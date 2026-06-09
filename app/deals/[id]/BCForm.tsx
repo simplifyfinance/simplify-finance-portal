@@ -98,7 +98,7 @@ Format as clean HTML using inline styles. Use these brand colours: header backgr
       const res = await fetch('/api/generate-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({ prompt, broker: notes.broker_sig })
       })
       const data = await res.json()
       setEmailHtml(data.html)

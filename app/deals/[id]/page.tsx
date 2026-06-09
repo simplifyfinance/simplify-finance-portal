@@ -1,4 +1,5 @@
 'use client'
+import Image from 'next/image'
 import { useEffect, useState, use } from 'react'
 import { supabase } from '@/lib/supabase'
 import { ArrowLeft } from 'lucide-react'
@@ -26,15 +27,43 @@ export default function DealPage({ params }: { params: Promise<{ id: string }> }
 
   return (
     <div className="p-6">
+      <div className="bg-white border border-gray-100 rounded-3xl p-6 mb-6 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="rounded-2xl bg-slate-50 p-3">
+              <Image src="/file.svg" alt="Simplify Finance logo" width={56} height={56} />
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-[0.32em] text-slate-500 font-semibold">Finance, Simplified</div>
+              <div className="mt-2 text-2xl font-semibold text-slate-900">Simplify Finance</div>
+            </div>
+          </div>
+          <div className="space-y-1 text-right text-xs text-slate-500">
+            <div>© 2026 Simplify Finance, St Leonards, Sydney</div>
+            <div>Australian Credit Licence: 387025</div>
+          </div>
+        </div>
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          Subject to loan approval, credit criteria and lender terms. All information is indicative only.
+        </div>
+      </div>
       <button onClick={() => router.back()} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-5">
         <ArrowLeft size={14} /> Back to deals
       </button>
       <div className="bg-white border border-gray-100 rounded-xl p-5 mb-4">
-        <div className="text-lg font-semibold mb-1">{deal.deal_name}</div>
-        <div className="flex gap-3 text-sm text-gray-500">
-          <span>{deal.clients?.first_name} {deal.clients?.last_name}</span>
-          <span>·</span><span>{deal.deal_type}</span>
-          <span>·</span><span>Broker: {deal.assigned_broker}</span>
+        <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <div className="text-lg font-semibold mb-1">{deal.deal_name}</div>
+            <div className="flex flex-wrap gap-3 text-sm text-gray-500">
+              <span>{deal.clients?.first_name} {deal.clients?.last_name}</span>
+              <span>·</span><span>{deal.deal_type}</span>
+            </div>
+          </div>
+          <div className="rounded-3xl border border-[#2DBEFF]/20 bg-[#F0FBFF] p-4 max-w-md">
+            <div className="text-xs uppercase tracking-[0.24em] text-[#2B6CB0] font-semibold mb-2">Broker</div>
+            <div className="text-sm font-semibold text-slate-900">{deal.assigned_broker || 'Broker name not assigned'}</div>
+            <div className="text-sm text-slate-500 mt-1">{deal.broker_rep_number ? `Credit Rep #${deal.broker_rep_number}` : 'Credit Rep #N/A'}</div>
+          </div>
         </div>
       </div>
       <div className="flex gap-2 mb-6">
