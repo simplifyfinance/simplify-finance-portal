@@ -3,11 +3,13 @@ import { useEffect, useState, use } from 'react'
 import { supabase } from '@/lib/supabase'
 import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import BCForm from './BCForm'
 
 export default function DealPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [deal, setDeal] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [stage, setStage] = useState('BC')
   const router = useRouter()
 
   useEffect(() => {
@@ -37,15 +39,25 @@ export default function DealPage({ params }: { params: Promise<{ id: string }> }
       </div>
       <div className="flex gap-2 mb-6">
         {['BC','LO','Compliance'].map(s => (
-          <div key={s} className={`flex-1 text-center py-2.5 rounded-lg text-sm font-medium border transition-colors ${deal.stage === s ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-400 bg-white'}`}>
+          <button key={s} onClick={() => setStage(s)}
+            className={`flex-1 text-center py-2.5 rounded-lg text-sm font-medium border transition-colors ${stage === s ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-400 bg-white hover:bg-gray-50'}`}>
             {s === 'BC' ? 'BC — Borrowing capacity' : s === 'LO' ? 'LO — Lending options' : 'Compliance'}
-          </div>
+          </button>
         ))}
       </div>
-      <div className="bg-white border border-gray-100 rounded-xl p-5">
-        <div className="text-sm font-medium mb-4">BC form coming next</div>
-        <div className="text-xs text-gray-400">All 12 templates with full field sets will load here.</div>
-      </div>
+      {stage === 'BC' && <BCForm deal={deal} />}
+      {stage === 'LO' && (
+        <div className="bg-white border border-gray-100 rounded-xl p-8 text-center">
+          <div className="text-sm font-medium text-gray-500 mb-1">Lending options</div>
+          <div className="text-xs text-gray-400">Coming after BC is complete.</div>
+        </div>
+      )}
+      {stage === 'Compliance' && (
+        <div className="bg-white border border-gray-100 rounded-xl p-8 text-center">
+          <div className="text-sm font-medium text-gray-500 mb-1">Compliance</div>
+          <div className="text-xs text-gray-400">Coming after LO is complete.</div>
+        </div>
+      )}
     </div>
   )
 }
