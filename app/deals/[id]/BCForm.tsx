@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const TEMPLATES = [
   { id: 'refinance_equity', label: 'Refinance + equity release' },
@@ -33,24 +33,79 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
 
 type Split = { label: string; amount: string; rate: string; type: string }
 
+const inputCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
+const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
+
+function formatNumber(val: string): string {
+  const digits = val.replace(/[^0-9]/g, '')
+  if (!digits) return ''
+  return parseInt(digits).toLocaleString('en-AU')
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs text-gray-500">{label}</label>
+      {children}
+    </div>
+  )
+}
+
+function NumberInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <input className={inputCls} placeholder={placeholder} value={value}
+      onChange={e => onChange(formatNumber(e.target.value))} />
+  )
+}
+
 export default function BCForm({ deal }: { deal: any }) {
+  const saveKey = `bc-form-${deal.id}`
+
+  const getSaved = () => {
+    try { return JSON.parse(localStorage.getItem(saveKey) || '{}') } catch { return {} }
+  }
+
+  const s = getSaved()
+
   const [activeTab, setActiveTab] = useState<'factfind' | 'form' | 'preview'>('form')
-  const [template, setTemplate] = useState('oo_purchase')
-  const [splits, setSplits] = useState<Split[]>(TEMPLATE_DEFAULTS['oo_purchase'].splits)
-  const [applicant, setApplicant] = useState({
-    first_name: deal.clients?.first_name || '',
-    last_name: deal.clients?.last_name || '',
-    dependants: '0',
-    joint: 'No',
-  })
-  const [income, setIncome] = useState({ base: '', other: '', rental: '' })
-  const [liabilities, setLiabilities] = useState({ cc_limit: '', personal_loan: '', car_loan: '', hecs: '', health: '', living: '' })
-  const [scenario, setScenario] = useState({ suburb: '', property_type: 'Owner-occupied', purchase_price: '', deposit: '', stamp_duty: '', lvr: '80%', loan_term: '30' })
-  const [notes, setNotes] = useState({ broker: '', internal: '', broker_sig: deal.assigned_broker || 'Fabio' })
-  const [checklist, setChecklist] = useState<string[]>([])
+  const [template, setTemplate] = useState(s.template || 'oo_purchase')
+  const [splits, setSplits] = useState<Split[]>(s.splits || TEMPLATE_DEFAULTS['oo_purchase'].splits)
+  const [firstName, setFirstName] = useState(s.firstName || deal.clients?.first_name || '')
+  const [lastName, setLastName] = useState(s.lastName || deal.clients?.last_name || '')
+  const [dependants, setDependants] = useState(s.dependants || '0')
+  const [joint, setJoint] = useState(s.joint || 'No')
+  const [incomeBase, setIncomeBase] = useState(s.incomeBase || '')
+  const [incomeOther, setIncomeOther] = useState(s.incomeOther || '')
+  const [incomeRental, setIncomeRental] = useState(s.incomeRental || '')
+  const [ccLimit, setCcLimit] = useState(s.ccLimit || '')
+  const [personalLoan, setPersonalLoan] = useState(s.personalLoan || '')
+  const [carLoan, setCarLoan] = useState(s.carLoan || '')
+  const [hecs, setHecs] = useState(s.hecs || '')
+  const [health, setHealth] = useState(s.health || '')
+  const [living, setLiving] = useState(s.living || '')
+  const [suburb, setSuburb] = useState(s.suburb || '')
+  const [propertyType, setPropertyType] = useState(s.propertyType || 'Owner-occupied')
+  const [purchasePrice, setPurchasePrice] = useState(s.purchasePrice || '')
+  const [deposit, setDeposit] = useState(s.deposit || '')
+  const [stampDuty, setStampDuty] = useState(s.stampDuty || '')
+  const [lvr, setLvr] = useState(s.lvr || '80%')
+  const [lvrCustom, setLvrCustom] = useState(s.lvrCustom || '')
+  const [loanTerm, setLoanTerm] = useState(s.loanTerm || '30')
+  const [brokerNotes, setBrokerNotes] = useState(s.brokerNotes || '')
+  const [internalNotes, setInternalNotes] = useState(s.internalNotes || '')
+  const [brokerSig, setBrokerSig] = useState(s.brokerSig || deal.assigned_broker || 'Fabio')
+  const [checklist, setChecklist] = useState<string[]>(s.checklist || [])
   const [newCheck, setNewCheck] = useState('')
   const [generating, setGenerating] = useState(false)
-  const [emailHtml, setEmailHtml] = useState('')
+  const [emailHtml, setEmailHtml] = useState(s.emailHtml || '')
+  const [emailError, setEmailError] = useState('')
+  const [savedAt, setSavedAt] = useState('')
+
+  useEffect(() => {
+    const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, internalNotes, brokerSig, checklist, emailHtml }
+    localStorage.setItem(saveKey, JSON.stringify(data))
+    setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, internalNotes, brokerSig, checklist, emailHtml])
 
   function selectTemplate(id: string) {
     setTemplate(id)
@@ -61,6 +116,10 @@ export default function BCForm({ deal }: { deal: any }) {
     setSplits(prev => prev.map((s, idx) => idx === i ? { ...s, [key]: val } : s))
   }
 
+  function updateSplitAmount(i: number, val: string) {
+    setSplits(prev => prev.map((s, idx) => idx === i ? { ...s, amount: formatNumber(val) } : s))
+  }
+
   function addSplit() {
     setSplits(prev => [...prev, { label: `Split ${prev.length + 1}`, amount: '', rate: '6.14', type: 'P&I' }])
   }
@@ -69,69 +128,58 @@ export default function BCForm({ deal }: { deal: any }) {
     setSplits(prev => prev.filter((_, idx) => idx !== i))
   }
 
+  const effectiveLvr = lvr === 'Other' ? lvrCustom : lvr
+
   async function generateEmail() {
     setGenerating(true)
+    setEmailError('')
     const templateLabel = TEMPLATES.find(t => t.id === template)?.label || template
     const splitsText = splits.map(s => `${s.label}: $${s.amount} @ ${s.rate}% p.a. (${s.type})`).join('\n')
-    const checklistText = checklist.length ? checklist.join(', ') : `Income $${income.base} p.a., ${applicant.dependants} dependants, CC limit $${liabilities.cc_limit}`
+    const checklistText = checklist.length
+      ? checklist.join(', ')
+      : `Income $${incomeBase} p.a., ${dependants} dependants${ccLimit ? `, CC limit $${ccLimit}` : ''}${carLoan ? `, car loan $${carLoan}/mo` : ''}`
 
-    const prompt = `You are writing a professional mortgage broker email for Simplify Finance.
-
-Client: ${applicant.first_name} ${applicant.joint === 'Yes' ? '& partner' : ''}
+    const prompt = `Client: ${firstName} ${lastName}${joint === 'Yes' ? ' & partner' : ''}
 Template: ${templateLabel}
+Suburb: ${suburb || 'not specified'}
+Property type: ${propertyType}
+Purchase price: $${purchasePrice}
+Deposit: $${deposit}
+LVR: ${effectiveLvr}
+Loan term: ${loanTerm} years
 Loan structure:
 ${splitsText}
-Broker notes: ${notes.broker || 'None'}
-Based on: ${checklistText}
-Broker: ${notes.broker_sig}
-
-Write a warm, professional borrowing capacity email. Include:
-1. A brief personalised opening (2-3 sentences)
-2. The loan structure summary (use the splits above)
-3. A "Based on your numbers" section listing key assumptions
-4. A brief next steps paragraph
-5. Sign off from ${notes.broker_sig} at Simplify Finance
-
-Format as clean HTML using inline styles. Use these brand colours: header background #343333, accent #2DBEFF, card background #F2E8DB. No markdown, just HTML.`
+Broker notes: ${brokerNotes || 'None'}
+Key assumptions: ${checklistText}`
 
     try {
       const res = await fetch('/api/generate-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, broker: notes.broker_sig })
+        body: JSON.stringify({ prompt, broker: brokerSig })
       })
+      if (!res.ok) { setEmailError(`Server error: ${res.status}`); setGenerating(false); return }
       const data = await res.json()
-      setEmailHtml(data.html)
-      setActiveTab('preview')
-    } catch (e) {
-      alert('Error generating email. Check your API key.')
+      if (data.html) { setEmailHtml(data.html); setActiveTab('preview') }
+      else setEmailError('No email returned. Try again.')
+    } catch (e: any) {
+      setEmailError(`Error: ${e.message}`)
     }
     setGenerating(false)
   }
 
-  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs text-gray-500">{label}</label>
-      {children}
-    </div>
-  )
-
-  const inputCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white"
-  const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white"
-
   return (
     <div>
-      {/* Sub tabs */}
-      <div className="flex gap-2 mb-5">
+      <div className="flex gap-2 mb-4 items-center">
         {[['factfind','Fact find'],['form','BC form'],['preview','Preview & share']].map(([id,label]) => (
           <button key={id} onClick={() => setActiveTab(id as any)}
             className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${activeTab === id ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500 bg-white'}`}>
             {label}
           </button>
         ))}
+        {savedAt && <span className="text-xs text-gray-400 ml-auto">✓ Autosaved {savedAt}</span>}
       </div>
 
-      {/* FACT FIND TAB */}
       {activeTab === 'factfind' && (
         <div className="flex flex-col gap-4">
           <div className="bg-white border border-gray-100 rounded-xl p-5 text-center">
@@ -142,16 +190,14 @@ Format as clean HTML using inline styles. Use these brand colours: header backgr
           </div>
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Attached documents</div>
-            <div className="text-xs text-gray-400 mb-3">Fact finds, screenshots, rate sheets. Rate sheet tagged files appear as reminders when sending in Outlook.</div>
+            <div className="text-xs text-gray-400 mb-3">Fact finds, screenshots, rate sheets.</div>
             <button className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">+ Add document</button>
           </div>
         </div>
       )}
 
-      {/* BC FORM TAB */}
       {activeTab === 'form' && (
         <div>
-          {/* Template selector */}
           <div className="bg-white border border-gray-100 rounded-xl p-4 mb-4">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">BC template</div>
             <div className="flex flex-wrap gap-2">
@@ -165,85 +211,87 @@ Format as clean HTML using inline styles. Use these brand colours: header backgr
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* LEFT COLUMN */}
             <div className="flex flex-col gap-4">
-
-              {/* Applicant */}
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Applicant</div>
                 <div className="grid grid-cols-2 gap-2 mb-2">
-                  <Field label="First name"><input className={inputCls} value={applicant.first_name} onChange={e => setApplicant({...applicant, first_name: e.target.value})} /></Field>
-                  <Field label="Last name"><input className={inputCls} value={applicant.last_name} onChange={e => setApplicant({...applicant, last_name: e.target.value})} /></Field>
+                  <Field label="First name"><input className={inputCls} value={firstName} onChange={e => setFirstName(e.target.value)} /></Field>
+                  <Field label="Last name"><input className={inputCls} value={lastName} onChange={e => setLastName(e.target.value)} /></Field>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <Field label="Dependants"><input className={inputCls} type="number" value={applicant.dependants} onChange={e => setApplicant({...applicant, dependants: e.target.value})} /></Field>
-                  <Field label="Joint application"><select className={selectCls} value={applicant.joint} onChange={e => setApplicant({...applicant, joint: e.target.value})}><option>No</option><option>Yes</option></select></Field>
+                  <Field label="Dependants"><input className={inputCls} type="number" value={dependants} onChange={e => setDependants(e.target.value)} /></Field>
+                  <Field label="Joint application"><select className={selectCls} value={joint} onChange={e => setJoint(e.target.value)}><option>No</option><option>Yes</option></select></Field>
                 </div>
               </div>
 
-              {/* Income */}
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Income</div>
                 <div className="flex flex-col gap-2">
-                  <Field label="Base income (p.a.)"><input className={inputCls} placeholder="$120,000" value={income.base} onChange={e => setIncome({...income, base: e.target.value})} /></Field>
+                  <Field label="Base income (p.a.)"><NumberInput value={incomeBase} onChange={setIncomeBase} placeholder="120,000" /></Field>
                   <div className="grid grid-cols-2 gap-2">
-                    <Field label="Other income"><input className={inputCls} placeholder="$0" value={income.other} onChange={e => setIncome({...income, other: e.target.value})} /></Field>
-                    <Field label="Rental income"><input className={inputCls} placeholder="$0" value={income.rental} onChange={e => setIncome({...income, rental: e.target.value})} /></Field>
+                    <Field label="Other income"><NumberInput value={incomeOther} onChange={setIncomeOther} placeholder="0" /></Field>
+                    <Field label="Rental income"><NumberInput value={incomeRental} onChange={setIncomeRental} placeholder="0" /></Field>
                   </div>
                 </div>
               </div>
 
-              {/* Liabilities */}
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Liabilities</div>
                 <div className="grid grid-cols-2 gap-2">
-                  <Field label="Credit card limit"><input className={inputCls} placeholder="$10,000" value={liabilities.cc_limit} onChange={e => setLiabilities({...liabilities, cc_limit: e.target.value})} /></Field>
-                  <Field label="Personal loan (mo.)"><input className={inputCls} placeholder="$0" value={liabilities.personal_loan} onChange={e => setLiabilities({...liabilities, personal_loan: e.target.value})} /></Field>
-                  <Field label="Car loan (mo.)"><input className={inputCls} placeholder="$0" value={liabilities.car_loan} onChange={e => setLiabilities({...liabilities, car_loan: e.target.value})} /></Field>
-                  <Field label="HECS (p.a.)"><input className={inputCls} placeholder="$0" value={liabilities.hecs} onChange={e => setLiabilities({...liabilities, hecs: e.target.value})} /></Field>
-                  <Field label="Health insurance (mo.)"><input className={inputCls} placeholder="$0" value={liabilities.health} onChange={e => setLiabilities({...liabilities, health: e.target.value})} /></Field>
-                  <Field label="Living expenses / HEM"><input className={inputCls} placeholder="$3,800" value={liabilities.living} onChange={e => setLiabilities({...liabilities, living: e.target.value})} /></Field>
+                  <Field label="Credit card limit"><NumberInput value={ccLimit} onChange={setCcLimit} placeholder="10,000" /></Field>
+                  <Field label="Personal loan (mo.)"><NumberInput value={personalLoan} onChange={setPersonalLoan} placeholder="0" /></Field>
+                  <Field label="Car loan (mo.)"><NumberInput value={carLoan} onChange={setCarLoan} placeholder="0" /></Field>
+                  <Field label="HECS (p.a.)"><NumberInput value={hecs} onChange={setHecs} placeholder="0" /></Field>
+                  <Field label="Health insurance (mo.)"><NumberInput value={health} onChange={setHealth} placeholder="0" /></Field>
+                  <Field label="Living expenses / HEM"><NumberInput value={living} onChange={setLiving} placeholder="3,800" /></Field>
                 </div>
               </div>
 
-              {/* Notes */}
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Notes</div>
                 <div className="flex flex-col gap-2">
                   <Field label="Broker summary notes (included in email)">
-                    <textarea className={`${inputCls} min-h-16 resize-y`} value={notes.broker} onChange={e => setNotes({...notes, broker: e.target.value})} placeholder="Add personalised notes for client..." />
+                    <textarea className={`${inputCls} min-h-16 resize-y`} value={brokerNotes} onChange={e => setBrokerNotes(e.target.value)} placeholder="Add personalised notes..." />
                   </Field>
                   <Field label="Internal assessor notes (internal only)">
-                    <textarea className={`${inputCls} min-h-16 resize-y`} value={notes.internal} onChange={e => setNotes({...notes, internal: e.target.value})} placeholder="Internal notes..." />
+                    <textarea className={`${inputCls} min-h-16 resize-y`} value={internalNotes} onChange={e => setInternalNotes(e.target.value)} placeholder="Internal notes..." />
                   </Field>
                   <Field label="Broker signature">
-                    <select className={selectCls} value={notes.broker_sig} onChange={e => setNotes({...notes, broker_sig: e.target.value})}>
-                      <option>Fabio — Simplify Finance</option>
-                      <option>Mark — Simplify Finance</option>
+                    <select className={selectCls} value={brokerSig} onChange={e => setBrokerSig(e.target.value)}>
+                      <option value="Fabio">Fabio — Simplify Finance</option>
+                      <option value="Mark">Mark — Simplify Finance</option>
                     </select>
                   </Field>
                 </div>
               </div>
             </div>
 
-            {/* RIGHT COLUMN */}
             <div className="flex flex-col gap-4">
-
-              {/* Scenario fields */}
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Scenario details</div>
                 <div className="grid grid-cols-2 gap-2">
-                  <Field label="Suburb"><input className={inputCls} value={scenario.suburb} onChange={e => setScenario({...scenario, suburb: e.target.value})} /></Field>
-                  <Field label="Property type"><select className={selectCls} value={scenario.property_type} onChange={e => setScenario({...scenario, property_type: e.target.value})}><option>Owner-occupied</option><option>Investment</option></select></Field>
-                  <Field label="Purchase price"><input className={inputCls} placeholder="$750,000" value={scenario.purchase_price} onChange={e => setScenario({...scenario, purchase_price: e.target.value})} /></Field>
-                  <Field label="Deposit"><input className={inputCls} placeholder="$150,000" value={scenario.deposit} onChange={e => setScenario({...scenario, deposit: e.target.value})} /></Field>
-                  <Field label="Stamp duty"><input className={inputCls} placeholder="$40,000" value={scenario.stamp_duty} onChange={e => setScenario({...scenario, stamp_duty: e.target.value})} /></Field>
-                  <Field label="LVR"><select className={selectCls} value={scenario.lvr} onChange={e => setScenario({...scenario, lvr: e.target.value})}><option>80%</option><option>90%</option><option>95%</option></select></Field>
-                  <Field label="Loan term (years)"><input className={inputCls} value={scenario.loan_term} onChange={e => setScenario({...scenario, loan_term: e.target.value})} /></Field>
+                  <Field label="Suburb"><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
+                  <Field label="Property type"><select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>
+                  <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={setPurchasePrice} placeholder="750,000" /></Field>
+                  <Field label="Deposit"><NumberInput value={deposit} onChange={setDeposit} placeholder="150,000" /></Field>
+                  <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={setStampDuty} placeholder="40,000" /></Field>
+                  <Field label="LVR">
+                    <select className={selectCls} value={lvr} onChange={e => setLvr(e.target.value)}>
+                      <option>80%</option>
+                      <option>90%</option>
+                      <option>95%</option>
+                      <option>Other</option>
+                    </select>
+                  </Field>
+                  {lvr === 'Other' && (
+                    <Field label="Custom LVR">
+                      <input className={inputCls} placeholder="e.g. 85%" value={lvrCustom} onChange={e => setLvrCustom(e.target.value)} />
+                    </Field>
+                  )}
+                  <Field label="Loan term (years)"><input className={inputCls} value={loanTerm} onChange={e => setLoanTerm(e.target.value)} /></Field>
                 </div>
               </div>
 
-              {/* Loan splits */}
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Loan splits</div>
                 <div className="flex flex-col gap-3">
@@ -255,7 +303,7 @@ Format as clean HTML using inline styles. Use these brand colours: header backgr
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <Field label="Label"><input className={inputCls} value={s.label} onChange={e => updateSplit(i, 'label', e.target.value)} /></Field>
-                        <Field label="Amount"><input className={inputCls} placeholder="$600,000" value={s.amount} onChange={e => updateSplit(i, 'amount', e.target.value)} /></Field>
+                        <Field label="Amount"><input className={inputCls} placeholder="600,000" value={s.amount} onChange={e => updateSplitAmount(i, e.target.value)} /></Field>
                         <Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
                         <Field label="Type"><select className={selectCls} value={s.type} onChange={e => updateSplit(i, 'type', e.target.value)}><option>P&I</option><option>Interest only</option></select></Field>
                       </div>
@@ -265,7 +313,6 @@ Format as clean HTML using inline styles. Use these brand colours: header backgr
                 </div>
               </div>
 
-              {/* Checklist */}
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">"Based on your numbers" checklist</div>
                 <div className="flex flex-col gap-2 mb-2">
@@ -285,9 +332,11 @@ Format as clean HTML using inline styles. Use these brand colours: header backgr
                 </div>
               </div>
 
-              {/* Generate button */}
+              {emailError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-600">{emailError}</div>
+              )}
+
               <div className="flex justify-end gap-2">
-                <button onClick={() => setActiveTab('preview')} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Preview</button>
                 <button onClick={generateEmail} disabled={generating}
                   className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-50">
                   {generating ? 'Generating...' : '✨ Generate email'}
@@ -298,7 +347,6 @@ Format as clean HTML using inline styles. Use these brand colours: header backgr
         </div>
       )}
 
-      {/* PREVIEW TAB */}
       {activeTab === 'preview' && (
         <div>
           <div className="flex justify-end gap-2 mb-4">
