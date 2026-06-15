@@ -1,5 +1,11 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 const defaultBrands = [{ id: 'simplify', name: 'Simplify Finance', isDefault: true, headerColor: '#343333', accentColor: '#2DBEFF', acl: '387025', footerAddress: 'St Leonards, Sydney' }]
 const defaultBrokers = [
@@ -10,9 +16,49 @@ const defaultBrokers = [
 export default function SettingsPage() {
   const [brands, setBrands] = useState(defaultBrands)
   const [brokers, setBrokers] = useState(defaultBrokers)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      const { data } = await supabase.from('settings').select('*').eq('id', 'singleton').single()
+      if (data) {
+        if (data.brands?.length) setBrands(data.brands)
+        if (data.brokers?.length) setBrokers(data.brokers)
+      }
+      setLoading(false)
+    }
+    load()
+  }, [])
+
+  async function handleSave() {
+    setSaving(true)
+    await supabase.from('settings').upsert({
+      id: 'singleton',
+      brands,
+      brokers,
+      updated_at: new Date().toISOString()
+    })
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 3000)
+  }
+
+  if (loading) return <div className="p-8 max-w-3xl mx-auto text-sm text-gray-400">Loading settings...</div>
+
   return (
     <div className="p-8 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-[#343333] mb-1">Settings</h1>
+      <div className="flex justify-between items-center mb-1">
+        <h1 className="text-2xl font-bold text-[#343333]">Settings</h1>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="text-sm bg-[#2DBEFF] text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-400 transition disabled:opacity-50"
+        >
+          {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save settings'}
+        </button>
+      </div>
       <p className="text-sm text-gray-500 mb-8">Manage your brands and broker profiles</p>
       <section className="mb-10">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Brands</h2>
