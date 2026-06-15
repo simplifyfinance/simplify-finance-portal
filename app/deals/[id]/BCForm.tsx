@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 
 const TEMPLATES = [
   { id: 'refinance_equity', label: 'Refinance + equity release' },
@@ -65,6 +66,16 @@ export default function BCForm({ deal }: { deal: any }) {
     try { return JSON.parse(localStorage.getItem(saveKey) || '{}') } catch { return {} }
   }
 
+  useEffect(() => {
+    async function loadFromSupabase() {
+      const { data } = await supabase.from('deals').select('bc_data').eq('id', deal.id).single()
+      if (data?.bc_data && Object.keys(data.bc_data).length > 0) {
+        localStorage.setItem(saveKey, JSON.stringify(data.bc_data))
+      }
+    }
+    loadFromSupabase()
+  }, [deal.id])
+
   const s = getSaved()
 
   const [activeTab, setActiveTab] = useState<'factfind' | 'form' | 'preview'>('form')
@@ -103,7 +114,7 @@ export default function BCForm({ deal }: { deal: any }) {
 
   useEffect(() => {
     const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, internalNotes, brokerSig, checklist, emailHtml }
-    localStorage.setItem(saveKey, JSON.stringify(data))
+    localStorage.setItem(saveKey, JSON.stringify(data)); supabase.from('deals').update({ bc_data: data }).eq('id', deal.id)
     setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
   }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, internalNotes, brokerSig, checklist, emailHtml])
 
