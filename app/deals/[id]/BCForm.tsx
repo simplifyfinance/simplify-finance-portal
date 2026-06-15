@@ -309,13 +309,13 @@ Key assumptions: ${checklistText}`
                   {splits.map((s, i) => (
                     <div key={i} className="bg-gray-50 rounded-lg p-3">
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-medium text-[#2DBEFF]">Split {i + 1}</span>
+                        <span className="text-xs font-medium text-[#2DBEFF]">{template === "oo_lvr_compare" ? `Option ${i + 1}` : `Split ${i + 1}`}</span>
                         {splits.length > 1 && <button onClick={() => removeSplit(i)} className="text-xs text-gray-400 hover:text-red-500">Remove</button>}
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <Field label="Label"><input className={inputCls} value={s.label} onChange={e => updateSplit(i, 'label', e.target.value)} /></Field>
                         <Field label="Amount"><input className={inputCls} placeholder="600,000" value={s.amount} onChange={e => updateSplitAmount(i, e.target.value)} /></Field>
-                        {template === "oo_lvr_compare" && <Field label="Deposit required"><input className={inputCls} value={s.deposit || ""} onChange={e => updateSplit(i, 'deposit', e.target.value)} placeholder="150,000" /></Field>}<Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
+                        {template === "oo_lvr_compare" && <Field label="Deposit required"><NumberInput value={s.deposit || ""} onChange={v => updateSplit(i, 'deposit', v)} placeholder="150,000" /></Field>}<Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
                         <Field label="Type"><select className={selectCls} value={s.type} onChange={e => updateSplit(i, 'type', e.target.value)}><option>P&I</option><option>Interest only</option></select></Field>
                       </div>
                     </div>
