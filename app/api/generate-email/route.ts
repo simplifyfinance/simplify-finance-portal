@@ -1,84 +1,324 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST(req: NextRequest) {
-  const { prompt, broker } = await req.json()
+const brokers: Record<string, { name: string; title: string; crn: string; calendly: string }> = {
+  'Fabio': { name: 'Fabio de Castro', title: 'Director / Mortgage Broker', crn: '483807', calendly: 'https://calendly.com/fabiobroker' },
+  'Mark': { name: 'Mark Gallo', title: 'Mortgage Broker', crn: '496195', calendly: 'https://calendly.com/markgallo/phonecall' },
+}
 
-  const brokers: Record<string, { name: string; title: string; crn: string }> = {
-    'Fabio': { name: 'Fabio de Castro', title: 'Director / Mortgage Broker', crn: '483807' },
-    'Mark': { name: 'Mark Gallo', title: 'Mortgage Broker', crn: '496195' },
-    'Fabio — Simplify Finance': { name: 'Fabio de Castro', title: 'Director / Mortgage Broker', crn: '483807' },
-    'Mark — Simplify Finance': { name: 'Mark Gallo', title: 'Mortgage Broker', crn: '496195' },
+function shell(body: string, b: { name: string; title: string; crn: string; calendly: string }) {
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr><td>
+  <table width="600" cellpadding="0" cellspacing="0" align="center" style="background:#fff;margin:0 auto">
+    <tr><td style="background:#343333;padding:20px;text-align:center">
+      <p style="color:#fff;font-size:22px;font-weight:bold;margin:0 0 6px;letter-spacing:-0.5px">Simplify Finance.</p>
+      <p style="color:#fff;font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0">Finance, Simplified.</p>
+    </td></tr>
+    <tr><td style="padding:28px">${body}</td></tr>
+    <tr><td style="background:#343333;padding:14px 16px;text-align:center">
+      <p style="font-size:10px;color:rgba(255,255,255,0.6);margin:0 0 6px;line-height:1.6">Rates quoted are indicative only and subject to change. Figures are based on information provided and are not a formal credit assessment. Subject to lender approval.</p>
+      <p style="font-size:10px;color:rgba(255,255,255,0.4);margin:0">&copy; 2026 Simplify Finance | St Leonards, Sydney | Australian Credit Licence: 387025</p>
+    </td></tr>
+  </table></td></tr></table>`
+}
+
+function brokerBox(personalisation: string) {
+  return `<div style="background:#FFF8E7;border-left:4px solid #F59E0B;border-radius:0 6px 6px 0;padding:13px 15px;margin-bottom:18px">
+    <p style="font-size:10px;font-weight:600;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Broker — personalise before sending</p>
+    <p style="font-size:13px;color:#333;line-height:1.6">${personalisation || 'Hi [Client First Name], great speaking with you today. [Add your personal opening here.]'}</p>
+  </div>`
+}
+
+function notesBox(items: string[]) {
+  const all = ['Any rates or fees quoted are subject to change', ...items]
+  return `<div style="background:#EEF6FD;border-left:4px solid #2DBEFF;border-radius:0 6px 6px 0;padding:13px 15px;margin-bottom:18px">
+    <p style="font-size:10px;font-weight:600;color:#0369a1;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Important things to note</p>
+    ${all.map(i => `<p style="font-size:12px;color:#334155;margin:4px 0;line-height:1.6">&bull; ${i}</p>`).join('')}
+  </div>`
+}
+
+function heading() { return `<p style="font-size:11px;font-weight:600;color:#343333;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px">Borrowing Capacity Review</p>` }
+
+function card(title: string, rows: string) {
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
+    <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">${title}</p>
+    <table width="100%" cellpadding="0" cellspacing="0">${rows}</table>
+  </td></tr></table>`
+}
+
+function row(l: string, v: string) {
+  return `<tr><td style="font-size:12px;color:#555;padding:3px 0">${l}</td><td style="font-size:12px;color:#343333;font-weight:500;text-align:right">${v}</td></tr>`
+}
+
+function check(items: string[]) {
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
+    <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Based on your numbers</p>
+    ${items.map(i => `<p style="font-size:13px;color:#555;margin:4px 0">&#10003; ${i}</p>`).join('')}
+  </td></tr></table>`
+}
+
+function ctas(calendly: string) {
+  return `<div style="margin-bottom:20px">
+    <a href="${calendly}" style="background:#2DBEFF;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block;margin-right:8px">I am ready to proceed</a>
+    <a href="${calendly}" style="background:#343333;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">Book a call</a>
+  </div>`
+}
+
+function sig(b: { name: string; title: string; crn: string }) {
+  return `<div style="border:1px solid #e5e5e5;border-radius:8px;padding:12px 14px;max-width:240px">
+    <p style="font-size:14px;font-weight:600;color:#333;margin-bottom:2px">${b.name}</p>
+    <p style="font-size:12px;color:#666;margin-bottom:2px">${b.title}</p>
+    <p style="font-size:11px;color:#999">CR No. ${b.crn}</p>
+  </div>`
+}
+
+function p(t: string) { return `<p style="font-size:14px;color:#333;margin-bottom:14px">${t}</p>` }
+function p13(t: string) { return `<p style="font-size:13px;color:#555;margin-bottom:12px">${t}</p>` }
+function propHead(t: string) { return `<p style="font-size:13px;color:#343333;font-weight:600;margin-bottom:8px">&#127968; ${t}</p>` }
+
+function buildLVRrow(lvr: string, lvrCustom: string, lmi: string) {
+  const effectiveLvr = lvr === 'Other' ? lvrCustom : lvr
+  const lvrNum = parseFloat(effectiveLvr)
+  if (lvrNum > 80 && lmi) {
+    return row('LVR', effectiveLvr) + row('LMI (estimated)', lmi)
   }
+  return row('LVR', lvrNum <= 80 ? `${effectiveLvr} (no LMI)` : effectiveLvr)
+}
+
+function buildChecklist(d: any) {
+  const items = []
+  if (d.incomeBase) items.push(`Base salary (excl. super) ${d.incomeBase} p.a.`)
+  if (d.joint === 'Yes') items.push('Joint application')
+  if (d.dependants) items.push(`${d.dependants} dependant${d.dependants === '1' ? '' : 's'}`)
+  if (d.hecs) items.push(`HECS ${d.hecs} p.a.`)
+  if (d.carLoan) items.push(`Car loan ${d.carLoan}/mo`)
+  if (d.personalLoan) items.push(`Personal loan ${d.personalLoan}/mo`)
+  if (d.ccLimit) items.push(`Credit card limit ${d.ccLimit}`)
+  return items
+}
+
+export async function POST(req: NextRequest) {
+  const { prompt, broker, formData } = await req.json()
   const b = brokers[broker] || brokers['Fabio']
+  const d = formData || {}
 
-  const systemPrompt = `You are generating a professional HTML borrowing capacity email for Simplify Finance. Return ONLY raw HTML — no markdown, no code fences, no preamble.
+  const template = d.template || 'oo_purchase'
+  const personalisation = d.brokerPersonalisation || ''
+  const checkItems = buildChecklist(d)
 
-STRUCTURE (follow exactly):
+  let body = ''
 
-1. Outer wrapper: <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f3;font-family:Arial,sans-serif;padding:20px 0">
-   Inner content: max-width 600px, centered, background white.
+  if (template === 'refinance_equity') {
+    body = heading() + brokerBox(personalisation) +
+      p('Great news — we have finished running your numbers and the results are looking really positive.') +
+      p(`Based on your current financial position, you have sufficient capacity to refinance your property and access approximately ${d.splits?.[1]?.amount || '[equity amount]'} in equity, while also securing a competitive rate.`) +
+      p13('Here is a breakdown of the structure:') +
+      propHead(`Against ${d.suburb || '[Property Address]'}`) +
+      card('Split 1 — Refinanced Loan', row('Loan amount', d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
+      card('Split 2 — Equity Release', row('Loan amount', d.splits?.[1]?.amount || '') + row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[1]?.type || 'Interest Only')) +
+      check(checkItems) +
+      p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox([]) + sig(b)
 
-2. HEADER — background #343333, padding 24px, text-align center:
-   <img src="/sf-logo-white.png" alt="Simplify Finance" style="height:44px;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto">
-   Tagline: "Finance, Simplified." — white, font-size 11px, letter-spacing 2px, text-transform uppercase, margin 0
+  } else if (template === 'refinance_only') {
+    body = heading() + brokerBox(personalisation) +
+      p('Great news — we have finished running your numbers and the results are looking really positive.') +
+      p('Based on your current financial position, you have sufficient capacity to refinance your existing loan and secure a competitive rate.') +
+      p13('Here is a breakdown of the structure:') +
+      propHead(`Against ${d.suburb || '[Property Address]'}`) +
+      card('Refinanced Loan', row('New loan amount', d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
+      check(checkItems) +
+      p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox([]) + sig(b)
 
-3. AI NOTES BOX (shown before email body — this is for the broker, not the client):
-   Background #FFF8E7, border-left 4px solid #F59E0B, border-radius 0 8px 8px 0, padding 14px 16px, margin 16px
-   Title: "✦ AI Deal Notes" — font-size 11px font-weight 600 color #92400E uppercase letter-spacing 0.5px margin-bottom 8px
-   Content: 2-3 concise dot points observing key aspects of this deal — serviceability considerations, LVR risk, notable liabilities, anything a broker should be aware of when personalising the email. Font-size 12px color #78350F line-height 1.6
-   Note at bottom: "📝 Add your personalised opening paragraph above before sending." — font-size 11px color #B45309 font-style italic
+  } else if (template === 'oo_purchase') {
+    const lvr = d.lvr || '80%'
+    const lvrNum = parseFloat(lvr)
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong>.`) +
+      p13('Here is a breakdown of the structure:') +
+      card('Your Loan Structure',
+        row('Purchase price', d.purchasePrice || '') +
+        row('Deposit', d.deposit || '') +
+        row('Stamp duty', d.stampDuty || '') +
+        row('Loan amount', d.splits?.[0]?.amount || '') +
+        (lvrNum > 80 && d.lmi ? row('LVR', lvr) + row('LMI (estimated)', d.lmi) : row('LVR', `${lvr} (no LMI)`)) +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox([]) + sig(b)
 
-4. EMAIL BODY — padding 28px background white:
-   - Opening paragraph placeholder: "[Broker to personalise — e.g. 'Hi [Name], great speaking with you today. Based on our conversation...']" — shown in light gray italic font-size 13px color #9CA3AF border 1px dashed #E5E7EB padding 12px border-radius 6px margin-bottom 16px
-   - Then: "We have completed your borrowing capacity assessment. Here is a summary of what is possible based on your current financial position."
+  } else if (template === 'investment_purchase') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong>.`) +
+      card('Your Loan Structure',
+        row('Purchase price', d.purchasePrice || '') +
+        row('Deposit', d.deposit || '') +
+        row('Stamp duty', d.stampDuty || '') +
+        row('Loan amount', d.splits?.[0]?.amount || '') +
+        row('LVR', d.lvr || '80%') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', d.splits?.[0]?.type || 'Interest Only (5 years)')
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the right structure for your investment — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox(['We have assumed a minimum rental yield of 4% p.a. Please note, rental yield is a key component in determining your borrowing capacity for an investment purchase.']) + sig(b)
 
-5. LOAN STRUCTURE CARD — background #F2E8DB, border-radius 8px, padding 16px, margin-bottom 16px:
-   Title "Your Loan Structure" — font-size 11px font-weight 600 color #7a5c3a uppercase letter-spacing 0.5px margin-bottom 10px
-   Each split on its own row: bold label left, rate + type right. Font-size 13px.
+  } else if (template === 'buy_sell') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      card('Sale Proceeds Summary',
+        row('Expected sale price', d.salePrice || '') +
+        row('Agent fees / selling costs', d.agentFees || '') +
+        row('Mortgage to discharge', d.mortgageDischarge || '') +
+        `<tr style="border-top:1px solid rgba(122,92,58,0.3)"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Net proceeds (est.)</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">${d.netProceeds || ''}</td></tr>`
+      ) +
+      card('New Purchase',
+        row('Purchase price', d.purchasePrice || '') +
+        row('Deposit (from sale proceeds)', d.deposit || '') +
+        row('Stamp duty', d.stampDuty || '') +
+        row('Loan amount', d.splits?.[0]?.amount || '') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('Now it is about finding the right lender, the right rate, and making sure the timing between your sale and purchase lines up perfectly. That is exactly what we are here for.') +
+      ctas(b.calendly) +
+      notesBox([
+        'This is your estimated borrowing capacity as of today and it can change by the time you are ready to apply.',
+        'The figures used for the proposed sale are only estimated amounts. If you were to sell the property for less we would need to re-work your numbers.',
+        'You will also need to ascertain if there are any further fees on the finalisation of your sale (e.g. Capital Gains Tax).'
+      ]) + sig(b)
 
-6. ASSUMPTIONS CARD — same cream styling:
-   Title "Based on Your Numbers" — same title style
-   Bullet list of key figures. Font-size 13px color #555.
+  } else if (template === 'fhb') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p('There is currently a government scheme we believe you would be eligible for. The <strong>First Home Guarantee (5% Deposit Scheme)</strong> allows first home buyers with a minimum 5% deposit to purchase a property without the cost of Lenders Mortgage Insurance.') +
+      `<p style="font-size:14px;color:#333;margin-bottom:8px">To be eligible, home buyers must be:</p>
+      <ul style="font-size:13px;color:#555;margin:0 0 16px 20px;line-height:1.9">
+        <li>An Australian citizen or Permanent Resident at the time they enter the loan</li>
+        <li>Applying as an individual or couple</li>
+        <li>Saved a minimum deposit of 5% and shown to be using all available savings towards the purchase</li>
+        <li>Intending to be owner-occupiers of the purchased property</li>
+        <li>First home buyers who have not previously owned, or had an interest in, a property in Australia in the last 10 years</li>
+        <li>Purchasing a property within the price cap relevant to your state or territory</li>
+      </ul>` +
+      card('Your Loan Structure',
+        row('Purchase price', d.purchasePrice || '') +
+        row('Stamp duty', d.stampDuty || '/bin/zsh — first home buyer exemption') +
+        row('Loan amount', d.splits?.[0]?.amount || '') +
+        row('LMI', '/bin/zsh — guaranteed by NHFIC') +
+        row('Your contribution required', d.deposit || '') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox([]) + sig(b)
 
-7. BLUE INFO BOX — background #EEF6FD, border-left 3px solid #2DBEFF, padding 12px 14px, border-radius 0 6px 6px 0, font-size 12px color #333, margin-bottom 16px:
-   "These figures are indicative only and based on the information provided. Final approval is subject to full credit assessment and lender conditions."
+  } else if (template === 'bridging') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p('Based on your current financial position, bridging finance is achievable for your next owner-occupied purchase.') +
+      card('Bridging Loan Summary',
+        row('Bridging loan (debt while holding both properties)', d.splits?.[0]?.amount || '') +
+        row('End debt (after selling existing property)', d.splits?.[1]?.amount || '')
+      ) +
+      card('Loan 1 — Bridging Loan',
+        row('Loan amount', d.splits?.[0]?.amount || '') +
+        row('Rate', 'Standard variable rate*') +
+        row('Interest treatment', 'Capitalised during bridging period') +
+        row('Maximum bridging period', '12 months to sell existing property')
+      ) +
+      card('Loan 2 — End Debt',
+        row('Loan amount', d.splits?.[1]?.amount || '') +
+        row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[1]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the right structure for your bridging scenario — and that is exactly what we will do for you.') +
+      ctas(b.calendly) +
+      notesBox([
+        'These are only estimates — if the valuation on your current property comes in lower than the expected sale price, we will need to re-work your numbers.',
+        'Bridging loan interest is capitalised during the bridging period and will increase the total loan balance.'
+      ]) + sig(b)
 
-8. NEXT STEPS paragraph — font-size 14px color #333, margin-bottom 20px.
+  } else if (template === 'family_pledge') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong> — using your parents' property as a security guarantee to avoid Lenders Mortgage Insurance.`) +
+      card('Your Loan Structure',
+        row('Purchase price', d.purchasePrice || '') +
+        row('Stamp duty', d.stampDuty || '') +
+        row('Loan amount', d.splits?.[0]?.amount || '') +
+        row('Your contribution required', d.deposit || '') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
+      ctas(b.calendly) +
+      notesBox(['Family guarantee arrangements are subject to lender eligibility criteria and guarantor assessment.']) + sig(b)
 
-9. TWO CTA BUTTONS side by side — margin-bottom 24px:
-   "Book a call" — background #2DBEFF color white padding 10px 20px border-radius 6px font-size 13px font-weight 600 text-decoration none display inline-block margin-right 8px
-   "I'm ready to proceed" — background #343333 color white same styling
+  } else if (template === 'smsf') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p('When looking at your numbers, your borrowing capacity is looking strong for an SMSF purchase.') +
+      card('Your Loan Structure',
+        row('Purchase price', d.purchasePrice || '') +
+        row('Stamp duty', d.stampDuty || '') +
+        row('Loan amount', d.splits?.[0]?.amount || '') +
+        row('Your contribution required', d.deposit || '') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the right SMSF structure for your investment — and that is exactly what we will do for you.') +
+      ctas(b.calendly) +
+      notesBox([
+        'We have assumed a minimum rental yield of 4% p.a. Rental yield is a key component in determining your borrowing capacity for an investment purchase.',
+        'Confirmation of your rollover amount to your SMSF is required.',
+        'Please advise if you did NOT receive financial advice when setting up your SMSF.',
+        'Please note, lenders will require you to obtain independent financial and legal advice at your own cost as you will be a guarantor on the application.'
+      ]) + sig(b)
 
-10. BROKER SIGNATURE BOX — border 1px solid #e5e5e5, border-radius 8px, padding 14px 16px, max-width 260px (NOT full width):
-    ${b.name} — font-size 14px font-weight 600 color #333 margin-bottom 2px
-    ${b.title} — font-size 12px color #666 margin-bottom 2px
-    CR No. ${b.crn} — font-size 11px color #999
+  } else if (template === 'construction') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      card('Your Loan Structure',
+        row('Land value', d.landValue || '') +
+        row('Construction cost', d.constructionCost || '') +
+        row('Total project cost', d.purchasePrice || '') +
+        row('Deposit', d.deposit || '') +
+        row('Stamp duty', d.stampDuty || '') +
+        row('Loan amount', d.splits?.[0]?.amount || '') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender and construction loan structure for your project — and we will guide you through every step of that process.') +
+      ctas(b.calendly) +
+      notesBox(['Construction cost estimates are indicative only and subject to builder contracts and council approvals.']) + sig(b)
 
-11. DISCLAIMER — font-size 11px color #999 margin-top 20px line-height 1.6:
-    "This assessment is indicative only and subject to full credit assessment, lender approval, and verification of all information provided. Interest rates quoted are indicative and may change. This is not a credit approval or commitment to lend."
+  } else {
+    body = heading() + brokerBox(personalisation) + p('Email template coming soon.') + ctas(b.calendly) + sig(b)
+  }
 
-12. FOOTER — background #343333, padding 16px, text-align center, font-size 11px, color rgba(255,255,255,0.5):
-    "© 2026 Simplify Finance | St Leonards, Sydney | Australian Credit Licence: 387025"
-
-IMPORTANT: The AI notes box content should be genuinely useful broker observations based on the deal data provided.`
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY!,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2500,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  })
-
-  const data = await res.json()
-  let html = data.content?.[0]?.text || ''
-  html = html.replace(/^```html\n?/, '').replace(/\n?```$/, '').trim()
+  const html = shell(body, b)
   return NextResponse.json({ html })
 }
