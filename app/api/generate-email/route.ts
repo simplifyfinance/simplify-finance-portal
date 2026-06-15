@@ -112,8 +112,8 @@ export async function POST(req: NextRequest) {
       p(`Based on your current financial position, you have sufficient capacity to refinance your property and access approximately ${d.splits?.[1]?.amount || '[equity amount]'} in equity, while also securing a competitive rate.`) +
       p13('Here is a breakdown of the structure:') +
       propHead(`Against ${d.suburb || '[Property Address]'}`) +
-      card('Split 1 — Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + row('Loan amount', '$' + d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
-      card('Split 2 — Equity Release', row('Equity release amount', '$' + (d.equityRelease || '')) + row('Loan amount', '$' + d.splits?.[1]?.amount || '') + row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[1]?.type || 'Interest Only')) +
+      card('Split 1 - Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + row('Loan amount', '$' + d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
+      card('Split 2 - Equity Release', row('Equity release amount', '$' + (d.equityRelease || '')) + row('Loan amount', '$' + d.splits?.[1]?.amount || '') + row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[1]?.type || 'Interest Only')) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
       ctas(b.calendly) + notesBox([]) + sig(b)
@@ -258,13 +258,13 @@ export async function POST(req: NextRequest) {
         row('Bridging loan (debt while holding both properties)', d.splits?.[0]?.amount || '') +
         row('End debt (after selling existing property)', d.splits?.[1]?.amount || '')
       ) +
-      card('Loan 1 — Bridging Loan',
+      card('Loan 1 - Bridging Loan',
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('Rate', 'Standard variable rate*') +
         row('Interest treatment', 'Capitalised during bridging period') +
-        row('Bridging period', (d.bridgingPeriod || '12') + ' months') +
+        row('Bridging period', (d.bridgingPeriod || '12') + ' months')
       ) +
-      card('Loan 2 — End Debt',
+      card('Loan 2 - End Debt',
         row('Loan amount', '$' + d.splits?.[1]?.amount || '') +
         row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
