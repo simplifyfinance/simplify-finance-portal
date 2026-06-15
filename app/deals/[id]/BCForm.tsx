@@ -304,7 +304,7 @@ Key assumptions: ${checklistText}`
               </div>
 
               <div className="bg-white border border-gray-100 rounded-xl p-4">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Loan splits</div>
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">{template === "oo_lvr_compare" ? "Loan Options — Multiple Deposits" : "Loan splits"}</div>
                 <div className="flex flex-col gap-3">
                   {splits.map((s, i) => (
                     <div key={i} className="bg-gray-50 rounded-lg p-3">
