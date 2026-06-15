@@ -107,6 +107,11 @@ export default function BCForm({ deal }: { deal: any }) {
   const [lvrCustom, setLvrCustom] = useState(s.lvrCustom || '')
   const [lmi, setLmi] = useState(s.lmi || '')
   const [loanTerm, setLoanTerm] = useState(s.loanTerm || '30')
+  const [fhog, setFhog] = useState(s.fhog || '')
+  const [guarantorName, setGuarantorName] = useState(s.guarantorName || '')
+  const [bridgingPeriod, setBridgingPeriod] = useState(s.bridgingPeriod || '')
+  const [constructionCost, setConstructionCost] = useState(s.constructionCost || '')
+  const [landValue, setLandValue] = useState(s.landValue || '')
   const [brokerNotes, setBrokerNotes] = useState(s.brokerNotes || '')
 
   // Auto-calculate LVR from purchase price and deposit
@@ -333,6 +338,11 @@ Key assumptions: ${checklistText}`
                     </Field>
                   )}
                   <Field label="Loan term (years)"><input className={inputCls} value={loanTerm} onChange={e => setLoanTerm(e.target.value)} /></Field>
+              {template === 'fhb' && <Field label="First home owner grant"><NumberInput value={fhog} onChange={setFhog} placeholder="30,000" /></Field>}
+              {template === 'family_pledge' && <Field label="Guarantor name"><input className={inputCls} value={guarantorName} onChange={e => setGuarantorName(e.target.value)} placeholder="e.g. John Smith" /></Field>}
+              {template === 'bridging' && <Field label="Bridging period (months)"><input className={inputCls} value={bridgingPeriod} onChange={e => setBridgingPeriod(e.target.value)} placeholder="e.g. 6" /></Field>}
+              {template === 'construction' && <Field label="Land value"><NumberInput value={landValue} onChange={setLandValue} placeholder="400,000" /></Field>}
+              {template === 'construction' && <Field label="Construction cost"><NumberInput value={constructionCost} onChange={setConstructionCost} placeholder="350,000" /></Field>}
                 </div>
               </div>
 
