@@ -104,8 +104,23 @@ export default function BCForm({ deal }: { deal: any }) {
   const [equityRelease, setEquityRelease] = useState(s.equityRelease || '')
   const [lvr, setLvr] = useState(s.lvr || '80%')
   const [lvrCustom, setLvrCustom] = useState(s.lvrCustom || '')
+  const [lmi, setLmi] = useState(s.lmi || '')
   const [loanTerm, setLoanTerm] = useState(s.loanTerm || '30')
   const [brokerNotes, setBrokerNotes] = useState(s.brokerNotes || '')
+
+  // Auto-calculate LVR from purchase price and deposit
+  useEffect(() => {
+    const price = parseFloat(String(purchasePrice).replace(/,/g, ''))
+    const dep = parseFloat(String(deposit).replace(/,/g, ''))
+    if (price > 0 && dep >= 0) {
+      const calc = ((price - dep) / price) * 100
+      const rounded = Math.round(calc)
+      if (rounded <= 80) setLvr('80%')
+      else if (rounded <= 90) setLvr('90%')
+      else if (rounded <= 95) setLvr('95%')
+      else { setLvr('Other'); setLvrCustom(rounded + '%') }
+    }
+  }, [purchasePrice, deposit])
   const [internalNotes, setInternalNotes] = useState(s.internalNotes || '')
   const [brokerSig, setBrokerSig] = useState(s.brokerSig || deal.assigned_broker || 'Fabio')
   const [checklist, setChecklist] = useState<string[]>(s.checklist || [])
