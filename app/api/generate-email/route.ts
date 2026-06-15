@@ -140,6 +140,7 @@ export async function POST(req: NextRequest) {
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
         row('Deposit', '$' + d.deposit || '') +
+        row('Deposit source', d.depositSource || '') +
         row('Stamp duty', '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         (lvrNum > 80 && d.lmi ? row('LVR', lvr) + row('LMI (estimated)', d.lmi) : row('LVR', `${lvr} (no LMI)`)) +
@@ -159,6 +160,7 @@ export async function POST(req: NextRequest) {
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
         row('Deposit', '$' + d.deposit || '') +
+        row('Deposit source', d.depositSource || '') +
         row('Stamp duty', '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('LVR', d.lvr || '80%') +
@@ -326,6 +328,7 @@ export async function POST(req: NextRequest) {
         row('Construction cost', d.constructionCost || '') +
         row('Total project cost', d.purchasePrice || '') +
         row('Deposit', '$' + d.deposit || '') +
+        row('Deposit source', d.depositSource || '') +
         row('Stamp duty', '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
@@ -336,6 +339,46 @@ export async function POST(req: NextRequest) {
       p('The next step is finding the right lender and construction loan structure for your project — and we will guide you through every step of that process.') +
       ctas(b.calendly) +
       notesBox(['Construction cost estimates are indicative only and subject to builder contracts and council approvals.']) + sig(b)
+
+  } else if (template === 'investment_equity') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      p13('Here is a breakdown of the structure:') +
+      propHead(`Against ${d.suburb || '[Property Address]'}`) +
+      card('Your Loan Structure',
+        row('Existing loan balance', '$' + (d.existingLoanBal || '')) +
+        row('Equity release amount', '$' + (d.equityRelease || '')) +
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('LVR', d.lvr || '80%') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the right structure for your investment — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox([]) + sig(b)
+
+  } else if (template === 'custom') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      card('Your Loan Structure',
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Deposit', '$' + d.deposit || '') +
+        row('Deposit source', d.depositSource || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('LVR', d.lvr || '') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox([]) + sig(b)
 
   } else {
     body = heading() + brokerBox(personalisation) + p('Email template coming soon.') + ctas(b.calendly) + sig(b)
