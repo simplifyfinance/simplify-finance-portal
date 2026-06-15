@@ -114,7 +114,7 @@ export default function BCForm({ deal }: { deal: any }) {
 
   useEffect(() => {
     const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, internalNotes, brokerSig, checklist, emailHtml }
-    localStorage.setItem(saveKey, JSON.stringify(data)); supabase.from('deals').update({ bc_data: data }).eq('id', deal.id)
+    localStorage.setItem(saveKey, JSON.stringify(data)); await supabase.from('deals').update({ bc_data: data }).eq('id', deal.id)
     setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
   }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, internalNotes, brokerSig, checklist, emailHtml])
 
