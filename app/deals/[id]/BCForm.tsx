@@ -283,9 +283,9 @@ Key assumptions: ${checklistText}`
                 <div className="grid grid-cols-2 gap-2">
                   <Field label="Suburb"><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
                   <Field label="Property type"><select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>
-                  <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={setPurchasePrice} placeholder="750,000" /></Field>
+                  {!["refinance_equity", "refinance_only"].includes(template) && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={setPurchasePrice} placeholder="750,000" /></Field>}
                   {template !== "oo_lvr_compare" && <Field label="Deposit"><NumberInput value={deposit} onChange={setDeposit} placeholder="150,000" /></Field>}
-                  <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={setStampDuty} placeholder="40,000" /></Field>
+                  {!["refinance_equity", "refinance_only"].includes(template) && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={setStampDuty} placeholder="40,000" /></Field>}
                   <Field label="LVR">
                     <select className={selectCls} value={lvr} onChange={e => setLvr(e.target.value)}>
                       <option>80%</option>
