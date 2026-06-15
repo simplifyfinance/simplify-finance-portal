@@ -293,7 +293,7 @@ Key assumptions: ${checklistText}`
                       <option>95%</option>
                       <option>Other</option>
                     </select>
-                  </Field>
+                  </Field>}
                   {lvr === 'Other' && (
                     <Field label="Custom LVR">
                       <input className={inputCls} placeholder="e.g. 85%" value={lvrCustom} onChange={e => setLvrCustom(e.target.value)} />
