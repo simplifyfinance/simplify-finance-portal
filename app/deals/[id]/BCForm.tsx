@@ -15,6 +15,7 @@ const TEMPLATES = [
   { id: 'family_pledge', label: 'Family pledge' },
   { id: 'smsf', label: 'SMSF purchase' },
   { id: 'construction', label: 'Construction loan' },
+  { id: 'custom', label: 'Custom (all fields)' },
 ]
 
 const TEMPLATE_DEFAULTS: Record<string, any> = {
@@ -99,6 +100,8 @@ export default function BCForm({ deal }: { deal: any }) {
   const [purchasePrice, setPurchasePrice] = useState(s.purchasePrice || '')
   const [deposit, setDeposit] = useState(s.deposit || '')
   const [stampDuty, setStampDuty] = useState(s.stampDuty || '')
+  const [existingLoanBal, setExistingLoanBal] = useState(s.existingLoanBal || '')
+  const [equityRelease, setEquityRelease] = useState(s.equityRelease || '')
   const [lvr, setLvr] = useState(s.lvr || '80%')
   const [lvrCustom, setLvrCustom] = useState(s.lvrCustom || '')
   const [loanTerm, setLoanTerm] = useState(s.loanTerm || '30')
@@ -284,8 +287,10 @@ Key assumptions: ${checklistText}`
                   <Field label="Suburb"><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
                   <Field label="Property type"><select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>
                   {!["refinance_equity", "refinance_only"].includes(template) && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={setPurchasePrice} placeholder="750,000" /></Field>}
-                  {!["refinance_equity", "refinance_only"].includes(template) && template !== "oo_lvr_compare" && <Field label="Deposit"><NumberInput value={deposit} onChange={setDeposit} placeholder="150,000" /></Field>}
+                  {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={setDeposit} placeholder="150,000" /></Field>}
                   {!["refinance_equity", "refinance_only"].includes(template) && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={setStampDuty} placeholder="40,000" /></Field>}
+              {["refinance_equity", "refinance_only", "investment_equity", "buy_sell", "bridging"].includes(template) && <Field label="Existing loan balance"><NumberInput value={existingLoanBal} onChange={setExistingLoanBal} placeholder="500,000" /></Field>}
+              {["refinance_equity", "investment_equity"].includes(template) && <Field label="Equity release amount"><NumberInput value={equityRelease} onChange={setEquityRelease} placeholder="100,000" /></Field>}
 
                   {!["refinance_equity", "refinance_only"].includes(template) && <Field label="LVR">
                  <select className={selectCls} value={lvr} onChange={e => setLvr(e.target.value)}>
