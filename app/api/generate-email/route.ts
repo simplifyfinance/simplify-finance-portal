@@ -124,7 +124,449 @@ export async function POST(req: NextRequest) {
       p('Based on your current financial position, you have sufficient capacity to refinance your existing loan and secure a competitive rate.') +
       p13('Here is a breakdown of the structure:') +
       propHead(`Against ${d.suburb || '[Property Address]'}`) +
-      card('Refinanced Loan', row('New loan amount', '$' + d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
+      card('Loan structure',
+        row('Existing loan balance', ' + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
+      check(checkItems) +
+      p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox([]) + sig(b)
+
+  } else if (template === 'oo_purchase') {
+    const lvr = d.lvr || '80%'
+    const lvrNum = parseFloat(lvr)
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong>.`) +
+      p13('Here is a breakdown of the structure:') +
+      card('Your Loan Structure',
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Deposit', '$' + d.deposit || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        (lvrNum > 80 && d.lmi ? row('LVR', lvr) + row('LMI (estimated)', d.lmi) : row('LVR', `${lvr} (no LMI)`)) +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox([]) + sig(b)
+
+  } else if (template === 'investment_purchase') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong>.`) +
+      card('Your Loan Structure',
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Deposit', '$' + d.deposit || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('LVR', d.lvr || '80%') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', d.splits?.[0]?.type || 'Interest Only (5 years)')
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the right structure for your investment — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox(['We have assumed a minimum rental yield of 4% p.a. Please note, rental yield is a key component in determining your borrowing capacity for an investment purchase.']) + sig(b)
+
+  } else if (template === 'buy_sell') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      card('Sale Proceeds Summary',
+        row('Expected sale price', d.salePrice || '') +
+        row('Agent fees / selling costs', d.agentFees || '') +
+        row('Mortgage to discharge', d.mortgageDischarge || '') +
+        `<tr style="border-top:1px solid rgba(122,92,58,0.3)"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Net proceeds (est.)</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">${d.netProceeds || ''}</td></tr>`
+      ) +
+      card('New Purchase',
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Deposit (from sale proceeds)', '$' + d.deposit || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('Now it is about finding the right lender, the right rate, and making sure the timing between your sale and purchase lines up perfectly. That is exactly what we are here for.') +
+      ctas(b.calendly) +
+      notesBox([
+        'This is your estimated borrowing capacity as of today and it can change by the time you are ready to apply.',
+        'The figures used for the proposed sale are only estimated amounts. If you were to sell the property for less we would need to re-work your numbers.',
+        'You will also need to ascertain if there are any further fees on the finalisation of your sale (e.g. Capital Gains Tax).'
+      ]) + sig(b)
+
+  } else if (template === 'oo_lvr_compare') {
+    const splits = d.splits || []
+    const lvrCols = splits.map((s: any) => {
+      const lvrNum = parseFloat(s.label)
+      return `<td style="width:${Math.floor(100/splits.length)}%;vertical-align:top;padding:0 4px">
+        <p style="font-size:13px;font-weight:700;color:#343333;text-align:center;margin-bottom:8px;background:#fff;padding:6px 8px;border-radius:4px">${s.label}</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">Loan amount: $${s.amount}</p>${s.deposit ? `<p style="font-size:11px;color:#555;margin:3px 0">Deposit required: $${s.deposit}</p>` : ""}
+        <p style="font-size:11px;color:#555;margin:3px 0">Rate: ${s.rate}% p.a.*</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">Type: ${s.type}</p>
+      </td>`
+    }).join('')
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.purchasePrice || '[purchase price]'}</strong>. Below we have outlined ${splits.length} scenarios based on different deposit contributions.`) +
+      `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
+        <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Deposit Options</p>
+        <table width="100%" cellpadding="0" cellspacing="0"><tr>${lvrCols}</tr></table>
+      </td></tr></table>` +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox([]) + sig(b)
+
+  } else if (template === 'fhb') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p('There is currently a government scheme we believe you would be eligible for. The <strong>First Home Guarantee (5% Deposit Scheme)</strong> allows first home buyers with a minimum 5% deposit to purchase a property without the cost of Lenders Mortgage Insurance.') +
+      `<p style="font-size:14px;color:#333;margin-bottom:8px">To be eligible, home buyers must be:</p>
+      <ul style="font-size:13px;color:#555;margin:0 0 16px 20px;line-height:1.9">
+        <li>An Australian citizen or Permanent Resident at the time they enter the loan</li>
+        <li>Applying as an individual or couple</li>
+        <li>Saved a minimum deposit of 5% and shown to be using all available savings towards the purchase</li>
+        <li>Intending to be owner-occupiers of the purchased property</li>
+        <li>First home buyers who have not previously owned, or had an interest in, a property in Australia in the last 10 years</li>
+        <li>Purchasing a property within the price cap relevant to your state or territory</li>
+      </ul>` +
+      card('Your Loan Structure',
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Stamp duty', '$' + d.stampDuty || '/bin/zsh — first home buyer exemption') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('LMI', '/bin/zsh — guaranteed by NHFIC') +
+        row('Your contribution required', '$' + d.deposit || '') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox([]) + sig(b)
+
+  } else if (template === 'bridging') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p('Based on your current financial position, bridging finance is achievable for your next owner-occupied purchase.') +
+      card('Bridging Loan Summary',
+        row('Bridging loan (debt while holding both properties)', d.splits?.[0]?.amount || '') +
+        row('End debt (after selling existing property)', d.splits?.[1]?.amount || '')
+      ) +
+      card('Loan 1 — Bridging Loan',
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Rate', 'Standard variable rate*') +
+        row('Interest treatment', 'Capitalised during bridging period') +
+        row('Maximum bridging period', '12 months to sell existing property')
+      ) +
+      card('Loan 2 — End Debt',
+        row('Loan amount', '$' + d.splits?.[1]?.amount || '') +
+        row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[1]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the right structure for your bridging scenario — and that is exactly what we will do for you.') +
+      ctas(b.calendly) +
+      notesBox([
+        'These are only estimates — if the valuation on your current property comes in lower than the expected sale price, we will need to re-work your numbers.',
+        'Bridging loan interest is capitalised during the bridging period and will increase the total loan balance.'
+      ]) + sig(b)
+
+  } else if (template === 'family_pledge') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong> — using your parents' property as a security guarantee to avoid Lenders Mortgage Insurance.`) +
+      card('Your Loan Structure',
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Your contribution required', '$' + d.deposit || '') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
+      ctas(b.calendly) +
+      notesBox(['Family guarantee arrangements are subject to lender eligibility criteria and guarantor assessment.']) + sig(b)
+
+  } else if (template === 'smsf') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p('When looking at your numbers, your borrowing capacity is looking strong for an SMSF purchase.') +
+      card('Your Loan Structure',
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Your contribution required', '$' + d.deposit || '') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the right SMSF structure for your investment — and that is exactly what we will do for you.') +
+      ctas(b.calendly) +
+      notesBox([
+        'We have assumed a minimum rental yield of 4% p.a. Rental yield is a key component in determining your borrowing capacity for an investment purchase.',
+        'Confirmation of your rollover amount to your SMSF is required.',
+        'Please advise if you did NOT receive financial advice when setting up your SMSF.',
+        'Please note, lenders will require you to obtain independent financial and legal advice at your own cost as you will be a guarantor on the application.'
+      ]) + sig(b)
+
+  } else if (template === 'construction') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      card('Your Loan Structure',
+        row('Land value', d.landValue || '') +
+        row('Construction cost', d.constructionCost || '') +
+        row('Total project cost', d.purchasePrice || '') +
+        row('Deposit', '$' + d.deposit || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender and construction loan structure for your project — and we will guide you through every step of that process.') +
+      ctas(b.calendly) +
+      notesBox(['Construction cost estimates are indicative only and subject to builder contracts and council approvals.']) + sig(b)
+
+  } else {
+    body = heading() + brokerBox(personalisation) + p('Email template coming soon.') + ctas(b.calendly) + sig(b)
+  }
+
+  const html = shell(body, b)
+  return NextResponse.json({ html })
+}
+ + (d.existingLoanBal || '')) +
+        row('New loan amount', ' + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
+      check(checkItems) +
+      p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox([]) + sig(b)
+
+  } else if (template === 'oo_purchase') {
+    const lvr = d.lvr || '80%'
+    const lvrNum = parseFloat(lvr)
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong>.`) +
+      p13('Here is a breakdown of the structure:') +
+      card('Your Loan Structure',
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Deposit', '$' + d.deposit || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        (lvrNum > 80 && d.lmi ? row('LVR', lvr) + row('LMI (estimated)', d.lmi) : row('LVR', `${lvr} (no LMI)`)) +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox([]) + sig(b)
+
+  } else if (template === 'investment_purchase') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong>.`) +
+      card('Your Loan Structure',
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Deposit', '$' + d.deposit || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('LVR', d.lvr || '80%') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', d.splits?.[0]?.type || 'Interest Only (5 years)')
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the right structure for your investment — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox(['We have assumed a minimum rental yield of 4% p.a. Please note, rental yield is a key component in determining your borrowing capacity for an investment purchase.']) + sig(b)
+
+  } else if (template === 'buy_sell') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      card('Sale Proceeds Summary',
+        row('Expected sale price', d.salePrice || '') +
+        row('Agent fees / selling costs', d.agentFees || '') +
+        row('Mortgage to discharge', d.mortgageDischarge || '') +
+        `<tr style="border-top:1px solid rgba(122,92,58,0.3)"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Net proceeds (est.)</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">${d.netProceeds || ''}</td></tr>`
+      ) +
+      card('New Purchase',
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Deposit (from sale proceeds)', '$' + d.deposit || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('Now it is about finding the right lender, the right rate, and making sure the timing between your sale and purchase lines up perfectly. That is exactly what we are here for.') +
+      ctas(b.calendly) +
+      notesBox([
+        'This is your estimated borrowing capacity as of today and it can change by the time you are ready to apply.',
+        'The figures used for the proposed sale are only estimated amounts. If you were to sell the property for less we would need to re-work your numbers.',
+        'You will also need to ascertain if there are any further fees on the finalisation of your sale (e.g. Capital Gains Tax).'
+      ]) + sig(b)
+
+  } else if (template === 'oo_lvr_compare') {
+    const splits = d.splits || []
+    const lvrCols = splits.map((s: any) => {
+      const lvrNum = parseFloat(s.label)
+      return `<td style="width:${Math.floor(100/splits.length)}%;vertical-align:top;padding:0 4px">
+        <p style="font-size:13px;font-weight:700;color:#343333;text-align:center;margin-bottom:8px;background:#fff;padding:6px 8px;border-radius:4px">${s.label}</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">Loan amount: $${s.amount}</p>${s.deposit ? `<p style="font-size:11px;color:#555;margin:3px 0">Deposit required: $${s.deposit}</p>` : ""}
+        <p style="font-size:11px;color:#555;margin:3px 0">Rate: ${s.rate}% p.a.*</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">Type: ${s.type}</p>
+      </td>`
+    }).join('')
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.purchasePrice || '[purchase price]'}</strong>. Below we have outlined ${splits.length} scenarios based on different deposit contributions.`) +
+      `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
+        <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Deposit Options</p>
+        <table width="100%" cellpadding="0" cellspacing="0"><tr>${lvrCols}</tr></table>
+      </td></tr></table>` +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox([]) + sig(b)
+
+  } else if (template === 'fhb') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p('There is currently a government scheme we believe you would be eligible for. The <strong>First Home Guarantee (5% Deposit Scheme)</strong> allows first home buyers with a minimum 5% deposit to purchase a property without the cost of Lenders Mortgage Insurance.') +
+      `<p style="font-size:14px;color:#333;margin-bottom:8px">To be eligible, home buyers must be:</p>
+      <ul style="font-size:13px;color:#555;margin:0 0 16px 20px;line-height:1.9">
+        <li>An Australian citizen or Permanent Resident at the time they enter the loan</li>
+        <li>Applying as an individual or couple</li>
+        <li>Saved a minimum deposit of 5% and shown to be using all available savings towards the purchase</li>
+        <li>Intending to be owner-occupiers of the purchased property</li>
+        <li>First home buyers who have not previously owned, or had an interest in, a property in Australia in the last 10 years</li>
+        <li>Purchasing a property within the price cap relevant to your state or territory</li>
+      </ul>` +
+      card('Your Loan Structure',
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Stamp duty', '$' + d.stampDuty || '/bin/zsh — first home buyer exemption') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('LMI', '/bin/zsh — guaranteed by NHFIC') +
+        row('Your contribution required', '$' + d.deposit || '') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox([]) + sig(b)
+
+  } else if (template === 'bridging') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p('Based on your current financial position, bridging finance is achievable for your next owner-occupied purchase.') +
+      card('Bridging Loan Summary',
+        row('Bridging loan (debt while holding both properties)', d.splits?.[0]?.amount || '') +
+        row('End debt (after selling existing property)', d.splits?.[1]?.amount || '')
+      ) +
+      card('Loan 1 — Bridging Loan',
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Rate', 'Standard variable rate*') +
+        row('Interest treatment', 'Capitalised during bridging period') +
+        row('Maximum bridging period', '12 months to sell existing property')
+      ) +
+      card('Loan 2 — End Debt',
+        row('Loan amount', '$' + d.splits?.[1]?.amount || '') +
+        row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[1]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the right structure for your bridging scenario — and that is exactly what we will do for you.') +
+      ctas(b.calendly) +
+      notesBox([
+        'These are only estimates — if the valuation on your current property comes in lower than the expected sale price, we will need to re-work your numbers.',
+        'Bridging loan interest is capitalised during the bridging period and will increase the total loan balance.'
+      ]) + sig(b)
+
+  } else if (template === 'family_pledge') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong> — using your parents' property as a security guarantee to avoid Lenders Mortgage Insurance.`) +
+      card('Your Loan Structure',
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Your contribution required', '$' + d.deposit || '') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
+      ctas(b.calendly) +
+      notesBox(['Family guarantee arrangements are subject to lender eligibility criteria and guarantor assessment.']) + sig(b)
+
+  } else if (template === 'smsf') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p('When looking at your numbers, your borrowing capacity is looking strong for an SMSF purchase.') +
+      card('Your Loan Structure',
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Your contribution required', '$' + d.deposit || '') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the right SMSF structure for your investment — and that is exactly what we will do for you.') +
+      ctas(b.calendly) +
+      notesBox([
+        'We have assumed a minimum rental yield of 4% p.a. Rental yield is a key component in determining your borrowing capacity for an investment purchase.',
+        'Confirmation of your rollover amount to your SMSF is required.',
+        'Please advise if you did NOT receive financial advice when setting up your SMSF.',
+        'Please note, lenders will require you to obtain independent financial and legal advice at your own cost as you will be a guarantor on the application.'
+      ]) + sig(b)
+
+  } else if (template === 'construction') {
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      card('Your Loan Structure',
+        row('Land value', d.landValue || '') +
+        row('Construction cost', d.constructionCost || '') +
+        row('Total project cost', d.purchasePrice || '') +
+        row('Deposit', '$' + d.deposit || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Estimated repayments', '[calculated]') +
+        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      ) +
+      check(checkItems) +
+      p('The next step is finding the right lender and construction loan structure for your project — and we will guide you through every step of that process.') +
+      ctas(b.calendly) +
+      notesBox(['Construction cost estimates are indicative only and subject to builder contracts and council approvals.']) + sig(b)
+
+  } else {
+    body = heading() + brokerBox(personalisation) + p('Email template coming soon.') + ctas(b.calendly) + sig(b)
+  }
+
+  const html = shell(body, b)
+  return NextResponse.json({ html })
+}
+ + d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
       ctas(b.calendly) + notesBox([]) + sig(b)
