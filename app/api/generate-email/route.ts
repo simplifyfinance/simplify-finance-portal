@@ -112,8 +112,8 @@ export async function POST(req: NextRequest) {
       p(`Based on your current financial position, you have sufficient capacity to refinance your property and access approximately ${d.splits?.[1]?.amount || '[equity amount]'} in equity, while also securing a competitive rate.`) +
       p13('Here is a breakdown of the structure:') +
       propHead(`Against ${d.suburb || '[Property Address]'}`) +
-      card('Split 1 — Refinanced Loan', row('Loan amount', d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
-      card('Split 2 — Equity Release', row('Loan amount', d.splits?.[1]?.amount || '') + row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[1]?.type || 'Interest Only')) +
+      card('Split 1 — Refinanced Loan', row('Loan amount', '$' + d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
+      card('Split 2 — Equity Release', row('Loan amount', '$' + d.splits?.[1]?.amount || '') + row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[1]?.type || 'Interest Only')) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
       ctas(b.calendly) + notesBox([]) + sig(b)
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
       p('Based on your current financial position, you have sufficient capacity to refinance your existing loan and secure a competitive rate.') +
       p13('Here is a breakdown of the structure:') +
       propHead(`Against ${d.suburb || '[Property Address]'}`) +
-      card('Refinanced Loan', row('New loan amount', d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
+      card('Refinanced Loan', row('New loan amount', '$' + d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
       ctas(b.calendly) + notesBox([]) + sig(b)
@@ -138,10 +138,10 @@ export async function POST(req: NextRequest) {
       p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong>.`) +
       p13('Here is a breakdown of the structure:') +
       card('Your Loan Structure',
-        row('Purchase price', d.purchasePrice || '') +
-        row('Deposit', d.deposit || '') +
-        row('Stamp duty', d.stampDuty || '') +
-        row('Loan amount', d.splits?.[0]?.amount || '') +
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Deposit', '$' + d.deposit || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         (lvrNum > 80 && d.lmi ? row('LVR', lvr) + row('LMI (estimated)', d.lmi) : row('LVR', `${lvr} (no LMI)`)) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
@@ -157,10 +157,10 @@ export async function POST(req: NextRequest) {
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
       p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong>.`) +
       card('Your Loan Structure',
-        row('Purchase price', d.purchasePrice || '') +
-        row('Deposit', d.deposit || '') +
-        row('Stamp duty', d.stampDuty || '') +
-        row('Loan amount', d.splits?.[0]?.amount || '') +
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Deposit', '$' + d.deposit || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('LVR', d.lvr || '80%') +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
@@ -181,10 +181,10 @@ export async function POST(req: NextRequest) {
         `<tr style="border-top:1px solid rgba(122,92,58,0.3)"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Net proceeds (est.)</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">${d.netProceeds || ''}</td></tr>`
       ) +
       card('New Purchase',
-        row('Purchase price', d.purchasePrice || '') +
-        row('Deposit (from sale proceeds)', d.deposit || '') +
-        row('Stamp duty', d.stampDuty || '') +
-        row('Loan amount', d.splits?.[0]?.amount || '') +
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Deposit (from sale proceeds)', '$' + d.deposit || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
@@ -234,11 +234,11 @@ export async function POST(req: NextRequest) {
         <li>Purchasing a property within the price cap relevant to your state or territory</li>
       </ul>` +
       card('Your Loan Structure',
-        row('Purchase price', d.purchasePrice || '') +
-        row('Stamp duty', d.stampDuty || '/bin/zsh — first home buyer exemption') +
-        row('Loan amount', d.splits?.[0]?.amount || '') +
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Stamp duty', '$' + d.stampDuty || '/bin/zsh — first home buyer exemption') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('LMI', '/bin/zsh — guaranteed by NHFIC') +
-        row('Your contribution required', d.deposit || '') +
+        row('Your contribution required', '$' + d.deposit || '') +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
@@ -256,13 +256,13 @@ export async function POST(req: NextRequest) {
         row('End debt (after selling existing property)', d.splits?.[1]?.amount || '')
       ) +
       card('Loan 1 — Bridging Loan',
-        row('Loan amount', d.splits?.[0]?.amount || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('Rate', 'Standard variable rate*') +
         row('Interest treatment', 'Capitalised during bridging period') +
         row('Maximum bridging period', '12 months to sell existing property')
       ) +
       card('Loan 2 — End Debt',
-        row('Loan amount', d.splits?.[1]?.amount || '') +
+        row('Loan amount', '$' + d.splits?.[1]?.amount || '') +
         row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
         row('Repayment type', `${d.splits?.[1]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
@@ -281,10 +281,10 @@ export async function POST(req: NextRequest) {
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
       p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong> — using your parents' property as a security guarantee to avoid Lenders Mortgage Insurance.`) +
       card('Your Loan Structure',
-        row('Purchase price', d.purchasePrice || '') +
-        row('Stamp duty', d.stampDuty || '') +
-        row('Loan amount', d.splits?.[0]?.amount || '') +
-        row('Your contribution required', d.deposit || '') +
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Your contribution required', '$' + d.deposit || '') +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
@@ -299,10 +299,10 @@ export async function POST(req: NextRequest) {
       p('We have completed your borrowing capacity assessment.') +
       p('When looking at your numbers, your borrowing capacity is looking strong for an SMSF purchase.') +
       card('Your Loan Structure',
-        row('Purchase price', d.purchasePrice || '') +
-        row('Stamp duty', d.stampDuty || '') +
-        row('Loan amount', d.splits?.[0]?.amount || '') +
-        row('Your contribution required', d.deposit || '') +
+        row('Purchase price', '$' + d.purchasePrice || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Your contribution required', '$' + d.deposit || '') +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
@@ -325,9 +325,9 @@ export async function POST(req: NextRequest) {
         row('Land value', d.landValue || '') +
         row('Construction cost', d.constructionCost || '') +
         row('Total project cost', d.purchasePrice || '') +
-        row('Deposit', d.deposit || '') +
-        row('Stamp duty', d.stampDuty || '') +
-        row('Loan amount', d.splits?.[0]?.amount || '') +
+        row('Deposit', '$' + d.deposit || '') +
+        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
