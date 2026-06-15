@@ -99,6 +99,7 @@ export default function BCForm({ deal }: { deal: any }) {
   const [propertyType, setPropertyType] = useState(s.propertyType || 'Owner-occupied')
   const [purchasePrice, setPurchasePrice] = useState(s.purchasePrice || '')
   const [deposit, setDeposit] = useState(s.deposit || '')
+  const [depositSource, setDepositSource] = useState(s.depositSource || '')
   const [stampDuty, setStampDuty] = useState(s.stampDuty || '')
   const [existingLoanBal, setExistingLoanBal] = useState(s.existingLoanBal || '')
   const [equityRelease, setEquityRelease] = useState(s.equityRelease || '')
@@ -303,6 +304,17 @@ Key assumptions: ${checklistText}`
                   <Field label="Property type"><select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>
                   {!["refinance_equity", "refinance_only"].includes(template) && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={setPurchasePrice} placeholder="750,000" /></Field>}
                   {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={setDeposit} placeholder="150,000" /></Field>}
+              {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge"].includes(template) && (
+                <Field label="Deposit source">
+                  <select className={selectCls} value={depositSource} onChange={e => setDepositSource(e.target.value)}>
+                    <option value="">Select source</option>
+                    <option value="Savings">Savings</option>
+                    <option value="Equity">Equity</option>
+                    <option value="Gift">Gift</option>
+                    <option value="Combination">Combination of savings &amp; equity</option>
+                  </select>
+                </Field>
+              )}
                   {!["refinance_equity", "refinance_only"].includes(template) && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={setStampDuty} placeholder="40,000" /></Field>}
               {["refinance_equity", "refinance_only", "investment_equity", "buy_sell", "bridging"].includes(template) && <Field label="Existing loan balance"><NumberInput value={existingLoanBal} onChange={setExistingLoanBal} placeholder="500,000" /></Field>}
               {["refinance_equity", "investment_equity"].includes(template) && <Field label="Equity release amount"><NumberInput value={equityRelease} onChange={setEquityRelease} placeholder="100,000" /></Field>}
