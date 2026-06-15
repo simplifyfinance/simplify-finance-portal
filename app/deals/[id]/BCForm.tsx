@@ -315,7 +315,7 @@ Key assumptions: ${checklistText}`
                       <div className="grid grid-cols-2 gap-2">
                         <Field label="Label"><input className={inputCls} value={s.label} onChange={e => updateSplit(i, 'label', e.target.value)} /></Field>
                         <Field label="Amount"><input className={inputCls} placeholder="600,000" value={s.amount} onChange={e => updateSplitAmount(i, e.target.value)} /></Field>
-                        <Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
+                        {template === "oo_lvr_compare" && <Field label="Deposit required"><input className={inputCls} value={s.deposit || ""} onChange={e => updateSplit(i, 'deposit', e.target.value)} placeholder="150,000" /></Field>}<Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
                         <Field label="Type"><select className={selectCls} value={s.type} onChange={e => updateSplit(i, 'type', e.target.value)}><option>P&I</option><option>Interest only</option></select></Field>
                       </div>
                     </div>

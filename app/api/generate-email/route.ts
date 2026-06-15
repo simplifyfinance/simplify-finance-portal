@@ -204,7 +204,7 @@ export async function POST(req: NextRequest) {
       const lvrNum = parseFloat(s.label)
       return `<td style="width:${Math.floor(100/splits.length)}%;vertical-align:top;padding:0 4px">
         <p style="font-size:13px;font-weight:700;color:#343333;text-align:center;margin-bottom:8px;background:#fff;padding:6px 8px;border-radius:4px">${s.label}</p>
-        <p style="font-size:11px;color:#555;margin:3px 0">Loan amount: ${s.amount}</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">Loan amount: ${s.amount}</p>${s.deposit ? `<p style="font-size:11px;color:#555;margin:3px 0">Deposit required: ${s.deposit}</p>` : ""}
         <p style="font-size:11px;color:#555;margin:3px 0">Rate: ${s.rate}% p.a.*</p>
         <p style="font-size:11px;color:#555;margin:3px 0">Type: ${s.type}</p>
       </td>`
