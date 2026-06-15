@@ -85,13 +85,13 @@ function buildLVRrow(lvr: string, lvrCustom: string, lmi: string) {
 
 function buildChecklist(d: any) {
   const items = []
-  if (d.incomeBase) items.push(`Base salary (excl. super) ${d.incomeBase} p.a.`)
+  if (d.incomeBase) items.push(`Base salary (excl. super) $${d.incomeBase} p.a.`)
   if (d.joint === 'Yes') items.push('Joint application')
   if (d.dependants) items.push(`${d.dependants} dependant${d.dependants === '1' ? '' : 's'}`)
-  if (d.hecs) items.push(`HECS ${d.hecs} p.a.`)
-  if (d.carLoan) items.push(`Car loan ${d.carLoan}/mo`)
-  if (d.personalLoan) items.push(`Personal loan ${d.personalLoan}/mo`)
-  if (d.ccLimit) items.push(`Credit card limit ${d.ccLimit}`)
+  if (d.hecs) items.push(`HECS $${d.hecs} p.a.`)
+  if (d.carLoan) items.push(`Car loan $${d.carLoan}/mo`)
+  if (d.personalLoan) items.push(`Personal loan $${d.personalLoan}/mo`)
+  if (d.ccLimit) items.push(`Credit card limit $${d.ccLimit}`)
   return items
 }
 
