@@ -33,7 +33,7 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
   construction: { splits: [{ label: 'Land loan', amount: '', rate: '6.14', type: 'P&I' }, { label: 'Construction loan', amount: '', rate: '6.39', type: 'Interest only' }] },
 }
 
-type Split = { label: string; amount: string; rate: string; type: string }
+type Split = { label: string; amount: string; rate: string; type: string; deposit?: string }
 
 const inputCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
 const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
