@@ -241,6 +241,7 @@ export async function POST(req: NextRequest) {
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('LMI', '/bin/zsh — guaranteed by NHFIC') +
         row('Your contribution required', '$' + d.deposit || '') +
+        row('First home owner grant', d.fhog ? '$' + d.fhog : 'Not applicable') +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
@@ -261,7 +262,7 @@ export async function POST(req: NextRequest) {
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('Rate', 'Standard variable rate*') +
         row('Interest treatment', 'Capitalised during bridging period') +
-        row('Maximum bridging period', '12 months to sell existing property')
+        row('Bridging period', (d.bridgingPeriod || '12') + ' months') +
       ) +
       card('Loan 2 — End Debt',
         row('Loan amount', '$' + d.splits?.[1]?.amount || '') +
@@ -287,6 +288,7 @@ export async function POST(req: NextRequest) {
         row('Stamp duty', '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('Your contribution required', '$' + d.deposit || '') +
+        row('Guarantor', d.guarantorName || '') +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
