@@ -198,6 +198,28 @@ export async function POST(req: NextRequest) {
         'You will also need to ascertain if there are any further fees on the finalisation of your sale (e.g. Capital Gains Tax).'
       ]) + sig(b)
 
+  } else if (template === 'oo_lvr_compare') {
+    const splits = d.splits || []
+    const lvrCols = splits.map((s: any) => {
+      const lvrNum = parseFloat(s.label)
+      return `<td style="width:${Math.floor(100/splits.length)}%;vertical-align:top;padding:0 4px">
+        <p style="font-size:13px;font-weight:700;color:#343333;text-align:center;margin-bottom:8px;background:#fff;padding:6px 8px;border-radius:4px">${s.label}</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">Loan amount: ${s.amount}</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">Rate: ${s.rate}% p.a.*</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">Type: ${s.type}</p>
+      </td>`
+    }).join('')
+    body = heading() + brokerBox(personalisation) +
+      p('We have completed your borrowing capacity assessment.') +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.purchasePrice || '[purchase price]'}</strong>. Below we have outlined ${splits.length} scenarios based on different deposit contributions.`) +
+      `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
+        <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Deposit Options</p>
+        <table width="100%" cellpadding="0" cellspacing="0"><tr>${lvrCols}</tr></table>
+      </td></tr></table>` +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
+      ctas(b.calendly) + notesBox([]) + sig(b)
+
   } else if (template === 'fhb') {
     body = heading() + brokerBox(personalisation) +
       p('We have completed your borrowing capacity assessment.') +
