@@ -137,10 +137,10 @@ export default function BCForm({ deal }: { deal: any }) {
   const [savedAt, setSavedAt] = useState('')
 
   useEffect(() => {
-    const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, internalNotes, brokerSig, checklist, emailHtml }
+    const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue }
     localStorage.setItem(saveKey, JSON.stringify(data)); supabase.from('deals').update({ bc_data: data }).eq('id', deal.id).then(() => {})
     setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, internalNotes, brokerSig, checklist, emailHtml])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue])
 
   function selectTemplate(id: string) {
     setTemplate(id)
