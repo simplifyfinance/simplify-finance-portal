@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const brokers: Record<string, { name: string; title: string; crn: string; calendly: string }> = {
-  'Fabio': { name: 'Fabio de Castro', title: 'Director / Mortgage Broker', crn: '483807', calendly: 'https://calendly.com/fabiobroker' },
-  'Mark': { name: 'Mark Gallo', title: 'Mortgage Broker', crn: '496195', calendly: 'https://calendly.com/markgallo/phonecall' },
+const brokers: Record<string, { name: string; title: string; crn: string; calendly: string; email: string }> = {
+  'Fabio': { name: 'Fabio de Castro', title: 'Director / Mortgage Broker', crn: '483807', calendly: 'https://calendly.com/fabiobroker', email: 'fabio@simplifyfinance.com.au' },
+  'Mark': { name: 'Mark Gallo', title: 'Mortgage Broker', crn: '496195', calendly: 'https://calendly.com/markgallo/phonecall', email: 'mark@simplifyfinance.com.au' },
 }
 
 function shell(body: string, b: { name: string; title: string; crn: string; calendly: string }) {
