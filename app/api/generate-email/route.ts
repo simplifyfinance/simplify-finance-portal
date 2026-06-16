@@ -55,9 +55,9 @@ function check(items: string[]) {
   </td></tr></table>`
 }
 
-function ctas(calendly: string) {
+function ctas(calendly: string, proceedUrl?: string) {
   return `<div style="margin-bottom:20px">
-    <a href="${calendly}" style="background:#2DBEFF;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block;margin-right:8px">I am ready to proceed</a>
+    <a href="${proceedUrl || calendly}" style="background:#2DBEFF;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block;margin-right:8px">I am ready to proceed</a>
     <a href="${calendly}" style="background:#343333;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">Book a call</a>
   </div>`
 }
@@ -96,7 +96,7 @@ function buildChecklist(d: any) {
 }
 
 export async function POST(req: NextRequest) {
-  const { prompt, broker, formData } = await req.json()
+  const { prompt, broker, dealId, formData } = await req.json()
   const b = brokers[broker] || brokers['Fabio']
   const d = formData || {}
 
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
       card('Split 2 - Equity Release', row('Equity release amount', '$' + (d.equityRelease || '')) + row('Loan amount', '$' + d.splits?.[1]?.amount || '') + row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[1]?.type || 'Interest Only')) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
-      ctas(b.calendly) + notesBox([]) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + notesBox([]) + sig(b)
 
   } else if (template === 'refinance_only') {
     body = heading() + brokerBox(personalisation) +
@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
       card('Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + row('New loan amount', '$' + d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
-      ctas(b.calendly) + notesBox([]) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + notesBox([]) + sig(b)
 
   } else if (template === 'oo_purchase') {
     const lvr = d.lvr || '80%'
@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-      ctas(b.calendly) + notesBox([]) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + notesBox([]) + sig(b)
 
   } else if (template === 'investment_purchase') {
     body = heading() + brokerBox(personalisation) +
@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right structure for your investment — and that is exactly what we will do for you.') +
-      ctas(b.calendly) + notesBox(['We have assumed a minimum rental yield of 4% p.a. Please note, rental yield is a key component in determining your borrowing capacity for an investment purchase.']) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + notesBox(['We have assumed a minimum rental yield of 4% p.a. Please note, rental yield is a key component in determining your borrowing capacity for an investment purchase.']) + sig(b)
 
   } else if (template === 'buy_sell') {
     body = heading() + brokerBox(personalisation) +
@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('Now it is about finding the right lender, the right rate, and making sure the timing between your sale and purchase lines up perfectly. That is exactly what we are here for.') +
-      ctas(b.calendly) +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) +
       notesBox([
         'This is your estimated borrowing capacity as of today and it can change by the time you are ready to apply.',
         'The figures used for the proposed sale are only estimated amounts. If you were to sell the property for less we would need to re-work your numbers.',
@@ -220,7 +220,7 @@ export async function POST(req: NextRequest) {
       </td></tr></table>` +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-      ctas(b.calendly) + notesBox([]) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + notesBox([]) + sig(b)
 
   } else if (template === 'fhb') {
     body = heading() + brokerBox(personalisation) +
@@ -248,7 +248,7 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-      ctas(b.calendly) + notesBox([]) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + notesBox([]) + sig(b)
 
   } else if (template === 'bridging') {
     body = heading() + brokerBox(personalisation) +
@@ -272,7 +272,7 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right structure for your bridging scenario — and that is exactly what we will do for you.') +
-      ctas(b.calendly) +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) +
       notesBox([
         'These are only estimates — if the valuation on your current property comes in lower than the expected sale price, we will need to re-work your numbers.',
         'Bridging loan interest is capitalised during the bridging period and will increase the total loan balance.'
@@ -295,7 +295,7 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-      ctas(b.calendly) +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) +
       notesBox(['Family guarantee arrangements are subject to lender eligibility criteria and guarantor assessment.']) + sig(b)
 
   } else if (template === 'smsf') {
@@ -313,7 +313,7 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right SMSF structure for your investment — and that is exactly what we will do for you.') +
-      ctas(b.calendly) +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) +
       notesBox([
         'We have assumed a minimum rental yield of 4% p.a. Rental yield is a key component in determining your borrowing capacity for an investment purchase.',
         'Confirmation of your rollover amount to your SMSF is required.',
@@ -339,7 +339,7 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('The next step is finding the right lender and construction loan structure for your project — and we will guide you through every step of that process.') +
-      ctas(b.calendly) +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) +
       notesBox(['Construction cost estimates are indicative only and subject to builder contracts and council approvals.']) + sig(b)
 
   } else if (template === 'investment_equity') {
@@ -361,7 +361,7 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right structure for your investment — and that is exactly what we will do for you.') +
-      ctas(b.calendly) + notesBox([]) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + notesBox([]) + sig(b)
 
   } else if (template === 'custom') {
     body = heading() + brokerBox(personalisation) +
@@ -380,10 +380,10 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
-      ctas(b.calendly) + notesBox([]) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + notesBox([]) + sig(b)
 
   } else {
-    body = heading() + brokerBox(personalisation) + p('Email template coming soon.') + ctas(b.calendly) + sig(b)
+    body = heading() + brokerBox(personalisation) + p('Email template coming soon.') + ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + sig(b)
   }
 
   const html = shell(body, b)
