@@ -18,6 +18,7 @@ export default async function ProceedPage({ params }: { params: Promise<{ id: st
     .eq('id', id)
 
   const clientName = deal.clients?.first_name || 'there'
+  const brokerFirstName = deal.broker_first_name || 'Your broker'
 
   const steps = [
     { num: '1', title: 'Portal invitation', desc: "You'll receive an invitation to our secure client portal via email. This is where you'll upload your documents safely and easily." },

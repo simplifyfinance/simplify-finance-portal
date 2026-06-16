@@ -195,7 +195,7 @@ Key assumptions: ${checklistText}`
       })
       if (!res.ok) { setEmailError(`Server error: ${res.status}`); setGenerating(false); return }
       const data = await res.json()
-      if (data.html) { setEmailHtml(data.html); setActiveTab('preview') }
+      if (data.html) { setEmailHtml(data.html); if (data.brokerFirstName) { await supabase.from('deals').update({ broker_first_name: data.brokerFirstName }).eq('id', deal.id) } setActiveTab('preview') }
       else setEmailError('No email returned. Try again.')
     } catch (e: any) {
       setEmailError(`Error: ${e.message}`)

@@ -387,5 +387,5 @@ export async function POST(req: NextRequest) {
   }
 
   const html = shell(body, b)
-  return NextResponse.json({ html })
+  const brokerFirstName = b.name.split(' ')[0]; return NextResponse.json({ html, brokerFirstName })
 }
