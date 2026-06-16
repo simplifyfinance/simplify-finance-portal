@@ -5,7 +5,7 @@ import { Plus, Search, Briefcase } from 'lucide-react'
 import Link from 'next/link'
 
 type Client = { id: string; first_name: string; last_name: string }
-type Deal = { id: string; deal_name: string; deal_type: string; stage: string; status: string; assigned_broker: string; created_at: string; clients: Client }
+type Deal = { id: string; deal_name: string; deal_type: string; stage: string; status: string; assigned_broker: string; created_at: string; clients: Client; client_proceeded?: boolean }
 
 export default function DealsPage() {
   const [deals, setDeals] = useState<Deal[]>([])
