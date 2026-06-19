@@ -26,7 +26,6 @@ export default function DealsPage() {
           const broker = data?.broker_key || null
           setUserRole(role)
           setBrokerKey(broker)
-          setDeal(d => ({ ...d, assigned_broker: broker || 'Fabio' }))
           fetchDeals(role, broker)
         })
     })
@@ -92,18 +91,18 @@ export default function DealsPage() {
           ))}
         </div>
       )}
-      {showModal && <NewDealModal onClose={() => setShowModal(false)} onCreated={() => { setShowModal(false); fetchDeals() }} />}
+      {showModal && <NewDealModal onClose={() => setShowModal(false)} onCreated={() => { setShowModal(false); fetchDeals(userRole, brokerKey) }} brokerKey={brokerKey} userRole={userRole} />}
     </div>
   )
 }
 
-function NewDealModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: () => void; onCreated: () => void; brokerKey: string | null; userRole: string }) {
   const [mode, setMode] = useState<'new' | 'existing'>('new')
   const [clients, setClients] = useState<Client[]>([])
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [clientSearch, setClientSearch] = useState('')
   const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone: '' })
-  const [deal, setDeal] = useState({ deal_type: 'Purchase', assigned_broker: '' })
+  const [deal, setDeal] = useState({ deal_type: 'Purchase', assigned_broker: brokerKey || 'Fabio' })
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
