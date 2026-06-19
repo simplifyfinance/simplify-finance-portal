@@ -104,9 +104,12 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
   const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone: '' })
   const [deal, setDeal] = useState({ deal_type: 'Purchase', assigned_broker: brokerKey || 'Fabio' })
   const [saving, setSaving] = useState(false)
+  const [brokerList, setBrokerList] = useState<string[]>([])
 
   useEffect(() => {
     supabase.from('clients').select('*').order('first_name').then(({ data }) => { if (data) setClients(data) })
+    supabase.from('user_profiles').select('broker_key').not('broker_key', 'is', null).eq('active', true)
+      .then(({ data }) => { if (data) setBrokerList(data.map((d: any) => d.broker_key).filter(Boolean)) })
   }, [])
 
   const dealName = `${selectedClient?.last_name || form.last_name}_${deal.deal_type}_${new Date().getFullYear()}`
@@ -170,7 +173,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
             <label className="text-xs text-gray-500 mb-1 block">Assigned broker</label>
             <select value={deal.assigned_broker} onChange={e => setDeal({...deal, assigned_broker: e.target.value})}
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF]">
-              {['Fabio','Mark'].map(b => <option key={b}>{b}</option>)}
+              {brokerList.map(b => <option key={b}>{b}</option>)}
             </select>
           </div>}
         </div>
