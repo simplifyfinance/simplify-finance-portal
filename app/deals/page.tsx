@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { Plus, Search, Briefcase } from 'lucide-react'
 import Link from 'next/link'
 
@@ -12,11 +13,30 @@ export default function DealsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
+  const [userRole, setUserRole] = useState<string>('')
+  const [brokerKey, setBrokerKey] = useState<string | null>(null)
 
-  useEffect(() => { fetchDeals() }, [])
+  useEffect(() => {
+    const browser = createSupabaseBrowser()
+    browser.auth.getUser().then(({ data: { user } }) => {
+      if (!user) { fetchDeals(); return }
+      browser.from('user_profiles').select('role, broker_key').eq('id', user.id).single()
+        .then(({ data }) => {
+          const role = data?.role || 'staff'
+          const broker = data?.broker_key || null
+          setUserRole(role)
+          setBrokerKey(broker)
+          fetchDeals(role, broker)
+        })
+    })
+  }, [])
 
-  async function fetchDeals() {
-    const { data, error } = await supabase.from('deals').select('*, clients(first_name, last_name)').order('created_at', { ascending: false })
+  async function fetchDeals(role?: string, broker?: string | null) {
+    let query = supabase.from('deals').select('*, clients(first_name, last_name)').order('created_at', { ascending: false })
+    if (role === 'broker' && broker) {
+      query = query.eq('assigned_broker', broker)
+    }
+    const { data, error } = await query
     if (!error && data) setDeals(data)
     setLoading(false)
   }
