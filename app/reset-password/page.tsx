@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 
 function ResetForm() {
   const [password, setPassword] = useState('')
@@ -10,14 +10,12 @@ function ResetForm() {
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Supabase puts the token in the URL hash — handle it
     const supabase = createSupabaseBrowser()
     supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
-        // User is now in password recovery state
+        console.log('Password recovery mode')
       }
     })
   }, [])
@@ -39,91 +37,38 @@ function ResetForm() {
   }
 
   return (
-    <div style={{ backgroundColor: "#F2E8DB", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
-      <div className="bg-white rounded-2xl p-10 w-full max-w-sm border border-gray-100">
-        <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-[#343333] rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-[#2DBEFF] font-bold text-lg">SF</span>
+    <div style={{ backgroundColor: '#F2E8DB', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '40px', width: '100%', maxWidth: '360px', border: '1px solid #f0f0f0' }}>
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div style={{ width: '48px', height: '48px', background: '#343333', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <span style={{ color: '#2DBEFF', fontWeight: 'bold', fontSize: '18px' }}>SF</span>
           </div>
-          <h1 className="text-xl font-semibold text-[#343333]">Set your password</h1>
-          <p className="text-sm text-gray-400
-mkdir -p ~/simplify-finance-portal/app/reset-password
-
-cat > /tmp/reset-page.tsx << 'ENDOFFILE'
-'use client'
-import { useState, useEffect, Suspense } from 'react'
-import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { useRouter, useSearchParams } from 'next/navigation'
-
-function ResetForm() {
-  const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
-  const searchParams = useSearchParams()
-
-  useEffect(() => {
-    // Supabase puts the token in the URL hash — handle it
-    const supabase = createSupabaseBrowser()
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        // User is now in password recovery state
-      }
-    })
-  }, [])
-
-  async function handleReset() {
-    if (password !== confirm) { setError('Passwords do not match'); return }
-    if (password.length < 8) { setError('Password must be at least 8 characters'); return }
-    setLoading(true)
-    setError('')
-    const supabase = createSupabaseBrowser()
-    const { error } = await supabase.auth.updateUser({ password })
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-    } else {
-      setSuccess(true)
-      setTimeout(() => router.push('/'), 2000)
-    }
-  }
-
-  return (
-    <div style={{ backgroundColor: "#F2E8DB", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
-      <div className="bg-white rounded-2xl p-10 w-full max-w-sm border border-gray-100">
-        <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-[#343333] rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-[#2DBEFF] font-bold text-lg">SF</span>
-          </div>
-          <h1 className="text-xl font-semibold text-[#343333]">Set your password</h1>
-          <p className="text-sm text-gray-400 mt-1">Choose a password for your account</p>
+          <h1 style={{ fontSize: '20px', fontWeight: '600', color: '#343333', margin: '0 0 4px' }}>Set your password</h1>
+          <p style={{ fontSize: '14px', color: '#999', margin: 0 }}>Choose a password for your account</p>
         </div>
-
         {success ? (
-          <div className="text-center">
-            <p className="text-sm text-green-600 font-medium">Password set successfully!</p>
-            <p className="text-xs text-gray-400 mt-1">Redirecting to portal...</p>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '14px', color: '#16a34a', fontWeight: '500' }}>Password set successfully!</p>
+            <p style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>Redirecting to portal...</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1.5">New password</label>
+              <label style={{ fontSize: '12px', fontWeight: '500', color: '#666', display: 'block', marginBottom: '6px' }}>New password</label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="Minimum 8 characters"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#2DBEFF]" />
+                style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1.5">Confirm password</label>
+              <label style={{ fontSize: '12px', fontWeight: '500', color: '#666', display: 'block', marginBottom: '6px' }}>Confirm password</label>
               <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleReset()}
                 placeholder="Repeat password"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#2DBEFF]" />
+                style={{ width: '100%', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px 12px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
             </div>
-            {error && <p className="text-xs text-red-500">{error}</p>}
+            {error && <p style={{ fontSize: '12px', color: '#ef4444', margin: 0 }}>{error}</p>}
             <button onClick={handleReset} disabled={loading}
-              className="w-full bg-[#343333] text-white rounded-lg py-2.5 text-sm font-medium hover:bg-[#2a2a2a] transition disabled:opacity-50">
+              style={{ width: '100%', background: '#343333', color: '#fff', borderRadius: '8px', padding: '10px', fontSize: '14px', fontWeight: '500', border: 'none', cursor: 'pointer', opacity: loading ? 0.5 : 1 }}>
               {loading ? 'Setting password...' : 'Set password'}
             </button>
           </div>
