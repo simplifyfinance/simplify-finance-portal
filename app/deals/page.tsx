@@ -26,6 +26,7 @@ export default function DealsPage() {
           const broker = data?.broker_key || null
           setUserRole(role)
           setBrokerKey(broker)
+          setDeal(d => ({ ...d, assigned_broker: broker || 'Fabio' }))
           fetchDeals(role, broker)
         })
     })
@@ -102,7 +103,7 @@ function NewDealModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [clientSearch, setClientSearch] = useState('')
   const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone: '' })
-  const [deal, setDeal] = useState({ deal_type: 'Purchase', assigned_broker: 'Fabio' })
+  const [deal, setDeal] = useState({ deal_type: 'Purchase', assigned_broker: '' })
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -166,13 +167,13 @@ function NewDealModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
               {['Purchase','Refinance','Investment','Bridging','Construction','SMSF'].map(t => <option key={t}>{t}</option>)}
             </select>
           </div>
-          <div>
+          {userRole !== 'broker' && <div>
             <label className="text-xs text-gray-500 mb-1 block">Assigned broker</label>
             <select value={deal.assigned_broker} onChange={e => setDeal({...deal, assigned_broker: e.target.value})}
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF]">
               {['Fabio','Mark'].map(b => <option key={b}>{b}</option>)}
             </select>
-          </div>
+          </div>}
         </div>
         {(form.last_name || selectedClient) && (
           <div className="bg-gray-50 rounded-lg px-3 py-2 mb-4 text-xs text-gray-500">
