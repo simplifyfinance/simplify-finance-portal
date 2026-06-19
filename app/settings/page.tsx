@@ -1,4 +1,5 @@
 'use client'
+import TeamSection from '@/components/TeamSection'
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
