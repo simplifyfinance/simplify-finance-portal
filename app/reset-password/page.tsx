@@ -39,7 +39,7 @@ function ResetForm() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F2E8DB] flex items-center justify-center p-6">
+    <div style={{ backgroundColor: "#F2E8DB", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
       <div className="bg-white rounded-2xl p-10 w-full max-w-sm border border-gray-100">
         <div className="text-center mb-8">
           <div className="w-12 h-12 bg-[#343333] rounded-xl flex items-center justify-center mx-auto mb-4">
