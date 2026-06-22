@@ -170,14 +170,18 @@ export default function LOForm({ deal }: { deal: any }) {
   async function generateRecommendation() {
     setGeneratingRec(true)
     const rec = d.lenders.find(l => l.lenderName === d.recommendedLender)
-    const prompt = `You are a mortgage broker writing a recommendation for a client. The recommended lender is ${d.recommendedLender} with product ${rec?.productName}. The deal involves a loan amount of $${d.loanAmount}. Variable P&I rate: ${rec?.variablePI.enabled ? rec.variablePI.rate + '% p.a.' : 'not offered'}. Annual fee: ${rec ? (lenderLibrary.find(l => l.id === rec.lenderId)?.annual_fee || 0) : 0}. Write 2-3 sentences explaining why this lender is recommended. Be specific, professional, and focus on value to the client. Do not use placeholder text.`
-    const res = await fetch('/api/generate-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, broker: deal.assigned_broker, formData: { template: 'recommendation_ai', ...d } })
-    })
-    const data = await res.json()
-    if (data.recommendationNote) setD({ ...d, recommendationNote: data.recommendationNote })
+    const lib = lenderLibrary.find(l => l.id === rec?.lenderId)
+    const prompt = `You are a mortgage broker writing a recommendation for a client. Write 2-3 professional sentences recommending ${d.recommendedLender} (${rec?.productName}). Loan amount: ${d.loanAmount}. Variable P&I rate: ${rec?.variablePI.enabled ? rec.variablePI.rate + '% p.a.' : 'not offered'}. Annual fee: ${lib?.annual_fee || 0}. Be specific and focus on value. Do not use placeholder text.`
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 300, messages: [{ role: 'user', content: prompt }] })
+      })
+      const data = await res.json()
+      const text = data.content?.[0]?.text || ''
+      if (text) setD({ ...d, recommendationNote: text })
+    } catch (e) { console.error(e) }
     setGeneratingRec(false)
   }
 
