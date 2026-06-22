@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import BCForm from './BCForm'
+import LOForm from './LOForm'
 
 export default function DealPageClient({ deal }: { deal: any }) {
   const [stage, setStage] = useState('BC')
@@ -35,12 +36,7 @@ export default function DealPageClient({ deal }: { deal: any }) {
       </div>
 
       {stage === 'BC' && <BCForm deal={deal} />}
-      {stage === 'LO' && (
-        <div className="bg-white border border-gray-100 rounded-xl p-8 text-center">
-          <div className="text-sm font-medium text-gray-500 mb-1">Lending options</div>
-          <div className="text-xs text-gray-400">Coming after BC is complete.</div>
-        </div>
-      )}
+      {stage === 'LO' && <LOForm deal={deal} />}
       {stage === 'Compliance' && (
         <div className="bg-white border border-gray-100 rounded-xl p-8 text-center">
           <div className="text-sm font-medium text-gray-500 mb-1">Compliance</div>
