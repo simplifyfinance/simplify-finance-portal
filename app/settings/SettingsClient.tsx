@@ -1,5 +1,6 @@
 'use client'
 import TeamSection from '@/components/TeamSection'
+import LenderLibrary from '@/components/LenderLibrary'
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
