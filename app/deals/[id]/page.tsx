@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { createSupabaseServer } from '@/lib/supabase-server'
 import DealPageClient from './DealPageClient'
 
 type DealWithClient = {
@@ -12,6 +12,7 @@ type DealWithClient = {
 
 export default async function DealPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const supabase = await createSupabaseServer()
   const { data: deal, error } = await supabase
     .from('deals')
     .select('*, clients(first_name, last_name)')

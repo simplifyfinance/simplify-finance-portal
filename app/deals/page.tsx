@@ -1,14 +1,16 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { Plus, Search, Briefcase } from 'lucide-react'
+import { Plus, Search, Briefcase, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
 type Client = { id: string; first_name: string; last_name: string }
 type Deal = { id: string; deal_name: string; deal_type: string; stage: string; status: string; assigned_broker: string; created_at: string; clients: Client; client_proceeded?: boolean }
 
+const BROKER_DISPLAY: Record<string, string> = { Fabio: 'Fabio De Castro', Mark: 'Mark Gallo' }
+
 export default function DealsPage() {
+  const browser = createSupabaseBrowser()
   const [deals, setDeals] = useState<Deal[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -17,7 +19,6 @@ export default function DealsPage() {
   const [brokerKey, setBrokerKey] = useState<string | null>(null)
 
   useEffect(() => {
-    const browser = createSupabaseBrowser()
     browser.auth.getUser().then(({ data: { user } }) => {
       if (!user) { fetchDeals(); return }
       browser.from('user_profiles').select('role, broker_key').eq('id', user.id).single()
@@ -32,13 +33,21 @@ export default function DealsPage() {
   }, [])
 
   async function fetchDeals(role?: string, broker?: string | null) {
-    let query = supabase.from('deals').select('*, clients(first_name, last_name)').order('created_at', { ascending: false })
+    let query = browser.from('deals').select('*, clients(first_name, last_name)').order('created_at', { ascending: false })
     if (role === 'broker' && broker) {
       query = query.eq('assigned_broker', broker)
     }
     const { data, error } = await query
     if (!error && data) setDeals(data)
     setLoading(false)
+  }
+
+  async function deleteDeal(e: React.MouseEvent, id: string, name: string) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
+    await browser.from('deals').delete().eq('id', id)
+    setDeals(prev => prev.filter(d => d.id !== id))
   }
 
   const filtered = deals.filter(d =>
@@ -71,23 +80,28 @@ export default function DealsPage() {
       ) : (
         <div className="flex flex-col gap-2">
           {filtered.map(deal => (
-            <Link key={deal.id} href={`/deals/${deal.id}`}
-              className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 hover:border-[#2DBEFF] transition-all">
-              <div className="w-9 h-9 rounded-full bg-[#2DBEFF]/10 text-[#2DBEFF] flex items-center justify-center text-xs font-semibold flex-shrink-0">
-                {deal.clients?.first_name?.[0]}{deal.clients?.last_name?.[0]}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium">{deal.deal_name}</div>
-                <div className="text-xs text-gray-400 mt-0.5">
-                  {deal.clients?.first_name} {deal.clients?.last_name}
-                  {deal.deal_type && <> · {deal.deal_type}</>}
-                  {deal.assigned_broker && <> · {deal.assigned_broker}</>}
+            <div key={deal.id} className="flex items-center gap-2">
+              <Link href={`/deals/${deal.id}`} className="flex-1 bg-white border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 hover:border-[#2DBEFF] transition-all">
+                <div className="w-9 h-9 rounded-full bg-[#2DBEFF]/10 text-[#2DBEFF] flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                  {deal.clients?.first_name?.[0]}{deal.clients?.last_name?.[0]}
                 </div>
-              </div>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${deal.status === 'in_progress' ? 'bg-[#2DBEFF]/10 text-[#2DBEFF]' : 'bg-gray-100 text-gray-500'}`}>
-                {deal.status === 'in_progress' ? 'In progress' : deal.status}
-              </span>
-            </Link>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium">{deal.deal_name}</div>
+                  <div className="text-xs text-gray-400 mt-0.5">
+                    {deal.clients?.first_name} {deal.clients?.last_name}
+                    {deal.deal_type && <> · {deal.deal_type}</>}
+                    {deal.assigned_broker && <> · {BROKER_DISPLAY[deal.assigned_broker] || deal.assigned_broker}</>}
+                  </div>
+                </div>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${deal.status === 'in_progress' ? 'bg-[#2DBEFF]/10 text-[#2DBEFF]' : 'bg-gray-100 text-gray-500'}`}>
+                  {deal.status === 'in_progress' ? 'In progress' : deal.status}
+                </span>
+              </Link>
+              <button onClick={e => deleteDeal(e, deal.id, deal.deal_name)}
+                className="w-8 h-8 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-300 hover:text-red-400 hover:border-red-200 hover:bg-red-50 flex-shrink-0 transition">
+                <Trash2 size={13} />
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -97,6 +111,7 @@ export default function DealsPage() {
 }
 
 function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: () => void; onCreated: () => void; brokerKey: string | null; userRole: string }) {
+  const browser = createSupabaseBrowser()
   const [mode, setMode] = useState<'new' | 'existing'>('new')
   const [clients, setClients] = useState<Client[]>([])
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
@@ -107,9 +122,12 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
   const [brokerList, setBrokerList] = useState<string[]>([])
 
   useEffect(() => {
-    supabase.from('clients').select('*').order('first_name').then(({ data }) => { if (data) setClients(data) })
-    supabase.from('user_profiles').select('broker_key').not('broker_key', 'is', null).eq('active', true)
-      .then(({ data }) => { if (data) setBrokerList(data.map((d: any) => d.broker_key).filter(Boolean)) })
+    browser.from('clients').select('*').order('first_name').then(({ data }) => { if (data) setClients(data) })
+    browser.from('user_profiles').select('broker_key').not('broker_key', 'is', null)
+      .then(({ data }) => {
+        if (data && data.length > 0) setBrokerList(data.map((d: any) => d.broker_key).filter(Boolean))
+        else setBrokerList(['Fabio', 'Mark'])
+      })
   }, [])
 
   const dealName = `${selectedClient?.last_name || form.last_name}_${deal.deal_type}_${new Date().getFullYear()}`
@@ -118,10 +136,10 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
     setSaving(true)
     let clientId = selectedClient?.id
     if (!clientId) {
-      const { data } = await supabase.from('clients').insert([form]).select().single()
+      const { data } = await browser.from('clients').insert([form]).select().single()
       clientId = data?.id
     }
-    await supabase.from('deals').insert([{ deal_name: dealName, client_id: clientId, deal_type: deal.deal_type, assigned_broker: deal.assigned_broker, stage: 'BC', status: 'in_progress' }])
+    await browser.from('deals').insert([{ deal_name: dealName, client_id: clientId, deal_type: deal.deal_type, assigned_broker: deal.assigned_broker, stage: 'BC', status: 'in_progress' }])
     setSaving(false)
     onCreated()
   }
@@ -173,7 +191,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
             <label className="text-xs text-gray-500 mb-1 block">Assigned broker</label>
             <select value={deal.assigned_broker} onChange={e => setDeal({...deal, assigned_broker: e.target.value})}
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF]">
-              {brokerList.map(b => <option key={b}>{b}</option>)}
+              {brokerList.map(b => <option key={b} value={b}>{BROKER_DISPLAY[b] || b}</option>)}
             </select>
           </div>}
         </div>

@@ -2,16 +2,38 @@
 import { useState, useEffect } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
-type Lender = { id: string; name: string; product_name: string; annual_fee: number; monthly_fee: number; settlement_fee: number; offset_account: boolean; multiple_offsets: boolean; offset_count: number }
+type LenderProduct = {
+  id: string
+  lender_id: string
+  lender_name: string
+  product_name: string
+  rate_type: string
+  loan_purpose: string
+  application_fee: string | null
+  annual_fee: string | null
+  valuation_fee: string | null
+  rate_lock_fee: string | null
+  offset_account: boolean
+  multiple_offsets: boolean
+  notes: string | null
+  is_draft: boolean
+  active: boolean
+}
 
 type RateModule = { enabled: boolean; rate: string; repayment: string; loanTerm: string; ioYears?: string; fixedYears?: string }
 
 type LenderOption = {
   lenderId: string
+  lenderProductId: string
   lenderName: string
   productName: string
   approvalDays: string
+  applicationFee: string
+  annualFee: string
   valuationFee: string
+  rateLockFee: string
+  offsetAccount: string
+  libraryNotes: string
   maxEquity: string
   specialNote: string
   variablePI: RateModule
@@ -48,7 +70,9 @@ type LOData = {
 const defaultRateModule: RateModule = { enabled: false, rate: '', repayment: '', loanTerm: '30', ioYears: '5', fixedYears: '2' }
 
 const defaultLenderOption = (): LenderOption => ({
-  lenderId: '', lenderName: '', productName: '', approvalDays: '', valuationFee: '', maxEquity: '', specialNote: '',
+  lenderId: '', lenderProductId: '', lenderName: '', productName: '', approvalDays: '',
+  applicationFee: '', annualFee: '', valuationFee: '', rateLockFee: '', offsetAccount: '', libraryNotes: '',
+  maxEquity: '', specialNote: '',
   variablePI: { ...defaultRateModule },
   variableIO: { ...defaultRateModule },
   fixedPI: { ...defaultRateModule },
@@ -78,12 +102,29 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
+function LibraryField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-1">
+        <label className="text-xs font-medium text-gray-500">{label}</label>
+        <span className="text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">library</span>
+      </div>
+      <input
+        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] bg-blue-50/30"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder="—"
+      />
+    </div>
+  )
+}
+
 export default function LOForm({ deal }: { deal: any }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `lo_${deal.id}`
   const bc = deal.bc_data || {}
 
-  const [lenderLibrary, setLenderLibrary] = useState<Lender[]>([])
+  const [allProducts, setAllProducts] = useState<LenderProduct[]>([])
   const [generating, setGenerating] = useState(false)
   const [generatingRec, setGeneratingRec] = useState(false)
   const [emailHtml, setEmailHtml] = useState('')
@@ -119,7 +160,17 @@ export default function LOForm({ deal }: { deal: any }) {
   const [d, setD] = useState<LOData>(initData)
 
   useEffect(() => {
-    supabase.from('lenders').select('*').eq('active', true).order('name').then(({ data }) => { if (data) setLenderLibrary(data) })
+    supabase
+      .from('lender_products')
+      .select('*, lenders(name)')
+      .eq('is_draft', false)
+      .eq('active', true)
+      .then(({ data }) => {
+        if (data) {
+          const shaped = data.map((p: any) => ({ ...p, lender_name: p.lenders?.name || '' }))
+          setAllProducts(shaped)
+        }
+      })
     supabase.from('deals').select('lo_data').eq('id', deal.id).single().then(({ data }) => {
       if (data?.lo_data && Object.keys(data.lo_data).length > 0) {
         setD(data.lo_data as LOData)
@@ -134,6 +185,50 @@ export default function LOForm({ deal }: { deal: any }) {
     setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
   }, [d])
 
+  const uniqueLenders = Array.from(new Map(allProducts.map(p => [p.lender_id, { id: p.lender_id, name: p.lender_name }])).values())
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  function getProductsForLender(lenderId: string) {
+    return allProducts.filter(p => p.lender_id === lenderId)
+  }
+
+  function selectLenderName(i: number, lenderId: string) {
+    const lender = uniqueLenders.find(l => l.id === lenderId)
+    const updated = [...d.lenders]
+    updated[i] = {
+      ...updated[i],
+      lenderId,
+      lenderName: lender?.name || '',
+      lenderProductId: '',
+      productName: '',
+      applicationFee: '',
+      annualFee: '',
+      valuationFee: '',
+      rateLockFee: '',
+      offsetAccount: '',
+      libraryNotes: '',
+    }
+    setD({ ...d, lenders: updated })
+  }
+
+  function selectProduct(i: number, productId: string) {
+    const product = allProducts.find(p => p.id === productId)
+    if (!product) return
+    const updated = [...d.lenders]
+    updated[i] = {
+      ...updated[i],
+      lenderProductId: productId,
+      productName: product.product_name,
+      applicationFee: product.application_fee || '',
+      annualFee: product.annual_fee || '',
+      valuationFee: product.valuation_fee || '',
+      rateLockFee: product.rate_lock_fee || '',
+      offsetAccount: product.offset_account ? (product.multiple_offsets ? 'Yes — multiple offsets' : 'Yes') : 'No',
+      libraryNotes: product.notes || '',
+    }
+    setD({ ...d, lenders: updated })
+  }
+
   function updateLender(i: number, field: keyof LenderOption, value: any) {
     const updated = [...d.lenders]
     updated[i] = { ...updated[i], [field]: value }
@@ -143,14 +238,6 @@ export default function LOForm({ deal }: { deal: any }) {
   function updateRateModule(lenderIdx: number, module: 'variablePI' | 'variableIO' | 'fixedPI' | 'fixedIO', field: keyof RateModule, value: any) {
     const updated = [...d.lenders]
     updated[lenderIdx] = { ...updated[lenderIdx], [module]: { ...updated[lenderIdx][module], [field]: value } }
-    setD({ ...d, lenders: updated })
-  }
-
-  function selectLender(i: number, lenderId: string) {
-    const lib = lenderLibrary.find(l => l.id === lenderId)
-    if (!lib) return
-    const updated = [...d.lenders]
-    updated[i] = { ...updated[i], lenderId, lenderName: lib.name, productName: lib.product_name }
     setD({ ...d, lenders: updated })
   }
 
@@ -170,8 +257,7 @@ export default function LOForm({ deal }: { deal: any }) {
   async function generateRecommendation() {
     setGeneratingRec(true)
     const rec = d.lenders.find(l => l.lenderName === d.recommendedLender)
-    const lib = lenderLibrary.find(l => l.id === rec?.lenderId)
-    const prompt = `You are a mortgage broker writing a recommendation for a client. Write 2-3 professional sentences recommending ${d.recommendedLender} (${rec?.productName}). Loan amount: ${d.loanAmount}. Variable P&I rate: ${rec?.variablePI.enabled ? rec.variablePI.rate + '% p.a.' : 'not offered'}. Annual fee: ${lib?.annual_fee || 0}. Be specific and focus on value. Do not use placeholder text.`
+    const prompt = `You are a mortgage broker writing a recommendation for a client. Write 2-3 professional sentences recommending ${d.recommendedLender} (${rec?.productName}). Loan amount: ${d.loanAmount}. Variable P&I rate: ${rec?.variablePI.enabled ? rec.variablePI.rate + '% p.a.' : 'not offered'}. Annual fee: ${rec?.annualFee || 'nil'}. Application fee: ${rec?.applicationFee || 'nil'}. Be specific and focus on value. Do not use placeholder text.`
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -207,7 +293,6 @@ export default function LOForm({ deal }: { deal: any }) {
 
   return (
     <div className="space-y-4">
-      {/* Tab bar */}
       <div className="flex gap-2 bg-white border border-gray-100 rounded-xl p-1">
         {(['form', 'preview'] as const).map(t => (
           <button key={t} onClick={() => setActiveTab(t)}
@@ -219,7 +304,6 @@ export default function LOForm({ deal }: { deal: any }) {
 
       {activeTab === 'form' && (
         <div className="space-y-4">
-          {/* Template + scenario */}
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Scenario</div>
             <div className="grid grid-cols-2 gap-3">
@@ -240,7 +324,6 @@ export default function LOForm({ deal }: { deal: any }) {
             </div>
           </div>
 
-          {/* Broker personalisation */}
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Broker personalisation</div>
             <textarea className={inp + ' min-h-[80px] resize-y'} value={d.brokerPersonalisation}
@@ -248,7 +331,6 @@ export default function LOForm({ deal }: { deal: any }) {
               placeholder="Hi [First Name], following our conversation..." />
           </div>
 
-          {/* Documents required */}
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Documents required</div>
             <div className="space-y-2 mb-3">
@@ -269,25 +351,60 @@ export default function LOForm({ deal }: { deal: any }) {
             </div>
           </div>
 
-          {/* Lender options */}
           {d.lenders.map((lender, i) => (
             <div key={i} className="bg-white border border-gray-100 rounded-xl p-5">
               <div className="flex justify-between items-center mb-4">
                 <div className="text-xs font-medium text-gray-400 uppercase tracking-widest">Option {i + 1}</div>
                 {d.lenders.length > 1 && <button onClick={() => removeLender(i)} className="text-xs text-red-400 hover:text-red-600">Remove</button>}
               </div>
+
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <Field label="Lender">
-                  <select className={sel} value={lender.lenderId} onChange={e => selectLender(i, e.target.value)}>
-                    <option value="">Select lender</option>
-                    {lenderLibrary.map(l => <option key={l.id} value={l.id}>{l.name} — {l.product_name}</option>)}
+                  <select className={sel} value={lender.lenderId} onChange={e => selectLenderName(i, e.target.value)}>
+                    <option value="">— select lender —</option>
+                    {uniqueLenders.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                   </select>
                 </Field>
+                <Field label="Product">
+                  <select className={sel} value={lender.lenderProductId} onChange={e => selectProduct(i, e.target.value)} disabled={!lender.lenderId}>
+                    <option value="">— select product —</option>
+                    {getProductsForLender(lender.lenderId).map(p => <option key={p.id} value={p.id}>{p.product_name}</option>)}
+                  </select>
+                </Field>
+              </div>
+
+              {lender.lenderProductId && (
+                <div className="mb-4 p-4 bg-blue-50/20 border border-blue-100 rounded-xl">
+                  <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-3">
+                    Fees
+                    <span className="ml-2 normal-case text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">auto-filled from library — editable</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <LibraryField label="Application fee" value={lender.applicationFee} onChange={v => updateLender(i, 'applicationFee', v)} />
+                    <LibraryField label="Annual fee" value={lender.annualFee} onChange={v => updateLender(i, 'annualFee', v)} />
+                    <LibraryField label="Valuation fee" value={lender.valuationFee} onChange={v => updateLender(i, 'valuationFee', v)} />
+                    <LibraryField label="Rate lock fee" value={lender.rateLockFee} onChange={v => updateLender(i, 'rateLockFee', v)} />
+                  </div>
+                  <LibraryField label="Offset account" value={lender.offsetAccount} onChange={v => updateLender(i, 'offsetAccount', v)} />
+                  {lender.libraryNotes && (
+                    <div className="mt-3">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <label className="text-xs font-medium text-gray-500">Internal notes</label>
+                        <span className="text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">library</span>
+                      </div>
+                      <textarea
+                        className="w-full border border-blue-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] bg-blue-50/30 resize-y min-h-[60px]"
+                        value={lender.libraryNotes}
+                        onChange={e => updateLender(i, 'libraryNotes', e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3 mb-4">
                 <Field label="Approval days"><input className={inp} value={lender.approvalDays} onChange={e => updateLender(i, 'approvalDays', e.target.value)} placeholder="e.g. 3-4 business days" /></Field>
-                {!isBridging && <>
-                  <Field label="Valuation fee"><input className={inp} value={lender.valuationFee} onChange={e => updateLender(i, 'valuationFee', e.target.value)} placeholder="e.g. $300" /></Field>
-                  <Field label="Max equity"><input className={inp} value={lender.maxEquity} onChange={e => updateLender(i, 'maxEquity', e.target.value)} placeholder="e.g. $500,000" /></Field>
-                </>}
+                {!isBridging && <Field label="Max equity"><input className={inp} value={lender.maxEquity} onChange={e => updateLender(i, 'maxEquity', e.target.value)} placeholder="e.g. $500,000" /></Field>}
                 <Field label="Special note (optional)">
                   <input className={inp} value={lender.specialNote} onChange={e => updateLender(i, 'specialNote', e.target.value)} placeholder="e.g. Rate increases after 3 months" />
                 </Field>
@@ -298,9 +415,9 @@ export default function LOForm({ deal }: { deal: any }) {
                   <div className="text-xs font-medium text-gray-400 uppercase tracking-widest col-span-2 mb-1">Bridging structure</div>
                   <Field label="Variable rate % p.a."><input className={inp} value={lender.bridgingRate} onChange={e => updateLender(i, 'bridgingRate', e.target.value)} placeholder="8.67" /></Field>
                   <Field label="Loan term (months)"><input className={inp} value={lender.bridgingTerm} onChange={e => updateLender(i, 'bridgingTerm', e.target.value)} placeholder="12" /></Field>
-                  <Field label="Bridging loan amount"><input className={inp} value={lender.bridgingLoanAmount} onChange={e => updateLender(i, 'bridgingLoanAmount', e.target.value)} placeholder="500,000" /></Field>
-                  <Field label="Est. interest capitalised"><input className={inp} value={lender.estimatedInterest} onChange={e => updateLender(i, 'estimatedInterest', e.target.value)} placeholder="40,000" /></Field>
-                  <Field label="Establishment fee"><input className={inp} value={lender.establishmentFee} onChange={e => updateLender(i, 'establishmentFee', e.target.value)} placeholder="600" /></Field>
+                  <Field label="Bridging loan amount"><input className={inp} value={lender.bridgingLoanAmount} onChange={e => updateLender(i, 'bridgingLoanAmount', e.target.value)} placeholder="e.g. $800,000" /></Field>
+                  <Field label="Estimated interest"><input className={inp} value={lender.estimatedInterest} onChange={e => updateLender(i, 'estimatedInterest', e.target.value)} placeholder="e.g. $12,000" /></Field>
+                  <Field label="Establishment fee"><input className={inp} value={lender.establishmentFee} onChange={e => updateLender(i, 'establishmentFee', e.target.value)} placeholder="e.g. $900" /></Field>
                   <Field label="Monthly fee"><input className={inp} value={lender.monthlyFee} onChange={e => updateLender(i, 'monthlyFee', e.target.value)} placeholder="8" /></Field>
                   <Field label="Doc processing fee"><input className={inp} value={lender.docProcessingFee} onChange={e => updateLender(i, 'docProcessingFee', e.target.value)} placeholder="150" /></Field>
                 </div>
@@ -342,7 +459,6 @@ export default function LOForm({ deal }: { deal: any }) {
             </button>
           )}
 
-          {/* Recommendation */}
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Recommendation</div>
             <div className="grid grid-cols-2 gap-3 mb-3">
@@ -364,7 +480,6 @@ export default function LOForm({ deal }: { deal: any }) {
             </button>
           </div>
 
-          {/* Criteria used */}
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Research criteria</div>
             <div className="space-y-2 mb-3">
@@ -391,7 +506,6 @@ export default function LOForm({ deal }: { deal: any }) {
             </div>
           </div>
 
-          {/* Additional notes */}
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Additional notes</div>
             <textarea className={inp + ' min-h-[80px] resize-y'} value={d.additionalNotes}
@@ -399,7 +513,6 @@ export default function LOForm({ deal }: { deal: any }) {
               placeholder="e.g. Debt recycling wording, rate reduction requested, credit card limit notes..." />
           </div>
 
-          {/* Internal notes */}
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Internal notes</div>
             <textarea className={inp + ' min-h-[80px] resize-y'} value={d.internalNotes}
@@ -407,7 +520,6 @@ export default function LOForm({ deal }: { deal: any }) {
               placeholder="Internal notes — not included in the email" />
           </div>
 
-          {/* Generate button */}
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-400">{savedAt ? `Autosaved at ${savedAt}` : ''}</span>
             <button onClick={generateEmail} disabled={generating}
