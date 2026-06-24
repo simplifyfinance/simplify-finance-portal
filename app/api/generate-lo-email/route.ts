@@ -31,7 +31,7 @@ function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender
   const cols = lenders.length
   const pct = cols === 1 ? '100%' : cols === 2 ? '50%' : '33%'
 
-  const headers = lenders.map((l, i) => { const isRec = recommendedLender && l.lenderName === recommendedLender; return `<td width="${pct}" style="background:#f8f8f8;padding:14px;border:1px solid #e0e0e0;vertical-align:top">${isRec ? '<p style="font-size:11px;font-weight:700;color:#fff;background:#2DBEFF;display:inline-block;padding:2px 8px;border-radius:3px;margin:0 0 6px">&#9733; Recommended</p>' : ''}<p style="font-size:13px;font-weight:700;color:#343333;margin:0 0 6px">OPTION ${i+1}</p><p style="font-size:14px;font-weight:700;color:#2DBEFF;margin:0 0 4px">${l.lenderName} &mdash; ${l.productName}</p>${l.approvalDays ? `<p style="font-size:12px;color:#777;margin:4px 0 0">${l.approvalDays} to approval</p>` : ''}${l.specialNote ? `<p style="font-size:11px;color:#dc2626;margin:6px 0 0">&#10071; ${l.specialNote}</p>` : ''}</td>` }).join('')
+  const headers = lenders.map((l, i) => { const isRec = recommendedLender && l.lenderName === recommendedLender; return `<td width="${pct}" style="background:#f8f8f8;padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:13px;font-weight:700;color:#343333;margin:0 0 6px">OPTION ${i+1}</p><p style="font-size:14px;font-weight:700;color:#2DBEFF;margin:0 0 4px">${l.lenderName} &mdash; ${l.productName}</p>${l.approvalDays ? `<p style="font-size:12px;color:#777;margin:4px 0 0">${l.approvalDays} to approval</p>` : ''}${isRec ? '<p style="font-size:11px;font-weight:700;color:#D97706;border:1px solid #D97706;display:inline-block;padding:2px 8px;border-radius:3px;margin:6px 0 0">&#9733; Recommended</p>' : ''}${l.specialNote ? `<p style="font-size:11px;color:#dc2626;margin:6px 0 0">&#10071; ${l.specialNote}</p>` : ''}</td>` }).join('')
 
   let featureCells = ''
   if (isBridging) {
@@ -121,13 +121,12 @@ export async function POST(req: NextRequest) {
 
   body += p('Please note, for the requested loan amount, we have added a buffer to cover the last month\'s repayment and any applicable discharge fees. This will ensure there is no shortfall come settlement. Any funds not required will be credited back into your loan so that no additional interest is charged.')
 
-  const sortedLenders = d.recommendedLender ? [...d.lenders].sort((a: any, b: any) => a.lenderName === d.recommendedLender ? -1 : b.lenderName === d.recommendedLender ? 1 : 0) : d.lenders
-  body += buildLenderTable(sortedLenders, isBridging, d.recommendedLender)
-
   if (d.recommendedLender && d.recommendationNote) {
     body += `<p style="font-size:14px;font-weight:700;color:#343333;margin-bottom:8px">Our Recommendation: ${d.recommendedLender}</p>`
     body += p(d.recommendationNote)
   }
+  const sortedLenders = d.recommendedLender ? [...d.lenders].sort((a: any, b: any) => a.lenderName === d.recommendedLender ? -1 : b.lenderName === d.recommendedLender ? 1 : 0) : d.lenders
+  body += buildLenderTable(sortedLenders, isBridging, d.recommendedLender)
 
   body += p('Please let us know which lender you would like to proceed with and if you have any questions regarding the numbers above.')
   body += ctas(b.calendly, proceedUrl)
