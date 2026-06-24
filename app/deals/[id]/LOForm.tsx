@@ -160,18 +160,18 @@ export default function LOForm({ deal }: { deal: any }) {
   const [d, setD] = useState<LOData>(initData)
 
   useEffect(() => {
-    supabase
-      .from('lender_products')
-      .select('*, lenders(name)')
-      .eq('is_draft', false)
-      .eq('active', true)
-      .then(({ data }) => {
-        if (data) {
-          const shaped = data.map((p: any) => ({ ...p, lender_name: p.lenders?.name || '' }))
-          setAllProducts(shaped)
-        }
-      })
-    supabase.from('deals').select('lo_data').eq('id', deal.id).single().then(({ data }) => {
+    Promise.all([
+      supabase.from('lender_products').select('*'),
+      supabase.from('lenders').select('id, name')
+    ]).then(([{ data: products }, { data: lenders }]) => {
+      if (products && lenders) {
+        const lenderMap: Record<string, string> = {}
+        lenders.forEach((l: any) => { lenderMap[l.id] = l.name })
+        const shaped = products.map((p: any) => ({ ...p, lender_name: lenderMap[p.lender_id] || '' }))
+        setAllProducts(shaped)
+      }
+    })
+    supabase.from('deals').select('lo_data').eq('id', deal.id).single().then(({ data, error }) => { console.log("LP data:", data?.length, "error:", error);
       if (data?.lo_data && Object.keys(data.lo_data).length > 0) {
         setD(data.lo_data as LOData)
         if ((data.lo_data as LOData).emailHtml) setEmailHtml((data.lo_data as LOData).emailHtml)
