@@ -68,8 +68,11 @@ function buildLenderTable(lenders: any[], isBridging: boolean) {
     })
     const feeRows = lenders.map(l => {
       let fees = ''
-      fees += tick(`Valuation returned at $${l.valuationFee || 'TBC'}`)
-      fees += tick(`Maximum Equity $${l.maxEquity || 'TBC'}`)
+      if (l.applicationFee) fees += tick("Application fee: " + l.applicationFee)
+      if (l.annualFee) fees += tick("Annual fee: " + l.annualFee)
+      if (l.valuationFee) fees += tick("Valuation fee: " + l.valuationFee)
+      if (l.rateLockFee) fees += tick("Rate lock fee: " + l.rateLockFee)
+      if (l.offsetAccount) fees += tick("Offset account: " + l.offsetAccount)
       return `<td style="padding:14px;border:1px solid #e0e0e0;vertical-align:top">${fees}</td>`
     }).join('')
     featureCells += `<tr>${feeRows}</tr>`
