@@ -50,12 +50,27 @@ export async function POST(req: NextRequest) {
         },
       ]
     } else {
-      messageContent = [
-        {
-          type: 'text',
-          text: `Please fetch and read the content at this URL: ${url}\n\n${EXTRACTION_PROMPT}`,
-        },
-      ]
+      const urlRes = await fetch(url as string)
+      const contentType = urlRes.headers.get('content-type') || ''
+      if (contentType.includes('pdf') || (url as string).endsWith('.pdf')) {
+        const buffer = await urlRes.arrayBuffer()
+        const base64 = Buffer.from(buffer).toString('base64')
+        messageContent = [
+          {
+            type: 'document',
+            source: { type: 'base64', media_type: 'application/pdf', data: base64 },
+          },
+          { type: 'text', text: EXTRACTION_PROMPT },
+        ]
+      } else {
+        const html = await urlRes.text()
+        messageContent = [
+          {
+            type: 'text',
+            text: `Here is the page content:\n\n${html.slice(0, 20000)}\n\n${EXTRACTION_PROMPT}`,
+          },
+        ]
+      }
     }
 
     const response = await client.messages.create({
