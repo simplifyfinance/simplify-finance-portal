@@ -95,6 +95,7 @@ export default function SettingsPage() {
           </div>
         ))}
       </section>
+      <LenderLibrary />
     </div>
   )
 }
