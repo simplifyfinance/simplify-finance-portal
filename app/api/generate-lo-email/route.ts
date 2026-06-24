@@ -18,7 +18,7 @@ function sig(b: { name: string; title: string; crn: string }) {
 }
 
 function p(t: string) { return `<p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">${t}</p>` }
-function tick(s: string) { return `<p style="font-size:12px;color:#333;margin:4px 0;line-height:1.5"><span style="display:inline-block;background:#22c55e;color:#fff;border-radius:3px;width:16px;height:16px;text-align:center;font-size:10px;line-height:16px;margin-right:6px;vertical-align:middle">&#10003;</span>${s}</p>` }
+function tick(s: string) { return `<p style="font-size:12px;color:#444;margin:4px 0;line-height:1.5"><span style="color:#2DBEFF;font-weight:700;margin-right:6px">&#10003;</span>${s}</p>` }
 function notesBox(items: string[]) {
   if (!items.length) return ''
   return `<div style="background:#EFF6FF;border-left:4px solid #2DBEFF;border-radius:0 6px 6px 0;padding:13px 15px;margin:18px 0"><p style="font-size:10px;font-weight:600;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Important things to note</p>${items.map(i => `<p style="font-size:12px;color:#334155;margin:4px 0;line-height:1.6">&bull; ${i}</p>`).join('')}</div>`
@@ -31,7 +31,7 @@ function buildLenderTable(lenders: any[], isBridging: boolean) {
   const cols = lenders.length
   const pct = cols === 1 ? '100%' : cols === 2 ? '50%' : '33%'
 
-  const headers = lenders.map((l, i) => `<td width="${pct}" style="background:#f8f8f8;padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:13px;font-weight:700;color:#343333;margin:0 0 6px">Option ${i+1}</p><p style="font-size:13px;font-weight:600;color:#343333;margin:0">&#128073; ${l.lenderName} &mdash; ${l.productName}</p>${l.approvalDays ? `<p style="font-size:12px;color:#555;margin:6px 0 0">(${l.approvalDays} to approval)</p>` : ''}${l.specialNote ? `<p style="font-size:11px;color:#dc2626;margin:6px 0 0">&#10071; ${l.specialNote}</p>` : ''}</td>`).join('')
+  const headers = lenders.map((l, i) => `<td width="${pct}" style="background:#f8f8f8;padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:13px;font-weight:700;color:#343333;margin:0 0 6px">OPTION ${i+1}</p><p style="font-size:14px;font-weight:700;color:#2DBEFF;margin:0 0 4px">${l.lenderName} &mdash; ${l.productName}</p>${l.approvalDays ? `<p style="font-size:12px;color:#777;margin:4px 0 0">${l.approvalDays} to approval</p>` : ''}${l.specialNote ? `<p style="font-size:11px;color:#dc2626;margin:6px 0 0">&#10071; ${l.specialNote}</p>` : ''}</td>`).join('')
 
   let featureCells = ''
   if (isBridging) {
@@ -52,7 +52,7 @@ function buildLenderTable(lenders: any[], isBridging: boolean) {
     const anyEnabled = (module: string) => lenders.some((l: any) => l[module]?.enabled)
     modules.forEach(mod => {
       if (!anyEnabled(mod)) return
-      const headerCells = lenders.map(() => `<td style="padding:10px 14px;border:1px solid #e0e0e0;background:#fafafa"><p style="font-size:12px;font-weight:700;color:#343333;margin:0;text-decoration:underline">${moduleLabels[mod]}</p></td>`).join('')
+      const headerCells = lenders.map(() => `<td style="padding:10px 14px;border:1px solid #e0e0e0;background:#fafafa"><p style="font-size:12px;font-weight:700;color:#343333;margin:0;text-decoration:none">${moduleLabels[mod]}</p></td>`).join('')
       featureCells += `<tr>${headerCells}</tr>`
       const contentCells = lenders.map((l: any) => {
         const m = l[mod]
