@@ -403,7 +403,7 @@ export default function LOForm({ deal }: { deal: any }) {
               )}
 
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <Field label="Approval days"><input className={inp} value={lender.approvalDays} onChange={e => updateLender(i, 'approvalDays', e.target.value)} placeholder="e.g. 3-4 business days" /></Field>
+                <Field label="Approval days"><select className={sel} value={lender.approvalDays} onChange={e => updateLender(i, 'approvalDays', e.target.value)}><option value="">— select —</option><option>1-2 business days</option><option>3-5 business days</option><option>5-7 business days</option><option>7-10 business days</option><option>10+ business days</option></select></Field>
                 {!isBridging && <Field label="Max equity"><input className={inp} value={lender.maxEquity} onChange={e => updateLender(i, 'maxEquity', e.target.value)} placeholder="e.g. $500,000" /></Field>}
                 <Field label="Special note (optional)">
                   <input className={inp} value={lender.specialNote} onChange={e => updateLender(i, 'specialNote', e.target.value)} placeholder="e.g. Rate increases after 3 months" />
@@ -441,8 +441,8 @@ export default function LOForm({ deal }: { deal: any }) {
                           <Field label="Rate % p.a."><input className={inp} value={lender[key].rate} onChange={e => updateRateModule(i, key, 'rate', e.target.value)} placeholder="6.14" /></Field>
                           <Field label="Monthly repayment"><input className={inp} value={lender[key].repayment} onChange={e => updateRateModule(i, key, 'repayment', e.target.value)} placeholder="3,200" /></Field>
                           <Field label="Loan term (years)"><input className={inp} value={lender[key].loanTerm} onChange={e => updateRateModule(i, key, 'loanTerm', e.target.value)} placeholder="30" /></Field>
-                          {showIO && <Field label="IO period (years)"><input className={inp} value={lender[key].ioYears} onChange={e => updateRateModule(i, key, 'ioYears', e.target.value)} placeholder="5" /></Field>}
-                          {showFixed && <Field label="Fixed for (years)"><input className={inp} value={lender[key].fixedYears} onChange={e => updateRateModule(i, key, 'fixedYears', e.target.value)} placeholder="2" /></Field>}
+                          {showIO && <Field label="IO period (years)"><select className={sel} value={lender[key].ioYears} onChange={e => updateRateModule(i, key, 'ioYears', e.target.value)}><option value="">— select —</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></Field>}
+                          {showFixed && <Field label="Fixed for (years)"><select className={sel} value={lender[key].fixedYears} onChange={e => updateRateModule(i, key, 'fixedYears', e.target.value)}><option value="">— select —</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></Field>}
                         </div>
                       )}
                     </div>
