@@ -171,7 +171,7 @@ export default function LOForm({ deal }: { deal: any }) {
         setAllProducts(shaped)
       }
     })
-    supabase.from('deals').select('lo_data').eq('id', deal.id).single().then(({ data, error }) => { console.log("LP data:", data?.length, "error:", error);
+    supabase.from('deals').select('lo_data').eq('id', deal.id).single().then(({ data }) => {
       if (data?.lo_data && Object.keys(data.lo_data).length > 0) {
         setD(data.lo_data as LOData)
         if ((data.lo_data as LOData).emailHtml) setEmailHtml((data.lo_data as LOData).emailHtml)
