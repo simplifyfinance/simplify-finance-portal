@@ -351,12 +351,43 @@ export default function LOForm({ deal }: { deal: any }) {
             </div>
           </div>
 
-          {d.lenders.map((lender, i) => (
-            <div key={i} className="bg-white border border-gray-100 rounded-xl p-5">
-              <div className="flex justify-between items-center mb-4">
-                <div className="text-xs font-medium text-gray-400 uppercase tracking-widest">Option {i + 1}</div>
-                {d.lenders.length > 1 && <button onClick={() => removeLender(i)} className="text-xs text-red-400 hover:text-red-600">Remove</button>}
+          {!d.recommendedLender && d.lenders.some(l => l.lenderName) && (
+            <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-2">
+              <span className="text-amber-500 text-base">⚠</span>
+              <div>
+                <div className="text-xs font-medium text-amber-800">No recommended option set</div>
+                <div className="text-xs text-amber-600">Click "Set as recommended" on your preferred option — it will appear first in the client email.</div>
               </div>
+            </div>
+          )}
+
+          {d.lenders.map((lender, i) => {
+            const isRec = d.recommendedLender && lender.lenderName === d.recommendedLender
+            const isEmpty = !lender.lenderId
+            return (
+            <div key={i} className={`rounded-xl p-5 border transition-all ${isRec ? 'border-[#2DBEFF] bg-blue-50/30' : isEmpty ? 'border-dashed border-amber-200 bg-amber-50/20' : 'bg-white border-gray-100'}`}>
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="text-xs font-medium text-gray-400 uppercase tracking-widest">Option {i + 1}</div>
+                  {isRec && <span className="text-[10px] bg-[#2DBEFF] text-white px-2 py-0.5 rounded-full font-medium">★ Recommended</span>}
+                  {isEmpty && <span className="text-[10px] text-amber-600 font-normal normal-case">— select a lender to begin</span>}
+                </div>
+                <div className="flex items-center gap-2">
+                  {!isRec && lender.lenderName && (
+                    <button onClick={() => setD({ ...d, recommendedLender: lender.lenderName })}
+                      className="text-xs text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-2.5 py-1 hover:bg-blue-50 transition">
+                      ★ Set as recommended
+                    </button>
+                  )}
+                  {d.lenders.length > 1 && <button onClick={() => removeLender(i)} className="text-xs text-red-400 hover:text-red-600">Remove</button>}
+                </div>
+              </div>
+              {isEmpty && (
+                <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2.5 mb-4 text-xs text-amber-700">
+                  <span>💡</span>
+                  <span>Select a lender and product to auto-fill fees from the library. Then enter rates and set one option as recommended.</span>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <Field label="Lender">
@@ -450,7 +481,7 @@ export default function LOForm({ deal }: { deal: any }) {
                 </div>
               )}
             </div>
-          ))}
+          )})}
 
           {d.lenders.length < 3 && (
             <button onClick={addLender}
