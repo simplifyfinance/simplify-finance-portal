@@ -283,17 +283,13 @@ export default function ComplianceForm({ deal }: { deal: any }) {
     }
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('/api/generate-compliance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 1500,
-          messages: [{ role: 'user', content: prompts[field] || '' }]
-        })
+        body: JSON.stringify({ prompt: prompts[field] || '' })
       })
       const data = await res.json()
-      const text = data.content?.[0]?.text || ''
+      const text = data.text || ''
       if (text) setD(prev => ({ ...prev, [field]: text }))
     } catch (e) { console.error(e) }
     setGenerating(prev => ({ ...prev, [field]: false }))
