@@ -36,6 +36,11 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
 type Split = { label: string; amount: string; rate: string; type: string; deposit?: string }
 
 const inputCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
+function fieldCls(value: string) {
+  return value && value.trim() && value !== '0'
+    ? "px-2.5 py-1.5 text-sm border border-green-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
+    : "px-2.5 py-1.5 text-sm border border-amber-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-[#FEFBF5] w-full"
+}
 const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
 
 function formatNumber(val: string): string {
@@ -54,8 +59,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function NumberInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  const cls = value && value.trim() && value !== '0'
+    ? "px-2.5 py-1.5 text-sm border border-green-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
+    : "px-2.5 py-1.5 text-sm border border-amber-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-[#FEFBF5] w-full"
   return (
-    <input className={inputCls} placeholder={placeholder} value={value}
+    <input className={cls} placeholder={placeholder} value={value}
       onChange={e => onChange(formatNumber(e.target.value))} />
   )
 }
@@ -286,7 +294,7 @@ Key assumptions: ${checklistText}`
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Notes</div>
                 <div className="flex flex-col gap-2">
                   <Field label="Broker summary notes (included in email)">
-                    <textarea className={`${inputCls} min-h-16 resize-y`} value={brokerNotes} onChange={e => setBrokerNotes(e.target.value)} placeholder="Add personalised notes..." />
+                    <textarea className={`${brokerNotes ? "border-green-200 bg-white" : "border-amber-200 bg-[#FFFBF0]"} px-2.5 py-1.5 text-sm rounded-lg focus:outline-none focus:border-[#2DBEFF] w-full min-h-16 resize-y border`} value={brokerNotes} onChange={e => setBrokerNotes(e.target.value)} placeholder="✏ Add your personalised opening message — this goes directly into the client email..." />
                   </Field>
                   <Field label="Internal assessor notes (internal only)">
                     <textarea className={`${inputCls} min-h-16 resize-y`} value={internalNotes} onChange={e => setInternalNotes(e.target.value)} placeholder="Internal notes..." />

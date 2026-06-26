@@ -326,9 +326,9 @@ export default function LOForm({ deal }: { deal: any }) {
 
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Broker personalisation</div>
-            <textarea className={inp + ' min-h-[80px] resize-y'} value={d.brokerPersonalisation}
+            <textarea className={`${d.brokerPersonalisation ? "border-green-200 bg-white" : "border-amber-200 bg-[#FFFBF0]"} w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-[80px] resize-y border`} value={d.brokerPersonalisation}
               onChange={e => setD({ ...d, brokerPersonalisation: e.target.value })}
-              placeholder="Hi [First Name], following our conversation..." />
+              placeholder="✏ Add your personalised opening message — this appears at the top of the client email..." />
           </div>
 
           <div className="bg-white border border-gray-100 rounded-xl p-5">
