@@ -490,7 +490,7 @@ export default function LOForm({ deal }: { deal: any }) {
             </button>
           )}
 
-          <div className="bg-white border border-gray-100 rounded-xl p-5">
+          <div className={`rounded-xl p-5 border transition-all ${d.recommendedLender && d.recommendationNote ? "bg-white border-green-100" : "bg-amber-50/30 border-amber-200"}`}>
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Recommendation</div>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <Field label="Recommended lender">
