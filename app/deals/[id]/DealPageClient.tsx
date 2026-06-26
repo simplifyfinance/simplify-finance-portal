@@ -99,7 +99,7 @@ export default function DealPageClient({ deal }: { deal: any }) {
         ))}
       </div>
 
-      {stage === 'BC' && <BCForm deal={dealData} onUpdate={(bc_data: any) => setDealData((prev: any) => ({ ...prev, bc_data }))} />}
+      {stage === 'BC' && <BCForm deal={dealData} />}
       {stage === 'LO' && <LOForm deal={dealData} />}
       {stage === 'Compliance' && <ComplianceForm deal={dealData} />}
     </div>
