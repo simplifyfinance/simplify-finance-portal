@@ -132,6 +132,10 @@ export default function LOForm({ deal }: { deal: any }) {
   const [savedAt, setSavedAt] = useState('')
   const [newDoc, setNewDoc] = useState('')
   const [newCriteria, setNewCriteria] = useState('')
+  const [sendTo, setSendTo] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [sendError, setSendError] = useState('')
 
   const initData = (): LOData => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem(saveKey) : null
@@ -269,6 +273,30 @@ export default function LOForm({ deal }: { deal: any }) {
       if (text) setD({ ...d, recommendationNote: text })
     } catch (e) { console.error(e) }
     setGeneratingRec(false)
+  }
+
+  async function sendEmail() {
+    if (!sendTo || !emailHtml) return
+    setSending(true)
+    setSendError('')
+    setSent(false)
+    try {
+      const res = await fetch('/api/send-lo-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: sendTo,
+          html: emailHtml,
+          brokerName: deal.assigned_broker,
+          dealName: deal.deal_name,
+          subject: `Your lending options — ${deal.clients?.first_name || ''} ${deal.clients?.last_name || ''}`
+        })
+      })
+      const data = await res.json()
+      if (data.ok) { setSent(true); setTimeout(() => setSent(false), 4000) }
+      else setSendError(data.error || 'Failed to send')
+    } catch (e: any) { setSendError(e.message) }
+    setSending(false)
   }
 
   async function generateEmail() {
@@ -572,10 +600,23 @@ export default function LOForm({ deal }: { deal: any }) {
         <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
           {emailHtml ? (
             <>
-              <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100">
+              <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100 gap-3 flex-wrap">
                 <span className="text-sm font-medium text-gray-600">Email preview</span>
-                <button onClick={() => navigator.clipboard.writeText(emailHtml)}
-                  className="text-xs text-[#2DBEFF] hover:underline">Copy HTML</button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <input
+                    className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#2DBEFF] w-64"
+                    placeholder="Client email address..."
+                    value={sendTo}
+                    onChange={e => setSendTo(e.target.value)}
+                  />
+                  <button
+                    onClick={sendEmail}
+                    disabled={sending || !sendTo}
+                    className="bg-[#2DBEFF] text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-400 transition disabled:opacity-40">
+                    {sending ? 'Sending...' : sent ? '✓ Sent!' : 'Send to client'}
+                  </button>
+                  {sendError && <span className="text-xs text-red-500">{sendError}</span>}
+                </div>
               </div>
               <iframe srcDoc={emailHtml} className="w-full h-[800px] border-0" title="LO Email Preview" />
             </>
