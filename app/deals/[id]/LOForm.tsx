@@ -491,7 +491,14 @@ export default function LOForm({ deal }: { deal: any }) {
           )}
 
           <div className={`rounded-xl p-5 border-2 transition-all ${d.recommendedLender && d.recommendationNote ? "bg-white border-green-200" : "bg-[#FFF8E6] border-amber-400"}`}>
-            <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Recommendation</div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-xs font-medium text-gray-400 uppercase tracking-widest">Recommendation</div>
+              {d.recommendedLender && !d.recommendationNote && (
+                <span className="text-xs text-amber-700 bg-amber-100 border border-amber-300 rounded-lg px-2.5 py-1">
+                  ⚠ Add why this product is in the client&#39;s best interests
+                </span>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <Field label="Recommended lender">
                 <select className={sel} value={d.recommendedLender} onChange={e => setD({ ...d, recommendedLender: e.target.value })}>
