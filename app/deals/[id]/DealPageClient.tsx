@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import BCForm from './BCForm'
 import LOForm from './LOForm'
+import ComplianceForm from './ComplianceForm'
 
 export default function DealPageClient({ deal }: { deal: any }) {
   const [stage, setStage] = useState('BC')
@@ -37,12 +38,7 @@ export default function DealPageClient({ deal }: { deal: any }) {
 
       {stage === 'BC' && <BCForm deal={deal} />}
       {stage === 'LO' && <LOForm deal={deal} />}
-      {stage === 'Compliance' && (
-        <div className="bg-white border border-gray-100 rounded-xl p-8 text-center">
-          <div className="text-sm font-medium text-gray-500 mb-1">Compliance</div>
-          <div className="text-xs text-gray-400">Coming after LO is complete.</div>
-        </div>
-      )}
+      {stage === 'Compliance' && <ComplianceForm deal={deal} />}
     </div>
   )
 }
