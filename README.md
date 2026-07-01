@@ -34,3 +34,16 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+---
+
+## Confidentiality & IP Notice
+
+All contents of this repository — including but not limited to source code, business logic, workflows, API integrations, database schemas, prompt engineering, and documentation — are the **confidential intellectual property of Simplify Finance (Mortgage Specialists Pty Ltd, ACL 387025)**.
+
+- Do not share, publish, or expose any part of this repository externally
+- Do not paste code or implementation details into public forums or third-party services
+- All contributors must treat repository contents as strictly confidential
+- Unauthorised disclosure may constitute a breach of confidentiality obligations
+
+© Simplify Finance. All rights reserved.
