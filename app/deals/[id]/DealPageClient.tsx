@@ -2,9 +2,25 @@
 import { useState, useEffect } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import FactFindForm from './FactFindForm'
 import BCForm from './BCForm'
 import LOForm from './LOForm'
 import ComplianceForm from './ComplianceForm'
+
+function calcFactFindCompletion(deal: any): number {
+  const d = deal.fact_find_data || {}
+  const a = d.applicants?.[0] || {}
+  const fields = [
+    a.firstName, a.lastName, a.dob,
+    a.employment?.[0]?.employerName,
+    a.income?.[0]?.grossSalary,
+    d.assets?.length > 0 ? '1' : '',
+    d.liabilities?.length > 0 ? '1' : '',
+    d.properties?.length > 0 ? '1' : '',
+  ]
+  const filled = fields.filter(f => f && String(f).trim() !== '').length
+  return Math.round((filled / fields.length) * 100)
+}
 
 function calcBCCompletion(deal: any): number {
   const d = deal.bc_data || {}
@@ -57,16 +73,20 @@ function ProgressBar({ pct, active }: { pct: number; active: boolean }) {
   )
 }
 
-export default function DealPageClient({ deal }: { deal: any }) {
-  const [stage, setStage] = useState('BC')
+export default function DealPageClient({ deal, initialStage }: { deal: any; initialStage?: string }) {
+  const validStages = ['FactFind', 'BC', 'LO', 'Compliance']
+  const startStage = validStages.includes(initialStage || '') ? initialStage! : 'FactFind'
+  const [stage, setStage] = useState(startStage)
   const [dealData, setDealData] = useState(deal)
   const router = useRouter()
 
+  const factFindPct = calcFactFindCompletion(dealData)
   const bcPct = calcBCCompletion(dealData)
   const loPct = calcLOCompletion(dealData)
   const compPct = calcComplianceCompletion(dealData)
 
   const tabs = [
+    { key: 'FactFind', label: 'Fact Find', pct: factFindPct },
     { key: 'BC', label: 'BC — Borrowing capacity', pct: bcPct },
     { key: 'LO', label: 'Lending options', pct: loPct },
     { key: 'Compliance', label: 'Compliance', pct: compPct },
@@ -99,6 +119,7 @@ export default function DealPageClient({ deal }: { deal: any }) {
         ))}
       </div>
 
+      {stage === 'FactFind' && <FactFindForm deal={dealData} />}
       {stage === 'BC' && <BCForm deal={dealData} />}
       {stage === 'LO' && <LOForm deal={dealData} />}
       {stage === 'Compliance' && <ComplianceForm deal={dealData} />}

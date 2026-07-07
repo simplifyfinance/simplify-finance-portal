@@ -56,9 +56,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#F2E8DB] flex items-center justify-center p-6">
       <div className="bg-white rounded-2xl p-10 w-full max-w-sm border border-gray-100">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-[#343333] rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-[#2DBEFF] font-bold text-lg">SF</span>
-          </div>
+          <img src="/login-icon.png" alt="Simplify Finance" className="w-12 h-12 rounded-xl mx-auto mb-4 object-cover" />
           <h1 className="text-xl font-semibold text-[#343333]">Simplify Finance</h1>
           <p className="text-sm text-gray-400 mt-1">{mode === 'login' ? 'Sign in to your portal' : 'Reset your password'}</p>
         </div>

@@ -6,7 +6,7 @@ const brokers: Record<string, { name: string; title: string; crn: string; calend
 }
 
 function shell(body: string) {
-  return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr><td><table width="600" cellpadding="0" cellspacing="0" style="background:#fff;margin:0 auto"><tr><td style="background:#343333;padding:20px;text-align:center"><p style="color:#fff;font-size:22px;font-weight:bold;margin:0 0 6px">Simplify Finance.</p><p style="color:#fff;font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0">Finance, Simplified.</p></td></tr><tr><td style="padding:28px">${body}</td></tr><tr><td style="background:#343333;padding:14px 16px;text-align:center"><p style="color:rgba(255,255,255,0.6);font-size:10px;line-height:1.6;margin:0">Rates quoted are indicative only and subject to change. This email does not constitute formal approval.</p><p style="color:rgba(255,255,255,0.4);font-size:10px;margin:4px 0 0">&copy; 2026 Simplify Finance | St Leonards, Sydney | Australian Credit Licence: 387025</p></td></tr></table></td></tr></table>`
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr><td><table width="600" cellpadding="0" cellspacing="0" style="background:#fff;margin:0 auto"><tr><td style="background:#F2E8DB;padding:24px;text-align:center"><img src="https://simplify-finance-portal.vercel.app/logo-dark.png" alt="Simplify Finance" style="height:48px;width:auto;margin-bottom:6px" /><p style="color:#7a6f5f;font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0">Finance, Simplified.</p></td></tr><tr><td style="padding:28px">${body}</td></tr><tr><td style="background:#343333;padding:14px 16px;text-align:center"><p style="color:rgba(255,255,255,0.6);font-size:10px;line-height:1.6;margin:0">Rates quoted are indicative only and subject to change. This email does not constitute formal approval.</p><p style="color:rgba(255,255,255,0.4);font-size:10px;margin:4px 0 0">&copy; 2026 Simplify Finance | St Leonards, Sydney | Australian Credit Licence: 387025</p></td></tr></table></td></tr></table>`
 }
 
 function brokerBox(text: string) {
@@ -24,7 +24,11 @@ function notesBox(items: string[]) {
   return `<div style="background:#EFF6FF;border-left:4px solid #2DBEFF;border-radius:0 6px 6px 0;padding:13px 15px;margin:18px 0"><p style="font-size:10px;font-weight:600;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Important things to note</p>${items.map(i => `<p style="font-size:12px;color:#334155;margin:4px 0;line-height:1.6">&bull; ${i}</p>`).join('')}</div>`
 }
 function ctas(calendly: string, proceedUrl?: string) {
-  return `<div style="margin-bottom:20px"><a href="${proceedUrl || calendly}" style="background:#2DBEFF;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block;margin-right:8px">I am ready to proceed</a><a href="${calendly}" style="background:#343333;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">Book a call</a></div>`
+  return `<table cellpadding="0" cellspacing="0" style="margin-bottom:20px"><tr>
+    <td><a href="${proceedUrl || calendly}" style="background:#2DBEFF;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">I am ready to proceed</a></td>
+    <td width="10">&nbsp;</td>
+    <td><a href="${calendly}" style="background:#343333;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">Book a call</a></td>
+  </tr></table>`
 }
 
 function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender?: string) {
@@ -81,11 +85,20 @@ function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender
   return `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px"><tr>${headers}</tr>${featureCells}</table>`
 }
 
+function walletLinkBox(link: string) {
+  if (!link) return ''
+  return `<div style="background:#F0FBF7;border-left:4px solid #1D9E75;border-radius:0 6px 6px 0;padding:16px;margin:18px 0">
+    <p style="font-size:13px;font-weight:700;color:#0F6E56;margin:0 0 8px">Share your bank statements securely</p>
+    <p style="font-size:13px;color:#333;line-height:1.6;margin:0 0 12px">To help us verify your income and finalise your application, we use a secure platform called WealthDesk to safely collect your bank statements. This is a secure, read-only connection — we never see or store your online banking login details.</p>
+    <a href="${link}" style="background:#1D9E75;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">Share bank statements</a>
+  </div>`
+}
+
 export async function POST(req: NextRequest) {
   const { broker, dealId, loData: d } = await req.json()
   const b = brokers[broker] || brokers['Fabio']
   const isBridging = d.template === 'lo_bridging'
-  const proceedUrl = dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined
+  const proceedUrl = dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=LO` : undefined
 
   const templateLabel = d.template === 'lo_purchase' ? 'purchase an owner-occupied property' : d.template === 'lo_refinance' ? 'refinance your existing loan' : 'bridge between properties'
 
@@ -130,7 +143,7 @@ export async function POST(req: NextRequest) {
 
   body += p('Please let us know which lender you would like to proceed with and if you have any questions regarding the numbers above.')
   body += ctas(b.calendly, proceedUrl)
-  body += notesBox(['Any rates or fees quoted are subject to change', 'This email does not constitute as a formal approval'])
+  body += notesBox(d.importantNotesList || ['Any rates or fees quoted are subject to change', 'This email does not constitute as a formal approval'])
   body += sig(b)
 
   const html = shell(body)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSupabaseServer } from '@/lib/supabase-server'
+import { createSupabaseAdmin } from '@/lib/supabase-admin'
 
 export async function POST(req: NextRequest) {
   const { email, fullName, role } = await req.json()
@@ -8,10 +8,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'Missing fields' }, { status: 400 })
   }
 
-  const supabase = await createSupabaseServer()
+  const supabaseAdmin = createSupabaseAdmin()
 
   // Create auth user with a temporary password and send invite
-  const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
+  const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
     data: { full_name: fullName }
   })
 
@@ -20,13 +20,17 @@ export async function POST(req: NextRequest) {
   }
 
   // Insert user profile
-  await supabase.from('user_profiles').insert({
+  const { error: profileError } = await supabaseAdmin.from('user_profiles').insert({
     id: data.user.id,
     email,
     full_name: fullName,
     role,
     active: true
   })
+
+  if (profileError) {
+    return NextResponse.json({ ok: false, error: profileError.message }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true })
 }

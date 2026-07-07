@@ -60,25 +60,74 @@ type ComplianceData = {
   creditHistoryComment: string
   securityComment: string
   applicationSubmissionComment: string
+  expenses: Record<string, ExpenseEntry>
 }
 
 const defaultRisk = (): RiskData => ({
-  adverseChanges: '', beneficialChanges: '', retirementAge: '', repaymentMethod: '',
+  adverseChanges: 'No', beneficialChanges: 'No', retirementAge: '', repaymentMethod: '',
   financialExperience: 'Medium', interestRateConcern: 'Medium', loanFlexibility: 'Medium',
   jobSecurity: 'Medium', propertyValueConcern: 'Medium',
-  emergencyFund: '', maintainLifestyle: '', adequateInsurance: '', hasWill: '', circumstancesImpact: '',
-  problemsMeetingCommitments: '', officerInLiquidation: '', unsatisfiedJudgements: '',
-  simultaneousApplications: '', declaredBankrupt: ''
+  emergencyFund: 'Yes', maintainLifestyle: 'Yes', adequateInsurance: 'Yes', hasWill: 'Yes', circumstancesImpact: 'No',
+  problemsMeetingCommitments: 'No', officerInLiquidation: 'No', unsatisfiedJudgements: 'No',
+  simultaneousApplications: 'No', declaredBankrupt: 'No'
 })
 
 const defaultProductReqs = (): ProductReqs => ({
-  fixedRate: '', variableRate: '', fixedAndVariable: '',
-  principalAndInterest: '', interestOnly: '', interestInAdvance: '', lineOfCredit: '',
+  fixedRate: '', variableRate: '', fixedAndVariable: 'Important',
+  principalAndInterest: '', interestOnly: '', interestInAdvance: 'Do not want', lineOfCredit: 'Do not want',
   offsetAccount: '', redraw: '', otherRequirements: '',
   lowestCost: 'Somewhat important', approvedQuickly: 'Somewhat important',
   specificFeatures: 'Somewhat important', lenderPolicy: 'Somewhat important',
   branchFrequency: 'Rarely'
 })
+
+const EXPENSE_CATEGORIES: { key: string; label: string; inHem: boolean }[] = [
+  { key: 'groceries', label: 'Groceries', inHem: true },
+  { key: 'clothingPersonalCare', label: 'Clothing and personal care', inHem: true },
+  { key: 'petCare', label: 'Pet care', inHem: true },
+  { key: 'phoneInternetSubscriptions', label: 'Phone, internet and subscriptions', inHem: true },
+  { key: 'other', label: 'Other', inHem: true },
+  { key: 'privateSchoolingTuition', label: 'Private schooling and tuition', inHem: false },
+  { key: 'childcare', label: 'Childcare', inHem: true },
+  { key: 'publicEducation', label: 'Public education', inHem: true },
+  { key: 'higherEducationTraining', label: 'Higher education and training', inHem: true },
+  { key: 'recreationEntertainment', label: 'Recreation and entertainment', inHem: true },
+  { key: 'sicknessAccidentLifeInsurance', label: 'Sickness, accident and life insurance', inHem: false },
+  { key: 'medicalHealth', label: 'Medical and health', inHem: true },
+  { key: 'healthInsurance', label: 'Health insurance', inHem: true },
+  { key: 'generalBasicInsurances', label: 'General basic insurances', inHem: true },
+  { key: 'transport', label: 'Transport', inHem: true },
+  { key: 'secondaryResidenceRunningCosts', label: 'Secondary residence running costs', inHem: false },
+  { key: 'primaryResidenceRunningCosts', label: 'Primary residence running costs', inHem: true },
+  { key: 'investmentPropertyRunningCosts', label: 'Investment property running costs', inHem: true },
+  { key: 'primaryResidenceBodyCorp', label: 'Primary residence body corp', inHem: true },
+  { key: 'childSpousalMaintenance', label: 'Child and spousal maintenance', inHem: false },
+  { key: 'rent', label: 'Rent', inHem: true },
+  { key: 'board', label: 'Board', inHem: true },
+]
+
+type ExpenseEntry = {
+  monthlyAmount: string
+  splits: Record<string, string>
+  comment: string
+}
+
+function defaultExpenseSplit(applicants: Applicant[]): Record<string, string> {
+  const n = applicants.length
+  if (n === 0) return {}
+  const pct = n === 1 ? '100' : (100 / n).toFixed(2).replace(/\.00$/, '')
+  const result: Record<string, string> = {}
+  applicants.forEach(a => { result[a.name] = pct })
+  return result
+}
+
+function defaultExpenses(applicants: Applicant[]): Record<string, ExpenseEntry> {
+  const result: Record<string, ExpenseEntry> = {}
+  EXPENSE_CATEGORIES.forEach(c => {
+    result[c.key] = { monthlyAmount: '', splits: defaultExpenseSplit(applicants), comment: '' }
+  })
+  return result
+}
 
 function Toggle({ value, onChange, options, colors }: { value: string; onChange: (v: string) => void; options: string[]; colors?: string[] }) {
   return (
@@ -176,7 +225,8 @@ export default function ComplianceForm({ deal }: { deal: any }) {
       productReqs: pReqs,
       analysisComment: '', optionsComment: '', borrowingPowerComment: '',
       depositComment: '', creditHistoryComment: '', securityComment: '',
-      applicationSubmissionComment: ''
+      applicationSubmissionComment: '',
+      expenses: defaultExpenses(apps)
     }
   }
 
@@ -186,12 +236,15 @@ export default function ComplianceForm({ deal }: { deal: any }) {
   const [savedAt, setSavedAt] = useState('')
   const [showValidation, setShowValidation] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
-  const [stage, setStage] = useState<'needs' | 'risks' | 'product' | 'comments'>('needs')
+  const [stage, setStage] = useState<'needs' | 'risks' | 'product' | 'comments' | 'expenses'>('needs')
+  const [complianceCompletedAt, setComplianceCompletedAt] = useState<string | null>(deal.compliance_completed_at || null)
 
   useEffect(() => {
     supabase.from('deals').select('compliance_data').eq('id', deal.id).single().then(({ data }) => {
       if (data?.compliance_data && Object.keys(data.compliance_data).length > 0) {
-        setD(data.compliance_data as ComplianceData)
+        const loaded = data.compliance_data as ComplianceData
+        if (!loaded.expenses) loaded.expenses = defaultExpenses(loaded.applicants || [])
+        setD(loaded)
       }
     })
   }, [])
@@ -208,6 +261,20 @@ export default function ComplianceForm({ deal }: { deal: any }) {
 
   function updateProductReqs(field: keyof ProductReqs, value: string) {
     setD(prev => ({ ...prev, productReqs: { ...prev.productReqs, [field]: value } }))
+  }
+
+  function updateExpense(key: string, field: 'monthlyAmount' | 'comment', value: string) {
+    setD(prev => ({ ...prev, expenses: { ...prev.expenses, [key]: { ...prev.expenses[key], [field]: value } } }))
+  }
+
+  function updateExpenseSplit(key: string, applicantName: string, value: string) {
+    setD(prev => ({
+      ...prev,
+      expenses: {
+        ...prev.expenses,
+        [key]: { ...prev.expenses[key], splits: { ...prev.expenses[key].splits, [applicantName]: value } }
+      }
+    }))
   }
 
   function validateBeforePush(): string[] {
@@ -300,12 +367,20 @@ export default function ComplianceForm({ deal }: { deal: any }) {
     for (const f of fields) { await generateField(f) }
   }
 
+  async function markComplianceComplete() {
+    const nowIso = new Date().toISOString()
+    const { error } = await supabase.from('deals').update({ compliance_completed_at: nowIso }).eq('id', deal.id)
+    if (error) { alert('Error marking compliance complete: ' + error.message); return }
+    setComplianceCompletedAt(nowIso)
+  }
+
   function handlePushToSalesTrekker() {
     const errors = validateBeforePush()
     if (errors.length > 0) {
       setValidationErrors(errors)
       setShowValidation(true)
     } else {
+      markComplianceComplete()
       alert('All fields complete — SalesTrekker automation coming soon!')
     }
   }
@@ -314,8 +389,8 @@ export default function ComplianceForm({ deal }: { deal: any }) {
   const currentApplicant = d.applicants[activeApplicant]
   const currentRisk = d.risks[currentApplicant?.name] || defaultRisk()
 
-  const stages = ['needs', 'risks', 'product', 'comments'] as const
-  const stageLabels = { needs: 'Needs & objectives', risks: 'Risks', product: 'Product requirements', comments: 'Broker comments' }
+  const stages = ['needs', 'risks', 'product', 'comments', 'expenses'] as const
+  const stageLabels = { needs: 'Needs & objectives', risks: 'Risks', product: 'Product requirements', comments: 'Broker comments', expenses: 'Living expenses' }
 
   return (
     <div className="space-y-4">
@@ -603,7 +678,85 @@ export default function ComplianceForm({ deal }: { deal: any }) {
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">{savedAt ? `Autosaved at ${savedAt}` : ''}</span>
+            <span className="text-xs text-gray-400">
+              {savedAt ? `Autosaved at ${savedAt}` : ''}
+              {complianceCompletedAt && <span className="ml-3 text-green-600">✓ Compliance completed</span>}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* STAGE: Living Expenses */}
+      {stage === 'expenses' && (
+        <div className="space-y-4">
+          <div className="bg-white border border-gray-100 rounded-xl p-5">
+            <SectionHeader title="Living expenses" badge="household monthly" />
+            <div className="flex items-center gap-4 mb-3 text-xs text-gray-500">
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />In HEM</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" />Not in HEM</span>
+            </div>
+            <div className="flex flex-col gap-2">
+              {EXPENSE_CATEGORIES.map(cat => {
+                const entry = d.expenses?.[cat.key] || { monthlyAmount: '', splits: {}, comment: '' }
+                return (
+                  <div key={cat.key} className="border border-gray-100 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`w-2.5 h-2.5 rounded-full inline-block flex-shrink-0 ${cat.inHem ? 'bg-green-500' : 'bg-red-400'}`} />
+                      <span className="text-sm font-medium text-[#343333]">{cat.label}</span>
+                    </div>
+                    <div className="grid gap-2 items-end" style={{ gridTemplateColumns: `160px repeat(${d.applicants.length}, 1fr) 1fr` }}>
+                      <div>
+                        <label className="text-xs text-gray-400 block mb-1">Monthly amount</label>
+                        <input className={inp} value={entry.monthlyAmount} onChange={e => updateExpense(cat.key, 'monthlyAmount', e.target.value)} placeholder="0" />
+                      </div>
+                      {d.applicants.map(a => (
+                        <div key={a.name}>
+                          <label className="text-xs text-gray-400 block mb-1">{a.name} %</label>
+                          <input className={inp} value={entry.splits?.[a.name] || ''} onChange={e => updateExpenseSplit(cat.key, a.name, e.target.value)} placeholder="0" />
+                        </div>
+                      ))}
+                      <div>
+                        <label className="text-xs text-gray-400 block mb-1">Comment</label>
+                        <input className={inp} value={entry.comment} onChange={e => updateExpense(cat.key, 'comment', e.target.value)} placeholder="Optional note..." />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {(() => {
+            const toNum = (v: string) => parseFloat(String(v).replace(/,/g, '')) || 0
+            const totalAll = EXPENSE_CATEGORIES.reduce((sum, c) => sum + toNum(d.expenses?.[c.key]?.monthlyAmount || ''), 0)
+            const totalHem = EXPENSE_CATEGORIES.filter(c => c.inHem).reduce((sum, c) => sum + toNum(d.expenses?.[c.key]?.monthlyAmount || ''), 0)
+            const totalNotHem = EXPENSE_CATEGORIES.filter(c => !c.inHem).reduce((sum, c) => sum + toNum(d.expenses?.[c.key]?.monthlyAmount || ''), 0)
+            return (
+              <div className="bg-white border border-gray-100 rounded-xl p-5">
+                <SectionHeader title="Totals (monthly)" />
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="text-xs text-gray-500 mb-1">Total expenses</div>
+                    <div className="text-xl font-semibold text-[#343333]">${totalAll.toLocaleString('en-AU')}</div>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-3">
+                    <div className="text-xs text-green-600 mb-1">Total living expenses (in HEM)</div>
+                    <div className="text-xl font-semibold text-green-700">${totalHem.toLocaleString('en-AU')}</div>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-3">
+                    <div className="text-xs text-red-500 mb-1">Total living expenses (not in HEM)</div>
+                    <div className="text-xl font-semibold text-red-600">${totalNotHem.toLocaleString('en-AU')}</div>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-400">
+              {savedAt ? `Autosaved at ${savedAt}` : ''}
+              {complianceCompletedAt && <span className="ml-3 text-green-600">✓ Compliance completed</span>}
+            </span>
             <button onClick={handlePushToSalesTrekker}
               className="bg-[#343333] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition">
               Push to SalesTrekker →
@@ -628,7 +781,7 @@ export default function ComplianceForm({ deal }: { deal: any }) {
                 className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
                 Go back & complete
               </button>
-              <button onClick={() => { setShowValidation(false); alert('SalesTrekker automation coming soon!') }}
+              <button onClick={() => { setShowValidation(false); markComplianceComplete(); alert('SalesTrekker automation coming soon!') }}
                 className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a]">
                 Proceed anyway
               </button>

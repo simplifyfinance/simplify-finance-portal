@@ -8,9 +8,9 @@ const brokers: Record<string, { name: string; title: string; crn: string; calend
 function shell(body: string, b: { name: string; title: string; crn: string; calendly: string }) {
   return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr><td>
   <table width="600" cellpadding="0" cellspacing="0" align="center" style="background:#fff;margin:0 auto">
-    <tr><td style="background:#343333;padding:20px;text-align:center">
-      <p style="color:#fff;font-size:22px;font-weight:bold;margin:0 0 6px;letter-spacing:-0.5px">Simplify Finance.</p>
-      <p style="color:#fff;font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0">Finance, Simplified.</p>
+    <tr><td style="background:#F2E8DB;padding:24px;text-align:center">
+      <img src="https://simplify-finance-portal.vercel.app/logo-dark.png" alt="Simplify Finance" style="height:48px;width:auto;margin-bottom:6px" />
+      <p style="color:#7a6f5f;font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0">Finance, Simplified.</p>
     </td></tr>
     <tr><td style="padding:28px">${body}</td></tr>
     <tr><td style="background:#343333;padding:14px 16px;text-align:center">
@@ -56,10 +56,11 @@ function check(items: string[]) {
 }
 
 function ctas(calendly: string, proceedUrl?: string) {
-  return `<div style="margin-bottom:20px">
-    <a href="${proceedUrl || calendly}" style="background:#2DBEFF;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block;margin-right:8px">I am ready to proceed</a>
-    <a href="${calendly}" style="background:#343333;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">Book a call</a>
-  </div>`
+  return `<table cellpadding="0" cellspacing="0" style="margin-bottom:20px"><tr>
+    <td><a href="${proceedUrl || calendly}" style="background:#2DBEFF;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">I am ready to proceed</a></td>
+    <td width="10">&nbsp;</td>
+    <td><a href="${calendly}" style="background:#343333;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">Book a call</a></td>
+  </tr></table>`
 }
 
 function sig(b: { name: string; title: string; crn: string }) {
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest) {
   const template = d.template || 'oo_purchase'
   const personalisation = d.brokerPersonalisation || ''
   const checkItems = buildChecklist(d)
+  const notes = d.additionalNotes || []
 
   let body = ''
 
@@ -116,7 +118,7 @@ export async function POST(req: NextRequest) {
       card('Split 2 - Equity Release', row('Equity release amount', '$' + (d.equityRelease || '')) + row('Loan amount', '$' + d.splits?.[1]?.amount || '') + row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[1]?.type || 'Interest Only')) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + notesBox([]) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else if (template === 'refinance_only') {
     body = heading() + brokerBox(personalisation) +
@@ -127,7 +129,7 @@ export async function POST(req: NextRequest) {
       card('Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + row('New loan amount', '$' + d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + notesBox([]) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else if (template === 'oo_purchase') {
     const lvr = d.lvr || '80%'
@@ -150,7 +152,7 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + notesBox([]) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else if (template === 'investment_purchase') {
     body = heading() + brokerBox(personalisation) +
@@ -170,7 +172,7 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right structure for your investment — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + notesBox(['We have assumed a minimum rental yield of 4% p.a. Please note, rental yield is a key component in determining your borrowing capacity for an investment purchase.']) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else if (template === 'buy_sell') {
     body = heading() + brokerBox(personalisation) +
@@ -193,12 +195,8 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('Now it is about finding the right lender, the right rate, and making sure the timing between your sale and purchase lines up perfectly. That is exactly what we are here for.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) +
-      notesBox([
-        'This is your estimated borrowing capacity as of today and it can change by the time you are ready to apply.',
-        'The figures used for the proposed sale are only estimated amounts. If you were to sell the property for less we would need to re-work your numbers.',
-        'You will also need to ascertain if there are any further fees on the finalisation of your sale (e.g. Capital Gains Tax).'
-      ]) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      notesBox(notes) + sig(b)
 
   } else if (template === 'oo_lvr_compare') {
     const splits = d.splits || []
@@ -220,21 +218,23 @@ export async function POST(req: NextRequest) {
       </td></tr></table>` +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + notesBox([]) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else if (template === 'fhb') {
     body = heading() + brokerBox(personalisation) +
       p('We have completed your borrowing capacity assessment.') +
-      p('There is currently a government scheme we believe you would be eligible for. The <strong>First Home Guarantee (5% Deposit Scheme)</strong> allows first home buyers with a minimum 5% deposit to purchase a property without the cost of Lenders Mortgage Insurance.') +
-      `<p style="font-size:14px;color:#333;margin-bottom:8px">To be eligible, home buyers must be:</p>
+      p('There is currently a government scheme we believe that you would be eligible for. The 5% Deposit Scheme is a current government scheme that allows first home buyers with a minimum 5% deposit to purchase a property without the cost of mortgage insurance.') +
+      `<p style="font-size:14px;color:#333;margin-bottom:8px">To apply for the 5% Deposit Scheme, home buyers must be:</p>
       <ul style="font-size:13px;color:#555;margin:0 0 16px 20px;line-height:1.9">
-        <li>An Australian citizen or Permanent Resident at the time they enter the loan</li>
+        <li>An Australian citizen(s) or Permanent Resident at the time they enter the loan</li>
         <li>Applying as an individual or couple</li>
-        <li>Saved a minimum deposit of 5% and shown to be using all available savings towards the purchase</li>
+        <li>Saved a minimum deposit of 5%**</li>
         <li>Intending to be owner-occupiers of the purchased property</li>
         <li>First home buyers who have not previously owned, or had an interest in, a property in Australia in the last 10 years</li>
-        <li>Purchasing a property within the price cap relevant to your state or territory</li>
-      </ul>` +
+        <li>Purchase a property within the price cap relevant to your state/territory</li>
+      </ul>
+      <p style="font-size:12px;color:#777;margin:0 0 16px;line-height:1.6">**Retained savings explanation: after the payment of your 5% deposit (plus any relevant stamp duty), the government allows you to retain up to 6 months of living expenses AND up to 6 months of scheduled loan repayments.</p>
+      <p style="font-size:13px;color:#555;margin:0 0 16px">Further information: <a href="https://firsthomebuyers.gov.au/australian-government-5-percent-deposit-scheme" style="color:#2DBEFF">firsthomebuyers.gov.au/australian-government-5-percent-deposit-scheme</a></p>` +
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
         row('Stamp duty', '$' + d.stampDuty || '/bin/zsh — first home buyer exemption') +
@@ -248,7 +248,7 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + notesBox([]) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else if (template === 'bridging') {
     body = heading() + brokerBox(personalisation) +
@@ -272,11 +272,8 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right structure for your bridging scenario — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) +
-      notesBox([
-        'These are only estimates — if the valuation on your current property comes in lower than the expected sale price, we will need to re-work your numbers.',
-        'Bridging loan interest is capitalised during the bridging period and will increase the total loan balance.'
-      ]) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      notesBox(notes) + sig(b)
 
   } else if (template === 'family_pledge') {
     body = heading() + brokerBox(personalisation) +
@@ -295,8 +292,8 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) +
-      notesBox(['Family guarantee arrangements are subject to lender eligibility criteria and guarantor assessment.']) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      notesBox(notes) + sig(b)
 
   } else if (template === 'smsf') {
     body = heading() + brokerBox(personalisation) +
@@ -313,13 +310,8 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right SMSF structure for your investment — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) +
-      notesBox([
-        'We have assumed a minimum rental yield of 4% p.a. Rental yield is a key component in determining your borrowing capacity for an investment purchase.',
-        'Confirmation of your rollover amount to your SMSF is required.',
-        'Please advise if you did NOT receive financial advice when setting up your SMSF.',
-        'Please note, lenders will require you to obtain independent financial and legal advice at your own cost as you will be a guarantor on the application.'
-      ]) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      notesBox(notes) + sig(b)
 
   } else if (template === 'construction') {
     body = heading() + brokerBox(personalisation) +
@@ -339,29 +331,56 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('The next step is finding the right lender and construction loan structure for your project — and we will guide you through every step of that process.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) +
-      notesBox(['Construction cost estimates are indicative only and subject to builder contracts and council approvals.']) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      notesBox(notes) + sig(b)
 
   } else if (template === 'investment_equity') {
+    const totalCost = d.purchasePrice && d.stampDuty ? `$${d.purchasePrice} + $${d.stampDuty}` : ''
+    const existingLoanCol = `
+      <p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 6px">Existing loan refinanced</p>
+      <p style="font-size:11px;color:#555;margin:2px 0">Loan amount: $${d.splits?.[0]?.amount || ''}</p>
+      <p style="font-size:11px;color:#555;margin:2px 0">Indicative rate: ${d.splits?.[0]?.rate || ''}% p.a.*</p>
+      <p style="font-size:11px;color:#555;margin:2px 0">Estimated repayments: [calculated]</p>
+      <p style="font-size:11px;color:#555;margin:2px 0 10px">Repayment type: ${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years</p>
+      <p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 6px">Equity access</p>
+      <p style="font-size:11px;color:#555;margin:2px 0">Loan amount: $${d.splits?.[1]?.amount || ''}</p>
+      <p style="font-size:11px;color:#555;margin:2px 0">Indicative rate: ${d.splits?.[1]?.rate || ''}% p.a.*</p>
+      <p style="font-size:11px;color:#555;margin:2px 0">Estimated repayments: [calculated]</p>
+      <p style="font-size:11px;color:#555;margin:2px 0">Repayment type: ${d.splits?.[1]?.type || 'P&I'} over ${d.loanTerm || '30'} years</p>`
+    const newPurchaseCol = `
+      <p style="font-size:11px;color:#555;margin:2px 0">Loan amount: $${d.splits?.[2]?.amount || ''}</p>
+      <p style="font-size:11px;color:#555;margin:2px 0">Indicative rate: ${d.splits?.[2]?.rate || ''}% p.a.*</p>
+      <p style="font-size:11px;color:#555;margin:2px 0">Estimated repayments: [calculated]</p>
+      <p style="font-size:11px;color:#555;margin:2px 0">Repayment type: ${d.splits?.[2]?.type || 'P&I'} over ${d.loanTerm || '30'} years</p>`
+
     body = heading() + brokerBox(personalisation) +
-      p('We have completed your borrowing capacity assessment.') +
-      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
-      p13('Here is a breakdown of the structure:') +
-      propHead(`Against ${d.suburb || '[Property Address]'}`) +
-      card('Your Loan Structure',
-        row('Existing loan balance', '$' + (d.existingLoanBal || '')) +
-        row('Equity release amount', '$' + (d.equityRelease || '')) +
-        row('Purchase price', '$' + d.purchasePrice || '') +
-        row('Stamp duty', '$' + d.stampDuty || '') +
-        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
-        row('LVR', d.lvr || '80%') +
-        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
-        row('Estimated repayments', '[calculated]') +
-        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      p('We have now finalised your review as you are looking at purchasing an owner-occupied/investment property.') +
+      p('We would use equity in your owner-occupied/investment property to help fund the deposit plus stamp duty costs.') +
+      p('A second loan will be set up against your new purchase, so all properties are stand alone — these are two separate securities, not cross-collateralised.') +
+      p(`Provided you are ok to use equity, we could look at a purchase price of <strong>$${d.purchasePrice || '[amount]'}</strong>.`) +
+      p13('Your numbers would be:') +
+      card('Summary',
+        row('Purchase price', '$' + (d.purchasePrice || '')) +
+        row('Stamp duty', '$' + (d.stampDuty || '')) +
+        row('Total cost (plus solicitor\'s fees and incidentals)', totalCost) +
+        row('Loan amount', '$' + (d.splits?.[2]?.amount || '')) +
+        row('Deposit needed (from equity release and personal savings)', '$' + (d.equityRelease || ''))
       ) +
+      p13('Below is a breakdown of the structure:') +
+      `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:14px"><tr>
+        <td width="50%" style="background:#F2E8DB;padding:14px;border:1px solid #e5ddc8;vertical-align:top">
+          <p style="font-size:12px;font-weight:700;color:#343333;margin:0 0 10px">&#127968; Against ${d.suburb || '[Existing Property]'}</p>
+          ${existingLoanCol}
+        </td>
+        <td width="50%" style="background:#F2E8DB;padding:14px;border:1px solid #e5ddc8;vertical-align:top">
+          <p style="font-size:12px;font-weight:700;color:#343333;margin:0 0 10px">&#127968; Against new purchase</p>
+          ${newPurchaseCol}
+        </td>
+      </tr></table>` +
       check(checkItems) +
-      p('The next step is finding the right lender, the right rate, and the right structure for your investment — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + notesBox([]) + sig(b)
+      p('Please let us know your thoughts and if you have any questions regarding the numbers above.') +
+      p('The next step is to collect your documentation so we can look at specific lenders and interest rates.') +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else if (template === 'custom') {
     body = heading() + brokerBox(personalisation) +
@@ -380,10 +399,10 @@ export async function POST(req: NextRequest) {
       ) +
       check(checkItems) +
       p('The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + notesBox([]) + sig(b)
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else {
-    body = heading() + brokerBox(personalisation) + p('Email template coming soon.') + ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}` : undefined) + sig(b)
+    body = heading() + brokerBox(personalisation) + p('Email template coming soon.') + ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + sig(b)
   }
 
   const html = shell(body, b)

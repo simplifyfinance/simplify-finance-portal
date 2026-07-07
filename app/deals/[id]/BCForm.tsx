@@ -1,6 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import CreditOfficerAssignment from './CreditOfficerAssignment'
+import BrokerAssignment from './BrokerAssignment'
 
 const TEMPLATES = [
   { id: 'refinance_equity', label: 'Refinance + equity release' },
@@ -8,7 +10,7 @@ const TEMPLATES = [
   { id: 'oo_purchase', label: 'OO purchase' },
   { id: 'oo_lvr_compare', label: 'OO purchase — LVR comparison' },
   { id: 'investment_purchase', label: 'Investment purchase' },
-  { id: 'investment_equity', label: 'Investment + equity release' },
+  { id: 'investment_equity', label: 'Equity release + purchase' },
   { id: 'buy_sell', label: 'Buy / sell' },
   { id: 'fhb', label: 'First home buyer' },
   { id: 'bridging', label: 'Bridging loan' },
@@ -24,7 +26,7 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
   oo_purchase: { splits: [{ label: 'Owner-occupied loan', amount: '', rate: '6.14', type: 'P&I' }] },
   oo_lvr_compare: { splits: [{ label: '80% LVR option', amount: '', rate: '6.14', type: 'P&I' }, { label: '90% LVR option', amount: '', rate: '6.39', type: 'P&I' }] },
   investment_purchase: { splits: [{ label: 'Investment loan', amount: '', rate: '6.39', type: 'P&I' }] },
-  investment_equity: { splits: [{ label: 'Investment loan', amount: '', rate: '6.39', type: 'P&I' }, { label: 'Equity release', amount: '', rate: '6.14', type: 'P&I' }] },
+  investment_equity: { splits: [{ label: 'Existing loan refinanced', amount: '', rate: '6.14', type: 'P&I' }, { label: 'Equity access', amount: '', rate: '6.14', type: 'P&I' }, { label: 'New purchase', amount: '', rate: '6.39', type: 'P&I' }] },
   buy_sell: { splits: [{ label: 'New purchase loan', amount: '', rate: '6.14', type: 'P&I' }, { label: 'Bridging facility', amount: '', rate: '7.50', type: 'Interest only' }] },
   fhb: { splits: [{ label: 'Owner-occupied loan', amount: '', rate: '6.14', type: 'P&I' }] },
   bridging: { splits: [{ label: 'Bridging loan', amount: '', rate: '7.50', type: 'Interest only' }, { label: 'End loan', amount: '', rate: '6.14', type: 'P&I' }] },
@@ -34,6 +36,34 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
 }
 
 type Split = { label: string; amount: string; rate: string; type: string; deposit?: string }
+
+const TEMPLATE_NOTES: Record<string, string[]> = {
+  refinance_equity: [],
+  refinance_only: [],
+  oo_purchase: [],
+  oo_lvr_compare: [],
+  investment_purchase: ['We have assumed a minimum rental yield of 4% p.a. Please note, rental yield is a key component in determining your borrowing capacity for an investment purchase.'],
+  investment_equity: ['We have assumed a minimum rental yield of 4% p.a. Please note, rental yield is a key component in determining your borrowing capacity for an investment purchase.'],
+  buy_sell: [
+    'This is your estimated borrowing capacity as of today and it can change by the time you are ready to apply.',
+    'The figures used for the proposed sale are only estimated amounts. If you were to sell the property for less we would need to re-work your numbers.',
+    'You will also need to ascertain if there are any further fees on the finalisation of your sale (e.g. Capital Gains Tax).',
+  ],
+  fhb: [],
+  bridging: [
+    'These are only estimates — if the valuation on your current property comes in lower than the expected sale price, we will need to re-work your numbers.',
+    'Bridging loan interest is capitalised during the bridging period and will increase the total loan balance.',
+  ],
+  family_pledge: ['Family guarantee arrangements are subject to lender eligibility criteria and guarantor assessment.'],
+  smsf: [
+    'We have assumed a minimum rental yield of 4% p.a. Rental yield is a key component in determining your borrowing capacity for an investment purchase.',
+    'Confirmation of your rollover amount to your SMSF is required.',
+    'Please advise if you did NOT receive financial advice when setting up your SMSF.',
+    'Please note, lenders will require you to obtain independent financial and legal advice at your own cost as you will be a guarantor on the application.',
+  ],
+  construction: ['Construction cost estimates are indicative only and subject to builder contracts and council approvals.'],
+  custom: [],
+}
 
 const inputCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
 function fieldCls(value: string) {
@@ -121,6 +151,9 @@ export default function BCForm({ deal }: { deal: any }) {
   const [constructionCost, setConstructionCost] = useState(s.constructionCost || '')
   const [landValue, setLandValue] = useState(s.landValue || '')
   const [brokerNotes, setBrokerNotes] = useState(s.brokerNotes || '')
+  const [templateNotes, setTemplateNotes] = useState(
+    s.templateNotes !== undefined ? s.templateNotes : (TEMPLATE_NOTES[s.template || 'oo_purchase'] || []).join('\n')
+  )
 
   // Auto-calculate LVR from purchase price and deposit
   useEffect(() => {
@@ -143,16 +176,35 @@ export default function BCForm({ deal }: { deal: any }) {
   const [emailHtml, setEmailHtml] = useState(s.emailHtml || '')
   const [emailError, setEmailError] = useState('')
   const [savedAt, setSavedAt] = useState('')
+  const [bcCompletedAt, setBcCompletedAt] = useState<string | null>(deal.bc_completed_at || null)
+  const [markingComplete, setMarkingComplete] = useState(false)
+  const [sendingToCreditTeam, setSendingToCreditTeam] = useState(false)
+  const [creditTeamMsg, setCreditTeamMsg] = useState('')
+  const [creditTeamErr, setCreditTeamErr] = useState('')
+  const [assignmentRefreshKey, setAssignmentRefreshKey] = useState(0)
+  const [saveError, setSaveError] = useState('')
+  const [clientProceeded, setClientProceeded] = useState<boolean>(!!deal.client_proceeded)
+  const [showMoveToLoPopup, setShowMoveToLoPopup] = useState(false)
+  const [sendingMoveToLo, setSendingMoveToLo] = useState(false)
+  const [moveToLoMsg, setMoveToLoMsg] = useState('')
 
   useEffect(() => {
-    const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue }
-    localStorage.setItem(saveKey, JSON.stringify(data)); supabase.from('deals').update({ bc_data: data }).eq('id', deal.id).then(() => {})
-    setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue])
+    const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue }
+    localStorage.setItem(saveKey, JSON.stringify(data))
+    const timeoutId = setTimeout(() => {
+      supabase.from('deals').update({ bc_data: data }).eq('id', deal.id).then(({ error }) => {
+        if (error) { console.error('BC autosave failed:', error); setSaveError(error.message) }
+        else setSaveError('')
+      })
+      setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+    }, 700)
+    return () => clearTimeout(timeoutId)
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue])
 
   function selectTemplate(id: string) {
     setTemplate(id)
     setSplits(TEMPLATE_DEFAULTS[id].splits.map((s: Split) => ({ ...s })))
+    setTemplateNotes((TEMPLATE_NOTES[id] || []).join('\n'))
   }
 
   function updateSplit(i: number, key: keyof Split, val: string) {
@@ -172,6 +224,83 @@ export default function BCForm({ deal }: { deal: any }) {
   }
 
   const effectiveLvr = lvr === 'Other' ? lvrCustom : lvr
+
+  async function markBCComplete() {
+    setMarkingComplete(true)
+    const nowIso = new Date().toISOString()
+    const { error } = await supabase.from('deals').update({ bc_completed_at: nowIso }).eq('id', deal.id)
+    if (error) { setMarkingComplete(false); alert('Error marking BC complete: ' + error.message); return }
+    setBcCompletedAt(nowIso)
+    try {
+      await fetch('/api/notify-broker-stage-complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId: deal.id, stage: 'BC' })
+      })
+    } catch (e) {
+      // Non-fatal — completion itself succeeded even if the notification failed
+    }
+    setMarkingComplete(false)
+  }
+
+  async function sendToCreditTeam() {
+    setSendingToCreditTeam(true)
+    setCreditTeamMsg('')
+    setCreditTeamErr('')
+    try {
+      const res = await fetch('/api/allocate-credit-officer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId: deal.id })
+      })
+      const data = await res.json()
+      if (!data.ok) { setCreditTeamErr(data.error || 'Failed to allocate'); setSendingToCreditTeam(false); return }
+      if (data.alreadyAssigned) setCreditTeamMsg('This deal is already assigned to a credit officer.')
+      else setCreditTeamMsg(`Assigned to ${data.assignedTo}${data.emailSent ? ' — notified by email' : ''}`)
+      setAssignmentRefreshKey(k => k + 1)
+    } catch (e: any) {
+      setCreditTeamErr(e.message)
+    }
+    setSendingToCreditTeam(false)
+  }
+
+  async function handleMoveToLo() {
+    setSendingMoveToLo(true)
+    setMoveToLoMsg('')
+    try {
+      const res = await fetch('/api/send-next-steps-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId: deal.id, stage: 'BC' })
+      })
+      const data = await res.json()
+      if (!data.ok) { setMoveToLoMsg(data.error || 'Failed'); setSendingMoveToLo(false); return }
+      setClientProceeded(true)
+      setShowMoveToLoPopup(false)
+      setMoveToLoMsg(data.alreadyProceeded ? 'Already moved to LO' : data.emailSent ? 'Moved to LO — client emailed' : 'Moved to LO — no email on file for client')
+    } catch (e: any) {
+      setMoveToLoMsg(e.message)
+    }
+    setSendingMoveToLo(false)
+  }
+
+  const [sendToClientMsg, setSendToClientMsg] = useState('')
+
+  async function sendToClient() {
+    try {
+      const blob = new Blob([emailHtml], { type: 'text/html' })
+      const textBlob = new Blob([emailHtml.replace(/<[^>]+>/g, '')], { type: 'text/plain' })
+      await navigator.clipboard.write([new ClipboardItem({ 'text/html': blob, 'text/plain': textBlob })])
+      const subject = 'Your Borrowing Capacity'
+      const to = deal.clients?.email || ''
+      const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}`
+      window.location.href = mailto
+      setSendToClientMsg('Email copied — paste (Cmd+V) into the body in Outlook')
+    } catch (e: any) {
+      setSendToClientMsg('Could not copy — try "Copy HTML" instead')
+    }
+    setTimeout(() => setSendToClientMsg(''), 6000)
+  }
 
   async function generateEmail() {
     setGenerating(true)
@@ -199,7 +328,7 @@ Key assumptions: ${checklistText}`
       const res = await fetch('/api/generate-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ broker: brokerSig, dealId: deal.id, formData: { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, checklist } })
+        body: JSON.stringify({ broker: brokerSig, dealId: deal.id, formData: { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, checklist, additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
       })
       if (!res.ok) { setEmailError(`Server error: ${res.status}`); setGenerating(false); return }
       const data = await res.json()
@@ -221,6 +350,7 @@ Key assumptions: ${checklistText}`
           </button>
         ))}
         {savedAt && <span className="text-xs text-gray-400 ml-auto">✓ Autosaved {savedAt}</span>}
+        {saveError && <span className="text-xs text-red-500 ml-2">⚠ Save failed: {saveError}</span>}
       </div>
 
       {activeTab === 'factfind' && (
@@ -295,6 +425,9 @@ Key assumptions: ${checklistText}`
                 <div className="flex flex-col gap-2">
                   <Field label="Broker summary notes (included in email)">
                     <textarea className={`${brokerNotes ? "border-green-200 bg-white" : "border-amber-200 bg-[#FFFBF0]"} px-2.5 py-1.5 text-sm rounded-lg focus:outline-none focus:border-[#2DBEFF] w-full min-h-16 resize-y border`} value={brokerNotes} onChange={e => setBrokerNotes(e.target.value)} placeholder="✏ Add your personalised opening message — this goes directly into the client email..." />
+                  </Field>
+                  <Field label="Important things to note (included in email, one per line — pre-filled per template)">
+                    <textarea className={`${inputCls} min-h-40 resize-y`} value={templateNotes} onChange={e => setTemplateNotes(e.target.value)} placeholder="One note per line..." />
                   </Field>
                   <Field label="Internal assessor notes (internal only)">
                     <textarea className={`${inputCls} min-h-16 resize-y`} value={internalNotes} onChange={e => setInternalNotes(e.target.value)} placeholder="Internal notes..." />
@@ -411,12 +544,65 @@ Key assumptions: ${checklistText}`
 
       {activeTab === 'preview' && (
         <div>
-          <div className="flex justify-end gap-2 mb-4">
-            <button className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Assign broker</button>
-            <button onClick={() => { navigator.clipboard.writeText(emailHtml); alert('HTML copied!') }}
-              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Copy HTML</button>
-            <button className="px-3 py-1.5 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90">Mark BC complete</button>
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              {creditTeamMsg && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">{creditTeamMsg}</span>}
+              {creditTeamErr && <span className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{creditTeamErr}</span>}
+              {moveToLoMsg && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">{moveToLoMsg}</span>}
+              {sendToClientMsg && <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">{sendToClientMsg}</span>}
+            </div>
+            <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <button onClick={sendToCreditTeam} disabled={sendingToCreditTeam}
+                  className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+                  {sendingToCreditTeam ? 'Allocating...' : 'Allocate to credit team'}
+                </button>
+                <button onClick={markBCComplete} disabled={markingComplete || !!bcCompletedAt}
+                  title="This notifies the broker that BC is ready for their final review and personalisation"
+                  className={`px-3 py-1.5 text-sm rounded-lg font-medium disabled:opacity-70 ${bcCompletedAt ? 'bg-green-50 text-green-600 border border-green-200' : 'border border-gray-200 hover:bg-gray-50'}`}>
+                  {bcCompletedAt ? '✓ BC completed' : markingComplete ? 'Marking...' : 'Mark BC complete'}
+                </button>
+                {!clientProceeded && (
+                  <button onClick={() => setShowMoveToLoPopup(true)}
+                    className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
+                    Client agreed — move to LO
+                  </button>
+                )}
+              </div>
+
+              <div className="w-px h-8 bg-gray-200" />
+
+              <div className="flex items-center gap-3">
+                <button onClick={sendToClient}
+                  className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90">Send to client</button>
+                <button onClick={() => { navigator.clipboard.writeText(emailHtml); alert('HTML copied!') }}
+                  className="text-xs text-gray-400 hover:text-gray-600 underline">Copy HTML instead</button>
+              </div>
+
+              <div className="w-px h-8 bg-gray-200 ml-auto" />
+
+              <div className="flex items-center gap-4">
+                <BrokerAssignment dealId={deal.id} currentBroker={deal.assigned_broker} />
+                <div className="w-px h-6 bg-gray-200" />
+                <CreditOfficerAssignment key={assignmentRefreshKey} dealId={deal.id} brokerName={deal.assigned_broker} />
+              </div>
+            </div>
           </div>
+          {showMoveToLoPopup && (
+            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+              <div className="bg-white rounded-2xl p-6 w-[440px] shadow-xl">
+                <div className="text-base font-semibold mb-1 text-[#343333]">Send the next-steps email to the client?</div>
+                <p className="text-sm text-gray-500 mb-5">This moves the deal to LO and emails the client the same next-steps content (including the bank statement link, if entered) they'd see if they'd clicked "ready to proceed" themselves. Only use this if they agreed over a call rather than through the email.</p>
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => setShowMoveToLoPopup(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+                  <button onClick={handleMoveToLo} disabled={sendingMoveToLo}
+                    className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a] disabled:opacity-50">
+                    {sendingMoveToLo ? 'Sending...' : 'Send and move to LO'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {emailHtml ? (
             <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
               <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between">

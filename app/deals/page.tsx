@@ -5,7 +5,11 @@ import { Plus, Search, Briefcase, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
 type Client = { id: string; first_name: string; last_name: string }
-type Deal = { id: string; deal_name: string; deal_type: string; stage: string; status: string; assigned_broker: string; created_at: string; clients: Client; client_proceeded?: boolean }
+type Deal = {
+  id: string; deal_name: string; deal_type: string; stage: string; status: string; assigned_broker: string;
+  created_at: string; clients: Client; client_proceeded?: boolean
+  bc_completed_at?: string | null; lo_completed_at?: string | null; compliance_completed_at?: string | null
+}
 
 const BROKER_DISPLAY: Record<string, string> = { Fabio: 'Fabio De Castro', Mark: 'Mark Gallo' }
 
@@ -22,20 +26,28 @@ export default function DealsPage() {
     browser.auth.getUser().then(({ data: { user } }) => {
       if (!user) { fetchDeals(); return }
       browser.from('user_profiles').select('role, broker_key').eq('id', user.id).single()
-        .then(({ data }) => {
+        .then(async ({ data }) => {
           const role = data?.role || 'staff'
           const broker = data?.broker_key || null
           setUserRole(role)
           setBrokerKey(broker)
-          fetchDeals(role, broker)
+
+          if (role === 'staff') {
+            const { data: officer } = await browser.from('credit_officers').select('id').eq('user_id', user.id).single()
+            fetchDeals(role, broker, officer?.id || null)
+          } else {
+            fetchDeals(role, broker)
+          }
         })
     })
   }, [])
 
-  async function fetchDeals(role?: string, broker?: string | null) {
+  async function fetchDeals(role?: string, broker?: string | null, creditOfficerId?: string | null) {
     let query = browser.from('deals').select('*, clients(first_name, last_name)').order('created_at', { ascending: false })
     if (role === 'broker' && broker) {
       query = query.eq('assigned_broker', broker)
+    } else if (role === 'staff' && creditOfficerId) {
+      query = query.eq('assigned_credit_officer', creditOfficerId)
     }
     const { data, error } = await query
     if (!error && data) setDeals(data)
@@ -56,8 +68,55 @@ export default function DealsPage() {
     d.clients?.last_name?.toLowerCase().includes(search.toLowerCase())
   )
 
+  const totalAssigned = deals.length
+  const isBrokerViewer = !!brokerKey
+  const myBrokerDeals = deals.filter(d => d.assigned_broker === brokerKey)
+  const bcReady = myBrokerDeals.filter(d => d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at).length
+  const loReady = myBrokerDeals.filter(d => d.lo_completed_at && !d.compliance_completed_at).length
+  const complianceReady = myBrokerDeals.filter(d => d.compliance_completed_at).length
+  const activeForStaff = deals.filter(d => !d.compliance_completed_at).length
+
+  function readyStageFor(deal: Deal): 'BC' | 'LO' | null {
+    if (deal.lo_completed_at && !deal.compliance_completed_at) return 'LO'
+    if (deal.bc_completed_at && !deal.lo_completed_at && !deal.compliance_completed_at) return 'BC'
+    return null
+  }
+
   return (
     <div className="p-6">
+      {isBrokerViewer && (
+        <div className="grid grid-cols-4 gap-3 mb-4">
+          <div className="bg-white border border-gray-100 rounded-xl p-4">
+            <div className="text-xs text-gray-400 mb-1">Your deals</div>
+            <div className="text-2xl font-semibold text-[#343333]">{myBrokerDeals.length}</div>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <div className="text-xs text-amber-600 mb-1">BC ready for review</div>
+            <div className="text-2xl font-semibold text-amber-700">{bcReady}</div>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <div className="text-xs text-amber-600 mb-1">LO ready for review</div>
+            <div className="text-2xl font-semibold text-amber-700">{loReady}</div>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+            <div className="text-xs text-green-600 mb-1">Compliance completed</div>
+            <div className="text-2xl font-semibold text-green-700">{complianceReady}</div>
+          </div>
+        </div>
+      )}
+      {userRole === 'staff' && (
+        <div className="flex gap-3 mb-4">
+          <div className="flex-1 bg-white border border-gray-100 rounded-xl p-4">
+            <div className="text-xs text-gray-400 mb-1">Deals assigned to you</div>
+            <div className="text-2xl font-semibold text-[#343333]">{totalAssigned}</div>
+          </div>
+          <div className="flex-1 bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div className="text-xs text-[#2DBEFF] mb-1">Active (not yet complete)</div>
+            <div className="text-2xl font-semibold text-[#2DBEFF]">{activeForStaff}</div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-3 mb-6">
         <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -79,9 +138,11 @@ export default function DealsPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {filtered.map(deal => (
+          {filtered.map(deal => {
+            const readyStage = readyStageFor(deal)
+            return (
             <div key={deal.id} className="flex items-center gap-2">
-              <Link href={`/deals/${deal.id}`} className="flex-1 bg-white border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 hover:border-[#2DBEFF] transition-all">
+              <Link href={readyStage ? `/deals/${deal.id}?stage=${readyStage}` : `/deals/${deal.id}`} className={`flex-1 bg-white border rounded-xl px-4 py-3 flex items-center gap-4 transition-all ${readyStage ? 'border-amber-300 hover:border-amber-400' : 'border-gray-100 hover:border-[#2DBEFF]'}`}>
                 <div className="w-9 h-9 rounded-full bg-[#2DBEFF]/10 text-[#2DBEFF] flex items-center justify-center text-xs font-semibold flex-shrink-0">
                   {deal.clients?.first_name?.[0]}{deal.clients?.last_name?.[0]}
                 </div>
@@ -93,6 +154,9 @@ export default function DealsPage() {
                     {deal.assigned_broker && <> · {BROKER_DISPLAY[deal.assigned_broker] || deal.assigned_broker}</>}
                   </div>
                 </div>
+                {readyStage && (
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-amber-100 text-amber-700">{readyStage} ready for review</span>
+                )}
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${deal.status === 'in_progress' ? 'bg-[#2DBEFF]/10 text-[#2DBEFF]' : 'bg-gray-100 text-gray-500'}`}>
                   {deal.status === 'in_progress' ? 'In progress' : deal.status}
                 </span>
@@ -102,7 +166,7 @@ export default function DealsPage() {
                 <Trash2 size={13} />
               </button>
             </div>
-          ))}
+          )})}
         </div>
       )}
       {showModal && <NewDealModal onClose={() => setShowModal(false)} onCreated={() => { setShowModal(false); fetchDeals(userRole, brokerKey) }} brokerKey={brokerKey} userRole={userRole} />}

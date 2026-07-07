@@ -1,7 +1,7 @@
 'use client'
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut } from "lucide-react"
+import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createSupabaseBrowser } from "@/lib/supabase-browser"
 
@@ -13,6 +13,7 @@ const nav = [
 ]
 
 const adminNav = [
+  { label: "Team workload", href: "/credit-team-workload", icon: BarChart3 },
   { label: "Team", href: "/team", icon: UserPlus },
   { label: "Settings", href: "/settings", icon: Settings },
 ]
@@ -45,9 +46,11 @@ export default function Sidebar() {
 
   return (
     <aside style={{ background: '#343333' }} className="w-56 min-w-56 flex flex-col text-white h-screen">
-      <div className="px-4 py-5 border-b border-white/10">
-        <div style={{ color: '#2DBEFF' }} className="font-semibold text-sm tracking-wide">Simplify Finance</div>
-        <div className="text-white/40 text-xs mt-1">Credit & Compliance Portal</div>
+      <div className="px-2 py-2 border-b border-white/10 flex justify-center" style={{ backgroundColor: '#F2E8DB' }}>
+        <img src="/logo-dark.png" alt="Simplify Finance" className="h-[136px] w-auto" />
+      </div>
+      <div className="px-4 py-2 border-b border-white/10">
+        <div className="text-white/40 text-xs">Credit & Compliance Portal</div>
       </div>
 
       <nav className="flex-1 px-2 py-3">
