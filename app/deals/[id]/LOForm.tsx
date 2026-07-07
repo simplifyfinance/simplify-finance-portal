@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
+import BrokerAssignment from './BrokerAssignment'
 
 type LenderProduct = {
   id: string
@@ -140,7 +141,6 @@ export default function LOForm({ deal }: { deal: any }) {
   const [savedAt, setSavedAt] = useState('')
   const [newDoc, setNewDoc] = useState('')
   const [newCriteria, setNewCriteria] = useState('')
-  const [sendTo, setSendTo] = useState('')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [sendError, setSendError] = useState('')
@@ -150,6 +150,10 @@ export default function LOForm({ deal }: { deal: any }) {
   const [creditTeamMsg, setCreditTeamMsg] = useState('')
   const [creditTeamErr, setCreditTeamErr] = useState('')
   const [assignmentRefreshKey, setAssignmentRefreshKey] = useState(0)
+  const [clientProceeded, setClientProceeded] = useState<boolean>(!!deal.lo_client_proceeded)
+  const [showMoveToCompliancePopup, setShowMoveToCompliancePopup] = useState(false)
+  const [sendingMoveToCompliance, setSendingMoveToCompliance] = useState(false)
+  const [moveToComplianceMsg, setMoveToComplianceMsg] = useState('')
 
   const initData = (): LOData => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem(saveKey) : null
@@ -300,26 +304,23 @@ export default function LOForm({ deal }: { deal: any }) {
   }
 
   async function sendEmail() {
-    if (!sendTo || !emailHtml) return
+    if (!emailHtml) return
     setSending(true)
     setSendError('')
     setSent(false)
     try {
-      const res = await fetch('/api/send-lo-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: sendTo,
-          html: emailHtml,
-          brokerName: deal.assigned_broker,
-          dealName: deal.deal_name,
-          subject: `Your lending options — ${deal.clients?.first_name || ''} ${deal.clients?.last_name || ''}`
-        })
-      })
-      const data = await res.json()
-      if (data.ok) { setSent(true); setTimeout(() => setSent(false), 4000) }
-      else setSendError(data.error || 'Failed to send')
-    } catch (e: any) { setSendError(e.message) }
+      const blob = new Blob([emailHtml], { type: 'text/html' })
+      const textBlob = new Blob([emailHtml.replace(/<[^>]+>/g, '')], { type: 'text/plain' })
+      await navigator.clipboard.write([new ClipboardItem({ 'text/html': blob, 'text/plain': textBlob })])
+      const subject = 'Lending Options & Recommendation'
+      const to = deal.clients?.email || ''
+      const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}`
+      window.location.href = mailto
+      setSent(true)
+      setTimeout(() => setSent(false), 6000)
+    } catch (e: any) {
+      setSendError('Could not copy — try "Copy HTML" instead')
+    }
     setSending(false)
   }
 
@@ -337,6 +338,26 @@ export default function LOForm({ deal }: { deal: any }) {
       setActiveTab('preview')
     }
     setGenerating(false)
+  }
+
+  async function handleMoveToCompliance() {
+    setSendingMoveToCompliance(true)
+    setMoveToComplianceMsg('')
+    try {
+      const res = await fetch('/api/send-next-steps-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId: deal.id, stage: 'LO' })
+      })
+      const data = await res.json()
+      if (!data.ok) { setMoveToComplianceMsg(data.error || 'Failed'); setSendingMoveToCompliance(false); return }
+      setClientProceeded(true)
+      setShowMoveToCompliancePopup(false)
+      setMoveToComplianceMsg(data.alreadyProceeded ? 'Already moved to Compliance' : data.emailSent ? 'Moved to Compliance — client emailed' : 'Moved to Compliance — no email on file for client')
+    } catch (e: any) {
+      setMoveToComplianceMsg(e.message)
+    }
+    setSendingMoveToCompliance(false)
   }
 
   async function markLOComplete() {
@@ -667,43 +688,81 @@ export default function LOForm({ deal }: { deal: any }) {
       )}
 
       {activeTab === 'preview' && (
-        <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
-          {emailHtml ? (
-            <>
-              <div className="flex justify-between items-center px-4 py-3 border-b border-gray-100 gap-3 flex-wrap">
-                <span className="text-sm font-medium text-gray-600">Email preview</span>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {creditTeamMsg && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">{creditTeamMsg}</span>}
-                  {creditTeamErr && <span className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{creditTeamErr}</span>}
-                  <CreditOfficerAssignment key={assignmentRefreshKey} dealId={deal.id} brokerName={deal.assigned_broker} />
-                  <input
-                    className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#2DBEFF] w-64"
-                    placeholder="Client email address..."
-                    value={sendTo}
-                    onChange={e => setSendTo(e.target.value)}
-                  />
-                  <button
-                    onClick={sendEmail}
-                    disabled={sending || !sendTo}
-                    className="bg-[#2DBEFF] text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-400 transition disabled:opacity-40">
-                    {sending ? 'Sending...' : sent ? '✓ Sent!' : 'Send to client'}
-                  </button>
-                  {sendError && <span className="text-xs text-red-500">{sendError}</span>}
+        <div>
+          {emailHtml && (
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                {creditTeamMsg && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">{creditTeamMsg}</span>}
+                {creditTeamErr && <span className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{creditTeamErr}</span>}
+                {moveToComplianceMsg && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">{moveToComplianceMsg}</span>}
+                {sendError && <span className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{sendError}</span>}
+              </div>
+              <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
                   <button onClick={sendToCreditTeam} disabled={sendingToCreditTeam}
-                    className="px-3 py-1.5 text-sm border border-[#2DBEFF] text-[#2DBEFF] rounded-lg font-medium hover:bg-blue-50 disabled:opacity-50">
-                    {sendingToCreditTeam ? 'Sending...' : 'Send to credit team'}
+                    className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+                    {sendingToCreditTeam ? 'Allocating...' : 'Allocate to credit team'}
                   </button>
                   <button onClick={markLOComplete} disabled={markingLoComplete || !!loCompletedAt}
-                    className={`px-3 py-1.5 text-sm rounded-lg font-medium disabled:opacity-70 ${loCompletedAt ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-[#343333] text-white hover:bg-[#2a2a2a]'}`}>
+                    title="This notifies the broker that LO is ready for their final review and personalisation"
+                    className={`px-3 py-1.5 text-sm rounded-lg font-medium disabled:opacity-70 ${loCompletedAt ? 'bg-green-50 text-green-600 border border-green-200' : 'border border-gray-200 hover:bg-gray-50'}`}>
                     {loCompletedAt ? '✓ LO completed' : markingLoComplete ? 'Marking...' : 'Mark LO complete'}
+                  </button>
+                  {!clientProceeded && (
+                    <button onClick={() => setShowMoveToCompliancePopup(true)}
+                      className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
+                      Client agreed — move to Compliance
+                    </button>
+                  )}
+                </div>
+
+                <div className="w-px h-8 bg-gray-200" />
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={sendEmail}
+                    disabled={sending || !emailHtml}
+                    className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-40">
+                    {sending ? 'Copying...' : sent ? '✓ Copied — paste in Outlook' : 'Send to client'}
+                  </button>
+                  <button onClick={() => { navigator.clipboard.writeText(emailHtml); alert('HTML copied!') }}
+                    className="text-xs text-gray-400 hover:text-gray-600 underline">Copy HTML instead</button>
+                </div>
+
+                <div className="w-px h-8 bg-gray-200 ml-auto" />
+
+                <div className="flex items-center gap-4">
+                  <BrokerAssignment dealId={deal.id} currentBroker={deal.assigned_broker} />
+                  <div className="w-px h-6 bg-gray-200" />
+                  <CreditOfficerAssignment key={assignmentRefreshKey} dealId={deal.id} brokerName={deal.assigned_broker} />
+                </div>
+              </div>
+            </div>
+          )}
+          {showMoveToCompliancePopup && (
+            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+              <div className="bg-white rounded-2xl p-6 w-[440px] shadow-xl">
+                <div className="text-base font-semibold mb-1 text-[#343333]">Send the next-steps email to the client?</div>
+                <p className="text-sm text-gray-500 mb-5">This moves the deal to Compliance and emails the client the next-steps content. Only use this if they agreed over a call rather than through the email.</p>
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => setShowMoveToCompliancePopup(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+                  <button onClick={handleMoveToCompliance} disabled={sendingMoveToCompliance}
+                    className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a] disabled:opacity-50">
+                    {sendingMoveToCompliance ? 'Sending...' : 'Send and move to Compliance'}
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+          <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+          {emailHtml ? (
+            <>
               <iframe srcDoc={emailHtml} className="w-full h-[800px] border-0" title="LO Email Preview" />
             </>
           ) : (
             <div className="p-8 text-center text-sm text-gray-400">Generate the email first to see a preview</div>
           )}
+          </div>
         </div>
       )}
     </div>
