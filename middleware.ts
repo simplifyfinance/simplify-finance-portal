@@ -25,8 +25,12 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Public routes - no auth needed
-  if (pathname.startsWith('/proceed') || pathname.startsWith('/login')) {
+  // Public routes - no auth needed.
+  // /reset-password must be public: the Supabase reset link carries an auth
+  // token in the URL that the page itself exchanges for a session client-side.
+  // If this route required auth, the redirect to /login would happen first,
+  // discarding the token before it's ever processed.
+  if (pathname.startsWith('/proceed') || pathname.startsWith('/login') || pathname.startsWith('/reset-password')) {
     return supabaseResponse
   }
 
@@ -41,5 +45,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-matcher: ['/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico)$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico)$).*)'],
 }
