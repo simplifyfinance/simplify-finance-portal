@@ -46,8 +46,8 @@ export default function Sidebar() {
 
   return (
     <aside style={{ background: '#343333' }} className="w-56 min-w-56 flex flex-col text-white h-screen">
-      <div className="px-4 py-4 border-b border-white/10 flex justify-center" style={{ backgroundColor: '#F2E8DB' }}>
-        <img src="/logo-dark.png" alt="Simplify Finance" className="h-[136px] w-auto" />
+      <div className="px-4 py-4 border-b border-white/10 flex justify-center">
+        <img src="/logo-charcoal.png" alt="Simplify Finance" className="h-16 w-auto" />
       </div>
       <div className="px-4 py-2 border-b border-white/10">
         <div className="text-white/40 text-xs">Credit & Compliance Portal</div>
