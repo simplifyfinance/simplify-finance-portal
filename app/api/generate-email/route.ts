@@ -9,7 +9,7 @@ function shell(body: string, b: { name: string; title: string; crn: string; cale
   return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr><td>
   <table width="600" cellpadding="0" cellspacing="0" align="center" style="background:#fff;margin:0 auto">
     <tr><td style="background:#F2E8DB;padding:24px;text-align:center">
-      <img src="https://simplify-finance-portal.vercel.app/logo-dark.png" alt="Simplify Finance" style="height:64px;width:auto;display:block;margin:0 auto 6px" />
+      <img src="https://simplify-finance-portal.vercel.app/logo-dark.png" alt="Simplify Finance" style="height:90px;width:auto;display:block;margin:0 auto 6px" />
       <p style="color:#7a6f5f;font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0">Finance, Simplified.</p>
     </td></tr>
     <tr><td style="padding:28px">${body}</td></tr>
