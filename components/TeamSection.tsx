@@ -27,6 +27,8 @@ export default function TeamSection() {
   const [inviting, setInviting] = useState(false)
   const [inviteMsg, setInviteMsg] = useState('')
   const [showInvite, setShowInvite] = useState(false)
+  const [resendingId, setResendingId] = useState<string | null>(null)
+  const [resendMsg, setResendMsg] = useState<Record<string, string>>({})
 
   const supabase = createSupabaseBrowser()
 
@@ -69,6 +71,23 @@ export default function TeamSection() {
       setInviteMsg(data.error || 'Failed to send invitation')
     }
     setInviting(false)
+  }
+
+  async function handleResend(user: UserProfile) {
+    setResendingId(user.id)
+    setResendMsg(prev => ({ ...prev, [user.id]: '' }))
+    const res = await fetch('/api/invite-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: user.email, fullName: user.full_name, role: user.role })
+    })
+    const data = await res.json()
+    setResendMsg(prev => ({
+      ...prev,
+      [user.id]: data.ok ? 'Invite resent' : (data.error || 'Failed')
+    }))
+    setResendingId(null)
+    setTimeout(() => setResendMsg(prev => ({ ...prev, [user.id]: '' })), 4000)
   }
 
   const inputCls = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]"
@@ -134,6 +153,12 @@ export default function TeamSection() {
                 <select className={selectCls} value={user.role} onChange={e => updateRole(user.id, e.target.value)}>
                   {roleOptions.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
                 </select>
+                <button
+                  onClick={() => handleResend(user)}
+                  disabled={resendingId === user.id}
+                  className="text-xs px-3 py-1 rounded-lg border border-blue-200 text-[#2DBEFF] hover:bg-blue-50 transition disabled:opacity-50">
+                  {resendingId === user.id ? 'Sending...' : resendMsg[user.id] || 'Resend invite'}
+                </button>
                 <button onClick={() => toggleActive(user.id, user.active)}
                   className={`text-xs px-3 py-1 rounded-lg border transition ${user.active ? 'border-red-200 text-red-400 hover:bg-red-50' : 'border-green-200 text-green-500 hover:bg-green-50'}`}>
                   {user.active ? 'Deactivate' : 'Activate'}
