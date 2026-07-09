@@ -403,10 +403,10 @@ Key assumptions: ${checklistText}`
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Income</div>
                 <div className="flex flex-col gap-2">
-                  <Field label="Base income (p.a.)"><NumberInput value={incomeBase} onChange={setIncomeBase} placeholder="120,000" /></Field>
+                  <Field label="Base income (p.a.)"><NumberInput value={incomeBase} onChange={setIncomeBase} /></Field>
                   <div className="grid grid-cols-2 gap-2">
-                    <Field label="Other income"><NumberInput value={incomeOther} onChange={setIncomeOther} placeholder="0" /></Field>
-                    <Field label="Rental income"><NumberInput value={incomeRental} onChange={setIncomeRental} placeholder="0" /></Field>
+                    <Field label="Other income"><NumberInput value={incomeOther} onChange={setIncomeOther} /></Field>
+                    <Field label="Rental income"><NumberInput value={incomeRental} onChange={setIncomeRental} /></Field>
                   </div>
                 </div>
               </div>
@@ -414,12 +414,12 @@ Key assumptions: ${checklistText}`
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Liabilities</div>
                 <div className="grid grid-cols-2 gap-2">
-                  <Field label="Credit card limit"><NumberInput value={ccLimit} onChange={setCcLimit} placeholder="10,000" /></Field>
-                  <Field label="Personal loan (mo.)"><NumberInput value={personalLoan} onChange={setPersonalLoan} placeholder="0" /></Field>
-                  <Field label="Car loan (mo.)"><NumberInput value={carLoan} onChange={setCarLoan} placeholder="0" /></Field>
-                  <Field label="HECS (p.a.)"><NumberInput value={hecs} onChange={setHecs} placeholder="0" /></Field>
-                  <Field label="Health insurance (mo.)"><NumberInput value={health} onChange={setHealth} placeholder="0" /></Field>
-                  <Field label="Living expenses / HEM"><NumberInput value={living} onChange={setLiving} placeholder="3,800" /></Field>
+                  <Field label="Credit card limit"><NumberInput value={ccLimit} onChange={setCcLimit} /></Field>
+                  <Field label="Personal loan (mo.)"><NumberInput value={personalLoan} onChange={setPersonalLoan} /></Field>
+                  <Field label="Car loan (mo.)"><NumberInput value={carLoan} onChange={setCarLoan} /></Field>
+                  <Field label="HECS (p.a.)"><NumberInput value={hecs} onChange={setHecs} /></Field>
+                  <Field label="Health insurance (mo.)"><NumberInput value={health} onChange={setHealth} /></Field>
+                  <Field label="Living expenses / HEM"><NumberInput value={living} onChange={setLiving} /></Field>
                 </div>
               </div>
 
@@ -451,8 +451,8 @@ Key assumptions: ${checklistText}`
                 <div className="grid grid-cols-2 gap-2">
                   <Field label="Suburb"><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
                   <Field label="Property type"><select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>
-                  {!["refinance_equity", "refinance_only"].includes(template) && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={setPurchasePrice} placeholder="750,000" /></Field>}
-                  {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={setDeposit} placeholder="150,000" /></Field>}
+                  {!["refinance_equity", "refinance_only"].includes(template) && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={setPurchasePrice} /></Field>}
+                  {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={setDeposit} /></Field>}
               {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge"].includes(template) && (
                 <Field label="Deposit source">
                   <select className={selectCls} value={depositSource} onChange={e => setDepositSource(e.target.value)}>
@@ -464,9 +464,9 @@ Key assumptions: ${checklistText}`
                   </select>
                 </Field>
               )}
-                  {!["refinance_equity", "refinance_only"].includes(template) && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={setStampDuty} placeholder="40,000" /></Field>}
-              {["refinance_equity", "refinance_only", "investment_equity", "buy_sell", "bridging"].includes(template) && <Field label="Existing loan balance"><NumberInput value={existingLoanBal} onChange={setExistingLoanBal} placeholder="500,000" /></Field>}
-              {["refinance_equity", "investment_equity"].includes(template) && <Field label="Equity release amount"><NumberInput value={equityRelease} onChange={setEquityRelease} placeholder="100,000" /></Field>}
+                  {!["refinance_equity", "refinance_only"].includes(template) && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={setStampDuty} /></Field>}
+              {["refinance_equity", "refinance_only", "investment_equity", "buy_sell", "bridging"].includes(template) && <Field label="Existing loan balance"><NumberInput value={existingLoanBal} onChange={setExistingLoanBal} /></Field>}
+              {["refinance_equity", "investment_equity"].includes(template) && <Field label="Equity release amount"><NumberInput value={equityRelease} onChange={setEquityRelease} /></Field>}
 
                   {!["refinance_equity", "refinance_only"].includes(template) && <Field label="LVR">
                  <select className={selectCls} value={lvr} onChange={e => setLvr(e.target.value)}>
@@ -482,11 +482,11 @@ Key assumptions: ${checklistText}`
                     </Field>
                   )}
                   <Field label="Loan term (years)"><input className={inputCls} value={loanTerm} onChange={e => setLoanTerm(e.target.value)} /></Field>
-              {template === 'fhb' && <Field label="First home owner grant"><NumberInput value={fhog} onChange={setFhog} placeholder="30,000" /></Field>}
+              {template === 'fhb' && <Field label="First home owner grant"><NumberInput value={fhog} onChange={setFhog} /></Field>}
               {template === 'family_pledge' && <Field label="Guarantor name"><input className={inputCls} value={guarantorName} onChange={e => setGuarantorName(e.target.value)} placeholder="e.g. John Smith" /></Field>}
               {template === 'bridging' && <Field label="Bridging period (months)"><input className={inputCls} value={bridgingPeriod} onChange={e => setBridgingPeriod(e.target.value)} placeholder="e.g. 6" /></Field>}
-              {template === 'construction' && <Field label="Land value"><NumberInput value={landValue} onChange={setLandValue} placeholder="400,000" /></Field>}
-              {template === 'construction' && <Field label="Construction cost"><NumberInput value={constructionCost} onChange={setConstructionCost} placeholder="350,000" /></Field>}
+              {template === 'construction' && <Field label="Land value"><NumberInput value={landValue} onChange={setLandValue} /></Field>}
+              {template === 'construction' && <Field label="Construction cost"><NumberInput value={constructionCost} onChange={setConstructionCost} /></Field>}
                 </div>
               </div>
 
@@ -501,8 +501,8 @@ Key assumptions: ${checklistText}`
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <Field label="Label"><input className={inputCls} value={s.label} onChange={e => updateSplit(i, 'label', e.target.value)} /></Field>
-                        <Field label="Amount"><input className={inputCls} placeholder="600,000" value={s.amount} onChange={e => updateSplitAmount(i, e.target.value)} /></Field>
-                        {template === "oo_lvr_compare" && <Field label="Deposit required"><NumberInput value={s.deposit || ""} onChange={v => updateSplit(i, 'deposit', v)} placeholder="150,000" /></Field>}<Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
+                        <Field label="Amount"><input className={inputCls} value={s.amount} onChange={e => updateSplitAmount(i, e.target.value)} /></Field>
+                        {template === "oo_lvr_compare" && <Field label="Deposit required"><NumberInput value={s.deposit || ""} onChange={v => updateSplit(i, 'deposit', v)} /></Field>}<Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
                         <Field label="Type"><select className={selectCls} value={s.type} onChange={e => updateSplit(i, 'type', e.target.value)}><option>P&I</option><option>Interest only</option></select></Field>
                       </div>
                     </div>

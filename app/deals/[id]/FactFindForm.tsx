@@ -220,7 +220,7 @@ function OwnershipSplit({ applicants, ownership, onChange }: { applicants: FactF
         <div key={a.id}>
           <label className="text-xs text-gray-500 block mb-1">{a.firstName || 'Applicant'} ownership %</label>
           <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]"
-            value={ownership[a.id] || ''} onChange={e => onChange({ ...ownership, [a.id]: e.target.value })} placeholder="0" />
+            value={ownership[a.id] || ''} onChange={e => onChange({ ...ownership, [a.id]: e.target.value })} />
         </div>
       ))}
     </div>

@@ -440,7 +440,7 @@ export default function LOForm({ deal }: { deal: any }) {
               </Field>
               {!isRefinance && (
                 <Field label="Loan amount">
-                  <input className={inp} value={d.loanAmount} onChange={e => setD({ ...d, loanAmount: e.target.value })} placeholder="750,000" />
+                  <input className={inp} value={d.loanAmount} onChange={e => setD({ ...d, loanAmount: e.target.value })} />
                 </Field>
               )}
             </div>
@@ -468,7 +468,7 @@ export default function LOForm({ deal }: { deal: any }) {
                         </div>
                         <div>
                           <label className="text-xs text-gray-500 block mb-1">Amount</label>
-                          <input className={inp} value={split.amount} onChange={e => updateRefinanceSplit(idx, 'amount', e.target.value)} placeholder="500,000" />
+                          <input className={inp} value={split.amount} onChange={e => updateRefinanceSplit(idx, 'amount', e.target.value)} />
                         </div>
                         <div className="flex items-end pb-2">
                           {d.refinanceSplits.length > 1 && (
@@ -606,7 +606,7 @@ export default function LOForm({ deal }: { deal: any }) {
                           <div className="grid grid-cols-5 gap-2">
                             <div>
                               <label className="text-xs text-gray-400 block mb-1">Amount</label>
-                              <input className={inp} value={split.amount} onChange={e => updateLenderSplit(i, sidx, 'amount', e.target.value)} placeholder="500,000" />
+                              <input className={inp} value={split.amount} onChange={e => updateLenderSplit(i, sidx, 'amount', e.target.value)} />
                             </div>
                             <div>
                               <label className="text-xs text-gray-400 block mb-1">LVR</label>
@@ -614,11 +614,11 @@ export default function LOForm({ deal }: { deal: any }) {
                             </div>
                             <div>
                               <label className="text-xs text-gray-400 block mb-1">Rate % p.a.</label>
-                              <input className={inp} value={split.rate} onChange={e => updateLenderSplit(i, sidx, 'rate', e.target.value)} placeholder="6.14" />
+                              <input className={inp} value={split.rate} onChange={e => updateLenderSplit(i, sidx, 'rate', e.target.value)} />
                             </div>
                             <div>
                               <label className="text-xs text-gray-400 block mb-1">Repayment</label>
-                              <input className={inp} value={split.repayment} onChange={e => updateLenderSplit(i, sidx, 'repayment', e.target.value)} placeholder="3,200" />
+                              <input className={inp} value={split.repayment} onChange={e => updateLenderSplit(i, sidx, 'repayment', e.target.value)} />
                             </div>
                             <div>
                               <label className="text-xs text-gray-400 block mb-1">Type</label>
@@ -641,8 +641,8 @@ export default function LOForm({ deal }: { deal: any }) {
                   isBridging ? (
                     <div className="grid grid-cols-2 gap-3 border-t border-gray-100 pt-4">
                       <div className="text-xs font-medium text-gray-400 uppercase tracking-widest col-span-2 mb-1">Bridging structure</div>
-                      <Field label="Variable rate % p.a."><input className={inp} value={lender.bridgingRate} onChange={e => updateLender(i, 'bridgingRate', e.target.value)} placeholder="8.67" /></Field>
-                      <Field label="Loan term (months)"><input className={inp} value={lender.bridgingTerm} onChange={e => updateLender(i, 'bridgingTerm', e.target.value)} placeholder="12" /></Field>
+                      <Field label="Variable rate % p.a."><input className={inp} value={lender.bridgingRate} onChange={e => updateLender(i, 'bridgingRate', e.target.value)} /></Field>
+                      <Field label="Loan term (months)"><input className={inp} value={lender.bridgingTerm} onChange={e => updateLender(i, 'bridgingTerm', e.target.value)} /></Field>
                       <Field label="Bridging loan amount"><input className={inp} value={lender.bridgingLoanAmount} onChange={e => updateLender(i, 'bridgingLoanAmount', e.target.value)} placeholder="e.g. $800,000" /></Field>
                       <Field label="Estimated interest"><input className={inp} value={lender.estimatedInterest} onChange={e => updateLender(i, 'estimatedInterest', e.target.value)} placeholder="e.g. $12,000" /></Field>
                       <Field label="Establishment fee"><input className={inp} value={lender.establishmentFee} onChange={e => updateLender(i, 'establishmentFee', e.target.value)} /></Field>
@@ -665,9 +665,9 @@ export default function LOForm({ deal }: { deal: any }) {
                           </label>
                           {lender[key].enabled && (
                             <div className="grid grid-cols-3 gap-2 mt-2">
-                              <Field label="Rate % p.a."><input className={inp} value={lender[key].rate} onChange={e => updateRateModule(i, key, 'rate', e.target.value)} placeholder="6.14" /></Field>
-                              <Field label="Monthly repayment"><input className={inp} value={lender[key].repayment} onChange={e => updateRateModule(i, key, 'repayment', e.target.value)} placeholder="3,200" /></Field>
-                              <Field label="Loan term (years)"><input className={inp} value={lender[key].loanTerm} onChange={e => updateRateModule(i, key, 'loanTerm', e.target.value)} placeholder="30" /></Field>
+                              <Field label="Rate % p.a."><input className={inp} value={lender[key].rate} onChange={e => updateRateModule(i, key, 'rate', e.target.value)} /></Field>
+                              <Field label="Monthly repayment"><input className={inp} value={lender[key].repayment} onChange={e => updateRateModule(i, key, 'repayment', e.target.value)} /></Field>
+                              <Field label="Loan term (years)"><input className={inp} value={lender[key].loanTerm} onChange={e => updateRateModule(i, key, 'loanTerm', e.target.value)} /></Field>
                               {showIO && <Field label="IO period (years)"><select className={sel} value={lender[key].ioYears} onChange={e => updateRateModule(i, key, 'ioYears', e.target.value)}><option value="">— select —</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></Field>}
                               {showFixed && <Field label="Fixed for (years)"><select className={sel} value={lender[key].fixedYears} onChange={e => updateRateModule(i, key, 'fixedYears', e.target.value)}><option value="">— select —</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></Field>}
                             </div>

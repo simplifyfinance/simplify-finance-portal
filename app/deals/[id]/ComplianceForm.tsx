@@ -707,12 +707,12 @@ export default function ComplianceForm({ deal }: { deal: any }) {
                     <div className="grid gap-2 items-end" style={{ gridTemplateColumns: `160px repeat(${d.applicants.length}, 1fr) 1fr` }}>
                       <div>
                         <label className="text-xs text-gray-400 block mb-1">Monthly amount</label>
-                        <input className={inp} value={entry.monthlyAmount} onChange={e => updateExpense(cat.key, 'monthlyAmount', e.target.value)} placeholder="0" />
+                        <input className={inp} value={entry.monthlyAmount} onChange={e => updateExpense(cat.key, 'monthlyAmount', e.target.value)} />
                       </div>
                       {d.applicants.map(a => (
                         <div key={a.name}>
                           <label className="text-xs text-gray-400 block mb-1">{a.name} %</label>
-                          <input className={inp} value={entry.splits?.[a.name] || ''} onChange={e => updateExpenseSplit(cat.key, a.name, e.target.value)} placeholder="0" />
+                          <input className={inp} value={entry.splits?.[a.name] || ''} onChange={e => updateExpenseSplit(cat.key, a.name, e.target.value)} />
                         </div>
                       ))}
                       <div>
