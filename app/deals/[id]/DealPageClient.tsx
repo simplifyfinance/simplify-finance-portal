@@ -10,16 +10,7 @@ import ComplianceForm from './ComplianceForm'
 function calcFactFindCompletion(deal: any): number {
   const d = deal.fact_find_data || {}
   const a = d.applicants?.[0] || {}
-  const fields = [
-    a.firstName, a.lastName, a.dob,
-    a.employment?.[0]?.employerName,
-    a.income?.[0]?.grossSalary,
-    d.assets?.length > 0 ? '1' : '',
-    d.liabilities?.length > 0 ? '1' : '',
-    d.properties?.length > 0 ? '1' : '',
-  ]
-  const filled = fields.filter(f => f && String(f).trim() !== '').length
-  return Math.round((filled / fields.length) * 100)
+  return (a.firstName && a.lastName) ? 100 : 0
 }
 
 function calcBCCompletion(deal: any): number {
