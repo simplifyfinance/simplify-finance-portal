@@ -207,7 +207,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
     if (!clientId) {
       const { data, error: clientError } = await browser.from('clients').insert([form]).select().single()
       if (clientError || !data?.id) {
-        alert('Client insert failed: ' + (clientError?.message || 'unknown error'))
+        alert('Failed to create client record. Please try again.')
         setSaving(false)
         return
       }
