@@ -77,7 +77,7 @@ export default function DealPageClient({ deal, initialStage }: { deal: any; init
   const compPct = calcComplianceCompletion(dealData)
 
   const tabs = [
-    { key: 'FactFind', label: 'Fact Find', pct: factFindPct },
+    { key: 'FactFind', label: 'Fact Find', pct: -1 },
     { key: 'BC', label: 'BC — Borrowing capacity', pct: bcPct },
     { key: 'LO', label: 'Lending options', pct: loPct },
     { key: 'Compliance', label: 'Compliance', pct: compPct },
