@@ -205,8 +205,13 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
     setSaving(true)
     let clientId = selectedClient?.id
     if (!clientId) {
-      const { data } = await browser.from('clients').insert([form]).select().single()
-      clientId = data?.id
+      const { data, error: clientError } = await browser.from('clients').insert([form]).select().single()
+      if (clientError || !data?.id) {
+        alert('Failed to create client record. Please try again.')
+        setSaving(false)
+        return
+      }
+      clientId = data.id
     }
 
     // Seed fact_find_data with applicant(s) from modal
