@@ -227,7 +227,7 @@ function OwnershipSplit({ applicants, ownership, onChange }: { applicants: FactF
   )
 }
 
-export default function FactFindForm({ deal }: { deal: any }) {
+export default function FactFindForm({ deal, onDataChange }: { deal: any; onDataChange?: (d: FactFindData) => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `fact_find_${deal.id}`
   const bc = deal.bc_data || {}
@@ -279,6 +279,7 @@ export default function FactFindForm({ deal }: { deal: any }) {
     localStorage.setItem(saveKey, JSON.stringify(d))
     supabase.from('deals').update({ fact_find_data: d }).eq('id', deal.id).then(() => {})
     setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+    onDataChange?.(d)
   }, [d])
 
   const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]"

@@ -116,21 +116,24 @@ export default function BCForm({ deal }: { deal: any }) {
   }, [deal.id])
 
   const s = getSaved()
+  const ff = deal.fact_find_data || {}
+  const ffApp = (ff.applicants || [])[0] || {}
+  const ffLiabs: any[] = ff.liabilities || []
 
   const [activeTab, setActiveTab] = useState<'factfind' | 'form' | 'preview'>('form')
   const [template, setTemplate] = useState(s.template || 'oo_purchase')
   const [splits, setSplits] = useState<Split[]>(s.splits || TEMPLATE_DEFAULTS['oo_purchase'].splits)
-  const [firstName, setFirstName] = useState(s.firstName || deal.clients?.first_name || '')
-  const [lastName, setLastName] = useState(s.lastName || deal.clients?.last_name || '')
+  const [firstName, setFirstName] = useState(s.firstName || ffApp.firstName || deal.clients?.first_name || '')
+  const [lastName, setLastName] = useState(s.lastName || ffApp.lastName || deal.clients?.last_name || '')
   const [dependants, setDependants] = useState(s.dependants || '0')
-  const [joint, setJoint] = useState(s.joint || 'No')
-  const [incomeBase, setIncomeBase] = useState(s.incomeBase || '')
+  const [joint, setJoint] = useState(s.joint || (ff.applicants?.length > 1 ? 'Yes' : 'No'))
+  const [incomeBase, setIncomeBase] = useState(s.incomeBase || ffApp.income?.[0]?.grossSalary || '')
   const [incomeOther, setIncomeOther] = useState(s.incomeOther || '')
   const [incomeRental, setIncomeRental] = useState(s.incomeRental || '')
-  const [ccLimit, setCcLimit] = useState(s.ccLimit || '')
-  const [personalLoan, setPersonalLoan] = useState(s.personalLoan || '')
-  const [carLoan, setCarLoan] = useState(s.carLoan || '')
-  const [hecs, setHecs] = useState(s.hecs || '')
+  const [ccLimit, setCcLimit] = useState(s.ccLimit || ffLiabs.find((l:any) => l.liabilityType === 'Credit card')?.limitAmount || '')
+  const [personalLoan, setPersonalLoan] = useState(s.personalLoan || ffLiabs.find((l:any) => l.liabilityType === 'Personal loan')?.repaymentAmount || '')
+  const [carLoan, setCarLoan] = useState(s.carLoan || ffLiabs.find((l:any) => l.liabilityType === 'Car loan')?.repaymentAmount || '')
+  const [hecs, setHecs] = useState(s.hecs || ffLiabs.find((l:any) => l.liabilityType === 'HECS')?.repaymentAmount || '')
   const [health, setHealth] = useState(s.health || '')
   const [living, setLiving] = useState(s.living || '')
   const [suburb, setSuburb] = useState(s.suburb || '')
