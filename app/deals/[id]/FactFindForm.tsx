@@ -198,7 +198,7 @@ const defaultApplicant = (): FactFindApplicant => ({
   previousName: '', gender: '', dob: '', phoneMobile: '', emailPersonal: '',
   addresses: [defaultAddress(true)],
   employment: [defaultEmployment(true)],
-  income: [defaultIncome()]
+  income: []
 })
 
 const defaultAsset = (): Asset => ({
@@ -327,6 +327,35 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
       return { ...prev, applicants: apps }
     })
   }
+
+  useEffect(() => {
+    if (!applicant) return
+    const eligible = applicant.employment.filter(e => e.isCurrent && (e.employmentType === 'PAYG' || e.employmentType === 'Self-employed'))
+    const eligibleIds = new Set(eligible.map(e => e.id))
+    let income = applicant.income
+    let changed = false
+
+    eligible.forEach(emp => {
+      const existing = income.find(inc => inc.employmentId === emp.id)
+      if (!existing) {
+        income = [...income, { ...defaultIncome(emp.employmentType), employmentId: emp.id }]
+        changed = true
+      } else if (existing.incomeType !== emp.employmentType) {
+        income = income.map(inc => inc.id === existing.id ? { ...inc, incomeType: emp.employmentType } : inc)
+        changed = true
+      }
+    })
+
+    const filtered = income.filter(inc => !inc.employmentId || eligibleIds.has(inc.employmentId))
+    if (filtered.length !== income.length) {
+      income = filtered
+      changed = true
+    }
+
+    if (changed) {
+      updateApplicant('income', income)
+    }
+  }, [applicant?.employment])
 
   function addApplicant() {
     setD(prev => ({ ...prev, applicants: [...prev.applicants, defaultApplicant()] }))
@@ -618,21 +647,13 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
               )}
               {inc.incomeType === 'Self-employed' && (
                 <div className="mb-3 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Business name</label>
-                      <input className={inp} value={inc.seBusinessName} onChange={e => updateIncome(inc.id, 'seBusinessName', e.target.value)} />
+                  <div className="bg-gray-50 rounded-lg p-3 text-sm">
+                    <div className="text-xs text-gray-500 mb-1">Business (from Employment tab)</div>
+                    <div className="font-medium">
+                      {applicant.employment.find(e => e.id === inc.employmentId)?.employerName || 'Not linked \u2014 set business details on the Employment tab'}
                     </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">ABN</label>
-                      <AbnAutocomplete
-                        value={inc.seAbn}
-                        onChange={val => updateIncome(inc.id, 'seAbn', val)}
-                        onSelect={result => {
-                          updateIncome(inc.id, 'seAbn', result.abn)
-                          updateIncome(inc.id, 'seBusinessName', result.businessName)
-                        }}
-                      />
+                    <div className="text-xs text-gray-400 mt-0.5">
+                      ABN: {applicant.employment.find(e => e.id === inc.employmentId)?.employerAbn || '\u2014'}
                     </div>
                   </div>
                   <div>
