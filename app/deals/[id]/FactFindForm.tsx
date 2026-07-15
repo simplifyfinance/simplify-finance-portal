@@ -172,8 +172,8 @@ const defaultEmployment = (isCurrent: boolean): Employment => ({
   contactPersonName: '', contactPersonDetails: ''
 })
 
-const defaultIncome = (): Income => ({
-  id: uid(), incomeType: 'PAYG', employmentId: '',
+const defaultIncome = (type: string = 'PAYG'): Income => ({
+  id: uid(), incomeType: type, employmentId: '',
   grossSalary: '', grossSalaryFrequency: 'Annually',
   bonusAmount: '', bonusFrequency: 'Annually',
   overtimeEssentialAmount: '', overtimeEssentialFrequency: 'Annually',
@@ -293,6 +293,7 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
 
   const [d, setD] = useState<FactFindData>(initData)
   const [stage, setStage] = useState<'personal' | 'employment' | 'income' | 'assets' | 'properties' | 'liabilities'>('personal')
+  const [addIncomeMenuOpen, setAddIncomeMenuOpen] = useState(false)
   const [activeApplicant, setActiveApplicant] = useState(0)
   const [savedAt, setSavedAt] = useState('')
 
@@ -355,8 +356,9 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
   function updateIncome(id: string, field: keyof Income, value: any) {
     updateApplicant('income', applicant.income.map(i => i.id === id ? { ...i, [field]: value } : i))
   }
-  function addIncome() {
-    updateApplicant('income', [...applicant.income, defaultIncome()])
+  function addIncome(type: string = 'PAYG') {
+    updateApplicant('income', [...applicant.income, defaultIncome(type)])
+    setAddIncomeMenuOpen(false)
   }
   function removeIncome(id: string) {
     updateApplicant('income', applicant.income.filter(i => i.id !== id))
@@ -579,7 +581,6 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                   <option value="Self-employed">Self-employed income</option>
                   <option value="Other taxable">Other taxable income</option>
                   <option value="Other non-taxable">Other non-taxable income</option>
-                  <option value="Rental">Rental income</option>
                 </select>
                 {applicant.income.length > 1 && (
                   <button onClick={() => removeIncome(inc.id)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
@@ -771,9 +772,19 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
               )}
             </div>
           ))}
-          <button onClick={addIncome} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
-            + Add income source
-          </button>
+          <div className="relative inline-block">
+            <button onClick={() => setAddIncomeMenuOpen(!addIncomeMenuOpen)} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
+              + Add income source
+            </button>
+            {addIncomeMenuOpen && (
+              <div className="absolute z-10 mt-1 bg-white border border-gray-100 rounded-lg shadow-md w-56 overflow-hidden">
+                <button onClick={() => addIncome('PAYG')} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 border-b border-gray-50">PAYG income</button>
+                <button onClick={() => addIncome('Self-employed')} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 border-b border-gray-50">Self-employed income</button>
+                <button onClick={() => addIncome('Other taxable')} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 border-b border-gray-50">Other taxable income</button>
+                <button onClick={() => addIncome('Other non-taxable')} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Other non-taxable income</button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
