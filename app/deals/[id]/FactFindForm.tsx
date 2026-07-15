@@ -731,40 +731,44 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                   )}
                 </div>
               )}
-              <div className="grid grid-cols-3 gap-3 mb-2">
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Gross salary</label>
-                  <input className={inp} value={inc.grossSalary} onChange={e => updateIncome(inc.id, 'grossSalary', e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Frequency</label>
-                  <select className={inp} value={inc.grossSalaryFrequency} onChange={e => updateIncome(inc.id, 'grossSalaryFrequency', e.target.value)}>
-                    <option>Weekly</option><option>Fortnightly</option><option>Monthly</option><option>Annually</option>
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 gap-3">
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Bonus</label>
-                  <input className={inp} value={inc.bonusAmount} onChange={e => updateIncome(inc.id, 'bonusAmount', e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Overtime essential</label>
-                  <input className={inp} value={inc.overtimeEssentialAmount} onChange={e => updateIncome(inc.id, 'overtimeEssentialAmount', e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Overtime non-essential</label>
-                  <input className={inp} value={inc.overtimeNonEssentialAmount} onChange={e => updateIncome(inc.id, 'overtimeNonEssentialAmount', e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Commission</label>
-                  <input className={inp} value={inc.commissionAmount} onChange={e => updateIncome(inc.id, 'commissionAmount', e.target.value)} />
-                </div>
-              </div>
-              <div className="mt-2 w-1/4">
-                <label className="text-xs text-gray-500 block mb-1">Allowance</label>
-                <input className={inp} value={inc.allowanceAmount} onChange={e => updateIncome(inc.id, 'allowanceAmount', e.target.value)} />
-              </div>
+              {inc.incomeType === 'PAYG' && (
+                <>
+                  <div className="grid grid-cols-3 gap-3 mb-2">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Gross salary</label>
+                      <input className={inp} value={inc.grossSalary} onChange={e => updateIncome(inc.id, 'grossSalary', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Frequency</label>
+                      <select className={inp} value={inc.grossSalaryFrequency} onChange={e => updateIncome(inc.id, 'grossSalaryFrequency', e.target.value)}>
+                        <option>Weekly</option><option>Fortnightly</option><option>Monthly</option><option>Annually</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Bonus</label>
+                      <input className={inp} value={inc.bonusAmount} onChange={e => updateIncome(inc.id, 'bonusAmount', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Overtime essential</label>
+                      <input className={inp} value={inc.overtimeEssentialAmount} onChange={e => updateIncome(inc.id, 'overtimeEssentialAmount', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Overtime non-essential</label>
+                      <input className={inp} value={inc.overtimeNonEssentialAmount} onChange={e => updateIncome(inc.id, 'overtimeNonEssentialAmount', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Commission</label>
+                      <input className={inp} value={inc.commissionAmount} onChange={e => updateIncome(inc.id, 'commissionAmount', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="mt-2 w-1/4">
+                    <label className="text-xs text-gray-500 block mb-1">Allowance</label>
+                    <input className={inp} value={inc.allowanceAmount} onChange={e => updateIncome(inc.id, 'allowanceAmount', e.target.value)} />
+                  </div>
+                </>
+              )}
             </div>
           ))}
           <button onClick={addIncome} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
