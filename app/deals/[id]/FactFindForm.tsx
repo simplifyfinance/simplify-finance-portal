@@ -28,6 +28,7 @@ type Employment = {
   employerAddress: string
   contactPersonName: string
   contactPersonDetails: string
+  employmentType: string
 }
 
 type Income = {
@@ -169,7 +170,7 @@ const defaultAddress = (isCurrent: boolean): Address => ({
 })
 
 const defaultEmployment = (isCurrent: boolean): Employment => ({
-  id: uid(), isCurrent, employmentPriority: 'Primary', employmentBasis: 'Full time',
+  id: uid(), isCurrent, employmentPriority: 'Primary', employmentBasis: 'Full time', employmentType: 'PAYG',
   occupation: '', startDate: '', onProbation: false, employerName: '', employerAbn: '',
   employerAcn: '', employerType: '', employerAddress: '',
   contactPersonName: '', contactPersonDetails: ''
@@ -545,27 +546,46 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                 <select className={inp} value={emp.employmentPriority} onChange={e => updateEmployment(emp.id, 'employmentPriority', e.target.value)}>
                   <option>Primary</option><option>Secondary</option>
                 </select>
-                <select className={inp} value={emp.employmentBasis} onChange={e => updateEmployment(emp.id, 'employmentBasis', e.target.value)}>
-                  <option>Full time</option><option>Part time</option><option>Casual</option>
+                <select className={inp} value={emp.employmentType} onChange={e => updateEmployment(emp.id, 'employmentType', e.target.value)}>
+                  <option value="PAYG">PAYG</option>
+                  <option value="Self-employed">Self-employed</option>
+                  <option value="Not working">Not working</option>
                 </select>
-                <input className={inp} placeholder="Occupation" value={emp.occupation} onChange={e => updateEmployment(emp.id, 'occupation', e.target.value)} />
-                <input type="date" className={inp} value={emp.startDate} onChange={e => updateEmployment(emp.id, 'startDate', e.target.value)} />
+                {emp.employmentType !== 'Not working' && (
+                  <>
+                    <select className={inp} value={emp.employmentBasis} onChange={e => updateEmployment(emp.id, 'employmentBasis', e.target.value)}>
+                      <option>Full time</option><option>Part time</option><option>Casual</option>
+                    </select>
+                    <input className={inp} placeholder="Occupation" value={emp.occupation} onChange={e => updateEmployment(emp.id, 'occupation', e.target.value)} />
+                  </>
+                )}
               </div>
-              <div className="grid grid-cols-4 gap-3 mb-3">
-                <input className={inp} placeholder="Employer name" value={emp.employerName} onChange={e => updateEmployment(emp.id, 'employerName', e.target.value)} />
-                <input className={inp} placeholder="ABN" value={emp.employerAbn} onChange={e => updateEmployment(emp.id, 'employerAbn', e.target.value)} />
-                <input className={inp} placeholder="ACN" value={emp.employerAcn} onChange={e => updateEmployment(emp.id, 'employerAcn', e.target.value)} />
-                <select className={inp} value={emp.employerType} onChange={e => updateEmployment(emp.id, 'employerType', e.target.value)}>
-                  <option value="">Employer type</option><option>Public</option><option>Private</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-1 gap-3">
-                <input className={inp} placeholder="Employer address" value={emp.employerAddress} onChange={e => updateEmployment(emp.id, 'employerAddress', e.target.value)} />
-              </div>
-              <label className="flex items-center gap-2 mt-3 text-xs text-gray-500">
-                <input type="checkbox" checked={emp.onProbation} onChange={e => updateEmployment(emp.id, 'onProbation', e.target.checked)} />
-                On probation
-              </label>
+              {emp.employmentType !== 'Not working' && (
+                <>
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    <input type="date" className={inp} value={emp.startDate} onChange={e => updateEmployment(emp.id, 'startDate', e.target.value)} />
+                    <input className={inp} placeholder="Employer / business name" value={emp.employerName} onChange={e => updateEmployment(emp.id, 'employerName', e.target.value)} />
+                    <AbnAutocomplete
+                      value={emp.employerAbn}
+                      onChange={val => updateEmployment(emp.id, 'employerAbn', val)}
+                      onSelect={result => {
+                        updateEmployment(emp.id, 'employerAbn', result.abn)
+                        updateEmployment(emp.id, 'employerName', result.businessName)
+                      }}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <select className={inp} value={emp.employerType} onChange={e => updateEmployment(emp.id, 'employerType', e.target.value)}>
+                      <option value="">Employer type</option><option>Public</option><option>Private</option>
+                    </select>
+                    <input className={inp} placeholder="Employer address" value={emp.employerAddress} onChange={e => updateEmployment(emp.id, 'employerAddress', e.target.value)} />
+                  </div>
+                  <label className="flex items-center gap-2 mt-3 text-xs text-gray-500">
+                    <input type="checkbox" checked={emp.onProbation} onChange={e => updateEmployment(emp.id, 'onProbation', e.target.checked)} />
+                    On probation
+                  </label>
+                </>
+              )}
             </div>
           ))}
           <button onClick={addEmployment} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
