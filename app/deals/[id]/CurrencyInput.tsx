@@ -1,14 +1,16 @@
 "use client"
 import { useState, useEffect } from 'react'
 
-function formatCurrency(raw: string): string {
-  const digits = raw.replace(/[^0-9]/g, '')
+function formatCurrency(raw: string | undefined | null): string {
+  if (!raw) return ''
+  const digits = String(raw).replace(/[^0-9]/g, '')
   if (!digits) return ''
   return '$' + digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
-function toRawDigits(formatted: string): string {
-  return formatted.replace(/[^0-9]/g, '')
+function toRawDigits(formatted: string | undefined | null): string {
+  if (!formatted) return ''
+  return String(formatted).replace(/[^0-9]/g, '')
 }
 
 export default function CurrencyInput({
