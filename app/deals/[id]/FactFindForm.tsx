@@ -338,8 +338,14 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
     eligible.forEach(emp => {
       const existing = income.find(inc => inc.employmentId === emp.id)
       if (!existing) {
-        income = [...income, { ...defaultIncome(emp.employmentType), employmentId: emp.id }]
-        changed = true
+        const orphan = income.find(inc => !inc.employmentId && (inc.incomeType === 'PAYG' || inc.incomeType === 'Self-employed'))
+        if (orphan) {
+          income = income.map(inc => inc.id === orphan.id ? { ...inc, employmentId: emp.id, incomeType: emp.employmentType } : inc)
+          changed = true
+        } else {
+          income = [...income, { ...defaultIncome(emp.employmentType), employmentId: emp.id }]
+          changed = true
+        }
       } else if (existing.incomeType !== emp.employmentType) {
         income = income.map(inc => inc.id === existing.id ? { ...inc, incomeType: emp.employmentType } : inc)
         changed = true
@@ -382,6 +388,10 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
   }
   function addEmployment() {
     updateApplicant('employment', [...applicant.employment, defaultEmployment(false)])
+  }
+  function addSecondaryEmployment() {
+    const secondary = { ...defaultEmployment(true), employmentPriority: 'Secondary' }
+    updateApplicant('employment', [...applicant.employment, secondary])
   }
   function removeEmployment(id: string) {
     updateApplicant('employment', applicant.employment.filter(e => e.id !== id))
@@ -580,13 +590,13 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                   <option value="Self-employed">Self-employed</option>
                   <option value="Not working">Not working</option>
                 </select>
+                {emp.employmentType === 'PAYG' && (
+                  <select className={inp} value={emp.employmentBasis} onChange={e => updateEmployment(emp.id, 'employmentBasis', e.target.value)}>
+                    <option>Full time</option><option>Part time</option><option>Casual</option>
+                  </select>
+                )}
                 {emp.employmentType !== 'Not working' && (
-                  <>
-                    <select className={inp} value={emp.employmentBasis} onChange={e => updateEmployment(emp.id, 'employmentBasis', e.target.value)}>
-                      <option>Full time</option><option>Part time</option><option>Casual</option>
-                    </select>
-                    <input className={inp} placeholder="Occupation" value={emp.occupation} onChange={e => updateEmployment(emp.id, 'occupation', e.target.value)} />
-                  </>
+                  <input className={inp} placeholder="Occupation" value={emp.occupation} onChange={e => updateEmployment(emp.id, 'occupation', e.target.value)} />
                 )}
               </div>
               {emp.employmentType !== 'Not working' && (
@@ -604,9 +614,11 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3 mb-3">
-                    <select className={inp} value={emp.employerType} onChange={e => updateEmployment(emp.id, 'employerType', e.target.value)}>
-                      <option value="">Employer type</option><option>Public</option><option>Private</option>
-                    </select>
+                    {emp.employmentType === 'PAYG' && (
+                      <select className={inp} value={emp.employerType} onChange={e => updateEmployment(emp.id, 'employerType', e.target.value)}>
+                        <option value="">Employer type</option><option>Public</option><option>Private</option>
+                      </select>
+                    )}
                     <input className={inp} placeholder="Employer address" value={emp.employerAddress} onChange={e => updateEmployment(emp.id, 'employerAddress', e.target.value)} />
                   </div>
                   <label className="flex items-center gap-2 mt-3 text-xs text-gray-500">
@@ -617,9 +629,14 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
               )}
             </div>
           ))}
-          <button onClick={addEmployment} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
-            + Add previous employment
-          </button>
+          <div className="flex gap-2">
+            <button onClick={addSecondaryEmployment} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
+              + Add secondary employment
+            </button>
+            <button onClick={addEmployment} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
+              + Add previous employment
+            </button>
+          </div>
         </div>
       )}
 
