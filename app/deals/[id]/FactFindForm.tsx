@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import AddressAutocomplete from './AddressAutocomplete'
 import AbnAutocomplete from './AbnAutocomplete'
+import CurrencyInput from './CurrencyInput'
 
 type Address = {
   id: string
@@ -67,6 +68,8 @@ type Income = {
   seDirectorSalary: string
   seDirectorSalaryFrequency: string
   seDirectorProfitable: string
+  otherIncomeType: string
+  otherIncomeAmount: string
 }
 
 type FactFindApplicant = {
@@ -185,7 +188,8 @@ const defaultIncome = (type: string = 'PAYG'): Income => ({
   seYear1Depreciation: '', seYear1Interest: '', seYear1Super: '', seYear1OneOff: '', seYear1Other: '',
   seYear2FY: '2023/24', seYear2Salary: '', seYear2NetProfit: '',
   seYear2Depreciation: '', seYear2Interest: '', seYear2Super: '', seYear2OneOff: '', seYear2Other: '',
-  seDirectorSalary: '', seDirectorSalaryFrequency: 'Annually', seDirectorProfitable: 'Yes'
+  seDirectorSalary: '', seDirectorSalaryFrequency: 'Annually', seDirectorProfitable: 'Yes',
+  otherIncomeType: '', otherIncomeAmount: ''
 })
 
 const defaultApplicant = (): FactFindApplicant => ({
@@ -632,34 +636,34 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                         <div className="grid grid-cols-2 gap-3 mb-2">
                           <div>
                             <label className="text-xs text-gray-500 block mb-1">Salary</label>
-                            <input className={inp} value={inc.seYear1Salary} onChange={e => updateIncome(inc.id, 'seYear1Salary', e.target.value)} />
+                            <CurrencyInput className={inp} value={inc.seYear1Salary} onChange={val => updateIncome(inc.id, 'seYear1Salary', val)} />
                           </div>
                           <div>
                             <label className="text-xs text-gray-500 block mb-1">Net profit</label>
-                            <input className={inp} value={inc.seYear1NetProfit} onChange={e => updateIncome(inc.id, 'seYear1NetProfit', e.target.value)} />
+                            <CurrencyInput className={inp} value={inc.seYear1NetProfit} onChange={val => updateIncome(inc.id, 'seYear1NetProfit', val)} />
                           </div>
                         </div>
                         <div className="text-xs text-gray-500 mb-1">Add backs</div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="text-xs text-gray-400 block mb-1">Depreciation</label>
-                            <input className={inp} value={inc.seYear1Depreciation} onChange={e => updateIncome(inc.id, 'seYear1Depreciation', e.target.value)} />
+                            <CurrencyInput className={inp} value={inc.seYear1Depreciation} onChange={val => updateIncome(inc.id, 'seYear1Depreciation', val)} />
                           </div>
                           <div>
                             <label className="text-xs text-gray-400 block mb-1">Interest on business loans</label>
-                            <input className={inp} value={inc.seYear1Interest} onChange={e => updateIncome(inc.id, 'seYear1Interest', e.target.value)} />
+                            <CurrencyInput className={inp} value={inc.seYear1Interest} onChange={val => updateIncome(inc.id, 'seYear1Interest', val)} />
                           </div>
                           <div>
                             <label className="text-xs text-gray-400 block mb-1">Superannuation</label>
-                            <input className={inp} value={inc.seYear1Super} onChange={e => updateIncome(inc.id, 'seYear1Super', e.target.value)} />
+                            <CurrencyInput className={inp} value={inc.seYear1Super} onChange={val => updateIncome(inc.id, 'seYear1Super', val)} />
                           </div>
                           <div>
                             <label className="text-xs text-gray-400 block mb-1">One-off expenses</label>
-                            <input className={inp} value={inc.seYear1OneOff} onChange={e => updateIncome(inc.id, 'seYear1OneOff', e.target.value)} />
+                            <CurrencyInput className={inp} value={inc.seYear1OneOff} onChange={val => updateIncome(inc.id, 'seYear1OneOff', val)} />
                           </div>
                           <div className="col-span-2">
                             <label className="text-xs text-gray-400 block mb-1">Other add backs</label>
-                            <input className={inp} value={inc.seYear1Other} onChange={e => updateIncome(inc.id, 'seYear1Other', e.target.value)} />
+                            <CurrencyInput className={inp} value={inc.seYear1Other} onChange={val => updateIncome(inc.id, 'seYear1Other', val)} />
                           </div>
                         </div>
                       </div>
@@ -675,34 +679,34 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                           <div className="grid grid-cols-2 gap-3 mb-2">
                             <div>
                               <label className="text-xs text-gray-500 block mb-1">Salary</label>
-                              <input className={inp} value={inc.seYear2Salary} onChange={e => updateIncome(inc.id, 'seYear2Salary', e.target.value)} />
+                              <CurrencyInput className={inp} value={inc.seYear2Salary} onChange={val => updateIncome(inc.id, 'seYear2Salary', val)} />
                             </div>
                             <div>
                               <label className="text-xs text-gray-500 block mb-1">Net profit</label>
-                              <input className={inp} value={inc.seYear2NetProfit} onChange={e => updateIncome(inc.id, 'seYear2NetProfit', e.target.value)} />
+                              <CurrencyInput className={inp} value={inc.seYear2NetProfit} onChange={val => updateIncome(inc.id, 'seYear2NetProfit', val)} />
                             </div>
                           </div>
                           <div className="text-xs text-gray-500 mb-1">Add backs</div>
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className="text-xs text-gray-400 block mb-1">Depreciation</label>
-                              <input className={inp} value={inc.seYear2Depreciation} onChange={e => updateIncome(inc.id, 'seYear2Depreciation', e.target.value)} />
+                              <CurrencyInput className={inp} value={inc.seYear2Depreciation} onChange={val => updateIncome(inc.id, 'seYear2Depreciation', val)} />
                             </div>
                             <div>
                               <label className="text-xs text-gray-400 block mb-1">Interest on business loans</label>
-                              <input className={inp} value={inc.seYear2Interest} onChange={e => updateIncome(inc.id, 'seYear2Interest', e.target.value)} />
+                              <CurrencyInput className={inp} value={inc.seYear2Interest} onChange={val => updateIncome(inc.id, 'seYear2Interest', val)} />
                             </div>
                             <div>
                               <label className="text-xs text-gray-400 block mb-1">Superannuation</label>
-                              <input className={inp} value={inc.seYear2Super} onChange={e => updateIncome(inc.id, 'seYear2Super', e.target.value)} />
+                              <CurrencyInput className={inp} value={inc.seYear2Super} onChange={val => updateIncome(inc.id, 'seYear2Super', val)} />
                             </div>
                             <div>
                               <label className="text-xs text-gray-400 block mb-1">One-off expenses</label>
-                              <input className={inp} value={inc.seYear2OneOff} onChange={e => updateIncome(inc.id, 'seYear2OneOff', e.target.value)} />
+                              <CurrencyInput className={inp} value={inc.seYear2OneOff} onChange={val => updateIncome(inc.id, 'seYear2OneOff', val)} />
                             </div>
                             <div className="col-span-2">
                               <label className="text-xs text-gray-400 block mb-1">Other add backs</label>
-                              <input className={inp} value={inc.seYear2Other} onChange={e => updateIncome(inc.id, 'seYear2Other', e.target.value)} />
+                              <CurrencyInput className={inp} value={inc.seYear2Other} onChange={val => updateIncome(inc.id, 'seYear2Other', val)} />
                             </div>
                           </div>
                         </div>
@@ -714,7 +718,7 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                     <div className="grid grid-cols-3 gap-3">
                       <div>
                         <label className="text-xs text-gray-500 block mb-1">Salary amount</label>
-                        <input className={inp} value={inc.seDirectorSalary} onChange={e => updateIncome(inc.id, 'seDirectorSalary', e.target.value)} />
+                        <CurrencyInput className={inp} value={inc.seDirectorSalary} onChange={val => updateIncome(inc.id, 'seDirectorSalary', val)} />
                       </div>
                       <div>
                         <label className="text-xs text-gray-500 block mb-1">Frequency</label>
@@ -732,12 +736,24 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                   )}
                 </div>
               )}
+              {(inc.incomeType === 'Other taxable' || inc.incomeType === 'Other non-taxable') && (
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Income type</label>
+                    <input className={inp} placeholder="Describe the income" value={inc.otherIncomeType} onChange={e => updateIncome(inc.id, 'otherIncomeType', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Annual income</label>
+                    <CurrencyInput className={inp} value={inc.otherIncomeAmount} onChange={val => updateIncome(inc.id, 'otherIncomeAmount', val)} />
+                  </div>
+                </div>
+              )}
               {inc.incomeType === 'PAYG' && (
                 <>
                   <div className="grid grid-cols-3 gap-3 mb-2">
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">Gross salary</label>
-                      <input className={inp} value={inc.grossSalary} onChange={e => updateIncome(inc.id, 'grossSalary', e.target.value)} />
+                      <CurrencyInput className={inp} value={inc.grossSalary} onChange={val => updateIncome(inc.id, 'grossSalary', val)} />
                     </div>
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">Frequency</label>
@@ -749,24 +765,24 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                   <div className="grid grid-cols-4 gap-3">
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">Bonus</label>
-                      <input className={inp} value={inc.bonusAmount} onChange={e => updateIncome(inc.id, 'bonusAmount', e.target.value)} />
+                      <CurrencyInput className={inp} value={inc.bonusAmount} onChange={val => updateIncome(inc.id, 'bonusAmount', val)} />
                     </div>
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">Overtime essential</label>
-                      <input className={inp} value={inc.overtimeEssentialAmount} onChange={e => updateIncome(inc.id, 'overtimeEssentialAmount', e.target.value)} />
+                      <CurrencyInput className={inp} value={inc.overtimeEssentialAmount} onChange={val => updateIncome(inc.id, 'overtimeEssentialAmount', val)} />
                     </div>
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">Overtime non-essential</label>
-                      <input className={inp} value={inc.overtimeNonEssentialAmount} onChange={e => updateIncome(inc.id, 'overtimeNonEssentialAmount', e.target.value)} />
+                      <CurrencyInput className={inp} value={inc.overtimeNonEssentialAmount} onChange={val => updateIncome(inc.id, 'overtimeNonEssentialAmount', val)} />
                     </div>
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">Commission</label>
-                      <input className={inp} value={inc.commissionAmount} onChange={e => updateIncome(inc.id, 'commissionAmount', e.target.value)} />
+                      <CurrencyInput className={inp} value={inc.commissionAmount} onChange={val => updateIncome(inc.id, 'commissionAmount', val)} />
                     </div>
                   </div>
                   <div className="mt-2 w-1/4">
                     <label className="text-xs text-gray-500 block mb-1">Allowance</label>
-                    <input className={inp} value={inc.allowanceAmount} onChange={e => updateIncome(inc.id, 'allowanceAmount', e.target.value)} />
+                    <CurrencyInput className={inp} value={inc.allowanceAmount} onChange={val => updateIncome(inc.id, 'allowanceAmount', val)} />
                   </div>
                 </>
               )}
@@ -850,7 +866,7 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                 {prop.ownershipType === 'Owner occupied' ? (
                   <input className={inp} placeholder="Body corp (monthly)" value={prop.bodyCorpAmount} onChange={e => updateProperty(prop.id, 'bodyCorpAmount', e.target.value)} />
                 ) : (
-                  <input className={inp} placeholder="Rental income (weekly)" value={prop.rentalIncome} onChange={e => updateProperty(prop.id, 'rentalIncome', e.target.value)} />
+                  <CurrencyInput className={inp} placeholder="Rental income (weekly)" value={prop.rentalIncome} onChange={val => updateProperty(prop.id, 'rentalIncome', val)} />
                 )}
               </div>
               <div className="mb-3 w-1/3">
