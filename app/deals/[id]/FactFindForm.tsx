@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import AddressAutocomplete from './AddressAutocomplete'
+import AbnAutocomplete from './AbnAutocomplete'
 
 type Address = {
   id: string
@@ -44,6 +45,28 @@ type Income = {
   commissionFrequency: string
   allowanceAmount: string
   allowanceFrequency: string
+  seBusinessName: string
+  seAbn: string
+  seAssessmentMethod: string
+  seYear1FY: string
+  seYear1Salary: string
+  seYear1NetProfit: string
+  seYear1Depreciation: string
+  seYear1Interest: string
+  seYear1Super: string
+  seYear1OneOff: string
+  seYear1Other: string
+  seYear2FY: string
+  seYear2Salary: string
+  seYear2NetProfit: string
+  seYear2Depreciation: string
+  seYear2Interest: string
+  seYear2Super: string
+  seYear2OneOff: string
+  seYear2Other: string
+  seDirectorSalary: string
+  seDirectorSalaryFrequency: string
+  seDirectorProfitable: string
 }
 
 type FactFindApplicant = {
@@ -156,7 +179,13 @@ const defaultIncome = (): Income => ({
   overtimeEssentialAmount: '', overtimeEssentialFrequency: 'Annually',
   overtimeNonEssentialAmount: '', overtimeNonEssentialFrequency: 'Annually',
   commissionAmount: '', commissionFrequency: 'Annually',
-  allowanceAmount: '', allowanceFrequency: 'Annually'
+  allowanceAmount: '', allowanceFrequency: 'Annually',
+  seBusinessName: '', seAbn: '', seAssessmentMethod: 'Last 2 financial years',
+  seYear1FY: '2024/25', seYear1Salary: '', seYear1NetProfit: '',
+  seYear1Depreciation: '', seYear1Interest: '', seYear1Super: '', seYear1OneOff: '', seYear1Other: '',
+  seYear2FY: '2023/24', seYear2Salary: '', seYear2NetProfit: '',
+  seYear2Depreciation: '', seYear2Interest: '', seYear2Super: '', seYear2OneOff: '', seYear2Other: '',
+  seDirectorSalary: '', seDirectorSalaryFrequency: 'Annually', seDirectorProfitable: 'Yes'
 })
 
 const defaultApplicant = (): FactFindApplicant => ({
@@ -547,6 +576,7 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
               <div className="flex justify-between items-center mb-3">
                 <select className="text-xs font-medium text-gray-500 border-0" value={inc.incomeType} onChange={e => updateIncome(inc.id, 'incomeType', e.target.value)}>
                   <option value="PAYG">PAYG income</option>
+                  <option value="Self-employed">Self-employed income</option>
                   <option value="Other taxable">Other taxable income</option>
                   <option value="Other non-taxable">Other non-taxable income</option>
                   <option value="Rental">Rental income</option>
@@ -560,6 +590,146 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                   <option value="">Linked employer</option>
                   {applicant.employment.map(e => <option key={e.id} value={e.id}>{e.employerName || 'Unnamed employer'}</option>)}
                 </select>
+              )}
+              {inc.incomeType === 'Self-employed' && (
+                <div className="mb-3 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Business name</label>
+                      <input className={inp} value={inc.seBusinessName} onChange={e => updateIncome(inc.id, 'seBusinessName', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">ABN</label>
+                      <AbnAutocomplete
+                        value={inc.seAbn}
+                        onChange={val => updateIncome(inc.id, 'seAbn', val)}
+                        onSelect={result => {
+                          updateIncome(inc.id, 'seAbn', result.abn)
+                          updateIncome(inc.id, 'seBusinessName', result.businessName)
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Assessment method</label>
+                    <select className={inp} value={inc.seAssessmentMethod} onChange={e => updateIncome(inc.id, 'seAssessmentMethod', e.target.value)}>
+                      <option value="Last 2 financial years">Last 2 financial years</option>
+                      <option value="One year in isolation">One year in isolation</option>
+                      <option value="Director's salary">Director's salary</option>
+                    </select>
+                  </div>
+
+                  {(inc.seAssessmentMethod === 'Last 2 financial years' || inc.seAssessmentMethod === 'One year in isolation') && (
+                    <div className="space-y-3">
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs font-medium text-gray-600">Financial year 1</span>
+                          <select className="text-xs border border-gray-200 rounded px-2 py-1" value={inc.seYear1FY} onChange={e => updateIncome(inc.id, 'seYear1FY', e.target.value)}>
+                            <option>2024/25</option><option>2023/24</option><option>2022/23</option><option>2021/22</option>
+                          </select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mb-2">
+                          <div>
+                            <label className="text-xs text-gray-500 block mb-1">Salary</label>
+                            <input className={inp} value={inc.seYear1Salary} onChange={e => updateIncome(inc.id, 'seYear1Salary', e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 block mb-1">Net profit</label>
+                            <input className={inp} value={inc.seYear1NetProfit} onChange={e => updateIncome(inc.id, 'seYear1NetProfit', e.target.value)} />
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-500 mb-1">Add backs</div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-gray-400 block mb-1">Depreciation</label>
+                            <input className={inp} value={inc.seYear1Depreciation} onChange={e => updateIncome(inc.id, 'seYear1Depreciation', e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-400 block mb-1">Interest on business loans</label>
+                            <input className={inp} value={inc.seYear1Interest} onChange={e => updateIncome(inc.id, 'seYear1Interest', e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-400 block mb-1">Superannuation</label>
+                            <input className={inp} value={inc.seYear1Super} onChange={e => updateIncome(inc.id, 'seYear1Super', e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-400 block mb-1">One-off expenses</label>
+                            <input className={inp} value={inc.seYear1OneOff} onChange={e => updateIncome(inc.id, 'seYear1OneOff', e.target.value)} />
+                          </div>
+                          <div className="col-span-2">
+                            <label className="text-xs text-gray-400 block mb-1">Other add backs</label>
+                            <input className={inp} value={inc.seYear1Other} onChange={e => updateIncome(inc.id, 'seYear1Other', e.target.value)} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {inc.seAssessmentMethod === 'Last 2 financial years' && (
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-xs font-medium text-gray-600">Financial year 2</span>
+                            <select className="text-xs border border-gray-200 rounded px-2 py-1" value={inc.seYear2FY} onChange={e => updateIncome(inc.id, 'seYear2FY', e.target.value)}>
+                              <option>2024/25</option><option>2023/24</option><option>2022/23</option><option>2021/22</option>
+                            </select>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3 mb-2">
+                            <div>
+                              <label className="text-xs text-gray-500 block mb-1">Salary</label>
+                              <input className={inp} value={inc.seYear2Salary} onChange={e => updateIncome(inc.id, 'seYear2Salary', e.target.value)} />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-500 block mb-1">Net profit</label>
+                              <input className={inp} value={inc.seYear2NetProfit} onChange={e => updateIncome(inc.id, 'seYear2NetProfit', e.target.value)} />
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-500 mb-1">Add backs</div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-gray-400 block mb-1">Depreciation</label>
+                              <input className={inp} value={inc.seYear2Depreciation} onChange={e => updateIncome(inc.id, 'seYear2Depreciation', e.target.value)} />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-400 block mb-1">Interest on business loans</label>
+                              <input className={inp} value={inc.seYear2Interest} onChange={e => updateIncome(inc.id, 'seYear2Interest', e.target.value)} />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-400 block mb-1">Superannuation</label>
+                              <input className={inp} value={inc.seYear2Super} onChange={e => updateIncome(inc.id, 'seYear2Super', e.target.value)} />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-400 block mb-1">One-off expenses</label>
+                              <input className={inp} value={inc.seYear2OneOff} onChange={e => updateIncome(inc.id, 'seYear2OneOff', e.target.value)} />
+                            </div>
+                            <div className="col-span-2">
+                              <label className="text-xs text-gray-400 block mb-1">Other add backs</label>
+                              <input className={inp} value={inc.seYear2Other} onChange={e => updateIncome(inc.id, 'seYear2Other', e.target.value)} />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {inc.seAssessmentMethod === "Director's salary" && (
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Salary amount</label>
+                        <input className={inp} value={inc.seDirectorSalary} onChange={e => updateIncome(inc.id, 'seDirectorSalary', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Frequency</label>
+                        <select className={inp} value={inc.seDirectorSalaryFrequency} onChange={e => updateIncome(inc.id, 'seDirectorSalaryFrequency', e.target.value)}>
+                          <option>Weekly</option><option>Fortnightly</option><option>Monthly</option><option>Annually</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Business profitable?</label>
+                        <select className={inp} value={inc.seDirectorProfitable} onChange={e => updateIncome(inc.id, 'seDirectorProfitable', e.target.value)}>
+                          <option>Yes</option><option>No</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
               <div className="grid grid-cols-3 gap-3 mb-2">
                 <div>
