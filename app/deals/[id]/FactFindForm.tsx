@@ -5,6 +5,31 @@ import AddressAutocomplete from './AddressAutocomplete'
 import AbnAutocomplete from './AbnAutocomplete'
 import CurrencyInput from './CurrencyInput'
 
+function seYearTotalFF(inc: any, year: 1 | 2): number {
+  const p = year === 1 ? 'seYear1' : 'seYear2'
+  return (Number(inc[`${p}Salary`]) || 0) + (Number(inc[`${p}NetProfit`]) || 0) +
+    (Number(inc[`${p}Depreciation`]) || 0) + (Number(inc[`${p}Interest`]) || 0) +
+    (Number(inc[`${p}Super`]) || 0) + (Number(inc[`${p}OneOff`]) || 0) + (Number(inc[`${p}Other`]) || 0)
+}
+
+function calculateSeAssessableIncome(inc: any): number {
+  const year1 = seYearTotalFF(inc, 1)
+  if (inc.seAssessmentMethod === 'One year in isolation') return year1
+  if (inc.seAssessmentMethod === "Director's salary") {
+    const freq = inc.seDirectorSalaryFrequency
+    const salary = Number(inc.seDirectorSalary) || 0
+    const mult = freq === 'Weekly' ? 52 : freq === 'Fortnightly' ? 26 : freq === 'Monthly' ? 12 : 1
+    return salary * mult
+  }
+  const year2 = seYearTotalFF(inc, 2)
+  if (inc.seGrowthMethod === 'latest_lower') return year1
+  if (inc.seGrowthMethod === 'previous_plus_growth') {
+    const pct = inc.seGrowthPercentOption === 'Other' ? (Number(inc.seGrowthPercentCustom) || 0) : (Number(inc.seGrowthPercentOption) || 0)
+    return year2 * (1 + pct / 100)
+  }
+  return (year1 + year2) / 2
+}
+
 type Address = {
   id: string
   address: string
@@ -50,6 +75,9 @@ type Income = {
   seBusinessName: string
   seAbn: string
   seAssessmentMethod: string
+  seGrowthMethod: string
+  seGrowthPercentOption: string
+  seGrowthPercentCustom: string
   seYear1FY: string
   seYear1Salary: string
   seYear1NetProfit: string
@@ -186,6 +214,7 @@ const defaultIncome = (type: string = 'PAYG'): Income => ({
   commissionAmount: '', commissionFrequency: 'Annually',
   allowanceAmount: '', allowanceFrequency: 'Annually',
   seBusinessName: '', seAbn: '', seAssessmentMethod: 'Last 2 financial years',
+  seGrowthMethod: 'average', seGrowthPercentOption: '20', seGrowthPercentCustom: '',
   seYear1FY: '2024/25', seYear1Salary: '', seYear1NetProfit: '',
   seYear1Depreciation: '', seYear1Interest: '', seYear1Super: '', seYear1OneOff: '', seYear1Other: '',
   seYear2FY: '2023/24', seYear2Salary: '', seYear2NetProfit: '',
@@ -689,6 +718,43 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                       <option value="One year in isolation">One year in isolation</option>
                       <option value="Director's salary">Director's salary</option>
                     </select>
+                  </div>
+
+                  {inc.seAssessmentMethod === 'Last 2 financial years' && (
+                    <div className="mb-3">
+                      <label className="text-xs text-gray-500 block mb-1">Income calculation method</label>
+                      <select className={inp} value={inc.seGrowthMethod} onChange={e => updateIncome(inc.id, 'seGrowthMethod', e.target.value)}>
+                        <option value="average">Average of the Last Two Years</option>
+                        <option value="latest_lower">Latest Year \u2014 Where Lower Than the Previous Year</option>
+                        <option value="previous_plus_growth">Previous Year Plus Growth Percentage</option>
+                      </select>
+                      {inc.seGrowthMethod === 'previous_plus_growth' && (
+                        <div className="grid grid-cols-2 gap-3 mt-2">
+                          <select className={inp} value={inc.seGrowthPercentOption} onChange={e => updateIncome(inc.id, 'seGrowthPercentOption', e.target.value)}>
+                            <option value="20">20%</option>
+                            <option value="50">50%</option>
+                            <option value="Other">Other</option>
+                          </select>
+                          {inc.seGrowthPercentOption === 'Other' && (
+                            <input className={inp} type="number" placeholder="Custom %" value={inc.seGrowthPercentCustom} onChange={e => updateIncome(inc.id, 'seGrowthPercentCustom', e.target.value)} />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-3">
+                    <div className="text-xs text-gray-500 mb-1">Assessable income (calculated)</div>
+                    <div className="text-sm font-semibold text-gray-800">
+                      ${Math.round(calculateSeAssessableIncome(inc)).toLocaleString()} p.a.
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      {inc.seAssessmentMethod === 'Last 2 financial years' && inc.seGrowthMethod === 'average' && `(Year 1: $${Math.round(seYearTotalFF(inc, 1)).toLocaleString()} + Year 2: $${Math.round(seYearTotalFF(inc, 2)).toLocaleString()}) \u00f7 2`}
+                      {inc.seAssessmentMethod === 'Last 2 financial years' && inc.seGrowthMethod === 'latest_lower' && `Using Year 1 (latest): $${Math.round(seYearTotalFF(inc, 1)).toLocaleString()}`}
+                      {inc.seAssessmentMethod === 'Last 2 financial years' && inc.seGrowthMethod === 'previous_plus_growth' && `Year 2: $${Math.round(seYearTotalFF(inc, 2)).toLocaleString()} + ${inc.seGrowthPercentOption === 'Other' ? inc.seGrowthPercentCustom : inc.seGrowthPercentOption}% growth`}
+                      {inc.seAssessmentMethod === 'One year in isolation' && `Year 1 total (incl. add-backs)`}
+                      {inc.seAssessmentMethod === "Director's salary" && `Director's salary, annualized`}
+                    </div>
                   </div>
 
                   {(inc.seAssessmentMethod === 'Last 2 financial years' || inc.seAssessmentMethod === 'One year in isolation') && (
