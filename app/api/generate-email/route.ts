@@ -73,7 +73,10 @@ function sig(b: { name: string; title: string; crn: string }) {
 
 function p(t: string) { return `<p style="font-size:14px;color:#333;margin-bottom:14px">${t}</p>` }
 function p13(t: string) { return `<p style="font-size:13px;color:#555;margin-bottom:12px">${t}</p>` }
-function propHead(t: string) { return `<p style="font-size:13px;color:#343333;font-weight:600;margin-bottom:8px">&#127968; ${t}</p>` }
+function propHead(t: string, rentalIncome?: string) {
+  return `<p style="font-size:13px;color:#343333;font-weight:600;margin-bottom:8px">&#127968; ${t}</p>` +
+    (rentalIncome ? `<p style="font-size:12px;color:#666;margin-bottom:8px">Rental income: $${rentalIncome}/week</p>` : '')
+}
 
 function buildLVRrow(lvr: string, lvrCustom: string, lmi: string) {
   const effectiveLvr = lvr === 'Other' ? lvrCustom : lvr
@@ -124,7 +127,7 @@ export async function POST(req: NextRequest) {
       p('Great news — we have finished running your numbers and the results are looking really positive.') +
       p(`Based on your current financial position, you have sufficient capacity to refinance your property and access approximately ${d.splits?.[1]?.amount || '[equity amount]'} in equity, while also securing a competitive rate.`) +
       p13('Here is a breakdown of the structure:') +
-      propHead(`Against ${d.suburb || '[Property Address]'}`) +
+      propHead(`Against ${d.suburb || '[Property Address]'}`, d.incomeRental) +
       card('Split 1 - Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + row('Loan amount', '$' + d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
       card('Split 2 - Equity Release', row('Equity release amount', '$' + (d.equityRelease || '')) + row('Loan amount', '$' + d.splits?.[1]?.amount || '') + row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[1]?.type || 'Interest Only')) +
       check(checkItems) +
@@ -136,7 +139,7 @@ export async function POST(req: NextRequest) {
       p('Great news — we have finished running your numbers and the results are looking really positive.') +
       p('Based on your current financial position, you have sufficient capacity to refinance your existing loan and secure a competitive rate.') +
       p13('Here is a breakdown of the structure:') +
-      propHead(`Against ${d.suburb || '[Property Address]'}`) +
+      propHead(`Against ${d.suburb || '[Property Address]'}`, d.incomeRental) +
       card('Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + row('New loan amount', '$' + d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
