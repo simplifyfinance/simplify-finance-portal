@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import AddressAutocomplete from './AddressAutocomplete'
 import AbnAutocomplete from './AbnAutocomplete'
@@ -287,6 +287,9 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
   }
 
   const initData = (): FactFindData => {
+    if (deal?.fact_find_data && Object.keys(deal.fact_find_data).length > 0) {
+      return deal.fact_find_data as FactFindData
+    }
     const saved = typeof window !== 'undefined' ? localStorage.getItem(saveKey) : null
     if (saved) return JSON.parse(saved)
     return {
@@ -304,19 +307,16 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
   const [activeApplicant, setActiveApplicant] = useState(0)
   const [savedAt, setSavedAt] = useState('')
 
-  useEffect(() => {
-    supabase.from('deals').select('fact_find_data').eq('id', deal.id).single().then(({ data }) => {
-      if (data?.fact_find_data && Object.keys(data.fact_find_data).length > 0) {
-        setD(data.fact_find_data as FactFindData)
-      }
-    })
-  }, [])
-
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     localStorage.setItem(saveKey, JSON.stringify(d))
-    supabase.from('deals').update({ fact_find_data: d }).eq('id', deal.id).then(() => {})
-    setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
     onDataChange?.(d)
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+    saveTimeoutRef.current = setTimeout(() => {
+      supabase.from('deals').update({ fact_find_data: d }).eq('id', deal.id).then(() => {
+        setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+      })
+    }, 600)
   }, [d])
 
   const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]"
