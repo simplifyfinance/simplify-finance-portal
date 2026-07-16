@@ -395,7 +395,10 @@ Key assumptions: ${checklistText}`
       const res = await fetch('/api/generate-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ broker: brokerSig, dealId: deal.id, formData: { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, checklist, additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
+        body: JSON.stringify({ broker: brokerSig, dealId: deal.id, formData: { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeBreakdown: [
+          ...buildIncomeBreakdown(ffApp, firstName || 'Applicant 1', seIncomeBasis),
+          ...(joint === 'Yes' ? buildIncomeBreakdown(ffApp2, ffApp2.firstName || 'Applicant 2', seIncomeBasis) : [])
+        ], incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, checklist, additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
       })
       if (!res.ok) { setEmailError(`Server error: ${res.status}`); setGenerating(false); return }
       const data = await res.json()
