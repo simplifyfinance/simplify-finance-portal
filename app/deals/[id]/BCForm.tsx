@@ -35,7 +35,7 @@ function calculateIncomeEntryAnnual(inc: any): number {
     const year1 = seYearTotal(inc, 1)
     if (inc.seAssessmentMethod === 'One year in isolation') return year1
     const year2 = seYearTotal(inc, 2)
-    if (inc.seGrowthMethod === 'latest_lower') return year1
+    if (inc.seGrowthMethod === 'latest_lower') return year1 < year2 ? year1 : 0
     if (inc.seGrowthMethod === 'previous_plus_growth') {
       const pct = inc.seGrowthPercentOption === 'Other' ? (Number(inc.seGrowthPercentCustom) || 0) : (Number(inc.seGrowthPercentOption) || 0)
       return year2 * (1 + pct / 100)
