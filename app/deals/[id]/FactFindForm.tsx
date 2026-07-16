@@ -746,10 +746,10 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                       ${Math.round(calculateSeAssessableIncome(inc)).toLocaleString()} p.a.
                     </div>
                     <div className="text-xs text-gray-400 mt-1">
-                      {inc.seAssessmentMethod === 'Last 2 financial years' && inc.seGrowthMethod === 'average' && `(Year 1: $${Math.round(seYearTotalFF(inc, 1)).toLocaleString()} + Year 2: $${Math.round(seYearTotalFF(inc, 2)).toLocaleString()}) \u00f7 2`}
-                      {inc.seAssessmentMethod === 'Last 2 financial years' && inc.seGrowthMethod === 'latest_lower' && `Using Year 1 (latest): $${Math.round(seYearTotalFF(inc, 1)).toLocaleString()}`}
-                      {inc.seAssessmentMethod === 'Last 2 financial years' && inc.seGrowthMethod === 'previous_plus_growth' && `Year 2: $${Math.round(seYearTotalFF(inc, 2)).toLocaleString()} + ${inc.seGrowthPercentOption === 'Other' ? inc.seGrowthPercentCustom : inc.seGrowthPercentOption}% growth`}
-                      {inc.seAssessmentMethod === 'One year in isolation' && `Year 1 total (incl. add-backs)`}
+                      {inc.seAssessmentMethod === 'Last 2 financial years' && inc.seGrowthMethod === 'average' && `FY ${inc.seYear1FY}: $${Math.round(seYearTotalFF(inc, 1)).toLocaleString()} + FY ${inc.seYear2FY}: $${Math.round(seYearTotalFF(inc, 2)).toLocaleString()}, averaged`}
+                      {inc.seAssessmentMethod === 'Last 2 financial years' && inc.seGrowthMethod === 'latest_lower' && `Using FY ${inc.seYear1FY}: $${Math.round(seYearTotalFF(inc, 1)).toLocaleString()}`}
+                      {inc.seAssessmentMethod === 'Last 2 financial years' && inc.seGrowthMethod === 'previous_plus_growth' && `FY ${inc.seYear2FY}: $${Math.round(seYearTotalFF(inc, 2)).toLocaleString()} + ${inc.seGrowthPercentOption === 'Other' ? inc.seGrowthPercentCustom : inc.seGrowthPercentOption}% growth`}
+                      {inc.seAssessmentMethod === 'One year in isolation' && `FY ${inc.seYear1FY} total, including add-backs`}
                       {inc.seAssessmentMethod === "Director's salary" && `Director's salary, annualized`}
                     </div>
                   </div>
