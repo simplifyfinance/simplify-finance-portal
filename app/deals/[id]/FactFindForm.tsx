@@ -995,7 +995,7 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
             <div key={liab.id} className="border border-gray-100 rounded-lg p-4 mb-2">
               <div className="flex justify-between items-center mb-3">
                 <select className="text-xs font-medium text-gray-500 border-0" value={liab.liabilityType} onChange={e => updateLiability(liab.id, 'liabilityType', e.target.value)}>
-                  <option>Credit card</option><option>Car loan</option><option>Personal loan</option><option>HECS</option><option>Other</option>
+                  <option>Credit card</option><option>Car loan</option><option>Personal loan</option><option>HECS</option><option>Health Insurance</option><option>Other</option>
                 </select>
                 <button onClick={() => removeLiability(liab.id)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
               </div>

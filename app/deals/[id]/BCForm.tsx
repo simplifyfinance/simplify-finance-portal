@@ -461,31 +461,7 @@ Key assumptions: ${checklistText}`
                   <Field label="First name"><input className={inputCls} value={firstName} onChange={e => setFirstName(e.target.value)} /></Field>
                   <Field label="Last name"><input className={inputCls} value={lastName} onChange={e => setLastName(e.target.value)} /></Field>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Field label="Dependants (from Fact Find)"><div className={inputCls + " bg-gray-50 text-gray-500"}>{dependants || 0}</div></Field>
-                  <Field label="Joint application"><select className={selectCls} value={joint} onChange={e => setJoint(e.target.value)}><option>No</option><option>Yes</option></select></Field>
-                </div>
-              </div>
-
-              <div className="bg-white border border-gray-100 rounded-xl p-4">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Income (from Fact Find)</div>
-                <p className="text-xs text-gray-400 mb-2">Income figures are pulled automatically from Fact Find and used in the email \u2014 no manual entry needed here.</p>
-                <Field label="Self-employed income basis">
-                  <select className={selectCls} value={seIncomeBasis} onChange={e => setSeIncomeBasis(e.target.value)}>
-                    <option value="average">Average of 2 years</option>
-                    <option value="latest">Latest year</option>
-                    <option value="lower">Lower of two years</option>
-                  </select>
-                </Field>
-              </div>
-
-              <div className="bg-white border border-gray-100 rounded-xl p-4">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Liabilities (from Fact Find)</div>
-                <p className="text-xs text-gray-400 mb-2">Credit card, personal loan, car loan and HECS are pulled automatically from Fact Find.</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <Field label="Health insurance (mo.)"><NumberInput value={health} onChange={setHealth} /></Field>
-                  <Field label="Living expenses / HEM"><NumberInput value={living} onChange={setLiving} /></Field>
-                </div>
+                <Field label="Joint application"><select className={selectCls} value={joint} onChange={e => setJoint(e.target.value)}><option>No</option><option>Yes</option></select></Field>
               </div>
 
               <div className="bg-white border border-gray-100 rounded-xl p-4">
