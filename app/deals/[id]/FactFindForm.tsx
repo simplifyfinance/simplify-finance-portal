@@ -514,9 +514,9 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
       <button onClick={addApplicant} className="px-4 py-2 rounded-lg text-sm font-medium border border-dashed border-gray-300 text-gray-500 hover:border-gray-400">
         + Add applicant
       </button>
-      <div className="ml-auto flex items-center gap-2">
-        <span className="text-xs text-gray-500">Dependants</span>
-        <input type="number" className="w-14 text-center border border-gray-200 rounded-lg py-1.5 text-sm focus:outline-none focus:border-[#2DBEFF]" value={d.dependants} onChange={e => setD(prev => ({ ...prev, dependants: e.target.value }))} />
+      <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-1.5 ml-1">
+        <span className="text-xs text-gray-500 whitespace-nowrap">Dependants</span>
+        <input type="number" className="w-12 text-center text-sm border-0 focus:outline-none p-0" value={d.dependants} onChange={e => setD(prev => ({ ...prev, dependants: e.target.value }))} />
       </div>
     </div>
   )
