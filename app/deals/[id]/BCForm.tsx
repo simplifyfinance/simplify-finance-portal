@@ -4,6 +4,66 @@ import { supabase } from '@/lib/supabase'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
 import BrokerAssignment from './BrokerAssignment'
 
+function annualizeAmount(amount: string | undefined, frequency: string | undefined): number {
+  const n = Number(amount) || 0
+  if (frequency === 'Weekly') return n * 52
+  if (frequency === 'Fortnightly') return n * 26
+  if (frequency === 'Monthly') return n * 12
+  return n
+}
+
+function seYearTotal(inc: any, year: 1 | 2): number {
+  const p = year === 1 ? 'seYear1' : 'seYear2'
+  return (Number(inc[`${p}Salary`]) || 0) + (Number(inc[`${p}NetProfit`]) || 0) +
+    (Number(inc[`${p}Depreciation`]) || 0) + (Number(inc[`${p}Interest`]) || 0) +
+    (Number(inc[`${p}Super`]) || 0) + (Number(inc[`${p}OneOff`]) || 0) + (Number(inc[`${p}Other`]) || 0)
+}
+
+function calculateIncomeEntryAnnual(inc: any, seBasis: string): number {
+  if (inc.incomeType === 'PAYG') {
+    return annualizeAmount(inc.grossSalary, inc.grossSalaryFrequency) +
+      annualizeAmount(inc.bonusAmount, inc.bonusFrequency) +
+      annualizeAmount(inc.overtimeEssentialAmount, inc.overtimeEssentialFrequency) +
+      annualizeAmount(inc.overtimeNonEssentialAmount, inc.overtimeNonEssentialFrequency) +
+      annualizeAmount(inc.commissionAmount, inc.commissionFrequency) +
+      annualizeAmount(inc.allowanceAmount, inc.allowanceFrequency)
+  }
+  if (inc.incomeType === 'Self-employed') {
+    if (inc.seAssessmentMethod === "Director's salary") {
+      return annualizeAmount(inc.seDirectorSalary, inc.seDirectorSalaryFrequency)
+    }
+    const year1 = seYearTotal(inc, 1)
+    if (inc.seAssessmentMethod === 'One year in isolation') return year1
+    const year2 = seYearTotal(inc, 2)
+    if (seBasis === 'latest') return year1
+    if (seBasis === 'lower') return Math.min(year1, year2)
+    return (year1 + year2) / 2
+  }
+  if (inc.incomeType === 'Other taxable' || inc.incomeType === 'Other non-taxable') {
+    return Number(inc.otherIncomeAmount) || 0
+  }
+  return 0
+}
+
+function calculateApplicantTotalIncome(app: any, seBasis: string): number {
+  const incomeList: any[] = app?.income || []
+  return Math.round(incomeList.reduce((sum, inc) => sum + calculateIncomeEntryAnnual(inc, seBasis), 0))
+}
+
+function buildIncomeBreakdown(app: any, applicantLabel: string, seBasis: string): { label: string; amount: number | null }[] {
+  const incomeList: any[] = app?.income || []
+  return incomeList
+    .filter(inc => inc.incomeType === 'PAYG' || inc.incomeType === 'Self-employed' || inc.incomeType === 'Other taxable' || inc.incomeType === 'Other non-taxable')
+    .map(inc => {
+      if (inc.incomeType === 'Self-employed') {
+        return { label: `${applicantLabel} \u2014 Self-employed income`, amount: null }
+      }
+      const amount = Math.round(calculateIncomeEntryAnnual(inc, seBasis))
+      const typeLabel = inc.incomeType === 'PAYG' ? 'PAYG income' : (inc.otherIncomeType || inc.incomeType)
+      return { label: `${applicantLabel} \u2014 ${typeLabel}`, amount }
+    })
+}
+
 const TEMPLATES = [
   { id: 'refinance_equity', label: 'Refinance + equity release' },
   { id: 'refinance_only', label: 'Refinance only' },
@@ -118,6 +178,7 @@ export default function BCForm({ deal }: { deal: any }) {
   const s = getSaved()
   const ff = deal.fact_find_data || {}
   const ffApp = (ff.applicants || [])[0] || {}
+  const ffApp2 = (ff.applicants || [])[1] || {}
   const ffLiabs: any[] = ff.liabilities || []
 
   const [activeTab, setActiveTab] = useState<'factfind' | 'form' | 'preview'>('form')
@@ -127,7 +188,10 @@ export default function BCForm({ deal }: { deal: any }) {
   const [lastName, setLastName] = useState(s.lastName || ffApp.lastName || deal.clients?.last_name || '')
   const [dependants, setDependants] = useState(s.dependants || '0')
   const [joint, setJoint] = useState(s.joint || (ff.applicants?.length > 1 ? 'Yes' : 'No'))
-  const [incomeBase, setIncomeBase] = useState(s.incomeBase || ffApp.income?.[0]?.grossSalary || '')
+  const [seIncomeBasis, setSeIncomeBasis] = useState(s.seIncomeBasis || 'average')
+  const [incomeApplicant1, setIncomeApplicant1] = useState(s.incomeApplicant1 || (calculateApplicantTotalIncome(ffApp, s.seIncomeBasis || 'average') || '').toString())
+  const [incomeApplicant2, setIncomeApplicant2] = useState(s.incomeApplicant2 || (calculateApplicantTotalIncome(ffApp2, s.seIncomeBasis || 'average') || '').toString())
+  const incomeBase = (Number(incomeApplicant1) || 0) + (joint === 'Yes' ? (Number(incomeApplicant2) || 0) : 0)
   const [incomeOther, setIncomeOther] = useState(s.incomeOther || '')
   const [incomeRental, setIncomeRental] = useState(s.incomeRental || '')
   const [ccLimit, setCcLimit] = useState(s.ccLimit || ffLiabs.find((l:any) => l.liabilityType === 'Credit card')?.limitAmount || '')
@@ -403,7 +467,17 @@ Key assumptions: ${checklistText}`
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Income</div>
                 <div className="flex flex-col gap-2">
-                  <Field label="Base income (p.a.)"><NumberInput value={incomeBase} onChange={setIncomeBase} /></Field>
+                  <Field label="Applicant 1 income (p.a.)"><NumberInput value={incomeApplicant1} onChange={setIncomeApplicant1} /></Field>
+                  {joint === 'Yes' && (
+                    <Field label="Applicant 2 income (p.a.)"><NumberInput value={incomeApplicant2} onChange={setIncomeApplicant2} /></Field>
+                  )}
+                  <Field label="Self-employed income basis">
+                    <select className={selectCls} value={seIncomeBasis} onChange={e => setSeIncomeBasis(e.target.value)}>
+                      <option value="average">Average of 2 years</option>
+                      <option value="latest">Latest year</option>
+                      <option value="lower">Lower of two years</option>
+                    </select>
+                  </Field>
                   <div className="grid grid-cols-2 gap-2">
                     <Field label="Other income"><NumberInput value={incomeOther} onChange={setIncomeOther} /></Field>
                     <Field label="Rental income"><NumberInput value={incomeRental} onChange={setIncomeRental} /></Field>
