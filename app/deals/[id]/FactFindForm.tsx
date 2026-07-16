@@ -511,6 +511,10 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
       <button onClick={addApplicant} className="px-4 py-2 rounded-lg text-sm font-medium border border-dashed border-gray-300 text-gray-500 hover:border-gray-400">
         + Add applicant
       </button>
+      <div className="ml-auto flex items-center gap-2">
+        <span className="text-xs text-gray-500">Dependants</span>
+        <input type="number" className="w-14 text-center border border-gray-200 rounded-lg py-1.5 text-sm focus:outline-none focus:border-[#2DBEFF]" value={d.dependants} onChange={e => setD(prev => ({ ...prev, dependants: e.target.value }))} />
+      </div>
     </div>
   )
 
@@ -526,13 +530,6 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
       </div>
 
       {(stage === 'personal' || stage === 'employment' || stage === 'income') && applicantTabs}
-
-      {stage === 'personal' && (
-        <div className="bg-white border border-gray-100 rounded-xl p-4 mb-4">
-          <label className="text-xs text-gray-500 block mb-1">Dependants (household total)</label>
-          <input className={inp + ' w-40'} type="number" value={d.dependants} onChange={e => setD(prev => ({ ...prev, dependants: e.target.value }))} />
-        </div>
-      )}
 
       {stage === 'personal' && applicant && (
         <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-4">
