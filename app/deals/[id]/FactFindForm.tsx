@@ -159,6 +159,7 @@ type FactFindData = {
   assets: Asset[]
   properties: FactFindProperty[]
   liabilities: Liability[]
+  dependants: string
 }
 
 function uid() {
@@ -292,7 +293,8 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
       applicants: getInitialApplicants(),
       assets: [],
       properties: [],
-      liabilities: []
+      liabilities: [],
+      dependants: ''
     }
   }
 
@@ -495,6 +497,13 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
       </div>
 
       {(stage === 'personal' || stage === 'employment' || stage === 'income') && applicantTabs}
+
+      {stage === 'personal' && (
+        <div className="bg-white border border-gray-100 rounded-xl p-4 mb-4">
+          <label className="text-xs text-gray-500 block mb-1">Dependants (household total)</label>
+          <input className={inp + ' w-40'} type="number" value={d.dependants} onChange={e => setD(prev => ({ ...prev, dependants: e.target.value }))} />
+        </div>
+      )}
 
       {stage === 'personal' && applicant && (
         <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-4">

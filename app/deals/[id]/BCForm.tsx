@@ -186,7 +186,7 @@ export default function BCForm({ deal }: { deal: any }) {
   const [splits, setSplits] = useState<Split[]>(s.splits || TEMPLATE_DEFAULTS['oo_purchase'].splits)
   const [firstName, setFirstName] = useState(s.firstName || ffApp.firstName || deal.clients?.first_name || '')
   const [lastName, setLastName] = useState(s.lastName || ffApp.lastName || deal.clients?.last_name || '')
-  const [dependants, setDependants] = useState(s.dependants || '0')
+  const dependants = ff.dependants || '0'
   const [joint, setJoint] = useState(s.joint || (ff.applicants?.length > 1 ? 'Yes' : 'No'))
   const [seIncomeBasis, setSeIncomeBasis] = useState(s.seIncomeBasis || 'average')
   const [incomeApplicant1, setIncomeApplicant1] = useState(s.incomeApplicant1 || (calculateApplicantTotalIncome(ffApp, s.seIncomeBasis || 'average') || '').toString())
@@ -462,39 +462,27 @@ Key assumptions: ${checklistText}`
                   <Field label="Last name"><input className={inputCls} value={lastName} onChange={e => setLastName(e.target.value)} /></Field>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <Field label="Dependants"><input className={inputCls} type="number" value={dependants} onChange={e => setDependants(e.target.value)} /></Field>
+                  <Field label="Dependants (from Fact Find)"><div className={inputCls + " bg-gray-50 text-gray-500"}>{dependants || 0}</div></Field>
                   <Field label="Joint application"><select className={selectCls} value={joint} onChange={e => setJoint(e.target.value)}><option>No</option><option>Yes</option></select></Field>
                 </div>
               </div>
 
               <div className="bg-white border border-gray-100 rounded-xl p-4">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Income</div>
-                <div className="flex flex-col gap-2">
-                  <Field label="Applicant 1 income (p.a.)"><NumberInput value={incomeApplicant1} onChange={setIncomeApplicant1} /></Field>
-                  {joint === 'Yes' && (
-                    <Field label="Applicant 2 income (p.a.)"><NumberInput value={incomeApplicant2} onChange={setIncomeApplicant2} /></Field>
-                  )}
-                  <Field label="Self-employed income basis">
-                    <select className={selectCls} value={seIncomeBasis} onChange={e => setSeIncomeBasis(e.target.value)}>
-                      <option value="average">Average of 2 years</option>
-                      <option value="latest">Latest year</option>
-                      <option value="lower">Lower of two years</option>
-                    </select>
-                  </Field>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Field label="Other income"><NumberInput value={incomeOther} onChange={setIncomeOther} /></Field>
-                    <Field label="Rental income"><NumberInput value={incomeRental} onChange={setIncomeRental} /></Field>
-                  </div>
-                </div>
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Income (from Fact Find)</div>
+                <p className="text-xs text-gray-400 mb-2">Income figures are pulled automatically from Fact Find and used in the email \u2014 no manual entry needed here.</p>
+                <Field label="Self-employed income basis">
+                  <select className={selectCls} value={seIncomeBasis} onChange={e => setSeIncomeBasis(e.target.value)}>
+                    <option value="average">Average of 2 years</option>
+                    <option value="latest">Latest year</option>
+                    <option value="lower">Lower of two years</option>
+                  </select>
+                </Field>
               </div>
 
               <div className="bg-white border border-gray-100 rounded-xl p-4">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Liabilities</div>
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Liabilities (from Fact Find)</div>
+                <p className="text-xs text-gray-400 mb-2">Credit card, personal loan, car loan and HECS are pulled automatically from Fact Find.</p>
                 <div className="grid grid-cols-2 gap-2">
-                  <Field label="Credit card limit"><NumberInput value={ccLimit} onChange={setCcLimit} /></Field>
-                  <Field label="Personal loan (mo.)"><NumberInput value={personalLoan} onChange={setPersonalLoan} /></Field>
-                  <Field label="Car loan (mo.)"><NumberInput value={carLoan} onChange={setCarLoan} /></Field>
-                  <Field label="HECS (p.a.)"><NumberInput value={hecs} onChange={setHecs} /></Field>
                   <Field label="Health insurance (mo.)"><NumberInput value={health} onChange={setHealth} /></Field>
                   <Field label="Living expenses / HEM"><NumberInput value={living} onChange={setLiving} /></Field>
                 </div>
