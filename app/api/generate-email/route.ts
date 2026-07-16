@@ -86,7 +86,18 @@ function buildLVRrow(lvr: string, lvrCustom: string, lmi: string) {
 
 function buildChecklist(d: any) {
   const items = []
-  if (d.incomeBase) items.push(`Base salary (excl. super) $${d.incomeBase} p.a.`)
+  const breakdown: { label: string; amount: number | null }[] = d.incomeBreakdown || []
+  if (breakdown.length > 0) {
+    breakdown.forEach(entry => {
+      if (entry.amount === null) {
+        items.push(`${entry.label}: Income as per tax returns provided`)
+      } else {
+        items.push(`${entry.label} $${entry.amount} p.a.`)
+      }
+    })
+  } else if (d.incomeBase) {
+    items.push(`Base salary (excl. super) $${d.incomeBase} p.a.`)
+  }
   if (d.joint === 'Yes') items.push('Joint application')
   if (d.dependants) items.push(`${d.dependants} dependant${d.dependants === '1' ? '' : 's'}`)
   if (d.hecs) items.push(`HECS $${d.hecs} p.a.`)
