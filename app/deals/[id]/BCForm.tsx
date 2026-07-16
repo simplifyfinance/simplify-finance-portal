@@ -19,7 +19,7 @@ function seYearTotal(inc: any, year: 1 | 2): number {
     (Number(inc[`${p}Super`]) || 0) + (Number(inc[`${p}OneOff`]) || 0) + (Number(inc[`${p}Other`]) || 0)
 }
 
-function calculateIncomeEntryAnnual(inc: any, seBasis: string): number {
+function calculateIncomeEntryAnnual(inc: any): number {
   if (inc.incomeType === 'PAYG') {
     return annualizeAmount(inc.grossSalary, inc.grossSalaryFrequency) +
       annualizeAmount(inc.bonusAmount, inc.bonusFrequency) +
@@ -35,8 +35,11 @@ function calculateIncomeEntryAnnual(inc: any, seBasis: string): number {
     const year1 = seYearTotal(inc, 1)
     if (inc.seAssessmentMethod === 'One year in isolation') return year1
     const year2 = seYearTotal(inc, 2)
-    if (seBasis === 'latest') return year1
-    if (seBasis === 'lower') return Math.min(year1, year2)
+    if (inc.seGrowthMethod === 'latest_lower') return year1
+    if (inc.seGrowthMethod === 'previous_plus_growth') {
+      const pct = inc.seGrowthPercentOption === 'Other' ? (Number(inc.seGrowthPercentCustom) || 0) : (Number(inc.seGrowthPercentOption) || 0)
+      return year2 * (1 + pct / 100)
+    }
     return (year1 + year2) / 2
   }
   if (inc.incomeType === 'Other taxable' || inc.incomeType === 'Other non-taxable') {
@@ -45,12 +48,12 @@ function calculateIncomeEntryAnnual(inc: any, seBasis: string): number {
   return 0
 }
 
-function calculateApplicantTotalIncome(app: any, seBasis: string): number {
+function calculateApplicantTotalIncome(app: any): number {
   const incomeList: any[] = app?.income || []
-  return Math.round(incomeList.reduce((sum, inc) => sum + calculateIncomeEntryAnnual(inc, seBasis), 0))
+  return Math.round(incomeList.reduce((sum, inc) => sum + calculateIncomeEntryAnnual(inc), 0))
 }
 
-function buildIncomeBreakdown(app: any, applicantLabel: string, seBasis: string): { label: string; amount: number | null }[] {
+function buildIncomeBreakdown(app: any, applicantLabel: string): { label: string; amount: number | null }[] {
   const incomeList: any[] = app?.income || []
   return incomeList
     .filter(inc => inc.incomeType === 'PAYG' || inc.incomeType === 'Self-employed' || inc.incomeType === 'Other taxable' || inc.incomeType === 'Other non-taxable')
@@ -58,7 +61,7 @@ function buildIncomeBreakdown(app: any, applicantLabel: string, seBasis: string)
       if (inc.incomeType === 'Self-employed') {
         return { label: `${applicantLabel} \u2014 Self-employed income`, amount: null }
       }
-      const amount = Math.round(calculateIncomeEntryAnnual(inc, seBasis))
+      const amount = Math.round(calculateIncomeEntryAnnual(inc))
       const typeLabel = inc.incomeType === 'PAYG' ? 'PAYG income' : (inc.otherIncomeType || inc.incomeType)
       return { label: `${applicantLabel} \u2014 ${typeLabel}`, amount }
     })
@@ -188,9 +191,8 @@ export default function BCForm({ deal }: { deal: any }) {
   const [lastName, setLastName] = useState(s.lastName || ffApp.lastName || deal.clients?.last_name || '')
   const dependants = ff.dependants || '0'
   const [joint, setJoint] = useState(s.joint || (ff.applicants?.length > 1 ? 'Yes' : 'No'))
-  const [seIncomeBasis, setSeIncomeBasis] = useState(s.seIncomeBasis || 'average')
-  const [incomeApplicant1, setIncomeApplicant1] = useState(s.incomeApplicant1 || (calculateApplicantTotalIncome(ffApp, s.seIncomeBasis || 'average') || '').toString())
-  const [incomeApplicant2, setIncomeApplicant2] = useState(s.incomeApplicant2 || (calculateApplicantTotalIncome(ffApp2, s.seIncomeBasis || 'average') || '').toString())
+  const [incomeApplicant1, setIncomeApplicant1] = useState(s.incomeApplicant1 || (calculateApplicantTotalIncome(ffApp) || '').toString())
+  const [incomeApplicant2, setIncomeApplicant2] = useState(s.incomeApplicant2 || (calculateApplicantTotalIncome(ffApp2) || '').toString())
   const incomeBase = (Number(incomeApplicant1) || 0) + (joint === 'Yes' ? (Number(incomeApplicant2) || 0) : 0)
   const [incomeOther, setIncomeOther] = useState(s.incomeOther || '')
   const [incomeRental, setIncomeRental] = useState(s.incomeRental || '')
@@ -396,8 +398,8 @@ Key assumptions: ${checklistText}`
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ broker: brokerSig, dealId: deal.id, formData: { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeBreakdown: [
-          ...buildIncomeBreakdown(ffApp, firstName || 'Applicant 1', seIncomeBasis),
-          ...(joint === 'Yes' ? buildIncomeBreakdown(ffApp2, ffApp2.firstName || 'Applicant 2', seIncomeBasis) : [])
+          ...buildIncomeBreakdown(ffApp, firstName || 'Applicant 1'),
+          ...(joint === 'Yes' ? buildIncomeBreakdown(ffApp2, ffApp2.firstName || 'Applicant 2') : [])
         ], incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, checklist, additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
       })
       if (!res.ok) { setEmailError(`Server error: ${res.status}`); setGenerating(false); return }
