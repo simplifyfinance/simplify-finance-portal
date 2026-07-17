@@ -239,7 +239,7 @@ export default function BCForm({ deal }: { deal: any }) {
     s.templateNotes !== undefined ? s.templateNotes : (TEMPLATE_NOTES[s.template || 'oo_purchase'] || []).join('\n')
   )
 
-  const purchaseLinkTemplates = ['oo_purchase', 'investment_purchase', 'fhb', 'buy_sell', 'bridging', 'construction']
+  const purchaseLinkTemplates = ['oo_purchase', 'investment_purchase', 'fhb', 'buy_sell', 'construction']
   const isPurchaseLinked = purchaseLinkTemplates.includes(template)
 
   function handlePurchasePriceChange(val: string) {

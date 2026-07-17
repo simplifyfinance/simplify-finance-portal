@@ -208,6 +208,7 @@ export async function POST(req: NextRequest) {
         row('Deposit (from sale proceeds)', '$' + d.deposit || '') +
         row('Stamp duty', '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
@@ -343,6 +344,7 @@ export async function POST(req: NextRequest) {
         row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
         row('Stamp duty', '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
