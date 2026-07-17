@@ -4,6 +4,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import AddressAutocomplete from './AddressAutocomplete'
 import AbnAutocomplete from './AbnAutocomplete'
 import CurrencyInput from './CurrencyInput'
+import BankSelect from './BankSelect'
 
 function seYearTotalFF(inc: any, year: 1 | 2): number {
   const p = year === 1 ? 'seYear1' : 'seYear2'
@@ -951,22 +952,24 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
             <div key={asset.id} className="border border-gray-100 rounded-lg p-4 mb-2">
               <div className="flex justify-between items-center mb-3">
                 <select className="text-xs font-medium text-gray-500 border-0" value={asset.assetType} onChange={e => updateAsset(asset.id, 'assetType', e.target.value)}>
-                  <option>Bank account</option><option>Vehicle</option><option>Home content</option><option>Super</option><option>Other</option>
+                  <option>Bank account</option><option>Vehicle</option><option>Home Contents</option><option>Super</option><option>Other</option>
                 </select>
                 <button onClick={() => removeAsset(asset.id)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
               </div>
-              <div className="grid grid-cols-3 gap-3 mb-3">
-                <input className={inp} placeholder="Description" value={asset.description} onChange={e => updateAsset(asset.id, 'description', e.target.value)} />
-                <input className={inp} placeholder="Value" value={asset.value} onChange={e => updateAsset(asset.id, 'value', e.target.value)} />
+              <div className="grid grid-cols-2 gap-3 mb-3">
                 {asset.assetType === 'Bank account' && (
-                  <input className={inp} placeholder="BSB" value={asset.bsb} onChange={e => updateAsset(asset.id, 'bsb', e.target.value)} />
-                )}
-                {asset.assetType === 'Vehicle' && (
-                  <input className={inp} placeholder="Reg. number" value={asset.regNumber} onChange={e => updateAsset(asset.id, 'regNumber', e.target.value)} />
+                  <BankSelect className={inp} value={asset.description} onChange={v => updateAsset(asset.id, 'description', v)} />
                 )}
                 {asset.assetType === 'Super' && (
-                  <input className={inp} placeholder="Membership number" value={asset.membershipNumber} onChange={e => updateAsset(asset.id, 'membershipNumber', e.target.value)} />
+                  <input className={inp} placeholder="Fund Name" value={asset.description} onChange={e => updateAsset(asset.id, 'description', e.target.value)} />
                 )}
+                {asset.assetType === 'Vehicle' && (
+                  <input className={inp} placeholder="Description" value={asset.description} onChange={e => updateAsset(asset.id, 'description', e.target.value)} />
+                )}
+                {asset.assetType === 'Other' && (
+                  <input className={inp} placeholder="Description" value={asset.description} onChange={e => updateAsset(asset.id, 'description', e.target.value)} />
+                )}
+                <CurrencyInput className={inp} placeholder="Value" value={asset.value} onChange={v => updateAsset(asset.id, 'value', v)} />
               </div>
               <OwnershipSplit applicants={d.applicants} ownership={asset.ownership} onChange={v => updateAsset(asset.id, 'ownership', v)} />
             </div>
