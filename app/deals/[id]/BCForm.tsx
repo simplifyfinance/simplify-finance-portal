@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
 import BrokerAssignment from './BrokerAssignment'
+import CurrencyInput from './CurrencyInput'
 
 function annualizeAmount(amount: string | undefined, frequency: string | undefined): number {
   const n = Number(amount) || 0
@@ -226,6 +227,7 @@ export default function BCForm({ deal }: { deal: any }) {
   const [lvr, setLvr] = useState(s.lvr || '80%')
   const [lvrCustom, setLvrCustom] = useState(s.lvrCustom || '')
   const [lmi, setLmi] = useState(s.lmi || '')
+  const [lmiApplicable, setLmiApplicable] = useState(s.lmiApplicable || '')
   const [loanTerm, setLoanTerm] = useState(s.loanTerm || '30')
   const [fhog, setFhog] = useState(s.fhog || '')
   const [guarantorName, setGuarantorName] = useState(s.guarantorName || '')
@@ -237,19 +239,45 @@ export default function BCForm({ deal }: { deal: any }) {
     s.templateNotes !== undefined ? s.templateNotes : (TEMPLATE_NOTES[s.template || 'oo_purchase'] || []).join('\n')
   )
 
-  // Auto-calculate LVR from purchase price and deposit
-  useEffect(() => {
-    const price = parseFloat(String(purchasePrice).replace(/,/g, ''))
-    const dep = parseFloat(String(deposit).replace(/,/g, ''))
-    if (price > 0 && dep >= 0) {
-      const calc = ((price - dep) / price) * 100
-      const rounded = Math.round(calc)
-      if (rounded <= 80) setLvr('80%')
-      else if (rounded <= 90) setLvr('90%')
-      else if (rounded <= 95) setLvr('95%')
-      else { setLvr('Other'); setLvrCustom(rounded + '%') }
+  const purchaseLinkTemplates = ['oo_purchase', 'investment_purchase', 'fhb', 'buy_sell', 'bridging', 'construction']
+  const isPurchaseLinked = purchaseLinkTemplates.includes(template)
+
+  function handlePurchasePriceChange(val: string) {
+    setPurchasePrice(val)
+    if (!isPurchaseLinked) return
+    const price = parseFloat(val.replace(/,/g, '')) || 0
+    const dep = parseFloat(deposit.replace(/,/g, '')) || 0
+    if (dep > 0) {
+      setSplits(prev => prev.map((sp, idx) => idx === 0 ? { ...sp, amount: formatNumber(Math.max(0, Math.round(price - dep)).toString()) } : sp))
+    } else {
+      const loanAmt = parseFloat((splits[0]?.amount || '0').replace(/,/g, '')) || 0
+      if (loanAmt > 0) setDeposit(formatNumber(Math.max(0, Math.round(price - loanAmt)).toString()))
     }
-  }, [purchasePrice, deposit])
+  }
+
+  function handleDepositChange(val: string) {
+    setDeposit(val)
+    if (!isPurchaseLinked) return
+    const price = parseFloat(purchasePrice.replace(/,/g, '')) || 0
+    const dep = parseFloat(val.replace(/,/g, '')) || 0
+    if (price > 0) {
+      setSplits(prev => prev.map((sp, idx) => idx === 0 ? { ...sp, amount: formatNumber(Math.max(0, Math.round(price - dep)).toString()) } : sp))
+    }
+  }
+
+  function handleLoanAmountChange(i: number, val: string) {
+    updateSplitAmount(i, val)
+    if (!isPurchaseLinked || i !== 0) return
+    const price = parseFloat(purchasePrice.replace(/,/g, '')) || 0
+    const loanAmt = parseFloat(val.replace(/,/g, '')) || 0
+    if (price > 0) {
+      setDeposit(formatNumber(Math.max(0, Math.round(price - loanAmt)).toString()))
+    }
+  }
+
+  const lvrPriceNum = parseFloat(purchasePrice.replace(/,/g, '')) || 0
+  const lvrLoanNum = parseFloat((splits[0]?.amount || '0').replace(/,/g, '')) || 0
+  const lvrPercent = lvrPriceNum > 0 ? Math.round((lvrLoanNum / lvrPriceNum) * 1000) / 10 : 0
   const [internalNotes, setInternalNotes] = useState(s.internalNotes || '')
   const [brokerSig, setBrokerSig] = useState(s.brokerSig || deal.assigned_broker || 'Fabio')
   const [checklist, setChecklist] = useState<string[]>(s.checklist || [])
@@ -271,7 +299,7 @@ export default function BCForm({ deal }: { deal: any }) {
   const [moveToLoMsg, setMoveToLoMsg] = useState('')
 
   useEffect(() => {
-    const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue }
+    const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue }
     localStorage.setItem(saveKey, JSON.stringify(data))
     const timeoutId = setTimeout(() => {
       supabase.from('deals').update({ bc_data: data }).eq('id', deal.id).then(({ error }) => {
@@ -281,7 +309,7 @@ export default function BCForm({ deal }: { deal: any }) {
       setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
     }, 700)
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue])
 
   function selectTemplate(id: string) {
     setTemplate(id)
@@ -413,7 +441,7 @@ Key assumptions: ${checklistText}`
         body: JSON.stringify({ broker: brokerSig, dealId: deal.id, formData: { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeBreakdown: [
           ...buildIncomeBreakdown(ffApp, firstName || 'Applicant 1'),
           ...(joint === 'Yes' ? buildIncomeBreakdown(ffApp2, ffApp2.firstName || 'Applicant 2') : [])
-        ], housingExpense: buildHousingExpenseLine(ffApp), incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, checklist, additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
+        ], housingExpense: buildHousingExpenseLine(ffApp), incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, checklist, additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
       })
       if (!res.ok) { setEmailError(`Server error: ${res.status}`); setGenerating(false); return }
       const data = await res.json()
@@ -498,8 +526,8 @@ Key assumptions: ${checklistText}`
                 <div className="grid grid-cols-2 gap-2">
                   <Field label="Suburb"><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
                   <Field label="Property type"><select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>
-                  {!["refinance_equity", "refinance_only"].includes(template) && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={setPurchasePrice} /></Field>}
-                  {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={setDeposit} /></Field>}
+                  {!["refinance_equity", "refinance_only"].includes(template) && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={handlePurchasePriceChange} /></Field>}
+                  {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={handleDepositChange} /></Field>}
               {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge"].includes(template) && (
                 <Field label="Deposit source">
                   <select className={selectCls} value={depositSource} onChange={e => setDepositSource(e.target.value)}>
@@ -515,7 +543,26 @@ Key assumptions: ${checklistText}`
               {["refinance_equity", "refinance_only", "investment_equity", "buy_sell", "bridging"].includes(template) && <Field label="Existing loan balance"><NumberInput value={existingLoanBal} onChange={setExistingLoanBal} /></Field>}
               {["refinance_equity", "investment_equity"].includes(template) && <Field label="Equity release amount"><NumberInput value={equityRelease} onChange={setEquityRelease} /></Field>}
 
-                  {!["refinance_equity", "refinance_only"].includes(template) && <Field label="LVR">
+                  {isPurchaseLinked && (
+                    <Field label="LVR (calculated)">
+                      <div className={inputCls + " bg-gray-50 text-gray-700"}>{lvrPercent > 0 ? `${lvrPercent}%` : '\u2014'}</div>
+                    </Field>
+                  )}
+                  {isPurchaseLinked && lvrPercent > 80 && (
+                    <Field label="LMI status">
+                      <select className={selectCls} value={lmiApplicable} onChange={e => setLmiApplicable(e.target.value)}>
+                        <option value="">Select</option>
+                        <option value="Applicable">LMI applicable</option>
+                        <option value="Waived">LMI waived</option>
+                      </select>
+                    </Field>
+                  )}
+                  {isPurchaseLinked && lvrPercent > 80 && lmiApplicable === 'Applicable' && (
+                    <Field label="LMI estimate">
+                      <CurrencyInput className={inputCls} value={lmi} onChange={setLmi} />
+                    </Field>
+                  )}
+                  {!isPurchaseLinked && !["refinance_equity", "refinance_only"].includes(template) && <Field label="LVR">
                  <select className={selectCls} value={lvr} onChange={e => setLvr(e.target.value)}>
                       <option>80%</option>
                       <option>90%</option>
@@ -523,7 +570,7 @@ Key assumptions: ${checklistText}`
                       <option>Other</option>
                     </select>
                   </Field>}
-                  {!["refinance_equity", "refinance_only"].includes(template) && lvr === 'Other' && (
+                  {!isPurchaseLinked && !["refinance_equity", "refinance_only"].includes(template) && lvr === 'Other' && (
                 <Field label="Custom LVR">
                       <input className={inputCls} placeholder="e.g. 85%" value={lvrCustom} onChange={e => setLvrCustom(e.target.value)} />
                     </Field>
@@ -548,7 +595,7 @@ Key assumptions: ${checklistText}`
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <Field label="Label"><input className={inputCls} value={s.label} onChange={e => updateSplit(i, 'label', e.target.value)} /></Field>
-                        <Field label="Amount"><input className={inputCls} value={s.amount} onChange={e => updateSplitAmount(i, e.target.value)} /></Field>
+                        <Field label="Amount"><input className={inputCls} value={s.amount} onChange={e => handleLoanAmountChange(i, e.target.value)} /></Field>
                         {template === "oo_lvr_compare" && <Field label="Deposit required"><NumberInput value={s.deposit || ""} onChange={v => updateSplit(i, 'deposit', v)} /></Field>}<Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
                         <Field label="Type"><select className={selectCls} value={s.type} onChange={e => updateSplit(i, 'type', e.target.value)}><option>P&I</option><option>Interest only</option></select></Field>
                       </div>
