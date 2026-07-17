@@ -573,7 +573,12 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Gender</label>
-              <input className={inp} value={applicant.gender} onChange={e => updateApplicant('gender', e.target.value)} />
+              <select className={inp} value={applicant.gender} onChange={e => updateApplicant('gender', e.target.value)}>
+                <option value="">Select</option>
+                <option>Male</option>
+                <option>Female</option>
+                <option>Other</option>
+              </select>
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Date of birth</label>
@@ -590,6 +595,19 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
           </div>
 
           <SectionHeader title="Address history" />
+          {activeApplicant > 0 && (
+            <button
+              onClick={() => {
+                const primary = d.applicants[0]
+                if (!primary) return
+                const copied = primary.addresses.map(a => ({ ...a, id: uid() }))
+                updateApplicant('addresses', copied)
+              }}
+              className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition mb-3"
+            >
+              Copy address from Applicant 1
+            </button>
+          )}
           {applicant.addresses.map((addr, i) => (
             <div key={addr.id} className="border border-gray-100 rounded-lg p-3 mb-2">
               <div className="flex justify-between items-center mb-2">
