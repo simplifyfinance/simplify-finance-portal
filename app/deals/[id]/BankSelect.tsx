@@ -24,7 +24,7 @@ export default function BankSelect({
   }, [])
 
   useEffect(() => {
-    if (value && !banks.includes(value) && value !== '') {
+    if (value && banks.length > 0 && !banks.includes(value)) {
       setCustomMode(true)
     }
   }, [value, banks])
