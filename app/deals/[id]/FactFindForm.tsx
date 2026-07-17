@@ -159,6 +159,7 @@ type PropertyLoan = {
   interestOnlyExpiryDate: string
   rateType: string
   loanTermExpiryDate: string
+  remainingLoanTermYears: string
   status: string
   ownership: Record<string, string>
 }
@@ -255,7 +256,7 @@ const defaultPropertyLoan = (): PropertyLoan => ({
   id: uid(), lenderName: '', bsb: '', accountNumber: '', mortgageType: 'Owner occupied',
   limitAmount: '', balance: '', interestRate: '', repaymentAmount: '', repaymentFrequency: 'Monthly',
   repaymentType: 'Interest only', interestOnlyExpiryDate: '', rateType: 'Variable',
-  loanTermExpiryDate: '', status: 'Ongoing', ownership: {}
+  loanTermExpiryDate: '', remainingLoanTermYears: '30', status: 'Ongoing', ownership: {}
 })
 
 const defaultProperty = (): FactFindProperty => ({
@@ -1044,27 +1045,39 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
               </div>
               <div className="grid grid-cols-3 gap-3 mb-3">
                 <AddressAutocomplete className={inp + ' col-span-2'} value={prop.address} onChange={v => updateProperty(prop.id, 'address', v)} />
-                <input className={inp} placeholder="Value" value={prop.value} onChange={e => updateProperty(prop.id, 'value', e.target.value)} />
+                <CurrencyInput className={inp} placeholder="Value" value={prop.value} onChange={val => updateProperty(prop.id, 'value', val)} />
               </div>
               <div className="grid grid-cols-4 gap-3 mb-3">
                 <select className={inp} value={prop.zoning} onChange={e => updateProperty(prop.id, 'zoning', e.target.value)}>
                   <option>Residential</option><option>Commercial</option><option>Rural</option>
                 </select>
-                <input className={inp} placeholder="Property type" value={prop.propertySubtype} onChange={e => updateProperty(prop.id, 'propertySubtype', e.target.value)} />
+                <select className={inp} value={prop.propertySubtype} onChange={e => updateProperty(prop.id, 'propertySubtype', e.target.value)}>
+                  <option value="">Property type</option>
+                  <option>House</option>
+                  <option>Unit</option>
+                  <option>Townhouse</option>
+                  <option>Land</option>
+                  <option>Commercial</option>
+                  <option>Rural</option>
+                  <option>Other</option>
+                </select>
                 <select className={inp} value={prop.futureUse} onChange={e => updateProperty(prop.id, 'futureUse', e.target.value)}>
                   <option value="Ongoing">Ongoing</option>
                   <option value="Will become investment">Will become investment after settlement</option>
                   <option value="Will become owner occupied">Will become owner occupied after settlement</option>
                   <option value="To be sold">To be sold</option>
                 </select>
-                {prop.ownershipType === 'Owner occupied' ? (
-                  <input className={inp} placeholder="Body corp (monthly)" value={prop.bodyCorpAmount} onChange={e => updateProperty(prop.id, 'bodyCorpAmount', e.target.value)} />
-                ) : (
+                {prop.ownershipType !== 'Owner occupied' && (
                   <CurrencyInput className={inp} placeholder="Rental income (weekly)" value={prop.rentalIncome} onChange={val => updateProperty(prop.id, 'rentalIncome', val)} />
                 )}
               </div>
+              {(prop.propertySubtype === 'Unit' || prop.propertySubtype === 'Townhouse') && (
+                <div className="mb-3 w-1/4">
+                  <CurrencyInput className={inp} placeholder="Strata costs (quarterly)" value={prop.bodyCorpAmount} onChange={val => updateProperty(prop.id, 'bodyCorpAmount', val)} />
+                </div>
+              )}
               <div className="mb-3 w-1/3">
-                <input className={inp} placeholder="Running costs (monthly)" value={prop.runningCosts} onChange={e => updateProperty(prop.id, 'runningCosts', e.target.value)} />
+                <CurrencyInput className={inp} placeholder="Running costs (monthly)" value={prop.runningCosts} onChange={val => updateProperty(prop.id, 'runningCosts', val)} />
               </div>
               <OwnershipSplit applicants={d.applicants} ownership={prop.ownership} onChange={v => updateProperty(prop.id, 'ownership', v)} />
 
@@ -1083,9 +1096,9 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                       <input className={inp} placeholder="Interest rate %" value={loan.interestRate} onChange={e => updatePropertyLoan(prop.id, loan.id, 'interestRate', e.target.value)} />
                     </div>
                     <div className="grid grid-cols-4 gap-3 mb-2">
-                      <input className={inp} placeholder="Limit" value={loan.limitAmount} onChange={e => updatePropertyLoan(prop.id, loan.id, 'limitAmount', e.target.value)} />
-                      <input className={inp} placeholder="Balance" value={loan.balance} onChange={e => updatePropertyLoan(prop.id, loan.id, 'balance', e.target.value)} />
-                      <input className={inp} placeholder="Repayment" value={loan.repaymentAmount} onChange={e => updatePropertyLoan(prop.id, loan.id, 'repaymentAmount', e.target.value)} />
+                      <CurrencyInput className={inp} placeholder="Limit" value={loan.limitAmount} onChange={val => updatePropertyLoan(prop.id, loan.id, 'limitAmount', val)} />
+                      <CurrencyInput className={inp} placeholder="Balance" value={loan.balance} onChange={val => updatePropertyLoan(prop.id, loan.id, 'balance', val)} />
+                      <CurrencyInput className={inp} placeholder="Repayment" value={loan.repaymentAmount} onChange={val => updatePropertyLoan(prop.id, loan.id, 'repaymentAmount', val)} />
                       <select className={inp} value={loan.repaymentType} onChange={e => updatePropertyLoan(prop.id, loan.id, 'repaymentType', e.target.value)}>
                         <option>Interest only</option><option>Principal and interest</option>
                       </select>
@@ -1095,7 +1108,9 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                         <option>Variable</option><option>Fixed</option>
                       </select>
                       <input type="date" className={inp} placeholder="Interest only expiry" value={loan.interestOnlyExpiryDate} onChange={e => updatePropertyLoan(prop.id, loan.id, 'interestOnlyExpiryDate', e.target.value)} />
-                      <input type="month" className={inp} placeholder="Loan term expiry" value={loan.loanTermExpiryDate} onChange={e => updatePropertyLoan(prop.id, loan.id, 'loanTermExpiryDate', e.target.value)} />
+                      <select className={inp} value={loan.remainingLoanTermYears} onChange={e => updatePropertyLoan(prop.id, loan.id, 'remainingLoanTermYears', e.target.value)}>
+                        {Array.from({ length: 40 }, (_, i) => i + 1).map(y => <option key={y} value={y}>{y} year{y > 1 ? 's' : ''}</option>)}
+                      </select>
                       <select className={inp} value={loan.status} onChange={e => updatePropertyLoan(prop.id, loan.id, 'status', e.target.value)}>
                         <option value="Ongoing">Ongoing</option><option value="Refinance">Refinance</option><option value="To be paid out">To be paid out</option>
                       </select>
