@@ -112,7 +112,7 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
   construction: { splits: [{ label: 'Land loan', amount: '', rate: '6.14', type: 'P&I' }, { label: 'Construction loan', amount: '', rate: '6.39', type: 'Interest only' }] },
 }
 
-type Split = { label: string; amount: string; rate: string; type: string; deposit?: string }
+type Split = { label: string; amount: string; rate: string; type: string; deposit?: string; lmiApplicable?: string; lmi?: string }
 
 const TEMPLATE_NOTES: Record<string, string[]> = {
   refinance_equity: [],
@@ -337,7 +337,11 @@ export default function BCForm({ deal }: { deal: any }) {
   }
 
   function addSplit() {
-    setSplits(prev => [...prev, { label: `Split ${prev.length + 1}`, amount: '', rate: '6.14', type: 'P&I' }])
+    if (template === 'oo_lvr_compare') {
+      setSplits(prev => [...prev, { label: `Option ${prev.length + 1}`, amount: '', rate: '6.14', type: 'P&I', deposit: '', lmiApplicable: '', lmi: '' }])
+    } else {
+      setSplits(prev => [...prev, { label: `Split ${prev.length + 1}`, amount: '', rate: '6.14', type: 'P&I' }])
+    }
   }
 
   function removeSplit(i: number) {
@@ -599,7 +603,11 @@ Key assumptions: ${checklistText}`
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">{template === "oo_lvr_compare" ? "Loan Options — Multiple Deposits" : "Loan splits"}</div>
                 <div className="flex flex-col gap-3">
-                  {splits.map((s, i) => (
+                  {splits.map((s, i) => {
+                    const priceNum = parseFloat(purchasePrice.replace(/,/g, '')) || 0
+                    const optAmountNum = parseFloat((s.amount || '0').replace(/,/g, '')) || 0
+                    const optLvrPercent = priceNum > 0 ? Math.round((optAmountNum / priceNum) * 1000) / 10 : 0
+                    return (
                     <div key={i} className="bg-gray-50 rounded-lg p-3">
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-xs font-medium text-[#2DBEFF]">{template === "oo_lvr_compare" ? `Option ${i + 1}` : `Split ${i + 1}`}</span>
@@ -610,10 +618,30 @@ Key assumptions: ${checklistText}`
                         <Field label="Amount"><input className={inputCls} value={s.amount} onChange={e => handleLoanAmountChange(i, e.target.value)} /></Field>
                         {template === "oo_lvr_compare" && <Field label="Deposit required"><NumberInput value={s.deposit || ""} onChange={v => updateSplit(i, 'deposit', v)} /></Field>}<Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
                         <Field label="Type"><select className={selectCls} value={s.type} onChange={e => updateSplit(i, 'type', e.target.value)}><option>P&I</option><option>Interest only</option></select></Field>
+                        {template === "oo_lvr_compare" && (
+                          <Field label="LVR (calculated)">
+                            <div className={inputCls + " bg-white text-gray-700"}>{optLvrPercent > 0 ? `${optLvrPercent}%` : '\u2014'}</div>
+                          </Field>
+                        )}
+                        {template === "oo_lvr_compare" && optLvrPercent > 80 && (
+                          <Field label="LMI status">
+                            <select className={selectCls} value={s.lmiApplicable || ''} onChange={e => updateSplit(i, 'lmiApplicable', e.target.value)}>
+                              <option value="">Select</option>
+                              <option value="Applicable">LMI applicable</option>
+                              <option value="Waived">LMI waived</option>
+                            </select>
+                          </Field>
+                        )}
+                        {template === "oo_lvr_compare" && optLvrPercent > 80 && s.lmiApplicable === 'Applicable' && (
+                          <Field label="LMI estimate">
+                            <CurrencyInput className={inputCls} value={s.lmi || ''} onChange={v => updateSplit(i, 'lmi', v)} />
+                          </Field>
+                        )}
                       </div>
                     </div>
-                  ))}
-                  <button onClick={addSplit} className="text-xs text-[#2DBEFF] hover:underline text-left">+ Add split</button>
+                    )
+                  })}
+                  <button onClick={addSplit} className="text-xs text-[#2DBEFF] hover:underline text-left">{template === "oo_lvr_compare" ? "+ Add option" : "+ Add split"}</button>
                 </div>
               </div>
 
