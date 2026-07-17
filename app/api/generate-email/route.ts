@@ -101,6 +101,7 @@ function buildChecklist(d: any) {
   } else if (d.incomeBase) {
     items.push(`Base salary (excl. super) $${d.incomeBase} p.a.`)
   }
+  if (d.housingExpense) items.push(d.housingExpense)
   if (d.joint === 'Yes') items.push('Joint application')
   if (d.dependants) items.push(`${d.dependants} dependant${d.dependants === '1' ? '' : 's'}`)
   if (d.hecs) items.push(`HECS $${d.hecs} p.a.`)

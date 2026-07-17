@@ -53,6 +53,19 @@ function calculateApplicantTotalIncome(app: any): number {
   return Math.round(incomeList.reduce((sum, inc) => sum + calculateIncomeEntryAnnual(inc), 0))
 }
 
+function buildHousingExpenseLine(app: any): string {
+  const addresses: any[] = app?.addresses || []
+  const current = addresses.find((a) => a.isCurrent)
+  if (!current || !current.housingExpenseAmount) return ''
+  if (current.residentialStatus === 'Renting') {
+    return `Rent $${current.housingExpenseAmount}/${current.housingExpenseFrequency === 'Weekly' ? 'week' : 'month'}`
+  }
+  if (current.residentialStatus === 'Boarding') {
+    return `Board $${current.housingExpenseAmount}/${current.housingExpenseFrequency === 'Weekly' ? 'week' : 'month'}`
+  }
+  return ''
+}
+
 function buildIncomeBreakdown(app: any, applicantLabel: string): { label: string; amount: number | null }[] {
   const incomeList: any[] = app?.income || []
   return incomeList
@@ -400,7 +413,7 @@ Key assumptions: ${checklistText}`
         body: JSON.stringify({ broker: brokerSig, dealId: deal.id, formData: { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeBreakdown: [
           ...buildIncomeBreakdown(ffApp, firstName || 'Applicant 1'),
           ...(joint === 'Yes' ? buildIncomeBreakdown(ffApp2, ffApp2.firstName || 'Applicant 2') : [])
-        ], incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, checklist, additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
+        ], housingExpense: buildHousingExpenseLine(ffApp), incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, loanTerm, brokerNotes, checklist, additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
       })
       if (!res.ok) { setEmailError(`Server error: ${res.status}`); setGenerating(false); return }
       const data = await res.json()
