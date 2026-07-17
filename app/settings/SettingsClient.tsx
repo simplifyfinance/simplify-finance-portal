@@ -28,8 +28,6 @@ type UserProfile = {
 
 export default function SettingsPage() {
   const [brands, setBrands] = useState(defaultBrands)
-  const [banks, setBanks] = useState<string[]>([])
-  const [newBank, setNewBank] = useState('')
   const [brokers, setBrokers] = useState(defaultBrokers)
   const [wealthDeskLink, setWealthDeskLink] = useState('')
   const [saving, setSaving] = useState(false)
@@ -46,7 +44,6 @@ export default function SettingsPage() {
       const { data } = await supabase.from('settings').select('*').eq('id', 'singleton').single()
       if (data) {
         if (data.brands?.length) setBrands(data.brands)
-        if (data.banks?.length) setBanks(data.banks)
         if (data.brokers?.length) setBrokers(data.brokers)
         if (data.wealth_desk_link) setWealthDeskLink(data.wealth_desk_link)
       }
@@ -83,7 +80,6 @@ export default function SettingsPage() {
       id: 'singleton',
       brands,
       brokers,
-      banks,
       wealth_desk_link: wealthDeskLink,
       updated_at: new Date().toISOString()
     })
@@ -180,38 +176,6 @@ export default function SettingsPage() {
           </div>
         ))}
         <button onClick={() => setBrands([...brands, {id: Date.now().toString(), name: 'New Brand', isDefault: false, headerColor: '#343333', accentColor: '#2DBEFF', acl: '387025', footerAddress: 'St Leonards, Sydney'}])} className="text-sm text-[#2DBEFF] border border-dashed border-[#2DBEFF] rounded-lg px-4 py-2 hover:bg-blue-50 transition">+ Add another brand</button>
-      </section>
-      <section className="mb-10">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Banks</h2>
-        <p className="text-sm text-gray-500 mb-4">Manage the bank list shown when staff link a bank account in Fact Find</p>
-        <div className="flex flex-wrap gap-2 mb-4">
-          {banks.map((bank, i) => (
-            <div key={i} className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-1.5">
-              <span className="text-sm text-gray-700">{bank}</span>
-              <button onClick={() => setBanks(banks.filter((_, idx) => idx !== i))} className="text-xs text-red-400 hover:text-red-600">✕</button>
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <input
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 flex-1 max-w-xs"
-            placeholder="New bank name"
-            value={newBank}
-            onChange={(e) => setNewBank(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && newBank.trim()) {
-                setBanks([...banks, newBank.trim()])
-                setNewBank('')
-              }
-            }}
-          />
-          <button
-            onClick={() => { if (newBank.trim()) { setBanks([...banks, newBank.trim()]); setNewBank('') } }}
-            className="text-sm text-[#2DBEFF] border border-dashed border-[#2DBEFF] rounded-lg px-4 py-2 hover:bg-blue-50 transition"
-          >
-            + Add bank
-          </button>
-        </div>
       </section>
       <section className="mb-10">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Broker Profiles</h2>

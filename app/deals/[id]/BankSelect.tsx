@@ -15,8 +15,11 @@ export default function BankSelect({
   const [customMode, setCustomMode] = useState(false)
 
   useEffect(() => {
-    supabase.from('settings').select('banks').eq('id', 'singleton').single().then(({ data }) => {
-      if (data?.banks?.length) setBanks(data.banks)
+    supabase.from('lenders').select('name').order('name').then(({ data }) => {
+      if (data?.length) {
+        const uniqueNames = Array.from(new Set(data.map((l: any) => l.name).filter(Boolean)))
+        setBanks(uniqueNames as string[])
+      }
     })
   }, [])
 

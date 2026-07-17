@@ -307,7 +307,7 @@ function OwnershipSplit({ applicants, ownership, onChange }: { applicants: FactF
   )
 }
 
-function LiabilityOwnership({ applicants, ownership, onChange }: { applicants: FactFindApplicant[]; ownership: Record<string, string>; onChange: (v: Record<string, string>) => void }) {
+function OwnershipCheckboxes({ applicants, ownership, onChange }: { applicants: FactFindApplicant[]; ownership: Record<string, string>; onChange: (v: Record<string, string>) => void }) {
   return (
     <div>
       <label className="text-xs text-gray-500 block mb-2">Responsible for this liability</label>
@@ -1043,7 +1043,7 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                 )}
                 <CurrencyInput className={inp} placeholder="Value" value={asset.value} onChange={v => updateAsset(asset.id, 'value', v)} />
               </div>
-              <OwnershipSplit applicants={d.applicants} ownership={asset.ownership} onChange={v => updateAsset(asset.id, 'ownership', v)} />
+              <OwnershipCheckboxes applicants={d.applicants} ownership={asset.ownership} onChange={v => updateAsset(asset.id, 'ownership', v)} />
             </div>
           ))}
           <button onClick={addAsset} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
@@ -1199,7 +1199,7 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                   </div>
                 </>
               )}
-              <LiabilityOwnership applicants={d.applicants} ownership={liab.ownership} onChange={v => updateLiability(liab.id, 'ownership', v)} />
+              <OwnershipCheckboxes applicants={d.applicants} ownership={liab.ownership} onChange={v => updateLiability(liab.id, 'ownership', v)} />
             </div>
           ))}
           <button onClick={addLiability} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
