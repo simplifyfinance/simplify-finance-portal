@@ -48,6 +48,8 @@ type Address = {
   residentialStatus: string
   isCurrent: boolean
   startDate: string
+  housingExpenseAmount: string
+  housingExpenseFrequency: string
 }
 
 type Employment = {
@@ -207,7 +209,8 @@ function uid() {
 }
 
 const defaultAddress = (isCurrent: boolean): Address => ({
-  id: uid(), address: '', residentialStatus: '', isCurrent, startDate: ''
+  id: uid(), address: '', residentialStatus: '', isCurrent, startDate: '',
+  housingExpenseAmount: '', housingExpenseFrequency: 'Weekly'
 })
 
 const defaultEmployment = (isCurrent: boolean): Employment => ({
@@ -627,6 +630,25 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                 </select>
                 <input type="date" className={inp} value={addr.startDate} onChange={e => updateAddress(addr.id, 'startDate', e.target.value)} />
               </div>
+              {addr.isCurrent && addr.residentialStatus && addr.residentialStatus !== 'Owner' && (
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">
+                      {addr.residentialStatus === 'Renting' && 'Rent amount'}
+                      {addr.residentialStatus === 'Boarding' && 'Board amount'}
+                      {addr.residentialStatus === 'Living with family' && 'Housing expense (optional)'}
+                    </label>
+                    <CurrencyInput className={inp} value={addr.housingExpenseAmount} onChange={val => updateAddress(addr.id, 'housingExpenseAmount', val)} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Frequency</label>
+                    <select className={inp} value={addr.housingExpenseFrequency} onChange={e => updateAddress(addr.id, 'housingExpenseFrequency', e.target.value)}>
+                      <option>Weekly</option>
+                      <option>Monthly</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
           <button onClick={addAddress} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
