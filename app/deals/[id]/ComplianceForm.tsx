@@ -121,10 +121,11 @@ function defaultExpenseSplit(applicants: Applicant[]): Record<string, string> {
   return result
 }
 
-function defaultExpenses(applicants: Applicant[]): Record<string, ExpenseEntry> {
+function defaultExpenses(applicants: Applicant[], rentMonthlyAmount?: string): Record<string, ExpenseEntry> {
   const result: Record<string, ExpenseEntry> = {}
   EXPENSE_CATEGORIES.forEach(c => {
-    result[c.key] = { monthlyAmount: '', splits: defaultExpenseSplit(applicants), comment: '' }
+    const prefill = c.key === 'rent' && rentMonthlyAmount ? rentMonthlyAmount : ''
+    result[c.key] = { monthlyAmount: prefill, splits: defaultExpenseSplit(applicants), comment: '' }
   })
   return result
 }
@@ -216,6 +217,17 @@ export default function ComplianceForm({ deal }: { deal: any }) {
     pReqs.interestOnly = loLenders.some((l: any) => l.variableIO?.enabled || l.fixedIO?.enabled) ? 'Important' : 'Not important'
     if (approvalMentioned) pReqs.approvedQuickly = 'Most important'
 
+    const ff = deal.fact_find_data || {}
+    const ffApp = (ff.applicants || [])[0] || {}
+    const currentAddress = (ffApp.addresses || []).find((a: any) => a.isCurrent)
+    let rentMonthlyAmount = ''
+    if (currentAddress && (currentAddress.residentialStatus === 'Renting' || currentAddress.residentialStatus === 'Boarding') && currentAddress.housingExpenseAmount) {
+      const amount = Number(currentAddress.housingExpenseAmount) || 0
+      rentMonthlyAmount = currentAddress.housingExpenseFrequency === 'Weekly'
+        ? Math.round(amount * 52 / 12).toString()
+        : amount.toString()
+    }
+
     return {
       entityType: 'Individual(s)',
       applicants: apps,
@@ -226,7 +238,7 @@ export default function ComplianceForm({ deal }: { deal: any }) {
       analysisComment: '', optionsComment: '', borrowingPowerComment: '',
       depositComment: '', creditHistoryComment: '', securityComment: '',
       applicationSubmissionComment: '',
-      expenses: defaultExpenses(apps)
+      expenses: defaultExpenses(apps, rentMonthlyAmount)
     }
   }
 
