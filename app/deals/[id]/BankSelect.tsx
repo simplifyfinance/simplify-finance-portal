@@ -1,6 +1,8 @@
 "use client"
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { createSupabaseBrowser } from '@/lib/supabase-browser'
+
+const supabase = createSupabaseBrowser()
 
 export default function BankSelect({
   value,
