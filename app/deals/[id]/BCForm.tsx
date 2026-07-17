@@ -200,10 +200,10 @@ export default function BCForm({ deal }: { deal: any }) {
   const [activeTab, setActiveTab] = useState<'factfind' | 'form' | 'preview'>('form')
   const [template, setTemplate] = useState(s.template || 'oo_purchase')
   const [splits, setSplits] = useState<Split[]>(s.splits || TEMPLATE_DEFAULTS['oo_purchase'].splits)
-  const [firstName, setFirstName] = useState(s.firstName || ffApp.firstName || deal.clients?.first_name || '')
-  const [lastName, setLastName] = useState(s.lastName || ffApp.lastName || deal.clients?.last_name || '')
+  const firstName = ffApp.firstName || deal.clients?.first_name || ''
+  const lastName = ffApp.lastName || deal.clients?.last_name || ''
   const dependants = ff.dependants || '0'
-  const [joint, setJoint] = useState(s.joint || (ff.applicants?.length > 1 ? 'Yes' : 'No'))
+  const joint = ff.applicants?.length > 1 ? 'Yes' : 'No'
   const [incomeApplicant1, setIncomeApplicant1] = useState(s.incomeApplicant1 || (calculateApplicantTotalIncome(ffApp) || '').toString())
   const [incomeApplicant2, setIncomeApplicant2] = useState(s.incomeApplicant2 || (calculateApplicantTotalIncome(ffApp2) || '').toString())
   const incomeBase = (Number(incomeApplicant1) || 0) + (joint === 'Yes' ? (Number(incomeApplicant2) || 0) : 0)
@@ -470,15 +470,6 @@ Key assumptions: ${checklistText}`
 
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-4">
-              <div className="bg-white border border-gray-100 rounded-xl p-4">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Applicant</div>
-                <div className="grid grid-cols-2 gap-2 mb-2">
-                  <Field label="First name"><input className={inputCls} value={firstName} onChange={e => setFirstName(e.target.value)} /></Field>
-                  <Field label="Last name"><input className={inputCls} value={lastName} onChange={e => setLastName(e.target.value)} /></Field>
-                </div>
-                <Field label="Joint application"><select className={selectCls} value={joint} onChange={e => setJoint(e.target.value)}><option>No</option><option>Yes</option></select></Field>
-              </div>
-
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Notes</div>
                 <div className="flex flex-col gap-2">
