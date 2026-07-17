@@ -13,6 +13,14 @@ function seYearTotalFF(inc: any, year: 1 | 2): number {
     (Number(inc[`${p}Super`]) || 0) + (Number(inc[`${p}OneOff`]) || 0) + (Number(inc[`${p}Other`]) || 0)
 }
 
+function incrementFY(fy: string): string {
+  const match = fy.match(/^(\d{4})\/(\d{2})$/)
+  if (!match) return fy
+  const startYear = parseInt(match[1], 10) + 1
+  const endYY = ((startYear + 1) % 100).toString().padStart(2, '0')
+  return `${startYear}/${endYY}`
+}
+
 function calculateSeAssessableIncome(inc: any): number {
   const year1 = seYearTotalFF(inc, 1)
   if (inc.seAssessmentMethod === 'One year in isolation') return year1
@@ -24,12 +32,12 @@ function calculateSeAssessableIncome(inc: any): number {
   }
   const year2 = seYearTotalFF(inc, 2)
   if (inc.seGrowthMethod === 'latest_lower') {
-    if (year1 < year2) return year1
+    if (year2 < year1) return year2
     return NaN
   }
   if (inc.seGrowthMethod === 'previous_plus_growth') {
     const pct = inc.seGrowthPercentOption === 'Other' ? (Number(inc.seGrowthPercentCustom) || 0) : (Number(inc.seGrowthPercentOption) || 0)
-    return year2 * (1 + pct / 100)
+    return year1 * (1 + pct / 100)
   }
   return (year1 + year2) / 2
 }
@@ -219,9 +227,9 @@ const defaultIncome = (type: string = 'PAYG'): Income => ({
   allowanceAmount: '', allowanceFrequency: 'Annually',
   seBusinessName: '', seAbn: '', seAssessmentMethod: 'Last 2 financial years',
   seGrowthMethod: 'average', seGrowthPercentOption: '20', seGrowthPercentCustom: '',
-  seYear1FY: '2024/25', seYear1Salary: '', seYear1NetProfit: '',
+  seYear1FY: '2023/24', seYear1Salary: '', seYear1NetProfit: '',
   seYear1Depreciation: '', seYear1Interest: '', seYear1Super: '', seYear1OneOff: '', seYear1Other: '',
-  seYear2FY: '2023/24', seYear2Salary: '', seYear2NetProfit: '',
+  seYear2FY: '2024/25', seYear2Salary: '', seYear2NetProfit: '',
   seYear2Depreciation: '', seYear2Interest: '', seYear2Super: '', seYear2OneOff: '', seYear2Other: '',
   seDirectorSalary: '', seDirectorSalaryFrequency: 'Annually', seDirectorProfitable: 'Yes',
   otherIncomeType: '', otherIncomeAmount: ''
@@ -747,7 +755,7 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                   {Number.isNaN(calculateSeAssessableIncome(inc)) ? (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
                       <div className="text-sm font-semibold text-red-700">Latest year not lower</div>
-                      <div className="text-xs text-red-500 mt-1">FY {inc.seYear1FY} (${Math.round(seYearTotalFF(inc, 1)).toLocaleString()}) is not lower than FY {inc.seYear2FY} (${Math.round(seYearTotalFF(inc, 2)).toLocaleString()}). Choose a different calculation method.</div>
+                      <div className="text-xs text-red-500 mt-1">FY {inc.seYear2FY} (${Math.round(seYearTotalFF(inc, 2)).toLocaleString()}) is not lower than FY {inc.seYear1FY} (${Math.round(seYearTotalFF(inc, 1)).toLocaleString()}). Choose a different calculation method.</div>
                     </div>
                   ) : (
                     <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-3">
@@ -757,8 +765,8 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
                         {inc.seAssessmentMethod === 'Last 2 financial years' && inc.seGrowthMethod === 'average' && `FY ${inc.seYear1FY}: $${Math.round(seYearTotalFF(inc, 1)).toLocaleString()} + FY ${inc.seYear2FY}: $${Math.round(seYearTotalFF(inc, 2)).toLocaleString()}, averaged`}
-                        {inc.seAssessmentMethod === 'Last 2 financial years' && inc.seGrowthMethod === 'latest_lower' && `Using FY ${inc.seYear1FY}: $${Math.round(seYearTotalFF(inc, 1)).toLocaleString()}`}
-                        {inc.seAssessmentMethod === 'Last 2 financial years' && inc.seGrowthMethod === 'previous_plus_growth' && `FY ${inc.seYear2FY}: $${Math.round(seYearTotalFF(inc, 2)).toLocaleString()} + ${inc.seGrowthPercentOption === 'Other' ? inc.seGrowthPercentCustom : inc.seGrowthPercentOption}% growth`}
+                        {inc.seAssessmentMethod === 'Last 2 financial years' && inc.seGrowthMethod === 'latest_lower' && `Using FY ${inc.seYear2FY}: $${Math.round(seYearTotalFF(inc, 2)).toLocaleString()}`}
+                        {inc.seAssessmentMethod === 'Last 2 financial years' && inc.seGrowthMethod === 'previous_plus_growth' && `FY ${inc.seYear1FY}: $${Math.round(seYearTotalFF(inc, 1)).toLocaleString()} + ${inc.seGrowthPercentOption === 'Other' ? inc.seGrowthPercentCustom : inc.seGrowthPercentOption}% growth`}
                         {inc.seAssessmentMethod === 'One year in isolation' && `FY ${inc.seYear1FY} total, including add-backs`}
                         {inc.seAssessmentMethod === "Director's salary" && `Director's salary, annualized`}
                       </div>
@@ -770,8 +778,11 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                       <div className="bg-gray-50 rounded-lg p-3">
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-xs font-medium text-gray-600">Financial year 1</span>
-                          <select className="text-xs border border-gray-200 rounded px-2 py-1" value={inc.seYear1FY} onChange={e => updateIncome(inc.id, 'seYear1FY', e.target.value)}>
-                            <option>2024/25</option><option>2023/24</option><option>2022/23</option><option>2021/22</option>
+                          <select className="text-xs border border-gray-200 rounded px-2 py-1" value={inc.seYear1FY} onChange={e => {
+                            const newYear1 = e.target.value
+                            updateApplicant('income', applicant.income.map(i => i.id === inc.id ? { ...i, seYear1FY: newYear1, seYear2FY: incrementFY(newYear1) } : i))
+                          }}>
+                            <option>2021/22</option><option>2022/23</option><option>2023/24</option><option>2024/25</option>
                           </select>
                         </div>
                         <div className="grid grid-cols-2 gap-3 mb-2">
