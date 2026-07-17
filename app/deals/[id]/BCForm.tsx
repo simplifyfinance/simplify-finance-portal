@@ -332,6 +332,18 @@ export default function BCForm({ deal }: { deal: any }) {
     setSplits(prev => prev.map((s, idx) => idx === i ? { ...s, [key]: val } : s))
   }
 
+  function handleOptionLvrChange(i: number, pctStr: string) {
+    const pct = parseFloat(pctStr) || 0
+    const price = parseFloat(purchasePrice.replace(/,/g, '')) || 0
+    if (price > 0 && pct > 0) {
+      const loanAmt = Math.round(price * pct / 100)
+      const dep = Math.round(price - loanAmt)
+      setSplits(prev => prev.map((sp, idx) => idx === i ? { ...sp, label: pctStr, amount: formatNumber(loanAmt.toString()), deposit: formatNumber(dep.toString()) } : sp))
+    } else {
+      setSplits(prev => prev.map((sp, idx) => idx === i ? { ...sp, label: pctStr } : sp))
+    }
+  }
+
   function updateSplitAmount(i: number, val: string) {
     setSplits(prev => prev.map((s, idx) => idx === i ? { ...s, amount: formatNumber(val) } : s))
   }
@@ -578,7 +590,7 @@ Key assumptions: ${checklistText}`
                       <CurrencyInput className={inputCls} value={lmi} onChange={setLmi} />
                     </Field>
                   )}
-                  {!showCalculatedLvr && <Field label="LVR">
+                  {!showCalculatedLvr && template !== "oo_lvr_compare" && <Field label="LVR">
                  <select className={selectCls} value={lvr} onChange={e => setLvr(e.target.value)}>
                       <option>80%</option>
                       <option>90%</option>
@@ -586,7 +598,7 @@ Key assumptions: ${checklistText}`
                       <option>Other</option>
                     </select>
                   </Field>}
-                  {!showCalculatedLvr && lvr === 'Other' && (
+                  {!showCalculatedLvr && template !== "oo_lvr_compare" && lvr === 'Other' && (
                 <Field label="Custom LVR">
                       <input className={inputCls} placeholder="e.g. 85%" value={lvrCustom} onChange={e => setLvrCustom(e.target.value)} />
                     </Field>
@@ -614,7 +626,28 @@ Key assumptions: ${checklistText}`
                         {splits.length > 1 && <button onClick={() => removeSplit(i)} className="text-xs text-gray-400 hover:text-red-500">Remove</button>}
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <Field label="Label"><input className={inputCls} value={s.label} onChange={e => updateSplit(i, 'label', e.target.value)} /></Field>
+                        {template === "oo_lvr_compare" ? (
+                          <>
+                            <Field label="LVR %">
+                              <select className={selectCls} value={['80%', '90%', '95%'].includes(s.label) ? s.label : (s.label ? 'Other' : '')} onChange={e => {
+                                if (e.target.value === 'Other') { updateSplit(i, 'label', '') } else { handleOptionLvrChange(i, e.target.value) }
+                              }}>
+                                <option value="">Select</option>
+                                <option value="80%">80%</option>
+                                <option value="90%">90%</option>
+                                <option value="95%">95%</option>
+                                <option value="Other">Other</option>
+                              </select>
+                            </Field>
+                            {!['80%', '90%', '95%'].includes(s.label) && (
+                              <Field label="Custom LVR %">
+                                <input className={inputCls} placeholder="e.g. 85%" value={s.label} onChange={e => handleOptionLvrChange(i, e.target.value)} />
+                              </Field>
+                            )}
+                          </>
+                        ) : (
+                          <Field label="Label"><input className={inputCls} value={s.label} onChange={e => updateSplit(i, 'label', e.target.value)} /></Field>
+                        )}
                         <Field label="Amount"><input className={inputCls} value={s.amount} onChange={e => handleLoanAmountChange(i, e.target.value)} /></Field>
                         {template === "oo_lvr_compare" && <Field label="Deposit required"><NumberInput value={s.deposit || ""} onChange={v => updateSplit(i, 'deposit', v)} /></Field>}<Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
                         <Field label="Type"><select className={selectCls} value={s.type} onChange={e => updateSplit(i, 'type', e.target.value)}><option>P&I</option><option>Interest only</option></select></Field>
