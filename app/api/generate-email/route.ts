@@ -78,13 +78,21 @@ function propHead(t: string, rentalIncome?: string) {
     (rentalIncome ? `<p style="font-size:12px;color:#666;margin-bottom:8px">Rental income: $${rentalIncome}/week</p>` : '')
 }
 
-function buildLVRrow(lvr: string, lvrCustom: string, lmi: string) {
-  const effectiveLvr = lvr === 'Other' ? lvrCustom : lvr
-  const lvrNum = parseFloat(effectiveLvr)
-  if (lvrNum > 80 && lmi) {
-    return row('LVR', effectiveLvr) + row('LMI (estimated)', lmi)
+function buildLVRLine(d: any) {
+  const pct = Number(d.lvrPercent)
+  if (!pct || pct <= 0) {
+    return row('LVR', d.lvr || '80%')
   }
-  return row('LVR', lvrNum <= 80 ? `${effectiveLvr} (no LMI)` : effectiveLvr)
+  if (pct > 80) {
+    if (d.lmiApplicable === 'Applicable' && d.lmi) {
+      return row('LVR', `${pct}%`) + row('LMI (estimated)', '$' + d.lmi)
+    }
+    if (d.lmiApplicable === 'Waived') {
+      return row('LVR', `${pct}% (LMI waived)`)
+    }
+    return row('LVR', `${pct}%`)
+  }
+  return row('LVR', `${pct}% (no LMI)`)
 }
 
 function buildChecklist(d: any) {
@@ -147,8 +155,6 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else if (template === 'oo_purchase') {
-    const lvr = d.lvr || '80%'
-    const lvrNum = parseFloat(lvr)
     body = heading() + brokerBox(personalisation) +
       p('We have completed your borrowing capacity assessment.') +
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
@@ -159,7 +165,7 @@ export async function POST(req: NextRequest) {
         row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
         row('Stamp duty', '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
-        (lvrNum > 80 && d.lmi ? row('LVR', lvr) + row('LMI (estimated)', d.lmi) : row('LVR', `${lvr} (no LMI)`)) +
+        buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
@@ -178,7 +184,7 @@ export async function POST(req: NextRequest) {
         row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
         row('Stamp duty', '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
-        row('LVR', d.lvr || '80%') +
+        buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
         row('Repayment type', d.splits?.[0]?.type || 'Interest Only (5 years)')
@@ -403,7 +409,7 @@ export async function POST(req: NextRequest) {
         row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
         row('Stamp duty', '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
-        row('LVR', d.lvr || '') +
+        buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
