@@ -156,8 +156,7 @@ export async function POST(req: NextRequest) {
       p13('Here is a breakdown of the structure:') +
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
-        row('Deposit', '$' + d.deposit || '') +
-        row('Deposit source', d.depositSource || '') +
+        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
         row('Stamp duty', '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         (lvrNum > 80 && d.lmi ? row('LVR', lvr) + row('LMI (estimated)', d.lmi) : row('LVR', `${lvr} (no LMI)`)) +
@@ -176,8 +175,7 @@ export async function POST(req: NextRequest) {
       p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong>.`) +
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
-        row('Deposit', '$' + d.deposit || '') +
-        row('Deposit source', d.depositSource || '') +
+        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
         row('Stamp duty', '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('LVR', d.lvr || '80%') +
@@ -336,8 +334,7 @@ export async function POST(req: NextRequest) {
         row('Land value', d.landValue || '') +
         row('Construction cost', d.constructionCost || '') +
         row('Total project cost', d.purchasePrice || '') +
-        row('Deposit', '$' + d.deposit || '') +
-        row('Deposit source', d.depositSource || '') +
+        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
         row('Stamp duty', '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
@@ -403,8 +400,7 @@ export async function POST(req: NextRequest) {
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
-        row('Deposit', '$' + d.deposit || '') +
-        row('Deposit source', d.depositSource || '') +
+        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
         row('Stamp duty', '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('LVR', d.lvr || '') +
