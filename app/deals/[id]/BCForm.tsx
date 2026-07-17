@@ -223,6 +223,7 @@ export default function BCForm({ deal }: { deal: any }) {
   const [depositSource, setDepositSource] = useState(s.depositSource || '')
   const [stampDuty, setStampDuty] = useState(s.stampDuty || '')
   const [existingLoanBal, setExistingLoanBal] = useState(s.existingLoanBal || '')
+  const [propertyValue, setPropertyValue] = useState(s.propertyValue || '')
   const [equityRelease, setEquityRelease] = useState(s.equityRelease || '')
   const [lvr, setLvr] = useState(s.lvr || '80%')
   const [lvrCustom, setLvrCustom] = useState(s.lvrCustom || '')
@@ -275,9 +276,19 @@ export default function BCForm({ deal }: { deal: any }) {
     }
   }
 
-  const lvrPriceNum = parseFloat(purchasePrice.replace(/,/g, '')) || 0
-  const lvrLoanNum = parseFloat((splits[0]?.amount || '0').replace(/,/g, '')) || 0
-  const lvrPercent = lvrPriceNum > 0 ? Math.round((lvrLoanNum / lvrPriceNum) * 1000) / 10 : 0
+  const isRefinanceLinked = ['refinance_equity', 'refinance_only'].includes(template)
+  const showCalculatedLvr = isPurchaseLinked || isRefinanceLinked
+
+  let lvrPercent = 0
+  if (isPurchaseLinked) {
+    const price = parseFloat(purchasePrice.replace(/,/g, '')) || 0
+    const loanAmt = parseFloat((splits[0]?.amount || '0').replace(/,/g, '')) || 0
+    lvrPercent = price > 0 ? Math.round((loanAmt / price) * 1000) / 10 : 0
+  } else if (isRefinanceLinked) {
+    const value = parseFloat(propertyValue.replace(/,/g, '')) || 0
+    const totalLoan = splits.reduce((sum, sp) => sum + (parseFloat((sp.amount || '0').replace(/,/g, '')) || 0), 0)
+    lvrPercent = value > 0 ? Math.round((totalLoan / value) * 1000) / 10 : 0
+  }
   const [internalNotes, setInternalNotes] = useState(s.internalNotes || '')
   const [brokerSig, setBrokerSig] = useState(s.brokerSig || deal.assigned_broker || 'Fabio')
   const [checklist, setChecklist] = useState<string[]>(s.checklist || [])
@@ -299,7 +310,7 @@ export default function BCForm({ deal }: { deal: any }) {
   const [moveToLoMsg, setMoveToLoMsg] = useState('')
 
   useEffect(() => {
-    const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue }
+    const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue }
     localStorage.setItem(saveKey, JSON.stringify(data))
     const timeoutId = setTimeout(() => {
       supabase.from('deals').update({ bc_data: data }).eq('id', deal.id).then(({ error }) => {
@@ -309,7 +320,7 @@ export default function BCForm({ deal }: { deal: any }) {
       setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
     }, 700)
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue])
 
   function selectTemplate(id: string) {
     setTemplate(id)
@@ -541,14 +552,15 @@ Key assumptions: ${checklistText}`
               )}
                   {!["refinance_equity", "refinance_only"].includes(template) && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={setStampDuty} /></Field>}
               {["refinance_equity", "refinance_only", "investment_equity", "buy_sell", "bridging"].includes(template) && <Field label="Existing loan balance"><NumberInput value={existingLoanBal} onChange={setExistingLoanBal} /></Field>}
+              {["refinance_equity", "refinance_only"].includes(template) && <Field label="Property value"><NumberInput value={propertyValue} onChange={setPropertyValue} /></Field>}
               {["refinance_equity", "investment_equity"].includes(template) && <Field label="Equity release amount"><NumberInput value={equityRelease} onChange={setEquityRelease} /></Field>}
 
-                  {isPurchaseLinked && (
+                  {showCalculatedLvr && (
                     <Field label="LVR (calculated)">
                       <div className={inputCls + " bg-gray-50 text-gray-700"}>{lvrPercent > 0 ? `${lvrPercent}%` : '\u2014'}</div>
                     </Field>
                   )}
-                  {isPurchaseLinked && lvrPercent > 80 && (
+                  {showCalculatedLvr && lvrPercent > 80 && (
                     <Field label="LMI status">
                       <select className={selectCls} value={lmiApplicable} onChange={e => setLmiApplicable(e.target.value)}>
                         <option value="">Select</option>
@@ -557,12 +569,12 @@ Key assumptions: ${checklistText}`
                       </select>
                     </Field>
                   )}
-                  {isPurchaseLinked && lvrPercent > 80 && lmiApplicable === 'Applicable' && (
+                  {showCalculatedLvr && lvrPercent > 80 && lmiApplicable === 'Applicable' && (
                     <Field label="LMI estimate">
                       <CurrencyInput className={inputCls} value={lmi} onChange={setLmi} />
                     </Field>
                   )}
-                  {!isPurchaseLinked && !["refinance_equity", "refinance_only"].includes(template) && <Field label="LVR">
+                  {!showCalculatedLvr && <Field label="LVR">
                  <select className={selectCls} value={lvr} onChange={e => setLvr(e.target.value)}>
                       <option>80%</option>
                       <option>90%</option>
@@ -570,7 +582,7 @@ Key assumptions: ${checklistText}`
                       <option>Other</option>
                     </select>
                   </Field>}
-                  {!isPurchaseLinked && !["refinance_equity", "refinance_only"].includes(template) && lvr === 'Other' && (
+                  {!showCalculatedLvr && lvr === 'Other' && (
                 <Field label="Custom LVR">
                       <input className={inputCls} placeholder="e.g. 85%" value={lvrCustom} onChange={e => setLvrCustom(e.target.value)} />
                     </Field>
