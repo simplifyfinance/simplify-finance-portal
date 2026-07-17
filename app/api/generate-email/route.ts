@@ -51,7 +51,7 @@ function row(l: string, v: string) {
 function check(items: string[]) {
   return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
     <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Based on your numbers</p>
-    ${items.map(i => `<p style="font-size:13px;color:#555;margin:6px 0"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#22c55e;color:#fff;text-align:center;line-height:14px;font-size:9px;font-weight:700;margin-right:6px">&#10003;</span>${i}</p>`).join('')}
+    ${items.map(i => `<p style="font-size:13px;color:#555;margin:4px 0">&#10003; ${i}</p>`).join('')}
   </td></tr></table>`
 }
 
