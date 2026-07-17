@@ -650,7 +650,7 @@ Key assumptions: ${checklistText}`
                 <div className="flex flex-col gap-2 mb-2">
                   {checklist.map((item, i) => (
                     <div key={i} className="flex items-center gap-2 text-sm">
-                      <span className="text-gray-500">\u2713</span>
+                      <span className="text-gray-500">✓</span>
                       <span className="flex-1">{item}</span>
                       <button onClick={() => setChecklist(c => c.filter((_,idx) => idx !== i))} className="text-xs text-gray-300 hover:text-red-400">✕</button>
                     </div>
