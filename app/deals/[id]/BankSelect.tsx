@@ -14,7 +14,7 @@ export default function BankSelect({
   className?: string
 }) {
   const [banks, setBanks] = useState<string[]>([])
-  const [customMode, setCustomMode] = useState(false)
+  const [isOther, setIsOther] = useState(false)
 
   useEffect(() => {
     supabase.from('lenders').select('name').order('name').then(({ data }) => {
@@ -27,48 +27,39 @@ export default function BankSelect({
 
   useEffect(() => {
     if (value && banks.length > 0 && !banks.includes(value)) {
-      setCustomMode(true)
+      setIsOther(true)
     }
   }, [value, banks])
 
-  if (customMode) {
-    return (
-      <div className="flex gap-1">
+  return (
+    <div className="flex gap-2">
+      <select
+        className={className}
+        value={isOther ? '__other__' : (banks.includes(value) ? value : '')}
+        onChange={(e) => {
+          if (e.target.value === '__other__') {
+            setIsOther(true)
+            onChange('')
+          } else {
+            setIsOther(false)
+            onChange(e.target.value)
+          }
+        }}
+      >
+        <option value="">Select bank</option>
+        {banks.map((bank) => (
+          <option key={bank} value={bank}>{bank}</option>
+        ))}
+        <option value="__other__">Other</option>
+      </select>
+      {isOther && (
         <input
           className={className}
           placeholder="Bank name"
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
-        <button
-          type="button"
-          className="text-xs text-gray-400 hover:text-gray-600 px-1"
-          onClick={() => { setCustomMode(false); onChange('') }}
-        >
-          ✕
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <select
-      className={className}
-      value={banks.includes(value) ? value : ''}
-      onChange={(e) => {
-        if (e.target.value === '__other__') {
-          setCustomMode(true)
-          onChange('')
-        } else {
-          onChange(e.target.value)
-        }
-      }}
-    >
-      <option value="">Select bank</option>
-      {banks.map((bank) => (
-        <option key={bank} value={bank}>{bank}</option>
-      ))}
-      <option value="__other__">Other</option>
-    </select>
+      )}
+    </div>
   )
 }
