@@ -107,7 +107,22 @@ export async function POST(req: NextRequest) {
   const isBridging = d.template === 'lo_bridging'
   const proceedUrl = dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=LO` : undefined
 
-  const templateLabel = d.template === 'lo_purchase' ? 'purchase an owner-occupied property' : d.template === 'lo_refinance' ? 'refinance your existing loan' : 'bridge between properties'
+  const BC_TEMPLATE_PHRASES: Record<string, string> = {
+    refinance_equity: 'refinance your existing loan and access equity',
+    refinance_only: 'refinance your existing loan',
+    oo_purchase: 'purchase an owner-occupied property',
+    oo_lvr_compare: 'purchase an owner-occupied property',
+    investment_purchase: 'purchase an investment property',
+    investment_equity: 'access equity for your next purchase',
+    buy_sell: 'sell your existing property and purchase a new one',
+    fhb: 'purchase your first home',
+    bridging: 'bridge between properties',
+    family_pledge: 'purchase your property with a family guarantee',
+    smsf_purchase: 'purchase a property through your SMSF',
+    construction: 'build your new property',
+    custom: 'structure your loan',
+  }
+  const templateLabel = BC_TEMPLATE_PHRASES[d.bcTemplate] || (d.template === 'lo_purchase' ? 'purchase an owner-occupied property' : d.template === 'lo_refinance' ? 'refinance your existing loan' : 'bridge between properties')
 
   let body = brokerBox(d.brokerPersonalisation, d.firstName, d.jointFirstName, d.joint)
   body += p(`Our team have now finalised your lending options to select from as you are looking to ${templateLabel}.`)

@@ -74,6 +74,7 @@ type LenderOption = {
 
 type LOData = {
   template: string
+  bcTemplate: string
   firstName: string
   lastName: string
   joint: string
@@ -201,6 +202,7 @@ export default function LOForm({ deal }: { deal: any }) {
     const initialTemplate = bc.template?.startsWith('refinance') ? 'lo_refinance' : bc.template === 'bridging' ? 'lo_bridging' : 'lo_purchase'
     return {
       template: initialTemplate,
+      bcTemplate: bc.template || '',
       firstName: bc.firstName || '',
       lastName: bc.lastName || '',
       joint: bc.joint || 'No',
@@ -234,6 +236,7 @@ export default function LOForm({ deal }: { deal: any }) {
     setD(prev => ({
       ...prev,
       template: newTemplate,
+      bcTemplate: bc.template || '',
       firstName: bc.firstName || '',
       lastName: bc.lastName || '',
       joint: bc.joint || 'No',
