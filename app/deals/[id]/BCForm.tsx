@@ -481,10 +481,22 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
 
   const [sendToClientMsg, setSendToClientMsg] = useState('')
 
+  function getCleanEmailHtml() {
+    const fn = (firstName || '[Client First Name]').trim()
+    const jfn = (ffApp2.firstName || '').trim()
+    const greetingName = (joint === 'Yes' && jfn) ? `${fn} and ${jfn}` : fn
+    let clean = `<p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">Hi ${greetingName},</p>`
+    if (brokerNotes && brokerNotes.trim()) {
+      clean += `<p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">${brokerNotes}</p>`
+    }
+    return emailHtml.replace(/<div style="background:#FFF8E7[\s\S]*?<\/div>/, clean)
+  }
+
   async function sendToClient() {
     try {
-      const blob = new Blob([emailHtml], { type: 'text/html' })
-      const textBlob = new Blob([emailHtml.replace(/<[^>]+>/g, '')], { type: 'text/plain' })
+      const cleanHtml = getCleanEmailHtml()
+      const blob = new Blob([cleanHtml], { type: 'text/html' })
+      const textBlob = new Blob([cleanHtml.replace(/<[^>]+>/g, '')], { type: 'text/plain' })
       await navigator.clipboard.write([new ClipboardItem({ 'text/html': blob, 'text/plain': textBlob })])
       const subject = 'Your Borrowing Capacity'
       const to = deal.clients?.email || ''
@@ -803,7 +815,7 @@ Key assumptions: ${checklistText}`
               <div className="flex items-center gap-3">
                 <button onClick={sendToClient}
                   className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90">Send to client</button>
-                <button onClick={() => { navigator.clipboard.writeText(emailHtml); alert('HTML copied!') }}
+                <button onClick={() => { navigator.clipboard.writeText(getCleanEmailHtml()); alert('HTML copied!') }}
                   className="text-xs text-gray-400 hover:text-gray-600 underline">Copy HTML instead</button>
               </div>
 

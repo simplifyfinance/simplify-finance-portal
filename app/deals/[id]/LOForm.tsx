@@ -380,12 +380,24 @@ export default function LOForm({ deal }: { deal: any }) {
     setGeneratingRec(false)
   }
 
+  function getCleanEmailHtml() {
+    const fn = (d.firstName || '[Client First Name]').trim()
+    const jfn = (d.jointFirstName || '').trim()
+    const greetingName = (d.joint === 'Yes' && jfn) ? `${fn} and ${jfn}` : fn
+    let clean = `<p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">Hi ${greetingName},</p>`
+    if (d.brokerPersonalisation && d.brokerPersonalisation.trim()) {
+      clean += `<p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">${d.brokerPersonalisation}</p>`
+    }
+    return emailHtml.replace(/<div style="background:#FFF8E7[\s\S]*?<\/div>/, clean)
+  }
+
   async function sendEmail() {
     if (!emailHtml) return
     setSending(true); setSendError(''); setSent(false)
     try {
-      const blob = new Blob([emailHtml], { type: 'text/html' })
-      const textBlob = new Blob([emailHtml.replace(/<[^>]+>/g, '')], { type: 'text/plain' })
+      const cleanHtml = getCleanEmailHtml()
+      const blob = new Blob([cleanHtml], { type: 'text/html' })
+      const textBlob = new Blob([cleanHtml.replace(/<[^>]+>/g, '')], { type: 'text/plain' })
       await navigator.clipboard.write([new ClipboardItem({ 'text/html': blob, 'text/plain': textBlob })])
       const subject = 'Lending Options & Recommendation'
       const to = deal.clients?.email || ''
@@ -832,7 +844,7 @@ export default function LOForm({ deal }: { deal: any }) {
                   <button onClick={sendEmail} disabled={sending || !emailHtml} className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-40">
                     {sending ? 'Copying...' : sent ? '✓ Copied — paste in Outlook' : 'Send to client'}
                   </button>
-                  <button onClick={() => { navigator.clipboard.writeText(emailHtml); alert('HTML copied!') }} className="text-xs text-gray-400 hover:text-gray-600 underline">Copy HTML instead</button>
+                  <button onClick={() => { navigator.clipboard.writeText(getCleanEmailHtml()); alert('HTML copied!') }} className="text-xs text-gray-400 hover:text-gray-600 underline">Copy HTML instead</button>
                 </div>
                 <div className="w-px h-8 bg-gray-200 ml-auto" />
                 <div className="flex items-center gap-4">

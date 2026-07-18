@@ -10,8 +10,14 @@ function shell(body: string) {
 }
 
 function brokerBox(text: string, firstName?: string, jointFirstName?: string, joint?: string) {
-  const greetingName = (joint === 'Yes' && jointFirstName) ? `${firstName || '[Client First Name]'} and ${jointFirstName}` : (firstName || '[Client First Name]')
-  return `<p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">Hi ${greetingName},</p><p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">${text || '[Add your personal opening here.]'}</p>`
+  const fn = (firstName || '[Client First Name]').trim()
+  const jfn = (jointFirstName || '').trim()
+  const greetingName = (joint === 'Yes' && jfn) ? `${fn} and ${jfn}` : fn
+  return `<div style="background:#FFF8E7;border-left:4px solid #F59E0B;border-radius:0 6px 6px 0;padding:13px 15px;margin-bottom:18px">
+    <p style="font-size:10px;font-weight:600;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Broker personalisation</p>
+    <p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">Hi ${greetingName},</p>
+    <p style="font-size:14px;color:#333;line-height:1.6">${text || '[Add your personal opening here.]'}</p>
+  </div>`
 }
 
 function sig(b: { name: string; title: string; crn: string }) {
