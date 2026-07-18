@@ -9,8 +9,9 @@ function shell(body: string) {
   return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr><td><table width="600" cellpadding="0" cellspacing="0" style="background:#fff;margin:0 auto"><tr><td style="background:#343333;padding:28px 24px;text-align:center"><img src="https://simplify-finance-portal.vercel.app/logo-charcoal.png" alt="Simplify Finance" style="height:80px;width:auto;display:block;margin:0 auto 8px" /><p style="color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0">Finance, Simplified.</p></td></tr><tr><td style="padding:28px">${body}</td></tr><tr><td style="background:#343333;padding:14px 16px;text-align:center"><p style="color:rgba(255,255,255,0.6);font-size:10px;line-height:1.6;margin:0">Rates quoted are indicative only and subject to change. This email does not constitute formal approval.</p><p style="color:rgba(255,255,255,0.4);font-size:10px;margin:4px 0 0">&copy; 2026 Simplify Finance | St Leonards, Sydney | Australian Credit Licence: 387025</p></td></tr></table></td></tr></table>`
 }
 
-function brokerBox(text: string, firstName?: string) {
-  return `<div style="background:#FFF8E7;border-left:4px solid #F59E0B;border-radius:0 6px 6px 0;padding:13px 15px;margin-bottom:18px"><p style="font-size:10px;font-weight:600;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Broker personalisation</p><p style="font-size:13px;color:#333;line-height:1.6">${text || `Hi ${firstName || '[Client First Name]'}, [Add your personal opening here.]`}</p></div>`
+function brokerBox(text: string, firstName?: string, jointFirstName?: string, joint?: string) {
+  const greetingName = (joint === 'Yes' && jointFirstName) ? `${firstName || '[Client First Name]'} and ${jointFirstName}` : (firstName || '[Client First Name]')
+  return `<div style="background:#FFF8E7;border-left:4px solid #F59E0B;border-radius:0 6px 6px 0;padding:13px 15px;margin-bottom:18px"><p style="font-size:10px;font-weight:600;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Broker personalisation</p><p style="font-size:13px;color:#333;line-height:1.6">${text || `Hi ${greetingName}, [Add your personal opening here.]`}</p></div>`
 }
 
 function sig(b: { name: string; title: string; crn: string }) {
@@ -102,7 +103,7 @@ export async function POST(req: NextRequest) {
 
   const templateLabel = d.template === 'lo_purchase' ? 'purchase an owner-occupied property' : d.template === 'lo_refinance' ? 'refinance your existing loan' : 'bridge between properties'
 
-  let body = brokerBox(d.brokerPersonalisation, d.firstName)
+  let body = brokerBox(d.brokerPersonalisation, d.firstName, d.jointFirstName, d.joint)
   body += p(`Our team have now finalised your lending options to select from as you are looking to ${templateLabel}.`)
 
   if (!isBridging && (d.purchasePrice || d.loanAmount)) {

@@ -77,6 +77,8 @@ type LOData = {
   firstName: string
   lastName: string
   joint: string
+  jointFirstName: string
+  jointLastName: string
   loanAmount: string
   purchasePrice: string
   deposit: string
@@ -153,6 +155,8 @@ export default function LOForm({ deal }: { deal: any }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `lo_${deal.id}`
   const bc = deal.bc_data || {}
+  const ff = deal.fact_find_data || {}
+  const ffApp2 = (ff.applicants || [])[1] || {}
 
   const [allProducts, setAllProducts] = useState<LenderProduct[]>([])
   const [generating, setGenerating] = useState(false)
@@ -200,6 +204,8 @@ export default function LOForm({ deal }: { deal: any }) {
       firstName: bc.firstName || '',
       lastName: bc.lastName || '',
       joint: bc.joint || 'No',
+      jointFirstName: ffApp2.firstName || '',
+      jointLastName: ffApp2.lastName || '',
       loanAmount: bc.splits?.[0]?.amount || '',
       purchasePrice: bc.purchasePrice || '',
       deposit: bc.deposit || '',
@@ -231,6 +237,8 @@ export default function LOForm({ deal }: { deal: any }) {
       firstName: bc.firstName || '',
       lastName: bc.lastName || '',
       joint: bc.joint || 'No',
+      jointFirstName: ffApp2.firstName || '',
+      jointLastName: ffApp2.lastName || '',
       loanAmount: bc.splits?.[0]?.amount || '',
       purchasePrice: bc.purchasePrice || '',
       deposit: bc.deposit || '',
@@ -458,10 +466,13 @@ export default function LOForm({ deal }: { deal: any }) {
             <div className="grid grid-cols-2 gap-3 mb-4">
               <Field label="First name"><input className={inp} value={d.firstName} onChange={e => setD({ ...d, firstName: e.target.value })} /></Field>
               <Field label="Last name"><input className={inp} value={d.lastName} onChange={e => setD({ ...d, lastName: e.target.value })} /></Field>
-              <Field label="Joint application">
-                <select className={sel} value={d.joint} onChange={e => setD({ ...d, joint: e.target.value })}><option>No</option><option>Yes</option></select>
-              </Field>
             </div>
+            {d.joint === 'Yes' && (
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <Field label="Joint applicant first name"><input className={inp} value={d.jointFirstName} onChange={e => setD({ ...d, jointFirstName: e.target.value })} /></Field>
+                <Field label="Joint applicant last name"><input className={inp} value={d.jointLastName} onChange={e => setD({ ...d, jointLastName: e.target.value })} /></Field>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3 mb-4">
               <Field label="Email template">
                 <select className={sel} value={d.template} onChange={e => selectTemplate(e.target.value)}>
