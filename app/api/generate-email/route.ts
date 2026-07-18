@@ -137,7 +137,6 @@ export async function POST(req: NextRequest) {
 
   if (template === 'refinance_equity') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p('Great news — we have finished running your numbers and the results are looking really positive.') +
       p(`Based on your current financial position, you have sufficient capacity to refinance your property and access approximately ${d.splits?.[1]?.amount || '[equity amount]'} in equity, while also securing a competitive rate.`) +
       p13('Here is a breakdown of the structure:') +
       propHead(`Against ${d.suburb || '[Property Address]'}`, d.incomeRental) +
@@ -149,7 +148,6 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'refinance_only') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p('Great news — we have finished running your numbers and the results are looking really positive.') +
       p('Based on your current financial position, you have sufficient capacity to refinance your existing loan and secure a competitive rate.') +
       p13('Here is a breakdown of the structure:') +
       propHead(`Against ${d.suburb || '[Property Address]'}`, d.incomeRental) +
