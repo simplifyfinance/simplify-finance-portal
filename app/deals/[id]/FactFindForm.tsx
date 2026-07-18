@@ -1183,9 +1183,8 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
               )}
               {(liab.liabilityType === 'Car loan' || liab.liabilityType === 'Personal loan' || liab.liabilityType === 'Other') && (
                 <>
-                  <div className="grid grid-cols-3 gap-3 mb-3">
+                  <div className="grid grid-cols-2 gap-3 mb-3">
                     <input className={inp} placeholder="Bank / lender" value={liab.lenderName} onChange={e => updateLiability(liab.id, 'lenderName', e.target.value)} />
-                    <CurrencyInput className={inp} placeholder="Limit" value={liab.limitAmount} onChange={val => updateLiability(liab.id, 'limitAmount', val)} />
                     <CurrencyInput className={inp} placeholder="Balance" value={liab.balance} onChange={val => updateLiability(liab.id, 'balance', val)} />
                   </div>
                   <div className="grid grid-cols-3 gap-3 mb-3">
