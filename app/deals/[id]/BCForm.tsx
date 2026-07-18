@@ -67,6 +67,63 @@ function buildHousingExpenseLine(app: any): string {
   return ''
 }
 
+function getOwnerNamesFromCheckbox(ownership: Record<string, string> | undefined, applicants: any[]): string {
+  if (!ownership) return ''
+  return applicants.filter((a) => ownership[a.id] === 'Yes').map((a) => a.firstName || 'Applicant').join(', ')
+}
+
+function getOwnerNamesFromPercent(ownership: Record<string, string> | undefined, applicants: any[]): string {
+  if (!ownership) return ''
+  return applicants.filter((a) => (Number(ownership[a.id]) || 0) > 0).map((a) => a.firstName || 'Applicant').join(', ')
+}
+
+function freqLabel(freq: string | undefined): string {
+  if (freq === 'Weekly') return 'week'
+  if (freq === 'Fortnightly') return 'fortnight'
+  return 'month'
+}
+
+function buildPropertyLiabilityChecklist(ff: any): string[] {
+  const items: string[] = []
+  const applicants = ff.applicants || []
+  const properties = ff.properties || []
+  const liabilities = ff.liabilities || []
+
+  properties.forEach((prop: any) => {
+    const owners = getOwnerNamesFromPercent(prop.ownership, applicants)
+    const isInvestment = prop.ownershipType === 'Investment'
+    const typeParts = [prop.propertySubtype, prop.zoning].filter(Boolean).join(', ')
+    items.push(`${prop.address || 'Property'}\u2014${typeParts ? ' ' + typeParts : ''} (${prop.ownershipType || 'Owner occupied'})`)
+    if (isInvestment && prop.rentalIncome) {
+      items.push(`Rental income: $${prop.rentalIncome}/week`)
+    }
+    if (owners) {
+      items.push(`Owned by: ${owners}`)
+    }
+    ;(prop.loans || []).forEach((loan: any) => {
+      if (loan.lenderName || loan.balance) {
+        items.push(`Linked loan: ${loan.lenderName || 'Lender'}\u2014Balance $${loan.balance || '0'}`)
+      }
+    })
+  })
+
+  liabilities.forEach((liab: any) => {
+    const owners = getOwnerNamesFromCheckbox(liab.ownership, applicants)
+    const ownerSuffix = owners ? `, owned by ${owners}` : ''
+    if (liab.liabilityType === 'Credit card') {
+      items.push(`Credit card\u2014Limit $${liab.limitAmount || '0'}${ownerSuffix}`)
+    } else if (liab.liabilityType === 'HECS') {
+      items.push(`HECS\u2014Balance $${liab.balance || '0'}${ownerSuffix}`)
+    } else if (liab.liabilityType === 'Health Insurance') {
+      items.push(`Health insurance\u2014$${liab.repaymentAmount || '0'}/${freqLabel(liab.repaymentFrequency)}${ownerSuffix}`)
+    } else {
+      items.push(`${liab.liabilityType}\u2014Repayment $${liab.repaymentAmount || '0'}/${freqLabel(liab.repaymentFrequency)}, Balance $${liab.balance || '0'}${ownerSuffix}`)
+    }
+  })
+
+  return items
+}
+
 function buildIncomeBreakdown(app: any, applicantLabel: string): { label: string; amount: number | null }[] {
   const incomeList: any[] = app?.income || []
   return incomeList
@@ -468,7 +525,7 @@ Key assumptions: ${checklistText}`
         body: JSON.stringify({ broker: brokerSig, dealId: deal.id, formData: { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeBreakdown: [
           ...buildIncomeBreakdown(ffApp, firstName || 'Applicant 1'),
           ...(joint === 'Yes' ? buildIncomeBreakdown(ffApp2, ffApp2.firstName || 'Applicant 2') : [])
-        ], housingExpense: buildHousingExpenseLine(ffApp), incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, checklist, additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
+        ], housingExpense: buildHousingExpenseLine(ffApp), factFindChecklist: buildPropertyLiabilityChecklist(ff), incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, checklist, additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
       })
       if (!res.ok) { setEmailError(`Server error: ${res.status}`); setGenerating(false); return }
       const data = await res.json()

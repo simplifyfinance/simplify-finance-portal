@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
 
   const template = d.template || 'oo_purchase'
   const personalisation = d.brokerNotes || ''
-  const checkItems = [...buildChecklist(d), ...(d.checklist || [])]
+  const checkItems = [...buildChecklist(d), ...(d.factFindChecklist || []), ...(d.checklist || [])]
   const notes = d.additionalNotes || []
 
   let body = ''
