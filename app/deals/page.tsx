@@ -198,8 +198,14 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
       })
   }, [])
 
-  const primaryLastName = selectedClient?.last_name || form.last_name
-  const dealName = `${primaryLastName}_${deal.deal_type}_${new Date().getFullYear()}`
+  const app1First = selectedClient?.first_name || form.first_name || ''
+  const app1Last = selectedClient?.last_name || form.last_name || ''
+  const app2First = form2.first_name || ''
+  const app2Last = form2.last_name || ''
+  const namePart = showSecondApplicant && (app2First || app2Last)
+    ? `${app1First}_${app1Last}_${app2First}_${app2Last}`
+    : `${app1First}_${app1Last}`
+  const dealName = `${namePart}_${deal.deal_type}_${new Date().getFullYear()}`
 
   async function handleCreate() {
     setSaving(true)
