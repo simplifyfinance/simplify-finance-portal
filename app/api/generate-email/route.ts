@@ -20,11 +20,9 @@ function shell(body: string, b: { name: string; title: string; crn: string; cale
   </table></td></tr></table>`
 }
 
-function brokerBox(personalisation: string) {
-  return `<div style="background:#FFF8E7;border-left:4px solid #F59E0B;border-radius:0 6px 6px 0;padding:13px 15px;margin-bottom:18px">
-    <p style="font-size:10px;font-weight:600;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Broker — personalise before sending</p>
-    <p style="font-size:13px;color:#333;line-height:1.6">${personalisation || 'Hi [Client First Name], great speaking with you today. [Add your personal opening here.]'}</p>
-  </div>`
+function brokerBox(personalisation: string, firstName?: string, jointFirstName?: string, joint?: string) {
+  const greetingName = (joint === 'Yes' && jointFirstName) ? `${firstName || '[Client First Name]'} and ${jointFirstName}` : (firstName || '[Client First Name]')
+  return `<p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">Hi ${greetingName}, great speaking with you today.</p><p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">${personalisation || '[Add your personal opening here.]'}</p>`
 }
 
 function notesBox(items: string[]) {
@@ -132,7 +130,7 @@ export async function POST(req: NextRequest) {
   let body = ''
 
   if (template === 'refinance_equity') {
-    body = heading() + brokerBox(personalisation) +
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('Great news — we have finished running your numbers and the results are looking really positive.') +
       p(`Based on your current financial position, you have sufficient capacity to refinance your property and access approximately ${d.splits?.[1]?.amount || '[equity amount]'} in equity, while also securing a competitive rate.`) +
       p13('Here is a breakdown of the structure:') +
@@ -144,7 +142,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else if (template === 'refinance_only') {
-    body = heading() + brokerBox(personalisation) +
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('Great news — we have finished running your numbers and the results are looking really positive.') +
       p('Based on your current financial position, you have sufficient capacity to refinance your existing loan and secure a competitive rate.') +
       p13('Here is a breakdown of the structure:') +
@@ -155,7 +153,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else if (template === 'oo_purchase') {
-    body = heading() + brokerBox(personalisation) +
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have completed your borrowing capacity assessment.') +
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
       p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong>.`) +
@@ -175,7 +173,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else if (template === 'investment_purchase') {
-    body = heading() + brokerBox(personalisation) +
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have completed your borrowing capacity assessment.') +
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
       p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong>.`) +
@@ -194,7 +192,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else if (template === 'buy_sell') {
-    body = heading() + brokerBox(personalisation) +
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have completed your borrowing capacity assessment.') +
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
       card('Sale Proceeds Summary',
@@ -240,7 +238,7 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;color:#555;margin:3px 0">Type: ${s.type}</p>
       </td>`
     }).join('')
-    body = heading() + brokerBox(personalisation) +
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have completed your borrowing capacity assessment.') +
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.purchasePrice || '[purchase price]'}</strong>. Below we have outlined ${splits.length} scenarios based on different deposit contributions.`) +
       `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
@@ -252,7 +250,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else if (template === 'fhb') {
-    body = heading() + brokerBox(personalisation) +
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have completed your borrowing capacity assessment.') +
       p('There is currently a government scheme we believe that you would be eligible for. The 5% Deposit Scheme is a current government scheme that allows first home buyers with a minimum 5% deposit to purchase a property without the cost of mortgage insurance.') +
       `<p style="font-size:14px;color:#333;margin-bottom:8px">To apply for the 5% Deposit Scheme, home buyers must be:</p>
@@ -282,7 +280,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else if (template === 'bridging') {
-    body = heading() + brokerBox(personalisation) +
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have completed your borrowing capacity assessment.') +
       p('Based on your current financial position, bridging finance is achievable for your next owner-occupied purchase.') +
       card('Bridging Loan Summary',
@@ -307,7 +305,7 @@ export async function POST(req: NextRequest) {
       notesBox(notes) + sig(b)
 
   } else if (template === 'family_pledge') {
-    body = heading() + brokerBox(personalisation) +
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have completed your borrowing capacity assessment.') +
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
       p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong> — using your parents' property as a security guarantee to avoid Lenders Mortgage Insurance.`) +
@@ -327,7 +325,7 @@ export async function POST(req: NextRequest) {
       notesBox(notes) + sig(b)
 
   } else if (template === 'smsf') {
-    body = heading() + brokerBox(personalisation) +
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have completed your borrowing capacity assessment.') +
       p('When looking at your numbers, your borrowing capacity is looking strong for an SMSF purchase.') +
       card('Your Loan Structure',
@@ -345,7 +343,7 @@ export async function POST(req: NextRequest) {
       notesBox(notes) + sig(b)
 
   } else if (template === 'construction') {
-    body = heading() + brokerBox(personalisation) +
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have completed your borrowing capacity assessment.') +
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
       card('Your Loan Structure',
@@ -384,7 +382,7 @@ export async function POST(req: NextRequest) {
       <p style="font-size:11px;color:#555;margin:2px 0">Estimated repayments: [calculated]</p>
       <p style="font-size:11px;color:#555;margin:2px 0">Repayment type: ${d.splits?.[2]?.type || 'P&I'} over ${d.loanTerm || '30'} years</p>`
 
-    body = heading() + brokerBox(personalisation) +
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have now finalised your review as you are looking at purchasing an owner-occupied/investment property.') +
       p('We would use equity in your owner-occupied/investment property to help fund the deposit plus stamp duty costs.') +
       p('A second loan will be set up against your new purchase, so all properties are stand alone — these are two separate securities, not cross-collateralised.') +
@@ -414,7 +412,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else if (template === 'custom') {
-    body = heading() + brokerBox(personalisation) +
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have completed your borrowing capacity assessment.') +
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
       card('Your Loan Structure',
@@ -432,7 +430,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else {
-    body = heading() + brokerBox(personalisation) + p('Email template coming soon.') + ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + sig(b)
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) + p('Email template coming soon.') + ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + sig(b)
   }
 
   const html = shell(body, b)
