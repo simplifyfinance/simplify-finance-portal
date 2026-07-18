@@ -74,6 +74,9 @@ type LenderOption = {
 
 type LOData = {
   template: string
+  firstName: string
+  lastName: string
+  joint: string
   loanAmount: string
   purchasePrice: string
   deposit: string
@@ -194,6 +197,9 @@ export default function LOForm({ deal }: { deal: any }) {
     const initialTemplate = bc.template?.startsWith('refinance') ? 'lo_refinance' : bc.template === 'bridging' ? 'lo_bridging' : 'lo_purchase'
     return {
       template: initialTemplate,
+      firstName: bc.firstName || '',
+      lastName: bc.lastName || '',
+      joint: bc.joint || 'No',
       loanAmount: bc.splits?.[0]?.amount || '',
       purchasePrice: bc.purchasePrice || '',
       deposit: bc.deposit || '',
@@ -216,6 +222,23 @@ export default function LOForm({ deal }: { deal: any }) {
   }
 
   const [d, setD] = useState<LOData>(initData)
+
+  useEffect(() => {
+    const newTemplate = bc.template?.startsWith('refinance') ? 'lo_refinance' : bc.template === 'bridging' ? 'lo_bridging' : 'lo_purchase'
+    setD(prev => ({
+      ...prev,
+      template: newTemplate,
+      firstName: bc.firstName || '',
+      lastName: bc.lastName || '',
+      joint: bc.joint || 'No',
+      loanAmount: bc.splits?.[0]?.amount || '',
+      purchasePrice: bc.purchasePrice || '',
+      deposit: bc.deposit || '',
+      stampDuty: bc.stampDuty || '',
+      existingLoan: bc.existingLoanBal || '',
+      refinanceSplits: initRefinanceSplits(),
+    }))
+  }, [deal.bc_data])
 
   function selectTemplate(id: string) {
     setD({ ...d, template: id, importantNotes: (LO_TEMPLATE_NOTES[id] || []).join('\n') })
@@ -432,6 +455,13 @@ export default function LOForm({ deal }: { deal: any }) {
           {/* Scenario */}
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Scenario</div>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <Field label="First name"><input className={inp} value={d.firstName} onChange={e => setD({ ...d, firstName: e.target.value })} /></Field>
+              <Field label="Last name"><input className={inp} value={d.lastName} onChange={e => setD({ ...d, lastName: e.target.value })} /></Field>
+              <Field label="Joint application">
+                <select className={sel} value={d.joint} onChange={e => setD({ ...d, joint: e.target.value })}><option>No</option><option>Yes</option></select>
+              </Field>
+            </div>
             <div className="grid grid-cols-2 gap-3 mb-4">
               <Field label="Email template">
                 <select className={sel} value={d.template} onChange={e => selectTemplate(e.target.value)}>
