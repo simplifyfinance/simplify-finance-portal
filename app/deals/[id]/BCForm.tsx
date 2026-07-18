@@ -232,7 +232,7 @@ function NumberInput({ value, onChange, placeholder }: { value: string; onChange
   )
 }
 
-export default function BCForm({ deal }: { deal: any }) {
+export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange?: (d: any) => void }) {
   const saveKey = `bc-form-${deal.id}`
 
   const getSaved = () => {
@@ -369,6 +369,7 @@ export default function BCForm({ deal }: { deal: any }) {
   useEffect(() => {
     const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue }
     localStorage.setItem(saveKey, JSON.stringify(data))
+    onDataChange?.(data)
     const timeoutId = setTimeout(() => {
       supabase.from('deals').update({ bc_data: data }).eq('id', deal.id).then(({ error }) => {
         if (error) { console.error('BC autosave failed:', error); setSaveError(error.message) }

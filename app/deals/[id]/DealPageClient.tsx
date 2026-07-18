@@ -48,7 +48,7 @@ export default function DealPageClient({ deal, initialStage }: { deal: any; init
       </div>
 
       {stage === 'FactFind' && <FactFindForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} />}
-      {stage === 'BC' && <BCForm deal={dealData} />}
+      {stage === 'BC' && <BCForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} />}
       {stage === 'LO' && <LOForm deal={dealData} />}
       {stage === 'Compliance' && <ComplianceForm deal={dealData} />}
     </div>
