@@ -362,7 +362,7 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
       assets: [],
       properties: [],
       liabilities: [],
-      dependants: ''
+      dependants: '0'
     }
   }
 
@@ -548,8 +548,11 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
         + Add applicant
       </button>
       <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-1.5 ml-1">
+        <svg className="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 4-4h1m5-8a4 4 0 1 1-8 0 4 4 0 0 1 8 0zm6 4a4 4 0 1 0-8 0" />
+        </svg>
         <span className="text-xs text-gray-500 whitespace-nowrap">Dependants</span>
-        <input type="number" className="w-12 text-center text-sm border-0 focus:outline-none p-0" value={d.dependants} onChange={e => setD(prev => ({ ...prev, dependants: e.target.value }))} />
+        <input type="number" className="w-12 text-center text-sm border-0 focus:outline-none p-0" value={d.dependants || '0'} onChange={e => setD(prev => ({ ...prev, dependants: e.target.value }))} />
       </div>
     </div>
   )
