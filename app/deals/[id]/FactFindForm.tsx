@@ -1132,7 +1132,7 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                       <button onClick={() => removePropertyLoan(prop.id, loan.id)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
                     </div>
                     <div className="grid grid-cols-4 gap-3 mb-2">
-                      <input className={inp} placeholder="Bank" value={loan.lenderName} onChange={e => updatePropertyLoan(prop.id, loan.id, 'lenderName', e.target.value)} />
+                      <BankSelect className={inp} value={loan.lenderName} onChange={v => updatePropertyLoan(prop.id, loan.id, 'lenderName', v)} />
                       <input className={inp} placeholder="BSB" value={loan.bsb} onChange={e => updatePropertyLoan(prop.id, loan.id, 'bsb', e.target.value)} />
                       <input className={inp} placeholder="Account number" value={loan.accountNumber} onChange={e => updatePropertyLoan(prop.id, loan.id, 'accountNumber', e.target.value)} />
                       <input className={inp} placeholder="Interest rate %" value={loan.interestRate} onChange={e => updatePropertyLoan(prop.id, loan.id, 'interestRate', e.target.value)} />
