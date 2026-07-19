@@ -407,6 +407,41 @@ export default function LOForm({ deal }: { deal: any }) {
     setGeneratingRec(false)
   }
 
+  function handleLoPurchasePriceChange(val: string) {
+    const price = parseFloat(val.replace(/,/g, '')) || 0
+    const dep = parseFloat((d.deposit || '0').replace(/,/g, '')) || 0
+    if (dep > 0) {
+      setD(prev => ({ ...prev, purchasePrice: val, loanAmount: formatNumber(Math.max(0, Math.round(price - dep)).toString()) }))
+    } else {
+      const loanAmt = parseFloat((d.loanAmount || '0').replace(/,/g, '')) || 0
+      if (loanAmt > 0) {
+        setD(prev => ({ ...prev, purchasePrice: val, deposit: formatNumber(Math.max(0, Math.round(price - loanAmt)).toString()) }))
+      } else {
+        setD(prev => ({ ...prev, purchasePrice: val }))
+      }
+    }
+  }
+
+  function handleLoDepositChange(val: string) {
+    const price = parseFloat((d.purchasePrice || '0').replace(/,/g, '')) || 0
+    const dep = parseFloat(val.replace(/,/g, '')) || 0
+    if (price > 0) {
+      setD(prev => ({ ...prev, deposit: val, loanAmount: formatNumber(Math.max(0, Math.round(price - dep)).toString()) }))
+    } else {
+      setD(prev => ({ ...prev, deposit: val }))
+    }
+  }
+
+  function handleLoLoanAmountChange(val: string) {
+    const price = parseFloat((d.purchasePrice || '0').replace(/,/g, '')) || 0
+    const loanAmt = parseFloat(val.replace(/,/g, '')) || 0
+    if (price > 0) {
+      setD(prev => ({ ...prev, loanAmount: val, deposit: formatNumber(Math.max(0, Math.round(price - loanAmt)).toString()) }))
+    } else {
+      setD(prev => ({ ...prev, loanAmount: val }))
+    }
+  }
+
   function getCleanEmailHtml() {
     const fn = (d.firstName || '[Client First Name]').trim()
     const jfn = (d.jointFirstName || '').trim()
@@ -520,7 +555,7 @@ export default function LOForm({ deal }: { deal: any }) {
               </Field>
               {!isRefinance && (
                 <Field label="Loan amount">
-                  <NumberInput value={d.loanAmount} onChange={v => setD({ ...d, loanAmount: v })} />
+                  <NumberInput value={d.loanAmount} onChange={handleLoLoanAmountChange} />
                 </Field>
               )}
             </div>
@@ -528,9 +563,19 @@ export default function LOForm({ deal }: { deal: any }) {
             {/* Purchase-specific fields */}
             {!isRefinance && !isBridging && (
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Purchase price"><NumberInput value={d.purchasePrice} onChange={v => setD({ ...d, purchasePrice: v })} /></Field>
-                <Field label="Deposit"><NumberInput value={d.deposit} onChange={v => setD({ ...d, deposit: v })} /></Field>
+                <Field label="Purchase price"><NumberInput value={d.purchasePrice} onChange={handleLoPurchasePriceChange} /></Field>
+                <Field label="Deposit"><NumberInput value={d.deposit} onChange={handleLoDepositChange} /></Field>
                 <Field label="Stamp duty"><NumberInput value={d.stampDuty} onChange={v => setD({ ...d, stampDuty: v })} /></Field>
+                <Field label="LVR (calculated)">
+                  <div className={inp + " bg-gray-50 text-gray-700"}>
+                    {(() => {
+                      const price = parseFloat((d.purchasePrice || '0').replace(/,/g, '')) || 0
+                      const loanAmt = parseFloat((d.loanAmount || '0').replace(/,/g, '')) || 0
+                      const pct = price > 0 ? Math.round((loanAmt / price) * 1000) / 10 : 0
+                      return pct > 0 ? `${pct}%` : '\u2014'
+                    })()}
+                  </div>
+                </Field>
               </div>
             )}
 
