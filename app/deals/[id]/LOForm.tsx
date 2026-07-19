@@ -140,6 +140,22 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
+function formatNumber(val: string): string {
+  const digits = val.replace(/[^0-9]/g, '')
+  if (!digits) return ''
+  return parseInt(digits).toLocaleString('en-AU')
+}
+
+function NumberInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <div className="relative">
+      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
+      <input className="w-full border border-gray-200 rounded-lg pl-5 pr-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]" placeholder={placeholder} value={value}
+        onChange={e => onChange(formatNumber(e.target.value))} />
+    </div>
+  )
+}
+
 function LibraryField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div>
@@ -147,7 +163,10 @@ function LibraryField({ label, value, onChange }: { label: string; value: string
         <label className="text-xs font-medium text-gray-500">{label}</label>
         <span className="text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">library</span>
       </div>
-      <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] bg-blue-50/30" value={value} onChange={e => onChange(e.target.value)} placeholder="—" />
+      <div className="relative">
+        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
+        <input className="w-full border border-gray-200 rounded-lg pl-5 pr-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] bg-blue-50/30" value={value} onChange={e => onChange(formatNumber(e.target.value))} placeholder="—" />
+      </div>
     </div>
   )
 }
@@ -496,7 +515,7 @@ export default function LOForm({ deal }: { deal: any }) {
               </Field>
               {!isRefinance && (
                 <Field label="Loan amount">
-                  <input className={inp} value={d.loanAmount} onChange={e => setD({ ...d, loanAmount: e.target.value })} />
+                  <NumberInput value={d.loanAmount} onChange={v => setD({ ...d, loanAmount: v })} />
                 </Field>
               )}
             </div>
@@ -504,9 +523,9 @@ export default function LOForm({ deal }: { deal: any }) {
             {/* Purchase-specific fields */}
             {!isRefinance && !isBridging && (
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Purchase price"><input className={inp} value={d.purchasePrice} onChange={e => setD({ ...d, purchasePrice: e.target.value })} /></Field>
-                <Field label="Deposit"><input className={inp} value={d.deposit} onChange={e => setD({ ...d, deposit: e.target.value })} /></Field>
-                <Field label="Stamp duty"><input className={inp} value={d.stampDuty} onChange={e => setD({ ...d, stampDuty: e.target.value })} /></Field>
+                <Field label="Purchase price"><NumberInput value={d.purchasePrice} onChange={v => setD({ ...d, purchasePrice: v })} /></Field>
+                <Field label="Deposit"><NumberInput value={d.deposit} onChange={v => setD({ ...d, deposit: v })} /></Field>
+                <Field label="Stamp duty"><NumberInput value={d.stampDuty} onChange={v => setD({ ...d, stampDuty: v })} /></Field>
               </div>
             )}
 
@@ -699,11 +718,11 @@ export default function LOForm({ deal }: { deal: any }) {
                       <div className="text-xs font-medium text-gray-400 uppercase tracking-widest col-span-2 mb-1">Bridging structure</div>
                       <Field label="Variable rate % p.a."><input className={inp} value={lender.bridgingRate} onChange={e => updateLender(i, 'bridgingRate', e.target.value)} /></Field>
                       <Field label="Loan term (months)"><input className={inp} value={lender.bridgingTerm} onChange={e => updateLender(i, 'bridgingTerm', e.target.value)} /></Field>
-                      <Field label="Bridging loan amount"><input className={inp} value={lender.bridgingLoanAmount} onChange={e => updateLender(i, 'bridgingLoanAmount', e.target.value)} placeholder="e.g. $800,000" /></Field>
+                      <Field label="Bridging loan amount"><NumberInput value={lender.bridgingLoanAmount} onChange={v => updateLender(i, 'bridgingLoanAmount', v)} placeholder="e.g. 800,000" /></Field>
                       <Field label="Estimated interest"><input className={inp} value={lender.estimatedInterest} onChange={e => updateLender(i, 'estimatedInterest', e.target.value)} placeholder="e.g. $12,000" /></Field>
-                      <Field label="Establishment fee"><input className={inp} value={lender.establishmentFee} onChange={e => updateLender(i, 'establishmentFee', e.target.value)} /></Field>
-                      <Field label="Monthly fee"><input className={inp} value={lender.monthlyFee} onChange={e => updateLender(i, 'monthlyFee', e.target.value)} /></Field>
-                      <Field label="Doc processing fee"><input className={inp} value={lender.docProcessingFee} onChange={e => updateLender(i, 'docProcessingFee', e.target.value)} /></Field>
+                      <Field label="Establishment fee"><NumberInput value={lender.establishmentFee} onChange={v => updateLender(i, 'establishmentFee', v)} /></Field>
+                      <Field label="Monthly fee"><NumberInput value={lender.monthlyFee} onChange={v => updateLender(i, 'monthlyFee', v)} /></Field>
+                      <Field label="Doc processing fee"><NumberInput value={lender.docProcessingFee} onChange={v => updateLender(i, 'docProcessingFee', v)} /></Field>
                     </div>
                   ) : (
                     <div className="border-t border-gray-100 pt-4 space-y-4">
@@ -722,7 +741,7 @@ export default function LOForm({ deal }: { deal: any }) {
                           {lender[key].enabled && (
                             <div className="grid grid-cols-3 gap-2 mt-2">
                               <Field label="Rate % p.a."><input className={inp} value={lender[key].rate} onChange={e => updateRateModule(i, key, 'rate', e.target.value)} /></Field>
-                              <Field label="Monthly repayment"><input className={inp} value={lender[key].repayment} onChange={e => updateRateModule(i, key, 'repayment', e.target.value)} /></Field>
+                              <Field label="Monthly repayment"><NumberInput value={lender[key].repayment} onChange={v => updateRateModule(i, key, 'repayment', v)} /></Field>
                               <Field label="Loan term (years)"><input className={inp} value={lender[key].loanTerm} onChange={e => updateRateModule(i, key, 'loanTerm', e.target.value)} /></Field>
                               {showIO && <Field label="IO period (years)"><select className={sel} value={lender[key].ioYears} onChange={e => updateRateModule(i, key, 'ioYears', e.target.value)}><option value="">— select —</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></Field>}
                               {showFixed && <Field label="Fixed for (years)"><select className={sel} value={lender[key].fixedYears} onChange={e => updateRateModule(i, key, 'fixedYears', e.target.value)}><option value="">— select —</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></Field>}
