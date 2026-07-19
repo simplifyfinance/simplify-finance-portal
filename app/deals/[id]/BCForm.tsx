@@ -283,6 +283,13 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
   const [depositSource, setDepositSource] = useState(s.depositSource || '')
   const [stampDuty, setStampDuty] = useState(s.stampDuty || '')
   const [existingLoanBal, setExistingLoanBal] = useState(s.existingLoanBal || '')
+
+  function handleExistingLoanBalChange(val: string) {
+    setExistingLoanBal(val)
+    if (['refinance_equity', 'refinance_only'].includes(template)) {
+      setSplits(prev => prev.map((sp, idx) => idx === 0 ? { ...sp, amount: formatNumber(val) } : sp))
+    }
+  }
   const [propertyValue, setPropertyValue] = useState(s.propertyValue || '')
   const [equityRelease, setEquityRelease] = useState(s.equityRelease || '')
   const [lvr, setLvr] = useState(s.lvr || '80%')
@@ -640,7 +647,7 @@ Key assumptions: ${checklistText}`
                 </Field>
               )}
                   {!["refinance_equity", "refinance_only"].includes(template) && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={setStampDuty} /></Field>}
-              {["refinance_equity", "refinance_only", "investment_equity", "buy_sell", "bridging"].includes(template) && <Field label="Existing loan balance"><NumberInput value={existingLoanBal} onChange={setExistingLoanBal} /></Field>}
+              {["refinance_equity", "refinance_only", "investment_equity", "buy_sell", "bridging"].includes(template) && <Field label="Existing loan balance"><NumberInput value={existingLoanBal} onChange={handleExistingLoanBalChange} /></Field>}
               {["refinance_equity", "refinance_only"].includes(template) && <Field label="Property value"><NumberInput value={propertyValue} onChange={setPropertyValue} /></Field>}
               {["refinance_equity", "investment_equity"].includes(template) && <Field label="Equity release amount"><NumberInput value={equityRelease} onChange={setEquityRelease} /></Field>}
 
