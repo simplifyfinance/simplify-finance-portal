@@ -283,6 +283,26 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
   const [depositSource, setDepositSource] = useState(s.depositSource || '')
   const [stampDuty, setStampDuty] = useState(s.stampDuty || '')
   const [existingLoanBal, setExistingLoanBal] = useState(s.existingLoanBal || '')
+  const [newPurchasePrice, setNewPurchasePrice] = useState(s.newPurchasePrice || '')
+  const [newPurchaseDeposit, setNewPurchaseDeposit] = useState(s.newPurchaseDeposit || '')
+
+  function handleNewPurchasePriceChange(val: string) {
+    setNewPurchasePrice(val)
+    const price = parseFloat(val.replace(/,/g, '')) || 0
+    const dep = parseFloat(newPurchaseDeposit.replace(/,/g, '')) || 0
+    if (dep > 0) {
+      setSplits(prev => prev.map((sp, idx) => idx === 2 ? { ...sp, amount: formatNumber(Math.max(0, Math.round(price - dep)).toString()) } : sp))
+    }
+  }
+
+  function handleNewPurchaseDepositChange(val: string) {
+    setNewPurchaseDeposit(val)
+    const price = parseFloat(newPurchasePrice.replace(/,/g, '')) || 0
+    const dep = parseFloat(val.replace(/,/g, '')) || 0
+    if (price > 0) {
+      setSplits(prev => prev.map((sp, idx) => idx === 2 ? { ...sp, amount: formatNumber(Math.max(0, Math.round(price - dep)).toString()) } : sp))
+    }
+  }
 
   function handleExistingLoanBalChange(val: string) {
     setExistingLoanBal(val)
@@ -378,7 +398,7 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
   const [moveToLoMsg, setMoveToLoMsg] = useState('')
 
   useEffect(() => {
-    const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue }
+    const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue }
     localStorage.setItem(saveKey, JSON.stringify(data))
     onDataChange?.(data)
     const timeoutId = setTimeout(() => {
@@ -389,7 +409,7 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
       setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
     }, 700)
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue])
 
   function selectTemplate(id: string) {
     setTemplate(id)
@@ -697,6 +717,7 @@ Key assumptions: ${checklistText}`
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">{template === "oo_lvr_compare" ? "Loan Options — Multiple Deposits" : "Loan splits"}</div>
                 <div className="flex flex-col gap-3">
                   {splits.map((s, i) => {
+                    if (template === 'investment_equity' && i === 2) return null
                     const priceNum = parseFloat(purchasePrice.replace(/,/g, '')) || 0
                     const optAmountNum = parseFloat((s.amount || '0').replace(/,/g, '')) || 0
                     const optLvrPercent = priceNum > 0 ? Math.round((optAmountNum / priceNum) * 1000) / 10 : 0
@@ -755,6 +776,17 @@ Key assumptions: ${checklistText}`
                     </div>
                     )
                   })}
+                  {template === "investment_equity" && (
+                    <div className="bg-white border-2 border-[#2DBEFF]/30 rounded-lg p-3">
+                      <div className="text-xs font-medium text-[#2DBEFF] mb-2">New Purchase</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Field label="Purchase price"><NumberInput value={newPurchasePrice} onChange={handleNewPurchasePriceChange} /></Field>
+                        <Field label="Deposit"><NumberInput value={newPurchaseDeposit} onChange={handleNewPurchaseDepositChange} /></Field>
+                        <Field label="Loan amount"><input className={inputCls} value={splits[2]?.amount || ''} onChange={e => updateSplitAmount(2, e.target.value)} /></Field>
+                        <Field label="Rate"><input className={inputCls} value={splits[2]?.rate || ''} onChange={e => updateSplit(2, 'rate', e.target.value)} /></Field>
+                      </div>
+                    </div>
+                  )}
                   <button onClick={addSplit} className="text-xs text-[#2DBEFF] hover:underline text-left">{template === "oo_lvr_compare" ? "+ Add option" : "+ Add split"}</button>
                 </div>
               </div>
