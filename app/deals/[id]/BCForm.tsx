@@ -224,11 +224,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function NumberInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   const cls = value && value.trim() && value !== '0'
-    ? "px-2.5 py-1.5 text-sm border border-green-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
-    : "px-2.5 py-1.5 text-sm border border-amber-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-[#FEFBF5] w-full"
+    ? "pl-5 pr-2.5 py-1.5 text-sm border border-green-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
+    : "pl-5 pr-2.5 py-1.5 text-sm border border-amber-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-[#FEFBF5] w-full"
   return (
-    <input className={cls} placeholder={placeholder} value={value}
-      onChange={e => onChange(formatNumber(e.target.value))} />
+    <div className="relative">
+      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
+      <input className={cls} placeholder={placeholder} value={value}
+        onChange={e => onChange(formatNumber(e.target.value))} />
+    </div>
   )
 }
 
