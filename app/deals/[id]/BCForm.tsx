@@ -286,7 +286,7 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
 
   function handleExistingLoanBalChange(val: string) {
     setExistingLoanBal(val)
-    if (['refinance_equity', 'refinance_only'].includes(template)) {
+    if (['refinance_equity', 'refinance_only', 'investment_equity'].includes(template)) {
       setSplits(prev => prev.map((sp, idx) => idx === 0 ? { ...sp, amount: formatNumber(val) } : sp))
     }
   }
@@ -343,7 +343,7 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
     }
   }
 
-  const isRefinanceLinked = ['refinance_equity', 'refinance_only'].includes(template)
+  const isRefinanceLinked = ['refinance_equity', 'refinance_only', 'investment_equity'].includes(template)
   const showCalculatedLvr = isPurchaseLinked || isRefinanceLinked
 
   let lvrPercent = 0
@@ -353,7 +353,8 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
     lvrPercent = price > 0 ? Math.round((loanAmt / price) * 1000) / 10 : 0
   } else if (isRefinanceLinked) {
     const value = parseFloat(propertyValue.replace(/,/g, '')) || 0
-    const totalLoan = splits.reduce((sum, sp) => sum + (parseFloat((sp.amount || '0').replace(/,/g, '')) || 0), 0)
+    const relevantSplits = template === 'investment_equity' ? splits.slice(0, 2) : splits
+    const totalLoan = relevantSplits.reduce((sum, sp) => sum + (parseFloat((sp.amount || '0').replace(/,/g, '')) || 0), 0)
     lvrPercent = value > 0 ? Math.round((totalLoan / value) * 1000) / 10 : 0
   }
   const [internalNotes, setInternalNotes] = useState(s.internalNotes || '')
@@ -648,7 +649,7 @@ Key assumptions: ${checklistText}`
               )}
                   {!["refinance_equity", "refinance_only"].includes(template) && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={setStampDuty} /></Field>}
               {["refinance_equity", "refinance_only", "investment_equity", "buy_sell", "bridging"].includes(template) && <Field label="Existing loan balance"><NumberInput value={existingLoanBal} onChange={handleExistingLoanBalChange} /></Field>}
-              {["refinance_equity", "refinance_only"].includes(template) && <Field label="Property value"><NumberInput value={propertyValue} onChange={setPropertyValue} /></Field>}
+              {["refinance_equity", "refinance_only", "investment_equity"].includes(template) && <Field label="Property value"><NumberInput value={propertyValue} onChange={setPropertyValue} /></Field>}
               {["refinance_equity", "investment_equity"].includes(template) && <Field label="Equity release amount"><NumberInput value={equityRelease} onChange={setEquityRelease} /></Field>}
 
                   {showCalculatedLvr && (
