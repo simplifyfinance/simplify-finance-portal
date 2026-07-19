@@ -203,6 +203,7 @@ type FactFindData = {
   properties: FactFindProperty[]
   liabilities: Liability[]
   dependants: string
+  internalNotes: string
 }
 
 function uid() {
@@ -362,7 +363,8 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
       assets: [],
       properties: [],
       liabilities: [],
-      dependants: '0'
+      dependants: '0',
+      internalNotes: ''
     }
   }
 
@@ -566,6 +568,22 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
             {stageLabels[s]}
           </button>
         ))}
+      </div>
+
+      <div className="bg-white border border-gray-100 rounded-xl p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
+          </svg>
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Internal notes</span>
+          <span className="text-xs text-gray-400 ml-auto">Stays visible on every tab — not client facing</span>
+        </div>
+        <textarea
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-16 resize-y"
+          placeholder="Jot notes while on the phone with the client..."
+          value={d.internalNotes}
+          onChange={e => setD(prev => ({ ...prev, internalNotes: e.target.value }))}
+        />
       </div>
 
       {(stage === 'personal' || stage === 'employment' || stage === 'income') && applicantTabs}
