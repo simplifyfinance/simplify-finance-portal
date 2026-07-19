@@ -392,7 +392,12 @@ export default function LOForm({ deal }: { deal: any }) {
   async function generateRecommendation() {
     setGeneratingRec(true)
     const rec = d.lenders.find(l => l.lenderName === d.recommendedLender)
-    const prompt = `You are a mortgage broker writing a recommendation for a client. Write 2-3 professional sentences recommending ${d.recommendedLender} (${rec?.productName}). Loan amount: ${d.loanAmount}. Variable P&I rate: ${rec?.variablePI.enabled ? rec.variablePI.rate + '% p.a.' : 'not offered'}. Annual fee: ${rec?.annualFee || 'nil'}. Application fee: ${rec?.applicationFee || 'nil'}. Be specific and focus on value. Do not use placeholder text.`
+    const lenderSummaries = d.lenders.map(l => {
+      const rate = l.variablePI.enabled ? `${l.variablePI.rate}% p.a. variable P&I` : (l.variableIO.enabled ? `${l.variableIO.rate}% p.a. variable IO` : (l.fixedPI.enabled ? `${l.fixedPI.rate}% p.a. fixed P&I` : 'rate not specified'))
+      return `- ${l.lenderName} (${l.productName || 'product not specified'}): ${rate}, annual fee ${l.annualFee || 'nil'}, application fee ${l.applicationFee || 'nil'}, approval turnaround ${l.approvalDays || 'not specified'} days${l.lenderName === d.recommendedLender ? ' [RECOMMENDED]' : ''}`
+    }).join('\n')
+    const criteriaList = (d.criteriaUsed || []).join(', ') || 'not specified'
+    const prompt = `You are a mortgage broker writing a recommendation for a client. Here are all the lending options reviewed:\n${lenderSummaries}\n\nThe research criteria that mattered for this client: ${criteriaList}.\n\nWrite 2-3 professional sentences recommending ${d.recommendedLender} (${rec?.productName}) for a loan amount of ${d.loanAmount}. Explicitly compare it against the other option(s) listed above — reference rate, fees, and approval turnaround days where the recommended lender is genuinely better, and mention which of the client's research criteria it satisfies. Be specific and factual, don't just describe the recommended lender in isolation. Do not use placeholder text.`
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 300, messages: [{ role: 'user', content: prompt }] }) })
       const data = await res.json()
