@@ -200,7 +200,7 @@ export async function POST(req: NextRequest) {
       card('Sale Proceeds Summary',
         row('Expected sale price', '$' + (d.salePrice || '')) +
         row('Agent fees / selling costs', '$' + (d.agentFees || '')) +
-        row('Mortgage to discharge', '$' + (d.mortgageDischarge || '')) +
+        row('Existing loan balance (to be discharged)', '$' + (d.existingLoanBal || '')) +
         `<tr style="border-top:1px solid rgba(122,92,58,0.3)"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Net proceeds (est.)</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">$${d.netProceeds || ''}</td></tr>`
       ) +
       card('New Purchase',
