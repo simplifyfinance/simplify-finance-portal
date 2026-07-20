@@ -296,7 +296,7 @@ export async function POST(req: NextRequest) {
       card('Loan 2 - End Debt (your ongoing repayments)',
         row('Loan amount', '$' + d.splits?.[1]?.amount || '') +
         row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') +
-        row('Estimated repayments', '[calculated]') +
+        row('Estimated repayments', d.splits?.[1]?.repayment ? '$' + d.splits[1].repayment : '[calculated]') +
         row('Repayment type', `${d.splits?.[1]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
       check(checkItems) +
