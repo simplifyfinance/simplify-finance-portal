@@ -282,17 +282,18 @@ export async function POST(req: NextRequest) {
   } else if (template === 'bridging') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have completed your borrowing capacity assessment. Based on your current financial position, bridging finance is achievable for your next owner-occupied purchase.') +
+      p('Bridging finance lets you buy your new home before your current one sells. Here is how it works: while you hold both properties, your bridging loan accrues interest at the rate below, but that interest is <strong>capitalised</strong> \u2014 added to your loan balance rather than paid month to month. When your existing property sells, the proceeds pay off that combined balance. Whatever is left over becomes your <strong>end debt</strong>: an ordinary home loan with regular repayments, which you will see broken out below.') +
       card('Bridging Loan Summary',
-        row('Bridging loan (debt while holding both properties)', d.splits?.[0]?.amount || '') +
-        row('End debt (after selling existing property)', d.splits?.[1]?.amount || '')
+        row('Bridging loan (while holding both properties)', '$' + d.splits?.[0]?.amount || '') +
+        row('End debt (after selling existing property)', '$' + d.splits?.[1]?.amount || '')
       ) +
       card('Loan 1 - Bridging Loan',
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
-        row('Rate', 'Standard variable rate*') +
-        row('Interest treatment', 'Capitalised during bridging period') +
+        row('Rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
+        row('Interest treatment', 'Capitalised \u2014 no repayments during the bridging period') +
         row('Bridging period', (d.bridgingPeriod || '12') + ' months')
       ) +
-      card('Loan 2 - End Debt',
+      card('Loan 2 - End Debt (your ongoing repayments)',
         row('Loan amount', '$' + d.splits?.[1]?.amount || '') +
         row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
