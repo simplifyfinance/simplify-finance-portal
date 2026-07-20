@@ -322,6 +322,32 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
       setSplits(prev => prev.map((sp, idx) => idx === 1 ? { ...sp, amount: formatNumber(val) } : sp))
     }
   }
+
+  const [salePrice, setSalePriceRaw] = useState(s.salePrice || '')
+  const [agentFees, setAgentFeesRaw] = useState(s.agentFees || '')
+  const [mortgageDischarge, setMortgageDischargeRaw] = useState(s.mortgageDischarge || '')
+  const [additionalSavings, setAdditionalSavingsRaw] = useState(s.additionalSavings || '')
+
+  function recomputeDeposit(sp: string, af: string, md: string, sav: string) {
+    const spN = parseFloat(sp.replace(/,/g, '')) || 0
+    const afN = parseFloat(af.replace(/,/g, '')) || 0
+    const mdN = parseFloat(md.replace(/,/g, '')) || 0
+    const savN = parseFloat(sav.replace(/,/g, '')) || 0
+    const net = Math.max(0, Math.round(spN - afN - mdN))
+    setDeposit(formatNumber((net + savN).toString()))
+  }
+
+  function setSalePrice(val: string) { setSalePriceRaw(val); recomputeDeposit(val, agentFees, mortgageDischarge, additionalSavings) }
+  function setAgentFees(val: string) { setAgentFeesRaw(val); recomputeDeposit(salePrice, val, mortgageDischarge, additionalSavings) }
+  function setMortgageDischarge(val: string) { setMortgageDischargeRaw(val); recomputeDeposit(salePrice, agentFees, val, additionalSavings) }
+  function setAdditionalSavings(val: string) { setAdditionalSavingsRaw(val); recomputeDeposit(salePrice, agentFees, mortgageDischarge, val) }
+
+  const netProceeds = (() => {
+    const spN = parseFloat(salePrice.replace(/,/g, '')) || 0
+    const afN = parseFloat(agentFees.replace(/,/g, '')) || 0
+    const mdN = parseFloat(mortgageDischarge.replace(/,/g, '')) || 0
+    return Math.max(0, Math.round(spN - afN - mdN))
+  })()
   const [propertyValue, setPropertyValue] = useState(s.propertyValue || '')
   const [equityRelease, setEquityRelease] = useState(s.equityRelease || '')
   const [lvr, setLvr] = useState(s.lvr || '80%')
@@ -410,7 +436,7 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
   const [moveToLoMsg, setMoveToLoMsg] = useState('')
 
   useEffect(() => {
-    const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue }
+    const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, mortgageDischarge, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue }
     localStorage.setItem(saveKey, JSON.stringify(data))
     onDataChange?.(data)
     const timeoutId = setTimeout(() => {
@@ -421,7 +447,7 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
       setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
     }, 700)
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, mortgageDischarge, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue])
 
   function selectTemplate(id: string) {
     setTemplate(id)
@@ -681,6 +707,15 @@ Key assumptions: ${checklistText}`
               )}
                   {!["refinance_equity", "refinance_only", "investment_equity"].includes(template) && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={setStampDuty} /></Field>}
               {["refinance_equity", "refinance_only", "investment_equity", "buy_sell", "bridging"].includes(template) && <Field label="Existing loan balance"><NumberInput value={existingLoanBal} onChange={handleExistingLoanBalChange} /></Field>}
+              {template === "buy_sell" && <Field label="Expected sale price"><NumberInput value={salePrice} onChange={setSalePrice} /></Field>}
+              {template === "buy_sell" && <Field label="Agent fees / selling costs"><NumberInput value={agentFees} onChange={setAgentFees} /></Field>}
+              {template === "buy_sell" && <Field label="Mortgage to discharge"><NumberInput value={mortgageDischarge} onChange={setMortgageDischarge} /></Field>}
+              {template === "buy_sell" && (
+                <Field label="Net proceeds (calculated)">
+                  <div className={inputCls + " bg-gray-50 text-gray-700"}>{netProceeds > 0 ? `$${formatNumber(netProceeds.toString())}` : '\u2014'}</div>
+                </Field>
+              )}
+              {template === "buy_sell" && <Field label="Additional savings (optional)"><NumberInput value={additionalSavings} onChange={setAdditionalSavings} /></Field>}
               {["refinance_equity", "refinance_only", "investment_equity"].includes(template) && <Field label="Property value"><NumberInput value={propertyValue} onChange={setPropertyValue} /></Field>}
               {["refinance_equity", "investment_equity"].includes(template) && <Field label="Equity release amount"><NumberInput value={equityRelease} onChange={handleEquityReleaseChange} /></Field>}
 

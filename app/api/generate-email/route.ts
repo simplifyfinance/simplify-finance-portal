@@ -194,17 +194,18 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
   } else if (template === 'buy_sell') {
+    const depositLabel = (Number(d.additionalSavings) || 0) > 0 ? 'Deposit (from sale proceeds and savings)' : 'Deposit (from sale proceeds)'
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
       card('Sale Proceeds Summary',
-        row('Expected sale price', d.salePrice || '') +
-        row('Agent fees / selling costs', d.agentFees || '') +
-        row('Mortgage to discharge', d.mortgageDischarge || '') +
-        `<tr style="border-top:1px solid rgba(122,92,58,0.3)"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Net proceeds (est.)</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">${d.netProceeds || ''}</td></tr>`
+        row('Expected sale price', '$' + (d.salePrice || '')) +
+        row('Agent fees / selling costs', '$' + (d.agentFees || '')) +
+        row('Mortgage to discharge', '$' + (d.mortgageDischarge || '')) +
+        `<tr style="border-top:1px solid rgba(122,92,58,0.3)"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Net proceeds (est.)</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">$${d.netProceeds || ''}</td></tr>`
       ) +
       card('New Purchase',
         row('Purchase price', '$' + d.purchasePrice || '') +
-        row('Deposit (from sale proceeds)', '$' + d.deposit || '') +
+        row(depositLabel, '$' + d.deposit || '') +
         row('Stamp duty', '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         buildLVRLine(d) +
