@@ -291,7 +291,14 @@ export async function POST(req: NextRequest) {
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('Rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Interest treatment', 'Capitalised \u2014 no repayments during the bridging period') +
-        row('Bridging period', (d.bridgingPeriod || '12') + ' months')
+        row('Bridging period', (d.bridgingPeriod || '12') + ' months') +
+        (() => {
+          const amt = parseFloat((d.splits?.[0]?.amount || '0').replace(/,/g, '')) || 0
+          const rate = parseFloat(d.splits?.[0]?.rate || '0') || 0
+          const months = parseFloat(d.bridgingPeriod || '0') || 0
+          const interest = amt * (rate / 100) * (months / 12)
+          return interest > 0 ? row('Estimated interest capitalised', '$' + Math.round(interest).toLocaleString('en-AU')) : ''
+        })()
       ) +
       card('Loan 2 - End Debt (your ongoing repayments)',
         row('Loan amount', '$' + d.splits?.[1]?.amount || '') +

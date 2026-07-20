@@ -807,7 +807,20 @@ Key assumptions: ${checklistText}`
                         <Field label="Amount"><input className={inputCls} value={s.amount} onChange={e => handleLoanAmountChange(i, e.target.value)} /></Field>
                         {template === "oo_lvr_compare" && <Field label="Deposit required"><NumberInput value={s.deposit || ""} onChange={v => updateSplit(i, 'deposit', v)} /></Field>}<Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
                         <Field label="Type"><select className={selectCls} value={s.type} onChange={e => updateSplit(i, 'type', e.target.value)}><option>P&I</option><option>Interest only</option></select></Field>
-                        {template === "bridging" && <Field label="Repayment"><CurrencyInput className={inputCls} value={s.repayment || ""} onChange={v => updateSplit(i, 'repayment', v)} /></Field>}
+                        {template === "bridging" && i === 1 && <Field label="Repayment"><CurrencyInput className={inputCls} value={s.repayment || ""} onChange={v => updateSplit(i, 'repayment', v)} /></Field>}
+                        {template === "bridging" && i === 0 && (
+                          <Field label="Estimated interest capitalised">
+                            <div className={inputCls + " bg-gray-50 text-gray-700"}>
+                              {(() => {
+                                const amt = parseFloat((s.amount || '0').replace(/,/g, '')) || 0
+                                const rate = parseFloat(s.rate || '0') || 0
+                                const months = parseFloat(bridgingPeriod || '0') || 0
+                                const interest = amt * (rate / 100) * (months / 12)
+                                return interest > 0 ? `$${formatNumber(Math.round(interest).toString())}` : '\u2014'
+                              })()}
+                            </div>
+                          </Field>
+                        )}
                         {template === "oo_lvr_compare" && (
                           <Field label="LVR (calculated)">
                             <div className={inputCls + " bg-white text-gray-700"}>{optLvrPercent > 0 ? `${optLvrPercent}%` : '\u2014'}</div>
