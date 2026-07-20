@@ -283,22 +283,20 @@ export async function POST(req: NextRequest) {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have completed your borrowing capacity assessment. Based on your current financial position, bridging finance is achievable for your next owner-occupied purchase.') +
       p('Bridging finance lets you buy your new home before your current one sells. Here is how it works: while you hold both properties, your bridging loan accrues interest at the rate below, but that interest is <strong>capitalised</strong> \u2014 added to your loan balance rather than paid month to month. When your existing property sells, the proceeds pay off that combined balance. Whatever is left over becomes your <strong>end debt</strong>: an ordinary home loan with regular repayments, which you will see broken out below.') +
-      card('Bridging Loan Summary',
-        row('Bridging loan (while holding both properties)', '$' + d.splits?.[0]?.amount || '') +
-        row('End debt (after selling existing property)', '$' + d.splits?.[1]?.amount || '')
+      card('New Purchase Details',
+        row('Purchase price', '$' + (d.purchasePrice || '')) +
+        row('Stamp duty', '$' + (d.stampDuty || '')) +
+        `<tr style="border-top:1px solid rgba(122,92,58,0.3)"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Total cost</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">$${(() => { const pp = parseFloat((d.purchasePrice||'0').replace(/,/g,'')) || 0; const sd = parseFloat((d.stampDuty||'0').replace(/,/g,'')) || 0; return (pp+sd).toLocaleString('en-AU') })()}</td></tr>` +
+        row(`Contribution${d.depositSource ? ` (from ${d.depositSource})` : ''}`, '$' + (d.deposit || '')) +
+        row('Bridging loan (peak debt)', '$' + (d.splits?.[0]?.amount || '')) +
+        row('End debt', '$' + (d.splits?.[1]?.amount || ''))
       ) +
       card('Loan 1 - Bridging Loan',
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('Rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Interest treatment', 'Capitalised \u2014 no repayments during the bridging period') +
         row('Bridging period', (d.bridgingPeriod || '12') + ' months') +
-        (() => {
-          const amt = parseFloat((d.splits?.[0]?.amount || '0').replace(/,/g, '')) || 0
-          const rate = parseFloat(d.splits?.[0]?.rate || '0') || 0
-          const months = parseFloat(d.bridgingPeriod || '0') || 0
-          const interest = amt * (rate / 100) * (months / 12)
-          return interest > 0 ? row('Estimated interest capitalised', '$' + Math.round(interest).toLocaleString('en-AU')) : ''
-        })()
+        (d.splits?.[0]?.interestCapitalised ? row('Estimated interest capitalised', '$' + d.splits[0].interestCapitalised) : '')
       ) +
       card('Loan 2 - End Debt (your ongoing repayments)',
         row('Loan amount', '$' + d.splits?.[1]?.amount || '') +

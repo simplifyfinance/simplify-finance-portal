@@ -169,7 +169,7 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
   construction: { splits: [{ label: 'Land loan', amount: '', rate: '6.14', type: 'P&I' }, { label: 'Construction loan', amount: '', rate: '6.39', type: 'Interest only' }] },
 }
 
-type Split = { label: string; amount: string; rate: string; type: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string }
+type Split = { label: string; amount: string; rate: string; type: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string; interestCapitalised?: string }
 
 const TEMPLATE_NOTES: Record<string, string[]> = {
   refinance_equity: [],
@@ -810,15 +810,7 @@ Key assumptions: ${checklistText}`
                         {template === "bridging" && i === 1 && <Field label="Repayment"><CurrencyInput className={inputCls} value={s.repayment || ""} onChange={v => updateSplit(i, 'repayment', v)} /></Field>}
                         {template === "bridging" && i === 0 && (
                           <Field label="Estimated interest capitalised">
-                            <div className={inputCls + " bg-gray-50 text-gray-700"}>
-                              {(() => {
-                                const amt = parseFloat((s.amount || '0').replace(/,/g, '')) || 0
-                                const rate = parseFloat(s.rate || '0') || 0
-                                const months = parseFloat(bridgingPeriod || '0') || 0
-                                const interest = amt * (rate / 100) * (months / 12)
-                                return interest > 0 ? `$${formatNumber(Math.round(interest).toString())}` : '\u2014'
-                              })()}
-                            </div>
+                            <CurrencyInput className={inputCls} value={s.interestCapitalised || ""} onChange={v => updateSplit(i, 'interestCapitalised', v)} />
                           </Field>
                         )}
                         {template === "oo_lvr_compare" && (
