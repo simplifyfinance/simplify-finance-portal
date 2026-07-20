@@ -48,6 +48,7 @@ type Address = {
   residentialStatus: string
   isCurrent: boolean
   startDate: string
+  endDate: string
   housingExpenseAmount: string
   housingExpenseFrequency: string
 }
@@ -59,6 +60,7 @@ type Employment = {
   employmentBasis: string
   occupation: string
   startDate: string
+  endDate: string
   onProbation: boolean
   employerName: string
   employerAbn: string
@@ -211,12 +213,12 @@ function uid() {
 }
 
 const defaultAddress = (isCurrent: boolean): Address => ({
-  id: uid(), address: '', residentialStatus: '', isCurrent, startDate: '',
+  id: uid(), address: '', residentialStatus: '', isCurrent, startDate: '', endDate: '',
   housingExpenseAmount: '', housingExpenseFrequency: 'Weekly'
 })
 
 const defaultEmployment = (isCurrent: boolean): Employment => ({
-  id: uid(), isCurrent, employmentPriority: 'Primary', employmentBasis: 'Full time', employmentType: 'PAYG',
+  id: uid(), isCurrent, employmentPriority: 'Primary', employmentBasis: 'Full time', employmentType: 'PAYG', endDate: '',
   occupation: '', startDate: '', onProbation: false, employerName: '', employerAbn: '',
   employerAcn: '', employerType: '', employerAddress: '',
   contactPersonName: '', contactPersonDetails: ''
@@ -671,7 +673,16 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
                   <option>Boarding</option>
                   <option>Living with family</option>
                 </select>
-                <input type="date" className={inp} value={addr.startDate} onChange={e => updateAddress(addr.id, 'startDate', e.target.value)} />
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">{addr.isCurrent ? 'Move-in date' : 'Start date'}</label>
+                  <input type="date" className={inp} value={addr.startDate} onChange={e => updateAddress(addr.id, 'startDate', e.target.value)} />
+                </div>
+                {!addr.isCurrent && (
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">End date</label>
+                    <input type="date" className={inp} value={addr.endDate} onChange={e => updateAddress(addr.id, 'endDate', e.target.value)} />
+                  </div>
+                )}
               </div>
               {addr.isCurrent && addr.residentialStatus && addr.residentialStatus !== 'Owner' && (
                 <div className="grid grid-cols-2 gap-3 mt-3">
@@ -732,7 +743,16 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
               {emp.employmentType !== 'Not working' && (
                 <>
                   <div className="grid grid-cols-3 gap-3 mb-3">
-                    <input type="date" className={inp} value={emp.startDate} onChange={e => updateEmployment(emp.id, 'startDate', e.target.value)} />
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Start date</label>
+                      <input type="date" className={inp} value={emp.startDate} onChange={e => updateEmployment(emp.id, 'startDate', e.target.value)} />
+                    </div>
+                    {!emp.isCurrent && (
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">End date</label>
+                        <input type="date" className={inp} value={emp.endDate} onChange={e => updateEmployment(emp.id, 'endDate', e.target.value)} />
+                      </div>
+                    )}
                     <input className={inp} placeholder="Employer / business name" value={emp.employerName} onChange={e => updateEmployment(emp.id, 'employerName', e.target.value)} />
                     <AbnAutocomplete
                       value={emp.employerAbn}
