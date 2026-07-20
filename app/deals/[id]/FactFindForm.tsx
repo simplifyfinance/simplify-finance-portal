@@ -212,6 +212,18 @@ function uid() {
   return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)
 }
 
+function monthsBetween(start: string, end: string): number {
+  if (!start) return 0
+  const s = new Date(start)
+  const e = end ? new Date(end) : new Date()
+  const months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth())
+  return Math.max(0, months)
+}
+
+function totalHistoryMonths(entries: { isCurrent: boolean; startDate: string; endDate?: string }[]): number {
+  return entries.reduce((sum, e) => sum + monthsBetween(e.startDate, e.isCurrent ? '' : (e.endDate || '')), 0)
+}
+
 const defaultAddress = (isCurrent: boolean): Address => ({
   id: uid(), address: '', residentialStatus: '', isCurrent, startDate: '', endDate: '',
   housingExpenseAmount: '', housingExpenseFrequency: 'Weekly'
@@ -705,6 +717,11 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
               )}
             </div>
           ))}
+          {totalHistoryMonths(applicant.addresses) < 24 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 mb-2">
+              Address history covers {totalHistoryMonths(applicant.addresses)} of the last 24 months \u2014 add a previous address to reach 2 years.
+            </div>
+          )}
           <button onClick={addAddress} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
             + Add previous address
           </button>
@@ -779,6 +796,11 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
               )}
             </div>
           ))}
+          {totalHistoryMonths(applicant.employment.filter(e => e.employmentPriority === 'Primary')) < 24 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 mb-2">
+              Employment history covers {totalHistoryMonths(applicant.employment.filter(e => e.employmentPriority === 'Primary'))} of the last 24 months \u2014 add previous employment to reach 2 years.
+            </div>
+          )}
           <div className="flex gap-2">
             <button onClick={addSecondaryEmployment} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
               + Add secondary employment
