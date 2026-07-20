@@ -296,12 +296,12 @@ export async function POST(req: NextRequest) {
         row('Rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Interest treatment', 'Capitalised \u2014 no repayments during the bridging period') +
         row('Bridging period', (d.bridgingPeriod || '12') + ' months') +
-        (d.splits?.[0]?.interestCapitalised ? row('Estimated interest capitalised', '$' + d.splits[0].interestCapitalised) : '')
+        (d.splits?.[0]?.interestCapitalised ? row('Estimated interest capitalised', '$' + (parseFloat(String(d.splits[0].interestCapitalised).replace(/,/g,'')) || 0).toLocaleString('en-AU')) : '')
       ) +
       card('Loan 2 - End Debt (your ongoing repayments)',
         row('Loan amount', '$' + d.splits?.[1]?.amount || '') +
         row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') +
-        row('Estimated repayments', d.splits?.[1]?.repayment ? '$' + d.splits[1].repayment : '[calculated]') +
+        row('Estimated repayments', d.splits?.[1]?.repayment ? '$' + (parseFloat(String(d.splits[1].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
         row('Repayment type', `${d.splits?.[1]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
       check(checkItems) +

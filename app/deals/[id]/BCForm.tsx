@@ -400,7 +400,8 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
   }
 
   const isRefinanceLinked = ['refinance_equity', 'refinance_only', 'investment_equity'].includes(template)
-  const showCalculatedLvr = isPurchaseLinked || isRefinanceLinked
+  const isBridgingLinked = template === 'bridging'
+  const showCalculatedLvr = isPurchaseLinked || isRefinanceLinked || isBridgingLinked
 
   let lvrPercent = 0
   if (isPurchaseLinked) {
@@ -412,6 +413,10 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
     const relevantSplits = template === 'investment_equity' ? splits.slice(0, 2) : splits
     const totalLoan = relevantSplits.reduce((sum, sp) => sum + (parseFloat((sp.amount || '0').replace(/,/g, '')) || 0), 0)
     lvrPercent = value > 0 ? Math.round((totalLoan / value) * 1000) / 10 : 0
+  } else if (isBridgingLinked) {
+    const price = parseFloat(purchasePrice.replace(/,/g, '')) || 0
+    const endDebt = parseFloat((splits[1]?.amount || '0').replace(/,/g, '')) || 0
+    lvrPercent = price > 0 ? Math.round((endDebt / price) * 1000) / 10 : 0
   }
   const [internalNotes, setInternalNotes] = useState(s.internalNotes || '')
   const [brokerSig, setBrokerSig] = useState(s.brokerSig || deal.assigned_broker || 'Fabio')
