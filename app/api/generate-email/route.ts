@@ -268,9 +268,8 @@ export async function POST(req: NextRequest) {
         row('Purchase price', '$' + d.purchasePrice || '') +
         row('Stamp duty', '$' + d.stampDuty || '/bin/zsh — first home buyer exemption') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
-        row('LMI', '/bin/zsh — guaranteed by NHFIC') +
+        row('LMI', 'Waived under Gov. Deposit Scheme') +
         row('Your contribution required', '$' + d.deposit || '') +
-        row('First home owner grant', d.fhog ? '$' + d.fhog : 'Not applicable') +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)

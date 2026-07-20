@@ -694,7 +694,7 @@ Key assumptions: ${checklistText}`
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Scenario details</div>
                 <div className="grid grid-cols-2 gap-2">
                   <Field label="Suburb"><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
-                  <Field label="Property type"><select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>
+                  {template !== "fhb" && <Field label="Property type"><select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>}
                   {!["refinance_equity", "refinance_only", "investment_equity"].includes(template) && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={handlePurchasePriceChange} /></Field>}
                   {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={handleDepositChange} /></Field>}
               {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "buy_sell"].includes(template) && (
@@ -764,7 +764,6 @@ Key assumptions: ${checklistText}`
                     </Field>
                   )}
                   <Field label="Loan term (years)"><input className={inputCls} value={loanTerm} onChange={e => setLoanTerm(e.target.value)} /></Field>
-              {template === 'fhb' && <Field label="First home owner grant"><NumberInput value={fhog} onChange={setFhog} /></Field>}
               {template === 'family_pledge' && <Field label="Guarantor name"><input className={inputCls} value={guarantorName} onChange={e => setGuarantorName(e.target.value)} placeholder="e.g. John Smith" /></Field>}
               {template === 'bridging' && <Field label="Bridging period (months)"><input className={inputCls} value={bridgingPeriod} onChange={e => setBridgingPeriod(e.target.value)} placeholder="e.g. 6" /></Field>}
               {template === 'construction' && <Field label="Land value"><NumberInput value={landValue} onChange={setLandValue} /></Field>}
