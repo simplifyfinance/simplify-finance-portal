@@ -411,7 +411,8 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
 
   const isRefinanceLinked = ['refinance_equity', 'refinance_only', 'investment_equity'].includes(template)
   const isBridgingLinked = template === 'bridging'
-  const showCalculatedLvr = isPurchaseLinked || isRefinanceLinked || isBridgingLinked
+  const isConstructionLinked = template === 'construction'
+  const showCalculatedLvr = isPurchaseLinked || isRefinanceLinked || isBridgingLinked || isConstructionLinked
 
   let lvrPercent = 0
   if (isPurchaseLinked) {
@@ -427,6 +428,10 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
     const price = parseFloat(purchasePrice.replace(/,/g, '')) || 0
     const endDebt = parseFloat((splits[1]?.amount || '0').replace(/,/g, '')) || 0
     lvrPercent = price > 0 ? Math.round((endDebt / price) * 1000) / 10 : 0
+  } else if (isConstructionLinked) {
+    const value = parseFloat(asIfCompleteValue.replace(/,/g, '')) || 0
+    const loanAmt = parseFloat((splits[0]?.amount || '0').replace(/,/g, '')) || 0
+    lvrPercent = value > 0 ? Math.round((loanAmt / value) * 1000) / 10 : 0
   }
   const [internalNotes, setInternalNotes] = useState(s.internalNotes || '')
   const [brokerSig, setBrokerSig] = useState(s.brokerSig || deal.assigned_broker || 'Fabio')
@@ -449,7 +454,7 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
   const [moveToLoMsg, setMoveToLoMsg] = useState('')
 
   useEffect(() => {
-    const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue }
+    const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue }
     localStorage.setItem(saveKey, JSON.stringify(data))
     onDataChange?.(data)
     const timeoutId = setTimeout(() => {
@@ -460,7 +465,7 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
       setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
     }, 700)
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue])
 
   function selectTemplate(id: string) {
     setTemplate(id)
@@ -620,7 +625,7 @@ Key assumptions: ${checklistText}`
         body: JSON.stringify({ broker: brokerSig, dealId: deal.id, formData: { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeBreakdown: [
           ...buildIncomeBreakdown(ffApp, firstName || 'Applicant 1'),
           ...(joint === 'Yes' ? buildIncomeBreakdown(ffApp2, ffApp2.firstName || 'Applicant 2') : [])
-        ], housingExpense: buildHousingExpenseLine(ffApp), factFindChecklist: buildPropertyLiabilityChecklist(ff), jointFirstName: ffApp2.firstName || '', incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, depositSource, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, salePrice, agentFees, netProceeds, additionalSavings, brokerNotes, checklist, additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
+        ], housingExpense: buildHousingExpenseLine(ffApp), factFindChecklist: buildPropertyLiabilityChecklist(ff), jointFirstName: ffApp2.firstName || '', incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, depositSource, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, salePrice, agentFees, netProceeds, additionalSavings, landValue, constructionCost, asIfCompleteValue, brokerNotes, checklist, additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
       })
       if (!res.ok) { setEmailError(`Server error: ${res.status}`); setGenerating(false); return }
       const data = await res.json()
@@ -705,8 +710,8 @@ Key assumptions: ${checklistText}`
                 <div className="grid grid-cols-2 gap-2">
                   <Field label="Suburb"><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
                   {template !== "fhb" && <Field label="Property type"><select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>}
-                  {!["refinance_equity", "refinance_only", "investment_equity"].includes(template) && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={handlePurchasePriceChange} /></Field>}
-                  {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={handleDepositChange} /></Field>}
+                  {!["refinance_equity", "refinance_only", "investment_equity", "construction"].includes(template) && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={handlePurchasePriceChange} /></Field>}
+                  {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "construction"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={handleDepositChange} /></Field>}
               {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "buy_sell"].includes(template) && (
                 <Field label="Deposit source">
                   <select className={selectCls} value={depositSource} onChange={e => setDepositSource(e.target.value)}>
@@ -778,6 +783,35 @@ Key assumptions: ${checklistText}`
               {template === 'bridging' && <Field label="Bridging period (months)"><input className={inputCls} value={bridgingPeriod} onChange={e => setBridgingPeriod(e.target.value)} placeholder="e.g. 6" /></Field>}
               {template === 'construction' && <Field label="Land value"><NumberInput value={landValue} onChange={setLandValue} /></Field>}
               {template === 'construction' && <Field label="Construction cost"><NumberInput value={constructionCost} onChange={setConstructionCost} /></Field>}
+              {template === 'construction' && (
+                <Field label="Total cost (calculated)">
+                  <div className={inputCls + " bg-gray-50 text-gray-700"}>
+                    {(() => {
+                      const land = parseFloat(landValue.replace(/,/g, '')) || 0
+                      const constr = parseFloat(constructionCost.replace(/,/g, '')) || 0
+                      const sd = parseFloat(stampDuty.replace(/,/g, '')) || 0
+                      const total = land + constr + sd
+                      return total > 0 ? `$${formatNumber(total.toString())}` : '\u2014'
+                    })()}
+                  </div>
+                </Field>
+              )}
+              {template === 'construction' && <Field label={'"As if complete" valuation'}><NumberInput value={asIfCompleteValue} onChange={setAsIfCompleteValue} /></Field>}
+              {template === 'construction' && (
+                <Field label="Deposit required (calculated)">
+                  <div className={inputCls + " bg-gray-50 text-gray-700"}>
+                    {(() => {
+                      const land = parseFloat(landValue.replace(/,/g, '')) || 0
+                      const constr = parseFloat(constructionCost.replace(/,/g, '')) || 0
+                      const sd = parseFloat(stampDuty.replace(/,/g, '')) || 0
+                      const total = land + constr + sd
+                      const loanAmt = parseFloat((splits[0]?.amount || '0').replace(/,/g, '')) || 0
+                      const req = total - loanAmt
+                      return total > 0 ? `$${formatNumber(Math.max(0, Math.round(req)).toString())}` : '\u2014'
+                    })()}
+                  </div>
+                </Field>
+              )}
                 </div>
               </div>
 
