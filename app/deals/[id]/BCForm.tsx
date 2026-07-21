@@ -360,6 +360,8 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
   function setConstructionCost(val: string) { setConstructionCostRaw(val); recomputeAsIfComplete(landValue, val) }
   const [landValue, setLandValueRaw] = useState(s.landValue || '')
   const [asIfCompleteValue, setAsIfCompleteValue] = useState(s.asIfCompleteValue || '')
+  const [compareOptions, setCompareOptions] = useState(s.compareOptions || false)
+  const isMultiOption = template === 'oo_lvr_compare' || (template === 'oo_purchase' && compareOptions)
 
   function recomputeAsIfComplete(land: string, constr: string) {
     const landN = parseFloat(land.replace(/,/g, '')) || 0
@@ -710,9 +712,15 @@ Key assumptions: ${checklistText}`
                 <div className="grid grid-cols-2 gap-2">
                   <Field label="Suburb"><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
                   {template !== "fhb" && <Field label="Property type"><select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>}
+                  {template === "oo_purchase" && (
+                    <div className="flex items-center gap-2 col-span-2">
+                      <input type="checkbox" id="compareOptions" checked={compareOptions} onChange={e => setCompareOptions(e.target.checked)} />
+                      <label htmlFor="compareOptions" className="text-xs text-gray-600">Compare multiple options (e.g. different purchase prices based on paying down liabilities)</label>
+                    </div>
+                  )}
                   {!["refinance_equity", "refinance_only", "investment_equity", "construction"].includes(template) && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={handlePurchasePriceChange} /></Field>}
-                  {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "construction"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={handleDepositChange} /></Field>}
-              {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "buy_sell"].includes(template) && (
+                  {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "construction"].includes(template) && !isMultiOption && <Field label="Deposit"><NumberInput value={deposit} onChange={handleDepositChange} /></Field>}
+              {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "buy_sell"].includes(template) && !isMultiOption && (
                 <Field label="Deposit source">
                   <select className={selectCls} value={depositSource} onChange={e => setDepositSource(e.target.value)}>
                     <option value="">Select source</option>
