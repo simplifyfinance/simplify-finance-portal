@@ -169,7 +169,7 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
   construction: { splits: [{ label: 'Land loan', amount: '', rate: '6.14', type: 'P&I' }, { label: 'Construction loan', amount: '', rate: '6.39', type: 'Interest only' }] },
 }
 
-type Split = { label: string; amount: string; rate: string; type: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string; interestCapitalised?: string }
+type Split = { label: string; amount: string; rate: string; type: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string; interestCapitalised?: string; optionPurchasePrice?: string; ccPayoff?: boolean; ccPayoffAmount?: string; hecsPayoff?: boolean; hecsPayoffAmount?: string; carLoanPayoff?: boolean; personalLoanPayoff?: boolean }
 
 const TEMPLATE_NOTES: Record<string, string[]> = {
   refinance_equity: [],
@@ -824,7 +824,7 @@ Key assumptions: ${checklistText}`
               </div>
 
               <div className="bg-white border border-gray-100 rounded-xl p-4">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">{template === "oo_lvr_compare" ? "Loan Options — Multiple Deposits" : "Loan splits"}</div>
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">{isMultiOption ? "Loan Options — Multiple Deposits" : "Loan splits"}</div>
                 <div className="flex flex-col gap-3">
                   {splits.map((s, i) => {
                     if (template === 'investment_equity' && i === 2) return null
@@ -834,11 +834,11 @@ Key assumptions: ${checklistText}`
                     return (
                     <div key={i} className="bg-gray-50 rounded-lg p-3">
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-medium text-[#2DBEFF]">{template === "oo_lvr_compare" ? `Option ${i + 1}` : `Split ${i + 1}`}</span>
+                        <span className="text-xs font-medium text-[#2DBEFF]">{isMultiOption ? `Option ${i + 1}` : `Split ${i + 1}`}</span>
                         {splits.length > 1 && <button onClick={() => removeSplit(i)} className="text-xs text-gray-400 hover:text-red-500">Remove</button>}
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        {template === "oo_lvr_compare" ? (
+                        {isMultiOption ? (
                           <>
                             <Field label="LVR %">
                               <select className={selectCls} value={['80%', '90%', '95%'].includes(s.label) ? s.label : (s.label ? 'Other' : '')} onChange={e => {
@@ -861,7 +861,7 @@ Key assumptions: ${checklistText}`
                           <Field label="Label"><input className={inputCls} value={s.label} onChange={e => updateSplit(i, 'label', e.target.value)} /></Field>
                         )}
                         <Field label="Amount"><input className={inputCls} value={s.amount} onChange={e => handleLoanAmountChange(i, e.target.value)} /></Field>
-                        {template === "oo_lvr_compare" && <Field label="Deposit required"><NumberInput value={s.deposit || ""} onChange={v => updateSplit(i, 'deposit', v)} /></Field>}<Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
+                        {isMultiOption && <Field label="Deposit required"><NumberInput value={s.deposit || ""} onChange={v => updateSplit(i, 'deposit', v)} /></Field>}<Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
                         <Field label="Type"><select className={selectCls} value={s.type} onChange={e => updateSplit(i, 'type', e.target.value)}><option>P&I</option><option>Interest only</option></select></Field>
                         {template === "bridging" && i === 1 && <Field label="Repayment"><CurrencyInput className={inputCls} value={s.repayment || ""} onChange={v => updateSplit(i, 'repayment', v)} /></Field>}
                         {template === "bridging" && i === 0 && (
@@ -869,12 +869,12 @@ Key assumptions: ${checklistText}`
                             <CurrencyInput className={inputCls} value={s.interestCapitalised || ""} onChange={v => updateSplit(i, 'interestCapitalised', v)} />
                           </Field>
                         )}
-                        {template === "oo_lvr_compare" && (
+                        {isMultiOption && (
                           <Field label="LVR (calculated)">
                             <div className={inputCls + " bg-white text-gray-700"}>{optLvrPercent > 0 ? `${optLvrPercent}%` : '\u2014'}</div>
                           </Field>
                         )}
-                        {template === "oo_lvr_compare" && optLvrPercent > 80 && (
+                        {isMultiOption && optLvrPercent > 80 && (
                           <Field label="LMI status">
                             <select className={selectCls} value={s.lmiApplicable || ''} onChange={e => updateSplit(i, 'lmiApplicable', e.target.value)}>
                               <option value="">Select</option>
@@ -883,7 +883,7 @@ Key assumptions: ${checklistText}`
                             </select>
                           </Field>
                         )}
-                        {template === "oo_lvr_compare" && optLvrPercent > 80 && s.lmiApplicable === 'Applicable' && (
+                        {isMultiOption && optLvrPercent > 80 && s.lmiApplicable === 'Applicable' && (
                           <Field label="LMI estimate">
                             <CurrencyInput className={inputCls} value={s.lmi || ''} onChange={v => updateSplit(i, 'lmi', v)} />
                           </Field>
@@ -892,7 +892,7 @@ Key assumptions: ${checklistText}`
                     </div>
                     )
                   })}
-                  <button onClick={addSplit} className="text-xs text-[#2DBEFF] hover:underline text-left">{template === "oo_lvr_compare" ? "+ Add option" : "+ Add split"}</button>
+                  <button onClick={addSplit} className="text-xs text-[#2DBEFF] hover:underline text-left">{isMultiOption ? "+ Add option" : "+ Add split"}</button>
                 </div>
               </div>
 
