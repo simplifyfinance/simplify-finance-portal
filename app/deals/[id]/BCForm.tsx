@@ -356,14 +356,24 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
   const [fhog, setFhog] = useState(s.fhog || '')
   const [guarantorName, setGuarantorName] = useState(s.guarantorName || '')
   const [bridgingPeriod, setBridgingPeriod] = useState(s.bridgingPeriod || '')
-  const [constructionCost, setConstructionCost] = useState(s.constructionCost || '')
-  const [landValue, setLandValue] = useState(s.landValue || '')
+  const [constructionCost, setConstructionCostRaw] = useState(s.constructionCost || '')
+  function setConstructionCost(val: string) { setConstructionCostRaw(val); recomputeAsIfComplete(landValue, val) }
+  const [landValue, setLandValueRaw] = useState(s.landValue || '')
+  const [asIfCompleteValue, setAsIfCompleteValue] = useState(s.asIfCompleteValue || '')
+
+  function recomputeAsIfComplete(land: string, constr: string) {
+    const landN = parseFloat(land.replace(/,/g, '')) || 0
+    const constrN = parseFloat(constr.replace(/,/g, '')) || 0
+    setAsIfCompleteValue(formatNumber((landN + constrN).toString()))
+  }
+
+  function setLandValue(val: string) { setLandValueRaw(val); recomputeAsIfComplete(val, constructionCost) }
   const [brokerNotes, setBrokerNotes] = useState(s.brokerNotes || '')
   const [templateNotes, setTemplateNotes] = useState(
     s.templateNotes !== undefined ? s.templateNotes : (TEMPLATE_NOTES[s.template || 'oo_purchase'] || []).join('\n')
   )
 
-  const purchaseLinkTemplates = ['oo_purchase', 'investment_purchase', 'fhb', 'buy_sell', 'construction']
+  const purchaseLinkTemplates = ['oo_purchase', 'investment_purchase', 'fhb', 'buy_sell']
   const isPurchaseLinked = purchaseLinkTemplates.includes(template)
 
   function handlePurchasePriceChange(val: string) {
