@@ -166,6 +166,7 @@ export async function POST(req: NextRequest) {
       if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by $${opt.hecsPayoffAmount}` : 'HECS closed')
       if (opt.carLoanPayoff) actions.push('Car loan closed')
       if (opt.personalLoanPayoff) actions.push('Personal loan closed')
+      const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</p>` : ''
       let lmiLine = ''
       if (lvrNum > 80) {
         if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0">LMI (estimated): $${opt.lmi}</p>`
@@ -179,7 +180,7 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;color:#555;margin:3px 0">Loan amount: $${opt.loanAmount || ''}</p>
         <p style="font-size:11px;color:#555;margin:3px 0">LVR: ${lvrNum}%</p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0">Rate: ${opt.rate}% p.a.*</p>
-        ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px">To achieve this option:</p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0">&#10003; ${a}</p>`).join('') : ''}
+        ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px">To achieve this option:</p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0">&#10003; ${a}</p>`).join('') : ''}${nonBankNote}
       </td>`
     }
     const baseOption = {
