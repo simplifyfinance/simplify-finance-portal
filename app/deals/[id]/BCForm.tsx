@@ -975,10 +975,16 @@ Key assumptions: ${checklistText}`
                 </div>
               )}
 
-              {["oo_purchase", "investment_purchase"].includes(template) && compareOptions && altScenarios.map((alt, idx) => {
+              {["oo_purchase", "investment_purchase", "refinance_equity"].includes(template) && compareOptions && altScenarios.map((alt, idx) => {
+                const isRefiEquityAlt = template === 'refinance_equity'
                 const price = parseFloat(alt.purchasePrice.replace(/,/g, '')) || 0
                 const loanAmt = parseFloat(alt.loanAmount.replace(/,/g, '')) || 0
-                const altLvr = price > 0 ? Math.round((loanAmt / price) * 1000) / 10 : 0
+                const existingLoanN = parseFloat(existingLoanBal.replace(/,/g, '')) || 0
+                const propertyValueN = parseFloat(propertyValue.replace(/,/g, '')) || 0
+                const equityReleaseN = parseFloat((alt.equityReleaseAmount || '0').replace(/,/g, '')) || 0
+                const altLvr = isRefiEquityAlt
+                  ? (propertyValueN > 0 ? Math.round(((existingLoanN + equityReleaseN) / propertyValueN) * 1000) / 10 : 0)
+                  : (price > 0 ? Math.round((loanAmt / price) * 1000) / 10 : 0)
                 return (
                 <div key={alt.id} className="bg-white border-2 border-[#2DBEFF]/40 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-3">
@@ -986,6 +992,10 @@ Key assumptions: ${checklistText}`
                     <button onClick={() => removeAltScenario(alt.id)} className="text-xs text-gray-400 hover:text-red-500">Remove</button>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
+                    {isRefiEquityAlt ? (
+                      <Field label="Equity release amount"><CurrencyInput className={inputCls} value={alt.equityReleaseAmount || ''} onChange={v => updateAltScenario(alt.id, 'equityReleaseAmount', v)} /></Field>
+                    ) : (
+                      <>
                     <Field label="Purchase price"><NumberInput value={alt.purchasePrice} onChange={v => handleAltPurchasePriceChange(alt.id, v)} /></Field>
                     <Field label="Deposit"><NumberInput value={alt.deposit} onChange={v => handleAltDepositChange(alt.id, v)} /></Field>
                     <Field label="Deposit source">
@@ -1000,6 +1010,8 @@ Key assumptions: ${checklistText}`
                     <Field label="Stamp duty"><NumberInput value={alt.stampDuty} onChange={v => updateAltScenario(alt.id, 'stampDuty', v)} /></Field>
                     <Field label="Loan amount"><input className={inputCls} value={alt.loanAmount} onChange={e => updateAltScenario(alt.id, 'loanAmount', e.target.value)} /></Field>
                     <Field label="Rate"><input className={inputCls} value={alt.rate} onChange={e => updateAltScenario(alt.id, 'rate', e.target.value)} /></Field>
+                      </>
+                    )}
                     <Field label="LVR (calculated)">
                       <div className={inputCls + " bg-gray-50 text-gray-700"}>{altLvr > 0 ? `${altLvr}%` : '\u2014'}</div>
                     </Field>
@@ -1046,7 +1058,7 @@ Key assumptions: ${checklistText}`
                 </div>
                 )
               })}
-              {["oo_purchase", "investment_purchase"].includes(template) && compareOptions && (
+              {["oo_purchase", "investment_purchase", "refinance_equity"].includes(template) && compareOptions && (
                 <button onClick={addAltScenario} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition self-start">
                   + Add alternative scenario
                 </button>
