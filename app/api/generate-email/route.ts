@@ -135,7 +135,49 @@ export async function POST(req: NextRequest) {
 
   let body = ''
 
-  if (template === 'refinance_equity') {
+  if (template === 'refinance_equity' && d.compareOptions) {
+    const buildOptionColRE = (opt: any, label: string) => {
+      const existingLoanN = parseFloat((d.existingLoanBal || '0').replace(/,/g, '')) || 0
+      const propertyValueN = parseFloat((d.propertyValue || '0').replace(/,/g, '')) || 0
+      const equityReleaseN = parseFloat((opt.equityReleaseAmount || '0').replace(/,/g, '')) || 0
+      const lvrNum = propertyValueN > 0 ? Math.round(((existingLoanN + equityReleaseN) / propertyValueN) * 1000) / 10 : 0
+      const actions = []
+      if (opt.ccPayoff) actions.push((Number(opt.ccPayoffAmount) || 0) > 0 ? `Reduce credit card by $${opt.ccPayoffAmount}` : 'Credit card closed')
+      if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by $${opt.hecsPayoffAmount}` : 'HECS closed')
+      if (opt.carLoanPayoff) actions.push('Car loan closed')
+      if (opt.personalLoanPayoff) actions.push('Personal loan closed')
+      const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</p>` : ''
+      let lmiLine = ''
+      if (lvrNum > 80) {
+        if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0">LMI (estimated): $${opt.lmi}</p>`
+        else if (opt.lmiApplicable === 'Waived') lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0">LMI waived</p>`
+      }
+      return `<td style="width:50%;vertical-align:top;padding:0 6px">
+        <p style="font-size:13px;font-weight:700;color:#343333;text-align:center;margin-bottom:8px;background:#fff;padding:6px 8px;border-radius:4px">${label}</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">Existing loan balance: $${d.existingLoanBal || ''}</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">Equity release amount: $${opt.equityReleaseAmount || ''}</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">LVR: ${lvrNum}%</p>${lmiLine}
+        ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px">To achieve this option:</p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0">&#10003; ${a}</p>`).join('') : ''}${nonBankNote}
+      </td>`
+    }
+    const baseOptionRE = {
+      equityReleaseAmount: d.equityRelease,
+      lmiApplicable: d.lmiApplicable, lmi: d.lmi,
+      ccPayoff: false, hecsPayoff: false, carLoanPayoff: false, personalLoanPayoff: false, nonBankLender: false
+    }
+    const allOptionsRE = [buildOptionColRE(baseOptionRE, 'Option 1'), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionColRE(alt, `Option ${i + 2}`))]
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
+      p('Based on your current financial position, you have capacity to refinance and access equity. Below we have outlined different equity release scenarios depending on your financial position.') +
+      propHead(`Against ${d.suburb || '[Property Address]'}`, d.incomeRental) +
+      `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
+        <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Equity Release Options</p>
+        <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptionsRE.join('')}</tr></table>
+      </td></tr></table>` +
+      check(checkItems) +
+      p('The numbers are looking strong. The next step is finding the right lender and rate for your situation \u2014 and that is exactly what we will do for you.') +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
+
+  } else if (template === 'refinance_equity') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p(`Based on your current financial position, you have sufficient capacity to refinance your property and access approximately ${d.splits?.[1]?.amount || '[equity amount]'} in equity, while also securing a competitive rate.`) +
       p13('Here is a breakdown of the structure:') +
