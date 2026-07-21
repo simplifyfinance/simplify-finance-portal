@@ -838,7 +838,7 @@ Key assumptions: ${checklistText}`
                         {splits.length > 1 && <button onClick={() => removeSplit(i)} className="text-xs text-gray-400 hover:text-red-500">Remove</button>}
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        {isMultiOption ? (
+                        {template === "oo_lvr_compare" ? (
                           <>
                             <Field label="LVR %">
                               <select className={selectCls} value={['80%', '90%', '95%'].includes(s.label) ? s.label : (s.label ? 'Other' : '')} onChange={e => {
@@ -857,12 +857,42 @@ Key assumptions: ${checklistText}`
                               </Field>
                             )}
                           </>
+                        ) : template === "oo_purchase" && compareOptions ? (
+                          <>
+                            <Field label="Option label"><input className={inputCls} placeholder="e.g. Option 1" value={s.label} onChange={e => updateSplit(i, 'label', e.target.value)} /></Field>
+                            <Field label="Purchase price"><NumberInput value={s.optionPurchasePrice || ''} onChange={v => updateSplit(i, 'optionPurchasePrice', v)} /></Field>
+                          </>
                         ) : (
                           <Field label="Label"><input className={inputCls} value={s.label} onChange={e => updateSplit(i, 'label', e.target.value)} /></Field>
                         )}
                         <Field label="Amount"><input className={inputCls} value={s.amount} onChange={e => handleLoanAmountChange(i, e.target.value)} /></Field>
-                        {isMultiOption && <Field label="Deposit required"><NumberInput value={s.deposit || ""} onChange={v => updateSplit(i, 'deposit', v)} /></Field>}<Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
+                        {template === "oo_lvr_compare" && <Field label="Deposit required"><NumberInput value={s.deposit || ""} onChange={v => updateSplit(i, 'deposit', v)} /></Field>}<Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
                         <Field label="Type"><select className={selectCls} value={s.type} onChange={e => updateSplit(i, 'type', e.target.value)}><option>P&I</option><option>Interest only</option></select></Field>
+                        {template === "oo_purchase" && compareOptions && (
+                          <div className="col-span-2 bg-white rounded-lg p-3 border border-gray-100">
+                            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">To achieve this option</div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="flex items-center gap-2">
+                                <input type="checkbox" checked={!!s.ccPayoff} onChange={e => updateSplit(i, 'ccPayoff', e.target.checked as any)} />
+                                <label className="text-xs text-gray-600">Reduce credit card limit by</label>
+                              </div>
+                              {s.ccPayoff && <CurrencyInput className={inputCls} value={s.ccPayoffAmount || ''} onChange={v => updateSplit(i, 'ccPayoffAmount', v)} />}
+                              <div className="flex items-center gap-2">
+                                <input type="checkbox" checked={!!s.hecsPayoff} onChange={e => updateSplit(i, 'hecsPayoff', e.target.checked as any)} />
+                                <label className="text-xs text-gray-600">Reduce HECS by</label>
+                              </div>
+                              {s.hecsPayoff && <CurrencyInput className={inputCls} value={s.hecsPayoffAmount || ''} onChange={v => updateSplit(i, 'hecsPayoffAmount', v)} />}
+                              <div className="flex items-center gap-2">
+                                <input type="checkbox" checked={!!s.carLoanPayoff} onChange={e => updateSplit(i, 'carLoanPayoff', e.target.checked as any)} />
+                                <label className="text-xs text-gray-600">Close car loan</label>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input type="checkbox" checked={!!s.personalLoanPayoff} onChange={e => updateSplit(i, 'personalLoanPayoff', e.target.checked as any)} />
+                                <label className="text-xs text-gray-600">Close personal loan</label>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         {template === "bridging" && i === 1 && <Field label="Repayment"><CurrencyInput className={inputCls} value={s.repayment || ""} onChange={v => updateSplit(i, 'repayment', v)} /></Field>}
                         {template === "bridging" && i === 0 && (
                           <Field label="Estimated interest capitalised">
