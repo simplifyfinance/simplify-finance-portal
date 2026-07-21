@@ -757,7 +757,7 @@ Key assumptions: ${checklistText}`
                 <div className="grid grid-cols-2 gap-2">
                   <Field label="Suburb"><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
                   {template !== "fhb" && <Field label="Property type"><select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>}
-                  {template === "oo_purchase" && (
+                  {["oo_purchase", "investment_purchase"].includes(template) && (
                     <div className="flex items-center gap-2 col-span-2">
                       <input type="checkbox" id="compareOptions" checked={compareOptions} onChange={e => setCompareOptions(e.target.checked)} />
                       <label htmlFor="compareOptions" className="text-xs text-gray-600">Compare multiple options (e.g. different purchase prices based on paying down liabilities)</label>
@@ -974,7 +974,7 @@ Key assumptions: ${checklistText}`
                 </div>
               )}
 
-              {template === "oo_purchase" && compareOptions && altScenarios.map((alt, idx) => {
+              {["oo_purchase", "investment_purchase"].includes(template) && compareOptions && altScenarios.map((alt, idx) => {
                 const price = parseFloat(alt.purchasePrice.replace(/,/g, '')) || 0
                 const loanAmt = parseFloat(alt.loanAmount.replace(/,/g, '')) || 0
                 const altLvr = price > 0 ? Math.round((loanAmt / price) * 1000) / 10 : 0
@@ -1045,7 +1045,7 @@ Key assumptions: ${checklistText}`
                 </div>
                 )
               })}
-              {template === "oo_purchase" && compareOptions && (
+              {["oo_purchase", "investment_purchase"].includes(template) && compareOptions && (
                 <button onClick={addAltScenario} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition self-start">
                   + Add alternative scenario
                 </button>
