@@ -219,6 +219,50 @@ export async function POST(req: NextRequest) {
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
 
+  } else if (template === 'investment_purchase' && d.compareOptions) {
+    const buildOptionColIP = (opt: any, label: string) => {
+      const priceNum = parseFloat((opt.purchasePrice || '').replace(/,/g, '')) || 0
+      const loanNum = parseFloat((opt.loanAmount || '').replace(/,/g, '')) || 0
+      const lvrNum = priceNum > 0 ? Math.round((loanNum / priceNum) * 1000) / 10 : 0
+      const actions = []
+      if (opt.ccPayoff) actions.push((Number(opt.ccPayoffAmount) || 0) > 0 ? `Reduce credit card by $${opt.ccPayoffAmount}` : 'Credit card closed')
+      if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by $${opt.hecsPayoffAmount}` : 'HECS closed')
+      if (opt.carLoanPayoff) actions.push('Car loan closed')
+      if (opt.personalLoanPayoff) actions.push('Personal loan closed')
+      const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</p>` : ''
+      let lmiLine = ''
+      if (lvrNum > 80) {
+        if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0">LMI (estimated): $${opt.lmi}</p>`
+        else if (opt.lmiApplicable === 'Waived') lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0">LMI waived</p>`
+      }
+      return `<td style="width:50%;vertical-align:top;padding:0 6px">
+        <p style="font-size:13px;font-weight:700;color:#343333;text-align:center;margin-bottom:8px;background:#fff;padding:6px 8px;border-radius:4px">${label}</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">Purchase price: $${opt.purchasePrice || ''}</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">Deposit: $${opt.deposit || ''}</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">Stamp duty: $${opt.stampDuty || ''}</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">Loan amount: $${opt.loanAmount || ''}</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">LVR: ${lvrNum}%</p>${lmiLine}
+        <p style="font-size:11px;color:#555;margin:3px 0">Rate: ${opt.rate}% p.a.*</p>
+        ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px">To achieve this option:</p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0">&#10003; ${a}</p>`).join('') : ''}${nonBankNote}
+      </td>`
+    }
+    const baseOptionIP = {
+      purchasePrice: d.purchasePrice, deposit: d.deposit, stampDuty: d.stampDuty,
+      loanAmount: d.splits?.[0]?.amount, rate: d.splits?.[0]?.rate,
+      lmiApplicable: d.lmiApplicable, lmi: d.lmi,
+      ccPayoff: false, hecsPayoff: false, carLoanPayoff: false, personalLoanPayoff: false, nonBankLender: false
+    }
+    const allOptionsIP = [buildOptionColIP(baseOptionIP, 'Option 1'), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionColIP(alt, `Option ${i + 2}`))]
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
+      p('We have completed your borrowing capacity assessment. Below we have outlined different purchase price scenarios depending on your financial position.') +
+      `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
+        <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Purchase Options</p>
+        <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptionsIP.join('')}</tr></table>
+      </td></tr></table>` +
+      check(checkItems) +
+      p('The next step is finding the right lender, the right rate, and the right structure for your investment \u2014 and that is exactly what we will do for you.') +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
+
   } else if (template === 'investment_purchase') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
