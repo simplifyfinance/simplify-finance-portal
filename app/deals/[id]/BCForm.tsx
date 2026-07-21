@@ -361,7 +361,7 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
   const [landValue, setLandValueRaw] = useState(s.landValue || '')
   const [asIfCompleteValue, setAsIfCompleteValue] = useState(s.asIfCompleteValue || '')
   const [compareOptions, setCompareOptions] = useState(s.compareOptions || false)
-  const isMultiOption = template === 'oo_lvr_compare' || (template === 'oo_purchase' && compareOptions)
+  const isMultiOption = template === 'oo_lvr_compare'
 
   function recomputeAsIfComplete(land: string, constr: string) {
     const landN = parseFloat(land.replace(/,/g, '')) || 0
@@ -719,8 +719,8 @@ Key assumptions: ${checklistText}`
                     </div>
                   )}
                   {!["refinance_equity", "refinance_only", "investment_equity", "construction"].includes(template) && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={handlePurchasePriceChange} /></Field>}
-                  {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "construction"].includes(template) && !isMultiOption && <Field label="Deposit"><NumberInput value={deposit} onChange={handleDepositChange} /></Field>}
-              {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "buy_sell"].includes(template) && !isMultiOption && (
+                  {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "construction"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={handleDepositChange} /></Field>}
+              {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "buy_sell"].includes(template) && (
                 <Field label="Deposit source">
                   <select className={selectCls} value={depositSource} onChange={e => setDepositSource(e.target.value)}>
                     <option value="">Select source</option>
