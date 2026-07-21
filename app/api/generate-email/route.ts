@@ -345,15 +345,22 @@ export async function POST(req: NextRequest) {
       notesBox(notes) + sig(b)
 
   } else if (template === 'construction') {
+    const landN = parseFloat((d.landValue || '0').replace(/,/g, '')) || 0
+    const constrN = parseFloat((d.constructionCost || '0').replace(/,/g, '')) || 0
+    const sdN = parseFloat((d.stampDuty || '0').replace(/,/g, '')) || 0
+    const totalCost = landN + constrN + sdN
+    const loanAmtN = parseFloat((d.splits?.[0]?.amount || '0').replace(/,/g, '')) || 0
+    const depositRequired = Math.max(0, Math.round(totalCost - loanAmtN))
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
       card('Your Loan Structure',
-        row('Land value', d.landValue || '') +
-        row('Construction cost', d.constructionCost || '') +
-        row('Total project cost', d.purchasePrice || '') +
-        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
-        row('Stamp duty', '$' + d.stampDuty || '') +
+        row('Land value', '$' + (d.landValue || '')) +
+        row('Construction cost', '$' + (d.constructionCost || '')) +
+        row('Stamp duty', '$' + (d.stampDuty || '')) +
+        `<tr style="border-top:1px solid rgba(122,92,58,0.3)"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Total cost</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">$${totalCost.toLocaleString('en-AU')}</td></tr>` +
+        row('"As if complete" valuation', '$' + (d.asIfCompleteValue || '')) +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Deposit required', '$' + depositRequired.toLocaleString('en-AU')) +
         buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', '[calculated]') +
