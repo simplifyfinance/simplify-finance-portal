@@ -189,6 +189,7 @@ type AltScenario = {
   carLoanPayoff: boolean
   personalLoanPayoff: boolean
   nonBankLender: boolean
+  equityReleaseAmount?: string
 }
 
 const TEMPLATE_NOTES: Record<string, string[]> = {
@@ -757,10 +758,10 @@ Key assumptions: ${checklistText}`
                 <div className="grid grid-cols-2 gap-2">
                   <Field label="Suburb"><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
                   {template !== "fhb" && <Field label="Property type"><select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>}
-                  {["oo_purchase", "investment_purchase"].includes(template) && (
+                  {["oo_purchase", "investment_purchase", "refinance_equity"].includes(template) && (
                     <div className="flex items-center gap-2 col-span-2">
                       <input type="checkbox" id="compareOptions" checked={compareOptions} onChange={e => setCompareOptions(e.target.checked)} />
-                      <label htmlFor="compareOptions" className="text-xs text-gray-600">Compare multiple options (e.g. different purchase prices based on paying down liabilities)</label>
+                      <label htmlFor="compareOptions" className="text-xs text-gray-600">Compare multiple options (e.g. different scenarios based on paying down liabilities)</label>
                     </div>
                   )}
                   {!["refinance_equity", "refinance_only", "investment_equity", "construction"].includes(template) && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={handlePurchasePriceChange} /></Field>}
