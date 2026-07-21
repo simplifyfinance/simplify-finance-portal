@@ -973,6 +973,79 @@ Key assumptions: ${checklistText}`
                 </div>
               )}
 
+              {template === "oo_purchase" && compareOptions && altScenarios.map((alt, idx) => {
+                const price = parseFloat(alt.purchasePrice.replace(/,/g, '')) || 0
+                const loanAmt = parseFloat(alt.loanAmount.replace(/,/g, '')) || 0
+                const altLvr = price > 0 ? Math.round((loanAmt / price) * 1000) / 10 : 0
+                return (
+                <div key={alt.id} className="bg-white border-2 border-[#2DBEFF]/40 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-xs font-medium text-[#2DBEFF] uppercase tracking-wider">Alternative scenario {idx + 1}</div>
+                    <button onClick={() => removeAltScenario(alt.id)} className="text-xs text-gray-400 hover:text-red-500">Remove</button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Purchase price"><NumberInput value={alt.purchasePrice} onChange={v => handleAltPurchasePriceChange(alt.id, v)} /></Field>
+                    <Field label="Deposit"><NumberInput value={alt.deposit} onChange={v => handleAltDepositChange(alt.id, v)} /></Field>
+                    <Field label="Deposit source">
+                      <select className={selectCls} value={alt.depositSource} onChange={e => updateAltScenario(alt.id, 'depositSource', e.target.value)}>
+                        <option value="">Select source</option>
+                        <option value="Savings">Savings</option>
+                        <option value="Equity">Equity</option>
+                        <option value="Gift">Gift</option>
+                        <option value="Combination">Combination of savings &amp; equity</option>
+                      </select>
+                    </Field>
+                    <Field label="Stamp duty"><NumberInput value={alt.stampDuty} onChange={v => updateAltScenario(alt.id, 'stampDuty', v)} /></Field>
+                    <Field label="Loan amount"><input className={inputCls} value={alt.loanAmount} onChange={e => updateAltScenario(alt.id, 'loanAmount', e.target.value)} /></Field>
+                    <Field label="Rate"><input className={inputCls} value={alt.rate} onChange={e => updateAltScenario(alt.id, 'rate', e.target.value)} /></Field>
+                    <Field label="LVR (calculated)">
+                      <div className={inputCls + " bg-gray-50 text-gray-700"}>{altLvr > 0 ? `${altLvr}%` : '\u2014'}</div>
+                    </Field>
+                    {altLvr > 80 && (
+                      <Field label="LMI status">
+                        <select className={selectCls} value={alt.lmiApplicable} onChange={e => updateAltScenario(alt.id, 'lmiApplicable', e.target.value)}>
+                          <option value="">Select</option>
+                          <option value="Applicable">LMI applicable</option>
+                          <option value="Waived">LMI waived</option>
+                        </select>
+                      </Field>
+                    )}
+                    {altLvr > 80 && alt.lmiApplicable === 'Applicable' && (
+                      <Field label="LMI estimate">
+                        <CurrencyInput className={inputCls} value={alt.lmi} onChange={v => updateAltScenario(alt.id, 'lmi', v)} />
+                      </Field>
+                    )}
+                  </div>
+                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mt-4 mb-2">To achieve this option</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" checked={alt.ccPayoff} onChange={e => updateAltScenario(alt.id, 'ccPayoff', e.target.checked)} />
+                      <label className="text-xs text-gray-600">Reduce credit card limit by</label>
+                    </div>
+                    {alt.ccPayoff && <CurrencyInput className={inputCls} value={alt.ccPayoffAmount} onChange={v => updateAltScenario(alt.id, 'ccPayoffAmount', v)} />}
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" checked={alt.hecsPayoff} onChange={e => updateAltScenario(alt.id, 'hecsPayoff', e.target.checked)} />
+                      <label className="text-xs text-gray-600">Reduce HECS by</label>
+                    </div>
+                    {alt.hecsPayoff && <CurrencyInput className={inputCls} value={alt.hecsPayoffAmount} onChange={v => updateAltScenario(alt.id, 'hecsPayoffAmount', v)} />}
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" checked={alt.carLoanPayoff} onChange={e => updateAltScenario(alt.id, 'carLoanPayoff', e.target.checked)} />
+                      <label className="text-xs text-gray-600">Close car loan</label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" checked={alt.personalLoanPayoff} onChange={e => updateAltScenario(alt.id, 'personalLoanPayoff', e.target.checked)} />
+                      <label className="text-xs text-gray-600">Close personal loan</label>
+                    </div>
+                  </div>
+                </div>
+                )
+              })}
+              {template === "oo_purchase" && compareOptions && (
+                <button onClick={addAltScenario} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition self-start">
+                  + Add alternative scenario
+                </button>
+              )}
+
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">"Based on your numbers" checklist</div>
                 <div className="flex flex-col gap-2 mb-2">
