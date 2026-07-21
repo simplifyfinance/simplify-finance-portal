@@ -169,7 +169,26 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
   construction: { splits: [{ label: 'Land loan', amount: '', rate: '6.14', type: 'P&I' }, { label: 'Construction loan', amount: '', rate: '6.39', type: 'Interest only' }] },
 }
 
-type Split = { label: string; amount: string; rate: string; type: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string; interestCapitalised?: string; optionPurchasePrice?: string; ccPayoff?: boolean; ccPayoffAmount?: string; hecsPayoff?: boolean; hecsPayoffAmount?: string; carLoanPayoff?: boolean; personalLoanPayoff?: boolean }
+type Split = { label: string; amount: string; rate: string; type: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string; interestCapitalised?: string }
+
+type AltScenario = {
+  id: string
+  purchasePrice: string
+  deposit: string
+  depositSource: string
+  stampDuty: string
+  loanAmount: string
+  rate: string
+  type: string
+  lmiApplicable: string
+  lmi: string
+  ccPayoff: boolean
+  ccPayoffAmount: string
+  hecsPayoff: boolean
+  hecsPayoffAmount: string
+  carLoanPayoff: boolean
+  personalLoanPayoff: boolean
+}
 
 const TEMPLATE_NOTES: Record<string, string[]> = {
   refinance_equity: [],
@@ -361,6 +380,31 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
   const [landValue, setLandValueRaw] = useState(s.landValue || '')
   const [asIfCompleteValue, setAsIfCompleteValue] = useState(s.asIfCompleteValue || '')
   const [compareOptions, setCompareOptions] = useState(s.compareOptions || false)
+  const [altScenarios, setAltScenarios] = useState<AltScenario[]>(s.altScenarios || [])
+
+  function addAltScenario() {
+    setAltScenarios(prev => [...prev, {
+      id: Math.random().toString(36).slice(2), purchasePrice: '', deposit: '', depositSource: '', stampDuty: '',
+      loanAmount: '', rate: '6.14', type: 'P&I', lmiApplicable: '', lmi: '',
+      ccPayoff: false, ccPayoffAmount: '', hecsPayoff: false, hecsPayoffAmount: '', carLoanPayoff: false, personalLoanPayoff: false
+    }])
+  }
+  function removeAltScenario(id: string) { setAltScenarios(prev => prev.filter(a => a.id !== id)) }
+  function updateAltScenario(id: string, field: keyof AltScenario, value: any) {
+    setAltScenarios(prev => prev.map(a => a.id === id ? { ...a, [field]: value } : a))
+  }
+  function handleAltPurchasePriceChange(id: string, val: string) {
+    const price = parseFloat(val.replace(/,/g, '')) || 0
+    const scenario = altScenarios.find(a => a.id === id)
+    const dep = parseFloat((scenario?.deposit || '0').replace(/,/g, '')) || 0
+    setAltScenarios(prev => prev.map(a => a.id === id ? { ...a, purchasePrice: val, loanAmount: formatNumber(Math.max(0, Math.round(price - dep)).toString()) } : a))
+  }
+  function handleAltDepositChange(id: string, val: string) {
+    const dep = parseFloat(val.replace(/,/g, '')) || 0
+    const scenario = altScenarios.find(a => a.id === id)
+    const price = parseFloat((scenario?.purchasePrice || '0').replace(/,/g, '')) || 0
+    setAltScenarios(prev => prev.map(a => a.id === id ? { ...a, deposit: val, loanAmount: formatNumber(Math.max(0, Math.round(price - dep)).toString()) } : a))
+  }
   const isMultiOption = template === 'oo_lvr_compare'
 
   function recomputeAsIfComplete(land: string, constr: string) {
