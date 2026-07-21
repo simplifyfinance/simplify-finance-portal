@@ -188,6 +188,7 @@ type AltScenario = {
   hecsPayoffAmount: string
   carLoanPayoff: boolean
   personalLoanPayoff: boolean
+  nonBankLender: boolean
 }
 
 const TEMPLATE_NOTES: Record<string, string[]> = {
@@ -386,7 +387,7 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
     setAltScenarios(prev => [...prev, {
       id: Math.random().toString(36).slice(2), purchasePrice: '', deposit: '', depositSource: '', stampDuty: '',
       loanAmount: '', rate: '6.14', type: 'P&I', lmiApplicable: '', lmi: '',
-      ccPayoff: false, ccPayoffAmount: '', hecsPayoff: false, hecsPayoffAmount: '', carLoanPayoff: false, personalLoanPayoff: false
+      ccPayoff: false, ccPayoffAmount: '', hecsPayoff: false, hecsPayoffAmount: '', carLoanPayoff: false, personalLoanPayoff: false, nonBankLender: false
     }])
   }
   function removeAltScenario(id: string) { setAltScenarios(prev => prev.filter(a => a.id !== id)) }
@@ -1035,6 +1036,10 @@ Key assumptions: ${checklistText}`
                     <div className="flex items-center gap-2">
                       <input type="checkbox" checked={alt.personalLoanPayoff} onChange={e => updateAltScenario(alt.id, 'personalLoanPayoff', e.target.checked)} />
                       <label className="text-xs text-gray-600">Close personal loan</label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" checked={alt.nonBankLender} onChange={e => updateAltScenario(alt.id, 'nonBankLender', e.target.checked)} />
+                      <label className="text-xs text-gray-600">Non-bank lender</label>
                     </div>
                   </div>
                 </div>
