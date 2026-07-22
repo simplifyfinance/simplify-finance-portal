@@ -365,15 +365,65 @@ export default function ComplianceForm({ deal }: { deal: any }) {
     }
 
     const prompts: Record<string, string> = {
-      needsPrimary: `You are a compliance officer for an Australian mortgage brokerage. Write the "Primary reasons for seeking credit / needs and objectives" field for SalesTrekker CRM. Client: ${context.clientName}. Loan: $${context.loanAmount} for ${context.loanType}. Property: ${context.suburb}. Income: $${context.incomeBase} base. Recommended lender: ${context.recommendedLender}. Client's own stated purpose for this loan: "${context.loanPurpose || 'not recorded — use loan type and property details only, do not invent a personal reason'}". Base the purpose section on what the client actually told the broker above rather than inventing circumstances. Also cover: loan amount and term, specific features requested, savings position. Write 4-6 professional sentences. No dot points. Australian mortgage broker tone. Must comply with SFG Best Interests Duty Policy.`,
-      needsImmediate: `You are a compliance officer for an Australian mortgage brokerage. Write the "Immediate needs and objectives — within next 2 years" field. Client: ${context.clientName}. Loan type: ${context.loanType}. Client's own stated 2-year goals: "${context.goals2Years || 'not recorded — write a brief neutral statement that no specific short-term goals were disclosed, do not invent any'}". Base this field strictly on what the client actually told the broker. Write 3-4 professional sentences. No dot points.`,
-      needsLongTerm: `You are a compliance officer for an Australian mortgage brokerage. Write the "Longer term needs and objectives — 2 to 10 years" field. Client: ${context.clientName}. Dependants: ${context.dependants}. Client's own stated 2-10 year goals: "${context.goals10Years || 'not recorded — write a brief neutral statement that no specific long-term goals were disclosed, do not invent any'}". Base this field strictly on what the client actually told the broker. Write 3-4 professional sentences. No dot points.`,
-      analysisComment: `You are a compliance officer for an Australian mortgage brokerage writing a credit note for SalesTrekker. Write the "Analysis, assessment and applicant education" broker comment. Client: ${context.clientName}. Loan: $${context.loanAmount}. Income: $${context.incomeBase}. Dependants: ${context.dependants}. Lender: ${context.recommendedLender}. Product: ${context.product}. Rate: ${context.rate}%. Cover ALL of these: purpose of loan, client situation overview, ages/exit strategy, employment type and stability, assets and liabilities, financial habits, financial awareness, client wants vs needs, goals and priorities, specific requirements, lender policy/serviceability, security assessment, applicant education. Must reference Best Interests Duty and NCCP obligations. Write in professional paragraphs with bold subheadings. Minimum 500 words.`,
-      optionsComment: `You are a compliance officer for an Australian mortgage brokerage. Write the "Options presented and recommendation" broker comment. All lenders considered: ${context.allLenders}. Recommended: ${context.recommendedLender} — ${context.product}. Rate: ${context.rate}%. Application fee: ${context.applicationFee}. Annual fee: ${context.annualFee}. Offset: ${context.offsetAccount}. Broker recommendation note: ${context.recommendationNote}. Cover: why recommended product is in client's best interests, alternatives considered, fees and charges, rate comparisons, why cheaper options may not have been selected. Reference SFG Best Interests Duty — must justify recommendation. Write in professional paragraphs.`,
-      borrowingPowerComment: `You are a compliance officer for an Australian mortgage brokerage. Write the "Borrowing power" broker comment. Client: ${context.clientName}. Loan: $${context.loanAmount}. Purchase price: $${context.purchasePrice}. Income: $${context.incomeBase} base, $${context.incomeRental} rental. CC limit: $${context.ccLimit}. Cover: maximum borrowing capacity, DTI ratio, asset position, LVR, serviceability assessment. Write 3-4 professional paragraphs.`,
-      depositComment: `You are a compliance officer for an Australian mortgage brokerage. Write the "Deposit/Equity" broker comment in 1-2 sentences. Client: ${context.clientName}. Purchase price: $${context.purchasePrice}. Loan: $${context.loanAmount}. Deposit: $${context.deposit}. Existing loan: $${context.existingLoan}. State where funds for completion come from.`,
-      creditHistoryComment: `You are a compliance officer for an Australian mortgage brokerage. Write the "Credit history" broker comment. Client: ${context.clientName}. Risk answers: ${context.risks}. Note: No Equifax credit score currently available — prompt credit team to confirm. Cover: payment history, bankruptcies, judgements, simultaneous applications. If all credit history answers are No, confirm clean credit history. Reference NCCP responsible lending obligations. Write 2-3 professional paragraphs.`,
-      securityComment: `Write one sentence for the "Security (property)" field. Property type: ${context.propertyType}. Suburb: ${context.suburb}. If no address confirmed yet write "TBA — [property type] [suburb]".`,
+      needsPrimary: `CRM FIELD: Primary reasons for seeking credit / your needs and objectives
+
+Cover: purpose of the loan (owner occupied / investment) and why; loan amount and term and why; any specific features, lenders, interest rate types or repayment types requested and why; any flexibility on the client's stated needs and objectives; savings held / retention of savings and why; any personal circumstances that may affect the loan (financial circumstances, employment, family status); whether the client is a first home buyer.
+
+Client: ${context.clientName}. Loan: $${context.loanAmount} for ${context.loanType}. Property: ${context.suburb}. Income: $${context.incomeBase} base. Recommended lender: ${context.recommendedLender}. Client's own stated purpose for this loan: "${context.loanPurpose || 'not recorded'}". Write 4-6 sentences, no dot points.`,
+
+      needsImmediate: `CRM FIELD: Immediate needs and objectives — within the next two years (e.g. holiday, purchases, renovations, savings, protect the family, etc)
+
+Cover: what the client might want to achieve in the next 2 years and how it may affect the loan — overseas travel, starting a family, upgrading or changing property, investments.
+
+Client: ${context.clientName}. Loan type: ${context.loanType}. Client's own stated 2-year goals: "${context.goals2Years || 'not recorded'}". Write 3-4 sentences, no dot points.`,
+
+      needsLongTerm: `CRM FIELD: Longer term needs and objectives — between 2 to 10 years (e.g. repay mortgage, buy a new car, education expenses, purchase investment property, retirement planning, etc)
+
+Cover: reducing the home loan and why/how quickly; dependants — commencing or finishing schooling, childcare costs, affordability; retiring before the end of the requested loan term and how this may affect the loan; vehicle or recreational vehicle upgrade and potential timing.
+
+Client: ${context.clientName}. Dependants: ${context.dependants}. Client's own stated 2-10 year goals: "${context.goals10Years || 'not recorded'}". Write 3-4 sentences, no dot points.`,
+
+      analysisComment: `CRM FIELD: Analysis, assessment and applicant education comments
+
+Write three clearly labelled sections using bold subheadings:
+
+ANALYSIS — cover: purpose of the loan and loan amount; what the client is hoping to achieve short and long term; overview of the client's situation; ages of applicants and whether an exit strategy is required; residential status (renting, boarding, and history); family status and ages of dependants; employment type, income, stability and any recent/upcoming changes; assets and liabilities including any changes (e.g. credit cards being closed or paid out); financial habits (savings held); financial awareness (loan terms, repayments, interest rates); credit history.
+
+ASSESSMENT — cover: the client's personal and financial position including employment stability; the client's wants versus what they actually need; the client's goals, objectives, priorities and preferences; specific requirements (lender, features, repayment type); lender policy, serviceability and borrowing capacity; security type and any postcode restrictions; turnaround times and security property type considerations.
+
+APPLICANT EDUCATION — cover: the level of financial understanding driving the education needed; any mitigants (e.g. the client's situation may limit what's available to them); client wants versus needs; how loan types and features work; repayment types and requirements; any complex scenarios (guarantor, exit strategy, foreseeable changes); applicable fees and charges; government schemes or promotional offers; cashback offers; costs of refinancing/extending loan term; professional packages; fixed rates and break costs; pre-approval requirements; seniors' loans if applicable.
+
+Client: ${context.clientName}. Loan: $${context.loanAmount}. Income: $${context.incomeBase}. Dependants: ${context.dependants}. Lender: ${context.recommendedLender}. Product: ${context.product}. Rate: ${context.rate}%. Minimum 500 words total across the three sections.`,
+
+      optionsComment: `CRM FIELD: Options presented and recommendation comments
+
+Cover: how the recommended product is in the client's best interests; loan type, repayment type, interest rate type and why; specific lender request versus other cheaper options considered; alternative feature options to what was requested and why (e.g. offset vs redraw); if the cheapest option was not recommended, explain why; whether turnaround times, geographical location, lender policy, borrowing capacity or loan amount available played a part in the recommendation; fees and charges applicable, any fee waivers or professional packages; security or servicing guarantee if applicable; lender service/branch access; credit history if it affected the recommendation; property size; first home buyer scheme if applicable.
+
+All lenders considered: ${context.allLenders}. Recommended: ${context.recommendedLender} — ${context.product}. Rate: ${context.rate}%. Application fee: ${context.applicationFee}. Annual fee: ${context.annualFee}. Offset: ${context.offsetAccount}. Broker recommendation note: ${context.recommendationNote}. Write in professional paragraphs.`,
+
+      borrowingPowerComment: `CRM FIELD: Borrowing power comments
+
+Explain the client's ability to repay the loan — reference maximum borrowing capacity, debt-to-income ratio, asset position, LVR, and overall serviceability assessment.
+
+Client: ${context.clientName}. Loan: $${context.loanAmount}. Purchase price: $${context.purchasePrice}. Income: $${context.incomeBase} base, $${context.incomeRental} rental. CC limit: $${context.ccLimit}. Write 3-4 paragraphs.`,
+
+      depositComment: `CRM FIELD: Deposit/Equity comments
+
+Explain the deposit if this is a purchase, or the equity usage if this is a refinance/equity release/cashout — must reference the client's savings position and where funds for completion come from.
+
+Client: ${context.clientName}. Purchase price: $${context.purchasePrice}. Loan: $${context.loanAmount}. Deposit: $${context.deposit}. Existing loan: $${context.existingLoan}. One sentence only.`,
+
+      creditHistoryComment: `CRM FIELD: Credit history comments
+
+Explain any potential credit history comments — must reference any comments about repayment history or conduct (payment history, bankruptcies, judgements, simultaneous credit applications). If all credit history answers are No, confirm a clean credit history and note that no Equifax credit score is currently available, so the credit team should confirm.
+
+Client: ${context.clientName}. Risk answers: ${context.risks}. Write 2-3 paragraphs.`,
+
+      securityComment: `CRM FIELD: Security (property) comments
+
+Add the security if it is a refinance, or write TBA for a pre-approval — must reference the security in question.
+
+Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence only. If no address confirmed yet, write "TBA — [property type] [suburb]".`,
     }
 
     try {
