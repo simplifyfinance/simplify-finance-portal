@@ -503,7 +503,7 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
           {[
             ['Client', d.applicants.map(a => a.name).join(', ')],
             ['Loan amount', `$${lo.loanAmount || bc.splits?.[0]?.amount || '—'}`],
-            ['Lender', lo.lenders?.[0]?.lenderName || '—'],
+            ['Lender', lo.recommendedLender || lo.lenders?.[0]?.lenderName || '—'],
             ['Loan type', bc.template?.replace(/_/g, ' ') || '—'],
           ].map(([label, value]) => (
             <div key={label}>
