@@ -486,7 +486,7 @@ export default function LOForm({ deal }: { deal: any }) {
     const res = await fetch('/api/generate-lo-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ broker: deal.assigned_broker, dealId: deal.id, loData: { ...d, importantNotesList: (d.importantNotes || '').split('\n').map((n: string) => n.trim()).filter(Boolean) } })
+      body: JSON.stringify({ broker: d.brokerSig || deal.assigned_broker, dealId: deal.id, loData: { ...d, importantNotesList: (d.importantNotes || '').split('\n').map((n: string) => n.trim()).filter(Boolean) } })
     })
     const data = await res.json()
     if (data.html) { setEmailHtml(data.html); setD({ ...d, emailHtml: data.html }); setActiveTab('preview') }
@@ -626,6 +626,12 @@ export default function LOForm({ deal }: { deal: any }) {
           {/* Broker personalisation */}
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Broker personalisation</div>
+            <label className="text-xs text-gray-500 block mb-1">Broker signature</label>
+            <select className="w-full rounded-lg px-3 py-2 text-sm border border-gray-200 focus:outline-none focus:border-[#2DBEFF] mb-3" value={d.brokerSig} onChange={e => setD({ ...d, brokerSig: e.target.value })}>
+              {brokersList.map((b: any, i: number) => (
+                <option key={i} value={b.name}>{b.name} — Simplify Finance</option>
+              ))}
+            </select>
             <textarea className={`${d.brokerPersonalisation ? "border-green-200 bg-white" : "border-amber-200 bg-[#FFFBF0]"} w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-[80px] resize-y border`} value={d.brokerPersonalisation} onChange={e => setD({ ...d, brokerPersonalisation: e.target.value })} placeholder="✏ Add your personalised opening message..." />
           </div>
 
