@@ -178,8 +178,11 @@ function SectionHeader({ title, badge }: { title: string; badge?: string }) {
 function AIButton({ onClick, loading, label = 'Generate with AI' }: { onClick: () => void; loading?: boolean; label?: string }) {
   return (
     <button onClick={onClick} disabled={loading}
-      className="mt-2 text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition disabled:opacity-40 flex items-center gap-1.5">
-      <span>✦</span> {loading ? 'Generating...' : label}
+      className="mt-2 text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition disabled:opacity-40 flex items-center gap-1.5 whitespace-nowrap">
+      <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 3v4M9 17v4M3 9h4M17 9h4M9 9l6 6M15 9l-6 6" />
+      </svg>
+      <span>{loading ? 'Generating...' : label}</span>
     </button>
   )
 }
