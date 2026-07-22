@@ -588,6 +588,16 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
                   onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
                   placeholder="Click Generate with AI or type manually..." />
                 <AIButton onClick={() => generateField(key)} loading={generating[key]} />
+                <button onClick={() => { setFlaggingField(flaggingField === key ? null : key); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
+                {flaggingField === key && (
+                  <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <textarea className={inp + ' min-h-[60px] resize-y bg-white'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={() => submitFlag(key, label)} disabled={flagSubmitting || !flagNote.trim()} className="text-xs bg-amber-500 text-white rounded-lg px-3 py-1.5 hover:bg-amber-600 disabled:opacity-40">{flagSubmitting ? 'Submitting...' : 'Submit flag'}</button>
+                      <button onClick={() => { setFlaggingField(null); setFlagNote('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                    </div>
+                  </div>
+                )}
                 {d.aiMeta?.[key] && (d.aiMeta[key].confidence || d.aiMeta[key].source) && (
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     {d.aiMeta[key].confidence && (
@@ -829,6 +839,16 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
                   onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
                   placeholder="Click Generate with AI or type manually..." />
                 <AIButton onClick={() => generateField(key)} loading={generating[key]} />
+                <button onClick={() => { setFlaggingField(flaggingField === key ? null : key); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
+                {flaggingField === key && (
+                  <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <textarea className={inp + ' min-h-[60px] resize-y bg-white'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={() => submitFlag(key, label)} disabled={flagSubmitting || !flagNote.trim()} className="text-xs bg-amber-500 text-white rounded-lg px-3 py-1.5 hover:bg-amber-600 disabled:opacity-40">{flagSubmitting ? 'Submitting...' : 'Submit flag'}</button>
+                      <button onClick={() => { setFlaggingField(null); setFlagNote('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                    </div>
+                  </div>
+                )}
                 {d.aiMeta?.[key] && (d.aiMeta[key].confidence || d.aiMeta[key].source) && (
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     {d.aiMeta[key].confidence && (
@@ -857,6 +877,16 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
                     onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
                     placeholder="Click Generate..." />
                   <AIButton onClick={() => generateField(key)} loading={generating[key]} />
+                <button onClick={() => { setFlaggingField(flaggingField === key ? null : key); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
+                {flaggingField === key && (
+                  <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <textarea className={inp + ' min-h-[60px] resize-y bg-white'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={() => submitFlag(key, label)} disabled={flagSubmitting || !flagNote.trim()} className="text-xs bg-amber-500 text-white rounded-lg px-3 py-1.5 hover:bg-amber-600 disabled:opacity-40">{flagSubmitting ? 'Submitting...' : 'Submit flag'}</button>
+                      <button onClick={() => { setFlaggingField(null); setFlagNote('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                    </div>
+                  </div>
+                )}
                 {d.aiMeta?.[key] && (d.aiMeta[key].confidence || d.aiMeta[key].source) && (
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     {d.aiMeta[key].confidence && (
@@ -880,6 +910,16 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
                   onChange={e => setD(prev => ({ ...prev, securityComment: e.target.value }))}
                   placeholder="TBA or enter address..." />
                 <AIButton onClick={() => generateField('securityComment')} loading={generating['securityComment']} />
+                <button onClick={() => { setFlaggingField(flaggingField === 'securityComment' ? null : 'securityComment'); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
+                {flaggingField === 'securityComment' && (
+                  <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <textarea className={inp + ' min-h-[60px] resize-y bg-white'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={() => submitFlag('securityComment', 'Security (property)')} disabled={flagSubmitting || !flagNote.trim()} className="text-xs bg-amber-500 text-white rounded-lg px-3 py-1.5 hover:bg-amber-600 disabled:opacity-40">{flagSubmitting ? 'Submitting...' : 'Submit flag'}</button>
+                      <button onClick={() => { setFlaggingField(null); setFlagNote('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                    </div>
+                  </div>
+                )}
                 {d.aiMeta?.['securityComment'] && (d.aiMeta['securityComment'].confidence || d.aiMeta['securityComment'].source) && (
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     {d.aiMeta['securityComment'].confidence && (
