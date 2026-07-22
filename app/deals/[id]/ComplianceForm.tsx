@@ -190,6 +190,25 @@ function AIButton({ onClick, loading, label = 'Generate with AI' }: { onClick: (
 export default function ComplianceForm({ deal }: { deal: any }) {
   const supabase = createSupabaseBrowser()
   const [styleNotes, setStyleNotes] = useState<string[]>([])
+  const [flaggingField, setFlaggingField] = useState<string | null>(null)
+  const [flagNote, setFlagNote] = useState('')
+  const [flagSubmitting, setFlagSubmitting] = useState(false)
+
+  async function submitFlag(fieldKey: string, fieldLabel: string) {
+    if (!flagNote.trim()) return
+    setFlagSubmitting(true)
+    const { data: userData } = await supabase.auth.getUser()
+    await supabase.from('compliance_flags').insert({
+      deal_id: deal.id,
+      field_key: fieldKey,
+      field_label: fieldLabel,
+      note: flagNote.trim(),
+      flagged_by: userData?.user?.email || 'unknown'
+    })
+    setFlagSubmitting(false)
+    setFlaggingField(null)
+    setFlagNote('')
+  }
 
   useEffect(() => {
     supabase.from('settings').select('compliance_style_notes').eq('id', 'singleton').single().then(({ data }) => {
