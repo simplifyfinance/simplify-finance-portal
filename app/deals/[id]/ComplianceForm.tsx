@@ -407,19 +407,19 @@ export default function ComplianceForm({ deal }: { deal: any }) {
 
 Cover: purpose of the loan (owner occupied / investment) and why; loan amount and term and why; any specific features, lenders, interest rate types or repayment types requested and why; any flexibility on the client's stated needs and objectives; savings held / retention of savings and why; any personal circumstances that may affect the loan (financial circumstances, employment, family status); whether the client is a first home buyer.
 
-Client: ${context.clientName}. Loan: $${context.loanAmount} for ${context.loanType}. Property: ${context.suburb}. Income: $${context.incomeBase} base. Recommended lender: ${context.recommendedLender}. Client's own stated purpose for this loan: "${context.loanPurpose || 'not recorded'}". Write 4-6 sentences, no dot points.`,
+Client: ${context.clientName}. Loan: $${context.loanAmount} for ${context.loanType}. Property: ${context.suburb}. Income: $${context.incomeBase} base. Recommended lender: ${context.recommendedLender}, product: ${context.product}. Confirmed product features: Offset account = ${context.offsetAccount || 'not specified'}, Redraw = ${context.redraw || 'not specified'}. Client's own stated purpose for this loan: "${context.loanPurpose || 'not recorded'}". IMPORTANT: only reference a specific loan feature (e.g. offset account) as a benefit if it is confirmed present above — if a feature is not present, describe the general benefit (e.g. reducing debt through extra repayments) without naming a feature the product doesn't have. Write 4-6 sentences, no dot points.`,
 
       needsImmediate: `CRM FIELD: Immediate needs and objectives — within the next two years (e.g. holiday, purchases, renovations, savings, protect the family, etc)
 
 Cover: what the client might want to achieve in the next 2 years and how it may affect the loan — overseas travel, starting a family, upgrading or changing property, investments.
 
-Client: ${context.clientName}. Loan type: ${context.loanType}. Client's own stated 2-year goals: "${context.goals2Years || 'not recorded'}". Write 3-4 sentences, no dot points.`,
+Client: ${context.clientName}. Loan type: ${context.loanType}. Recommended product features: Offset account = ${context.offsetAccount || 'not specified'}, Redraw = ${context.redraw || 'not specified'}. Client's own stated 2-year goals: "${context.goals2Years || 'not recorded'}". IMPORTANT: only reference a specific loan feature as helping achieve a goal if it is confirmed present above — otherwise describe the general benefit without naming a feature the product doesn't have. Write 3-4 sentences, no dot points.`,
 
       needsLongTerm: `CRM FIELD: Longer term needs and objectives — between 2 to 10 years (e.g. repay mortgage, buy a new car, education expenses, purchase investment property, retirement planning, etc)
 
 Cover: reducing the home loan and why/how quickly; dependants — commencing or finishing schooling, childcare costs, affordability; retiring before the end of the requested loan term and how this may affect the loan; vehicle or recreational vehicle upgrade and potential timing.
 
-Client: ${context.clientName}. Dependants: ${context.dependants}. Client's own stated 2-10 year goals: "${context.goals10Years || 'not recorded'}". Write 3-4 sentences, no dot points.`,
+Client: ${context.clientName}. Dependants: ${context.dependants}. Recommended product features: Offset account = ${context.offsetAccount || 'not specified'}, Redraw = ${context.redraw || 'not specified'}. Client's own stated 2-10 year goals: "${context.goals10Years || 'not recorded'}". IMPORTANT: only reference a specific loan feature as helping achieve a goal if it is confirmed present above — otherwise describe the general benefit without naming a feature the product doesn't have. Write 3-4 sentences, no dot points.`,
 
       analysisComment: `CRM FIELD: Analysis, assessment and applicant education comments
 
