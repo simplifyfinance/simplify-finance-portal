@@ -30,6 +30,8 @@ export default function SettingsPage() {
   const [brands, setBrands] = useState(defaultBrands)
   const [brokers, setBrokers] = useState(defaultBrokers)
   const [wealthDeskLink, setWealthDeskLink] = useState('')
+  const [complianceStyleNotes, setComplianceStyleNotes] = useState<string[]>([])
+  const [newStyleNote, setNewStyleNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -46,6 +48,7 @@ export default function SettingsPage() {
         if (data.brands?.length) setBrands(data.brands)
         if (data.brokers?.length) setBrokers(data.brokers)
         if (data.wealth_desk_link) setWealthDeskLink(data.wealth_desk_link)
+        if (data.compliance_style_notes?.length) setComplianceStyleNotes(data.compliance_style_notes)
       }
       setLoading(false)
     }
@@ -81,6 +84,7 @@ export default function SettingsPage() {
       brands,
       brokers,
       wealth_desk_link: wealthDeskLink,
+      compliance_style_notes: complianceStyleNotes,
       updated_at: new Date().toISOString()
     })
     setSaving(false)
