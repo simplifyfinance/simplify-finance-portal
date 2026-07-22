@@ -264,12 +264,21 @@ export default function ComplianceForm({ deal }: { deal: any }) {
   useEffect(() => {
     const freshApps = getApplicants()
     const freshRequirementsType = bc.template?.includes('investment') ? 'Investment' : 'Owner occupied'
+    const ffLive = deal.fact_find_data || {}
     setD(prev => {
       const newRisks = { ...prev.risks }
       freshApps.forEach(a => { if (!newRisks[a.name]) newRisks[a.name] = defaultRisk() })
-      return { ...prev, applicants: freshApps, requirementsType: freshRequirementsType, risks: newRisks }
+      return {
+        ...prev,
+        applicants: freshApps,
+        requirementsType: freshRequirementsType,
+        risks: newRisks,
+        needsPrimary: prev.needsPrimary || ffLive.loanPurpose || '',
+        needsImmediate: prev.needsImmediate || ffLive.goals2Years || '',
+        needsLongTerm: prev.needsLongTerm || ffLive.goals10Years || '',
+      }
     })
-  }, [deal.bc_data])
+  }, [deal.bc_data, deal.fact_find_data])
   const [activeApplicant, setActiveApplicant] = useState(0)
   const [generating, setGenerating] = useState<Record<string, boolean>>({})
   const [savedAt, setSavedAt] = useState('')
