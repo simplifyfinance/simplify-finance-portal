@@ -832,6 +832,19 @@ export default function LOForm({ deal }: { deal: any }) {
             </div>
             <Field label="Recommendation paragraph">
               <textarea className={inp + ' min-h-[100px] resize-y'} value={d.recommendationNote} onChange={e => setD({ ...d, recommendationNote: e.target.value })} placeholder="Based on your situation, I would recommend proceeding with..." />
+              {(() => {
+                const mismatchedLender = d.lenders.find(l =>
+                  l.lenderName &&
+                  l.lenderName !== d.recommendedLender &&
+                  d.recommendationNote.toLowerCase().includes(l.lenderName.toLowerCase()) &&
+                  !d.recommendationNote.toLowerCase().includes(d.recommendedLender.toLowerCase())
+                )
+                return mismatchedLender && (
+                  <div className="mt-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-600">
+                    Your note mentions {mismatchedLender.lenderName}, but you've selected {d.recommendedLender} as the recommended lender — please confirm this is correct.
+                  </div>
+                )
+              })()}
             </Field>
             <button onClick={generateRecommendation} disabled={generatingRec || !d.recommendedLender} className="mt-2 text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-4 py-2 hover:bg-blue-50 transition disabled:opacity-40">
               {generatingRec ? 'Generating...' : '✦ AI draft recommendation'}
