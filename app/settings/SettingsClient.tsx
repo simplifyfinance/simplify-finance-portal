@@ -191,8 +191,14 @@ export default function SettingsPage() {
         {brands.map((brand) => (
           <div key={brand.id} className="border border-gray-200 rounded-xl p-5 mb-4 bg-white">
             <div className="flex justify-between items-start mb-4">
-              <div><p className="font-semibold text-[#343333]">{brand.name}</p><p className="text-xs text-gray-400">{brand.isDefault ? 'Default brand' : 'Additional brand'}</p></div>
-              {brand.isDefault && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">Default</span>}
+              <div className="flex-1">
+                <input className="font-semibold text-[#343333] text-sm border border-gray-200 rounded-lg px-3 py-1.5 w-full max-w-xs mb-1" value={brand.name} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, name: e.target.value} : b))} placeholder="Brand name" />
+                <p className="text-xs text-gray-400">{brand.isDefault ? 'Default brand' : 'Additional brand'}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {brand.isDefault && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">Default</span>}
+                {!brand.isDefault && <button onClick={() => setBrands(brands.filter(b => b.id !== brand.id))} className="text-xs text-red-400 hover:text-red-600">Remove</button>}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-xs text-gray-400 block mb-1">Header colour</label><div className="flex items-center gap-2"><input type="color" value={brand.headerColor} className="w-8 h-8 rounded cursor-pointer border border-gray-200" onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, headerColor: e.target.value} : b))} /><span className="text-sm font-mono text-gray-600">{brand.headerColor}</span></div></div>
