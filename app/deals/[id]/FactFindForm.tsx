@@ -206,6 +206,9 @@ type FactFindData = {
   liabilities: Liability[]
   dependants: string
   internalNotes: string
+  loanPurpose: string
+  goals2Years: string
+  goals10Years: string
 }
 
 function uid() {
@@ -378,7 +381,10 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
       properties: [],
       liabilities: [],
       dependants: '0',
-      internalNotes: ''
+      internalNotes: '',
+      loanPurpose: '',
+      goals2Years: '',
+      goals10Years: ''
     }
   }
 
