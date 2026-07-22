@@ -609,6 +609,26 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
 
       {(stage === 'personal' || stage === 'employment' || stage === 'income') && applicantTabs}
 
+      {stage === 'personal' && (
+        <div className="bg-white border border-gray-100 rounded-xl p-4">
+          <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Purpose and goals</div>
+          <div className="flex flex-col gap-3">
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Purpose of loan / primary reason for finance</label>
+              <textarea className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-16 resize-y" placeholder="What the client told you they want this loan for..." value={d.loanPurpose} onChange={e => setD(prev => ({ ...prev, loanPurpose: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Goals — next 2 years</label>
+              <textarea className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-16 resize-y" placeholder="Client's own stated short-term plans..." value={d.goals2Years} onChange={e => setD(prev => ({ ...prev, goals2Years: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Goals — 2 to 10 years</label>
+              <textarea className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-16 resize-y" placeholder="Client's own stated long-term plans..." value={d.goals10Years} onChange={e => setD(prev => ({ ...prev, goals10Years: e.target.value }))} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {stage === 'personal' && applicant && (
         <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-4">
           <SectionHeader title="Personal details" />
