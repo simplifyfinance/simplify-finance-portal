@@ -64,6 +64,7 @@ type ComplianceData = {
   aiMeta: Record<string, { confidence: string; source: string }>
   clientAgreedLender: string
   clientChosenLender: string
+  clientChosenLenderOther: string
   clientChosenLenderReason: string
 }
 
@@ -253,6 +254,7 @@ export default function ComplianceForm({ deal }: { deal: any }) {
       aiMeta: {},
       clientAgreedLender: '',
       clientChosenLender: '',
+      clientChosenLenderOther: '',
       clientChosenLenderReason: ''
     }
   }
@@ -737,6 +739,33 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
             <div className="flex items-center justify-between mb-4">
               <SectionHeader title="Broker comments" badge="AI generated" />
               <AIButton onClick={generateAll} loading={Object.values(generating).some(Boolean)} label="Generate all fields" />
+            </div>
+
+            <div className="bg-gray-50 border border-gray-100 rounded-lg p-4 mb-4">
+              <label className="text-xs font-medium text-gray-500 block mb-2">Did the client agree with the recommended lender ({lo.recommendedLender || 'not yet recommended'})?</label>
+              <Toggle value={d.clientAgreedLender} onChange={v => setD(prev => ({ ...prev, clientAgreedLender: v, clientChosenLender: v === 'Yes' ? '' : prev.clientChosenLender, clientChosenLenderReason: v === 'Yes' ? '' : prev.clientChosenLenderReason }))}
+                options={['Yes', 'No']} colors={['blue', 'blue']} />
+              {d.clientAgreedLender === 'No' && (
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 block mb-1">Lender the client chose instead</label>
+                    <select className={inp} value={d.clientChosenLender} onChange={e => setD(prev => ({ ...prev, clientChosenLender: e.target.value }))}>
+                      <option value="">Select lender</option>
+                      {(lo.lenders || []).map((l: any, i: number) => (
+                        <option key={i} value={l.lenderName}>{l.lenderName}</option>
+                      ))}
+                      <option value="__other__">Other (not previously considered)</option>
+                    </select>
+                    {d.clientChosenLender === '__other__' && (
+                      <input className={inp + ' mt-2'} placeholder="Lender name" value={d.clientChosenLenderOther} onChange={e => setD(prev => ({ ...prev, clientChosenLenderOther: e.target.value }))} />
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 block mb-1">Why did the client choose differently?</label>
+                    <input className={inp} placeholder="e.g. existing banking relationship, preferred branch access" value={d.clientChosenLenderReason} onChange={e => setD(prev => ({ ...prev, clientChosenLenderReason: e.target.value }))} />
+                  </div>
+                </div>
+              )}
             </div>
 
             {[
