@@ -198,7 +198,7 @@ export default function ComplianceForm({ deal }: { deal: any }) {
     if (!flagNote.trim()) return
     setFlagSubmitting(true)
     const { data: userData } = await supabase.auth.getUser()
-    await supabase.from('compliance_flags').insert({
+    const { error } = await supabase.from('compliance_flags').insert({
       deal_id: deal.id,
       field_key: fieldKey,
       field_label: fieldLabel,
@@ -206,6 +206,10 @@ export default function ComplianceForm({ deal }: { deal: any }) {
       flagged_by: userData?.user?.email || 'unknown'
     })
     setFlagSubmitting(false)
+    if (error) {
+      alert('Error submitting flag: ' + error.message)
+      return
+    }
     setFlaggingField(null)
     setFlagNote('')
   }
