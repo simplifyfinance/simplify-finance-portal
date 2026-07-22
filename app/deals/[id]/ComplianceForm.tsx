@@ -523,6 +523,18 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
                   onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
                   placeholder="Click Generate with AI or type manually..." />
                 <AIButton onClick={() => generateField(key)} loading={generating[key]} />
+                {d.aiMeta?.[key] && (d.aiMeta[key].confidence || d.aiMeta[key].source) && (
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {d.aiMeta[key].confidence && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                        d.aiMeta[key].confidence.toLowerCase().includes('high') ? 'bg-green-50 text-green-600' :
+                        d.aiMeta[key].confidence.toLowerCase().includes('low') ? 'bg-red-50 text-red-600' :
+                        'bg-amber-50 text-amber-600'
+                      }`}>{d.aiMeta[key].confidence} confidence</span>
+                    )}
+                    {d.aiMeta[key].source && <span className="text-[10px] text-gray-400">Source: {d.aiMeta[key].source}</span>}
+                  </div>
+                )}
               </div>
             ))}
             <div className="mt-2">
@@ -725,6 +737,18 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
                   onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
                   placeholder="Click Generate with AI or type manually..." />
                 <AIButton onClick={() => generateField(key)} loading={generating[key]} />
+                {d.aiMeta?.[key] && (d.aiMeta[key].confidence || d.aiMeta[key].source) && (
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {d.aiMeta[key].confidence && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                        d.aiMeta[key].confidence.toLowerCase().includes('high') ? 'bg-green-50 text-green-600' :
+                        d.aiMeta[key].confidence.toLowerCase().includes('low') ? 'bg-red-50 text-red-600' :
+                        'bg-amber-50 text-amber-600'
+                      }`}>{d.aiMeta[key].confidence} confidence</span>
+                    )}
+                    {d.aiMeta[key].source && <span className="text-[10px] text-gray-400">Source: {d.aiMeta[key].source}</span>}
+                  </div>
+                )}
               </div>
             ))}
 
@@ -741,6 +765,18 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
                     onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
                     placeholder="Click Generate..." />
                   <AIButton onClick={() => generateField(key)} loading={generating[key]} />
+                {d.aiMeta?.[key] && (d.aiMeta[key].confidence || d.aiMeta[key].source) && (
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {d.aiMeta[key].confidence && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                        d.aiMeta[key].confidence.toLowerCase().includes('high') ? 'bg-green-50 text-green-600' :
+                        d.aiMeta[key].confidence.toLowerCase().includes('low') ? 'bg-red-50 text-red-600' :
+                        'bg-amber-50 text-amber-600'
+                      }`}>{d.aiMeta[key].confidence} confidence</span>
+                    )}
+                    {d.aiMeta[key].source && <span className="text-[10px] text-gray-400">Source: {d.aiMeta[key].source}</span>}
+                  </div>
+                )}
                 </div>
               ))}
             </div>
@@ -752,6 +788,18 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
                   onChange={e => setD(prev => ({ ...prev, securityComment: e.target.value }))}
                   placeholder="TBA or enter address..." />
                 <AIButton onClick={() => generateField('securityComment')} loading={generating['securityComment']} />
+                {d.aiMeta?.['securityComment'] && (d.aiMeta['securityComment'].confidence || d.aiMeta['securityComment'].source) && (
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {d.aiMeta['securityComment'].confidence && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                        d.aiMeta['securityComment'].confidence.toLowerCase().includes('high') ? 'bg-green-50 text-green-600' :
+                        d.aiMeta['securityComment'].confidence.toLowerCase().includes('low') ? 'bg-red-50 text-red-600' :
+                        'bg-amber-50 text-amber-600'
+                      }`}>{d.aiMeta['securityComment'].confidence} confidence</span>
+                    )}
+                    {d.aiMeta['securityComment'].source && <span className="text-[10px] text-gray-400">Source: {d.aiMeta['securityComment'].source}</span>}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500 block mb-1">Application submission notes</label>
