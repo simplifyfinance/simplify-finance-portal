@@ -356,6 +356,7 @@ export default function ComplianceForm({ deal }: { deal: any }) {
 
   async function generateField(field: string) {
     setGenerating(prev => ({ ...prev, [field]: true }))
+    const recLender = (lo.lenders || []).find((l: any) => l.lenderName === lo.recommendedLender) || lo.lenders?.[0] || {}
     const context = {
       clientName: d.applicants.map(a => a.name).join(' and '),
       loanAmount: lo.loanAmount || bc.splits?.[0]?.amount || '',
@@ -365,9 +366,9 @@ export default function ComplianceForm({ deal }: { deal: any }) {
       incomeBase: bc.incomeBase || '',
       incomeOther: bc.incomeOther || '',
       incomeRental: bc.incomeRental || '',
-      lender: lo.lenders?.[0]?.lenderName || '',
-      product: lo.lenders?.[0]?.productName || '',
-      rate: lo.lenders?.[0]?.variablePI?.rate || lo.lenders?.[0]?.fixedPI?.rate || '',
+      lender: recLender.lenderName || '',
+      product: recLender.productName || '',
+      rate: recLender.variablePI?.rate || recLender.fixedPI?.rate || '',
       recommendedLender: (() => {
         if (d.clientAgreedLender === 'No') {
           const chosen = d.clientChosenLender === '__other__' ? d.clientChosenLenderOther : d.clientChosenLender
@@ -380,9 +381,10 @@ export default function ComplianceForm({ deal }: { deal: any }) {
       clientChosenLenderReason: d.clientChosenLenderReason || '',
       recommendationNote: lo.recommendationNote || '',
       allLenders: (lo.lenders || []).map((l: any) => `${l.lenderName} ${l.productName}`).join(', '),
-      applicationFee: lo.lenders?.[0]?.applicationFee || '',
-      annualFee: lo.lenders?.[0]?.annualFee || '',
-      offsetAccount: lo.lenders?.[0]?.offsetAccount || '',
+      applicationFee: recLender.applicationFee || '',
+      annualFee: recLender.annualFee || '',
+      offsetAccount: recLender.offsetAccount || '',
+      redraw: recLender.redraw || '',
       needsPrimary: d.needsPrimary,
       needsImmediate: d.needsImmediate,
       needsLongTerm: d.needsLongTerm,
