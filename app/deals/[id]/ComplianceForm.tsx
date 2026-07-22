@@ -61,6 +61,7 @@ type ComplianceData = {
   securityComment: string
   applicationSubmissionComment: string
   expenses: Record<string, ExpenseEntry>
+  aiMeta: Record<string, { confidence: string; source: string }>
 }
 
 const defaultRisk = (): RiskData => ({
@@ -238,7 +239,8 @@ export default function ComplianceForm({ deal }: { deal: any }) {
       analysisComment: '', optionsComment: '', borrowingPowerComment: '',
       depositComment: '', creditHistoryComment: '', securityComment: '',
       applicationSubmissionComment: '',
-      expenses: defaultExpenses(apps, rentMonthlyAmount)
+      expenses: defaultExpenses(apps, rentMonthlyAmount),
+      aiMeta: {}
     }
   }
 
