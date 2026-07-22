@@ -483,6 +483,13 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
   }
   const [internalNotes, setInternalNotes] = useState(s.internalNotes || '')
   const [brokerSig, setBrokerSig] = useState(s.brokerSig || deal.assigned_broker || 'Fabio')
+  const [brokersList, setBrokersList] = useState<{ name: string }[]>([{ name: 'Fabio' }, { name: 'Mark' }])
+
+  useEffect(() => {
+    supabase.from('settings').select('brokers').eq('id', 'singleton').single().then(({ data }) => {
+      if (data?.brokers?.length) setBrokersList(data.brokers)
+    })
+  }, [])
   const [checklist, setChecklist] = useState<string[]>(s.checklist || [])
   const [newCheck, setNewCheck] = useState('')
   const [generating, setGenerating] = useState(false)
@@ -744,8 +751,9 @@ Key assumptions: ${checklistText}`
                   </Field>
                   <Field label="Broker signature">
                     <select className={selectCls} value={brokerSig} onChange={e => setBrokerSig(e.target.value)}>
-                      <option value="Fabio">Fabio — Simplify Finance</option>
-                      <option value="Mark">Mark — Simplify Finance</option>
+                      {brokersList.map((b: any, i: number) => (
+                        <option key={i} value={b.name}>{b.name} — Simplify Finance</option>
+                      ))}
                     </select>
                   </Field>
                 </div>
