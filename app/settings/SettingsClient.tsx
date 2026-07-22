@@ -225,6 +225,24 @@ export default function SettingsPage() {
         </div>
       </section>
       <section className="mb-10">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Compliance AI Style Notes</h2>
+        <div className="border border-gray-200 rounded-xl p-5 bg-white">
+          <p className="text-xs text-gray-400 mb-3">Corrections and preferences you've given before, fed into every future Compliance AI generation across all deals — e.g. "Always mention offset account benefits" or "Keep the deposit comment to one sentence, no exceptions."</p>
+          <div className="flex flex-col gap-2 mb-3">
+            {complianceStyleNotes.map((note, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
+                <span className="flex-1">{note}</span>
+                <button onClick={() => setComplianceStyleNotes(prev => prev.filter((_, idx) => idx !== i))} className="text-xs text-gray-300 hover:text-red-400">✕</button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2" value={newStyleNote} onChange={e => setNewStyleNote(e.target.value)} placeholder="Add a style note..." onKeyDown={e => { if (e.key === 'Enter' && newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} />
+            <button onClick={() => { if (newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} className="text-sm bg-gray-100 rounded-lg px-4 py-2 hover:bg-gray-200 transition">Add</button>
+          </div>
+        </div>
+      </section>
+      <section className="mb-10">
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Credit Team</h2>
         </div>
