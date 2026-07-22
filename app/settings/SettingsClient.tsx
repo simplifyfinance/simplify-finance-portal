@@ -266,6 +266,33 @@ export default function SettingsPage() {
         </div>
       </section>
       <section className="mb-10">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Compliance AI Flags {complianceFlags.length > 0 && <span className="bg-amber-100 text-amber-600 rounded-full px-2 py-0.5 ml-1">{complianceFlags.length}</span>}</h2>
+        <div className="border border-gray-200 rounded-xl p-5 bg-white">
+          <p className="text-xs text-gray-400 mb-3">Issues flagged by the team on live deals. Promote a flag to turn it into a permanent Style Note applied to every future generation, or dismiss it if it doesn't need to become a standing rule.</p>
+          {loadingFlags ? (
+            <p className="text-xs text-gray-400">Loading...</p>
+          ) : complianceFlags.length === 0 ? (
+            <p className="text-xs text-gray-400">No open flags.</p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {complianceFlags.map((flag) => (
+                <div key={flag.id} className="bg-gray-50 rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-gray-500">{flag.field_label} — {flag.deals?.deal_name || 'Unknown deal'}</span>
+                    <span className="text-[10px] text-gray-300">{flag.flagged_by} · {new Date(flag.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <p className="text-sm mb-2">{flag.note}</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => promoteFlag(flag)} className="text-xs bg-[#2DBEFF] text-white rounded-lg px-3 py-1.5 hover:bg-blue-500">Promote to Style Note</button>
+                    <button onClick={() => dismissFlag(flag.id)} className="text-xs text-gray-400 hover:text-gray-600">Dismiss</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+      <section className="mb-10">
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Credit Team</h2>
         </div>
