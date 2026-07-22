@@ -356,7 +356,16 @@ export default function ComplianceForm({ deal }: { deal: any }) {
       lender: lo.lenders?.[0]?.lenderName || '',
       product: lo.lenders?.[0]?.productName || '',
       rate: lo.lenders?.[0]?.variablePI?.rate || lo.lenders?.[0]?.fixedPI?.rate || '',
-      recommendedLender: lo.recommendedLender || '',
+      recommendedLender: (() => {
+        if (d.clientAgreedLender === 'No') {
+          const chosen = d.clientChosenLender === '__other__' ? d.clientChosenLenderOther : d.clientChosenLender
+          return chosen || lo.recommendedLender || ''
+        }
+        return lo.recommendedLender || ''
+      })(),
+      originalRecommendedLender: lo.recommendedLender || '',
+      clientAgreedLender: d.clientAgreedLender || '',
+      clientChosenLenderReason: d.clientChosenLenderReason || '',
       recommendationNote: lo.recommendationNote || '',
       allLenders: (lo.lenders || []).map((l: any) => `${l.lenderName} ${l.productName}`).join(', '),
       applicationFee: lo.lenders?.[0]?.applicationFee || '',
@@ -414,7 +423,7 @@ Client: ${context.clientName}. Loan: $${context.loanAmount}. Income: $${context.
 
 Cover: how the recommended product is in the client's best interests; loan type, repayment type, interest rate type and why; specific lender request versus other cheaper options considered; alternative feature options to what was requested and why (e.g. offset vs redraw); if the cheapest option was not recommended, explain why; whether turnaround times, geographical location, lender policy, borrowing capacity or loan amount available played a part in the recommendation; fees and charges applicable, any fee waivers or professional packages; security or servicing guarantee if applicable; lender service/branch access; credit history if it affected the recommendation; property size; first home buyer scheme if applicable.
 
-All lenders considered: ${context.allLenders}. Recommended: ${context.recommendedLender} — ${context.product}. Rate: ${context.rate}%. Application fee: ${context.applicationFee}. Annual fee: ${context.annualFee}. Offset: ${context.offsetAccount}. Broker recommendation note: ${context.recommendationNote}. Write in professional paragraphs.`,
+All lenders considered: ${context.allLenders}. Originally recommended: ${context.originalRecommendedLender} — ${context.product}. Rate: ${context.rate}%. Application fee: ${context.applicationFee}. Annual fee: ${context.annualFee}. Offset: ${context.offsetAccount}. Broker recommendation note: ${context.recommendationNote}. ${context.clientAgreedLender === 'No' ? `The client did not proceed with the original recommendation and instead selected ${context.recommendedLender}, for the following stated reason: "${context.clientChosenLenderReason || 'not recorded'}". Explain both why the original lender was recommended AND why the client's final choice is understood and documented, referencing their stated reason.` : `The client agreed with and proceeded with the recommended lender.`} Write in professional paragraphs.`,
 
       borrowingPowerComment: `CRM FIELD: Borrowing power comments
 
@@ -511,7 +520,7 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
           {[
             ['Client', d.applicants.map(a => a.name).join(', ')],
             ['Loan amount', `$${lo.loanAmount || bc.splits?.[0]?.amount || '—'}`],
-            ['Lender', lo.recommendedLender || lo.lenders?.[0]?.lenderName || '—'],
+            ['Lender', (d.clientAgreedLender === 'No' ? ((d.clientChosenLender === '__other__' ? d.clientChosenLenderOther : d.clientChosenLender) || lo.recommendedLender) : lo.recommendedLender) || lo.lenders?.[0]?.lenderName || '—'],
             ['Loan type', bc.template?.replace(/_/g, ' ') || '—'],
           ].map(([label, value]) => (
             <div key={label}>
