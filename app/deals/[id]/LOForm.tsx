@@ -96,6 +96,7 @@ type LOData = {
   internalNotes: string
   emailHtml: string
   refinanceSplits: RefinanceSplit[]
+  brokerSig: string
 }
 
 const defaultRateModule: RateModule = { enabled: false, rate: '', repayment: '', loanTerm: '30', ioYears: '5', fixedYears: '2' }
@@ -244,11 +245,19 @@ export default function LOForm({ deal }: { deal: any }) {
       recommendationNote: '',
       internalNotes: '',
       emailHtml: '',
-      refinanceSplits: initRefinanceSplits()
+      refinanceSplits: initRefinanceSplits(),
+      brokerSig: deal.assigned_broker || 'Fabio'
     }
   }
 
   const [d, setD] = useState<LOData>(initData)
+  const [brokersList, setBrokersList] = useState<{ name: string }[]>([{ name: 'Fabio' }, { name: 'Mark' }])
+
+  useEffect(() => {
+    supabase.from('settings').select('brokers').eq('id', 'singleton').single().then(({ data }: any) => {
+      if (data?.brokers?.length) setBrokersList(data.brokers)
+    })
+  }, [])
 
   useEffect(() => {
     const newTemplate = bc.template?.startsWith('refinance') ? 'lo_refinance' : bc.template === 'bridging' ? 'lo_bridging' : 'lo_purchase'
