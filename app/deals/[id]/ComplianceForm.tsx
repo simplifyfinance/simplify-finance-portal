@@ -383,8 +383,16 @@ export default function ComplianceForm({ deal }: { deal: any }) {
         body: JSON.stringify({ prompt: prompts[field] || '' })
       })
       const data = await res.json()
-      const text = data.text || ''
-      if (text) setD(prev => ({ ...prev, [field]: text }))
+      const raw = data.text || ''
+      if (raw) {
+        const answerMatch = raw.match(/ANSWER:\s*([\s\S]*?)(?:\n\s*CONFIDENCE:|$)/i)
+        const confidenceMatch = raw.match(/CONFIDENCE:\s*([\s\S]*?)(?:\n\s*SOURCE:|$)/i)
+        const sourceMatch = raw.match(/SOURCE:\s*([\s\S]*?)$/i)
+        const answer = answerMatch ? answerMatch[1].trim() : raw.trim()
+        const confidence = confidenceMatch ? confidenceMatch[1].trim() : ''
+        const source = sourceMatch ? sourceMatch[1].trim() : ''
+        setD(prev => ({ ...prev, [field]: answer, aiMeta: { ...prev.aiMeta, [field]: { confidence, source } } }))
+      }
     } catch (e) { console.error(e) }
     setGenerating(prev => ({ ...prev, [field]: false }))
   }
