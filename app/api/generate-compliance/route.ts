@@ -29,11 +29,14 @@ SOURCE:
 
 export async function POST(req: NextRequest) {
   try {
-    const { prompt } = await req.json()
+    const { prompt, styleNotes } = await req.json()
+    const styleBlock = (styleNotes && styleNotes.length > 0)
+      ? `\n\nAdditional style notes from previous broker feedback — follow these consistently:\n${styleNotes.map((n: string) => `- ${n}`).join('\n')}`
+      : ''
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1500,
-      system: SYSTEM_PROMPT,
+      system: SYSTEM_PROMPT + styleBlock,
       messages: [{ role: 'user', content: prompt }]
     })
     const text = response.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')
