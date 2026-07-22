@@ -488,6 +488,11 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
     for (const f of fields) { await generateField(f) }
   }
 
+  async function generateNeeds() {
+    const fields = ['needsPrimary', 'needsImmediate', 'needsLongTerm']
+    for (const f of fields) { await generateField(f) }
+  }
+
   async function markComplianceComplete() {
     const nowIso = new Date().toISOString()
     const { error } = await supabase.from('deals').update({ compliance_completed_at: nowIso }).eq('id', deal.id)
@@ -547,7 +552,10 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
       {stage === 'needs' && (
         <div className="space-y-4">
           <div className="bg-white border border-gray-100 rounded-xl p-5">
-            <SectionHeader title="Needs & objectives" />
+            <div className="flex items-center justify-between mb-2">
+              <SectionHeader title="Needs & objectives" />
+              <AIButton onClick={generateNeeds} loading={['needsPrimary', 'needsImmediate', 'needsLongTerm'].some(f => generating[f])} label="Generate all fields" />
+            </div>
             {[
               { key: 'needsPrimary', label: 'Primary reasons for seeking credit' },
               { key: 'needsImmediate', label: 'Immediate needs & objectives — next 2 years' },
