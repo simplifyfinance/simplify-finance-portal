@@ -76,6 +76,7 @@ export default function SettingsPage() {
     }
     load()
     loadCreditTeam()
+    loadComplianceFlags()
   }, [])
 
   async function loadCreditTeam() {
