@@ -182,6 +182,13 @@ function AIButton({ onClick, loading, label = 'Generate with AI' }: { onClick: (
 
 export default function ComplianceForm({ deal }: { deal: any }) {
   const supabase = createSupabaseBrowser()
+  const [styleNotes, setStyleNotes] = useState<string[]>([])
+
+  useEffect(() => {
+    supabase.from('settings').select('compliance_style_notes').eq('id', 'singleton').single().then(({ data }) => {
+      if (data?.compliance_style_notes?.length) setStyleNotes(data.compliance_style_notes)
+    })
+  }, [])
   const saveKey = `compliance_${deal.id}`
   const bc = deal.bc_data || {}
   const lo = deal.lo_data || {}
@@ -430,7 +437,7 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
       const res = await fetch('/api/generate-compliance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: prompts[field] || '' })
+        body: JSON.stringify({ prompt: prompts[field] || '', styleNotes })
       })
       const data = await res.json()
       const raw = data.text || ''
