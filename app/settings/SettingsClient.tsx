@@ -32,6 +32,28 @@ export default function SettingsPage() {
   const [wealthDeskLink, setWealthDeskLink] = useState('')
   const [complianceStyleNotes, setComplianceStyleNotes] = useState<string[]>([])
   const [newStyleNote, setNewStyleNote] = useState('')
+  const [complianceFlags, setComplianceFlags] = useState<any[]>([])
+  const [loadingFlags, setLoadingFlags] = useState(true)
+
+  async function loadComplianceFlags() {
+    setLoadingFlags(true)
+    const { data } = await supabase.from('compliance_flags').select('*, deals(deal_name)').eq('promoted', false).order('created_at', { ascending: false })
+    if (data) setComplianceFlags(data)
+    setLoadingFlags(false)
+  }
+
+  async function promoteFlag(flag: any) {
+    const updatedNotes = [...complianceStyleNotes, flag.note]
+    setComplianceStyleNotes(updatedNotes)
+    await supabase.from('settings').upsert({ id: 'singleton', compliance_style_notes: updatedNotes, updated_at: new Date().toISOString() })
+    await supabase.from('compliance_flags').update({ promoted: true }).eq('id', flag.id)
+    loadComplianceFlags()
+  }
+
+  async function dismissFlag(flagId: string) {
+    await supabase.from('compliance_flags').update({ promoted: true }).eq('id', flagId)
+    loadComplianceFlags()
+  }
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
