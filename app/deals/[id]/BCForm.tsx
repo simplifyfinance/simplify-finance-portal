@@ -764,7 +764,14 @@ Key assumptions: ${checklistText}`
                   <Field label="Broker signature">
                     <select className={selectCls} value={brokerSig} onChange={e => setBrokerSig(e.target.value)}>
                       {brokersList.map((b: any, i: number) => (
-                        <option key={i} value={b.name}>{b.name} — Simplify Finance</option>
+                        <option key={i} value={b.name}>{b.name}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Brand">
+                    <select className={selectCls} value={brand} onChange={e => setBrand(e.target.value)}>
+                      {availableBrands.map((br: any) => (
+                        <option key={br.id} value={br.id}>{br.name}</option>
                       ))}
                     </select>
                   </Field>
