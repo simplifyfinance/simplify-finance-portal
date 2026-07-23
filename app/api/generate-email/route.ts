@@ -141,9 +141,32 @@ function buildChecklist(d: any) {
 }
 
 export async function POST(req: NextRequest) {
-  const { prompt, broker, dealId, formData } = await req.json()
-  const b = brokers[broker] || brokers['Fabio']
+  const { prompt, broker, brand, dealId, formData } = await req.json()
   const d = formData || {}
+
+  let b = brokers[broker] || brokers['Fabio']
+  let brandObj: any = undefined
+  try {
+    const supabase = await createSupabaseServer()
+    const { data: settings } = await supabase.from('settings').select('brokers, brands').eq('id', 'singleton').single()
+    if (settings?.brokers?.length) {
+      const liveBroker = settings.brokers.find((x: any) => x.name === broker)
+      if (liveBroker) {
+        b = {
+          name: liveBroker.name,
+          title: liveBroker.title || 'Mortgage Broker',
+          crn: liveBroker.crn || '',
+          calendly: liveBroker.calendly || '',
+          email: liveBroker.email || '',
+        }
+      }
+    }
+    if (settings?.brands?.length && brand) {
+      brandObj = settings.brands.find((x: any) => x.id === brand)
+    }
+  } catch (e) {
+    console.error('Failed to fetch live settings, using defaults:', e)
+  }
 
   const template = d.template || 'oo_purchase'
   const personalisation = d.brokerNotes || ''
@@ -587,6 +610,6 @@ export async function POST(req: NextRequest) {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) + p('Email template coming soon.') + ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + sig(b)
   }
 
-  const html = shell(body, b)
+  const html = shell(body, b, brandObj)
   const brokerFirstName = b.name.split(' ')[0]; return NextResponse.json({ html, brokerFirstName })
 }
