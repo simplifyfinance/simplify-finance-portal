@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
 import BrokerAssignment from './BrokerAssignment'
 import CurrencyInput from './CurrencyInput'
@@ -488,8 +489,9 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
   const [brand, setBrand] = useState(s.brand || '')
 
   useEffect(() => {
-    supabase.from('settings').select('brokers, brands').eq('id', 'singleton').single().then(({ data, error }) => {
-      console.log('BC brokers/brands fetch result:', { data, error })
+    const supabaseBrowser = createSupabaseBrowser()
+    supabaseBrowser.from('settings').select('brokers, brands').eq('id', 'singleton').single().then(({ data, error }) => {
+      if (error) console.error('BC brokers/brands fetch error:', error)
       if (data?.brokers?.length) setBrokersList(data.brokers)
       if (data?.brands?.length) setBrandsList(data.brands)
     })
