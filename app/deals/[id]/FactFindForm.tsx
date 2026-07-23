@@ -612,9 +612,37 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
           )}
         </div>
       ))}
-      <button onClick={addApplicant} className="px-4 py-2 rounded-lg text-sm font-medium border border-dashed border-gray-300 text-gray-500 hover:border-gray-400">
+      <button onClick={() => setShowAddApplicantModal(true)} className="px-4 py-2 rounded-lg text-sm font-medium border border-dashed border-gray-300 text-gray-500 hover:border-gray-400">
         + Add applicant
       </button>
+
+      {showAddApplicantModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowAddApplicantModal(false)}>
+          <div className="bg-white rounded-2xl p-6 w-[420px] max-h-[80vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="text-base font-semibold mb-4">Add applicant</div>
+            <button onClick={addApplicant} className="w-full text-left px-4 py-3 rounded-lg border border-dashed border-[#2DBEFF] text-[#2DBEFF] hover:bg-blue-50 transition mb-4 text-sm font-medium">
+              + New applicant
+            </button>
+            <p className="text-xs font-medium text-gray-500 mb-2">Or select an existing customer</p>
+            <input type="text" placeholder="Search clients..." value={applicantSearch} onChange={e => setApplicantSearch(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] mb-2" />
+            <div className="max-h-56 overflow-y-auto flex flex-col gap-1">
+              {existingClients
+                .filter(c => `${c.first_name} ${c.last_name}`.toLowerCase().includes(applicantSearch.toLowerCase()))
+                .map(c => (
+                  <div key={c.id} onClick={() => addExistingApplicant(c)}
+                    className="px-3 py-2 rounded-lg text-sm cursor-pointer hover:bg-gray-50">
+                    <p className="font-medium text-[#343333]">{c.first_name} {c.last_name}</p>
+                    {c.email && <p className="text-xs text-gray-400">{c.email}</p>}
+                  </div>
+                ))}
+            </div>
+            <button onClick={() => setShowAddApplicantModal(false)} className="w-full mt-4 px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-1.5 ml-1">
         <svg className="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M17 20v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 4-4h1m5-8a4 4 0 1 1-8 0 4 4 0 0 1 8 0zm6 4a4 4 0 1 0-8 0" />
