@@ -452,8 +452,54 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
     }
   }, [applicant?.employment])
 
+  const [showAddApplicantModal, setShowAddApplicantModal] = useState(false)
+  const [applicantSearch, setApplicantSearch] = useState('')
+  const [existingClients, setExistingClients] = useState<any[]>([])
+
+  useEffect(() => {
+    if (showAddApplicantModal && existingClients.length === 0) {
+      supabase.from('clients').select('id, first_name, last_name, email, phone').order('last_name').then(({ data }) => {
+        if (data) setExistingClients(data)
+      })
+    }
+  }, [showAddApplicantModal])
+
+  async function renameDealForApplicants(applicants: FactFindApplicant[]) {
+    const app1 = applicants[0]
+    const app2 = applicants[1]
+    const namePart = (app2 && (app2.firstName || app2.lastName))
+      ? `${app1?.firstName || ''}_${app1?.lastName || ''}_${app2.firstName || ''}_${app2.lastName || ''}`
+      : `${app1?.firstName || ''}_${app1?.lastName || ''}`
+    const currentParts = (deal.deal_name || '').split('_')
+    const year = currentParts[currentParts.length - 1] || new Date().getFullYear().toString()
+    const newDealName = `${namePart}_${deal.deal_type || 'Purchase'}_${year}`
+    await supabase.from('deals').update({ deal_name: newDealName }).eq('id', deal.id)
+  }
+
   function addApplicant() {
-    setD(prev => ({ ...prev, applicants: [...prev.applicants, defaultApplicant()] }))
+    setD(prev => {
+      const updated = { ...prev, applicants: [...prev.applicants, defaultApplicant()] }
+      renameDealForApplicants(updated.applicants)
+      return updated
+    })
+    setShowAddApplicantModal(false)
+  }
+
+  function addExistingApplicant(client: any) {
+    setD(prev => {
+      const newApplicant: FactFindApplicant = {
+        ...defaultApplicant(),
+        firstName: client.first_name || '',
+        lastName: client.last_name || '',
+        emailPersonal: client.email || '',
+        phoneMobile: client.phone || '',
+      }
+      const updated = { ...prev, applicants: [...prev.applicants, newApplicant] }
+      renameDealForApplicants(updated.applicants)
+      return updated
+    })
+    setShowAddApplicantModal(false)
+    setApplicantSearch('')
   }
 
   function removeApplicant(index: number) {
