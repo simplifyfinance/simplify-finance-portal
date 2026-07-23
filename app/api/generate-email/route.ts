@@ -1,21 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createSupabaseServer } from '@/lib/supabase-server'
 
 const brokers: Record<string, { name: string; title: string; crn: string; calendly: string; email: string }> = {
   'Fabio': { name: 'Fabio de Castro', title: 'Director / Mortgage Broker', crn: '483807', calendly: 'https://calendly.com/fabiobroker', email: 'fabio@simplifyfinance.com.au' },
   'Mark': { name: 'Mark Gallo', title: 'Mortgage Broker', crn: '496195', calendly: 'https://calendly.com/markgallo/phonecall', email: 'mark@simplifyfinance.com.au' },
 }
 
-function shell(body: string, b: { name: string; title: string; crn: string; calendly: string }) {
+const DEFAULT_BRAND = {
+  name: 'Simplify Finance',
+  headerColor: '#343333',
+  logoUrl: 'https://simplify-finance-portal.vercel.app/logo-charcoal.png',
+  footerAddress: 'St Leonards, Sydney',
+  acl: '387025',
+}
+
+function shell(body: string, b: { name: string; title: string; crn: string; calendly: string }, brand?: { name?: string; headerColor?: string; logoUrl?: string; footerAddress?: string; acl?: string }) {
+  const brandName = brand?.name || DEFAULT_BRAND.name
+  const headerColor = brand?.headerColor || DEFAULT_BRAND.headerColor
+  const logoUrl = brand?.logoUrl || DEFAULT_BRAND.logoUrl
+  const footerAddress = brand?.footerAddress || DEFAULT_BRAND.footerAddress
+  const acl = brand?.acl || DEFAULT_BRAND.acl
+  const logoBlock = logoUrl
+    ? `<img src="${logoUrl}" alt="${brandName}" style="height:80px;width:auto;display:block;margin:0 auto 8px" />`
+    : `<p style="color:#fff;font-size:22px;font-weight:700;margin:0 0 8px">${brandName}</p>`
   return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr><td>
   <table width="600" cellpadding="0" cellspacing="0" align="center" style="background:#fff;margin:0 auto">
-    <tr><td style="background:#343333;padding:28px 24px;text-align:center">
-      <img src="https://simplify-finance-portal.vercel.app/logo-charcoal.png" alt="Simplify Finance" style="height:80px;width:auto;display:block;margin:0 auto 8px" />
+    <tr><td style="background:${headerColor};padding:28px 24px;text-align:center">
+      ${logoBlock}
       <p style="color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0">Finance, Simplified.</p>
     </td></tr>
     <tr><td style="padding:28px">${body}</td></tr>
-    <tr><td style="background:#343333;padding:14px 16px;text-align:center">
+    <tr><td style="background:${headerColor};padding:14px 16px;text-align:center">
       <p style="font-size:10px;color:rgba(255,255,255,0.6);margin:0 0 6px;line-height:1.6">Rates quoted are indicative only and subject to change. Figures are based on information provided and are not a formal credit assessment. Subject to lender approval.</p>
-      <p style="font-size:10px;color:rgba(255,255,255,0.4);margin:0">&copy; 2026 Simplify Finance | St Leonards, Sydney | Australian Credit Licence: 387025</p>
+      <p style="font-size:10px;color:rgba(255,255,255,0.4);margin:0">&copy; 2026 ${brandName} | ${footerAddress} | Australian Credit Licence: ${acl}</p>
     </td></tr>
   </table></td></tr></table>`
 }
