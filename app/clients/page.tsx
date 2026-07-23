@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import Link from 'next/link'
+import { Trash2 } from 'lucide-react'
 
 type Client = {
   id: string
@@ -20,6 +21,13 @@ type ClientWithDeal = Client & {
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<ClientWithDeal[]>([])
+
+  async function deleteClient(id: string, name: string) {
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
+    const supabase = createSupabaseBrowser()
+    await supabase.from('clients').delete().eq('id', id)
+    setClients(prev => prev.filter(c => c.id !== id))
+  }
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
 
@@ -97,6 +105,10 @@ export default function ClientsPage() {
                     <p className="text-xs text-gray-400 mt-0.5">{client.assigned_broker}</p>
                   )}
                 </div>
+                <button onClick={() => deleteClient(client.id, `${client.first_name} ${client.last_name}`)}
+                  className="w-8 h-8 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-300 hover:text-red-400 hover:border-red-200 hover:bg-red-50 flex-shrink-0 transition">
+                  <Trash2 size={13} />
+                </button>
               </div>
             )
           })}
