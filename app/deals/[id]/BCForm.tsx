@@ -483,13 +483,25 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
   }
   const [internalNotes, setInternalNotes] = useState(s.internalNotes || '')
   const [brokerSig, setBrokerSig] = useState(s.brokerSig || deal.assigned_broker || 'Fabio')
-  const [brokersList, setBrokersList] = useState<{ name: string }[]>([{ name: 'Fabio' }, { name: 'Mark' }])
+  const [brokersList, setBrokersList] = useState<{ name: string; brandIds?: string[] }[]>([{ name: 'Fabio', brandIds: ['simplify'] }, { name: 'Mark', brandIds: ['simplify'] }])
+  const [brandsList, setBrandsList] = useState<{ id: string; name: string }[]>([{ id: 'simplify', name: 'Simplify Finance' }])
+  const [brand, setBrand] = useState(s.brand || '')
 
   useEffect(() => {
-    supabase.from('settings').select('brokers').eq('id', 'singleton').single().then(({ data }) => {
+    supabase.from('settings').select('brokers, brands').eq('id', 'singleton').single().then(({ data }) => {
       if (data?.brokers?.length) setBrokersList(data.brokers)
+      if (data?.brands?.length) setBrandsList(data.brands)
     })
   }, [])
+
+  const currentBrokerBrandIds = brokersList.find((b: any) => b.name === brokerSig)?.brandIds || ['simplify']
+  const availableBrands = brandsList.filter((br: any) => currentBrokerBrandIds.includes(br.id))
+
+  useEffect(() => {
+    if (availableBrands.length > 0 && !availableBrands.some((br: any) => br.id === brand)) {
+      setBrand(availableBrands[0].id)
+    }
+  }, [brokerSig, brandsList])
   const [checklist, setChecklist] = useState<string[]>(s.checklist || [])
   const [newCheck, setNewCheck] = useState('')
   const [generating, setGenerating] = useState(false)
