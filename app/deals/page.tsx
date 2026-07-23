@@ -284,31 +284,33 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
                 </div>
               ))}
             </div>
-
-            {!showSecondApplicant ? (
-              <button onClick={() => setShowSecondApplicant(true)}
-                className="text-sm text-[#2DBEFF] border border-dashed border-[#2DBEFF] rounded-lg px-4 py-1.5 hover:bg-blue-50 transition w-full">
-                + Add second applicant
-              </button>
-            ) : (
-              <div className="border border-blue-100 rounded-xl p-4 bg-blue-50/30">
-                <div className="flex justify-between items-center mb-2">
-                  <p className="text-xs font-medium text-gray-500">Applicant 2</p>
-                  <button onClick={() => { setShowSecondApplicant(false); setForm2({ first_name: '', last_name: '', email: '', phone: '' }) }}
-                    className="text-xs text-gray-400 hover:text-red-400">Remove</button>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {[['first_name','First name'],['last_name','Last name'],['email','Email'],['phone','Phone']].map(([k,l]) => (
-                    <div key={k}>
-                      <label className="text-xs text-gray-500 mb-1 block">{l}</label>
-                      <input type="text" value={form2[k as keyof typeof form2]} onChange={e => setForm2({...form2, [k]: e.target.value})}
-                        className={inp} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
+        )}
+
+        {(mode === 'existing' ? !!selectedClient : true) && (
+          !showSecondApplicant ? (
+            <button onClick={() => setShowSecondApplicant(true)}
+              className="text-sm text-[#2DBEFF] border border-dashed border-[#2DBEFF] rounded-lg px-4 py-1.5 hover:bg-blue-50 transition w-full mb-4">
+              + Add second applicant
+            </button>
+          ) : (
+            <div className="border border-blue-100 rounded-xl p-4 bg-blue-50/30 mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <p className="text-xs font-medium text-gray-500">Applicant 2</p>
+                <button onClick={() => { setShowSecondApplicant(false); setForm2({ first_name: '', last_name: '', email: '', phone: '' }) }}
+                  className="text-xs text-gray-400 hover:text-red-400">Remove</button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {[['first_name','First name'],['last_name','Last name'],['email','Email'],['phone','Phone']].map(([k,l]) => (
+                  <div key={k}>
+                    <label className="text-xs text-gray-500 mb-1 block">{l}</label>
+                    <input type="text" value={form2[k as keyof typeof form2]} onChange={e => setForm2({...form2, [k]: e.target.value})}
+                      className={inp} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
         )}
 
         <div className="grid grid-cols-2 gap-3 mb-4 mt-4">
