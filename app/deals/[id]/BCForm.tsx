@@ -280,7 +280,7 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
   const ffApp2 = (ff.applicants || [])[1] || {}
   const ffLiabs: any[] = ff.liabilities || []
 
-  const [activeTab, setActiveTab] = useState<'factfind' | 'form' | 'preview'>('form')
+  const [activeTab, setActiveTab] = useState<'form' | 'preview'>('form')
   const [template, setTemplate] = useState(s.template || 'oo_purchase')
   const [splits, setSplits] = useState<Split[]>(s.splits || TEMPLATE_DEFAULTS['oo_purchase'].splits)
   const firstName = ffApp.firstName || deal.clients?.first_name || ''
@@ -710,7 +710,7 @@ Key assumptions: ${checklistText}`
   return (
     <div>
       <div className="flex gap-2 mb-4 items-center">
-        {[['factfind','Fact find'],['form','BC form'],['preview','Preview & share']].map(([id,label]) => (
+        {[['form','BC form'],['preview','Preview & share']].map(([id,label]) => (
           <button key={id} onClick={() => setActiveTab(id as any)}
             className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${activeTab === id ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500 bg-white'}`}>
             {label}
@@ -720,21 +720,7 @@ Key assumptions: ${checklistText}`
         {saveError && <span className="text-xs text-red-500 ml-2">⚠ Save failed: {saveError}</span>}
       </div>
 
-      {activeTab === 'factfind' && (
-        <div className="flex flex-col gap-4">
-          <div className="bg-white border border-gray-100 rounded-xl p-5 text-center">
-            <div className="text-2xl mb-2">📎</div>
-            <div className="text-sm font-medium mb-1">Upload fact find PDF</div>
-            <div className="text-xs text-gray-400 mb-3">AI will extract client details and pre-fill the BC form</div>
-            <button className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Upload & extract</button>
-          </div>
-          <div className="bg-white border border-gray-100 rounded-xl p-5">
-            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Attached documents</div>
-            <div className="text-xs text-gray-400 mb-3">Fact finds, screenshots, rate sheets.</div>
-            <button className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">+ Add document</button>
-          </div>
-        </div>
-      )}
+
 
       {activeTab === 'form' && (
         <div>
