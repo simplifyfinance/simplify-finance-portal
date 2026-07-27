@@ -185,7 +185,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
   const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone: '' })
   const [showSecondApplicant, setShowSecondApplicant] = useState(false)
   const [form2, setForm2] = useState({ first_name: '', last_name: '', email: '', phone: '' })
-  const [deal, setDeal] = useState({ deal_type: 'Purchase', assigned_broker: brokerKey || 'Fabio' })
+  const [deal, setDeal] = useState({ deal_type: 'Purchase', assigned_broker: brokerKey || 'Fabio', lead_source: '' })
   const [saving, setSaving] = useState(false)
   const [brokerList, setBrokerList] = useState<string[]>([])
 
@@ -235,6 +235,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
       deal_name: dealName,
       client_id: clientId,
       deal_type: deal.deal_type,
+      lead_source: deal.lead_source,
       assigned_broker: deal.assigned_broker,
       stage: 'BC',
       status: 'in_progress',
@@ -328,6 +329,10 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
               </select>
             </div>
           )}
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Lead source</label>
+            <input type="text" value={deal.lead_source} onChange={e => setDeal({...deal, lead_source: e.target.value})} placeholder="e.g. Referral, Google, Facebook..." className={inp} />
+          </div>
         </div>
 
         {(form.last_name || selectedClient) && (
