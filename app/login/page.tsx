@@ -1,9 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -11,12 +12,14 @@ export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'forgot'>('login')
   const [resetSent, setResetSent] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const nextPath = searchParams.get('next') || '/'
 
   useEffect(() => {
     const supabase = createSupabaseBrowser()
     supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        router.push('/')
+        router.push(nextPath)
         router.refresh()
       }
     })
@@ -31,7 +34,7 @@ export default function LoginPage() {
       setError('Invalid email or password')
       setLoading(false)
     } else {
-      router.push('/')
+      router.push(nextPath)
       router.refresh()
     }
   }
@@ -120,5 +123,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   )
 }

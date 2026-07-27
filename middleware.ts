@@ -37,7 +37,10 @@ export async function middleware(request: NextRequest) {
   // All other routes require auth
   if (!user) {
     const url = request.nextUrl.clone()
+    const originalPath = url.pathname + url.search
     url.pathname = '/login'
+    url.search = ''
+    url.searchParams.set('next', originalPath)
     return NextResponse.redirect(url)
   }
 
