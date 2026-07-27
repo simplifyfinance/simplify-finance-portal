@@ -11,11 +11,18 @@ export async function POST(req: NextRequest) {
 
   const { data: deal, error: dealError } = await supabase
     .from('deals')
-    .select('id, deal_name, assigned_broker')
+    .select('id, deal_name, assigned_broker, assigned_credit_officer')
     .eq('id', dealId)
     .single()
 
   if (dealError || !deal) return NextResponse.json({ ok: false, error: dealError?.message || 'Deal not found' }, { status: 404 })
+
+  // Only notify the broker if a credit officer actually did the work — if the broker
+  // completed this stage themselves (no allocation), they don't need to be told
+  // "the credit team has completed" something they just did personally.
+  if (!deal.assigned_credit_officer) {
+    return NextResponse.json({ ok: true, emailSent: false, reason: 'No credit officer assigned — broker completed this stage themselves' })
+  }
 
   const { data: settings } = await supabase.from('settings').select('brokers').eq('id', 'singleton').single()
   const brokerRecord = (settings?.brokers || []).find((b: any) => (b.name || '').split(' ')[0] === deal.assigned_broker)
