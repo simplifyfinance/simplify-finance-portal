@@ -482,7 +482,8 @@ export default function LOForm({ deal, onStageChange }: { deal: any; onStageChan
       await navigator.clipboard.write([new ClipboardItem({ 'text/html': blob, 'text/plain': textBlob })])
       const subject = 'Lending Options & Recommendation'
       const to = deal.clients?.email || ''
-      window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}`
+      const bccParam = deal.salestrekker_bcc ? `&bcc=${encodeURIComponent(deal.salestrekker_bcc)}` : ''
+      window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}${bccParam}`
       setSent(true)
       setTimeout(() => setSent(false), 6000)
       const nowIso = new Date().toISOString()

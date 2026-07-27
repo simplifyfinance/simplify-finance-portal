@@ -664,7 +664,8 @@ export default function BCForm({ deal, onDataChange, onStageChange }: { deal: an
       await navigator.clipboard.write([new ClipboardItem({ 'text/html': blob, 'text/plain': textBlob })])
       const subject = 'Your Borrowing Capacity'
       const to = deal.clients?.email || ''
-      const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}`
+      const bccParam = deal.salestrekker_bcc ? `&bcc=${encodeURIComponent(deal.salestrekker_bcc)}` : ''
+      const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}${bccParam}`
       window.location.href = mailto
       setSendToClientMsg('Email copied — paste (Cmd+V) into the body in Outlook')
       const nowIso = new Date().toISOString()
