@@ -97,6 +97,10 @@ type LOData = {
   emailHtml: string
   refinanceSplits: RefinanceSplit[]
   brokerSig: string
+  clientAgreedLender: string
+  clientChosenLender: string
+  clientChosenLenderOther: string
+  clientChosenLenderReason: string
 }
 
 const defaultRateModule: RateModule = { enabled: false, rate: '', repayment: '', loanTerm: '30', ioYears: '5', fixedYears: '2' }
@@ -246,7 +250,11 @@ export default function LOForm({ deal }: { deal: any }) {
       internalNotes: '',
       emailHtml: '',
       refinanceSplits: initRefinanceSplits(),
-      brokerSig: deal.assigned_broker || 'Fabio'
+      brokerSig: deal.assigned_broker || 'Fabio',
+      clientAgreedLender: '',
+      clientChosenLender: '',
+      clientChosenLenderOther: '',
+      clientChosenLenderReason: ''
     }
   }
 
