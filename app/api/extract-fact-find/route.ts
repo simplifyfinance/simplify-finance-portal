@@ -20,8 +20,11 @@ Extract into this exact structure:
     }
   ],
   "assets": [{ "assetType": "Bank account/Shares/Super/Vehicle or empty", "description": "", "value": "" }],
-  "properties": [{ "address": "", "ownershipType": "Owner occupied/Investment or empty", "value": "", "rentalIncome": "" }],
-  "liabilities": [{ "liabilityType": "Credit card/Car loan/Personal loan/HECS or empty", "limit": "", "balance": "" }]
+  "properties": [{
+    "address": "", "ownershipType": "Owner occupied/Investment or empty", "value": "", "rentalIncome": "",
+    "loans": [{ "lenderName": "", "balance": "", "limitAmount": "", "interestRate": "", "repaymentAmount": "", "repaymentFrequency": "Monthly/Fortnightly/Weekly or empty" }]
+  }],
+  "liabilities": [{ "liabilityType": "Credit card/Car loan/Personal loan/HECS or empty", "lenderName": "", "limitAmount": "", "balance": "", "repaymentAmount": "", "repaymentFrequency": "Monthly/Fortnightly/Weekly or empty" }]
 }
 
 Rules:
