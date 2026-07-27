@@ -452,6 +452,61 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
     }
   }, [applicant?.employment])
 
+  const [extracting, setExtracting] = useState(false)
+  const [extractedData, setExtractedData] = useState<any>(null)
+  const [showExtractReview, setShowExtractReview] = useState(false)
+
+  async function extractFactFindPdf(file: File) {
+    setExtracting(true)
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve((reader.result as string).split(',')[1])
+        reader.onerror = () => reject(new Error('Failed to read file'))
+        reader.readAsDataURL(file)
+      })
+      const res = await fetch('/api/extract-fact-find', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdfBase64: base64 })
+      })
+      const data = await res.json()
+      if (data.error) {
+        alert('Extraction failed: ' + data.error)
+      } else {
+        setExtractedData(data.extracted)
+        setShowExtractReview(true)
+      }
+      await uploadDocument(file)
+    } catch (e: any) {
+      alert('Error extracting PDF: ' + e.message)
+    }
+    setExtracting(false)
+  }
+
+  function applyExtractedData() {
+    if (!extractedData) return
+    setD(prev => {
+      const updated = { ...prev }
+      if (extractedData.applicants?.length) {
+        updated.applicants = extractedData.applicants.map((a: any) => ({
+          ...defaultApplicant(),
+          ...a,
+          addresses: a.addresses?.length ? a.addresses.map((addr: any) => ({ ...defaultAddress(true), ...addr })) : [defaultAddress(true)],
+          employment: a.employment?.length ? a.employment.map((e: any) => ({ ...defaultEmployment(true), ...e })) : [defaultEmployment(true)],
+          income: a.income || []
+        }))
+      }
+      if (extractedData.assets?.length) updated.assets = extractedData.assets.map((x: any) => ({ ...defaultAsset(), ...x }))
+      if (extractedData.properties?.length) updated.properties = extractedData.properties.map((x: any) => ({ ...defaultProperty(), ...x }))
+      if (extractedData.liabilities?.length) updated.liabilities = extractedData.liabilities.map((x: any) => ({ ...defaultLiability(), ...x }))
+      renameDealForApplicants(updated.applicants)
+      return updated
+    })
+    setShowExtractReview(false)
+    setExtractedData(null)
+  }
+
   const [documents, setDocuments] = useState<any[]>([])
   const [uploadingDoc, setUploadingDoc] = useState(false)
 
