@@ -50,7 +50,15 @@ export default function DealsPage() {
   async function deleteDeal(e: React.MouseEvent, id: string, name: string) {
     e.preventDefault()
     e.stopPropagation()
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
+    if (!confirm(`Delete "${name}"? This will also delete its attached documents. This cannot be undone.`)) return
+
+    const { data: docs } = await browser.from('deal_documents').select('id, file_path').eq('deal_id', id)
+    if (docs && docs.length > 0) {
+      const paths = docs.map((d: any) => d.file_path)
+      await browser.storage.from('deal-documents').remove(paths)
+      await browser.from('deal_documents').delete().eq('deal_id', id)
+    }
+
     const { error } = await browser.from('deals').delete().eq('id', id)
     if (error) {
       alert('Error deleting deal: ' + error.message)
