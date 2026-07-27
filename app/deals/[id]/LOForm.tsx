@@ -969,7 +969,31 @@ export default function LOForm({ deal }: { deal: any }) {
             <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
               <div className="bg-white rounded-2xl p-6 w-[440px] shadow-xl">
                 <div className="text-base font-semibold mb-1 text-[#343333]">Send the next-steps email to the client?</div>
-                <p className="text-sm text-gray-500 mb-5">This moves the deal to Compliance and emails the client the next-steps content.</p>
+                <p className="text-sm text-gray-500 mb-4">This moves the deal to Compliance and emails the client the next-steps content.</p>
+
+                <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                  <label className="text-xs font-medium text-gray-500 block mb-2">Did the client agree with the recommended lender ({d.recommendedLender || 'not yet recommended'})?</label>
+                  <div className="flex gap-2">
+                    <button onClick={() => setD(prev => ({ ...prev, clientAgreedLender: 'Yes', clientChosenLender: '', clientChosenLenderOther: '', clientChosenLenderReason: '' }))}
+                      className={`px-3 py-1.5 text-xs rounded-lg border ${d.clientAgreedLender === 'Yes' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>Yes</button>
+                    <button onClick={() => setD(prev => ({ ...prev, clientAgreedLender: 'No' }))}
+                      className={`px-3 py-1.5 text-xs rounded-lg border ${d.clientAgreedLender === 'No' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>No</button>
+                  </div>
+                  {d.clientAgreedLender === 'No' && (
+                    <div className="mt-3 flex flex-col gap-2">
+                      <select className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg" value={d.clientChosenLender} onChange={e => setD(prev => ({ ...prev, clientChosenLender: e.target.value }))}>
+                        <option value="">Select lender the client chose</option>
+                        {d.lenders.map((l, i) => <option key={i} value={l.lenderName}>{l.lenderName}</option>)}
+                        <option value="__other__">Other (not previously considered)</option>
+                      </select>
+                      {d.clientChosenLender === '__other__' && (
+                        <input className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg" placeholder="Lender name" value={d.clientChosenLenderOther} onChange={e => setD(prev => ({ ...prev, clientChosenLenderOther: e.target.value }))} />
+                      )}
+                      <input className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg" placeholder="Why did they choose differently?" value={d.clientChosenLenderReason} onChange={e => setD(prev => ({ ...prev, clientChosenLenderReason: e.target.value }))} />
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex justify-end gap-2">
                   <button onClick={() => setShowMoveToCompliancePopup(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
                   <button onClick={handleMoveToCompliance} disabled={sendingMoveToCompliance} className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a] disabled:opacity-50">
