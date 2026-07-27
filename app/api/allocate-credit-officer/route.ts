@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
 
   const { data: deal, error: dealError } = await supabase
     .from('deals')
-    .select('id, deal_name, assigned_broker, assigned_credit_officer')
+    .select('id, deal_name, assigned_broker, assigned_credit_officer, stage, bc_data, clients(first_name, last_name)')
     .eq('id', dealId)
     .single()
 
@@ -146,7 +146,17 @@ export async function POST(req: NextRequest) {
             to: profile.email,
             cc: 'info@simplifyfinance.com.au',
             subject: `New deal assigned: ${deal.deal_name}`,
-            html: `<p>Hi ${profile.full_name?.split(' ')[0] || ''},</p><p>A new deal has been assigned to you: <strong>${deal.deal_name}</strong>.</p><p><a href="https://simplify-finance-portal.vercel.app/deals/${dealId}">Open the deal</a></p>`
+            html: `<p>Hi ${profile.full_name?.split(' ')[0] || ''},</p><p>A new deal has been assigned to you.</p>
+              <table style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 16px" width="100%" cellpadding="0" cellspacing="0">
+                <tr><td style="color:#666;font-size:13px;padding:3px 0">Deal</td><td style="text-align:right;font-size:13px;font-weight:600;padding:3px 0">${deal.deal_name}</td></tr>
+                <tr><td style="color:#666;font-size:13px;padding:3px 0">Client</td><td style="text-align:right;font-size:13px;padding:3px 0">${(deal.clients as any)?.first_name || ''} ${(deal.clients as any)?.last_name || ''}</td></tr>
+                <tr><td style="color:#666;font-size:13px;padding:3px 0">Stage</td><td style="text-align:right;font-size:13px;padding:3px 0">${deal.stage || 'BC'}</td></tr>
+                <tr><td style="color:#666;font-size:13px;padding:3px 0">Loan type</td><td style="text-align:right;font-size:13px;padding:3px 0">${(deal.bc_data?.template || '').replace(/_/g, ' ') || 'Not specified'}</td></tr>
+                <tr><td style="color:#666;font-size:13px;padding:3px 0">Purchase price</td><td style="text-align:right;font-size:13px;padding:3px 0">${deal.bc_data?.purchasePrice ? '$' + deal.bc_data.purchasePrice : 'Not specified'}</td></tr>
+                <tr><td style="color:#666;font-size:13px;padding:3px 0">Suburb</td><td style="text-align:right;font-size:13px;padding:3px 0">${deal.bc_data?.suburb || 'Not specified'}</td></tr>
+                <tr><td style="color:#666;font-size:13px;padding:3px 0">Broker</td><td style="text-align:right;font-size:13px;padding:3px 0">${deal.assigned_broker || ''}</td></tr>
+              </table>
+              <p><a href="https://simplify-finance-portal.vercel.app/deals/${dealId}">Open the deal</a></p>`
           })
         })
         emailSent = true
