@@ -768,7 +768,7 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
           <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Internal notes</span>
         </div>
         <p className="text-xs text-gray-400 mb-2">Stays visible on every tab — not client facing</p>
-        <textarea
+        <textarea spellCheck="true"
           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-[400px] resize-y"
           placeholder="Jot notes while on the phone with the client..."
           value={d.internalNotes}
@@ -888,15 +888,15 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
           <div className="flex flex-col gap-3">
             <div>
               <label className="text-xs text-gray-500 block mb-1">Purpose of loan / primary reason for finance</label>
-              <textarea className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-16 resize-y" placeholder="What the client told you they want this loan for..." value={d.loanPurpose} onChange={e => setD(prev => ({ ...prev, loanPurpose: e.target.value }))} />
+              <textarea spellCheck="true" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-16 resize-y" placeholder="What the client told you they want this loan for..." value={d.loanPurpose} onChange={e => setD(prev => ({ ...prev, loanPurpose: e.target.value }))} />
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Goals — next 2 years</label>
-              <textarea className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-16 resize-y" placeholder="Client's own stated short-term plans..." value={d.goals2Years} onChange={e => setD(prev => ({ ...prev, goals2Years: e.target.value }))} />
+              <textarea spellCheck="true" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-16 resize-y" placeholder="Client's own stated short-term plans..." value={d.goals2Years} onChange={e => setD(prev => ({ ...prev, goals2Years: e.target.value }))} />
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Goals — 2 to 10 years</label>
-              <textarea className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-16 resize-y" placeholder="Client's own stated long-term plans..." value={d.goals10Years} onChange={e => setD(prev => ({ ...prev, goals10Years: e.target.value }))} />
+              <textarea spellCheck="true" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-16 resize-y" placeholder="Client's own stated long-term plans..." value={d.goals10Years} onChange={e => setD(prev => ({ ...prev, goals10Years: e.target.value }))} />
             </div>
           </div>
         </div>

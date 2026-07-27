@@ -742,13 +742,13 @@ Key assumptions: ${checklistText}`
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Notes</div>
                 <div className="flex flex-col gap-2">
                   <Field label="Broker summary notes (included in email)">
-                    <textarea className={`${brokerNotes ? "border-green-200 bg-white" : "border-amber-200 bg-[#FFFBF0]"} px-2.5 py-1.5 text-sm rounded-lg focus:outline-none focus:border-[#2DBEFF] w-full min-h-16 resize-y border`} value={brokerNotes} onChange={e => setBrokerNotes(e.target.value)} placeholder="✏ Add your personalised opening message — this goes directly into the client email..." />
+                    <textarea spellCheck="true" className={`${brokerNotes ? "border-green-200 bg-white" : "border-amber-200 bg-[#FFFBF0]"} px-2.5 py-1.5 text-sm rounded-lg focus:outline-none focus:border-[#2DBEFF] w-full min-h-16 resize-y border`} value={brokerNotes} onChange={e => setBrokerNotes(e.target.value)} placeholder="✏ Add your personalised opening message — this goes directly into the client email..." />
                   </Field>
                   <Field label="Important things to note (included in email, one per line — pre-filled per template)">
-                    <textarea className={`${inputCls} min-h-40 resize-y`} value={templateNotes} onChange={e => setTemplateNotes(e.target.value)} placeholder="One note per line..." />
+                    <textarea spellCheck="true" className={`${inputCls} min-h-40 resize-y`} value={templateNotes} onChange={e => setTemplateNotes(e.target.value)} placeholder="One note per line..." />
                   </Field>
                   <Field label="Internal assessor notes (internal only)">
-                    <textarea className={`${inputCls} min-h-16 resize-y`} value={internalNotes} onChange={e => setInternalNotes(e.target.value)} placeholder="Internal notes..." />
+                    <textarea spellCheck="true" className={`${inputCls} min-h-16 resize-y`} value={internalNotes} onChange={e => setInternalNotes(e.target.value)} placeholder="Internal notes..." />
                   </Field>
                   <Field label="Broker signature">
                     <select className={selectCls} value={brokerSig} onChange={e => setBrokerSig(e.target.value)}>

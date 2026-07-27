@@ -632,7 +632,7 @@ export default function LOForm({ deal }: { deal: any }) {
                 <option key={i} value={b.name}>{b.name} — Simplify Finance</option>
               ))}
             </select>
-            <textarea className={`${d.brokerPersonalisation ? "border-green-200 bg-white" : "border-amber-200 bg-[#FFFBF0]"} w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-[80px] resize-y border`} value={d.brokerPersonalisation} onChange={e => setD({ ...d, brokerPersonalisation: e.target.value })} placeholder="✏ Add your personalised opening message..." />
+            <textarea spellCheck="true" className={`${d.brokerPersonalisation ? "border-green-200 bg-white" : "border-amber-200 bg-[#FFFBF0]"} w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-[80px] resize-y border`} value={d.brokerPersonalisation} onChange={e => setD({ ...d, brokerPersonalisation: e.target.value })} placeholder="✏ Add your personalised opening message..." />
           </div>
 
           {/* Documents required */}
@@ -846,7 +846,7 @@ export default function LOForm({ deal }: { deal: any }) {
               </Field>
             </div>
             <Field label="Recommendation paragraph">
-              <textarea className={inp + ' min-h-[100px] resize-y'} value={d.recommendationNote} onChange={e => setD({ ...d, recommendationNote: e.target.value })} placeholder="Based on your situation, I would recommend proceeding with..." />
+              <textarea spellCheck="true" className={inp + ' min-h-[100px] resize-y'} value={d.recommendationNote} onChange={e => setD({ ...d, recommendationNote: e.target.value })} placeholder="Based on your situation, I would recommend proceeding with..." />
               {(() => {
                 const mismatchedLender = d.lenders.find(l =>
                   l.lenderName &&
@@ -893,19 +893,19 @@ export default function LOForm({ deal }: { deal: any }) {
           {/* Important notes */}
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Important things to note (included in email, one per line)</div>
-            <textarea className={inp + ' min-h-40 resize-y'} value={d.importantNotes || ''} onChange={e => setD({ ...d, importantNotes: e.target.value })} placeholder="One note per line..." />
+            <textarea spellCheck="true" className={inp + ' min-h-40 resize-y'} value={d.importantNotes || ''} onChange={e => setD({ ...d, importantNotes: e.target.value })} placeholder="One note per line..." />
           </div>
 
           {/* Additional notes */}
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Additional notes</div>
-            <textarea className={inp + ' min-h-[80px] resize-y'} value={d.additionalNotes} onChange={e => setD({ ...d, additionalNotes: e.target.value })} placeholder="e.g. Debt recycling wording, rate reduction requested..." />
+            <textarea spellCheck="true" className={inp + ' min-h-[80px] resize-y'} value={d.additionalNotes} onChange={e => setD({ ...d, additionalNotes: e.target.value })} placeholder="e.g. Debt recycling wording, rate reduction requested..." />
           </div>
 
           {/* Internal notes */}
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Internal notes</div>
-            <textarea className={inp + ' min-h-[80px] resize-y'} value={d.internalNotes} onChange={e => setD({ ...d, internalNotes: e.target.value })} placeholder="Internal notes — not included in the email" />
+            <textarea spellCheck="true" className={inp + ' min-h-[80px] resize-y'} value={d.internalNotes} onChange={e => setD({ ...d, internalNotes: e.target.value })} placeholder="Internal notes — not included in the email" />
           </div>
 
           <div className="flex items-center justify-between">

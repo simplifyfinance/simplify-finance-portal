@@ -588,14 +588,14 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
             ].map(({ key, label }) => (
               <div key={key} className="mb-4">
                 <label className="text-xs font-medium text-gray-500 block mb-1">{label}</label>
-                <textarea className={inp + ' min-h-[100px] resize-y'} value={(d as any)[key]}
+                <textarea spellCheck="true" className={inp + ' min-h-[100px] resize-y'} value={(d as any)[key]}
                   onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
                   placeholder="Click Generate with AI or type manually..." />
                 <AIButton onClick={() => generateField(key)} loading={generating[key]} />
                 <button onClick={() => { setFlaggingField(flaggingField === key ? null : key); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
                 {flaggingField === key && (
                   <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <textarea className={inp + ' min-h-[60px] resize-y bg-white'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
+                    <textarea spellCheck="true" className={inp + ' min-h-[60px] resize-y bg-white'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
                     <div className="flex gap-2 mt-2">
                       <button onClick={() => submitFlag(key, label)} disabled={flagSubmitting || !flagNote.trim()} className="text-xs bg-amber-500 text-white rounded-lg px-3 py-1.5 hover:bg-amber-600 disabled:opacity-40">{flagSubmitting ? 'Submitting...' : 'Submit flag'}</button>
                       <button onClick={() => { setFlaggingField(null); setFlagNote('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
@@ -789,7 +789,7 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
 
           <div>
             <label className="text-xs font-medium text-gray-500 block mb-1">Other requirements</label>
-            <textarea className={inp + ' min-h-[80px] resize-y'} value={d.productReqs.otherRequirements}
+            <textarea spellCheck="true" className={inp + ' min-h-[80px] resize-y'} value={d.productReqs.otherRequirements}
               onChange={e => updateProductReqs('otherRequirements', e.target.value)}
               placeholder="Any other requirements not already stated..." />
           </div>
@@ -839,14 +839,14 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
             ].map(({ key, label }) => (
               <div key={key} className="mb-4">
                 <label className="text-xs font-medium text-gray-500 block mb-1">{label}</label>
-                <textarea className={inp + ' min-h-[120px] resize-y'} value={(d as any)[key]}
+                <textarea spellCheck="true" className={inp + ' min-h-[120px] resize-y'} value={(d as any)[key]}
                   onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
                   placeholder="Click Generate with AI or type manually..." />
                 <AIButton onClick={() => generateField(key)} loading={generating[key]} />
                 <button onClick={() => { setFlaggingField(flaggingField === key ? null : key); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
                 {flaggingField === key && (
                   <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <textarea className={inp + ' min-h-[60px] resize-y bg-white'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
+                    <textarea spellCheck="true" className={inp + ' min-h-[60px] resize-y bg-white'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
                     <div className="flex gap-2 mt-2">
                       <button onClick={() => submitFlag(key, label)} disabled={flagSubmitting || !flagNote.trim()} className="text-xs bg-amber-500 text-white rounded-lg px-3 py-1.5 hover:bg-amber-600 disabled:opacity-40">{flagSubmitting ? 'Submitting...' : 'Submit flag'}</button>
                       <button onClick={() => { setFlaggingField(null); setFlagNote('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
@@ -877,14 +877,14 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
                   <label className="text-xs font-medium text-gray-500 block mb-1">
                     {label} {warning && <span className="text-[10px] text-amber-500">{warning}</span>}
                   </label>
-                  <textarea className={inp + ' min-h-[100px] resize-y'} value={(d as any)[key]}
+                  <textarea spellCheck="true" className={inp + ' min-h-[100px] resize-y'} value={(d as any)[key]}
                     onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
                     placeholder="Click Generate..." />
                   <AIButton onClick={() => generateField(key)} loading={generating[key]} />
                 <button onClick={() => { setFlaggingField(flaggingField === key ? null : key); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
                 {flaggingField === key && (
                   <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <textarea className={inp + ' min-h-[60px] resize-y bg-white'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
+                    <textarea spellCheck="true" className={inp + ' min-h-[60px] resize-y bg-white'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
                     <div className="flex gap-2 mt-2">
                       <button onClick={() => submitFlag(key, label)} disabled={flagSubmitting || !flagNote.trim()} className="text-xs bg-amber-500 text-white rounded-lg px-3 py-1.5 hover:bg-amber-600 disabled:opacity-40">{flagSubmitting ? 'Submitting...' : 'Submit flag'}</button>
                       <button onClick={() => { setFlaggingField(null); setFlagNote('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
@@ -910,14 +910,14 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-medium text-gray-500 block mb-1">Security (property)</label>
-                <textarea className={inp + ' min-h-[80px] resize-y'} value={d.securityComment}
+                <textarea spellCheck="true" className={inp + ' min-h-[80px] resize-y'} value={d.securityComment}
                   onChange={e => setD(prev => ({ ...prev, securityComment: e.target.value }))}
                   placeholder="TBA or enter address..." />
                 <AIButton onClick={() => generateField('securityComment')} loading={generating['securityComment']} />
                 <button onClick={() => { setFlaggingField(flaggingField === 'securityComment' ? null : 'securityComment'); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
                 {flaggingField === 'securityComment' && (
                   <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <textarea className={inp + ' min-h-[60px] resize-y bg-white'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
+                    <textarea spellCheck="true" className={inp + ' min-h-[60px] resize-y bg-white'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
                     <div className="flex gap-2 mt-2">
                       <button onClick={() => submitFlag('securityComment', 'Security (property)')} disabled={flagSubmitting || !flagNote.trim()} className="text-xs bg-amber-500 text-white rounded-lg px-3 py-1.5 hover:bg-amber-600 disabled:opacity-40">{flagSubmitting ? 'Submitting...' : 'Submit flag'}</button>
                       <button onClick={() => { setFlaggingField(null); setFlagNote('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
@@ -939,7 +939,7 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500 block mb-1">Application submission notes</label>
-                <textarea className={inp + ' min-h-[80px] resize-y'} value={d.applicationSubmissionComment}
+                <textarea spellCheck="true" className={inp + ' min-h-[80px] resize-y'} value={d.applicationSubmissionComment}
                   onChange={e => setD(prev => ({ ...prev, applicationSubmissionComment: e.target.value }))}
                   placeholder="Lender-specific notes, broker contact details..." />
               </div>
