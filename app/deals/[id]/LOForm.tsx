@@ -485,7 +485,13 @@ export default function LOForm({ deal, onStageChange }: { deal: any; onStageChan
       window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}`
       setSent(true)
       setTimeout(() => setSent(false), 6000)
-      supabase.from('deals').update({ lo_sent_at: new Date().toISOString() }).eq('id', deal.id).then(() => {})
+      const nowIso = new Date().toISOString()
+      const updates: any = { lo_sent_at: nowIso }
+      if (!deal.assigned_credit_officer && !loCompletedAt) {
+        updates.lo_completed_at = nowIso
+        setLoCompletedAt(nowIso)
+      }
+      supabase.from('deals').update(updates).eq('id', deal.id).then(() => {})
     } catch (e: any) { setSendError('Could not copy — try "Copy HTML" instead') }
     setSending(false)
   }
