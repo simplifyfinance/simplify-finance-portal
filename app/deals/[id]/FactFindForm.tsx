@@ -805,7 +805,12 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
               <div className="bg-gray-50 rounded-lg p-3 mb-3">
                 <p className="text-xs font-semibold text-gray-600 mb-1">Properties ({extractedData.properties.length})</p>
                 {extractedData.properties.map((x: any, i: number) => (
-                  <p key={i} className="text-xs text-gray-500">{x.address || 'Address not found'}{x.ownershipType ? ` — ${x.ownershipType}` : ''}{x.value ? ` — $${x.value}` : ''}</p>
+                  <div key={i} className="mb-1">
+                    <p className="text-xs text-gray-500">{x.address || 'Address not found'}{x.ownershipType ? ` — ${x.ownershipType}` : ''}{x.value ? ` — $${x.value}` : ''}</p>
+                    {x.loans?.map((l: any, li: number) => (
+                      <p key={li} className="text-xs text-gray-400 ml-3">↳ {l.lenderName || 'Lender not found'}{l.balance ? ` — balance $${l.balance}` : ''}{l.limitAmount ? ` — limit $${l.limitAmount}` : ''}</p>
+                    ))}
+                  </div>
                 ))}
               </div>
             )}
@@ -814,7 +819,7 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
               <div className="bg-gray-50 rounded-lg p-3 mb-3">
                 <p className="text-xs font-semibold text-gray-600 mb-1">Liabilities ({extractedData.liabilities.length})</p>
                 {extractedData.liabilities.map((x: any, i: number) => (
-                  <p key={i} className="text-xs text-gray-500">{x.liabilityType}{x.balance ? ` — balance $${x.balance}` : ''}{x.limit ? ` — limit $${x.limit}` : ''}</p>
+                  <p key={i} className="text-xs text-gray-500">{x.liabilityType}{x.lenderName ? ` (${x.lenderName})` : ''}{x.balance ? ` — balance $${x.balance}` : ''}{x.limitAmount ? ` — limit $${x.limitAmount}` : ''}</p>
                 ))}
               </div>
             )}
