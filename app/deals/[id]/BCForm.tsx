@@ -514,6 +514,12 @@ export default function BCForm({ deal, onDataChange, onStageChange }: { deal: an
   const [bcCompletedAt, setBcCompletedAt] = useState<string | null>(deal.bc_completed_at || null)
   const [markingComplete, setMarkingComplete] = useState(false)
   const [sendingToCreditTeam, setSendingToCreditTeam] = useState(false)
+  const [bcSelfAssigned, setBcSelfAssigned] = useState(!!deal.bc_self_assigned)
+
+  async function handleBcSelfAssign() {
+    setBcSelfAssigned(true)
+    await supabase.from('deals').update({ bc_self_assigned: true }).eq('id', deal.id)
+  }
   const [creditTeamMsg, setCreditTeamMsg] = useState('')
   const [creditTeamErr, setCreditTeamErr] = useState('')
   const [assignmentRefreshKey, setAssignmentRefreshKey] = useState(0)
@@ -1127,15 +1133,24 @@ Key assumptions: ${checklistText}`
             </div>
             <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-2">
-                <button onClick={sendToCreditTeam} disabled={sendingToCreditTeam}
-                  className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50">
-                  {sendingToCreditTeam ? 'Allocating...' : 'Allocate to credit team'}
-                </button>
-                <button onClick={markBCComplete} disabled={markingComplete || !!bcCompletedAt}
-                  title="This notifies the broker that BC is ready for their final review and personalisation"
-                  className={`px-3 py-1.5 text-sm rounded-lg font-medium disabled:opacity-70 ${bcCompletedAt ? 'bg-green-50 text-green-600 border border-green-200' : 'border border-gray-200 hover:bg-gray-50'}`}>
-                  {bcCompletedAt ? '✓ BC completed' : markingComplete ? 'Marking...' : 'Mark BC complete'}
-                </button>
+                {!deal.assigned_credit_officer && !bcSelfAssigned ? (
+                  <>
+                    <button onClick={handleBcSelfAssign}
+                      className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
+                      I'll do this myself
+                    </button>
+                    <button onClick={sendToCreditTeam} disabled={sendingToCreditTeam}
+                      className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+                      {sendingToCreditTeam ? 'Sending...' : 'Send to credit team'}
+                    </button>
+                  </>
+                ) : deal.assigned_credit_officer ? (
+                  <button onClick={markBCComplete} disabled={markingComplete || !!bcCompletedAt}
+                    title="This notifies the broker that BC is ready for their final review and personalisation"
+                    className={`px-3 py-1.5 text-sm rounded-lg font-medium disabled:opacity-70 ${bcCompletedAt ? 'bg-green-50 text-green-600 border border-green-200' : 'border border-gray-200 hover:bg-gray-50'}`}>
+                    {bcCompletedAt ? '✓ Sent to broker for review' : markingComplete ? 'Marking...' : 'Done — send to broker for review'}
+                  </button>
+                ) : null}
                 {!clientProceeded && (
                   <button onClick={() => setShowMoveToLoPopup(true)}
                     className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
