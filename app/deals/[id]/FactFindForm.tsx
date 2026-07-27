@@ -773,6 +773,14 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
         />
 
         <div className="mt-4 pt-4 border-t border-gray-100">
+          <label className={`flex flex-col items-center justify-center gap-1 border border-dashed border-gray-300 rounded-xl p-4 mb-4 cursor-pointer hover:border-[#2DBEFF] hover:bg-blue-50/30 transition ${extracting ? 'opacity-50 pointer-events-none' : ''}`}>
+            <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
+            </svg>
+            <span className="text-xs font-medium text-gray-600">{extracting ? 'Extracting...' : 'Upload fact find PDF'}</span>
+            <span className="text-[10px] text-gray-400">AI will extract client details</span>
+            <input type="file" accept="application/pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) extractFactFindPdf(f) }} />
+          </label>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Attached documents</span>
             <label className={`text-xs text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-2.5 py-1 hover:bg-blue-50 transition cursor-pointer ${uploadingDoc ? 'opacity-40 pointer-events-none' : ''}`}>
