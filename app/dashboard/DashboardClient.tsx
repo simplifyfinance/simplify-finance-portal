@@ -8,7 +8,9 @@ type Deal = {
   stage: 'BC' | 'LO' | 'Compliance' | string
   client_proceeded?: boolean
   bc_completed_at?: string | null
+  bc_sent_at?: string | null
   lo_completed_at?: string | null
+  lo_sent_at?: string | null
   compliance_completed_at?: string | null
   assigned_broker?: string | null
   assigned_credit_officer?: string | null
@@ -33,8 +35,8 @@ type ActionType = 'proceeded' | 'bc_to_lo' | 'lo_to_compliance'
 
 const actionLabel: Record<ActionType, string> = {
   proceeded: 'Client confirmed ready to proceed',
-  bc_to_lo: 'BC complete — start LO',
-  lo_to_compliance: 'LO complete — Compliance pending',
+  bc_to_lo: 'BC ready for your review & send',
+  lo_to_compliance: 'LO ready for your review & send',
 }
 
 const actionColor: Record<ActionType, string> = {
@@ -70,12 +72,18 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
   const actionItems = useMemo(() => {
     const items: { deal: Deal; type: ActionType }[] = []
     for (const d of filteredDeals) {
-      if (d.client_proceeded) items.push({ deal: d, type: 'proceeded' })
-      else if (d.bc_completed_at && !d.lo_completed_at) items.push({ deal: d, type: 'bc_to_lo' })
-      else if (d.lo_completed_at && !d.compliance_completed_at) items.push({ deal: d, type: 'lo_to_compliance' })
+      const isDealsBroker = !!brokerKey && d.assigned_broker?.toLowerCase() === brokerKey.toLowerCase()
+      if (d.client_proceeded) {
+        items.push({ deal: d, type: 'proceeded' })
+      } else if (d.bc_completed_at && !d.bc_sent_at) {
+        // Review-and-send is always the broker's action, regardless of who did the BC work
+        if (isDealsBroker) items.push({ deal: d, type: 'bc_to_lo' })
+      } else if (d.lo_completed_at && !d.lo_sent_at) {
+        if (isDealsBroker) items.push({ deal: d, type: 'lo_to_compliance' })
+      }
     }
     return items
-  }, [filteredDeals])
+  }, [filteredDeals, brokerKey])
 
   const stageCounts = useMemo(() => {
     const counts: Record<string, number> = { BC: 0, LO: 0, Compliance: 0 }
