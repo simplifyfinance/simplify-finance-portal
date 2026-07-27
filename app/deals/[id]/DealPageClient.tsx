@@ -36,6 +36,20 @@ export default function DealPageClient({ deal, initialStage }: { deal: any; init
             <span>·</span><span>Broker: {deal.assigned_broker}</span>
           </div>
         </div>
+        <div className="flex gap-2 flex-shrink-0">
+          {dealData.onedrive_link && (
+            <a href={dealData.onedrive_link} target="_blank" rel="noopener noreferrer"
+              className="text-xs text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
+              Open OneDrive →
+            </a>
+          )}
+          {dealData.salestrekker_link && (
+            <a href={dealData.salestrekker_link} target="_blank" rel="noopener noreferrer"
+              className="text-xs text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
+              Open SalesTrekker →
+            </a>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-2 mb-6">
@@ -47,7 +61,7 @@ export default function DealPageClient({ deal, initialStage }: { deal: any; init
         ))}
       </div>
 
-      {stage === 'FactFind' && <FactFindForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} />}
+      {stage === 'FactFind' && <FactFindForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} />}
       {stage === 'BC' && <BCForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={setStage} />}
       {stage === 'LO' && <LOForm deal={dealData} onStageChange={setStage} />}
       {stage === 'Compliance' && <ComplianceForm deal={dealData} />}

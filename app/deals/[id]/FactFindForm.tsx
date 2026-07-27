@@ -345,7 +345,7 @@ function OwnershipCheckboxes({ applicants, ownership, onChange }: { applicants: 
   )
 }
 
-export default function FactFindForm({ deal, onDataChange }: { deal: any; onDataChange?: (d: FactFindData) => void }) {
+export default function FactFindForm({ deal, onDataChange, onDealFieldChange }: { deal: any; onDataChange?: (d: FactFindData) => void; onDealFieldChange?: (field: string, value: string) => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `fact_find_${deal.id}`
   const bc = deal.bc_data || {}
@@ -516,6 +516,7 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
 
   async function saveDealLinks(field: string, value: string) {
     await supabase.from('deals').update({ [field]: value }).eq('id', deal.id)
+    onDealFieldChange?.(field, value)
   }
 
   const [documents, setDocuments] = useState<any[]>([])
