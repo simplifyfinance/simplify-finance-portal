@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { Plus, Search, Briefcase, Trash2 } from 'lucide-react'
 import Link from 'next/link'
-type Client = { id: string; first_name: string; last_name: string }
+type Client = { id: string; first_name: string; last_name: string; email?: string; phone?: string }
 type Deal = {
   id: string; deal_name: string; deal_type: string; stage: string; status: string; assigned_broker: string;
   created_at: string; clients: Client; client_proceeded?: boolean
@@ -258,6 +258,9 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
   }
 
   const filteredClients = clients.filter(c => `${c.first_name} ${c.last_name}`.toLowerCase().includes(clientSearch.toLowerCase()))
+  const [app2Mode, setApp2Mode] = useState<'new' | 'existing'>('new')
+  const [app2Search, setApp2Search] = useState('')
+  const filteredClientsApp2 = clients.filter(c => `${c.first_name} ${c.last_name}`.toLowerCase().includes(app2Search.toLowerCase()))
   const inp = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF]"
   const sel = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF]"
 
@@ -310,18 +313,37 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
             <div className="border border-blue-100 rounded-xl p-4 bg-blue-50/30 mb-4">
               <div className="flex justify-between items-center mb-2">
                 <p className="text-xs font-medium text-gray-500">Applicant 2</p>
-                <button onClick={() => { setShowSecondApplicant(false); setForm2({ first_name: '', last_name: '', email: '', phone: '' }) }}
+                <button onClick={() => { setShowSecondApplicant(false); setForm2({ first_name: '', last_name: '', email: '', phone: '' }); setApp2Mode('new'); setApp2Search('') }}
                   className="text-xs text-gray-400 hover:text-red-400">Remove</button>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                {[['first_name','First name'],['last_name','Last name'],['email','Email'],['phone','Phone']].map(([k,l]) => (
-                  <div key={k}>
-                    <label className="text-xs text-gray-500 mb-1 block">{l}</label>
-                    <input type="text" value={form2[k as keyof typeof form2]} onChange={e => setForm2({...form2, [k]: e.target.value})}
-                      className={inp} />
-                  </div>
-                ))}
+              <div className="flex gap-2 mb-3">
+                <button onClick={() => setApp2Mode('new')} className={`flex-1 py-1.5 rounded-lg text-xs font-medium border ${app2Mode==='new' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>New person</button>
+                <button onClick={() => setApp2Mode('existing')} className={`flex-1 py-1.5 rounded-lg text-xs font-medium border ${app2Mode==='existing' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>Existing client</button>
               </div>
+              {app2Mode === 'existing' ? (
+                <div>
+                  <input type="text" placeholder="Search clients..." value={app2Search} onChange={e => setApp2Search(e.target.value)}
+                    className={`${inp} mb-2`} />
+                  <div className="max-h-32 overflow-y-auto flex flex-col gap-1">
+                    {filteredClientsApp2.map(c => (
+                      <div key={c.id} onClick={() => setForm2({ first_name: c.first_name, last_name: c.last_name, email: c.email || '', phone: c.phone || '' })}
+                        className={`px-3 py-2 rounded-lg text-sm cursor-pointer ${form2.first_name === c.first_name && form2.last_name === c.last_name ? 'bg-[#2DBEFF]/10 text-[#2DBEFF] font-medium' : 'hover:bg-gray-50'}`}>
+                        {c.first_name} {c.last_name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {[['first_name','First name'],['last_name','Last name'],['email','Email'],['phone','Phone']].map(([k,l]) => (
+                    <div key={k}>
+                      <label className="text-xs text-gray-500 mb-1 block">{l}</label>
+                      <input type="text" value={form2[k as keyof typeof form2]} onChange={e => setForm2({...form2, [k]: e.target.value})}
+                        className={inp} />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )
         )}
