@@ -591,27 +591,23 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange }: 
   }
 
   function addApplicant() {
-    setD(prev => {
-      const updated = { ...prev, applicants: [...prev.applicants, defaultApplicant()] }
-      renameDealForApplicants(updated.applicants)
-      return updated
-    })
+    const updatedApplicants = [...d.applicants, defaultApplicant()]
+    setD(prev => ({ ...prev, applicants: updatedApplicants }))
+    renameDealForApplicants(updatedApplicants)
     setShowAddApplicantModal(false)
   }
 
   function addExistingApplicant(client: any) {
-    setD(prev => {
-      const newApplicant: FactFindApplicant = {
-        ...defaultApplicant(),
-        firstName: client.first_name || '',
-        lastName: client.last_name || '',
-        emailPersonal: client.email || '',
-        phoneMobile: client.phone || '',
-      }
-      const updated = { ...prev, applicants: [...prev.applicants, newApplicant] }
-      renameDealForApplicants(updated.applicants)
-      return updated
-    })
+    const newApplicant: FactFindApplicant = {
+      ...defaultApplicant(),
+      firstName: client.first_name || '',
+      lastName: client.last_name || '',
+      emailPersonal: client.email || '',
+      phoneMobile: client.phone || '',
+    }
+    const updatedApplicants = [...d.applicants, newApplicant]
+    setD(prev => ({ ...prev, applicants: updatedApplicants }))
+    renameDealForApplicants(updatedApplicants)
     setShowAddApplicantModal(false)
     setApplicantSearch('')
   }
