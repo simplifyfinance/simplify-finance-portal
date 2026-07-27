@@ -667,7 +667,13 @@ export default function BCForm({ deal, onDataChange, onStageChange }: { deal: an
       const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}`
       window.location.href = mailto
       setSendToClientMsg('Email copied — paste (Cmd+V) into the body in Outlook')
-      supabase.from('deals').update({ bc_sent_at: new Date().toISOString() }).eq('id', deal.id).then(() => {})
+      const nowIso = new Date().toISOString()
+      const updates: any = { bc_sent_at: nowIso }
+      if (!deal.assigned_credit_officer && !bcCompletedAt) {
+        updates.bc_completed_at = nowIso
+        setBcCompletedAt(nowIso)
+      }
+      supabase.from('deals').update(updates).eq('id', deal.id).then(() => {})
     } catch (e: any) {
       setSendToClientMsg('Could not copy — try "Copy HTML" instead')
     }
