@@ -176,7 +176,7 @@ function LibraryField({ label, value, onChange }: { label: string; value: string
   )
 }
 
-export default function LOForm({ deal }: { deal: any }) {
+export default function LOForm({ deal, onStageChange }: { deal: any; onStageChange?: (stage: string) => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `lo_${deal.id}`
   const bc = deal.bc_data || {}
@@ -509,6 +509,7 @@ export default function LOForm({ deal }: { deal: any }) {
       if (!data.ok) { setMoveToComplianceMsg(data.error || 'Failed'); setSendingMoveToCompliance(false); return }
       setClientProceeded(true); setShowMoveToCompliancePopup(false)
       setMoveToComplianceMsg(data.alreadyProceeded ? 'Already moved to Compliance' : data.emailSent ? 'Moved to Compliance — client emailed' : 'Moved to Compliance — no email on file')
+      onStageChange?.('Compliance')
     } catch (e: any) { setMoveToComplianceMsg(e.message) }
     setSendingMoveToCompliance(false)
   }

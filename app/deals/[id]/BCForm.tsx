@@ -257,7 +257,7 @@ function NumberInput({ value, onChange, placeholder }: { value: string; onChange
   )
 }
 
-export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange?: (d: any) => void }) {
+export default function BCForm({ deal, onDataChange, onStageChange }: { deal: any; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void }) {
   const saveKey = `bc-form-${deal.id}`
 
   const getSaved = () => {
@@ -630,6 +630,7 @@ export default function BCForm({ deal, onDataChange }: { deal: any; onDataChange
       setClientProceeded(true)
       setShowMoveToLoPopup(false)
       setMoveToLoMsg(data.alreadyProceeded ? 'Already moved to LO' : data.emailSent ? 'Moved to LO — client emailed' : 'Moved to LO — no email on file for client')
+      onStageChange?.('LO')
     } catch (e: any) {
       setMoveToLoMsg(e.message)
     }
