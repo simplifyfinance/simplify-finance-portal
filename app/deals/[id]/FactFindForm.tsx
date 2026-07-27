@@ -498,7 +498,10 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
         }))
       }
       if (extractedData.assets?.length) updated.assets = extractedData.assets.map((x: any) => ({ ...defaultAsset(), ...x }))
-      if (extractedData.properties?.length) updated.properties = extractedData.properties.map((x: any) => ({ ...defaultProperty(), ...x }))
+      if (extractedData.properties?.length) updated.properties = extractedData.properties.map((x: any) => ({
+        ...defaultProperty(), ...x,
+        loans: x.loans?.length ? x.loans.map((l: any) => ({ ...defaultPropertyLoan(), ...l })) : []
+      }))
       if (extractedData.liabilities?.length) updated.liabilities = extractedData.liabilities.map((x: any) => ({ ...defaultLiability(), ...x }))
       renameDealForApplicants(updated.applicants)
       return updated
