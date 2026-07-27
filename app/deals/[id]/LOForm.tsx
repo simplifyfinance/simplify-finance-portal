@@ -939,12 +939,11 @@ export default function LOForm({ deal, onStageChange }: { deal: any; onStageChan
               </div>
               <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <button onClick={sendToCreditTeam} disabled={sendingToCreditTeam} className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50">
-                    {sendingToCreditTeam ? 'Allocating...' : 'Allocate to credit team'}
-                  </button>
-                  <button onClick={markLOComplete} disabled={markingLoComplete || !!loCompletedAt} className={`px-3 py-1.5 text-sm rounded-lg font-medium disabled:opacity-70 ${loCompletedAt ? 'bg-green-50 text-green-600 border border-green-200' : 'border border-gray-200 hover:bg-gray-50'}`}>
-                    {loCompletedAt ? '✓ LO completed' : markingLoComplete ? 'Marking...' : 'Mark LO complete'}
-                  </button>
+                  {deal.assigned_credit_officer && (
+                    <button onClick={markLOComplete} disabled={markingLoComplete || !!loCompletedAt} className={`px-3 py-1.5 text-sm rounded-lg font-medium disabled:opacity-70 ${loCompletedAt ? 'bg-green-50 text-green-600 border border-green-200' : 'border border-gray-200 hover:bg-gray-50'}`}>
+                      {loCompletedAt ? '✓ Sent to broker for review' : markingLoComplete ? 'Marking...' : 'Done — send to broker for review'}
+                    </button>
+                  )}
                   {!clientProceeded && (
                     <button onClick={() => setShowMoveToCompliancePopup(true)} className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
                       Client agreed — move to Compliance
