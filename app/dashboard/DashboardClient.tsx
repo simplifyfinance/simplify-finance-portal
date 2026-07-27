@@ -172,9 +172,11 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-[#343333] truncate">{deal.deal_name}</div>
-                  <div className="text-xs text-gray-400">
-                    {deal.clients?.first_name} {deal.clients?.last_name}
-                    {deal.assigned_broker && <> · {deal.assigned_broker}</>}
+                  <div className="text-xs text-gray-400 flex items-center gap-2">
+                    <span>{deal.clients?.first_name} {deal.clients?.last_name}</span>
+                    {deal.assigned_broker && (
+                      <span className="text-[11px] font-medium px-1.5 py-0.5 rounded border border-gray-200 text-gray-500">Broker: {deal.assigned_broker}</span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
