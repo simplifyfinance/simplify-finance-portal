@@ -772,7 +772,63 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
           onChange={e => setD(prev => ({ ...prev, internalNotes: e.target.value }))}
         />
 
-        <div className="mt-4 pt-4 border-t border-gray-100">
+        {showExtractReview && extractedData && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowExtractReview(false)}>
+          <div className="bg-white rounded-2xl p-6 w-[480px] max-h-[80vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="text-base font-semibold mb-1">Review extracted data</div>
+            <p className="text-xs text-gray-400 mb-4">Check this looks right before applying — you can fine-tune any field afterwards in the normal form.</p>
+
+            {extractedData.applicants?.map((a: any, i: number) => (
+              <div key={i} className="bg-gray-50 rounded-lg p-3 mb-3">
+                <p className="text-xs font-semibold text-gray-600 mb-1">Applicant {i + 1}</p>
+                <p className="text-sm text-[#343333]">{a.firstName} {a.lastName}{a.dob ? ` · DOB ${a.dob}` : ''}</p>
+                {(a.phoneMobile || a.emailPersonal) && <p className="text-xs text-gray-400">{a.phoneMobile}{a.phoneMobile && a.emailPersonal ? ' · ' : ''}{a.emailPersonal}</p>}
+                {a.employment?.[0]?.employerName && <p className="text-xs text-gray-500 mt-1">{a.employment[0].occupation} at {a.employment[0].employerName}</p>}
+                {a.income?.[0]?.grossSalary && <p className="text-xs text-gray-500">Income: ${a.income[0].grossSalary} {a.income[0].grossSalaryFrequency}</p>}
+                {a.addresses?.[0]?.address && <p className="text-xs text-gray-500">{a.addresses[0].address}</p>}
+              </div>
+            ))}
+
+            {extractedData.assets?.length > 0 && (
+              <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                <p className="text-xs font-semibold text-gray-600 mb-1">Assets ({extractedData.assets.length})</p>
+                {extractedData.assets.map((x: any, i: number) => (
+                  <p key={i} className="text-xs text-gray-500">{x.assetType}{x.description ? ` — ${x.description}` : ''}{x.value ? ` — $${x.value}` : ''}</p>
+                ))}
+              </div>
+            )}
+
+            {extractedData.properties?.length > 0 && (
+              <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                <p className="text-xs font-semibold text-gray-600 mb-1">Properties ({extractedData.properties.length})</p>
+                {extractedData.properties.map((x: any, i: number) => (
+                  <p key={i} className="text-xs text-gray-500">{x.address || 'Address not found'}{x.ownershipType ? ` — ${x.ownershipType}` : ''}{x.value ? ` — $${x.value}` : ''}</p>
+                ))}
+              </div>
+            )}
+
+            {extractedData.liabilities?.length > 0 && (
+              <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                <p className="text-xs font-semibold text-gray-600 mb-1">Liabilities ({extractedData.liabilities.length})</p>
+                {extractedData.liabilities.map((x: any, i: number) => (
+                  <p key={i} className="text-xs text-gray-500">{x.liabilityType}{x.balance ? ` — balance $${x.balance}` : ''}{x.limit ? ` — limit $${x.limit}` : ''}</p>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2 mt-4">
+              <button onClick={applyExtractedData} className="flex-1 px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90">
+                Apply to Fact Find
+              </button>
+              <button onClick={() => { setShowExtractReview(false); setExtractedData(null) }} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-4 pt-4 border-t border-gray-100">
           <label className={`flex flex-col items-center justify-center gap-1 border border-dashed border-gray-300 rounded-xl p-4 mb-4 cursor-pointer hover:border-[#2DBEFF] hover:bg-blue-50/30 transition ${extracting ? 'opacity-50 pointer-events-none' : ''}`}>
             <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
