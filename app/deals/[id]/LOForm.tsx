@@ -485,6 +485,7 @@ export default function LOForm({ deal, onStageChange }: { deal: any; onStageChan
       window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}`
       setSent(true)
       setTimeout(() => setSent(false), 6000)
+      supabase.from('deals').update({ lo_sent_at: new Date().toISOString() }).eq('id', deal.id).then(() => {})
     } catch (e: any) { setSendError('Could not copy — try "Copy HTML" instead') }
     setSending(false)
   }
