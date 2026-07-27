@@ -22,6 +22,17 @@ export async function markProceeded(dealId: string, stage: ProceedStage) {
     const nowIso = new Date().toISOString()
     if (stage === 'BC') {
       await supabase.from('deals').update({ stage: 'LO', client_proceeded: true, proceeded_at: nowIso }).eq('id', dealId)
+
+      if (!deal.assigned_credit_officer) {
+        try {
+          await fetch('https://simplify-finance-portal.vercel.app/api/allocate-credit-officer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dealId })
+          })
+        } catch (e) {
+        }
+      }
     } else {
       await supabase.from('deals').update({ stage: 'Compliance', lo_client_proceeded: true, lo_proceeded_at: nowIso }).eq('id', dealId)
     }
