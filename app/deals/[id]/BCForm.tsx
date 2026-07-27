@@ -489,8 +489,7 @@ export default function BCForm({ deal, onDataChange, onStageChange }: { deal: an
   const [brand, setBrand] = useState(s.brand || '')
 
   useEffect(() => {
-    const supabaseBrowser = createSupabaseBrowser()
-    supabaseBrowser.from('settings').select('brokers, brands').eq('id', 'singleton').single().then(({ data, error }) => {
+    supabase.from('settings').select('brokers, brands').eq('id', 'singleton').single().then(({ data, error }) => {
       if (error) console.error('BC brokers/brands fetch error:', error)
       if (data?.brokers?.length) setBrokersList(data.brokers)
       if (data?.brands?.length) setBrandsList(data.brands)
