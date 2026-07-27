@@ -11,6 +11,7 @@ type Deal = {
   lo_completed_at?: string | null
   compliance_completed_at?: string | null
   assigned_broker?: string | null
+  assigned_credit_officer?: string | null
   clients?: { first_name?: string; last_name?: string } | null
 }
 
@@ -18,6 +19,7 @@ type Props = {
   deals: Deal[]
   fullName: string | null
   brokerKey: string | null
+  creditOfficerId: string | null
   allowToggle: boolean
 }
 
@@ -41,12 +43,15 @@ const actionColor: Record<ActionType, string> = {
   lo_to_compliance: 'bg-purple-100 text-purple-700',
 }
 
-export default function DashboardClient({ deals, fullName, brokerKey, allowToggle }: Props) {
+export default function DashboardClient({ deals, fullName, brokerKey, creditOfficerId, allowToggle }: Props) {
   const [view, setView] = useState<'team' | 'mine'>('team')
 
   const filteredDeals = useMemo(() => {
-    if (allowToggle && view === 'mine' && brokerKey) {
-      return deals.filter(d => d.assigned_broker?.toLowerCase() === brokerKey.toLowerCase())
+    if (allowToggle && view === 'mine' && (brokerKey || creditOfficerId)) {
+      return deals.filter(d =>
+        (brokerKey && d.assigned_broker?.toLowerCase() === brokerKey.toLowerCase()) ||
+        (creditOfficerId && d.assigned_credit_officer === creditOfficerId)
+      )
     }
     return deals
   }, [deals, allowToggle, view, brokerKey])

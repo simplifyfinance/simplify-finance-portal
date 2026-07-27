@@ -28,6 +28,14 @@ export default async function Dashboard() {
 
   const brokerKey = profile?.broker_key || null
 
+  const { data: creditOfficerRecord } = await supabase
+    .from('credit_officers')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('active', true)
+    .maybeSingle()
+  const creditOfficerId = creditOfficerRecord?.id || null
+
   // Three cases:
   // 1. No broker_key at all (Kylie, Alan — admin/staff with no personal book):
   //    always full team view, no toggle.
@@ -49,13 +57,14 @@ export default async function Dashboard() {
 
   const { data: deals } = await dealsQuery
 
-  const allowToggle = !!brokerKey && TEAM_VIEW_BROKERS.includes(brokerKey.toLowerCase())
+  const allowToggle = (!!brokerKey && TEAM_VIEW_BROKERS.includes(brokerKey.toLowerCase())) || !!creditOfficerId
 
   return (
     <DashboardClient
       deals={deals || []}
       fullName={profile?.full_name || null}
       brokerKey={brokerKey}
+      creditOfficerId={creditOfficerId}
       allowToggle={allowToggle}
     />
   )
