@@ -51,7 +51,11 @@ export default function DealsPage() {
     e.preventDefault()
     e.stopPropagation()
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
-    await browser.from('deals').delete().eq('id', id)
+    const { error } = await browser.from('deals').delete().eq('id', id)
+    if (error) {
+      alert('Error deleting deal: ' + error.message)
+      return
+    }
     setDeals(prev => prev.filter(d => d.id !== id))
   }
   const filtered = deals.filter(d =>
