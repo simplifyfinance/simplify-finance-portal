@@ -452,6 +452,53 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
     }
   }, [applicant?.employment])
 
+  const [documents, setDocuments] = useState<any[]>([])
+  const [uploadingDoc, setUploadingDoc] = useState(false)
+
+  useEffect(() => {
+    supabase.from('deal_documents').select('*').eq('deal_id', deal.id).order('created_at', { ascending: false }).then(({ data }) => {
+      if (data) setDocuments(data)
+    })
+  }, [])
+
+  async function uploadDocument(file: File) {
+    setUploadingDoc(true)
+    const filePath = `${deal.id}/${Date.now()}_${file.name}`
+    const { error: uploadError } = await supabase.storage.from('deal-documents').upload(filePath, file)
+    if (uploadError) {
+      alert('Upload failed: ' + uploadError.message)
+      setUploadingDoc(false)
+      return
+    }
+    const { data: userData } = await supabase.auth.getUser()
+    const { data: inserted, error: insertError } = await supabase.from('deal_documents').insert({
+      deal_id: deal.id,
+      file_name: file.name,
+      file_path: filePath,
+      file_type: file.type,
+      uploaded_by: userData?.user?.email || 'unknown'
+    }).select().single()
+    if (insertError) {
+      alert('Error saving document record: ' + insertError.message)
+    } else if (inserted) {
+      setDocuments(prev => [inserted, ...prev])
+    }
+    setUploadingDoc(false)
+  }
+
+  async function downloadDocument(filePath: string) {
+    const { data, error } = await supabase.storage.from('deal-documents').createSignedUrl(filePath, 60)
+    if (error) { alert('Error generating download link: ' + error.message); return }
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+  }
+
+  async function deleteDocument(id: string, filePath: string) {
+    if (!confirm('Delete this document? This cannot be undone.')) return
+    await supabase.storage.from('deal-documents').remove([filePath])
+    await supabase.from('deal_documents').delete().eq('id', id)
+    setDocuments(prev => prev.filter(doc => doc.id !== id))
+  }
+
   const [showAddApplicantModal, setShowAddApplicantModal] = useState(false)
   const [applicantSearch, setApplicantSearch] = useState('')
   const [existingClients, setExistingClients] = useState<any[]>([])
