@@ -46,6 +46,17 @@ const actionColor: Record<ActionType, string> = {
 export default function DashboardClient({ deals, fullName, brokerKey, creditOfficerId, allowToggle }: Props) {
   const [view, setView] = useState<'team' | 'mine'>('team')
 
+  const brokerSummary = useMemo(() => {
+    const byBroker: Record<string, { BC: number; LO: number; Compliance: number; total: number }> = {}
+    deals.forEach(d => {
+      const key = d.assigned_broker || 'Unassigned'
+      if (!byBroker[key]) byBroker[key] = { BC: 0, LO: 0, Compliance: 0, total: 0 }
+      if (d.stage === 'BC' || d.stage === 'LO' || d.stage === 'Compliance') byBroker[key][d.stage]++
+      byBroker[key].total++
+    })
+    return Object.entries(byBroker).sort((a, b) => b[1].total - a[1].total)
+  }, [deals])
+
   const filteredDeals = useMemo(() => {
     if (allowToggle && view === 'mine' && (brokerKey || creditOfficerId)) {
       return deals.filter(d =>
@@ -108,6 +119,32 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
           </div>
         )}
       </div>
+
+      {brokerSummary.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs text-gray-400">Deals by broker</div>
+            <div className="flex gap-3 text-xs text-gray-400">
+              <span><span className="inline-block w-2 h-2 rounded-sm bg-blue-500 mr-1" />BC</span>
+              <span><span className="inline-block w-2 h-2 rounded-sm bg-purple-500 mr-1" />LO</span>
+              <span><span className="inline-block w-2 h-2 rounded-sm bg-green-500 mr-1" />Compliance</span>
+            </div>
+          </div>
+          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(brokerSummary.length, 4)}, minmax(0, 1fr))` }}>
+            {brokerSummary.map(([broker, counts]) => (
+              <div key={broker} className="bg-gray-50 rounded-lg p-3">
+                <div className="text-xs font-medium text-[#343333] mb-1">{broker}</div>
+                <div className="text-xl font-medium text-[#343333] mb-2">{counts.total}</div>
+                <div className="flex h-1.5 rounded-sm overflow-hidden">
+                  {counts.BC > 0 && <div className="bg-blue-500" style={{ width: `${(counts.BC / counts.total) * 100}%` }} />}
+                  {counts.LO > 0 && <div className="bg-purple-500" style={{ width: `${(counts.LO / counts.total) * 100}%` }} />}
+                  {counts.Compliance > 0 && <div className="bg-green-500" style={{ width: `${(counts.Compliance / counts.total) * 100}%` }} />}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Needs your action */}
       <div className="bg-white border border-gray-100 rounded-xl overflow-hidden mb-6">
