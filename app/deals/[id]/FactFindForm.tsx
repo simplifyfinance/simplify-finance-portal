@@ -711,11 +711,36 @@ export default function FactFindForm({ deal, onDataChange }: { deal: any; onData
         </div>
         <p className="text-xs text-gray-400 mb-2">Stays visible on every tab — not client facing</p>
         <textarea
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-[600px] resize-y"
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-[400px] resize-y"
           placeholder="Jot notes while on the phone with the client..."
           value={d.internalNotes}
           onChange={e => setD(prev => ({ ...prev, internalNotes: e.target.value }))}
         />
+
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Attached documents</span>
+            <label className={`text-xs text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-2.5 py-1 hover:bg-blue-50 transition cursor-pointer ${uploadingDoc ? 'opacity-40 pointer-events-none' : ''}`}>
+              {uploadingDoc ? 'Uploading...' : '+ Add'}
+              <input type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) uploadDocument(f) }} />
+            </label>
+          </div>
+          <p className="text-xs text-gray-400 mb-2">Fact finds, screenshots, rate sheets.</p>
+          {documents.length === 0 ? (
+            <p className="text-xs text-gray-300">No documents yet.</p>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {documents.map(doc => (
+                <div key={doc.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-2.5 py-1.5">
+                  <button onClick={() => downloadDocument(doc.file_path)} className="text-xs text-[#343333] hover:text-[#2DBEFF] truncate text-left flex-1">
+                    {doc.file_name}
+                  </button>
+                  <button onClick={() => deleteDocument(doc.id, doc.file_path)} className="text-xs text-gray-300 hover:text-red-400 ml-2 flex-shrink-0">✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="space-y-4">
