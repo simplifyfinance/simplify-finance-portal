@@ -291,6 +291,7 @@ export default function ComplianceForm({ deal }: { deal: any }) {
     const freshApps = getApplicants()
     const freshRequirementsType = bc.template?.includes('investment') ? 'Investment' : 'Owner occupied'
     const ffLive = deal.fact_find_data || {}
+    const loLive = deal.lo_data || {}
     setD(prev => {
       const newRisks = { ...prev.risks }
       freshApps.forEach(a => { if (!newRisks[a.name]) newRisks[a.name] = defaultRisk() })
@@ -302,9 +303,13 @@ export default function ComplianceForm({ deal }: { deal: any }) {
         needsPrimary: prev.needsPrimary || ffLive.loanPurpose || '',
         needsImmediate: prev.needsImmediate || ffLive.goals2Years || '',
         needsLongTerm: prev.needsLongTerm || ffLive.goals10Years || '',
+        clientAgreedLender: prev.clientAgreedLender || loLive.clientAgreedLender || '',
+        clientChosenLender: prev.clientChosenLender || loLive.clientChosenLender || '',
+        clientChosenLenderOther: prev.clientChosenLenderOther || loLive.clientChosenLenderOther || '',
+        clientChosenLenderReason: prev.clientChosenLenderReason || loLive.clientChosenLenderReason || '',
       }
     })
-  }, [deal.bc_data, deal.fact_find_data])
+  }, [deal.bc_data, deal.fact_find_data, deal.lo_data])
   const [activeApplicant, setActiveApplicant] = useState(0)
   const [generating, setGenerating] = useState<Record<string, boolean>>({})
   const [savedAt, setSavedAt] = useState('')
