@@ -1,4 +1,5 @@
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { notifyCrisMoveCard } from '@/lib/salestrekker-notify'
 
 type ProceedStage = 'BC' | 'LO'
 
@@ -35,6 +36,10 @@ export async function markProceeded(dealId: string, stage: ProceedStage) {
       }
     } else {
       await supabase.from('deals').update({ stage: 'Compliance', lo_client_proceeded: true, lo_proceeded_at: nowIso }).eq('id', dealId)
+      try {
+        await notifyCrisMoveCard(deal.deal_name, deal.assigned_broker, 'Move this deal card to Compliance (to be actioned)')
+      } catch (e) {
+      }
     }
 
     // Notify the assigned broker either way — they need to know the client has moved forward
