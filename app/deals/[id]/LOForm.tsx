@@ -486,6 +486,7 @@ export default function LOForm({ deal, onStageChange }: { deal: any; onStageChan
       window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}${bccParam}`
       setSent(true)
       setTimeout(() => setSent(false), 6000)
+      const wasNotYetCompleted = !loCompletedAt
       const nowIso = new Date().toISOString()
       const updates: any = { lo_sent_at: nowIso }
       if (!deal.assigned_credit_officer && !loCompletedAt) {
@@ -493,6 +494,9 @@ export default function LOForm({ deal, onStageChange }: { deal: any; onStageChan
         setLoCompletedAt(nowIso)
       }
       supabase.from('deals').update(updates).eq('id', deal.id).then(() => {})
+      if (wasNotYetCompleted) {
+        fetch('/api/notify-salestrekker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId: deal.id, trigger: 'lo_sent' }) }).catch(() => {})
+      }
     } catch (e: any) { setSendError('Could not copy — try "Copy HTML" instead') }
     setSending(false)
   }
