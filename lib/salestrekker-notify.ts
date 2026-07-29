@@ -21,6 +21,7 @@ async function sendResendEmail(to: string, subject: string, html: string) {
 
 // Trigger 1 (Path A or B) — Ellie creates the deal card in SalesTrekker
 export async function notifyEllieCreateCard(params: {
+  dealId: string
   dealName: string
   clientName: string
   brokerName: string
@@ -31,12 +32,14 @@ export async function notifyEllieCreateCard(params: {
   creditOfficerName?: string | null
   alreadyBcActioned?: boolean
 }) {
-  const { dealName, clientName, brokerName, leadSource, dealType, incomeType, internalNotes, creditOfficerName, alreadyBcActioned } = params
+  const { dealId, dealName, clientName, brokerName, leadSource, dealType, incomeType, internalNotes, creditOfficerName, alreadyBcActioned } = params
+  const dealLink = `https://simplify-finance-portal.vercel.app/deals/${dealId}`
 
   const steps = [
     `Create a new deal card for <b>${clientName || 'this client'}</b>`,
     `Allocate to broker: <b>${brokerName || ''}</b>`,
-    `Create a OneDrive folder for this client`,
+    `Create a OneDrive folder for this client, and a SalesTrekker BCC code if applicable`,
+    `Paste the OneDrive link, SalesTrekker card link, and BCC code into the portal's Fact Find "Deal links" section: <a href="${dealLink}">Open the deal &rarr;</a>`,
     `Add labels &mdash; Lead source: <b>${leadSource || 'Not provided'}</b>, Deal type: <b>${dealType || ''}</b>, Income type: <b>${incomeType || 'Not yet available — check Fact Find'}</b>`,
     `Copy internal notes from the portal:<br><span style="color:#666;font-style:italic">${internalNotes ? internalNotes.replace(/\n/g, '<br>') : '(no notes entered yet)'}</span>`,
   ]

@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
       }
 
       await notifyEllieCreateCard({
+        dealId,
         dealName,
         clientName,
         brokerName,
