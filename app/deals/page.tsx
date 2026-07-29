@@ -125,6 +125,10 @@ export default function DealsPage() {
           <input type="text" placeholder="Search by name, client, purpose..." value={search} onChange={e => setSearch(e.target.value)}
             className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-[#2DBEFF]" />
         </div>
+        <button onClick={() => setShowClosed(!showClosed)}
+          className={`px-3 py-2 text-sm rounded-lg border transition ${showClosed ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+          {showClosed ? '✓ Showing closed deals' : 'Show closed deals'}
+        </button>
         <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-3 py-2 bg-[#2DBEFF] text-white text-sm font-medium rounded-lg hover:opacity-90">
           <Plus size={14} />New deal
         </button>
