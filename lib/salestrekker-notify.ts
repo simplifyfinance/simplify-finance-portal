@@ -39,7 +39,11 @@ export async function notifyEllieCreateCard(params: {
     `Create a new deal card for <b>${clientName || 'this client'}</b>`,
     `Allocate to broker: <b>${brokerName || ''}</b>`,
     `Create a OneDrive folder for this client, and a SalesTrekker BCC code if applicable`,
-    `Paste the OneDrive link, SalesTrekker card link, and BCC code into the portal's Fact Find "Deal links" section: <a href="${dealLink}">Open the deal &rarr;</a>`,
+    `Paste these into the portal's Fact Find "Deal links" section: <a href="${dealLink}">Open the deal &rarr;</a><div style="margin-top:8px;margin-left:4px;display:flex;flex-direction:column;gap:4px">
+      <div style="font-size:12px;color:#343333;background:#fff;border-radius:6px;padding:6px 10px">4a. OneDrive folder link</div>
+      <div style="font-size:12px;color:#343333;background:#fff;border-radius:6px;padding:6px 10px">4b. SalesTrekker card link</div>
+      <div style="font-size:12px;color:#343333;background:#fff;border-radius:6px;padding:6px 10px">4c. SalesTrekker BCC code</div>
+    </div>`,
     `Add labels &mdash; Lead source: <b>${leadSource || 'Not provided'}</b>, Deal type: <b>${dealType || ''}</b>, Income type: <b>${incomeType || 'Not yet available — check Fact Find'}</b>`,
     `Copy internal notes from the portal:<br><span style="color:#666;font-style:italic">${internalNotes ? internalNotes.replace(/\n/g, '<br>') : '(no notes entered yet)'}</span>`,
   ]
