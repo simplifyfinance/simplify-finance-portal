@@ -612,8 +612,12 @@ export default function BCForm({ deal, onDataChange, onStageChange }: { deal: an
       })
       const data = await res.json()
       if (!data.ok) { setCreditTeamErr(data.error || 'Failed to allocate'); setSendingToCreditTeam(false); return }
-      if (data.alreadyAssigned) setCreditTeamMsg('This deal is already assigned to a credit officer.')
-      else setCreditTeamMsg(`Assigned to ${data.assignedTo}${data.emailSent ? ' — notified by email' : ''}`)
+      if (data.alreadyAssigned) {
+        setCreditTeamMsg('This deal is already assigned to a credit officer.')
+      } else {
+        setCreditTeamMsg(`Assigned to ${data.assignedTo}${data.emailSent ? ' — notified by email' : ''}`)
+        fetch('/api/notify-salestrekker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId: deal.id, trigger: 'bc_action' }) }).catch(() => {})
+      }
       setAssignmentRefreshKey(k => k + 1)
     } catch (e: any) {
       setCreditTeamErr(e.message)
@@ -667,6 +671,7 @@ export default function BCForm({ deal, onDataChange, onStageChange }: { deal: an
       const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}${bccParam}`
       window.location.href = mailto
       setSendToClientMsg('Email copied — paste (Cmd+V) into the body in Outlook')
+      const wasNotYetCompleted = !bcCompletedAt
       const nowIso = new Date().toISOString()
       const updates: any = { bc_sent_at: nowIso }
       if (!deal.assigned_credit_officer && !bcCompletedAt) {
@@ -674,6 +679,10 @@ export default function BCForm({ deal, onDataChange, onStageChange }: { deal: an
         setBcCompletedAt(nowIso)
       }
       supabase.from('deals').update(updates).eq('id', deal.id).then(() => {})
+      if (wasNotYetCompleted) {
+        const trigger = deal.assigned_credit_officer ? 'bc_sent' : 'bc_action'
+        fetch('/api/notify-salestrekker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId: deal.id, trigger }) }).catch(() => {})
+      }
     } catch (e: any) {
       setSendToClientMsg('Could not copy — try "Copy HTML" instead')
     }
