@@ -528,6 +528,7 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
     const { error } = await supabase.from('deals').update({ compliance_completed_at: nowIso }).eq('id', deal.id)
     if (error) { alert('Error marking compliance complete: ' + error.message); return }
     setComplianceCompletedAt(nowIso)
+    fetch('/api/notify-salestrekker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId: deal.id, trigger: 'push_to_salestrekker' }) }).catch(() => {})
   }
 
   function handlePushToSalesTrekker() {
@@ -537,7 +538,7 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
       setShowValidation(true)
     } else {
       markComplianceComplete()
-      alert('All fields complete — SalesTrekker automation coming soon!')
+      alert('Compliance complete — Cris has been notified to close this deal in SalesTrekker.')
     }
   }
 
@@ -1055,7 +1056,7 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
                 className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
                 Go back & complete
               </button>
-              <button onClick={() => { setShowValidation(false); markComplianceComplete(); alert('SalesTrekker automation coming soon!') }}
+              <button onClick={() => { setShowValidation(false); markComplianceComplete(); alert('Compliance complete — Cris has been notified to close this deal in SalesTrekker.') }}
                 className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a]">
                 Proceed anyway
               </button>
