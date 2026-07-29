@@ -66,10 +66,12 @@ export default function DealsPage() {
     }
     setDeals(prev => prev.filter(d => d.id !== id))
   }
+  const [showClosed, setShowClosed] = useState(false)
   const filtered = deals.filter(d =>
-    d.deal_name?.toLowerCase().includes(search.toLowerCase()) ||
+    (showClosed || d.status !== 'completed') &&
+    (d.deal_name?.toLowerCase().includes(search.toLowerCase()) ||
     d.clients?.first_name?.toLowerCase().includes(search.toLowerCase()) ||
-    d.clients?.last_name?.toLowerCase().includes(search.toLowerCase())
+    d.clients?.last_name?.toLowerCase().includes(search.toLowerCase()))
   )
   const totalAssigned = deals.length
   const isBrokerViewer = !!brokerKey
