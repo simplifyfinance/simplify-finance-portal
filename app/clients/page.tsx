@@ -25,7 +25,11 @@ export default function ClientsPage() {
   async function deleteClient(id: string, name: string) {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
     const supabase = createSupabaseBrowser()
-    await supabase.from('clients').delete().eq('id', id)
+    const { error } = await supabase.from('clients').delete().eq('id', id)
+    if (error) {
+      alert('Error deleting client: ' + error.message)
+      return
+    }
     setClients(prev => prev.filter(c => c.id !== id))
   }
   const [loading, setLoading] = useState(true)
