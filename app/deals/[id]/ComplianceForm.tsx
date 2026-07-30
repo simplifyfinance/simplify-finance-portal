@@ -1088,9 +1088,50 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
                 className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
                 Go back & complete
               </button>
-              <button onClick={() => { setShowValidation(false); markComplianceComplete(); alert('Compliance complete — Cris has been notified to close this deal in SalesTrekker.') }}
+              <button onClick={() => {
+                setShowValidation(false)
+                if (linkableApplicants.length > 0) {
+                  setPositionChoices(Object.fromEntries(linkableApplicants.map((a: any) => [a.id, true])))
+                  setShowPositionPrompt(true)
+                } else {
+                  markComplianceComplete()
+                  alert('Compliance complete — Cris has been notified to close this deal in SalesTrekker.')
+                }
+              }}
                 className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a]">
                 Proceed anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPositionPrompt && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-[460px] shadow-xl">
+            <div className="text-base font-semibold mb-1 text-[#343333]">Update client financial position?</div>
+            <p className="text-sm text-gray-500 mb-4">This refreshes each applicant's saved assets, liabilities, and properties based on this deal's Fact Find.</p>
+            <div className="flex flex-col gap-3 mb-5">
+              {linkableApplicants.map((a: any) => (
+                <div key={a.id} className="flex justify-between items-center bg-gray-50 rounded-lg px-4 py-3">
+                  <span className="text-sm font-medium text-[#343333]">{a.firstName} {a.lastName}</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setPositionChoices(prev => ({ ...prev, [a.id]: true }))}
+                      className={`px-3 py-1 text-xs rounded-lg border ${positionChoices[a.id] ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>
+                      Yes
+                    </button>
+                    <button onClick={() => setPositionChoices(prev => ({ ...prev, [a.id]: false }))}
+                      className={`px-3 py-1 text-xs rounded-lg border ${positionChoices[a.id] === false ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>
+                      No
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end">
+              <button onClick={finalizePush}
+                className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a]">
+                Continue
               </button>
             </div>
           </div>
