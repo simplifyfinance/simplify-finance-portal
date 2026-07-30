@@ -1,7 +1,7 @@
 'use client'
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3 } from "lucide-react"
+import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3, Percent } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createSupabaseBrowser } from "@/lib/supabase-browser"
 
@@ -11,6 +11,7 @@ const nav = [
   { label: "Clients", href: "/clients", icon: Users },
   { label: "Lender library", href: "/lenders", icon: Building2 },
   { label: "Reports", href: "/reports", icon: BarChart3 },
+  { label: "Cheat sheet", href: "/cheat-sheet", icon: Percent },
 ]
 
 const adminNav = [
