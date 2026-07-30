@@ -531,11 +531,43 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
     fetch('/api/notify-salestrekker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId: deal.id, trigger: 'push_to_salestrekker' }) }).catch(() => {})
   }
 
+  const [showPositionPrompt, setShowPositionPrompt] = useState(false)
+  const [positionChoices, setPositionChoices] = useState<Record<string, boolean>>({})
+  const linkableApplicants = ((deal.fact_find_data || {}).applicants || []).filter((a: any) => a.clientId)
+
+  async function updateClientPosition(applicant: any) {
+    const ffLive = deal.fact_find_data || {}
+    const ownedProperties = (ffLive.properties || []).filter((p: any) => !!p.ownership?.[applicant.id])
+    const ownedLiabilities = (ffLive.liabilities || []).filter((l: any) => !!l.ownership?.[applicant.id])
+    const ownedAssets = (ffLive.assets || []).filter((a: any) => !!a.ownership?.[applicant.id])
+    await supabase.from('clients').update({
+      position_properties: ownedProperties,
+      position_liabilities: ownedLiabilities,
+      position_assets: ownedAssets,
+      position_updated_at: new Date().toISOString(),
+      position_updated_from_deal_id: deal.id
+    }).eq('id', applicant.clientId)
+  }
+
+  async function finalizePush() {
+    for (const applicant of linkableApplicants) {
+      if (positionChoices[applicant.id]) {
+        await updateClientPosition(applicant)
+      }
+    }
+    setShowPositionPrompt(false)
+    markComplianceComplete()
+    alert('Compliance complete — Cris has been notified to close this deal in SalesTrekker.')
+  }
+
   function handlePushToSalesTrekker() {
     const errors = validateBeforePush()
     if (errors.length > 0) {
       setValidationErrors(errors)
       setShowValidation(true)
+    } else if (linkableApplicants.length > 0) {
+      setPositionChoices(Object.fromEntries(linkableApplicants.map((a: any) => [a.id, true])))
+      setShowPositionPrompt(true)
     } else {
       markComplianceComplete()
       alert('Compliance complete — Cris has been notified to close this deal in SalesTrekker.')
