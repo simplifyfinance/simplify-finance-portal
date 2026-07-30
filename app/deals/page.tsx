@@ -182,12 +182,12 @@ export default function DealsPage() {
 function makeUid() {
   return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)
 }
-function makeApplicant(first_name: string, last_name: string, email: string, phone: string) {
+function makeApplicant(first_name: string, last_name: string, email: string, phone: string, clientId?: string) {
   const id = makeUid()
   return {
     id, title: '', firstName: first_name, middleName: '', lastName: last_name,
     preferredName: '', previousName: '', gender: '', dob: '',
-    phoneMobile: phone, emailPersonal: email,
+    phoneMobile: phone, emailPersonal: email, clientId,
     addresses: [{ id: makeUid(), address: '', residentialStatus: '', isCurrent: true, startDate: '' }],
     employment: [{ id: makeUid(), isCurrent: true, employmentPriority: 'Primary', employmentBasis: 'Full time', occupation: '', startDate: '', onProbation: false, employerName: '', employerAbn: '', employerAcn: '', employerType: '', employerAddress: '', contactPersonName: '', contactPersonDetails: '' }],
     income: [{ id: makeUid(), incomeType: 'PAYG', employmentId: '', grossSalary: '', grossSalaryFrequency: 'Annually', bonusAmount: '', bonusFrequency: 'Annually', overtimeEssentialAmount: '', overtimeEssentialFrequency: 'Annually', overtimeNonEssentialAmount: '', overtimeNonEssentialFrequency: 'Annually', commissionAmount: '', commissionFrequency: 'Annually', allowanceAmount: '', allowanceFrequency: 'Annually' }]
@@ -202,7 +202,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
   const [clientSearch, setClientSearch] = useState('')
   const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone: '' })
   const [showSecondApplicant, setShowSecondApplicant] = useState(false)
-  const [form2, setForm2] = useState({ first_name: '', last_name: '', email: '', phone: '' })
+  const [form2, setForm2] = useState({ first_name: '', last_name: '', email: '', phone: '', client_id: '' })
   const [deal, setDeal] = useState({ deal_type: 'Purchase', assigned_broker: brokerKey || 'Fabio', lead_source: '' })
   const [saving, setSaving] = useState(false)
   const [brokerList, setBrokerList] = useState<string[]>([])
@@ -243,9 +243,9 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
     const primaryLastNameVal = selectedClient?.last_name || form.last_name
     const primaryEmail = mode === 'existing' ? '' : form.email
     const primaryPhone = mode === 'existing' ? '' : form.phone
-    const applicants = [makeApplicant(primaryFirstName, primaryLastNameVal, primaryEmail, primaryPhone)]
+    const applicants = [makeApplicant(primaryFirstName, primaryLastNameVal, primaryEmail, primaryPhone, mode === 'existing' ? clientId : undefined)]
     if (showSecondApplicant && (form2.first_name || form2.last_name)) {
-      applicants.push(makeApplicant(form2.first_name, form2.last_name, form2.email, form2.phone))
+      applicants.push(makeApplicant(form2.first_name, form2.last_name, form2.email, form2.phone, form2.client_id || undefined))
     }
     const fact_find_data = { applicants, assets: [], properties: [], liabilities: [] }
 
@@ -319,7 +319,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
             <div className="border border-blue-100 rounded-xl p-4 bg-blue-50/30 mb-4">
               <div className="flex justify-between items-center mb-2">
                 <p className="text-xs font-medium text-gray-500">Applicant 2</p>
-                <button onClick={() => { setShowSecondApplicant(false); setForm2({ first_name: '', last_name: '', email: '', phone: '' }); setApp2Mode('new'); setApp2Search('') }}
+                <button onClick={() => { setShowSecondApplicant(false); setForm2({ first_name: '', last_name: '', email: '', phone: '', client_id: '' }); setApp2Mode('new'); setApp2Search('') }}
                   className="text-xs text-gray-400 hover:text-red-400">Remove</button>
               </div>
               <div className="flex gap-2 mb-3">
@@ -332,7 +332,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
                     className={`${inp} mb-2`} />
                   <div className="max-h-32 overflow-y-auto flex flex-col gap-1">
                     {filteredClientsApp2.map(c => (
-                      <div key={c.id} onClick={() => setForm2({ first_name: c.first_name, last_name: c.last_name, email: c.email || '', phone: c.phone || '' })}
+                      <div key={c.id} onClick={() => setForm2({ first_name: c.first_name, last_name: c.last_name, email: c.email || '', phone: c.phone || '', client_id: c.id })}
                         className={`px-3 py-2 rounded-lg text-sm cursor-pointer ${form2.first_name === c.first_name && form2.last_name === c.last_name ? 'bg-[#2DBEFF]/10 text-[#2DBEFF] font-medium' : 'hover:bg-gray-50'}`}>
                         {c.first_name} {c.last_name}
                       </div>
