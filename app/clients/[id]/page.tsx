@@ -31,6 +31,9 @@ export default function ClientProfilePage() {
   const closedDeals = deals.filter(d => d.status === 'completed')
   const initials = `${client.first_name?.[0] || ''}${client.last_name?.[0] || ''}`.toUpperCase()
 
+  const hasSmsfOpportunity = (client.position_assets || []).some((a: any) => a.assetType === 'Super' && Number(a.value || 0) >= 250000)
+  const hasCarLoan = (client.position_liabilities || []).some((l: any) => l.liabilityType === 'Car loan')
+
   return (
     <div className="max-w-3xl mx-auto p-6">
       <Link href="/clients" className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-5">
@@ -45,6 +48,16 @@ export default function ClientProfilePage() {
         <div>
           <p className="text-lg font-semibold text-[#343333]">{client.first_name} {client.last_name}</p>
           <p className="text-sm text-gray-400">{client.email}{client.phone ? ` · ${client.phone}` : ''}</p>
+          {(hasSmsfOpportunity || hasCarLoan) && (
+            <div className="flex gap-2 mt-2">
+              {hasSmsfOpportunity && (
+                <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full">SMSF opportunity</span>
+              )}
+              {hasCarLoan && (
+                <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">Car loan present</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
