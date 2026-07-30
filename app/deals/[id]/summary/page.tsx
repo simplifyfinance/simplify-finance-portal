@@ -144,6 +144,39 @@ export default function DealSummaryPage() {
         </div>
       )}
 
+      {(ff.liabilities || []).length > 0 && (
+        <div className="bg-white border border-gray-100 border-l-4 border-l-red-400 rounded-xl p-5">
+          <p className="text-xs font-medium text-red-600 uppercase tracking-wider mb-3">Liabilities</p>
+          <div className="flex flex-col gap-2">
+            {ff.liabilities.map((l: any) => {
+              const badgeColors: Record<string, string> = {
+                'Credit card': 'bg-red-100 text-red-700',
+                'Car loan': 'bg-purple-100 text-purple-700',
+                'Personal loan': 'bg-purple-100 text-purple-700',
+                'HECS': 'bg-blue-100 text-blue-700',
+                'Health insurance': 'bg-teal-100 text-teal-700',
+              }
+              const badgeClass = badgeColors[l.liabilityType] || 'bg-gray-100 text-gray-700'
+              const owners = Object.entries(l.ownership || {})
+                .filter(([, v]) => !!v)
+                .map(([applicantId]) => applicants.find((a: any) => a.id === applicantId)?.firstName)
+                .filter(Boolean)
+                .join(' / ')
+              const detail = l.liabilityType === 'Credit card'
+                ? `Limit ${fmtMoney(l.limitAmount) || 'not provided'}`
+                : `Balance ${fmtMoney(l.balance) || 'not provided'}${l.repaymentAmount ? `, ${fmtMoney(l.repaymentAmount)}/${l.repaymentFrequency || ''}` : ''}`
+              return (
+                <div key={l.id} className="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2">
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${badgeClass}`}>{l.liabilityType}</span>
+                  <span className="text-sm text-gray-600 flex-1">{detail}{l.lenderName ? ` — ${l.lenderName}` : ''}</span>
+                  {owners && <span className="text-sm font-medium">{owners}</span>}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
