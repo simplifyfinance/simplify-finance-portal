@@ -890,10 +890,10 @@ export default function LOForm({ deal, onStageChange }: { deal: any; onStageChan
 
           {d.lenders.length < 3 && (
             <>
-              <a href="/cheat-sheet" target="_blank" rel="noopener noreferrer"
+              <button type="button" onClick={() => window.open('/cheat-sheet', '_blank', 'noopener,noreferrer')}
                 className="text-xs text-gray-400 hover:text-[#2DBEFF] transition mb-2 inline-block">
                 Rate cheat sheet →
-              </a>
+              </button>
               <button onClick={addLender} className="w-full py-3 border border-dashed border-gray-300 rounded-xl text-sm text-gray-400 hover:border-[#2DBEFF] hover:text-[#2DBEFF] transition">
                 + Add another lender option
               </button>
