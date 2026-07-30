@@ -10,6 +10,7 @@ const nav = [
   { label: "Deals", href: "/deals", icon: Briefcase },
   { label: "Clients", href: "/clients", icon: Users },
   { label: "Lender library", href: "/lenders", icon: Building2 },
+  { label: "Reports", href: "/reports", icon: BarChart3 },
 ]
 
 const adminNav = [
