@@ -259,6 +259,50 @@ export default function LOForm({ deal, onStageChange }: { deal: any; onStageChan
   }
 
   const [d, setD] = useState<LOData>(initData)
+
+  useEffect(() => {
+    async function syncRateObservations() {
+      const purpose = d.bcTemplate.includes('investment') ? 'Investment' : 'Owner Occupied'
+      const loanAmountNum = Number((d.loanAmount || '').toString().replace(/,/g, '')) || 0
+      const purchasePriceNum = Number((d.purchasePrice || '').toString().replace(/,/g, '')) || 0
+      const lvr = purchasePriceNum > 0 && loanAmountNum > 0 ? Math.round((loanAmountNum / purchasePriceNum) * 1000) / 10 : null
+
+      for (const lender of d.lenders) {
+        if (!lender.lenderName) continue
+
+        const piRate = lender.variablePI?.enabled ? lender.variablePI.rate : (lender.fixedPI?.enabled ? lender.fixedPI.rate : null)
+        const ioRate = lender.variableIO?.enabled ? lender.variableIO.rate : (lender.fixedIO?.enabled ? lender.fixedIO.rate : null)
+
+        if (piRate) {
+          await supabase.from('lender_rate_observations').upsert({
+            deal_id: deal.id,
+            lender_name: lender.lenderName,
+            repayment_type: 'PI',
+            purpose,
+            rate: Number(piRate) || null,
+            lvr,
+            loan_amount: loanAmountNum || null,
+            broker_name: d.brokerSig || deal.assigned_broker,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'deal_id,lender_name,repayment_type' })
+        }
+        if (ioRate) {
+          await supabase.from('lender_rate_observations').upsert({
+            deal_id: deal.id,
+            lender_name: lender.lenderName,
+            repayment_type: 'IO',
+            purpose,
+            rate: Number(ioRate) || null,
+            lvr,
+            loan_amount: loanAmountNum || null,
+            broker_name: d.brokerSig || deal.assigned_broker,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'deal_id,lender_name,repayment_type' })
+        }
+      }
+    }
+    syncRateObservations()
+  }, [d.lenders, d.loanAmount, d.purchasePrice, d.bcTemplate])
   const [brokersList, setBrokersList] = useState<{ name: string }[]>([{ name: 'Fabio' }, { name: 'Mark' }])
 
   useEffect(() => {
