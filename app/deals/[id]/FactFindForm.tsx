@@ -106,6 +106,7 @@ type FactFindApplicant = {
   addresses: Address[]
   employment: Employment[]
   income: Income[]
+  clientId?: string
 }
 
 type Asset = {
@@ -578,6 +579,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange }: 
       lastName: client.last_name || '',
       emailPersonal: client.email || '',
       phoneMobile: client.phone || '',
+      clientId: client.id,
     }
     const updatedApplicants = [...d.applicants, newApplicant]
     setD(prev => ({ ...prev, applicants: updatedApplicants }))
