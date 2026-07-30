@@ -106,6 +106,44 @@ export default function DealSummaryPage() {
         </div>
       </div>
 
+      {(ff.properties || []).length > 0 && (
+        <div className="bg-white border border-gray-100 border-l-4 border-l-amber-400 rounded-xl p-5 mb-4">
+          <p className="text-xs font-medium text-amber-600 uppercase tracking-wider mb-3">Properties</p>
+          <div className="flex flex-col gap-2">
+            {ff.properties.map((p: any) => {
+              const isOwnerOcc = p.ownershipType === 'Owner occupied'
+              const ownershipLabel = Object.entries(p.ownership || {})
+                .map(([applicantId, pct]) => {
+                  const app = applicants.find((a: any) => a.id === applicantId)
+                  return app ? `${app.firstName} ${pct}%` : null
+                })
+                .filter(Boolean)
+                .join(' / ')
+              return (
+                <div key={p.id} className="bg-gray-50 rounded-lg p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-sm font-medium text-[#343333]">{p.address || 'Address not set'}</p>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isOwnerOcc ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}`}>
+                      {p.ownershipType}
+                    </span>
+                  </div>
+                  <table className="w-full text-sm">
+                    <tbody>
+                      <tr><td className="text-gray-500 py-0.5 pr-2" style={{ width: '35%' }}>Value</td><td className="py-0.5 font-medium">{fmtMoney(p.value) || 'Not provided'}</td></tr>
+                      {p.rentalIncome && <tr><td className="text-gray-500 py-0.5 pr-2">Rental income</td><td className="py-0.5 font-medium">{fmtMoney(p.rentalIncome)}/{p.rentalIncomeFrequency || ''}</td></tr>}
+                      {ownershipLabel && <tr><td className="text-gray-500 py-0.5 pr-2">Ownership</td><td className="py-0.5">{ownershipLabel}</td></tr>}
+                      {(p.loans || []).map((loan: any, li: number) => (
+                        <tr key={li}><td className="text-gray-500 py-0.5 pr-2">Linked loan</td><td className="py-0.5">{loan.lenderName || 'Lender not set'} — balance <b className="font-medium">{fmtMoney(loan.balance)}</b>{loan.repaymentAmount ? `, ${fmtMoney(loan.repaymentAmount)}/${loan.repaymentFrequency || ''}` : ''}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
