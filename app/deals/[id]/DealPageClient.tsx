@@ -37,6 +37,10 @@ export default function DealPageClient({ deal, initialStage }: { deal: any; init
           </div>
         </div>
         <div className="flex gap-2 flex-shrink-0">
+          <a href={`/deals/${deal.id}/summary`} target="_blank" rel="noopener noreferrer"
+            className="text-xs text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
+            View summary →
+          </a>
           {dealData.onedrive_link && (
             <a href={dealData.onedrive_link} target="_blank" rel="noopener noreferrer"
               className="text-xs text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
