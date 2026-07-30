@@ -17,8 +17,15 @@ export default function ClientProfilePage() {
     async function load() {
       const { data: clientData } = await supabase.from('clients').select('*').eq('id', clientId).single()
       setClient(clientData)
-      const { data: dealsData } = await supabase.from('deals').select('*').eq('client_id', clientId).order('created_at', { ascending: false })
-      setDeals(dealsData || [])
+      const { data: primaryDeals } = await supabase.from('deals').select('*').eq('client_id', clientId).order('created_at', { ascending: false })
+      const { data: jointDeals } = await supabase.from('deals').select('*').contains('fact_find_data->applicants', [{ clientId }]).order('created_at', { ascending: false })
+
+      const merged = [...(primaryDeals || [])]
+      for (const d of (jointDeals || [])) {
+        if (!merged.some(existing => existing.id === d.id)) merged.push(d)
+      }
+      merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      setDeals(merged)
       setLoading(false)
     }
     load()
