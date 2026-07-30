@@ -193,6 +193,10 @@ export default function DealsPage() {
                   {deal.status === 'in_progress' ? 'In progress' : deal.status}
                 </span>
               </Link>
+              <button onClick={e => cloneDeal(e, deal)}
+                className="w-8 h-8 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-300 hover:text-[#2DBEFF] hover:border-blue-200 hover:bg-blue-50 flex-shrink-0 transition">
+                <Copy size={13} />
+              </button>
               <button onClick={e => deleteDeal(e, deal.id, deal.deal_name)}
                 className="w-8 h-8 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-300 hover:text-red-400 hover:border-red-200 hover:bg-red-50 flex-shrink-0 transition">
                 <Trash2 size={13} />
