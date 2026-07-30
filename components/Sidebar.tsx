@@ -11,7 +11,7 @@ const nav = [
   { label: "Clients", href: "/clients", icon: Users },
   { label: "Lender library", href: "/lenders", icon: Building2 },
   { label: "Reports", href: "/reports", icon: BarChart3 },
-  { label: "Cheat sheet", href: "/cheat-sheet", icon: Percent },
+  { label: "Cheat sheet", href: "/cheat-sheet", icon: Percent, newTab: true },
 ]
 
 const adminNav = [
@@ -59,11 +59,19 @@ export default function Sidebar() {
         <div className="text-white/30 text-xs uppercase tracking-widest px-2 mb-2">Main</div>
         {nav.map(item => {
           const Icon = item.icon
+          const linkClass = `flex items-center gap-2.5 px-3 py-2 rounded-md text-sm mb-0.5 transition-colors ${
+            path.startsWith(item.href) ? 'text-[#2DBEFF] bg-[#2DBEFF]/10' : 'text-white/60 hover:text-white hover:bg-white/5'
+          }`
+          if ((item as any).newTab) {
+            return (
+              <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer" className={linkClass}>
+                <Icon size={15} />
+                {item.label}
+              </a>
+            )
+          }
           return (
-            <Link key={item.href} href={item.href}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm mb-0.5 transition-colors ${
-                path.startsWith(item.href) ? 'text-[#2DBEFF] bg-[#2DBEFF]/10' : 'text-white/60 hover:text-white hover:bg-white/5'
-              }`}>
+            <Link key={item.href} href={item.href} className={linkClass}>
               <Icon size={15} />
               {item.label}
             </Link>
