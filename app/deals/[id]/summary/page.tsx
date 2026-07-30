@@ -77,6 +77,11 @@ export default function DealSummaryPage() {
 
   const ff = deal.fact_find_data || {}
   const applicants = ff.applicants || []
+  const bc = deal.bc_data || {}
+  const lo = deal.lo_data || {}
+  const totalLoanAmount = (bc.splits || []).reduce((sum: number, s: any) => sum + (Number((s.amount || '').toString().replace(/,/g, '')) || 0), 0)
+  const purchasePriceNum = Number((bc.purchasePrice || '').toString().replace(/,/g, '')) || 0
+  const simpleLvr = purchasePriceNum > 0 && totalLoanAmount > 0 ? Math.round((totalLoanAmount / purchasePriceNum) * 1000) / 10 : null
 
   return (
     <div className="max-w-3xl mx-auto p-6">
@@ -174,6 +179,50 @@ export default function DealSummaryPage() {
               )
             })}
           </div>
+        </div>
+      )}
+
+      {Object.keys(bc).length > 0 && (
+        <div className="bg-white border border-gray-100 border-l-4 border-l-[#2DBEFF] rounded-xl p-5 mb-4">
+          <p className="text-xs font-medium text-[#2DBEFF] uppercase tracking-wider mb-3">BC — borrowing capacity</p>
+          <table className="w-full text-sm">
+            <tbody>
+              <tr><td className="text-gray-500 py-1 pr-2" style={{ width: '35%' }}>Template</td><td className="py-1">{(bc.template || '').replace(/_/g, ' ') || 'Not set'}</td></tr>
+              {bc.purchasePrice && <tr><td className="text-gray-500 py-1 pr-2">Purchase price</td><td className="py-1 font-medium">{fmtMoney(bc.purchasePrice)}</td></tr>}
+              {bc.deposit && <tr><td className="text-gray-500 py-1 pr-2">Deposit</td><td className="py-1 font-medium">{fmtMoney(bc.deposit)}{bc.depositSource ? ` (${bc.depositSource})` : ''}</td></tr>}
+              {totalLoanAmount > 0 && <tr><td className="text-gray-500 py-1 pr-2">Loan amount</td><td className="py-1 font-medium">{fmtMoney(totalLoanAmount)}</td></tr>}
+              {simpleLvr !== null && <tr><td className="text-gray-500 py-1 pr-2">LVR (est.)</td><td className="py-1 font-medium">{simpleLvr}%</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {(lo.lenders || []).length > 0 && (
+        <div className="bg-white border border-gray-100 border-l-4 border-l-green-500 rounded-xl p-5">
+          <p className="text-xs font-medium text-green-600 uppercase tracking-wider mb-3">LO — lending options</p>
+          <table className="w-full text-sm mb-3">
+            <tbody>
+              {lo.lenders.map((l: any, i: number) => (
+                <tr key={i}>
+                  <td className="text-gray-500 py-1 pr-2" style={{ width: '40%' }}>{l.lenderName}{l.productName ? ` — ${l.productName}` : ''}</td>
+                  <td className="py-1">
+                    {l.variablePI?.enabled ? `${l.variablePI.rate}% variable P&I` : l.variableIO?.enabled ? `${l.variableIO.rate}% variable IO` : l.fixedPI?.enabled ? `${l.fixedPI.rate}% fixed P&I` : 'Rate not set'}
+                    {l.annualFee ? `, ${fmtMoney(l.annualFee)} annual fee` : ''}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {lo.recommendedLender && (
+            <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
+              <span className="text-sm">Recommended: <b className="font-medium">{lo.recommendedLender}</b></span>
+              {lo.clientAgreedLender && (
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${lo.clientAgreedLender === 'Yes' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {lo.clientAgreedLender === 'Yes' ? 'Client agreed' : `Client chose: ${lo.clientChosenLender === '__other__' ? lo.clientChosenLenderOther : lo.clientChosenLender}`}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
 
