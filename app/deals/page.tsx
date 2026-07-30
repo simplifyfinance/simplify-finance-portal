@@ -1,8 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { Plus, Search, Briefcase, Trash2 } from 'lucide-react'
+import { Plus, Search, Briefcase, Trash2, Copy } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 type Client = { id: string; first_name: string; last_name: string; email?: string; phone?: string }
 type Deal = {
   id: string; deal_name: string; deal_type: string; stage: string; status: string; assigned_broker: string;
@@ -12,6 +13,7 @@ type Deal = {
 const BROKER_DISPLAY: Record<string, string> = { Fabio: 'Fabio De Castro', Mark: 'Mark Gallo' }
 export default function DealsPage() {
   const browser = createSupabaseBrowser()
+  const router = useRouter()
   const [deals, setDeals] = useState<Deal[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -47,6 +49,31 @@ export default function DealsPage() {
     if (!error && data) setDeals(data)
     setLoading(false)
   }
+  async function cloneDeal(e: React.MouseEvent, deal: any) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!confirm(`Clone "${deal.deal_name}"? This copies Fact Find only — BC, LO, and Compliance start fresh.`)) return
+
+    const { data: fullDeal } = await browser.from('deals').select('fact_find_data, client_id, deal_type, assigned_broker').eq('id', deal.id).single()
+    if (!fullDeal) { alert('Could not load deal to clone'); return }
+
+    const namePart = deal.deal_name.replace(/_\d{4}$/, '')
+    const newDealName = `${namePart}_${new Date().getFullYear()}_Copy`
+
+    const { data: inserted, error } = await browser.from('deals').insert([{
+      deal_name: newDealName,
+      client_id: fullDeal.client_id,
+      deal_type: fullDeal.deal_type,
+      assigned_broker: fullDeal.assigned_broker,
+      stage: 'BC',
+      status: 'in_progress',
+      fact_find_data: fullDeal.fact_find_data
+    }]).select().single()
+
+    if (error || !inserted) { alert('Error cloning deal: ' + (error?.message || 'unknown error')); return }
+    router.push(`/deals/${inserted.id}`)
+  }
+
   async function deleteDeal(e: React.MouseEvent, id: string, name: string) {
     e.preventDefault()
     e.stopPropagation()
