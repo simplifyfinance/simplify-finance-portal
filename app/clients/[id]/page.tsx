@@ -86,6 +86,53 @@ export default function ClientProfilePage() {
           No deals for this client yet.
         </div>
       )}
+
+      {client.position_updated_at && (
+        <div className="mt-4">
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-sm font-medium text-[#343333]">Financial position</p>
+            <span className="text-xs text-gray-400">Last updated {new Date(client.position_updated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          </div>
+
+          {(client.position_properties || []).length > 0 && (
+            <div className="bg-white border border-gray-100 border-l-4 border-l-amber-400 rounded-xl p-5 mb-3">
+              <p className="text-xs font-medium text-amber-600 uppercase tracking-wider mb-3">Properties</p>
+              <div className="flex flex-col gap-2">
+                {client.position_properties.map((p: any, i: number) => (
+                  <div key={i} className="bg-gray-50 rounded-lg p-3">
+                    <div className="flex justify-between items-center mb-1">
+                      <p className="text-sm font-medium text-[#343333]">{p.address || 'Address not set'}</p>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.ownershipType === 'Owner occupied' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}`}>
+                        {p.ownershipType}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500">Value: {p.value ? `$${Number(p.value).toLocaleString('en-AU')}` : 'Not provided'}</p>
+                    {(p.loans || []).map((loan: any, li: number) => (
+                      <p key={li} className="text-xs text-gray-500">{loan.lenderName || 'Lender not set'} — balance ${Number(loan.balance || 0).toLocaleString('en-AU')}{loan.interestRate ? `, ${loan.interestRate}%` : ''}</p>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(client.position_liabilities || []).length > 0 && (
+            <div className="bg-white border border-gray-100 border-l-4 border-l-red-400 rounded-xl p-5">
+              <p className="text-xs font-medium text-red-600 uppercase tracking-wider mb-3">Liabilities</p>
+              <div className="flex flex-col gap-2">
+                {client.position_liabilities.map((l: any, i: number) => (
+                  <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2">
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700 flex-shrink-0">{l.liabilityType}</span>
+                    <span className="text-sm text-gray-600 flex-1">
+                      {l.liabilityType === 'Credit card' ? `Limit $${Number(l.limitAmount || 0).toLocaleString('en-AU')}` : `Balance $${Number(l.balance || 0).toLocaleString('en-AU')}`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
