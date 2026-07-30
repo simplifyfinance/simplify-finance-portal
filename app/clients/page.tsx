@@ -86,16 +86,18 @@ export default function ClientsPage() {
             return (
               <div key={client.id}
                 className={`flex items-center gap-4 px-5 py-3 ${i < filtered.length - 1 ? 'border-b border-gray-50' : ''}`}>
-                <div style={{ background: 'rgba(45,190,255,0.12)', color: '#2DBEFF' }}
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">
-                  {initials || '?'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#343333]">{client.first_name} {client.last_name}</p>
-                  <p className="text-xs text-gray-400">
-                    {client.email}{client.phone ? ` · ${client.phone}` : ''}
-                  </p>
-                </div>
+                <Link href={`/clients/${client.id}`} className="flex items-center gap-4 flex-1 min-w-0">
+                  <div style={{ background: 'rgba(45,190,255,0.12)', color: '#2DBEFF' }}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                    {initials || '?'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-[#343333]">{client.first_name} {client.last_name}</p>
+                    <p className="text-xs text-gray-400">
+                      {client.email}{client.phone ? ` · ${client.phone}` : ''}
+                    </p>
+                  </div>
+                </Link>
                 <div className="flex-shrink-0 text-right">
                   {client.deal_id ? (
                     <Link href={`/deals/${client.deal_id}`}
