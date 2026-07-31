@@ -39,11 +39,12 @@ export async function notifyEllieCreateCard(params: {
     `Create a new deal card for <b>${clientName || 'this client'}</b>`,
     `Allocate to broker: <b>${brokerName || ''}</b>`,
     `Create a OneDrive folder for this client, and a SalesTrekker BCC code if applicable`,
-    `Paste these into the portal's Fact Find "Deal links" section: <a href="${dealLink}">Open the deal &rarr;</a><div style="margin-top:8px;margin-left:4px;display:flex;flex-direction:column;gap:4px">
-      <div style="font-size:12px;color:#343333;background:#fff;border-radius:6px;padding:6px 10px">4a. OneDrive folder link</div>
-      <div style="font-size:12px;color:#343333;background:#fff;border-radius:6px;padding:6px 10px">4b. SalesTrekker card link</div>
-      <div style="font-size:12px;color:#343333;background:#fff;border-radius:6px;padding:6px 10px">4c. SalesTrekker BCC code</div>
-    </div>`,
+    `Paste these into the portal's Fact Find "Deal links" section: <a href="${dealLink}" style="color:#2DBEFF">Open the deal &rarr;</a>
+    <table style="width:100%;margin-top:8px;border-collapse:separate;border-spacing:0 4px" cellpadding="0" cellspacing="0">
+      <tr><td style="background:#ffffff;border-radius:6px;padding:6px 10px;font-size:12px;color:#343333">4a. OneDrive folder link</td></tr>
+      <tr><td style="background:#ffffff;border-radius:6px;padding:6px 10px;font-size:12px;color:#343333">4b. SalesTrekker card link</td></tr>
+      <tr><td style="background:#ffffff;border-radius:6px;padding:6px 10px;font-size:12px;color:#343333">4c. SalesTrekker BCC code</td></tr>
+    </table>`,
     `Add labels &mdash; Lead source: <b>${leadSource || 'Not provided'}</b>, Deal type: <b>${dealType || ''}</b>, Income type: <b>${incomeType || 'Not yet available — check Fact Find'}</b>`,
     `Copy internal notes from the portal:<br><span style="color:#666;font-style:italic">${internalNotes ? internalNotes.replace(/\n/g, '<br>') : '(no notes entered yet)'}</span>`,
   ]
@@ -55,13 +56,16 @@ export async function notifyEllieCreateCard(params: {
     steps.push(`Note: this deal is already at <b>BC Actioned</b> stage — set the card to that stage as part of creating it`)
   }
 
-  const stepsHtml = steps.map((s, i) => `
-    <div style="display:flex;gap:10px;align-items:flex-start;background:#EBF5FE;border-radius:8px;padding:10px 12px;margin-bottom:8px">
-      <span style="font-size:12px;font-weight:600;background:#2DBEFF;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i + 1}</span>
-      <span style="font-size:13px;color:#343333">${s}</span>
-    </div>`).join('')
+  const stepsRows = steps.map((s, i) => `
+    <tr>
+      <td style="background:#EBF5FE;border-radius:8px;padding:10px 12px;font-size:13px;color:#343333">
+        <b style="color:#2DBEFF">${i + 1}.</b> ${s}
+      </td>
+    </tr>`).join('')
 
-  const html = `<p>Hi Ellie,</p><p>A new deal is ready to be set up in SalesTrekker. Please complete the following:</p>${stepsHtml}`
+  const html = `<p>Hi Ellie,</p>
+    <p>A new deal is ready to be set up in SalesTrekker. Please complete the following:</p>
+    <table style="width:100%;border-collapse:separate;border-spacing:0 8px" cellpadding="0" cellspacing="0">${stepsRows}</table>`
 
   await sendResendEmail('ellie@simplifyfinance.com.au', `New deal created — ${dealName}`, html)
 }

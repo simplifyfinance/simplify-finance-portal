@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       const ff = deal.fact_find_data || {}
       const primaryApplicant = ff.applicants?.[0]
       const employmentBasis = primaryApplicant?.employment?.[0]?.employmentBasis || ''
-      const incomeType = employmentBasis === 'Self-employed' ? 'Self-employed' : (employmentBasis ? 'PAYE' : '')
+      const incomeType = employmentBasis === 'Self-employed' ? 'Self-employed' : (employmentBasis ? 'PAYG' : '')
 
       let creditOfficerName: string | null = null
       let alreadyBcActioned = false
