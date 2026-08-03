@@ -259,6 +259,16 @@ export default function LOForm({ deal, onStageChange }: { deal: any; onStageChan
   }
 
   const [d, setD] = useState<LOData>(initData)
+  const [canSendToClient, setCanSendToClient] = useState(false)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase.from('user_profiles').select('role').eq('id', user.id).single().then(({ data }) => {
+        setCanSendToClient(data?.role === 'admin' || data?.role === 'broker')
+      })
+    })
+  }, [])
 
   useEffect(() => {
     async function syncRateObservations() {
@@ -1010,9 +1020,13 @@ export default function LOForm({ deal, onStageChange }: { deal: any; onStageChan
                 </div>
                 <div className="w-px h-8 bg-gray-200" />
                 <div className="flex items-center gap-3">
-                  <button onClick={sendEmail} disabled={sending || !emailHtml} className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-40">
-                    {sending ? 'Copying...' : sent ? '✓ Copied — paste in Outlook' : 'Send to client'}
-                  </button>
+                  {canSendToClient ? (
+                    <button onClick={sendEmail} disabled={sending || !emailHtml} className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-40">
+                      {sending ? 'Copying...' : sent ? '✓ Copied — paste in Outlook' : 'Send to client'}
+                    </button>
+                  ) : (
+                    <span className="text-xs text-gray-400 italic">Only the broker can send this to the client — use "Done — send to broker for review" above.</span>
+                  )}
                   <button onClick={() => { navigator.clipboard.writeText(getCleanEmailHtml()); alert('HTML copied!') }} className="text-xs text-gray-400 hover:text-gray-600 underline">Copy HTML instead</button>
                 </div>
                 <div className="w-px h-8 bg-gray-200 ml-auto" />
