@@ -211,9 +211,10 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Equity Release Options</p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptionsRE.join('')}</tr></table>
       </td></tr></table>` +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation \u2014 and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
+       notesBox(notes) + sig(b)
 
   } else if (template === 'refinance_equity') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -222,9 +223,10 @@ export async function POST(req: NextRequest) {
       propHead(`Against ${d.suburb || '[Property Address]'}`, d.incomeRental) +
       card('Split 1 - Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + row('Loan amount', '$' + d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
       card('Split 2 - Equity Release', row('Equity release amount', '$' + (d.equityRelease || '')) + row('Loan amount', '$' + d.splits?.[1]?.amount || '') + row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[1]?.repayment ? '$' + (parseFloat(String(d.splits[1].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[1]?.type || 'Interest Only') + buildLVRLine(d)) +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
+       notesBox(notes) + sig(b)
 
   } else if (template === 'refinance_only') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -232,9 +234,10 @@ export async function POST(req: NextRequest) {
       p13('Here is a breakdown of the structure:') +
       propHead(`Against ${d.suburb || '[Property Address]'}`, d.incomeRental) +
       card('Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + row('New loan amount', '$' + d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years') + buildLVRLine(d)) +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
+       notesBox(notes) + sig(b)
 
   } else if (template === 'oo_purchase' && d.compareOptions) {
     const buildOptionCol = (opt: any, label: string) => {
@@ -277,9 +280,10 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Purchase Options</p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptions.join('')}</tr></table>
       </td></tr></table>` +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
+       notesBox(notes) + sig(b)
 
   } else if (template === 'oo_purchase') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -296,9 +300,10 @@ export async function POST(req: NextRequest) {
         row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
+       notesBox(notes) + sig(b)
 
   } else if (template === 'investment_purchase' && d.compareOptions) {
     const buildOptionColIP = (opt: any, label: string) => {
@@ -341,9 +346,10 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Purchase Options</p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptionsIP.join('')}</tr></table>
       </td></tr></table>` +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right structure for your investment \u2014 and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
+       notesBox(notes) + sig(b)
 
   } else if (template === 'investment_purchase') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -359,9 +365,10 @@ export async function POST(req: NextRequest) {
         row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
         row('Repayment type', d.splits?.[0]?.type || 'Interest Only (5 years)')
       ) +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right structure for your investment — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
+       notesBox(notes) + sig(b)
 
   } else if (template === 'buy_sell') {
     const depositLabel = (Number(d.additionalSavings) || 0) > 0 ? 'Deposit (from sale proceeds and savings)' : 'Deposit (from sale proceeds)'
@@ -383,9 +390,10 @@ export async function POST(req: NextRequest) {
         row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('Now it is about finding the right lender, the right rate, and making sure the timing between your sale and purchase lines up perfectly. That is exactly what we are here for.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      
       notesBox(notes) + sig(b)
 
   } else if (template === 'oo_lvr_compare') {
@@ -416,9 +424,10 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Deposit Options</p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${lvrCols}</tr></table>
       </td></tr></table>` +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
+       notesBox(notes) + sig(b)
 
   } else if (template === 'fhb') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -444,9 +453,10 @@ export async function POST(req: NextRequest) {
         row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
+       notesBox(notes) + sig(b)
 
   } else if (template === 'bridging') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -473,9 +483,10 @@ export async function POST(req: NextRequest) {
         row('Estimated repayments', d.splits?.[1]?.repayment ? '$' + (parseFloat(String(d.splits[1].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
         row('Repayment type', `${d.splits?.[1]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right structure for your bridging scenario — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      
       notesBox(notes) + sig(b)
 
   } else if (template === 'family_pledge') {
@@ -492,9 +503,10 @@ export async function POST(req: NextRequest) {
         row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      
       notesBox(notes) + sig(b)
 
   } else if (template === 'smsf') {
@@ -509,9 +521,10 @@ export async function POST(req: NextRequest) {
         row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right SMSF structure for your investment — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      
       notesBox(notes) + sig(b)
 
   } else if (template === 'construction') {
@@ -536,9 +549,10 @@ export async function POST(req: NextRequest) {
         row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender and construction loan structure for your project — and we will guide you through every step of that process.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      
       notesBox(notes) + sig(b)
 
   } else if (template === 'investment_equity') {
@@ -584,10 +598,11 @@ export async function POST(req: NextRequest) {
           ${newPurchaseCol}
         </td>
       </tr></table>` +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('Please let us know your thoughts and if you have any questions regarding the numbers above.') +
       p('The next step is to collect your documentation so we can look at specific lenders and interest rates.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
+       notesBox(notes) + sig(b)
 
   } else if (template === 'custom') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -602,9 +617,10 @@ export async function POST(req: NextRequest) {
         row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + notesBox(notes) + sig(b)
+       notesBox(notes) + sig(b)
 
   } else {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) + p('Email template coming soon.') + ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + sig(b)
