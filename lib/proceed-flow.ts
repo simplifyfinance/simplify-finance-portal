@@ -22,7 +22,7 @@ export async function markProceeded(dealId: string, stage: ProceedStage) {
   if (!alreadyProceeded) {
     const nowIso = new Date().toISOString()
     if (stage === 'BC') {
-      await supabase.from('deals').update({ stage: 'LO', client_proceeded: true, proceeded_at: nowIso }).eq('id', dealId)
+      await supabase.from('deals').update({ stage: 'LO', last_tab: 'LO', client_proceeded: true, proceeded_at: nowIso }).eq('id', dealId)
 
       if (!deal.assigned_credit_officer) {
         try {
@@ -35,7 +35,7 @@ export async function markProceeded(dealId: string, stage: ProceedStage) {
         }
       }
     } else {
-      await supabase.from('deals').update({ stage: 'Compliance', lo_client_proceeded: true, lo_proceeded_at: nowIso }).eq('id', dealId)
+      await supabase.from('deals').update({ stage: 'Compliance', last_tab: 'Compliance', lo_client_proceeded: true, lo_proceeded_at: nowIso }).eq('id', dealId)
       try {
         await notifyCrisMoveCard(deal.deal_name, deal.assigned_broker, 'Move this deal card to Compliance (to be actioned)')
       } catch (e) {
