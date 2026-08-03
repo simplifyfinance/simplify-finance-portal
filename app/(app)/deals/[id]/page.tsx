@@ -12,6 +12,13 @@ type DealWithClient = {
   clients: { first_name: string; last_name: string; email?: string }
 }
 
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const supabase = await createSupabaseServer()
+  const { data } = await supabase.from('deals').select('deal_name').eq('id', id).single()
+  return { title: data?.deal_name ? `${data.deal_name} — Simplify Finance` : 'Simplify Finance Portal' }
+}
+
 export default async function DealPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ stage?: string }> }) {
   const { id } = await params
   const { stage } = await searchParams

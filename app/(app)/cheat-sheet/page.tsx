@@ -26,6 +26,10 @@ export default function CheatSheetPage() {
   const [loanSizeFilter, setLoanSizeFilter] = useState<LoanSizeFilter>('all')
 
   useEffect(() => {
+    document.title = 'Rate Cheat Sheet — Simplify Finance'
+  }, [])
+
+  useEffect(() => {
     async function load() {
       const { data } = await supabase.from('lender_rate_observations').select('*').not('rate', 'is', null).not('lvr', 'is', null)
       setRows(data || [])

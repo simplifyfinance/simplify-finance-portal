@@ -55,6 +55,10 @@ export default function DealSummaryPage() {
   const dealId = params.id as string
   const supabase = createSupabaseBrowser()
   const [deal, setDeal] = useState<any>(null)
+
+  useEffect(() => {
+    if (deal?.deal_name) document.title = `Summary — ${deal.deal_name}`
+  }, [deal])
   const [loading, setLoading] = useState(true)
 
   async function loadDeal() {

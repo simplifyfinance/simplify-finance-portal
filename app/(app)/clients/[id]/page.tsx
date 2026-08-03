@@ -10,6 +10,10 @@ export default function ClientProfilePage() {
   const clientId = params.id as string
   const supabase = createSupabaseBrowser()
   const [client, setClient] = useState<any>(null)
+
+  useEffect(() => {
+    if (client?.first_name) document.title = `${client.first_name} ${client.last_name} — Simplify Finance`
+  }, [client])
   const [deals, setDeals] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 

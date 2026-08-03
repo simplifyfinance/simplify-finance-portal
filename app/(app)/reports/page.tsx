@@ -17,6 +17,10 @@ export default function ReportsPage() {
   const [rateThreshold, setRateThreshold] = useState('6.50')
 
   useEffect(() => {
+    document.title = 'Reports — Simplify Finance'
+  }, [])
+
+  useEffect(() => {
     async function load() {
       const { data } = await supabase.from('clients').select('id, first_name, last_name, position_properties').not('position_properties', 'is', null)
       setClients(data || [])
