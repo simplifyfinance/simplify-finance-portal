@@ -21,6 +21,7 @@ export default function DealsPage() {
   const [userRole, setUserRole] = useState<string>('')
   const [brokerKey, setBrokerKey] = useState<string | null>(null)
   const [creditOfficerId, setCreditOfficerId] = useState<string | null>(null)
+  const [boxFilter, setBoxFilter] = useState<'all' | 'bc' | 'lo' | 'compliance'>('all')
   useEffect(() => {
     browser.auth.getUser().then(({ data: { user } }) => {
       if (!user) { fetchDeals(); return }
@@ -98,6 +99,10 @@ export default function DealsPage() {
   const [showClosed, setShowClosed] = useState(false)
   const filtered = deals.filter(d =>
     (showClosed || d.status !== 'completed') &&
+    (boxFilter === 'all' ||
+      (boxFilter === 'bc' && d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at) ||
+      (boxFilter === 'lo' && d.lo_completed_at && !d.compliance_completed_at) ||
+      (boxFilter === 'compliance' && d.compliance_completed_at)) &&
     (d.deal_name?.toLowerCase().includes(search.toLowerCase()) ||
     d.clients?.first_name?.toLowerCase().includes(search.toLowerCase()) ||
     d.clients?.last_name?.toLowerCase().includes(search.toLowerCase()))
@@ -121,22 +126,26 @@ export default function DealsPage() {
     <div className="p-6">
       {!loading && (
         <div className="grid grid-cols-4 gap-3 mb-4">
-          <div className="bg-white border border-gray-100 rounded-xl p-4">
+          <button onClick={() => setBoxFilter('all')}
+            className={`text-left bg-white border rounded-xl p-4 transition ${boxFilter === 'all' ? 'border-[#2DBEFF] ring-1 ring-[#2DBEFF]' : 'border-gray-100 hover:border-gray-200'}`}>
             <div className="text-xs text-gray-400 mb-1">{summaryLabel}</div>
             <div className="text-2xl font-semibold text-[#343333]">{summaryDeals.length}</div>
-          </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          </button>
+          <button onClick={() => setBoxFilter('bc')}
+            className={`text-left bg-amber-50 border rounded-xl p-4 transition ${boxFilter === 'bc' ? 'border-amber-500 ring-1 ring-amber-500' : 'border-amber-200 hover:border-amber-300'}`}>
             <div className="text-xs text-amber-600 mb-1">BC ready for review</div>
             <div className="text-2xl font-semibold text-amber-700">{bcReady}</div>
-          </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          </button>
+          <button onClick={() => setBoxFilter('lo')}
+            className={`text-left bg-amber-50 border rounded-xl p-4 transition ${boxFilter === 'lo' ? 'border-amber-500 ring-1 ring-amber-500' : 'border-amber-200 hover:border-amber-300'}`}>
             <div className="text-xs text-amber-600 mb-1">LO ready for review</div>
             <div className="text-2xl font-semibold text-amber-700">{loReady}</div>
-          </div>
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          </button>
+          <button onClick={() => setBoxFilter('compliance')}
+            className={`text-left bg-green-50 border rounded-xl p-4 transition ${boxFilter === 'compliance' ? 'border-green-500 ring-1 ring-green-500' : 'border-green-200 hover:border-green-300'}`}>
             <div className="text-xs text-green-600 mb-1">Compliance completed</div>
             <div className="text-2xl font-semibold text-green-700">{complianceReady}</div>
-          </div>
+          </button>
         </div>
       )}
       {userRole === 'staff' && (
