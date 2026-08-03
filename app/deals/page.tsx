@@ -190,7 +190,7 @@ export default function DealsPage() {
                   <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-amber-100 text-amber-700">{readyStage} ready for review</span>
                 )}
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${deal.status === 'in_progress' ? 'bg-[#2DBEFF]/10 text-[#2DBEFF]' : 'bg-gray-100 text-gray-500'}`}>
-                  {deal.status === 'in_progress' ? 'In progress' : deal.status}
+                  {deal.status === 'in_progress' ? (deal.stage || 'In progress') : deal.status}
                 </span>
               </Link>
               <button onClick={e => cloneDeal(e, deal)}
