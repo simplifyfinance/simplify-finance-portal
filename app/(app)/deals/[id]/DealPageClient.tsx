@@ -7,6 +7,7 @@ import FactFindForm from './FactFindForm'
 import BCForm from './BCForm'
 import LOForm from './LOForm'
 import ComplianceForm from './ComplianceForm'
+import CreditOfficerAssignment from './CreditOfficerAssignment'
 
 export default function DealPageClient({ deal, initialStage }: { deal: any; initialStage?: string }) {
   const validStages = ['FactFind', 'BC', 'LO', 'Compliance']
@@ -37,10 +38,11 @@ export default function DealPageClient({ deal, initialStage }: { deal: any; init
       <div className="bg-white border border-gray-100 rounded-xl p-5 mb-4 flex items-start justify-between">
         <div>
           <div className="text-lg font-semibold mb-1">{deal.deal_name}</div>
-          <div className="flex gap-3 text-sm text-gray-500">
+          <div className="flex gap-3 text-sm text-gray-500 items-center flex-wrap">
             <span>{deal.clients?.first_name} {deal.clients?.last_name}</span>
             <span>·</span><span>{deal.deal_type}</span>
             <span>·</span><span>Broker: {deal.assigned_broker}</span>
+            <CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} />
           </div>
         </div>
         <div className="flex gap-2 flex-shrink-0">
