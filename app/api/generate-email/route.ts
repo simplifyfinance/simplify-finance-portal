@@ -85,11 +85,9 @@ function ctas(calendly: string, proceedUrl?: string) {
 }
 
 function sig(b: { name: string; title: string; crn: string }) {
-  return `<div style="border:1px solid #e5e5e5;border-radius:8px;padding:12px 14px;max-width:240px">
-    <p style="font-size:14px;font-weight:600;color:#333;margin-bottom:2px">${b.name}</p>
-    <p style="font-size:12px;color:#666;margin-bottom:2px">${b.title}</p>
-    <p style="font-size:11px;color:#999">CR No. ${b.crn}</p>
-  </div>`
+  // Removed the signature box entirely - the broker already has their own signature set up in Outlook,
+  // so this was showing a duplicate/redundant one inside the generated email body.
+  return ''
 }
 
 function p(t: string) { return `<p style="font-size:14px;color:#333;margin-bottom:14px">${t}</p>` }
