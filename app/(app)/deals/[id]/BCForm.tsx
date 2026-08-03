@@ -515,6 +515,16 @@ export default function BCForm({ deal, onDataChange, onStageChange }: { deal: an
   const [markingComplete, setMarkingComplete] = useState(false)
   const [sendingToCreditTeam, setSendingToCreditTeam] = useState(false)
   const [bcSelfAssigned, setBcSelfAssigned] = useState(!!deal.bc_self_assigned)
+  const [canSendToClient, setCanSendToClient] = useState(false)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase.from('user_profiles').select('role').eq('id', user.id).single().then(({ data }) => {
+        setCanSendToClient(data?.role === 'admin' || data?.role === 'broker')
+      })
+    })
+  }, [])
 
   async function handleBcSelfAssign() {
     const { error } = await supabase.from('deals').update({ bc_self_assigned: true }).eq('id', deal.id)
@@ -1186,10 +1196,16 @@ Key assumptions: ${checklistText}`
               <div className="w-px h-8 bg-gray-200" />
 
               <div className="flex items-center gap-3">
-                <button onClick={sendToClient}
-                  className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90">Send to client</button>
-                <button onClick={() => { navigator.clipboard.writeText(getCleanEmailHtml()); alert('HTML copied!') }}
-                  className="text-xs text-gray-400 hover:text-gray-600 underline">Copy HTML instead</button>
+                {canSendToClient ? (
+                  <>
+                    <button onClick={sendToClient}
+                      className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90">Send to client</button>
+                    <button onClick={() => { navigator.clipboard.writeText(getCleanEmailHtml()); alert('HTML copied!') }}
+                      className="text-xs text-gray-400 hover:text-gray-600 underline">Copy HTML instead</button>
+                  </>
+                ) : (
+                  <span className="text-xs text-gray-400 italic">Only the broker can send this to the client — use "Done — send to broker for review" above.</span>
+                )}
               </div>
 
               <div className="w-px h-8 bg-gray-200 ml-auto" />
