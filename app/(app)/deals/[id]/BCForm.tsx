@@ -84,6 +84,19 @@ function freqLabel(freq: string | undefined): string {
   return 'month'
 }
 
+function fmtMoney(v: any): string {
+  const n = Number(v)
+  if (!v || isNaN(n)) return '0'
+  return n.toLocaleString('en-AU')
+}
+
+function subBlock(lines: string[]): string {
+  if (!lines.length) return ''
+  return `<div style="border-left:2px solid #d8c9a8;margin:4px 0 0 8px;padding-left:10px">` +
+    lines.map(l => `<p style="font-size:12px;color:#666;margin:2px 0">${l}</p>`).join('') +
+    `</div>`
+}
+
 function buildPropertyLiabilityChecklist(ff: any): string[] {
   const items: string[] = []
   const applicants = ff.applicants || []
@@ -94,32 +107,37 @@ function buildPropertyLiabilityChecklist(ff: any): string[] {
     const owners = getOwnerNamesFromPercent(prop.ownership, applicants)
     const isInvestment = prop.ownershipType === 'Investment'
     const typeParts = [prop.propertySubtype, prop.zoning].filter(Boolean).join(', ')
-    items.push(`${prop.address || 'Property'}\u2014${typeParts ? ' ' + typeParts : ''} (${prop.ownershipType || 'Owner occupied'})`)
+    const header = `<strong>${prop.address || 'Property'}</strong>${typeParts ? ' \u2014 ' + typeParts : ''} (${prop.ownershipType || 'Owner occupied'})`
+    const subLines: string[] = []
     if (isInvestment && prop.rentalIncome) {
-      items.push(`Rental income: $${prop.rentalIncome}/week`)
+      subLines.push(`Rental income: $${fmtMoney(prop.rentalIncome)}/week`)
     }
     if (owners) {
-      items.push(`Owned by: ${owners}`)
+      subLines.push(`Owned by: ${owners}`)
     }
     ;(prop.loans || []).forEach((loan: any) => {
       if (loan.lenderName || loan.balance) {
-        items.push(`Linked loan: ${loan.lenderName || 'Lender'}\u2014Balance $${loan.balance || '0'}`)
+        subLines.push(`Linked loan: ${loan.lenderName || 'Lender'} \u2014 Balance $${fmtMoney(loan.balance)}`)
       }
     })
+    items.push(header + subBlock(subLines))
   })
 
   liabilities.forEach((liab: any) => {
     const owners = getOwnerNamesFromCheckbox(liab.ownership, applicants)
-    const ownerSuffix = owners ? `, owned by ${owners}` : ''
+    const header = `<strong>${liab.liabilityType}</strong>`
+    const subLines: string[] = []
     if (liab.liabilityType === 'Credit card') {
-      items.push(`Credit card\u2014Limit $${liab.limitAmount || '0'}${ownerSuffix}`)
+      subLines.push(`Limit $${fmtMoney(liab.limitAmount)}`)
     } else if (liab.liabilityType === 'HECS') {
-      items.push(`HECS\u2014Balance $${liab.balance || '0'}${ownerSuffix}`)
+      subLines.push(`Balance $${fmtMoney(liab.balance)}`)
     } else if (liab.liabilityType === 'Health Insurance') {
-      items.push(`Health insurance\u2014$${liab.repaymentAmount || '0'}/${freqLabel(liab.repaymentFrequency)}${ownerSuffix}`)
+      subLines.push(`$${fmtMoney(liab.repaymentAmount)}/${freqLabel(liab.repaymentFrequency)}`)
     } else {
-      items.push(`${liab.liabilityType}\u2014Repayment $${liab.repaymentAmount || '0'}/${freqLabel(liab.repaymentFrequency)}, Balance $${liab.balance || '0'}${ownerSuffix}`)
+      subLines.push(`Repayment $${fmtMoney(liab.repaymentAmount)}/${freqLabel(liab.repaymentFrequency)}, Balance $${fmtMoney(liab.balance)}`)
     }
+    if (owners) subLines.push(`Owned by: ${owners}`)
+    items.push(header + subBlock(subLines))
   })
 
   return items
