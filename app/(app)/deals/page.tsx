@@ -20,6 +20,7 @@ export default function DealsPage() {
   const [showModal, setShowModal] = useState(false)
   const [userRole, setUserRole] = useState<string>('')
   const [brokerKey, setBrokerKey] = useState<string | null>(null)
+  const [creditOfficerId, setCreditOfficerId] = useState<string | null>(null)
   useEffect(() => {
     browser.auth.getUser().then(({ data: { user } }) => {
       if (!user) { fetchDeals(); return }
@@ -31,6 +32,7 @@ export default function DealsPage() {
           setBrokerKey(broker)
           if (role === 'staff') {
             const { data: officer } = await browser.from('credit_officers').select('id').eq('user_id', user.id).single()
+            setCreditOfficerId(officer?.id || null)
             fetchDeals(role, broker, officer?.id || null)
           } else {
             fetchDeals(role, broker)
@@ -101,11 +103,14 @@ export default function DealsPage() {
     d.clients?.last_name?.toLowerCase().includes(search.toLowerCase()))
   )
   const totalAssigned = deals.length
-  const isBrokerViewer = !!brokerKey
-  const myBrokerDeals = deals.filter(d => d.assigned_broker === brokerKey)
-  const bcReady = myBrokerDeals.filter(d => d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at).length
-  const loReady = myBrokerDeals.filter(d => d.lo_completed_at && !d.compliance_completed_at).length
-  const complianceReady = myBrokerDeals.filter(d => d.compliance_completed_at).length
+  const isPersonalViewer = !!brokerKey || (userRole === 'staff' && !!creditOfficerId)
+  const summaryLabel = isPersonalViewer ? 'Your deals' : 'Total deals'
+  // deals is already server-filtered to just this person's deals for brokers/staff-with-officer,
+  // and unfiltered (team-wide) for admin or staff without a credit officer record
+  const summaryDeals = deals
+  const bcReady = summaryDeals.filter(d => d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at).length
+  const loReady = summaryDeals.filter(d => d.lo_completed_at && !d.compliance_completed_at).length
+  const complianceReady = summaryDeals.filter(d => d.compliance_completed_at).length
   const activeForStaff = deals.filter(d => !d.compliance_completed_at).length
   function readyStageFor(deal: Deal): 'BC' | 'LO' | null {
     if (deal.lo_completed_at && !deal.compliance_completed_at) return 'LO'
@@ -114,11 +119,11 @@ export default function DealsPage() {
   }
   return (
     <div className="p-6">
-      {isBrokerViewer && (
+      {!loading && (
         <div className="grid grid-cols-4 gap-3 mb-4">
           <div className="bg-white border border-gray-100 rounded-xl p-4">
-            <div className="text-xs text-gray-400 mb-1">Your deals</div>
-            <div className="text-2xl font-semibold text-[#343333]">{myBrokerDeals.length}</div>
+            <div className="text-xs text-gray-400 mb-1">{summaryLabel}</div>
+            <div className="text-2xl font-semibold text-[#343333]">{summaryDeals.length}</div>
           </div>
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
             <div className="text-xs text-amber-600 mb-1">BC ready for review</div>
