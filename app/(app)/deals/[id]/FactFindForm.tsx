@@ -908,7 +908,15 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange }: 
           <div className="grid grid-cols-4 gap-3">
             <div>
               <label className="text-xs text-gray-500 block mb-1">Title</label>
-              <input className={inp} value={applicant.title} onChange={e => updateApplicant('title', e.target.value)} />
+              <select className={inp} value={applicant.title} onChange={e => updateApplicant('title', e.target.value)}>
+                <option value="">— select —</option>
+                <option value="Mr">Mr</option>
+                <option value="Mrs">Mrs</option>
+                <option value="Ms">Ms</option>
+                <option value="Miss">Miss</option>
+                <option value="Dr">Dr</option>
+                <option value="Prof">Prof</option>
+              </select>
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">First name</label>
