@@ -262,12 +262,13 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;color:#555;margin:3px 0">Loan amount: $${opt.loanAmount || ''}</p>
         <p style="font-size:11px;color:#555;margin:3px 0">LVR: ${lvrNum}%</p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0">Rate: ${opt.rate}% p.a.*</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">Est. repayment: ${opt.repayment ? '$' + (parseFloat(String(opt.repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]'}</p>
         ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px">To achieve this option:</p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0">&#10003; ${a}</p>`).join('') : ''}${nonBankNote}
       </td>`
     }
     const baseOption = {
       purchasePrice: d.purchasePrice, deposit: d.deposit, stampDuty: d.stampDuty,
-      loanAmount: d.splits?.[0]?.amount, rate: d.splits?.[0]?.rate,
+      loanAmount: d.splits?.[0]?.amount, rate: d.splits?.[0]?.rate, repayment: d.splits?.[0]?.repayment,
       lmiApplicable: d.lmiApplicable, lmi: d.lmi,
       ccPayoff: false, hecsPayoff: false, carLoanPayoff: false, personalLoanPayoff: false
     }
@@ -325,12 +326,13 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;color:#555;margin:3px 0">Loan amount: $${opt.loanAmount || ''}</p>
         <p style="font-size:11px;color:#555;margin:3px 0">LVR: ${lvrNum}%</p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0">Rate: ${opt.rate}% p.a.*</p>
+        <p style="font-size:11px;color:#555;margin:3px 0">Est. repayment: ${opt.repayment ? '$' + (parseFloat(String(opt.repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]'}</p>
         ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px">To achieve this option:</p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0">&#10003; ${a}</p>`).join('') : ''}${nonBankNote}
       </td>`
     }
     const baseOptionIP = {
       purchasePrice: d.purchasePrice, deposit: d.deposit, stampDuty: d.stampDuty,
-      loanAmount: d.splits?.[0]?.amount, rate: d.splits?.[0]?.rate,
+      loanAmount: d.splits?.[0]?.amount, rate: d.splits?.[0]?.rate, repayment: d.splits?.[0]?.repayment,
       lmiApplicable: d.lmiApplicable, lmi: d.lmi,
       ccPayoff: false, hecsPayoff: false, carLoanPayoff: false, personalLoanPayoff: false, nonBankLender: false
     }
