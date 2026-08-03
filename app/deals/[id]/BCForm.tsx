@@ -516,8 +516,12 @@ export default function BCForm({ deal, onDataChange, onStageChange }: { deal: an
   const [bcSelfAssigned, setBcSelfAssigned] = useState(!!deal.bc_self_assigned)
 
   async function handleBcSelfAssign() {
+    const { error } = await supabase.from('deals').update({ bc_self_assigned: true }).eq('id', deal.id)
+    if (error) {
+      alert('Error saving choice: ' + error.message)
+      return
+    }
     setBcSelfAssigned(true)
-    await supabase.from('deals').update({ bc_self_assigned: true }).eq('id', deal.id)
   }
   const [creditTeamMsg, setCreditTeamMsg] = useState('')
   const [creditTeamErr, setCreditTeamErr] = useState('')

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import FactFindForm from './FactFindForm'
 import BCForm from './BCForm'
 import LOForm from './LOForm'
@@ -13,6 +14,12 @@ export default function DealPageClient({ deal, initialStage }: { deal: any; init
   const [stage, setStage] = useState(startStage)
   const [dealData, setDealData] = useState(deal)
   const router = useRouter()
+  const supabase = createSupabaseBrowser()
+
+  function changeStage(newStage: string) {
+    setStage(newStage)
+    supabase.from('deals').update({ last_tab: newStage }).eq('id', deal.id).then(() => {})
+  }
 
   const tabs = [
     { key: 'FactFind', label: 'Fact Find' },
@@ -58,7 +65,7 @@ export default function DealPageClient({ deal, initialStage }: { deal: any; init
 
       <div className="flex gap-2 mb-6">
         {tabs.map(({ key, label }) => (
-          <button key={key} onClick={() => setStage(key)}
+          <button key={key} onClick={() => changeStage(key)}
             className={`flex-1 text-center py-2.5 px-3 rounded-lg text-sm font-medium border transition-colors ${stage === key ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-400 bg-white hover:bg-gray-50'}`}>
             {label}
           </button>
@@ -66,8 +73,8 @@ export default function DealPageClient({ deal, initialStage }: { deal: any; init
       </div>
 
       {stage === 'FactFind' && <FactFindForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} />}
-      {stage === 'BC' && <BCForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={setStage} />}
-      {stage === 'LO' && <LOForm deal={dealData} onStageChange={setStage} />}
+      {stage === 'BC' && <BCForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} />}
+      {stage === 'LO' && <LOForm deal={dealData} onStageChange={changeStage} />}
       {stage === 'Compliance' && <ComplianceForm deal={dealData} />}
     </div>
   )
