@@ -52,5 +52,5 @@ export default async function DealPage({ params, searchParams }: { params: Promi
 
   if (!canView) return notFound()
 
-  return <DealPageClient deal={deal as DealWithClient} initialStage={stage} />
+  return <DealPageClient deal={deal as DealWithClient} initialStage={stage || deal.stage} />
 }
