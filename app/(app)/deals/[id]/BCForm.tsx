@@ -180,6 +180,7 @@ type AltScenario = {
   stampDuty: string
   loanAmount: string
   rate: string
+  repayment?: string
   type: string
   lmiApplicable: string
   lmi: string
@@ -952,7 +953,7 @@ Key assumptions: ${checklistText}`
                         <Field label="Amount"><input className={inputCls} value={s.amount} onChange={e => handleLoanAmountChange(i, e.target.value)} /></Field>
                         {template === "oo_lvr_compare" && <Field label="Deposit required"><NumberInput value={s.deposit || ""} onChange={v => updateSplit(i, 'deposit', v)} /></Field>}<Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
                         <Field label="Type"><select className={selectCls} value={s.type} onChange={e => updateSplit(i, 'type', e.target.value)}><option>P&I</option><option>Interest only</option></select></Field>
-                        {template === "bridging" && i === 1 && <Field label="Repayment"><CurrencyInput className={inputCls} value={s.repayment || ""} onChange={v => updateSplit(i, 'repayment', v)} /></Field>}
+                        {!(template === "bridging" && i === 0) && <Field label="Repayment"><CurrencyInput className={inputCls} value={s.repayment || ""} onChange={v => updateSplit(i, 'repayment', v)} /></Field>}
                         {template === "bridging" && i === 0 && (
                           <Field label="Estimated interest capitalised">
                             <CurrencyInput className={inputCls} value={s.interestCapitalised || ""} onChange={v => updateSplit(i, 'interestCapitalised', v)} />
@@ -1053,6 +1054,7 @@ Key assumptions: ${checklistText}`
                     <Field label="Stamp duty"><NumberInput value={alt.stampDuty} onChange={v => updateAltScenario(alt.id, 'stampDuty', v)} /></Field>
                     <Field label="Loan amount"><input className={inputCls} value={alt.loanAmount} onChange={e => updateAltScenario(alt.id, 'loanAmount', e.target.value)} /></Field>
                     <Field label="Rate"><input className={inputCls} value={alt.rate} onChange={e => updateAltScenario(alt.id, 'rate', e.target.value)} /></Field>
+                    <Field label="Repayment"><CurrencyInput className={inputCls} value={alt.repayment || ''} onChange={v => updateAltScenario(alt.id, 'repayment', v)} /></Field>
                       </>
                     )}
                     <Field label="LVR (calculated)">
