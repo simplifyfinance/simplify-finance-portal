@@ -671,7 +671,10 @@ export default function BCForm({ deal, onDataChange, onStageChange }: { deal: an
       const textBlob = new Blob([cleanHtml.replace(/<[^>]+>/g, '')], { type: 'text/plain' })
       await navigator.clipboard.write([new ClipboardItem({ 'text/html': blob, 'text/plain': textBlob })])
       const subject = 'Your Borrowing Capacity'
-      const to = deal.clients?.email || ''
+      const applicantEmails = (deal.fact_find_data?.applicants || [])
+        .map((a: any) => a.emailPersonal)
+        .filter((e: string) => !!e)
+      const to = applicantEmails.length > 0 ? Array.from(new Set(applicantEmails)).join(',') : (deal.clients?.email || '')
       const bccParam = deal.salestrekker_bcc ? `&bcc=${encodeURIComponent(deal.salestrekker_bcc)}` : ''
       const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}${bccParam}`
       window.location.href = mailto

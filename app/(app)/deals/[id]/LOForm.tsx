@@ -525,7 +525,10 @@ export default function LOForm({ deal, onStageChange }: { deal: any; onStageChan
       const textBlob = new Blob([cleanHtml.replace(/<[^>]+>/g, '')], { type: 'text/plain' })
       await navigator.clipboard.write([new ClipboardItem({ 'text/html': blob, 'text/plain': textBlob })])
       const subject = 'Lending Options & Recommendation'
-      const to = deal.clients?.email || ''
+      const applicantEmails = (deal.fact_find_data?.applicants || [])
+        .map((a: any) => a.emailPersonal)
+        .filter((e: string) => !!e)
+      const to = applicantEmails.length > 0 ? Array.from(new Set(applicantEmails)).join(',') : (deal.clients?.email || '')
       const bccParam = deal.salestrekker_bcc ? `&bcc=${encodeURIComponent(deal.salestrekker_bcc)}` : ''
       window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}${bccParam}`
       setSent(true)
