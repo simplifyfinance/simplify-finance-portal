@@ -19,6 +19,7 @@ Extract into this exact structure:
       "income": [{ "incomeType": "Base salary/Rental/Other or empty", "grossSalary": "", "grossSalaryFrequency": "Annually/Monthly/Fortnightly/Weekly or empty" }]
     }
   ],
+  "dependants": "number of dependants as a plain digit string, e.g. '2', or empty string if not stated",
   "assets": [{ "assetType": "Bank account/Shares/Super/Vehicle or empty", "description": "", "value": "" }],
   "properties": [{
     "address": "", "ownershipType": "Owner occupied/Investment or empty", "value": "", "rentalIncome": "",

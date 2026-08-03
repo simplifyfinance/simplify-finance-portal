@@ -459,6 +459,14 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange }: 
     setExtracting(false)
   }
 
+  function processExtractedAddresses(addresses: any[]) {
+    if (!addresses?.length) return [defaultAddress(true)]
+    // Only one address can genuinely be "current" - sort by start date (most recent first)
+    // and mark just that one current, regardless of what the AI extraction returned.
+    const sorted = [...addresses].sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''))
+    return sorted.map((addr, i) => ({ ...defaultAddress(i === 0), ...addr, isCurrent: i === 0 }))
+  }
+
   function applyExtractedData() {
     if (!extractedData) return
     setD(prev => {
@@ -467,11 +475,12 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange }: 
         updated.applicants = extractedData.applicants.map((a: any) => ({
           ...defaultApplicant(),
           ...a,
-          addresses: a.addresses?.length ? a.addresses.map((addr: any) => ({ ...defaultAddress(true), ...addr })) : [defaultAddress(true)],
+          addresses: processExtractedAddresses(a.addresses),
           employment: a.employment?.length ? a.employment.map((e: any) => ({ ...defaultEmployment(true), ...e })) : [defaultEmployment(true)],
           income: a.income || []
         }))
       }
+      if (extractedData.dependants) updated.dependants = extractedData.dependants
       if (extractedData.assets?.length) updated.assets = extractedData.assets.map((x: any) => ({ ...defaultAsset(), ...x }))
       if (extractedData.properties?.length) updated.properties = extractedData.properties.map((x: any) => ({
         ...defaultProperty(), ...x,
