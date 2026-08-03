@@ -1059,6 +1059,21 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
               className="bg-[#343333] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition">
               Push to SalesTrekker →
             </button>
+            <button onClick={async () => {
+              const res = await fetch('/api/generate-summary-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dealId: deal.id })
+              })
+              const blob = await res.blob()
+              const url = window.URL.createObjectURL(blob)
+              const a = document.createElement('a')
+              a.href = url
+              a.download = 'test-summary.pdf'
+              a.click()
+            }} className="text-xs text-gray-400 hover:text-gray-600 underline ml-3">
+              [TEST] Download summary PDF
+            </button>
           </div>
         </div>
       )}
