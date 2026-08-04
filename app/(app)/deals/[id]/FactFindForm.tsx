@@ -1542,23 +1542,32 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange }: 
                 <button onClick={() => removeLiability(liab.id)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
               </div>
               {liab.liabilityType === 'HECS' && (
-                <div className="mb-3 w-1/3">
+                <div className="grid grid-cols-2 gap-3 mb-3">
                   <CurrencyInput className={inp} placeholder="Balance" value={liab.balance} onChange={val => updateLiability(liab.id, 'balance', val)} />
+                  <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}>
+                    <option value="Remain open">Remain open</option><option value="To be refinanced">To be refinanced</option><option value="To be closed">To be closed</option><option value="To be consolidated">To be consolidated</option>
+                  </select>
                 </div>
               )}
               {liab.liabilityType === 'Health Insurance' && (
-                <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="grid grid-cols-3 gap-3 mb-3">
                   <CurrencyInput className={inp} placeholder="Value" value={liab.repaymentAmount} onChange={val => updateLiability(liab.id, 'repaymentAmount', val)} />
                   <select className={inp} value={liab.repaymentFrequency} onChange={e => updateLiability(liab.id, 'repaymentFrequency', e.target.value)}>
                     <option>Monthly</option><option>Fortnightly</option><option>Weekly</option>
                   </select>
+                  <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}>
+                    <option value="Remain open">Remain open</option><option value="To be refinanced">To be refinanced</option><option value="To be closed">To be closed</option><option value="To be consolidated">To be consolidated</option>
+                  </select>
                 </div>
               )}
               {liab.liabilityType === 'Credit card' && (
-                <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="grid grid-cols-4 gap-3 mb-3">
                   <input className={inp} placeholder="Financial institution" value={liab.lenderName} onChange={e => updateLiability(liab.id, 'lenderName', e.target.value)} />
                   <CurrencyInput className={inp} placeholder="Credit limit" value={liab.limitAmount} onChange={val => updateLiability(liab.id, 'limitAmount', val)} />
                   <CurrencyInput className={inp} placeholder="Current balance" value={liab.balance} onChange={val => updateLiability(liab.id, 'balance', val)} />
+                  <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}>
+                    <option value="Remain open">Remain open</option><option value="To be refinanced">To be refinanced</option><option value="To be closed">To be closed</option><option value="To be consolidated">To be consolidated</option>
+                  </select>
                 </div>
               )}
               {(liab.liabilityType === 'Car loan' || liab.liabilityType === 'Personal loan' || liab.liabilityType === 'Other') && (
