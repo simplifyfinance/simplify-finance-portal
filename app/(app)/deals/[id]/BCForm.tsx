@@ -324,6 +324,13 @@ export default function BCForm({ deal, onDataChange, onStageChange }: { deal: an
   const [depositSource, setDepositSource] = useState(s.depositSource || '')
   const [stampDuty, setStampDuty] = useState(s.stampDuty || '')
   const [existingLoanBal, setExistingLoanBal] = useState(s.existingLoanBal || '')
+
+  useEffect(() => {
+    if (existingLoanBal) return
+    const ffProperties = ff.properties || []
+    const firstLoanBalance = ffProperties[0]?.loans?.[0]?.balance
+    if (firstLoanBalance) setExistingLoanBal(String(firstLoanBalance))
+  }, [ff.properties])
   const [newPurchasePrice, setNewPurchasePrice] = useState(s.newPurchasePrice || '')
   const [newPurchaseDeposit, setNewPurchaseDeposit] = useState(s.newPurchaseDeposit || '')
   const [newPurchaseSuburb, setNewPurchaseSuburb] = useState(s.newPurchaseSuburb || '')
