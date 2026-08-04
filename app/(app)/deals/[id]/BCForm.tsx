@@ -578,7 +578,9 @@ export default function BCForm({ deal, onDataChange, onStageChange }: { deal: an
   function selectTemplate(id: string) {
     setTemplate(id)
     setSplits(TEMPLATE_DEFAULTS[id].splits.map((s: Split) => ({ ...s })))
-    setTemplateNotes((TEMPLATE_NOTES[id] || []).join('\n'))
+    // Only auto-populate default notes if the field is genuinely empty - never overwrite
+    // anything the broker has already typed, even if it happens to match an earlier template's defaults.
+    setTemplateNotes((prev: string) => prev && prev.trim() ? prev : (TEMPLATE_NOTES[id] || []).join('\n'))
   }
 
   function updateSplit(i: number, key: keyof Split, val: string) {
