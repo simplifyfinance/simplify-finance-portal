@@ -97,6 +97,17 @@ function subBlock(lines: string[]): string {
     `</div>`
 }
 
+function statusBadge(status: string): string {
+  if (!status || status === 'Remain open') return ''
+  const colors: Record<string, string> = {
+    'To be closed': 'background:#FEF3C7;color:#92400E',
+    'To be refinanced': 'background:#D1FAE5;color:#065F46',
+    'To be consolidated': 'background:#DBEAFE;color:#1E40AF',
+  }
+  const style = colors[status] || 'background:#F3F4F6;color:#374151'
+  return ` <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;${style}">${status}</span>`
+}
+
 function buildPropertyLiabilityChecklist(ff: any): string[] {
   const items: string[] = []
   const applicants = ff.applicants || []
@@ -117,7 +128,7 @@ function buildPropertyLiabilityChecklist(ff: any): string[] {
     }
     ;(prop.loans || []).forEach((loan: any) => {
       if (loan.lenderName || loan.balance) {
-        subLines.push(`Linked loan: ${loan.lenderName || 'Lender'} \u2014 Balance $${fmtMoney(loan.balance)}`)
+        subLines.push(`Linked loan: ${loan.lenderName || 'Lender'} \u2014 Balance $${fmtMoney(loan.balance)}${statusBadge(loan.status)}`)
       }
     })
     items.push(header + subBlock(subLines))
@@ -125,7 +136,7 @@ function buildPropertyLiabilityChecklist(ff: any): string[] {
 
   liabilities.forEach((liab: any) => {
     const owners = getOwnerNamesFromCheckbox(liab.ownership, applicants)
-    const header = `<strong>${liab.liabilityType}</strong>`
+    const header = `<strong>${liab.liabilityType}</strong>${statusBadge(liab.status)}`
     const subLines: string[] = []
     if (liab.liabilityType === 'Credit card') {
       subLines.push(`Limit $${fmtMoney(liab.limitAmount)}`)
