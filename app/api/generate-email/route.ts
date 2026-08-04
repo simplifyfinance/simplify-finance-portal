@@ -114,7 +114,16 @@ function buildLVRLine(d: any) {
   return row('LVR', `${pct}% (no LMI)`)
 }
 
+function fmtNum(v: any): string {
+  const n = Number(v)
+  if (!v || isNaN(n)) return String(v || '')
+  return n.toLocaleString('en-AU')
+}
+
 function buildChecklist(d: any) {
+  // NOTE: HECS/car loan/personal loan/credit card lines were deliberately removed from here -
+  // they duplicated what factFindChecklist (buildPropertyLiabilityChecklist) already shows correctly
+  // from the real Fact Find liabilities data, causing double-counted, unformatted entries.
   const items = []
   const breakdown: { label: string; amount: number | null }[] = d.incomeBreakdown || []
   if (breakdown.length > 0) {
@@ -122,19 +131,15 @@ function buildChecklist(d: any) {
       if (entry.amount === null) {
         items.push(`${entry.label}: Income as per tax returns provided`)
       } else {
-        items.push(`${entry.label} $${entry.amount} p.a.`)
+        items.push(`${entry.label} $${fmtNum(entry.amount)} p.a.`)
       }
     })
   } else if (d.incomeBase) {
-    items.push(`Base salary (excl. super) $${d.incomeBase} p.a.`)
+    items.push(`Base salary (excl. super) $${fmtNum(d.incomeBase)} p.a.`)
   }
   if (d.housingExpense) items.push(d.housingExpense)
   if (d.joint === 'Yes') items.push('Joint application')
   if (d.dependants) items.push(`${d.dependants} dependant${d.dependants === '1' ? '' : 's'}`)
-  if (d.hecs) items.push(`HECS $${d.hecs} p.a.`)
-  if (d.carLoan) items.push(`Car loan $${d.carLoan}/mo`)
-  if (d.personalLoan) items.push(`Personal loan $${d.personalLoan}/mo`)
-  if (d.ccLimit) items.push(`Credit card limit $${d.ccLimit}`)
   return items
 }
 
