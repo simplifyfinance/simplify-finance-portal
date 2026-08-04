@@ -265,7 +265,7 @@ const defaultProperty = (): FactFindProperty => ({
 const defaultLiability = (): Liability => ({
   id: uid(), liabilityType: 'Credit card', lenderName: '', accountNumber: '',
   limitAmount: '', balance: '', repaymentAmount: '', repaymentFrequency: 'Monthly',
-  status: 'Ongoing', ownership: {}
+  status: 'Remain open', ownership: {}
 })
 
 function defaultOwnershipSplit(applicants: FactFindApplicant[]): Record<string, string> {
@@ -1573,7 +1573,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange }: 
                       <option>Monthly</option><option>Fortnightly</option><option>Weekly</option>
                     </select>
                     <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}>
-                      <option value="Ongoing">Ongoing</option><option value="Refinance">Refinance</option><option value="To be paid out">To be paid out</option>
+                      <option value="Remain open">Remain open</option><option value="To be refinanced">To be refinanced</option><option value="To be closed">To be closed</option><option value="To be consolidated">To be consolidated</option>
                     </select>
                   </div>
                 </>
