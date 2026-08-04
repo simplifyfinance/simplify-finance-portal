@@ -14,6 +14,41 @@ export default function DealPageClient({ deal, initialStage }: { deal: any; init
   const startStage = validStages.includes(initialStage || '') ? initialStage! : 'FactFind'
   const [stage, setStage] = useState(startStage)
   const [dealData, setDealData] = useState(deal)
+  const [editingName, setEditingName] = useState(false)
+  const [nameInput, setNameInput] = useState(deal.deal_name)
+  const [cloning, setCloning] = useState(false)
+
+  async function saveDealName() {
+    const trimmed = nameInput.trim()
+    if (!trimmed) return
+    const { error } = await supabase.from('deals').update({ deal_name: trimmed }).eq('id', deal.id)
+    if (error) { alert('Error saving name: ' + error.message); return }
+    setDealData((prev: any) => ({ ...prev, deal_name: trimmed }))
+    setEditingName(false)
+  }
+
+  async function cloneThisDeal() {
+    if (!confirm(`Clone "${dealData.deal_name}"? This copies Fact Find only — BC, LO, and Compliance start fresh.`)) return
+    setCloning(true)
+    const { data: fullDeal } = await supabase.from('deals').select('fact_find_data, client_id, deal_type, assigned_broker').eq('id', deal.id).single()
+    if (!fullDeal) { alert('Could not load deal to clone'); setCloning(false); return }
+
+    const namePart = dealData.deal_name.replace(/_\d{4}$/, '')
+    const newDealName = `${namePart}_${new Date().getFullYear()}_Copy`
+
+    const { data: inserted, error } = await supabase.from('deals').insert([{
+      deal_name: newDealName,
+      client_id: fullDeal.client_id,
+      deal_type: fullDeal.deal_type,
+      assigned_broker: fullDeal.assigned_broker,
+      stage: 'BC',
+      status: 'in_progress',
+      fact_find_data: fullDeal.fact_find_data
+    }]).select().single()
+
+    if (error || !inserted) { alert('Error cloning deal: ' + (error?.message || 'unknown error')); setCloning(false); return }
+    router.push(`/deals/${inserted.id}`)
+  }
   const router = useRouter()
   const supabase = createSupabaseBrowser()
 
@@ -37,7 +72,19 @@ export default function DealPageClient({ deal, initialStage }: { deal: any; init
 
       <div className="bg-white border border-gray-100 rounded-xl p-5 mb-4 flex items-start justify-between">
         <div>
-          <div className="text-lg font-semibold mb-1">{deal.deal_name}</div>
+          {editingName ? (
+            <div className="flex items-center gap-2 mb-1">
+              <input value={nameInput} onChange={e => setNameInput(e.target.value)}
+                className="text-lg font-semibold border border-[#2DBEFF] rounded-lg px-2 py-0.5" autoFocus />
+              <button onClick={saveDealName} className="text-xs font-medium text-white bg-[#2DBEFF] px-3 py-1.5 rounded-lg">Save</button>
+              <button onClick={() => { setEditingName(false); setNameInput(dealData.deal_name) }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 mb-1">
+              <div className="text-lg font-semibold">{dealData.deal_name}</div>
+              <button onClick={() => setEditingName(true)} className="text-xs text-[#2DBEFF] hover:underline">✎ Edit</button>
+            </div>
+          )}
           <div className="flex gap-3 text-sm text-gray-500 items-center flex-wrap">
             <span>{deal.clients?.first_name} {deal.clients?.last_name}</span>
             <span>·</span><span>{deal.deal_type}</span>
@@ -50,6 +97,10 @@ export default function DealPageClient({ deal, initialStage }: { deal: any; init
             className="text-xs text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
             View summary →
           </a>
+          <button onClick={cloneThisDeal} disabled={cloning}
+            className="text-xs text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition disabled:opacity-40">
+            {cloning ? 'Cloning...' : '📋 Clone deal'}
+          </button>
           {dealData.onedrive_link && (
             <a href={dealData.onedrive_link} target="_blank" rel="noopener noreferrer"
               className="text-xs text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
