@@ -300,10 +300,10 @@ function OwnershipSplit({ applicants, ownership, onChange }: { applicants: FactF
   )
 }
 
-function OwnershipCheckboxes({ applicants, ownership, onChange }: { applicants: FactFindApplicant[]; ownership: Record<string, string>; onChange: (v: Record<string, string>) => void }) {
+function OwnershipCheckboxes({ applicants, ownership, onChange, label = 'Responsible for this liability' }: { applicants: FactFindApplicant[]; ownership: Record<string, string>; onChange: (v: Record<string, string>) => void; label?: string }) {
   return (
     <div>
-      <label className="text-xs text-gray-500 block mb-2">Responsible for this liability</label>
+      <label className="text-xs text-gray-500 block mb-2">{label}</label>
       <div className="flex flex-wrap gap-4">
         {applicants.map(a => (
           <label key={a.id} className="flex items-center gap-2 text-sm text-gray-700">
@@ -1423,7 +1423,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange }: 
                 )}
                 <CurrencyInput className={inp} placeholder="Value" value={asset.value} onChange={v => updateAsset(asset.id, 'value', v)} />
               </div>
-              <OwnershipCheckboxes applicants={d.applicants} ownership={asset.ownership} onChange={v => updateAsset(asset.id, 'ownership', v)} />
+              <OwnershipCheckboxes applicants={d.applicants} ownership={asset.ownership} onChange={v => updateAsset(asset.id, 'ownership', v)} label="Owned by" />
             </div>
           ))}
           <button onClick={addAsset} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
