@@ -11,15 +11,21 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 9, color: '#999', marginBottom: 16 },
   section: { marginBottom: 10, padding: 10, borderRadius: 4, borderLeftWidth: 3 },
   sectionTitle: { fontSize: 9, fontWeight: 700, textTransform: 'uppercase', marginBottom: 6, letterSpacing: 0.5 },
-  row: { flexDirection: 'row', marginBottom: 2 },
-  label: { color: '#666', width: '40%' },
-  value: { fontWeight: 700 },
+  applicantBlock: { marginBottom: 8 },
+  applicantName: { fontWeight: 700, marginBottom: 2 },
+  line: { marginBottom: 1, color: '#444' },
+  subCard: { backgroundColor: '#F5F5F4', borderRadius: 4, padding: 8, marginBottom: 6 },
+  badge: { fontSize: 8, fontWeight: 700, paddingVertical: 2, paddingHorizontal: 6, borderRadius: 8, marginLeft: 6 },
 })
 
 function fmtMoney(v: any): string {
   const n = Number(v)
-  if (!v || isNaN(n)) return ''
+  if (!v || isNaN(n)) return '0'
   return '$' + n.toLocaleString('en-AU')
+}
+
+function freqLabel(f: string): string {
+  return f === 'Fortnightly' ? 'fortnight' : f === 'Weekly' ? 'week' : 'month'
 }
 
 export async function POST(req: NextRequest) {
@@ -31,6 +37,8 @@ export async function POST(req: NextRequest) {
 
     const ff = deal.fact_find_data || {}
     const applicants = ff.applicants || []
+    const properties = ff.properties || []
+    const liabilities = ff.liabilities || []
 
     const doc = (
       <Document>
@@ -38,12 +46,73 @@ export async function POST(req: NextRequest) {
           <Text style={styles.title}>Deal Summary — {deal.deal_name}</Text>
           <Text style={styles.subtitle}>Generated {new Date().toLocaleString('en-AU')}</Text>
 
+          {/* Applicants */}
           <View style={[styles.section, { backgroundColor: '#F5F0FA', borderLeftColor: '#9333EA' }]}>
             <Text style={[styles.sectionTitle, { color: '#9333EA' }]}>Applicants</Text>
-            {applicants.map((a: any, i: number) => (
-              <Text key={i} style={{ marginBottom: 2 }}>{a.firstName} {a.lastName}</Text>
-            ))}
+            {applicants.map((a: any, i: number) => {
+              const jobs = a.employment || []
+              const incomes = a.income || []
+              return (
+                <View key={i} style={styles.applicantBlock}>
+                  <Text style={styles.applicantName}>{a.title ? a.title + ' ' : ''}{a.firstName} {a.lastName}</Text>
+                  {jobs.map((job: any, ji: number) => (
+                    <Text key={ji} style={styles.line}>{job.occupation || 'Occupation not provided'} at {job.employerName || 'Employer not provided'} ({job.employmentBasis || 'basis not provided'})</Text>
+                  ))}
+                  {incomes.map((inc: any, ii: number) => {
+                    if (inc.incomeType === 'Self-employed') {
+                      const assessed = calculateSeAssessableIncome ? calculateSeAssessableIncome(inc) : null
+                      return <Text key={ii} style={styles.line}>Self-employed — assessed income: {assessed ? fmtMoney(Math.round(assessed)) : 'not calculated'} p.a.</Text>
+                    }
+                    return <Text key={ii} style={styles.line}>{inc.incomeType || 'Income'}: {fmtMoney(inc.grossSalary)} {inc.grossSalaryFrequency || ''}</Text>
+                  })}
+                </View>
+              )
+            })}
           </View>
+
+          {/* Properties */}
+          {properties.length > 0 && (
+            <View style={[styles.section, { backgroundColor: '#FEF6E7', borderLeftColor: '#D97706' }]}>
+              <Text style={[styles.sectionTitle, { color: '#D97706' }]}>Properties</Text>
+              {properties.map((prop: any, i: number) => (
+                <View key={i} style={styles.subCard}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
+                    <Text style={{ fontWeight: 700 }}>{prop.address || 'Property'}</Text>
+                    <Text style={[styles.badge, prop.ownershipType === 'Investment'
+                      ? { backgroundColor: '#EDE9FE', color: '#5B21B6' }
+                      : { backgroundColor: '#FEF3C7', color: '#92400E' }]}>
+                      {prop.ownershipType || 'Owner occupied'}
+                    </Text>
+                  </View>
+                  <Text style={styles.line}>Value: {fmtMoney(prop.value)}</Text>
+                  {prop.ownershipType === 'Investment' && prop.rentalIncome && (
+                    <Text style={styles.line}>Rental income: {fmtMoney(prop.rentalIncome)}/week</Text>
+                  )}
+                  {(prop.loans || []).map((loan: any, li: number) => (
+                    <Text key={li} style={styles.line}>Linked loan: {loan.lenderName || 'Lender'} — Balance {fmtMoney(loan.balance)}</Text>
+                  ))}
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Liabilities */}
+          {liabilities.length > 0 && (
+            <View style={[styles.section, { backgroundColor: '#FEF2F2', borderLeftColor: '#DC2626' }]}>
+              <Text style={[styles.sectionTitle, { color: '#DC2626' }]}>Liabilities</Text>
+              {liabilities.map((liab: any, i: number) => (
+                <View key={i} style={styles.subCard}>
+                  <Text style={{ fontWeight: 700, marginBottom: 3 }}>{liab.liabilityType}</Text>
+                  {liab.liabilityType === 'Credit card' && <Text style={styles.line}>Limit: {fmtMoney(liab.limitAmount)}</Text>}
+                  {liab.liabilityType === 'HECS' && <Text style={styles.line}>Balance: {fmtMoney(liab.balance)}</Text>}
+                  {liab.liabilityType === 'Health Insurance' && <Text style={styles.line}>{fmtMoney(liab.repaymentAmount)}/{freqLabel(liab.repaymentFrequency)}</Text>}
+                  {!['Credit card', 'HECS', 'Health Insurance'].includes(liab.liabilityType) && (
+                    <Text style={styles.line}>Repayment: {fmtMoney(liab.repaymentAmount)}/{freqLabel(liab.repaymentFrequency)}, Balance: {fmtMoney(liab.balance)}</Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
         </Page>
       </Document>
     )
