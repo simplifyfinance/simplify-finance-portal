@@ -1074,6 +1074,21 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
             }} className="text-xs text-gray-400 hover:text-gray-600 underline ml-3">
               [TEST] Download summary PDF
             </button>
+            <button onClick={async () => {
+              const res = await fetch('/api/generate-compliance-pdf', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dealId: deal.id })
+              })
+              const blob = await res.blob()
+              const url = window.URL.createObjectURL(blob)
+              const a = document.createElement('a')
+              a.href = url
+              a.download = 'test-compliance.pdf'
+              a.click()
+            }} className="text-xs text-gray-400 hover:text-gray-600 underline ml-3">
+              [TEST] Download compliance PDF
+            </button>
           </div>
         </div>
       )}
