@@ -1,4 +1,4 @@
-async function sendResendEmail(to: string, subject: string, html: string) {
+async function sendResendEmail(to: string, subject: string, html: string, attachments?: { filename: string; content: string }[]) {
   try {
     await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -11,7 +11,8 @@ async function sendResendEmail(to: string, subject: string, html: string) {
         to,
         cc: 'info@simplifyfinance.com.au',
         subject,
-        html
+        html,
+        ...(attachments && attachments.length ? { attachments } : {})
       })
     })
   } catch (e) {
@@ -71,7 +72,7 @@ export async function notifyEllieCreateCard(params: {
 }
 
 // Triggers 2-5 — Cris moves/closes the card in SalesTrekker
-export async function notifyCrisMoveCard(dealName: string, brokerName: string, action: string, closed = false) {
+export async function notifyCrisMoveCard(dealName: string, brokerName: string, action: string, closed = false, attachments?: { filename: string; content: string }[]) {
   const bg = closed ? '#E6F5EC' : '#F2E9FB'
   const color = closed ? '#1D9E75' : '#7C3AED'
   const html = `<p>Hi Cris,</p>
@@ -82,5 +83,5 @@ export async function notifyCrisMoveCard(dealName: string, brokerName: string, a
     <p style="color:#666;font-size:13px;margin:0 0 6px">Action needed in SalesTrekker:</p>
     <p style="font-size:14px;font-weight:600;padding:8px 12px;border-radius:8px;background:${bg};color:${color};margin:0">${action}</p>`
 
-  await sendResendEmail('cris@simplifyfinance.com.au', `SalesTrekker update needed — ${dealName}`, html)
+  await sendResendEmail('cris@simplifyfinance.com.au', `SalesTrekker update needed — ${dealName}`, html, attachments)
 }
