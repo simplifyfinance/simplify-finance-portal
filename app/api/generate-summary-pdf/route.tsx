@@ -39,6 +39,11 @@ export async function POST(req: NextRequest) {
     const applicants = ff.applicants || []
     const properties = ff.properties || []
     const liabilities = ff.liabilities || []
+    const bc = deal.bc_data || {}
+    const lo = deal.lo_data || {}
+    const totalLoanAmount = (bc.splits || []).reduce((sum: number, s: any) => sum + (Number((s.amount || '').toString().replace(/,/g, '')) || 0), 0)
+    const purchasePriceNum = Number((bc.purchasePrice || '').toString().replace(/,/g, '')) || 0
+    const simpleLvr = purchasePriceNum > 0 && totalLoanAmount > 0 ? Math.round((totalLoanAmount / purchasePriceNum) * 1000) / 10 : null
 
     const doc = (
       <Document>
@@ -111,6 +116,41 @@ export async function POST(req: NextRequest) {
                   )}
                 </View>
               ))}
+            </View>
+          )}
+
+          {/* BC */}
+          {Object.keys(bc).length > 0 && (
+            <View style={[styles.section, { backgroundColor: '#EAF6FF', borderLeftColor: '#2DBEFF' }]}>
+              <Text style={[styles.sectionTitle, { color: '#2DBEFF' }]}>BC — Borrowing Capacity</Text>
+              <Text style={styles.line}>Template: {(bc.template || '').replace(/_/g, ' ') || 'Not set'}</Text>
+              {bc.purchasePrice && <Text style={styles.line}>Purchase price: {fmtMoney(bc.purchasePrice)}</Text>}
+              {bc.deposit && <Text style={styles.line}>Deposit: {fmtMoney(bc.deposit)}{bc.depositSource ? ` (${bc.depositSource})` : ''}</Text>}
+              {totalLoanAmount > 0 && <Text style={styles.line}>Loan amount: {fmtMoney(totalLoanAmount)}</Text>}
+              {simpleLvr !== null && <Text style={styles.line}>LVR (est.): {simpleLvr}%</Text>}
+            </View>
+          )}
+
+          {/* LO */}
+          {(lo.lenders || []).length > 0 && (
+            <View style={[styles.section, { backgroundColor: '#EAFBF1', borderLeftColor: '#16A34A' }]}>
+              <Text style={[styles.sectionTitle, { color: '#16A34A' }]}>LO — Lending Options</Text>
+              {lo.lenders.map((l: any, i: number) => {
+                const rateText = l.variablePI?.enabled ? `${l.variablePI.rate}% variable P&I`
+                  : l.variableIO?.enabled ? `${l.variableIO.rate}% variable IO`
+                  : l.fixedPI?.enabled ? `${l.fixedPI.rate}% fixed P&I` : 'Rate not set'
+                return (
+                  <Text key={i} style={styles.line}>
+                    {l.lenderName}{l.productName ? ` — ${l.productName}` : ''}: {rateText}{l.annualFee ? `, ${fmtMoney(l.annualFee)} annual fee` : ''}
+                  </Text>
+                )
+              })}
+              {lo.recommendedLender && (
+                <Text style={[styles.line, { marginTop: 4, fontWeight: 700 }]}>
+                  Recommended: {lo.recommendedLender}
+                  {lo.clientAgreedLender === 'Yes' ? '  (Client agreed)' : lo.clientAgreedLender === 'No' ? `  (Client chose: ${lo.clientChosenLender === '__other__' ? lo.clientChosenLenderOther : lo.clientChosenLender})` : ''}
+                </Text>
+              )}
             </View>
           )}
         </Page>
