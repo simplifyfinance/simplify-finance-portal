@@ -98,14 +98,15 @@ function subBlock(lines: string[]): string {
 }
 
 function statusBadge(status: string): string {
-  if (!status || status === 'Remain open') return ''
+  // Only show a badge for these three explicit "something is changing" statuses.
+  // Everything else (Remain open, blank, or any old/legacy value like "Ongoing") shows nothing.
   const colors: Record<string, string> = {
     'To be closed': 'background:#FEF3C7;color:#92400E',
     'To be refinanced': 'background:#D1FAE5;color:#065F46',
     'To be consolidated': 'background:#DBEAFE;color:#1E40AF',
   }
-  const style = colors[status] || 'background:#F3F4F6;color:#374151'
-  return ` <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;${style}">${status}</span>`
+  if (!colors[status]) return ''
+  return ` <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;${colors[status]}">${status}</span>`
 }
 
 function buildPropertyLiabilityChecklist(ff: any): string[] {
