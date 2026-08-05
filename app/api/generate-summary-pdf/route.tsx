@@ -28,12 +28,9 @@ function freqLabel(f: string): string {
   return f === 'Fortnightly' ? 'fortnight' : f === 'Weekly' ? 'week' : 'month'
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const { dealId } = await req.json()
-    const supabase = await createSupabaseServer()
+export async function generateSummaryPdfBuffer(dealId: string, supabase: any): Promise<{ buffer: Buffer; dealName: string } | null> {
     const { data: deal } = await supabase.from('deals').select('*, clients(first_name, last_name)').eq('id', dealId).single()
-    if (!deal) return NextResponse.json({ ok: false, error: 'Deal not found' }, { status: 404 })
+    if (!deal) return null
 
     const ff = deal.fact_find_data || {}
     const applicants = ff.applicants || []
@@ -158,10 +155,20 @@ export async function POST(req: NextRequest) {
     )
 
     const buffer = await renderToBuffer(doc)
-    return new NextResponse(new Uint8Array(buffer), {
+    return { buffer, dealName: deal.deal_name }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const { dealId } = await req.json()
+    const supabase = await createSupabaseServer()
+    const result = await generateSummaryPdfBuffer(dealId, supabase)
+    if (!result) return NextResponse.json({ ok: false, error: 'Deal not found' }, { status: 404 })
+
+    return new NextResponse(new Uint8Array(result.buffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${deal.deal_name}-summary.pdf"`
+        'Content-Disposition': `attachment; filename="${result.dealName}-summary.pdf"`
       }
     })
   } catch (e: any) {
