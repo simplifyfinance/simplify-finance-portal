@@ -89,12 +89,9 @@ const EXPENSE_CATEGORIES: { key: string; label: string }[] = [
   { key: 'board', label: 'Board' },
 ]
 
-export async function POST(req: NextRequest) {
-  try {
-    const { dealId } = await req.json()
-    const supabase = await createSupabaseServer()
+export async function generateCompliancePdfBuffer(dealId: string, supabase: any): Promise<{ buffer: Buffer; dealName: string } | null> {
     const { data: deal } = await supabase.from('deals').select('*, clients(first_name, last_name)').eq('id', dealId).single()
-    if (!deal) return NextResponse.json({ ok: false, error: 'Deal not found' }, { status: 404 })
+    if (!deal) return null
 
     const c = deal.compliance_data || {}
     const applicants = c.applicants || []
@@ -192,10 +189,20 @@ export async function POST(req: NextRequest) {
     )
 
     const buffer = await renderToBuffer(doc)
-    return new NextResponse(new Uint8Array(buffer), {
+    return { buffer, dealName: deal.deal_name }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const { dealId } = await req.json()
+    const supabase = await createSupabaseServer()
+    const result = await generateCompliancePdfBuffer(dealId, supabase)
+    if (!result) return NextResponse.json({ ok: false, error: 'Deal not found' }, { status: 404 })
+
+    return new NextResponse(new Uint8Array(result.buffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${deal.deal_name}-compliance.pdf"`
+        'Content-Disposition': `attachment; filename="${result.dealName}-compliance.pdf"`
       }
     })
   } catch (e: any) {
