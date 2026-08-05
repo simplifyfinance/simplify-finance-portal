@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { notifyEllieCreateCard, notifyCrisMoveCard } from '@/lib/salestrekker-notify'
+import { generateSummaryPdfBuffer } from '@/app/api/generate-summary-pdf/route'
+import { generateCompliancePdfBuffer } from '@/app/api/generate-compliance-pdf/route'
 
 type Trigger = 'bc_action' | 'bc_sent' | 'lo_sent' | 'lo_to_compliance' | 'push_to_salestrekker'
 
@@ -83,7 +85,40 @@ export async function POST(req: NextRequest) {
 
     // Trigger 5: Push to SalesTrekker (final)
     if (trigger === 'push_to_salestrekker') {
-      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to Compliance Issued', true)
+      const attachments: { filename: string; content: string }[] = []
+
+      try {
+        const summaryResult = await generateSummaryPdfBuffer(dealId, supabase)
+        const complianceResult = await generateCompliancePdfBuffer(dealId, supabase)
+
+        for (const result of [
+          summaryResult ? { ...summaryResult, kind: 'summary' } : null,
+          complianceResult ? { ...complianceResult, kind: 'compliance' } : null
+        ]) {
+          if (!result) continue
+          const fileName = `${result.dealName}-${result.kind}.pdf`
+          const filePath = `${dealId}/${Date.now()}-${fileName}`
+
+          const { error: uploadError } = await supabase.storage.from('deal-documents').upload(filePath, result.buffer, {
+            contentType: 'application/pdf',
+            upsert: false
+          })
+
+          if (!uploadError) {
+            await supabase.from('deal_documents').insert({
+              deal_id: dealId,
+              file_name: fileName,
+              file_path: filePath,
+              file_type: 'application/pdf'
+            })
+            attachments.push({ filename: fileName, content: result.buffer.toString('base64') })
+          }
+        }
+      } catch (e) {
+        // Non-fatal — PDF generation/upload failure should never block the actual SalesTrekker push
+      }
+
+      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to Compliance Issued', true, attachments)
       await supabase.from('deals').update({ status: 'completed' }).eq('id', dealId)
       return NextResponse.json({ ok: true })
     }
