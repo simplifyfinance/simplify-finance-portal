@@ -556,8 +556,9 @@ export default function BCForm({ deal, onDataChange, onStageChange }: { deal: an
   const [debugRoleCheck, setDebugRoleCheck] = useState('checking...')
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user }, error: userError }) => {
-      if (!user) { setDebugRoleCheck(`no user found (error: ${userError?.message || 'none'})`); return }
+    supabase.auth.getSession().then(({ data: { session }, error: sessionError }) => {
+      const user = session?.user
+      if (!user) { setDebugRoleCheck(`no session found (error: ${sessionError?.message || 'none'})`); return }
       supabase.from('user_profiles').select('role').eq('id', user.id).single().then(({ data, error }) => {
         setCanSendToClient(data?.role === 'admin' || data?.role === 'broker')
         setDebugRoleCheck(`user.id=${user.id}, role=${data?.role || 'MISSING'}, error=${error?.message || 'none'}`)
