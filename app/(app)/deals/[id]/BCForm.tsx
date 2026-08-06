@@ -553,12 +553,14 @@ export default function BCForm({ deal, onDataChange, onStageChange }: { deal: an
   const [sendingToCreditTeam, setSendingToCreditTeam] = useState(false)
   const [bcSelfAssigned, setBcSelfAssigned] = useState(!!deal.bc_self_assigned)
   const [canSendToClient, setCanSendToClient] = useState(false)
+  const [debugRoleCheck, setDebugRoleCheck] = useState('checking...')
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      supabase.from('user_profiles').select('role').eq('id', user.id).single().then(({ data }) => {
+    supabase.auth.getUser().then(({ data: { user }, error: userError }) => {
+      if (!user) { setDebugRoleCheck(`no user found (error: ${userError?.message || 'none'})`); return }
+      supabase.from('user_profiles').select('role').eq('id', user.id).single().then(({ data, error }) => {
         setCanSendToClient(data?.role === 'admin' || data?.role === 'broker')
+        setDebugRoleCheck(`user.id=${user.id}, role=${data?.role || 'MISSING'}, error=${error?.message || 'none'}`)
       })
     })
   }, [])
@@ -1243,7 +1245,10 @@ Key assumptions: ${checklistText}`
                       className="text-xs text-gray-400 hover:text-gray-600 underline">Copy HTML instead</button>
                   </>
                 ) : (
-                  <span className="text-xs text-gray-400 italic">Only the broker can send this to the client — use "Done — send to broker for review" above.</span>
+                  <>
+                    <span className="text-xs text-gray-400 italic">Only the broker can send this to the client — use "Done — send to broker for review" above.</span>
+                    <span className="text-xs text-red-500 block mt-1">[DEBUG] {debugRoleCheck}</span>
+                  </>
                 )}
               </div>
 
