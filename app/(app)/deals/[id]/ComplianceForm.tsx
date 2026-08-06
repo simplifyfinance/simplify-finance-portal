@@ -557,7 +557,7 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
     }
     setShowPositionPrompt(false)
     markComplianceComplete()
-    alert('Compliance complete — Cris has been notified to close this deal in SalesTrekker.')
+    alert('Compliance complete — Cris has been notified that this deal is ready for Compliance to be issued.')
   }
 
   function handlePushToSalesTrekker() {
@@ -570,7 +570,7 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
       setShowPositionPrompt(true)
     } else {
       markComplianceComplete()
-      alert('Compliance complete — Cris has been notified to close this deal in SalesTrekker.')
+      alert('Compliance complete — Cris has been notified that this deal is ready for Compliance to be issued.')
     }
   }
 
@@ -1116,7 +1116,7 @@ Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence 
                   setShowPositionPrompt(true)
                 } else {
                   markComplianceComplete()
-                  alert('Compliance complete — Cris has been notified to close this deal in SalesTrekker.')
+                  alert('Compliance complete — Cris has been notified that this deal is ready for Compliance to be issued.')
                 }
               }}
                 className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a]">
