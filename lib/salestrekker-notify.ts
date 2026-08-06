@@ -81,7 +81,8 @@ export async function notifyCrisMoveCard(dealName: string, brokerName: string, a
       <tr><td style="color:#666;font-size:13px;padding:3px 0">Broker</td><td style="text-align:right;font-size:13px;padding:3px 0">${brokerName || ''}</td></tr>
     </table>
     <p style="color:#666;font-size:13px;margin:0 0 6px">Action needed in SalesTrekker:</p>
-    <p style="font-size:14px;font-weight:600;padding:8px 12px;border-radius:8px;background:${bg};color:${color};margin:0">${action}</p>`
+    <p style="font-size:14px;font-weight:600;padding:8px 12px;border-radius:8px;background:${bg};color:${color};margin:0">${action}</p>
+    ${attachments && attachments.length ? `<p style="color:#666;font-size:13px;margin:12px 0 0">Two PDFs are attached to this email (deal summary and compliance summary) — please save both into this client's OneDrive folder.</p>` : ''}`
 
   await sendResendEmail('cris@simplifyfinance.com.au', `SalesTrekker update needed — ${dealName}`, html, attachments)
 }
