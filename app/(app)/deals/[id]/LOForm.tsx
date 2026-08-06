@@ -176,7 +176,7 @@ function LibraryField({ label, value, onChange }: { label: string; value: string
   )
 }
 
-export default function LOForm({ deal, onStageChange }: { deal: any; onStageChange?: (stage: string) => void }) {
+export default function LOForm({ deal, onStageChange, userRole }: { deal: any; onStageChange?: (stage: string) => void; userRole?: string }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `lo_${deal.id}`
   const bc = deal.bc_data || {}
@@ -259,17 +259,7 @@ export default function LOForm({ deal, onStageChange }: { deal: any; onStageChan
   }
 
   const [d, setD] = useState<LOData>(initData)
-  const [canSendToClient, setCanSendToClient] = useState(false)
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const user = session?.user
-      if (!user) return
-      supabase.from('user_profiles').select('role').eq('id', user.id).single().then(({ data }) => {
-        setCanSendToClient(data?.role === 'admin' || data?.role === 'broker')
-      })
-    })
-  }, [])
+  const canSendToClient = userRole === 'admin' || userRole === 'broker'
 
   useEffect(() => {
     async function syncRateObservations() {

@@ -29,10 +29,11 @@ export default async function DealPage({ params, searchParams }: { params: Promi
 
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('broker_key')
+    .select('broker_key, role')
     .eq('id', user.id)
     .single()
   const brokerKey = profile?.broker_key || null
+  const userRole = profile?.role || ''
 
   const { data: creditOfficerRecord } = await supabase
     .from('credit_officers')
@@ -59,5 +60,5 @@ export default async function DealPage({ params, searchParams }: { params: Promi
 
   if (!canView) return notFound()
 
-  return <DealPageClient deal={deal as DealWithClient} initialStage={stage || deal.last_tab || deal.stage} />
+  return <DealPageClient deal={deal as DealWithClient} initialStage={stage || deal.last_tab || deal.stage} userRole={userRole} />
 }

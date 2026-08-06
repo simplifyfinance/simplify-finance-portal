@@ -9,7 +9,7 @@ import LOForm from './LOForm'
 import ComplianceForm from './ComplianceForm'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
 
-export default function DealPageClient({ deal, initialStage }: { deal: any; initialStage?: string }) {
+export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
   const validStages = ['FactFind', 'BC', 'LO', 'Compliance']
   const startStage = validStages.includes(initialStage || '') ? initialStage! : 'FactFind'
   const [stage, setStage] = useState(startStage)
@@ -126,8 +126,8 @@ export default function DealPageClient({ deal, initialStage }: { deal: any; init
       </div>
 
       {stage === 'FactFind' && <FactFindForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} />}
-      {stage === 'BC' && <BCForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} />}
-      {stage === 'LO' && <LOForm deal={dealData} onStageChange={changeStage} />}
+      {stage === 'BC' && <BCForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} userRole={userRole} />}
+      {stage === 'LO' && <LOForm deal={dealData} onStageChange={changeStage} userRole={userRole} />}
       {stage === 'Compliance' && <ComplianceForm deal={dealData} />}
     </div>
   )

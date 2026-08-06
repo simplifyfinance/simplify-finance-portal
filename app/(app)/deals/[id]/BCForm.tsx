@@ -288,7 +288,7 @@ function NumberInput({ value, onChange, placeholder }: { value: string; onChange
   )
 }
 
-export default function BCForm({ deal, onDataChange, onStageChange }: { deal: any; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void }) {
+export default function BCForm({ deal, onDataChange, onStageChange, userRole }: { deal: any; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void; userRole?: string }) {
   const saveKey = `bc-form-${deal.id}`
 
   const getSaved = () => {
@@ -552,19 +552,7 @@ export default function BCForm({ deal, onDataChange, onStageChange }: { deal: an
   const [markingComplete, setMarkingComplete] = useState(false)
   const [sendingToCreditTeam, setSendingToCreditTeam] = useState(false)
   const [bcSelfAssigned, setBcSelfAssigned] = useState(!!deal.bc_self_assigned)
-  const [canSendToClient, setCanSendToClient] = useState(false)
-  const [debugRoleCheck, setDebugRoleCheck] = useState('checking...')
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session }, error: sessionError }) => {
-      const user = session?.user
-      if (!user) { setDebugRoleCheck(`no session found (error: ${sessionError?.message || 'none'})`); return }
-      supabase.from('user_profiles').select('role').eq('id', user.id).single().then(({ data, error }) => {
-        setCanSendToClient(data?.role === 'admin' || data?.role === 'broker')
-        setDebugRoleCheck(`user.id=${user.id}, role=${data?.role || 'MISSING'}, error=${error?.message || 'none'}`)
-      })
-    })
-  }, [])
+  const canSendToClient = userRole === 'admin' || userRole === 'broker'
 
   async function handleBcSelfAssign() {
     const { error } = await supabase.from('deals').update({ bc_self_assigned: true }).eq('id', deal.id)
@@ -1246,10 +1234,7 @@ Key assumptions: ${checklistText}`
                       className="text-xs text-gray-400 hover:text-gray-600 underline">Copy HTML instead</button>
                   </>
                 ) : (
-                  <>
-                    <span className="text-xs text-gray-400 italic">Only the broker can send this to the client — use "Done — send to broker for review" above.</span>
-                    <span className="text-xs text-red-500 block mt-1">[DEBUG] {debugRoleCheck}</span>
-                  </>
+                  <span className="text-xs text-gray-400 italic">Only the broker can send this to the client — use "Done — send to broker for review" above.</span>
                 )}
               </div>
 
