@@ -262,7 +262,8 @@ export default function LOForm({ deal, onStageChange }: { deal: any; onStageChan
   const [canSendToClient, setCanSendToClient] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const user = session?.user
       if (!user) return
       supabase.from('user_profiles').select('role').eq('id', user.id).single().then(({ data }) => {
         setCanSendToClient(data?.role === 'admin' || data?.role === 'broker')
