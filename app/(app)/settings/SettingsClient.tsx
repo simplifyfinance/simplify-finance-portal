@@ -30,6 +30,8 @@ export default function SettingsPage() {
   const [brands, setBrands] = useState(defaultBrands)
   const [brokers, setBrokers] = useState(defaultBrokers)
   const [wealthDeskLink, setWealthDeskLink] = useState('')
+  const [newDealNotificationUserId, setNewDealNotificationUserId] = useState('')
+  const [stageMoveNotificationUserId, setStageMoveNotificationUserId] = useState('')
   const [complianceStyleNotes, setComplianceStyleNotes] = useState<string[]>([])
   const [newStyleNote, setNewStyleNote] = useState('')
   const [complianceFlags, setComplianceFlags] = useState<any[]>([])
@@ -70,6 +72,8 @@ export default function SettingsPage() {
         if (data.brands?.length) setBrands(data.brands)
         if (data.brokers?.length) setBrokers(data.brokers)
         if (data.wealth_desk_link) setWealthDeskLink(data.wealth_desk_link)
+        if (data.new_deal_notification_user_id) setNewDealNotificationUserId(data.new_deal_notification_user_id)
+        if (data.stage_move_notification_user_id) setStageMoveNotificationUserId(data.stage_move_notification_user_id)
         if (data.compliance_style_notes?.length) setComplianceStyleNotes(data.compliance_style_notes)
       }
       setLoading(false)
@@ -107,6 +111,8 @@ export default function SettingsPage() {
       brands,
       brokers,
       wealth_desk_link: wealthDeskLink,
+      new_deal_notification_user_id: newDealNotificationUserId || null,
+      stage_move_notification_user_id: stageMoveNotificationUserId || null,
       compliance_style_notes: complianceStyleNotes,
       updated_at: new Date().toISOString()
     })
@@ -252,6 +258,26 @@ export default function SettingsPage() {
           <p className="text-xs text-gray-400 mb-3">This is the same static link shared with every client to collect bank statements. It's used on the client "ready to proceed" page and in the manual next-steps email.</p>
           <label className="text-xs text-gray-400 block mb-1">WealthDesk link</label>
           <input className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono" value={wealthDeskLink} onChange={(e) => setWealthDeskLink(e.target.value)} placeholder="https://simplify.wealthdesk.com.au/iv/tk/..." />
+        </div>
+      </section>
+      <section className="mb-10">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Notification Routing</h2>
+        <div className="border border-gray-200 rounded-xl p-5 bg-white space-y-4">
+          <p className="text-xs text-gray-400 mb-3">Who receives internal notification emails as deals move through the pipeline. Change this anytime without needing a code change.</p>
+          <div>
+            <label className="text-xs text-gray-400 block mb-1">New deal notifications (currently Ellie)</label>
+            <select className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" value={newDealNotificationUserId} onChange={(e) => setNewDealNotificationUserId(e.target.value)}>
+              <option value="">— select team member —</option>
+              {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-400 block mb-1">Stage move notifications (currently Cris)</label>
+            <select className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" value={stageMoveNotificationUserId} onChange={(e) => setStageMoveNotificationUserId(e.target.value)}>
+              <option value="">— select team member —</option>
+              {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+            </select>
+          </div>
         </div>
       </section>
       <section className="mb-10">
