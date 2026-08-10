@@ -24,6 +24,19 @@ export async function POST(req: NextRequest) {
     const brokerName = deal.assigned_broker || ''
     const dealName = deal.deal_name
 
+    // Resolve who currently receives each notification type from Settings (admin-editable, no code change needed)
+    const { data: settingsRow } = await supabase.from('settings').select('new_deal_notification_user_id, stage_move_notification_user_id').eq('id', 'singleton').single()
+    let ellieEmail: string | null = null
+    let crisEmail: string | null = null
+    if (settingsRow?.new_deal_notification_user_id) {
+      const { data: p } = await supabase.from('user_profiles').select('email').eq('id', settingsRow.new_deal_notification_user_id).single()
+      ellieEmail = p?.email || null
+    }
+    if (settingsRow?.stage_move_notification_user_id) {
+      const { data: p } = await supabase.from('user_profiles').select('email').eq('id', settingsRow.stage_move_notification_user_id).single()
+      crisEmail = p?.email || null
+    }
+
     // Trigger 1: first BC action on a deal — fires once, whichever happens first
     if (trigger === 'bc_action') {
       if (deal.salestrekker_created_at) {
@@ -58,7 +71,8 @@ export async function POST(req: NextRequest) {
         incomeType,
         internalNotes: ff.internalNotes || '',
         creditOfficerName,
-        alreadyBcActioned
+        alreadyBcActioned,
+        recipientEmail: ellieEmail
       })
 
       await supabase.from('deals').update({ salestrekker_created_at: new Date().toISOString() }).eq('id', dealId)
@@ -67,19 +81,19 @@ export async function POST(req: NextRequest) {
 
     // Trigger 2: BC sent to client, card already exists
     if (trigger === 'bc_sent') {
-      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to BC Actioned')
+      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to BC Actioned', false, undefined, crisEmail)
       return NextResponse.json({ ok: true })
     }
 
     // Trigger 3: LO sent to client
     if (trigger === 'lo_sent') {
-      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to LO Actioned')
+      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to LO Actioned', false, undefined, crisEmail)
       return NextResponse.json({ ok: true })
     }
 
     // Trigger 4: client/broker confirms proceed LO -> Compliance
     if (trigger === 'lo_to_compliance') {
-      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to Compliance (to be actioned)')
+      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to Compliance (to be actioned)', false, undefined, crisEmail)
       return NextResponse.json({ ok: true })
     }
 
@@ -118,7 +132,7 @@ export async function POST(req: NextRequest) {
         // Non-fatal — PDF generation/upload failure should never block the actual SalesTrekker push
       }
 
-      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to Compliance Issued', true, attachments)
+      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to Compliance Issued', true, attachments, crisEmail)
       await supabase.from('deals').update({ status: 'completed' }).eq('id', dealId)
       return NextResponse.json({ ok: true })
     }
