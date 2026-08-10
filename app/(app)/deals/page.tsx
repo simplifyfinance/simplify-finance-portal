@@ -4,6 +4,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { Plus, Search, Briefcase, Trash2, Copy } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
 type Client = { id: string; first_name: string; last_name: string; email?: string; phone?: string }
 type Deal = {
   id: string; deal_name: string; deal_type: string; stage: string; status: string; assigned_broker: string;
@@ -42,7 +43,7 @@ export default function DealsPage() {
     })
   }, [])
   async function fetchDeals(role?: string, broker?: string | null, creditOfficerId?: string | null) {
-    let query = browser.from('deals').select('*, clients(first_name, last_name)').order('created_at', { ascending: false })
+    let query = browser.from('deals').select('*, clients(first_name, last_name), credit_officers(name)').order('created_at', { ascending: false })
     if (role === 'broker' && broker) {
       query = query.eq('assigned_broker', broker)
     } else if (role === 'staff' && creditOfficerId) {
@@ -198,8 +199,15 @@ export default function DealsPage() {
                     {deal.clients?.first_name} {deal.clients?.last_name}
                     {deal.deal_type && <> · {deal.deal_type}</>}
                     {deal.assigned_broker && <> · {BROKER_DISPLAY[deal.assigned_broker] || deal.assigned_broker}</>}
+                    {(deal as any).credit_officers?.name && <> · Credit: {(deal as any).credit_officers.name}</>}
                   </div>
                 </div>
+                {(() => {
+                  const waitingOn = getWaitingOnLabel(deal, (deal as any).credit_officers?.name)
+                  return waitingOn ? (
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-md whitespace-nowrap ${WAITING_ON_STYLES[waitingOn.color]}`}>{waitingOn.text}</span>
+                  ) : null
+                })()}
                 {readyStage && (
                   <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-amber-100 text-amber-700">{readyStage} ready for review</span>
                 )}
