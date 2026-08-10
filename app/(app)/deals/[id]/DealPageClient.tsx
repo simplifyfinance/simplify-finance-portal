@@ -8,6 +8,7 @@ import BCForm from './BCForm'
 import LOForm from './LOForm'
 import ComplianceForm from './ComplianceForm'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
+import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
   const validStages = ['FactFind', 'BC', 'LO', 'Compliance']
@@ -90,6 +91,12 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
             <span>·</span><span>{deal.deal_type}</span>
             <span>·</span><span>Broker: {deal.assigned_broker}</span>
             <CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} />
+            {(() => {
+              const waitingOn = getWaitingOnLabel(dealData)
+              return waitingOn ? (
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${WAITING_ON_STYLES[waitingOn.color]}`}>{waitingOn.text}</span>
+              ) : null
+            })()}
           </div>
         </div>
         <div className="flex gap-2 flex-shrink-0">
