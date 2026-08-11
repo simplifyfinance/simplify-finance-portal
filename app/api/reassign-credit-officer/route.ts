@@ -50,11 +50,12 @@ export async function POST(req: NextRequest) {
 
   // Always notify the newly-assigned officer - same email pattern as auto-allocation
   let emailSent = false
+  let emailDebug = 'not attempted'
   if (officer.user_id) {
-    const { data: officerProfile } = await supabase.from('user_profiles').select('email, full_name').eq('id', officer.user_id).single()
+    const { data: officerProfile, error: profileLookupError } = await supabase.from('user_profiles').select('email, full_name').eq('id', officer.user_id).single()
     if (officerProfile?.email) {
       try {
-        await fetch('https://api.resend.com/emails', {
+        const resendRes = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
@@ -74,11 +75,17 @@ export async function POST(req: NextRequest) {
               <p><a href="https://simplify-finance-portal.vercel.app/deals/${dealId}">Open the deal</a></p>`
           })
         })
-        emailSent = true
-      } catch (e) {
-        // Non-fatal - the assignment itself already succeeded
+        const resendBody = await resendRes.text()
+        emailDebug = `status=${resendRes.status}, body=${resendBody}`
+        emailSent = resendRes.ok
+      } catch (e: any) {
+        emailDebug = `fetch threw: ${e.message}`
       }
+    } else {
+      emailDebug = `no email on profile (lookup error: ${profileLookupError?.message || 'none'})`
     }
+  } else {
+    emailDebug = 'officer has no user_id linked'
   }
 
   // If this was the deal's first-ever credit officer assignment, also fire the SalesTrekker
@@ -97,5 +104,5 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, assignedTo: officer.name, emailSent, cardCreationTriggered })
+  return NextResponse.json({ ok: true, assignedTo: officer.name, emailSent, emailDebug, cardCreationTriggered })
 }

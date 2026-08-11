@@ -12,6 +12,7 @@ export default function CreditOfficerAssignment({ dealId, brokerName }: { dealId
   const [showPicker, setShowPicker] = useState(false)
   const [picked, setPicked] = useState('')
   const [msg, setMsg] = useState('')
+  const [emailDebug, setEmailDebug] = useState('')
   const [err, setErr] = useState('')
 
   useEffect(() => { load() }, [dealId])
@@ -56,6 +57,7 @@ export default function CreditOfficerAssignment({ dealId, brokerName }: { dealId
       setAssignedId(picked)
       setAssignedName(data.assignedTo)
       setMsg('Reassigned')
+      setEmailDebug(`emailSent=${data.emailSent}, debug=${data.emailDebug}`)
       setShowPicker(false)
       setPicked('')
     } catch (e: any) {
@@ -70,6 +72,7 @@ export default function CreditOfficerAssignment({ dealId, brokerName }: { dealId
     <div className="flex items-center gap-2 flex-wrap">
       <span className="text-xs text-gray-500 bg-gray-100 rounded-lg px-3 py-1.5">Assigned to: <span className="font-medium text-[#343333]">{assignedName}</span></span>
       {msg && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">{msg}</span>}
+      {emailDebug && <span className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5 block w-full">[DEBUG] {emailDebug}</span>}
       {err && <span className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{err}</span>}
       {isAdmin && !showPicker && (
         <button onClick={() => setShowPicker(true)} className="text-xs text-[#2DBEFF] hover:underline">Reassign</button>
