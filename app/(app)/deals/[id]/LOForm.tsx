@@ -1022,9 +1022,9 @@ export default function LOForm({ deal, onStageChange, userRole }: { deal: any; o
                 </div>
                 <div className="w-px h-8 bg-gray-200 ml-auto" />
                 <div className="flex items-center gap-4">
-                  <BrokerAssignment dealId={deal.id} currentBroker={deal.assigned_broker} />
+                  <BrokerAssignment dealId={deal.id} currentBroker={deal.assigned_broker} userRole={userRole} />
                   <div className="w-px h-6 bg-gray-200" />
-                  <CreditOfficerAssignment key={assignmentRefreshKey} dealId={deal.id} brokerName={deal.assigned_broker} />
+                  <CreditOfficerAssignment key={assignmentRefreshKey} dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
                 </div>
               </div>
             </div>

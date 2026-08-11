@@ -90,7 +90,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
             <span>{deal.clients?.first_name} {deal.clients?.last_name}</span>
             <span>·</span><span>{deal.deal_type}</span>
             <span>·</span><span>Broker: {deal.assigned_broker}</span>
-            <CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} />
+            <CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
             {(() => {
               const waitingOn = getWaitingOnLabel(dealData)
               return waitingOn ? (

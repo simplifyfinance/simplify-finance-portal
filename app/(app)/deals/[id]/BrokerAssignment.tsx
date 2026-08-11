@@ -2,9 +2,9 @@
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
-export default function BrokerAssignment({ dealId, currentBroker }: { dealId: string; currentBroker: string }) {
+export default function BrokerAssignment({ dealId, currentBroker, userRole }: { dealId: string; currentBroker: string; userRole?: string }) {
   const supabase = createSupabaseBrowser()
-  const [isAdmin, setIsAdmin] = useState(false)
+  const isAdmin = userRole === 'admin'
   const [assignedBroker, setAssignedBroker] = useState(currentBroker || '')
   const [brokerOptions, setBrokerOptions] = useState<string[]>([])
   const [showPicker, setShowPicker] = useState(false)
@@ -16,11 +16,6 @@ export default function BrokerAssignment({ dealId, currentBroker }: { dealId: st
   useEffect(() => { load() }, [])
 
   async function load() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: profile } = await supabase.from('user_profiles').select('role').eq('id', user.id).single()
-      setIsAdmin(profile?.role === 'admin')
-    }
 
     const { data: settings } = await supabase.from('settings').select('brokers').eq('id', 'singleton').single()
     const names = (settings?.brokers || []).map((b: any) => (b.name || '').split(' ')[0]).filter(Boolean)

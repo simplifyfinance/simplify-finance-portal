@@ -2,9 +2,9 @@
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
-export default function CreditOfficerAssignment({ dealId, brokerName }: { dealId: string; brokerName: string }) {
+export default function CreditOfficerAssignment({ dealId, brokerName, userRole }: { dealId: string; brokerName: string; userRole?: string }) {
   const supabase = createSupabaseBrowser()
-  const [isAdmin, setIsAdmin] = useState(false)
+  const isAdmin = userRole === 'admin'
   const [assignedId, setAssignedId] = useState<string | null>(null)
   const [assignedName, setAssignedName] = useState<string>('')
   const [eligible, setEligible] = useState<{ id: string; name: string }[]>([])
@@ -17,11 +17,6 @@ export default function CreditOfficerAssignment({ dealId, brokerName }: { dealId
   useEffect(() => { load() }, [dealId])
 
   async function load() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: profile } = await supabase.from('user_profiles').select('role').eq('id', user.id).single()
-      setIsAdmin(profile?.role === 'admin')
-    }
 
     const { data: deal } = await supabase.from('deals').select('assigned_credit_officer').eq('id', dealId).single()
     if (deal?.assigned_credit_officer) {
