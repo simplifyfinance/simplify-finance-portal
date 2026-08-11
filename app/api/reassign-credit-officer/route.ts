@@ -1,6 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 
+async function notifyOfficer(supabase: any, userId: string | null, subject: string, message: string, dealName: string, dealId: string, clientName: string, brokerName: string) {
+  if (!userId) return
+  const { data: officerProfile } = await supabase.from('user_profiles').select('email, full_name').eq('id', userId).single()
+  if (!officerProfile?.email) return
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'Simplify Finance Portal <notifications@simplifyfinance.com.au>',
+        to: officerProfile.email,
+        cc: 'info@simplifyfinance.com.au',
+        subject,
+        html: `<p>Hi ${officerProfile.full_name?.split(' ')[0] || ''},</p><p>${message}</p>
+          <table style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 16px" width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="color:#666;font-size:13px;padding:3px 0">Deal</td><td style="text-align:right;font-size:13px;font-weight:600;padding:3px 0">${dealName}</td></tr>
+            <tr><td style="color:#666;font-size:13px;padding:3px 0">Client</td><td style="text-align:right;font-size:13px;padding:3px 0">${clientName}</td></tr>
+            <tr><td style="color:#666;font-size:13px;padding:3px 0">Broker</td><td style="text-align:right;font-size:13px;padding:3px 0">${brokerName}</td></tr>
+          </table>
+          <p><a href="https://simplify-finance-portal.vercel.app/deals/${dealId}">Open the deal</a></p>`
+      })
+    })
+  } catch (e) {
+    // Non-fatal - the reassignment itself already succeeded
+  }
+}
+
 export async function POST(req: NextRequest) {
   const { dealId, creditOfficerId } = await req.json()
   if (!dealId || !creditOfficerId) return NextResponse.json({ ok: false, error: 'Missing dealId or creditOfficerId' }, { status: 400 })
@@ -27,19 +57,17 @@ export async function POST(req: NextRequest) {
 
   if (officerError || !officer) return NextResponse.json({ ok: false, error: 'Credit officer not found' }, { status: 404 })
 
-  // Check whether this deal already had a card created in SalesTrekker - if not, this manual
-  // assignment is effectively the deal's FIRST-EVER credit officer assignment, so the usual
-  // "create the deal card" notification (normally fired from BC's own Send to credit team flow)
-  // needs to be triggered here too, since this admin tool bypasses that flow entirely.
   const { data: deal, error: dealError } = await supabase
     .from('deals')
-    .select('deal_name, assigned_broker, salestrekker_created_at, bc_data, fact_find_data, clients(first_name, last_name)')
+    .select('deal_name, assigned_broker, assigned_credit_officer, salestrekker_created_at, clients(first_name, last_name)')
     .eq('id', dealId)
     .single()
 
   if (dealError || !deal) return NextResponse.json({ ok: false, error: 'Deal not found' }, { status: 404 })
 
   const isFirstAssignment = !deal.salestrekker_created_at
+  const previousOfficerId = deal.assigned_credit_officer
+  const clientName = `${(deal.clients as any)?.first_name || ''} ${(deal.clients as any)?.last_name || ''}`.trim()
 
   const { error: updateError } = await supabase
     .from('deals')
@@ -48,49 +76,28 @@ export async function POST(req: NextRequest) {
 
   if (updateError) return NextResponse.json({ ok: false, error: updateError.message }, { status: 500 })
 
-  // Always notify the newly-assigned officer - same email pattern as auto-allocation
-  let emailSent = false
-  let emailDebug = 'not attempted'
-  if (officer.user_id) {
-    const { data: officerProfile, error: profileLookupError } = await supabase.from('user_profiles').select('email, full_name').eq('id', officer.user_id).single()
-    if (officerProfile?.email) {
-      try {
-        const resendRes = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            from: 'Simplify Finance Portal <notifications@simplifyfinance.com.au>',
-            to: officerProfile.email,
-            cc: 'info@simplifyfinance.com.au',
-            subject: `New deal assigned: ${deal.deal_name}`,
-            html: `<p>Hi ${officerProfile.full_name?.split(' ')[0] || ''},</p><p>A deal has been assigned to you.</p>
-              <table style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 16px" width="100%" cellpadding="0" cellspacing="0">
-                <tr><td style="color:#666;font-size:13px;padding:3px 0">Deal</td><td style="text-align:right;font-size:13px;font-weight:600;padding:3px 0">${deal.deal_name}</td></tr>
-                <tr><td style="color:#666;font-size:13px;padding:3px 0">Client</td><td style="text-align:right;font-size:13px;padding:3px 0">${(deal.clients as any)?.first_name || ''} ${(deal.clients as any)?.last_name || ''}</td></tr>
-                <tr><td style="color:#666;font-size:13px;padding:3px 0">Broker</td><td style="text-align:right;font-size:13px;padding:3px 0">${deal.assigned_broker || ''}</td></tr>
-              </table>
-              <p><a href="https://simplify-finance-portal.vercel.app/deals/${dealId}">Open the deal</a></p>`
-          })
-        })
-        const resendBody = await resendRes.text()
-        emailDebug = `status=${resendRes.status}, body=${resendBody}`
-        emailSent = resendRes.ok
-      } catch (e: any) {
-        emailDebug = `fetch threw: ${e.message}`
-      }
-    } else {
-      emailDebug = `no email on profile (lookup error: ${profileLookupError?.message || 'none'})`
+  // Notify the previous officer (if there was one, and it's genuinely changing) that they no longer need to work this deal
+  if (previousOfficerId && previousOfficerId !== creditOfficerId) {
+    const { data: previousOfficer } = await supabase.from('credit_officers').select('user_id').eq('id', previousOfficerId).single()
+    if (previousOfficer?.user_id) {
+      await notifyOfficer(
+        supabase, previousOfficer.user_id,
+        `Deal reassigned: ${deal.deal_name}`,
+        `This deal has been reassigned to another team member — you no longer need to action it.`,
+        deal.deal_name, dealId, clientName, deal.assigned_broker || ''
+      )
     }
-  } else {
-    emailDebug = 'officer has no user_id linked'
   }
 
-  // If this was the deal's first-ever credit officer assignment, also fire the SalesTrekker
-  // card-creation trigger that normally happens via BC's own Send to credit team flow.
-  let cardCreationTriggered = false
+  // Always notify the newly-assigned officer
+  await notifyOfficer(
+    supabase, officer.user_id,
+    `New deal assigned: ${deal.deal_name}`,
+    `A deal has been assigned to you.`,
+    deal.deal_name, dealId, clientName, deal.assigned_broker || ''
+  )
+
+  // If this was the deal's first-ever credit officer assignment, also fire the SalesTrekker card-creation trigger
   if (isFirstAssignment) {
     try {
       await fetch('https://simplify-finance-portal.vercel.app/api/notify-salestrekker', {
@@ -98,11 +105,10 @@ export async function POST(req: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dealId, trigger: 'bc_action' })
       })
-      cardCreationTriggered = true
     } catch (e) {
       // Non-fatal - the assignment itself already succeeded
     }
   }
 
-  return NextResponse.json({ ok: true, assignedTo: officer.name, emailSent, emailDebug, cardCreationTriggered })
+  return NextResponse.json({ ok: true, assignedTo: officer.name })
 }
