@@ -24,15 +24,23 @@ export async function POST(req: NextRequest) {
   // Find active credit officers covering this broker
   const { data: links, error: linksError } = await supabase
     .from('credit_officer_brokers')
-    .select('credit_officer_id, credit_officers!inner(id, name, active, user_id)')
+    .select('credit_officer_id, credit_officers!inner(id, name, active, user_id, on_leave_from, on_leave_until)')
     .eq('broker_slug', brokerSlug)
     .eq('credit_officers.active', true)
 
   if (linksError) return NextResponse.json({ ok: false, error: linksError.message }, { status: 500 })
 
-  const candidates = (links || []).map((l: any) => l.credit_officers).filter(Boolean)
+  const today = new Date().toISOString().slice(0, 10)
+  const allEligible = (links || []).map((l: any) => l.credit_officers).filter(Boolean)
+  const candidates = allEligible.filter((o: any) => {
+    if (!o.on_leave_from || !o.on_leave_until) return true
+    return !(today >= o.on_leave_from && today <= o.on_leave_until)
+  })
   if (candidates.length === 0) {
-    return NextResponse.json({ ok: false, error: `No active credit officer covers deals for "${brokerSlug}". Check Settings > Credit Team.` }, { status: 400 })
+    const reason = allEligible.length > 0
+      ? `Every credit officer covering "${brokerSlug}" is currently on leave. Check Settings > Credit Team.`
+      : `No active credit officer covers deals for "${brokerSlug}". Check Settings > Credit Team.`
+    return NextResponse.json({ ok: false, error: reason }, { status: 400 })
   }
 
   // Company-wide average active workload — the baseline "overloaded" is measured against.
