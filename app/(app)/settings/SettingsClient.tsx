@@ -17,6 +17,8 @@ type CreditOfficer = {
   active: boolean
   userId: string | null
   brokers: string[] // broker slugs (first names) this officer covers
+  onLeaveFrom: string | null
+  onLeaveUntil: string | null
 }
 
 type UserProfile = {
@@ -97,7 +99,9 @@ export default function SettingsPage() {
         name: o.name,
         active: o.active,
         userId: o.user_id || null,
-        brokers: (links || []).filter((l: any) => l.credit_officer_id === o.id).map((l: any) => l.broker_slug)
+        brokers: (links || []).filter((l: any) => l.credit_officer_id === o.id).map((l: any) => l.broker_slug),
+        onLeaveFrom: o.on_leave_from || null,
+        onLeaveUntil: o.on_leave_until || null
       }))
       setCreditOfficers(shaped)
     }
@@ -138,7 +142,7 @@ export default function SettingsPage() {
   async function addCreditOfficer() {
     const { data, error } = await supabase.from('credit_officers').insert({ name: 'New credit officer', active: true }).select().single()
     if (error) { alert('Error adding credit officer: ' + error.message); return }
-    if (data) setCreditOfficers([...creditOfficers, { id: data.id, name: data.name, active: data.active, userId: null, brokers: [] }])
+    if (data) setCreditOfficers([...creditOfficers, { id: data.id, name: data.name, active: data.active, userId: null, brokers: [], onLeaveFrom: null, onLeaveUntil: null }])
   }
 
   async function linkCreditOfficerUser(officerId: string, userId: string) {
@@ -151,6 +155,11 @@ export default function SettingsPage() {
   async function updateCreditOfficerName(id: string, name: string) {
     setCreditOfficers(creditOfficers.map(o => o.id === id ? { ...o, name } : o))
     await supabase.from('credit_officers').update({ name, updated_at: new Date().toISOString() }).eq('id', id)
+  }
+
+  async function updateCreditOfficerLeave(id: string, field: 'onLeaveFrom' | 'onLeaveUntil', value: string) {
+    setCreditOfficers(creditOfficers.map(o => o.id === id ? { ...o, [field]: value || null } : o))
+    await supabase.from('credit_officers').update({ [field === 'onLeaveFrom' ? 'on_leave_from' : 'on_leave_until']: value || null }).eq('id', id)
   }
 
   async function toggleCreditOfficerActive(id: string, active: boolean) {
@@ -356,6 +365,19 @@ export default function SettingsPage() {
                     {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name} ({p.email})</option>)}
                   </select>
                   {!officer.userId && <p className="text-xs text-amber-600 mt-1">⚠ No portal account linked — this person won't receive assignment emails until linked.</p>}
+                </div>
+                <div className="mb-3 grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">On leave from</label>
+                    <input type="date" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" value={officer.onLeaveFrom || ''} onChange={(e) => updateCreditOfficerLeave(officer.id, 'onLeaveFrom', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Until</label>
+                    <input type="date" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" value={officer.onLeaveUntil || ''} onChange={(e) => updateCreditOfficerLeave(officer.id, 'onLeaveUntil', e.target.value)} />
+                  </div>
+                  {officer.onLeaveFrom && officer.onLeaveUntil && (
+                    <p className="text-xs text-amber-600 col-span-2">🏖 Excluded from auto-allocation between {officer.onLeaveFrom} and {officer.onLeaveUntil}</p>
+                  )}
                 </div>
                 <label className="text-xs text-gray-400 block mb-2">Covers deals for:</label>
                 <div className="flex flex-wrap gap-2">
