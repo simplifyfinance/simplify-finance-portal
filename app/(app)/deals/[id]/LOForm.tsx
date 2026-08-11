@@ -146,9 +146,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function formatNumber(val: string): string {
-  const digits = val.replace(/[^0-9]/g, '')
-  if (!digits) return ''
-  return parseInt(digits).toLocaleString('en-AU')
+  let cleaned = val.replace(/[^0-9.]/g, '')
+  const firstDot = cleaned.indexOf('.')
+  if (firstDot !== -1) {
+    cleaned = cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, '')
+  }
+  const [intPart, decPart] = cleaned.split('.')
+  if (!intPart && decPart === undefined) return ''
+  const formattedInt = (parseInt(intPart || '0', 10) || 0).toLocaleString('en-AU')
+  return decPart !== undefined ? formattedInt + '.' + decPart.slice(0, 2) : formattedInt
 }
 
 function NumberInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {

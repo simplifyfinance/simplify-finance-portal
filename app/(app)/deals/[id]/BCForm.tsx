@@ -261,9 +261,15 @@ function fieldCls(value: string) {
 const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
 
 function formatNumber(val: string): string {
-  const digits = val.replace(/[^0-9]/g, '')
-  if (!digits) return ''
-  return parseInt(digits).toLocaleString('en-AU')
+  let cleaned = val.replace(/[^0-9.]/g, '')
+  const firstDot = cleaned.indexOf('.')
+  if (firstDot !== -1) {
+    cleaned = cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, '')
+  }
+  const [intPart, decPart] = cleaned.split('.')
+  if (!intPart && decPart === undefined) return ''
+  const formattedInt = (parseInt(intPart || '0', 10) || 0).toLocaleString('en-AU')
+  return decPart !== undefined ? formattedInt + '.' + decPart.slice(0, 2) : formattedInt
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
