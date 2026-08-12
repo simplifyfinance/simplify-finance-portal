@@ -7,6 +7,7 @@ type Deal = {
   deal_name: string
   stage: 'BC' | 'LO' | 'Compliance' | string
   client_proceeded?: boolean
+  lo_client_proceeded?: boolean
   bc_completed_at?: string | null
   bc_sent_at?: string | null
   lo_completed_at?: string | null
@@ -31,16 +32,18 @@ const stageColor: Record<string, string> = {
   Compliance: 'bg-green-100 text-green-600',
 }
 
-type ActionType = 'proceeded' | 'bc_to_lo' | 'lo_to_compliance'
+type ActionType = 'proceeded_to_lo' | 'proceeded_to_compliance' | 'bc_to_lo' | 'lo_to_compliance'
 
 const actionLabel: Record<ActionType, string> = {
-  proceeded: 'Client confirmed ready to proceed',
+  proceeded_to_lo: 'Client confirmed ready to proceed to LO',
+  proceeded_to_compliance: 'Client confirmed ready to proceed to Compliance',
   bc_to_lo: 'BC ready for your review & send',
   lo_to_compliance: 'LO ready for your review & send',
 }
 
 const actionColor: Record<ActionType, string> = {
-  proceeded: 'bg-green-100 text-green-700',
+  proceeded_to_lo: 'bg-green-100 text-green-700',
+  proceeded_to_compliance: 'bg-green-100 text-green-700',
   bc_to_lo: 'bg-blue-100 text-blue-700',
   lo_to_compliance: 'bg-purple-100 text-purple-700',
 }
@@ -73,8 +76,13 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
     const items: { deal: Deal; type: ActionType }[] = []
     for (const d of filteredDeals) {
       const isDealsBroker = !!brokerKey && d.assigned_broker?.toLowerCase() === brokerKey.toLowerCase()
-      if (d.client_proceeded) {
-        items.push({ deal: d, type: 'proceeded' })
+      // Both "client proceeded" checks are scoped to the CURRENT stage and not-yet-completed -
+      // these flags never reset once set, so without this scoping they'd stay flagged forever
+      // even after the deal has long since moved past that point.
+      if (d.client_proceeded && d.stage === 'LO' && !d.lo_completed_at) {
+        items.push({ deal: d, type: 'proceeded_to_lo' })
+      } else if (d.lo_client_proceeded && d.stage === 'Compliance' && !d.compliance_completed_at) {
+        items.push({ deal: d, type: 'proceeded_to_compliance' })
       } else if (d.bc_completed_at && !d.bc_sent_at) {
         // Review-and-send is always the broker's action, regardless of who did the BC work
         if (isDealsBroker) items.push({ deal: d, type: 'bc_to_lo' })
@@ -225,7 +233,8 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {deal.client_proceeded && (
+                  {((deal.client_proceeded && deal.stage === 'LO' && !deal.lo_completed_at) ||
+                    (deal.lo_client_proceeded && deal.stage === 'Compliance' && !deal.compliance_completed_at)) && (
                     <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Ready to proceed</span>
                   )}
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stageColor[deal.stage] || 'bg-gray-100 text-gray-500'}`}>
