@@ -24,6 +24,7 @@ type Props = {
   brokerKey: string | null
   creditOfficerId: string | null
   allowToggle: boolean
+  defaultView: 'team' | 'mine'
 }
 
 const stageColor: Record<string, string> = {
@@ -48,12 +49,19 @@ const actionColor: Record<ActionType, string> = {
   lo_to_compliance: 'bg-purple-100 text-purple-700',
 }
 
-export default function DashboardClient({ deals, fullName, brokerKey, creditOfficerId, allowToggle }: Props) {
-  const [view, setView] = useState<'team' | 'mine'>('team')
+export default function DashboardClient({ deals, fullName, brokerKey, creditOfficerId, allowToggle, defaultView }: Props) {
+  const [view, setView] = useState<'team' | 'mine'>(defaultView)
+  const effectiveView = allowToggle ? view : defaultView
 
   const brokerSummary = useMemo(() => {
     const byBroker: Record<string, { BC: number; LO: number; Compliance: number; total: number }> = {}
-    deals.forEach(d => {
+    const source = effectiveView === 'mine' && (brokerKey || creditOfficerId)
+      ? deals.filter(d =>
+          (brokerKey && d.assigned_broker?.toLowerCase() === brokerKey.toLowerCase()) ||
+          (creditOfficerId && d.assigned_credit_officer === creditOfficerId)
+        )
+      : deals
+    source.forEach(d => {
       const key = d.assigned_broker || 'Unassigned'
       if (!byBroker[key]) byBroker[key] = { BC: 0, LO: 0, Compliance: 0, total: 0 }
       if (d.stage === 'BC' || d.stage === 'LO' || d.stage === 'Compliance') byBroker[key][d.stage]++
@@ -63,7 +71,7 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
   }, [deals])
 
   const filteredDeals = useMemo(() => {
-    if (allowToggle && view === 'mine' && (brokerKey || creditOfficerId)) {
+    if (effectiveView === 'mine' && (brokerKey || creditOfficerId)) {
       return deals.filter(d =>
         (brokerKey && d.assigned_broker?.toLowerCase() === brokerKey.toLowerCase()) ||
         (creditOfficerId && d.assigned_credit_officer === creditOfficerId)

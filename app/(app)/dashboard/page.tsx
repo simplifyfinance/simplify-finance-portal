@@ -46,7 +46,8 @@ export default async function Dashboard() {
 
   const { data: deals } = await dealsQuery
 
-  const allowToggle = (!!brokerKey && TEAM_VIEW_BROKERS.includes(brokerKey.toLowerCase())) || !!creditOfficerId
+  const allowToggle = !!brokerKey && TEAM_VIEW_BROKERS.includes(brokerKey.toLowerCase())
+  const defaultView: 'team' | 'mine' = creditOfficerId ? 'mine' : 'team'
 
   return (
     <DashboardClient
@@ -55,6 +56,7 @@ export default async function Dashboard() {
       brokerKey={brokerKey}
       creditOfficerId={creditOfficerId}
       allowToggle={allowToggle}
+      defaultView={defaultView}
     />
   )
 }
