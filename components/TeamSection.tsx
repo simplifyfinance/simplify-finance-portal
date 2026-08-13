@@ -60,6 +60,18 @@ export default function TeamSection() {
     setUsers(users.map(u => u.id === id ? { ...u, active: !active } : u))
   }
 
+  async function handleDelete(user: UserProfile) {
+    if (!confirm(`Permanently delete ${user.full_name}'s account? This cannot be undone.`)) return
+    const res = await fetch('/api/delete-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id })
+    })
+    const data = await res.json()
+    if (!data.ok) { alert('Error deleting: ' + data.error); return }
+    setUsers(users.filter(u => u.id !== user.id))
+  }
+
   async function handleInvite() {
     if (!inviteEmail || !inviteName) return
     setInviting(true)
@@ -186,6 +198,12 @@ export default function TeamSection() {
                   className={`text-xs px-3 py-1 rounded-lg border transition ${user.active ? 'border-red-200 text-red-400 hover:bg-red-50' : 'border-green-200 text-green-500 hover:bg-green-50'}`}>
                   {user.active ? 'Deactivate' : 'Activate'}
                 </button>
+                {!user.active && (
+                  <button onClick={() => handleDelete(user)}
+                    className="text-xs px-3 py-1 rounded-lg border border-red-300 text-red-600 hover:bg-red-100 transition font-medium">
+                    Delete
+                  </button>
+                )}
               </div>
             </div>
           ))}
