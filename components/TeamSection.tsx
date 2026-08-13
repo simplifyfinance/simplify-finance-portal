@@ -29,6 +29,8 @@ export default function TeamSection() {
   const [showInvite, setShowInvite] = useState(false)
   const [resendingId, setResendingId] = useState<string | null>(null)
   const [resendMsg, setResendMsg] = useState<Record<string, string>>({})
+  const [editingNameId, setEditingNameId] = useState<string | null>(null)
+  const [nameInput, setNameInput] = useState('')
 
   const supabase = createSupabaseBrowser()
 
@@ -43,6 +45,14 @@ export default function TeamSection() {
   async function updateRole(id: string, role: string) {
     await supabase.from('user_profiles').update({ role }).eq('id', id)
     setUsers(users.map(u => u.id === id ? { ...u, role } : u))
+  }
+
+  async function saveName(id: string) {
+    const trimmed = nameInput.trim()
+    if (!trimmed) return
+    await supabase.from('user_profiles').update({ full_name: trimmed }).eq('id', id)
+    setUsers(users.map(u => u.id === id ? { ...u, full_name: trimmed } : u))
+    setEditingNameId(null)
   }
 
   async function toggleActive(id: string, active: boolean) {
@@ -142,7 +152,20 @@ export default function TeamSection() {
                   {user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-[#343333] truncate">{user.full_name}</p>
+                  {editingNameId === user.id ? (
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <input className="text-sm font-medium border border-[#2DBEFF] rounded-lg px-2 py-0.5"
+                        value={nameInput} onChange={e => setNameInput(e.target.value)} autoFocus />
+                      <button onClick={() => saveName(user.id)} className="text-xs font-medium text-white bg-[#2DBEFF] px-2.5 py-1 rounded-lg">Save</button>
+                      <button onClick={() => setEditingNameId(null)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-[#343333] truncate">{user.full_name}</p>
+                      <button onClick={() => { setEditingNameId(user.id); setNameInput(user.full_name) }}
+                        className="text-xs text-[#2DBEFF] hover:underline flex-shrink-0">Edit</button>
+                    </div>
+                  )}
                   <p className="text-xs text-gray-400 truncate">{user.email}</p>
                 </div>
               </div>
