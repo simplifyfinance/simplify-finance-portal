@@ -5,6 +5,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 type DealRow = {
   assigned_broker: string | null
   assigned_credit_officer: string | null
+  status: string | null
   bc_completed_at: string | null
   lo_completed_at: string | null
   compliance_completed_at: string | null
@@ -42,17 +43,23 @@ export default function WorkloadClient() {
 
     const { data: deals, error: dealsError } = await supabase
       .from('deals')
-      .select('assigned_broker, assigned_credit_officer, bc_completed_at, lo_completed_at, compliance_completed_at, credit_assigned_at')
+      .select('assigned_broker, assigned_credit_officer, status, bc_completed_at, lo_completed_at, compliance_completed_at, credit_assigned_at')
     if (dealsError) { setError(dealsError.message); setLoading(false); return }
 
     const dealRows = (deals || []) as DealRow[]
 
     const brokers: BrokerStat[] = brokerNames.map(name => {
       const myDeals = dealRows.filter(d => d.assigned_broker === name)
+      // Active-stage buckets must exclude deals already marked completed/lost overall -
+      // relying on the bc/lo/compliance_completed_at timestamps alone is misleading for
+      // deals that reached status='completed' through some other path without those
+      // timestamps ever being set (e.g. old test data), which would otherwise wrongly
+      // count as "still in BC" forever.
+      const activeDeals = myDeals.filter(d => d.status !== 'completed' && d.status !== 'lost')
       const completed = myDeals.filter(d => d.compliance_completed_at).length
-      const inCompliance = myDeals.filter(d => d.lo_completed_at && !d.compliance_completed_at).length
-      const inLO = myDeals.filter(d => d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at).length
-      const inBC = myDeals.filter(d => !d.bc_completed_at).length
+      const inCompliance = activeDeals.filter(d => d.lo_completed_at && !d.compliance_completed_at).length
+      const inLO = activeDeals.filter(d => d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at).length
+      const inBC = activeDeals.filter(d => !d.bc_completed_at).length
       return { name, total: myDeals.length, inBC, inLO, inCompliance, completed }
     })
 
@@ -83,11 +90,12 @@ export default function WorkloadClient() {
     setLoading(false)
 
     const totalDeals = dealRows.length
+    const activeDealRows = dealRows.filter(d => d.status !== 'completed' && d.status !== 'lost')
     const stageCounts = {
-      inBC: dealRows.filter(d => !d.bc_completed_at).length,
-      inLO: dealRows.filter(d => d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at).length,
-      inCompliance: dealRows.filter(d => d.lo_completed_at && !d.compliance_completed_at).length,
-      completed: dealRows.filter(d => d.compliance_completed_at).length,
+      inBC: activeDealRows.filter(d => !d.bc_completed_at).length,
+      inLO: activeDealRows.filter(d => d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at).length,
+      inCompliance: activeDealRows.filter(d => d.lo_completed_at && !d.compliance_completed_at).length,
+      completed: dealRows.filter(d => d.status === 'completed').length,
     }
     setStageDistribution({ total: totalDeals, ...stageCounts })
   }
