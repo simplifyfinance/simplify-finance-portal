@@ -70,7 +70,9 @@ export default function WorkloadClient() {
     const officerRows: OfficerStat[] = (officers || []).map((o: any) => {
       const myDeals = dealRows.filter(d => d.assigned_credit_officer === o.id)
       const completedDeals = myDeals.filter(d => d.compliance_completed_at)
-      const active = myDeals.length - completedDeals.length
+      // Same fix as broker stats above - "active" must exclude deals already marked
+      // completed/lost overall, not just rely on compliance_completed_at being blank.
+      const active = myDeals.filter(d => d.status !== 'completed' && d.status !== 'lost' && !d.compliance_completed_at).length
 
       const bcTimes = myDeals
         .filter(d => d.credit_assigned_at && d.bc_completed_at && d.bc_completed_at > d.credit_assigned_at)
