@@ -561,10 +561,16 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
   const canSendToClient = userRole === 'admin' || userRole === 'broker'
 
   async function handleBcSelfAssign() {
-    const { error } = await supabase.from('deals').update({ bc_self_assigned: true }).eq('id', deal.id)
+    const { data: rows, error } = await supabase.from('deals').update({ bc_self_assigned: true }).eq('id', deal.id).select('id')
+    console.log('[bc_self_assign] dealId=', deal.id, 'rows=', rows, 'error=', error)
     if (error) {
       alert('Error saving choice: ' + error.message)
       return
+    }
+    if (!rows || rows.length === 0) {
+      alert('DIAGNOSTIC: update reported 0 rows changed, with no error.')
+    } else {
+      alert('DIAGNOSTIC: update changed ' + rows.length + ' row(s).')
     }
     setBcSelfAssigned(true)
 
