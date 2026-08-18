@@ -562,20 +562,15 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
 
   async function handleBcSelfAssign() {
     const { data: rows, error } = await supabase.from('deals').update({ bc_self_assigned: true }).eq('id', deal.id).select('id')
-    console.log('[bc_self_assign] dealId=', deal.id, 'rows=', rows, 'error=', error)
     if (error) {
       alert('Error saving choice: ' + error.message)
       return
     }
-    const { data: authData } = await supabase.auth.getUser()
-    const { data: selRows, error: selErr } = await supabase.from('deals').select('id').eq('id', deal.id)
-    alert(
-      'DIAGNOSTIC\n' +
-      'browser uid: ' + (authData?.user?.id || 'NONE - not authenticated') + '\n' +
-      'browser can SELECT this deal: ' + (selRows ? selRows.length + ' row(s)' : 'error') + '\n' +
-      'select error: ' + (selErr?.message || 'none') + '\n' +
-      'update changed: ' + (rows ? rows.length : 0) + ' row(s)'
-    )
+    if (!rows || rows.length === 0) {
+      // Zero rows with no error means the write was refused. Never fail silently.
+      alert('Could not save that choice - nothing was saved. Please tell Fabio.')
+      return
+    }
     setBcSelfAssigned(true)
 
     // Tell Ellie to create the SalesTrekker card now. The route claims the send
