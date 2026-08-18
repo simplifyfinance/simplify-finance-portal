@@ -203,6 +203,7 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
 type Split = { label: string; amount: string; rate: string; type: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string; interestCapitalised?: string }
 
 type AltScenario = {
+  label?: string
   id: string
   purchasePrice: string
   deposit: string
@@ -428,10 +429,11 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
   const [asIfCompleteValue, setAsIfCompleteValue] = useState(s.asIfCompleteValue || '')
   const [compareOptions, setCompareOptions] = useState(s.compareOptions || false)
   const [altScenarios, setAltScenarios] = useState<AltScenario[]>(s.altScenarios || [])
+  const [optionLabel, setOptionLabel] = useState(s.optionLabel || '')
 
   function addAltScenario() {
     setAltScenarios(prev => [...prev, {
-      id: Math.random().toString(36).slice(2), purchasePrice: '', deposit: '', depositSource: '', stampDuty: '',
+      id: Math.random().toString(36).slice(2), label: '', purchasePrice: '', deposit: '', depositSource: '', stampDuty: '',
       loanAmount: '', rate: '6.14', type: 'P&I', lmiApplicable: '', lmi: '',
       ccPayoff: false, ccPayoffAmount: '', hecsPayoff: false, hecsPayoffAmount: '', carLoanPayoff: false, personalLoanPayoff: false, nonBankLender: false
     }])
@@ -600,7 +602,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
   const [moveToLoMsg, setMoveToLoMsg] = useState('')
 
   useEffect(() => {
-    const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, altScenarios, brand }
+    const data = { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
     localStorage.setItem(saveKey, JSON.stringify(data))
     onDataChange?.(data)
     const timeoutId = setTimeout(() => {
@@ -611,7 +613,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
       setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
     }, 700)
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
 
   function selectTemplate(id: string) {
     setTemplate(id)
@@ -829,7 +831,7 @@ Key assumptions: ${checklistText}`
         body: JSON.stringify({ broker: brokerSig, brand, dealId: deal.id, formData: { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeBreakdown: [
           ...buildIncomeBreakdown(ffApp, firstName || 'Applicant 1'),
           ...(joint === 'Yes' ? buildIncomeBreakdown(ffApp2, ffApp2.firstName || 'Applicant 2') : [])
-        ], housingExpense: buildHousingExpenseLine(ffApp), factFindChecklist: buildPropertyLiabilityChecklist(ff), jointFirstName: ffApp2.firstName || '', incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, depositSource, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, existingLoanBal, salePrice, agentFees, netProceeds, additionalSavings, landValue, constructionCost, asIfCompleteValue, compareOptions, altScenarios, brand, brokerNotes, checklist, additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
+        ], housingExpense: buildHousingExpenseLine(ffApp), factFindChecklist: buildPropertyLiabilityChecklist(ff), jointFirstName: ffApp2.firstName || '', incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, depositSource, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, existingLoanBal, salePrice, agentFees, netProceeds, additionalSavings, landValue, constructionCost, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand, brokerNotes, checklist, additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
       })
       if (!res.ok) { setEmailError(`Server error: ${res.status}`); setGenerating(false); return }
       const data = await res.json()
@@ -912,6 +914,13 @@ Key assumptions: ${checklistText}`
                     <div className="flex items-center gap-2 col-span-2">
                       <input type="checkbox" id="compareOptions" checked={compareOptions} onChange={e => setCompareOptions(e.target.checked)} />
                       <label htmlFor="compareOptions" className="text-xs text-gray-600">Compare multiple options (e.g. different scenarios based on paying down liabilities)</label>
+                    </div>
+                  )}
+                  {["oo_purchase", "investment_purchase", "refinance_equity"].includes(template) && compareOptions && (
+                    <div className="col-span-2">
+                      <Field label="Option 1 description (appears in the client email)">
+                        <input className={inputCls} value={optionLabel} onChange={e => setOptionLabel(e.target.value)} placeholder="e.g. Purchasing a new property" />
+                      </Field>
                     </div>
                   )}
                   {!["refinance_equity", "refinance_only", "investment_equity", "construction"].includes(template) && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={handlePurchasePriceChange} /></Field>}
@@ -1142,6 +1151,11 @@ Key assumptions: ${checklistText}`
                     <button onClick={() => removeAltScenario(alt.id)} className="text-xs text-gray-400 hover:text-red-500">Remove</button>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
+                    <div className="col-span-2">
+                      <Field label={`Option ${idx + 2} description (appears in the client email)`}>
+                        <input className={inputCls} value={alt.label || ''} onChange={e => updateAltScenario(alt.id, 'label', e.target.value)} placeholder="e.g. Purchasing an existing property" />
+                      </Field>
+                    </div>
                     {isRefiEquityAlt ? (
                       <Field label="Equity release amount"><CurrencyInput className={inputCls} value={alt.equityReleaseAmount || ''} onChange={v => updateAltScenario(alt.id, 'equityReleaseAmount', v)} /></Field>
                     ) : (

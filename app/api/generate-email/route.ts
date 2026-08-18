@@ -208,7 +208,7 @@ export async function POST(req: NextRequest) {
       lmiApplicable: d.lmiApplicable, lmi: d.lmi,
       ccPayoff: false, hecsPayoff: false, carLoanPayoff: false, personalLoanPayoff: false, nonBankLender: false
     }
-    const allOptionsRE = [buildOptionColRE(baseOptionRE, 'Option 1'), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionColRE(alt, `Option ${i + 2}`))]
+    const allOptionsRE = [buildOptionColRE(baseOptionRE, `Option 1${d.optionLabel ? ' — ' + d.optionLabel : ''}`), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionColRE(alt, `Option ${i + 2}${alt.label ? ' — ' + alt.label : ''}`))]
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('Based on your current financial position, you have capacity to refinance and access equity. Below we have outlined different equity release scenarios depending on your financial position.') +
       propHead(`Against ${d.suburb || '[Property Address]'}`, d.incomeRental) +
@@ -278,7 +278,7 @@ export async function POST(req: NextRequest) {
       lmiApplicable: d.lmiApplicable, lmi: d.lmi,
       ccPayoff: false, hecsPayoff: false, carLoanPayoff: false, personalLoanPayoff: false
     }
-    const allOptions = [buildOptionCol(baseOption, 'Option 1'), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionCol(alt, `Option ${i + 2}`))]
+    const allOptions = [buildOptionCol(baseOption, `Option 1${d.optionLabel ? ' — ' + d.optionLabel : ''}`), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionCol(alt, `Option ${i + 2}${alt.label ? ' — ' + alt.label : ''}`))]
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have completed your borrowing capacity assessment. Below we have outlined different purchase price scenarios depending on your financial position.') +
       `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
@@ -344,7 +344,7 @@ export async function POST(req: NextRequest) {
       lmiApplicable: d.lmiApplicable, lmi: d.lmi,
       ccPayoff: false, hecsPayoff: false, carLoanPayoff: false, personalLoanPayoff: false, nonBankLender: false
     }
-    const allOptionsIP = [buildOptionColIP(baseOptionIP, 'Option 1'), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionColIP(alt, `Option ${i + 2}`))]
+    const allOptionsIP = [buildOptionColIP(baseOptionIP, `Option 1${d.optionLabel ? ' — ' + d.optionLabel : ''}`), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionColIP(alt, `Option ${i + 2}${alt.label ? ' — ' + alt.label : ''}`))]
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have completed your borrowing capacity assessment. Below we have outlined different purchase price scenarios depending on your financial position.') +
       `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
