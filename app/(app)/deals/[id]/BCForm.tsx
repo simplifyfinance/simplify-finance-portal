@@ -723,8 +723,8 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
       const to = applicantEmails.length > 0 ? Array.from(new Set(applicantEmails)).join(',') : (deal.clients?.email || '')
       const bccParam = deal.salestrekker_bcc ? `&bcc=${encodeURIComponent(deal.salestrekker_bcc)}` : ''
       const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}${bccParam}`
-      window.location.href = mailto
-      setSendToClientMsg('Email copied — paste (Cmd+V) into the body in Outlook')
+      // Persist and notify BEFORE navigating to mailto. Navigation can abort
+      // in-flight requests, which previously lost Ellie's notification silently.
       const wasNotYetCompleted = !bcCompletedAt
       const nowIso = new Date().toISOString()
       const updates: any = { bc_sent_at: nowIso }
@@ -732,11 +732,33 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
         updates.bc_completed_at = nowIso
         setBcCompletedAt(nowIso)
       }
-      supabase.from('deals').update(updates).eq('id', deal.id).then(() => {})
+      const { error: updErr } = await supabase.from('deals').update(updates).eq('id', deal.id)
+      if (updErr) console.error('[sendToClient] deal update failed', updErr)
+
+      let notifyFailed = false
       if (wasNotYetCompleted) {
         const trigger = deal.assigned_credit_officer ? 'bc_sent' : 'bc_action'
-        fetch('/api/notify-salestrekker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId: deal.id, trigger }) }).catch(() => {})
+        try {
+          const res = await fetch('/api/notify-salestrekker', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dealId: deal.id, trigger }),
+            keepalive: true
+          })
+          if (!res.ok) {
+            notifyFailed = true
+            console.error('[notify-salestrekker] responded', res.status, await res.text())
+          }
+        } catch (err) {
+          notifyFailed = true
+          console.error('[notify-salestrekker] request failed', err)
+        }
       }
+
+      window.location.href = mailto
+      setSendToClientMsg(notifyFailed
+        ? 'Email copied — but the SalesTrekker notification did not send. Tell Fabio.'
+        : 'Email copied — paste (Cmd+V) into the body in Outlook')
     } catch (e: any) {
       setSendToClientMsg('Could not copy — try "Copy HTML" instead')
     }
