@@ -435,7 +435,7 @@ export default function ComplianceForm({ deal }: { deal: any }) {
 
 Cover: purpose of the loan (owner occupied / investment) and why; loan amount and term and why; any specific features, lenders, interest rate types or repayment types requested and why; any flexibility on the client's stated needs and objectives; savings held / retention of savings and why; any personal circumstances that may affect the loan (financial circumstances, employment, family status); whether the client is a first home buyer.
 
-Client: ${context.clientName}. Loan: $${context.loanAmount} for ${context.loanType}. Property: ${context.suburb}. Income: $${context.incomeBase} base. Recommended lender: ${context.recommendedLender}, product: ${context.product}. Confirmed product features: Offset account = ${context.offsetAccount || 'not specified'}, Redraw = ${context.redraw || 'not specified'}. Client's own stated purpose for this loan: "${context.loanPurpose || 'not recorded'}". IMPORTANT: only reference a specific loan feature (e.g. offset account) as a benefit if it is confirmed present above — if a feature is not present, describe the general benefit (e.g. reducing debt through extra repayments) without naming a feature the product doesn't have. Write 4-6 sentences, no dot points.`,
+Client: ${context.clientName}. Loan: $${context.loanAmount} for ${context.loanType}. Property location (may be a suburb or a state): ${context.suburb}. Income: $${context.incomeBase} base. Recommended lender: ${context.recommendedLender}, product: ${context.product}. Confirmed product features: Offset account = ${context.offsetAccount || 'not specified'}, Redraw = ${context.redraw || 'not specified'}. Client's own stated purpose for this loan: "${context.loanPurpose || 'not recorded'}". IMPORTANT: only reference a specific loan feature (e.g. offset account) as a benefit if it is confirmed present above — if a feature is not present, describe the general benefit (e.g. reducing debt through extra repayments) without naming a feature the product doesn't have. Write 4-6 sentences, no dot points.`,
 
       needsImmediate: `CRM FIELD: Immediate needs and objectives — within the next two years (e.g. holiday, purchases, renovations, savings, protect the family, etc)
 
@@ -489,7 +489,7 @@ Client: ${context.clientName}. Risk answers: ${context.risks}. Write 2-3 paragra
 
 Add the security if it is a refinance, or write TBA for a pre-approval — must reference the security in question.
 
-Property type: ${context.propertyType}. Suburb: ${context.suburb}. One sentence only. If no address confirmed yet, write "TBA — [property type] [suburb]".`,
+Property type: ${context.propertyType}. Location (may be a suburb or a state): ${context.suburb}. One sentence only. If no address confirmed yet, write "TBA — [property type] [location]".`,
     }
 
     try {
