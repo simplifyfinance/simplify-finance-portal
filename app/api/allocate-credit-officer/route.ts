@@ -161,7 +161,7 @@ export async function POST(req: NextRequest) {
                 <tr><td style="color:#666;font-size:13px;padding:3px 0">Stage</td><td style="text-align:right;font-size:13px;padding:3px 0">${deal.stage || 'BC'}</td></tr>
                 <tr><td style="color:#666;font-size:13px;padding:3px 0">Loan type</td><td style="text-align:right;font-size:13px;padding:3px 0">${(deal.bc_data?.template || '').replace(/_/g, ' ') || 'Not specified'}</td></tr>
                 <tr><td style="color:#666;font-size:13px;padding:3px 0">Purchase price</td><td style="text-align:right;font-size:13px;padding:3px 0">${deal.bc_data?.purchasePrice ? '$' + deal.bc_data.purchasePrice : 'Not specified'}</td></tr>
-                <tr><td style="color:#666;font-size:13px;padding:3px 0">Suburb</td><td style="text-align:right;font-size:13px;padding:3px 0">${deal.bc_data?.suburb || 'Not specified'}</td></tr>
+                <tr><td style="color:#666;font-size:13px;padding:3px 0">Suburb / State</td><td style="text-align:right;font-size:13px;padding:3px 0">${deal.bc_data?.suburb || 'Not specified'}</td></tr>
                 <tr><td style="color:#666;font-size:13px;padding:3px 0">Broker</td><td style="text-align:right;font-size:13px;padding:3px 0">${deal.assigned_broker || ''}</td></tr>
               </table>
               <p><a href="https://simplify-finance-portal.vercel.app/deals/${dealId}">Open the deal</a></p>`

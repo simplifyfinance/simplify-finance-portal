@@ -811,7 +811,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
 
     const prompt = `Client: ${firstName} ${lastName}${joint === 'Yes' ? ' & partner' : ''}
 Template: ${templateLabel}
-Suburb: ${suburb || 'not specified'}
+Suburb/State: ${suburb || 'not specified'}
 Property type: ${propertyType}
 Purchase price: $${purchasePrice}
 Deposit: $${deposit}
@@ -906,7 +906,7 @@ Key assumptions: ${checklistText}`
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Scenario details</div>
                 <div className="grid grid-cols-2 gap-2">
-                  <Field label="Suburb"><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
+                  <Field label={['refinance_equity', 'refinance_only'].includes(template) ? 'Suburb' : 'State'}><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
                   {template !== "fhb" && <Field label="Property type"><select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>}
                   {["oo_purchase", "investment_purchase", "refinance_equity"].includes(template) && (
                     <div className="flex items-center gap-2 col-span-2">
@@ -1096,7 +1096,7 @@ Key assumptions: ${checklistText}`
                 <div className="bg-white border-2 border-[#2DBEFF]/40 rounded-xl p-4">
                   <div className="text-xs font-medium text-[#2DBEFF] uppercase tracking-wider mb-3">New purchase</div>
                   <div className="grid grid-cols-2 gap-2">
-                    <Field label="Suburb"><input className={inputCls} value={newPurchaseSuburb} onChange={e => setNewPurchaseSuburb(e.target.value)} /></Field>
+                    <Field label="State"><input className={inputCls} value={newPurchaseSuburb} onChange={e => setNewPurchaseSuburb(e.target.value)} /></Field>
                     <Field label="Property type"><select className={selectCls} value={newPurchasePropertyType} onChange={e => setNewPurchasePropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>
                     <Field label="Purchase price"><NumberInput value={newPurchasePrice} onChange={handleNewPurchasePriceChange} /></Field>
                     <Field label="Deposit/Equity"><NumberInput value={newPurchaseDeposit} onChange={handleNewPurchaseDepositChange} /></Field>
