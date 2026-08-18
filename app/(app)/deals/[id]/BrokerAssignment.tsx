@@ -1,10 +1,11 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { can } from '@/lib/permissions'
 
 export default function BrokerAssignment({ dealId, currentBroker, userRole }: { dealId: string; currentBroker: string; userRole?: string }) {
   const supabase = createSupabaseBrowser()
-  const isAdmin = userRole === 'admin'
+  const isAdmin = can(userRole, 'manageAssignments')
   const [assignedBroker, setAssignedBroker] = useState(currentBroker || '')
   const [brokerOptions, setBrokerOptions] = useState<string[]>([])
   const [showPicker, setShowPicker] = useState(false)

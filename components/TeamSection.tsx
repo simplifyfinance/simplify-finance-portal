@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { ROLES } from '@/lib/permissions'
 
 type UserProfile = {
   id: string
@@ -11,7 +12,7 @@ type UserProfile = {
   active: boolean
 }
 
-const roleOptions = ['admin', 'broker', 'staff']
+const roleOptions = [...ROLES]
 const roleColors: Record<string, string> = {
   admin: 'bg-purple-100 text-purple-700',
   broker: 'bg-blue-100 text-blue-700',

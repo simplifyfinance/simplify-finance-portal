@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
 import BrokerAssignment from './BrokerAssignment'
+import { can } from '@/lib/permissions'
 
 function makeUid() {
   return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)
@@ -265,7 +266,7 @@ export default function LOForm({ deal, onStageChange, userRole }: { deal: any; o
   }
 
   const [d, setD] = useState<LOData>(initData)
-  const canSendToClient = userRole === 'admin' || userRole === 'broker'
+  const canSendToClient = can(userRole, 'sendClientEmails')
 
   useEffect(() => {
     async function syncRateObservations() {

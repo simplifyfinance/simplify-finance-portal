@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { can } from '@/lib/permissions'
 
 async function notifyOfficer(supabase: any, userId: string | null, subject: string, message: string, dealName: string, dealId: string, clientName: string, brokerName: string) {
   if (!userId) return
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (profileError || !profile) return NextResponse.json({ ok: false, error: 'Could not verify permissions' }, { status: 403 })
-  if (profile.role !== 'admin') return NextResponse.json({ ok: false, error: 'Only admins can manually reassign deals' }, { status: 403 })
+  if (!can(profile.role, 'reassignDeals')) return NextResponse.json({ ok: false, error: 'Only admins can manually reassign deals' }, { status: 403 })
 
   const { data: officer, error: officerError } = await supabase
     .from('credit_officers')

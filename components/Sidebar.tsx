@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3, Percent } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createSupabaseBrowser } from "@/lib/supabase-browser"
+import { can, roleLabel as formatRoleLabel } from '@/lib/permissions'
 
 const nav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -44,7 +45,7 @@ export default function Sidebar() {
   }
 
   const initials = profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || '?'
-  const roleLabel = profile?.role === 'admin' ? 'Admin' : profile?.role === 'broker' ? 'Broker' : 'Staff'
+  const roleLabel = formatRoleLabel(profile?.role)
 
   return (
     <aside style={{ background: '#343333' }} className="w-56 min-w-56 flex flex-col text-white h-screen">
@@ -78,7 +79,7 @@ export default function Sidebar() {
           )
         })}
 
-        {profile?.role === 'admin' && (
+        {can(profile?.role, 'manageTeam') && (
           <>
             <div className="text-white/30 text-xs uppercase tracking-widest px-2 mb-2 mt-4">Admin</div>
             {adminNav.map(item => {

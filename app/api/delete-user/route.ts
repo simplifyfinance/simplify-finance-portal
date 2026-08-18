@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
+import { can } from '@/lib/permissions'
 
 export async function POST(req: NextRequest) {
   const { userId } = await req.json()
@@ -11,7 +12,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 })
 
   const { data: profile } = await supabase.from('user_profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') return NextResponse.json({ ok: false, error: 'Only admins can delete team members' }, { status: 403 })
+  if (!can(profile?.role, 'manageTeam')) return NextResponse.json({ ok: false, error: 'Only admins can delete team members' }, { status: 403 })
 
   const supabaseAdmin = createSupabaseAdmin()
 

@@ -5,6 +5,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
 import BrokerAssignment from './BrokerAssignment'
 import CurrencyInput from './CurrencyInput'
+import { can } from '@/lib/permissions'
 
 function annualizeAmount(amount: string | undefined, frequency: string | undefined): number {
   const n = Number(amount) || 0
@@ -560,7 +561,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
   const [markingComplete, setMarkingComplete] = useState(false)
   const [sendingToCreditTeam, setSendingToCreditTeam] = useState(false)
   const [bcSelfAssigned, setBcSelfAssigned] = useState(!!deal.bc_self_assigned)
-  const canSendToClient = userRole === 'admin' || userRole === 'broker'
+  const canSendToClient = can(userRole, 'sendClientEmails')
 
   async function handleBcSelfAssign() {
     const { data: rows, error } = await supabase.from('deals').update({ bc_self_assigned: true }).eq('id', deal.id).select('id')
