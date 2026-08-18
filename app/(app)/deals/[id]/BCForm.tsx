@@ -567,6 +567,23 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
       return
     }
     setBcSelfAssigned(true)
+
+    // Tell Ellie to create the SalesTrekker card now. The route claims the send
+    // atomically, so this can never produce a duplicate.
+    try {
+      const res = await fetch('/api/notify-salestrekker', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId: deal.id, trigger: 'bc_action' })
+      })
+      if (!res.ok) {
+        console.error('[notify-salestrekker] responded', res.status, await res.text())
+        alert('Saved, but the SalesTrekker notification did not send. Please tell Fabio.')
+      }
+    } catch (err) {
+      console.error('[notify-salestrekker] request failed', err)
+      alert('Saved, but the SalesTrekker notification did not send. Please tell Fabio.')
+    }
   }
   const [creditTeamMsg, setCreditTeamMsg] = useState('')
   const [creditTeamErr, setCreditTeamErr] = useState('')
@@ -667,7 +684,20 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
         setCreditTeamMsg('This deal is already assigned to a credit officer.')
       } else {
         setCreditTeamMsg(`Assigned to ${data.assignedTo}${data.emailSent ? ' — notified by email' : ''}`)
-        fetch('/api/notify-salestrekker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId: deal.id, trigger: 'bc_action' }) }).catch(() => {})
+        try {
+          const nres = await fetch('/api/notify-salestrekker', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dealId: deal.id, trigger: 'bc_action' })
+          })
+          if (!nres.ok) {
+            console.error('[notify-salestrekker] responded', nres.status, await nres.text())
+            setCreditTeamErr('Assigned, but the SalesTrekker notification did not send. Tell Fabio.')
+          }
+        } catch (err) {
+          console.error('[notify-salestrekker] request failed', err)
+          setCreditTeamErr('Assigned, but the SalesTrekker notification did not send. Tell Fabio.')
+        }
       }
       setAssignmentRefreshKey(k => k + 1)
     } catch (e: any) {

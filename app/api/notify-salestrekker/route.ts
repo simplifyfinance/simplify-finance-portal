@@ -39,9 +39,21 @@ export async function POST(req: NextRequest) {
 
     // Trigger 1: first BC action on a deal — fires once, whichever happens first
     if (trigger === 'bc_action') {
-      if (deal.salestrekker_created_at) {
-        // Card already exists (shouldn't normally reach here for this trigger, but stay safe)
-        return NextResponse.json({ ok: true, skipped: true })
+      // Atomically claim the send. This UPDATE only matches while the timestamp is
+      // still null, so exactly one caller can ever win it - no duplicate emails to
+      // Ellie however many triggers fire, or how close together.
+      const { data: claimed, error: claimErr } = await supabase
+        .from('deals')
+        .update({ salestrekker_created_at: new Date().toISOString() })
+        .eq('id', dealId)
+        .is('salestrekker_created_at', null)
+        .select('id')
+
+      if (claimErr) {
+        return NextResponse.json({ ok: false, error: claimErr.message }, { status: 500 })
+      }
+      if (!claimed || claimed.length === 0) {
+        return NextResponse.json({ ok: true, skipped: true, reason: 'already notified' })
       }
 
       const ff = deal.fact_find_data || {}
@@ -61,21 +73,28 @@ export async function POST(req: NextRequest) {
         alreadyBcActioned = true
       }
 
-      await notifyEllieCreateCard({
-        dealId,
-        dealName,
-        clientName,
-        brokerName,
-        leadSource: deal.lead_source || '',
-        dealType: deal.deal_type || '',
-        incomeType,
-        internalNotes: ff.internalNotes || '',
-        creditOfficerName,
-        alreadyBcActioned,
-        recipientEmail: ellieEmail
-      })
+      try {
+        await notifyEllieCreateCard({
+          dealId,
+          dealName,
+          clientName,
+          brokerName,
+          leadSource: deal.lead_source || '',
+          dealType: deal.deal_type || '',
+          incomeType,
+          internalNotes: ff.internalNotes || '',
+          creditOfficerName,
+          alreadyBcActioned,
+          recipientEmail: ellieEmail
+        })
+      } catch (e: any) {
+        // Release the claim so a later trigger can retry, rather than a timestamp
+        // permanently blocking an email that never actually sent.
+        await supabase.from('deals').update({ salestrekker_created_at: null }).eq('id', dealId)
+        console.error('[notify-salestrekker] notifyEllieCreateCard failed', e)
+        return NextResponse.json({ ok: false, error: e?.message || 'Notification failed' }, { status: 500 })
+      }
 
-      await supabase.from('deals').update({ salestrekker_created_at: new Date().toISOString() }).eq('id', dealId)
       return NextResponse.json({ ok: true })
     }
 
