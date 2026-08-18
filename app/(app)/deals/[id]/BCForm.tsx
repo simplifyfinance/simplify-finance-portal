@@ -567,11 +567,15 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
       alert('Error saving choice: ' + error.message)
       return
     }
-    if (!rows || rows.length === 0) {
-      alert('DIAGNOSTIC: update reported 0 rows changed, with no error.')
-    } else {
-      alert('DIAGNOSTIC: update changed ' + rows.length + ' row(s).')
-    }
+    const { data: authData } = await supabase.auth.getUser()
+    const { data: selRows, error: selErr } = await supabase.from('deals').select('id').eq('id', deal.id)
+    alert(
+      'DIAGNOSTIC\n' +
+      'browser uid: ' + (authData?.user?.id || 'NONE - not authenticated') + '\n' +
+      'browser can SELECT this deal: ' + (selRows ? selRows.length + ' row(s)' : 'error') + '\n' +
+      'select error: ' + (selErr?.message || 'none') + '\n' +
+      'update changed: ' + (rows ? rows.length : 0) + ' row(s)'
+    )
     setBcSelfAssigned(true)
 
     // Tell Ellie to create the SalesTrekker card now. The route claims the send
