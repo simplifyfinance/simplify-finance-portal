@@ -1190,7 +1190,13 @@ Key assumptions: ${checklistText}`
                     </Field>
                     <Field label="Loan term (years)"><input className={inputCls} value={newPurchaseLoanTerm} onChange={e => setNewPurchaseLoanTerm(e.target.value)} /></Field>
                     <Field label="Loan amount">
-                      <NumberInput value={splits[2]?.amount || ''} onChange={v => setNewPurchaseSplitField('amount', v)} />
+                      <NumberInput value={splits[2]?.amount || ''} onChange={v => {
+                        setNewPurchaseSplitField('amount', v)
+                        const price = parseFloat((newPurchasePrice || '0').replace(/,/g, '')) || 0
+                        const loanAmt = parseFloat((v || '0').replace(/,/g, '')) || 0
+                        const sd = parseFloat((newPurchaseStampDuty || '0').replace(/,/g, '')) || 0
+                        if (price > 0) setNewPurchaseDeposit(formatNumber(Math.max(0, Math.round(price - loanAmt + sd)).toString()))
+                      }} />
                       {(() => {
                         const dep = parseFloat((newPurchaseDeposit || '0').replace(/,/g, '')) || 0
                         const sd = parseFloat((newPurchaseStampDuty || '0').replace(/,/g, '')) || 0
