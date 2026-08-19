@@ -183,7 +183,7 @@ export async function POST(req: NextRequest) {
       const existingLoanN = parseFloat((d.existingLoanBal || '0').replace(/,/g, '')) || 0
       const propertyValueN = parseFloat((d.propertyValue || '0').replace(/,/g, '')) || 0
       const equityReleaseN = parseFloat((opt.equityReleaseAmount || '0').replace(/,/g, '')) || 0
-      const lvrNum = propertyValueN > 0 ? Math.round(((existingLoanN + equityReleaseN) / propertyValueN) * 1000) / 10 : 0
+      const lvrNum = propertyValueN > 0 ? Math.ceil(((existingLoanN + equityReleaseN) / propertyValueN) * 1000) / 10 : 0
       const actions = []
       if (opt.ccPayoff) actions.push((Number(opt.ccPayoffAmount) || 0) > 0 ? `Reduce credit card by $${opt.ccPayoffAmount}` : 'Credit card closed')
       if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by $${opt.hecsPayoffAmount}` : 'HECS closed')
@@ -248,7 +248,7 @@ export async function POST(req: NextRequest) {
     const buildOptionCol = (opt: any, label: string) => {
       const priceNum = parseFloat((opt.purchasePrice || '').replace(/,/g, '')) || 0
       const loanNum = parseFloat((opt.loanAmount || '').replace(/,/g, '')) || 0
-      const lvrNum = priceNum > 0 ? Math.round((loanNum / priceNum) * 1000) / 10 : 0
+      const lvrNum = priceNum > 0 ? Math.ceil((loanNum / priceNum) * 1000) / 10 : 0
       const actions = []
       if (opt.ccPayoff) actions.push((Number(opt.ccPayoffAmount) || 0) > 0 ? `Reduce credit card by $${opt.ccPayoffAmount}` : 'Credit card closed')
       if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by $${opt.hecsPayoffAmount}` : 'HECS closed')
@@ -314,7 +314,7 @@ export async function POST(req: NextRequest) {
     const buildOptionColIP = (opt: any, label: string) => {
       const priceNum = parseFloat((opt.purchasePrice || '').replace(/,/g, '')) || 0
       const loanNum = parseFloat((opt.loanAmount || '').replace(/,/g, '')) || 0
-      const lvrNum = priceNum > 0 ? Math.round((loanNum / priceNum) * 1000) / 10 : 0
+      const lvrNum = priceNum > 0 ? Math.ceil((loanNum / priceNum) * 1000) / 10 : 0
       const actions = []
       if (opt.ccPayoff) actions.push((Number(opt.ccPayoffAmount) || 0) > 0 ? `Reduce credit card by $${opt.ccPayoffAmount}` : 'Credit card closed')
       if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by $${opt.hecsPayoffAmount}` : 'HECS closed')
@@ -406,7 +406,7 @@ export async function POST(req: NextRequest) {
     const priceNum = parseFloat((d.purchasePrice || '').replace(/,/g, '')) || 0
     const lvrCols = splits.map((s: any) => {
       const amountNum = parseFloat((s.amount || '').replace(/,/g, '')) || 0
-      const lvrNum = priceNum > 0 ? Math.round((amountNum / priceNum) * 1000) / 10 : 0
+      const lvrNum = priceNum > 0 ? Math.ceil((amountNum / priceNum) * 1000) / 10 : 0
       let lmiLine = ''
       if (lvrNum > 80) {
         if (s.lmiApplicable === 'Applicable' && s.lmi) {

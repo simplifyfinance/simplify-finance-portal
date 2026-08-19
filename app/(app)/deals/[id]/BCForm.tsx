@@ -564,20 +564,20 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
   if (isPurchaseLinked) {
     const price = parseFloat(purchasePrice.replace(/,/g, '')) || 0
     const loanAmt = parseFloat((splits[0]?.amount || '0').replace(/,/g, '')) || 0
-    lvrPercent = price > 0 ? Math.round((loanAmt / price) * 1000) / 10 : 0
+    lvrPercent = price > 0 ? Math.ceil((loanAmt / price) * 1000) / 10 : 0
   } else if (isRefinanceLinked) {
     const value = parseFloat(propertyValue.replace(/,/g, '')) || 0
     const relevantSplits = template === 'investment_equity' ? splits.slice(0, 2) : splits
     const totalLoan = relevantSplits.reduce((sum, sp) => sum + (parseFloat((sp.amount || '0').replace(/,/g, '')) || 0), 0)
-    lvrPercent = value > 0 ? Math.round((totalLoan / value) * 1000) / 10 : 0
+    lvrPercent = value > 0 ? Math.ceil((totalLoan / value) * 1000) / 10 : 0
   } else if (isBridgingLinked) {
     const price = parseFloat(purchasePrice.replace(/,/g, '')) || 0
     const endDebt = parseFloat((splits[1]?.amount || '0').replace(/,/g, '')) || 0
-    lvrPercent = price > 0 ? Math.round((endDebt / price) * 1000) / 10 : 0
+    lvrPercent = price > 0 ? Math.ceil((endDebt / price) * 1000) / 10 : 0
   } else if (isConstructionLinked) {
     const value = parseFloat(asIfCompleteValue.replace(/,/g, '')) || 0
     const loanAmt = parseFloat((splits[0]?.amount || '0').replace(/,/g, '')) || 0
-    lvrPercent = value > 0 ? Math.round((loanAmt / value) * 1000) / 10 : 0
+    lvrPercent = value > 0 ? Math.ceil((loanAmt / value) * 1000) / 10 : 0
   }
   const [internalNotes, setInternalNotes] = useState(s.internalNotes || '')
   const [brokerSig, setBrokerSig] = useState(s.brokerSig || deal.assigned_broker || 'Fabio')
@@ -1094,7 +1094,7 @@ Key assumptions: ${checklistText}`
                     if (template === 'investment_equity' && i === 2) return null
                     const priceNum = parseFloat(purchasePrice.replace(/,/g, '')) || 0
                     const optAmountNum = parseFloat((s.amount || '0').replace(/,/g, '')) || 0
-                    const optLvrPercent = priceNum > 0 ? Math.round((optAmountNum / priceNum) * 1000) / 10 : 0
+                    const optLvrPercent = priceNum > 0 ? Math.ceil((optAmountNum / priceNum) * 1000) / 10 : 0
                     return (
                     <div key={i} className="bg-gray-50 rounded-lg p-3">
                       <div className="flex justify-between items-center mb-2">
@@ -1183,7 +1183,7 @@ Key assumptions: ${checklistText}`
                         {(() => {
                           const price = parseFloat((newPurchasePrice || '0').replace(/,/g, '')) || 0
                           const loanAmt = parseFloat((splits[2]?.amount || '0').replace(/,/g, '')) || 0
-                          const pct = price > 0 ? Math.round((loanAmt / price) * 1000) / 10 : 0
+                          const pct = price > 0 ? Math.ceil((loanAmt / price) * 1000) / 10 : 0
                           return pct > 0 ? `${pct}%` : '\u2014'
                         })()}
                       </div>
@@ -1227,8 +1227,8 @@ Key assumptions: ${checklistText}`
                 const propertyValueN = parseFloat(propertyValue.replace(/,/g, '')) || 0
                 const equityReleaseN = parseFloat((alt.equityReleaseAmount || '0').replace(/,/g, '')) || 0
                 const altLvr = isRefiEquityAlt
-                  ? (propertyValueN > 0 ? Math.round(((existingLoanN + equityReleaseN) / propertyValueN) * 1000) / 10 : 0)
-                  : (price > 0 ? Math.round((loanAmt / price) * 1000) / 10 : 0)
+                  ? (propertyValueN > 0 ? Math.ceil(((existingLoanN + equityReleaseN) / propertyValueN) * 1000) / 10 : 0)
+                  : (price > 0 ? Math.ceil((loanAmt / price) * 1000) / 10 : 0)
                 return (
                 <div key={alt.id} className="bg-white border-2 border-[#2DBEFF]/40 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-3">
