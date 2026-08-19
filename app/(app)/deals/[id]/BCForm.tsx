@@ -1208,6 +1208,7 @@ Key assumptions: ${checklistText}`
                         <option>Interest only</option>
                       </select>
                     </Field>
+                    <Field label="Repayment"><CurrencyInput className={inputCls} value={splits[2]?.repayment || ''} onChange={v => setNewPurchaseSplitField('repayment', v)} /></Field>
                   </div>
                 </div>
               )}
