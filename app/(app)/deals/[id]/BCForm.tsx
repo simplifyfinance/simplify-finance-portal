@@ -363,8 +363,9 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
     setNewPurchasePrice(val)
     const price = parseFloat(val.replace(/,/g, '')) || 0
     const dep = parseFloat(newPurchaseDeposit.replace(/,/g, '')) || 0
+    const sd = parseFloat((newPurchaseStampDuty || '0').replace(/,/g, '')) || 0
     if (dep > 0) {
-      setSplits(prev => prev.map((sp, idx) => idx === 2 ? { ...sp, amount: formatNumber(Math.max(0, Math.round(price - dep)).toString()) } : sp))
+      setNewPurchaseSplitField('amount', formatNumber(Math.max(0, Math.round(price - (dep - sd))).toString()))
     }
   }
 
@@ -372,8 +373,30 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
     setNewPurchaseDeposit(val)
     const price = parseFloat(newPurchasePrice.replace(/,/g, '')) || 0
     const dep = parseFloat(val.replace(/,/g, '')) || 0
+    const sd = parseFloat((newPurchaseStampDuty || '0').replace(/,/g, '')) || 0
     if (price > 0) {
-      setSplits(prev => prev.map((sp, idx) => idx === 2 ? { ...sp, amount: formatNumber(Math.max(0, Math.round(price - dep)).toString()) } : sp))
+      setNewPurchaseSplitField('amount', formatNumber(Math.max(0, Math.round(price - (dep - sd))).toString()))
+    }
+  }
+
+  // The new purchase loan lives in splits[2]. This creates it if the deal was
+  // saved before that split existed, so the fields always have something to write to.
+  function setNewPurchaseSplitField(field: string, val: string) {
+    setSplits(prev => {
+      const next = [...prev]
+      while (next.length < 3) next.push({ label: 'New purchase', amount: '', rate: '6.39', type: 'P&I' })
+      next[2] = { ...next[2], [field]: val } as any
+      return next
+    })
+  }
+
+  function handleNewPurchaseStampDutyChange(val: string) {
+    setNewPurchaseStampDuty(val)
+    const price = parseFloat(newPurchasePrice.replace(/,/g, '')) || 0
+    const dep = parseFloat(newPurchaseDeposit.replace(/,/g, '')) || 0
+    const sd = parseFloat((val || '0').replace(/,/g, '')) || 0
+    if (price > 0 && dep > 0) {
+      setNewPurchaseSplitField('amount', formatNumber(Math.max(0, Math.round(price - (dep - sd))).toString()))
     }
   }
 
@@ -1154,7 +1177,7 @@ Key assumptions: ${checklistText}`
                         <option value="Combination">Combination of savings &amp; equity</option>
                       </select>
                     </Field>
-                    <Field label="Stamp duty"><NumberInput value={newPurchaseStampDuty} onChange={setNewPurchaseStampDuty} /></Field>
+                    <Field label="Stamp duty"><NumberInput value={newPurchaseStampDuty} onChange={handleNewPurchaseStampDutyChange} /></Field>
                     <Field label="LVR (calculated)">
                       <div className={inputCls + " bg-gray-50 text-gray-700"}>
                         {(() => {
@@ -1166,6 +1189,25 @@ Key assumptions: ${checklistText}`
                       </div>
                     </Field>
                     <Field label="Loan term (years)"><input className={inputCls} value={newPurchaseLoanTerm} onChange={e => setNewPurchaseLoanTerm(e.target.value)} /></Field>
+                    <Field label="Loan amount">
+                      <NumberInput value={splits[2]?.amount || ''} onChange={v => setNewPurchaseSplitField('amount', v)} />
+                      {(() => {
+                        const dep = parseFloat((newPurchaseDeposit || '0').replace(/,/g, '')) || 0
+                        const sd = parseFloat((newPurchaseStampDuty || '0').replace(/,/g, '')) || 0
+                        if (dep <= 0 || sd <= 0) return null
+                        if (sd >= dep) return <div className="text-[11px] text-red-500 mt-1">Stamp duty exceeds the deposit</div>
+                        return <div className="text-[11px] text-gray-500 mt-1">${formatNumber(Math.round(dep - sd).toString())} into the property after stamp duty</div>
+                      })()}
+                    </Field>
+                    <Field label="Rate">
+                      <input className={inputCls} value={splits[2]?.rate || ''} onChange={e => setNewPurchaseSplitField('rate', e.target.value)} />
+                    </Field>
+                    <Field label="Type">
+                      <select className={selectCls} value={splits[2]?.type || 'P&I'} onChange={e => setNewPurchaseSplitField('type', e.target.value)}>
+                        <option>P&I</option>
+                        <option>Interest only</option>
+                      </select>
+                    </Field>
                   </div>
                 </div>
               )}
