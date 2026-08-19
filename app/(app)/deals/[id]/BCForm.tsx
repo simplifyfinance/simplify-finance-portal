@@ -447,13 +447,23 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
     const price = parseFloat(val.replace(/,/g, '')) || 0
     const scenario = altScenarios.find(a => a.id === id)
     const dep = parseFloat((scenario?.deposit || '0').replace(/,/g, '')) || 0
-    setAltScenarios(prev => prev.map(a => a.id === id ? { ...a, purchasePrice: val, loanAmount: formatNumber(Math.max(0, Math.round(price - dep)).toString()) } : a))
+    const sd = parseFloat((scenario?.stampDuty || '0').replace(/,/g, '')) || 0
+    setAltScenarios(prev => prev.map(a => a.id === id ? { ...a, purchasePrice: val, loanAmount: formatNumber(Math.max(0, Math.round(price - (dep - sd))).toString()) } : a))
   }
   function handleAltDepositChange(id: string, val: string) {
     const dep = parseFloat(val.replace(/,/g, '')) || 0
     const scenario = altScenarios.find(a => a.id === id)
     const price = parseFloat((scenario?.purchasePrice || '0').replace(/,/g, '')) || 0
-    setAltScenarios(prev => prev.map(a => a.id === id ? { ...a, deposit: val, loanAmount: formatNumber(Math.max(0, Math.round(price - dep)).toString()) } : a))
+    const sd = parseFloat((scenario?.stampDuty || '0').replace(/,/g, '')) || 0
+    setAltScenarios(prev => prev.map(a => a.id === id ? { ...a, deposit: val, loanAmount: formatNumber(Math.max(0, Math.round(price - (dep - sd))).toString()) } : a))
+
+  }
+  function handleAltStampDutyChange(id: string, val: string) {
+    const sd = parseFloat(val.replace(/,/g, '')) || 0
+    const scenario = altScenarios.find(a => a.id === id)
+    const price = parseFloat((scenario?.purchasePrice || '0').replace(/,/g, '')) || 0
+    const dep = parseFloat((scenario?.deposit || '0').replace(/,/g, '')) || 0
+    setAltScenarios(prev => prev.map(a => a.id === id ? { ...a, stampDuty: val, loanAmount: formatNumber(Math.max(0, Math.round(price - (dep - sd))).toString()) } : a))
   }
   const isMultiOption = template === 'oo_lvr_compare'
 
@@ -477,11 +487,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
     if (!isPurchaseLinked) return
     const price = parseFloat(val.replace(/,/g, '')) || 0
     const dep = parseFloat(deposit.replace(/,/g, '')) || 0
+    const sd = parseFloat(stampDuty.replace(/,/g, '')) || 0
     if (dep > 0) {
-      setSplits(prev => prev.map((sp, idx) => idx === 0 ? { ...sp, amount: formatNumber(Math.max(0, Math.round(price - dep)).toString()) } : sp))
+      // Stamp duty is paid out of the deposit, so only the remainder reduces the loan.
+      setSplits(prev => prev.map((sp, idx) => idx === 0 ? { ...sp, amount: formatNumber(Math.max(0, Math.round(price - (dep - sd))).toString()) } : sp))
     } else {
       const loanAmt = parseFloat((splits[0]?.amount || '0').replace(/,/g, '')) || 0
-      if (loanAmt > 0) setDeposit(formatNumber(Math.max(0, Math.round(price - loanAmt)).toString()))
+      if (loanAmt > 0) setDeposit(formatNumber(Math.max(0, Math.round(price - loanAmt + sd)).toString()))
     }
   }
 
@@ -490,8 +502,22 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
     if (!isPurchaseLinked) return
     const price = parseFloat(purchasePrice.replace(/,/g, '')) || 0
     const dep = parseFloat(val.replace(/,/g, '')) || 0
+    const sd = parseFloat(stampDuty.replace(/,/g, '')) || 0
     if (price > 0) {
-      setSplits(prev => prev.map((sp, idx) => idx === 0 ? { ...sp, amount: formatNumber(Math.max(0, Math.round(price - dep)).toString()) } : sp))
+      setSplits(prev => prev.map((sp, idx) => idx === 0 ? { ...sp, amount: formatNumber(Math.max(0, Math.round(price - (dep - sd))).toString()) } : sp))
+    }
+  }
+
+  // Stamp duty previously had no handler, so changing it never recalculated the
+  // loan. Entering deposit first and stamp duty second left the old figure.
+  function handleStampDutyChange(val: string) {
+    setStampDuty(val)
+    if (!isPurchaseLinked) return
+    const price = parseFloat(purchasePrice.replace(/,/g, '')) || 0
+    const dep = parseFloat(deposit.replace(/,/g, '')) || 0
+    const sd = parseFloat(val.replace(/,/g, '')) || 0
+    if (price > 0 && dep > 0) {
+      setSplits(prev => prev.map((sp, idx) => idx === 0 ? { ...sp, amount: formatNumber(Math.max(0, Math.round(price - (dep - sd))).toString()) } : sp))
     }
   }
 
@@ -500,8 +526,9 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
     if (!isPurchaseLinked || i !== 0) return
     const price = parseFloat(purchasePrice.replace(/,/g, '')) || 0
     const loanAmt = parseFloat(val.replace(/,/g, '')) || 0
+    const sd = parseFloat(stampDuty.replace(/,/g, '')) || 0
     if (price > 0) {
-      setDeposit(formatNumber(Math.max(0, Math.round(price - loanAmt)).toString()))
+      setDeposit(formatNumber(Math.max(0, Math.round(price - loanAmt + sd)).toString()))
     }
   }
 
@@ -925,7 +952,15 @@ Key assumptions: ${checklistText}`
                     </div>
                   )}
                   {!["refinance_equity", "refinance_only", "investment_equity", "construction"].includes(template) && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={handlePurchasePriceChange} /></Field>}
-                  {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "construction"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={handleDepositChange} /></Field>}
+                  {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "construction"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={handleDepositChange} />
+                    {(() => {
+                      const dep = parseFloat(deposit.replace(/,/g, '')) || 0
+                      const sd = parseFloat(stampDuty.replace(/,/g, '')) || 0
+                      if (dep <= 0 || sd <= 0) return null
+                      if (sd >= dep) return <div className="text-[11px] text-red-500 mt-1">Stamp duty exceeds the deposit</div>
+                      return <div className="text-[11px] text-gray-500 mt-1">${formatNumber(Math.round(dep - sd).toString())} into the property after stamp duty</div>
+                    })()}
+                  </Field>}
               {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "buy_sell"].includes(template) && (
                 <Field label="Deposit source">
                   <select className={selectCls} value={depositSource} onChange={e => setDepositSource(e.target.value)}>
@@ -937,7 +972,7 @@ Key assumptions: ${checklistText}`
                   </select>
                 </Field>
               )}
-                  {!["refinance_equity", "refinance_only", "investment_equity"].includes(template) && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={setStampDuty} /></Field>}
+                  {!["refinance_equity", "refinance_only", "investment_equity"].includes(template) && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={handleStampDutyChange} /></Field>}
               {["refinance_equity", "refinance_only", "investment_equity", "buy_sell", "bridging"].includes(template) && <Field label="Existing loan balance"><NumberInput value={existingLoanBal} onChange={handleExistingLoanBalChange} /></Field>}
               {template === "buy_sell" && <Field label="Expected sale price"><NumberInput value={salePrice} onChange={setSalePrice} /></Field>}
               {template === "buy_sell" && <Field label="Agent fees / selling costs"><NumberInput value={agentFees} onChange={setAgentFees} /></Field>}
@@ -1172,7 +1207,7 @@ Key assumptions: ${checklistText}`
                         <option value="Combination">Combination of savings &amp; equity</option>
                       </select>
                     </Field>
-                    <Field label="Stamp duty"><NumberInput value={alt.stampDuty} onChange={v => updateAltScenario(alt.id, 'stampDuty', v)} /></Field>
+                    <Field label="Stamp duty"><NumberInput value={alt.stampDuty} onChange={v => handleAltStampDutyChange(alt.id, v)} /></Field>
                     <Field label="Loan amount"><input className={inputCls} value={alt.loanAmount} onChange={e => updateAltScenario(alt.id, 'loanAmount', e.target.value)} /></Field>
                     <Field label="Rate"><input className={inputCls} value={alt.rate} onChange={e => updateAltScenario(alt.id, 'rate', e.target.value)} /></Field>
                     <Field label="Repayment"><CurrencyInput className={inputCls} value={alt.repayment || ''} onChange={v => updateAltScenario(alt.id, 'repayment', v)} /></Field>
