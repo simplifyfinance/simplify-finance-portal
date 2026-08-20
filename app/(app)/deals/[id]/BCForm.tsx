@@ -313,7 +313,12 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
     loadFromSupabase()
   }, [deal.id])
 
-  const s = getSaved()
+  // Load from the database copy passed in on the deal, NOT from localStorage.
+  // localStorage is a per-browser draft cache keyed only by deal id, so it showed
+  // one user another user's blank state, and an empty cache rendered a blank form
+  // that the autosave could then write back over the real record.
+  const saved = getSaved()
+  const s = (deal.bc_data && Object.keys(deal.bc_data).length > 0) ? deal.bc_data : saved
   const ff = deal.fact_find_data || {}
   const ffApp = (ff.applicants || [])[0] || {}
   const ffApp2 = (ff.applicants || [])[1] || {}
