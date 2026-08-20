@@ -224,6 +224,14 @@ export default function LOForm({ deal, onStageChange, userRole }: { deal: any; o
   }
 
   const initData = (): LOData => {
+    // Database first, same as FactFindForm. Reading localStorage first meant two people
+    // opening the same deal saw different data, and an empty cache built blank defaults
+    // over the top of a real record.
+    if (deal?.lo_data && Object.keys(deal.lo_data).length > 0) {
+      const fromDb: any = deal.lo_data
+      if (!fromDb.refinanceSplits) fromDb.refinanceSplits = initRefinanceSplits()
+      return fromDb
+    }
     const saved = typeof window !== 'undefined' ? localStorage.getItem(saveKey) : null
     if (saved) {
       const parsed = JSON.parse(saved)

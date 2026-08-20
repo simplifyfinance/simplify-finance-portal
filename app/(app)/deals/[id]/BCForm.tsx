@@ -662,11 +662,16 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
     localStorage.setItem(saveKey, JSON.stringify(data))
     onDataChange?.(data)
     const timeoutId = setTimeout(() => {
-      supabase.from('deals').update({ bc_data: data }).eq('id', deal.id).then(({ error }) => {
-        if (error) { console.error('BC autosave failed:', error); setSaveError(error.message) }
-        else setSaveError('')
+      // Verify the write actually landed. RLS denials return zero rows with NO error, so
+      // checking `error` alone reports success on a write that saved nothing. setSavedAt
+      // previously fired here regardless of outcome - the form said "Saved" while nothing
+      // reached the database, which is why silent failures went unnoticed for weeks.
+      supabase.from('deals').update({ bc_data: data }).eq('id', deal.id).select('id').then(({ data: rows, error }) => {
+        if (error) { console.error('BC autosave failed:', error); setSaveError('NOT SAVED - ' + error.message); return }
+        if (!rows || rows.length === 0) { console.error('BC autosave affected zero rows'); setSaveError('NOT SAVED - your changes did not reach the database. Do not close this tab.'); return }
+        setSaveError('')
+        setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
       })
-      setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
     }, 700)
     return () => clearTimeout(timeoutId)
   }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])

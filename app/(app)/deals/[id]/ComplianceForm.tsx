@@ -233,6 +233,10 @@ export default function ComplianceForm({ deal }: { deal: any }) {
   }
 
   const initData = (): ComplianceData => {
+    // Database first, same as FactFindForm.
+    if (deal?.compliance_data && Object.keys(deal.compliance_data).length > 0) {
+      return deal.compliance_data as ComplianceData
+    }
     const saved = typeof window !== 'undefined' ? localStorage.getItem(saveKey) : null
     if (saved) return JSON.parse(saved)
     const apps = getApplicants()
