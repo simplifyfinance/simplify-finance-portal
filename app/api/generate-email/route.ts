@@ -561,7 +561,10 @@ export async function POST(req: NextRequest) {
       notesBox(notes) + sig(b)
 
   } else if (template === 'investment_equity') {
-    const totalCost = d.purchasePrice && d.stampDuty ? `$${d.purchasePrice} + $${d.stampDuty}` : ''
+    const npPrice   = d.newPurchasePrice     || d.purchasePrice || ''
+    const npStamp   = d.newPurchaseStampDuty || d.stampDuty     || ''
+    const npDeposit = d.newPurchaseDeposit   || d.equityRelease || d.deposit || ''
+    const totalCost = npPrice && npStamp ? `$${npPrice} + $${npStamp}` : ''
     const existingLoanCol = `
       <p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 6px">Existing loan refinanced</p>
       <p style="font-size:11px;color:#555;margin:2px 0">Loan amount: $${d.splits?.[0]?.amount || ''}</p>
@@ -583,14 +586,14 @@ export async function POST(req: NextRequest) {
       p('We have now finalised your review as you are looking at purchasing an owner-occupied/investment property.') +
       p('We would use equity in your owner-occupied/investment property to help fund the deposit plus stamp duty costs.') +
       p('A second loan will be set up against your new purchase, so all properties are stand alone — these are two separate securities, not cross-collateralised.') +
-      p(`Provided you are ok to use equity, we could look at a purchase price of <strong>$${d.purchasePrice || '[amount]'}</strong>.`) +
+      p(`Provided you are ok to use equity, we could look at a purchase price of <strong>$${npPrice || '[amount]'}</strong>.`) +
       p13('Your numbers would be:') +
       card('Summary',
-        row('Purchase price', '$' + (d.purchasePrice || '')) +
-        row('Stamp duty', '$' + (d.stampDuty || '')) +
+        row('Purchase price', '$' + npPrice) +
+        row('Stamp duty', '$' + npStamp) +
         row('Total cost (plus solicitor\'s fees and incidentals)', totalCost) +
         row('Loan amount', '$' + (d.splits?.[2]?.amount || '')) +
-        row('Deposit needed (from equity release and personal savings)', '$' + (d.equityRelease || ''))
+        row('Deposit needed (from equity release and personal savings)', '$' + npDeposit)
       ) +
       p13('Below is a breakdown of the structure:') +
       `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:14px"><tr>
