@@ -296,7 +296,7 @@ function NumberInput({ value, onChange, placeholder }: { value: string; onChange
   )
 }
 
-export default function BCForm({ deal, onDataChange, onStageChange, userRole }: { deal: any; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void; userRole?: string }) {
+export default function BCForm({ deal, onDataChange, onStageChange, userRole, onSaveStatus }: { deal: any; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void }) {
   // The database is the only store. No browser-side copy and no fallback: a per-browser
   // cache keyed only by deal id showed one user another user's state, and an empty cache
   // rendered a blank form that the autosave then wrote back over the real record.
@@ -635,6 +635,8 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
   const [creditTeamErr, setCreditTeamErr] = useState('')
   const [assignmentRefreshKey, setAssignmentRefreshKey] = useState(0)
   const [saveError, setSaveError] = useState('')
+  // Mirror save state up to the deal header, which owns the single indicator.
+  useEffect(() => { onSaveStatus?.({ at: savedAt, error: saveError }) }, [savedAt, saveError])
   const [clientProceeded, setClientProceeded] = useState<boolean>(!!deal.client_proceeded)
   const [showMoveToLoPopup, setShowMoveToLoPopup] = useState(false)
   const [sendingMoveToLo, setSendingMoveToLo] = useState(false)
@@ -902,8 +904,6 @@ Key assumptions: ${checklistText}`
             {label}
           </button>
         ))}
-        {savedAt && <span className="text-xs text-gray-400 ml-auto">✓ Autosaved {savedAt}</span>}
-        {saveError && <span className="text-xs text-red-500 ml-2">⚠ Save failed: {saveError}</span>}
       </div>
 
 

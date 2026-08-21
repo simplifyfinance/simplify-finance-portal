@@ -183,7 +183,7 @@ function LibraryField({ label, value, onChange }: { label: string; value: string
   )
 }
 
-export default function LOForm({ deal, onStageChange, userRole }: { deal: any; onStageChange?: (stage: string) => void; userRole?: string }) {
+export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: { deal: any; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `lo_${deal.id}`
   const bc = deal.bc_data || {}
@@ -197,6 +197,8 @@ export default function LOForm({ deal, onStageChange, userRole }: { deal: any; o
   const [activeTab, setActiveTab] = useState<'form' | 'preview'>('form')
   const [savedAt, setSavedAt] = useState('')
   const [saveError, setSaveError] = useState('')
+  // Mirror save state up to the deal header, which owns the single indicator.
+  useEffect(() => { onSaveStatus?.({ at: savedAt, error: saveError }) }, [savedAt, saveError])
   const [newDoc, setNewDoc] = useState('')
   const [newCriteria, setNewCriteria] = useState('')
   const [sending, setSending] = useState(false)
@@ -998,7 +1000,7 @@ export default function LOForm({ deal, onStageChange, userRole }: { deal: any; o
           </div>
 
           <div className="flex items-center justify-between">
-            <span className={saveError ? "text-xs font-semibold text-red-600" : "text-xs text-gray-400"}>{saveError || (savedAt ? `Autosaved at ${savedAt}` : '')}</span>
+            
             <button onClick={generateEmail} disabled={generating} className="bg-[#2DBEFF] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-400 transition disabled:opacity-50">
               {generating ? 'Generating email...' : 'Generate LO email'}
             </button>

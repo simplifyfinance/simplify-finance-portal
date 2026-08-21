@@ -17,6 +17,9 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   const [dealData, setDealData] = useState(deal)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState(deal.deal_name)
+  // One save indicator for the whole deal, so it sits in the same place on every tab.
+  // Each form reports up rather than rendering its own label wherever that form ends.
+  const [saveStatus, setSaveStatus] = useState<{ at?: string; error?: string }>({})
   const [cloning, setCloning] = useState(false)
 
   async function saveDealName() {
@@ -82,7 +85,12 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
             </div>
           ) : (
             <div className="flex items-center gap-2 mb-1">
-              <div className="text-lg font-semibold">{dealData.deal_name}</div>
+              <div className="flex items-center gap-3">
+                <div className="text-lg font-semibold">{dealData.deal_name}</div>
+                {saveStatus.error
+                  ? <span className="text-xs font-semibold text-red-600">{saveStatus.error}</span>
+                  : saveStatus.at ? <span className="text-xs text-gray-400 whitespace-nowrap">Autosaved {saveStatus.at}</span> : null}
+              </div>
               <button onClick={() => setEditingName(true)} className="text-xs text-[#2DBEFF] hover:underline">✎ Edit</button>
             </div>
           )}
@@ -132,10 +140,10 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
         ))}
       </div>
 
-      {stage === 'FactFind' && <FactFindForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} />}
-      {stage === 'BC' && <BCForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} userRole={userRole} />}
-      {stage === 'LO' && <LOForm deal={dealData} onStageChange={changeStage} userRole={userRole} />}
-      {stage === 'Compliance' && <ComplianceForm deal={dealData} />}
+      {stage === 'FactFind' && <FactFindForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
+      {stage === 'BC' && <BCForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
+      {stage === 'LO' && <LOForm deal={dealData} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
+      {stage === 'Compliance' && <ComplianceForm deal={dealData} onSaveStatus={setSaveStatus} />}
     </div>
   )
 }

@@ -320,7 +320,7 @@ function OwnershipCheckboxes({ applicants, ownership, onChange, label = 'Respons
   )
 }
 
-export default function FactFindForm({ deal, onDataChange, onDealFieldChange }: { deal: any; onDataChange?: (d: FactFindData) => void; onDealFieldChange?: (field: string, value: string) => void }) {
+export default function FactFindForm({ deal, onDataChange, onDealFieldChange, onSaveStatus }: { deal: any; onDataChange?: (d: FactFindData) => void; onDealFieldChange?: (field: string, value: string) => void; onSaveStatus?: (s: { at?: string; error?: string }) => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `fact_find_${deal.id}`
   const bc = deal.bc_data || {}
@@ -367,6 +367,8 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange }: 
   const [activeApplicant, setActiveApplicant] = useState(0)
   const [savedAt, setSavedAt] = useState('')
   const [saveError, setSaveError] = useState('')
+  // Mirror save state up to the deal header, which owns the single indicator.
+  useEffect(() => { onSaveStatus?.({ at: savedAt, error: saveError }) }, [savedAt, saveError])
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
@@ -1599,7 +1601,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange }: 
         </div>
       )}
 
-      <div className={saveError ? "text-xs font-semibold text-red-600 text-right" : "text-xs text-gray-400 text-right"}>{saveError || (savedAt ? `Autosaved at ${savedAt}` : '')}</div>
+      
       </div>
     </div>
   )

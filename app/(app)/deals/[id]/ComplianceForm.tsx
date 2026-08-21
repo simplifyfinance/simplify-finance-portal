@@ -187,7 +187,7 @@ function AIButton({ onClick, loading, label = 'Generate with AI' }: { onClick: (
   )
 }
 
-export default function ComplianceForm({ deal }: { deal: any }) {
+export default function ComplianceForm({ deal, onSaveStatus }: { deal: any; onSaveStatus?: (s: { at?: string; error?: string }) => void }) {
   const supabase = createSupabaseBrowser()
   const [styleNotes, setStyleNotes] = useState<string[]>([])
   const [flaggingField, setFlaggingField] = useState<string | null>(null)
@@ -316,6 +316,8 @@ export default function ComplianceForm({ deal }: { deal: any }) {
   const [generating, setGenerating] = useState<Record<string, boolean>>({})
   const [savedAt, setSavedAt] = useState('')
   const [saveError, setSaveError] = useState('')
+  // Mirror save state up to the deal header, which owns the single indicator.
+  useEffect(() => { onSaveStatus?.({ at: savedAt, error: saveError }) }, [savedAt, saveError])
   const [showValidation, setShowValidation] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [stage, setStage] = useState<'needs' | 'risks' | 'product' | 'comments' | 'expenses'>('needs')
@@ -989,7 +991,7 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
 
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-400">
-              {saveError ? <span className="font-semibold text-red-600">{saveError}</span> : (savedAt ? `Autosaved at ${savedAt}` : '')}
+              
               {complianceCompletedAt && <span className="ml-3 text-green-600">✓ Compliance completed</span>}
             </span>
           </div>
@@ -1064,7 +1066,7 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
 
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-400">
-              {saveError ? <span className="font-semibold text-red-600">{saveError}</span> : (savedAt ? `Autosaved at ${savedAt}` : '')}
+              
               {complianceCompletedAt && <span className="ml-3 text-green-600">✓ Compliance completed</span>}
             </span>
             <button onClick={handlePushToSalesTrekker}
