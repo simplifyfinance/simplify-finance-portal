@@ -237,8 +237,6 @@ export default function ComplianceForm({ deal }: { deal: any }) {
     if (deal?.compliance_data && Object.keys(deal.compliance_data).length > 0) {
       return deal.compliance_data as ComplianceData
     }
-    const saved = typeof window !== 'undefined' ? localStorage.getItem(saveKey) : null
-    if (saved) return JSON.parse(saved)
     const apps = getApplicants()
     const risks: Record<string, RiskData> = {}
     apps.forEach(a => { risks[a.name] = defaultRisk() })
@@ -317,6 +315,7 @@ export default function ComplianceForm({ deal }: { deal: any }) {
   const [activeApplicant, setActiveApplicant] = useState(0)
   const [generating, setGenerating] = useState<Record<string, boolean>>({})
   const [savedAt, setSavedAt] = useState('')
+  const [saveError, setSaveError] = useState('')
   const [showValidation, setShowValidation] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [stage, setStage] = useState<'needs' | 'risks' | 'product' | 'comments' | 'expenses'>('needs')
@@ -333,9 +332,18 @@ export default function ComplianceForm({ deal }: { deal: any }) {
   }, [])
 
   useEffect(() => {
-    localStorage.setItem(saveKey, JSON.stringify(d))
-    supabase.from('deals').update({ compliance_data: d }).eq('id', deal.id).then(() => {})
-    setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+    // The database is the only store - no localStorage copy. Debounced because this
+    // previously wrote on every keystroke, and the row count is now checked because
+    // a refused write returns zero rows with no error.
+    const t = setTimeout(() => {
+      supabase.from('deals').update({ compliance_data: d }).eq('id', deal.id).select('id').then(({ data: rows, error }) => {
+        if (error) { console.error('Compliance autosave failed:', error); setSaveError('NOT SAVED - ' + error.message); return }
+        if (!rows || rows.length === 0) { console.error('Compliance autosave affected zero rows'); setSaveError('NOT SAVED - your changes did not reach the database. Do not close this tab.'); return }
+        setSaveError('')
+        setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+      })
+    }, 700)
+    return () => clearTimeout(t)
   }, [d])
 
   function updateRisk(applicant: string, field: keyof RiskData, value: string) {
@@ -981,7 +989,7 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
 
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-400">
-              {savedAt ? `Autosaved at ${savedAt}` : ''}
+              {saveError ? <span className="font-semibold text-red-600">{saveError}</span> : (savedAt ? `Autosaved at ${savedAt}` : '')}
               {complianceCompletedAt && <span className="ml-3 text-green-600">✓ Compliance completed</span>}
             </span>
           </div>
@@ -1056,7 +1064,7 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
 
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-400">
-              {savedAt ? `Autosaved at ${savedAt}` : ''}
+              {saveError ? <span className="font-semibold text-red-600">{saveError}</span> : (savedAt ? `Autosaved at ${savedAt}` : '')}
               {complianceCompletedAt && <span className="ml-3 text-green-600">✓ Compliance completed</span>}
             </span>
             <button onClick={handlePushToSalesTrekker}

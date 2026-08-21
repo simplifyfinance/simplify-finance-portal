@@ -297,28 +297,11 @@ function NumberInput({ value, onChange, placeholder }: { value: string; onChange
 }
 
 export default function BCForm({ deal, onDataChange, onStageChange, userRole }: { deal: any; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void; userRole?: string }) {
-  const saveKey = `bc-form-${deal.id}`
-
-  const getSaved = () => {
-    try { return JSON.parse(localStorage.getItem(saveKey) || '{}') } catch { return {} }
-  }
-
-  useEffect(() => {
-    async function loadFromSupabase() {
-      const { data } = await supabase.from('deals').select('bc_data').eq('id', deal.id).single()
-      if (data?.bc_data && Object.keys(data.bc_data).length > 0) {
-        localStorage.setItem(saveKey, JSON.stringify(data.bc_data))
-      }
-    }
-    loadFromSupabase()
-  }, [deal.id])
-
-  // Load from the database copy passed in on the deal, NOT from localStorage.
-  // localStorage is a per-browser draft cache keyed only by deal id, so it showed
-  // one user another user's blank state, and an empty cache rendered a blank form
-  // that the autosave could then write back over the real record.
-  const saved = getSaved()
-  const s = (deal.bc_data && Object.keys(deal.bc_data).length > 0) ? deal.bc_data : saved
+  // The database is the only store. No browser-side copy and no fallback: a per-browser
+  // cache keyed only by deal id showed one user another user's state, and an empty cache
+  // rendered a blank form that the autosave then wrote back over the real record.
+  // bc_data arrives on the deal prop, already fetched server-side.
+  const s = (deal.bc_data && Object.keys(deal.bc_data).length > 0) ? deal.bc_data : {}
   const ff = deal.fact_find_data || {}
   const ffApp = (ff.applicants || [])[0] || {}
   const ffApp2 = (ff.applicants || [])[1] || {}
@@ -659,7 +642,6 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole }: 
 
   useEffect(() => {
     const data = buildBcData()
-    localStorage.setItem(saveKey, JSON.stringify(data))
     onDataChange?.(data)
     const timeoutId = setTimeout(() => {
       // Verify the write actually landed. RLS denials return zero rows with NO error, so

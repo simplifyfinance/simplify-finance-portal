@@ -196,6 +196,7 @@ export default function LOForm({ deal, onStageChange, userRole }: { deal: any; o
   const [emailHtml, setEmailHtml] = useState('')
   const [activeTab, setActiveTab] = useState<'form' | 'preview'>('form')
   const [savedAt, setSavedAt] = useState('')
+  const [saveError, setSaveError] = useState('')
   const [newDoc, setNewDoc] = useState('')
   const [newCriteria, setNewCriteria] = useState('')
   const [sending, setSending] = useState(false)
@@ -231,12 +232,6 @@ export default function LOForm({ deal, onStageChange, userRole }: { deal: any; o
       const fromDb: any = deal.lo_data
       if (!fromDb.refinanceSplits) fromDb.refinanceSplits = initRefinanceSplits()
       return fromDb
-    }
-    const saved = typeof window !== 'undefined' ? localStorage.getItem(saveKey) : null
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      if (!parsed.refinanceSplits) parsed.refinanceSplits = initRefinanceSplits()
-      return parsed
     }
     const initialTemplate = bc.template?.startsWith('refinance') ? 'lo_refinance' : bc.template === 'bridging' ? 'lo_bridging' : 'lo_purchase'
     return {
@@ -374,9 +369,19 @@ export default function LOForm({ deal, onStageChange, userRole }: { deal: any; o
   }, [])
 
   useEffect(() => {
-    localStorage.setItem(saveKey, JSON.stringify(d))
-    supabase.from('deals').update({ lo_data: d }).eq('id', deal.id).then(() => {})
-    setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+    // The database is the only store. No localStorage copy - a per-browser cache keyed only
+    // by deal id showed one user another user's state, and let a blank form overwrite a real
+    // record. Debounced because this previously wrote on every keystroke, which hammers the
+    // database and lets an older payload land after a newer one.
+    const t = setTimeout(() => {
+      supabase.from('deals').update({ lo_data: d }).eq('id', deal.id).select('id').then(({ data: rows, error }) => {
+        if (error) { console.error('LO autosave failed:', error); setSaveError('NOT SAVED - ' + error.message); return }
+        if (!rows || rows.length === 0) { console.error('LO autosave affected zero rows'); setSaveError('NOT SAVED - your changes did not reach the database. Do not close this tab.'); return }
+        setSaveError('')
+        setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+      })
+    }, 700)
+    return () => clearTimeout(t)
   }, [d])
 
   const uniqueLenders = Array.from(new Map(allProducts.map(p => [p.lender_id, { id: p.lender_id, name: p.lender_name }])).values()).sort((a, b) => a.name.localeCompare(b.name))
@@ -993,7 +998,7 @@ export default function LOForm({ deal, onStageChange, userRole }: { deal: any; o
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">{savedAt ? `Autosaved at ${savedAt}` : ''}</span>
+            <span className={saveError ? "text-xs font-semibold text-red-600" : "text-xs text-gray-400"}>{saveError || (savedAt ? `Autosaved at ${savedAt}` : '')}</span>
             <button onClick={generateEmail} disabled={generating} className="bg-[#2DBEFF] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-400 transition disabled:opacity-50">
               {generating ? 'Generating email...' : 'Generate LO email'}
             </button>

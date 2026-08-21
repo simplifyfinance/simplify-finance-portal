@@ -348,8 +348,6 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange }: 
     if (deal?.fact_find_data && Object.keys(deal.fact_find_data).length > 0) {
       return deal.fact_find_data as FactFindData
     }
-    const saved = typeof window !== 'undefined' ? localStorage.getItem(saveKey) : null
-    if (saved) return JSON.parse(saved)
     return {
       applicants: getInitialApplicants(),
       assets: [],
@@ -368,14 +366,19 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange }: 
   const [addIncomeMenuOpen, setAddIncomeMenuOpen] = useState(false)
   const [activeApplicant, setActiveApplicant] = useState(0)
   const [savedAt, setSavedAt] = useState('')
+  const [saveError, setSaveError] = useState('')
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    localStorage.setItem(saveKey, JSON.stringify(d))
+    // The database is the only store - no localStorage copy. The row count is checked
+    // because a write refused by row-level security returns zero rows and no error.
     onDataChange?.(d)
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
     saveTimeoutRef.current = setTimeout(() => {
-      supabase.from('deals').update({ fact_find_data: d }).eq('id', deal.id).then(() => {
+      supabase.from('deals').update({ fact_find_data: d }).eq('id', deal.id).select('id').then(({ data: rows, error }) => {
+        if (error) { console.error('Fact find autosave failed:', error); setSaveError('NOT SAVED - ' + error.message); return }
+        if (!rows || rows.length === 0) { console.error('Fact find autosave affected zero rows'); setSaveError('NOT SAVED - your changes did not reach the database. Do not close this tab.'); return }
+        setSaveError('')
         setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
       })
     }, 600)
@@ -1596,7 +1599,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange }: 
         </div>
       )}
 
-      <div className="text-xs text-gray-400 text-right">{savedAt ? `Autosaved at ${savedAt}` : ''}</div>
+      <div className={saveError ? "text-xs font-semibold text-red-600 text-right" : "text-xs text-gray-400 text-right"}>{saveError || (savedAt ? `Autosaved at ${savedAt}` : '')}</div>
       </div>
     </div>
   )
