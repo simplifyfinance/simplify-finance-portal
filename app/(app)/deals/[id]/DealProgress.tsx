@@ -6,7 +6,7 @@
 const STEPS = [
   { key: 'created_at',              label: 'Fact Find' },
   { key: 'bc_completed_at',         label: 'BC' },
-  { key: 'lo_completed_at',         label: 'Lending' },
+  { key: 'lo_completed_at',         label: 'Lending options' },
   { key: 'compliance_completed_at', label: 'Compliance' },
   { key: 'lodged_at',               label: 'Lodged' },
   { key: 'preapproval_at',          label: 'Preapproved' },
@@ -31,19 +31,21 @@ export default function DealProgress({ deal }: { deal: any }) {
       <div className="relative h-[3px] mx-[6.25%] bg-[#dfe4e9] rounded">
         <div className="absolute left-0 top-0 h-[3px] rounded bg-[#12A150]" style={{ width: `${fill}%` }} />
       </div>
-      <div className="flex -mt-[9px]">
+      <div className="flex -mt-[11px]">
         {STEPS.map((s, i) => {
           const isDone = done[i]
           const isNow = !isDone && i === currentIdx
           return (
             <div key={s.key} className="flex-1 text-center">
-              <div className={`w-[15px] h-[15px] rounded-full mx-auto border-[3px] flex items-center justify-center ${
-                isDone ? 'bg-[#12A150] border-[#12A150]'
-                : isNow ? 'bg-white border-[#2DBEFF] shadow-[0_0_0_4px_rgba(45,190,255,.16)]'
-                : 'bg-white border-[#dfe4e9]'}`}>
+              <div className={`w-[18px] h-[18px] rounded-full mx-auto flex items-center justify-center ${
+                isDone ? 'bg-[#12A150]'
+                : isNow ? 'bg-white border-2 border-[#2DBEFF] shadow-[0_0_0_4px_rgba(45,190,255,.16)]'
+                : 'bg-white border-2 border-[#dfe4e9]'}`}>
                 {isDone && (
-                  <span className="block w-[4px] h-[7px] border-solid border-white"
-                        style={{ borderWidth: '0 2px 2px 0', transform: 'rotate(45deg) translate(-1px,-1px)' }} />
+                  <svg viewBox="0 0 12 12" className="w-[11px] h-[11px]" fill="none"
+                       stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2.5 6.4 L4.8 8.7 L9.5 3.6" />
+                  </svg>
                 )}
               </div>
               <div className={`text-[11.5px] mt-[9px] ${
