@@ -37,10 +37,17 @@ export default function DealProgress({ deal }: { deal: any }) {
           const isNow = !isDone && i === currentIdx
           return (
             <div key={s.key} className="flex-1 text-center">
-              <div className={`w-[15px] h-[15px] rounded-full mx-auto border-[3px] ${
+              <div className={`w-4 h-4 rounded-full mx-auto border-2 flex items-center justify-center ${
                 isDone ? 'bg-[#12A150] border-[#12A150]'
                 : isNow ? 'bg-white border-[#2DBEFF] ring-4 ring-[#2DBEFF]/20'
-                : 'bg-white border-gray-200'}`} />
+                : 'bg-white border-gray-200'}`}>
+                {isDone && (
+                  <svg viewBox="0 0 12 12" className="w-[10px] h-[10px]" fill="none"
+                       stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 6.4 L4.6 9 L10 3.2" />
+                  </svg>
+                )}
+              </div>
               <div className={`text-[11.5px] mt-2 ${
                 isDone ? 'text-gray-600' : isNow ? 'text-[#2DBEFF] font-semibold' : 'text-gray-300'}`}>{s.label}</div>
               <div className="text-[10.5px] text-gray-400 min-h-[14px]">{fmt(deal?.[s.key])}</div>
