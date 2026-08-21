@@ -6,7 +6,7 @@
 const STEPS = [
   { key: 'created_at',              label: 'Fact Find' },
   { key: 'bc_completed_at',         label: 'BC' },
-  { key: 'lo_completed_at',         label: 'Lending options' },
+  { key: 'lo_completed_at',         label: 'Lending Options' },
   { key: 'compliance_completed_at', label: 'Compliance' },
   { key: 'lodged_at',               label: 'Lodged' },
   { key: 'preapproval_at',          label: 'Preapproved' },
@@ -31,7 +31,7 @@ export default function DealProgress({ deal }: { deal: any }) {
       <div className="relative h-[3px] mx-[6.25%] bg-[#dfe4e9] rounded">
         <div className="absolute left-0 top-0 h-[3px] rounded bg-[#12A150]" style={{ width: `${fill}%` }} />
       </div>
-      <div className="flex -mt-[11px]">
+      <div className="relative z-10 flex -mt-[11px]">
         {STEPS.map((s, i) => {
           const isDone = done[i]
           const isNow = !isDone && i === currentIdx
