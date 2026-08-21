@@ -9,6 +9,7 @@ import LOForm from './LOForm'
 import ComplianceForm from './ComplianceForm'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
 import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
+import DealProgress from './DealProgress'
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
   const validStages = ['FactFind', 'BC', 'LO', 'Compliance']
@@ -130,6 +131,8 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           )}
         </div>
       </div>
+
+      <DealProgress deal={dealData} />
 
       <div className="flex gap-2 mb-6">
         {tabs.map(({ key, label }) => (
