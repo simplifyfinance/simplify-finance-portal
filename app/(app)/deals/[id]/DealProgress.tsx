@@ -28,7 +28,7 @@ export default function DealProgress({ deal }: { deal: any }) {
 
   return (
     <div className="bg-white border border-gray-100 rounded-xl px-6 pt-5 pb-3 mb-4">
-      <div className="relative h-[3px] mx-[6.25%] bg-gray-200 rounded">
+      <div className="relative h-[3px] mx-[6.25%] bg-[#dfe4e9] rounded">
         <div className="absolute left-0 top-0 h-[3px] rounded bg-[#12A150]" style={{ width: `${fill}%` }} />
       </div>
       <div className="flex -mt-[9px]">
@@ -37,20 +37,20 @@ export default function DealProgress({ deal }: { deal: any }) {
           const isNow = !isDone && i === currentIdx
           return (
             <div key={s.key} className="flex-1 text-center">
-              <div className={`w-4 h-4 rounded-full mx-auto border-2 flex items-center justify-center ${
+              <div className={`w-[15px] h-[15px] rounded-full mx-auto border-[3px] flex items-center justify-center ${
                 isDone ? 'bg-[#12A150] border-[#12A150]'
-                : isNow ? 'bg-white border-[#2DBEFF] ring-4 ring-[#2DBEFF]/20'
-                : 'bg-white border-gray-200'}`}>
+                : isNow ? 'bg-white border-[#2DBEFF] shadow-[0_0_0_4px_rgba(45,190,255,.16)]'
+                : 'bg-white border-[#dfe4e9]'}`}>
                 {isDone && (
-                  <svg viewBox="0 0 12 12" className="w-[10px] h-[10px]" fill="none"
-                       stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M2 6.4 L4.6 9 L10 3.2" />
-                  </svg>
+                  <span className="block w-[4px] h-[7px] border-solid border-white"
+                        style={{ borderWidth: '0 2px 2px 0', transform: 'rotate(45deg) translate(-1px,-1px)' }} />
                 )}
               </div>
-              <div className={`text-[11.5px] mt-2 ${
-                isDone ? 'text-gray-600' : isNow ? 'text-[#2DBEFF] font-semibold' : 'text-gray-300'}`}>{s.label}</div>
-              <div className="text-[10.5px] text-gray-400 min-h-[14px]">{fmt(deal?.[s.key])}</div>
+              <div className={`text-[11.5px] mt-[9px] ${
+                isDone ? 'text-[#5c6773] font-medium'
+                : isNow ? 'text-[#2DBEFF] font-bold'
+                : 'text-[#b0b7bf] font-medium'}`}>{s.label}</div>
+              <div className="text-[10.5px] text-[#a8b0b8] mt-[2px] min-h-[14px]">{fmt(deal?.[s.key])}</div>
             </div>
           )
         })}
