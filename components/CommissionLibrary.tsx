@@ -43,6 +43,8 @@ export default function CommissionLibrary() {
   const [edit, setEdit] = useState<Record<string, string>>({})
   const [status, setStatus] = useState('')
   const [busy, setBusy] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [newLender, setNewLender] = useState('')
 
   async function load() {
     const [r, s] = await Promise.all([
@@ -116,6 +118,39 @@ export default function CommissionLibrary() {
       })
       await load()
       setStatus((alsoConfirm ? 'Confirmed ' : 'Saved ') + r.lender)
+    }
+    setBusy(false)
+  }
+
+  async function removeRate(r: Rate) {
+    if (!confirm('Remove ' + r.lender + ' from your rates?\n\nThe published schedule entry stays, so you can add it back at any time.')) return
+    setBusy(true)
+    const { error } = await supabase.from('commission_rates').delete().eq('id', r.id)
+    if (error) setStatus('NOT SAVED - ' + error.message)
+    else { setOpen(null); await load(); setStatus('Removed ' + r.lender) }
+    setBusy(false)
+  }
+
+  async function addRate() {
+    const name = newLender.trim()
+    if (!name) return
+    if (rates.some(r => norm(r.lender) === norm(name))) { setStatus('NOT SAVED - ' + name + ' is already on your list'); return }
+    setBusy(true)
+    const src = sourceFor(name).find(e => e.record_type === 'primary')
+    const { data, error } = await supabase.from('commission_rates').insert({
+      lender: name,
+      effective_from: new Date().toISOString().slice(0, 10),
+      // Nothing is guessed on the way in. The published text shows underneath and
+      // you type the figures, so an added lender is never silently wrong.
+      clawback_text: src?.clawback_text || null,
+      confirmed: false,
+    }).select('id')
+    if (error) setStatus('NOT SAVED - ' + error.message)
+    else if (!data || data.length === 0) setStatus('NOT SAVED - the row did not reach the database')
+    else {
+      setNewLender(''); setAdding(false)
+      await load()
+      setStatus('Added ' + name + ' - now enter its upfront and clawback window')
     }
     setBusy(false)
   }
@@ -277,6 +312,10 @@ export default function CommissionLibrary() {
                           Save and confirm
                         </button>
                       )}
+                      <button onClick={() => removeRate(r)} disabled={busy}
+                        className="text-[12px] text-[#A29889] hover:text-[#C4553B] ml-auto">
+                        Remove {r.lender} from my rates
+                      </button>
                     </div>
                   </div>
                 )}
@@ -286,6 +325,32 @@ export default function CommissionLibrary() {
           {shownRates.length === 0 && (
             <div className="px-4 py-8 text-center text-[13px] text-[#A29889]">No lender matches that.</div>
           )}
+          <div className="px-4 py-3 bg-[#FDFCFA] border-t border-[#F6F2EA]">
+            {adding ? (
+              <div className="flex gap-2 items-center flex-wrap">
+                <input list="sched-lenders" value={newLender} onChange={e => setNewLender(e.target.value)}
+                  placeholder="Lender name" autoFocus
+                  className="text-[13px] border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 w-[240px] focus:outline-none focus:border-[#2DBEFF]" />
+                <datalist id="sched-lenders">
+                  {Array.from(new Set(sched.map(x => x.lender)))
+                    .filter(name => !rates.some(r => norm(r.lender) === norm(name)))
+                    .map(name => <option key={name} value={name} />)}
+                </datalist>
+                <button onClick={addRate} disabled={busy || !newLender.trim()}
+                  className="bg-[#343333] text-white rounded-lg px-4 py-2 text-[12.5px] font-semibold hover:bg-[#2a2a2a] transition disabled:opacity-40">
+                  Add
+                </button>
+                <button onClick={() => { setAdding(false); setNewLender('') }}
+                  className="text-[12px] text-[#A29889] hover:text-[#2E2A26]">Cancel</button>
+                <span className="text-[11.5px] text-[#A29889]">Pick from the published schedule, or type a lender that is not in it.</span>
+              </div>
+            ) : (
+              <button onClick={() => setAdding(true)}
+                className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">
+                + Add a lender
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="bg-white border border-[#EDE7DD] rounded-xl overflow-hidden">
