@@ -210,7 +210,7 @@ export default function SettingsPage() {
   }, [])
   const activePane = PANES.find(x => x.key === pane) || PANES[0]
 
-  if (loading) return <div className="p-8 max-w-3xl mx-auto text-sm text-gray-400">Loading settings...</div>
+  if (loading) return <div className="p-8 max-w-5xl mx-auto text-[13px] text-[#A29889]">Loading settings...</div>
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
@@ -224,8 +224,8 @@ export default function SettingsPage() {
           {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save settings'}
         </button>
       </div>
-      <p className="text-sm text-gray-500 mb-1">{activePane.label}</p>
-      <p className="text-xs text-gray-400 mb-8">{activePane.blurb}</p>
+      <p className="text-[13px] text-[#6E665C] mb-1">{activePane.label}</p>
+      <p className="text-[11.5px] text-[#A29889] mb-8">{activePane.blurb}</p>
       {pane === 'brands' && (
       <section className="mb-10">
         <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4">Brands</h2>
@@ -271,13 +271,13 @@ export default function SettingsPage() {
               <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">Email</label><input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={broker.email} onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? {...b, email: e.target.value} : b))} /></div>
             </div>
             <div className="mt-3">
-              <label className="text-xs text-gray-400 block mb-2">Brands (a broker can work under multiple brands)</label>
+              <label className="text-[11px] font-semibold text-[#A29889] block mb-2">Brands (a broker can work under multiple brands)</label>
               <div className="flex flex-wrap gap-2">
                 {brands.map((brand) => {
                   const has = ((broker as any).brandIds || []).includes(brand.id)
                   return (
                     <button key={brand.id} onClick={() => toggleBrokerBrand(broker.id, brand.id)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${has ? 'bg-[#2DBEFF] border-[#2DBEFF] text-white' : 'border-gray-200 text-gray-500 hover:border-[#2DBEFF] hover:text-[#2DBEFF]'}`}>
+                      className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors ${has ? 'bg-[#343333] border-[#343333] text-white' : 'border-[#E8E1D6] text-[#6E665C] hover:border-[#2DBEFF] hover:text-[#2DBEFF]'}`}>
                       {brand.name}
                     </button>
                   )
@@ -287,7 +287,7 @@ export default function SettingsPage() {
           </div>
         ))}
         <button onClick={() => setBrokers([...brokers, {id: Date.now().toString(), name: 'New Broker', title: 'Mortgage Broker', crn: '', email: '', calendly: '', brandIds: ['simplify']}])} className="text-[12.5px] font-medium text-[#6E665C] bg-[#FAF7F2] border border-[#E8E1D6] rounded-lg px-4 py-2 hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition">+ Add another broker</button>
-        <p className="text-xs text-gray-400 mt-2">Note: broker names should start with the first name used elsewhere in the portal (e.g. "Fabio", "Justin") — this is what links a broker to their deals and credit team coverage below.</p>
+        <p className="text-[11.5px] text-[#A29889] mt-2">Note: broker names should start with the first name used elsewhere in the portal (e.g. "Fabio", "Justin") — this is what links a broker to their deals and credit team coverage below.</p>
       </section>
       )}
       {pane === 'connections' && (
@@ -357,13 +357,13 @@ export default function SettingsPage() {
               {complianceFlags.map((flag) => (
                 <div key={flag.id} className="bg-gray-50 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-gray-500">{flag.field_label} — {flag.deals?.deal_name || 'Unknown deal'}</span>
+                    <span className="text-[11.5px] font-medium text-[#6E665C]">{flag.field_label} — {flag.deals?.deal_name || 'Unknown deal'}</span>
                     <span className="text-[10px] text-gray-300">{flag.flagged_by} · {new Date(flag.created_at).toLocaleDateString()}</span>
                   </div>
                   <p className="text-sm mb-2">{flag.note}</p>
                   <div className="flex gap-2">
-                    <button onClick={() => promoteFlag(flag)} className="text-xs bg-[#2DBEFF] text-white rounded-lg px-3 py-1.5 hover:bg-blue-500">Promote to Style Note</button>
-                    <button onClick={() => dismissFlag(flag.id)} className="text-xs text-gray-400 hover:text-gray-600">Dismiss</button>
+                    <button onClick={() => promoteFlag(flag)} className="text-[11.5px] bg-[#343333] text-white rounded-lg px-3 py-1.5 hover:bg-[#2a2a2a]">Promote to Style Note</button>
+                    <button onClick={() => dismissFlag(flag.id)} className="text-[11.5px] text-[#A29889] hover:text-[#2E2A26]">Dismiss</button>
                   </div>
                 </div>
               ))}
@@ -377,12 +377,12 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em]">Credit Team</h2>
         </div>
-        <p className="text-xs text-gray-400 mb-4">Manage who's on the credit team and which brokers' deals each person covers. This drives automatic allocation when a deal is sent to the credit team.</p>
+        <p className="text-[11.5px] text-[#A29889] mb-4">Manage who's on the credit team and which brokers' deals each person covers. This drives automatic allocation when a deal is sent to the credit team.</p>
         {creditTeamError && (
           <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-600 mb-4">{creditTeamError}</div>
         )}
         {loadingCreditTeam ? (
-          <div className="text-sm text-gray-400">Loading credit team...</div>
+          <div className="text-[13px] text-[#A29889]">Loading credit team...</div>
         ) : (
           <>
             {creditOfficers.map((officer) => (
@@ -390,7 +390,7 @@ export default function SettingsPage() {
                 <div className="flex justify-between items-start mb-4">
                   <input className="font-semibold text-[#2E2A26] flex-1 border border-[#E8E1D6] rounded-lg px-3 py-2 focus:outline-none focus:border-[#2DBEFF]" value={officer.name} onChange={(e) => updateCreditOfficerName(officer.id, e.target.value)} placeholder="Credit officer name" />
                   <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer">
+                    <label className="flex items-center gap-1.5 text-[11.5px] text-[#6E665C] cursor-pointer">
                       <input type="checkbox" checked={officer.active} onChange={(e) => toggleCreditOfficerActive(officer.id, e.target.checked)} />
                       Active
                     </label>
@@ -418,14 +418,14 @@ export default function SettingsPage() {
                     <p className="text-xs text-amber-600 col-span-2">🏖 Excluded from auto-allocation between {officer.onLeaveFrom} and {officer.onLeaveUntil}</p>
                   )}
                 </div>
-                <label className="text-xs text-gray-400 block mb-2">Covers deals for:</label>
+                <label className="text-[11px] font-semibold text-[#A29889] block mb-2">Covers deals for:</label>
                 <div className="flex flex-wrap gap-2">
                   {brokers.map((b) => {
                     const slug = brokerSlug(b.name)
                     const covers = officer.brokers.includes(slug)
                     return (
                       <button key={b.id} onClick={() => toggleBrokerCoverage(officer.id, slug)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${covers ? 'bg-[#2DBEFF] border-[#2DBEFF] text-white' : 'border-gray-200 text-gray-500 hover:border-[#2DBEFF] hover:text-[#2DBEFF]'}`}>
+                        className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors ${covers ? 'bg-[#343333] border-[#343333] text-white' : 'border-[#E8E1D6] text-[#6E665C] hover:border-[#2DBEFF] hover:text-[#2DBEFF]'}`}>
                         {slug}
                       </button>
                     )
