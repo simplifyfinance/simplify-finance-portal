@@ -22,23 +22,23 @@ const adminNav = [
   { label: "Settings", href: "/settings", icon: Settings },
 ]
 
-type Profile = { full_name: string; role: string; email: string; is_admin?: boolean }
+type Profile = { full_name: string; role: string; email: string; is_admin?: boolean; sees_finance?: boolean }
 
 // Settings has outgrown one scroll, so it nests under the nav item rather than
 // growing a second left column beside the one the portal already has.
-const SUBNAV: Record<string, { key: string; label: string; adminOnly?: boolean }[]> = {
+const SUBNAV: Record<string, { key: string; label: string; adminOnly?: boolean; financeOnly?: boolean }[]> = {
   '/pipeline': [
     { key: 'report', label: 'Report' },
     { key: 'actuals', label: 'Monthly actuals', adminOnly: true },
   ],
   '/lenders': [
     { key: 'lenders', label: 'Products & policy' },
-    { key: 'commissions', label: 'Commission library' },
   ],
   '/settings': [
     { key: 'brands', label: 'Brands' },
     { key: 'brokers', label: 'Broker profiles' },
     { key: 'targets', label: 'Targets', adminOnly: true },
+    { key: 'commissions', label: 'Commission library', financeOnly: true },
     { key: 'people', label: 'Credit team' },
     { key: 'notifications', label: 'Notifications' },
     { key: 'compliance', label: 'Compliance AI' },
@@ -55,7 +55,7 @@ export default function Sidebar() {
     const supabase = createSupabaseBrowser()
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
-      supabase.from('user_profiles').select('full_name, role, email, is_admin').eq('id', user.id).single()
+      supabase.from('user_profiles').select('full_name, role, email, is_admin, sees_finance').eq('id', user.id).single()
         .then(({ data }) => { if (data) setProfile(data) })
     })
   }, [])
@@ -79,7 +79,9 @@ export default function Sidebar() {
   // One renderer for every nav item that has sub-items, so Settings and the Lender
   // library cannot drift apart as more sections gain sub-pages.
   function subNav(href: string) {
-    const subs = (SUBNAV[href] || []).filter(sx => !sx.adminOnly || profile?.is_admin)
+    const subs = (SUBNAV[href] || [])
+      .filter(sx => !sx.adminOnly || profile?.is_admin)
+      .filter(sx => !sx.financeOnly || profile?.sees_finance)
     if (subs.length === 0 || !path.startsWith(href)) return null
     const active = subs.some(sx => sx.key === hash) ? hash : subs[0].key
     return (
