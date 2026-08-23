@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { listPeriods, inPeriod, toAuDate, todayYmd, fyEndYear, type Period, type PeriodKind } from '@/lib/periods'
+import { ContextChart, FyProgressChart } from '@/components/PipelineCharts'
 
 /* ---------- formatting ---------- */
 function num(v: any): number | null {
@@ -257,6 +258,52 @@ export default function PipelinePage() {
     return { now, then }
   }, [monthly, period])
 
+  /* ---------- chart data ---------- */
+  const FY_MONTHS = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6]
+
+  // The selected period against the ones before it, with the same-period average of
+  // the three prior years drawn behind them. Raw totals here, not the clipped
+  // baselines - a chart of whole periods is honest as long as the running one is marked.
+  const contextChart = useMemo(() => {
+    if (kind === 'week' || !period || idx < 0) return null
+    const n = kind === 'fy' ? 5 : kind === 'quarter' ? 8 : 12
+    const bars: any[] = []
+    for (let k = n - 1; k >= 0; k--) {
+      const pp = periods[idx + k]
+      if (!pp) continue
+      const priors = [1, 2, 3]
+        .map(j => periods[idx + k + backOneYear * j])
+        .filter(Boolean)
+        .map(q => periodValue(q).amount)
+        .filter(x => x > 0)
+      bars.push({
+        label: pp.label,
+        value: periodValue(pp).amount,
+        avg: priors.length ? priors.reduce((a, b) => a + b, 0) / priors.length : null,
+        selected: pp.key === period.key,
+        partial: todayYmd() >= pp.start && todayYmd() <= pp.end,
+      })
+    }
+    return bars.some(b => b.value > 0) ? bars : null
+  }, [kind, periods, idx, period, monthly, backOneYear])
+
+  // Cumulative, so a part-finished year draws a shorter line rather than a smaller one.
+  const fyChart = useMemo(() => {
+    if (kind !== 'fy' || !period) return null
+    const fy = fyEndYear(period.end)
+    const monthsOf = (end: number) => FY_MONTHS.map(mi => {
+      const y = mi >= 7 ? end - 1 : end
+      return monthly[`${y}-${String(mi).padStart(2, '0')}`]?.amount ?? null
+    })
+    const now = monthsOf(fy), prev = monthsOf(fy - 1)
+    const avg = FY_MONTHS.map((_, i) => {
+      const vals = [1, 2, 3].map(j => monthsOf(fy - j)[i]).filter(v => v !== null) as number[]
+      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
+    })
+    if (!now.some(v => v !== null)) return null
+    return { now, prev, avg, nowLabel: period.label, prevLabel: `FY${String(fy - 1).slice(2)}` }
+  }, [kind, period, monthly])
+
   /* ---------- deal rows inside the selected period ---------- */
   const rows = useMemo(() => {
     if (!period) return []
@@ -482,6 +529,9 @@ export default function PipelinePage() {
                   sub={fytd && fytd.then > 0 ? `${signed(pct(fytd.now, fytd.then))} on the same point last year` : undefined}
                   subTone={fytd && fytd.then > 0 ? (fytd.now >= fytd.then ? 'up' : 'down') : undefined} />
           </div>
+
+          {contextChart && <ContextChart bars={contextChart} metric={metric} kind={kind} />}
+          {fyChart && <FyProgressChart {...fyChart} metric={metric} />}
 
           {current.sources.has('spreadsheet') && (
             <div className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-xl px-4 py-2.5 text-[12.5px] mb-4">
