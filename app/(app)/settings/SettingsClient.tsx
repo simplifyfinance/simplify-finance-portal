@@ -332,7 +332,7 @@ export default function SettingsPage() {
             {complianceStyleNotes.map((note, i) => (
               <div key={i} className="flex items-center gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
                 <span className="flex-1">{note}</span>
-                <button onClick={() => setComplianceStyleNotes(prev => prev.filter((_, idx) => idx !== i))} className="text-xs text-gray-300 hover:text-red-400">✕</button>
+                <button onClick={() => setComplianceStyleNotes(prev => prev.filter((_, idx) => idx !== i))} className="text-xs text-[#C9C1B4] hover:text-red-400">✕</button>
               </div>
             ))}
           </div>
@@ -358,7 +358,7 @@ export default function SettingsPage() {
                 <div key={flag.id} className="bg-gray-50 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[11.5px] font-medium text-[#6E665C]">{flag.field_label} — {flag.deals?.deal_name || 'Unknown deal'}</span>
-                    <span className="text-[10px] text-gray-300">{flag.flagged_by} · {new Date(flag.created_at).toLocaleDateString()}</span>
+                    <span className="text-[10px] text-[#C9C1B4]">{flag.flagged_by} · {new Date(flag.created_at).toLocaleDateString()}</span>
                   </div>
                   <p className="text-sm mb-2">{flag.note}</p>
                   <div className="flex gap-2">
