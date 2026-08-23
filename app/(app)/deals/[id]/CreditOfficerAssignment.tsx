@@ -63,7 +63,7 @@ export default function CreditOfficerAssignment({ dealId, brokerName, userRole }
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-xs text-gray-500 bg-gray-100 rounded-lg px-3 py-1.5">Assigned to: <span className="font-medium text-[#343333]">{assignedName}</span></span>
+      <span className="inline-flex items-baseline gap-1.5 bg-[#FAF7F2] border border-[#E8E1D6] rounded-lg px-2.5 py-1"><span className="text-[9.5px] font-bold tracking-wider uppercase text-[#A29889]">Credit</span><span className="text-[13px] font-semibold text-[#2E2A26]">{assignedName}</span></span>
       {msg && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">{msg}</span>}
       {err && <span className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{err}</span>}
       {isAdmin && !showPicker && (

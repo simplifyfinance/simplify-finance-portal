@@ -95,15 +95,20 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
               <button onClick={() => setEditingName(true)} className="text-xs text-[#2DBEFF] hover:underline">✎ Edit</button>
             </div>
           )}
-          <div className="flex gap-3 text-sm text-gray-500 items-center flex-wrap">
-            <span>{deal.clients?.first_name} {deal.clients?.last_name}</span>
-            <span>·</span><span>{deal.deal_type}</span>
-            <span>·</span><span>Broker: {deal.assigned_broker}</span>
+          {/* Client and loan type are not repeated here - the deal name already contains both. */}
+          <div className="flex gap-2 items-center flex-wrap">
+            <span className="inline-flex items-baseline gap-1.5 bg-[#FAF7F2] border border-[#E8E1D6] rounded-lg px-2.5 py-1">
+              <span className="text-[9.5px] font-bold tracking-wider uppercase text-[#A29889]">Broker</span>
+              <span className="text-[13px] font-semibold text-[#2E2A26]">{deal.assigned_broker}</span>
+            </span>
             <CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
             {(() => {
               const waitingOn = getWaitingOnLabel(dealData)
               return waitingOn ? (
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${WAITING_ON_STYLES[waitingOn.color]}`}>{waitingOn.text}</span>
+                <span className="inline-flex items-baseline gap-2 bg-[#F3E9D7] border border-[#E7D8BC] rounded-lg px-3 py-1">
+                  <span className="text-[9.5px] font-bold tracking-wider uppercase text-[#A98B52]">Waiting on</span>
+                  <span className="text-[13px] font-semibold text-[#8A6A2F]">{waitingOn.text.replace(/^Waiting on:\s*/i, '')}</span>
+                </span>
               ) : null
             })()}
           </div>
@@ -115,7 +120,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           </a>
           <button onClick={cloneThisDeal} disabled={cloning}
             className="text-xs text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition disabled:opacity-40">
-            {cloning ? 'Cloning...' : '📋 Clone deal'}
+            {cloning ? 'Cloning...' : 'Clone deal'}
           </button>
           {dealData.onedrive_link && (
             <a href={dealData.onedrive_link} target="_blank" rel="noopener noreferrer"
