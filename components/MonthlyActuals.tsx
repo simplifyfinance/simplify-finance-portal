@@ -45,6 +45,7 @@ export default function MonthlyActuals() {
   const [fy, setFy] = useState(() => fyEndYear(todayYmd()))
   const [hist, setHist] = useState<Record<string, any>>({})
   const [portal, setPortal] = useState<Record<string, { lodged: number; lodgedDeals: number; settled: number; settledDeals: number }>>({})
+  const [targets, setTargets] = useState<Record<string, { lodged: number | null; settled: number | null }>>({})
   const [vals, setVals] = useState<Record<string, string>>({})
   const [status, setStatus] = useState('')
   const [busy, setBusy] = useState(false)
@@ -58,10 +59,23 @@ export default function MonthlyActuals() {
     if (!prof?.is_admin) { setIsAdmin(false); return }
     setIsAdmin(true)
 
-    const [h, r] = await Promise.all([
+    const [h, r, t] = await Promise.all([
       supabase.from('pipeline_history').select('*'),
       supabase.rpc('pipeline_register'),
+      supabase.from('pipeline_targets').select('metric, month, amount, broker_key'),
     ])
+
+    // Business targets only. A broker's target must never be compared against a
+    // business figure.
+    const tt: Record<string, { lodged: number | null; settled: number | null }> = {}
+    for (const row of (t.data || [])) {
+      if (row.broker_key) continue
+      const m = String(row.month).slice(0, 10)
+      if (!tt[m]) tt[m] = { lodged: null, settled: null }
+      if (row.metric === 'lodged') tt[m].lodged = Number(row.amount)
+      if (row.metric === 'settled') tt[m].settled = Number(row.amount)
+    }
+    setTargets(tt)
     const hh: Record<string, any> = {}
     const v: Record<string, string> = {}
     for (const row of (h.data || [])) {
@@ -102,8 +116,26 @@ export default function MonthlyActuals() {
     const row = hist[m]
     const p = portal[m]
     const src = row ? (row.source === 'manual' ? 'override' : 'spreadsheet') : (p ? 'portal' : 'none')
-    return { mi, name: NAMES[mi - 1], month: m, row, p, src, future: m > todayYmd().slice(0, 7) + '-01' }
-  }), [fy, hist, portal])
+    return { mi, name: NAMES[mi - 1], month: m, row, p, src, t: targets[m],
+             future: m > todayYmd().slice(0, 7) + '-01' }
+  }), [fy, hist, portal, targets])
+
+  // The year so far, against the target for the months actually recorded - so a
+  // year with three months in it is not measured against twelve months of target.
+  const totals = useMemo(() => {
+    let la = 0, sa = 0, dl = 0, ds = 0, lt = 0, st = 0, recorded = 0
+    for (const mm of months) {
+      const l = parseNum(vals[key('la', mm.month)] || '')
+      const sv = parseNum(vals[key('sa', mm.month)] || '')
+      const d1 = parseNum(vals[key('dl', mm.month)] || '')
+      const d2 = parseNum(vals[key('ds', mm.month)] || '')
+      if (l !== null) { la += l; recorded += 1; if (mm.t?.lodged) lt += mm.t.lodged }
+      if (sv !== null) { sa += sv; if (mm.t?.settled) st += mm.t.settled }
+      if (d1 !== null) dl += d1
+      if (d2 !== null) ds += d2
+    }
+    return { la, sa, dl, ds, lt, st, recorded }
+  }, [months, vals])
 
   const dirty = useMemo(() => months.some(mm => {
     for (const [f, col] of [['dl', 'deals_lodged'], ['la', 'lodged_amount'], ['ds', 'deals_settled'], ['sa', 'settled_amount']] as const) {
@@ -195,13 +227,24 @@ export default function MonthlyActuals() {
   const tag = 'text-[10px] font-bold tracking-[.05em] uppercase rounded-full px-2 py-[2px]'
   const failed = status.startsWith('NOT ')
 
+  function pctOf(actual: number | null, target: number | null | undefined) {
+    if (actual === null || !target) return <span className="text-[11.5px] text-[#C9C1B4]">&mdash;</span>
+    const p = actual / target * 100
+    return (
+      <span className="text-[11.5px] tabular-nums whitespace-nowrap">
+        <span className={`font-semibold ${p >= 100 ? 'text-[#2E9E63]' : 'text-[#C4553B]'}`}>{Math.round(p)}%</span>
+        <span className="text-[#C9C1B4]"> of {compact(target)}</span>
+      </span>
+    )
+  }
+
   return (
     <div className="max-w-6xl mx-auto p-6">
       <p className="text-lg font-medium text-[#2E2A26] mb-1">Monthly actuals</p>
       <p className="text-[12.5px] text-[#A29889] mb-5 max-w-[80ch]">
         What the Pipeline reports for each month. A figure typed here overrides whatever the portal would count,
         until you release it — which is how you keep reporting real numbers while the team is still learning to
-        mark deals through.
+        mark deals through. The target sits beside each month, so you can see where the year stands as you type.
       </p>
 
       <div className="border border-[#EDE7DD] rounded-xl bg-white overflow-hidden">
@@ -229,8 +272,10 @@ export default function MonthlyActuals() {
                 <th className="text-left px-5 py-2.5 border-b border-[#F6F2EA]">Month</th>
                 <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">Deals lodged</th>
                 <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">Lodged</th>
+                <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">vs target</th>
                 <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">Deals settled</th>
                 <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">Settled</th>
+                <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">vs target</th>
                 <th className="text-left px-3 py-2.5 border-b border-[#F6F2EA]">Source</th>
                 <th className="text-right px-5 py-2.5 border-b border-[#F6F2EA]"></th>
               </tr>
@@ -244,15 +289,27 @@ export default function MonthlyActuals() {
                     <td className="px-5 py-2 text-[13px] font-medium text-[#6E665C]">
                       {mm.name} {String(fy - (mm.mi >= 7 ? 1 : 0))}
                     </td>
-                    {(['dl', 'la', 'ds', 'sa'] as const).map(f => (
-                      <td key={f} className="px-3 py-2 text-right">
-                        <input value={vals[key(f, mm.month)] || ''} inputMode="numeric"
-                          onChange={e => set(f, mm.month, e.target.value)}
-                          onBlur={e => set(f, mm.month, commas(e.target.value))}
-                          placeholder={mm.future ? '' : '—'}
-                          className={inp + ring + (f === 'dl' || f === 'ds' ? ' w-[74px]' : ' w-[118px]')} />
-                      </td>
-                    ))}
+                    {(['dl', 'la', 'pl', 'ds', 'sa', 'ps'] as const).map(f => {
+                      if (f === 'pl') return (
+                        <td key={f} className="px-3 py-2 text-right">
+                          {pctOf(parseNum(vals[key('la', mm.month)] || ''), mm.t?.lodged)}
+                        </td>
+                      )
+                      if (f === 'ps') return (
+                        <td key={f} className="px-3 py-2 text-right">
+                          {pctOf(parseNum(vals[key('sa', mm.month)] || ''), mm.t?.settled)}
+                        </td>
+                      )
+                      return (
+                        <td key={f} className="px-3 py-2 text-right">
+                          <input value={vals[key(f, mm.month)] || ''} inputMode="numeric"
+                            onChange={e => set(f, mm.month, e.target.value)}
+                            onBlur={e => set(f, mm.month, commas(e.target.value))}
+                            placeholder={mm.future ? '' : '—'}
+                            className={inp + ring + (f === 'dl' || f === 'ds' ? ' w-[74px]' : ' w-[118px]')} />
+                        </td>
+                      )
+                    })}
                     <td className="px-3 py-2">
                       {mm.src === 'spreadsheet' && <span className={tag + ' bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C]'}>Spreadsheet</span>}
                       {mm.src === 'override' && <span className={tag + ' bg-[#EAF7FE] border border-[#BFE6F9] text-[#0E8FCB]'}>Override</span>}
@@ -275,6 +332,22 @@ export default function MonthlyActuals() {
                 )
               })}
             </tbody>
+            <tfoot>
+              <tr className="border-t border-[#E8E1D6] bg-[#FDFCFA]">
+                <td className="px-5 py-3 text-[13px] font-semibold text-[#2E2A26]">FY{String(fy).slice(2)} so far</td>
+                <td className="px-3 py-3 text-right text-[13px] font-semibold tabular-nums">{totals.dl || '—'}</td>
+                <td className="px-3 py-3 text-right text-[13px] font-semibold tabular-nums">{totals.la ? compact(totals.la) : '—'}</td>
+                <td className="px-3 py-3 text-right">{pctOf(totals.la || null, totals.lt || null)}</td>
+                <td className="px-3 py-3 text-right text-[13px] font-semibold tabular-nums">{totals.ds || '—'}</td>
+                <td className="px-3 py-3 text-right text-[13px] font-semibold tabular-nums">{totals.sa ? compact(totals.sa) : '—'}</td>
+                <td className="px-3 py-3 text-right">{pctOf(totals.sa || null, totals.st || null)}</td>
+                <td colSpan={2} className="px-5 py-3 text-right text-[11.5px] text-[#A29889]">
+                  {totals.recorded
+                    ? `${totals.recorded} month${totals.recorded === 1 ? '' : 's'} recorded, against the target for those months`
+                    : 'nothing recorded yet this year'}
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
 
