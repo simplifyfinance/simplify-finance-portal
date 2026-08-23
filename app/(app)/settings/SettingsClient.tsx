@@ -227,7 +227,7 @@ export default function SettingsPage() {
       <p className="text-[11.5px] text-[#A29889] mb-8">{activePane.blurb}</p>
       {pane === 'brands' && (
       <section className="mb-10">
-        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4">Brands</h2>
+        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Brands</h2>
         {brands.map((brand) => (
           <div key={brand.id} className="border border-[#EDE7DD] rounded-xl p-5 mb-4 bg-white">
             <div className="flex justify-between items-start mb-4">
@@ -236,7 +236,7 @@ export default function SettingsPage() {
                 <p className="text-[11.5px] text-[#A29889]">{brand.isDefault ? 'Default brand' : 'Additional brand'}</p>
               </div>
               <div className="flex items-center gap-2">
-                {brand.isDefault && <span className="text-[10.5px] bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] px-2.5 py-1 rounded-full font-semibold">Default</span>}
+                {brand.isDefault && <span className="text-[10.5px] bg-[#EAF7FE] border border-[#BFE6F9] text-[#0E8FCB] px-2.5 py-1 rounded-full font-semibold">Default</span>}
                 {!brand.isDefault && <button onClick={() => setBrands(brands.filter(b => b.id !== brand.id))} className="text-[11.5px] text-[#A29889] hover:text-[#C4553B] transition">Remove</button>}
               </div>
             </div>
@@ -249,12 +249,12 @@ export default function SettingsPage() {
             </div>
           </div>
         ))}
-        <button onClick={() => setBrands([...brands, {id: Date.now().toString(), name: 'New Brand', isDefault: false, headerColor: '#343333', accentColor: '#2DBEFF', acl: '387025', footerAddress: 'St Leonards, Sydney', logoUrl: ''}])} className="text-[12.5px] font-medium text-[#6E665C] bg-[#FAF7F2] border border-[#E8E1D6] rounded-lg px-4 py-2 hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition">+ Add another brand</button>
+        <button onClick={() => setBrands([...brands, {id: Date.now().toString(), name: 'New Brand', isDefault: false, headerColor: '#343333', accentColor: '#2DBEFF', acl: '387025', footerAddress: 'St Leonards, Sydney', logoUrl: ''}])} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">+ Add another brand</button>
       </section>
       )}
       {pane === 'brokers' && (
       <section className="mb-10">
-        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4">Broker Profiles</h2>
+        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Broker Profiles</h2>
         {brokers.map((broker) => (
           <div key={broker.id} className="border border-[#EDE7DD] rounded-xl p-5 mb-4 bg-white">
             <div className="flex justify-between items-start mb-4">
@@ -285,13 +285,13 @@ export default function SettingsPage() {
             </div>
           </div>
         ))}
-        <button onClick={() => setBrokers([...brokers, {id: Date.now().toString(), name: 'New Broker', title: 'Mortgage Broker', crn: '', email: '', calendly: '', brandIds: ['simplify']}])} className="text-[12.5px] font-medium text-[#6E665C] bg-[#FAF7F2] border border-[#E8E1D6] rounded-lg px-4 py-2 hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition">+ Add another broker</button>
+        <button onClick={() => setBrokers([...brokers, {id: Date.now().toString(), name: 'New Broker', title: 'Mortgage Broker', crn: '', email: '', calendly: '', brandIds: ['simplify']}])} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">+ Add another broker</button>
         <p className="text-[11.5px] text-[#A29889] mt-2">Note: broker names should start with the first name used elsewhere in the portal (e.g. "Fabio", "Justin") — this is what links a broker to their deals and credit team coverage below.</p>
       </section>
       )}
       {pane === 'connections' && (
       <section className="mb-10">
-        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4">Bank Statement Collection (WealthDesk)</h2>
+        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Bank Statement Collection (WealthDesk)</h2>
         <div className="border border-[#EDE7DD] rounded-xl p-5 bg-white">
           <p className="text-[11.5px] text-[#A29889] mb-3">This is the same static link shared with every client to collect bank statements. It's used on the client "ready to proceed" page and in the manual next-steps email.</p>
           <label className="text-[11px] font-semibold text-[#A29889] block mb-1">WealthDesk link</label>
@@ -301,7 +301,7 @@ export default function SettingsPage() {
       )}
       {pane === 'notifications' && (
       <section className="mb-10">
-        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4">Notification Routing</h2>
+        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Notification Routing</h2>
         <div className="border border-[#EDE7DD] rounded-xl p-5 bg-white space-y-4">
           <p className="text-[11.5px] text-[#A29889] mb-3">Who receives internal notification emails as deals move through the pipeline. Change this anytime without needing a code change.</p>
           <div>
@@ -324,7 +324,7 @@ export default function SettingsPage() {
       {pane === 'targets' && <PipelineTargets />}
       {pane === 'compliance' && (
       <section className="mb-10">
-        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4">Compliance AI Style Notes</h2>
+        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Compliance AI Style Notes</h2>
         <div className="border border-[#EDE7DD] rounded-xl p-5 bg-white">
           <p className="text-[11.5px] text-[#A29889] mb-3">Corrections and preferences you've given before, fed into every future Compliance AI generation across all deals — e.g. "Always mention offset account benefits" or "Keep the deposit comment to one sentence, no exceptions."</p>
           <div className="flex flex-col gap-2 mb-3">
@@ -337,14 +337,14 @@ export default function SettingsPage() {
           </div>
           <div className="flex gap-2">
             <input className="flex-1 text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={newStyleNote} onChange={e => setNewStyleNote(e.target.value)} placeholder="Add a style note..." onKeyDown={e => { if (e.key === 'Enter' && newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} />
-            <button onClick={() => { if (newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} className="text-[12.5px] font-medium text-[#6E665C] bg-[#FAF7F2] border border-[#E8E1D6] rounded-lg px-4 py-2 hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition">Add</button>
+            <button onClick={() => { if (newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">Add</button>
           </div>
         </div>
       </section>
       )}
       {pane === 'compliance' && (
       <section className="mb-10">
-        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4">Compliance AI Flags {complianceFlags.length > 0 && <span className="bg-amber-100 text-amber-600 rounded-full px-2 py-0.5 ml-1">{complianceFlags.length}</span>}</h2>
+        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Compliance AI Flags {complianceFlags.length > 0 && <span className="bg-amber-100 text-amber-600 rounded-full px-2 py-0.5 ml-1">{complianceFlags.length}</span>}</h2>
         <div className="border border-[#EDE7DD] rounded-xl p-5 bg-white">
           <p className="text-[11.5px] text-[#A29889] mb-3">Issues flagged by the team on live deals. Promote a flag to turn it into a permanent Style Note applied to every future generation, or dismiss it if it doesn't need to become a standing rule.</p>
           {loadingFlags ? (
@@ -374,7 +374,7 @@ export default function SettingsPage() {
       {pane === 'people' && (
       <section className="mb-10">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em]">Credit Team</h2>
+          <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Credit Team</h2>
         </div>
         <p className="text-[11.5px] text-[#A29889] mb-4">Manage who's on the credit team and which brokers' deals each person covers. This drives automatic allocation when a deal is sent to the credit team.</p>
         {creditTeamError && (
@@ -432,7 +432,7 @@ export default function SettingsPage() {
                 </div>
               </div>
             ))}
-            <button onClick={addCreditOfficer} className="text-[12.5px] font-medium text-[#6E665C] bg-[#FAF7F2] border border-[#E8E1D6] rounded-lg px-4 py-2 hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition">+ Add credit officer</button>
+            <button onClick={addCreditOfficer} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">+ Add credit officer</button>
           </>
         )}
       </section>

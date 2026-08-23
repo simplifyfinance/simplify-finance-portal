@@ -161,9 +161,9 @@ export default function PipelineTargets() {
 
   return (
     <section className="mb-10">
-      <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Business Targets</h2>
-      <div className="border border-gray-200 rounded-xl bg-white overflow-hidden">
-        <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-gray-100 flex-wrap">
+      <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Business Targets</h2>
+      <div className="border border-[#EDE7DD] rounded-xl bg-white overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-[#F6F2EA] flex-wrap">
           <div>
             <div className="text-[13px] font-semibold text-[#2E2A26]">Monthly targets</div>
             <div className="text-[11.5px] text-[#A29889]">
@@ -197,13 +197,13 @@ export default function PipelineTargets() {
           <table className="w-full">
             <thead>
               <tr className="text-[10px] font-semibold tracking-[.085em] uppercase text-[#A29889]">
-                <th className="text-left px-5 py-2.5 border-b border-gray-100">Month</th>
-                <th className="text-right px-3 py-2.5 border-b border-gray-100">Lodged target</th>
-                <th className="text-right px-3 py-2.5 border-b border-gray-100">FY{String(fy - 1).slice(2)} actual</th>
-                <th className="text-right px-3 py-2.5 border-b border-gray-100">Change</th>
-                <th className="text-right px-3 py-2.5 border-b border-gray-100">Settled target</th>
-                <th className="text-right px-3 py-2.5 border-b border-gray-100">FY{String(fy - 1).slice(2)} actual</th>
-                <th className="text-right px-5 py-2.5 border-b border-gray-100">Change</th>
+                <th className="text-left px-5 py-2.5 border-b border-[#F6F2EA]">Month</th>
+                <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">Lodged target</th>
+                <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">FY{String(fy - 1).slice(2)} actual</th>
+                <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">Change</th>
+                <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">Settled target</th>
+                <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">FY{String(fy - 1).slice(2)} actual</th>
+                <th className="text-right px-5 py-2.5 border-b border-[#F6F2EA]">Change</th>
               </tr>
             </thead>
             <tbody>
@@ -212,7 +212,7 @@ export default function PipelineTargets() {
                 const sv = parseNum(vals[`settled:${r.key}`] || '')
                 const ld = lv !== null && r.lodgedActual ? (lv - r.lodgedActual) / r.lodgedActual * 100 : null
                 const sd = sv !== null && r.settledActual ? (sv - r.settledActual) / r.settledActual * 100 : null
-                const pctCell = (d: number | null) => d === null ? <span className="text-gray-300">—</span>
+                const pctCell = (d: number | null) => d === null ? <span className="text-[#C9C1B4]">—</span>
                   : <span className={`text-[11.5px] tabular-nums ${d >= 0 ? 'text-[#2E9E63]' : 'text-[#C4553B]'}`}>
                       {(d >= 0 ? '+' : '\u2212') + Math.abs(d).toFixed(1)}%
                     </span>
@@ -224,7 +224,7 @@ export default function PipelineTargets() {
                         onChange={e => set('lodged', r.key, e.target.value)}
                         onBlur={e => set('lodged', r.key, withCommas(e.target.value))}
                         placeholder="not set"
-                        className={inp + (lv === null ? ' bg-[#FFFCF5] border-[#EFE0BC]' : ' border-gray-200')} />
+                        className={inp + (lv === null ? ' bg-[#FFFCF5] border-[#EFE0BC]' : ' border-[#E8E1D6]')} />
                     </td>
                     <td className="px-3 py-2 text-right text-[12.5px] text-[#A29889] tabular-nums">{compact(r.lodgedActual)}</td>
                     <td className="px-3 py-2 text-right">{pctCell(ld)}</td>
@@ -233,7 +233,7 @@ export default function PipelineTargets() {
                         onChange={e => set('settled', r.key, e.target.value)}
                         onBlur={e => set('settled', r.key, withCommas(e.target.value))}
                         placeholder="not set"
-                        className={inp + (sv === null ? ' bg-[#FFFCF5] border-[#EFE0BC]' : ' border-gray-200')} />
+                        className={inp + (sv === null ? ' bg-[#FFFCF5] border-[#EFE0BC]' : ' border-[#E8E1D6]')} />
                     </td>
                     <td className="px-3 py-2 text-right text-[12.5px] text-[#A29889] tabular-nums">{compact(r.settledActual)}</td>
                     <td className="px-5 py-2 text-right">{pctCell(sd)}</td>
@@ -242,7 +242,7 @@ export default function PipelineTargets() {
               })}
             </tbody>
             <tfoot>
-              <tr className="border-t border-gray-200">
+              <tr className="border-t border-[#E8E1D6]">
                 <td className="px-5 py-3 text-[13px] font-semibold">Financial year</td>
                 <td className="px-3 py-3 text-right text-[13px] font-semibold tabular-nums">{totals.lt ? compact(totals.lt) : '—'}</td>
                 <td className="px-3 py-3 text-right text-[12.5px] text-[#A29889] tabular-nums">{compact(totals.la)}</td>
@@ -255,7 +255,7 @@ export default function PipelineTargets() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-t border-gray-100 bg-[#FDFCFA] flex-wrap">
+        <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-t border-[#F6F2EA] bg-[#FDFCFA] flex-wrap">
           <span className={`text-[12px] ${failed ? 'text-red-600 font-medium' : 'text-[#A29889]'}`}>
             {status || (dirty ? 'Unsaved changes.' : 'Nothing to save.')}
           </span>
