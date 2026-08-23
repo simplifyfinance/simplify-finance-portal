@@ -20,7 +20,7 @@ async function sendResendEmail(to: string, subject: string, html: string, attach
   }
 }
 
-// Trigger 1 (Path A or B) — Ellie creates the deal card in SalesTrekker
+// Trigger 1 (Path A or B) — whoever Settings nominates creates the deal card in SalesTrekker
 export async function notifyEllieCreateCard(params: {
   dealId: string
   dealName: string
@@ -65,18 +65,18 @@ export async function notifyEllieCreateCard(params: {
       </td>
     </tr>`).join('')
 
-  const html = `<p>Hi Ellie,</p>
+  const html = `<p>Hi,</p>
     <p>A new deal is ready to be set up in SalesTrekker. Please complete the following:</p>
     <table style="width:100%;border-collapse:separate;border-spacing:0 8px" cellpadding="0" cellspacing="0">${stepsRows}</table>`
 
   await sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au', `New deal created — ${dealName}`, html)
 }
 
-// Triggers 2-5 — Cris moves/closes the card in SalesTrekker
+// Triggers 2-5 — whoever Settings nominates moves/closes the card in SalesTrekker
 export async function notifyCrisMoveCard(dealName: string, brokerName: string, action: string, closed = false, attachments?: { filename: string; content: string }[], recipientEmail?: string | null) {
   const bg = closed ? '#E6F5EC' : '#F2E9FB'
   const color = closed ? '#1D9E75' : '#7C3AED'
-  const html = `<p>Hi Cris,</p>
+  const html = `<p>Hi,</p>
     <table style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 16px" width="100%" cellpadding="0" cellspacing="0">
       <tr><td style="color:#666;font-size:13px;padding:3px 0">Deal</td><td style="text-align:right;font-size:13px;font-weight:600;padding:3px 0">${dealName}</td></tr>
       <tr><td style="color:#666;font-size:13px;padding:3px 0">Broker</td><td style="text-align:right;font-size:13px;padding:3px 0">${brokerName || ''}</td></tr>
