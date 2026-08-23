@@ -39,6 +39,7 @@ const SUBNAV: Record<string, { key: string; label: string; adminOnly?: boolean; 
     { key: 'brokers', label: 'Broker profiles' },
     { key: 'targets', label: 'Targets', adminOnly: true },
     { key: 'commissions', label: 'Commission library', financeOnly: true },
+    { key: 'ai', label: 'AI expenses', financeOnly: true },
     { key: 'people', label: 'Credit team' },
     { key: 'notifications', label: 'Notifications' },
     { key: 'compliance', label: 'Compliance AI' },

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import PipelineTargets from '@/components/PipelineTargets'
 import CommissionLibrary from '@/components/CommissionLibrary'
+import AiExpenses from '@/components/AiExpenses'
 
 const supabase = createSupabaseBrowser()
 
@@ -194,6 +195,7 @@ export default function SettingsPage() {
     { key: 'brokers', label: 'Broker profiles', blurb: 'Credit representative numbers, signatures and contact details used on documents.' },
     { key: 'targets', label: 'Targets', blurb: 'Monthly lodged and settled targets by financial year. Drives the Pipeline comparison panel.' },
     { key: 'commissions', label: 'Commission library', blurb: 'What each lender pays, on what basis, and what they claw back.' },
+    { key: 'ai', label: 'AI expenses', blurb: 'What the portal spends on Anthropic, by month, person and feature.' },
     { key: 'people', label: 'Credit team', blurb: 'Who covers which broker.' },
     { key: 'notifications', label: 'Notifications', blurb: 'Who is emailed as deals move through the pipeline.' },
     { key: 'compliance', label: 'Compliance AI', blurb: 'Style notes and flags fed into every Compliance generation.' },
@@ -324,6 +326,12 @@ export default function SettingsPage() {
       </section>
       )}
       {pane === 'targets' && <PipelineTargets />}
+      {pane === 'ai' && (
+      <section className="mb-10">
+        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />AI expenses</h2>
+        <AiExpenses />
+      </section>
+      )}
       {pane === 'commissions' && (
       <section className="mb-10">
         <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Commission library</h2>
