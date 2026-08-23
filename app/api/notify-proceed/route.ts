@@ -1,14 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createSupabaseAdmin } from '@/lib/supabase-admin'
 
-const brokers: Record<string, { name: string; email: string }> = {
-  'Fabio': { name: 'Fabio de Castro', email: 'fabio@simplifyfinance.com.au' },
-  'Mark': { name: 'Mark Gallo', email: 'mark@simplifyfinance.com.au' },
+// The team is not a list in the code. A broker who is not in a hardcoded map used
+// to fall through to Fabio silently, so a new broker's client proceeding emailed
+// the wrong person. This reads the broker from their profile instead, and falls
+// back to the shared inbox rather than to a named individual.
+async function resolveBroker(brokerKey: string): Promise<{ name: string; email: string }> {
+  const fallback = { name: 'Simplify Finance', email: 'info@simplifyfinance.com.au' }
+  if (!brokerKey) return fallback
+  try {
+    const supabase = createSupabaseAdmin()
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('full_name, email')
+      .ilike('broker_key', brokerKey)
+      .limit(1)
+      .maybeSingle()
+    if (data?.email) return { name: data.full_name || brokerKey, email: data.email }
+  } catch {
+    // fall through to the shared inbox
+  }
+  return fallback
 }
 
 export async function POST(req: NextRequest) {
   const { dealName, clientName, brokerKey } = await req.json()
 
-  const broker = brokers[brokerKey] || brokers['Fabio']
+  const broker = await resolveBroker(brokerKey)
 
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
