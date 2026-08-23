@@ -27,7 +27,7 @@ if ! npm run build > /tmp/ship-build.log 2>&1; then
 fi
 echo "Build OK."
 
-if git diff --quiet && git diff --cached --quiet; then
+if [ -z "$(git status --porcelain)" ]; then
   echo "Nothing to commit."
   exit 0
 fi
