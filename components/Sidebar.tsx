@@ -22,7 +22,19 @@ const adminNav = [
   { label: "Settings", href: "/settings", icon: Settings },
 ]
 
-type Profile = { full_name: string; role: string; email: string }
+type Profile = { full_name: string; role: string; email: string; is_admin?: boolean }
+
+// Settings has outgrown one scroll, so it nests under the nav item rather than
+// growing a second left column beside the one the portal already has.
+const SETTINGS_SUB: { key: string; label: string; adminOnly?: boolean }[] = [
+  { key: 'brands', label: 'Brands' },
+  { key: 'brokers', label: 'Broker profiles' },
+  { key: 'targets', label: 'Targets', adminOnly: true },
+  { key: 'people', label: 'Credit team' },
+  { key: 'notifications', label: 'Notifications' },
+  { key: 'compliance', label: 'Compliance AI' },
+  { key: 'connections', label: 'Connections' },
+]
 
 export default function Sidebar() {
   const path = usePathname()
@@ -33,7 +45,7 @@ export default function Sidebar() {
     const supabase = createSupabaseBrowser()
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
-      supabase.from('user_profiles').select('full_name, role, email').eq('id', user.id).single()
+      supabase.from('user_profiles').select('full_name, role, email, is_admin').eq('id', user.id).single()
         .then(({ data }) => { if (data) setProfile(data) })
     })
   }, [])
@@ -46,6 +58,14 @@ export default function Sidebar() {
   }
 
   const initials = profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || '?'
+  const [hash, setHash] = useState('brands')
+  useEffect(() => {
+    const read = () => setHash((window.location.hash || '#brands').slice(1))
+    read()
+    window.addEventListener('hashchange', read)
+    return () => window.removeEventListener('hashchange', read)
+  }, [])
+
   const roleLabel = formatRoleLabel(profile?.role)
 
   return (
@@ -85,14 +105,35 @@ export default function Sidebar() {
             <div className="text-white/30 text-xs uppercase tracking-widest px-2 mb-2 mt-4">Admin</div>
             {adminNav.map(item => {
               const Icon = item.icon
+              const open = item.href === '/settings' && path.startsWith('/settings')
               return (
-                <Link key={item.href} href={item.href}
-                  className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm mb-0.5 transition-colors ${
-                    path.startsWith(item.href) ? 'text-[#2DBEFF] bg-[#2DBEFF]/10' : 'text-white/60 hover:text-white hover:bg-white/5'
-                  }`}>
-                  <Icon size={15} />
-                  {item.label}
-                </Link>
+                <div key={item.href}>
+                  <Link href={item.href}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm mb-0.5 transition-colors ${
+                      path.startsWith(item.href) ? 'text-[#2DBEFF] bg-[#2DBEFF]/10' : 'text-white/60 hover:text-white hover:bg-white/5'
+                    }`}>
+                    <Icon size={15} />
+                    {item.label}
+                    {item.href === '/settings' && (
+                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                           strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="ml-auto opacity-50">
+                        <path d={open ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'} />
+                      </svg>
+                    )}
+                  </Link>
+                  {open && (
+                    <div className="mb-1.5">
+                      {SETTINGS_SUB.filter(sx => !sx.adminOnly || profile?.is_admin).map(sx => (
+                        <button key={sx.key} onClick={() => { window.location.hash = sx.key }}
+                          className={`block w-full text-left pl-[31px] pr-2.5 py-1.5 rounded-md text-xs transition-colors ${
+                            hash === sx.key ? 'bg-white/10 text-white font-semibold' : 'text-white/45 hover:text-white hover:bg-white/5'
+                          }`}>
+                          {sx.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )
             })}
           </>

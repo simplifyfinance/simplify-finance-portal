@@ -187,10 +187,33 @@ export default function SettingsPage() {
     }
   }
 
+  // Which pane is showing. Driven by the URL hash so the sidebar can steer it and a
+  // link to a particular setting can be shared.
+  const PANES: { key: string; label: string; blurb: string }[] = [
+    { key: 'brands', label: 'Brands', blurb: 'Trading names used on deals and client emails.' },
+    { key: 'brokers', label: 'Broker profiles', blurb: 'Credit representative numbers, signatures and contact details used on documents.' },
+    { key: 'targets', label: 'Targets', blurb: 'Monthly lodged and settled targets by financial year. Drives the Pipeline comparison panel.' },
+    { key: 'people', label: 'Credit team', blurb: 'Who covers which broker.' },
+    { key: 'notifications', label: 'Notifications', blurb: 'Who is emailed as deals move through the pipeline.' },
+    { key: 'compliance', label: 'Compliance AI', blurb: 'Style notes and flags fed into every Compliance generation.' },
+    { key: 'connections', label: 'Connections', blurb: 'Bank statement collection and other outside services.' },
+  ]
+  const [pane, setPane] = useState('brands')
+  useEffect(() => {
+    const read = () => {
+      const h = (window.location.hash || '#brands').slice(1)
+      setPane(PANES.some(x => x.key === h) ? h : 'brands')
+    }
+    read()
+    window.addEventListener('hashchange', read)
+    return () => window.removeEventListener('hashchange', read)
+  }, [])
+  const activePane = PANES.find(x => x.key === pane) || PANES[0]
+
   if (loading) return <div className="p-8 max-w-3xl mx-auto text-sm text-gray-400">Loading settings...</div>
 
   return (
-    <div className="p-8 max-w-3xl mx-auto">
+    <div className="p-8 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-1">
         <h1 className="text-2xl font-bold text-[#343333]">Settings</h1>
         <button
@@ -201,7 +224,9 @@ export default function SettingsPage() {
           {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save settings'}
         </button>
       </div>
-      <p className="text-sm text-gray-500 mb-8">Manage your brands and broker profiles</p>
+      <p className="text-sm text-gray-500 mb-1">{activePane.label}</p>
+      <p className="text-xs text-gray-400 mb-8">{activePane.blurb}</p>
+      {pane === 'brands' && (
       <section className="mb-10">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Brands</h2>
         {brands.map((brand) => (
@@ -227,6 +252,8 @@ export default function SettingsPage() {
         ))}
         <button onClick={() => setBrands([...brands, {id: Date.now().toString(), name: 'New Brand', isDefault: false, headerColor: '#343333', accentColor: '#2DBEFF', acl: '387025', footerAddress: 'St Leonards, Sydney', logoUrl: ''}])} className="text-sm text-[#2DBEFF] border border-dashed border-[#2DBEFF] rounded-lg px-4 py-2 hover:bg-blue-50 transition">+ Add another brand</button>
       </section>
+      )}
+      {pane === 'brokers' && (
       <section className="mb-10">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Broker Profiles</h2>
         {brokers.map((broker) => (
@@ -262,6 +289,8 @@ export default function SettingsPage() {
         <button onClick={() => setBrokers([...brokers, {id: Date.now().toString(), name: 'New Broker', title: 'Mortgage Broker', crn: '', email: '', calendly: '', brandIds: ['simplify']}])} className="text-sm text-[#2DBEFF] border border-dashed border-[#2DBEFF] rounded-lg px-4 py-2 hover:bg-blue-50 transition">+ Add another broker</button>
         <p className="text-xs text-gray-400 mt-2">Note: broker names should start with the first name used elsewhere in the portal (e.g. "Fabio", "Justin") — this is what links a broker to their deals and credit team coverage below.</p>
       </section>
+      )}
+      {pane === 'connections' && (
       <section className="mb-10">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Bank Statement Collection (WealthDesk)</h2>
         <div className="border border-gray-200 rounded-xl p-5 bg-white">
@@ -270,6 +299,8 @@ export default function SettingsPage() {
           <input className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono" value={wealthDeskLink} onChange={(e) => setWealthDeskLink(e.target.value)} placeholder="https://simplify.wealthdesk.com.au/iv/tk/..." />
         </div>
       </section>
+      )}
+      {pane === 'notifications' && (
       <section className="mb-10">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Notification Routing</h2>
         <div className="border border-gray-200 rounded-xl p-5 bg-white space-y-4">
@@ -290,7 +321,9 @@ export default function SettingsPage() {
           </div>
         </div>
       </section>
-      <PipelineTargets />
+      )}
+      {pane === 'targets' && <PipelineTargets />}
+      {pane === 'compliance' && (
       <section className="mb-10">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Compliance AI Style Notes</h2>
         <div className="border border-gray-200 rounded-xl p-5 bg-white">
@@ -309,6 +342,8 @@ export default function SettingsPage() {
           </div>
         </div>
       </section>
+      )}
+      {pane === 'compliance' && (
       <section className="mb-10">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Compliance AI Flags {complianceFlags.length > 0 && <span className="bg-amber-100 text-amber-600 rounded-full px-2 py-0.5 ml-1">{complianceFlags.length}</span>}</h2>
         <div className="border border-gray-200 rounded-xl p-5 bg-white">
@@ -336,6 +371,8 @@ export default function SettingsPage() {
           )}
         </div>
       </section>
+      )}
+      {pane === 'people' && (
       <section className="mb-10">
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Credit Team</h2>
@@ -400,6 +437,7 @@ export default function SettingsPage() {
           </>
         )}
       </section>
+      )}
       <LenderLibrary />
     </div>
   )
