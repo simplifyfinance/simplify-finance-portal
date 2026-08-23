@@ -55,6 +55,19 @@ success message was displayed by code that never verified anything:
   are entered directly in Supabase or Vercel.
 - Show design work before building it. Mockups use the real palette and real data.
 
+## Decisions
+
+`docs/decisions.md` is the record. Read it before proposing anything — a decision
+already made is not reopened, and the user should never be asked the same question
+twice.
+
+Write a decision there **the moment it is made**, in the same commit as the work.
+Chat history is compacted and summarised as sessions grow; a decision that lives only
+in the conversation will be lost, and asking again wastes the user's time and erodes
+trust.
+
+`docs/backlog.md` is the current state of the work. Keep it current.
+
 ## Domain facts
 
 - Australian financial year: 1 July to 30 June. Quarters align to it — Q1 is Jul-Sep.
