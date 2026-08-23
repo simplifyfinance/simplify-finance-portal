@@ -277,7 +277,7 @@ export default function SettingsPage() {
                   const has = ((broker as any).brandIds || []).includes(brand.id)
                   return (
                     <button key={brand.id} onClick={() => toggleBrokerBrand(broker.id, brand.id)}
-                      className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors ${has ? 'bg-[#343333] border-[#343333] text-white' : 'border-[#E8E1D6] text-[#6E665C] hover:border-[#2DBEFF] hover:text-[#2DBEFF]'}`}>
+                      className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors ${has ? 'bg-[#343333] border-[#343333] text-white' : 'border-[#E8E1D6] text-[#6E665C] hover:bg-[#FAF7F2] hover:text-[#2E2A26]'}`}>
                       {brand.name}
                     </button>
                   )
@@ -338,7 +338,7 @@ export default function SettingsPage() {
           </div>
           <div className="flex gap-2">
             <input className="flex-1 text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={newStyleNote} onChange={e => setNewStyleNote(e.target.value)} placeholder="Add a style note..." onKeyDown={e => { if (e.key === 'Enter' && newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} />
-            <button onClick={() => { if (newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} className="text-sm bg-gray-100 rounded-lg px-4 py-2 hover:bg-gray-200 transition">Add</button>
+            <button onClick={() => { if (newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} className="text-[12.5px] font-medium text-[#6E665C] bg-[#FAF7F2] border border-[#E8E1D6] rounded-lg px-4 py-2 hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition">Add</button>
           </div>
         </div>
       </section>
@@ -425,7 +425,7 @@ export default function SettingsPage() {
                     const covers = officer.brokers.includes(slug)
                     return (
                       <button key={b.id} onClick={() => toggleBrokerCoverage(officer.id, slug)}
-                        className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors ${covers ? 'bg-[#343333] border-[#343333] text-white' : 'border-[#E8E1D6] text-[#6E665C] hover:border-[#2DBEFF] hover:text-[#2DBEFF]'}`}>
+                        className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors ${covers ? 'bg-[#343333] border-[#343333] text-white' : 'border-[#E8E1D6] text-[#6E665C] hover:bg-[#FAF7F2] hover:text-[#2E2A26]'}`}>
                         {slug}
                       </button>
                     )
