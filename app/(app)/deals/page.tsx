@@ -1,10 +1,11 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { Plus, Search, Briefcase, Trash2, Copy } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
+import { ageGroupOf, stageAge, GROUP_ORDER, GROUP_STYLE } from '@/lib/deal-age'
 type Client = { id: string; first_name: string; last_name: string; email?: string; phone?: string }
 type Deal = {
   id: string; deal_name: string; deal_type: string; stage: string; status: string; assigned_broker: string;
@@ -114,6 +115,14 @@ export default function DealsPage() {
   // deals is already server-filtered to just this person's deals for brokers/staff-with-officer,
   // and unfiltered (team-wide) for admin or staff without a credit officer record
   const summaryDeals = deals
+  // Stuck first, and oldest first inside each group. The top of the page is the
+  // morning's work.
+  const grouped = [...filtered].sort((x, y) => {
+    const g = GROUP_ORDER.indexOf(ageGroupOf(x)) - GROUP_ORDER.indexOf(ageGroupOf(y))
+    if (g !== 0) return g
+    return (stageAge(y).days || 0) - (stageAge(x).days || 0)
+  })
+
   const bcReady = summaryDeals.filter(d => d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at).length
   const loReady = summaryDeals.filter(d => d.lo_completed_at && !d.compliance_completed_at).length
   const complianceReady = summaryDeals.filter(d => d.compliance_completed_at).length
@@ -185,10 +194,25 @@ export default function DealsPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {filtered.map(deal => {
+          {grouped.map((deal, gi) => {
             const readyStage = readyStageFor(deal)
+            const grp = ageGroupOf(deal)
+            const age = stageAge(deal)
+            const showHeader = gi === 0 || ageGroupOf(grouped[gi - 1]) !== grp
             return (
-            <div key={deal.id} className="flex items-center gap-2">
+            <Fragment key={deal.id}>
+            {showHeader && (
+              <div className={`flex items-center gap-2.5 px-1 mb-0.5 ${gi === 0 ? '' : 'mt-4'}`}>
+                <span className={`text-[11px] font-bold tracking-[.08em] uppercase ${GROUP_STYLE[grp].text}`}>
+                  {GROUP_STYLE[grp].label}
+                </span>
+                <span className="text-[11px] text-[#A29889]">
+                  {grouped.filter(d => ageGroupOf(d) === grp).length}
+                </span>
+                <span className="flex-1 h-px bg-[#EDE7DD]" />
+              </div>
+            )}
+            <div className="flex items-center gap-2">
               <Link href={readyStage ? `/deals/${deal.id}?stage=${readyStage}` : `/deals/${deal.id}`} className={`flex-1 bg-white border rounded-xl px-4 py-3 flex items-center gap-4 transition-all ${readyStage ? 'border-amber-300 hover:border-amber-400' : 'border-gray-100 hover:border-[#2DBEFF]'}`}>
                 <div className="w-9 h-9 rounded-full bg-[#2DBEFF]/10 text-[#2DBEFF] flex items-center justify-center text-xs font-semibold flex-shrink-0">
                   {deal.clients?.first_name?.[0]}{deal.clients?.last_name?.[0]}
@@ -211,6 +235,10 @@ export default function DealsPage() {
                 {readyStage && (
                   <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-amber-100 text-amber-700">{readyStage} ready for review</span>
                 )}
+                {grp !== 'closed' && (
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-md whitespace-nowrap ${GROUP_STYLE[grp].chip}`}
+                        title={`In this stage for ${age.label} (business days)`}>{age.label}</span>
+                )}
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${deal.status === 'in_progress' ? 'bg-[#2DBEFF]/10 text-[#2DBEFF]' : 'bg-gray-100 text-gray-500'}`}>
                   {deal.status === 'in_progress' ? (deal.stage || 'In progress') : deal.status}
                 </span>
@@ -224,6 +252,7 @@ export default function DealsPage() {
                 <Trash2 size={13} />
               </button>
             </div>
+            </Fragment>
           )})}
         </div>
       )}
