@@ -275,14 +275,14 @@ export default function SettingsPage() {
         <div className="border border-gray-200 rounded-xl p-5 bg-white space-y-4">
           <p className="text-xs text-gray-400 mb-3">Who receives internal notification emails as deals move through the pipeline. Change this anytime without needing a code change.</p>
           <div>
-            <label className="text-xs text-gray-400 block mb-1">New deal notifications (currently Ellie)</label>
+            <label className="text-xs text-gray-400 block mb-1">When a new deal is created — who is asked to create the SalesTrekker card</label>
             <select className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" value={newDealNotificationUserId} onChange={(e) => setNewDealNotificationUserId(e.target.value)}>
               <option value="">— select team member —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-xs text-gray-400 block mb-1">Stage move notifications (currently Cris)</label>
+            <label className="text-xs text-gray-400 block mb-1">When a deal moves stage — who is asked to move the SalesTrekker card</label>
             <select className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" value={stageMoveNotificationUserId} onChange={(e) => setStageMoveNotificationUserId(e.target.value)}>
               <option value="">— select team member —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}

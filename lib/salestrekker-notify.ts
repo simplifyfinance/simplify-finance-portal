@@ -69,7 +69,7 @@ export async function notifyEllieCreateCard(params: {
     <p>A new deal is ready to be set up in SalesTrekker. Please complete the following:</p>
     <table style="width:100%;border-collapse:separate;border-spacing:0 8px" cellpadding="0" cellspacing="0">${stepsRows}</table>`
 
-  await sendResendEmail(recipientEmail || 'ellie@simplifyfinance.com.au', `New deal created — ${dealName}`, html)
+  await sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au', `New deal created — ${dealName}`, html)
 }
 
 // Triggers 2-5 — Cris moves/closes the card in SalesTrekker
@@ -85,5 +85,5 @@ export async function notifyCrisMoveCard(dealName: string, brokerName: string, a
     <p style="font-size:14px;font-weight:600;padding:8px 12px;border-radius:8px;background:${bg};color:${color};margin:0">${action}</p>
     ${attachments && attachments.length ? `<p style="color:#666;font-size:13px;margin:12px 0 0">Two PDFs are attached to this email (deal summary and compliance summary) — please save both into this client's OneDrive folder.</p>` : ''}`
 
-  await sendResendEmail(recipientEmail || 'cris@simplifyfinance.com.au', `SalesTrekker update needed — ${dealName}`, html, attachments)
+  await sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au', `SalesTrekker update needed — ${dealName}`, html, attachments)
 }
