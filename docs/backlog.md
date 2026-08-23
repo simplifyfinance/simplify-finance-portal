@@ -32,7 +32,10 @@ Current state. Update as things land.
    for ING and ANZ. Anything unconfirmed reads "rate not confirmed" — never zero.
 4. **AI expenses.** Usage table, logging in six routes, per-model price list, screen.
    60–90 min. Only counts from the day it ships.
-5. **RCTI import.** Expected against received. Upfront only to start.
+5. **Tasks in the portal.** Follow-ups currently leave the system as an email asking
+   support to create a card task. Bring them in: a task on the deal, visible to the
+   broker and support, with the Monday digest reading from it.
+6. **RCTI import.** Expected against received. Upfront only to start.
 6. **Access & permissions screen.** `is_admin`, `sees_finance`, `sees_all_deals` are
    SQL-only. Has caused two incidents.
 7. **Closing deals without losing the client.** Eight closure reasons, one next

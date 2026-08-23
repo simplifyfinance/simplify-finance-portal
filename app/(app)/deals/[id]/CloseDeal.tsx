@@ -82,6 +82,22 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
 
       if (savePosition && linked.length > 0) await writePositions()
 
+      // A follow-up date asks support to put a task on the deal card, for the broker
+      // and themselves. Until tasks live in the portal, this is how it survives.
+      let emailWarning = ''
+      if (due) {
+        try {
+          const res = await fetch('/api/notify-salestrekker', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dealId: deal.id, trigger: 'close_followup' }),
+          })
+          if (!res.ok) emailWarning = 'The deal is closed, but the follow-up email did not send. Set the task up manually.'
+        } catch {
+          emailWarning = 'The deal is closed, but the follow-up email did not send. Set the task up manually.'
+        }
+      }
+      if (emailWarning) setTimeout(() => alert(emailWarning), 50)
+
       onUpdated(patch)
       setOpen(false)
       reset()
@@ -170,7 +186,7 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
                   <input type="date" value={due} onChange={e => setDue(e.target.value)}
                     className="text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#2DBEFF]" />
                 </div>
-                <div className="text-[11px] text-[#A29889] mt-2">One action, with a date. It appears in the Monday digest that week.</div>
+                <div className="text-[11px] text-[#A29889] mt-2">Setting a date emails support to put a follow-up task on the deal card, for the broker and themselves.</div>
               </div>
 
               {linked.length > 0 && (

@@ -96,6 +96,11 @@ client's position, and takes one next action.
 - Closing sets `status = 'lost'`, which the credit team workload screen and the
   waiting-on label already respect. Until this is built, every dead deal counts as
   active work.
+- **A follow-up date emails support** — the same recipient as "when a deal moves
+  stage", set in Settings — asking them to put a follow-up task on the deal card for
+  the broker and the support team. Interim behaviour, deliberately.
+- **Later: tasks live in the portal**, so nobody leaves the system to record or see a
+  follow-up. The email exists only until that is built.
 - **Monday digest** lists next actions falling due that week.
 
 ## Interface

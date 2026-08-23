@@ -4,7 +4,7 @@ import { notifyEllieCreateCard, notifyCrisMoveCard } from '@/lib/salestrekker-no
 import { generateSummaryPdfBuffer } from '@/app/api/generate-summary-pdf/route'
 import { generateCompliancePdfBuffer } from '@/app/api/generate-compliance-pdf/route'
 
-type Trigger = 'bc_action' | 'bc_sent' | 'lo_sent' | 'lo_to_compliance' | 'push_to_salestrekker'
+type Trigger = 'bc_action' | 'bc_sent' | 'lo_sent' | 'lo_to_compliance' | 'push_to_salestrekker' | 'close_followup'
 
 export async function POST(req: NextRequest) {
   try {
@@ -95,6 +95,22 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: false, error: e?.message || 'Notification failed' }, { status: 500 })
       }
 
+      return NextResponse.json({ ok: true })
+    }
+
+    // Read from the deal, not the request body, so the email can only ever say what
+    // was actually saved.
+    if (trigger === 'close_followup') {
+      const { data: c } = await supabase.from('deals')
+        .select('close_reason, next_action, next_action_due').eq('id', dealId).maybeSingle()
+      const due = c?.next_action_due
+        ? new Date(c.next_action_due).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+        : 'no date set'
+      const instruction =
+        `Set up a follow-up task on this deal card for ${brokerName} and the support team. Due ${due}.`
+        + (c?.next_action ? ` Action: ${c.next_action}.` : '')
+        + (c?.close_reason ? ` The deal was closed as: ${String(c.close_reason).replace(/_/g, ' ')}.` : '')
+      await notifyCrisMoveCard(dealName, brokerName, instruction, false, undefined, crisEmail)
       return NextResponse.json({ ok: true })
     }
 
