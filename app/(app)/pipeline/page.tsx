@@ -34,8 +34,8 @@ type Row = {
   name: string
   broker: string
   lender: string
-  date: string           // the date that put this row in the period
-  amount: number | null  // amount at the stage this view reports on
+  date: string
+  amount: number | null
   splits: number
   status: string
   lodgedAmount: number | null
@@ -48,28 +48,26 @@ export default function PipelinePage() {
   const [view, setView] = useState<'lodged' | 'settled'>('lodged')
   const [kind, setKind] = useState<PeriodKind>('month')
   const [periodKey, setPeriodKey] = useState('')
-  const [deals, setDeals] = useState<any[]>([])
-  const [snaps, setSnaps] = useState<any[]>([])
+  const [reg, setReg] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
     let cancelled = false
     async function load() {
-      const [dRes, sRes] = await Promise.all([
-        supabase.from('deals').select('id, deal_name, assigned_broker, lender, loan_amount, expected_upfront, lodged_at, preapproval_at, formal_approval_at, settled_at'),
-        supabase.from('deal_stage_snapshots').select('deal_id, stage, effective_date, lender, total_amount, splits'),
-      ])
+      // pipeline_register() is a SECURITY DEFINER function returning the register
+      // columns for EVERY deal, so the lodged and settled totals are company-wide
+      // for every team member. It deliberately exposes no form data.
+      const { data, error } = await supabase.rpc('pipeline_register')
       if (cancelled) return
       // A failed read must not look like an empty pipeline. Those are very
       // different things and the team would act on them very differently.
-      if (dRes.error || sRes.error) {
-        setLoadError(dRes.error?.message || sRes.error?.message || 'Could not load the pipeline.')
+      if (error) {
+        setLoadError(error.message)
         setLoading(false)
         return
       }
-      setDeals(dRes.data || [])
-      setSnaps(sRes.data || [])
+      setReg(data || [])
       setLoading(false)
     }
     load()
@@ -80,58 +78,50 @@ export default function PipelinePage() {
   const period: Period | undefined = useMemo(
     () => periods.find(p => p.key === periodKey) || periods[0], [periods, periodKey])
 
-  const snapIndex = useMemo(() => {
-    const m: Record<string, Record<string, any>> = {}
-    for (const s of snaps) {
-      if (!m[s.deal_id]) m[s.deal_id] = {}
-      m[s.deal_id][s.stage] = s
-    }
-    return m
-  }, [snaps])
-
   const rows: Row[] = useMemo(() => {
     if (!period) return []
     const out: Row[] = []
-    for (const d of deals) {
-      const s = snapIndex[d.id] || {}
-      const lodgedSnap = s.lodged, formalSnap = s.formal, settledSnap = s.settled
-      const lodgedAmount = lodgedSnap ? (num(lodgedSnap.total_amount) ?? splitsTotal(lodgedSnap.splits)) : num(d.loan_amount)
+    for (const d of reg) {
+      // The amount at a stage comes from that stage's snapshot. Only where no
+      // snapshot exists - historic deals, or ones marked before snapshots
+      // existed - does it fall back to the deal's single loan_amount.
+      const lodgedAmount = num(d.lodged_total) ?? splitsTotal(d.lodged_splits) ?? num(d.loan_amount)
+      const settledAmount = num(d.settled_total) ?? splitsTotal(d.settled_splits) ?? num(d.loan_amount)
 
-      // The date a deal is reported on is the effective date recorded at the
-      // stage, not when someone happened to click the button.
-      const lodgedDate  = toAuDate(lodgedSnap?.effective_date  || d.lodged_at)
-      const settledDate = toAuDate(settledSnap?.effective_date || d.settled_at)
+      // The date reported on is the effective date recorded at the stage, not
+      // when someone happened to click the button.
+      const lodgedDate  = toAuDate(d.lodged_date  || d.lodged_at)
+      const settledDate = toAuDate(d.settled_date || d.settled_at)
 
-      const isLodged  = view === 'lodged'  && inPeriod(lodgedDate, period)
       const isSettled = view === 'settled' && inPeriod(settledDate, period)
+      const isLodged  = view === 'lodged'  && inPeriod(lodgedDate, period)
       if (!isLodged && !isSettled) continue
 
-      const activeSnap = isSettled ? settledSnap : lodgedSnap
-      const amount = isSettled
-        ? (settledSnap ? (num(settledSnap.total_amount) ?? splitsTotal(settledSnap.splits)) : num(d.loan_amount))
-        : lodgedAmount
-
-      const status = d.settled_at ? 'Settled'
-        : d.formal_approval_at ? 'Formal approval'
-        : d.preapproval_at ? 'Preapproved'
-        : d.lodged_at ? 'Lodged' : '-'
+      const amount = isSettled ? settledAmount : lodgedAmount
+      const splits = isSettled ? d.settled_splits : d.lodged_splits
 
       out.push({
-        id: d.id,
+        id: d.deal_id,
         name: d.deal_name || '(unnamed deal)',
         broker: d.assigned_broker || '-',
-        lender: activeSnap?.lender || formalSnap?.lender || lodgedSnap?.lender || d.lender || '-',
+        lender: (isSettled
+          ? (d.settled_lender || d.formal_lender || d.lodged_lender)
+          : d.lodged_lender) || d.lender || '-',
         date: isSettled ? settledDate : lodgedDate,
         amount,
-        splits: Array.isArray(activeSnap?.splits) ? activeSnap.splits.length : 0,
-        status,
+        splits: Array.isArray(splits) ? splits.length : 0,
+        status: d.settled_at ? 'Settled'
+          : d.formal_approval_at ? 'Formal approval'
+          : d.preapproval_at ? 'Preapproved'
+          : d.lodged_at ? 'Lodged' : '-',
         lodgedAmount,
-        variance: (isSettled && amount !== null && lodgedAmount !== null) ? amount - lodgedAmount : null,
+        variance: (isSettled && settledAmount !== null && lodgedAmount !== null && d.lodged_total !== null)
+          ? settledAmount - lodgedAmount : null,
         upfront: num(d.expected_upfront),
       })
     }
     return out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-  }, [deals, snapIndex, period, view])
+  }, [reg, period, view])
 
   const totals = useMemo(() => {
     const amount = rows.reduce((t, r) => t + (r.amount || 0), 0)
