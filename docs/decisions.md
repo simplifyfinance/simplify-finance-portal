@@ -168,3 +168,25 @@ a separate tab; it appears as source text under each lender.
 
 Still needed from Fabio: La Trobe (fee-based schedule) and ME Bank (not in the
 SFG schedule — now part of BOQ) have no figures at all.
+
+## Targets and pace (FINAL — 17 Aug 2026)
+
+Alan's FY27 targets are loaded: $449,867,845 lodged, $330,000,000 settled,
+business-level (broker_key null). Monthly dollars reconcile to his totals
+exactly. His deal COUNTS are one over his own stated totals (666 vs 665 lodged,
+515 vs 514 settled) — rounding in his spreadsheet. Counts are not loaded; the
+portal tracks dollars only.
+
+- **Targets screen sets numbers. It does not compare them.** Last year's actual
+  is a faint reference while typing. No Change column — comparing a target to a
+  prior-year actual is not a result anyone acts on.
+- **The Pipeline is the only place results are compared.** Three questions, at
+  any scope: this period vs target; financial year to date vs target (ahead or
+  behind); and vs last year.
+- **Pace pro-rates the running month.** Part-way through a month, only that
+  share of the month's target counts. Otherwise every month reads as behind
+  until its last day.
+- **Brokers get target, year-to-date pace and share of the business. Never
+  year-on-year** — the ten years of history is a business total with no broker
+  split. Share of business is suppressed with an explanation whenever the
+  business figure for that period came from the spreadsheet.
