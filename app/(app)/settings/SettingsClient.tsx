@@ -219,7 +219,7 @@ export default function SettingsPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="text-sm bg-[#2DBEFF] text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-400 transition disabled:opacity-50"
+          className="text-[13px] bg-[#343333] text-white px-5 py-2 rounded-lg font-semibold hover:bg-[#2a2a2a] transition disabled:opacity-40"
         >
           {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save settings'}
         </button>
@@ -228,29 +228,29 @@ export default function SettingsPage() {
       <p className="text-xs text-gray-400 mb-8">{activePane.blurb}</p>
       {pane === 'brands' && (
       <section className="mb-10">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Brands</h2>
+        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4">Brands</h2>
         {brands.map((brand) => (
-          <div key={brand.id} className="border border-gray-200 rounded-xl p-5 mb-4 bg-white">
+          <div key={brand.id} className="border border-[#EDE7DD] rounded-xl p-5 mb-4 bg-white">
             <div className="flex justify-between items-start mb-4">
               <div className="flex-1">
-                <input className="font-semibold text-[#343333] text-sm border border-gray-200 rounded-lg px-3 py-1.5 w-full max-w-xs mb-1" value={brand.name} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, name: e.target.value} : b))} placeholder="Brand name" />
-                <p className="text-xs text-gray-400">{brand.isDefault ? 'Default brand' : 'Additional brand'}</p>
+                <input className="font-semibold text-[#2E2A26] text-[13.5px] border border-[#E8E1D6] rounded-lg px-3 py-1.5 w-full max-w-xs mb-1 focus:outline-none focus:border-[#2DBEFF]" value={brand.name} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, name: e.target.value} : b))} placeholder="Brand name" />
+                <p className="text-[11.5px] text-[#A29889]">{brand.isDefault ? 'Default brand' : 'Additional brand'}</p>
               </div>
               <div className="flex items-center gap-2">
-                {brand.isDefault && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">Default</span>}
-                {!brand.isDefault && <button onClick={() => setBrands(brands.filter(b => b.id !== brand.id))} className="text-xs text-red-400 hover:text-red-600">Remove</button>}
+                {brand.isDefault && <span className="text-[10.5px] bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] px-2.5 py-1 rounded-full font-semibold">Default</span>}
+                {!brand.isDefault && <button onClick={() => setBrands(brands.filter(b => b.id !== brand.id))} className="text-[11.5px] text-[#A29889] hover:text-[#C4553B] transition">Remove</button>}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs text-gray-400 block mb-1">Header colour</label><div className="flex items-center gap-2"><input type="color" value={brand.headerColor} className="w-8 h-8 rounded cursor-pointer border border-gray-200 flex-shrink-0" onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, headerColor: e.target.value} : b))} /><input className="text-sm font-mono text-gray-600 border border-gray-200 rounded-lg px-2 py-1 w-24" value={brand.headerColor} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, headerColor: e.target.value} : b))} placeholder="#343333" /></div></div>
-              <div><label className="text-xs text-gray-400 block mb-1">Accent colour</label><div className="flex items-center gap-2"><input type="color" value={brand.accentColor} className="w-8 h-8 rounded cursor-pointer border border-gray-200 flex-shrink-0" onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, accentColor: e.target.value} : b))} /><input className="text-sm font-mono text-gray-600 border border-gray-200 rounded-lg px-2 py-1 w-24" value={brand.accentColor} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, accentColor: e.target.value} : b))} placeholder="#2DBEFF" /></div></div>
-              <div><label className="text-xs text-gray-400 block mb-1">Logo URL</label><input className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" value={brand.logoUrl || ''} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, logoUrl: e.target.value} : b))} placeholder="https://.../logo.png" /></div>
-              <div><label className="text-xs text-gray-400 block mb-1">ACL number</label><input className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" value={brand.acl} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, acl: e.target.value} : b))} /></div>
-              <div><label className="text-xs text-gray-400 block mb-1">Footer address</label><input className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" value={brand.footerAddress} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, footerAddress: e.target.value} : b))} /></div>
+              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">Header colour</label><div className="flex items-center gap-2"><input type="color" value={brand.headerColor} className="w-8 h-8 rounded cursor-pointer border border-[#E8E1D6] flex-shrink-0" onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, headerColor: e.target.value} : b))} /><input className="text-[12.5px] font-mono text-[#6E665C] border border-[#E8E1D6] rounded-lg px-2 py-1 w-24 focus:outline-none focus:border-[#2DBEFF]" value={brand.headerColor} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, headerColor: e.target.value} : b))} placeholder="#343333" /></div></div>
+              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">Accent colour</label><div className="flex items-center gap-2"><input type="color" value={brand.accentColor} className="w-8 h-8 rounded cursor-pointer border border-[#E8E1D6] flex-shrink-0" onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, accentColor: e.target.value} : b))} /><input className="text-[12.5px] font-mono text-[#6E665C] border border-[#E8E1D6] rounded-lg px-2 py-1 w-24 focus:outline-none focus:border-[#2DBEFF]" value={brand.accentColor} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, accentColor: e.target.value} : b))} placeholder="#2DBEFF" /></div></div>
+              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">Logo URL</label><input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={brand.logoUrl || ''} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, logoUrl: e.target.value} : b))} placeholder="https://.../logo.png" /></div>
+              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">ACL number</label><input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={brand.acl} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, acl: e.target.value} : b))} /><div className="text-[11px] text-[#A29889] mt-1">Appears in the footer of client emails.</div></div>
+              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">Footer address</label><input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={brand.footerAddress} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, footerAddress: e.target.value} : b))} /></div>
             </div>
           </div>
         ))}
-        <button onClick={() => setBrands([...brands, {id: Date.now().toString(), name: 'New Brand', isDefault: false, headerColor: '#343333', accentColor: '#2DBEFF', acl: '387025', footerAddress: 'St Leonards, Sydney', logoUrl: ''}])} className="text-sm text-[#2DBEFF] border border-dashed border-[#2DBEFF] rounded-lg px-4 py-2 hover:bg-blue-50 transition">+ Add another brand</button>
+        <button onClick={() => setBrands([...brands, {id: Date.now().toString(), name: 'New Brand', isDefault: false, headerColor: '#343333', accentColor: '#2DBEFF', acl: '387025', footerAddress: 'St Leonards, Sydney', logoUrl: ''}])} className="text-[12.5px] font-medium text-[#6E665C] bg-[#FAF7F2] border border-[#E8E1D6] rounded-lg px-4 py-2 hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition">+ Add another brand</button>
       </section>
       )}
       {pane === 'brokers' && (
