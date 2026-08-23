@@ -63,11 +63,40 @@ If a decision is not written here, it does not exist.
 - Stages keep their own snapshots: lodged, formal, settled. Amounts differ between
   them and commission is calculated on the settled amount at the settled date.
 
-### Close reasons — TO CONFIRM
+### Close reasons — FINAL
 
-Eight reasons were agreed in an earlier session. That session was compacted and the
-list was lost. **Do not invent them.** Recover them from the earlier chat, write them
-here, then build the dropdown.
+Eight, and they cover everything. Stored value on the left, label shown on the right.
+
+| Value | Label |
+|---|---|
+| `no_response` | No response from client |
+| `not_ready` | Not ready yet — revisit later |
+| `changed_plans` | Client changed plans |
+| `property_fell_through` | Property fell through |
+| `servicing` | Servicing — couldn't borrow enough |
+| `insufficient_funds` | Insufficient deposit or funds |
+| `duplicate` | Duplicate or invalid enquiry |
+| `other` | Other — note required |
+
+`other` requires a note. Nothing else does.
+
+### Closing a deal
+
+Closing is one step, not three. The modal asks for the reason, offers to save the
+client's position, and takes one next action.
+
+- **One next action per closed deal**, with a date. Not a task list — one thing, so it
+  actually gets done.
+- **Three reasons are "not now", not "never"**, and require a follow-up date rather
+  than leaving it optional: `not_ready`, `servicing`, `insufficient_funds`. These are
+  the ones that come back, and they are the reason for closing properly rather than
+  letting a deal rot in the active list.
+- **The client's position is saved by default**, as declared — no loan added, because
+  no loan happened. A lost deal still captured a full fact find.
+- Closing sets `status = 'lost'`, which the credit team workload screen and the
+  waiting-on label already respect. Until this is built, every dead deal counts as
+  active work.
+- **Monday digest** lists next actions falling due that week.
 
 ## Interface
 
