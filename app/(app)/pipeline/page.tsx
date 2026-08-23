@@ -165,7 +165,6 @@ export default function PipelinePage() {
     return seen ? t : null
   }
 
-  const series = useMemo(() => periods.map(p => ({ p, ...periodValue(p) })), [periods, monthly])
   const idx = useMemo(() => periods.findIndex(p => p.key === period?.key), [periods, period])
   const backOneYear = kind === 'month' ? 12 : kind === 'quarter' ? 4 : kind === 'fy' ? 1 : 0
 
@@ -173,18 +172,71 @@ export default function PipelinePage() {
   const target = period ? periodTarget(period) : null
   const inProgress = !!period && todayYmd() >= period.start && todayYmd() <= period.end
 
-  const lastYear = backOneYear && series[idx + backOneYear]?.amount ? series[idx + backOneYear] : null
+  // The calendar months a period spans, in order.
+  function monthKeysIn(pp: Period): string[] {
+    const out: string[] = []
+    let y = Number(pp.start.slice(0, 4)), m = Number(pp.start.slice(5, 7))
+    for (let guard = 0; guard < 24; guard++) {
+      const key = `${y}-${String(m).padStart(2, '0')}`
+      if (key + '-01' > pp.end) break
+      out.push(key)
+      m += 1
+      if (m > 12) { m = 1; y += 1 }
+    }
+    return out
+  }
+
+  // A part-finished period must never be measured against finished ones. A financial
+  // year holding one month of data is compared against the FIRST MONTH of earlier
+  // years, not their full twelve; a month still running is compared against the same
+  // share of earlier months. Otherwise every comparison reads as a collapse.
+  const shape = useMemo(() => {
+    if (!period || !backOneYear) return null
+    const keys = monthKeysIn(period)
+    const withData = keys.filter(k => monthly[k])
+    if (withData.length === 0) return null
+    const todayKey = todayYmd().slice(0, 7)
+    const lastKey = withData[withData.length - 1]
+    const partial = inProgress && lastKey === todayKey
+    let frac = 1
+    if (partial) {
+      const y = Number(todayKey.slice(0, 4)), m = Number(todayKey.slice(5, 7))
+      const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate()
+      frac = Number(todayYmd().slice(8, 10)) / daysInMonth
+    }
+    return { n: withData.length, total: keys.length, frac, partial,
+             clipped: withData.length < keys.length || partial }
+  }, [period, monthly, inProgress, backOneYear])
+
+  // Any other period, cut to the same shape as the one on screen.
+  function baseline(pp: Period): number {
+    const keys = shape ? monthKeysIn(pp).slice(0, shape.n) : monthKeysIn(pp)
+    let t = 0
+    keys.forEach((k, i) => {
+      const v = monthly[k]?.amount || 0
+      t += (shape && i === keys.length - 1) ? v * shape.frac : v
+    })
+    return t
+  }
+
+  // The selected period keeps its real figure; everything it is measured against is
+  // cut down to match it.
+  const series = useMemo(
+    () => periods.map(pp => ({ p: pp, value: pp.key === period?.key ? current.amount : baseline(pp) })),
+    [periods, shape, monthly, period, current.amount])
+
+  const lastYear = backOneYear && series[idx + backOneYear]?.value ? series[idx + backOneYear] : null
   const threeYear = useMemo(() => {
     if (!backOneYear) return null
-    const vals = [1, 2, 3].map(n => series[idx + backOneYear * n]).filter(s => s && s.amount > 0)
+    const vals = [1, 2, 3].map(n => series[idx + backOneYear * n]).filter(s => s && s.value > 0)
     if (vals.length === 0) return null
-    return { avg: vals.reduce((t, s) => t + s.amount, 0) / vals.length, n: vals.length }
+    return { avg: vals.reduce((t, s) => t + s.value, 0) / vals.length, n: vals.length }
   }, [series, idx, backOneYear])
 
   const record = useMemo(() => {
-    const withData = series.filter(s => s.amount > 0)
+    const withData = series.filter(s => s.value > 0)
     if (withData.length === 0) return null
-    const sorted = [...withData].sort((a, b) => b.amount - a.amount)
+    const sorted = [...withData].sort((a, b) => b.value - a.value)
     const rank = sorted.findIndex(s => s.p.key === period?.key) + 1
     return { best: sorted[0], rank: rank || null, total: sorted.length, isBest: sorted[0].p.key === period?.key,
              second: sorted[1] || null }
@@ -381,12 +433,12 @@ export default function PipelinePage() {
               <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
                 <span className="text-[13px] font-semibold text-[#2E2A26]">
                   How {period?.label} compares
-                  {inProgress && <span className="text-[#A29889] font-normal"> · still in progress</span>}
+                  {inProgress && <span className="text-[#A29889] font-normal"> · still in progress{shape?.clipped ? `, compared on the first ${shape.n} month${shape.n === 1 ? '' : 's'} of each year` : ''}</span>}
                 </span>
                 {record?.isBest ? (
                   <span className="inline-flex items-center gap-1.5 bg-[#F3F9F4] border border-[#CFE6D5] text-[#25794C] rounded-full px-2.5 py-1 text-[11.5px] font-semibold">
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2l1.8 3.9 4.2.5-3.1 2.9.8 4.2L8 11.6 4.3 13.5l.8-4.2L2 6.4l4.2-.5z"/></svg>
-                    Best on record
+                    {shape?.clipped ? 'Best start on record' : 'Best on record'}
                   </span>
                 ) : record?.rank && record.rank <= 5 ? (
                   <span className="inline-flex items-center gap-1.5 bg-[#FBF4E3] border border-[#EFE0BC] text-[#9A7B2E] rounded-full px-2.5 py-1 text-[11.5px] font-semibold">
@@ -395,27 +447,27 @@ export default function PipelinePage() {
                 ) : null}
               </div>
               <div className="grid grid-cols-4">
-                <Cmp label="vs same period last year"
-                     value={lastYear ? signed(pct(current.amount, lastYear.amount)) : '-'}
-                     tone={lastYear ? (current.amount >= lastYear.amount ? 'up' : 'down') : 'flat'}
-                     base={lastYear ? `${lastYear.p.label} · ${compact(lastYear.amount)} \u2192 ${compact(current.amount)}` : 'no comparable period held'} />
+                <Cmp label={shape?.clipped ? 'vs same point last year' : 'vs same period last year'}
+                     value={lastYear ? signed(pct(current.amount, lastYear.value)) : '-'}
+                     tone={lastYear ? (current.amount >= lastYear.value ? 'up' : 'down') : 'flat'}
+                     base={lastYear ? `${lastYear.p.label}${shape?.clipped ? ' at this point' : ''} · ${compact(lastYear.value)} \u2192 ${compact(current.amount)}` : 'no comparable period held'} />
                 <Cmp label="vs target"
                      value={target ? Math.round(current.amount / target * 100) + '%' : 'not set'}
                      tone={target ? (current.amount >= target ? 'up' : 'down') : 'flat'}
                      base={target ? `${compact(Math.abs(current.amount - target))} ${current.amount >= target ? 'ahead of' : 'short of'} ${compact(target)}` : 'no target loaded for this period'}
                      meter={target ? Math.min(100, current.amount / target * 100) : null}
                      meterFull={!!target && current.amount >= target} />
-                <Cmp label="vs 3-year average"
+                <Cmp label={shape?.clipped ? 'vs 3-year average at this point' : 'vs 3-year average'}
                      value={threeYear ? signed(pct(current.amount, threeYear.avg)) : '-'}
                      tone={threeYear ? (current.amount >= threeYear.avg ? 'up' : 'down') : 'flat'}
-                     base={threeYear ? `${compact(threeYear.avg)} · average of ${threeYear.n} prior year${threeYear.n === 1 ? '' : 's'}` : 'not enough history yet'} />
-                <Cmp label={record?.isBest ? 'Previous best' : 'Best on record'}
-                     value={record ? compact(record.isBest ? (record.second?.amount ?? null) : record.best.amount) : '-'}
+                     base={threeYear ? `${compact(threeYear.avg)} · average of ${threeYear.n} prior year${threeYear.n === 1 ? '' : 's'}${shape?.clipped ? ' at this point' : ''}` : 'not enough history yet'} />
+                <Cmp label={record?.isBest ? 'Previous best' : shape?.clipped ? 'Best start on record' : 'Best on record'}
+                     value={record ? compact(record.isBest ? (record.second?.value ?? null) : record.best.value) : '-'}
                      tone="flat"
                      base={record
                        ? (record.isBest
-                          ? (record.second ? `${record.second.p.label} · beaten by ${compact(current.amount - record.second.amount)}` : 'first period on record')
-                          : `${record.best.p.label} · ${compact(record.best.amount - current.amount)} above this one`)
+                          ? (record.second ? `${record.second.p.label} · beaten by ${compact(current.amount - record.second.value)}` : 'first period on record')
+                          : `${record.best.p.label} · ${compact(record.best.value - current.amount)} ahead of ${period?.label}`)
                        : ''} />
               </div>
             </div>
