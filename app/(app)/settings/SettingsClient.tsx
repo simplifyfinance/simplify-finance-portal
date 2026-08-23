@@ -215,7 +215,7 @@ export default function SettingsPage() {
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-1">
-        <h1 className="text-2xl font-bold text-[#343333]">Settings</h1>
+        <h1 className="text-2xl font-bold text-[#2E2A26]">Settings</h1>
         <button
           onClick={handleSave}
           disabled={saving}
@@ -255,20 +255,20 @@ export default function SettingsPage() {
       )}
       {pane === 'brokers' && (
       <section className="mb-10">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Broker Profiles</h2>
+        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4">Broker Profiles</h2>
         {brokers.map((broker) => (
-          <div key={broker.id} className="border border-gray-200 rounded-xl p-5 mb-4 bg-white">
+          <div key={broker.id} className="border border-[#EDE7DD] rounded-xl p-5 mb-4 bg-white">
             <div className="flex justify-between items-start mb-4">
               <div className="flex-1">
-                <input className="font-semibold text-[#343333] w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#2DBEFF] mb-1" value={broker.name} onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? {...b, name: e.target.value} : b))} placeholder="Broker name" />
+                <input className="font-semibold text-[#2E2A26] w-full border border-[#E8E1D6] rounded-lg px-3 py-2 focus:outline-none focus:border-[#2DBEFF] mb-1" value={broker.name} onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? {...b, name: e.target.value} : b))} placeholder="Broker name" />
               </div>
-              <button onClick={() => setBrokers(brokers.filter(b => b.id !== broker.id))} className="text-xs text-red-400 hover:text-red-600">Remove</button>
+              <button onClick={() => setBrokers(brokers.filter(b => b.id !== broker.id))} className="text-[11.5px] text-[#A29889] hover:text-[#C4553B] transition">Remove</button>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs text-gray-400 block mb-1">Title</label><input className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" value={broker.title} onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? {...b, title: e.target.value} : b))} /></div>
-              <div><label className="text-xs text-gray-400 block mb-1">CR number</label><input className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" value={broker.crn} onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? {...b, crn: e.target.value} : b))} placeholder="e.g. 123456 — placeholder until confirmed" /></div>
-              <div><label className="text-xs text-gray-400 block mb-1">Calendly link</label><input className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono" value={broker.calendly} onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? {...b, calendly: e.target.value} : b))} /></div>
-              <div><label className="text-xs text-gray-400 block mb-1">Email</label><input className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" value={broker.email} onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? {...b, email: e.target.value} : b))} /></div>
+              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">Title</label><input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={broker.title} onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? {...b, title: e.target.value} : b))} /></div>
+              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">CR number</label><input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={broker.crn} onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? {...b, crn: e.target.value} : b))} placeholder="e.g. 123456 — placeholder until confirmed" /></div>
+              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">Calendly link</label><input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF] font-mono" value={broker.calendly} onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? {...b, calendly: e.target.value} : b))} /></div>
+              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">Email</label><input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={broker.email} onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? {...b, email: e.target.value} : b))} /></div>
             </div>
             <div className="mt-3">
               <label className="text-xs text-gray-400 block mb-2">Brands (a broker can work under multiple brands)</label>
@@ -286,35 +286,35 @@ export default function SettingsPage() {
             </div>
           </div>
         ))}
-        <button onClick={() => setBrokers([...brokers, {id: Date.now().toString(), name: 'New Broker', title: 'Mortgage Broker', crn: '', email: '', calendly: '', brandIds: ['simplify']}])} className="text-sm text-[#2DBEFF] border border-dashed border-[#2DBEFF] rounded-lg px-4 py-2 hover:bg-blue-50 transition">+ Add another broker</button>
+        <button onClick={() => setBrokers([...brokers, {id: Date.now().toString(), name: 'New Broker', title: 'Mortgage Broker', crn: '', email: '', calendly: '', brandIds: ['simplify']}])} className="text-[12.5px] font-medium text-[#6E665C] bg-[#FAF7F2] border border-[#E8E1D6] rounded-lg px-4 py-2 hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition">+ Add another broker</button>
         <p className="text-xs text-gray-400 mt-2">Note: broker names should start with the first name used elsewhere in the portal (e.g. "Fabio", "Justin") — this is what links a broker to their deals and credit team coverage below.</p>
       </section>
       )}
       {pane === 'connections' && (
       <section className="mb-10">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Bank Statement Collection (WealthDesk)</h2>
-        <div className="border border-gray-200 rounded-xl p-5 bg-white">
-          <p className="text-xs text-gray-400 mb-3">This is the same static link shared with every client to collect bank statements. It's used on the client "ready to proceed" page and in the manual next-steps email.</p>
-          <label className="text-xs text-gray-400 block mb-1">WealthDesk link</label>
-          <input className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono" value={wealthDeskLink} onChange={(e) => setWealthDeskLink(e.target.value)} placeholder="https://simplify.wealthdesk.com.au/iv/tk/..." />
+        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4">Bank Statement Collection (WealthDesk)</h2>
+        <div className="border border-[#EDE7DD] rounded-xl p-5 bg-white">
+          <p className="text-[11.5px] text-[#A29889] mb-3">This is the same static link shared with every client to collect bank statements. It's used on the client "ready to proceed" page and in the manual next-steps email.</p>
+          <label className="text-[11px] font-semibold text-[#A29889] block mb-1">WealthDesk link</label>
+          <input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF] font-mono" value={wealthDeskLink} onChange={(e) => setWealthDeskLink(e.target.value)} placeholder="https://simplify.wealthdesk.com.au/iv/tk/..." />
         </div>
       </section>
       )}
       {pane === 'notifications' && (
       <section className="mb-10">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Notification Routing</h2>
-        <div className="border border-gray-200 rounded-xl p-5 bg-white space-y-4">
-          <p className="text-xs text-gray-400 mb-3">Who receives internal notification emails as deals move through the pipeline. Change this anytime without needing a code change.</p>
+        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4">Notification Routing</h2>
+        <div className="border border-[#EDE7DD] rounded-xl p-5 bg-white space-y-4">
+          <p className="text-[11.5px] text-[#A29889] mb-3">Who receives internal notification emails as deals move through the pipeline. Change this anytime without needing a code change.</p>
           <div>
-            <label className="text-xs text-gray-400 block mb-1">When a new deal is created — who is asked to create the SalesTrekker card</label>
-            <select className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" value={newDealNotificationUserId} onChange={(e) => setNewDealNotificationUserId(e.target.value)}>
+            <label className="text-[11px] font-semibold text-[#A29889] block mb-1">When a new deal is created — who is asked to create the SalesTrekker card</label>
+            <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={newDealNotificationUserId} onChange={(e) => setNewDealNotificationUserId(e.target.value)}>
               <option value="">— select team member —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-xs text-gray-400 block mb-1">When a deal moves stage — who is asked to move the SalesTrekker card</label>
-            <select className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" value={stageMoveNotificationUserId} onChange={(e) => setStageMoveNotificationUserId(e.target.value)}>
+            <label className="text-[11px] font-semibold text-[#A29889] block mb-1">When a deal moves stage — who is asked to move the SalesTrekker card</label>
+            <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={stageMoveNotificationUserId} onChange={(e) => setStageMoveNotificationUserId(e.target.value)}>
               <option value="">— select team member —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
@@ -325,9 +325,9 @@ export default function SettingsPage() {
       {pane === 'targets' && <PipelineTargets />}
       {pane === 'compliance' && (
       <section className="mb-10">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Compliance AI Style Notes</h2>
-        <div className="border border-gray-200 rounded-xl p-5 bg-white">
-          <p className="text-xs text-gray-400 mb-3">Corrections and preferences you've given before, fed into every future Compliance AI generation across all deals — e.g. "Always mention offset account benefits" or "Keep the deposit comment to one sentence, no exceptions."</p>
+        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4">Compliance AI Style Notes</h2>
+        <div className="border border-[#EDE7DD] rounded-xl p-5 bg-white">
+          <p className="text-[11.5px] text-[#A29889] mb-3">Corrections and preferences you've given before, fed into every future Compliance AI generation across all deals — e.g. "Always mention offset account benefits" or "Keep the deposit comment to one sentence, no exceptions."</p>
           <div className="flex flex-col gap-2 mb-3">
             {complianceStyleNotes.map((note, i) => (
               <div key={i} className="flex items-center gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
@@ -337,7 +337,7 @@ export default function SettingsPage() {
             ))}
           </div>
           <div className="flex gap-2">
-            <input className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2" value={newStyleNote} onChange={e => setNewStyleNote(e.target.value)} placeholder="Add a style note..." onKeyDown={e => { if (e.key === 'Enter' && newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} />
+            <input className="flex-1 text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={newStyleNote} onChange={e => setNewStyleNote(e.target.value)} placeholder="Add a style note..." onKeyDown={e => { if (e.key === 'Enter' && newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} />
             <button onClick={() => { if (newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} className="text-sm bg-gray-100 rounded-lg px-4 py-2 hover:bg-gray-200 transition">Add</button>
           </div>
         </div>
@@ -345,13 +345,13 @@ export default function SettingsPage() {
       )}
       {pane === 'compliance' && (
       <section className="mb-10">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Compliance AI Flags {complianceFlags.length > 0 && <span className="bg-amber-100 text-amber-600 rounded-full px-2 py-0.5 ml-1">{complianceFlags.length}</span>}</h2>
-        <div className="border border-gray-200 rounded-xl p-5 bg-white">
-          <p className="text-xs text-gray-400 mb-3">Issues flagged by the team on live deals. Promote a flag to turn it into a permanent Style Note applied to every future generation, or dismiss it if it doesn't need to become a standing rule.</p>
+        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4">Compliance AI Flags {complianceFlags.length > 0 && <span className="bg-amber-100 text-amber-600 rounded-full px-2 py-0.5 ml-1">{complianceFlags.length}</span>}</h2>
+        <div className="border border-[#EDE7DD] rounded-xl p-5 bg-white">
+          <p className="text-[11.5px] text-[#A29889] mb-3">Issues flagged by the team on live deals. Promote a flag to turn it into a permanent Style Note applied to every future generation, or dismiss it if it doesn't need to become a standing rule.</p>
           {loadingFlags ? (
-            <p className="text-xs text-gray-400">Loading...</p>
+            <p className="text-[11.5px] text-[#A29889]">Loading...</p>
           ) : complianceFlags.length === 0 ? (
-            <p className="text-xs text-gray-400">No open flags.</p>
+            <p className="text-[11.5px] text-[#A29889]">No open flags.</p>
           ) : (
             <div className="flex flex-col gap-3">
               {complianceFlags.map((flag) => (
@@ -375,7 +375,7 @@ export default function SettingsPage() {
       {pane === 'people' && (
       <section className="mb-10">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Credit Team</h2>
+          <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em]">Credit Team</h2>
         </div>
         <p className="text-xs text-gray-400 mb-4">Manage who's on the credit team and which brokers' deals each person covers. This drives automatic allocation when a deal is sent to the credit team.</p>
         {creditTeamError && (
@@ -386,20 +386,20 @@ export default function SettingsPage() {
         ) : (
           <>
             {creditOfficers.map((officer) => (
-              <div key={officer.id} className="border border-gray-200 rounded-xl p-5 mb-4 bg-white">
+              <div key={officer.id} className="border border-[#EDE7DD] rounded-xl p-5 mb-4 bg-white">
                 <div className="flex justify-between items-start mb-4">
-                  <input className="font-semibold text-[#343333] flex-1 border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#2DBEFF]" value={officer.name} onChange={(e) => updateCreditOfficerName(officer.id, e.target.value)} placeholder="Credit officer name" />
+                  <input className="font-semibold text-[#2E2A26] flex-1 border border-[#E8E1D6] rounded-lg px-3 py-2 focus:outline-none focus:border-[#2DBEFF]" value={officer.name} onChange={(e) => updateCreditOfficerName(officer.id, e.target.value)} placeholder="Credit officer name" />
                   <div className="flex items-center gap-3">
                     <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer">
                       <input type="checkbox" checked={officer.active} onChange={(e) => toggleCreditOfficerActive(officer.id, e.target.checked)} />
                       Active
                     </label>
-                    <button onClick={() => removeCreditOfficer(officer.id)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
+                    <button onClick={() => removeCreditOfficer(officer.id)} className="text-[11.5px] text-[#A29889] hover:text-[#C4553B] transition">Remove</button>
                   </div>
                 </div>
                 <div className="mb-3">
-                  <label className="text-xs text-gray-400 block mb-1">Linked portal account (used for assignment notification emails)</label>
-                  <select className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" value={officer.userId || ''} onChange={(e) => linkCreditOfficerUser(officer.id, e.target.value)}>
+                  <label className="text-[11px] font-semibold text-[#A29889] block mb-1">Linked portal account (used for assignment notification emails)</label>
+                  <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={officer.userId || ''} onChange={(e) => linkCreditOfficerUser(officer.id, e.target.value)}>
                     <option value="">— not linked —</option>
                     {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name} ({p.email})</option>)}
                   </select>
@@ -407,12 +407,12 @@ export default function SettingsPage() {
                 </div>
                 <div className="mb-3 grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-gray-400 block mb-1">On leave from</label>
-                    <input type="date" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" value={officer.onLeaveFrom || ''} onChange={(e) => updateCreditOfficerLeave(officer.id, 'onLeaveFrom', e.target.value)} />
+                    <label className="text-[11px] font-semibold text-[#A29889] block mb-1">On leave from</label>
+                    <input type="date" className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={officer.onLeaveFrom || ''} onChange={(e) => updateCreditOfficerLeave(officer.id, 'onLeaveFrom', e.target.value)} />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 block mb-1">Until</label>
-                    <input type="date" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" value={officer.onLeaveUntil || ''} onChange={(e) => updateCreditOfficerLeave(officer.id, 'onLeaveUntil', e.target.value)} />
+                    <label className="text-[11px] font-semibold text-[#A29889] block mb-1">Until</label>
+                    <input type="date" className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={officer.onLeaveUntil || ''} onChange={(e) => updateCreditOfficerLeave(officer.id, 'onLeaveUntil', e.target.value)} />
                   </div>
                   {officer.onLeaveFrom && officer.onLeaveUntil && (
                     <p className="text-xs text-amber-600 col-span-2">🏖 Excluded from auto-allocation between {officer.onLeaveFrom} and {officer.onLeaveUntil}</p>
@@ -433,7 +433,7 @@ export default function SettingsPage() {
                 </div>
               </div>
             ))}
-            <button onClick={addCreditOfficer} className="text-sm text-[#2DBEFF] border border-dashed border-[#2DBEFF] rounded-lg px-4 py-2 hover:bg-blue-50 transition">+ Add credit officer</button>
+            <button onClick={addCreditOfficer} className="text-[12.5px] font-medium text-[#6E665C] bg-[#FAF7F2] border border-[#E8E1D6] rounded-lg px-4 py-2 hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition">+ Add credit officer</button>
           </>
         )}
       </section>
