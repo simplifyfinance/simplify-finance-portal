@@ -539,10 +539,57 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
 
   async function markComplianceComplete() {
     const nowIso = new Date().toISOString()
-    const { error } = await supabase.from('deals').update({ compliance_completed_at: nowIso }).eq('id', deal.id)
+    const { data: rows, error } = await supabase.from('deals')
+      .update({ compliance_completed_at: nowIso }).eq('id', deal.id).select('id')
     if (error) { alert('Error marking compliance complete: ' + error.message); return }
+    if (!rows || rows.length === 0) {
+      alert('NOT SAVED - compliance was not marked complete and the notification was not sent. Do not close this tab.')
+      return
+    }
     setComplianceCompletedAt(nowIso)
-    fetch('/api/notify-salestrekker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId: deal.id, trigger: 'push_to_salestrekker' }) }).catch(() => {})
+    // The notification is awaited and checked. If it fails the user is told, because
+    // otherwise the message claims an email went out that never left the building.
+    try {
+      const res = await fetch('/api/notify-salestrekker', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId: deal.id, trigger: 'push_to_salestrekker' })
+      })
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '')
+        alert('Compliance is marked complete, but the notification email FAILED to send'
+          + (detail ? ' (' + detail.slice(0, 200) + ')' : '')
+          + '. Please tell the compliance team directly.')
+        return
+      }
+      alert('Compliance complete - the compliance team has been notified that this deal is ready to be issued.')
+    } catch (e: any) {
+      alert('Compliance is marked complete, but the notification email FAILED to send ('
+        + (e?.message || 'network error') + '). Please tell the compliance team directly.')
+    }
+  }
+
+  const [downloading, setDownloading] = useState('')
+  const pdfBaseName = String((deal as any).deal_name || (deal as any).name || (deal as any).title || 'deal').replace(/[^A-Za-z0-9_-]+/g, '_')
+
+  async function downloadPdf(kind: 'summary' | 'compliance') {
+    setDownloading(kind)
+    try {
+      const res = await fetch(kind === 'summary' ? '/api/generate-summary-pdf' : '/api/generate-compliance-pdf', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId: deal.id })
+      })
+      if (!res.ok) { alert('Could not generate the ' + kind + ' PDF. Nothing was downloaded.'); return }
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = pdfBaseName + '-' + kind + '.pdf'
+      a.click()
+      window.URL.revokeObjectURL(url)
+    } catch (e: any) {
+      alert('Could not generate the ' + kind + ' PDF: ' + (e?.message || 'network error'))
+    } finally {
+      setDownloading('')
+    }
   }
 
   const [showPositionPrompt, setShowPositionPrompt] = useState(false)
@@ -571,7 +618,6 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
     }
     setShowPositionPrompt(false)
     markComplianceComplete()
-    alert('Compliance complete — Cris has been notified that this deal is ready for Compliance to be issued.')
   }
 
   function handlePushToSalesTrekker() {
@@ -584,7 +630,6 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
       setShowPositionPrompt(true)
     } else {
       markComplianceComplete()
-      alert('Compliance complete — Cris has been notified that this deal is ready for Compliance to be issued.')
     }
   }
 
@@ -622,6 +667,33 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
               <div className="text-sm font-medium text-[#343333] truncate">{value}</div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Compliance actions */}
+      <div className="bg-white border border-gray-100 rounded-xl p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <button onClick={handlePushToSalesTrekker}
+              className="bg-[#343333] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition inline-flex items-center gap-2">
+              Push to SalesTrekker
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+            </button>
+            <div className="text-[11.5px] text-[#A29889] mt-2.5 max-w-[46ch]">Marks compliance complete and emails both PDFs to the compliance team.</div>
+            {complianceCompletedAt && <div className="text-[11.5px] text-green-600 mt-1">✓ Compliance completed</div>}
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => downloadPdf('summary')} disabled={!!downloading}
+              className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-lg px-3.5 py-2 text-[12.5px] font-medium hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition inline-flex items-center gap-1.5 disabled:opacity-40">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v8M4.5 7l3.5 3.5L11.5 7M3 13h10"/></svg>
+              {downloading === 'summary' ? 'Preparing...' : 'Summary PDF'}
+            </button>
+            <button onClick={() => downloadPdf('compliance')} disabled={!!downloading}
+              className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-lg px-3.5 py-2 text-[12.5px] font-medium hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition inline-flex items-center gap-1.5 disabled:opacity-40">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v8M4.5 7l3.5 3.5L11.5 7M3 13h10"/></svg>
+              {downloading === 'compliance' ? 'Preparing...' : 'Compliance PDF'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1063,47 +1135,6 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
               </div>
             )
           })()}
-
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">
-              
-              {complianceCompletedAt && <span className="ml-3 text-green-600">✓ Compliance completed</span>}
-            </span>
-            <button onClick={handlePushToSalesTrekker}
-              className="bg-[#343333] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition">
-              Push to SalesTrekker →
-            </button>
-            <button onClick={async () => {
-              const res = await fetch('/api/generate-summary-pdf', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ dealId: deal.id })
-              })
-              const blob = await res.blob()
-              const url = window.URL.createObjectURL(blob)
-              const a = document.createElement('a')
-              a.href = url
-              a.download = 'test-summary.pdf'
-              a.click()
-            }} className="text-xs text-gray-400 hover:text-gray-600 underline ml-3">
-              [TEST] Download summary PDF
-            </button>
-            <button onClick={async () => {
-              const res = await fetch('/api/generate-compliance-pdf', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ dealId: deal.id })
-              })
-              const blob = await res.blob()
-              const url = window.URL.createObjectURL(blob)
-              const a = document.createElement('a')
-              a.href = url
-              a.download = 'test-compliance.pdf'
-              a.click()
-            }} className="text-xs text-gray-400 hover:text-gray-600 underline ml-3">
-              [TEST] Download compliance PDF
-            </button>
-          </div>
         </div>
       )}
 
@@ -1130,7 +1161,6 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
                   setShowPositionPrompt(true)
                 } else {
                   markComplianceComplete()
-                  alert('Compliance complete — Cris has been notified that this deal is ready for Compliance to be issued.')
                 }
               }}
                 className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a]">
