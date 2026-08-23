@@ -17,10 +17,26 @@ function money(v: number): string {
   if (a >= 1e3) return '$' + Math.round(v / 1e3) + 'k'
   return '$' + Math.round(v)
 }
-function niceMax(v: number): number {
-  if (v <= 0) return 1
-  const mag = Math.pow(10, Math.floor(Math.log10(v)))
-  return Math.ceil(v / (mag / 2)) * (mag / 2)
+// Pick a tick step that lands on round numbers, then set the top of the scale from
+// it. Dividing the peak by four gave ticks like $11.25m, which is unreadable.
+function axisScale(v: number): { max: number; ticks: number; step: number } {
+  if (v <= 0) return { max: 1, ticks: 1, step: 1 }
+  const raw = v / 4
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)))
+  const norm = raw / mag
+  const step = (norm <= 1 ? 1 : norm <= 1.5 ? 1.5 : norm <= 2 ? 2 : norm <= 3 ? 3 : norm <= 5 ? 5 : 10) * mag
+  const max = Math.ceil(v / step) * step
+  return { max, ticks: Math.round(max / step), step }
+}
+// Axis labels stay short so they cannot overrun the gutter.
+function axisLabel(v: number): string {
+  if (v === 0) return '$0'
+  if (Math.abs(v) >= 1e6) {
+    const n = v / 1e6
+    return '$' + (Number.isInteger(n) ? n : n.toFixed(1)) + 'm'
+  }
+  if (Math.abs(v) >= 1e3) return '$' + Math.round(v / 1e3) + 'k'
+  return '$' + Math.round(v)
 }
 
 function useTip() {
@@ -76,8 +92,8 @@ export function ContextChart({ bars, metric, kind }: {
   kind: string
 }) {
   const { on, node } = useTip()
-  const W = 700, base = 168, top = 16, xa = 46
-  const max = niceMax(Math.max(...bars.map(b => Math.max(b.value, b.avg || 0))))
+  const W = 700, base = 168, top = 16, xa = 60
+  const { max, ticks } = axisScale(Math.max(...bars.map(b => Math.max(b.value, b.avg || 0))))
   const span = (W - xa - 8) / bars.length
   const bw = Math.min(38, span - 10)
   const y = (v: number) => base - (v / max) * (base - top)
@@ -113,12 +129,12 @@ export function ContextChart({ bars, metric, kind }: {
       {node}
       <svg viewBox={`0 0 ${W} 200`} className="w-full h-auto" role="img"
            aria-label={`${noun} volume by ${kind}, with the selected period highlighted`}>
-        {[0, 1, 2, 3, 4].map(i => {
-          const v = max / 4 * i
+        {Array.from({ length: ticks + 1 }, (_, i) => {
+          const v = max / ticks * i
           return (
             <g key={i}>
-              <line x1={xa - 4} y1={y(v)} x2={W} y2={y(v)} stroke={GRID} strokeWidth={1} />
-              <text x={xa - 10} y={y(v) + 3.5} textAnchor="end" fontSize={9.5} fill={INK3}>{money(v)}</text>
+              <line x1={xa - 6} y1={y(v)} x2={W} y2={y(v)} stroke={GRID} strokeWidth={1} />
+              <text x={xa - 12} y={y(v) + 3.5} textAnchor="end" fontSize={9.5} fill={INK3}>{axisLabel(v)}</text>
             </g>
           )
         })}
@@ -160,8 +176,8 @@ export function FyProgressChart({ now, prev, avg, nowLabel, prevLabel, metric }:
   const MONTHS = ['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun']
   const cume = (a: (number | null)[]) => { let t = 0; return a.map(v => v === null ? null : (t += v)) }
   const cNow = cume(now), cPrev = cume(prev), cAvg = cume(avg)
-  const W = 700, base = 186, top = 16, xa = 52
-  const max = niceMax(Math.max(...[...cNow, ...cPrev, ...cAvg].map(v => v || 0)))
+  const W = 700, base = 186, top = 16, xa = 66
+  const { max, ticks } = axisScale(Math.max(...[...cNow, ...cPrev, ...cAvg].map(v => v || 0)))
   const span = (W - xa - 46) / 11
   const y = (v: number) => base - (v / max) * (base - top)
   const noun = metric === 'settled' ? 'settled' : 'lodged'
@@ -202,12 +218,12 @@ export function FyProgressChart({ now, prev, avg, nowLabel, prevLabel, metric }:
       {node}
       <svg viewBox={`0 0 ${W} 216`} className="w-full h-auto" role="img"
            aria-label={`Cumulative ${noun} volume, ${nowLabel} against ${prevLabel}`}>
-        {[0, 1, 2, 3, 4].map(i => {
-          const v = max / 4 * i
+        {Array.from({ length: ticks + 1 }, (_, i) => {
+          const v = max / ticks * i
           return (
             <g key={i}>
               <line x1={xa - 6} y1={y(v)} x2={W - 20} y2={y(v)} stroke={GRID} strokeWidth={1} />
-              <text x={xa - 12} y={y(v) + 3.5} textAnchor="end" fontSize={9.5} fill={INK3}>{money(v)}</text>
+              <text x={xa - 12} y={y(v) + 3.5} textAnchor="end" fontSize={9.5} fill={INK3}>{axisLabel(v)}</text>
             </g>
           )
         })}
