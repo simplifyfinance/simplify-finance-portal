@@ -10,6 +10,7 @@ import ComplianceForm from './ComplianceForm'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
 import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
 import DealProgress, { currentStage } from './DealProgress'
+import DealSettlement from './DealSettlement'
 import { templateLabel } from '@/lib/templates'
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
@@ -162,6 +163,8 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
       </div>
 
       <DealProgress deal={dealData} />
+
+      <DealSettlement deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
 
       <div className="flex gap-2 mb-6">
         {tabs.map(({ key, label }) => (
