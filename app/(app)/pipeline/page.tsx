@@ -46,6 +46,8 @@ export default function PipelinePage() {
   const [kind, setKind] = useState<PeriodKind>('month')
   const [periodKey, setPeriodKey] = useState('')
   const [reg, setReg] = useState<any[]>([])
+  const [scope, setScope] = useState('')            // '' is the whole business
+  const [brokers, setBrokers] = useState<{ key: string; name: string }[]>([])
   const [hist, setHist] = useState<any[]>([])
   const [targets, setTargets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -56,10 +58,11 @@ export default function PipelinePage() {
   useEffect(() => {
     let cancelled = false
     async function load() {
-      const [r, h, t] = await Promise.all([
+      const [r, h, t, b] = await Promise.all([
         supabase.rpc('pipeline_register'),
         supabase.from('pipeline_history').select('month, deals_lodged, lodged_amount, deals_settled, settled_amount'),
-        supabase.from('pipeline_targets').select('metric, month, amount'),
+        supabase.from('pipeline_targets').select('metric, month, amount, broker_key'),
+        supabase.from('user_profiles').select('full_name, broker_key').not('broker_key', 'is', null),
       ])
       if (cancelled) return
       // A failed read must never look like a quiet business.
@@ -71,6 +74,15 @@ export default function PipelinePage() {
       setReg(r.data || [])
       setHist(h.data || [])
       setTargets(t.error ? [] : (t.data || []))   // targets are optional until they are set
+      const seen = new Set<string>()
+      const bs: { key: string; name: string }[] = []
+      for (const r2 of (b.data || [])) {
+        const key = String(r2.broker_key || '').toLowerCase()
+        if (!key || seen.has(key)) continue
+        seen.add(key)
+        bs.push({ key, name: r2.full_name || key })
+      }
+      setBrokers(bs.sort((x, y) => x.name.localeCompare(y.name)))
       setLoading(false)
     }
     load()
@@ -112,6 +124,18 @@ export default function PipelinePage() {
   // row, the portal's own deals become the figure - and the page says which.
   const monthly = useMemo(() => {
     const m: Record<string, { amount: number; deals: number; source: 'spreadsheet' | 'portal' }> = {}
+    if (scope) {
+      for (const r of dealRows) {
+        if ((r.broker || '').toLowerCase() !== scope) continue
+        const date = metric === 'lodged' ? r.lodgedDate : r.settledDate
+        if (!date) continue
+        const key = date.slice(0, 7)
+        if (!m[key]) m[key] = { amount: 0, deals: 0, source: 'portal' }
+        m[key].amount += (metric === 'lodged' ? r.lodgedAmount : r.settledAmount) || 0
+        m[key].deals += 1
+      }
+      return m
+    }
     for (const h of hist) {
       const key = String(h.month).slice(0, 7)
       const amount = num(metric === 'lodged' ? h.lodged_amount : h.settled_amount)
@@ -129,16 +153,16 @@ export default function PipelinePage() {
       m[key].deals += 1
     }
     return m
-  }, [hist, dealRows, metric])
+  }, [hist, dealRows, metric, scope])
 
   const targetByMonth = useMemo(() => {
     const m: Record<string, number> = {}
-    for (const t of targets) if (t.metric === metric) {
+    for (const t of targets) if (t.metric === metric && (t.broker_key || '') === scope) {
       const a = num(t.amount)
       if (a !== null) m[String(t.month).slice(0, 7)] = a
     }
     return m
-  }, [targets, metric])
+  }, [targets, metric, scope])
 
   /* ---------- periods ---------- */
   const COUNT: Record<PeriodKind, number> = { week: 26, month: 144, quarter: 48, fy: 12 }
@@ -308,6 +332,7 @@ export default function PipelinePage() {
   const rows = useMemo(() => {
     if (!period) return []
     return dealRows
+      .filter(r => !scope || (r.broker || '').toLowerCase() === scope)
       .filter(r => inPeriod(metric === 'lodged' ? r.lodgedDate : r.settledDate, period))
       .map(r => ({
         ...r,
@@ -319,7 +344,7 @@ export default function PipelinePage() {
           ? r.settledAmount - r.lodgedAmount : null,
       }))
       .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-  }, [dealRows, period, metric])
+  }, [dealRows, period, metric, scope])
 
   const byBroker = useMemo(() => {
     const m: Record<string, { count: number; amount: number }> = {}
@@ -372,6 +397,21 @@ export default function PipelinePage() {
             <button key={v} onClick={() => setMetric(v)}
               className={`px-4 py-1.5 text-[13px] rounded-md font-medium transition ${metric === v ? 'bg-white text-[#2E2A26] shadow-sm' : 'text-[#6E665C]'}`}>
               {v === 'lodged' ? 'Lodgements' : 'Settlements'}
+            </button>
+          ))}
+        </div>
+
+        <div className="w-px h-5 bg-[#E8E1D6]" />
+
+        <div className="flex gap-1.5 flex-wrap">
+          <button onClick={() => setScope('')}
+            className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium border transition-colors ${scope === '' ? 'bg-[#343333] border-[#343333] text-white font-semibold' : 'border-[#E8E1D6] bg-white text-[#6E665C] hover:bg-[#FAF7F2] hover:text-[#2E2A26]'}`}>
+            Business
+          </button>
+          {brokers.map(b => (
+            <button key={b.key} onClick={() => setScope(b.key)}
+              className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium border transition-colors ${scope === b.key ? 'bg-[#343333] border-[#343333] text-white font-semibold' : 'border-[#E8E1D6] bg-white text-[#6E665C] hover:bg-[#FAF7F2] hover:text-[#2E2A26]'}`}>
+              {b.name}
             </button>
           ))}
         </div>
@@ -475,7 +515,7 @@ export default function PipelinePage() {
       ) : (
         <>
           {/* comparison */}
-          {kind !== 'week' && current.amount > 0 && (
+          {!scope && kind !== 'week' && current.amount > 0 && (
             <div className="bg-white border border-gray-100 rounded-xl overflow-hidden mb-4">
               <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
                 <span className="text-[13px] font-semibold text-[#2E2A26]">
@@ -525,15 +565,29 @@ export default function PipelinePage() {
             <Tile label={metric === 'settled' ? 'Deals settled' : 'Deals lodged'} value={String(current.deals || 0)} />
             <Tile label={metric === 'settled' ? 'Settled volume' : 'Lodged volume'} value={compact(current.amount || null)} />
             <Tile label="Average size" value={current.deals ? compact(current.amount / current.deals) : '-'} />
-            <Tile label="Financial year to date" value={compact(fytd?.now || null)}
-                  sub={fytd && fytd.then > 0 ? `${signed(pct(fytd.now, fytd.then))} on the same point last year` : undefined}
-                  subTone={fytd && fytd.then > 0 ? (fytd.now >= fytd.then ? 'up' : 'down') : undefined} />
+            {scope ? (
+              <Tile label="Against target"
+                    value={target ? Math.round(current.amount / target * 100) + '%' : 'not set'}
+                    sub={target ? `${compact(Math.abs(current.amount - target))} ${current.amount >= target ? 'ahead of' : 'short of'} ${compact(target)}` : 'no target set for this period'}
+                    subTone={target ? (current.amount >= target ? 'up' : 'down') : undefined} />
+            ) : (
+              <Tile label="Financial year to date" value={compact(fytd?.now || null)}
+                    sub={fytd && fytd.then > 0 ? `${signed(pct(fytd.now, fytd.then))} on the same point last year` : undefined}
+                    subTone={fytd && fytd.then > 0 ? (fytd.now >= fytd.then ? 'up' : 'down') : undefined} />
+            )}
           </div>
 
           {contextChart && <ContextChart bars={contextChart} metric={metric} kind={kind} />}
-          {fyChart && <FyProgressChart {...fyChart} metric={metric} />}
+          {!scope && fyChart && <FyProgressChart {...fyChart} metric={metric} />}
 
-          {current.sources.has('spreadsheet') && (
+          {scope && (
+            <div className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-xl px-4 py-2.5 text-[12.5px] mb-4">
+              {brokers.find(b => b.key === scope)?.name || scope} is measured against target and against the
+              business. There is no year-on-year here - the ten years of history is a business total, not a split by broker.
+            </div>
+          )}
+
+          {!scope && current.sources.has('spreadsheet') && (
             <div className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-xl px-4 py-2.5 text-[12.5px] mb-4">
               These figures come from the business spreadsheet, not from deals recorded in the portal.
               Deal-by-deal detail below starts once the team marks lodgements and settlements here.
