@@ -69,6 +69,18 @@ export default function Sidebar() {
   }
 
   const initials = profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || '?'
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  function toggleSection(href: string, e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setCollapsed(prev => {
+      const next = new Set(prev)
+      if (next.has(href)) next.delete(href)
+      else next.add(href)
+      return next
+    })
+  }
+
   const [hash, setHash] = useState('')
   useEffect(() => {
     const read = () => setHash(window.location.hash.slice(1))
@@ -83,7 +95,7 @@ export default function Sidebar() {
     const subs = (SUBNAV[href] || [])
       .filter(sx => !sx.adminOnly || profile?.is_admin)
       .filter(sx => !sx.financeOnly || profile?.sees_finance)
-    if (subs.length === 0 || !path.startsWith(href)) return null
+    if (subs.length === 0 || !path.startsWith(href) || collapsed.has(href)) return null
     const active = subs.some(sx => sx.key === hash) ? hash : subs[0].key
     return (
       <div className="mb-1.5">
@@ -126,7 +138,7 @@ export default function Sidebar() {
             )
           }
           const hasSubs = !!SUBNAV[item.href]
-          const open = hasSubs && path.startsWith(item.href)
+          const open = hasSubs && path.startsWith(item.href) && !collapsed.has(item.href)
           return (
             <div key={item.href}>
               <Link href={item.href} className={linkClass}
@@ -134,10 +146,14 @@ export default function Sidebar() {
                 <Icon size={15} />
                 {item.label}
                 {hasSubs && (
-                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-                       strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="ml-auto opacity-50">
-                    <path d={open ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'} />
-                  </svg>
+                  <span role="button" aria-label={open ? 'Collapse' : 'Expand'}
+                    onClick={e => toggleSection(item.href, e)}
+                    className="ml-auto -mr-1 px-1 py-0.5 rounded opacity-50 hover:opacity-100 hover:bg-white/10">
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                         strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                      <path d={open ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'} />
+                    </svg>
+                  </span>
                 )}
               </Link>
               {subNav(item.href)}
@@ -151,7 +167,7 @@ export default function Sidebar() {
             {adminNav.map(item => {
               const Icon = item.icon
               const hasSubs = !!SUBNAV[item.href]
-              const open = hasSubs && path.startsWith(item.href)
+              const open = hasSubs && path.startsWith(item.href) && !collapsed.has(item.href)
               return (
                 <div key={item.href}>
                   <Link href={item.href}
@@ -162,10 +178,14 @@ export default function Sidebar() {
                     <Icon size={15} />
                     {item.label}
                     {hasSubs && (
-                      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-                           strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="ml-auto opacity-50">
-                        <path d={open ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'} />
-                      </svg>
+                      <span role="button" aria-label={open ? 'Collapse' : 'Expand'}
+                        onClick={e => toggleSection(item.href, e)}
+                        className="ml-auto -mr-1 px-1 py-0.5 rounded opacity-50 hover:opacity-100 hover:bg-white/10">
+                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                             strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                          <path d={open ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'} />
+                        </svg>
+                      </span>
                     )}
                   </Link>
                   {subNav(item.href)}
