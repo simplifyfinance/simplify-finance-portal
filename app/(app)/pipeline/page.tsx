@@ -130,20 +130,8 @@ export default function PipelinePage() {
   // The spreadsheet is authoritative for any month it holds, because the team is
   // not yet marking deals through the portal. As soon as a month has no history
   // row, the portal's own deals become the figure - and the page says which.
-  const monthly = useMemo(() => {
+  const businessMonthly = useMemo(() => {
     const m: Record<string, { amount: number; deals: number; source: 'spreadsheet' | 'portal' }> = {}
-    if (scope) {
-      for (const r of dealRows) {
-        if ((r.broker || '').toLowerCase() !== scope) continue
-        const date = metric === 'lodged' ? r.lodgedDate : r.settledDate
-        if (!date) continue
-        const key = date.slice(0, 7)
-        if (!m[key]) m[key] = { amount: 0, deals: 0, source: 'portal' }
-        m[key].amount += (metric === 'lodged' ? r.lodgedAmount : r.settledAmount) || 0
-        m[key].deals += 1
-      }
-      return m
-    }
     for (const h of hist) {
       const key = String(h.month).slice(0, 7)
       const amount = num(metric === 'lodged' ? h.lodged_amount : h.settled_amount)
@@ -161,7 +149,24 @@ export default function PipelinePage() {
       m[key].deals += 1
     }
     return m
-  }, [hist, dealRows, metric, scope])
+  }, [hist, dealRows, metric])
+
+  const brokerMonthly = useMemo(() => {
+    const m: Record<string, { amount: number; deals: number; source: 'spreadsheet' | 'portal' }> = {}
+    if (!scope) return m
+    for (const r of dealRows) {
+      if ((r.broker || '').toLowerCase() !== scope) continue
+      const date = metric === 'lodged' ? r.lodgedDate : r.settledDate
+      if (!date) continue
+      const key = date.slice(0, 7)
+      if (!m[key]) m[key] = { amount: 0, deals: 0, source: 'portal' }
+      m[key].amount += (metric === 'lodged' ? r.lodgedAmount : r.settledAmount) || 0
+      m[key].deals += 1
+    }
+    return m
+  }, [dealRows, metric, scope])
+
+  const monthly = scope ? brokerMonthly : businessMonthly
 
   const targetByMonth = useMemo(() => {
     const m: Record<string, number> = {}
@@ -180,16 +185,18 @@ export default function PipelinePage() {
 
   // Value of any period = the months inside it. Weeks are smaller than the data
   // we hold, so weekly views carry no history and no comparisons.
-  function periodValue(p: Period): { amount: number; deals: number; sources: Set<string>; months: number } {
+  function periodValueOf(m: Record<string, { amount: number; deals: number; source: string }>, p: Period):
+    { amount: number; deals: number; sources: Set<string>; months: number } {
     let amount = 0, deals = 0, months = 0
     const sources = new Set<string>()
-    for (const [key, v] of Object.entries(monthly)) {
+    for (const [key, v] of Object.entries(m)) {
       if (key + '-01' >= p.start && key + '-01' <= p.end) {
         amount += v.amount; deals += v.deals; months += 1; sources.add(v.source)
       }
     }
     return { amount, deals, sources, months }
   }
+  function periodValue(p: Period) { return periodValueOf(monthly, p) }
   function periodTarget(p: Period): number | null {
     let t = 0, seen = false
     for (const [key, v] of Object.entries(targetByMonth)) {
@@ -289,6 +296,45 @@ export default function PipelinePage() {
     }
     return { now, then }
   }, [monthly, period])
+
+  // Target to the same point in the year. A month still running counts only the
+  // share of itself that has happened, so "behind" never just means "this month
+  // has not finished yet".
+  const fytdTarget = useMemo(() => {
+    if (!period) return null
+    const fy = fyEndYear(period.end)
+    const start = `${fy - 1}-07-01`
+    const today = todayYmd()
+    const cut = period.end < today ? period.end : today
+    let t = 0, seen = false
+    for (const [key, v] of Object.entries(targetByMonth)) {
+      const first = key + '-01'
+      if (first < start || first > cut) continue
+      const y = Number(key.slice(0, 4)), mo = Number(key.slice(5, 7))
+      const dim = new Date(Date.UTC(y, mo, 0)).getUTCDate()
+      const last = `${key}-${String(dim).padStart(2, '0')}`
+      t += v * (last > cut ? Number(cut.slice(8, 10)) / dim : 1)
+      seen = true
+    }
+    return seen ? t : null
+  }, [targetByMonth, period])
+
+  const pace = useMemo(() => {
+    if (!fytd || fytdTarget === null || fytdTarget <= 0) return null
+    const diff = fytd.now - fytdTarget
+    return { diff, ahead: diff >= 0, target: fytdTarget }
+  }, [fytd, fytdTarget])
+
+  // A broker's share only means something while the business figure is the portal's
+  // own. Against a spreadsheet total, which has no broker split, it would read as
+  // near zero and be wrong.
+  const share = useMemo(() => {
+    if (!scope || !period) return null
+    const biz = periodValueOf(businessMonthly, period)
+    if (!biz.amount) return null
+    if (biz.sources.has('spreadsheet')) return { pct: null as number | null, biz: biz.amount }
+    return { pct: current.amount / biz.amount * 100 as number | null, biz: biz.amount }
+  }, [scope, period, businessMonthly, current.amount])
 
   /* ---------- chart data ---------- */
   const FY_MONTHS = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6]
@@ -571,21 +617,49 @@ export default function PipelinePage() {
             </div>
           )}
 
+          {scope && kind !== 'week' && current.amount > 0 && (
+            <div className="bg-white border border-gray-100 rounded-xl overflow-hidden mb-4">
+              <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
+                <span className="text-[13px] font-semibold text-[#2E2A26]">
+                  {brokers.find(b => b.key === scope)?.name || scope} · {period?.label}
+                  {inProgress && <span className="text-[#A29889] font-normal"> · still in progress</span>}
+                </span>
+              </div>
+              <div className="grid grid-cols-3">
+                <Cmp label="vs target"
+                     value={target ? Math.round(current.amount / target * 100) + '%' : 'not set'}
+                     tone={target ? (current.amount >= target ? 'up' : 'down') : 'flat'}
+                     base={target ? `${compact(Math.abs(current.amount - target))} ${current.amount >= target ? 'ahead of' : 'short of'} ${compact(target)}` : 'no target set for this period'}
+                     meter={target ? Math.min(100, current.amount / target * 100) : null}
+                     meterFull={!!target && current.amount >= target} />
+                <Cmp label="financial year to date"
+                     value={compact(fytd?.now || null)}
+                     tone={pace ? (pace.ahead ? 'up' : 'down') : 'flat'}
+                     base={pace
+                       ? `${compact(Math.abs(pace.diff))} ${pace.ahead ? 'ahead of' : 'behind'} ${compact(pace.target)} to date`
+                       : 'no targets set for this year'} />
+                <Cmp label="share of the business"
+                     value={share && share.pct !== null ? share.pct.toFixed(0) + '%' : '-'}
+                     tone="flat"
+                     base={!share ? 'no business figure for this period'
+                       : share.pct === null ? 'the business figure here is the spreadsheet total, which has no broker split'
+                       : `of ${compact(share.biz)} across the business`} />
+              </div>
+            </div>
+          )}
+
           {/* tiles */}
           <div className="grid grid-cols-4 gap-3 mb-4">
             <Tile label={metric === 'settled' ? 'Deals settled' : 'Deals lodged'} value={String(current.deals || 0)} />
             <Tile label={metric === 'settled' ? 'Settled volume' : 'Lodged volume'} value={compact(current.amount || null)} />
             <Tile label="Average size" value={current.deals ? compact(current.amount / current.deals) : '-'} />
-            {scope ? (
-              <Tile label="Against target"
-                    value={target ? Math.round(current.amount / target * 100) + '%' : 'not set'}
-                    sub={target ? `${compact(Math.abs(current.amount - target))} ${current.amount >= target ? 'ahead of' : 'short of'} ${compact(target)}` : 'no target set for this period'}
-                    subTone={target ? (current.amount >= target ? 'up' : 'down') : undefined} />
-            ) : (
-              <Tile label="Financial year to date" value={compact(fytd?.now || null)}
-                    sub={fytd && fytd.then > 0 ? `${signed(pct(fytd.now, fytd.then))} on the same point last year` : undefined}
-                    subTone={fytd && fytd.then > 0 ? (fytd.now >= fytd.then ? 'up' : 'down') : undefined} />
-            )}
+            <Tile label="Financial year to date" value={compact(fytd?.now || null)}
+                  sub={pace
+                    ? `${compact(Math.abs(pace.diff))} ${pace.ahead ? 'ahead of' : 'behind'} target to date`
+                    : 'no target set for this year'}
+                  subTone={pace ? (pace.ahead ? 'up' : 'down') : undefined}
+                  sub2={!scope && fytd && fytd.then > 0 ? `${signed(pct(fytd.now, fytd.then))} on the same point last year` : undefined}
+                  sub2Tone={!scope && fytd && fytd.then > 0 ? (fytd.now >= fytd.then ? 'up' : 'down') : undefined} />
           </div>
 
           {contextChart && <ContextChart bars={contextChart} metric={metric} kind={kind} />}
@@ -652,12 +726,14 @@ export default function PipelinePage() {
   )
 }
 
-function Tile({ label, value, sub, subTone }: { label: string; value: string; sub?: string; subTone?: 'up' | 'down' }) {
+function Tile({ label, value, sub, subTone, sub2, sub2Tone }:
+  { label: string; value: string; sub?: string; subTone?: 'up' | 'down'; sub2?: string; sub2Tone?: 'up' | 'down' }) {
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-4">
       <div className="text-[10px] font-semibold tracking-[.09em] uppercase text-[#A29889] mb-1.5">{label}</div>
       <div className="text-2xl font-semibold text-[#343333] tracking-tight">{value}</div>
       {sub && <div className={`text-[11.5px] mt-0.5 ${subTone === 'up' ? 'text-[#2E9E63]' : subTone === 'down' ? 'text-[#C4553B]' : 'text-[#A29889]'}`}>{sub}</div>}
+      {sub2 && <div className={`text-[11.5px] mt-0.5 ${sub2Tone === 'up' ? 'text-[#2E9E63]' : sub2Tone === 'down' ? 'text-[#C4553B]' : 'text-[#A29889]'}`}>{sub2}</div>}
     </div>
   )
 }

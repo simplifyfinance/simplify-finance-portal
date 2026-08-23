@@ -190,7 +190,8 @@ export default function PipelineTargets() {
           <div>
             <div className="text-[13px] font-semibold text-[#2E2A26]">Monthly targets</div>
             <div className="text-[11.5px] text-[#A29889]">
-              Quarter and financial-year targets are these months added together.
+              Quarter and financial-year targets are these months added together. Last year sits
+              alongside only as a reference while you set the number - results are compared on the Pipeline.
             </div>
           </div>
           <div className="inline-flex items-center gap-2">
@@ -246,27 +247,15 @@ export default function PipelineTargets() {
               <tr className="text-[10px] font-semibold tracking-[.085em] uppercase text-[#A29889]">
                 <th className="text-left px-5 py-2.5 border-b border-[#F6F2EA]">Month</th>
                 <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">Lodged target</th>
-                {isBusiness && <>
-                  <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">FY{String(fy - 1).slice(2)} actual</th>
-                  <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">Change</th>
-                </>}
+                {isBusiness && <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA] font-normal">FY{String(fy - 1).slice(2)}</th>}
                 <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">Settled target</th>
-                {isBusiness && <>
-                  <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">FY{String(fy - 1).slice(2)} actual</th>
-                  <th className="text-right px-5 py-2.5 border-b border-[#F6F2EA]">Change</th>
-                </>}
+                {isBusiness && <th className="text-right px-5 py-2.5 border-b border-[#F6F2EA] font-normal">FY{String(fy - 1).slice(2)}</th>}
               </tr>
             </thead>
             <tbody>
               {monthRows.map(r => {
                 const lv = parseNum(vals[k('lodged', r.key, scope)] || '')
                 const sv = parseNum(vals[k('settled', r.key, scope)] || '')
-                const pctCell = (v: number | null, actual: number | null) => {
-                  if (v === null || !actual) return <span className="text-[#C9C1B4]">—</span>
-                  const d = (v - actual) / actual * 100
-                  return <span className={`text-[11.5px] tabular-nums ${d >= 0 ? 'text-[#2E9E63]' : 'text-[#C4553B]'}`}>
-                    {(d >= 0 ? '+' : '\u2212') + Math.abs(d).toFixed(1)}%</span>
-                }
                 return (
                   <tr key={r.key} className="border-b border-[#F6F2EA] last:border-0 hover:bg-[#FCFAF6]">
                     <td className="px-5 py-2 text-[13px] font-medium text-[#6E665C]">{r.name}</td>
@@ -277,10 +266,7 @@ export default function PipelineTargets() {
                         placeholder="not set"
                         className={inp + (lv === null ? ' bg-[#FFFCF5] border-[#EFE0BC]' : ' border-[#E8E1D6]')} />
                     </td>
-                    {isBusiness && <>
-                      <td className="px-3 py-2 text-right text-[12.5px] text-[#A29889] tabular-nums">{compact(r.lodgedActual)}</td>
-                      <td className="px-3 py-2 text-right">{pctCell(lv, r.lodgedActual)}</td>
-                    </>}
+                    {isBusiness && <td className="px-3 py-2 text-right text-[12.5px] text-[#C9C1B4] tabular-nums">{compact(r.lodgedActual)}</td>}
                     <td className="px-3 py-2 text-right">
                       <input value={vals[k('settled', r.key, scope)] || ''} inputMode="numeric"
                         onChange={e => set('settled', r.key, e.target.value)}
@@ -288,10 +274,7 @@ export default function PipelineTargets() {
                         placeholder="not set"
                         className={inp + (sv === null ? ' bg-[#FFFCF5] border-[#EFE0BC]' : ' border-[#E8E1D6]')} />
                     </td>
-                    {isBusiness && <>
-                      <td className="px-3 py-2 text-right text-[12.5px] text-[#A29889] tabular-nums">{compact(r.settledActual)}</td>
-                      <td className="px-5 py-2 text-right">{pctCell(sv, r.settledActual)}</td>
-                    </>}
+                    {isBusiness && <td className="px-5 py-2 text-right text-[12.5px] text-[#C9C1B4] tabular-nums">{compact(r.settledActual)}</td>}
                   </tr>
                 )
               })}
@@ -300,15 +283,9 @@ export default function PipelineTargets() {
               <tr className="border-t border-[#E8E1D6]">
                 <td className="px-5 py-3 text-[13px] font-semibold">Financial year</td>
                 <td className="px-3 py-3 text-right text-[13px] font-semibold tabular-nums">{totals.lt ? compact(totals.lt) : '—'}</td>
-                {isBusiness && <>
-                  <td className="px-3 py-3 text-right text-[12.5px] text-[#A29889] tabular-nums">{compact(totals.la)}</td>
-                  <td className="px-3 py-3 text-right text-[11.5px] text-[#A29889]">{totals.set} of 12</td>
-                </>}
+                {isBusiness && <td className="px-3 py-3 text-right text-[12.5px] text-[#C9C1B4] tabular-nums">{compact(totals.la)}</td>}
                 <td className="px-3 py-3 text-right text-[13px] font-semibold tabular-nums">{totals.st ? compact(totals.st) : '—'}</td>
-                {isBusiness && <>
-                  <td className="px-3 py-3 text-right text-[12.5px] text-[#A29889] tabular-nums">{compact(totals.sa)}</td>
-                  <td className="px-5 py-3"></td>
-                </>}
+                {isBusiness && <td className="px-5 py-3 text-right text-[12.5px] text-[#C9C1B4] tabular-nums">{compact(totals.sa)}</td>}
               </tr>
             </tfoot>
           </table>
