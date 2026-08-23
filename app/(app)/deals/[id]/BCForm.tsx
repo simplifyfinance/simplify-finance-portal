@@ -6,6 +6,7 @@ import CreditOfficerAssignment from './CreditOfficerAssignment'
 import BrokerAssignment from './BrokerAssignment'
 import CurrencyInput from './CurrencyInput'
 import { can } from '@/lib/permissions'
+import { templateLabel } from '@/lib/templates'
 
 function annualizeAmount(amount: string | undefined, frequency: string | undefined): number {
   const n = Number(amount) || 0
@@ -635,6 +636,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const [creditTeamErr, setCreditTeamErr] = useState('')
   const [assignmentRefreshKey, setAssignmentRefreshKey] = useState(0)
   const [saveError, setSaveError] = useState('')
+  const [showAllTemplates, setShowAllTemplates] = useState(false)
   // Mirror save state up to the deal header, which owns the single indicator.
   useEffect(() => { onSaveStatus?.({ at: savedAt, error: saveError }) }, [savedAt, saveError])
   const [clientProceeded, setClientProceeded] = useState<boolean>(!!deal.client_proceeded)
@@ -912,14 +914,24 @@ Key assumptions: ${checklistText}`
         <div>
           <div className="bg-white border border-gray-100 rounded-xl p-4 mb-4">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">BC template</div>
-            <div className="flex flex-wrap gap-2">
-              {TEMPLATES.map(t => (
-                <button key={t.id} onClick={() => selectTemplate(t.id)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${template === t.id ? 'bg-[#2DBEFF] border-[#2DBEFF] text-white' : 'border-gray-200 text-gray-600 hover:border-[#2DBEFF] hover:text-[#2DBEFF]'}`}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
+            {deal.bc_completed_at && !showAllTemplates ? (
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="inline-flex items-center gap-2 bg-[#F4FCFF] border border-[#CDEBF8] rounded-lg px-3.5 py-2">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#12A150" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.4 L6.2 11.4 L13 4.6"/></svg>
+                  <span className="text-sm font-semibold text-[#0E86B8]">{templateLabel(template)}</span>
+                </span>
+                <button onClick={() => setShowAllTemplates(true)} className="text-xs text-[#2DBEFF] hover:underline">Change scenario</button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {TEMPLATES.map(t => (
+                  <button key={t.id} onClick={() => selectTemplate(t.id)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${template === t.id ? 'bg-[#2DBEFF] border-[#2DBEFF] text-white' : 'border-gray-200 text-gray-600 hover:border-[#2DBEFF] hover:text-[#2DBEFF]'}`}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

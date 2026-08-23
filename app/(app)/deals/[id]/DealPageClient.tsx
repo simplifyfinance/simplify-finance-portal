@@ -10,6 +10,7 @@ import ComplianceForm from './ComplianceForm'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
 import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
 import DealProgress, { currentStage } from './DealProgress'
+import { templateLabel } from '@/lib/templates'
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
   const validStages = ['FactFind', 'BC', 'LO', 'Compliance']
@@ -104,6 +105,12 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
               <span className="text-[13px] font-semibold text-[#2E2A26]">{deal.assigned_broker}</span>
             </span>
             <CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
+            {templateLabel(dealData.bc_data?.template) && (
+              <span className="inline-flex items-baseline gap-1.5 bg-[#F4FCFF] border border-[#CDEBF8] rounded-lg px-2.5 py-1">
+                <span className="text-[9.5px] font-bold tracking-wider uppercase text-[#7BB8D2]">Scenario</span>
+                <span className="text-[13px] font-semibold text-[#0E86B8]">{templateLabel(dealData.bc_data?.template)}</span>
+              </span>
+            )}
             {(() => {
               const waitingOn = getWaitingOnLabel(dealData)
               return waitingOn ? (

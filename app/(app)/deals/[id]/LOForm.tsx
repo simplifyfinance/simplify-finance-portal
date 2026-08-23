@@ -4,6 +4,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
 import BrokerAssignment from './BrokerAssignment'
 import { can } from '@/lib/permissions'
+import { templateLabel } from '@/lib/templates'
 
 function makeUid() {
   return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)
@@ -635,6 +636,57 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
 
       {activeTab === 'form' && (
         <div className="space-y-4">
+
+          {/* Read-only BC summary. The reason anyone opens the BC tab from here is that they
+              need its numbers while choosing a lender - so bring the numbers to the work. */}
+          {(() => {
+            const bc: any = deal.bc_data || {}
+            if (!bc.template) return null
+            const money = (v: any) => (v === undefined || v === null || v === '') ? null : '$' + String(v).replace(/^\$/, '')
+            const core: [string, any][] = [
+              ['Purchase price', money(bc.newPurchasePrice || bc.purchasePrice)],
+              ['Stamp duty', money(bc.newPurchaseStampDuty || bc.stampDuty)],
+              ['Deposit / equity', money(bc.newPurchaseDeposit || bc.deposit || bc.equityRelease)],
+              ['Existing loan', money(bc.existingLoanBal)],
+              ['LVR', bc.lvrPercent ? bc.lvrPercent + '%' : (bc.lvr || null)],
+              ['Term', bc.loanTerm ? bc.loanTerm + ' years' : null],
+            ]
+            const facts = core.filter(([, v]) => v)
+            const splits = (bc.splits || []).filter((sp: any) => sp && (sp.amount || sp.label))
+            return (
+              <div className="bg-white border border-[#E8E1D6] rounded-xl px-5 py-4">
+                <div className="flex items-center justify-between gap-4 flex-wrap mb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-bold tracking-wider uppercase text-[#A29889]">From BC</span>
+                    <span className="text-[12.5px] font-semibold text-[#0E86B8] bg-[#F4FCFF] border border-[#CDEBF8] rounded-lg px-2.5 py-1">{templateLabel(bc.template)}</span>
+                  </div>
+                  <button onClick={() => onStageChange?.('BC')} className="text-xs text-[#2DBEFF] hover:underline">Open BC tab &rarr;</button>
+                </div>
+                {facts.length > 0 && (
+                  <div className="flex gap-7 flex-wrap">
+                    {facts.map(([k, v]) => (
+                      <div key={k} className="flex flex-col">
+                        <span className="text-[9.5px] font-bold tracking-wider uppercase text-[#A29889]">{k}</span>
+                        <span className="text-sm font-semibold tabular-nums">{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {splits.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2.5 mt-3 pt-3 border-t border-[#F1ECE4]">
+                    {splits.map((sp: any, i: number) => (
+                      <div key={i} className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-lg px-3 py-2.5">
+                        <div className="text-[12px] font-semibold mb-1">{sp.label || ('Split ' + (i + 1))}</div>
+                        <div className="text-[11.5px] text-[#6E665C] tabular-nums">
+                          {sp.amount ? '$' + sp.amount : ''}{sp.rate ? ' \u00b7 ' + sp.rate + '%' : ''}{sp.type ? ' \u00b7 ' + sp.type : ''}{sp.repayment ? ' \u00b7 $' + sp.repayment + '/mo' : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {/* Scenario */}
           <div className="bg-white border border-gray-100 rounded-xl p-5">
