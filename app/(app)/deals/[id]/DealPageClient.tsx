@@ -11,6 +11,7 @@ import CreditOfficerAssignment from './CreditOfficerAssignment'
 import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
 import DealProgress, { currentStage } from './DealProgress'
 import DealSettlement from './DealSettlement'
+import CloseDeal from './CloseDeal'
 import { templateLabel } from '@/lib/templates'
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
@@ -157,6 +158,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="9" rx="1.4"/><path d="M11 5V3.4A1.4 1.4 0 0 0 9.6 2H4.4A1.4 1.4 0 0 0 3 3.4v7.2A1.4 1.4 0 0 0 4.4 12H5"/></svg>
                 {cloning ? 'Cloning...' : 'Clone'}
               </button>
+              <CloseDeal deal={dealData} onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
             </div>
           </div>
         </div>
