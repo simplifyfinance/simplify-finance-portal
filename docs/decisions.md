@@ -144,3 +144,27 @@ client's position, and takes one next action.
 - **Deploy only with `./scripts/ship.sh "message"`.** It refuses on a failed build and
   refuses off `main`.
 - **A decision is recorded here in the same commit as the work it decides.**
+
+## Commission library (FINAL — 17 Aug 2026)
+
+One view only: the lenders we are accredited with. The full SFG schedule is not
+a separate tab; it appears as source text under each lender.
+
+- **Upfront** — one percentage, except where the lender genuinely prices by LVR
+  (ING, ANZ, ANZ Medical). Bands are read-only in the UI and changed by request.
+- **Trail** — ONE percentage. Lenders whose trail steps up over the years are
+  flattened to the first-year figure, with the stepping written into comments.
+  Calculation and reporting use the single figure. Deliberate simplification.
+- **Clawback** — a whole number of months only, "out of clawback after N".
+  The diminishing scale is not modelled. Wording only, for the loans-at-risk
+  report. 0 = no clawback.
+- **Comments** — free text. Where the nuance lives.
+- **Editing** — a row is read-only until Edit is pressed. Save writes and
+  collapses; Cancel discards.
+- **Amending the SFG text** — allowed. The entry is tagged "Amended", and the
+  original is retained in commission_schedule.original and can be shown.
+- **confirmed = false is honest.** Commission calculation uses confirmed rates
+  only and reads "rate not confirmed" otherwise. Never zero, never an estimate.
+
+Still needed from Fabio: La Trobe (fee-based schedule) and ME Bank (not in the
+SFG schedule — now part of BOQ) have no figures at all.
