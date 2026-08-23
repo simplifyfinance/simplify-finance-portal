@@ -26,15 +26,21 @@ type Profile = { full_name: string; role: string; email: string; is_admin?: bool
 
 // Settings has outgrown one scroll, so it nests under the nav item rather than
 // growing a second left column beside the one the portal already has.
-const SETTINGS_SUB: { key: string; label: string; adminOnly?: boolean }[] = [
-  { key: 'brands', label: 'Brands' },
-  { key: 'brokers', label: 'Broker profiles' },
-  { key: 'targets', label: 'Targets', adminOnly: true },
-  { key: 'people', label: 'Credit team' },
-  { key: 'notifications', label: 'Notifications' },
-  { key: 'compliance', label: 'Compliance AI' },
-  { key: 'connections', label: 'Connections' },
-]
+const SUBNAV: Record<string, { key: string; label: string; adminOnly?: boolean }[]> = {
+  '/lenders': [
+    { key: 'lenders', label: 'Products & policy' },
+    { key: 'commissions', label: 'Commission library' },
+  ],
+  '/settings': [
+    { key: 'brands', label: 'Brands' },
+    { key: 'brokers', label: 'Broker profiles' },
+    { key: 'targets', label: 'Targets', adminOnly: true },
+    { key: 'people', label: 'Credit team' },
+    { key: 'notifications', label: 'Notifications' },
+    { key: 'compliance', label: 'Compliance AI' },
+    { key: 'connections', label: 'Connections' },
+  ],
+}
 
 export default function Sidebar() {
   const path = usePathname()
@@ -58,13 +64,33 @@ export default function Sidebar() {
   }
 
   const initials = profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || '?'
-  const [hash, setHash] = useState('brands')
+  const [hash, setHash] = useState('')
   useEffect(() => {
-    const read = () => setHash((window.location.hash || '#brands').slice(1))
+    const read = () => setHash(window.location.hash.slice(1))
     read()
     window.addEventListener('hashchange', read)
     return () => window.removeEventListener('hashchange', read)
   }, [])
+
+  // One renderer for every nav item that has sub-items, so Settings and the Lender
+  // library cannot drift apart as more sections gain sub-pages.
+  function subNav(href: string) {
+    const subs = (SUBNAV[href] || []).filter(sx => !sx.adminOnly || profile?.is_admin)
+    if (subs.length === 0 || !path.startsWith(href)) return null
+    const active = subs.some(sx => sx.key === hash) ? hash : subs[0].key
+    return (
+      <div className="mb-1.5">
+        {subs.map(sx => (
+          <button key={sx.key} onClick={() => { window.location.hash = sx.key }}
+            className={`block w-full text-left pl-[31px] pr-2.5 py-1.5 rounded-md text-xs transition-colors ${
+              active === sx.key ? 'bg-white/10 text-white font-semibold' : 'text-white/45 hover:text-white hover:bg-white/5'
+            }`}>
+            {sx.label}
+          </button>
+        ))}
+      </div>
+    )
+  }
 
   const roleLabel = formatRoleLabel(profile?.role)
 
@@ -92,11 +118,22 @@ export default function Sidebar() {
               </a>
             )
           }
+          const hasSubs = !!SUBNAV[item.href]
+          const open = hasSubs && path.startsWith(item.href)
           return (
-            <Link key={item.href} href={item.href} className={linkClass}>
-              <Icon size={15} />
-              {item.label}
-            </Link>
+            <div key={item.href}>
+              <Link href={item.href} className={linkClass}>
+                <Icon size={15} />
+                {item.label}
+                {hasSubs && (
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                       strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="ml-auto opacity-50">
+                    <path d={open ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'} />
+                  </svg>
+                )}
+              </Link>
+              {subNav(item.href)}
+            </div>
           )
         })}
 
@@ -105,7 +142,8 @@ export default function Sidebar() {
             <div className="text-white/30 text-xs uppercase tracking-widest px-2 mb-2 mt-4">Admin</div>
             {adminNav.map(item => {
               const Icon = item.icon
-              const open = item.href === '/settings' && path.startsWith('/settings')
+              const hasSubs = !!SUBNAV[item.href]
+              const open = hasSubs && path.startsWith(item.href)
               return (
                 <div key={item.href}>
                   <Link href={item.href}
@@ -114,25 +152,14 @@ export default function Sidebar() {
                     }`}>
                     <Icon size={15} />
                     {item.label}
-                    {item.href === '/settings' && (
+                    {hasSubs && (
                       <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
                            strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="ml-auto opacity-50">
                         <path d={open ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'} />
                       </svg>
                     )}
                   </Link>
-                  {open && (
-                    <div className="mb-1.5">
-                      {SETTINGS_SUB.filter(sx => !sx.adminOnly || profile?.is_admin).map(sx => (
-                        <button key={sx.key} onClick={() => { window.location.hash = sx.key }}
-                          className={`block w-full text-left pl-[31px] pr-2.5 py-1.5 rounded-md text-xs transition-colors ${
-                            hash === sx.key ? 'bg-white/10 text-white font-semibold' : 'text-white/45 hover:text-white hover:bg-white/5'
-                          }`}>
-                          {sx.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  {subNav(item.href)}
                 </div>
               )
             })}
