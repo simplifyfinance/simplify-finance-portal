@@ -887,7 +887,12 @@ Key assumptions: ${checklistText}`
           ...(joint === 'Yes' ? buildIncomeBreakdown(ffApp2, ffApp2.firstName || 'Applicant 2') : [])
         ], housingExpense: buildHousingExpenseLine(ffApp), factFindChecklist: buildPropertyLiabilityChecklist(ff), jointFirstName: ffApp2.firstName || '', additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
       })
-      if (!res.ok) { setEmailError(`Server error: ${res.status}`); setGenerating(false); return }
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        setEmailError(err?.error || `Server error: ${res.status}`)
+        setGenerating(false)
+        return
+      }
       const data = await res.json()
       if (data.html) { setEmailHtml(data.html); if (data.brokerFirstName) { await supabase.from('deals').update({ broker_first_name: data.brokerFirstName }).eq('id', deal.id) } setActiveTab('preview') }
       else setEmailError('No email returned. Try again.')

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
 
-const brokers: Record<string, { name: string; title: string; crn: string; calendly: string; email: string }> = {
-  'Fabio': { name: 'Fabio de Castro', title: 'Director / Mortgage Broker', crn: '483807', calendly: 'https://calendly.com/fabiobroker', email: 'fabio@simplifyfinance.com.au' },
-  'Mark': { name: 'Mark Gallo', title: 'Mortgage Broker', crn: '496195', calendly: 'https://calendly.com/markgallo/phonecall', email: 'mark@simplifyfinance.com.au' },
-}
 
 const DEFAULT_BRAND = {
   name: 'Simplify Finance',
@@ -147,7 +144,9 @@ export async function POST(req: NextRequest) {
   const { prompt, broker, brand, dealId, formData } = await req.json()
   const d = formData || {}
 
-  let b = brokers[broker] || brokers['Fabio']
+  const resolved = await resolveBrokerProfile(broker)
+  if (!resolved) return NextResponse.json({ error: noBrokerMessage(broker) }, { status: 400 })
+  let b: any = resolved
   let brandObj: any = undefined
   try {
     const supabase = await createSupabaseServer()

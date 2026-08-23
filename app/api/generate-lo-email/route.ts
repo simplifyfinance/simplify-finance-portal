@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 
-const brokers: Record<string, { name: string; title: string; crn: string; calendly: string }> = {
-  'Fabio': { name: 'Fabio de Castro', title: 'Director / Mortgage Broker', crn: '483807', calendly: 'https://calendly.com/fabiobroker' },
-  'Mark': { name: 'Mark Gallo', title: 'Mortgage Broker', crn: '496195', calendly: 'https://calendly.com/markgallo/phonecall' },
-}
 
 function shell(body: string) {
   return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr><td><table width="600" cellpadding="0" cellspacing="0" style="background:#fff;margin:0 auto"><tr><td style="background:#343333;padding:28px 24px;text-align:center"><img src="https://simplify-finance-portal.vercel.app/logo-charcoal.png" alt="Simplify Finance" style="height:80px;width:auto;display:block;margin:0 auto 8px" /><p style="color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0">Finance, Simplified.</p></td></tr><tr><td style="padding:28px">${body}</td></tr><tr><td style="background:#343333;padding:14px 16px;text-align:center"><p style="color:rgba(255,255,255,0.6);font-size:10px;line-height:1.6;margin:0">Rates quoted are indicative only and subject to change. This email does not constitute formal approval.</p><p style="color:rgba(255,255,255,0.4);font-size:10px;margin:4px 0 0">&copy; 2026 Simplify Finance | St Leonards, Sydney | Australian Credit Licence: 387025</p></td></tr></table></td></tr></table>`
@@ -105,7 +102,8 @@ function walletLinkBox(link: string) {
 
 export async function POST(req: NextRequest) {
   const { broker, dealId, loData: d } = await req.json()
-  const b = brokers[broker] || brokers['Fabio']
+  const b = await resolveBrokerProfile(broker)
+  if (!b) return NextResponse.json({ error: noBrokerMessage(broker) }, { status: 400 })
   const isBridging = d.template === 'lo_bridging'
   const proceedUrl = dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=LO` : undefined
 

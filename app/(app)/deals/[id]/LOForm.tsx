@@ -579,8 +579,15 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ broker: d.brokerSig || deal.assigned_broker, dealId: deal.id, loData: { ...d, importantNotesList: (d.importantNotes || '').split('\n').map((n: string) => n.trim()).filter(Boolean) } })
     })
+    if (!res.ok) {
+      const err = await res.json().catch(() => null)
+      alert(err?.error || 'Could not generate the email.')
+      setGenerating(false)
+      return
+    }
     const data = await res.json()
     if (data.html) { setEmailHtml(data.html); setD({ ...d, emailHtml: data.html }); setActiveTab('preview') }
+    else alert('No email was returned. Try again.')
     setGenerating(false)
   }
 

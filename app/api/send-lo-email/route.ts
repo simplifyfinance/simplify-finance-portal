@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,13 +9,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const brokerEmails: Record<string, string> = {
-      Fabio: 'fabio@simplifyfinance.com.au',
-      Mark: 'mark@simplifyfinance.com.au',
+    const profile = await resolveBrokerProfile(brokerName)
+    if (!profile) {
+      return NextResponse.json({ error: noBrokerMessage(brokerName) }, { status: 400 })
     }
 
     const fromEmail = 'noreply@simplifyfinance.com.au'
-    const replyTo = brokerEmails[brokerName] || 'info@simplifyfinance.com.au'
+    const replyTo = profile.email || 'info@simplifyfinance.com.au'
 
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
