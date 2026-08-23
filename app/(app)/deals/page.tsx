@@ -235,7 +235,7 @@ export default function DealsPage() {
                 {readyStage && (
                   <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-amber-100 text-amber-700">{readyStage} ready for review</span>
                 )}
-                {grp !== 'closed' && (
+                {grp !== 'closed' && age.days !== null && (
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-md whitespace-nowrap ${GROUP_STYLE[grp].chip}`}
                         title={`In this stage for ${age.label} (business days)`}>{age.label}</span>
                 )}

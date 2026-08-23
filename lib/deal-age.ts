@@ -1,6 +1,12 @@
 // How long a deal has sat in its current stage, and whether that is a problem.
 // Business days, because a Friday action should not look stale on Monday.
 
+// Ageing starts here. A stage entered before this date is not aged at all — those
+// timestamps predate the rule, and a list that opens with twenty deals nobody intends
+// to chase teaches people to ignore the group. Anything that moves from this date on
+// is tracked immediately, including deals created long before it.
+export const AGEING_FROM = '2026-08-24'
+
 export type AgeGroup = 'nudge' | 'long' | 'moving' | 'closed'
 
 // Thresholds differ by stage: a fact find waiting on client documents for a week is
@@ -45,7 +51,9 @@ export function businessDaysSince(iso: string | null): number | null {
 
 export function stageAge(deal: any): { key: string; days: number | null; label: string } {
   const key = stageKey(deal)
-  const days = businessDaysSince(stageSince(deal))
+  const since = stageSince(deal)
+  const tracked = !!since && String(since).slice(0, 10) >= AGEING_FROM
+  const days = tracked ? businessDaysSince(since) : null
   const label = days === null ? '\u2014' : days === 0 ? 'today' : days === 1 ? '1 day' : `${days} days`
   return { key, days, label }
 }

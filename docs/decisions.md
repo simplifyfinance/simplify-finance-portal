@@ -122,6 +122,11 @@ client's position, and takes one next action.
   | Compliance issued, not lodged | 5 | 8 |
 
   Post-lodgement stages are not aged yet — those wait on the lender, not on us.
+- **Ageing starts 24 Aug 2026.** A stage entered before that date is not aged and
+  shows no chip — the historical timestamps predate the rule and would fill the top of
+  the list with deals nobody intends to chase. Anything entering a stage from that date
+  on is tracked immediately, including deals created long before it. The cutover is
+  `AGEING_FROM` in `lib/deal-age.ts`.
 - A deal at "compliance issued" ageing is the one that matters most: it means nobody
   moved the SalesTrekker card and nobody marked it lodged.
 
