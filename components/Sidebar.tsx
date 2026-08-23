@@ -27,6 +27,10 @@ type Profile = { full_name: string; role: string; email: string; is_admin?: bool
 // Settings has outgrown one scroll, so it nests under the nav item rather than
 // growing a second left column beside the one the portal already has.
 const SUBNAV: Record<string, { key: string; label: string; adminOnly?: boolean }[]> = {
+  '/pipeline': [
+    { key: 'report', label: 'Report' },
+    { key: 'actuals', label: 'Monthly actuals', adminOnly: true },
+  ],
   '/lenders': [
     { key: 'lenders', label: 'Products & policy' },
     { key: 'commissions', label: 'Commission library' },

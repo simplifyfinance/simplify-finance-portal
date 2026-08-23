@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { listPeriods, inPeriod, toAuDate, todayYmd, fyEndYear, type Period, type PeriodKind } from '@/lib/periods'
 import { ContextChart, FyProgressChart } from '@/components/PipelineCharts'
+import MonthlyActuals from '@/components/MonthlyActuals'
 
 /* ---------- formatting ---------- */
 function num(v: any): number | null {
@@ -52,6 +53,13 @@ export default function PipelinePage() {
   const [targets, setTargets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
+  const [view, setView] = useState('report')
+  useEffect(() => {
+    const read = () => setView(window.location.hash.slice(1) === 'actuals' ? 'actuals' : 'report')
+    read()
+    window.addEventListener('hashchange', read)
+    return () => window.removeEventListener('hashchange', read)
+  }, [])
   const [pickOpen, setPickOpen] = useState(false)
   const pickRef = useRef<HTMLDivElement>(null)
 
@@ -385,6 +393,9 @@ export default function PipelinePage() {
     { k: 'week', label: 'Week' }, { k: 'month', label: 'Month' },
     { k: 'quarter', label: 'Quarter' }, { k: 'fy', label: 'Financial year' },
   ]
+
+  // Every hook above has already run, so switching the whole view here is safe.
+  if (view === 'actuals') return <MonthlyActuals />
 
   return (
     <div className="max-w-6xl mx-auto p-6">
