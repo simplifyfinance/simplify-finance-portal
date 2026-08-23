@@ -4,7 +4,7 @@
 // and clicking it does nothing. Status changes because something happened (a confirmed
 // action now, the SalesTrekker API later); the bar simply shows where the deal is.
 const STEPS = [
-  { key: 'created_at',              label: 'Fact Find' },
+  { key: 'fact_find_data',          label: 'Fact Find' },
   { key: 'bc_completed_at',         label: 'BC' },
   { key: 'lo_completed_at',         label: 'Lending Options' },
   { key: 'compliance_completed_at', label: 'Compliance' },
@@ -20,8 +20,23 @@ function fmt(v: any) {
   return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short' })
 }
 
+
+// Single source of truth for which stage a deal is on. The progress bar highlights it and
+// the deal page opens on it, so the blue bead and the open tab can never disagree.
+export function currentStage(deal: any): string {
+  const ffDone = deal?.fact_find_data && Object.keys(deal.fact_find_data).length > 0
+  if (!ffDone) return 'FactFind'
+  if (!deal?.bc_completed_at) return 'BC'
+  if (!deal?.lo_completed_at) return 'LO'
+  return 'Compliance'
+}
+
 export default function DealProgress({ deal }: { deal: any }) {
-  const done = STEPS.map(s => Boolean(deal?.[s.key]))
+  // Fact Find has no completion timestamp, so it counts as done when the form has content.
+  // Using created_at would tick it the moment a deal is created, which is not true.
+  const done = STEPS.map(s => s.key === 'fact_find_data'
+    ? Boolean(deal?.fact_find_data && Object.keys(deal.fact_find_data).length > 0)
+    : Boolean(deal?.[s.key]))
   const lastDone = done.lastIndexOf(true)
   const currentIdx = Math.min(lastDone + 1, STEPS.length - 1)
   const fill = (Math.max(lastDone, 0) / (STEPS.length - 1)) * 100
@@ -52,7 +67,7 @@ export default function DealProgress({ deal }: { deal: any }) {
                 isDone ? 'text-[#5c6773] font-medium'
                 : isNow ? 'text-[#2DBEFF] font-bold'
                 : 'text-[#b0b7bf] font-medium'}`}>{s.label}</div>
-              <div className="text-[10.5px] text-[#a8b0b8] mt-[2px] min-h-[14px]">{fmt(deal?.[s.key])}</div>
+              <div className="text-[10.5px] text-[#a8b0b8] mt-[2px] min-h-[14px]">{fmt(s.key === 'fact_find_data' ? deal?.created_at : deal?.[s.key])}</div>
             </div>
           )
         })}

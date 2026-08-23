@@ -9,11 +9,13 @@ import LOForm from './LOForm'
 import ComplianceForm from './ComplianceForm'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
 import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
-import DealProgress from './DealProgress'
+import DealProgress, { currentStage } from './DealProgress'
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
   const validStages = ['FactFind', 'BC', 'LO', 'Compliance']
-  const startStage = validStages.includes(initialStage || '') ? initialStage! : 'FactFind'
+  // Always open on the stage the progress bar marks as current, so whoever opens the deal
+  // lands where the work actually is rather than on whichever tab was viewed last.
+  const startStage = currentStage(deal)
   const [stage, setStage] = useState(startStage)
   const [dealData, setDealData] = useState(deal)
   const [editingName, setEditingName] = useState(false)
@@ -113,27 +115,42 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
             })()}
           </div>
         </div>
-        <div className="flex gap-2 flex-shrink-0">
-          <a href={`/deals/${deal.id}/summary`} target="_blank" rel="noopener noreferrer"
-            className="text-xs text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
-            View summary →
-          </a>
-          <button onClick={cloneThisDeal} disabled={cloning}
-            className="text-xs text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition disabled:opacity-40">
-            {cloning ? 'Cloning...' : 'Clone deal'}
-          </button>
-          {dealData.onedrive_link && (
-            <a href={dealData.onedrive_link} target="_blank" rel="noopener noreferrer"
-              className="text-xs text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
-              Open OneDrive →
-            </a>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {(dealData.onedrive_link || dealData.salestrekker_link) && (
+            <div className="flex items-center gap-2">
+              <span className="text-[9.5px] font-bold tracking-wider uppercase text-[#A29889]">Open</span>
+              <div className="inline-flex border border-[#E8E1D6] rounded-[10px] overflow-hidden">
+                {dealData.onedrive_link && (
+                  <a href={dealData.onedrive_link} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-[#6E665C] bg-[#FAF7F2] px-3.5 py-2 hover:bg-[#F4EEE4] transition inline-flex items-center gap-2 border-r border-[#E8E1D6]">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12V5.5A1.5 1.5 0 0 1 3.5 4h3l1.5 2h4.5A1.5 1.5 0 0 1 14 7.5V12a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12z"/></svg>
+                    OneDrive
+                  </a>
+                )}
+                {dealData.salestrekker_link && (
+                  <a href={dealData.salestrekker_link} target="_blank" rel="noopener noreferrer"
+                    className="text-xs font-semibold text-white bg-[#2DBEFF] px-3.5 py-2 hover:bg-[#25AEEC] transition inline-flex items-center gap-2">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h4v4"/><path d="M13 3 7.5 8.5"/><path d="M12 10v3H3V4h3"/></svg>
+                    SalesTrekker
+                  </a>
+                )}
+              </div>
+            </div>
           )}
-          {dealData.salestrekker_link && (
-            <a href={dealData.salestrekker_link} target="_blank" rel="noopener noreferrer"
-              className="text-xs text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
-              Open SalesTrekker →
-            </a>
-          )}
+          <div className="flex items-center gap-2">
+            <span className="text-[9.5px] font-bold tracking-wider uppercase text-[#A29889]">Deal</span>
+            <div className="inline-flex border border-[#E8E1D6] rounded-[10px] overflow-hidden">
+              <a href={`/deals/${deal.id}/summary`} target="_blank" rel="noopener noreferrer"
+                className="text-xs text-[#6E665C] bg-[#FAF7F2] px-3.5 py-2 hover:bg-[#F4EEE4] transition inline-flex items-center gap-2 border-r border-[#E8E1D6]">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2h5l3 3v9H4z"/><path d="M9 2v3h3"/></svg>
+                Summary
+              </a>
+              <button onClick={cloneThisDeal} disabled={cloning} className="text-xs text-[#6E665C] bg-[#FAF7F2] px-3.5 py-2 hover:bg-[#F4EEE4] transition inline-flex items-center gap-2 disabled:opacity-40">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="9" rx="1.4"/><path d="M11 5V3.4A1.4 1.4 0 0 0 9.6 2H4.4A1.4 1.4 0 0 0 3 3.4v7.2A1.4 1.4 0 0 0 4.4 12H5"/></svg>
+                {cloning ? 'Cloning...' : 'Clone'}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
