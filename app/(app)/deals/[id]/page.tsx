@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { hasTeamViewAccess } from '@/lib/access-control'
+import DealNoAccess from '@/components/DealNoAccess'
 import DealPageClient from './DealPageClient'
 
 type DealWithClient = {
@@ -29,36 +29,28 @@ export default async function DealPage({ params, searchParams }: { params: Promi
 
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('broker_key, role')
+    .select('role')
     .eq('id', user.id)
     .single()
-  const brokerKey = profile?.broker_key || null
   const userRole = profile?.role || ''
 
-  const { data: creditOfficerRecord } = await supabase
-    .from('credit_officers')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('active', true)
-    .maybeSingle()
-  const creditOfficerId = creditOfficerRecord?.id || null
-
-  const { data: deal, error } = await supabase
+  // The database is the only judge of who may see a deal. This query runs as the
+  // signed-in user, so row level security has already applied the flags and the
+  // broker grants. There is deliberately no second copy of those rules here - a
+  // hardcoded copy is how the app and the database drift apart.
+  const { data: deal } = await supabase
     .from('deals')
     .select('*, clients(first_name, last_name, email)')
     .eq('id', id)
-    .single()
+    .maybeSingle()
 
-  if (error || !deal) return notFound()
-
-  // Access check: team-access brokers (Fabio, Mark) and admin/staff with no
-  // broker_key (Kylie, Alan) can open any deal. Everyone else must either be
-  // the deal's assigned broker or its assigned credit officer.
-  const isOwnDeal = !!brokerKey && deal.assigned_broker?.toLowerCase() === brokerKey.toLowerCase()
-  const isOwnAllocation = !!creditOfficerId && deal.assigned_credit_officer === creditOfficerId
-  const canView = hasTeamViewAccess(brokerKey) || isOwnDeal || isOwnAllocation
-
-  if (!canView) return notFound()
+  if (!deal) {
+    // Nothing came back. Either the deal does not exist, or it does and this person
+    // may not open it. Those need different answers, so ask.
+    const { data: exists } = await supabase.rpc('deal_exists', { p_deal_id: id })
+    if (exists) return <DealNoAccess />
+    return notFound()
+  }
 
   return <DealPageClient deal={deal as DealWithClient} initialStage={stage || deal.last_tab || deal.stage} userRole={userRole} />
 }
