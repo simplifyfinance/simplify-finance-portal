@@ -2,6 +2,7 @@
 import LenderLibrary from '@/components/LenderLibrary'
 import { useState, useEffect } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import PipelineTargets from '@/components/PipelineTargets'
 
 const supabase = createSupabaseBrowser()
 
@@ -289,6 +290,7 @@ export default function SettingsPage() {
           </div>
         </div>
       </section>
+      <PipelineTargets />
       <section className="mb-10">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Compliance AI Style Notes</h2>
         <div className="border border-gray-200 rounded-xl p-5 bg-white">
