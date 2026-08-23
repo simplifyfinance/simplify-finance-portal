@@ -102,8 +102,15 @@ function walletLinkBox(link: string) {
 
 export async function POST(req: NextRequest) {
   const { broker, dealId, loData: d } = await req.json()
-  const b = await resolveBrokerProfile(broker)
-  if (!b) return NextResponse.json({ error: noBrokerMessage(broker) }, { status: 400 })
+  const resolved = await resolveBrokerProfile(broker)
+  if (!resolved) return NextResponse.json({ error: noBrokerMessage(broker) }, { status: 400 })
+  const b = {
+    name: resolved.name || String(broker || ''),
+    title: resolved.title || '',
+    crn: resolved.crn || '',
+    calendly: resolved.calendly || '',
+    email: resolved.email || '',
+  }
   const isBridging = d.template === 'lo_bridging'
   const proceedUrl = dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=LO` : undefined
 
