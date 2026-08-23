@@ -103,6 +103,28 @@ client's position, and takes one next action.
   follow-up. The email exists only until that is built.
 - **Monday digest** lists next actions falling due that week.
 
+## The deals list
+
+- **Grouped by what needs attention**, not a flat list: Needs a nudge / Running long /
+  Moving / Settled this month. The top of the page is the morning's work.
+- **Brokers see their own deals; admins see all.** This is the existing access model —
+  RLS plus `sees_all_deals` and broker grants. No separate rule.
+- **Age is days in the current stage**, measured in **business days** so a Friday
+  action does not look stale on Monday. (My call — say if calendar is preferred.)
+- **Thresholds per stage**, because they are not the same:
+
+  | Stage | Running long after | Needs a nudge after |
+  |---|---|---|
+  | Fact find | 10 | 15 |
+  | BC | 3 | 5 |
+  | Lending options | 7 | 10 |
+  | Compliance (being written) | 5 | 8 |
+  | Compliance issued, not lodged | 5 | 8 |
+
+  Post-lodgement stages are not aged yet — those wait on the lender, not on us.
+- A deal at "compliance issued" ageing is the one that matters most: it means nobody
+  moved the SalesTrekker card and nobody marked it lodged.
+
 ## Interface
 
 - Sidebar sections nest in place — Settings, Lender library and Pipeline. Never a
