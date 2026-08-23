@@ -1,5 +1,4 @@
 'use client'
-import LenderLibrary from '@/components/LenderLibrary'
 import { useState, useEffect } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import PipelineTargets from '@/components/PipelineTargets'
@@ -438,7 +437,6 @@ export default function SettingsPage() {
         )}
       </section>
       )}
-      <LenderLibrary />
     </div>
   )
 }
