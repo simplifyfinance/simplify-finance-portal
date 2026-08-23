@@ -122,7 +122,8 @@ export default function Sidebar() {
           const open = hasSubs && path.startsWith(item.href)
           return (
             <div key={item.href}>
-              <Link href={item.href} className={linkClass}>
+              <Link href={item.href} className={linkClass}
+                onClick={() => { if (!hasSubs) history.replaceState(null, '', item.href); setHash('') }}>
                 <Icon size={15} />
                 {item.label}
                 {hasSubs && (
@@ -147,6 +148,7 @@ export default function Sidebar() {
               return (
                 <div key={item.href}>
                   <Link href={item.href}
+                    onClick={() => { if (!hasSubs) history.replaceState(null, '', item.href); setHash('') }}
                     className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm mb-0.5 transition-colors ${
                       path.startsWith(item.href) ? 'text-[#2DBEFF] bg-[#2DBEFF]/10' : 'text-white/60 hover:text-white hover:bg-white/5'
                     }`}>
