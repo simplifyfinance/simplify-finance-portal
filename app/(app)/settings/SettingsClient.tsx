@@ -228,9 +228,9 @@ export default function SettingsPage() {
       ? { ...o, brokers: covers ? o.brokers.filter(b => b !== slug) : [...o.brokers, slug] }
       : o))
     if (covers) {
-      await supabase.from('credit_officer_brokers').delete().eq('credit_officer_id', officerId).eq('broker_slug', slug)
+      await supabase.from('credit_officer_brokers').delete().eq('credit_officer_id', officerId).ilike('broker_slug', slug)
     } else {
-      await supabase.from('credit_officer_brokers').insert({ credit_officer_id: officerId, broker_slug: slug })
+      await supabase.from('credit_officer_brokers').insert({ credit_officer_id: officerId, broker_slug: slug.toLowerCase() })
     }
   }
 

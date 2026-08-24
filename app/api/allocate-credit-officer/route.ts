@@ -19,13 +19,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, alreadyAssigned: true })
   }
 
-  const brokerSlug = (deal.assigned_broker || '').split(' ')[0]
+  const brokerSlug = (deal.assigned_broker || '').split(' ')[0].toLowerCase()
 
   // Find active credit officers covering this broker
   const { data: links, error: linksError } = await supabase
     .from('credit_officer_brokers')
     .select('credit_officer_id, credit_officers!inner(id, name, active, user_id, on_leave_from, on_leave_until)')
-    .eq('broker_slug', brokerSlug)
+    .ilike('broker_slug', brokerSlug)
     .eq('credit_officers.active', true)
 
   if (linksError) return NextResponse.json({ ok: false, error: linksError.message }, { status: 500 })

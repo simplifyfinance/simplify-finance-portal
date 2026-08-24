@@ -25,11 +25,11 @@ export default function CreditOfficerAssignment({ dealId, brokerName, userRole }
       if (officer) setAssignedName(officer.name)
     }
 
-    const brokerSlug = (brokerName || '').split(' ')[0]
+    const brokerSlug = (brokerName || '').split(' ')[0].toLowerCase()
     const { data: links } = await supabase
       .from('credit_officer_brokers')
       .select('credit_officer_id, credit_officers!inner(id, name, active)')
-      .eq('broker_slug', brokerSlug)
+      .ilike('broker_slug', brokerSlug)
       .eq('credit_officers.active', true)
     const options = (links || []).map((l: any) => l.credit_officers).filter(Boolean)
     setEligible(options)
