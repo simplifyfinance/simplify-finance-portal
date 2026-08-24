@@ -5,6 +5,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { listPeriods, inPeriod, toAuDate, todayYmd, fyEndYear, type Period, type PeriodKind } from '@/lib/periods'
 import { ContextChart, FyProgressChart } from '@/components/PipelineCharts'
 import MonthlyActuals from '@/components/MonthlyActuals'
+import PipelineSnapshot from '@/components/PipelineSnapshot'
 
 /* ---------- formatting ---------- */
 function num(v: any): number | null {
@@ -283,41 +284,42 @@ export default function PipelinePage() {
   }, [series, period])
 
   // FY to date, and the same span a year ago.
+  // Only the months actually recorded. A month nobody has entered is left out
+  // rather than counted as a zero - otherwise a year reads as a collapse until
+  // someone types the figure in, and last year gets compared on more months
+  // than this year has.
   const fytd = useMemo(() => {
     if (!period) return null
     const fy = fyEndYear(period.end)
     const start = `${fy - 1}-07-01`
-    let now = 0, then = 0
-    for (const [key, v] of Object.entries(monthly)) {
-      const d = key + '-01'
-      if (d >= start && d <= period.end) now += v.amount
-      const shifted = `${Number(key.slice(0, 4)) + 1}-${key.slice(5)}-01`
-      if (shifted >= start && shifted <= period.end) then += v.amount
+    const keys = Object.keys(monthly).filter(k => k + '-01' >= start && k + '-01' <= period.end).sort()
+    let now = 0, then = 0, comparable = 0
+    for (const k of keys) {
+      now += monthly[k].amount
+      const prior = `${Number(k.slice(0, 4)) - 1}-${k.slice(5)}`
+      if (monthly[prior]) { then += monthly[prior].amount; comparable += 1 }
     }
-    return { now, then }
+    return { now, then, keys, comparable }
   }, [monthly, period])
 
   // Target to the same point in the year. A month still running counts only the
   // share of itself that has happened, so "behind" never just means "this month
   // has not finished yet".
   const fytdTarget = useMemo(() => {
-    if (!period) return null
-    const fy = fyEndYear(period.end)
-    const start = `${fy - 1}-07-01`
+    if (!fytd) return null
     const today = todayYmd()
-    const cut = period.end < today ? period.end : today
     let t = 0, seen = false
-    for (const [key, v] of Object.entries(targetByMonth)) {
-      const first = key + '-01'
-      if (first < start || first > cut) continue
-      const y = Number(key.slice(0, 4)), mo = Number(key.slice(5, 7))
+    for (const k of fytd.keys) {
+      const v = targetByMonth[k]
+      if (!v) continue
+      const y = Number(k.slice(0, 4)), mo = Number(k.slice(5, 7))
       const dim = new Date(Date.UTC(y, mo, 0)).getUTCDate()
-      const last = `${key}-${String(dim).padStart(2, '0')}`
-      t += v * (last > cut ? Number(cut.slice(8, 10)) / dim : 1)
+      const last = `${k}-${String(dim).padStart(2, '0')}`
+      t += v * (last > today ? Number(today.slice(8, 10)) / dim : 1)
       seen = true
     }
     return seen ? t : null
-  }, [targetByMonth, period])
+  }, [targetByMonth, fytd])
 
   const pace = useMemo(() => {
     if (!fytd || fytdTarget === null || fytdTarget <= 0) return null
@@ -446,6 +448,11 @@ export default function PipelinePage() {
   return (
     <div className="max-w-6xl mx-auto p-6">
       <p className="text-lg font-medium text-[#343333] mb-4">Pipeline</p>
+
+      {!loading && !loadError && (
+        <PipelineSnapshot hist={hist} dealRows={dealRows} targets={targets} brokers={brokers}
+                          onPickBroker={key => setScope(key)} />
+      )}
 
       {/* toolbar */}
       <div className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-xl p-3 flex items-center gap-3 flex-wrap mb-4">
