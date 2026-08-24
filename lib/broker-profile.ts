@@ -17,11 +17,17 @@ export async function resolveBrokerProfile(key: string | null | undefined): Prom
   try {
     const supabase = createSupabaseAdmin()
 
-    const { data: row } = await supabase
+    // Deals store whatever the broker was called when the deal was made - a key,
+    // a first name, or a full name. Matching on the key alone would silently lose
+    // people, so the same three-way match the old list used is kept here.
+    const { data: all } = await supabase
       .from('brokers')
       .select('broker_key, name, title, crn, calendly, brand_ids, user_id')
-      .ilike('broker_key', wanted)
-      .maybeSingle()
+
+    const rows = (all || []) as any[]
+    const row = rows.find(b => String(b.broker_key || '').toLowerCase() === wanted)
+      || rows.find(b => String(b.name || '').trim().toLowerCase() === wanted)
+      || rows.find(b => String(b.name || '').trim().toLowerCase().split(' ')[0] === wanted)
 
     if (row) {
       // The email is not a broker fact - it belongs to their login.
