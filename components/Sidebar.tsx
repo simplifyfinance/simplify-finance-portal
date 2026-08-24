@@ -1,7 +1,7 @@
 'use client'
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3, Percent, TrendingUp } from "lucide-react"
+import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3, Percent, TrendingUp, CalendarCheck } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createSupabaseBrowser } from "@/lib/supabase-browser"
 import { can, roleLabel as formatRoleLabel } from '@/lib/permissions'
@@ -10,6 +10,7 @@ const nav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Deals", href: "/deals", icon: Briefcase },
   { label: "Pipeline", href: "/pipeline", icon: TrendingUp },
+  { label: "Settlements", href: "/settlements", icon: CalendarCheck, settlementsOnly: true },
   { label: "Clients", href: "/clients", icon: Users },
   { label: "Lender library", href: "/lenders", icon: Building2 },
   { label: "Reports", href: "/reports", icon: BarChart3 },
@@ -22,7 +23,8 @@ const adminNav = [
   { label: "Settings", href: "/settings", icon: Settings },
 ]
 
-type Profile = { full_name: string; role: string; email: string; is_admin?: boolean; sees_finance?: boolean }
+type Profile = { full_name: string; role: string; email: string; is_admin?: boolean; sees_finance?: boolean
+                 sees_settlements?: boolean }
 
 // Settings has outgrown one scroll, so it nests under the nav item rather than
 // growing a second left column beside the one the portal already has.
@@ -56,7 +58,7 @@ export default function Sidebar() {
     const supabase = createSupabaseBrowser()
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
-      supabase.from('user_profiles').select('full_name, role, email, is_admin, sees_finance').eq('id', user.id).single()
+      supabase.from('user_profiles').select('full_name, role, email, is_admin, sees_finance, sees_settlements').eq('id', user.id).single()
         .then(({ data }) => { if (data) setProfile(data) })
     })
   }, [])
@@ -124,7 +126,7 @@ export default function Sidebar() {
 
       <nav className="flex-1 px-2 py-3">
         <div className="text-white/30 text-xs uppercase tracking-widest px-2 mb-2">Main</div>
-        {nav.map(item => {
+        {nav.filter(item => !(item as any).settlementsOnly || profile?.is_admin || profile?.sees_settlements).map(item => {
           const Icon = item.icon
           const linkClass = `flex items-center gap-2.5 px-3 py-2 rounded-md text-sm mb-0.5 transition-colors ${
             path.startsWith(item.href) ? 'text-[#2DBEFF] bg-[#2DBEFF]/10' : 'text-white/60 hover:text-white hover:bg-white/5'

@@ -13,6 +13,7 @@ type UserProfile = {
   is_admin?: boolean | null
   sees_finance?: boolean | null
   sees_all_deals?: boolean | null
+  sees_settlements?: boolean | null
 }
 
 // A broker key is the name deals are stamped with. It must match what is already
@@ -93,7 +94,7 @@ export default function TeamSection() {
       : 'Broker key cleared. They no longer appear as a broker anywhere.')
   }
 
-  async function toggleFlag(user: UserProfile, field: 'is_admin' | 'sees_finance' | 'sees_all_deals') {
+  async function toggleFlag(user: UserProfile, field: 'is_admin' | 'sees_finance' | 'sees_all_deals' | 'sees_settlements') {
     setAccessMsg('')
     const next = !user[field]
     if (!(await writeProfile(user.id, { [field]: next }))) return
@@ -308,7 +309,8 @@ export default function TeamSection() {
                     <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">Permissions</label>
                     {([['is_admin', 'Admin', 'Sets targets and monthly actuals'],
                        ['sees_finance', 'Sees finance', 'Commissions and the finance screens'],
-                       ['sees_all_deals', 'Sees all deals', 'Every deal, not just their own']] as const).map(([f, label, why]) => (
+                       ['sees_all_deals', 'Sees all deals', 'Every deal, not just their own'],
+                       ['sees_settlements', 'Settlements', 'The settlements board, every broker, from lodgement on']] as const).map(([f, label, why]) => (
                       <label key={f} className="flex items-start gap-2 mb-1.5 cursor-pointer">
                         <input type="checkbox" checked={!!user[f]} onChange={() => toggleFlag(user, f)} className="mt-[3px]" />
                         <span>
