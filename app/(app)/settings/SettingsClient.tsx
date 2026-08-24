@@ -76,6 +76,26 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  // Logins that carry a broker key. A key with no profile card is invisible
+  // otherwise: their targets save and the Pipeline uses them, but there is
+  // nowhere to open them.
+  const [brokerLogins, setBrokerLogins] = useState<{ key: string; name: string }[]>([])
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from('user_profiles')
+        .select('full_name, broker_key').not('broker_key', 'is', null)
+      const seen = new Set<string>()
+      const out: { key: string; name: string }[] = []
+      for (const r of (data || [])) {
+        const key = String((r as any).broker_key || '').trim().toLowerCase()
+        if (!key || seen.has(key)) continue
+        seen.add(key)
+        out.push({ key, name: (r as any).full_name || key })
+      }
+      setBrokerLogins(out.sort((a, b) => a.name.localeCompare(b.name)))
+    })()
+  }, [])
+
   const [creditOfficers, setCreditOfficers] = useState<CreditOfficer[]>([])
   const [loadingCreditTeam, setLoadingCreditTeam] = useState(true)
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([])
@@ -320,6 +340,23 @@ export default function SettingsPage() {
             <BrokerTargets brokerKey={brokerKeyOf(broker)} name={broker.name} />
           </div>
         ))}
+        {brokerLogins.filter(l => !brokers.some(b => brokerKeyOf(b) === l.key)).map(l => (
+          <div key={l.key} className="flex items-start gap-3 bg-[#FDF6E7] border border-[#EFE0BC] rounded-xl px-4 py-3 mb-4">
+            <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#B4761F" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
+            <span className="text-[12.5px] text-[#7A5F17] flex-1">
+              <strong className="text-[#5E4A11]">{l.name} has no profile here.</strong>{' '}
+              Their login carries the broker key &ldquo;{l.key}&rdquo;, so their deals and targets already count
+              towards them on the Pipeline &mdash; but with no profile there is nowhere to set their targets or
+              actuals, and no CR number for their client documents.
+            </span>
+            <button
+              onClick={() => setBrokers([...brokers, { id: l.key, name: l.name, title: 'Mortgage Broker', crn: '', email: '', calendly: '', brandIds: ['simplify'], brokerKey: l.key }])}
+              className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-3.5 py-2 hover:bg-[#EAF7FE] transition whitespace-nowrap shrink-0">
+              Add {l.name.split(' ')[0]}&rsquo;s profile
+            </button>
+          </div>
+        ))}
+
         <button onClick={() => setBrokers([...brokers, {id: Date.now().toString(), name: 'New Broker', title: 'Mortgage Broker', crn: '', email: '', calendly: '', brandIds: ['simplify'], brokerKey: ''}])} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">+ Add another broker</button>
         <p className="text-[11.5px] text-[#A29889] mt-2">Note: broker names should start with the first name used elsewhere in the portal (e.g. "Fabio", "Justin") — this is what links a broker to their deals and credit team coverage below.</p>
       </section>
