@@ -308,9 +308,6 @@ export default function PipelineSnapshot({ hist, dealRows, targets, brokers, bro
                       <span className="font-semibold tabular-nums">{Math.round(b.lodged / L.now * 100)}%</span>
                     </div>
                   )}
-                  <div className="text-[11.5px] text-[#0E8FCB] pt-2.5 mt-2.5 border-t border-[#F6F2EA]">
-                    Open {b.name.split(' ')[0]}&rsquo;s month-by-month &rsaquo;
-                  </div>
                 </button>
               )
             })}
