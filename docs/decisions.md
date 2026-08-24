@@ -219,3 +219,11 @@ nothing showed when it was broken.
   earlier rule that only sees_finance people saw other brokers by name.
 - **Custom period is whole months only.** History before the portal is stored as
   monthly totals, so a half month cannot be reported honestly.
+
+## Commission library — COMPLETE (17 Aug 2026)
+
+35 lenders, all confirmed, every upfront, trail and clawback window present.
+Bank Australia is clawback_months = 0, meaning genuinely nil — not unknown.
+
+Nothing in commission or clawback reporting is blocked on data any more.
+Both can be built with no "rate not confirmed" tail.
