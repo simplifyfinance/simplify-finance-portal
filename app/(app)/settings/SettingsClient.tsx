@@ -2,15 +2,27 @@
 import { useState, useEffect } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import PipelineTargets from '@/components/PipelineTargets'
+import BrokerTargets from '@/components/BrokerTargets'
 import CommissionLibrary from '@/components/CommissionLibrary'
 import AiExpenses from '@/components/AiExpenses'
 
 const supabase = createSupabaseBrowser()
 
 const defaultBrands = [{ id: 'simplify', name: 'Simplify Finance', isDefault: true, headerColor: '#343333', accentColor: '#2DBEFF', acl: '387025', footerAddress: 'St Leonards, Sydney', logoUrl: '' }]
-const defaultBrokers = [
-  { id: 'fabio', name: 'Fabio de Castro', title: 'Director / Mortgage Broker', crn: '483807', email: 'fabio@simplifyfinance.com.au', calendly: 'https://calendly.com/fabiobroker', brandIds: ['simplify'] },
-  { id: 'mark', name: 'Mark Gallo', title: 'Mortgage Broker', crn: '496195', email: 'mark@simplifyfinance.com.au', calendly: 'https://calendly.com/markgallo/phonecall', brandIds: ['simplify'] }
+type BrokerRow = {
+  id: string
+  name: string
+  title: string
+  crn: string
+  email: string
+  calendly: string
+  brandIds: string[]
+  brokerKey?: string
+}
+
+const defaultBrokers: BrokerRow[] = [
+  { id: 'fabio', name: 'Fabio de Castro', title: 'Director / Mortgage Broker', crn: '483807', email: 'fabio@simplifyfinance.com.au', calendly: 'https://calendly.com/fabiobroker', brandIds: ['simplify'], brokerKey: 'fabio' },
+  { id: 'mark', name: 'Mark Gallo', title: 'Mortgage Broker', crn: '496195', email: 'mark@simplifyfinance.com.au', calendly: 'https://calendly.com/markgallo/phonecall', brandIds: ['simplify'], brokerKey: 'mark' }
 ]
 
 type CreditOfficer = {
@@ -32,7 +44,7 @@ type UserProfile = {
 
 export default function SettingsPage() {
   const [brands, setBrands] = useState(defaultBrands)
-  const [brokers, setBrokers] = useState(defaultBrokers)
+  const [brokers, setBrokers] = useState<BrokerRow[]>(defaultBrokers)
   const [wealthDeskLink, setWealthDeskLink] = useState('')
   const [newDealNotificationUserId, setNewDealNotificationUserId] = useState('')
   const [stageMoveNotificationUserId, setStageMoveNotificationUserId] = useState('')
@@ -132,6 +144,12 @@ export default function SettingsPage() {
     return name.split(' ')[0]
   }
 
+  // The one string joining a broker profile to their deals, their login and their
+  // targets. It has always been the first name; it was just never shown.
+  function brokerKeyOf(b: any): string {
+    return String(b?.brokerKey || brokerSlug(b?.name || '') || '').trim().toLowerCase()
+  }
+
   function toggleBrokerBrand(brokerId: string, brandId: string) {
     setBrokers(brokers.map(b => {
       if (b.id !== brokerId) return b
@@ -192,8 +210,8 @@ export default function SettingsPage() {
   // link to a particular setting can be shared.
   const PANES: { key: string; label: string; blurb: string }[] = [
     { key: 'brands', label: 'Brands', blurb: 'Trading names used on deals and client emails.' },
-    { key: 'brokers', label: 'Broker profiles', blurb: 'Credit representative numbers, signatures and contact details used on documents.' },
-    { key: 'targets', label: 'Targets', blurb: 'Monthly lodged and settled targets by financial year. Drives the Pipeline comparison panel.' },
+    { key: 'brokers', label: 'Broker profiles', blurb: 'Everything about one broker: their details for documents, the key that links them to their deals, and their targets.' },
+    { key: 'targets', label: 'Business targets', blurb: 'Monthly lodged and settled targets for the business as a whole. A broker’s own targets live on their profile.' },
     { key: 'commissions', label: 'Commission library', blurb: 'What each lender pays, on what basis, and what they claw back.' },
     { key: 'ai', label: 'AI expenses', blurb: 'What the portal spends on Anthropic, by month, person and feature.' },
     { key: 'people', label: 'Credit team', blurb: 'Who covers which broker.' },
@@ -274,6 +292,18 @@ export default function SettingsPage() {
               <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">Email</label><input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={broker.email} onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? {...b, email: e.target.value} : b))} /></div>
             </div>
             <div className="mt-3">
+              <label className="text-[11px] font-semibold text-[#A29889] block mb-1">Broker key</label>
+              <input className="text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF] w-[200px] font-mono"
+                value={(broker as any).brokerKey ?? brokerKeyOf(broker)}
+                onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? { ...b, brokerKey: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '') } : b))} />
+              <p className="text-[11.5px] text-[#A29889] mt-1 max-w-[560px]">
+                What joins this profile to their deals, their login and their targets. It has always been the
+                first name in lower case &mdash; changing it breaks those links unless the deals change with it.
+                Saved with the button at the bottom of this page.
+              </p>
+            </div>
+
+            <div className="mt-3">
               <label className="text-[11px] font-semibold text-[#A29889] block mb-2">Brands (a broker can work under multiple brands)</label>
               <div className="flex flex-wrap gap-2">
                 {brands.map((brand) => {
@@ -287,9 +317,10 @@ export default function SettingsPage() {
                 })}
               </div>
             </div>
+            <BrokerTargets brokerKey={brokerKeyOf(broker)} name={broker.name} />
           </div>
         ))}
-        <button onClick={() => setBrokers([...brokers, {id: Date.now().toString(), name: 'New Broker', title: 'Mortgage Broker', crn: '', email: '', calendly: '', brandIds: ['simplify']}])} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">+ Add another broker</button>
+        <button onClick={() => setBrokers([...brokers, {id: Date.now().toString(), name: 'New Broker', title: 'Mortgage Broker', crn: '', email: '', calendly: '', brandIds: ['simplify'], brokerKey: ''}])} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">+ Add another broker</button>
         <p className="text-[11.5px] text-[#A29889] mt-2">Note: broker names should start with the first name used elsewhere in the portal (e.g. "Fabio", "Justin") — this is what links a broker to their deals and credit team coverage below.</p>
       </section>
       )}

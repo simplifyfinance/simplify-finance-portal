@@ -1,7 +1,7 @@
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
 
 export type BrokerProfile = {
-  id?: string; name: string; title?: string; crn?: string
+  id?: string; brokerKey?: string; name: string; title?: string; crn?: string
   email?: string; calendly?: string; brandIds?: string[]
 }
 
@@ -17,11 +17,14 @@ export async function resolveBrokerProfile(key: string | null | undefined): Prom
     const supabase = createSupabaseAdmin()
     const { data } = await supabase.from('settings').select('brokers').eq('id', 'singleton').maybeSingle()
     const list: BrokerProfile[] = Array.isArray((data as any)?.brokers) ? (data as any).brokers : []
-    const hit = list.find(b => {
-      const name = String(b?.name || '').trim().toLowerCase()
-      const id = String(b?.id || '').trim().toLowerCase()
-      return id === wanted || name === wanted || name.split(' ')[0] === wanted
-    })
+    // The explicit key wins. Name matching stays as a fallback for profiles saved
+    // before the key existed, but it is the thing that used to go wrong.
+    const hit = list.find(b => String((b as any)?.brokerKey || '').trim().toLowerCase() === wanted)
+      || list.find(b => {
+        const name = String(b?.name || '').trim().toLowerCase()
+        const id = String(b?.id || '').trim().toLowerCase()
+        return id === wanted || name === wanted || name.split(' ')[0] === wanted
+      })
     return hit || null
   } catch {
     return null

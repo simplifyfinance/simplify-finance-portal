@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
 
 export async function POST(req: NextRequest) {
-  const { email, fullName, role } = await req.json()
+  const { email, fullName, role, brokerKey } = await req.json()
 
   if (!email || !fullName || !role) {
     return NextResponse.json({ ok: false, error: 'Missing fields' }, { status: 400 })
@@ -27,11 +27,19 @@ export async function POST(req: NextRequest) {
 
   // Only insert profile if this is a genuinely new user
   if (!error && data?.user) {
+    // A broker with no key never appears on Targets or the Pipeline, so it is set
+    // at invite time rather than left for someone to notice later.
+    const key = typeof brokerKey === 'string'
+      ? brokerKey.trim().toLowerCase().replace(/[^a-z0-9]/g, '') || null
+      : null
+
     const { error: profileError } = await supabaseAdmin.from('user_profiles').insert({
       id: data.user.id,
       email,
       full_name: fullName,
       role,
+      broker_key: role === 'broker' ? key : null,
+      is_admin: role === 'admin',
       active: true
     })
     if (profileError && !profileError.message.includes('duplicate')) {

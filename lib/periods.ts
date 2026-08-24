@@ -4,7 +4,7 @@
 // import from here so a date can never fall in one period on one screen and
 // a different period on another.
 
-export type PeriodKind = 'week' | 'month' | 'quarter' | 'fy'
+export type PeriodKind = 'week' | 'month' | 'quarter' | 'fy' | 'custom'
 
 export type Period = {
   kind: PeriodKind
@@ -129,6 +129,33 @@ export function listPeriods(kind: PeriodKind, count = 12, today = todayYmd()): P
     for (let i = 0; i < count; i++) out.push(fyPeriod(fy - i))
   }
   return out
+}
+
+// Any two dates. Used only where a person has picked them by hand, so it is
+// never produced by listPeriods.
+export function customPeriod(from: string, to: string): Period {
+  const s = parse(from), e = parse(to)
+  return {
+    kind: 'custom', key: `c-${from}-${to}`,
+    label: 'Custom range',
+    range: `${pretty(s)} - ${pretty(e)}`,
+    start: from.slice(0, 10), end: to.slice(0, 10),
+  }
+}
+
+// The same calendar dates a year earlier. 29 February falls back to the 28th.
+export function backOneYearYmd(dateYmd: string): string {
+  const y = Number(dateYmd.slice(0, 4)) - 1
+  const rest = dateYmd.slice(4)
+  if (rest === '-02-29') return `${y}-02-28`
+  return `${y}${rest}`
+}
+
+// The last day of the month a date sits in.
+export function monthEndYmd(monthKey: string): string {
+  const y = Number(monthKey.slice(0, 4)), m = Number(monthKey.slice(5, 7))
+  const dim = utc(y, m, 0).getUTCDate()
+  return `${monthKey}-${String(dim).padStart(2, '0')}`
 }
 
 export function inPeriod(dateYmd: string, p: Period): boolean {

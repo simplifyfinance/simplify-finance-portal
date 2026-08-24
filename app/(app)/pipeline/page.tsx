@@ -2,7 +2,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { listPeriods, inPeriod, toAuDate, todayYmd, fyEndYear, type Period, type PeriodKind } from '@/lib/periods'
+import { listPeriods, inPeriod, toAuDate, todayYmd, fyEndYear, customPeriod, backOneYearYmd, monthEndYmd,
+         type Period, type PeriodKind } from '@/lib/periods'
 import { ContextChart, FyProgressChart } from '@/components/PipelineCharts'
 import MonthlyActuals from '@/components/MonthlyActuals'
 import PipelineSnapshot from '@/components/PipelineSnapshot'
@@ -47,6 +48,8 @@ export default function PipelinePage() {
   const [metric, setMetric] = useState<Metric>('lodged')
   const [kind, setKind] = useState<PeriodKind>('month')
   const [periodKey, setPeriodKey] = useState('')
+  const [fromM, setFromM] = useState('')     // 'YYYY-MM'
+  const [toM, setToM] = useState('')
   const [reg, setReg] = useState<any[]>([])
   const [scope, setScope] = useState('')            // '' is the whole business
   const [brokers, setBrokers] = useState<{ key: string; name: string }[]>([])
@@ -179,8 +182,13 @@ export default function PipelinePage() {
   }, [targets, metric, scope])
 
   /* ---------- periods ---------- */
-  const COUNT: Record<PeriodKind, number> = { week: 26, month: 144, quarter: 48, fy: 12 }
-  const periods = useMemo(() => listPeriods(kind, COUNT[kind]), [kind])
+  const COUNT: Record<PeriodKind, number> = { week: 26, month: 144, quarter: 48, fy: 12, custom: 1 }
+  const periods = useMemo(() => {
+    if (kind === 'custom') {
+      return (fromM && toM && fromM <= toM) ? [customPeriod(fromM + '-01', monthEndYmd(toM))] : []
+    }
+    return listPeriods(kind, COUNT[kind])
+  }, [kind, fromM, toM])
   const period: Period | undefined = useMemo(
     () => periods.find(p => p.key === periodKey) || periods[0], [periods, periodKey])
 
@@ -207,10 +215,19 @@ export default function PipelinePage() {
   }
 
   const idx = useMemo(() => periods.findIndex(p => p.key === period?.key), [periods, period])
-  const backOneYear = kind === 'month' ? 12 : kind === 'quarter' ? 4 : kind === 'fy' ? 1 : 0
+  const backOneYear = kind === 'month' ? 12 : kind === 'quarter' ? 4 : kind === 'fy' ? 1 : 0   // week and custom have none
 
+  const custom = kind === 'custom'
   const current = period ? periodValue(period) : { amount: 0, deals: 0, sources: new Set<string>(), months: 0 }
   const target = period ? periodTarget(period) : null
+
+  // The same months a year earlier. Whole months either way, so it is like for like.
+  const customPrior = useMemo(() => {
+    if (!custom || !period) return null
+    const prior = { ...period, start: backOneYearYmd(period.start), end: backOneYearYmd(period.end) }
+    const v = periodValue(prior as Period)
+    return v.amount > 0 ? v : null
+  }, [custom, period, monthly])
   const inProgress = !!period && todayYmd() >= period.start && todayYmd() <= period.end
 
   // The calendar months a period spans, in order.
@@ -345,7 +362,7 @@ export default function PipelinePage() {
   // the three prior years drawn behind them. Raw totals here, not the clipped
   // baselines - a chart of whole periods is honest as long as the running one is marked.
   const contextChart = useMemo(() => {
-    if (kind === 'week' || !period || idx < 0) return null
+    if (kind === 'week' || kind === 'custom' || !period || idx < 0) return null
     const n = kind === 'fy' ? 5 : kind === 'quarter' ? 8 : 12
     const bars: any[] = []
     for (let k = n - 1; k >= 0; k--) {
@@ -440,7 +457,26 @@ export default function PipelinePage() {
   const kinds: { k: PeriodKind; label: string }[] = [
     { k: 'week', label: 'Week' }, { k: 'month', label: 'Month' },
     { k: 'quarter', label: 'Quarter' }, { k: 'fy', label: 'Financial year' },
+    { k: 'custom', label: 'Custom' },
   ]
+  function pickKind(k: PeriodKind) {
+    setKind(k)
+    setPeriodKey('')
+    if (k === 'custom' && (!fromM || !toM)) {
+      const t = todayYmd().slice(0, 7)
+      setFromM(t); setToM(t)
+      setPickOpen(true)
+    }
+  }
+  function setSpan(f: string, t: string) { setKind('custom'); setFromM(f); setToM(t); setPickOpen(false) }
+  // n whole months back from this one, inclusive of it
+  function monthsBack(n: number): string {
+    const t = todayYmd()
+    let y = Number(t.slice(0, 4)), m = Number(t.slice(5, 7)) - n
+    while (m < 1) { m += 12; y -= 1 }
+    return `${y}-${String(m).padStart(2, '0')}`
+  }
+  const dateInput = 'text-[12.5px] border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]'
 
   // Every hook above has already run, so switching the whole view here is safe.
   if (view === 'actuals') return <MonthlyActuals />
@@ -484,7 +520,7 @@ export default function PipelinePage() {
 
         <div className="flex gap-3.5">
           {kinds.map(({ k, label }) => (
-            <button key={k} onClick={() => { setKind(k); setPeriodKey('') }}
+            <button key={k} onClick={() => pickKind(k)}
               className={`text-[12.5px] font-medium pb-1 border-b-2 transition ${kind === k ? 'text-[#2E2A26] border-[#343333]' : 'text-[#A29889] border-transparent hover:text-[#6E665C]'}`}>
               {label}
             </button>
@@ -498,15 +534,37 @@ export default function PipelinePage() {
             className="bg-white border border-[#E8E1D6] rounded-lg px-3 py-1.5 flex items-center gap-2.5 hover:border-[#C9C0B1] transition text-left">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#A29889" strokeWidth="1.5" strokeLinecap="round"><rect x="2.2" y="3.2" width="11.6" height="10.6" rx="2"/><path d="M2.2 6.4h11.6M5.4 2v2.4M10.6 2v2.4"/></svg>
             <span>
-              <span className="block text-[13px] font-semibold text-[#2E2A26] leading-tight">{period?.label}</span>
-              <span className="block text-[10.5px] text-[#A29889]">{period?.range}</span>
+              <span className="block text-[13px] font-semibold text-[#2E2A26] leading-tight">{period?.label || 'Pick two dates'}</span>
+              <span className="block text-[10.5px] text-[#A29889]">{period?.range || 'from and to'}</span>
             </span>
             <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#A29889" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={pickOpen ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'}/></svg>
           </button>
 
           {pickOpen && (
             <div className="absolute top-[calc(100%+8px)] left-0 z-20 w-[300px] bg-white border border-[#E8E1D6] rounded-xl shadow-[0_10px_30px_rgba(46,42,38,.13)] p-3">
-              {kind !== 'fy' && kind !== 'week' && (
+              {kind === 'custom' && (
+                <div className="grid gap-2 mb-1">
+                  <label className="block">
+                    <span className="block text-[10px] font-semibold uppercase tracking-[.08em] text-[#A29889] mb-1">From month</span>
+                    <input type="month" value={fromM} max={toM || undefined}
+                      onChange={e => setFromM(e.target.value)} className={dateInput} />
+                  </label>
+                  <label className="block">
+                    <span className="block text-[10px] font-semibold uppercase tracking-[.08em] text-[#A29889] mb-1">To month</span>
+                    <input type="month" value={toM} min={fromM || undefined}
+                      onChange={e => setToM(e.target.value)} className={dateInput} />
+                  </label>
+                  <span className="text-[11px] text-[#A29889]">
+                    Whole months only. Every figure held before the portal went live is a monthly total, so a
+                    half month cannot be reported honestly.
+                  </span>
+                  {fromM && toM && fromM > toM && (
+                    <span className="text-[11.5px] text-[#C4553B]">The first month is after the last.</span>
+                  )}
+                </div>
+              )}
+
+              {kind !== 'fy' && kind !== 'week' && kind !== 'custom' && (
                 <div className="flex items-center justify-between mb-2.5">
                   <button onClick={() => setPickYear(y => y - 1)} className="w-[26px] h-[26px] rounded-lg border border-[#E8E1D6] flex items-center justify-center text-[#6E665C] hover:bg-[#FAF7F2]">
                     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5"/></svg>
@@ -518,7 +576,7 @@ export default function PipelinePage() {
                 </div>
               )}
 
-              <div className={`grid gap-1.5 ${kind === 'week' ? 'grid-cols-2' : 'grid-cols-4'}`}>
+              <div className={`grid gap-1.5 ${kind === 'custom' ? 'hidden' : kind === 'week' ? 'grid-cols-2' : 'grid-cols-4'}`}>
                 {kind === 'month' && MONTHS.map((mn, i) => {
                   const key = `m-${pickYear}-${i + 1}`
                   const exists = periods.some(p => p.key === key)
@@ -559,6 +617,14 @@ export default function PipelinePage() {
                 <button onClick={() => quick('quarter', 0)} className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-full px-2.5 py-1 text-[11.5px] text-[#6E665C] hover:bg-[#F4EEE4]">This quarter</button>
                 <button onClick={() => quick('fy', 0)} className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-full px-2.5 py-1 text-[11.5px] text-[#6E665C] hover:bg-[#F4EEE4]">This FY</button>
                 <button onClick={() => quick('fy', 1)} className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-full px-2.5 py-1 text-[11.5px] text-[#6E665C] hover:bg-[#F4EEE4]">Last FY</button>
+                <button onClick={() => setSpan(monthsBack(2), todayYmd().slice(0, 7))}
+                  className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-full px-2.5 py-1 text-[11.5px] text-[#6E665C] hover:bg-[#F4EEE4]">Last 3 months</button>
+                <button onClick={() => setSpan(monthsBack(5), todayYmd().slice(0, 7))}
+                  className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-full px-2.5 py-1 text-[11.5px] text-[#6E665C] hover:bg-[#F4EEE4]">Last 6 months</button>
+                <button onClick={() => setSpan(monthsBack(11), todayYmd().slice(0, 7))}
+                  className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-full px-2.5 py-1 text-[11.5px] text-[#6E665C] hover:bg-[#F4EEE4]">Last 12 months</button>
+                <button onClick={() => { const t = todayYmd(); setSpan(`${fyEndYear(t) - 1}-07`, t.slice(0, 7)) }}
+                  className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-full px-2.5 py-1 text-[11.5px] text-[#6E665C] hover:bg-[#F4EEE4]">FY to date</button>
               </div>
             </div>
           )}
@@ -579,7 +645,37 @@ export default function PipelinePage() {
       ) : (
         <>
           {/* comparison */}
-          {!scope && kind !== 'week' && current.amount > 0 && (
+          {custom && period && (
+            <div className="bg-white border border-gray-100 rounded-xl overflow-hidden mb-4">
+              <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
+                <span className="text-[13px] font-semibold text-[#2E2A26]">{period.range}</span>
+                <span className="text-[11.5px] text-[#A29889]">
+                  {scope ? (brokers.find(b => b.key === scope)?.name || scope) : 'whole business'}
+                </span>
+              </div>
+              <div className="grid grid-cols-3">
+                <Cmp label="vs the same dates last year"
+                     value={customPrior ? signed(pct(current.amount, customPrior.amount)) : '-'}
+                     tone={customPrior ? (current.amount >= customPrior.amount ? 'up' : 'down') : 'flat'}
+                     base={customPrior
+                       ? `${compact(customPrior.amount)} → ${compact(current.amount)}`
+                       : 'nothing held for those dates last year'} />
+                <Cmp label="vs target"
+                     value={target ? Math.round(current.amount / target * 100) + '%' : 'not set'}
+                     tone={target ? (current.amount >= target ? 'up' : 'down') : 'flat'}
+                     base={target
+                       ? `${compact(Math.abs(current.amount - target))} ${current.amount >= target ? 'ahead of' : 'short of'} ${compact(target)} for the whole months in range`
+                       : 'no whole month with a target sits inside these dates'}
+                     meter={target ? Math.min(100, current.amount / target * 100) : null}
+                     meterFull={!!target && current.amount >= target} />
+                <Cmp label="deals" value={String(current.deals || 0)} tone="flat"
+                     base={current.deals ? `${compact(current.amount / current.deals)} average` : 'none in range'} />
+              </div>
+            </div>
+          )}
+
+
+          {!scope && kind !== 'week' && !custom && current.amount > 0 && (
             <div className="bg-white border border-gray-100 rounded-xl overflow-hidden mb-4">
               <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
                 <span className="text-[13px] font-semibold text-[#2E2A26]">
