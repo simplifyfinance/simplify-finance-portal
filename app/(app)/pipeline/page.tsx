@@ -54,6 +54,7 @@ export default function PipelinePage() {
   const [scope, setScope] = useState('')            // '' is the whole business
   const [brokers, setBrokers] = useState<{ key: string; name: string }[]>([])
   const [hist, setHist] = useState<any[]>([])
+  const [bhist, setBhist] = useState<any[]>([])
   const [targets, setTargets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -70,11 +71,12 @@ export default function PipelinePage() {
   useEffect(() => {
     let cancelled = false
     async function load() {
-      const [r, h, t, b] = await Promise.all([
+      const [r, h, t, b, bh] = await Promise.all([
         supabase.rpc('pipeline_register'),
         supabase.from('pipeline_history').select('month, deals_lodged, lodged_amount, deals_settled, settled_amount'),
         supabase.from('pipeline_targets').select('metric, month, amount, broker_key'),
         supabase.from('user_profiles').select('full_name, broker_key').not('broker_key', 'is', null),
+        supabase.from('pipeline_broker_history').select('broker_key, month, deals_lodged, lodged_amount, deals_settled, settled_amount'),
       ])
       if (cancelled) return
       // A failed read must never look like a quiet business.
@@ -86,6 +88,7 @@ export default function PipelinePage() {
       setReg(r.data || [])
       setHist(h.data || [])
       setTargets(t.error ? [] : (t.data || []))   // targets are optional until they are set
+      setBhist(bh.error ? [] : (bh.data || []))  // so are a broker's typed actuals
       const seen = new Set<string>()
       const bs: { key: string; name: string }[] = []
       for (const r2 of (b.data || [])) {
@@ -155,20 +158,30 @@ export default function PipelinePage() {
     return m
   }, [hist, dealRows, metric])
 
+  // A broker's typed figure wins over deals counted in the portal for that month,
+  // exactly as the business spreadsheet does for the business.
   const brokerMonthly = useMemo(() => {
-    const m: Record<string, { amount: number; deals: number; source: 'spreadsheet' | 'portal' }> = {}
+    const m: Record<string, { amount: number; deals: number; source: 'spreadsheet' | 'portal' | 'override' }> = {}
     if (!scope) return m
+    for (const row of bhist) {
+      if (String(row.broker_key || '').toLowerCase() !== scope) continue
+      const key = String(row.month).slice(0, 7)
+      const amount = num(metric === 'lodged' ? row.lodged_amount : row.settled_amount)
+      const deals = num(metric === 'lodged' ? row.deals_lodged : row.deals_settled)
+      if (amount !== null) m[key] = { amount, deals: deals || 0, source: 'override' }
+    }
     for (const r of dealRows) {
       if ((r.broker || '').toLowerCase() !== scope) continue
       const date = metric === 'lodged' ? r.lodgedDate : r.settledDate
       if (!date) continue
       const key = date.slice(0, 7)
+      if (m[key]?.source === 'override') continue
       if (!m[key]) m[key] = { amount: 0, deals: 0, source: 'portal' }
       m[key].amount += (metric === 'lodged' ? r.lodgedAmount : r.settledAmount) || 0
       m[key].deals += 1
     }
     return m
-  }, [dealRows, metric, scope])
+  }, [dealRows, metric, scope, bhist])
 
   const monthly = scope ? brokerMonthly : businessMonthly
 
@@ -486,7 +499,7 @@ export default function PipelinePage() {
       <p className="text-lg font-medium text-[#343333] mb-4">Pipeline</p>
 
       {!loading && !loadError && (
-        <PipelineSnapshot hist={hist} dealRows={dealRows} targets={targets} brokers={brokers}
+        <PipelineSnapshot hist={hist} dealRows={dealRows} targets={targets} brokers={brokers} brokerHist={bhist}
                           onPickBroker={key => setScope(key)} />
       )}
 

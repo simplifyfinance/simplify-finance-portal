@@ -10,6 +10,7 @@ type Props = {
   dealRows: any[]
   targets: any[]
   brokers: { key: string; name: string }[]
+  brokerHist?: any[]
   onPickBroker?: (key: string) => void
 }
 
@@ -32,7 +33,7 @@ function initials(name: string): string {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('')
 }
 
-export default function PipelineSnapshot({ hist, dealRows, targets, brokers, onPickBroker }: Props) {
+export default function PipelineSnapshot({ hist, dealRows, targets, brokers, brokerHist = [], onPickBroker }: Props) {
   const fy = fyEndYear(todayYmd())
   const fyStart = `${fy - 1}-07-01`
   const fyEnd = `${fy}-06-01`
@@ -105,22 +106,42 @@ export default function PipelineSnapshot({ hist, dealRows, targets, brokers, onP
   const S = head('settled')
 
   const cards = useMemo(() => brokers.map(b => {
+    // A figure typed on the broker's profile wins over deals counted here, month
+    // by month - the same rule the business figures follow.
+    const typed: Record<string, { lodged: number | null; settled: number | null; dl: number | null; ds: number | null }> = {}
+    for (const row of brokerHist) {
+      if (String(row.broker_key || '').toLowerCase() !== b.key) continue
+      typed[String(row.month).slice(0, 7)] = {
+        lodged: n(row.lodged_amount), settled: n(row.settled_amount),
+        dl: n(row.deals_lodged), ds: n(row.deals_settled),
+      }
+    }
     let lodged = 0, lodgedDeals = 0, settled = 0, settledDeals = 0, monthLodged = 0, monthSettled = 0
     for (const r of dealRows) {
       if ((r.broker || '').toLowerCase() !== b.key) continue
       const ld = r.lodgedDate, sd = r.settledDate
-      if (ld && L.keys.includes(ld.slice(0, 7))) { lodged += r.lodgedAmount || 0; lodgedDeals += 1 }
-      if (sd && S.keys.includes(sd.slice(0, 7))) { settled += r.settledAmount || 0; settledDeals += 1 }
-      if (ld && ld.slice(0, 7) === thisMonth) monthLodged += r.lodgedAmount || 0
-      if (sd && sd.slice(0, 7) === thisMonth) monthSettled += r.settledAmount || 0
+      if (ld && L.keys.includes(ld.slice(0, 7)) && typed[ld.slice(0, 7)]?.lodged == null) { lodged += r.lodgedAmount || 0; lodgedDeals += 1 }
+      if (sd && S.keys.includes(sd.slice(0, 7)) && typed[sd.slice(0, 7)]?.settled == null) { settled += r.settledAmount || 0; settledDeals += 1 }
+      if (ld && ld.slice(0, 7) === thisMonth && typed[thisMonth]?.lodged == null) monthLodged += r.lodgedAmount || 0
+      if (sd && sd.slice(0, 7) === thisMonth && typed[thisMonth]?.settled == null) monthSettled += r.settledAmount || 0
     }
+    for (const k of L.keys) {
+      const t = typed[k]
+      if (t?.lodged != null) { lodged += t.lodged; lodgedDeals += t.dl || 0 }
+    }
+    for (const k of S.keys) {
+      const t = typed[k]
+      if (t?.settled != null) { settled += t.settled; settledDeals += t.ds || 0 }
+    }
+    if (typed[thisMonth]?.lodged != null) monthLodged += typed[thisMonth].lodged as number
+    if (typed[thisMonth]?.settled != null) monthSettled += typed[thisMonth].settled as number
     const lt = targetOf('lodged', b.key), st = targetOf('settled', b.key)
     let lodgedTarget = 0, settledTarget = 0
     for (const k of L.keys) if (lt[k]) lodgedTarget += lt[k]
     for (const k of S.keys) if (st[k]) settledTarget += st[k]
     return { ...b, lodged, lodgedDeals, lodgedTarget, settled, settledDeals, settledTarget,
              monthLodged, monthSettled }
-  }), [brokers, dealRows, targetOf, L.keys, S.keys, thisMonth])
+  }), [brokers, dealRows, brokerHist, targetOf, L.keys, S.keys, thisMonth])
 
   const card = 'bg-white border border-[#EDE7DD] rounded-2xl'
   const kk = 'text-[10px] font-bold tracking-[.09em] uppercase text-[#A29889]'
@@ -232,9 +253,9 @@ export default function PipelineSnapshot({ hist, dealRows, targets, brokers, onP
 
           {L.sheet && (
             <div className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-xl px-4 py-2.5 text-[12.5px] mb-3">
-              The business figure for these months came from the spreadsheet, which has no broker split. Broker
-              figures below count only deals marked through the portal, so they will read low until the team is
-              marking deals here. Share of the business is left out for that reason.
+              The business figure for these months came from the spreadsheet, which has no broker split, so share
+              of the business is left out. A broker&rsquo;s own figures come from what is typed on their profile in
+              Settings, or from deals marked through the portal where nothing is typed.
             </div>
           )}
 

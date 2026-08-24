@@ -1,12 +1,14 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { fyEndYear, todayYmd } from '@/lib/periods'
+import { fyEndYear, todayYmd, toAuDate } from '@/lib/periods'
 
 const FY_MONTHS = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6]
 const NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
-type Row = { id: string; metric: string; month: string; amount: number }
+type TRow = { id: string; metric: string; month: string; amount: number }
+type HRow = { id: string; month: string; deals_lodged: number | null; lodged_amount: number | null
+              deals_settled: number | null; settled_amount: number | null }
 type Login = { id: string; full_name: string; role: string; broker_key: string | null }
 
 function monthKey(fyEnd: number, mi: number): string {
@@ -23,6 +25,17 @@ function commas(s: string): string {
   const n = parseNum(s)
   return n === null ? '' : n.toLocaleString('en-AU')
 }
+function num(v: any): number | null {
+  if (v === null || v === undefined || v === '') return null
+  const n = Number(String(v).replace(/[^0-9.\-]/g, ''))
+  return isNaN(n) ? null : n
+}
+function splitsTotal(sp: any): number | null {
+  if (!Array.isArray(sp) || sp.length === 0) return null
+  let t = 0, seen = false
+  for (const x of sp) { const n = num(x?.amount); if (n !== null) { t += n; seen = true } }
+  return seen ? t : null
+}
 function compact(n: number | null): string {
   if (n === null || n === undefined) return '—'
   const a = Math.abs(n)
@@ -31,88 +44,178 @@ function compact(n: number | null): string {
   return '$' + Math.round(n)
 }
 
-// One broker's targets, sitting on their own profile rather than on a separate
-// screen. The key below is what joins a profile to their deals, their login and
-// these targets - it is the only thing tying the three together.
+// One broker, in one place: the key that links them to their deals, their targets
+// and what they actually did. A figure typed here wins over deals counted in the
+// portal for that month, exactly as the business screen works.
 export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; name: string }) {
   const supabase = createSupabaseBrowser()
   const key = (brokerKey || '').trim().toLowerCase()
   const [open, setOpen] = useState(false)
   const [fy, setFy] = useState(() => fyEndYear(todayYmd()))
-  const [rows, setRows] = useState<Row[]>([])
+  const [targets, setTargets] = useState<TRow[]>([])
+  const [hist, setHist] = useState<HRow[]>([])
+  const [portal, setPortal] = useState<Record<string, { lodged: number; lodgedDeals: number; settled: number; settledDeals: number }>>({})
   const [vals, setVals] = useState<Record<string, string>>({})
   const [login, setLogin] = useState<Login | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
 
-  const k = (metric: string, month: string) => `${metric}:${month}`
+  const k = (field: string, month: string) => `${field}:${month}`
 
   async function load() {
     if (!key) { setLoaded(true); return }
-    const [t, u] = await Promise.all([
+    const [t, h, u, r] = await Promise.all([
       supabase.from('pipeline_targets').select('id, metric, month, amount').ilike('broker_key', key),
+      supabase.from('pipeline_broker_history').select('*').ilike('broker_key', key),
       supabase.from('user_profiles').select('id, full_name, role, broker_key').ilike('broker_key', key),
+      supabase.rpc('pipeline_register'),
     ])
-    const rs: Row[] = (t.data || []).map((r: any) => ({
-      id: r.id, metric: r.metric, month: String(r.month).slice(0, 10), amount: Number(r.amount),
+    const ts: TRow[] = (t.data || []).map((x: any) => ({
+      id: x.id, metric: x.metric, month: String(x.month).slice(0, 10), amount: Number(x.amount),
     }))
-    setRows(rs)
-    setVals(Object.fromEntries(rs.map(r => [k(r.metric, r.month), r.amount.toLocaleString('en-AU')])))
+    const hs: HRow[] = (h.data || []).map((x: any) => ({
+      id: x.id, month: String(x.month).slice(0, 10),
+      deals_lodged: x.deals_lodged, lodged_amount: x.lodged_amount,
+      deals_settled: x.deals_settled, settled_amount: x.settled_amount,
+    }))
+    setTargets(ts); setHist(hs)
     setLogin((u.data || [])[0] || null)
+
+    const v: Record<string, string> = {}
+    for (const x of ts) v[k(x.metric === 'lodged' ? 'tl' : 'ts', x.month)] = x.amount.toLocaleString('en-AU')
+    for (const x of hs) {
+      if (x.lodged_amount !== null)   v[k('al', x.month)] = Math.round(Number(x.lodged_amount)).toLocaleString('en-AU')
+      if (x.settled_amount !== null)  v[k('as', x.month)] = Math.round(Number(x.settled_amount)).toLocaleString('en-AU')
+    }
+    setVals(v)
+
+    // What the portal itself holds for this broker, so a month with no typed
+    // figure still shows something and it is obvious where it came from.
+    const pp: Record<string, any> = {}
+    for (const d of (r.data || [])) {
+      if (String(d.assigned_broker || '').trim().toLowerCase() !== key) continue
+      const ld = toAuDate(d.lodged_date || d.lodged_at)
+      const sd = toAuDate(d.settled_date || d.settled_at)
+      const la = num(d.lodged_total) ?? splitsTotal(d.lodged_splits) ?? num(d.loan_amount) ?? 0
+      const sa = num(d.settled_total) ?? splitsTotal(d.settled_splits) ?? num(d.loan_amount) ?? 0
+      if (ld) {
+        const m = ld.slice(0, 7) + '-01'
+        pp[m] = pp[m] || { lodged: 0, lodgedDeals: 0, settled: 0, settledDeals: 0 }
+        pp[m].lodged += la; pp[m].lodgedDeals += 1
+      }
+      if (sd) {
+        const m = sd.slice(0, 7) + '-01'
+        pp[m] = pp[m] || { lodged: 0, lodgedDeals: 0, settled: 0, settledDeals: 0 }
+        pp[m].settled += sa; pp[m].settledDeals += 1
+      }
+    }
+    setPortal(pp)
     setLoaded(true)
   }
   useEffect(() => { if (open && !loaded) load() }, [open])
-  useEffect(() => { setLoaded(false); setRows([]); setVals({}); setLogin(null) }, [key])
+  useEffect(() => { setLoaded(false); setTargets([]); setHist([]); setVals({}); setLogin(null) }, [key])
 
-  const months = useMemo(() => FY_MONTHS.map(mi => ({ name: NAMES[mi - 1], month: monthKey(fy, mi) })), [fy])
-  const saved = useMemo(() => {
-    const m: Record<string, Row> = {}
-    for (const r of rows) m[k(r.metric, r.month)] = r
+  const months = useMemo(() => FY_MONTHS.map(mi => {
+    const month = monthKey(fy, mi)
+    return { name: NAMES[mi - 1], month, h: hist.find(x => x.month === month), p: portal[month] }
+  }), [fy, hist, portal])
+
+  const savedT = useMemo(() => {
+    const m: Record<string, TRow> = {}
+    for (const r of targets) m[k(r.metric === 'lodged' ? 'tl' : 'ts', r.month)] = r
     return m
-  }, [rows])
+  }, [targets])
 
   const totals = useMemo(() => {
-    let l = 0, s = 0, set = 0
+    let tl = 0, ts = 0, al = 0, as_ = 0, set = 0, rec = 0, tlRec = 0, tsRec = 0
     for (const m of months) {
-      const lv = parseNum(vals[k('lodged', m.month)] || '')
-      const sv = parseNum(vals[k('settled', m.month)] || '')
-      if (lv !== null) { l += lv; set += 1 }
-      if (sv !== null) s += sv
+      const a = parseNum(vals[k('tl', m.month)] || ''), b = parseNum(vals[k('ts', m.month)] || '')
+      const c = parseNum(vals[k('al', m.month)] || ''), d = parseNum(vals[k('as', m.month)] || '')
+      if (a !== null) { tl += a; set += 1 }
+      if (b !== null) ts += b
+      if (c !== null) { al += c; rec += 1; if (a !== null) tlRec += a }
+      if (d !== null) { as_ += d; if (b !== null) tsRec += b }
     }
-    return { l, s, set }
+    return { tl, ts, al, as: as_, set, rec, tlRec, tsRec }
   }, [months, vals])
 
-  const dirty = useMemo(() => months.some(m => ['lodged', 'settled'].some(metric => {
-    const kk = k(metric, m.month)
-    return (parseNum(vals[kk] || '') ?? null) !== (saved[kk]?.amount ?? null)
-  })), [months, vals, saved])
+  const dirty = useMemo(() => months.some(m => {
+    for (const f of ['tl', 'ts'] as const) {
+      if ((parseNum(vals[k(f, m.month)] || '') ?? null) !== (savedT[k(f, m.month)]?.amount ?? null)) return true
+    }
+    const al = parseNum(vals[k('al', m.month)] || '')
+    const as_ = parseNum(vals[k('as', m.month)] || '')
+    const wasL = m.h?.lodged_amount === null || m.h?.lodged_amount === undefined ? null : Math.round(Number(m.h.lodged_amount))
+    const wasS = m.h?.settled_amount === null || m.h?.settled_amount === undefined ? null : Math.round(Number(m.h.settled_amount))
+    return (al === null ? null : Math.round(al)) !== wasL || (as_ === null ? null : Math.round(as_)) !== wasS
+  }), [months, vals, savedT])
+
+  function set(field: string, month: string, v: string) {
+    setVals(p => ({ ...p, [k(field, month)]: v }))
+    setStatus('')
+  }
+  function usedPortal(month: string) {
+    const p = portal[month]
+    if (!p) return
+    setVals(v => ({
+      ...v,
+      [k('al', month)]: Math.round(p.lodged).toLocaleString('en-AU'),
+      [k('as', month)]: Math.round(p.settled).toLocaleString('en-AU'),
+    }))
+    setStatus('Pulled the portal figures in. Nothing is saved until you press Save.')
+  }
 
   async function save() {
     setBusy(true); setStatus('')
-    const inserts: any[] = [], updates: { id: string; amount: number }[] = [], deletes: string[] = []
-    for (const m of months) for (const metric of ['lodged', 'settled']) {
-      const kk = k(metric, m.month)
-      const n = parseNum(vals[kk] || '')
-      const existing = saved[kk]
-      if (n === null) { if (existing) deletes.push(existing.id) }
-      else if (!existing) inserts.push({ metric, month: m.month, broker_key: key, amount: n })
-      else if (existing.amount !== n) updates.push({ id: existing.id, amount: n })
+    const tIns: any[] = [], tUpd: { id: string; amount: number }[] = [], tDel: string[] = []
+    const hUps: any[] = [], hDel: string[] = []
+    for (const m of months) {
+      for (const [f, metric] of [['tl', 'lodged'], ['ts', 'settled']] as const) {
+        const n = parseNum(vals[k(f, m.month)] || '')
+        const existing = savedT[k(f, m.month)]
+        if (n === null) { if (existing) tDel.push(existing.id) }
+        else if (!existing) tIns.push({ metric, month: m.month, broker_key: key, amount: n })
+        else if (existing.amount !== n) tUpd.push({ id: existing.id, amount: n })
+      }
+      const al = parseNum(vals[k('al', m.month)] || '')
+      const as_ = parseNum(vals[k('as', m.month)] || '')
+      if (al === null && as_ === null) { if (m.h) hDel.push(m.h.id) }
+      else {
+        const wasL = m.h?.lodged_amount === null || m.h?.lodged_amount === undefined ? null : Math.round(Number(m.h.lodged_amount))
+        const wasS = m.h?.settled_amount === null || m.h?.settled_amount === undefined ? null : Math.round(Number(m.h.settled_amount))
+        if ((al === null ? null : Math.round(al)) !== wasL || (as_ === null ? null : Math.round(as_)) !== wasS) {
+          hUps.push({ broker_key: key, month: m.month, lodged_amount: al, settled_amount: as_,
+                      deals_lodged: m.p && al !== null ? m.p.lodgedDeals : null,
+                      deals_settled: m.p && as_ !== null ? m.p.settledDeals : null,
+                      source: 'manual', updated_at: new Date().toISOString() })
+        }
+      }
     }
     try {
       // Row counts are checked. A blocked write returns no rows and no error.
-      if (inserts.length) {
-        const { data, error } = await supabase.from('pipeline_targets').insert(inserts).select('id')
+      if (tIns.length) {
+        const { data, error } = await supabase.from('pipeline_targets').insert(tIns).select('id')
         if (error) throw new Error(error.message)
-        if ((data?.length || 0) !== inserts.length) throw new Error('the database accepted ' + (data?.length || 0) + ' of ' + inserts.length + ' new rows')
+        if ((data?.length || 0) !== tIns.length) throw new Error('the database accepted ' + (data?.length || 0) + ' of ' + tIns.length + ' new targets')
       }
-      for (const u of updates) {
+      for (const u of tUpd) {
         const { data, error } = await supabase.from('pipeline_targets').update({ amount: u.amount }).eq('id', u.id).select('id')
         if (error) throw new Error(error.message)
-        if (!data || data.length === 0) throw new Error('a change did not reach the database')
+        if (!data || data.length === 0) throw new Error('a target did not reach the database')
       }
-      if (deletes.length) {
-        const { error } = await supabase.from('pipeline_targets').delete().in('id', deletes)
+      if (tDel.length) {
+        const { error } = await supabase.from('pipeline_targets').delete().in('id', tDel)
+        if (error) throw new Error(error.message)
+      }
+      if (hUps.length) {
+        const { data, error } = await supabase.from('pipeline_broker_history')
+          .upsert(hUps, { onConflict: 'broker_key,month' }).select('id')
+        if (error) throw new Error(error.message)
+        if ((data?.length || 0) !== hUps.length) throw new Error('the database accepted ' + (data?.length || 0) + ' of ' + hUps.length + ' months')
+      }
+      if (hDel.length) {
+        const { error } = await supabase.from('pipeline_broker_history').delete().in('id', hDel)
         if (error) throw new Error(error.message)
       }
       await load()
@@ -122,8 +225,15 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
     } finally { setBusy(false) }
   }
 
-  const inp = 'w-[112px] text-right text-[13px] border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 tabular-nums focus:outline-none focus:border-[#2DBEFF]'
+  const inp = 'w-[104px] text-right text-[12.5px] border rounded-lg px-2 py-1.5 tabular-nums focus:outline-none focus:border-[#2DBEFF]'
   const failed = status.startsWith('NOT SAVED')
+  const head = 'text-[10px] font-semibold tracking-[.085em] uppercase text-[#A29889]'
+
+  function hit(actual: number | null, target: number | null) {
+    if (actual === null || !target) return <span className="text-[#C9C1B4] text-[11.5px]">—</span>
+    const p = actual / target * 100
+    return <span className={`text-[11.5px] font-semibold tabular-nums ${p >= 100 ? 'text-[#2E9E63]' : 'text-[#C4553B]'}`}>{Math.round(p)}%</span>
+  }
 
   return (
     <div className="mt-4 border-t border-[#F6F2EA] pt-3">
@@ -132,8 +242,8 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
         <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
           <path d={open ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'} />
         </svg>
-        Targets for {name.split(' ')[0]}
-        {totals.set > 0 && !open && <span className="font-normal text-[#A29889]">· {compact(totals.l)} lodged set</span>}
+        Targets and actuals for {name.split(' ')[0]}
+        {!open && totals.set > 0 && <span className="font-normal text-[#A29889]">· {compact(totals.tl)} targeted</span>}
       </button>
 
       {open && (
@@ -150,14 +260,14 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
                 {login
                   ? <>Wired up. Key <b>{key}</b> matches the login for <b>{login.full_name}</b>, so deals stamped
                       &ldquo;{key}&rdquo; count towards them and they appear on the Pipeline.</>
-                  : <><strong className="text-[#5E4A11]">No login has this key.</strong> Targets set here will save,
+                  : <><strong className="text-[#5E4A11]">No login has this key.</strong> Everything here will save,
                       but nobody appears on the Pipeline under &ldquo;{key}&rdquo; until a team member carries that
                       broker key. Set it in Settings, Team, Access.</>}
               </div>
 
               <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
-                <span className="text-[11px] font-semibold text-[#A29889] uppercase tracking-[.08em]">
-                  Monthly targets · {totals.set} of 12 set
+                <span className={head}>
+                  {totals.set} of 12 targets set · {totals.rec} month{totals.rec === 1 ? '' : 's'} recorded
                 </span>
                 <span className="inline-flex items-center gap-2">
                   <button type="button" onClick={() => setFy(f => f - 1)}
@@ -172,36 +282,94 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
                 </span>
               </div>
 
-              <div className="border border-[#EDE7DD] rounded-xl overflow-hidden bg-white">
-                <div className="grid grid-cols-[1fr_auto_auto] gap-3 px-4 py-2 text-[10px] font-semibold tracking-[.085em] uppercase text-[#A29889] border-b border-[#F6F2EA]">
-                  <span>Month</span><span className="text-right w-[112px]">Lodged</span><span className="text-right w-[112px]">Settled</span>
-                </div>
-                {months.map(m => (
-                  <div key={m.month} className="grid grid-cols-[1fr_auto_auto] gap-3 px-4 py-1.5 items-center border-b border-[#F6F2EA] last:border-0">
-                    <span className="text-[13px] text-[#6E665C] font-medium">{m.name}</span>
-                    {(['lodged', 'settled'] as const).map(metric => (
-                      <input key={metric} inputMode="numeric" placeholder="not set"
-                        value={vals[k(metric, m.month)] || ''}
-                        onChange={e => { setVals(p => ({ ...p, [k(metric, m.month)]: e.target.value })); setStatus('') }}
-                        onBlur={e => setVals(p => ({ ...p, [k(metric, m.month)]: commas(e.target.value) }))}
-                        className={inp} />
-                    ))}
-                  </div>
-                ))}
-                <div className="grid grid-cols-[1fr_auto_auto] gap-3 px-4 py-2.5 items-center bg-[#FDFCFA] border-t border-[#E8E1D6]">
-                  <span className="text-[13px] font-semibold">FY{String(fy).slice(2)} total</span>
-                  <span className="text-[13px] font-semibold text-right w-[112px] tabular-nums">{totals.l ? compact(totals.l) : '—'}</span>
-                  <span className="text-[13px] font-semibold text-right w-[112px] tabular-nums">{totals.s ? compact(totals.s) : '—'}</span>
-                </div>
+              <div className="border border-[#EDE7DD] rounded-xl overflow-x-auto bg-white">
+                <table className="w-full">
+                  <thead>
+                    <tr>
+                      <th className={head + ' text-left px-4 py-2 border-b border-[#F6F2EA]'}>Month</th>
+                      <th className={head + ' text-right px-2 py-2 border-b border-[#F6F2EA]'}>Lodged target</th>
+                      <th className={head + ' text-right px-2 py-2 border-b border-[#F6F2EA]'}>Lodged actual</th>
+                      <th className={head + ' text-right px-2 py-2 border-b border-[#F6F2EA]'}>vs</th>
+                      <th className={head + ' text-right px-2 py-2 border-b border-[#F6F2EA]'}>Settled target</th>
+                      <th className={head + ' text-right px-2 py-2 border-b border-[#F6F2EA]'}>Settled actual</th>
+                      <th className={head + ' text-right px-2 py-2 border-b border-[#F6F2EA]'}>vs</th>
+                      <th className={head + ' text-left px-3 py-2 border-b border-[#F6F2EA]'}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {months.map(m => {
+                      const tl = parseNum(vals[k('tl', m.month)] || '')
+                      const ts = parseNum(vals[k('ts', m.month)] || '')
+                      const al = parseNum(vals[k('al', m.month)] || '')
+                      const as_ = parseNum(vals[k('as', m.month)] || '')
+                      const over = !!m.h
+                      const ring = over ? ' border-[#BFE6F9] bg-[#EAF7FE]' : ' border-[#E8E1D6]'
+                      return (
+                        <tr key={m.month} className="border-b border-[#F6F2EA] last:border-0 hover:bg-[#FCFAF6]">
+                          <td className="px-4 py-1.5 text-[13px] font-medium text-[#6E665C]">{m.name}</td>
+                          <td className="px-2 py-1.5 text-right">
+                            <input inputMode="numeric" placeholder="not set" value={vals[k('tl', m.month)] || ''}
+                              onChange={e => set('tl', m.month, e.target.value)}
+                              onBlur={e => set('tl', m.month, commas(e.target.value))}
+                              className={inp + ' border-[#E8E1D6]'} />
+                          </td>
+                          <td className="px-2 py-1.5 text-right">
+                            <input inputMode="numeric" placeholder="—" value={vals[k('al', m.month)] || ''}
+                              onChange={e => set('al', m.month, e.target.value)}
+                              onBlur={e => set('al', m.month, commas(e.target.value))}
+                              className={inp + ring} />
+                          </td>
+                          <td className="px-2 py-1.5 text-right">{hit(al, tl)}</td>
+                          <td className="px-2 py-1.5 text-right">
+                            <input inputMode="numeric" placeholder="not set" value={vals[k('ts', m.month)] || ''}
+                              onChange={e => set('ts', m.month, e.target.value)}
+                              onBlur={e => set('ts', m.month, commas(e.target.value))}
+                              className={inp + ' border-[#E8E1D6]'} />
+                          </td>
+                          <td className="px-2 py-1.5 text-right">
+                            <input inputMode="numeric" placeholder="—" value={vals[k('as', m.month)] || ''}
+                              onChange={e => set('as', m.month, e.target.value)}
+                              onBlur={e => set('as', m.month, commas(e.target.value))}
+                              className={inp + ring} />
+                          </td>
+                          <td className="px-2 py-1.5 text-right">{hit(as_, ts)}</td>
+                          <td className="px-3 py-1.5 whitespace-nowrap">
+                            {over && <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-[#EAF7FE] border border-[#BFE6F9] text-[#0E8FCB] rounded-full px-2 py-[2px] mr-2">Typed</span>}
+                            {m.p && (
+                              <button type="button" onClick={() => usedPortal(m.month)}
+                                className="text-[11.5px] text-[#0E8FCB] hover:underline">
+                                Use portal ({compact(m.p.lodged)})
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-[#FDFCFA] border-t border-[#E8E1D6]">
+                      <td className="px-4 py-2.5 text-[13px] font-semibold">FY{String(fy).slice(2)}</td>
+                      <td className="px-2 py-2.5 text-right text-[13px] font-semibold tabular-nums">{totals.tl ? compact(totals.tl) : '—'}</td>
+                      <td className="px-2 py-2.5 text-right text-[13px] font-semibold tabular-nums">{totals.al ? compact(totals.al) : '—'}</td>
+                      <td className="px-2 py-2.5 text-right">{hit(totals.al || null, totals.tlRec || null)}</td>
+                      <td className="px-2 py-2.5 text-right text-[13px] font-semibold tabular-nums">{totals.ts ? compact(totals.ts) : '—'}</td>
+                      <td className="px-2 py-2.5 text-right text-[13px] font-semibold tabular-nums">{totals.as ? compact(totals.as) : '—'}</td>
+                      <td className="px-2 py-2.5 text-right">{hit(totals.as || null, totals.tsRec || null)}</td>
+                      <td className="px-3 py-2.5 text-[11px] text-[#A29889] whitespace-nowrap">
+                        {totals.rec ? 'against the months recorded' : ''}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
 
               <div className="flex items-center justify-between gap-3 mt-2.5 flex-wrap">
                 <span className={`text-[12px] ${failed ? 'text-[#C4553B] font-medium' : 'text-[#A29889]'}`}>
-                  {status || (dirty ? 'Unsaved changes.' : 'Clearing a box and saving removes that target.')}
+                  {status || (dirty ? 'Unsaved changes.' : 'A typed actual wins over deals counted in the portal. Clear both boxes to release the month.')}
                 </span>
                 <button type="button" onClick={save} disabled={!dirty || busy}
                   className="bg-[#343333] text-white rounded-lg px-4 py-1.5 text-[12.5px] font-semibold hover:bg-[#2a2a2a] transition disabled:opacity-40">
-                  {busy ? 'Saving...' : 'Save targets'}
+                  {busy ? 'Saving...' : 'Save'}
                 </button>
               </div>
               <p className="text-[11px] text-[#A29889] mt-2">
