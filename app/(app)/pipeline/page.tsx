@@ -75,7 +75,7 @@ export default function PipelinePage() {
         supabase.rpc('pipeline_register'),
         supabase.from('pipeline_history').select('month, deals_lodged, lodged_amount, deals_settled, settled_amount'),
         supabase.from('pipeline_targets').select('metric, month, amount, broker_key'),
-        supabase.from('user_profiles').select('full_name, broker_key').not('broker_key', 'is', null),
+        supabase.from('brokers').select('broker_key, name, active').order('name'),
         supabase.from('pipeline_broker_history').select('broker_key, month, deals_lodged, lodged_amount, deals_settled, settled_amount'),
       ])
       if (cancelled) return
@@ -92,10 +92,11 @@ export default function PipelinePage() {
       const seen = new Set<string>()
       const bs: { key: string; name: string }[] = []
       for (const r2 of (b.data || [])) {
+        if (r2.active === false) continue
         const key = String(r2.broker_key || '').toLowerCase()
         if (!key || seen.has(key)) continue
         seen.add(key)
-        bs.push({ key, name: r2.full_name || key })
+        bs.push({ key, name: r2.name || key })
       }
       setBrokers(bs.sort((x, y) => x.name.localeCompare(y.name)))
       setLoading(false)

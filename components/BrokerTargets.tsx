@@ -299,13 +299,13 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
             <>
               <div className={`rounded-lg px-3 py-2.5 text-[12px] mb-3 border ${login
                 ? 'bg-[#F1F7F3] border-[#CFE6D5] text-[#25794C]'
-                : 'bg-[#FDF6E7] border-[#EFE0BC] text-[#7A5F17]'}`}>
+                : 'bg-[#FAF7F2] border-[#E8E1D6] text-[#6E665C]'}`}>
                 {login
                   ? <>Wired up. Key <b>{key}</b> matches the login for <b>{login.full_name}</b>, so deals stamped
                       &ldquo;{key}&rdquo; count towards them and they appear on the Pipeline.</>
-                  : <><strong className="text-[#5E4A11]">No login has this key.</strong> Everything here will save,
-                      but nobody appears on the Pipeline under &ldquo;{key}&rdquo; until a team member carries that
-                      broker key. Set it in Settings, Team, Access.</>}
+                  : <>No login yet. Their targets, actuals and Pipeline card all work regardless &mdash; they
+                      simply cannot sign in. Invite them in Team with the key &ldquo;{key}&rdquo; when they need
+                      access, and the two link up on their own.</>}
               </div>
 
               <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">

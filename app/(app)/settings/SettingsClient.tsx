@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import PipelineTargets from '@/components/PipelineTargets'
-import BrokerTargets from '@/components/BrokerTargets'
+import BrokerProfiles from '@/components/BrokerProfiles'
 import CommissionLibrary from '@/components/CommissionLibrary'
 import AiExpenses from '@/components/AiExpenses'
 
@@ -79,6 +79,15 @@ export default function SettingsPage() {
   // Logins that carry a broker key. A key with no profile card is invisible
   // otherwise: their targets save and the Pipeline uses them, but there is
   // nowhere to open them.
+  const [brokerList, setBrokerList] = useState<{ key: string; name: string }[]>([])
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from('brokers').select('broker_key, name, active').order('name')
+      setBrokerList((data || []).filter((r: any) => r.active !== false)
+        .map((r: any) => ({ key: String(r.broker_key), name: r.name })))
+    })()
+  }, [])
+
   const [brokerLogins, setBrokerLogins] = useState<{ key: string; name: string }[]>([])
   useEffect(() => {
     (async () => {
@@ -147,7 +156,6 @@ export default function SettingsPage() {
     const { error } = await supabase.from('settings').upsert({
       id: 'singleton',
       brands,
-      brokers,
       wealth_desk_link: wealthDeskLink,
       new_deal_notification_user_id: newDealNotificationUserId || null,
       stage_move_notification_user_id: stageMoveNotificationUserId || null,
@@ -294,73 +302,8 @@ export default function SettingsPage() {
         <button onClick={() => setBrands([...brands, {id: Date.now().toString(), name: 'New Brand', isDefault: false, headerColor: '#343333', accentColor: '#2DBEFF', acl: '387025', footerAddress: 'St Leonards, Sydney', logoUrl: ''}])} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">+ Add another brand</button>
       </section>
       )}
-      {pane === 'brokers' && (
-      <section className="mb-10">
-        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Broker Profiles</h2>
-        {brokers.map((broker) => (
-          <div key={broker.id} className="border border-[#EDE7DD] rounded-xl p-5 mb-4 bg-white">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex-1">
-                <input className="font-semibold text-[#2E2A26] w-full border border-[#E8E1D6] rounded-lg px-3 py-2 focus:outline-none focus:border-[#2DBEFF] mb-1" value={broker.name} onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? {...b, name: e.target.value} : b))} placeholder="Broker name" />
-              </div>
-              <button onClick={() => setBrokers(brokers.filter(b => b.id !== broker.id))} className="text-[11.5px] text-[#A29889] hover:text-[#C4553B] transition">Remove</button>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">Title</label><input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={broker.title} onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? {...b, title: e.target.value} : b))} /></div>
-              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">CR number</label><input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={broker.crn} onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? {...b, crn: e.target.value} : b))} placeholder="e.g. 123456 — placeholder until confirmed" /></div>
-              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">Calendly link</label><input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF] font-mono" value={broker.calendly} onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? {...b, calendly: e.target.value} : b))} /></div>
-              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">Email</label><input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={broker.email} onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? {...b, email: e.target.value} : b))} /></div>
-            </div>
-            <div className="mt-3">
-              <label className="text-[11px] font-semibold text-[#A29889] block mb-1">Broker key</label>
-              <input className="text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF] w-[200px] font-mono"
-                value={(broker as any).brokerKey ?? brokerKeyOf(broker)}
-                onChange={(e) => setBrokers(brokers.map(b => b.id === broker.id ? { ...b, brokerKey: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '') } : b))} />
-              <p className="text-[11.5px] text-[#A29889] mt-1 max-w-[560px]">
-                What joins this profile to their deals, their login and their targets. It has always been the
-                first name in lower case &mdash; changing it breaks those links unless the deals change with it.
-                Saved with the button at the bottom of this page.
-              </p>
-            </div>
+      {pane === 'brokers' && <BrokerProfiles brands={brands} />}
 
-            <div className="mt-3">
-              <label className="text-[11px] font-semibold text-[#A29889] block mb-2">Brands (a broker can work under multiple brands)</label>
-              <div className="flex flex-wrap gap-2">
-                {brands.map((brand) => {
-                  const has = ((broker as any).brandIds || []).includes(brand.id)
-                  return (
-                    <button key={brand.id} onClick={() => toggleBrokerBrand(broker.id, brand.id)}
-                      className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors ${has ? 'bg-[#343333] border-[#343333] text-white' : 'border-[#E8E1D6] text-[#6E665C] hover:bg-[#FAF7F2] hover:text-[#2E2A26]'}`}>
-                      {brand.name}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-            <BrokerTargets brokerKey={brokerKeyOf(broker)} name={broker.name} />
-          </div>
-        ))}
-        {brokerLogins.filter(l => !brokers.some(b => brokerKeyOf(b) === l.key)).map(l => (
-          <div key={l.key} className="flex items-start gap-3 bg-[#FDF6E7] border border-[#EFE0BC] rounded-xl px-4 py-3 mb-4">
-            <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#B4761F" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
-            <span className="text-[12.5px] text-[#7A5F17] flex-1">
-              <strong className="text-[#5E4A11]">{l.name} has no profile here.</strong>{' '}
-              Their login carries the broker key &ldquo;{l.key}&rdquo;, so their deals and targets already count
-              towards them on the Pipeline &mdash; but with no profile there is nowhere to set their targets or
-              actuals, and no CR number for their client documents.
-            </span>
-            <button
-              onClick={() => setBrokers([...brokers, { id: l.key, name: l.name, title: 'Mortgage Broker', crn: '', email: '', calendly: '', brandIds: ['simplify'], brokerKey: l.key }])}
-              className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-3.5 py-2 hover:bg-[#EAF7FE] transition whitespace-nowrap shrink-0">
-              Add {l.name.split(' ')[0]}&rsquo;s profile
-            </button>
-          </div>
-        ))}
-
-        <button onClick={() => setBrokers([...brokers, {id: Date.now().toString(), name: 'New Broker', title: 'Mortgage Broker', crn: '', email: '', calendly: '', brandIds: ['simplify'], brokerKey: ''}])} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">+ Add another broker</button>
-        <p className="text-[11.5px] text-[#A29889] mt-2">Note: broker names should start with the first name used elsewhere in the portal (e.g. "Fabio", "Justin") — this is what links a broker to their deals and credit team coverage below.</p>
-      </section>
-      )}
       {pane === 'connections' && (
       <section className="mb-10">
         <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Bank Statement Collection (WealthDesk)</h2>
@@ -503,11 +446,11 @@ export default function SettingsPage() {
                 </div>
                 <label className="text-[11px] font-semibold text-[#A29889] block mb-2">Covers deals for:</label>
                 <div className="flex flex-wrap gap-2">
-                  {brokers.map((b) => {
-                    const slug = brokerSlug(b.name)
-                    const covers = officer.brokers.includes(slug)
+                  {brokerList.map((b) => {
+                    const slug = b.key
+                    const covers = officer.brokers.some(x => String(x).toLowerCase() === slug)
                     return (
-                      <button key={b.id} onClick={() => toggleBrokerCoverage(officer.id, slug)}
+                      <button key={b.key} onClick={() => toggleBrokerCoverage(officer.id, slug)}
                         className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors ${covers ? 'bg-[#343333] border-[#343333] text-white' : 'border-[#E8E1D6] text-[#6E665C] hover:bg-[#FAF7F2] hover:text-[#2E2A26]'}`}>
                         {slug}
                       </button>

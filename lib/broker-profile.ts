@@ -5,27 +5,52 @@ export type BrokerProfile = {
   email?: string; calendly?: string; brandIds?: string[]
 }
 
-// The team is not a list in the code. Broker profiles are maintained in
-// Settings, and that is the only place a name, title or credit representative
-// number should come from - those go on client-facing documents, so a stale
-// hardcoded map is a compliance problem, not a cosmetic one.
+// One broker record, in public.brokers, keyed by broker_key. It exists whether or
+// not the person has a login. The old settings.brokers list is still read as a
+// fallback so a document can never lose a credit representative number during the
+// changeover - those go on client-facing documents, so a stale or missing value is
+// a compliance problem, not a cosmetic one.
 export async function resolveBrokerProfile(key: string | null | undefined): Promise<BrokerProfile | null> {
   if (!key) return null
   const wanted = String(key).trim().toLowerCase()
   if (!wanted) return null
   try {
     const supabase = createSupabaseAdmin()
+
+    const { data: row } = await supabase
+      .from('brokers')
+      .select('broker_key, name, title, crn, calendly, brand_ids, user_id')
+      .ilike('broker_key', wanted)
+      .maybeSingle()
+
+    if (row) {
+      // The email is not a broker fact - it belongs to their login.
+      let email: string | undefined
+      if ((row as any).user_id) {
+        const { data: u } = await supabase.from('user_profiles').select('email').eq('id', (row as any).user_id).maybeSingle()
+        email = (u as any)?.email || undefined
+      }
+      return {
+        id: (row as any).broker_key,
+        brokerKey: (row as any).broker_key,
+        name: (row as any).name,
+        title: (row as any).title || undefined,
+        crn: (row as any).crn || undefined,
+        calendly: (row as any).calendly || undefined,
+        brandIds: Array.isArray((row as any).brand_ids) ? (row as any).brand_ids : undefined,
+        email,
+      }
+    }
+
     const { data } = await supabase.from('settings').select('brokers').eq('id', 'singleton').maybeSingle()
     const list: BrokerProfile[] = Array.isArray((data as any)?.brokers) ? (data as any).brokers : []
-    // The explicit key wins. Name matching stays as a fallback for profiles saved
-    // before the key existed, but it is the thing that used to go wrong.
-    const hit = list.find(b => String((b as any)?.brokerKey || '').trim().toLowerCase() === wanted)
+    return list.find(b => String((b as any)?.brokerKey || '').trim().toLowerCase() === wanted)
       || list.find(b => {
         const name = String(b?.name || '').trim().toLowerCase()
         const id = String(b?.id || '').trim().toLowerCase()
         return id === wanted || name === wanted || name.split(' ')[0] === wanted
       })
-    return hit || null
+      || null
   } catch {
     return null
   }
