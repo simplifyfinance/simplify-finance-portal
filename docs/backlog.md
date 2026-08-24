@@ -59,3 +59,33 @@ Current state. Update as things land.
 - No build-time guard against field drift — agreed after the blank-data incident.
 - Confirm Dinisha and Ria should see zero deals (no `credit_officers` rows).
 - Rename `notifyEllieCreateCard` / `notifyCrisMoveCard` — internal names only.
+
+## Settlements (next build — agreed 17 Aug 2026)
+
+Its own item in the left nav, gated by a NEW `sees_settlements` flag on
+user_profiles — not is_admin and not sees_finance, so a settlement person can be
+given it without finance. Top-level nav items are not permission-filtered today;
+that filter has to be added.
+
+Replaces the settlement team's monthly spreadsheet. Built on:
+- `deals.expected_settlement_date` — does not exist yet, and is the spine of it.
+- a settlement status, so "trying to settle this month" is a real state.
+- Google review state: asked / reminded / left / declined, plus dates. The portal
+  KNOWS the state; the separate reviews project DOES the asking. Fields to be
+  named to match that project's stages so the two never need reconciling.
+- "Commission paid" — a manual tick now (paid, date, amount received). When the
+  commission platform lands it becomes a reconciliation: expected vs received,
+  with the gap visible. The settlement team's habit does not change.
+
+Sequencing decided: settlements BEFORE commission. Nothing here depends on
+commission existing, and it is the screen the team touches daily.
+
+Blocked on: the settlement team's spreadsheet — their actual columns, what they
+tick off monthly, and anything colour-coded (usually a status nobody wrote down).
+
+## Loans at risk of clawback — MOVED
+
+Was next-to-build. It is a dollar figure — what commission comes back if a loan
+repays inside its window — so it needs the commission platform. Counting loans
+and months without dollars is not something anyone would act on. Sits AFTER
+commission calculation.
