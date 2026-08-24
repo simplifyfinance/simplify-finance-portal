@@ -13,6 +13,7 @@ import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
 import DealProgress, { currentStage } from './DealProgress'
 import DealSettlement from './DealSettlement'
 import DealSettlementPanel from './DealSettlementPanel'
+import DealCommission from './DealCommission'
 import CloseDeal from './CloseDeal'
 import { templateLabel } from '@/lib/templates'
 
@@ -170,6 +171,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
 
       <DealSettlement deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
       <DealSettlementPanel deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+      <DealCommission deal={dealData} />
 
       <div className="flex gap-2 mb-6">
         {tabs.map(({ key, label }) => (
