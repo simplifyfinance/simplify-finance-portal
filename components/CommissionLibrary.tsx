@@ -105,6 +105,8 @@ export default function CommissionLibrary() {
   const [err, setErr] = useState('')
   const [adding, setAdding] = useState(false)
   const [newLender, setNewLender] = useState('')
+  const [selecting, setSelecting] = useState(false)
+  const [selected, setSelected] = useState<string[]>([])
 
   async function load() {
     const [r, s] = await Promise.all([
@@ -252,8 +254,36 @@ export default function CommissionLibrary() {
     }
   }
 
+  // Deleting a lender removes OUR rate for them. The SFG schedule they came from
+  // is left alone - it is the imported record, and losing it would mean a
+  // re-import to get back.
+  async function removeMany(ids: string[], names: string[]) {
+    if (ids.length === 0) return
+    const list = names.length <= 6 ? names.join(', ') : `${names.slice(0, 6).join(', ')} and ${names.length - 6} more`
+    if (!confirm(`Delete ${ids.length} lender${ids.length === 1 ? '' : 's'}?\n\n${list}\n\nThe published SFG schedule is kept, so any of them can be added back.`)) return
+    setBusy(true)
+    setErr('')
+    try {
+      const { data, error } = await supabase.from('commission_rates').delete().in('id', ids).select('id')
+      if (error) throw new Error(error.message)
+      if (!data || data.length !== ids.length) {
+        throw new Error(`The database removed ${data?.length || 0} of ${ids.length}. Nothing else was changed.`)
+      }
+      await load()
+      setOpen(null)
+      setEditing(false)
+      setSelected([])
+      setSelecting(false)
+      setStatus(`${ids.length} lender${ids.length === 1 ? '' : 's'} deleted. The SFG schedule is untouched.`)
+    } catch (e: any) {
+      setErr(e?.message || 'Could not delete.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function removeRate(r: Rate) {
-    if (!confirm(`Remove ${r.lender} from your rates? The published schedule entry stays, so you can add it back.`)) return
+    if (!confirm(`Delete ${r.lender}? The published SFG schedule entry stays, so you can add it back.`)) return
     setBusy(true)
     setErr('')
     try {
@@ -313,6 +343,14 @@ export default function CommissionLibrary() {
             placeholder="Search lenders"
             className="text-[13px] border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 w-[240px] focus:outline-none focus:border-[#2DBEFF]"
           />
+          {rates.length > 0 && (
+            <button onClick={() => { setSelecting(v => !v); setSelected([]); setOpen(null); setEditing(false); setErr('') }}
+              className={`text-[12.5px] font-semibold rounded-lg px-3.5 py-2 transition border ${selecting
+                ? 'bg-[#343333] border-[#343333] text-white'
+                : 'bg-white border-[#E8E1D6] text-[#6E665C] hover:bg-[#FAF7F2] hover:text-[#2E2A26]'}`}>
+              {selecting ? 'Done' : 'Delete lenders'}
+            </button>
+          )}
           {adding ? (
             <span className="flex gap-2 items-center">
               <span className="inline-flex items-center gap-2 border border-[#E8E1D6] rounded-lg px-3 py-1.5 bg-white">
@@ -343,6 +381,25 @@ export default function CommissionLibrary() {
         </div>
       )}
 
+      {selecting && (
+        <div className="flex items-center gap-3 bg-[#FAF7F2] border border-[#E8E1D6] rounded-xl px-4 py-2.5 mb-3 flex-wrap">
+          <span className="text-[12.5px] text-[#6E665C]">
+            Tick every lender you are not accredited with. The SFG schedule is kept either way.
+          </span>
+          <span className="flex gap-2 items-center ml-auto">
+            {selected.length > 0 && (
+              <button onClick={() => setSelected([])} className="text-[12px] text-[#A29889] hover:text-[#2E2A26]">Clear</button>
+            )}
+            <button
+              onClick={() => removeMany(selected, rates.filter(r => selected.includes(r.id)).map(r => r.lender))}
+              disabled={busy || selected.length === 0}
+              className="bg-[#C4553B] text-white rounded-lg px-4 py-2 text-[12.5px] font-semibold hover:bg-[#a94631] transition disabled:opacity-40">
+              {busy ? 'Deleting…' : `Delete ${selected.length || ''} selected`}
+            </button>
+          </span>
+        </div>
+      )}
+
       {err && <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm mb-3">{err}</div>}
       {status && <div className="bg-white border border-[#EDE7DD] rounded-lg px-3 py-2.5 mb-3 text-[12.5px] text-[#6E665C]">{status}</div>}
 
@@ -360,6 +417,23 @@ export default function CommissionLibrary() {
           const rows = schedFor(r)
           return (
             <div key={r.id} className="border-b border-[#F6F2EA] last:border-0">
+              {selecting ? (
+                <label className={`w-full text-left ${GRID} px-4 py-3 text-[13px] hover:bg-[#FCFAF6] transition items-center cursor-pointer`}>
+                  <span className="font-medium text-[#2E2A26] flex items-center gap-2.5">
+                    <input type="checkbox" checked={selected.includes(r.id)}
+                      onChange={e => setSelected(sel => e.target.checked ? [...sel, r.id] : sel.filter(x => x !== r.id))} />
+                    {r.lender}
+                  </span>
+                  <span className="text-[#6E665C]">{upfrontText(r)}</span>
+                  <span className="text-[#6E665C]">{trailTextOf(r)}</span>
+                  <span className="text-[#6E665C]">{clawbackTextOf(r)}</span>
+                  <span>
+                    {r.confirmed
+                      ? <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-[#F1F7F3] border border-[#CFE6D5] text-[#25794C] rounded-full px-2 py-[2px]">Confirmed</span>
+                      : <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-[#FDF6E7] border border-[#EFE0BC] text-[#9A7B2E] rounded-full px-2 py-[2px]">Not confirmed</span>}
+                  </span>
+                </label>
+              ) : (
               <button onClick={() => toggleRow(r)} className={`w-full text-left ${GRID} px-4 py-3 text-[13px] hover:bg-[#FCFAF6] transition items-center`}>
                 <span className="font-medium text-[#2E2A26]">{r.lender}</span>
                 <span className="text-[#6E665C]">{upfrontText(r)}</span>
@@ -371,6 +445,7 @@ export default function CommissionLibrary() {
                     : <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-[#FDF6E7] border border-[#EFE0BC] text-[#9A7B2E] rounded-full px-2 py-[2px]">Not confirmed</span>}
                 </span>
               </button>
+              )}
 
               {isOpen && !editing && (
                 <div className="px-4 pb-4 pt-1 bg-[#FDFCFA] border-t border-[#F6F2EA]">
@@ -432,7 +507,7 @@ export default function CommissionLibrary() {
 
                   <div className="flex gap-2 items-center flex-wrap">
                     <button onClick={() => startEdit(r)} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">Edit</button>
-                    <button onClick={() => removeRate(r)} disabled={busy} className="text-[12px] text-[#A29889] hover:text-[#C4553B] ml-auto">Remove from my rates</button>
+                    <button onClick={() => removeRate(r)} disabled={busy} className="text-[12px] text-[#A29889] hover:text-[#C4553B] ml-auto">Delete lender</button>
                   </div>
                 </div>
               )}
@@ -501,7 +576,7 @@ export default function CommissionLibrary() {
                       {busy ? 'Saving…' : 'Save and close'}
                     </button>
                     <button onClick={cancelEdit} disabled={busy} className="text-[12px] text-[#A29889] hover:text-[#2E2A26]">Cancel</button>
-                    <button onClick={() => removeRate(r)} disabled={busy} className="text-[12px] text-[#A29889] hover:text-[#C4553B] ml-auto">Remove from my rates</button>
+                    <button onClick={() => removeRate(r)} disabled={busy} className="text-[12px] text-[#A29889] hover:text-[#C4553B] ml-auto">Delete lender</button>
                   </div>
                 </div>
               )}
