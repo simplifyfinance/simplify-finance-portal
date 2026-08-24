@@ -60,6 +60,7 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
   const [loaded, setLoaded] = useState(false)
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
+  const [nameMsg, setNameMsg] = useState('')
 
   const k = (field: string, month: string) => `${field}:${month}`
 
@@ -114,6 +115,32 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
     setLoaded(true)
   }
   useEffect(() => { if (open && !loaded) load() }, [open])
+  useEffect(() => {
+    if (!key) return
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase.from('user_profiles')
+        .select('id, full_name, role, broker_key').ilike('broker_key', key)
+      if (!cancelled) setLogin((data || [])[0] || null)
+    })()
+    return () => { cancelled = true }
+  }, [key])
+
+  // The name on this profile goes on client documents. The name on their login is
+  // what the Pipeline, the snapshot and every broker chip shows. Two fields, and
+  // nothing kept them together until now.
+  const nameDrift = !!login && login.full_name.trim().toLowerCase() !== name.trim().toLowerCase()
+
+  async function pushName() {
+    if (!login) return
+    setNameMsg('')
+    const { data, error } = await supabase.from('user_profiles')
+      .update({ full_name: name.trim() }).eq('id', login.id).select('id')
+    if (error) { setNameMsg('NOT SAVED - ' + error.message); return }
+    if (!data || data.length === 0) { setNameMsg('NOT SAVED - the database refused the change.'); return }
+    setLogin({ ...login, full_name: name.trim() })
+    setNameMsg(`Their login now reads "${name.trim()}" everywhere.`)
+  }
   useEffect(() => { setLoaded(false); setTargets([]); setHist([]); setVals({}); setLogin(null) }, [key])
 
   const months = useMemo(() => FY_MONTHS.map(mi => {
@@ -237,6 +264,22 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
 
   return (
     <div className="mt-4 border-t border-[#F6F2EA] pt-3">
+      {nameDrift && login && (
+        <div className="flex items-start gap-3 bg-[#FDF6E7] border border-[#EFE0BC] rounded-lg px-3 py-2.5 mb-3">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#B4761F" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
+          <span className="text-[12px] text-[#7A5F17] flex-1">
+            <strong className="text-[#5E4A11]">Two different names.</strong> This profile says
+            &ldquo;{name}&rdquo;, their login says &ldquo;{login.full_name}&rdquo;. The login name is what the
+            Pipeline, the snapshot and every broker chip shows; this one goes on client documents.
+            {nameMsg && <span className={`block mt-1 ${nameMsg.startsWith('NOT SAVED') ? 'text-[#C4553B] font-medium' : 'text-[#25794C]'}`}>{nameMsg}</span>}
+          </span>
+          <button type="button" onClick={pushName}
+            className="text-[12px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-3 py-1.5 hover:bg-[#EAF7FE] transition whitespace-nowrap shrink-0">
+            Use &ldquo;{name}&rdquo; everywhere
+          </button>
+        </div>
+      )}
+
       <button type="button" onClick={() => setOpen(o => !o)}
         className="flex items-center gap-2 text-[12.5px] font-semibold text-[#0E8FCB] hover:underline">
         <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">

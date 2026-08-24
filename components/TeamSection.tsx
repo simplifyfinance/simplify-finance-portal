@@ -221,17 +221,20 @@ export default function TeamSection() {
           {users.map(user => (
             <div key={user.id} className={!user.active ? 'opacity-50' : ''}>
             <div className={`border border-gray-200 ${accessId === user.id ? 'rounded-t-xl' : 'rounded-xl'} px-5 py-3 bg-white flex items-center justify-between gap-4`}>
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div style={{ background: '#343333' }} className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
                   {user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                 </div>
                 <div className="min-w-0">
                   {editingNameId === user.id ? (
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <input className="text-sm font-medium border border-[#2DBEFF] rounded-lg px-2 py-0.5"
-                        value={nameInput} onChange={e => setNameInput(e.target.value)} autoFocus />
-                      <button onClick={() => saveName(user.id)} className="text-xs font-medium text-white bg-[#2DBEFF] px-2.5 py-1 rounded-lg">Save</button>
-                      <button onClick={() => setEditingNameId(null)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap min-w-0">
+                      <input className="text-sm font-medium border border-[#2DBEFF] rounded-lg px-2 py-1 w-[170px] min-w-0 focus:outline-none"
+                        value={nameInput} onChange={e => setNameInput(e.target.value)} autoFocus
+                        onKeyDown={e => { if (e.key === 'Enter') saveName(user.id); if (e.key === 'Escape') setEditingNameId(null) }} />
+                      <button onClick={() => saveName(user.id)}
+                        className="text-xs font-medium text-white bg-[#2DBEFF] px-2.5 py-1 rounded-lg shrink-0 hover:bg-[#0E8FCB] transition">Save</button>
+                      <button onClick={() => setEditingNameId(null)}
+                        className="text-xs text-gray-400 hover:text-gray-600 shrink-0">Cancel</button>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
@@ -243,7 +246,7 @@ export default function TeamSection() {
                   <p className="text-xs text-gray-400 truncate">{user.email}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center gap-3 flex-shrink-0 flex-wrap justify-end">
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${roleColors[user.role] || 'bg-gray-100 text-gray-600'}`}>
                   {user.role}
                 </span>
