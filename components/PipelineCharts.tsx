@@ -253,3 +253,119 @@ export function FyProgressChart({ now, prev, avg, nowLabel, prevLabel, metric }:
     </Frame>
   )
 }
+
+/* ---------- one broker's year, month by month ---------- */
+// Drawn from targets as well as actuals, so a broker with nothing recorded still
+// gets a shaped year rather than an empty panel. The target is the outline; what
+// they actually did is the solid bar inside it.
+export function BrokerYearChart({ months, metric, name, fyLabel }: {
+  months: { label: string; actual: number | null; target: number | null; future: boolean }[]
+  metric: 'lodged' | 'settled'
+  name: string
+  fyLabel: string
+}) {
+  const { on, node } = useTip()
+  const W = 700, base = 168, top = 16, xa = 60
+  const peak = Math.max(1, ...months.map(m => Math.max(m.actual || 0, m.target || 0)))
+  const { max, ticks } = axisScale(peak)
+  const span = (W - xa - 8) / months.length
+  const tw = Math.min(36, span - 8)
+  const aw = Math.max(9, tw - 14)
+  const y = (v: number) => base - (v / max) * (base - top)
+  const noun = metric === 'settled' ? 'Settled' : 'Lodged'
+
+  const recorded = months.filter(m => m.actual !== null)
+  const actualTotal = recorded.reduce((t, m) => t + (m.actual || 0), 0)
+  const targetToDate = recorded.reduce((t, m) => t + (m.target || 0), 0)
+  const yearTarget = months.reduce((t, m) => t + (m.target || 0), 0)
+
+  return (
+    <Frame
+      title={`${name} · ${noun.toLowerCase()} by month, ${fyLabel}`}
+      sub={recorded.length === 0
+        ? `Target only — nothing recorded yet this year`
+        : `${recorded.length} month${recorded.length === 1 ? '' : 's'} recorded · ${money(actualTotal)} against ${money(targetToDate)} to date`}
+      legend={<>
+        <Key color={NOW} label="Actual" />
+        <span className="inline-flex items-center gap-1.5 text-[11.5px] text-[#6E665C]">
+          <i className="w-[11px] h-[11px] rounded-[3px] border" style={{ borderColor: QUIET, background: 'transparent' }} />
+          Target
+        </span>
+      </>}
+      table={
+        <table className="w-full mt-2">
+          <thead>
+            <tr className="text-[10px] font-semibold tracking-[.08em] uppercase text-[#A29889]">
+              <th className="text-left py-1">Month</th>
+              <th className="text-right py-1">Target</th>
+              <th className="text-right py-1">Actual</th>
+              <th className="text-right py-1">Hit</th>
+            </tr>
+          </thead>
+          <tbody>
+            {months.map(m => (
+              <tr key={m.label} className="border-t border-[#F6F2EA]">
+                <td className="py-1 text-[12px] text-[#6E665C]">{m.label}</td>
+                <td className="py-1 text-[12px] text-right tabular-nums text-[#6E665C]">{m.target ? money(m.target) : '—'}</td>
+                <td className="py-1 text-[12px] text-right tabular-nums text-[#2E2A26]">{m.actual === null ? '—' : money(m.actual)}</td>
+                <td className={`py-1 text-[12px] text-right tabular-nums font-semibold ${
+                  m.actual === null || !m.target ? 'text-[#C9C1B4]'
+                    : m.actual >= m.target ? 'text-[#2E9E63]' : 'text-[#C4553B]'}`}>
+                  {m.actual === null || !m.target ? '—' : Math.round(m.actual / m.target * 100) + '%'}
+                </td>
+              </tr>
+            ))}
+            <tr className="border-t border-[#E8E1D6]">
+              <td className="py-1.5 text-[12px] font-semibold">{fyLabel}</td>
+              <td className="py-1.5 text-[12px] text-right tabular-nums font-semibold">{yearTarget ? money(yearTarget) : '—'}</td>
+              <td className="py-1.5 text-[12px] text-right tabular-nums font-semibold">{recorded.length ? money(actualTotal) : '—'}</td>
+              <td className={`py-1.5 text-[12px] text-right tabular-nums font-semibold ${
+                !recorded.length || !targetToDate ? 'text-[#C9C1B4]'
+                  : actualTotal >= targetToDate ? 'text-[#2E9E63]' : 'text-[#C4553B]'}`}>
+                {!recorded.length || !targetToDate ? '—' : Math.round(actualTotal / targetToDate * 100) + '%'}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      }
+    >
+      <svg viewBox={`0 0 ${W} ${base + 26}`} className="w-full" style={{ maxHeight: 240 }}>
+        {Array.from({ length: ticks + 1 }, (_, i) => {
+          const v = (max / ticks) * i
+          return (
+            <g key={i}>
+              <line x1={xa} x2={W - 4} y1={y(v)} y2={y(v)} stroke={GRID} strokeWidth="1" />
+              <text x={xa - 8} y={y(v) + 4} textAnchor="end" fontSize="10.5" fill={INK3}>{axisLabel(v)}</text>
+            </g>
+          )
+        })}
+        {months.map((m, i) => {
+          const cx = xa + span * i + span / 2
+          const t = m.target || 0
+          const a = m.actual
+          return (
+            <g key={m.label}>
+              {t > 0 && (
+                <rect x={cx - tw / 2} y={y(t)} width={tw} height={Math.max(1, base - y(t))}
+                      fill="none" stroke={QUIET} strokeWidth="1.2" rx="3" strokeDasharray={m.future ? '3 3' : undefined}
+                      {...on(`${m.label} target ${money(t)}`)} />
+              )}
+              {a !== null && a > 0 && (
+                <rect x={cx - aw / 2} y={y(a)} width={aw} height={Math.max(1, base - y(a))}
+                      fill={NOW} rx="2.5"
+                      {...on(`${m.label} ${money(a)}${t ? ` · ${Math.round(a / t * 100)}% of target` : ''}`)} />
+              )}
+              {a !== null && a === 0 && (
+                <line x1={cx - aw / 2} x2={cx + aw / 2} y1={base} y2={base} stroke={NOW} strokeWidth="2.5"
+                      {...on(`${m.label} nothing recorded`)} />
+              )}
+              <text x={cx} y={base + 16} textAnchor="middle" fontSize="10.5" fill={INK3}>{m.label}</text>
+            </g>
+          )
+        })}
+        <line x1={xa} x2={W - 4} y1={base} y2={base} stroke={INK3} strokeWidth="1" />
+      </svg>
+      {node}
+    </Frame>
+  )
+}

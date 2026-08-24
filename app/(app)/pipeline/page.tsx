@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { listPeriods, inPeriod, toAuDate, todayYmd, fyEndYear, customPeriod, backOneYearYmd, monthEndYmd,
          type Period, type PeriodKind } from '@/lib/periods'
-import { ContextChart, FyProgressChart } from '@/components/PipelineCharts'
+import { ContextChart, FyProgressChart, BrokerYearChart } from '@/components/PipelineCharts'
 import MonthlyActuals from '@/components/MonthlyActuals'
 import PipelineSnapshot from '@/components/PipelineSnapshot'
 
@@ -414,6 +414,25 @@ export default function PipelinePage() {
     return { now, prev, avg, nowLabel: period.label, prevLabel: `FY${String(fy - 1).slice(2)}` }
   }, [kind, period, monthly])
 
+  // Twelve months of the selected financial year for whoever is scoped. Targets
+  // alone are enough to draw it, so a broker with nothing recorded still gets a
+  // year rather than an empty panel.
+  const brokerYear = useMemo(() => {
+    if (!scope || !period) return null
+    const fy = fyEndYear(period.end)
+    const todayKey = todayYmd().slice(0, 7)
+    return FY_MONTHS.map(mi => {
+      const y = mi >= 7 ? fy - 1 : fy
+      const key = `${y}-${String(mi).padStart(2, '0')}`
+      return {
+        label: MONTHS[mi - 1],
+        actual: monthly[key] ? monthly[key].amount : null,
+        target: targetByMonth[key] ?? null,
+        future: key > todayKey,
+      }
+    })
+  }, [scope, period, monthly, targetByMonth])
+
   /* ---------- deal rows inside the selected period ---------- */
   const rows = useMemo(() => {
     if (!period) return []
@@ -772,11 +791,18 @@ export default function PipelinePage() {
             <Tile label="Financial year to date" value={compact(fytd?.now || null)}
                   sub={pace
                     ? `${compact(Math.abs(pace.diff))} ${pace.ahead ? 'ahead of' : 'behind'} target to date`
+                    : (fytd && fytd.keys.length === 0) ? 'nothing recorded yet this year'
                     : 'no target set for this year'}
                   subTone={pace ? (pace.ahead ? 'up' : 'down') : undefined}
                   sub2={!scope && fytd && fytd.then > 0 ? `${signed(pct(fytd.now, fytd.then))} on the same point last year` : undefined}
                   sub2Tone={!scope && fytd && fytd.then > 0 ? (fytd.now >= fytd.then ? 'up' : 'down') : undefined} />
           </div>
+
+          {scope && brokerYear && brokerYear.some(m => m.target !== null || m.actual !== null) && (
+            <BrokerYearChart months={brokerYear} metric={metric}
+              name={brokers.find(b => b.key === scope)?.name || scope}
+              fyLabel={`FY${String(fyEndYear(period?.end || todayYmd())).slice(2)}`} />
+          )}
 
           {contextChart && <ContextChart bars={contextChart} metric={metric} kind={kind} />}
           {!scope && fyChart && <FyProgressChart {...fyChart} metric={metric} />}
