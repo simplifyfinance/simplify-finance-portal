@@ -190,3 +190,32 @@ portal tracks dollars only.
   year-on-year** — the ten years of history is a business total with no broker
   split. Share of business is suppressed with an explanation whenever the
   business figure for that period came from the spreadsheet.
+
+## The broker key, and where a broker is managed (FINAL — 17 Aug 2026)
+
+A broker used to exist in three places joined only by matching their first name:
+the profile in settings.brokers, the login in user_profiles.broker_key, and
+their targets in pipeline_targets.broker_key. Nothing enforced the join and
+nothing showed when it was broken.
+
+- **The broker key is the single join.** Lower case, historically the first
+  name. It links the profile, the login, the deals and the targets. It is shown
+  and edited on the broker's profile in Settings.
+- **Settings → Broker profiles is where a broker is managed.** Details for
+  documents, the key, and their own monthly targets, all on one card.
+- **Settings → Business targets is the business only.** A broker's targets are
+  never set there.
+- **The profile card says when the wiring is broken** — amber whenever no login
+  carries that key, because targets will still save while the person never
+  appears on the Pipeline.
+- **Settings → Team, Access** sets broker_key, is_admin, sees_finance and
+  sees_all_deals. These were SQL-only until now, which caused two live problems.
+- **Inviting someone as a broker asks for their key** and writes it, so a new
+  broker is wired from the moment they are invited.
+- **role and is_admin remain two columns.** role drives the deal screens,
+  is_admin drives Targets, Monthly actuals and the sidebar. Where they disagree
+  the Access panel warns rather than guessing. Merging them is still open.
+- **Everyone sees every broker** on the Pipeline snapshot. This replaces the
+  earlier rule that only sees_finance people saw other brokers by name.
+- **Custom period is whole months only.** History before the portal is stored as
+  monthly totals, so a half month cannot be reported honestly.
