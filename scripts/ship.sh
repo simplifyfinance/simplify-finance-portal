@@ -16,6 +16,13 @@ if [ "$BRANCH" != "main" ]; then
   exit 1
 fi
 
+echo "Checking broker keys..."
+if ! ./scripts/check-broker-keys.sh; then
+  echo
+  echo "NOT SHIPPED - fix the above first."
+  exit 1
+fi
+
 echo "Building..."
 if ! npm run build > /tmp/ship-build.log 2>&1; then
   echo

@@ -1,4 +1,5 @@
 'use client'
+import { sameBroker } from '@/lib/broker-key'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
@@ -31,8 +32,11 @@ export default function WorkloadClient() {
     setLoading(true)
     setError('')
 
-    const { data: settings } = await supabase.from('settings').select('brokers').eq('id', 'singleton').single()
-    const brokerNames: string[] = (settings?.brokers || []).map((b: any) => (b.name || '').split(' ')[0]).filter(Boolean)
+    const { data: brokerRows } = await supabase.from('brokers').select('broker_key, name, active').order('name')
+    const brokerNames: string[] = (brokerRows || [])
+      .filter((b: any) => b.active !== false)
+      .map((b: any) => String(b.broker_key))
+      .filter(Boolean)
 
     const { data: officers, error: officersError } = await supabase
       .from('credit_officers')
@@ -49,7 +53,7 @@ export default function WorkloadClient() {
     const dealRows = (deals || []) as DealRow[]
 
     const brokers: BrokerStat[] = brokerNames.map(name => {
-      const myDeals = dealRows.filter(d => d.assigned_broker === name)
+      const myDeals = dealRows.filter(d => sameBroker(d.assigned_broker, name))
       // Active-stage buckets must exclude deals already marked completed/lost overall -
       // relying on the bc/lo/compliance_completed_at timestamps alone is misleading for
       // deals that reached status='completed' through some other path without those

@@ -1,4 +1,5 @@
 'use client'
+import { sameBroker } from '@/lib/broker-key'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import BrokerTargets from '@/components/BrokerTargets'
@@ -75,7 +76,8 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
     const key = (newKey.trim() || suggestKey(name)).toLowerCase().replace(/[^a-z0-9]/g, '')
     if (!name || !key) return
     setErr('')
-    if (rows.some(r => r.broker_key === key)) { setErr(`The key "${key}" is already taken by ${rows.find(r => r.broker_key === key)!.name}.`); return }
+    const clash = rows.find(r => sameBroker(r.broker_key, key))
+    if (clash) { setErr(`The key "${key}" is already taken by ${clash.name}.`); return }
     const { data, error } = await supabase.from('brokers')
       .insert({ broker_key: key, name, title: 'Mortgage Broker', brand_ids: ['simplify'] }).select('broker_key')
     if (error) { setErr(error.message); return }

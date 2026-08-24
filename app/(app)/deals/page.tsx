@@ -46,7 +46,7 @@ export default function DealsPage() {
   async function fetchDeals(role?: string, broker?: string | null, creditOfficerId?: string | null) {
     let query = browser.from('deals').select('*, clients(first_name, last_name), credit_officers(name)').order('created_at', { ascending: false })
     if (role === 'broker' && broker) {
-      query = query.eq('assigned_broker', broker)
+      query = query.ilike('assigned_broker', broker)
     } else if (role === 'staff' && creditOfficerId) {
       query = query.eq('assigned_credit_officer', creditOfficerId)
     }

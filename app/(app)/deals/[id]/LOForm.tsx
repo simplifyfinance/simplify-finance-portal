@@ -320,8 +320,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
   const [brokersList, setBrokersList] = useState<{ name: string }[]>([{ name: 'Fabio' }, { name: 'Mark' }])
 
   useEffect(() => {
-    supabase.from('settings').select('brokers').eq('id', 'singleton').single().then(({ data }: any) => {
-      if (data?.brokers?.length) setBrokersList(data.brokers)
+    supabase.from('brokers').select('broker_key, name, active').order('name').then(({ data }: any) => {
+      const rows = (data || []).filter((b: any) => b.active !== false).map((b: any) => ({ name: b.name }))
+      if (rows.length) setBrokersList(rows)
     })
   }, [])
 

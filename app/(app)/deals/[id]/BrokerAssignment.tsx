@@ -18,8 +18,11 @@ export default function BrokerAssignment({ dealId, currentBroker, userRole }: { 
 
   async function load() {
 
-    const { data: settings } = await supabase.from('settings').select('brokers').eq('id', 'singleton').single()
-    const names = (settings?.brokers || []).map((b: any) => (b.name || '').split(' ')[0]).filter(Boolean)
+    const { data: brokerRows } = await supabase.from('brokers').select('broker_key, name, active').order('name')
+    const names = (brokerRows || [])
+      .filter((b: any) => b.active !== false)
+      .map((b: any) => String(b.broker_key))
+      .filter(Boolean)
     setBrokerOptions(names)
   }
 

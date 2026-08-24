@@ -1,4 +1,5 @@
 'use client'
+import { brokerLabel } from '@/lib/broker-key'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -829,7 +830,7 @@ export default function PipelinePage() {
               </div>
               {byBroker.map(([broker, v]) => (
                 <div key={broker} className="grid grid-cols-[2fr_1fr_1fr] px-4 py-2.5 text-sm border-b border-gray-50 last:border-0">
-                  <span className="text-[#343333]">{broker}</span>
+                  <span className="text-[#343333]">{brokerLabel(broker)}</span>
                   <span className="text-gray-600">{v.count}</span>
                   <span className="font-medium text-[#343333]">{fmt(v.amount)}</span>
                 </div>

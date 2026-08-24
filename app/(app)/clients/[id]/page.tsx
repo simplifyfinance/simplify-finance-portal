@@ -1,4 +1,5 @@
 'use client'
+import { brokerLabel } from '@/lib/broker-key'
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
@@ -81,7 +82,7 @@ export default function ClientProfilePage() {
                 className="bg-gray-50 rounded-lg px-4 py-3 flex justify-between items-center hover:bg-gray-100 transition">
                 <div>
                   <p className="text-sm font-medium text-[#343333]">{d.deal_name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{d.deal_type} · Broker: {d.assigned_broker}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{d.deal_type} · Broker: {brokerLabel(d.assigned_broker)}</p>
                 </div>
                 <span className="text-xs font-medium bg-[#2DBEFF]/10 text-[#2DBEFF] px-2.5 py-1 rounded-full">{d.stage} →</span>
               </Link>
@@ -97,7 +98,7 @@ export default function ClientProfilePage() {
             {closedDeals.map(d => (
               <Link key={d.id} href={`/deals/${d.id}`}
                 className="rounded-lg px-4 py-2 flex justify-between items-center hover:bg-gray-50 transition">
-                <span className="text-sm">{d.deal_name} · <span className="text-gray-400">Broker: {d.assigned_broker}</span></span>
+                <span className="text-sm">{d.deal_name} · <span className="text-gray-400">Broker: {brokerLabel(d.assigned_broker)}</span></span>
                 <span className="text-xs text-gray-400">View →</span>
               </Link>
             ))}

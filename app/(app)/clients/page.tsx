@@ -1,4 +1,5 @@
 'use client'
+import { brokerLabel } from '@/lib/broker-key'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import Link from 'next/link'
@@ -108,7 +109,7 @@ export default function ClientsPage() {
                     <span className="text-xs text-gray-300">No deal</span>
                   )}
                   {client.assigned_broker && (
-                    <p className="text-xs text-gray-400 mt-0.5">{client.assigned_broker}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{brokerLabel(client.assigned_broker)}</p>
                   )}
                 </div>
                 <button onClick={() => deleteClient(client.id, `${client.first_name} ${client.last_name}`)}

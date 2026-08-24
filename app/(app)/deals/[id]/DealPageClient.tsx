@@ -1,4 +1,5 @@
 'use client'
+import { brokerLabel } from '@/lib/broker-key'
 import { useState, useEffect } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -105,7 +106,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           <div className="flex gap-2 items-center flex-wrap">
             <span className="inline-flex items-baseline gap-1.5 bg-[#FAF7F2] border border-[#E8E1D6] rounded-lg px-2.5 py-1">
               <span className="text-[9.5px] font-bold tracking-wider uppercase text-[#A29889]">Broker</span>
-              <span className="text-[13px] font-semibold text-[#2E2A26]">{deal.assigned_broker}</span>
+              <span className="text-[13px] font-semibold text-[#2E2A26]">{brokerLabel(deal.assigned_broker)}</span>
             </span>
             <CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
             {templateLabel(dealData.bc_data?.template) && (

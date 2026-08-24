@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveBrokerProfile } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
 
 const STAGE_LABELS: Record<string, string> = { BC: 'Borrowing Capacity', LO: 'Lending Options' }
@@ -24,8 +25,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, emailSent: false, reason: 'No credit officer assigned — broker completed this stage themselves' })
   }
 
-  const { data: settings } = await supabase.from('settings').select('brokers').eq('id', 'singleton').single()
-  const brokerRecord = (settings?.brokers || []).find((b: any) => (b.name || '').split(' ')[0] === deal.assigned_broker)
+  const brokerRecord = await resolveBrokerProfile(deal.assigned_broker)
 
   if (!brokerRecord?.email) {
     return NextResponse.json({ ok: true, emailSent: false, reason: 'No email on file for this broker' })

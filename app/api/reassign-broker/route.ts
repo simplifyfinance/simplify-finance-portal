@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveBrokerProfile } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { can } from '@/lib/permissions'
 
@@ -38,8 +39,7 @@ export async function POST(req: NextRequest) {
   // Notify the newly-assigned broker, same lookup pattern used throughout (brokers stored full name, matched by first name)
   let emailSent = false
   try {
-    const { data: settings } = await supabase.from('settings').select('brokers').eq('id', 'singleton').single()
-    const brokerRecord = (settings?.brokers || []).find((b: any) => (b.name || '').split(' ')[0] === brokerName)
+    const brokerRecord = await resolveBrokerProfile(brokerName)
     if (brokerRecord?.email) {
       await fetch('https://api.resend.com/emails', {
         method: 'POST',

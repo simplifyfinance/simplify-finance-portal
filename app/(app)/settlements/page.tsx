@@ -1,4 +1,5 @@
 'use client'
+import { brokerLabel } from '@/lib/broker-key'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -212,7 +213,7 @@ export default function SettlementsPage() {
           </span>
           <span className="min-w-0">
             <span className="font-medium text-[#2E2A26] block truncate">{d.deal_name || '(unnamed)'}</span>
-            <span className="text-[11px] text-[#A29889]">{d.assigned_broker || '—'}</span>
+            <span className="text-[11px] text-[#A29889]">{brokerLabel(d.assigned_broker)}</span>
           </span>
           <span className="min-w-0">
             <span className="text-[#6E665C] block truncate">{d.lodged_lender || d.lender || '—'}</span>

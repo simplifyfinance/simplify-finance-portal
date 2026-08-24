@@ -1,4 +1,5 @@
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { resolveBrokerProfile } from '@/lib/broker-profile'
 import { notifyCrisMoveCard } from '@/lib/salestrekker-notify'
 
 type ProceedStage = 'BC' | 'LO'
@@ -44,8 +45,7 @@ export async function markProceeded(dealId: string, stage: ProceedStage) {
 
     // Notify the assigned broker either way — they need to know the client has moved forward
     try {
-      const { data: settings } = await supabase.from('settings').select('brokers').eq('id', 'singleton').single()
-      const brokerRecord = (settings?.brokers || []).find((b: any) => (b.name || '').split(' ')[0] === deal.assigned_broker)
+      const brokerRecord = await resolveBrokerProfile(deal.assigned_broker)
       if (brokerRecord?.email) {
         const nextStageLabel = stage === 'BC' ? 'Lending Options' : 'Compliance'
         await fetch('https://api.resend.com/emails', {
