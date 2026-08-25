@@ -807,12 +807,35 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     return emailHtml.replace(/<!--BROKER-BOX-->[\s\S]*?<!--\/BROKER-BOX-->/, clean)
   }
 
+  // Puts the email on the clipboard as rich HTML, with a readable plain-text
+  // alternative for anything that cannot take HTML. Never writes markup as text.
+  async function copyEmailToClipboard() {
+    const cleanHtml = getCleanEmailHtml()
+    const plain = cleanHtml
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/<\/(p|tr|table|div)>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&bull;/g, '-').replace(/&#10003;/g, '*')
+      .replace(/\n{3,}/g, '\n\n').trim()
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([cleanHtml], { type: 'text/html' }),
+      'text/plain': new Blob([plain], { type: 'text/plain' }),
+    })])
+  }
+
+  async function copyEmailOnly() {
+    try {
+      await copyEmailToClipboard()
+      setSendToClientMsg('Email copied — paste (Cmd+V) into the body in Outlook')
+    } catch (e: any) {
+      setSendToClientMsg(e?.message || 'Could not copy the email.')
+    }
+    setTimeout(() => setSendToClientMsg(''), 6000)
+  }
+
   async function sendToClient() {
     try {
-      const cleanHtml = getCleanEmailHtml()
-      const blob = new Blob([cleanHtml], { type: 'text/html' })
-      const textBlob = new Blob([cleanHtml.replace(/<[^>]+>/g, '')], { type: 'text/plain' })
-      await navigator.clipboard.write([new ClipboardItem({ 'text/html': blob, 'text/plain': textBlob })])
+      await copyEmailToClipboard()
       const subject = 'Your Borrowing Capacity'
       const applicantEmails = (deal.fact_find_data?.applicants || [])
         .map((a: any) => a.emailPersonal)
@@ -857,7 +880,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
         ? 'Email copied — but the SalesTrekker notification did not send. Tell Fabio.'
         : 'Email copied — paste (Cmd+V) into the body in Outlook')
     } catch (e: any) {
-      setSendToClientMsg('Could not copy — try "Copy HTML" instead')
+      setSendToClientMsg(e?.message || 'Could not copy the email — nothing was sent.')
     }
     setTimeout(() => setSendToClientMsg(''), 6000)
   }
@@ -1414,8 +1437,8 @@ Key assumptions: ${checklistText}`
                   <>
                     <button onClick={sendToClient}
                       className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90">Send to client</button>
-                    <button onClick={() => { navigator.clipboard.writeText(getCleanEmailHtml()); alert('HTML copied!') }}
-                      className="text-xs text-gray-400 hover:text-gray-600 underline">Copy HTML instead</button>
+                    <button onClick={copyEmailOnly}
+                      className="text-xs text-gray-400 hover:text-gray-600 underline">Copy without opening Outlook</button>
                   </>
                 ) : (
                   <span className="text-xs text-gray-400 italic">Only the broker can send this to the client — use "Done — send to broker for review" above.</span>
