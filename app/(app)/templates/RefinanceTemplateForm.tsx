@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import {
   calculateRefinance,
@@ -48,6 +48,14 @@ export default function RefinanceTemplateForm() {
   const [cashback, setCashback] = useState('0')
 
   const [readyUrl, setReadyUrl] = useState('')
+
+  // A client email is a fixed 600px wide, which is wider than this column. Rather
+  // than clip it or make the reader scroll sideways, the preview is scaled down
+  // to whatever room there is — so what you see is the whole email, just smaller.
+  const frameRef = useRef<HTMLDivElement>(null)
+  const innerRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+  const [frameHeight, setFrameHeight] = useState(0)
   const [copied, setCopied] = useState<'html' | 'sms' | null>(null)
   const [copyError, setCopyError] = useState('')
 
@@ -169,6 +177,22 @@ export default function RefinanceTemplateForm() {
     })
   }, [input, result, clientFirstName, broker, calendlyUrl, proceedUrl, readyUrl])
 
+  useEffect(() => {
+    const frame = frameRef.current, inner = innerRef.current
+    if (!frame || !inner) return
+    const measure = () => {
+      const room = frame.clientWidth
+      const next = Math.min(1, room > 0 ? room / 600 : 1)
+      setScale(next)
+      setFrameHeight(inner.scrollHeight * next)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(frame)
+    ro.observe(inner)
+    return () => ro.disconnect()
+  }, [email])
+
   const missing: string[] = []
   if (!clientFirstName.trim()) missing.push('client name')
   if (!clientEmail.trim()) missing.push('client email')
@@ -178,15 +202,34 @@ export default function RefinanceTemplateForm() {
 
   // Both formats, and the ClipboardItem built inside the handler — Safari
   // rejects one constructed after an await.
-  const copyHtml = async () => {
+  async function putOnClipboard() {
+    if (!email) return
+    // Both formats, and the ClipboardItem built inside the handler — Safari
+    // rejects one constructed after an await.
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([email.html], { type: 'text/html' }),
+      'text/plain': new Blob([email.plainText], { type: 'text/plain' }),
+    })])
+  }
+
+  const openMail = async () => {
     if (!email) return
     setCopyError('')
     try {
-      const item = new ClipboardItem({
-        'text/html': new Blob([email.html], { type: 'text/html' }),
-        'text/plain': new Blob([email.plainText], { type: 'text/plain' }),
-      })
-      await navigator.clipboard.write([item])
+      await putOnClipboard()
+      setCopied('html')
+      setTimeout(() => setCopied(null), 4000)
+      window.location.href = buildMailtoUrl({ to: clientEmail, bcc, subject: email.subject })
+    } catch {
+      setCopyError('Could not copy the email, so nothing was opened. Your browser may be blocking clipboard access — try Chrome.')
+    }
+  }
+
+  const copyOnly = async () => {
+    if (!email) return
+    setCopyError('')
+    try {
+      await putOnClipboard()
       setCopied('html')
       setTimeout(() => setCopied(null), 2500)
     } catch {
@@ -209,11 +252,6 @@ export default function RefinanceTemplateForm() {
     } catch {
       setCopyError('Copy failed — try Chrome.')
     }
-  }
-
-  const openMail = () => {
-    if (!email) return
-    window.location.href = buildMailtoUrl({ to: clientEmail, bcc, subject: email.subject })
   }
 
   const panel = 'bg-white border rounded-xl px-4 py-4 mb-3.5'
@@ -345,19 +383,19 @@ export default function RefinanceTemplateForm() {
         )}
 
         <div className="flex gap-2.5 items-center flex-wrap">
-          <button onClick={copyHtml} disabled={!ready}
+          <button onClick={openMail} disabled={!ready}
             className="rounded-lg px-4 py-[9px] text-[13px] font-semibold disabled:opacity-40"
             style={{ background: TONE.accent, color: '#fff' }}>
-            {copied === 'html' ? 'Copied' : 'Copy email'}
+            {copied === 'html' ? 'Copied — paste with Cmd V' : 'Open in mail'}
           </button>
-          <button onClick={openMail} disabled={!ready}
-            className="rounded-lg px-4 py-[9px] text-[13px] font-medium border disabled:opacity-40"
-            style={{ borderColor: TONE.line, color: TONE.ink, background: '#fff' }}>Open in mail</button>
           <button onClick={copySms} disabled={!input}
             className="rounded-lg px-4 py-[9px] text-[13px] font-medium border disabled:opacity-40"
             style={{ borderColor: TONE.line, color: TONE.ink, background: '#fff' }}>
             {copied === 'sms' ? 'Copied' : 'Copy SMS'}
           </button>
+          <button onClick={copyOnly} disabled={!ready}
+            className="text-[12px] underline disabled:opacity-40"
+            style={{ color: TONE.label }}>Copy without opening</button>
           {missing.length > 0 && (
             <span className="text-[11.5px]" style={{ color: TONE.faint }}>Still needs {missing.join(', ')}</span>
           )}
@@ -366,8 +404,9 @@ export default function RefinanceTemplateForm() {
         {copyError && <p className="text-[12px] mt-2" style={{ color: TONE.neg }}>{copyError}</p>}
 
         <p className="text-[11.5px] mt-2.5" style={{ color: TONE.label }}>
-          A mail link cannot carry a formatted body — that is the standard, not a gap here. Copy the email, press
-          Open in mail, then paste into the message that opens with the address, BCC and subject already filled.
+          Open in mail copies the email first, then opens a message with the address, BCC and subject already
+          filled — so all that is left is Cmd V. A mail link cannot carry a formatted body itself; that is the
+          standard, not a gap here.
         </p>
       </div>
 
@@ -382,9 +421,16 @@ export default function RefinanceTemplateForm() {
               <span style={{ color: TONE.label }}>Subject</span>{' '}
               <span style={{ color: TONE.ink, fontWeight: 520 }}>{email.subject}</span>
             </div>
-            <div className="rounded-xl border overflow-auto"
-                 style={{ borderColor: TONE.line, background: '#f5f5f3', maxHeight: '78vh' }}
-                 dangerouslySetInnerHTML={{ __html: email.html }} />
+            <div ref={frameRef} className="rounded-xl border overflow-y-auto overflow-x-hidden"
+                 style={{ borderColor: TONE.line, background: '#f5f5f3', maxHeight: '78vh' }}>
+              <div style={{ height: frameHeight || undefined }}>
+                <div ref={innerRef} style={{ width: 600, transform: `scale(${scale})`, transformOrigin: 'top left' }}
+                     dangerouslySetInnerHTML={{ __html: email.html }} />
+              </div>
+            </div>
+            <p className="text-[11px] mt-1.5" style={{ color: TONE.faint }}>
+              Shown at {Math.round(scale * 100)}% to fit. The client receives it full size.
+            </p>
           </>
         ) : (
           <div className="rounded-xl border px-4 py-8 text-[13px] text-center"
