@@ -40,3 +40,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 test-summary.pdf
+
+# Commission and trail reports contain client credit information.
+# They are read locally and must never reach the repository.
+*.xlsx
+*.xls
+*.csv
+~$*
+private/

@@ -11,6 +11,7 @@ const nav = [
   { label: "Deals", href: "/deals", icon: Briefcase },
   { label: "Pipeline", href: "/pipeline", icon: TrendingUp },
   { label: "Settlements", href: "/settlements", icon: CalendarCheck, settlementsOnly: true },
+  { label: "Commissions", href: "/commissions", icon: Percent, financeOnly: true },
   { label: "Clients", href: "/clients", icon: Users },
   { label: "Lender library", href: "/lenders", icon: Building2 },
   { label: "Reports", href: "/reports", icon: BarChart3 },
@@ -126,7 +127,10 @@ export default function Sidebar() {
 
       <nav className="flex-1 px-2 py-3">
         <div className="text-white/30 text-xs uppercase tracking-widest px-2 mb-2">Main</div>
-        {nav.filter(item => !(item as any).settlementsOnly || profile?.is_admin || profile?.sees_settlements).map(item => {
+        {nav
+          .filter(item => !(item as any).settlementsOnly || profile?.is_admin || profile?.sees_settlements)
+          .filter(item => !(item as any).financeOnly || profile?.is_admin || profile?.sees_finance)
+          .map(item => {
           const Icon = item.icon
           const linkClass = `flex items-center gap-2.5 px-3 py-2 rounded-md text-sm mb-0.5 transition-colors ${
             path.startsWith(item.href) ? 'text-[#2DBEFF] bg-[#2DBEFF]/10' : 'text-white/60 hover:text-white hover:bg-white/5'
