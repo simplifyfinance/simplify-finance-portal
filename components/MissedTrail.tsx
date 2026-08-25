@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { TONE, money } from '@/lib/tone'
 import { sameBroker } from '@/lib/broker-key'
+import RowLimit, { STEPS } from '@/components/RowLimit'
 
 // Trail that stopped arriving. Two kinds, and they are not the same thing:
 //
@@ -31,7 +32,7 @@ function monthsBetween(lastPaid: string, backIn: string | null, away: number): s
 }
 
 type Gap = {
-  broker_key: string; loan_ref: string; months_away: number; came_back: boolean
+  broker_key: string; loan_ref: string; client_name: string | null; months_away: number; came_back: boolean
   last_paid: string; returned_in: string | null
   monthly_trail: number; trail_missed: number; balance: number | null; lender: string | null
 }
@@ -44,6 +45,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [draft, setDraft] = useState<{ to: string; subject: string; body: string } | null>(null)
   const [copied, setCopied] = useState(false)
+  const [limit, setLimit] = useState<number>(STEPS[0])
 
   useEffect(() => {
     supabase.from('commission_trail_gaps').select('*')
@@ -59,10 +61,13 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
   const away = useMemo(
     () => mine.filter(g => !g.came_back && g.months_away < GONE_AFTER), [mine])
   const rows = tab === 'back' ? back : away
+  const shown = rows.slice(0, limit)
 
   const idOf = (g: Gap) => `${g.broker_key}|${g.loan_ref}|${g.last_paid}`
   const chosen = rows.filter(g => picked.has(idOf(g)))
   const sum = (rs: Gap[]) => rs.reduce((t, g) => t + Number(g.trail_missed || 0), 0)
+
+  useEffect(() => setLimit(STEPS[0]), [tab, who])
 
   function toggle(g: Gap) {
     const id = idOf(g), next = new Set(picked)
@@ -111,7 +116,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
       for (const g of rs.sort((a, b) => b.trail_missed - a.trail_missed)) {
         const miss = monthsBetween(g.last_paid, g.returned_in, g.months_away).map(mLabel).join(', ')
         lines.push(
-          `  Loan ${g.loan_ref} — last paid ${mLabel(g.last_paid)}` +
+          `  ${g.client_name || 'Client not named'} — loan ${g.loan_ref}, last paid ${mLabel(g.last_paid)}` +
           (g.returned_in ? `, resumed ${mLabel(g.returned_in)}` : ', nothing since') +
           `. Missing: ${miss}. Approximately ${money(g.trail_missed)} ex GST at the ` +
           `${money(g.monthly_trail)} a month it was paying.`)
@@ -173,34 +178,36 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
       </div>
 
       <div className={card + ' overflow-x-auto'} style={cardS}>
-        <table className="w-full min-w-[820px]">
+        <table className="w-full min-w-[900px]">
           <thead>
             <tr>
               <th className={th + ' text-left w-[34px]'} style={{ color: TONE.label, borderColor: TONE.hair }}>
                 <input type="checkbox" checked={rows.length > 0 && chosen.length === rows.length}
                        onChange={toggleAll} aria-label="Select all" />
               </th>
-              {['Loan', 'Broker', 'Lender', 'Last paid', tab === 'back' ? 'Resumed' : 'Silent since',
+              {['Client', 'Loan', 'Broker', 'Lender', 'Last paid', tab === 'back' ? 'Resumed' : 'Silent since',
                 'Months missing', 'Trail missed'].map((h, i) => (
-                <th key={h} className={th + (i < 3 ? ' text-left' : ' text-right')}
+                <th key={h} className={th + (i < 4 ? ' text-left' : ' text-right')}
                     style={{ color: TONE.label, borderColor: TONE.hair }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && (
-              <tr><td colSpan={8} className="px-3 py-6 text-[13px]" style={{ color: TONE.label }}>
+              <tr><td colSpan={9} className="px-3 py-6 text-[13px]" style={{ color: TONE.label }}>
                 Nothing here{who === 'all' ? '' : ' for this broker'}.
               </td></tr>
             )}
-            {rows.slice(0, 60).map((g, i) => (
+            {shown.map((g, i) => (
               <tr key={idOf(g)} style={{ background: picked.has(idOf(g)) ? TONE.accentSoft : i % 2 ? TONE.zebra : '#fff' }}>
                 <td className="px-3 py-[9px] border-b" style={{ borderColor: TONE.hair }}>
                   <input type="checkbox" checked={picked.has(idOf(g))} onChange={() => toggle(g)}
                          aria-label={`Select loan ${g.loan_ref}`} />
                 </td>
                 <td className="px-3 py-[9px] text-[13px] border-b"
-                    style={{ color: TONE.ink, fontWeight: 520, borderColor: TONE.hair }}>{g.loan_ref}</td>
+                    style={{ color: TONE.ink, fontWeight: 520, borderColor: TONE.hair }}>{g.client_name || '—'}</td>
+                <td className="px-3 py-[9px] text-[13px] border-b"
+                    style={{ color: TONE.body, borderColor: TONE.hair }}>{g.loan_ref}</td>
                 <td className="px-3 py-[9px] text-[13px] border-b" style={{ color: TONE.body, borderColor: TONE.hair }}>
                   {brokers.find(b => sameBroker(b.key, g.broker_key))?.name.split(' ')[0] || g.broker_key}
                 </td>
@@ -230,6 +237,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
                 <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className="border-t" style={{ borderColor: TONE.line }} />
+                <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className={td + ' font-[640] border-b-0 border-t'} style={{ color: TONE.ink, borderColor: TONE.line }}>
                   {rows.reduce((t, g) => t + g.months_away, 0)} months
                 </td>
@@ -240,8 +248,8 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
             )}
           </tbody>
         </table>
+        <RowLimit shown={shown.length} total={rows.length} limit={limit} onChange={setLimit} />
         <div className="px-3 py-2.5 border-t text-[11.5px]" style={{ borderColor: TONE.hair, color: TONE.label }}>
-          {rows.length > 60 ? `Largest 60 shown of ${rows.length}. ` : ''}
           Trail missed is the months of silence at the rate the loan was paying when it stopped. Tick the rows you
           want, or leave them all unticked to include every one in the email.
         </div>

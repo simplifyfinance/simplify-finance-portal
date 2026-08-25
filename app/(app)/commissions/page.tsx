@@ -4,6 +4,8 @@ import CommissionRevenue from '@/components/CommissionRevenue'
 import TrailBook from '@/components/TrailBook'
 import MissingStatements from '@/components/MissingStatements'
 import MissedTrail from '@/components/MissedTrail'
+import CommissionByMonth from '@/components/CommissionByMonth'
+import { COMMISSION_START } from '@/lib/commission-schedule'
 import { money } from '@/lib/tone'
 import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -13,7 +15,7 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 const label = (m: string) => `${MONTHS[Number(m.slice(5, 7)) - 1]} ${m.slice(2, 4)}`
 
 // Every month from July 2025 to the month we are in.
-function monthsSince(start = '2025-07'): string[] {
+function monthsSince(start = COMMISSION_START): string[] {
   const out: string[] = []
   let [y, m] = [Number(start.slice(0, 4)), Number(start.slice(5, 7))]
   const now = todayYmd().slice(0, 7)
@@ -120,6 +122,56 @@ export default function CommissionsPage() {
 
       {statements.length > 0 && <MissingStatements statements={statements} brokers={brokers} />}
 
+      {statements.length > 0 && (
+        <>
+          <div className="text-[11px] font-bold uppercase tracking-[.08em] text-[#7A7266] mb-2">
+            What has been loaded
+          </div>
+          <div className={card + ' overflow-x-auto mb-5'}>
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th className="text-left px-4 py-2 text-[10px] font-semibold uppercase tracking-[.085em] text-[#7A7266] border-b border-[#F6F2EA]">Broker</th>
+                  {months.map(m => (
+                    <th key={m} className="px-1.5 py-2 text-[10px] font-semibold uppercase tracking-[.05em] text-[#7A7266] border-b border-[#F6F2EA] whitespace-nowrap">{label(m)}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {gridBrokers.map(b => (['trail', 'upfront'] as const).map(kind => (
+                  <tr key={b.key + kind} className="border-b border-[#F6F2EA] last:border-0">
+                    <td className="px-4 py-1.5 text-[12.5px] text-[#6E665C] whitespace-nowrap">
+                      {b.name.split(' ')[0]} <span className="text-[#B3ABA0]">{kind}</span>
+                    </td>
+                    {months.map(m => {
+                      const yes = have.has(`${b.key}|${kind}|${m}`)
+                      const before = !!b.from && m < b.from
+                      return (
+                        <td key={m} className="px-1.5 py-1.5 text-center">
+                          {before ? (
+                            <span className="inline-block w-[18px] h-[18px] leading-[18px] text-[#D8D1C5] text-[13px]"
+                                  title={`${b.name.split(' ')[0]} was not earning in ${m}`}>·</span>
+                          ) : (
+                            <span className={`inline-block w-[18px] h-[18px] rounded-[5px] ${yes ? 'bg-[#2E9E63]' : 'bg-[#F4EEE4] border border-[#E8E1D6]'}`}
+                                  title={yes ? `${m} loaded` : `${m} missing`} />
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                )))}
+              </tbody>
+            </table>
+            <div className="px-4 py-2.5 border-t border-[#F6F2EA] text-[11.5px] text-[#7A7266]">
+              Filled means loaded. Empty means that month has never been uploaded. A dot means the broker was
+              not earning yet, so there is nothing to load.
+            </div>
+          </div>
+        </>
+      )}
+
+
+
       <div className={card + ' p-5 mb-5'}>
         <DropZone accept=".xlsx" busy={busy}
           title="Drop SFG statements here, or click to choose"
@@ -172,6 +224,9 @@ export default function CommissionsPage() {
           </div>
           <CommissionRevenue statements={statements} brokers={brokers} />
 
+          <div className="text-[11px] font-bold uppercase tracking-[.08em] text-[#7A7266] mb-2">By month</div>
+          <CommissionByMonth statements={statements} />
+
           <div className="text-[11px] font-bold uppercase tracking-[.08em] text-[#7A7266] mb-2">
             The trail book
           </div>
@@ -182,66 +237,7 @@ export default function CommissionsPage() {
           </div>
           <MissedTrail brokers={brokers} />
 
-          <div className="text-[11px] font-bold uppercase tracking-[.08em] text-[#7A7266] mb-2">
-            What has been loaded
-          </div>
-          <div className={card + ' overflow-x-auto mb-5'}>
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <th className="text-left px-4 py-2 text-[10px] font-semibold uppercase tracking-[.085em] text-[#7A7266] border-b border-[#F6F2EA]">Broker</th>
-                  {months.map(m => (
-                    <th key={m} className="px-1.5 py-2 text-[10px] font-semibold uppercase tracking-[.05em] text-[#7A7266] border-b border-[#F6F2EA] whitespace-nowrap">{label(m)}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {gridBrokers.map(b => (['trail', 'upfront'] as const).map(kind => (
-                  <tr key={b.key + kind} className="border-b border-[#F6F2EA] last:border-0">
-                    <td className="px-4 py-1.5 text-[12.5px] text-[#6E665C] whitespace-nowrap">
-                      {b.name.split(' ')[0]} <span className="text-[#B3ABA0]">{kind}</span>
-                    </td>
-                    {months.map(m => {
-                      const yes = have.has(`${b.key}|${kind}|${m}`)
-                      const before = !!b.from && m < b.from
-                      return (
-                        <td key={m} className="px-1.5 py-1.5 text-center">
-                          {before ? (
-                            <span className="inline-block w-[18px] h-[18px] leading-[18px] text-[#D8D1C5] text-[13px]"
-                                  title={`${b.name.split(' ')[0]} was not earning in ${m}`}>·</span>
-                          ) : (
-                            <span className={`inline-block w-[18px] h-[18px] rounded-[5px] ${yes ? 'bg-[#2E9E63]' : 'bg-[#F4EEE4] border border-[#E8E1D6]'}`}
-                                  title={yes ? `${m} loaded` : `${m} missing`} />
-                          )}
-                        </td>
-                      )
-                    })}
-                  </tr>
-                )))}
-              </tbody>
-            </table>
-            <div className="px-4 py-2.5 border-t border-[#F6F2EA] text-[11.5px] text-[#7A7266]">
-              Filled means loaded. Empty means that month has never been uploaded. A dot means the broker was
-              not earning yet, so there is nothing to load.
-            </div>
-          </div>
 
-          <div className="text-[11px] font-bold uppercase tracking-[.08em] text-[#7A7266] mb-2">By month</div>
-          <div className={card + ' overflow-hidden'}>
-            <div className="grid grid-cols-[1fr_repeat(4,minmax(0,1fr))] gap-2 px-4 py-2 text-[10px] font-semibold uppercase tracking-[.085em] text-[#7A7266] border-b border-[#F6F2EA]">
-              <span>Month</span><span className="text-right">Gross</span><span className="text-right">Third parties</span>
-              <span className="text-right">Clawbacks</span><span className="text-right">Banked</span>
-            </div>
-            {months.filter(m => byMonth[m]).map(m => (
-              <div key={m} className="grid grid-cols-[1fr_repeat(4,minmax(0,1fr))] gap-2 px-4 py-2 text-[13px] border-b border-[#F6F2EA] last:border-0">
-                <span className="text-[#6E665C]">{label(m)}</span>
-                <span className="text-right tabular-nums">{money(byMonth[m].gross)}</span>
-                <span className="text-right tabular-nums text-[#7A7266]">{money(-byMonth[m].third)}</span>
-                <span className="text-right tabular-nums text-[#7A7266]">{money(byMonth[m].claw)}</span>
-                <span className="text-right tabular-nums font-semibold">{money(byMonth[m].banked)}</span>
-              </div>
-            ))}
-          </div>
         </>
       )}
     </div>

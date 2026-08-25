@@ -3,58 +3,50 @@ import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { TONE, money } from '@/lib/tone'
 import { sameBroker } from '@/lib/broker-key'
+import { stepMonth } from '@/lib/commission-schedule'
+import RowLimit, { STEPS } from '@/components/RowLimit'
 
 // Trail is a book, not a payment. Two questions matter: is it growing or
-// leaking, and which loans left.
+// leaking, and which loans have actually left.
 //
-// A loan going quiet is not the same as a loan being lost. Measured across
-// this book, 56 of 65 returns came back after a single silent month and 60
-// within two; past two months only five loans ever came back. So a loan is
-// only called gone after three consecutive silent months — and silence is
-// counted in months actually loaded, so a statement you have not uploaded is
-// never mistaken for a month the bank did not pay.
+// A loan going quiet is not a loan being lost. Measured across this book, most
+// returns came back after a single silent month. So a loan is only called gone
+// after three consecutive silent months — and silence is counted in months
+// actually loaded, so a statement you have not uploaded is never mistaken for
+// a month the bank did not pay. Everything shorter lives in the missed-trail
+// box, where it can be queried rather than written off.
 const GONE_AFTER = 3
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 const mLabel = (m: string) => `${MONTHS[Number(m.slice(5, 7)) - 1]} ${m.slice(2, 4)}`
 
-type MonthRow = { broker_key: string; period_month: string; loans: number; trail_ex_gst: number; book_balance: number }
+type MonthRow = { broker_key: string; period_month: string; loans: number; trail_ex_gst: number }
 type LoanState = {
-  broker_key: string; loan_ref: string; last_paid: string; annual_trail: number
-  balance: number | null; lender: string | null
-  months_paid: number; months_skipped: number; months_absent: number
-}
-
-function nextMonth(m: string): string {
-  let y = Number(m.slice(0, 4)), n = Number(m.slice(5, 7)) + 1
-  if (n > 12) { n = 1; y += 1 }
-  return `${y}-${String(n).padStart(2, '0')}`
+  broker_key: string; loan_ref: string; client_name: string | null; last_paid: string
+  annual_trail: number; balance: number | null; lender: string | null
+  months_skipped: number; months_absent: number
 }
 
 export default function TrailBook({ brokers }: { brokers: { key: string; name: string }[] }) {
   const supabase = createSupabaseBrowser()
   const [months, setMonths] = useState<MonthRow[]>([])
   const [silent, setSilent] = useState<LoanState[]>([])
-  const [returns, setReturns] = useState<{ months_away: number }[]>([])
   const [upfront, setUpfront] = useState<Record<string, number>>({})
   const [who, setWho] = useState('all')
-  const [tab, setTab] = useState<'gone' | 'quiet'>('gone')
+  const [lookback, setLookback] = useState(12)
+  const [limit, setLimit] = useState<number>(STEPS[0])
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
     (async () => {
-      const [m, l, r, s] = await Promise.all([
+      const [m, l, s] = await Promise.all([
         supabase.from('commission_trail_months').select('*').order('period_month'),
-        // only loans that have stopped paying — the ones still paying are
-        // thousands of rows and are already counted in the monthly view
         supabase.from('commission_trail_loan_state').select('*')
-          .gt('months_absent', 0).order('annual_trail', { ascending: false }).limit(2000),
-        supabase.from('commission_trail_returns').select('months_away'),
+          .gte('months_absent', GONE_AFTER).order('annual_trail', { ascending: false }).limit(2000),
         supabase.from('commission_statements').select('kind, period_month, gross_ex_gst'),
       ])
       setMonths((m.data || []) as MonthRow[])
       setSilent((l.data || []) as LoanState[])
-      setReturns((r.data || []) as any[])
       const up: Record<string, number> = {}
       for (const row of (s.data || []) as any[]) {
         if (row.kind !== 'upfront') continue
@@ -66,8 +58,10 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
     })()
   }, [])
 
-  const mine = useMemo(() => who === 'all' ? months : months.filter(r => sameBroker(r.broker_key, who)), [months, who])
-  const mySilent = useMemo(() => who === 'all' ? silent : silent.filter(r => sameBroker(r.broker_key, who)), [silent, who])
+  const mine = useMemo(
+    () => who === 'all' ? months : months.filter(r => sameBroker(r.broker_key, who)), [months, who])
+  const mineGone = useMemo(
+    () => who === 'all' ? silent : silent.filter(r => sameBroker(r.broker_key, who)), [silent, who])
 
   const series = useMemo(() => {
     const by = new Map<string, { trail: number; loans: number }>()
@@ -80,26 +74,31 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
       .sort((a, b) => a.m.localeCompare(b.m))
   }, [mine, upfront])
 
-  const holes = useMemo(() => {
-    const have = new Set(series.map(s => s.m))
-    const out: string[] = []
-    if (series.length < 2) return out
-    for (let m = nextMonth(series[0].m); m < series[series.length - 1].m; m = nextMonth(m)) {
-      if (!have.has(m)) out.push(m)
-    }
-    return out
-  }, [series])
-
   const last = series[series.length - 1]
   const prev = series.length > 1 ? series[series.length - 2] : null
-  const adjacent = !!prev && nextMonth(prev.m) === last?.m
+  const adjacent = !!prev && stepMonth(prev.m, 1) === last?.m
   const move = last && prev && adjacent ? last.trail - prev.trail : null
 
-  const gone = useMemo(() => mySilent.filter(l => l.months_absent >= GONE_AFTER), [mySilent])
-  const quiet = useMemo(() => mySilent.filter(l => l.months_absent > 0 && l.months_absent < GONE_AFTER), [mySilent])
-  const sum = (rows: LoanState[]) => rows.reduce((t, l) => t + Number(l.annual_trail || 0), 0)
-  const cameBackFast = returns.filter(r => r.months_away <= 2).length
-  const rows = tab === 'gone' ? gone : quiet
+  // A loan counts against a window by WHEN IT STOPPED, not by the fact that it
+  // is still silent. Otherwise the figure only ever grows and stops being a
+  // rate of loss.
+  const windowStart = useMemo(
+    () => last ? stepMonth(last.m, -(lookback - 1)) : '', [last, lookback])
+  const gone = useMemo(
+    () => lookback >= 999 ? mineGone : mineGone.filter(l => String(l.last_paid).slice(0, 7) >= windowStart),
+    [mineGone, windowStart, lookback])
+  const goneValue = gone.reduce((t, l) => t + Number(l.annual_trail || 0), 0)
+
+  // Only offer a window the data can actually fill.
+  const windows = useMemo(() => {
+    const out = [{ n: 12, label: 'Last 12 months' }]
+    if (series.length > 24) out.push({ n: 24, label: 'Last 2 years' })
+    if (series.length > 36) out.push({ n: 36, label: 'Last 3 years' })
+    out.push({ n: 999, label: 'All time' })
+    return out
+  }, [series.length])
+
+  useEffect(() => setLimit(STEPS[0]), [who, lookback])
 
   const card = 'bg-white border rounded-xl'
   const cardS = { borderColor: TONE.line }
@@ -122,6 +121,7 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
   const slot = (X1 - X0) / series.length
   const bw = Math.min(17, Math.max(4, (slot - 12) / 2))
   const yOf = (v: number) => Y1 - (v / top) * (Y1 - Y0)
+  const shown = gone.slice(0, limit)
 
   return (
     <div className="mb-6">
@@ -137,17 +137,7 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
         </span>
       </div>
 
-      {holes.length > 0 && (
-        <div className="rounded-xl px-4 py-3 mb-3 text-[12.5px] border"
-             style={{ background: '#FDF6E7', borderColor: '#EFE0BC', color: '#7A5F17' }}>
-          <b>{holes.length === 1 ? 'One trail month is missing' : `${holes.length} trail months are missing`}</b>
-          {' — '}{holes.map(mLabel).join(', ')}. Load {holes.length === 1 ? 'it' : 'them'} and every figure below
-          sharpens. Nothing is being blamed on a month you have not uploaded: silence is counted only in months
-          actually loaded.
-        </div>
-      )}
-
-      <div className="grid grid-cols-4 gap-[11px] mb-3.5 max-[860px]:grid-cols-2">
+      <div className="grid grid-cols-3 gap-[11px] mb-3.5 max-[860px]:grid-cols-1">
         <div className={card + ' px-[15px] py-[13px]'} style={cardS}>
           <div className={kk} style={{ color: TONE.label }}>Book at {mLabel(last.m)}</div>
           <div className="text-[27px] font-[640] tracking-[-.02em] leading-[1.15]" style={{ color: TONE.ink }}>
@@ -168,22 +158,20 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
               : `${prev && prev.trail ? ((move / prev.trail) * 100).toFixed(1) : '0.0'}% after normalising for days`}
           </div>
         </div>
-        <div className={card + ' px-[15px] py-[13px] cursor-pointer'} style={cardS} onClick={() => setTab('gone')}>
-          <div className={kk} style={{ color: TONE.label }}>Gone</div>
+        <div className={card + ' px-[15px] py-[13px]'} style={cardS}>
+          <div className="flex items-start justify-between gap-2">
+            <div className={kk} style={{ color: TONE.label }}>Gone</div>
+            <select value={lookback} onChange={e => setLookback(Number(e.target.value))}
+              className="border rounded-md px-1.5 py-[1px] text-[11px] bg-white -mt-[2px]"
+              style={{ borderColor: TONE.line, color: TONE.body }}>
+              {windows.map(w => <option key={w.n} value={w.n}>{w.label}</option>)}
+            </select>
+          </div>
           <div className="text-[27px] font-[640] tracking-[-.02em] leading-[1.15]" style={{ color: TONE.neg }}>
-            {money(-sum(gone))}
+            {money(-goneValue)}
           </div>
           <div className="text-[11.5px] mt-[1px]" style={{ color: TONE.label }}>
-            {gone.length} loans, silent {GONE_AFTER}+ months
-          </div>
-        </div>
-        <div className={card + ' px-[15px] py-[13px] cursor-pointer'} style={cardS} onClick={() => setTab('quiet')}>
-          <div className={kk} style={{ color: TONE.label }}>Quiet, may return</div>
-          <div className="text-[27px] font-[640] tracking-[-.02em] leading-[1.15]" style={{ color: '#B4761F' }}>
-            {money(-sum(quiet))}
-          </div>
-          <div className="text-[11.5px] mt-[1px]" style={{ color: TONE.label }}>
-            {quiet.length} loans, silent 1–2 months
+            {gone.length} loans stopped, silent {GONE_AFTER}+ months
           </div>
         </div>
       </div>
@@ -232,49 +220,39 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
         </div>
       </div>
 
-      <div className="flex items-center gap-2.5 mt-4 mb-2 flex-wrap">
-        <div className="inline-flex rounded-lg p-[2px] border" style={{ background: TONE.hair, borderColor: TONE.line }}>
-          {([['gone', `Gone (${gone.length})`], ['quiet', `Quiet (${quiet.length})`]] as const).map(([id, lab]) => (
-            <button key={id} onClick={() => setTab(id)}
-              className="px-3 py-1 text-[12.5px] rounded-[6px]"
-              style={tab === id
-                ? { background: '#fff', color: TONE.ink, fontWeight: 600, boxShadow: '0 1px 2px rgba(0,0,0,.07)' }
-                : { color: TONE.body }}>{lab}</button>
-          ))}
-        </div>
-        <span className="text-[12px]" style={{ color: TONE.label }}>
-          {tab === 'gone'
-            ? `Silent ${GONE_AFTER} months or more. Treated as lost.`
-            : `Silent one or two months. ${cameBackFast} loans in this book have come back from exactly that.`}
-        </span>
+      <div className="text-[11px] font-bold uppercase tracking-[.08em] mt-5 mb-2" style={{ color: TONE.label }}>
+        Loans gone — {windows.find(w => w.n === lookback)?.label.toLowerCase()}
       </div>
-
       <div className={card + ' overflow-x-auto'} style={cardS}>
-        <table className="w-full min-w-[700px]">
+        <table className="w-full min-w-[760px]">
           <thead>
             <tr>
-              {['Loan', 'Broker', 'Lender', 'Balance last seen', 'Trail a year', 'Last paid', 'Silent'].map((h, i) => (
-                <th key={h} className={th + (i < 3 ? ' text-left' : ' text-right')}
-                    style={{ color: TONE.label, borderColor: TONE.hair }}>{h}</th>
-              ))}
+              {['Client', 'Loan', 'Broker', 'Lender', 'Balance last seen', 'Trail a year', 'Last paid', 'Silent']
+                .map((h, i) => (
+                  <th key={h} className={th + (i < 4 ? ' text-left' : ' text-right')}
+                      style={{ color: TONE.label, borderColor: TONE.hair }}>{h}</th>
+                ))}
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && (
-              <tr><td colSpan={7} className="px-3 py-6 text-[13px]" style={{ color: TONE.label }}>
-                Nothing in this state{who === 'all' ? '' : ' for this broker'}.
+            {shown.length === 0 && (
+              <tr><td colSpan={8} className="px-3 py-6 text-[13px]" style={{ color: TONE.label }}>
+                No loans have stopped paying in this window.
               </td></tr>
             )}
-            {rows.slice(0, 40).map((l, i) => (
+            {shown.map((l, i) => (
               <tr key={l.broker_key + l.loan_ref} style={{ background: i % 2 ? TONE.zebra : '#fff' }}>
                 <td className="px-3 py-[9px] text-[13px] border-b"
                     style={{ color: TONE.ink, fontWeight: 520, borderColor: TONE.hair }}>
-                  {l.loan_ref}
+                  {l.client_name || '—'}
                   {l.months_skipped > 0 && (
                     <span className="ml-2 text-[10px] rounded-full px-2 py-[1px] border"
-                          style={{ background: '#FDF6E7', borderColor: '#EFE0BC', color: '#9A7B2E' }}
+                          style={{ background: TONE.accentSoft, borderColor: TONE.accentLine, color: '#0B6F9E' }}
                           title="This loan has gone quiet and come back before">skipped before</span>
                   )}
+                </td>
+                <td className="px-3 py-[9px] text-[13px] border-b" style={{ color: TONE.body, borderColor: TONE.hair }}>
+                  {l.loan_ref}
                 </td>
                 <td className="px-3 py-[9px] text-[13px] border-b" style={{ color: TONE.body, borderColor: TONE.hair }}>
                   {brokers.find(b => sameBroker(b.key, l.broker_key))?.name.split(' ')[0] || l.broker_key}
@@ -283,29 +261,29 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
                   {l.lender || '—'}
                 </td>
                 <td className={td} style={{ color: TONE.ink, borderColor: TONE.hair }}>{money(l.balance || 0)}</td>
-                <td className={td} style={{ color: tab === 'gone' ? TONE.neg : '#B4761F', borderColor: TONE.hair }}>
+                <td className={td} style={{ color: TONE.neg, borderColor: TONE.hair }}>
                   {money(-Math.abs(Number(l.annual_trail || 0)))}
                 </td>
                 <td className={td} style={{ color: TONE.label, borderColor: TONE.hair }}>
                   {mLabel(String(l.last_paid).slice(0, 7))}
                 </td>
                 <td className={td} style={{ color: TONE.label, borderColor: TONE.hair }}>
-                  {l.months_absent} {l.months_absent === 1 ? 'month' : 'months'}
+                  {l.months_absent} months
                 </td>
               </tr>
             ))}
-            {rows.length > 0 && (
+            {gone.length > 0 && (
               <tr style={{ background: TONE.hair }}>
                 <td className="px-3 py-[9px] text-[13px] font-[640] border-t"
-                    style={{ color: TONE.ink, borderColor: TONE.line }}>{rows.length} loans</td>
+                    style={{ color: TONE.ink, borderColor: TONE.line }}>{gone.length} loans</td>
+                <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className={td + ' font-[640] border-b-0 border-t'} style={{ color: TONE.ink, borderColor: TONE.line }}>
-                  {money(rows.reduce((t, l) => t + Number(l.balance || 0), 0))}
+                  {money(gone.reduce((t, l) => t + Number(l.balance || 0), 0))}
                 </td>
-                <td className={td + ' font-[640] border-b-0 border-t'}
-                    style={{ color: tab === 'gone' ? TONE.neg : '#B4761F', borderColor: TONE.line }}>
-                  {money(-sum(rows))}
+                <td className={td + ' font-[640] border-b-0 border-t'} style={{ color: TONE.neg, borderColor: TONE.line }}>
+                  {money(-goneValue)}
                 </td>
                 <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className="border-t" style={{ borderColor: TONE.line }} />
@@ -313,11 +291,10 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
             )}
           </tbody>
         </table>
+        <RowLimit shown={shown.length} total={gone.length} limit={limit} onChange={setLimit} />
         <div className="px-3 py-2.5 border-t text-[11.5px]" style={{ borderColor: TONE.hair, color: TONE.label }}>
-          {rows.length > 40 ? `Largest 40 shown of ${rows.length}. ` : ''}
-          A loan is called gone only after {GONE_AFTER} consecutive silent months, measured from your own book:
-          56 of 65 returns came back after one silent month, 60 within two. Loan references only — no borrower
-          names leave the aggregator file.
+          A loan counts here by the month it stopped paying, so the figure stays a rate of loss rather than a pile
+          that only ever grows. Trail a year is the monthly rate it was last paying, annualised.
         </div>
       </div>
     </div>
