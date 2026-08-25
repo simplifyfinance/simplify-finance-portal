@@ -1,5 +1,6 @@
 'use client'
-import { Fragment, useMemo } from 'react'
+import { Fragment, useMemo, useState } from 'react'
+import RowLimit, { STEPS } from '@/components/RowLimit'
 import { TONE, money } from '@/lib/tone'
 import { COMMISSION_START } from '@/lib/commission-schedule'
 
@@ -27,6 +28,8 @@ function fold(f: Fig, s: any): Fig {
 }
 
 export default function CommissionByMonth({ statements }: { statements: any[] }) {
+  // newest first, a handful at a time — a year of statements is three rows a month
+  const [limit, setLimit] = useState<number>(STEPS[0])
   const months = useMemo(() => {
     const by = new Map<string, { upfront: Fig; trail: Fig }>()
     for (const s of statements) {
@@ -76,7 +79,7 @@ export default function CommissionByMonth({ statements }: { statements: any[] })
           </tr>
         </thead>
         <tbody>
-          {months.map(([m, f]) => {
+          {months.slice(0, limit).map(([m, f]) => {
             const total: Fig = {
               gross: f.upfront.gross + f.trail.gross, third: f.upfront.third + f.trail.third,
               net: f.upfront.net + f.trail.net, claw: f.upfront.claw + f.trail.claw,
@@ -92,6 +95,7 @@ export default function CommissionByMonth({ statements }: { statements: any[] })
           })}
         </tbody>
       </table>
+      <RowLimit shown={Math.min(limit, months.length)} total={months.length} limit={limit} onChange={setLimit} unit="months" />
       <div className="px-3 py-2.5 border-t text-[11.5px]" style={{ borderColor: TONE.hair, color: TONE.label }}>
         Banked is net commission plus clawback plus referrals. Where banked exceeds gross — July 2025 — referral
         income is the reason, not an error.

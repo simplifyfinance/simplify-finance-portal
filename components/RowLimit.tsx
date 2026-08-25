@@ -7,19 +7,20 @@ import { TONE } from '@/lib/tone'
 export const STEPS = [5, 20] as const
 
 export default function RowLimit({
-  shown, total, limit, onChange,
+  shown, total, limit, onChange, unit,
 }: {
   shown: number
   total: number
   limit: number
   onChange: (n: number) => void
+  unit?: string
 }) {
   if (total <= STEPS[0]) return null
   const next = limit < 20 && total > 20 ? 20 : total
   return (
     <div className="px-3 py-2.5 border-t flex items-center gap-3 text-[11.5px]"
          style={{ borderColor: TONE.hair, color: TONE.label }}>
-      <span>Showing {shown} of {total}</span>
+      <span>Showing {shown} of {total}{unit ? ` ${unit}` : ''}</span>
       {limit < total && (
         <button onClick={() => onChange(next)} className="font-medium" style={{ color: TONE.accent }}>
           {next >= total ? `Show all ${total}` : `Show ${next}`}
