@@ -17,13 +17,18 @@ export default function BankSelect({
   const [isOther, setIsOther] = useState(false)
 
   useEffect(() => {
-    supabase.from('lenders').select('name').order('name').then(({ data }) => {
+    supabase.from('lenders').select('name, active').order('name').then(({ data }) => {
       if (data?.length) {
-        const uniqueNames = Array.from(new Set(data.map((l: any) => l.name).filter(Boolean)))
-        setBanks(uniqueNames as string[])
+        // Lenders switched off are no longer offered, but a deal already
+        // written with one keeps showing it rather than flipping to Other.
+        const names = data
+          .filter((l: any) => l.active !== false || (value && l.name === value))
+          .map((l: any) => l.name)
+          .filter(Boolean)
+        setBanks(Array.from(new Set(names)) as string[])
       }
     })
-  }, [])
+  }, [value])
 
   useEffect(() => {
     if (value && banks.length > 0 && !banks.includes(value)) {

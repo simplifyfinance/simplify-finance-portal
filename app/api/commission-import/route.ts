@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
 import { parseSfg } from '@/lib/sfg'
+import { segmentForLender, shouldBeInRegister } from '@/lib/lender-segment'
 
 export const maxDuration = 60
 
@@ -102,12 +103,12 @@ export async function POST(req: NextRequest) {
       const unknownLenders = new Set<string>()
       const payload = parsed.lines.map(l => {
         const lenderId = lenderByName.get(norm(l.lenderRaw)) || null
-        if (!lenderId && l.lenderRaw) unknownLenders.add(l.lenderRaw)
+        // Only a residential name we cannot resolve is a gap in the register.
+        // Insurance and commercial names are outside it on purpose.
+        if (!lenderId && shouldBeInRegister(l.lenderRaw)) unknownLenders.add(l.lenderRaw)
         // what left the business on this loan, whichever way the file signs it
         const third = l.kind === 'clawback' ? 0 : Math.abs(parsed.thirdParty[l.loanRef] || 0)
-        const r = (l.lenderRaw || '').toLowerCase()
-        const segment = /allianz|insurance/.test(r) ? 'insurance'
-          : /commercial|business/.test(r) ? 'commercial' : 'residential'
+        const segment = segmentForLender(l.lenderRaw)
         return {
           statement_id: (stmt as any).id,
           kind: l.kind,
