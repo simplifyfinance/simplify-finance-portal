@@ -20,13 +20,14 @@ function shell(body: string, b: { name: string; title: string; crn: string; cale
   const logoBlock = logoUrl
     ? `<img src="${logoUrl}" alt="${brandName}" height="80" style="height:80px;display:block;margin:0 auto 8px;border:0" />`
     : `<p style="color:#ffffff;font-size:22px;font-weight:700;margin:0 0 8px">${brandName}</p>`
-  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5f5f3" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr><td>
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5f5f3" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr>
+  <td bgcolor="#f5f5f3" align="center" style="background:#f5f5f3;padding:24px 12px">
   <table width="600" cellpadding="0" cellspacing="0" border="0" align="center" bgcolor="#ffffff" style="background:#ffffff;margin:0 auto">
     <tr><td bgcolor="${headerColor}" style="background:${headerColor};padding:28px 24px;text-align:center">
       ${logoBlock}
       <p style="color:#9E9E9E;font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0">Finance, Simplified.</p>
     </td></tr>
-    <tr><td style="padding:28px">${body}</td></tr>
+    <tr><td bgcolor="#ffffff" style="background:#ffffff;padding:28px">${body}</td></tr>
     <tr><td bgcolor="${headerColor}" style="background:${headerColor};padding:14px 16px;text-align:center">
       <p style="font-size:10px;color:#B5B5B5;margin:0 0 6px;line-height:1.6">Rates quoted are indicative only and subject to change. Figures are based on information provided and are not a formal credit assessment. Subject to lender approval.</p>
       <p style="font-size:10px;color:#9E9E9E;margin:0">&copy; 2026 ${brandName} | ${footerAddress} | Australian Credit Licence: ${acl}</p>
