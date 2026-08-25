@@ -798,7 +798,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     if (brokerNotes && brokerNotes.trim()) {
       clean += `<p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">${brokerNotes}</p>`
     }
-    return emailHtml.replace(/<div style="background:#FFF8E7[\s\S]*?<\/div>/, clean)
+    // The broker-only block is marked in the generated HTML, so removing it does
+    // not depend on how it is styled. If the marker is ever missing, fail loudly
+    // rather than mail a client a box headed "Broker personalisation".
+    if (!/<!--BROKER-BOX-->[\s\S]*?<!--\/BROKER-BOX-->/.test(emailHtml)) {
+      throw new Error('The broker personalisation block could not be found in the generated email.')
+    }
+    return emailHtml.replace(/<!--BROKER-BOX-->[\s\S]*?<!--\/BROKER-BOX-->/, clean)
   }
 
   async function sendToClient() {

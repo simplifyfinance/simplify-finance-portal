@@ -18,18 +18,18 @@ function shell(body: string, b: { name: string; title: string; crn: string; cale
   const footerAddress = brand?.footerAddress || DEFAULT_BRAND.footerAddress
   const acl = brand?.acl || DEFAULT_BRAND.acl
   const logoBlock = logoUrl
-    ? `<img src="${logoUrl}" alt="${brandName}" style="height:80px;width:auto;display:block;margin:0 auto 8px" />`
-    : `<p style="color:#fff;font-size:22px;font-weight:700;margin:0 0 8px">${brandName}</p>`
-  return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr><td>
-  <table width="600" cellpadding="0" cellspacing="0" align="center" style="background:#fff;margin:0 auto">
-    <tr><td style="background:${headerColor};padding:28px 24px;text-align:center">
+    ? `<img src="${logoUrl}" alt="${brandName}" height="80" style="height:80px;display:block;margin:0 auto 8px;border:0" />`
+    : `<p style="color:#ffffff;font-size:22px;font-weight:700;margin:0 0 8px">${brandName}</p>`
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5f5f3" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr><td>
+  <table width="600" cellpadding="0" cellspacing="0" border="0" align="center" bgcolor="#ffffff" style="background:#ffffff;margin:0 auto">
+    <tr><td bgcolor="${headerColor}" style="background:${headerColor};padding:28px 24px;text-align:center">
       ${logoBlock}
-      <p style="color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0">Finance, Simplified.</p>
+      <p style="color:#9E9E9E;font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0">Finance, Simplified.</p>
     </td></tr>
     <tr><td style="padding:28px">${body}</td></tr>
-    <tr><td style="background:${headerColor};padding:14px 16px;text-align:center">
-      <p style="font-size:10px;color:rgba(255,255,255,0.6);margin:0 0 6px;line-height:1.6">Rates quoted are indicative only and subject to change. Figures are based on information provided and are not a formal credit assessment. Subject to lender approval.</p>
-      <p style="font-size:10px;color:rgba(255,255,255,0.4);margin:0">&copy; 2026 ${brandName} | ${footerAddress} | Australian Credit Licence: ${acl}</p>
+    <tr><td bgcolor="${headerColor}" style="background:${headerColor};padding:14px 16px;text-align:center">
+      <p style="font-size:10px;color:#B5B5B5;margin:0 0 6px;line-height:1.6">Rates quoted are indicative only and subject to change. Figures are based on information provided and are not a formal credit assessment. Subject to lender approval.</p>
+      <p style="font-size:10px;color:#9E9E9E;margin:0">&copy; 2026 ${brandName} | ${footerAddress} | Australian Credit Licence: ${acl}</p>
     </td></tr>
   </table></td></tr></table>`
 }
@@ -38,27 +38,31 @@ function brokerBox(personalisation: string, firstName?: string, jointFirstName?:
   const fn = (firstName || '[Client First Name]').trim()
   const jfn = (jointFirstName || '').trim()
   const greetingName = (joint === 'Yes' && jfn) ? `${fn} and ${jfn}` : fn
-  return `<div style="background:#FFF8E7;border-left:4px solid #F59E0B;border-radius:0 6px 6px 0;padding:13px 15px;margin-bottom:18px">
-    <p style="font-size:10px;font-weight:600;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Broker personalisation</p>
-    <p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">Hi ${greetingName},</p>
-    <p style="font-size:14px;color:#333;line-height:1.6">${personalisation || '[Add your personal opening here.]'}</p>
-  </div>`
+  return `<!--BROKER-BOX--><table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:18px"><tr>
+    <td width="4" bgcolor="#F59E0B" style="background:#F59E0B;width:4px;font-size:0;line-height:0">&nbsp;</td>
+    <td bgcolor="#FFF8E7" style="background:#FFF8E7;padding:13px 15px">
+      <p style="font-size:10px;font-weight:600;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 6px">Broker personalisation</p>
+      <p style="font-size:14px;color:#333333;margin:0 0 14px;line-height:1.6">Hi ${greetingName},</p>
+      <p style="font-size:14px;color:#333333;margin:0;line-height:1.6">${personalisation || '[Add your personal opening here.]'}</p>
+    </td></tr></table><!--/BROKER-BOX-->`
 }
 
 function notesBox(items: string[]) {
   const all = ['Any rates or fees quoted are subject to change', ...items]
-  return `<div style="background:#EEF6FD;border-left:4px solid #2DBEFF;border-radius:0 6px 6px 0;padding:13px 15px;margin-bottom:18px">
-    <p style="font-size:10px;font-weight:600;color:#0369a1;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Important things to note</p>
-    ${all.map(i => `<p style="font-size:12px;color:#334155;margin:4px 0;line-height:1.6">&bull; ${i}</p>`).join('')}
-  </div>`
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:18px"><tr>
+    <td width="4" bgcolor="#2DBEFF" style="background:#2DBEFF;width:4px;font-size:0;line-height:0">&nbsp;</td>
+    <td bgcolor="#EEF6FD" style="background:#EEF6FD;padding:13px 15px">
+      <p style="font-size:10px;font-weight:600;color:#0369a1;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 8px">Important things to note</p>
+      ${all.map(i => `<p style="font-size:12px;color:#334155;margin:4px 0;line-height:1.6">&bull; ${i}</p>`).join('')}
+    </td></tr></table>`
 }
 
 function heading() { return `<p style="font-size:11px;font-weight:600;color:#343333;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px">Borrowing Capacity Review</p>` }
 
 function card(title: string, rows: string) {
-  return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
-    <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">${title}</p>
-    <table width="100%" cellpadding="0" cellspacing="0">${rows}</table>
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2E8DB" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px">
+    <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 10px">${title}</p>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>
   </td></tr></table>`
 }
 
@@ -67,17 +71,25 @@ function row(l: string, v: string) {
 }
 
 function check(items: string[]) {
-  return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
-    <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Based on your numbers</p>
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2E8DB" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px">
+    <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 10px">Based on your numbers</p>
     ${items.map(i => `<p style="font-size:13px;color:#555;margin:4px 0">&#10003; ${i}</p>`).join('')}
   </td></tr></table>`
 }
 
 function ctas(calendly: string, proceedUrl?: string) {
-  return `<table cellpadding="0" cellspacing="0" style="margin-bottom:20px"><tr>
-    <td><a href="${proceedUrl || calendly}" style="background:#2DBEFF;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">I am ready to proceed</a></td>
+  // The colour has to live on the cell, not the link. Word paints a cell
+  // background and ignores one on an inline anchor, which is why these arrived
+  // as bare blue text in Outlook on Windows.
+  const button = (href: string, bg: string, label: string) =>
+    `<table cellpadding="0" cellspacing="0" border="0" style="display:inline-table"><tr>
+      <td bgcolor="${bg}" align="center" style="background:${bg};border-radius:6px;padding:10px 18px">
+        <a href="${href}" style="color:#ffffff;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">${label}</a>
+      </td></tr></table>`
+  return `<table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px"><tr>
+    <td>${button(proceedUrl || calendly, '#2DBEFF', 'I am ready to proceed')}</td>
     <td width="10">&nbsp;</td>
-    <td><a href="${calendly}" style="background:#343333;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">Book a call</a></td>
+    <td>${button(calendly, '#343333', 'Book a call')}</td>
   </tr></table>`
 }
 
@@ -382,7 +394,7 @@ export async function POST(req: NextRequest) {
         row('Expected sale price', '$' + (d.salePrice || '')) +
         row('Agent fees / selling costs', '$' + (d.agentFees || '')) +
         row('Existing loan balance (to be discharged)', '$' + (d.existingLoanBal || '')) +
-        `<tr style="border-top:1px solid rgba(122,92,58,0.3)"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Net proceeds (est.)</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">$${d.netProceeds || ''}</td></tr>`
+        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Net proceeds (est.)</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">$${d.netProceeds || ''}</td></tr>`
       ) +
       card('New Purchase',
         row('Purchase price', '$' + d.purchasePrice || '') +
@@ -469,7 +481,7 @@ export async function POST(req: NextRequest) {
       card('New Purchase Details',
         row('Purchase price', '$' + (d.purchasePrice || '')) +
         row('Stamp duty', '$' + (d.stampDuty || '')) +
-        `<tr style="border-top:1px solid rgba(122,92,58,0.3)"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Total cost</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">$${(() => { const pp = parseFloat((d.purchasePrice||'0').replace(/,/g,'')) || 0; const sd = parseFloat((d.stampDuty||'0').replace(/,/g,'')) || 0; return (pp+sd).toLocaleString('en-AU') })()}</td></tr>` +
+        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Total cost</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">$${(() => { const pp = parseFloat((d.purchasePrice||'0').replace(/,/g,'')) || 0; const sd = parseFloat((d.stampDuty||'0').replace(/,/g,'')) || 0; return (pp+sd).toLocaleString('en-AU') })()}</td></tr>` +
         row(`Contribution${d.depositSource ? ` (from ${d.depositSource})` : ''}`, '$' + (d.deposit || '')) +
         row('Bridging loan (peak debt)', '$' + (d.splits?.[0]?.amount || '')) +
         row('End debt', '$' + (d.splits?.[1]?.amount || ''))
@@ -544,7 +556,7 @@ export async function POST(req: NextRequest) {
         row('Land value', '$' + (d.landValue || '')) +
         row('Construction cost', '$' + (d.constructionCost || '')) +
         row('Stamp duty', '$' + (d.stampDuty || '')) +
-        `<tr style="border-top:1px solid rgba(122,92,58,0.3)"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Total cost</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">$${totalCost.toLocaleString('en-AU')}</td></tr>` +
+        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Total cost</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">$${totalCost.toLocaleString('en-AU')}</td></tr>` +
         row('"As if complete" valuation', '$' + (d.asIfCompleteValue || '')) +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('Deposit required', '$' + depositRequired.toLocaleString('en-AU')) +
