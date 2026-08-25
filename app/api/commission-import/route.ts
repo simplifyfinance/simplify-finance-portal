@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
         rows_imported: parsed.lines.length, uploaded_by: user.id,
         gross_ex_gst: parsed.totals.grossExGst,
         third_party_ex_gst: parsed.totals.thirdPartyExGst,
+        referrals_ex_gst: parsed.totals.referralsExGst,
         clawback_ex_gst: parsed.totals.clawbackExGst,
         banked_ex_gst: parsed.totals.bankedExGst,
         reconciled: true,
@@ -100,7 +101,8 @@ export async function POST(req: NextRequest) {
       const payload = parsed.lines.map(l => {
         const lenderId = lenderByName.get(norm(l.lenderRaw)) || null
         if (!lenderId && l.lenderRaw) unknownLenders.add(l.lenderRaw)
-        const third = l.kind === 'clawback' ? 0 : (parsed.thirdParty[l.loanRef] || 0)
+        // what left the business on this loan, whichever way the file signs it
+        const third = l.kind === 'clawback' ? 0 : Math.abs(parsed.thirdParty[l.loanRef] || 0)
         const r = (l.lenderRaw || '').toLowerCase()
         const segment = /allianz|insurance/.test(r) ? 'insurance'
           : /commercial|business/.test(r) ? 'commercial' : 'residential'
@@ -145,7 +147,8 @@ export async function POST(req: NextRequest) {
         name, status: 'imported', broker: brokerKey,
         period: parsed.periodMonth.slice(0, 7), kind: parsed.kind, rows: written,
         gross: parsed.totals.grossExGst, thirdParty: parsed.totals.thirdPartyExGst,
-        clawback: parsed.totals.clawbackExGst, banked: parsed.totals.bankedExGst,
+        clawback: parsed.totals.clawbackExGst, referrals: parsed.totals.referralsExGst,
+        banked: parsed.totals.bankedExGst,
         unknownLenders: Array.from(unknownLenders),
       })
     } catch (e: any) {

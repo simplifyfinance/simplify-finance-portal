@@ -3,8 +3,12 @@
 // is how you end up with "SFG Trail May 2026xlsx.xlsx" landing in the wrong month.
 //
 // A statement is only accepted when it reconciles against its own tax invoice:
-//   gross  -  clawbacks  -  third-party splits  =  total electronically banked
-// That has been checked against every file supplied and ties to the cent.
+//   gross + clawbacks + referrals - disbursements = total electronically banked
+//
+// Signs are taken as the file states them, because SFG changed the layout: 2025
+// statements carry a separate Referrals tab and show disbursements negative, while
+// 2026 statements dropped that tab and show them positive. The one formula above
+// reconciles both to the cent.
 
 import ExcelJS from 'exceljs'
 
@@ -35,6 +39,7 @@ export type SfgStatement = {
   totals: {
     grossExGst: number
     clawbackExGst: number
+    referralsExGst: number
     thirdPartyExGst: number
     bankedExGst: number        // what the invoice says was paid
     computedBanked: number     // what the lines add up to
@@ -152,6 +157,22 @@ export async function parseSfg(buffer: ArrayBuffer | Buffer): Promise<SfgStateme
     }
   }
 
+  // The 2025 layout carries a Referrals tab of third-party amounts, each with a
+  // Type. A CLAWBACK row there is a referral partner's share being reversed - it is
+  // clawback, not a referral fee, and counting it as the latter would put the money
+  // in the wrong bucket. No loan reference on the tab, so it stays statement-level.
+  let referralsExGst = 0
+  let referralClawbackExGst = 0
+  const refWs = wb.getWorksheet('Referrals')
+  if (refWs) {
+    for (const r of rows(refWs)) {
+      const amt = num(r['Commission'])
+      if (!amt) continue
+      if (/clawback/i.test(str(r['Type']))) referralClawbackExGst += amt
+      else referralsExGst += amt
+    }
+  }
+
   const thirdParty: Record<string, number> = {}
   const splitName: Record<string, string> = {}
   const disbWs = wb.getWorksheet('Disbursements (Itemised)')
@@ -160,6 +181,7 @@ export async function parseSfg(buffer: ArrayBuffer | Buffer): Promise<SfgStateme
       const ref = str(r['Loan Id'])
       const amt = num(r['Commission Amount'])       // ex GST, and the figure that reconciles
       if (ref) {
+        // signed for reconciliation, but what leaves the business is the size of it
         thirdParty[ref] = (thirdParty[ref] || 0) + amt
         const sn = str(r['Split Name'])
         if (sn && !splitName[ref]) splitName[ref] = sn
@@ -171,7 +193,7 @@ export async function parseSfg(buffer: ArrayBuffer | Buffer): Promise<SfgStateme
   const clawbackExGst = lines.filter(l => l.kind === 'clawback').reduce((t, l) => t + l.grossExGst, 0)
   const thirdPartyExGst = Object.values(thirdParty).reduce((t, v) => t + v, 0)
   const bankedExGst = summary['Total Electronically Banked'] ?? 0
-  const computedBanked = grossExGst + clawbackExGst - thirdPartyExGst
+  const computedBanked = grossExGst + clawbackExGst + referralClawbackExGst + referralsExGst - thirdPartyExGst
   const outBy = Math.round((computedBanked - bankedExGst) * 100) / 100
 
   return {
@@ -179,7 +201,8 @@ export async function parseSfg(buffer: ArrayBuffer | Buffer): Promise<SfgStateme
     lines, thirdParty, splitName,
     totals: {
       grossExGst: Math.round(grossExGst * 100) / 100,
-      clawbackExGst: Math.round(clawbackExGst * 100) / 100,
+      clawbackExGst: Math.round((clawbackExGst + referralClawbackExGst) * 100) / 100,
+      referralsExGst: Math.round(referralsExGst * 100) / 100,
       thirdPartyExGst: Math.round(thirdPartyExGst * 100) / 100,
       bankedExGst, computedBanked: Math.round(computedBanked * 100) / 100,
       reconciled: Math.abs(outBy) < 0.05,

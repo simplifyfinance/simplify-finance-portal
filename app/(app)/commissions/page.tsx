@@ -145,7 +145,8 @@ export default function CommissionsPage() {
                 <div className="text-[12px] text-[#6E665C] mt-1">
                   {r.rows} lines · gross {money(r.gross)}
                   {r.clawback ? ` · clawbacks ${money(r.clawback)}` : ''}
-                  {r.thirdParty ? ` · to third parties ${money(-r.thirdParty)}` : ''}
+                  {r.referrals ? ` · referrals ${money(r.referrals)}` : ''}
+                  {r.thirdParty ? ` · to third parties ${money(-Math.abs(r.thirdParty))}` : ''}
                   {' · banked '}<b>{money(r.banked)}</b>
                   {r.unknownLenders?.length > 0 && (
                     <span className="text-[#B4761F]"> · lenders not in the register: {r.unknownLenders.join(', ')}</span>
