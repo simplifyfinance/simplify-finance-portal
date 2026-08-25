@@ -89,6 +89,8 @@ export async function POST(req: NextRequest) {
         period_month: parsed.periodMonth, filename: name,
         rows_imported: parsed.lines.length, uploaded_by: user.id,
         gross_ex_gst: parsed.totals.grossExGst,
+        net_commission_ex_gst: parsed.totals.netCommissionExGst,
+        recovered_ex_gst: parsed.totals.recoveredExGst,
         third_party_ex_gst: parsed.totals.thirdPartyExGst,
         referrals_ex_gst: parsed.totals.referralsExGst,
         clawback_ex_gst: parsed.totals.clawbackExGst,

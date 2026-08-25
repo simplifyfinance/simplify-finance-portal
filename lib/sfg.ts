@@ -3,12 +3,20 @@
 // is how you end up with "SFG Trail May 2026xlsx.xlsx" landing in the wrong month.
 //
 // A statement is only accepted when it reconciles against its own tax invoice:
-//   gross + clawbacks + referrals - disbursements = total electronically banked
+// The invoice's own lines are the authority, and both are checked, not just the
+// total:
 //
-// Signs are taken as the file states them, because SFG changed the layout: 2025
-// statements carry a separate Referrals tab and show disbursements negative, while
-// 2026 statements dropped that tab and show them positive. The one formula above
-// reconciles both to the cent.
+//   commission line = detail rows        - amounts paid out to third parties
+//   clawback line   = clawback rows      + referral clawbacks
+//                                        - amounts recovered back from third parties
+//
+// A clawback on a referred loan is reversed on the partner too, so it costs the
+// business the gross clawback LESS what comes back. Treating the gross as the cost
+// overstates it - on the August 2025 statement, by $3,253.25.
+//
+// Signs are taken as the file states them. SFG changed the layout: 2025 statements
+// carry a separate Referrals tab and show disbursements negative, 2026 statements
+// dropped that tab and show them positive. The rules above reconcile both.
 
 import ExcelJS from 'exceljs'
 
@@ -37,10 +45,12 @@ export type SfgStatement = {
   thirdParty: Record<string, number>
   splitName: Record<string, string>
   totals: {
-    grossExGst: number
-    clawbackExGst: number
+    grossExGst: number         // the detail rows, before anything is paid away
+    netCommissionExGst: number // the invoice's own commission line
+    clawbackExGst: number      // the invoice's own clawback line, net of recoveries
     referralsExGst: number
-    thirdPartyExGst: number
+    thirdPartyExGst: number    // paid away to third parties
+    recoveredExGst: number     // clawed back from third parties
     bankedExGst: number        // what the invoice says was paid
     computedBanked: number     // what the lines add up to
     reconciled: boolean
@@ -190,10 +200,20 @@ export async function parseSfg(buffer: ArrayBuffer | Buffer): Promise<SfgStateme
   }
 
   const grossExGst = lines.filter(l => l.kind !== 'clawback').reduce((t, l) => t + l.grossExGst, 0)
-  const clawbackExGst = lines.filter(l => l.kind === 'clawback').reduce((t, l) => t + l.grossExGst, 0)
-  const thirdPartyExGst = Object.values(thirdParty).reduce((t, v) => t + v, 0)
+  const clawDetailExGst = lines.filter(l => l.kind === 'clawback').reduce((t, l) => t + l.grossExGst, 0)
+
+  // paid away to third parties, versus recovered back from them on a clawback
+  const disb = Object.values(thirdParty)
+  const paidAway = disb.filter(v => v > 0).reduce((t, v) => t + v, 0)
+  const recovered = disb.filter(v => v < 0).reduce((t, v) => t + v, 0)   // negative
+  const thirdPartyExGst = paidAway
+  const recoveredExGst = recovered
+
+  const netCommissionExGst = grossExGst - paidAway
+  const clawbackExGst = clawDetailExGst + referralClawbackExGst - recovered
+
   const bankedExGst = summary['Total Electronically Banked'] ?? 0
-  const computedBanked = grossExGst + clawbackExGst + referralClawbackExGst + referralsExGst - thirdPartyExGst
+  const computedBanked = netCommissionExGst + clawbackExGst + referralsExGst
   const outBy = Math.round((computedBanked - bankedExGst) * 100) / 100
 
   return {
@@ -201,9 +221,11 @@ export async function parseSfg(buffer: ArrayBuffer | Buffer): Promise<SfgStateme
     lines, thirdParty, splitName,
     totals: {
       grossExGst: Math.round(grossExGst * 100) / 100,
-      clawbackExGst: Math.round((clawbackExGst + referralClawbackExGst) * 100) / 100,
+      netCommissionExGst: Math.round(netCommissionExGst * 100) / 100,
+      clawbackExGst: Math.round(clawbackExGst * 100) / 100,
       referralsExGst: Math.round(referralsExGst * 100) / 100,
       thirdPartyExGst: Math.round(thirdPartyExGst * 100) / 100,
+      recoveredExGst: Math.round(recoveredExGst * 100) / 100,
       bankedExGst, computedBanked: Math.round(computedBanked * 100) / 100,
       reconciled: Math.abs(outBy) < 0.05,
       outBy,
