@@ -30,7 +30,10 @@ export async function middleware(request: NextRequest) {
   // token in the URL that the page itself exchanges for a session client-side.
   // If this route required auth, the redirect to /login would happen first,
   // discarding the token before it's ever processed.
-  if (pathname.startsWith('/proceed') || pathname.startsWith('/login') || pathname.startsWith('/reset-password')) {
+  // /ready is the client landing page for template emails. It must be public:
+  // a past client has no login, and without this they are redirected to the
+  // portal sign-in screen instead of seeing their next steps.
+  if (pathname.startsWith('/proceed') || pathname.startsWith('/ready') || pathname.startsWith('/login') || pathname.startsWith('/reset-password')) {
     return supabaseResponse
   }
 

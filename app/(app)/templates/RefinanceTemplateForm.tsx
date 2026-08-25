@@ -47,6 +47,7 @@ export default function RefinanceTemplateForm() {
   const [remainingYears, setRemainingYears] = useState('')
   const [cashback, setCashback] = useState('0')
 
+  const [readyUrl, setReadyUrl] = useState('')
   const [copied, setCopied] = useState<'html' | 'sms' | null>(null)
   const [copyError, setCopyError] = useState('')
 
@@ -122,15 +123,51 @@ export default function RefinanceTemplateForm() {
     }
   }, [input])
 
+  // The "get started" link is signed on the server — the secret must not reach
+  // the browser — and carries the client, the broker and the quoted figures, so
+  // nothing has to be stored anywhere.
+  useEffect(() => {
+    if (!input || !result || !broker || !clientEmail.trim() || !clientFirstName.trim()) {
+      setReadyUrl('')
+      return
+    }
+    const body = {
+      name: clientFirstName.trim(),
+      email: clientEmail.trim(),
+      brokerKey: broker.key,
+      brokerName: broker.name,
+      calendly: calendlyUrl,
+      sentOn: new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }),
+      repaymentType: input.repaymentType,
+      balance: input.balance,
+      currentRate: input.currentRate,
+      newRate: input.newRate,
+      remainingYears: input.remainingYears,
+      cashback: input.cashback,
+      monthlySaving: result.monthlySaving,
+    }
+    let live = true
+    const t = setTimeout(() => {
+      fetch('/api/ready-link', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(j => { if (live && j?.url) setReadyUrl(j.url) })
+        .catch(() => { /* the Calendly link stands in, so the button is never dead */ })
+    }, 400)
+    return () => { live = false; clearTimeout(t) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input, result, broker, calendlyUrl, clientFirstName, clientEmail])
+
   const email = useMemo(() => {
     if (!input || !result) return null
     return buildRefinanceEmail(input, {
       clientFirstName,
       brokerName: broker?.name || 'Simplify Finance',
       calendlyUrl: calendlyUrl || '#',
-      proceedUrl: proceedUrl.trim() || calendlyUrl || '#',
+      proceedUrl: proceedUrl.trim() || readyUrl || calendlyUrl || '#',
     })
-  }, [input, result, clientFirstName, broker, calendlyUrl, proceedUrl])
+  }, [input, result, clientFirstName, broker, calendlyUrl, proceedUrl, readyUrl])
 
   const missing: string[] = []
   if (!clientFirstName.trim()) missing.push('client name')
@@ -219,7 +256,14 @@ export default function RefinanceTemplateForm() {
               <label className={lab} style={{ color: TONE.label }}>“Get started” link</label>
               <input className={inp} style={inpS} value={proceedUrl}
                      onChange={e => setProceedUrl(e.target.value)}
-                     placeholder="Leave blank to use the Calendly link" />
+                     placeholder={readyUrl ? 'Using the next-steps page' : 'Leave blank to use the Calendly link'} />
+              <p className={hint} style={{ color: readyUrl ? TONE.pos : TONE.faint }}>
+                {proceedUrl.trim()
+                  ? 'Your link is being used instead of the next-steps page.'
+                  : readyUrl
+                    ? 'Points at the next-steps page. Pressing it tells you they are ready.'
+                    : 'Fill in the client and the figures and the next-steps page is used automatically.'}
+              </p>
             </div>
           </div>
         </div>
