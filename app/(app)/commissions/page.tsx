@@ -1,6 +1,9 @@
 'use client'
 import DropZone from '@/components/DropZone'
 import CommissionRevenue from '@/components/CommissionRevenue'
+import TrailBook from '@/components/TrailBook'
+import MissingStatements from '@/components/MissingStatements'
+import MissedTrail from '@/components/MissedTrail'
 import { money } from '@/lib/tone'
 import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -115,6 +118,8 @@ export default function CommissionsPage() {
         which period it belongs to, so the order does not matter and the same file cannot be loaded twice.
       </p>
 
+      {statements.length > 0 && <MissingStatements statements={statements} brokers={brokers} />}
+
       <div className={card + ' p-5 mb-5'}>
         <DropZone accept=".xlsx" busy={busy}
           title="Drop SFG statements here, or click to choose"
@@ -162,7 +167,20 @@ export default function CommissionsPage() {
 
       {statements.length > 0 && (
         <>
+          <div className="text-[11px] font-bold uppercase tracking-[.08em] text-[#7A7266] mb-2">
+            Revenue
+          </div>
           <CommissionRevenue statements={statements} brokers={brokers} />
+
+          <div className="text-[11px] font-bold uppercase tracking-[.08em] text-[#7A7266] mb-2">
+            The trail book
+          </div>
+          <TrailBook brokers={brokers} />
+
+          <div className="text-[11px] font-bold uppercase tracking-[.08em] text-[#7A7266] mb-2">
+            Trail that went missing
+          </div>
+          <MissedTrail brokers={brokers} />
 
           <div className="text-[11px] font-bold uppercase tracking-[.08em] text-[#7A7266] mb-2">
             What has been loaded
