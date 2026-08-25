@@ -1,7 +1,7 @@
 'use client'
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3, Percent, TrendingUp, CalendarCheck } from "lucide-react"
+import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3, Percent, TrendingUp, CalendarCheck, Mail } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createSupabaseBrowser } from "@/lib/supabase-browser"
 import { can, roleLabel as formatRoleLabel } from '@/lib/permissions'
@@ -13,6 +13,7 @@ const nav = [
   { label: "Settlements", href: "/settlements", icon: CalendarCheck, settlementsOnly: true },
   { label: "Clients", href: "/clients", icon: Users },
   { label: "Lender library", href: "/lenders", icon: Building2 },
+  { label: "Templates", href: "/templates", icon: Mail },
   { label: "Reports", href: "/reports", icon: BarChart3 },
   { label: "Cheat sheet", href: "/cheat-sheet", icon: Percent, newTab: true },
 ]
