@@ -1,4 +1,5 @@
 'use client'
+import DropZone from '@/components/DropZone'
 import { useState, useEffect, useRef } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import AddressAutocomplete from './AddressAutocomplete'
@@ -517,6 +518,11 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     })
   }, [])
 
+  // Several at a time, one after another so a failure names the file that failed.
+  async function uploadDocuments(files: File[]) {
+    for (const f of files) await uploadDocument(f)
+  }
+
   async function uploadDocument(file: File) {
     setUploadingDoc(true)
     const filePath = `${deal.id}/${Date.now()}_${file.name}`
@@ -832,22 +838,27 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       )}
 
       <div className="mt-4 pt-4 border-t border-gray-100">
-          <label className={`flex flex-col items-center justify-center gap-1 border border-dashed border-gray-300 rounded-xl p-4 mb-4 cursor-pointer hover:border-[#2DBEFF] hover:bg-blue-50/30 transition ${extracting ? 'opacity-50 pointer-events-none' : ''}`}>
-            <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
-            </svg>
-            <span className="text-xs font-medium text-gray-600">{extracting ? 'Extracting...' : 'Upload fact find PDF'}</span>
-            <span className="text-[10px] text-gray-400">AI will extract client details</span>
-            <input type="file" accept="application/pdf" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) extractFactFindPdf(f) }} />
-          </label>
+          <div className="mb-4">
+            <DropZone compact multiple={false} accept="application/pdf" busy={extracting}
+              title={extracting ? 'Extracting…' : 'Drop the fact find PDF here'}
+              hint="AI will extract the client details"
+              onFiles={files => { if (files[0]) extractFactFindPdf(files[0]) }} />
+          </div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Attached documents</span>
             <label className={`text-xs text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-2.5 py-1 hover:bg-blue-50 transition cursor-pointer ${uploadingDoc ? 'opacity-40 pointer-events-none' : ''}`}>
               {uploadingDoc ? 'Uploading...' : '+ Add'}
-              <input type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) uploadDocument(f) }} />
+              <input type="file" multiple className="hidden"
+                onChange={e => { const fs = Array.from(e.target.files || []); if (fs.length) uploadDocuments(fs) }} />
             </label>
           </div>
           <p className="text-xs text-gray-400 mb-2">Fact finds, screenshots, rate sheets.</p>
+          <div className="mb-2">
+            <DropZone compact busy={uploadingDoc}
+              title="Drop documents here"
+              hint="as many at once as you like"
+              onFiles={files => uploadDocuments(files)} />
+          </div>
           {documents.length === 0 ? (
             <p className="text-xs text-gray-300">No documents yet.</p>
           ) : (

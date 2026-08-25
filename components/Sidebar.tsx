@@ -11,17 +11,19 @@ const nav = [
   { label: "Deals", href: "/deals", icon: Briefcase },
   { label: "Pipeline", href: "/pipeline", icon: TrendingUp },
   { label: "Settlements", href: "/settlements", icon: CalendarCheck, settlementsOnly: true },
-  { label: "Commissions", href: "/commissions", icon: Percent, financeOnly: true },
   { label: "Clients", href: "/clients", icon: Users },
   { label: "Lender library", href: "/lenders", icon: Building2 },
   { label: "Reports", href: "/reports", icon: BarChart3 },
   { label: "Cheat sheet", href: "/cheat-sheet", icon: Percent, newTab: true },
 ]
 
+// The heading is cosmetic. Each item states who may see it, so finance staff keep
+// Commissions without being made an admin.
 const adminNav = [
-  { label: "Team workload", href: "/credit-team-workload", icon: BarChart3 },
-  { label: "Team", href: "/team", icon: UserPlus },
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Commissions", href: "/commissions", icon: Percent, need: 'finance' as const },
+  { label: "Team workload", href: "/credit-team-workload", icon: BarChart3, need: 'admin' as const },
+  { label: "Team", href: "/team", icon: UserPlus, need: 'admin' as const },
+  { label: "Settings", href: "/settings", icon: Settings, need: 'admin' as const },
 ]
 
 type Profile = { full_name: string; role: string; email: string; is_admin?: boolean; sees_finance?: boolean
@@ -70,6 +72,11 @@ export default function Sidebar() {
     router.push('/login')
     router.refresh()
   }
+
+  const visibleAdmin = adminNav.filter(item =>
+    item.need === 'finance'
+      ? !!(profile?.is_admin || profile?.sees_finance)
+      : can(profile?.role, 'manageTeam'))
 
   const initials = profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || '?'
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
@@ -129,7 +136,6 @@ export default function Sidebar() {
         <div className="text-white/30 text-xs uppercase tracking-widest px-2 mb-2">Main</div>
         {nav
           .filter(item => !(item as any).settlementsOnly || profile?.is_admin || profile?.sees_settlements)
-          .filter(item => !(item as any).financeOnly || profile?.is_admin || profile?.sees_finance)
           .map(item => {
           const Icon = item.icon
           const linkClass = `flex items-center gap-2.5 px-3 py-2 rounded-md text-sm mb-0.5 transition-colors ${
@@ -167,10 +173,10 @@ export default function Sidebar() {
           )
         })}
 
-        {can(profile?.role, 'manageTeam') && (
+        {visibleAdmin.length > 0 && (
           <>
             <div className="text-white/30 text-xs uppercase tracking-widest px-2 mb-2 mt-4">Admin</div>
-            {adminNav.map(item => {
+            {visibleAdmin.map(item => {
               const Icon = item.icon
               const hasSubs = !!SUBNAV[item.href]
               const open = hasSubs && path.startsWith(item.href) && !collapsed.has(item.href)

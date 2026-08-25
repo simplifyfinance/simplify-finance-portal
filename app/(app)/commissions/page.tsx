@@ -1,4 +1,5 @@
 'use client'
+import DropZone from '@/components/DropZone'
 import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { todayYmd } from '@/lib/periods'
@@ -47,11 +48,11 @@ export default function CommissionsPage() {
   }
   useEffect(() => { load() }, [])
 
-  async function upload(files: FileList | null) {
+  async function upload(files: File[]) {
     if (!files || files.length === 0) return
     setBusy(true); setErr(''); setResults([])
     const fd = new FormData()
-    Array.from(files).forEach(f => fd.append('files', f))
+    files.forEach(f => fd.append('files', f))
     try {
       const res = await fetch('/api/commission-import', { method: 'POST', body: fd })
       const json = await res.json()
@@ -114,16 +115,10 @@ export default function CommissionsPage() {
       </p>
 
       <div className={card + ' p-5 mb-5'}>
-        <label className="block border-2 border-dashed border-[#E8E1D6] rounded-xl px-5 py-8 text-center cursor-pointer hover:border-[#BFE6F9] hover:bg-[#FCFAF6] transition">
-          <input type="file" multiple accept=".xlsx" className="hidden"
-            onChange={e => upload(e.target.files)} disabled={busy} />
-          <div className="text-[13.5px] font-semibold text-[#2E2A26]">
-            {busy ? 'Reading the statements…' : 'Drop SFG statements here, or click to choose'}
-          </div>
-          <div className="text-[12px] text-[#A29889] mt-1">
-            .xlsx only · drop as many as you like at once
-          </div>
-        </label>
+        <DropZone accept=".xlsx" busy={busy}
+          title="Drop SFG statements here, or click to choose"
+          hint=".xlsx only · as many as you like, any month, either broker"
+          onFiles={files => upload(files)} />
         {err && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2.5 text-[12.5px] mt-3">{err}</div>}
       </div>
 
