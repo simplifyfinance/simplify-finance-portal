@@ -18,8 +18,6 @@ import { buildRebateEmail } from '@/lib/new-property-rebate-email'
 const REBATE_FIELDS: ExtraField[] = [
   { key: 'rebate', label: 'Rebate passed back', placeholder: '15,000', required: true,
     hint: 'The only figure in the email. Leave the dollar sign out.' },
-  { key: 'documentsUrl', label: 'Project documents link', placeholder: 'https://…',
-    hint: 'Where the brochure and siting plan live. Leave blank and the button is left out.' },
 ]
 
 const TEMPLATES = [
@@ -53,7 +51,7 @@ const TEMPLATES = [
     blurb: 'New stock keeps the negative gearing treatment established property has lost, and the ' +
            'developer rebate is passed straight back to the client.',
     needs: 'the client and a rebate amount',
-    needsTail: '— plus a link to the project documents',
+    needsTail: '— plus the project PDFs, attached to the email',
   },
 ] as const
 
@@ -98,7 +96,8 @@ export default function TemplatesClient() {
         {chosen === 'negative-gearing' && <SimpleTemplateForm build={buildNegativeGearingEmail} />}
         {chosen === 'price-opportunity' && <SimpleTemplateForm build={buildPriceOpportunityEmail} />}
         {chosen === 'new-property-rebate' && (
-          <SimpleTemplateForm build={buildRebateEmail} extras={REBATE_FIELDS} extrasTitle="This project" />
+          <SimpleTemplateForm build={buildRebateEmail} extras={REBATE_FIELDS} extrasTitle="This project"
+                              allowAttachments emlPrefix="rebate" />
         )}
       </div>
     )

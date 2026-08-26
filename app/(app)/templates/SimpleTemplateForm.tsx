@@ -5,6 +5,7 @@ import { mailtoUrl } from '@/lib/email-shell'
 import { useSender } from './useSender'
 import { SenderPanel, ClientPanel, inp, inpS, panel, panelS } from './TemplateFields'
 import PasteReminder from './PasteReminder'
+import { buildEml, downloadEml, totalAttachmentBytes, ATTACHMENT_LIMIT_MB } from '@/lib/eml'
 
 // One form for every template that needs nothing but the client. Nothing is
 // calculated, so the email is ready as soon as the name and address are in.
@@ -34,11 +35,18 @@ export type ExtraField = {
 }
 
 export default function SimpleTemplateForm({
-  build, extras, extrasTitle,
+  build, extras, extrasTitle, allowAttachments, attachHint, emlPrefix,
 }: {
   build: EmailBuilder
   extras?: ExtraField[]
   extrasTitle?: string
+  // A template whose email refers to something attached — a brochure, a plan —
+  // gets a file picker and a second way out: the portal builds the whole
+  // message, Outlook opens it with the PDFs already in place. Nothing is
+  // uploaded and nothing is stored.
+  allowAttachments?: boolean
+  attachHint?: string
+  emlPrefix?: string
 }) {
   const sender = useSender('sf_template_sender_v1')
 
@@ -54,8 +62,10 @@ export default function SimpleTemplateForm({
   // The link takes a moment to come back. Until it does, the email on the
   // clipboard would be the version without it — so the button waits.
   const [linkPending, setLinkPending] = useState(false)
+  const [files, setFiles] = useState<File[]>([])
   const [copied, setCopied] = useState(false)
   const [showPaste, setShowPaste] = useState(false)
+  const [downloaded, setDownloaded] = useState(false)
   const [err, setErr] = useState('')
 
   const second = joint ? secondName.trim() : ''
@@ -120,8 +130,9 @@ export default function SimpleTemplateForm({
       brokerName: sender.broker.name,
       calendlyUrl: sender.calendlyUrl,
       opportunityUrl,
+      attachmentCount: String(files.length),
     })
-  }, [greeting, sender.broker, sender.calendlyUrl, opportunityUrl, extra, build])
+  }, [greeting, sender.broker, sender.calendlyUrl, opportunityUrl, extra, build, files.length])
 
   const missing: string[] = []
   for (const f of extras || []) {
@@ -153,8 +164,39 @@ export default function SimpleTemplateForm({
     }
   }
 
+  // Builds the whole message and saves it. Nothing is sent — the sender still
+  // reads it in Outlook and presses Send themselves.
+  const openInOutlook = async () => {
+    if (!built) return
+    setErr('')
+    try {
+      const blob = await buildEml({
+        to: recipients, bcc, subject: built.subject,
+        html: built.html, text: built.plainText, attachments: files,
+      })
+      const who = (firstName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'client')
+      downloadEml(blob, `${emlPrefix || 'email'}-${who}.eml`)
+      setDownloaded(true)
+      setTimeout(() => setDownloaded(false), 6000)
+    } catch (e: any) {
+      setErr(e?.message || 'Could not build the message file.')
+    }
+  }
+
+  const addFiles = (list: FileList | null) => {
+    if (!list || list.length === 0) return
+    setErr('')
+    const next = [...files, ...Array.from(list)]
+    if (totalAttachmentBytes(next) > ATTACHMENT_LIMIT_MB * 1024 * 1024) {
+      setErr(`That comes to more than ${ATTACHMENT_LIMIT_MB}MB of attachments, which most mail servers will refuse.`)
+      return
+    }
+    setFiles(next)
+  }
+
   // A client email is a fixed 600px, wider than this column, so the preview is
   // scaled rather than clipped.
+  const fileRef = useRef<HTMLInputElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
@@ -205,12 +247,62 @@ export default function SimpleTemplateForm({
           </div>
         )}
 
+        {allowAttachments && (
+          <div className={panel} style={panelS}>
+            <h3 className="text-[11px] font-bold tracking-[.08em] uppercase mb-3" style={{ color: TONE.label }}>
+              Attachments
+            </h3>
+            {files.map((file, i) => (
+              <div key={`${file.name}-${i}`}
+                   className="flex items-center gap-2.5 border rounded-lg px-2.5 py-2 mb-2 text-[12.5px]"
+                   style={{ borderColor: TONE.line, background: '#fff' }}>
+                <span className="rounded-[3px] text-white text-[7.5px] font-bold flex items-center justify-center shrink-0"
+                      style={{ width: 20, height: 24, background: TONE.neg }}>PDF</span>
+                <span className="flex-1 leading-[1.3] break-all" style={{ color: TONE.ink }}>{file.name}</span>
+                <span className="text-[11px] shrink-0" style={{ color: TONE.label }}>
+                  {(file.size / (1024 * 1024)).toFixed(1)} MB
+                </span>
+                <button onClick={() => setFiles(f2 => f2.filter((_, j) => j !== i))}
+                        className="text-[15px] leading-none px-1 shrink-0"
+                        style={{ color: TONE.label }} aria-label={`Remove ${file.name}`}>&times;</button>
+              </div>
+            ))}
+            <input ref={fileRef} type="file" accept="application/pdf" multiple className="hidden"
+                   onChange={e => { addFiles(e.target.files); e.target.value = '' }} />
+            <button onClick={() => fileRef.current?.click()}
+                    className="w-full border border-dashed rounded-[10px] py-3 text-[12.5px]"
+                    style={{ borderColor: TONE.line, background: TONE.zebra, color: TONE.label }}>
+              {files.length ? 'Add another PDF' : 'Choose a PDF'}
+            </button>
+            <p className="text-[11px] mt-2 leading-[1.55]" style={{ color: TONE.faint }}>
+              {attachHint || 'Nothing is uploaded. The files stay in this browser tab only long enough ' +
+                'to build the message, and are gone when you leave the page.'}
+            </p>
+          </div>
+        )}
+
         <div className="flex gap-2.5 items-center flex-wrap">
-          <button onClick={openMail} disabled={!ready}
-            className="rounded-lg px-4 py-[9px] text-[13px] font-semibold disabled:opacity-40"
-            style={{ background: TONE.accent, color: '#fff' }}>
-            {copied ? 'Copied — paste with Cmd V' : linkPending ? 'Preparing…' : 'Open in mail'}
-          </button>
+          {allowAttachments ? (
+            <>
+              <button onClick={openInOutlook} disabled={!ready}
+                className="rounded-lg px-4 py-[9px] text-[13px] font-semibold disabled:opacity-40"
+                style={{ background: TONE.accent, color: '#fff' }}>
+                {downloaded ? 'Saved — double-click it' : linkPending ? 'Preparing…'
+                  : files.length ? 'Open in Outlook with the attachments' : 'Open in Outlook'}
+              </button>
+              <button onClick={openMail} disabled={!ready}
+                className="rounded-lg px-4 py-[9px] text-[13px] font-semibold border disabled:opacity-40"
+                style={{ borderColor: TONE.line, background: '#fff', color: TONE.ink }}>
+                {copied ? 'Copied — paste with Cmd V' : 'Copy the email instead'}
+              </button>
+            </>
+          ) : (
+            <button onClick={openMail} disabled={!ready}
+              className="rounded-lg px-4 py-[9px] text-[13px] font-semibold disabled:opacity-40"
+              style={{ background: TONE.accent, color: '#fff' }}>
+              {copied ? 'Copied — paste with Cmd V' : linkPending ? 'Preparing…' : 'Open in mail'}
+            </button>
+          )}
           {missing.length > 0 && (
             <span className="text-[11.5px]" style={{ color: TONE.faint }}>Still needs {missing.join(', ')}</span>
           )}
@@ -229,11 +321,21 @@ export default function SimpleTemplateForm({
             Link ready — {opportunityUrl}
           </p>
         ) : null}
-        <p className="text-[11.5px] mt-2.5" style={{ color: TONE.label }}>
-          No figures to enter — the email reads the same for every investor, so it is ready as soon as
-          the client is filled in. Open in mail copies it first, then opens a message with the address,
-          BCC and subject already filled.
-        </p>
+        {allowAttachments ? (
+          <p className="text-[11.5px] mt-2.5 leading-[1.6]" style={{ color: TONE.label }}>
+            <b style={{ color: TONE.ink }}>Open in Outlook</b> saves the whole message as a file. Double-click
+            it and Outlook opens a draft with the address, subject, body and attachments already in place —
+            read it, then press Send. It needs the Outlook app: on webmail or a phone, use{' '}
+            <b style={{ color: TONE.ink }}>Copy the email instead</b>, which copies the body for you to paste
+            and leaves you to drag the PDFs in.
+          </p>
+        ) : (
+          <p className="text-[11.5px] mt-2.5" style={{ color: TONE.label }}>
+            No figures to enter — the email reads the same for every investor, so it is ready as soon as
+            the client is filled in. Open in mail copies it first, then opens a message with the address,
+            BCC and subject already filled.
+          </p>
+        )}
       </div>
 
       <div>

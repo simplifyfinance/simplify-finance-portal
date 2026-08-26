@@ -6,15 +6,16 @@ import { emailShell, shellButton, FONT } from './email-shell'
 // negative gearing treatment established property has just lost, and the rebate
 // comes on top of that. Two reasons, not one.
 //
-// No address, no lot, no estate anywhere: the rebate is a field and the project
-// documents are a link, so the same template carries to the next project.
+// No address, no lot, no estate anywhere. The rebate is a field and the project
+// documents are attachments, so the same template carries to the next project —
+// swap the PDFs, retype the rebate, send it again.
 
 export type RebateContext = {
   clientFirstName: string
   brokerName: string
   calendlyUrl: string
-  rebate?: string          // "15,000" — typed per project
-  documentsUrl?: string    // where the brochure and siting plan live
+  rebate?: string            // "15,000" — typed per project
+  attachmentCount?: string   // how many PDFs the sender attached, as a string
 }
 
 const CYAN = '#2DBEFF'
@@ -25,14 +26,20 @@ const INK = '#1a1a1a'
 const BODY = '#3d3d3a'
 const GREY = '#6b6b66'
 const GREEN = '#1E7A4A'
+const CHARCOAL = '#343333'
+
+const ATTACHED_NOTE =
+  'The attached material is produced by the developer and is provided as an example only. '
 
 const DISCLAIMER =
   'General information only. This email is not credit advice, tax advice, financial product advice or ' +
   'a recommendation, and does not take account of your objectives, financial situation or needs. The ' +
   'treatment of any property loss depends on your own circumstances and on the final form of the law. ' +
   'Any rebate is subject to the developer&rsquo;s terms and to contract, and prices, inclusions and ' +
-  'availability are set by the developer and may change. Please seek your own legal and tax advice ' +
-  'before entering into any contract.'
+  'availability are set by the developer and may change. '
+
+const DISCLAIMER_TAIL =
+  'Please seek your own legal and tax advice before entering into any contract.'
 
 const p = (t: string) =>
   `<p style="margin:0 0 15px;font-family:${FONT};font-size:15px;color:${BODY};line-height:1.65;">${t}</p>`
@@ -87,6 +94,16 @@ function twoUses(): string {
 </td></tr></table>`
 }
 
+// Off white rather than a fourth blue block. Every tinted block above is a
+// selling point; this one is an instruction to look at something, so it is set
+// apart without competing with the rebate figure.
+function attachBlock(): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0;"><tr>
+<td width="3" bgcolor="${CHARCOAL}" style="background-color:${CHARCOAL};width:3px;font-size:0;line-height:0;">&nbsp;</td>
+<td bgcolor="${SAND}" style="background-color:${SAND};padding:15px 17px;font-family:${FONT};font-size:14.5px;color:${BODY};line-height:1.65;">I have attached an example of the kind of package carrying a rebate right now, so you can see how one is put together. It is one of several, and the right one depends on your numbers rather than the address.</td>
+</tr></table>`
+}
+
 export function buildRebateEmail(ctx: RebateContext): {
   subject: string
   html: string
@@ -95,6 +112,9 @@ export function buildRebateEmail(ctx: RebateContext): {
   const name = ctx.clientFirstName.trim() || 'there'
   const amount = (ctx.rebate || '').replace(/[^0-9.,]/g, '').trim()
   const hasAmount = !!amount
+  // The sentence says "I have attached" — so it only appears when something is.
+  const attached = Number(ctx.attachmentCount || 0) > 0
+  const disclaimer = DISCLAIMER + (attached ? ATTACHED_NOTE : '') + DISCLAIMER_TAIL
 
   const body =
     p(`Hi ${name},`) +
@@ -115,11 +135,10 @@ export function buildRebateEmail(ctx: RebateContext): {
       'pay.') +
     punch('Most investors are sitting still right now. That is exactly when the good stock starts ' +
           'carrying rebates.') +
-    p('Have a look at the project, and if it is worth a conversation we will run the numbers against ' +
-      'your own position.') +
-    (ctx.documentsUrl ? shellButton(ctx.documentsUrl, 'See the property details') : '') +
-    shellButton(ctx.calendlyUrl || '#', 'Book a 15-minute chat',
-                ctx.documentsUrl ? '#ffffff' : '#2DBEFF') +
+    (attached
+      ? attachBlock()
+      : p('If it is worth a conversation, we will run the numbers against your own position.')) +
+    shellButton(ctx.calendlyUrl || '#', 'Book a 15-minute chat') +
     `<p style="margin:10px 0 0;font-family:${FONT};font-size:13.5px;color:${GREY};text-align:center;">Or simply reply to this email.</p>` +
     `<p style="margin:22px 0 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;">` +
       `<span style="font-weight:600;color:${INK};">${ctx.brokerName}</span><br>Simplify Finance</p>`
@@ -136,16 +155,18 @@ export function buildRebateEmail(ctx: RebateContext): {
     'What clients are doing with the rebate: holding the asset comfortably through the first year, or paying down their own home loan — interest on your own home is generally not deductible, so many people put every spare dollar there first. Worth a word with your accountant about which suits you.', '',
     'Fixed price. Registered land. Fixed site costs. The number you are quoted is the number you pay.', '',
     'Most investors are sitting still right now. That is exactly when the good stock starts carrying rebates.', '',
-    ctx.documentsUrl ? `See the property details: ${ctx.documentsUrl}` : '',
+    attached
+      ? 'I have attached an example of the kind of package carrying a rebate right now, so you can see how one is put together. It is one of several, and the right one depends on your numbers rather than the address.'
+      : 'If it is worth a conversation, we will run the numbers against your own position.', '',
     ctx.calendlyUrl ? `Book a 15-minute chat: ${ctx.calendlyUrl}` : '',
     'Or simply reply to this email.', '',
     ctx.brokerName, 'Simplify Finance', '',
-    DISCLAIMER.replace(/&rsquo;/g, '’'),
+    disclaimer.replace(/&rsquo;/g, '’'),
   ].filter(l => l !== '').join('\n')
 
   return {
     subject: 'New property still negatively gears — and right now it comes with cash back',
-    html: emailShell(body, DISCLAIMER),
+    html: emailShell(body, disclaimer),
     plainText,
   }
 }
