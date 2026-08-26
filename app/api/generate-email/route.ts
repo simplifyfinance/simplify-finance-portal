@@ -100,6 +100,17 @@ function sig(b: { name: string; title: string; crn: string }) {
   return ''
 }
 
+// An amount inside a sentence. The tables hard-code the dollar sign; the prose
+// did not, so figures were going to clients as bare numbers. A placeholder like
+// [amount] is left exactly as it is, and a value the broker has already typed a
+// dollar sign into is not given a second one.
+function amt(v: unknown, placeholder: string): string {
+  const t = String(v ?? '').trim()
+  if (!t) return placeholder
+  if (t.startsWith('$')) return t
+  return /[0-9]/.test(t) ? `$${t}` : t
+}
+
 function p(t: string) { return `<p style="font-size:14px;color:#333;margin-bottom:14px">${t}</p>` }
 function p13(t: string) { return `<p style="font-size:13px;color:#555;margin-bottom:12px">${t}</p>` }
 function propHead(t: string, rentalIncome?: string) {
@@ -235,7 +246,7 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'refinance_equity') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`Based on your current financial position, you have sufficient capacity to refinance your property and access approximately ${d.splits?.[1]?.amount || '[equity amount]'} in equity, while also securing a competitive rate.`) +
+      p(`Based on your current financial position, you have sufficient capacity to refinance your property and access approximately ${amt(d.splits?.[1]?.amount, '[equity amount]')} in equity, while also securing a competitive rate.`) +
       p13('Here is a breakdown of the structure:') +
       propHead(`Against ${d.suburb || '[Property Address]'}`, d.incomeRental) +
       card('Split 1 - Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + row('Loan amount', '$' + d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
@@ -304,8 +315,8 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'oo_purchase') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
-      p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong>.`) +
+      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
+      p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>.`) +
       p13('Here is a breakdown of the structure:') +
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
@@ -370,8 +381,8 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'investment_purchase') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
-      p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong>.`) +
+      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
+      p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>.`) +
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
         row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
@@ -390,7 +401,7 @@ export async function POST(req: NextRequest) {
   } else if (template === 'buy_sell') {
     const depositLabel = (Number(d.additionalSavings) || 0) > 0 ? 'Deposit (from sale proceeds and savings)' : 'Deposit (from sale proceeds)'
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       card('Sale Proceeds Summary',
         row('Expected sale price', '$' + (d.salePrice || '')) +
         row('Agent fees / selling costs', '$' + (d.agentFees || '')) +
@@ -436,7 +447,7 @@ export async function POST(req: NextRequest) {
       </td>`
     }).join('')
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.purchasePrice || '[purchase price]'}</strong>. Below we have outlined ${splits.length} scenarios based on different deposit contributions.`) +
+      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>. Below we have outlined ${splits.length} scenarios based on different deposit contributions.`) +
       `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Deposit Options</p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${lvrCols}</tr></table>
@@ -508,8 +519,8 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'family_pledge') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
-      p(`With a contribution of <strong>${d.deposit || '[deposit]'}</strong> in savings, you could achieve a purchase price of <strong>${d.purchasePrice || '[purchase price]'}</strong> — using your parents' property as a security guarantee to avoid Lenders Mortgage Insurance.`) +
+      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
+      p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong> — using your parents' property as a security guarantee to avoid Lenders Mortgage Insurance.`) +
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
         row('Stamp duty', '$' + d.stampDuty || '') +
@@ -552,7 +563,7 @@ export async function POST(req: NextRequest) {
     const loanAmtN = parseFloat((d.splits?.[0]?.amount || '0').replace(/,/g, '')) || 0
     const depositRequired = Math.max(0, Math.round(totalCost - loanAmtN))
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       card('Your Loan Structure',
         row('Land value', '$' + (d.landValue || '')) +
         row('Construction cost', '$' + (d.constructionCost || '')) +
@@ -598,7 +609,7 @@ export async function POST(req: NextRequest) {
       p('We have now finalised your review as you are looking at purchasing an owner-occupied/investment property.') +
       p('We would use equity in your owner-occupied/investment property to help fund the deposit plus stamp duty costs.') +
       p('A second loan will be set up against your new purchase, so all properties are stand alone — these are two separate securities, not cross-collateralised.') +
-      p(`Provided you are ok to use equity, we could look at a purchase price of <strong>$${npPrice || '[amount]'}</strong>.`) +
+      p(`Provided you are ok to use equity, we could look at a purchase price of <strong>$${amt(npPrice, '[amount]')}</strong>.`) +
       p13('Your numbers would be:') +
       card('Summary',
         row('Purchase price', '$' + npPrice) +
@@ -626,7 +637,7 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'custom') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${d.splits?.[0]?.amount || '[amount]'}</strong>.`) +
+      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
         row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
