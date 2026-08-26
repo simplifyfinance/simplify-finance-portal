@@ -12,6 +12,10 @@ export type NegativeGearingContext = {
   clientFirstName: string      // "Sarah", or "Sarah and Andrew" for a couple
   brokerName: string
   calendlyUrl: string
+  // When present, "better buying opportunities" becomes a link to the page
+  // carrying the $85,000 comparison. Without it the phrase reads as plain text,
+  // so the email is never broken by a missing link.
+  opportunityUrl?: string
 }
 
 const CYAN = '#2DBEFF'
@@ -73,8 +77,11 @@ export function buildNegativeGearingEmail(ctx: NegativeGearingContext): {
       'is eventually sold.') +
     p(`${em('The tax benefit has shifted from today to later.')} That is an important distinction.`) +
     p('For investors with a long-term strategy, established property is still very much worth ' +
-      'considering &mdash; particularly if the current uncertainty creates better buying ' +
-      'opportunities. It is simply a new way of looking at the numbers.') +
+      'considering &mdash; particularly if the current uncertainty creates ' +
+      (ctx.opportunityUrl
+        ? `<a href="${ctx.opportunityUrl}" style="color:#0B6F9E;font-weight:600;text-decoration:underline;">better buying opportunities</a>`
+        : 'better buying opportunities') +
+      '. It is simply a new way of looking at the numbers.') +
     p(em('The market has changed. Good investors adapt.')) +
     p('If you have put your next investment on hold because of negative gearing, let us look at the ' +
       'opportunities under the new rules.') +
@@ -91,7 +98,8 @@ export function buildNegativeGearingEmail(ctx: NegativeGearingContext): {
     'The change does mean investors need to allow for more cash flow upfront. From 1 July 2027, the loss on an established property bought under the new rules can no longer be used to reduce the tax on your income each year.', '',
     'But the loss itself does not simply disappear. It can be carried forward and potentially used to reduce tax when your residential property portfolio becomes positively geared, or against the capital gain when the property is eventually sold.', '',
     'The tax benefit has shifted from today to later. That is an important distinction.', '',
-    'For investors with a long-term strategy, established property is still very much worth considering — particularly if the current uncertainty creates better buying opportunities. It is simply a new way of looking at the numbers.', '',
+    'For investors with a long-term strategy, established property is still very much worth considering — particularly if the current uncertainty creates better buying opportunities. It is simply a new way of looking at the numbers.',
+    ctx.opportunityUrl ? `Read the $85,000 comparison: ${ctx.opportunityUrl}` : '', '',
     'The market has changed. Good investors adapt.', '',
     'If you have put your next investment on hold because of negative gearing, let us look at the opportunities under the new rules.', '',
     ctx.calendlyUrl ? `Book a 15-minute chat: ${ctx.calendlyUrl}` : '',

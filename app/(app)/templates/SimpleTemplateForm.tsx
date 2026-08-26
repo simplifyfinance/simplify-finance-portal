@@ -18,6 +18,7 @@ export type EmailBuilder = (ctx: {
   clientFirstName: string
   brokerName: string
   calendlyUrl: string
+  opportunityUrl?: string
 }) => BuiltEmail
 
 export default function SimpleTemplateForm({ build }: { build: EmailBuilder }) {
@@ -29,6 +30,7 @@ export default function SimpleTemplateForm({ build }: { build: EmailBuilder }) {
   const [secondName, setSecondName] = useState('')
   const [secondEmail, setSecondEmail] = useState('')
   const [bcc, setBcc] = useState('')
+  const [opportunityUrl, setOpportunityUrl] = useState('')
   const [copied, setCopied] = useState(false)
   const [showPaste, setShowPaste] = useState(false)
   const [err, setErr] = useState('')
@@ -37,14 +39,38 @@ export default function SimpleTemplateForm({ build }: { build: EmailBuilder }) {
   const greeting = second ? `${firstName.trim()} and ${second}` : firstName.trim()
   const recipients = [email.trim(), joint ? secondEmail.trim() : ''].filter(Boolean).join(',')
 
+  // Minted on the server, because the signing secret must not reach the browser.
+  // A builder that has no use for it simply ignores it.
+  useEffect(() => {
+    if (!greeting || !recipients || !sender.broker) { setOpportunityUrl(''); return }
+    const body = {
+      name: greeting,
+      email: recipients,
+      brokerKey: sender.broker.key,
+      brokerName: sender.broker.name,
+      sentOn: new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }),
+    }
+    let live = true
+    const t = setTimeout(() => {
+      fetch('/api/opportunity-link', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(j => { if (live && j?.url) setOpportunityUrl(j.url) })
+        .catch(() => { /* the phrase falls back to plain text, so nothing breaks */ })
+    }, 400)
+    return () => { live = false; clearTimeout(t) }
+  }, [greeting, recipients, sender.broker])
+
   const built = useMemo(() => {
     if (!greeting || !sender.broker) return null
     return build({
       clientFirstName: greeting,
       brokerName: sender.broker.name,
       calendlyUrl: sender.calendlyUrl,
+      opportunityUrl,
     })
-  }, [greeting, sender.broker, sender.calendlyUrl, build])
+  }, [greeting, sender.broker, sender.calendlyUrl, opportunityUrl, build])
 
   const missing: string[] = []
   if (!firstName.trim()) missing.push('client name')

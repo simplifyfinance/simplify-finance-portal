@@ -32,13 +32,16 @@ function secret(): string {
 
 const b64 = (b: Buffer) => b.toString('base64url')
 
-export function signReady(p: ReadyPayload): string {
-  const body = b64(Buffer.from(JSON.stringify(p)))
+// Signing and checking are the same job whatever the link carries, so both the
+// "ready to proceed" link and the buying-opportunity link share this rather than
+// each growing their own copy of the crypto.
+export function signPayload(value: unknown): string {
+  const body = b64(Buffer.from(JSON.stringify(value)))
   const mac = b64(crypto.createHmac('sha256', secret()).update(body).digest()).slice(0, 32)
   return `${body}.${mac}`
 }
 
-export function verifyReady(token: string): ReadyPayload | null {
+export function verifyPayload<T>(token: string): T | null {
   try {
     const [body, mac] = String(token || '').split('.')
     if (!body || !mac) return null
@@ -46,13 +49,19 @@ export function verifyReady(token: string): ReadyPayload | null {
     // constant time, so a wrong signature cannot be narrowed down by timing
     const a = Buffer.from(mac), b = Buffer.from(want)
     if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null
-    return JSON.parse(Buffer.from(body, 'base64url').toString()) as ReadyPayload
+    return JSON.parse(Buffer.from(body, 'base64url').toString()) as T
   } catch {
     return null
   }
 }
 
+export const signReady = (p: ReadyPayload): string => signPayload(p)
+export const verifyReady = (token: string): ReadyPayload | null => verifyPayload<ReadyPayload>(token)
+
+export function siteUrl(): string {
+  return process.env.NEXT_PUBLIC_SITE_URL || 'https://simplify-finance-portal.vercel.app'
+}
+
 export function readyUrl(token: string): string {
-  const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://simplify-finance-portal.vercel.app'
-  return `${base}/ready/${token}`
+  return `${siteUrl()}/ready/${token}`
 }

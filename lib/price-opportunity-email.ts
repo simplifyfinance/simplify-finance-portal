@@ -72,14 +72,11 @@ function keyBlock(line: string, payoff: string): string {
 </td></tr></table>`
 }
 
-export function buildPriceOpportunityEmail(ctx: PriceOpportunityContext): {
-  subject: string
-  html: string
-  plainText: string
-} {
-  const name = ctx.clientFirstName.trim() || 'there'
-
-  const body =
+// The argument, written once. The email ends on a button; the page ends by
+// pointing back at the email, because the action lives there. Everything above
+// that last line is identical, so the two cannot drift apart.
+function argument(name: string): string {
+  return (
     p(`Hi ${name},`) +
     punch('Everyone is talking about what investors are losing. Almost nobody is doing the other ' +
           'half of the maths.') +
@@ -96,14 +93,17 @@ export function buildPriceOpportunityEmail(ctx: PriceOpportunityContext): {
           'else is waiting.') +
     p('Not every property has moved $85,000, and your circumstances will not be the same as this ' +
       'buyer&rsquo;s. But if you have put investing on hold because of a tax change, you may be ' +
-      'reading the wrong number.') +
-    punch('Let us run yours.') +
-    shellButton(ctx.calendlyUrl || '#', 'Book a 15-minute chat') +
-    `<p style="margin:10px 0 0;font-family:${FONT};font-size:13.5px;color:${GREY};text-align:center;">Or simply reply to this email.</p>` +
-    `<p style="margin:22px 0 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;">` +
-      `<span style="font-weight:600;color:${INK};">${ctx.brokerName}</span><br>Simplify Finance</p>`
+      'reading the wrong number.')
+  )
+}
 
-  const plainText = [
+function signature(brokerName: string): string {
+  return `<p style="margin:22px 0 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;">` +
+    `<span style="font-weight:600;color:${INK};">${brokerName}</span><br>Simplify Finance</p>`
+}
+
+function plain(name: string, brokerName: string, tail: string[]): string {
+  return [
     `Hi ${name},`, '',
     'Everyone is talking about what investors are losing. Almost nobody is doing the other half of the maths.', '',
     'Ten kilometres from the Melbourne CBD. The same house, different values, eight weeks apart.', '',
@@ -116,16 +116,48 @@ export function buildPriceOpportunityEmail(ctx: PriceOpportunityContext): {
     'And the losses themselves are not gone. Under the new rules they are deferred — they build up, and can potentially be used against future property income or when you sell.', '',
     'So the question is not what you lost. It is what the right property costs while everyone else is waiting.', '',
     'Not every property has moved $85,000, and your circumstances will not be the same as this buyer’s. But if you have put investing on hold because of a tax change, you may be reading the wrong number.', '',
-    'Let us run yours.', '',
-    ctx.calendlyUrl ? `Book a 15-minute chat: ${ctx.calendlyUrl}` : '',
-    'Or simply reply to this email.', '',
-    ctx.brokerName, 'Simplify Finance', '',
+    ...tail, '',
+    brokerName, 'Simplify Finance', '',
     DISCLAIMER,
   ].join('\n')
+}
+
+export function buildPriceOpportunityEmail(ctx: PriceOpportunityContext): {
+  subject: string
+  html: string
+  plainText: string
+} {
+  const name = ctx.clientFirstName.trim() || 'there'
+  const body =
+    argument(name) +
+    punch('Let us run yours.') +
+    shellButton(ctx.calendlyUrl || '#', 'Book a 15-minute chat') +
+    `<p style="margin:10px 0 0;font-family:${FONT};font-size:13.5px;color:${GREY};text-align:center;">Or simply reply to this email.</p>` +
+    signature(ctx.brokerName)
 
   return {
     subject: 'What if the tax change actually created an opportunity?',
     html: emailShell(body, DISCLAIMER),
-    plainText,
+    plainText: plain(name, ctx.brokerName, [
+      'Let us run yours.',
+      ctx.calendlyUrl ? `Book a 15-minute chat: ${ctx.calendlyUrl}` : '',
+      'Or simply reply to this email.',
+    ].filter(Boolean)),
   }
+}
+
+// The same argument as a page, reached from the negative gearing email. No
+// button and no reply line — the action lives in the email that brought them
+// here, so the page points back to it rather than dead-ending.
+export function buildPriceOpportunityPage(ctx: {
+  clientFirstName: string
+  brokerName: string
+}): { html: string; disclaimer: string } {
+  const name = ctx.clientFirstName.trim() || 'there'
+  const first = (ctx.brokerName || '').trim().split(/\s+/)[0] || 'me'
+  const body =
+    argument(name) +
+    punch(`Reply to ${first === 'me' ? 'my' : first + '&rsquo;s'} email and let us run yours.`) +
+    signature(ctx.brokerName)
+  return { html: emailShell(body, DISCLAIMER), disclaimer: DISCLAIMER }
 }
