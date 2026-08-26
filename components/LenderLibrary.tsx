@@ -13,6 +13,9 @@ type Product = {
   annual_fee: string
   valuation_fee: string
   rate_lock_fee: string
+  early_repayment_fee: string
+  discharge_fee: string
+  legal_fee: string
   offset_account: boolean
   multiple_offsets: boolean
   notes: string
@@ -27,6 +30,9 @@ type ExtractedProduct = {
   annual_fee: string | null
   valuation_fee: string | null
   rate_lock_fee: string | null
+  early_repayment_fee: string | null
+  discharge_fee: string | null
+  legal_fee: string | null
   offset_account: boolean
   multiple_offsets: boolean
   notes: string
@@ -42,6 +48,9 @@ const emptyProduct = {
   annual_fee: '',
   valuation_fee: '',
   rate_lock_fee: '',
+  early_repayment_fee: '',
+  discharge_fee: '',
+  legal_fee: '',
   offset_account: false,
   multiple_offsets: false,
   notes: '',
@@ -137,6 +146,9 @@ export default function LenderLibrary() {
       application_fee: product.application_fee || '',
       annual_fee: product.annual_fee || '',
       valuation_fee: product.valuation_fee || '',
+      early_repayment_fee: product.early_repayment_fee || '',
+      discharge_fee: product.discharge_fee || '',
+      legal_fee: product.legal_fee || '',
       rate_lock_fee: product.rate_lock_fee || '',
       offset_account: product.offset_account,
       multiple_offsets: product.multiple_offsets,
@@ -250,6 +262,9 @@ export default function LenderLibrary() {
         application_fee: p.application_fee || '',
         annual_fee: p.annual_fee || '',
         valuation_fee: p.valuation_fee || '',
+        early_repayment_fee: p.early_repayment_fee || '',
+        discharge_fee: p.discharge_fee || '',
+        legal_fee: p.legal_fee || '',
         rate_lock_fee: p.rate_lock_fee || '',
         offset_account: p.offset_account,
         multiple_offsets: p.multiple_offsets,
@@ -529,6 +544,21 @@ export default function LenderLibrary() {
                       <input className={inp} value={productForm.rate_lock_fee} onChange={e => setProductForm({...productForm, rate_lock_fee: e.target.value})} placeholder="e.g. $500" />
                     </div>
                   )}
+                </div>
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-2 mt-4">Cost to exit</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Early repayment fee</label>
+                    <input className={inp} value={productForm.early_repayment_fee} onChange={e => setProductForm({...productForm, early_repayment_fee: e.target.value})} placeholder="e.g. Break cost on fixed, or None" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Discharge fee</label>
+                    <input className={inp} value={productForm.discharge_fee} onChange={e => setProductForm({...productForm, discharge_fee: e.target.value})} placeholder="e.g. $350" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Legal fee</label>
+                    <input className={inp} value={productForm.legal_fee} onChange={e => setProductForm({...productForm, legal_fee: e.target.value})} placeholder="e.g. $150 or At cost" />
+                  </div>
                 </div>
               </div>
               <div>

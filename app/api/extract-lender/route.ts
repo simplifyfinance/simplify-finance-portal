@@ -13,6 +13,9 @@ Extract ALL products you find. For each product return a JSON object with exactl
 - annual_fee: string or null
 - valuation_fee: string or null
 - rate_lock_fee: string or null
+- early_repayment_fee: string or null
+- discharge_fee: string or null
+- legal_fee: string or null
 - offset_account: boolean
 - multiple_offsets: boolean
 - notes: string
