@@ -23,12 +23,12 @@ export function emailShell(inner: string, disclaimer: string): string {
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" align="center" style="width:600px;max-width:600px;background-color:#ffffff;">
 <tr><td bgcolor="${CHARCOAL}" align="center" style="background-color:${CHARCOAL};padding:26px 20px;font-family:${FONT};">
 <img src="${LOGO_URL}" alt="Simplify Finance" height="72" style="height:72px;display:block;margin:0 auto 8px;border:0;" />
-<div style="color:#9E9E9E;font-size:10px;letter-spacing:2px;text-transform:uppercase;">Finance, Simplified.</div>
+<div style="color:#9E9E9E;font-size:10px;letter-spacing:2px;text-transform:uppercase;"><span style="color:#9E9E9E;">Finance, Simplified.</span></div>
 </td></tr>
 <tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding:26px 22px;font-family:${FONT};">${inner}</td></tr>
 <tr><td bgcolor="${CHARCOAL}" style="background-color:${CHARCOAL};padding:14px 20px;font-family:${FONT};">
-<div style="font-size:10px;color:${FOOTER_INK};line-height:1.6;">${disclaimer}</div>
-<div style="font-size:10px;color:#9E9E9E;line-height:1.6;padding-top:6px;">${LEGAL}</div>
+<div style="font-size:10px;color:${FOOTER_INK};line-height:1.6;"><span style="color:${FOOTER_INK};">${disclaimer}</span></div>
+<div style="font-size:10px;color:#9E9E9E;line-height:1.6;padding-top:6px;"><span style="color:#9E9E9E;">${LEGAL}</span></div>
 </td></tr>
 </table>
 </td></tr></table>`

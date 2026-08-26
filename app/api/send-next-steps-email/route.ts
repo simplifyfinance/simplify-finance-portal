@@ -43,8 +43,8 @@ export async function POST(req: NextRequest) {
         </tr></table>
       </td>
       <td valign="top" style="font-family:Arial,sans-serif">
-        <p style="margin:0 0 4px;font-weight:700;color:#343333;font-size:13px">${s.title}</p>
-        <p style="margin:0;color:#666666;font-size:12px;line-height:1.6">${s.desc}</p>
+        <p style="margin:0 0 4px;font-weight:700;color:#343333;font-size:13px"><span style="color:#343333;">${s.title}</span></p>
+        <p style="margin:0;color:#666666;font-size:12px;line-height:1.6"><span style="color:#666666;">${s.desc}</span></p>
         ${button}
       </td>
     </tr></table>`
@@ -55,9 +55,9 @@ export async function POST(req: NextRequest) {
       <table width="480" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:16px;max-width:480px">
         <tr><td bgcolor="#ffffff" style="background:#ffffff;padding:36px">
           <h1 style="font-size:20px;font-weight:700;color:#343333;margin:0 0 8px">Great news, ${clientName}!</h1>
-          <p style="font-size:13px;color:#666666;margin:0 0 24px;line-height:1.6">Following our call, here&rsquo;s exactly what happens next.</p>
+          <p style="font-size:13px;color:#666666;margin:0 0 24px;line-height:1.6"><span style="color:#666666;">Following our call, here&rsquo;s exactly what happens next.</span></p>
           ${stepsHtml}
-          <p style="font-size:11px;color:#999999;margin:16px 0 0;border-top:1px solid #eeeeee;padding-top:16px">Simplify Finance | ACL 387025 | St Leonards, Sydney</p>
+          <p style="font-size:11px;color:#999999;margin:16px 0 0;border-top:1px solid #eeeeee;padding-top:16px"><span style="color:#999999;">Simplify Finance | ACL 387025 | St Leonards, Sydney</span></p>
         </td></tr>
       </table>
     </td></tr>

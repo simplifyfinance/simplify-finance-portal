@@ -32,10 +32,10 @@ const DISCLAIMER =
   'before acting.'
 
 const p = (t: string) =>
-  `<p style="margin:0 0 15px;font-family:${FONT};font-size:15px;color:${BODY};line-height:1.65;">${t}</p>`
+  `<p style="margin:0 0 15px;font-family:${FONT};font-size:15px;color:${BODY};line-height:1.65;"><span style="color:${BODY};">${t}</span></p>`
 
 const punch = (t: string) =>
-  `<p style="margin:0 0 15px;font-family:${FONT};font-size:16.5px;color:${INK};font-weight:600;line-height:1.5;">${t}</p>`
+  `<p style="margin:0 0 15px;font-family:${FONT};font-size:16.5px;color:${INK};font-weight:600;line-height:1.5;"><span style="color:${INK};">${t}</span></p>`
 
 const b = (t: string) => `<span style="font-weight:600;color:${INK};">${t}</span>`
 
@@ -44,8 +44,8 @@ const b = (t: string) => `<span style="font-weight:600;color:${INK};">${t}</span
 function comparison(): string {
   const cell = (when: string, price: string, faded: boolean) =>
     `<td width="50%" align="center" bgcolor="#ffffff" style="background-color:#ffffff;padding:18px 12px;font-family:${FONT};${faded ? `border-right:1px solid ${BORDER};` : ''}">
-<div style="font-size:11.5px;color:${GREY};line-height:1.45;padding-bottom:6px;">${when}</div>
-<div style="font-size:26px;font-weight:bold;color:${faded ? WAS : INK};line-height:1.1;">${price}</div>
+<div style="font-size:11.5px;color:${GREY};line-height:1.45;padding-bottom:6px;"><span style="color:${GREY};">${when}</span></div>
+<div style="font-size:26px;font-weight:bold;color:${faded ? WAS : INK};line-height:1.1;"><span style="color:${faded ? WAS : INK};">${price}</span></div>
 </td>`
 
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0;border:1px solid ${BORDER};border-radius:8px;">
@@ -58,8 +58,8 @@ ${cell('Six weeks after<br>the Federal Budget', '$975,000', false)}
 </tr></table>
 </td></tr>
 <tr><td bgcolor="${TINT}" align="center" style="background-color:${TINT};border-top:1px solid ${BORDER};padding:18px 14px;font-family:${FONT};">
-<div style="font-size:38px;font-weight:bold;color:#0B6F9E;line-height:1;">$85,000</div>
-<div style="font-size:13px;color:#0B6F9E;padding-top:5px;">The saving from buying after everyone else got nervous</div>
+<div style="font-size:38px;font-weight:bold;color:#0B6F9E;line-height:1;"><span style="color:#0B6F9E;">$85,000</span></div>
+<div style="font-size:13px;color:#0B6F9E;padding-top:5px;"><span style="color:#0B6F9E;">The saving from buying after everyone else got nervous</span></div>
 </td></tr></table>`
 }
 
@@ -67,8 +67,8 @@ function keyBlock(line: string, payoff: string): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0;"><tr>
 <td width="3" bgcolor="${CYAN}" style="background-color:${CYAN};width:3px;font-size:0;line-height:0;">&nbsp;</td>
 <td bgcolor="${TINT}" style="background-color:${TINT};padding:16px 18px;font-family:${FONT};">
-<div style="font-size:19px;font-weight:bold;line-height:1.4;color:${INK};">${line}</div>
-<div style="font-size:14.5px;font-weight:600;color:#0B6F9E;padding-top:5px;">${payoff}</div>
+<div style="font-size:19px;font-weight:bold;line-height:1.4;color:${INK};"><span style="color:${INK};">${line}</span></div>
+<div style="font-size:14.5px;font-weight:600;color:#0B6F9E;padding-top:5px;"><span style="color:#0B6F9E;">${payoff}</span></div>
 </td></tr></table>`
 }
 
@@ -98,8 +98,8 @@ function argument(name: string): string {
 }
 
 function signature(brokerName: string): string {
-  return `<p style="margin:22px 0 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;">` +
-    `<span style="font-weight:600;color:${INK};">${brokerName}</span><br>Simplify Finance</p>`
+  return `<p style="margin:22px 0 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;"><span style="color:${BODY};">` +
+    `<span style="font-weight:600;color:${INK};">${brokerName}</span><br>Simplify Finance</span></p>`
 }
 
 function plain(name: string, brokerName: string, tail: string[]): string {
@@ -132,7 +132,7 @@ export function buildPriceOpportunityEmail(ctx: PriceOpportunityContext): {
     argument(name) +
     punch('Let us run yours.') +
     shellButton(ctx.calendlyUrl || '#', 'Book a 15-minute chat') +
-    `<p style="margin:10px 0 0;font-family:${FONT};font-size:13.5px;color:${GREY};text-align:center;">Or simply reply to this email.</p>` +
+    `<p style="margin:10px 0 0;font-family:${FONT};font-size:13.5px;color:${GREY};text-align:center;"><span style="color:${GREY};">Or simply reply to this email.</span></p>` +
     signature(ctx.brokerName)
 
   return {

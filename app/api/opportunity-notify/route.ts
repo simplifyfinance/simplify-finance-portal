@@ -23,12 +23,12 @@ export async function POST(req: NextRequest) {
   // info@ is always copied, so a broker without a login never means a lost signal
   const recipients = [to, 'info@simplifyfinance.com.au'].filter(Boolean)
 
-  const html = `<div style="font-family:${FONT};color:#575046;font-size:14px;line-height:1.6">
+  const html = `<div style="font-family:${FONT};color:#575046;font-size:14px;line-height:1.6"><span style="color:#575046;">
 <p>Hi ${(broker as any)?.name?.split(' ')[0] || ''},</p>
 <p><b style="color:#221F1B">${p.name}</b> clicked through from the negative gearing email you sent on
 ${p.sentOn} and read the $85,000 comparison. They have not booked a time.</p>
 <p><b style="color:#221F1B">Email</b><br>${p.email.split(',').map(e => e.trim()).join('<br>')}</p>
-</div>`
+</span></div>`
 
   try {
     const res = await fetch('https://api.resend.com/emails', {

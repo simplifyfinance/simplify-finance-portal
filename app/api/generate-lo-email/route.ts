@@ -3,7 +3,7 @@ import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 
 
 function shell(body: string) {
-  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5f5f3" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr><td bgcolor="#f5f5f3" align="center" style="background:#f5f5f3;padding:24px 12px"><table width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" align="center" style="background:#ffffff;margin:0 auto"><tr><td bgcolor="#343333" align="center" style="background:#343333;padding:28px 24px;text-align:center"><img src="https://simplify-finance-portal.vercel.app/logo-charcoal.png" alt="Simplify Finance" height="80" style="height:80px;display:block;margin:0 auto 8px;border:0" /><p style="color:#9E9E9E;font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0">Finance, Simplified.</p></td></tr><tr><td bgcolor="#ffffff" style="background:#ffffff;padding:28px">${body}</td></tr><tr><td bgcolor="#343333" style="background:#343333;padding:14px 16px;text-align:center"><p style="color:#B5B5B5;font-size:10px;line-height:1.6;margin:0">Rates quoted are indicative only and subject to change. This email does not constitute formal approval.</p><p style="color:#9E9E9E;font-size:10px;margin:4px 0 0">&copy; 2026 Simplify Finance | St Leonards, Sydney | Australian Credit Licence: 387025</p></td></tr></table></td></tr></table>`
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5f5f3" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr><td bgcolor="#f5f5f3" align="center" style="background:#f5f5f3;padding:24px 12px"><table width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" align="center" style="background:#ffffff;margin:0 auto"><tr><td bgcolor="#343333" align="center" style="background:#343333;padding:28px 24px;text-align:center"><img src="https://simplify-finance-portal.vercel.app/logo-charcoal.png" alt="Simplify Finance" height="80" style="height:80px;display:block;margin:0 auto 8px;border:0" /><p style="color:#9E9E9E;font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0"><span style="color:#9E9E9E;">Finance, Simplified.</span></p></td></tr><tr><td bgcolor="#ffffff" style="background:#ffffff;padding:28px">${body}</td></tr><tr><td bgcolor="#343333" style="background:#343333;padding:14px 16px;text-align:center"><p style="color:#B5B5B5;font-size:10px;line-height:1.6;margin:0"><span style="color:#B5B5B5;">Rates quoted are indicative only and subject to change. This email does not constitute formal approval.</span></p><p style="color:#9E9E9E;font-size:10px;margin:4px 0 0"><span style="color:#9E9E9E;">&copy; 2026 Simplify Finance | St Leonards, Sydney | Australian Credit Licence: 387025</span></p></td></tr></table></td></tr></table>`
 }
 
 function brokerBox(text: string, firstName?: string, jointFirstName?: string, joint?: string) {
@@ -13,9 +13,9 @@ function brokerBox(text: string, firstName?: string, jointFirstName?: string, jo
   return `<!--BROKER-BOX--><table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:18px"><tr>
     <td width="4" bgcolor="#F59E0B" style="background:#F59E0B;width:4px;font-size:0;line-height:0">&nbsp;</td>
     <td bgcolor="#FFF8E7" style="background:#FFF8E7;padding:13px 15px">
-      <p style="font-size:10px;font-weight:600;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 6px">Broker personalisation</p>
-      <p style="font-size:14px;color:#333333;margin:0 0 14px;line-height:1.6">Hi ${greetingName},</p>
-      <p style="font-size:14px;color:#333333;margin:0;line-height:1.6">${text || '[Add your personal opening here.]'}</p>
+      <p style="font-size:10px;font-weight:600;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 6px"><span style="color:#92400E;">Broker personalisation</span></p>
+      <p style="font-size:14px;color:#333333;margin:0 0 14px;line-height:1.6"><span style="color:#333333;">Hi ${greetingName},</span></p>
+      <p style="font-size:14px;color:#333333;margin:0;line-height:1.6"><span style="color:#333333;">${text || '[Add your personal opening here.]'}</span></p>
     </td></tr></table><!--/BROKER-BOX-->`
 }
 
@@ -25,15 +25,15 @@ function sig(b: { name: string; title: string; crn: string }) {
   return ''
 }
 
-function p(t: string) { return `<p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">${t}</p>` }
+function p(t: string) { return `<p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6"><span style="color:#333;">${t}</span></p>` }
 function tick(s: string) { return `<p style="font-size:12px;color:#444;margin:4px 0;line-height:1.5"><span style="color:#2DBEFF;font-weight:700;margin-right:6px">&#10003;</span>${s}</p>` }
 function notesBox(items: string[]) {
   if (!items.length) return ''
   return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0"><tr>
     <td width="4" bgcolor="#2DBEFF" style="background:#2DBEFF;width:4px;font-size:0;line-height:0">&nbsp;</td>
     <td bgcolor="#EFF6FF" style="background:#EFF6FF;padding:13px 15px">
-      <p style="font-size:10px;font-weight:600;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 8px">Important things to note</p>
-      ${items.map(i => `<p style="font-size:12px;color:#334155;margin:4px 0;line-height:1.6">&bull; ${i}</p>`).join('')}
+      <p style="font-size:10px;font-weight:600;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 8px"><span style="color:#1d4ed8;">Important things to note</span></p>
+      ${items.map(i => `<p style="font-size:12px;color:#334155;margin:4px 0;line-height:1.6"><span style="color:#334155;">&bull; ${i}</span></p>`).join('')}
     </td></tr></table>`
 }
 function ctas(calendly: string, proceedUrl?: string) {
@@ -55,7 +55,7 @@ function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender
   const cols = lenders.length
   const pct = cols === 1 ? '100%' : cols === 2 ? '50%' : '33%'
 
-  const headers = lenders.map((l, i) => { const isRec = recommendedLender && l.lenderName === recommendedLender; return `<td width="${pct}" bgcolor="#f8f8f8" style="background:#f8f8f8;padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:13px;font-weight:700;color:#343333;margin:0 0 6px">OPTION ${i+1}</p><p style="font-size:14px;font-weight:700;color:#2DBEFF;margin:0 0 4px">${l.lenderName} &mdash; ${l.productName}</p>${l.approvalDays ? `<p style="font-size:12px;color:#777;margin:4px 0 0">${l.approvalDays} to approval</p>` : ''}${isRec ? '<p style="font-size:11px;font-weight:700;color:#D97706;border:1px solid #D97706;display:inline-block;padding:2px 8px;border-radius:3px;margin:6px 0 0">&#9733; Recommended</p>' : ''}${l.specialNote ? `<p style="font-size:11px;color:#dc2626;margin:6px 0 0">&#10071; ${l.specialNote}</p>` : ''}</td>` }).join('')
+  const headers = lenders.map((l, i) => { const isRec = recommendedLender && l.lenderName === recommendedLender; return `<td width="${pct}" bgcolor="#f8f8f8" style="background:#f8f8f8;padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:13px;font-weight:700;color:#343333;margin:0 0 6px"><span style="color:#343333;">OPTION ${i+1}</span></p><p style="font-size:14px;font-weight:700;color:#2DBEFF;margin:0 0 4px"><span style="color:#2DBEFF;">${l.lenderName} &mdash; ${l.productName}</span></p>${l.approvalDays ? `<p style="font-size:12px;color:#777;margin:4px 0 0"><span style="color:#777;">${l.approvalDays} to approval</span></p>` : ''}${isRec ? '<p style="font-size:11px;font-weight:700;color:#D97706;border:1px solid #D97706;display:inline-block;padding:2px 8px;border-radius:3px;margin:6px 0 0"><span style="color:#D97706;">&#9733; Recommended</span></p>' : ''}${l.specialNote ? `<p style="font-size:11px;color:#dc2626;margin:6px 0 0"><span style="color:#dc2626;">&#10071; ${l.specialNote}</span></p>` : ''}</td>` }).join('')
 
   let featureCells = ''
   if (isBridging) {
@@ -68,7 +68,7 @@ function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender
       (l: any) => l.docProcessingFee ? tick(`Document Processing Fee of $${l.docProcessingFee}`) : '',
     ]
     featureCells = `<tr>${lenders.map(l => `<td style="padding:14px;border:1px solid #e0e0e0;vertical-align:top">${rows.map(fn => fn(l)).join('')}</td>`).join('')}</tr>`
-    const bridgingRows = lenders.map(l => `<td style="padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:12px;font-weight:600;color:#333;margin:0 0 6px">Bridging Loan (debt while holding both properties):</p><p style="font-size:12px;color:#333;margin:0 0 8px"><strong>Bridging loan: $${l.bridgingLoanAmount || 'XXX'}</strong></p><p style="font-size:12px;color:#333;margin:0"><strong>Estimated Interest Capitalised (over ${l.bridgingTerm || '12'} months): $${l.estimatedInterest || 'XXX'}</strong></p></td>`).join('')
+    const bridgingRows = lenders.map(l => `<td style="padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:12px;font-weight:600;color:#333;margin:0 0 6px"><span style="color:#333;">Bridging Loan (debt while holding both properties):</span></p><p style="font-size:12px;color:#333;margin:0 0 8px"><span style="color:#333;"><strong>Bridging loan: $${l.bridgingLoanAmount || 'XXX'}</strong></span></p><p style="font-size:12px;color:#333;margin:0"><span style="color:#333;"><strong>Estimated Interest Capitalised (over ${l.bridgingTerm || '12'} months): $${l.estimatedInterest || 'XXX'}</strong></span></p></td>`).join('')
     featureCells += `<tr>${bridgingRows}</tr>`
   } else {
     const modules = ['variablePI', 'variableIO', 'fixedPI', 'fixedIO'] as const
@@ -76,11 +76,11 @@ function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender
     const anyEnabled = (module: string) => lenders.some((l: any) => l[module]?.enabled)
     modules.forEach(mod => {
       if (!anyEnabled(mod)) return
-      const headerCells = lenders.map(() => `<td bgcolor="#fafafa" style="padding:10px 14px;border:1px solid #e0e0e0;background:#fafafa"><p style="font-size:12px;font-weight:700;color:#343333;margin:0;text-decoration:none">${moduleLabels[mod]}</p></td>`).join('')
+      const headerCells = lenders.map(() => `<td bgcolor="#fafafa" style="padding:10px 14px;border:1px solid #e0e0e0;background:#fafafa"><p style="font-size:12px;font-weight:700;color:#343333;margin:0;text-decoration:none"><span style="color:#343333;">${moduleLabels[mod]}</span></p></td>`).join('')
       featureCells += `<tr>${headerCells}</tr>`
       const contentCells = lenders.map((l: any) => {
         const m = l[mod]
-        if (!m?.enabled) return `<td style="padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:12px;color:#999">Not offered</p></td>`
+        if (!m?.enabled) return `<td style="padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:12px;color:#999"><span style="color:#999;">Not offered</span></p></td>`
         let content = tick(`Variable rate from ${m.rate}% p.a.*`)
         if (mod === 'fixedPI' || mod === 'fixedIO') content = tick(`Fixed rate ${m.rate}% p.a.* for ${m.fixedYears} years`)
         content += tick(`Monthly repayments of $${m.repayment}`)
@@ -115,8 +115,8 @@ function walletLinkBox(link: string) {
   return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0"><tr>
     <td width="4" bgcolor="#1D9E75" style="background:#1D9E75;width:4px;font-size:0;line-height:0">&nbsp;</td>
     <td bgcolor="#F0FBF7" style="background:#F0FBF7;padding:16px">
-      <p style="font-size:13px;font-weight:700;color:#0F6E56;margin:0 0 8px">Share your bank statements securely</p>
-      <p style="font-size:13px;color:#333333;line-height:1.6;margin:0 0 12px">To help us verify your income and finalise your application, we use a secure platform called WealthDesk to safely collect your bank statements. This is a secure, read-only connection &mdash; we never see or store your online banking login details.</p>
+      <p style="font-size:13px;font-weight:700;color:#0F6E56;margin:0 0 8px"><span style="color:#0F6E56;">Share your bank statements securely</span></p>
+      <p style="font-size:13px;color:#333333;line-height:1.6;margin:0 0 12px"><span style="color:#333333;">To help us verify your income and finalise your application, we use a secure platform called WealthDesk to safely collect your bank statements. This is a secure, read-only connection &mdash; we never see or store your online banking login details.</span></p>
       <table cellpadding="0" cellspacing="0" border="0"><tr>
         <td bgcolor="#1D9E75" align="center" style="background:#1D9E75;border-radius:6px;padding:10px 18px">
           <a href="${link}" style="color:#ffffff;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">Share bank statements</a>
@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
   let body = brokerBox(d.brokerPersonalisation, d.firstName, d.jointFirstName, d.joint)
 
   if (!isBridging && (d.purchasePrice || d.loanAmount)) {
-    body += `<p style="font-size:14px;font-weight:600;color:#343333;margin-bottom:8px">Your numbers would be:</p>`
+    body += `<p style="font-size:14px;font-weight:600;color:#343333;margin-bottom:8px"><span style="color:#343333;">Your numbers would be:</span></p>`
     if (d.purchasePrice) body += p(`Purchase Price: $${d.purchasePrice}`)
     if (d.stampDuty) body += p(`Stamp Duty (NSW): $${d.stampDuty}`)
     if (d.deposit) body += p(`Deposit Required: $${d.deposit}`)
@@ -154,14 +154,14 @@ export async function POST(req: NextRequest) {
   }
 
   if (d.documentsRequired.length > 0) {
-    body += `<p style="font-size:14px;font-weight:600;color:#343333;margin-bottom:8px">Please note, below numbers are subject to reviewing the following documents:</p>`
-    body += d.documentsRequired.map((doc: string) => `<p style="font-size:13px;color:#555;margin:4px 0">&ndash; ${doc}</p>`).join('')
+    body += `<p style="font-size:14px;font-weight:600;color:#343333;margin-bottom:8px"><span style="color:#343333;">Please note, below numbers are subject to reviewing the following documents:</span></p>`
+    body += d.documentsRequired.map((doc: string) => `<p style="font-size:13px;color:#555;margin:4px 0"><span style="color:#555;">&ndash; ${doc}</span></p>`).join('')
     body += '<br>'
   }
 
   if (d.criteriaUsed.length > 0) {
     body += p('<strong>When conducting our research, we focused on lenders that would offer the following:</strong>')
-    body += d.criteriaUsed.map((c: string) => `<p style="font-size:13px;color:#555;margin:4px 0">&ndash; ${c}</p>`).join('')
+    body += d.criteriaUsed.map((c: string) => `<p style="font-size:13px;color:#555;margin:4px 0"><span style="color:#555;">&ndash; ${c}</span></p>`).join('')
     body += '<br>'
   }
 
@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
   body += p('Please note, for the requested loan amount, we have added a buffer to cover the last month\'s repayment and any applicable discharge fees. This will ensure there is no shortfall come settlement. Any funds not required will be credited back into your loan so that no additional interest is charged.')
 
   if (d.recommendedLender && d.recommendationNote) {
-    body += `<p style="font-size:14px;font-weight:700;color:#343333;margin-bottom:8px">Our Recommendation: ${d.recommendedLender}</p>`
+    body += `<p style="font-size:14px;font-weight:700;color:#343333;margin-bottom:8px"><span style="color:#343333;">Our Recommendation: ${d.recommendedLender}</span></p>`
     body += p(d.recommendationNote)
   }
   const sortedLenders = d.recommendedLender ? [...d.lenders].sort((a: any, b: any) => a.lenderName === d.recommendedLender ? -1 : b.lenderName === d.recommendedLender ? 1 : 0) : d.lenders

@@ -19,18 +19,18 @@ function shell(body: string, b: { name: string; title: string; crn: string; cale
   const acl = brand?.acl || DEFAULT_BRAND.acl
   const logoBlock = logoUrl
     ? `<img src="${logoUrl}" alt="${brandName}" height="80" style="height:80px;display:block;margin:0 auto 8px;border:0" />`
-    : `<p style="color:#ffffff;font-size:22px;font-weight:700;margin:0 0 8px">${brandName}</p>`
+    : `<p style="color:#ffffff;font-size:22px;font-weight:700;margin:0 0 8px"><span style="color:#ffffff;">${brandName}</span></p>`
   return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5f5f3" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr>
   <td bgcolor="#f5f5f3" align="center" style="background:#f5f5f3;padding:24px 12px">
   <table width="600" cellpadding="0" cellspacing="0" border="0" align="center" bgcolor="#ffffff" style="background:#ffffff;margin:0 auto">
     <tr><td bgcolor="${headerColor}" style="background:${headerColor};padding:28px 24px;text-align:center">
       ${logoBlock}
-      <p style="color:#9E9E9E;font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0">Finance, Simplified.</p>
+      <p style="color:#9E9E9E;font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0"><span style="color:#9E9E9E;">Finance, Simplified.</span></p>
     </td></tr>
     <tr><td bgcolor="#ffffff" style="background:#ffffff;padding:28px">${body}</td></tr>
     <tr><td bgcolor="${headerColor}" style="background:${headerColor};padding:14px 16px;text-align:center">
-      <p style="font-size:10px;color:#B5B5B5;margin:0 0 6px;line-height:1.6">Rates quoted are indicative only and subject to change. Figures are based on information provided and are not a formal credit assessment. Subject to lender approval.</p>
-      <p style="font-size:10px;color:#9E9E9E;margin:0">&copy; 2026 ${brandName} | ${footerAddress} | Australian Credit Licence: ${acl}</p>
+      <p style="font-size:10px;color:#B5B5B5;margin:0 0 6px;line-height:1.6"><span style="color:#B5B5B5;">Rates quoted are indicative only and subject to change. Figures are based on information provided and are not a formal credit assessment. Subject to lender approval.</span></p>
+      <p style="font-size:10px;color:#9E9E9E;margin:0"><span style="color:#9E9E9E;">&copy; 2026 ${brandName} | ${footerAddress} | Australian Credit Licence: ${acl}</span></p>
     </td></tr>
   </table></td></tr></table>`
 }
@@ -42,9 +42,9 @@ function brokerBox(personalisation: string, firstName?: string, jointFirstName?:
   return `<!--BROKER-BOX--><table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:18px"><tr>
     <td width="4" bgcolor="#F59E0B" style="background:#F59E0B;width:4px;font-size:0;line-height:0">&nbsp;</td>
     <td bgcolor="#FFF8E7" style="background:#FFF8E7;padding:13px 15px">
-      <p style="font-size:10px;font-weight:600;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 6px">Broker personalisation</p>
-      <p style="font-size:14px;color:#333333;margin:0 0 14px;line-height:1.6">Hi ${greetingName},</p>
-      <p style="font-size:14px;color:#333333;margin:0;line-height:1.6">${personalisation || '[Add your personal opening here.]'}</p>
+      <p style="font-size:10px;font-weight:600;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 6px"><span style="color:#92400E;">Broker personalisation</span></p>
+      <p style="font-size:14px;color:#333333;margin:0 0 14px;line-height:1.6"><span style="color:#333333;">Hi ${greetingName},</span></p>
+      <p style="font-size:14px;color:#333333;margin:0;line-height:1.6"><span style="color:#333333;">${personalisation || '[Add your personal opening here.]'}</span></p>
     </td></tr></table><!--/BROKER-BOX-->`
 }
 
@@ -53,28 +53,28 @@ function notesBox(items: string[]) {
   return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:18px"><tr>
     <td width="4" bgcolor="#2DBEFF" style="background:#2DBEFF;width:4px;font-size:0;line-height:0">&nbsp;</td>
     <td bgcolor="#EEF6FD" style="background:#EEF6FD;padding:13px 15px">
-      <p style="font-size:10px;font-weight:600;color:#0369a1;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 8px">Important things to note</p>
-      ${all.map(i => `<p style="font-size:12px;color:#334155;margin:4px 0;line-height:1.6">&bull; ${i}</p>`).join('')}
+      <p style="font-size:10px;font-weight:600;color:#0369a1;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 8px"><span style="color:#0369a1;">Important things to note</span></p>
+      ${all.map(i => `<p style="font-size:12px;color:#334155;margin:4px 0;line-height:1.6"><span style="color:#334155;">&bull; ${i}</span></p>`).join('')}
     </td></tr></table>`
 }
 
-function heading() { return `<p style="font-size:11px;font-weight:600;color:#343333;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px">Borrowing Capacity Review</p>` }
+function heading() { return `<p style="font-size:11px;font-weight:600;color:#343333;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px"><span style="color:#343333;">Borrowing Capacity Review</span></p>` }
 
 function card(title: string, rows: string) {
   return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2E8DB" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px">
-    <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 10px">${title}</p>
+    <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 10px"><span style="color:#7a5c3a;">${title}</span></p>
     <table width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>
   </td></tr></table>`
 }
 
 function row(l: string, v: string) {
-  return `<tr><td style="font-size:12px;color:#555;padding:3px 0">${l}</td><td style="font-size:12px;color:#343333;font-weight:500;text-align:right">${v}</td></tr>`
+  return `<tr><td style="font-size:12px;color:#555;padding:3px 0"><span style="color:#555;">${l}</span></td><td style="font-size:12px;color:#343333;font-weight:500;text-align:right"><span style="color:#343333;">${v}</span></td></tr>`
 }
 
 function check(items: string[]) {
   return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2E8DB" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px">
-    <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 10px">Based on your numbers</p>
-    ${items.map(i => `<p style="font-size:13px;color:#555;margin:4px 0">&#10003; ${i}</p>`).join('')}
+    <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 10px"><span style="color:#7a5c3a;">Based on your numbers</span></p>
+    ${items.map(i => `<p style="font-size:13px;color:#555;margin:4px 0"><span style="color:#555;">&#10003; ${i}</span></p>`).join('')}
   </td></tr></table>`
 }
 
@@ -111,11 +111,11 @@ function amt(v: unknown, placeholder: string): string {
   return /[0-9]/.test(t) ? `$${t}` : t
 }
 
-function p(t: string) { return `<p style="font-size:14px;color:#333;margin-bottom:14px">${t}</p>` }
-function p13(t: string) { return `<p style="font-size:13px;color:#555;margin-bottom:12px">${t}</p>` }
+function p(t: string) { return `<p style="font-size:14px;color:#333;margin-bottom:14px"><span style="color:#333;">${t}</span></p>` }
+function p13(t: string) { return `<p style="font-size:13px;color:#555;margin-bottom:12px"><span style="color:#555;">${t}</span></p>` }
 function propHead(t: string, rentalIncome?: string) {
-  return `<p style="font-size:13px;color:#343333;font-weight:600;margin-bottom:8px">&#127968; ${t}</p>` +
-    (rentalIncome ? `<p style="font-size:12px;color:#666;margin-bottom:8px">Rental income: $${rentalIncome}/week</p>` : '')
+  return `<p style="font-size:13px;color:#343333;font-weight:600;margin-bottom:8px"><span style="color:#343333;">&#127968; ${t}</span></p>` +
+    (rentalIncome ? `<p style="font-size:12px;color:#666;margin-bottom:8px"><span style="color:#666;">Rental income: $${rentalIncome}/week</span></p>` : '')
 }
 
 function buildLVRLine(d: any) {
@@ -212,18 +212,18 @@ export async function POST(req: NextRequest) {
       if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by $${opt.hecsPayoffAmount}` : 'HECS closed')
       if (opt.carLoanPayoff) actions.push('Car loan closed')
       if (opt.personalLoanPayoff) actions.push('Personal loan closed')
-      const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</p>` : ''
+      const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px"><span style="color:#555;">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</span></p>` : ''
       let lmiLine = ''
       if (lvrNum > 80) {
-        if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0">LMI (estimated): $${opt.lmi}</p>`
-        else if (opt.lmiApplicable === 'Waived') lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0">LMI waived</p>`
+        if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI (estimated): $${opt.lmi}</span></p>`
+        else if (opt.lmiApplicable === 'Waived') lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI waived</span></p>`
       }
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
-        <p style="font-size:11px;color:#555;margin:3px 0">Existing loan balance: $${d.existingLoanBal || ''}</p>
-        <p style="font-size:11px;color:#555;margin:3px 0">Equity release amount: $${opt.equityReleaseAmount || ''}</p>
-        <p style="font-size:11px;color:#555;margin:3px 0">LVR: ${lvrNum}%</p>${lmiLine}
-        ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px">To achieve this option:</p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0">&#10003; ${a}</p>`).join('') : ''}${nonBankNote}
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Existing loan balance: $${d.existingLoanBal || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Equity release amount: $${opt.equityReleaseAmount || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
+        ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px"><span style="color:#343333;">To achieve this option:</span></p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">&#10003; ${a}</span></p>`).join('') : ''}${nonBankNote}
       </td>`
     }
     const baseOptionRE = {
@@ -236,7 +236,7 @@ export async function POST(req: NextRequest) {
       p('Based on your current financial position, you have capacity to refinance and access equity. Below we have outlined different equity release scenarios depending on your financial position.') +
       propHead(`Against ${d.suburb || '[Property Address]'}`, d.incomeRental) +
       `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2E8DB" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px">
-        <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Equity Release Options</p>
+        <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px"><span style="color:#7a5c3a;">Equity Release Options</span></p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptionsRE.join('')}</tr></table>
       </td></tr></table>` +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
@@ -277,22 +277,22 @@ export async function POST(req: NextRequest) {
       if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by $${opt.hecsPayoffAmount}` : 'HECS closed')
       if (opt.carLoanPayoff) actions.push('Car loan closed')
       if (opt.personalLoanPayoff) actions.push('Personal loan closed')
-      const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</p>` : ''
+      const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px"><span style="color:#555;">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</span></p>` : ''
       let lmiLine = ''
       if (lvrNum > 80) {
-        if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0">LMI (estimated): $${opt.lmi}</p>`
-        else if (opt.lmiApplicable === 'Waived') lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0">LMI waived</p>`
+        if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI (estimated): $${opt.lmi}</span></p>`
+        else if (opt.lmiApplicable === 'Waived') lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI waived</span></p>`
       }
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
-        <p style="font-size:11px;color:#555;margin:3px 0">Purchase price: $${opt.purchasePrice || ''}</p>
-        <p style="font-size:11px;color:#555;margin:3px 0">Deposit: $${opt.deposit || ''}</p>
-        <p style="font-size:11px;color:#555;margin:3px 0">Stamp duty: $${opt.stampDuty || ''}</p>
-        <p style="font-size:11px;color:#555;margin:3px 0">Loan amount: $${opt.loanAmount || ''}</p>
-        <p style="font-size:11px;color:#555;margin:3px 0">LVR: ${lvrNum}%</p>${lmiLine}
-        <p style="font-size:11px;color:#555;margin:3px 0">Rate: ${opt.rate}% p.a.*</p>
-        <p style="font-size:11px;color:#555;margin:3px 0">Est. repayment: ${opt.repayment ? '$' + (parseFloat(String(opt.repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]'}</p>
-        ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px">To achieve this option:</p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0">&#10003; ${a}</p>`).join('') : ''}${nonBankNote}
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Purchase price: $${opt.purchasePrice || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit: $${opt.deposit || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Stamp duty: $${opt.stampDuty || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: $${opt.loanAmount || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Est. repayment: ${opt.repayment ? '$' + (parseFloat(String(opt.repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]'}</span></p>
+        ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px"><span style="color:#343333;">To achieve this option:</span></p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">&#10003; ${a}</span></p>`).join('') : ''}${nonBankNote}
       </td>`
     }
     const baseOption = {
@@ -305,7 +305,7 @@ export async function POST(req: NextRequest) {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('Below we have outlined different purchase price scenarios depending on your financial position.') +
       `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2E8DB" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px">
-        <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Purchase Options</p>
+        <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px"><span style="color:#7a5c3a;">Purchase Options</span></p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptions.join('')}</tr></table>
       </td></tr></table>` +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
@@ -343,22 +343,22 @@ export async function POST(req: NextRequest) {
       if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by $${opt.hecsPayoffAmount}` : 'HECS closed')
       if (opt.carLoanPayoff) actions.push('Car loan closed')
       if (opt.personalLoanPayoff) actions.push('Personal loan closed')
-      const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</p>` : ''
+      const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px"><span style="color:#555;">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</span></p>` : ''
       let lmiLine = ''
       if (lvrNum > 80) {
-        if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0">LMI (estimated): $${opt.lmi}</p>`
-        else if (opt.lmiApplicable === 'Waived') lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0">LMI waived</p>`
+        if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI (estimated): $${opt.lmi}</span></p>`
+        else if (opt.lmiApplicable === 'Waived') lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI waived</span></p>`
       }
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
-        <p style="font-size:11px;color:#555;margin:3px 0">Purchase price: $${opt.purchasePrice || ''}</p>
-        <p style="font-size:11px;color:#555;margin:3px 0">Deposit: $${opt.deposit || ''}</p>
-        <p style="font-size:11px;color:#555;margin:3px 0">Stamp duty: $${opt.stampDuty || ''}</p>
-        <p style="font-size:11px;color:#555;margin:3px 0">Loan amount: $${opt.loanAmount || ''}</p>
-        <p style="font-size:11px;color:#555;margin:3px 0">LVR: ${lvrNum}%</p>${lmiLine}
-        <p style="font-size:11px;color:#555;margin:3px 0">Rate: ${opt.rate}% p.a.*</p>
-        <p style="font-size:11px;color:#555;margin:3px 0">Est. repayment: ${opt.repayment ? '$' + (parseFloat(String(opt.repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]'}</p>
-        ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px">To achieve this option:</p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0">&#10003; ${a}</p>`).join('') : ''}${nonBankNote}
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Purchase price: $${opt.purchasePrice || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit: $${opt.deposit || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Stamp duty: $${opt.stampDuty || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: $${opt.loanAmount || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Est. repayment: ${opt.repayment ? '$' + (parseFloat(String(opt.repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]'}</span></p>
+        ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px"><span style="color:#343333;">To achieve this option:</span></p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">&#10003; ${a}</span></p>`).join('') : ''}${nonBankNote}
       </td>`
     }
     const baseOptionIP = {
@@ -371,7 +371,7 @@ export async function POST(req: NextRequest) {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('Below we have outlined different purchase price scenarios depending on your financial position.') +
       `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2E8DB" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px">
-        <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Purchase Options</p>
+        <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px"><span style="color:#7a5c3a;">Purchase Options</span></p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptionsIP.join('')}</tr></table>
       </td></tr></table>` +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
@@ -406,7 +406,7 @@ export async function POST(req: NextRequest) {
         row('Expected sale price', '$' + (d.salePrice || '')) +
         row('Agent fees / selling costs', '$' + (d.agentFees || '')) +
         row('Existing loan balance (to be discharged)', '$' + (d.existingLoanBal || '')) +
-        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Net proceeds (est.)</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">$${d.netProceeds || ''}</td></tr>`
+        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Net proceeds (est.)</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">$${d.netProceeds || ''}</span></td></tr>`
       ) +
       card('New Purchase',
         row('Purchase price', '$' + d.purchasePrice || '') +
@@ -433,23 +433,23 @@ export async function POST(req: NextRequest) {
       let lmiLine = ''
       if (lvrNum > 80) {
         if (s.lmiApplicable === 'Applicable' && s.lmi) {
-          lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0">LMI (estimated): $${s.lmi}</p>`
+          lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI (estimated): $${s.lmi}</span></p>`
         } else if (s.lmiApplicable === 'Waived') {
-          lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0">LMI waived</p>`
+          lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI waived</span></p>`
         }
       }
       return `<td style="width:${Math.floor(100/splits.length)}%;vertical-align:top;padding:0 4px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${s.label}</td></tr></table>
-        <p style="font-size:11px;color:#555;margin:3px 0">Loan amount: $${s.amount}</p>${s.deposit ? `<p style="font-size:11px;color:#555;margin:3px 0">Deposit required: $${s.deposit}</p>` : ""}
-        <p style="font-size:11px;color:#555;margin:3px 0">LVR: ${lvrNum}%</p>${lmiLine}
-        <p style="font-size:11px;color:#555;margin:3px 0">Rate: ${s.rate}% p.a.*</p>
-        <p style="font-size:11px;color:#555;margin:3px 0">Type: ${s.type}</p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: $${s.amount}</span></p>${s.deposit ? `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit required: $${s.deposit}</span></p>` : ""}
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${s.rate}% p.a.*</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Type: ${s.type}</span></p>
       </td>`
     }).join('')
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>. Below we have outlined ${splits.length} scenarios based on different deposit contributions.`) +
       `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2E8DB" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px">
-        <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Deposit Options</p>
+        <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px"><span style="color:#7a5c3a;">Deposit Options</span></p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${lvrCols}</tr></table>
       </td></tr></table>` +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
@@ -460,7 +460,7 @@ export async function POST(req: NextRequest) {
   } else if (template === 'fhb') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('There is currently a government scheme we believe that you would be eligible for. The 5% Deposit Scheme is a current government scheme that allows first home buyers with a minimum 5% deposit to purchase a property without the cost of mortgage insurance.') +
-      `<p style="font-size:14px;color:#333;margin-bottom:8px">To apply for the 5% Deposit Scheme, home buyers must be:</p>
+      `<p style="font-size:14px;color:#333;margin-bottom:8px"><span style="color:#333;">To apply for the 5% Deposit Scheme, home buyers must be:</span></p>
       <ul style="font-size:13px;color:#555;margin:0 0 16px 20px;line-height:1.9">
         <li>An Australian citizen(s) or Permanent Resident at the time they enter the loan</li>
         <li>Applying as an individual or couple</li>
@@ -469,8 +469,8 @@ export async function POST(req: NextRequest) {
         <li>First home buyers who have not previously owned, or had an interest in, a property in Australia in the last 10 years</li>
         <li>Purchase a property within the price cap relevant to your state/territory</li>
       </ul>
-      <p style="font-size:12px;color:#777;margin:0 0 16px;line-height:1.6">**Retained savings explanation: after the payment of your 5% deposit (plus any relevant stamp duty), the government allows you to retain up to 6 months of living expenses AND up to 6 months of scheduled loan repayments.</p>
-      <p style="font-size:13px;color:#555;margin:0 0 16px">Further information: <a href="https://firsthomebuyers.gov.au/australian-government-5-percent-deposit-scheme" style="color:#2DBEFF">firsthomebuyers.gov.au/australian-government-5-percent-deposit-scheme</a></p>` +
+      <p style="font-size:12px;color:#777;margin:0 0 16px;line-height:1.6"><span style="color:#777;">**Retained savings explanation: after the payment of your 5% deposit (plus any relevant stamp duty), the government allows you to retain up to 6 months of living expenses AND up to 6 months of scheduled loan repayments.</span></p>
+      <p style="font-size:13px;color:#555;margin:0 0 16px"><span style="color:#555;">Further information: <a href="https://firsthomebuyers.gov.au/australian-government-5-percent-deposit-scheme" style="color:#2DBEFF">firsthomebuyers.gov.au/australian-government-5-percent-deposit-scheme</a></span></p>` +
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
         row('Stamp duty', '$' + d.stampDuty || '/bin/zsh — first home buyer exemption') +
@@ -493,7 +493,7 @@ export async function POST(req: NextRequest) {
       card('New Purchase Details',
         row('Purchase price', '$' + (d.purchasePrice || '')) +
         row('Stamp duty', '$' + (d.stampDuty || '')) +
-        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Total cost</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">$${(() => { const pp = parseFloat((d.purchasePrice||'0').replace(/,/g,'')) || 0; const sd = parseFloat((d.stampDuty||'0').replace(/,/g,'')) || 0; return (pp+sd).toLocaleString('en-AU') })()}</td></tr>` +
+        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Total cost</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">$${(() => { const pp = parseFloat((d.purchasePrice||'0').replace(/,/g,'')) || 0; const sd = parseFloat((d.stampDuty||'0').replace(/,/g,'')) || 0; return (pp+sd).toLocaleString('en-AU') })()}</span></td></tr>` +
         row(`Contribution${d.depositSource ? ` (from ${d.depositSource})` : ''}`, '$' + (d.deposit || '')) +
         row('Bridging loan (peak debt)', '$' + (d.splits?.[0]?.amount || '')) +
         row('End debt', '$' + (d.splits?.[1]?.amount || ''))
@@ -568,7 +568,7 @@ export async function POST(req: NextRequest) {
         row('Land value', '$' + (d.landValue || '')) +
         row('Construction cost', '$' + (d.constructionCost || '')) +
         row('Stamp duty', '$' + (d.stampDuty || '')) +
-        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px">Total cost</td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px">$${totalCost.toLocaleString('en-AU')}</td></tr>` +
+        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Total cost</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">$${totalCost.toLocaleString('en-AU')}</span></td></tr>` +
         row('"As if complete" valuation', '$' + (d.asIfCompleteValue || '')) +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('Deposit required', '$' + depositRequired.toLocaleString('en-AU')) +
@@ -589,21 +589,21 @@ export async function POST(req: NextRequest) {
     const npDeposit = d.newPurchaseDeposit   || d.equityRelease || d.deposit || ''
     const totalCost = npPrice && npStamp ? `$${npPrice} + $${npStamp}` : ''
     const existingLoanCol = `
-      <p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 6px">Existing loan refinanced</p>
-      <p style="font-size:11px;color:#555;margin:2px 0">Loan amount: $${d.splits?.[0]?.amount || ''}</p>
-      <p style="font-size:11px;color:#555;margin:2px 0">Indicative rate: ${d.splits?.[0]?.rate || ''}% p.a.*</p>
-      <p style="font-size:11px;color:#555;margin:2px 0">Estimated repayments: ${d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]'}</p>
-      <p style="font-size:11px;color:#555;margin:2px 0 10px">Repayment type: ${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years</p>
-      <p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 6px">Equity access</p>
-      <p style="font-size:11px;color:#555;margin:2px 0">Loan amount: $${d.splits?.[1]?.amount || ''}</p>
-      <p style="font-size:11px;color:#555;margin:2px 0">Indicative rate: ${d.splits?.[1]?.rate || ''}% p.a.*</p>
-      <p style="font-size:11px;color:#555;margin:2px 0">Estimated repayments: ${d.splits?.[1]?.repayment ? '$' + (parseFloat(String(d.splits[1].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]'}</p>
-      <p style="font-size:11px;color:#555;margin:2px 0">Repayment type: ${d.splits?.[1]?.type || 'P&I'} over ${d.loanTerm || '30'} years</p>`
+      <p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 6px"><span style="color:#343333;">Existing loan refinanced</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Loan amount: $${d.splits?.[0]?.amount || ''}</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Indicative rate: ${d.splits?.[0]?.rate || ''}% p.a.*</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Estimated repayments: ${d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]'}</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0 10px"><span style="color:#555;">Repayment type: ${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years</span></p>
+      <p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 6px"><span style="color:#343333;">Equity access</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Loan amount: $${d.splits?.[1]?.amount || ''}</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Indicative rate: ${d.splits?.[1]?.rate || ''}% p.a.*</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Estimated repayments: ${d.splits?.[1]?.repayment ? '$' + (parseFloat(String(d.splits[1].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]'}</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Repayment type: ${d.splits?.[1]?.type || 'P&I'} over ${d.loanTerm || '30'} years</span></p>`
     const newPurchaseCol = `
-      <p style="font-size:11px;color:#555;margin:2px 0">Loan amount: $${d.splits?.[2]?.amount || ''}</p>
-      <p style="font-size:11px;color:#555;margin:2px 0">Indicative rate: ${d.splits?.[2]?.rate || ''}% p.a.*</p>
-      <p style="font-size:11px;color:#555;margin:2px 0">Estimated repayments: ${d.splits?.[2]?.repayment ? '$' + (parseFloat(String(d.splits[2].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]'}</p>
-      <p style="font-size:11px;color:#555;margin:2px 0">Repayment type: ${d.splits?.[2]?.type || 'P&I'} over ${d.loanTerm || '30'} years</p>`
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Loan amount: $${d.splits?.[2]?.amount || ''}</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Indicative rate: ${d.splits?.[2]?.rate || ''}% p.a.*</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Estimated repayments: ${d.splits?.[2]?.repayment ? '$' + (parseFloat(String(d.splits[2].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]'}</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Repayment type: ${d.splits?.[2]?.type || 'P&I'} over ${d.loanTerm || '30'} years</span></p>`
 
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have now finalised your review as you are looking at purchasing an owner-occupied/investment property.') +
@@ -621,11 +621,11 @@ export async function POST(req: NextRequest) {
       p13('Below is a breakdown of the structure:') +
       `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:14px"><tr>
         <td width="50%" bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px;border:1px solid #e5ddc8;vertical-align:top">
-          <p style="font-size:12px;font-weight:700;color:#343333;margin:0 0 10px">&#127968; Against ${d.suburb || '[Existing Property]'}</p>
+          <p style="font-size:12px;font-weight:700;color:#343333;margin:0 0 10px"><span style="color:#343333;">&#127968; Against ${d.suburb || '[Existing Property]'}</span></p>
           ${existingLoanCol}
         </td>
         <td width="50%" bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px;border:1px solid #e5ddc8;vertical-align:top">
-          <p style="font-size:12px;font-weight:700;color:#343333;margin:0 0 10px">&#127968; Against new purchase</p>
+          <p style="font-size:12px;font-weight:700;color:#343333;margin:0 0 10px"><span style="color:#343333;">&#127968; Against new purchase</span></p>
           ${newPurchaseCol}
         </td>
       </tr></table>` +

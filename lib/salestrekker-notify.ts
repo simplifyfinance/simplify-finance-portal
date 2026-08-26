@@ -78,12 +78,12 @@ export async function notifyCrisMoveCard(dealName: string, brokerName: string, a
   const color = closed ? '#1D9E75' : '#7C3AED'
   const html = `<p>Hi,</p>
     <table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 16px" width="100%" cellpadding="0" cellspacing="0" border="0">
-      <tr><td style="color:#666;font-size:13px;padding:3px 0">Deal</td><td style="text-align:right;font-size:13px;font-weight:600;padding:3px 0">${dealName}</td></tr>
-      <tr><td style="color:#666;font-size:13px;padding:3px 0">Broker</td><td style="text-align:right;font-size:13px;padding:3px 0">${brokerName || ''}</td></tr>
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Deal</span></td><td style="text-align:right;font-size:13px;font-weight:600;padding:3px 0">${dealName}</td></tr>
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Broker</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${brokerName || ''}</td></tr>
     </table>
-    <p style="color:#666;font-size:13px;margin:0 0 6px">Action needed in SalesTrekker:</p>
+    <p style="color:#666;font-size:13px;margin:0 0 6px"><span style="color:#666;">Action needed in SalesTrekker:</span></p>
     <table cellpadding="0" cellspacing="0" border="0" style="margin:0"><tr><td bgcolor="${bg}" style="background:${bg};border-radius:8px;padding:8px 12px;font-family:Arial,sans-serif;font-size:14px;font-weight:600;color:${color}">${action}</td></tr></table>
-    ${attachments && attachments.length ? `<p style="color:#666;font-size:13px;margin:12px 0 0">Two PDFs are attached to this email (deal summary and compliance summary) — please save both into this client's OneDrive folder.</p>` : ''}`
+    ${attachments && attachments.length ? `<p style="color:#666;font-size:13px;margin:12px 0 0"><span style="color:#666;">Two PDFs are attached to this email (deal summary and compliance summary) — please save both into this client's OneDrive folder.</span></p>` : ''}`
 
   await sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au', `SalesTrekker update needed — ${dealName}`, html, attachments)
 }

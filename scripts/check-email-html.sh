@@ -32,6 +32,24 @@ for f in files:
             issues.append((f, line, 'colour on a <%s> — Word paints nothing. Use a table cell.' % name))
         elif 'bgcolor=' not in tag:
             issues.append((f, line, 'background %s with no bgcolor attribute' % colour))
+    # Word keeps a text colour on a run, and drops one on a paragraph. A colour
+    # on a <div>, <p> or <td> holding text arrives black — which is how Kylie's
+    # disclaimer came through as black on charcoal. Wrap the text in a span.
+    for tag in ('div', 'p', 'td'):
+        pat = re.compile(
+            r'<%s style="[^"]*?color:\s*([^;"]+)[^"]*">((?:(?!<%s|</%s>).)*?)</%s>'
+            % (tag, tag, tag, tag), re.S)
+        for m in pat.finditer(s):
+            inner = m.group(2)
+            if not inner.strip():
+                continue
+            if re.search(r'<(table|div|td|tr|p)\b', inner, re.I):
+                continue                       # holds other blocks, not text
+            if '<span style="color:' in inner or inner.strip().startswith('<a '):
+                continue                       # already a run-level colour
+            issues.append((f, s[:m.start()].count('\n') + 1,
+                           'text colour on a <%s> — Word paints it black. Wrap the text in a span.' % tag))
+
     for m in re.finditer(r'rgba\(', s):
         issues.append((f, s[:m.start()].count('\n') + 1, 'rgba() — Word has no rgba. Use a solid hex.'))
 

@@ -67,7 +67,7 @@ function button(label: string, url: string, filled: boolean): string {
 }
 
 function statCell(label: string, value: string): string {
-  return `<td width="50%" valign="top" style="padding:0 4px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${SAND}" style="background-color:${SAND};border-radius:6px;"><tr><td align="center" style="padding:12px 8px;font-family:${FONT};"><div style="font-size:12px;color:#7a5c3a;">${label}</div><div style="font-size:18px;color:#5C4326;padding-top:3px;">${value}</div></td></tr></table></td>`;
+  return `<td width="50%" valign="top" style="padding:0 4px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${SAND}" style="background-color:${SAND};border-radius:6px;"><tr><td align="center" style="padding:12px 8px;font-family:${FONT};"><div style="font-size:12px;color:#7a5c3a;"><span style="color:#7a5c3a;">${label}</span></div><div style="font-size:18px;color:#5C4326;padding-top:3px;"><span style="color:#5C4326;">${value}</span></div></td></tr></table></td>`;
 }
 
 function comparisonBlock(
@@ -80,23 +80,23 @@ function comparisonBlock(
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
 <tr>
 <td width="45%" valign="top" style="font-family:${FONT};">
-<div style="font-size:12px;color:${GREY};">Your rate now</div>
-<div style="font-size:21px;color:${INK};padding-top:3px;">${input.currentRate.toFixed(2)}%</div>
-<div style="font-size:12px;color:${GREY};padding-top:3px;">${formatCurrency(r.currentRepayment)}/mo</div>
+<div style="font-size:12px;color:${GREY};"><span style="color:${GREY};">Your rate now</span></div>
+<div style="font-size:21px;color:${INK};padding-top:3px;"><span style="color:${INK};">${input.currentRate.toFixed(2)}%</span></div>
+<div style="font-size:12px;color:${GREY};padding-top:3px;"><span style="color:${GREY};">${formatCurrency(r.currentRepayment)}/mo</span></div>
 </td>
 <td width="10%" align="center" valign="middle" style="font-family:${FONT};font-size:18px;color:#B4B2A9;">&rarr;</td>
 <td width="45%" valign="top" align="right" style="font-family:${FONT};">
-<div style="font-size:12px;color:${GREEN};">Your new rate</div>
-<div style="font-size:21px;color:${GREEN};padding-top:3px;">${input.newRate.toFixed(2)}%</div>
-<div style="font-size:12px;color:${GREEN};padding-top:3px;">${formatCurrency(r.newRepayment)}/mo</div>
+<div style="font-size:12px;color:${GREEN};"><span style="color:${GREEN};">Your new rate</span></div>
+<div style="font-size:21px;color:${GREEN};padding-top:3px;"><span style="color:${GREEN};">${input.newRate.toFixed(2)}%</span></div>
+<div style="font-size:12px;color:${GREEN};padding-top:3px;"><span style="color:${GREEN};">${formatCurrency(r.newRepayment)}/mo</span></div>
 </td>
 </tr>
 </table>
 </td></tr>
 <tr><td style="border-top:1px solid ${BORDER};padding:12px 14px 14px 14px;font-family:${FONT};" align="center">
-<div style="font-size:12px;color:${GREY};">${savingLabel}</div>
-<div style="font-size:30px;color:${GREEN};padding:3px 0;">${formatCurrency(r.monthlySaving)}</div>
-<div style="font-size:13px;color:${BODY};">every month</div>
+<div style="font-size:12px;color:${GREY};"><span style="color:${GREY};">${savingLabel}</span></div>
+<div style="font-size:30px;color:${GREEN};padding:3px 0;"><span style="color:${GREEN};">${formatCurrency(r.monthlySaving)}</span></div>
+<div style="font-size:13px;color:${BODY};"><span style="color:${BODY};">every month</span></div>
 </td></tr>
 </table>`;
 }
@@ -107,18 +107,18 @@ function shell(inner: string): string {
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" bgcolor="#ffffff" style="width:600px;max-width:600px;background-color:#ffffff;">
 <tr><td bgcolor="${NAVY}" align="center" style="background-color:${NAVY};padding:26px 20px;font-family:${FONT};">
 <img src="${LOGO_URL}" alt="Simplify Finance" height="72" style="height:72px;display:block;margin:0 auto 8px;border:0;" />
-<div style="color:${NAVY_LIGHT};font-size:10px;letter-spacing:2px;text-transform:uppercase;">Finance, Simplified.</div>
+<div style="color:${NAVY_LIGHT};font-size:10px;letter-spacing:2px;text-transform:uppercase;"><span style="color:${NAVY_LIGHT};">Finance, Simplified.</span></div>
 </td></tr>
 <tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding:24px 20px;">${inner}</td></tr>
 <tr><td bgcolor="${FOOTER_BG}" style="background-color:${FOOTER_BG};padding:14px 20px;font-family:${FONT};">
-<div style="font-size:10px;color:${FOOTER_INK};line-height:1.6;">${DISCLAIMER}</div>
+<div style="font-size:10px;color:${FOOTER_INK};line-height:1.6;"><span style="color:${FOOTER_INK};">${DISCLAIMER}</span></div>
 </td></tr>
 </table>
 </td></tr></table>`;
 }
 
 function signOff(ctx: EmailContext): string {
-  return `<p style="margin:0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;">Any questions, just hit reply.</p>
+  return `<p style="margin:0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;"><span style="color:${BODY};">Any questions, just hit reply.</span></p>
 <p style="margin:12px 0 0 0;font-family:${FONT};font-size:14px;color:${INK};line-height:1.5;">${ctx.brokerName}<br><span style="color:${GREY};font-size:13px;">Simplify Finance</span></p>`;
 }
 
@@ -128,7 +128,7 @@ function cashbackBlock(r: RefinanceResult, cashback: number): string {
     r.netCashPosition >= 0
       ? " &mdash; which covers the switching costs, so it doesn't cost you anything to move."
       : ' towards your switching costs.';
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${AMBER_BG}" style="background-color:${AMBER_BG};border-radius:6px;margin:0 0 14px 0;"><tr><td style="padding:12px 14px;font-family:${FONT};font-size:14px;color:${AMBER_DARK};line-height:1.5;"><strong>Plus a ${formatCurrency(cashback)} cashback</strong>${tail}</td></tr></table>`;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${AMBER_BG}" style="background-color:${AMBER_BG};border-radius:6px;margin:0 0 14px 0;"><tr><td style="padding:12px 14px;font-family:${FONT};font-size:14px;color:${AMBER_DARK};line-height:1.5;"><span style="color:${AMBER_DARK};"><strong>Plus a ${formatCurrency(cashback)} cashback</strong>${tail}</span></td></tr></table>`;
 }
 
 export function buildRefinanceEmail(
@@ -149,14 +149,14 @@ export function buildRefinanceEmail(
 
   let closingLine = '';
   if (isIO) {
-    closingLine = `<p style="margin:0 0 14px 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;">That's <strong>${formatCurrency(r.annualSaving)} a year</strong> improvement in your holding costs &mdash; money that can sit in your offset, cover the next round of maintenance, or go toward a deposit on the next one.</p>
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${FOOTER_BG}" style="background-color:${FOOTER_BG};margin:0 0 16px 0;"><tr><td style="padding:11px 13px;border-left:3px solid #B4B2A9;font-family:${FONT};font-size:13px;color:#5F5E5A;line-height:1.5;">${IO_TAX_NOTE}</td></tr></table>`;
+    closingLine = `<p style="margin:0 0 14px 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;"><span style="color:${BODY};">That's <strong>${formatCurrency(r.annualSaving)} a year</strong> improvement in your holding costs &mdash; money that can sit in your offset, cover the next round of maintenance, or go toward a deposit on the next one.</span></p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${FOOTER_BG}" style="background-color:${FOOTER_BG};margin:0 0 16px 0;"><tr><td style="padding:11px 13px;border-left:3px solid #B4B2A9;font-family:${FONT};font-size:13px;color:#5F5E5A;line-height:1.5;"><span style="color:#5F5E5A;">${IO_TAX_NOTE}</span></td></tr></table>`;
   } else if (r.monthsSavedIfRepaymentsHeld && r.monthsSavedIfRepaymentsHeld > 0) {
-    closingLine = `<p style="margin:0 0 16px 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;">If you kept your repayments the same instead of dropping them, you'd be mortgage-free <strong>${formatMonthsAsYearsMonths(r.monthsSavedIfRepaymentsHeld)}</strong> sooner.</p>`;
+    closingLine = `<p style="margin:0 0 16px 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;"><span style="color:${BODY};">If you kept your repayments the same instead of dropping them, you'd be mortgage-free <strong>${formatMonthsAsYearsMonths(r.monthsSavedIfRepaymentsHeld)}</strong> sooner.</span></p>`;
   }
 
-  const inner = `<p style="margin:0 0 10px 0;font-family:${FONT};font-size:15px;color:${INK};line-height:1.6;">Hi ${name},</p>
-<p style="margin:0 0 14px 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;">${intro}</p>
+  const inner = `<p style="margin:0 0 10px 0;font-family:${FONT};font-size:15px;color:${INK};line-height:1.6;"><span style="color:${INK};">Hi ${name},</span></p>
+<p style="margin:0 0 14px 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;"><span style="color:${BODY};">${intro}</span></p>
 ${comparisonBlock(r, input, isIO ? 'Back into your cashflow' : "You'd save")}
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 14px 0;"><tr>
 ${statCell('Per year', formatCurrency(r.annualSaving))}

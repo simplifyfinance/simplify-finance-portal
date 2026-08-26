@@ -42,16 +42,16 @@ const DISCLAIMER_TAIL =
   'Please seek your own legal and tax advice before entering into any contract.'
 
 const p = (t: string) =>
-  `<p style="margin:0 0 15px;font-family:${FONT};font-size:15px;color:${BODY};line-height:1.65;">${t}</p>`
+  `<p style="margin:0 0 15px;font-family:${FONT};font-size:15px;color:${BODY};line-height:1.65;"><span style="color:${BODY};">${t}</span></p>`
 const punch = (t: string) =>
-  `<p style="margin:0 0 15px;font-family:${FONT};font-size:16.5px;color:${INK};font-weight:600;line-height:1.5;">${t}</p>`
+  `<p style="margin:0 0 15px;font-family:${FONT};font-size:16.5px;color:${INK};font-weight:600;line-height:1.5;"><span style="color:${INK};">${t}</span></p>`
 
 function keyBlock(line: string, payoff: string): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0;"><tr>
 <td width="3" bgcolor="${CYAN}" style="background-color:${CYAN};width:3px;font-size:0;line-height:0;">&nbsp;</td>
 <td bgcolor="${TINT}" style="background-color:${TINT};padding:16px 18px;font-family:${FONT};">
-<div style="font-size:19px;font-weight:bold;line-height:1.4;color:${INK};">${line}</div>
-<div style="font-size:14.5px;font-weight:600;color:#0B6F9E;padding-top:5px;">${payoff}</div>
+<div style="font-size:19px;font-weight:bold;line-height:1.4;color:${INK};"><span style="color:${INK};">${line}</span></div>
+<div style="font-size:14.5px;font-weight:600;color:#0B6F9E;padding-top:5px;"><span style="color:#0B6F9E;">${payoff}</span></div>
 </td></tr></table>`
 }
 
@@ -60,8 +60,8 @@ function rebateBlock(amount: string): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0;border:1px solid ${BORDER};border-radius:8px;">
 <tr><td bgcolor="${SAND}" align="center" style="background-color:${SAND};border-bottom:1px solid ${BORDER};padding:10px 14px;font-family:${FONT};font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#7a5c3a;font-weight:bold;">On this project</td></tr>
 <tr><td bgcolor="${TINT}" align="center" style="background-color:${TINT};padding:20px 14px 18px;font-family:${FONT};">
-<div style="font-size:42px;font-weight:bold;color:#0B6F9E;line-height:1;">$${amount}</div>
-<div style="font-size:13px;color:#0B6F9E;padding-top:6px;">Back to you, not kept as a fee</div>
+<div style="font-size:42px;font-weight:bold;color:#0B6F9E;line-height:1;"><span style="color:#0B6F9E;">$${amount}</span></div>
+<div style="font-size:13px;color:#0B6F9E;padding-top:6px;"><span style="color:#0B6F9E;">Back to you, not kept as a fee</span></div>
 </td></tr></table>`
 }
 
@@ -87,10 +87,10 @@ function twoUses(): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;"><tr>
 <td width="3" bgcolor="${CYAN}" style="background-color:${CYAN};width:3px;font-size:0;line-height:0;">&nbsp;</td>
 <td bgcolor="${TINT}" style="background-color:${TINT};padding:15px 17px;font-family:${FONT};">
-<div style="font-size:14.5px;font-weight:600;color:${INK};">Holding the asset comfortably</div>
-<div style="font-size:14px;color:${BODY};line-height:1.6;padding:3px 0 13px;">It covers the gap between the rent and the repayments through the first year, which is the part that catches people out.</div>
-<div style="font-size:14.5px;font-weight:600;color:${INK};">Or paying down their own home loan</div>
-<div style="font-size:14px;color:${BODY};line-height:1.6;padding-top:3px;">Interest on your own home is generally not deductible, so many people put every spare dollar there first. Worth a word with your accountant about which suits you.</div>
+<div style="font-size:14.5px;font-weight:600;color:${INK};"><span style="color:${INK};">Holding the asset comfortably</span></div>
+<div style="font-size:14px;color:${BODY};line-height:1.6;padding:3px 0 13px;"><span style="color:${BODY};">It covers the gap between the rent and the repayments through the first year, which is the part that catches people out.</span></div>
+<div style="font-size:14.5px;font-weight:600;color:${INK};"><span style="color:${INK};">Or paying down their own home loan</span></div>
+<div style="font-size:14px;color:${BODY};line-height:1.6;padding-top:3px;"><span style="color:${BODY};">Interest on your own home is generally not deductible, so many people put every spare dollar there first. Worth a word with your accountant about which suits you.</span></div>
 </td></tr></table>`
 }
 
@@ -139,9 +139,9 @@ export function buildRebateEmail(ctx: RebateContext): {
       ? attachBlock()
       : p('If it is worth a conversation, we will run the numbers against your own position.')) +
     shellButton(ctx.calendlyUrl || '#', 'Book a 15-minute chat') +
-    `<p style="margin:10px 0 0;font-family:${FONT};font-size:13.5px;color:${GREY};text-align:center;">Or simply reply to this email.</p>` +
-    `<p style="margin:22px 0 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;">` +
-      `<span style="font-weight:600;color:${INK};">${ctx.brokerName}</span><br>Simplify Finance</p>`
+    `<p style="margin:10px 0 0;font-family:${FONT};font-size:13.5px;color:${GREY};text-align:center;"><span style="color:${GREY};">Or simply reply to this email.</span></p>` +
+    `<p style="margin:22px 0 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;"><span style="color:${BODY};">` +
+      `<span style="font-weight:600;color:${INK};">${ctx.brokerName}</span><br>Simplify Finance</span></p>`
 
   const plainText = [
     `Hi ${name},`, '',

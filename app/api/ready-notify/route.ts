@@ -35,11 +35,11 @@ export async function POST(req: NextRequest) {
   if (p.cashback > 0) rows.push(['Cashback', money(p.cashback)])
 
   const table = rows.map(([k, v]) =>
-    `<tr><td style="font-size:13px;color:#575046;padding:7px 11px;border-bottom:1px solid #EFEAE0;">${k}</td>` +
-    `<td style="font-size:13px;color:#221F1B;padding:7px 11px;border-bottom:1px solid #EFEAE0;text-align:right;">${v}</td></tr>`
+    `<tr><td style="font-size:13px;color:#575046;padding:7px 11px;border-bottom:1px solid #EFEAE0;"><span style="color:#575046;">${k}</span></td>` +
+    `<td style="font-size:13px;color:#221F1B;padding:7px 11px;border-bottom:1px solid #EFEAE0;text-align:right;"><span style="color:#221F1B;">${v}</span></td></tr>`
   ).join('')
 
-  const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#575046;font-size:14px;line-height:1.6">
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#575046;font-size:14px;line-height:1.6"><span style="color:#575046;">
 <p>Hi ${(broker as any)?.name?.split(' ')[0] || ''},</p>
 <p><b style="color:#221F1B">${p.name}</b> pressed <b style="color:#221F1B">Get started</b> on the refinance email
 you sent on ${p.sentOn}. They are expecting a call within one business day.</p>
@@ -48,7 +48,7 @@ you sent on ${p.sentOn}. They are expecting a call within one business day.</p>
 <p style="margin-top:14px"><b style="color:#221F1B">Email</b><br>${p.email.split(',').map(e => e.trim()).join('<br>')}</p>
 <table cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#2DBEFF" align="center" style="background:#2DBEFF;border-radius:7px;padding:9px 16px">
 <a href="mailto:${encodeURIComponent(p.email)}" style="color:#ffffff;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">Reply to ${p.name}</a></td></tr></table>
-</div>`
+</span></div>`
 
   try {
     const res = await fetch('https://api.resend.com/emails', {

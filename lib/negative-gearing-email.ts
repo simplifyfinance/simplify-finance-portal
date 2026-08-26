@@ -35,7 +35,7 @@ const DISCLAIMER =
   'form of the law. Please speak to your accountant or registered tax adviser before acting.'
 
 const p = (t: string) =>
-  `<p style="margin:0 0 14px;font-family:${FONT};font-size:14.5px;color:${BODY};line-height:1.7;">${t}</p>`
+  `<p style="margin:0 0 14px;font-family:${FONT};font-size:14.5px;color:${BODY};line-height:1.7;"><span style="color:${BODY};">${t}</span></p>`
 
 const em = (t: string) => `<span style="font-weight:600;color:${INK};">${t}</span>`
 
@@ -43,8 +43,8 @@ function keyBlock(line: string, payoff: string): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0;"><tr>
 <td width="3" bgcolor="${CYAN}" style="background-color:${CYAN};width:3px;font-size:0;line-height:0;">&nbsp;</td>
 <td bgcolor="${TINT}" style="background-color:${TINT};padding:15px 17px;font-family:${FONT};">
-<div style="font-size:18.5px;font-weight:600;line-height:1.4;color:${INK};">${line}</div>
-<div style="font-size:15px;font-weight:600;color:#0B6F9E;padding-top:4px;">${payoff}</div>
+<div style="font-size:18.5px;font-weight:600;line-height:1.4;color:${INK};"><span style="color:${INK};">${line}</span></div>
+<div style="font-size:15px;font-weight:600;color:#0B6F9E;padding-top:4px;"><span style="color:#0B6F9E;">${payoff}</span></div>
 </td></tr></table>`
 }
 
@@ -86,9 +86,9 @@ export function buildNegativeGearingEmail(ctx: NegativeGearingContext): {
     p('If you have put your next investment on hold because of negative gearing, let us look at the ' +
       'opportunities under the new rules.') +
     shellButton(ctx.calendlyUrl || '#', 'Book a 15-minute chat') +
-    `<p style="margin:9px 0 0;font-family:${FONT};font-size:13.5px;color:${GREY};text-align:center;">Or simply reply to this email.</p>` +
-    `<p style="margin:20px 0 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;">` +
-      `<span style="font-weight:600;color:${INK};">${ctx.brokerName}</span><br>Simplify Finance</p>`
+    `<p style="margin:9px 0 0;font-family:${FONT};font-size:13.5px;color:${GREY};text-align:center;"><span style="color:${GREY};">Or simply reply to this email.</span></p>` +
+    `<p style="margin:20px 0 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;"><span style="color:${BODY};">` +
+      `<span style="font-weight:600;color:${INK};">${ctx.brokerName}</span><br>Simplify Finance</span></p>`
 
   const plainText = [
     `Hi ${name},`, '',
