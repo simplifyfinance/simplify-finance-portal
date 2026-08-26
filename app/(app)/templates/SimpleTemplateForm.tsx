@@ -1,18 +1,26 @@
 'use client'
 import { useMemo, useRef, useState, useEffect } from 'react'
 import { TONE } from '@/lib/tone'
-import { buildNegativeGearingEmail } from '@/lib/negative-gearing-email'
 import { mailtoUrl } from '@/lib/email-shell'
 import { useSender } from './useSender'
 import { SenderPanel, ClientPanel } from './TemplateFields'
 import PasteReminder from './PasteReminder'
 
-// Nothing is calculated here — the argument is the same for every investor, so
-// the email is ready as soon as the client is filled in. No loan panel, no SMS
-// (a text message about deferred tax losses is not a text message anyone wants),
-// and no "get started" link, because the call to action is a conversation.
+// One form for every template that needs nothing but the client. Nothing is
+// calculated, so the email is ready as soon as the name and address are in.
+//
+// No loan panel, no SMS (a text message about deferred tax losses is not one
+// anyone wants), and no "get started" link — the call to action is a
+// conversation, not an instruction to proceed.
 
-export default function NegativeGearingForm() {
+export type BuiltEmail = { subject: string; html: string; plainText: string }
+export type EmailBuilder = (ctx: {
+  clientFirstName: string
+  brokerName: string
+  calendlyUrl: string
+}) => BuiltEmail
+
+export default function SimpleTemplateForm({ build }: { build: EmailBuilder }) {
   const sender = useSender('sf_template_sender_v1')
 
   const [firstName, setFirstName] = useState('')
@@ -31,12 +39,12 @@ export default function NegativeGearingForm() {
 
   const built = useMemo(() => {
     if (!greeting || !sender.broker) return null
-    return buildNegativeGearingEmail({
+    return build({
       clientFirstName: greeting,
       brokerName: sender.broker.name,
       calendlyUrl: sender.calendlyUrl,
     })
-  }, [greeting, sender.broker, sender.calendlyUrl])
+  }, [greeting, sender.broker, sender.calendlyUrl, build])
 
   const missing: string[] = []
   if (!firstName.trim()) missing.push('client name')

@@ -2,11 +2,16 @@
 import { useState } from 'react'
 import { TONE } from '@/lib/tone'
 import RefinanceTemplateForm from './RefinanceTemplateForm'
-import NegativeGearingForm from './NegativeGearingForm'
+import SimpleTemplateForm from './SimpleTemplateForm'
+import { buildNegativeGearingEmail } from '@/lib/negative-gearing-email'
+import { buildPriceOpportunityEmail } from '@/lib/price-opportunity-email'
 
 // Each card says what the email does and, plainly, what it will ask for. A
 // template that needs six loan figures and one that needs none should not look
 // like the same amount of work.
+//
+// Adding a template is an entry here plus a builder in lib/. Anything that needs
+// only the client reuses SimpleTemplateForm rather than getting its own copy.
 const TEMPLATES = [
   {
     id: 'refinance',
@@ -21,6 +26,15 @@ const TEMPLATES = [
     name: 'Negative gearing',
     blurb: 'The rules changed for established property bought after 12 May 2026. Explains that the ' +
            'losses are deferred rather than lost, and invites a conversation.',
+    needs: 'the client only',
+    needsTail: '— no figures',
+  },
+  {
+    id: 'price-opportunity',
+    name: 'Price beats the tax refund',
+    blurb: 'The same house, valued $85,000 apart eight weeks either side of the Budget. Argues that ' +
+           'a better purchase price is worth nine to ten years of the tax benefit everyone is ' +
+           'mourning.',
     needs: 'the client only',
     needsTail: '— no figures',
   },
@@ -59,7 +73,9 @@ export default function TemplatesClient() {
         <span>/</span>
         <span style={{ color: TONE.ink, fontWeight: 600 }}>{current.name}</span>
       </div>
-      {chosen === 'refinance' ? <RefinanceTemplateForm /> : <NegativeGearingForm />}
+      {chosen === 'refinance' && <RefinanceTemplateForm />}
+      {chosen === 'negative-gearing' && <SimpleTemplateForm build={buildNegativeGearingEmail} />}
+      {chosen === 'price-opportunity' && <SimpleTemplateForm build={buildPriceOpportunityEmail} />}
     </div>
   )
 }
