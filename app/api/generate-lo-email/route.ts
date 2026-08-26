@@ -81,7 +81,12 @@ function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender
       if (l.applicationFee) fees += tick("Application fee: " + l.applicationFee)
       if (l.annualFee) fees += tick("Annual fee: " + l.annualFee)
       if (l.valuationFee) fees += tick("Valuation fee: " + l.valuationFee)
+      if (l.legalFee) fees += tick("Legal fee: " + l.legalFee)
       if (l.rateLockFee) fees += tick("Rate lock fee: " + l.rateLockFee)
+      // What it costs to leave. Clients ask about these when comparing two
+      // lenders, and until now they were nowhere in the email.
+      if (l.earlyRepaymentFee) fees += tick("Early repayment fee: " + l.earlyRepaymentFee)
+      if (l.dischargeFee) fees += tick("Discharge fee: " + l.dischargeFee)
       if (l.offsetAccount) fees += tick("Offset account: " + l.offsetAccount)
       return `<td style="padding:14px;border:1px solid #e0e0e0;vertical-align:top">${fees}</td>`
     }).join('')

@@ -36,7 +36,10 @@ type LenderProduct = {
   application_fee: string | null
   annual_fee: string | null
   valuation_fee: string | null
+  legal_fee: string | null
   rate_lock_fee: string | null
+  early_repayment_fee: string | null
+  discharge_fee: string | null
   offset_account: boolean
   multiple_offsets: boolean
   notes: string | null
@@ -55,7 +58,10 @@ type LenderOption = {
   applicationFee: string
   annualFee: string
   valuationFee: string
+  legalFee: string
   rateLockFee: string
+  earlyRepaymentFee: string
+  dischargeFee: string
   offsetAccount: string
   libraryNotes: string
   maxEquity: string
@@ -109,7 +115,8 @@ const defaultRateModule: RateModule = { enabled: false, rate: '', repayment: '',
 
 const defaultLenderOption = (): LenderOption => ({
   lenderId: '', lenderProductId: '', lenderName: '', productName: '', approvalDays: '',
-  applicationFee: '', annualFee: '', valuationFee: '', rateLockFee: '', offsetAccount: '', libraryNotes: '',
+  applicationFee: '', annualFee: '', valuationFee: '', legalFee: '', rateLockFee: '',
+  earlyRepaymentFee: '', dischargeFee: '', offsetAccount: '', libraryNotes: '',
   maxEquity: '', specialNote: '',
   variablePI: { ...defaultRateModule },
   variableIO: { ...defaultRateModule },
@@ -397,7 +404,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
   function selectLenderName(i: number, lenderId: string) {
     const lender = uniqueLenders.find(l => l.id === lenderId)
     const updated = [...d.lenders]
-    updated[i] = { ...updated[i], lenderId, lenderName: lender?.name || '', lenderProductId: '', productName: '', applicationFee: '', annualFee: '', valuationFee: '', rateLockFee: '', offsetAccount: '', libraryNotes: '' }
+    updated[i] = { ...updated[i], lenderId, lenderName: lender?.name || '', lenderProductId: '', productName: '', applicationFee: '', annualFee: '', valuationFee: '', legalFee: '', rateLockFee: '', earlyRepaymentFee: '', dischargeFee: '', offsetAccount: '', libraryNotes: '' }
     setD({ ...d, lenders: updated })
   }
 
@@ -405,7 +412,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
     const product = allProducts.find(p => p.id === productId)
     if (!product) return
     const updated = [...d.lenders]
-    updated[i] = { ...updated[i], lenderProductId: productId, productName: product.product_name, applicationFee: product.application_fee || '', annualFee: product.annual_fee || '', valuationFee: product.valuation_fee || '', rateLockFee: product.rate_lock_fee || '', offsetAccount: product.offset_account ? (product.multiple_offsets ? 'Yes — multiple offsets' : 'Yes') : 'No', libraryNotes: product.notes || '' }
+    updated[i] = { ...updated[i], lenderProductId: productId, productName: product.product_name, applicationFee: product.application_fee || '', annualFee: product.annual_fee || '', valuationFee: product.valuation_fee || '', legalFee: product.legal_fee || '', rateLockFee: product.rate_lock_fee || '', earlyRepaymentFee: product.early_repayment_fee || '', dischargeFee: product.discharge_fee || '', offsetAccount: product.offset_account ? (product.multiple_offsets ? 'Yes — multiple offsets' : 'Yes') : 'No', libraryNotes: product.notes || '' }
     setD({ ...d, lenders: updated })
   }
 
@@ -887,7 +894,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
                       <LibraryField label="Application fee" value={lender.applicationFee} onChange={v => updateLender(i, 'applicationFee', v)} />
                       <LibraryField label="Annual fee" value={lender.annualFee} onChange={v => updateLender(i, 'annualFee', v)} />
                       <LibraryField label="Valuation fee" value={lender.valuationFee} onChange={v => updateLender(i, 'valuationFee', v)} />
+                      <LibraryField label="Legal fee" value={lender.legalFee} onChange={v => updateLender(i, 'legalFee', v)} />
                       <LibraryField label="Rate lock fee" value={lender.rateLockFee} onChange={v => updateLender(i, 'rateLockFee', v)} />
+                      <LibraryField label="Early repayment fee" value={lender.earlyRepaymentFee} onChange={v => updateLender(i, 'earlyRepaymentFee', v)} />
+                      <LibraryField label="Discharge fee" value={lender.dischargeFee} onChange={v => updateLender(i, 'dischargeFee', v)} />
                     </div>
                     <LibraryField label="Offset account" value={lender.offsetAccount} onChange={v => updateLender(i, 'offsetAccount', v)} />
                   </div>
