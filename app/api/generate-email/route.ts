@@ -303,7 +303,7 @@ export async function POST(req: NextRequest) {
     }
     const allOptions = [buildOptionCol(baseOption, `Option 1${d.optionLabel ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + d.optionLabel + '</span>' : ''}`), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionCol(alt, `Option ${i + 2}${alt.label ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + alt.label + '</span>' : ''}`))]
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p('We have completed your borrowing capacity assessment. Below we have outlined different purchase price scenarios depending on your financial position.') +
+      p('Below we have outlined different purchase price scenarios depending on your financial position.') +
       `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Purchase Options</p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptions.join('')}</tr></table>
@@ -315,7 +315,7 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'oo_purchase') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>.`) +
       p13('Here is a breakdown of the structure:') +
       card('Your Loan Structure',
@@ -369,7 +369,7 @@ export async function POST(req: NextRequest) {
     }
     const allOptionsIP = [buildOptionColIP(baseOptionIP, `Option 1${d.optionLabel ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + d.optionLabel + '</span>' : ''}`), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionColIP(alt, `Option ${i + 2}${alt.label ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + alt.label + '</span>' : ''}`))]
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p('We have completed your borrowing capacity assessment. Below we have outlined different purchase price scenarios depending on your financial position.') +
+      p('Below we have outlined different purchase price scenarios depending on your financial position.') +
       `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Purchase Options</p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptionsIP.join('')}</tr></table>
@@ -381,7 +381,7 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'investment_purchase') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>.`) +
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
@@ -401,7 +401,7 @@ export async function POST(req: NextRequest) {
   } else if (template === 'buy_sell') {
     const depositLabel = (Number(d.additionalSavings) || 0) > 0 ? 'Deposit (from sale proceeds and savings)' : 'Deposit (from sale proceeds)'
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       card('Sale Proceeds Summary',
         row('Expected sale price', '$' + (d.salePrice || '')) +
         row('Agent fees / selling costs', '$' + (d.agentFees || '')) +
@@ -447,7 +447,7 @@ export async function POST(req: NextRequest) {
       </td>`
     }).join('')
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>. Below we have outlined ${splits.length} scenarios based on different deposit contributions.`) +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>. Below we have outlined ${splits.length} scenarios based on different deposit contributions.`) +
       `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Deposit Options</p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${lvrCols}</tr></table>
@@ -459,7 +459,7 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'fhb') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p('We have completed your borrowing capacity assessment. There is currently a government scheme we believe that you would be eligible for. The 5% Deposit Scheme is a current government scheme that allows first home buyers with a minimum 5% deposit to purchase a property without the cost of mortgage insurance.') +
+      p('There is currently a government scheme we believe that you would be eligible for. The 5% Deposit Scheme is a current government scheme that allows first home buyers with a minimum 5% deposit to purchase a property without the cost of mortgage insurance.') +
       `<p style="font-size:14px;color:#333;margin-bottom:8px">To apply for the 5% Deposit Scheme, home buyers must be:</p>
       <ul style="font-size:13px;color:#555;margin:0 0 16px 20px;line-height:1.9">
         <li>An Australian citizen(s) or Permanent Resident at the time they enter the loan</li>
@@ -488,7 +488,7 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'bridging') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p('We have completed your borrowing capacity assessment. Based on your current financial position, bridging finance is achievable for your next owner-occupied purchase.') +
+      p('Based on your current financial position, bridging finance is achievable for your next owner-occupied purchase.') +
       p('Bridging finance lets you buy your new home before your current one sells. Here is how it works: while you hold both properties, your bridging loan accrues interest at the rate below, but that interest is <strong>capitalised</strong> \u2014 added to your loan balance rather than paid month to month. When your existing property sells, the proceeds pay off that combined balance. Whatever is left over becomes your <strong>end debt</strong>: an ordinary home loan with regular repayments, which you will see broken out below.') +
       card('New Purchase Details',
         row('Purchase price', '$' + (d.purchasePrice || '')) +
@@ -519,7 +519,7 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'family_pledge') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong> — using your parents' property as a security guarantee to avoid Lenders Mortgage Insurance.`) +
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
@@ -539,7 +539,7 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'smsf') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p('We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is looking strong for an SMSF purchase.') +
+      p('When looking at your numbers, your borrowing capacity is looking strong for an SMSF purchase.') +
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
         row('Stamp duty', '$' + d.stampDuty || '') +
@@ -563,7 +563,7 @@ export async function POST(req: NextRequest) {
     const loanAmtN = parseFloat((d.splits?.[0]?.amount || '0').replace(/,/g, '')) || 0
     const depositRequired = Math.max(0, Math.round(totalCost - loanAmtN))
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       card('Your Loan Structure',
         row('Land value', '$' + (d.landValue || '')) +
         row('Construction cost', '$' + (d.constructionCost || '')) +
@@ -637,7 +637,7 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'custom') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`We have completed your borrowing capacity assessment. When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
+      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
         row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
