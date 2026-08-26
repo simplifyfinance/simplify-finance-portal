@@ -563,17 +563,36 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
     if (d.brokerPersonalisation && d.brokerPersonalisation.trim()) {
       clean += `<p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">${d.brokerPersonalisation}</p>`
     }
-    return emailHtml.replace(/<div style="background:#FFF8E7[\s\S]*?<\/div>/, clean)
+    // The broker-only block is marked in the generated HTML, so removing it does
+    // not depend on how it is styled. If the marker is ever missing, fail loudly
+    // rather than mail a client a box headed "Broker personalisation".
+    if (!/<!--BROKER-BOX-->[\s\S]*?<!--\/BROKER-BOX-->/.test(emailHtml)) {
+      throw new Error('The broker personalisation block could not be found in the generated email.')
+    }
+    return emailHtml.replace(/<!--BROKER-BOX-->[\s\S]*?<!--\/BROKER-BOX-->/, clean)
+  }
+
+  // One way to put the email on the clipboard, used by both buttons. Writing
+  // only text/plain hands Outlook raw markup instead of a formatted email.
+  async function copyEmailToClipboard() {
+    const cleanHtml = getCleanEmailHtml()
+    const plain = cleanHtml
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/<\/(p|tr|table|div)>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&bull;/g, '-').replace(/&#10003;/g, '*')
+      .replace(/\n{3,}/g, '\n\n').trim()
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([cleanHtml], { type: 'text/html' }),
+      'text/plain': new Blob([plain], { type: 'text/plain' }),
+    })])
   }
 
   async function sendEmail() {
     if (!emailHtml) return
     setSending(true); setSendError(''); setSent(false)
     try {
-      const cleanHtml = getCleanEmailHtml()
-      const blob = new Blob([cleanHtml], { type: 'text/html' })
-      const textBlob = new Blob([cleanHtml.replace(/<[^>]+>/g, '')], { type: 'text/plain' })
-      await navigator.clipboard.write([new ClipboardItem({ 'text/html': blob, 'text/plain': textBlob })])
+      await copyEmailToClipboard()
       const subject = 'Lending Options & Recommendation'
       const applicantEmails = (deal.fact_find_data?.applicants || [])
         .map((a: any) => a.emailPersonal)
@@ -594,7 +613,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
       if (wasNotYetCompleted) {
         fetch('/api/notify-salestrekker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId: deal.id, trigger: 'lo_sent' }) }).catch(() => {})
       }
-    } catch (e: any) { setSendError('Could not copy — try "Copy HTML" instead') }
+    } catch (e: any) { setSendError(e?.message || 'Could not copy the email — nothing was sent.') }
     setSending(false)
   }
 
@@ -1138,7 +1157,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
                   ) : (
                     <span className="text-xs text-gray-400 italic">Only the broker can send this to the client — use "Done — send to broker for review" above.</span>
                   )}
-                  <button onClick={() => { navigator.clipboard.writeText(getCleanEmailHtml()); alert('HTML copied!') }} className="text-xs text-gray-400 hover:text-gray-600 underline">Copy HTML instead</button>
+                  <button onClick={() => { copyEmailToClipboard().then(() => setSent(true)).catch(e => setSendError(e?.message || 'Copy failed.')) }} className="text-xs text-gray-400 hover:text-gray-600 underline">Copy without opening Outlook</button>
                 </div>
                 <div className="w-px h-8 bg-gray-200 ml-auto" />
                 <div className="flex items-center gap-4">

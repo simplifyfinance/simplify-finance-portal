@@ -3,18 +3,20 @@ import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 
 
 function shell(body: string) {
-  return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr><td><table width="600" cellpadding="0" cellspacing="0" style="background:#fff;margin:0 auto"><tr><td style="background:#343333;padding:28px 24px;text-align:center"><img src="https://simplify-finance-portal.vercel.app/logo-charcoal.png" alt="Simplify Finance" style="height:80px;width:auto;display:block;margin:0 auto 8px" /><p style="color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0">Finance, Simplified.</p></td></tr><tr><td style="padding:28px">${body}</td></tr><tr><td style="background:#343333;padding:14px 16px;text-align:center"><p style="color:rgba(255,255,255,0.6);font-size:10px;line-height:1.6;margin:0">Rates quoted are indicative only and subject to change. This email does not constitute formal approval.</p><p style="color:rgba(255,255,255,0.4);font-size:10px;margin:4px 0 0">&copy; 2026 Simplify Finance | St Leonards, Sydney | Australian Credit Licence: 387025</p></td></tr></table></td></tr></table>`
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5f5f3" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr><td bgcolor="#f5f5f3" align="center" style="background:#f5f5f3;padding:24px 12px"><table width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" align="center" style="background:#ffffff;margin:0 auto"><tr><td bgcolor="#343333" align="center" style="background:#343333;padding:28px 24px;text-align:center"><img src="https://simplify-finance-portal.vercel.app/logo-charcoal.png" alt="Simplify Finance" height="80" style="height:80px;display:block;margin:0 auto 8px;border:0" /><p style="color:#9E9E9E;font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0">Finance, Simplified.</p></td></tr><tr><td bgcolor="#ffffff" style="background:#ffffff;padding:28px">${body}</td></tr><tr><td bgcolor="#343333" style="background:#343333;padding:14px 16px;text-align:center"><p style="color:#B5B5B5;font-size:10px;line-height:1.6;margin:0">Rates quoted are indicative only and subject to change. This email does not constitute formal approval.</p><p style="color:#9E9E9E;font-size:10px;margin:4px 0 0">&copy; 2026 Simplify Finance | St Leonards, Sydney | Australian Credit Licence: 387025</p></td></tr></table></td></tr></table>`
 }
 
 function brokerBox(text: string, firstName?: string, jointFirstName?: string, joint?: string) {
   const fn = (firstName || '[Client First Name]').trim()
   const jfn = (jointFirstName || '').trim()
   const greetingName = (joint === 'Yes' && jfn) ? `${fn} and ${jfn}` : fn
-  return `<div style="background:#FFF8E7;border-left:4px solid #F59E0B;border-radius:0 6px 6px 0;padding:13px 15px;margin-bottom:18px">
-    <p style="font-size:10px;font-weight:600;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Broker personalisation</p>
-    <p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">Hi ${greetingName},</p>
-    <p style="font-size:14px;color:#333;line-height:1.6">${text || '[Add your personal opening here.]'}</p>
-  </div>`
+  return `<!--BROKER-BOX--><table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:18px"><tr>
+    <td width="4" bgcolor="#F59E0B" style="background:#F59E0B;width:4px;font-size:0;line-height:0">&nbsp;</td>
+    <td bgcolor="#FFF8E7" style="background:#FFF8E7;padding:13px 15px">
+      <p style="font-size:10px;font-weight:600;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 6px">Broker personalisation</p>
+      <p style="font-size:14px;color:#333333;margin:0 0 14px;line-height:1.6">Hi ${greetingName},</p>
+      <p style="font-size:14px;color:#333333;margin:0;line-height:1.6">${text || '[Add your personal opening here.]'}</p>
+    </td></tr></table><!--/BROKER-BOX-->`
 }
 
 function sig(b: { name: string; title: string; crn: string }) {
@@ -27,13 +29,25 @@ function p(t: string) { return `<p style="font-size:14px;color:#333;margin-botto
 function tick(s: string) { return `<p style="font-size:12px;color:#444;margin:4px 0;line-height:1.5"><span style="color:#2DBEFF;font-weight:700;margin-right:6px">&#10003;</span>${s}</p>` }
 function notesBox(items: string[]) {
   if (!items.length) return ''
-  return `<div style="background:#EFF6FF;border-left:4px solid #2DBEFF;border-radius:0 6px 6px 0;padding:13px 15px;margin:18px 0"><p style="font-size:10px;font-weight:600;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Important things to note</p>${items.map(i => `<p style="font-size:12px;color:#334155;margin:4px 0;line-height:1.6">&bull; ${i}</p>`).join('')}</div>`
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0"><tr>
+    <td width="4" bgcolor="#2DBEFF" style="background:#2DBEFF;width:4px;font-size:0;line-height:0">&nbsp;</td>
+    <td bgcolor="#EFF6FF" style="background:#EFF6FF;padding:13px 15px">
+      <p style="font-size:10px;font-weight:600;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 8px">Important things to note</p>
+      ${items.map(i => `<p style="font-size:12px;color:#334155;margin:4px 0;line-height:1.6">&bull; ${i}</p>`).join('')}
+    </td></tr></table>`
 }
 function ctas(calendly: string, proceedUrl?: string) {
-  return `<table cellpadding="0" cellspacing="0" style="margin-bottom:20px"><tr>
-    <td><a href="${proceedUrl || calendly}" style="background:#2DBEFF;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">I am ready to proceed</a></td>
+  // Word will not paint a background on an inline link, so the colour lives on
+  // the cell. Without this these arrived as bare blue and black text.
+  const button = (href: string, bg: string, label: string) =>
+    `<table cellpadding="0" cellspacing="0" border="0" style="display:inline-table"><tr>
+      <td bgcolor="${bg}" align="center" style="background:${bg};border-radius:6px;padding:10px 18px">
+        <a href="${href}" style="color:#ffffff;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">${label}</a>
+      </td></tr></table>`
+  return `<table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px"><tr>
+    <td>${button(proceedUrl || calendly, '#2DBEFF', 'I am ready to proceed')}</td>
     <td width="10">&nbsp;</td>
-    <td><a href="${calendly}" style="background:#343333;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">Book a call</a></td>
+    <td>${button(calendly, '#343333', 'Book a call')}</td>
   </tr></table>`
 }
 
@@ -41,7 +55,7 @@ function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender
   const cols = lenders.length
   const pct = cols === 1 ? '100%' : cols === 2 ? '50%' : '33%'
 
-  const headers = lenders.map((l, i) => { const isRec = recommendedLender && l.lenderName === recommendedLender; return `<td width="${pct}" style="background:#f8f8f8;padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:13px;font-weight:700;color:#343333;margin:0 0 6px">OPTION ${i+1}</p><p style="font-size:14px;font-weight:700;color:#2DBEFF;margin:0 0 4px">${l.lenderName} &mdash; ${l.productName}</p>${l.approvalDays ? `<p style="font-size:12px;color:#777;margin:4px 0 0">${l.approvalDays} to approval</p>` : ''}${isRec ? '<p style="font-size:11px;font-weight:700;color:#D97706;border:1px solid #D97706;display:inline-block;padding:2px 8px;border-radius:3px;margin:6px 0 0">&#9733; Recommended</p>' : ''}${l.specialNote ? `<p style="font-size:11px;color:#dc2626;margin:6px 0 0">&#10071; ${l.specialNote}</p>` : ''}</td>` }).join('')
+  const headers = lenders.map((l, i) => { const isRec = recommendedLender && l.lenderName === recommendedLender; return `<td width="${pct}" bgcolor="#f8f8f8" style="background:#f8f8f8;padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:13px;font-weight:700;color:#343333;margin:0 0 6px">OPTION ${i+1}</p><p style="font-size:14px;font-weight:700;color:#2DBEFF;margin:0 0 4px">${l.lenderName} &mdash; ${l.productName}</p>${l.approvalDays ? `<p style="font-size:12px;color:#777;margin:4px 0 0">${l.approvalDays} to approval</p>` : ''}${isRec ? '<p style="font-size:11px;font-weight:700;color:#D97706;border:1px solid #D97706;display:inline-block;padding:2px 8px;border-radius:3px;margin:6px 0 0">&#9733; Recommended</p>' : ''}${l.specialNote ? `<p style="font-size:11px;color:#dc2626;margin:6px 0 0">&#10071; ${l.specialNote}</p>` : ''}</td>` }).join('')
 
   let featureCells = ''
   if (isBridging) {
@@ -62,7 +76,7 @@ function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender
     const anyEnabled = (module: string) => lenders.some((l: any) => l[module]?.enabled)
     modules.forEach(mod => {
       if (!anyEnabled(mod)) return
-      const headerCells = lenders.map(() => `<td style="padding:10px 14px;border:1px solid #e0e0e0;background:#fafafa"><p style="font-size:12px;font-weight:700;color:#343333;margin:0;text-decoration:none">${moduleLabels[mod]}</p></td>`).join('')
+      const headerCells = lenders.map(() => `<td bgcolor="#fafafa" style="padding:10px 14px;border:1px solid #e0e0e0;background:#fafafa"><p style="font-size:12px;font-weight:700;color:#343333;margin:0;text-decoration:none">${moduleLabels[mod]}</p></td>`).join('')
       featureCells += `<tr>${headerCells}</tr>`
       const contentCells = lenders.map((l: any) => {
         const m = l[mod]
@@ -98,11 +112,16 @@ function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender
 
 function walletLinkBox(link: string) {
   if (!link) return ''
-  return `<div style="background:#F0FBF7;border-left:4px solid #1D9E75;border-radius:0 6px 6px 0;padding:16px;margin:18px 0">
-    <p style="font-size:13px;font-weight:700;color:#0F6E56;margin:0 0 8px">Share your bank statements securely</p>
-    <p style="font-size:13px;color:#333;line-height:1.6;margin:0 0 12px">To help us verify your income and finalise your application, we use a secure platform called WealthDesk to safely collect your bank statements. This is a secure, read-only connection — we never see or store your online banking login details.</p>
-    <a href="${link}" style="background:#1D9E75;color:#fff;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">Share bank statements</a>
-  </div>`
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0"><tr>
+    <td width="4" bgcolor="#1D9E75" style="background:#1D9E75;width:4px;font-size:0;line-height:0">&nbsp;</td>
+    <td bgcolor="#F0FBF7" style="background:#F0FBF7;padding:16px">
+      <p style="font-size:13px;font-weight:700;color:#0F6E56;margin:0 0 8px">Share your bank statements securely</p>
+      <p style="font-size:13px;color:#333333;line-height:1.6;margin:0 0 12px">To help us verify your income and finalise your application, we use a secure platform called WealthDesk to safely collect your bank statements. This is a secure, read-only connection &mdash; we never see or store your online banking login details.</p>
+      <table cellpadding="0" cellspacing="0" border="0"><tr>
+        <td bgcolor="#1D9E75" align="center" style="background:#1D9E75;border-radius:6px;padding:10px 18px">
+          <a href="${link}" style="color:#ffffff;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">Share bank statements</a>
+        </td></tr></table>
+    </td></tr></table>`
 }
 
 export async function POST(req: NextRequest) {
