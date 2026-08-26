@@ -65,8 +65,8 @@ export function buildNegativeGearingEmail(ctx: NegativeGearingContext): {
     p('But there is one part I do not think investors are talking about enough.') +
     keyBlock('The tax losses are not lost.', 'They are deferred.') +
     p('The change does mean investors need to allow for more cash flow upfront. From 1 July 2027, ' +
-      'an established property&rsquo;s loss can no longer be used to reduce the tax on your salary ' +
-      'each year.') +
+      'the loss on an established property bought under the new rules can no longer be used to ' +
+      'reduce the tax on your income each year.') +
     p('But the loss itself does not simply disappear.') +
     supportBlock('It can be carried forward and potentially used to reduce tax when your residential ' +
       'property portfolio becomes positively geared, or against the capital gain when the property ' +
@@ -88,7 +88,7 @@ export function buildNegativeGearingEmail(ctx: NegativeGearingContext): {
     'There has been a lot of noise about the end of negative gearing on established residential property purchased after 12 May 2026.', '',
     'But there is one part I do not think investors are talking about enough.', '',
     'The tax losses are not lost. They are deferred.', '',
-    'The change does mean investors need to allow for more cash flow upfront. From 1 July 2027, an established property’s loss can no longer be used to reduce the tax on your salary each year.', '',
+    'The change does mean investors need to allow for more cash flow upfront. From 1 July 2027, the loss on an established property bought under the new rules can no longer be used to reduce the tax on your income each year.', '',
     'But the loss itself does not simply disappear. It can be carried forward and potentially used to reduce tax when your residential property portfolio becomes positively geared, or against the capital gain when the property is eventually sold.', '',
     'The tax benefit has shifted from today to later. That is an important distinction.', '',
     'For investors with a long-term strategy, established property is still very much worth considering — particularly if the current uncertainty creates better buying opportunities. It is simply a new way of looking at the numbers.', '',
