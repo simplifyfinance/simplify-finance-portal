@@ -31,6 +31,7 @@ export default function SimpleTemplateForm({ build }: { build: EmailBuilder }) {
   const [secondEmail, setSecondEmail] = useState('')
   const [bcc, setBcc] = useState('')
   const [opportunityUrl, setOpportunityUrl] = useState('')
+  const [linkError, setLinkError] = useState('')
   const [copied, setCopied] = useState(false)
   const [showPaste, setShowPaste] = useState(false)
   const [err, setErr] = useState('')
@@ -41,26 +42,47 @@ export default function SimpleTemplateForm({ build }: { build: EmailBuilder }) {
 
   // Minted on the server, because the signing secret must not reach the browser.
   // A builder that has no use for it simply ignores it.
+  //
+  // The broker is depended on by key and name, not by the object: `brokers.find`
+  // returns a new object every render, so an object dependency restarted the
+  // debounce on every keystroke and the request never fired.
+  const brokerKeyDep = sender.broker?.key || ''
+  const brokerNameDep = sender.broker?.name || ''
   useEffect(() => {
-    if (!greeting || !recipients || !sender.broker) { setOpportunityUrl(''); return }
+    if (!greeting || !recipients || !brokerKeyDep) { setOpportunityUrl(''); setLinkError(''); return }
     const body = {
       name: greeting,
       email: recipients,
-      brokerKey: sender.broker.key,
-      brokerName: sender.broker.name,
+      brokerKey: brokerKeyDep,
+      brokerName: brokerNameDep,
       sentOn: new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }),
     }
     let live = true
-    const t = setTimeout(() => {
-      fetch('/api/opportunity-link', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-      })
-        .then(r => r.ok ? r.json() : null)
-        .then(j => { if (live && j?.url) setOpportunityUrl(j.url) })
-        .catch(() => { /* the phrase falls back to plain text, so nothing breaks */ })
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/opportunity-link', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!live) return
+        if (!res.ok || !json?.url) {
+          // Say so rather than sending an email quietly missing its link.
+          console.error('[opportunity-link]', res.status, json)
+          setOpportunityUrl('')
+          setLinkError(json?.error || `Could not create the link (${res.status}).`)
+          return
+        }
+        setOpportunityUrl(json.url)
+        setLinkError('')
+      } catch (e: any) {
+        if (!live) return
+        console.error('[opportunity-link] request failed', e)
+        setOpportunityUrl('')
+        setLinkError('Could not reach the server to create the link.')
+      }
     }, 400)
     return () => { live = false; clearTimeout(t) }
-  }, [greeting, recipients, sender.broker])
+  }, [greeting, recipients, brokerKeyDep, brokerNameDep])
 
   const built = useMemo(() => {
     if (!greeting || !sender.broker) return null
@@ -141,6 +163,11 @@ export default function SimpleTemplateForm({ build }: { build: EmailBuilder }) {
           )}
         </div>
         {err && <p className="text-[12px] mt-2" style={{ color: TONE.neg }}>{err}</p>}
+        {linkError && (
+          <p className="text-[12px] mt-2" style={{ color: TONE.neg }}>
+            {linkError} The email will still send, with that phrase as plain text instead of a link.
+          </p>
+        )}
         <p className="text-[11.5px] mt-2.5" style={{ color: TONE.label }}>
           No figures to enter — the email reads the same for every investor, so it is ready as soon as
           the client is filled in. Open in mail copies it first, then opens a message with the address,
