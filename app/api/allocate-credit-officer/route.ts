@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
             cc: 'info@simplifyfinance.com.au',
             subject: `New deal assigned: ${deal.deal_name}`,
             html: `<p>Hi ${profile.full_name?.split(' ')[0] || ''},</p><p>A new deal has been assigned to you.</p>
-              <table style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 16px" width="100%" cellpadding="0" cellspacing="0">
+              <table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 16px" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr><td style="color:#666;font-size:13px;padding:3px 0">Deal</td><td style="text-align:right;font-size:13px;font-weight:600;padding:3px 0">${deal.deal_name}</td></tr>
                 <tr><td style="color:#666;font-size:13px;padding:3px 0">Client</td><td style="text-align:right;font-size:13px;padding:3px 0">${(deal.clients as any)?.first_name || ''} ${(deal.clients as any)?.last_name || ''}</td></tr>
                 <tr><td style="color:#666;font-size:13px;padding:3px 0">Stage</td><td style="text-align:right;font-size:13px;padding:3px 0">${deal.stage || 'BC'}</td></tr>

@@ -19,7 +19,7 @@ async function notifyOfficer(supabase: any, userId: string | null, subject: stri
         cc: 'info@simplifyfinance.com.au',
         subject,
         html: `<p>Hi ${officerProfile.full_name?.split(' ')[0] || ''},</p><p>${message}</p>
-          <table style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 16px" width="100%" cellpadding="0" cellspacing="0">
+          <table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 16px" width="100%" cellpadding="0" cellspacing="0" border="0">
             <tr><td style="color:#666;font-size:13px;padding:3px 0">Deal</td><td style="text-align:right;font-size:13px;font-weight:600;padding:3px 0">${dealName}</td></tr>
             <tr><td style="color:#666;font-size:13px;padding:3px 0">Client</td><td style="text-align:right;font-size:13px;padding:3px 0">${clientName}</td></tr>
             <tr><td style="color:#666;font-size:13px;padding:3px 0">Broker</td><td style="text-align:right;font-size:13px;padding:3px 0">${brokerName}</td></tr>

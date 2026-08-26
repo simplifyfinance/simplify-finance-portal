@@ -23,25 +23,45 @@ export async function POST(req: NextRequest) {
   const { steps } = buildNextStepsContent(stage, wealthDeskLink)
   const clientName = deal.clients?.first_name || 'there'
 
-  const stepsHtml = steps.map((s: any) => `
-    <div style="display:flex;gap:12px;margin-bottom:18px">
-      <div style="width:24px;height:24px;border-radius:50%;background:${s.accent ? '#1D9E75' : '#343333'};color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${s.num}</div>
-      <div>
+  // Tables, not flex. Word ignores display:flex and border-radius entirely, so
+  // the numbered steps collapsed into a stack of loose text in Outlook on
+  // Windows. Every colour sits on a cell as a bgcolor attribute for the same
+  // reason — Word paints nothing from CSS alone.
+  const stepsHtml = steps.map((s: any) => {
+    const badge = s.accent ? '#1D9E75' : '#343333'
+    const button = s.button && wealthDeskLink
+      ? `<table cellpadding="0" cellspacing="0" border="0" style="margin-top:8px"><tr>
+           <td bgcolor="#1D9E75" align="center" style="background:#1D9E75;border-radius:6px;padding:8px 14px">
+             <a href="${wealthDeskLink}" style="color:#ffffff;font-size:12px;font-weight:600;text-decoration:none;display:inline-block">Click here to share your bank statements</a>
+           </td></tr></table>`
+      : ''
+    return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:18px"><tr>
+      <td width="34" valign="top" style="width:34px">
+        <table cellpadding="0" cellspacing="0" border="0"><tr>
+          <td width="24" height="24" bgcolor="${badge}" align="center" valign="middle"
+              style="width:24px;height:24px;background:${badge};border-radius:12px;color:#ffffff;font-size:11px;font-weight:700;font-family:Arial,sans-serif">${s.num}</td>
+        </tr></table>
+      </td>
+      <td valign="top" style="font-family:Arial,sans-serif">
         <p style="margin:0 0 4px;font-weight:700;color:#343333;font-size:13px">${s.title}</p>
-        <p style="margin:${s.button ? '0 0 8px' : '0'};color:#666;font-size:12px;line-height:1.6">${s.desc}</p>
-        ${s.button && wealthDeskLink ? `<a href="${wealthDeskLink}" style="background:#1D9E75;color:#fff;padding:8px 14px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;display:inline-block">Click here to share your bank statements</a>` : ''}
-      </div>
-    </div>
-  `).join('')
+        <p style="margin:0;color:#666666;font-size:12px;line-height:1.6">${s.desc}</p>
+        ${button}
+      </td>
+    </tr></table>`
+  }).join('')
 
-  const html = `<div style="font-family:Arial,sans-serif;background:#F2E8DB;padding:24px">
-    <div style="background:#fff;border-radius:16px;padding:36px;max-width:480px;margin:0 auto">
-      <h1 style="font-size:20px;font-weight:700;color:#343333;margin:0 0 8px">Great news, ${clientName}!</h1>
-      <p style="font-size:13px;color:#666;margin:0 0 24px;line-height:1.6">Following our call, here's exactly what happens next.</p>
-      ${stepsHtml}
-      <p style="font-size:11px;color:#999;margin-top:16px;border-top:1px solid #eee;padding-top:16px">Simplify Finance | ACL 387025 | St Leonards, Sydney</p>
-    </div>
-  </div>`
+  const html = `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2E8DB" style="background:#F2E8DB;font-family:Arial,sans-serif">
+    <tr><td bgcolor="#F2E8DB" align="center" style="background:#F2E8DB;padding:24px 12px">
+      <table width="480" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:16px;max-width:480px">
+        <tr><td bgcolor="#ffffff" style="background:#ffffff;padding:36px">
+          <h1 style="font-size:20px;font-weight:700;color:#343333;margin:0 0 8px">Great news, ${clientName}!</h1>
+          <p style="font-size:13px;color:#666666;margin:0 0 24px;line-height:1.6">Following our call, here&rsquo;s exactly what happens next.</p>
+          ${stepsHtml}
+          <p style="font-size:11px;color:#999999;margin:16px 0 0;border-top:1px solid #eeeeee;padding-top:16px">Simplify Finance | ACL 387025 | St Leonards, Sydney</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>`
 
   try {
     await fetch('https://api.resend.com/emails', {

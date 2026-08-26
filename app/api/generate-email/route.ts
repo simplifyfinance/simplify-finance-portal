@@ -219,7 +219,7 @@ export async function POST(req: NextRequest) {
         else if (opt.lmiApplicable === 'Waived') lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0">LMI waived</p>`
       }
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
-        <p style="font-size:13px;font-weight:700;color:#343333;text-align:center;margin-bottom:8px;background:#fff;padding:6px 8px;border-radius:4px">${label}</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
         <p style="font-size:11px;color:#555;margin:3px 0">Existing loan balance: $${d.existingLoanBal || ''}</p>
         <p style="font-size:11px;color:#555;margin:3px 0">Equity release amount: $${opt.equityReleaseAmount || ''}</p>
         <p style="font-size:11px;color:#555;margin:3px 0">LVR: ${lvrNum}%</p>${lmiLine}
@@ -235,7 +235,7 @@ export async function POST(req: NextRequest) {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('Based on your current financial position, you have capacity to refinance and access equity. Below we have outlined different equity release scenarios depending on your financial position.') +
       propHead(`Against ${d.suburb || '[Property Address]'}`, d.incomeRental) +
-      `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
+      `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2E8DB" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px">
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Equity Release Options</p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptionsRE.join('')}</tr></table>
       </td></tr></table>` +
@@ -284,7 +284,7 @@ export async function POST(req: NextRequest) {
         else if (opt.lmiApplicable === 'Waived') lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0">LMI waived</p>`
       }
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
-        <p style="font-size:13px;font-weight:700;color:#343333;text-align:center;margin-bottom:8px;background:#fff;padding:6px 8px;border-radius:4px">${label}</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
         <p style="font-size:11px;color:#555;margin:3px 0">Purchase price: $${opt.purchasePrice || ''}</p>
         <p style="font-size:11px;color:#555;margin:3px 0">Deposit: $${opt.deposit || ''}</p>
         <p style="font-size:11px;color:#555;margin:3px 0">Stamp duty: $${opt.stampDuty || ''}</p>
@@ -304,7 +304,7 @@ export async function POST(req: NextRequest) {
     const allOptions = [buildOptionCol(baseOption, `Option 1${d.optionLabel ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + d.optionLabel + '</span>' : ''}`), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionCol(alt, `Option ${i + 2}${alt.label ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + alt.label + '</span>' : ''}`))]
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('Below we have outlined different purchase price scenarios depending on your financial position.') +
-      `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
+      `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2E8DB" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px">
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Purchase Options</p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptions.join('')}</tr></table>
       </td></tr></table>` +
@@ -350,7 +350,7 @@ export async function POST(req: NextRequest) {
         else if (opt.lmiApplicable === 'Waived') lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0">LMI waived</p>`
       }
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
-        <p style="font-size:13px;font-weight:700;color:#343333;text-align:center;margin-bottom:8px;background:#fff;padding:6px 8px;border-radius:4px">${label}</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
         <p style="font-size:11px;color:#555;margin:3px 0">Purchase price: $${opt.purchasePrice || ''}</p>
         <p style="font-size:11px;color:#555;margin:3px 0">Deposit: $${opt.deposit || ''}</p>
         <p style="font-size:11px;color:#555;margin:3px 0">Stamp duty: $${opt.stampDuty || ''}</p>
@@ -370,7 +370,7 @@ export async function POST(req: NextRequest) {
     const allOptionsIP = [buildOptionColIP(baseOptionIP, `Option 1${d.optionLabel ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + d.optionLabel + '</span>' : ''}`), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionColIP(alt, `Option ${i + 2}${alt.label ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + alt.label + '</span>' : ''}`))]
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('Below we have outlined different purchase price scenarios depending on your financial position.') +
-      `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
+      `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2E8DB" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px">
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Purchase Options</p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptionsIP.join('')}</tr></table>
       </td></tr></table>` +
@@ -439,7 +439,7 @@ export async function POST(req: NextRequest) {
         }
       }
       return `<td style="width:${Math.floor(100/splits.length)}%;vertical-align:top;padding:0 4px">
-        <p style="font-size:13px;font-weight:700;color:#343333;text-align:center;margin-bottom:8px;background:#fff;padding:6px 8px;border-radius:4px">${s.label}</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${s.label}</td></tr></table>
         <p style="font-size:11px;color:#555;margin:3px 0">Loan amount: $${s.amount}</p>${s.deposit ? `<p style="font-size:11px;color:#555;margin:3px 0">Deposit required: $${s.deposit}</p>` : ""}
         <p style="font-size:11px;color:#555;margin:3px 0">LVR: ${lvrNum}%</p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0">Rate: ${s.rate}% p.a.*</p>
@@ -448,7 +448,7 @@ export async function POST(req: NextRequest) {
     }).join('')
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>. Below we have outlined ${splits.length} scenarios based on different deposit contributions.`) +
-      `<table width="100%" cellpadding="0" cellspacing="0" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td style="padding:14px">
+      `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2E8DB" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px">
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Deposit Options</p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${lvrCols}</tr></table>
       </td></tr></table>` +
@@ -620,11 +620,11 @@ export async function POST(req: NextRequest) {
       ) +
       p13('Below is a breakdown of the structure:') +
       `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:14px"><tr>
-        <td width="50%" style="background:#F2E8DB;padding:14px;border:1px solid #e5ddc8;vertical-align:top">
+        <td width="50%" bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px;border:1px solid #e5ddc8;vertical-align:top">
           <p style="font-size:12px;font-weight:700;color:#343333;margin:0 0 10px">&#127968; Against ${d.suburb || '[Existing Property]'}</p>
           ${existingLoanCol}
         </td>
-        <td width="50%" style="background:#F2E8DB;padding:14px;border:1px solid #e5ddc8;vertical-align:top">
+        <td width="50%" bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px;border:1px solid #e5ddc8;vertical-align:top">
           <p style="font-size:12px;font-weight:700;color:#343333;margin:0 0 10px">&#127968; Against new purchase</p>
           ${newPurchaseCol}
         </td>
