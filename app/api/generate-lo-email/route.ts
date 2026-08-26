@@ -119,25 +119,11 @@ export async function POST(req: NextRequest) {
   const isBridging = d.template === 'lo_bridging'
   const proceedUrl = dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=LO` : undefined
 
-  const BC_TEMPLATE_PHRASES: Record<string, string> = {
-    refinance_equity: 'refinance your existing loan and access equity',
-    refinance_only: 'refinance your existing loan',
-    oo_purchase: 'purchase an owner-occupied property',
-    oo_lvr_compare: 'purchase an owner-occupied property',
-    investment_purchase: 'purchase an investment property',
-    investment_equity: 'access equity for your next purchase',
-    buy_sell: 'sell your existing property and purchase a new one',
-    fhb: 'purchase your first home',
-    bridging: 'bridge between properties',
-    family_pledge: 'purchase your property with a family guarantee',
-    smsf_purchase: 'purchase a property through your SMSF',
-    construction: 'build your new property',
-    custom: 'structure your loan',
-  }
-  const templateLabel = BC_TEMPLATE_PHRASES[d.bcTemplate] || (d.template === 'lo_purchase' ? 'purchase an owner-occupied property' : d.template === 'lo_refinance' ? 'refinance your existing loan' : 'bridge between properties')
 
+  // The broker's own opening already says what the client is doing and why, in
+  // their words. Restating it underneath read as a second, blander version of
+  // the same sentence, so the email goes straight to the figures.
   let body = brokerBox(d.brokerPersonalisation, d.firstName, d.jointFirstName, d.joint)
-  body += p(`Our team have now finalised your lending options to select from as you are looking to ${templateLabel}.`)
 
   if (!isBridging && (d.purchasePrice || d.loanAmount)) {
     body += `<p style="font-size:14px;font-weight:600;color:#343333;margin-bottom:8px">Your numbers would be:</p>`
