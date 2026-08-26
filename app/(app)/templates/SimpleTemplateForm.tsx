@@ -32,6 +32,9 @@ export default function SimpleTemplateForm({ build }: { build: EmailBuilder }) {
   const [bcc, setBcc] = useState('')
   const [opportunityUrl, setOpportunityUrl] = useState('')
   const [linkError, setLinkError] = useState('')
+  // The link takes a moment to come back. Until it does, the email on the
+  // clipboard would be the version without it — so the button waits.
+  const [linkPending, setLinkPending] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showPaste, setShowPaste] = useState(false)
   const [err, setErr] = useState('')
@@ -49,7 +52,10 @@ export default function SimpleTemplateForm({ build }: { build: EmailBuilder }) {
   const brokerKeyDep = sender.broker?.key || ''
   const brokerNameDep = sender.broker?.name || ''
   useEffect(() => {
-    if (!greeting || !recipients || !brokerKeyDep) { setOpportunityUrl(''); setLinkError(''); return }
+    if (!greeting || !recipients || !brokerKeyDep) {
+      setOpportunityUrl(''); setLinkError(''); setLinkPending(false); return
+    }
+    setLinkPending(true)
     const body = {
       name: greeting,
       email: recipients,
@@ -70,15 +76,18 @@ export default function SimpleTemplateForm({ build }: { build: EmailBuilder }) {
           console.error('[opportunity-link]', res.status, json)
           setOpportunityUrl('')
           setLinkError(json?.error || `Could not create the link (${res.status}).`)
+          setLinkPending(false)
           return
         }
         setOpportunityUrl(json.url)
         setLinkError('')
+        setLinkPending(false)
       } catch (e: any) {
         if (!live) return
         console.error('[opportunity-link] request failed', e)
         setOpportunityUrl('')
         setLinkError('Could not reach the server to create the link.')
+        setLinkPending(false)
       }
     }, 400)
     return () => { live = false; clearTimeout(t) }
@@ -98,7 +107,9 @@ export default function SimpleTemplateForm({ build }: { build: EmailBuilder }) {
   if (!firstName.trim()) missing.push('client name')
   if (!recipients) missing.push('client email')
   if (!sender.broker) missing.push('a broker')
-  const ready = Boolean(built) && missing.length === 0
+  // Not ready while the link is still coming — otherwise the copy is made from
+  // an email the preview is about to replace.
+  const ready = Boolean(built) && missing.length === 0 && !linkPending
 
   // Copy first, then open the message — navigating away can cancel a clipboard
   // write in flight, which would leave nothing to paste.
@@ -156,7 +167,7 @@ export default function SimpleTemplateForm({ build }: { build: EmailBuilder }) {
           <button onClick={openMail} disabled={!ready}
             className="rounded-lg px-4 py-[9px] text-[13px] font-semibold disabled:opacity-40"
             style={{ background: TONE.accent, color: '#fff' }}>
-            {copied ? 'Copied — paste with Cmd V' : 'Open in mail'}
+            {copied ? 'Copied — paste with Cmd V' : linkPending ? 'Preparing…' : 'Open in mail'}
           </button>
           {missing.length > 0 && (
             <span className="text-[11.5px]" style={{ color: TONE.faint }}>Still needs {missing.join(', ')}</span>
