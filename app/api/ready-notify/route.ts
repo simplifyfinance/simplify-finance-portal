@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 you sent on ${p.sentOn}. They are expecting a call within one business day.</p>
 <p style="margin-bottom:4px"><b style="color:#221F1B">What they were quoted</b></p>
 <table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;border:1px solid #E5DED2;">${table}</table>
-<p style="margin-top:14px"><b style="color:#221F1B">${p.name}'s email</b><br>${p.email}</p>
+<p style="margin-top:14px"><b style="color:#221F1B">Email</b><br>${p.email.split(',').map(e => e.trim()).join('<br>')}</p>
 <p><a href="mailto:${encodeURIComponent(p.email)}" style="background:#2DBEFF;color:#fff;padding:9px 16px;
 border-radius:7px;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">Reply to ${p.name}</a></p>
 </div>`
@@ -57,7 +57,7 @@ border-radius:7px;font-size:13px;font-weight:600;text-decoration:none;display:in
       body: JSON.stringify({
         from: 'Simplify Finance Portal <notifications@simplifyfinance.com.au>',
         to: recipients,
-        reply_to: p.email,
+        reply_to: p.email.split(',').map(e => e.trim()).filter(Boolean),
         subject: `${p.name} is ready to proceed — refinance`,
         html,
       }),

@@ -39,6 +39,9 @@ export default function RefinanceTemplateForm() {
 
   const [clientFirstName, setClientFirstName] = useState('')
   const [clientEmail, setClientEmail] = useState('')
+  const [joint, setJoint] = useState(false)
+  const [client2FirstName, setClient2FirstName] = useState('')
+  const [client2Email, setClient2Email] = useState('')
   const [bcc, setBcc] = useState('')
   const [repaymentType, setRepaymentType] = useState<RepaymentType>('PI')
   const [balance, setBalance] = useState('')
@@ -131,6 +134,13 @@ export default function RefinanceTemplateForm() {
     }
   }, [input])
 
+  // A couple is greeted together and both are on the To line. The second set of
+  // details is optional throughout — a single applicant behaves exactly as before.
+  const second = joint ? client2FirstName.trim() : ''
+  const greeting = second ? `${clientFirstName.trim()} and ${second}` : clientFirstName.trim()
+  const recipients = [clientEmail.trim(), joint ? client2Email.trim() : '']
+    .filter(Boolean).join(',')
+
   // The "get started" link is signed on the server — the secret must not reach
   // the browser — and carries the client, the broker and the quoted figures, so
   // nothing has to be stored anywhere.
@@ -140,8 +150,8 @@ export default function RefinanceTemplateForm() {
       return
     }
     const body = {
-      name: clientFirstName.trim(),
-      email: clientEmail.trim(),
+      name: greeting || clientFirstName.trim(),
+      email: recipients,
       brokerKey: broker.key,
       brokerName: broker.name,
       calendly: calendlyUrl,
@@ -165,17 +175,17 @@ export default function RefinanceTemplateForm() {
     }, 400)
     return () => { live = false; clearTimeout(t) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, result, broker, calendlyUrl, clientFirstName, clientEmail])
+  }, [input, result, broker, calendlyUrl, clientFirstName, clientEmail, greeting, recipients])
 
   const email = useMemo(() => {
     if (!input || !result) return null
     return buildRefinanceEmail(input, {
-      clientFirstName,
+      clientFirstName: greeting || clientFirstName,
       brokerName: broker?.name || 'Simplify Finance',
       calendlyUrl: calendlyUrl || '#',
       proceedUrl: proceedUrl.trim() || readyUrl || calendlyUrl || '#',
     })
-  }, [input, result, clientFirstName, broker, calendlyUrl, proceedUrl, readyUrl])
+  }, [input, result, greeting, clientFirstName, broker, calendlyUrl, proceedUrl, readyUrl])
 
   useEffect(() => {
     const frame = frameRef.current, inner = innerRef.current
@@ -219,7 +229,7 @@ export default function RefinanceTemplateForm() {
       await putOnClipboard()
       setCopied('html')
       setTimeout(() => setCopied(null), 4000)
-      window.location.href = buildMailtoUrl({ to: clientEmail, bcc, subject: email.subject })
+      window.location.href = buildMailtoUrl({ to: recipients, bcc, subject: email.subject })
     } catch {
       setCopyError('Could not copy the email, so nothing was opened. Your browser may be blocking clipboard access — try Chrome.')
     }
@@ -242,7 +252,7 @@ export default function RefinanceTemplateForm() {
     setCopyError('')
     try {
       await navigator.clipboard.writeText(buildRefinanceSms(input, {
-        clientFirstName,
+        clientFirstName,   // one name only: a second would push it to a third segment
         brokerName: broker?.name || 'Simplify Finance',
         calendlyUrl,
         proceedUrl: proceedUrl.trim() || calendlyUrl,
@@ -319,6 +329,29 @@ export default function RefinanceTemplateForm() {
               <input className={inp} style={inpS} value={clientEmail} type="email"
                      onChange={e => setClientEmail(e.target.value)} placeholder="sarah@example.com" />
             </div>
+            <div className="col-span-2 max-[520px]:col-span-1">
+              <label className="flex items-center gap-2 text-[12.5px] cursor-pointer" style={{ color: TONE.body }}>
+                <input type="checkbox" checked={joint} onChange={e => setJoint(e.target.checked)} />
+                There are two applicants
+              </label>
+            </div>
+
+            {joint && (
+              <>
+                <div>
+                  <label className={lab} style={{ color: TONE.label }}>Second first name</label>
+                  <input className={inp} style={inpS} value={client2FirstName}
+                         onChange={e => setClient2FirstName(e.target.value)} placeholder="Andrew" />
+                </div>
+                <div>
+                  <label className={lab} style={{ color: TONE.label }}>Second email</label>
+                  <input className={inp} style={inpS} value={client2Email} type="email"
+                         onChange={e => setClient2Email(e.target.value)} placeholder="andrew@example.com" />
+                  <p className={hint} style={{ color: TONE.faint }}>Both are put on the To line.</p>
+                </div>
+              </>
+            )}
+
             <div className="col-span-2 max-[520px]:col-span-1">
               <label className={lab} style={{ color: TONE.label }}>SalesTrekker BCC</label>
               <input className={inp} style={inpS} value={bcc}
