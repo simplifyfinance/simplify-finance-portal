@@ -7,11 +7,14 @@ import { TONE } from '@/lib/tone'
 // assume it failed and start again. This says the one thing they need to do next.
 
 export default function PasteReminder({
-  open, onClose, onRetry,
+  open, onClose, onRetry, alsoDo,
 }: {
   open: boolean
   onClose: () => void
   onRetry?: () => void
+  // A template whose email promises an attachment says so here. An email that
+  // says "I have attached" and arrives with nothing is worse than no email.
+  alsoDo?: string
 }) {
   // Read the platform after mount, so the server and the browser agree on the
   // first render and React does not complain about a mismatch.
@@ -54,6 +57,15 @@ export default function PasteReminder({
             </div>
             <div className="text-[26px] font-[660] tracking-[-.02em]" style={{ color: '#095B83' }}>{combo}</div>
           </div>
+
+          {alsoDo && (
+            <div className="rounded-xl border px-4 py-3 mb-4 text-left"
+                 style={{ background: '#FAF8F4', borderColor: TONE.line }}>
+              <div className="text-[11px] font-bold uppercase tracking-[.09em] mb-1"
+                   style={{ color: TONE.label }}>Then</div>
+              <div className="text-[13.5px] leading-[1.55]" style={{ color: TONE.ink }}>{alsoDo}</div>
+            </div>
+          )}
 
           <p className="text-[12px] leading-[1.6]" style={{ color: TONE.label }}>
             Nothing pasted? The email is still on the clipboard — click into the message body first,
