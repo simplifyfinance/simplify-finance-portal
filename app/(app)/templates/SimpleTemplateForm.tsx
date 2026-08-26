@@ -3,7 +3,7 @@ import { useMemo, useRef, useState, useEffect } from 'react'
 import { TONE } from '@/lib/tone'
 import { mailtoUrl } from '@/lib/email-shell'
 import { useSender } from './useSender'
-import { SenderPanel, ClientPanel } from './TemplateFields'
+import { SenderPanel, ClientPanel, inp, inpS, panel, panelS } from './TemplateFields'
 import PasteReminder from './PasteReminder'
 
 // One form for every template that needs nothing but the client. Nothing is
@@ -19,9 +19,27 @@ export type EmailBuilder = (ctx: {
   brokerName: string
   calendlyUrl: string
   opportunityUrl?: string
+  [key: string]: string | undefined
 }) => BuiltEmail
 
-export default function SimpleTemplateForm({ build }: { build: EmailBuilder }) {
+// A template that needs one or two things beyond the client — a rebate amount,
+// a link to the project documents — declares them here rather than getting its
+// own form. Anything more than a handful of fields deserves its own screen.
+export type ExtraField = {
+  key: string
+  label: string
+  placeholder?: string
+  hint?: string
+  required?: boolean
+}
+
+export default function SimpleTemplateForm({
+  build, extras, extrasTitle,
+}: {
+  build: EmailBuilder
+  extras?: ExtraField[]
+  extrasTitle?: string
+}) {
   const sender = useSender('sf_template_sender_v1')
 
   const [firstName, setFirstName] = useState('')
@@ -30,6 +48,7 @@ export default function SimpleTemplateForm({ build }: { build: EmailBuilder }) {
   const [secondName, setSecondName] = useState('')
   const [secondEmail, setSecondEmail] = useState('')
   const [bcc, setBcc] = useState('')
+  const [extra, setExtra] = useState<Record<string, string>>({})
   const [opportunityUrl, setOpportunityUrl] = useState('')
   const [linkError, setLinkError] = useState('')
   // The link takes a moment to come back. Until it does, the email on the
@@ -96,14 +115,18 @@ export default function SimpleTemplateForm({ build }: { build: EmailBuilder }) {
   const built = useMemo(() => {
     if (!greeting || !sender.broker) return null
     return build({
+      ...extra,
       clientFirstName: greeting,
       brokerName: sender.broker.name,
       calendlyUrl: sender.calendlyUrl,
       opportunityUrl,
     })
-  }, [greeting, sender.broker, sender.calendlyUrl, opportunityUrl, build])
+  }, [greeting, sender.broker, sender.calendlyUrl, opportunityUrl, extra, build])
 
   const missing: string[] = []
+  for (const f of extras || []) {
+    if (f.required && !String(extra[f.key] || '').trim()) missing.push(f.label.toLowerCase())
+  }
   if (!firstName.trim()) missing.push('client name')
   if (!recipients) missing.push('client email')
   if (!sender.broker) missing.push('a broker')
@@ -162,6 +185,25 @@ export default function SimpleTemplateForm({ build }: { build: EmailBuilder }) {
           secondEmail={secondEmail} setSecondEmail={setSecondEmail}
           bcc={bcc} setBcc={setBcc}
         />
+
+        {extras && extras.length > 0 && (
+          <div className={panel} style={panelS}>
+            <h3 className="text-[11px] font-bold tracking-[.08em] uppercase mb-3" style={{ color: TONE.label }}>
+              {extrasTitle || 'This project'}
+            </h3>
+            <div className="grid grid-cols-2 gap-3 max-[520px]:grid-cols-1">
+              {extras.map(f => (
+                <div key={f.key} className={extras.length === 1 ? '' : 'col-span-2 max-[520px]:col-span-1'}>
+                  <label className="text-[11.5px] mb-1 block" style={{ color: TONE.label }}>{f.label}</label>
+                  <input className={inp} style={inpS} value={extra[f.key] || ''}
+                         onChange={e => setExtra(x => ({ ...x, [f.key]: e.target.value }))}
+                         placeholder={f.placeholder} />
+                  {f.hint && <p className="text-[11px] mt-1" style={{ color: TONE.faint }}>{f.hint}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-2.5 items-center flex-wrap">
           <button onClick={openMail} disabled={!ready}
