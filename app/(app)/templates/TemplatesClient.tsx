@@ -31,7 +31,7 @@ const TEMPLATES = [
   },
   {
     id: 'price-opportunity',
-    name: 'Price beats the tax refund',
+    name: 'What if the tax change actually created an opportunity?',
     blurb: 'The same house, valued $85,000 apart eight weeks either side of the Budget. Argues that ' +
            'a better purchase price is worth nine to ten years of the tax benefit everyone is ' +
            'mourning.',
