@@ -174,11 +174,19 @@ export default function SimpleTemplateForm({ build }: { build: EmailBuilder }) {
           )}
         </div>
         {err && <p className="text-[12px] mt-2" style={{ color: TONE.neg }}>{err}</p>}
-        {linkError && (
+        {/* Whether the email carries its link, stated plainly rather than left to
+            be discovered in someone's inbox. */}
+        {linkError ? (
           <p className="text-[12px] mt-2" style={{ color: TONE.neg }}>
             {linkError} The email will still send, with that phrase as plain text instead of a link.
           </p>
-        )}
+        ) : linkPending ? (
+          <p className="text-[12px] mt-2" style={{ color: TONE.label }}>Preparing the link…</p>
+        ) : opportunityUrl ? (
+          <p className="text-[12px] mt-2 break-all" style={{ color: TONE.pos }}>
+            Link ready — {opportunityUrl}
+          </p>
+        ) : null}
         <p className="text-[11.5px] mt-2.5" style={{ color: TONE.label }}>
           No figures to enter — the email reads the same for every investor, so it is ready as soon as
           the client is filled in. Open in mail copies it first, then opens a message with the address,

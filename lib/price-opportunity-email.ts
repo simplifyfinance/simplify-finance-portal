@@ -88,7 +88,7 @@ function argument(name: string): string {
     keyBlock('$85,000 off the price is nine to ten years of that benefit.',
              'Except you get it on the day you buy, not one year at a time.') +
     p('And the losses themselves are not gone. Under the new rules they are deferred &mdash; they ' +
-      'build up, and can potentially be used against future property income or when you sell.') +
+      'build up and can potentially be used against future property income or when you sell.') +
     punch('So the question is not what you lost. It is what the right property costs while everyone ' +
           'else is waiting.') +
     p('Not every property has moved $85,000, and your circumstances will not be the same as this ' +
@@ -113,7 +113,7 @@ function plain(name: string, brokerName: string, tail: string[]): string {
     'Now the number everyone is worried about losing.', '',
     'On a $200,000 income, negative gearing on a property like this was worth somewhere around $8,500 to $9,400 a year.', '',
     '$85,000 off the price is nine to ten years of that benefit. Except you get it on the day you buy, not one year at a time.', '',
-    'And the losses themselves are not gone. Under the new rules they are deferred — they build up, and can potentially be used against future property income or when you sell.', '',
+    'And the losses themselves are not gone. Under the new rules they are deferred — they build up and can potentially be used against future property income or when you sell.', '',
     'So the question is not what you lost. It is what the right property costs while everyone else is waiting.', '',
     'Not every property has moved $85,000, and your circumstances will not be the same as this buyer’s. But if you have put investing on hold because of a tax change, you may be reading the wrong number.', '',
     ...tail, '',
