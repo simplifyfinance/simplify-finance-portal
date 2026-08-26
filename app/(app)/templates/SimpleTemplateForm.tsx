@@ -35,7 +35,7 @@ export type ExtraField = {
 }
 
 export default function SimpleTemplateForm({
-  build, extras, extrasTitle, allowAttachments, attachHint, emlPrefix,
+  build, extras, extrasTitle, allowAttachments, attachHint, emlPrefix, usesOpportunityLink,
 }: {
   build: EmailBuilder
   extras?: ExtraField[]
@@ -47,6 +47,10 @@ export default function SimpleTemplateForm({
   allowAttachments?: boolean
   attachHint?: string
   emlPrefix?: string
+  // Only the negative gearing email carries a link to the opportunity page.
+  // Minting one for every template put a long green URL under templates that
+  // have nowhere to put it.
+  usesOpportunityLink?: boolean
 }) {
   const sender = useSender('sf_template_sender_v1')
 
@@ -81,7 +85,7 @@ export default function SimpleTemplateForm({
   const brokerKeyDep = sender.broker?.key || ''
   const brokerNameDep = sender.broker?.name || ''
   useEffect(() => {
-    if (!greeting || !recipients || !brokerKeyDep) {
+    if (!usesOpportunityLink || !greeting || !recipients || !brokerKeyDep) {
       setOpportunityUrl(''); setLinkError(''); setLinkPending(false); return
     }
     setLinkPending(true)
@@ -120,7 +124,7 @@ export default function SimpleTemplateForm({
       }
     }, 400)
     return () => { live = false; clearTimeout(t) }
-  }, [greeting, recipients, brokerKeyDep, brokerNameDep])
+  }, [usesOpportunityLink, greeting, recipients, brokerKeyDep, brokerNameDep])
 
   const built = useMemo(() => {
     if (!greeting || !sender.broker) return null
@@ -283,19 +287,15 @@ export default function SimpleTemplateForm({
 
         <div className="flex gap-2.5 items-center flex-wrap">
           {allowAttachments ? (
-            <>
-              <button onClick={openInOutlook} disabled={!ready}
-                className="rounded-lg px-4 py-[9px] text-[13px] font-semibold disabled:opacity-40"
-                style={{ background: TONE.accent, color: '#fff' }}>
-                {downloaded ? 'Saved — double-click it' : linkPending ? 'Preparing…'
-                  : files.length ? 'Open in Outlook with the attachments' : 'Open in Outlook'}
-              </button>
-              <button onClick={openMail} disabled={!ready}
-                className="rounded-lg px-4 py-[9px] text-[13px] font-semibold border disabled:opacity-40"
-                style={{ borderColor: TONE.line, background: '#fff', color: TONE.ink }}>
-                {copied ? 'Copied — paste with Cmd V' : 'Copy the email instead'}
-              </button>
-            </>
+            // It downloads a file. Saying "open" was a lie the first click
+            // exposed, so the button says download and the note says why.
+            <button onClick={openInOutlook} disabled={!ready}
+              className="rounded-lg px-4 py-[9px] text-[13px] font-semibold disabled:opacity-40"
+              style={{ background: TONE.accent, color: '#fff' }}>
+              {downloaded ? 'Saved to Downloads — double-click it'
+                : files.length ? 'Download the email with the attachments'
+                : 'Download the email'}
+            </button>
           ) : (
             <button onClick={openMail} disabled={!ready}
               className="rounded-lg px-4 py-[9px] text-[13px] font-semibold disabled:opacity-40"
@@ -310,7 +310,7 @@ export default function SimpleTemplateForm({
         {err && <p className="text-[12px] mt-2" style={{ color: TONE.neg }}>{err}</p>}
         {/* Whether the email carries its link, stated plainly rather than left to
             be discovered in someone's inbox. */}
-        {linkError ? (
+        {!usesOpportunityLink ? null : linkError ? (
           <p className="text-[12px] mt-2" style={{ color: TONE.neg }}>
             {linkError} The email will still send, with that phrase as plain text instead of a link.
           </p>
@@ -323,11 +323,9 @@ export default function SimpleTemplateForm({
         ) : null}
         {allowAttachments ? (
           <p className="text-[11.5px] mt-2.5 leading-[1.6]" style={{ color: TONE.label }}>
-            <b style={{ color: TONE.ink }}>Open in Outlook</b> saves the whole message as a file. Double-click
-            it and Outlook opens a draft with the address, subject, body and attachments already in place —
-            read it, then press Send. It needs the Outlook app: on webmail or a phone, use{' '}
-            <b style={{ color: TONE.ink }}>Copy the email instead</b>, which copies the body for you to paste
-            and leaves you to drag the PDFs in.
+            This saves the finished email to your Downloads as a file. Double-click that file and it opens
+            as a draft with the address, subject, body and both PDFs already in place. Read it, then press
+            Send. Nothing is sent until you do.
           </p>
         ) : (
           <p className="text-[11.5px] mt-2.5" style={{ color: TONE.label }}>

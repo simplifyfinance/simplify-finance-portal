@@ -93,7 +93,9 @@ export default function TemplatesClient() {
           <span style={{ color: TONE.ink, fontWeight: 600 }}>{current.name}</span>
         </div>
         {chosen === 'refinance' && <RefinanceTemplateForm />}
-        {chosen === 'negative-gearing' && <SimpleTemplateForm build={buildNegativeGearingEmail} />}
+        {chosen === 'negative-gearing' && (
+          <SimpleTemplateForm build={buildNegativeGearingEmail} usesOpportunityLink />
+        )}
         {chosen === 'price-opportunity' && <SimpleTemplateForm build={buildPriceOpportunityEmail} />}
         {chosen === 'new-property-rebate' && (
           <SimpleTemplateForm build={buildRebateEmail} extras={REBATE_FIELDS} extrasTitle="This project"
