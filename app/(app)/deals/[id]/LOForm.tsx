@@ -495,15 +495,24 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
     setGeneratingRec(false)
   }
 
+  // The deposit is everything the client puts in, stamp duty included — the same
+  // rule the BC form uses. Stamp duty is paid out of that money, so only what is
+  // left over reduces the loan. Leaving stamp duty out here is what made a
+  // $351,000 deposit arrive in LO as $320,000.
+  const num = (v: unknown) => parseFloat(String(v ?? '0').replace(/,/g, '')) || 0
+  const loanFrom = (price: number, deposit: number, stampDuty: number) =>
+    formatNumber(Math.max(0, Math.round(price - Math.max(0, deposit - stampDuty))).toString())
+  const depositFrom = (price: number, loan: number, stampDuty: number) =>
+    formatNumber(Math.max(0, Math.round(price - loan + stampDuty)).toString())
+
   function handleLoPurchasePriceChange(val: string) {
-    const price = parseFloat(val.replace(/,/g, '')) || 0
-    const dep = parseFloat((d.deposit || '0').replace(/,/g, '')) || 0
+    const price = num(val), dep = num(d.deposit), sd = num(d.stampDuty)
     if (dep > 0) {
-      setD(prev => ({ ...prev, purchasePrice: val, loanAmount: formatNumber(Math.max(0, Math.round(price - dep)).toString()) }))
+      setD(prev => ({ ...prev, purchasePrice: val, loanAmount: loanFrom(price, dep, sd) }))
     } else {
-      const loanAmt = parseFloat((d.loanAmount || '0').replace(/,/g, '')) || 0
+      const loanAmt = num(d.loanAmount)
       if (loanAmt > 0) {
-        setD(prev => ({ ...prev, purchasePrice: val, deposit: formatNumber(Math.max(0, Math.round(price - loanAmt)).toString()) }))
+        setD(prev => ({ ...prev, purchasePrice: val, deposit: depositFrom(price, loanAmt, sd) }))
       } else {
         setD(prev => ({ ...prev, purchasePrice: val }))
       }
@@ -511,22 +520,31 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
   }
 
   function handleLoDepositChange(val: string) {
-    const price = parseFloat((d.purchasePrice || '0').replace(/,/g, '')) || 0
-    const dep = parseFloat(val.replace(/,/g, '')) || 0
+    const price = num(d.purchasePrice), dep = num(val), sd = num(d.stampDuty)
     if (price > 0) {
-      setD(prev => ({ ...prev, deposit: val, loanAmount: formatNumber(Math.max(0, Math.round(price - dep)).toString()) }))
+      setD(prev => ({ ...prev, deposit: val, loanAmount: loanFrom(price, dep, sd) }))
     } else {
       setD(prev => ({ ...prev, deposit: val }))
     }
   }
 
   function handleLoLoanAmountChange(val: string) {
-    const price = parseFloat((d.purchasePrice || '0').replace(/,/g, '')) || 0
-    const loanAmt = parseFloat(val.replace(/,/g, '')) || 0
+    const price = num(d.purchasePrice), loanAmt = num(val), sd = num(d.stampDuty)
     if (price > 0) {
-      setD(prev => ({ ...prev, loanAmount: val, deposit: formatNumber(Math.max(0, Math.round(price - loanAmt)).toString()) }))
+      setD(prev => ({ ...prev, loanAmount: val, deposit: depositFrom(price, loanAmt, sd) }))
     } else {
       setD(prev => ({ ...prev, loanAmount: val }))
+    }
+  }
+
+  // Typing the deposit before the stamp duty used to leave the loan on the old
+  // figure. Changing either recalculates the loan, so the order does not matter.
+  function handleLoStampDutyChange(val: string) {
+    const price = num(d.purchasePrice), dep = num(d.deposit), sd = num(val)
+    if (price > 0 && dep > 0) {
+      setD(prev => ({ ...prev, stampDuty: val, loanAmount: loanFrom(price, dep, sd) }))
+    } else {
+      setD(prev => ({ ...prev, stampDuty: val }))
     }
   }
 
@@ -726,8 +744,18 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
             {!isRefinance && !isBridging && (
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Purchase price"><NumberInput value={d.purchasePrice} onChange={handleLoPurchasePriceChange} /></Field>
-                <Field label="Deposit"><NumberInput value={d.deposit} onChange={handleLoDepositChange} /></Field>
-                <Field label="Stamp duty"><NumberInput value={d.stampDuty} onChange={v => setD({ ...d, stampDuty: v })} /></Field>
+                <Field label="Deposit">
+                  <NumberInput value={d.deposit} onChange={handleLoDepositChange} />
+                  {(() => {
+                    const dep = num(d.deposit), sd = num(d.stampDuty)
+                    if (!dep || !sd) return null
+                    if (sd >= dep) return <div className="text-[11px] text-red-500 mt-1">Stamp duty exceeds the deposit</div>
+                    return <div className="text-[11px] text-gray-500 mt-1">
+                      ${formatNumber(Math.round(dep - sd).toString())} into the property after stamp duty
+                    </div>
+                  })()}
+                </Field>
+                <Field label="Stamp duty"><NumberInput value={d.stampDuty} onChange={handleLoStampDutyChange} /></Field>
                 <Field label="LVR (calculated)">
                   <div className={inp + " bg-gray-50 text-gray-700"}>
                     {(() => {
