@@ -12,9 +12,9 @@ import {
 import {
   buildRefinanceEmail,
   buildMailtoUrl,
-  buildRefinanceSms,
 } from '@/lib/refinance-email-template'
 import { TONE } from '@/lib/tone'
+import PasteReminder from './PasteReminder'
 
 // The email goes out in a broker's name, and anyone on the team may be the one
 // sending it — so the broker is chosen, not assumed from who is logged in. Name
@@ -59,7 +59,8 @@ export default function RefinanceTemplateForm() {
   const innerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
   const [frameHeight, setFrameHeight] = useState(0)
-  const [copied, setCopied] = useState<'html' | 'sms' | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [showPaste, setShowPaste] = useState(false)
   const [copyError, setCopyError] = useState('')
 
   useEffect(() => {
@@ -227,40 +228,12 @@ export default function RefinanceTemplateForm() {
     setCopyError('')
     try {
       await putOnClipboard()
-      setCopied('html')
-      setTimeout(() => setCopied(null), 4000)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 4000)
+      setShowPaste(true)
       window.location.href = buildMailtoUrl({ to: recipients, bcc, subject: email.subject })
     } catch {
       setCopyError('Could not copy the email, so nothing was opened. Your browser may be blocking clipboard access — try Chrome.')
-    }
-  }
-
-  const copyOnly = async () => {
-    if (!email) return
-    setCopyError('')
-    try {
-      await putOnClipboard()
-      setCopied('html')
-      setTimeout(() => setCopied(null), 2500)
-    } catch {
-      setCopyError('Copy failed — your browser may be blocking clipboard access. Try Chrome.')
-    }
-  }
-
-  const copySms = async () => {
-    if (!input) return
-    setCopyError('')
-    try {
-      await navigator.clipboard.writeText(buildRefinanceSms(input, {
-        clientFirstName,   // one name only: a second would push it to a third segment
-        brokerName: broker?.name || 'Simplify Finance',
-        calendlyUrl,
-        proceedUrl: proceedUrl.trim() || calendlyUrl,
-      }))
-      setCopied('sms')
-      setTimeout(() => setCopied(null), 2500)
-    } catch {
-      setCopyError('Copy failed — try Chrome.')
     }
   }
 
@@ -419,16 +392,8 @@ export default function RefinanceTemplateForm() {
           <button onClick={openMail} disabled={!ready}
             className="rounded-lg px-4 py-[9px] text-[13px] font-semibold disabled:opacity-40"
             style={{ background: TONE.accent, color: '#fff' }}>
-            {copied === 'html' ? 'Copied — paste with Cmd V' : 'Open in mail'}
+            {copied ? 'Copied — paste with Cmd V' : 'Open in mail'}
           </button>
-          <button onClick={copySms} disabled={!input}
-            className="rounded-lg px-4 py-[9px] text-[13px] font-medium border disabled:opacity-40"
-            style={{ borderColor: TONE.line, color: TONE.ink, background: '#fff' }}>
-            {copied === 'sms' ? 'Copied' : 'Copy SMS'}
-          </button>
-          <button onClick={copyOnly} disabled={!ready}
-            className="text-[12px] underline disabled:opacity-40"
-            style={{ color: TONE.label }}>Copy without opening</button>
           {missing.length > 0 && (
             <span className="text-[11.5px]" style={{ color: TONE.faint }}>Still needs {missing.join(', ')}</span>
           )}
@@ -472,6 +437,8 @@ export default function RefinanceTemplateForm() {
           </div>
         )}
       </div>
+      <PasteReminder open={showPaste} onClose={() => setShowPaste(false)}
+                     onRetry={openMail} />
     </div>
   )
 }
