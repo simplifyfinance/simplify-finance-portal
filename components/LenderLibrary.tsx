@@ -538,6 +538,10 @@ export default function LenderLibrary() {
                     <label className="text-xs text-gray-400 block mb-1">Valuation fee</label>
                     <input className={inp} value={productForm.valuation_fee} onChange={e => setProductForm({...productForm, valuation_fee: e.target.value})} placeholder="e.g. Free up to $360" />
                   </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Legal fee</label>
+                    <input className={inp} value={productForm.legal_fee} onChange={e => setProductForm({...productForm, legal_fee: e.target.value})} placeholder="e.g. $150 or At cost" />
+                  </div>
                   {(productForm.rate_type === 'fixed' || productForm.rate_type === 'both') && (
                     <div>
                       <label className="text-xs text-gray-400 block mb-1">Rate lock fee</label>
@@ -554,10 +558,6 @@ export default function LenderLibrary() {
                   <div>
                     <label className="text-xs text-gray-400 block mb-1">Discharge fee</label>
                     <input className={inp} value={productForm.discharge_fee} onChange={e => setProductForm({...productForm, discharge_fee: e.target.value})} placeholder="e.g. $350" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Legal fee</label>
-                    <input className={inp} value={productForm.legal_fee} onChange={e => setProductForm({...productForm, legal_fee: e.target.value})} placeholder="e.g. $150 or At cost" />
                   </div>
                 </div>
               </div>
