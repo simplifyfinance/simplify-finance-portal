@@ -4,3 +4,14 @@ body {
   background-color: #F5F5F3;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
+
+/* A two-finger sideways swipe on a Mac trackpad is a Back gesture. Over a long
+   form that does not scroll sideways it fires by accident, slides the previous
+   page in from the edge, and leaves whoever was filling the form on whatever
+   they last visited — with nothing pressed and no explanation. Containing the
+   horizontal overscroll stops the browser reading a swipe as navigation, while
+   leaving genuine sideways scrolling inside tables untouched. */
+html,
+body {
+  overscroll-behavior-x: contain;
+}
