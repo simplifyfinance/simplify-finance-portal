@@ -43,12 +43,11 @@ const INK = '#1a1a1a';
 // readable on it, so the disclaimer arrived black on charcoal. It now sits at
 // the foot of the white body under a hairline, and the charcoal band holds only
 // the logo, which is artwork and cannot be recoloured.
-const TAGLINE_INK = '#8A8279';
 const SMALL_INK = '#8a8a84';
 const NOTE_BG = '#F7F5F1';     // the tax note, formerly on the charcoal
 const SAND = '#F2E8DB';
 const LOGO_URL =
-  'https://simplify-finance-portal.vercel.app/logo-charcoal.png';
+  'https://simplify-finance-portal.vercel.app/logo-charcoal-tagline.png';
 const FONT =
   "-apple-system, 'Segoe UI', Arial, Helvetica, sans-serif";
 
@@ -111,9 +110,8 @@ function shell(inner: string): string {
 <tr><td align="center" bgcolor="#f5f5f3" style="background-color:#f5f5f3;padding:24px 12px;">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" bgcolor="#ffffff" style="width:600px;max-width:600px;background-color:#ffffff;">
 <tr><td bgcolor="${NAVY}" align="center" style="background-color:${NAVY};padding:26px 20px;font-family:${FONT};">
-<img src="${LOGO_URL}" alt="Simplify Finance" height="72" style="height:72px;display:block;margin:0 auto;border:0;" />
+<img src="${LOGO_URL}" alt="Simplify Finance" height="94" style="height:94px;display:block;margin:0 auto;border:0;" />
 </td></tr>
-<tr><td bgcolor="#ffffff" align="center" style="background-color:#ffffff;padding:14px 20px 0;font-family:${FONT};font-size:10px;letter-spacing:2px;text-transform:uppercase;color:${TAGLINE_INK};"><span style="color:${TAGLINE_INK};">Finance, Simplified.</span></td></tr>
 <tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding:20px 20px 24px;">${inner}
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:18px 0 0;"><tr>
 <td bgcolor="#ffffff" style="background-color:#ffffff;border-top:1px solid ${BORDER};padding:12px 0 0;font-family:${FONT};font-size:10px;line-height:1.65;color:${SMALL_INK};"><span style="color:${SMALL_INK};">${DISCLAIMER}</span></td>

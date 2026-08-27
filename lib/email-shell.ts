@@ -16,11 +16,10 @@
 // the charcoal band is the logo, which is artwork and cannot be recoloured.
 
 const CHARCOAL = '#343333'
-const TAGLINE_INK = '#8A8279'
 const SMALL_INK = '#8a8a84'
 const LEGAL_INK = '#9e9e98'
 const HAIRLINE = '#E4E2DC'
-const LOGO_URL = 'https://simplify-finance-portal.vercel.app/logo-charcoal.png'
+const LOGO_URL = 'https://simplify-finance-portal.vercel.app/logo-charcoal-tagline.png'
 export const FONT = "-apple-system, 'Segoe UI', Arial, Helvetica, sans-serif"
 
 const LEGAL =
@@ -42,9 +41,8 @@ export function emailShell(inner: string, disclaimer: string): string {
 <tr><td align="center" bgcolor="#f5f5f3" style="background-color:#f5f5f3;padding:24px 12px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" align="center" style="width:600px;max-width:600px;background-color:#ffffff;">
 <tr><td bgcolor="${CHARCOAL}" align="center" style="background-color:${CHARCOAL};padding:26px 20px;font-family:${FONT};">
-<img src="${LOGO_URL}" alt="Simplify Finance" height="72" style="height:72px;display:block;margin:0 auto;border:0;" />
+<img src="${LOGO_URL}" alt="Simplify Finance" height="94" style="height:94px;display:block;margin:0 auto;border:0;" />
 </td></tr>
-<tr><td bgcolor="#ffffff" align="center" style="background-color:#ffffff;padding:14px 20px 0;font-family:${FONT};font-size:10px;letter-spacing:2px;text-transform:uppercase;color:${TAGLINE_INK};"><span style="color:${TAGLINE_INK};">Finance, Simplified.</span></td></tr>
 <tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding:20px 22px 26px;font-family:${FONT};">${inner}${smallPrint(disclaimer)}</td></tr>
 </table>
 </td></tr></table>`

@@ -6,7 +6,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 const DEFAULT_BRAND = {
   name: 'Simplify Finance',
   headerColor: '#343333',
-  logoUrl: 'https://simplify-finance-portal.vercel.app/logo-charcoal.png',
+  logoUrl: 'https://simplify-finance-portal.vercel.app/logo-charcoal-tagline.png',
   footerAddress: 'St Leonards, Sydney',
   acl: '387025',
 }
@@ -18,7 +18,7 @@ function shell(body: string, b: { name: string; title: string; crn: string; cale
   const footerAddress = brand?.footerAddress || DEFAULT_BRAND.footerAddress
   const acl = brand?.acl || DEFAULT_BRAND.acl
   const logoBlock = logoUrl
-    ? `<img src="${logoUrl}" alt="${brandName}" height="80" style="height:80px;display:block;margin:0 auto 8px;border:0" />`
+    ? `<img src="${logoUrl}" alt="${brandName}" height="94" style="height:94px;display:block;margin:0 auto;border:0" />`
     : `<p style="color:#ffffff;font-size:22px;font-weight:700;margin:0 0 8px"><span style="color:#ffffff;">${brandName}</span></p>`
   return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5f5f3" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr>
   <td bgcolor="#f5f5f3" align="center" style="background:#f5f5f3;padding:24px 12px">
@@ -26,7 +26,6 @@ function shell(body: string, b: { name: string; title: string; crn: string; cale
     <tr><td bgcolor="${headerColor}" style="background:${headerColor};padding:28px 24px;text-align:center">
       ${logoBlock}
     </td></tr>
-    <tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;padding:14px 20px 0;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#8A8279"><span style="color:#8A8279;">Finance, Simplified.</span></td></tr>
     <tr><td bgcolor="#ffffff" style="background:#ffffff;padding:20px 28px 28px">${body}
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 0"><tr>
       <td bgcolor="#ffffff" style="background:#ffffff;border-top:1px solid #E4E2DC;padding:12px 0 0">
