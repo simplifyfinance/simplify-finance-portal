@@ -50,6 +50,38 @@ for f in files:
             issues.append((f, s[:m.start()].count('\n') + 1,
                            'text colour on a <%s> — Word paints it black. Wrap the text in a span.' % tag))
 
+    # Text on a dark cell is the bug that bit twice: Word paints the background
+    # from the bgcolor attribute and then throws away the pale colour that made
+    # the text readable on it, so it arrives black on charcoal. The rule is that
+    # a dark cell holds artwork and nothing else.
+    consts = dict(re.findall(r"const (\w+)\s*=\s*'(#[0-9a-fA-F]{6})'", s))
+    def dark(v):
+        v = consts.get(v.strip('${}'), v)
+        if not re.fullmatch(r'#[0-9a-fA-F]{6}', v or ''):
+            return False
+        r, g, bl = (int(v[i:i+2], 16) for i in (1, 3, 5))
+        return (0.299 * r + 0.587 * g + 0.114 * bl) < 110
+    # Scanned from each opening tag rather than as a matched pair: a wrapping
+    # cell's match swallowed the charcoal one and the first version of this rule
+    # sailed straight past the very bug it was written for.
+    for m in re.finditer(r'<td[^>]*bgcolor="([^"]+)"[^>]*>', s):
+        if not dark(m.group(1)):
+            continue
+        rest = s[m.end():]
+        close = rest.find('</td>')
+        if close < 0:
+            continue
+        inner = rest[:close]
+        if '<td' in inner:
+            continue                      # holds cells of its own, not text
+        inner = re.sub(r'<img[^>]*>', '', inner)
+        inner = re.sub(r'<[^>]+>', '', inner)
+        inner = inner.replace('&nbsp;', '').replace('${logoBlock}', '').strip()
+        if inner:
+            issues.append((f, s[:m.start()].count('\n') + 1,
+                           'text on a dark cell (%s) — Word drops the pale colour and paints it '
+                           'black. Dark cells hold artwork only.' % m.group(1)))
+
     for m in re.finditer(r'rgba\(', s):
         issues.append((f, s[:m.start()].count('\n') + 1, 'rgba() — Word has no rgba. Use a solid hex.'))
 

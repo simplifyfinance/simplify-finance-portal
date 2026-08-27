@@ -26,6 +26,10 @@ const INK = '#1a1a1a'
 const BODY = '#3d3d3a'
 const GREY = '#6b6b66'
 const GREEN = '#1E7A4A'
+// The tick was white on green, which is the same trap as the disclaimer: Word
+// keeps the circle and paints the tick black. Dark tick on a pale circle reads
+// either way.
+const GREEN_SOFT = '#DCEDE3'
 const CHARCOAL = '#343333'
 
 const ATTACHED_NOTE =
@@ -71,7 +75,7 @@ function bothBlock(amount: string): string {
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
 <td width="30" valign="top" style="width:30px;">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-<td width="20" height="20" bgcolor="${GREEN}" align="center" valign="middle" style="width:20px;height:20px;background-color:${GREEN};border-radius:10px;color:#ffffff;font-size:12px;">&#10003;</td>
+<td width="20" height="20" bgcolor="${GREEN_SOFT}" align="center" valign="middle" style="width:20px;height:20px;background-color:${GREEN_SOFT};border-radius:10px;font-size:12px;color:${GREEN};"><span style="color:${GREEN};">&#10003;</span></td>
 </tr></table></td>
 <td valign="top" style="font-size:14.5px;color:${BODY};line-height:1.55;">${text}</td>
 </tr></table></td></tr>`

@@ -7,9 +7,19 @@
 // Every coloured area carries a bgcolor attribute as well as the CSS. Outlook
 // on Windows renders through Word, which paints a background only from the
 // attribute — scripts/check-email-html.sh fails the ship if that slips.
+//
+// Nothing pale sits on anything dark. Word will paint a background from an
+// attribute but throws away the text colour that made the text readable on it,
+// so Kylie's disclaimer arrived black on charcoal. The rule now is that every
+// piece of live text in these emails is dark on light: the disclaimer sits at
+// the foot of the white body under a hairline, and the only thing left inside
+// the charcoal band is the logo, which is artwork and cannot be recoloured.
 
 const CHARCOAL = '#343333'
-const FOOTER_INK = '#B5B5B5'
+const TAGLINE_INK = '#8A8279'
+const SMALL_INK = '#8a8a84'
+const LEGAL_INK = '#9e9e98'
+const HAIRLINE = '#E4E2DC'
 const LOGO_URL = 'https://simplify-finance-portal.vercel.app/logo-charcoal.png'
 export const FONT = "-apple-system, 'Segoe UI', Arial, Helvetica, sans-serif"
 
@@ -17,19 +27,25 @@ const LEGAL =
   '&copy; 2026 Simplify Finance | Mortgage Specialists Pty Ltd | St Leonards, Sydney | ' +
   'Australian Credit Licence 387025'
 
+// The disclaimer, as the email's own last paragraph rather than a band beneath
+// it. Dark on white, so it reads whether or not the colour survives the trip.
+function smallPrint(disclaimer: string): string {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 0;"><tr>
+<td bgcolor="#ffffff" style="background-color:#ffffff;border-top:1px solid ${HAIRLINE};padding:12px 0 0;font-family:${FONT};">
+<div style="font-size:10px;line-height:1.65;color:${SMALL_INK};"><span style="color:${SMALL_INK};">${disclaimer}</span></div>
+<div style="font-size:10px;line-height:1.65;color:${LEGAL_INK};padding-top:6px;"><span style="color:${LEGAL_INK};">${LEGAL}</span></div>
+</td></tr></table>`
+}
+
 export function emailShell(inner: string, disclaimer: string): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5f5f3" style="background-color:#f5f5f3;">
 <tr><td align="center" bgcolor="#f5f5f3" style="background-color:#f5f5f3;padding:24px 12px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" align="center" style="width:600px;max-width:600px;background-color:#ffffff;">
 <tr><td bgcolor="${CHARCOAL}" align="center" style="background-color:${CHARCOAL};padding:26px 20px;font-family:${FONT};">
-<img src="${LOGO_URL}" alt="Simplify Finance" height="72" style="height:72px;display:block;margin:0 auto 8px;border:0;" />
-<div style="color:#9E9E9E;font-size:10px;letter-spacing:2px;text-transform:uppercase;"><span style="color:#9E9E9E;">Finance, Simplified.</span></div>
+<img src="${LOGO_URL}" alt="Simplify Finance" height="72" style="height:72px;display:block;margin:0 auto;border:0;" />
 </td></tr>
-<tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding:26px 22px;font-family:${FONT};">${inner}</td></tr>
-<tr><td bgcolor="${CHARCOAL}" style="background-color:${CHARCOAL};padding:14px 20px;font-family:${FONT};">
-<div style="font-size:10px;color:${FOOTER_INK};line-height:1.6;"><span style="color:${FOOTER_INK};">${disclaimer}</span></div>
-<div style="font-size:10px;color:#9E9E9E;line-height:1.6;padding-top:6px;"><span style="color:#9E9E9E;">${LEGAL}</span></div>
-</td></tr>
+<tr><td bgcolor="#ffffff" align="center" style="background-color:#ffffff;padding:14px 20px 0;font-family:${FONT};font-size:10px;letter-spacing:2px;text-transform:uppercase;color:${TAGLINE_INK};"><span style="color:${TAGLINE_INK};">Finance, Simplified.</span></td></tr>
+<tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding:20px 22px 26px;font-family:${FONT};">${inner}${smallPrint(disclaimer)}</td></tr>
 </table>
 </td></tr></table>`
 }

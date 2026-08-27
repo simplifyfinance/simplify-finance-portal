@@ -28,7 +28,6 @@ export interface EmailContext {
 // pair the borrowing-capacity email uses, so a client who receives both sees
 // one firm rather than two.
 const NAVY = '#343333';        // header and footer bar
-const NAVY_LIGHT = '#9E9E9E';  // tagline on the charcoal
 const CYAN = '#2DBEFF';        // the one action colour
 const GREEN = '#1E7A4A';
 const GREEN_BG = '#F1F7F3';
@@ -39,8 +38,14 @@ const BORDER = '#E4E2DC';
 const GREY = '#6b6b66';
 const BODY = '#3d3d3a';
 const INK = '#1a1a1a';
-const FOOTER_BG = '#343333';   // footer matches the header
-const FOOTER_INK = '#B5B5B5';  // legible on charcoal, no rgba
+// Nothing pale sits on anything dark any more. Word keeps a background painted
+// from a bgcolor attribute but discards the text colour that made the text
+// readable on it, so the disclaimer arrived black on charcoal. It now sits at
+// the foot of the white body under a hairline, and the charcoal band holds only
+// the logo, which is artwork and cannot be recoloured.
+const TAGLINE_INK = '#8A8279';
+const SMALL_INK = '#8a8a84';
+const NOTE_BG = '#F7F5F1';     // the tax note, formerly on the charcoal
 const SAND = '#F2E8DB';
 const LOGO_URL =
   'https://simplify-finance-portal.vercel.app/logo-charcoal.png';
@@ -106,13 +111,13 @@ function shell(inner: string): string {
 <tr><td align="center" bgcolor="#f5f5f3" style="background-color:#f5f5f3;padding:24px 12px;">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" bgcolor="#ffffff" style="width:600px;max-width:600px;background-color:#ffffff;">
 <tr><td bgcolor="${NAVY}" align="center" style="background-color:${NAVY};padding:26px 20px;font-family:${FONT};">
-<img src="${LOGO_URL}" alt="Simplify Finance" height="72" style="height:72px;display:block;margin:0 auto 8px;border:0;" />
-<div style="color:${NAVY_LIGHT};font-size:10px;letter-spacing:2px;text-transform:uppercase;"><span style="color:${NAVY_LIGHT};">Finance, Simplified.</span></div>
+<img src="${LOGO_URL}" alt="Simplify Finance" height="72" style="height:72px;display:block;margin:0 auto;border:0;" />
 </td></tr>
-<tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding:24px 20px;">${inner}</td></tr>
-<tr><td bgcolor="${FOOTER_BG}" style="background-color:${FOOTER_BG};padding:14px 20px;font-family:${FONT};">
-<div style="font-size:10px;color:${FOOTER_INK};line-height:1.6;"><span style="color:${FOOTER_INK};">${DISCLAIMER}</span></div>
-</td></tr>
+<tr><td bgcolor="#ffffff" align="center" style="background-color:#ffffff;padding:14px 20px 0;font-family:${FONT};font-size:10px;letter-spacing:2px;text-transform:uppercase;color:${TAGLINE_INK};"><span style="color:${TAGLINE_INK};">Finance, Simplified.</span></td></tr>
+<tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding:20px 20px 24px;">${inner}
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:18px 0 0;"><tr>
+<td bgcolor="#ffffff" style="background-color:#ffffff;border-top:1px solid ${BORDER};padding:12px 0 0;font-family:${FONT};font-size:10px;line-height:1.65;color:${SMALL_INK};"><span style="color:${SMALL_INK};">${DISCLAIMER}</span></td>
+</tr></table></td></tr>
 </table>
 </td></tr></table>`;
 }
@@ -150,7 +155,7 @@ export function buildRefinanceEmail(
   let closingLine = '';
   if (isIO) {
     closingLine = `<p style="margin:0 0 14px 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;"><span style="color:${BODY};">That's <strong>${formatCurrency(r.annualSaving)} a year</strong> improvement in your holding costs &mdash; money that can sit in your offset, cover the next round of maintenance, or go toward a deposit on the next one.</span></p>
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${FOOTER_BG}" style="background-color:${FOOTER_BG};margin:0 0 16px 0;"><tr><td style="padding:11px 13px;border-left:3px solid #B4B2A9;font-family:${FONT};font-size:13px;color:#5F5E5A;line-height:1.5;"><span style="color:#5F5E5A;">${IO_TAX_NOTE}</span></td></tr></table>`;
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${NOTE_BG}" style="background-color:${NOTE_BG};margin:0 0 16px 0;"><tr><td bgcolor="${NOTE_BG}" style="background-color:${NOTE_BG};padding:11px 13px;border-left:3px solid #B4B2A9;font-family:${FONT};font-size:13px;color:#5F5E5A;line-height:1.5;"><span style="color:#5F5E5A;">${IO_TAX_NOTE}</span></td></tr></table>`;
   } else if (r.monthsSavedIfRepaymentsHeld && r.monthsSavedIfRepaymentsHeld > 0) {
     closingLine = `<p style="margin:0 0 16px 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;"><span style="color:${BODY};">If you kept your repayments the same instead of dropping them, you'd be mortgage-free <strong>${formatMonthsAsYearsMonths(r.monthsSavedIfRepaymentsHeld)}</strong> sooner.</span></p>`;
   }
