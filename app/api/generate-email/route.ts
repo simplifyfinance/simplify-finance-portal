@@ -36,6 +36,13 @@ function shell(body: string, b: { name: string; title: string; crn: string; cale
   </table></td></tr></table>`
 }
 
+// Duty is a state tax. Printing it unlabelled, or labelled NSW for everyone,
+// puts a figure on a client-facing email that may belong to a different state.
+function dutyLabel(d: any): string {
+  const st = String(d?.dutyState || '').trim().toUpperCase()
+  return st ? `Stamp duty (${st})` : 'Stamp duty'
+}
+
 function brokerBox(personalisation: string, firstName?: string, jointFirstName?: string, joint?: string) {
   const fn = (firstName || '[Client First Name]').trim()
   const jfn = (jointFirstName || '').trim()
@@ -288,7 +295,7 @@ export async function POST(req: NextRequest) {
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Purchase price: $${opt.purchasePrice || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit: $${opt.deposit || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Stamp duty: $${opt.stampDuty || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">${dutyLabel(d)}: $${opt.stampDuty || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: $${opt.loanAmount || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
@@ -322,7 +329,7 @@ export async function POST(req: NextRequest) {
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
         row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
-        row('Stamp duty', '$' + d.stampDuty || '') +
+        row(dutyLabel(d), '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
@@ -354,7 +361,7 @@ export async function POST(req: NextRequest) {
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Purchase price: $${opt.purchasePrice || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit: $${opt.deposit || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Stamp duty: $${opt.stampDuty || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">${dutyLabel(d)}: $${opt.stampDuty || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: $${opt.loanAmount || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
@@ -387,7 +394,7 @@ export async function POST(req: NextRequest) {
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
         row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
-        row('Stamp duty', '$' + d.stampDuty || '') +
+        row(dutyLabel(d), '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
@@ -412,7 +419,7 @@ export async function POST(req: NextRequest) {
       card('New Purchase',
         row('Purchase price', '$' + d.purchasePrice || '') +
         row(depositLabel, '$' + d.deposit || '') +
-        row('Stamp duty', '$' + d.stampDuty || '') +
+        row(dutyLabel(d), '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
@@ -474,7 +481,7 @@ export async function POST(req: NextRequest) {
       <p style="font-size:13px;color:#555;margin:0 0 16px"><span style="color:#555;">Further information: <a href="https://firsthomebuyers.gov.au/australian-government-5-percent-deposit-scheme" style="color:#2DBEFF">firsthomebuyers.gov.au/australian-government-5-percent-deposit-scheme</a></span></p>` +
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
-        row('Stamp duty', '$' + d.stampDuty || '/bin/zsh — first home buyer exemption') +
+        row(dutyLabel(d), '$' + d.stampDuty || '/bin/zsh — first home buyer exemption') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('LMI', 'Waived under Gov. Deposit Scheme') +
         row('Your contribution required', '$' + d.deposit || '') +
@@ -493,7 +500,7 @@ export async function POST(req: NextRequest) {
       p('Bridging finance lets you buy your new home before your current one sells. Here is how it works: while you hold both properties, your bridging loan accrues interest at the rate below, but that interest is <strong>capitalised</strong> \u2014 added to your loan balance rather than paid month to month. When your existing property sells, the proceeds pay off that combined balance. Whatever is left over becomes your <strong>end debt</strong>: an ordinary home loan with regular repayments, which you will see broken out below.') +
       card('New Purchase Details',
         row('Purchase price', '$' + (d.purchasePrice || '')) +
-        row('Stamp duty', '$' + (d.stampDuty || '')) +
+        row(dutyLabel(d), '$' + (d.stampDuty || '')) +
         `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Total cost</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">$${(() => { const pp = parseFloat((d.purchasePrice||'0').replace(/,/g,'')) || 0; const sd = parseFloat((d.stampDuty||'0').replace(/,/g,'')) || 0; return (pp+sd).toLocaleString('en-AU') })()}</span></td></tr>` +
         row(`Contribution${d.depositSource ? ` (from ${d.depositSource})` : ''}`, '$' + (d.deposit || '')) +
         row('Bridging loan (peak debt)', '$' + (d.splits?.[0]?.amount || '')) +
@@ -524,7 +531,7 @@ export async function POST(req: NextRequest) {
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong> — using your parents' property as a security guarantee to avoid Lenders Mortgage Insurance.`) +
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
-        row('Stamp duty', '$' + d.stampDuty || '') +
+        row(dutyLabel(d), '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('Your contribution required', '$' + d.deposit || '') +
         row('Guarantor', d.guarantorName || '') +
@@ -543,7 +550,7 @@ export async function POST(req: NextRequest) {
       p('When looking at your numbers, your borrowing capacity is looking strong for an SMSF purchase.') +
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
-        row('Stamp duty', '$' + d.stampDuty || '') +
+        row(dutyLabel(d), '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         row('Your contribution required', '$' + d.deposit || '') +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
@@ -568,7 +575,7 @@ export async function POST(req: NextRequest) {
       card('Your Loan Structure',
         row('Land value', '$' + (d.landValue || '')) +
         row('Construction cost', '$' + (d.constructionCost || '')) +
-        row('Stamp duty', '$' + (d.stampDuty || '')) +
+        row(dutyLabel(d), '$' + (d.stampDuty || '')) +
         `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Total cost</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">$${totalCost.toLocaleString('en-AU')}</span></td></tr>` +
         row('"As if complete" valuation', '$' + (d.asIfCompleteValue || '')) +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
@@ -614,7 +621,7 @@ export async function POST(req: NextRequest) {
       p13('Your numbers would be:') +
       card('Summary',
         row('Purchase price', '$' + npPrice) +
-        row('Stamp duty', '$' + npStamp) +
+        row(dutyLabel(d), '$' + npStamp) +
         row('Total cost (plus solicitor\'s fees and incidentals)', totalCost) +
         row('Loan amount', '$' + (d.splits?.[2]?.amount || '')) +
         row('Deposit needed (from equity release and personal savings)', '$' + npDeposit)
@@ -642,7 +649,7 @@ export async function POST(req: NextRequest) {
       card('Your Loan Structure',
         row('Purchase price', '$' + d.purchasePrice || '') +
         row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
-        row('Stamp duty', '$' + d.stampDuty || '') +
+        row(dutyLabel(d), '$' + d.stampDuty || '') +
         row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
         buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +

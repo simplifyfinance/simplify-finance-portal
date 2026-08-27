@@ -147,7 +147,13 @@ export async function POST(req: NextRequest) {
   if (!isBridging && (d.purchasePrice || d.loanAmount)) {
     body += `<p style="font-size:14px;font-weight:600;color:#343333;margin-bottom:8px"><span style="color:#343333;">Your numbers would be:</span></p>`
     if (d.purchasePrice) body += p(`Purchase Price: $${d.purchasePrice}`)
-    if (d.stampDuty) body += p(`Stamp Duty (NSW): $${d.stampDuty}`)
+    if (d.stampDuty) {
+      // Was hardcoded to NSW, which was simply wrong for a client buying
+      // anywhere else. It now says whichever state the deal carries, or nothing
+      // at all rather than a state the deal never named.
+      const st = String(d.dutyState || '').trim().toUpperCase()
+      body += p(`Stamp Duty${st ? ` (${st})` : ''}: $${d.stampDuty}`)
+    }
     if (d.deposit) body += p(`Deposit Required: $${d.deposit}`)
     if (d.loanAmount) body += p(`Loan Amount: $${d.loanAmount}`)
     if (d.existingLoan) body += p(`Existing Loan Balance: $${d.existingLoan}`)
@@ -171,7 +177,11 @@ export async function POST(req: NextRequest) {
     body += p(d.additionalNotes)
   }
 
-  body += p('Please note, for the requested loan amount, we have added a buffer to cover the last month\'s repayment and any applicable discharge fees. This will ensure there is no shortfall come settlement. Any funds not required will be credited back into your loan so that no additional interest is charged.')
+  // The buffer covers a final repayment and a discharge fee on a loan being paid
+  // out. A purchase has neither, so the paragraph only ever confused the client.
+  if (d.template !== 'lo_purchase') {
+    body += p('Please note, for the requested loan amount, we have added a buffer to cover the last month\'s repayment and any applicable discharge fees. This will ensure there is no shortfall come settlement. Any funds not required will be credited back into your loan so that no additional interest is charged.')
+  }
 
   if (d.recommendedLender && d.recommendationNote) {
     body += `<p style="font-size:14px;font-weight:700;color:#343333;margin-bottom:8px"><span style="color:#343333;">Our Recommendation: ${d.recommendedLender}</span></p>`

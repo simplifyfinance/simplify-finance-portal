@@ -275,6 +275,8 @@ function formatNumber(val: string): string {
   return decPart !== undefined ? formattedInt + '.' + decPart.slice(0, 2) : formattedInt
 }
 
+const STATES = ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'] as const
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
@@ -332,6 +334,10 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const [deposit, setDeposit] = useState(s.deposit || '')
   const [depositSource, setDepositSource] = useState(s.depositSource || '')
   const [stampDuty, setStampDuty] = useState(s.stampDuty || '')
+  // Duty is a state tax and the rates differ, so the email has to say which one
+  // it is. It was printed as NSW for everybody, which was wrong the moment a
+  // client bought anywhere else.
+  const [dutyState, setDutyState] = useState(s.dutyState || '')
   const [existingLoanBal, setExistingLoanBal] = useState(s.existingLoanBal || '')
 
   useEffect(() => {
@@ -660,13 +666,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
       })
     }, 700)
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
   }
 
   function selectTemplate(id: string) {
@@ -1041,6 +1047,14 @@ Key assumptions: ${checklistText}`
                 </Field>
               )}
                   {!["refinance_equity", "refinance_only", "investment_equity"].includes(template) && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={handleStampDutyChange} /></Field>}
+                  {!["refinance_equity", "refinance_only", "investment_equity"].includes(template) && (
+                    <Field label="State">
+                      <select className={selectCls} value={dutyState} onChange={e => setDutyState(e.target.value)}>
+                        <option value="">Select</option>
+                        {STATES.map(x => <option key={x} value={x}>{x}</option>)}
+                      </select>
+                    </Field>
+                  )}
               {["refinance_equity", "refinance_only", "investment_equity", "buy_sell", "bridging"].includes(template) && <Field label="Existing loan balance"><NumberInput value={existingLoanBal} onChange={handleExistingLoanBalChange} /></Field>}
               {template === "buy_sell" && <Field label="Expected sale price"><NumberInput value={salePrice} onChange={setSalePrice} /></Field>}
               {template === "buy_sell" && <Field label="Agent fees / selling costs"><NumberInput value={agentFees} onChange={setAgentFees} /></Field>}

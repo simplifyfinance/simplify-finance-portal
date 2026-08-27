@@ -92,6 +92,9 @@ type LOData = {
   purchasePrice: string
   deposit: string
   stampDuty: string
+  // Carried through from the BC so the email can name the state the duty
+  // belongs to, rather than printing NSW for everybody.
+  dutyState: string
   existingLoan: string
   brokerPersonalisation: string
   documentsRequired: string[]
@@ -256,6 +259,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
       purchasePrice: bc.purchasePrice || '',
       deposit: bc.deposit || '',
       stampDuty: bc.stampDuty || '',
+      dutyState: bc.dutyState || '',
       existingLoan: bc.existingLoanBal || '',
       brokerPersonalisation: '',
       documentsRequired: [],
@@ -348,6 +352,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
       purchasePrice: bc.purchasePrice || '',
       deposit: bc.deposit || '',
       stampDuty: bc.stampDuty || '',
+      dutyState: bc.dutyState || '',
       existingLoan: bc.existingLoanBal || '',
       refinanceSplits: initRefinanceSplits(),
     }))
@@ -782,6 +787,17 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
                   })()}
                 </Field>
                 <Field label="Stamp duty"><NumberInput value={d.stampDuty} onChange={handleLoStampDutyChange} /></Field>
+                {/* Comes across from the BC. Editable here so an LO built without
+                    one, or corrected after the fact, still names the right state. */}
+                <Field label="State">
+                  <select className={inp} value={d.dutyState || ''}
+                          onChange={e => setD(x => ({ ...x, dutyState: e.target.value }))}>
+                    <option value="">Select</option>
+                    {['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'].map(x => (
+                      <option key={x} value={x}>{x}</option>
+                    ))}
+                  </select>
+                </Field>
                 <Field label="LVR (calculated)">
                   <div className={inp + " bg-gray-50 text-gray-700"}>
                     {(() => {
