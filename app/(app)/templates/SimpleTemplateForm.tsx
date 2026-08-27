@@ -5,6 +5,7 @@ import { mailtoUrl } from '@/lib/email-shell'
 import { useSender } from './useSender'
 import { SenderPanel, ClientPanel, inp, inpS, panel, panelS } from './TemplateFields'
 import PasteReminder from './PasteReminder'
+import SendConfirm from './SendConfirm'
 
 // One form for every template that needs nothing but the client. Nothing is
 // calculated, so the email is ready as soon as the name and address are in.
@@ -34,15 +35,15 @@ export type ExtraField = {
 }
 
 export default function SimpleTemplateForm({
-  build, extras, extrasTitle, attachReminder, usesOpportunityLink,
+  build, extras, extrasTitle, sendTemplateId, usesOpportunityLink,
 }: {
   build: EmailBuilder
   extras?: ExtraField[]
   extrasTitle?: string
-  // A template whose email says something is attached adds one line to the
-  // paste reminder, so the PDFs are not forgotten. The sender attaches them in
-  // their own mail program, the same way they attach anything.
-  attachReminder?: string
+  // A template whose email carries attachments cannot go through a mail link —
+  // one cannot carry a file. Given an id, the form takes files and the portal
+  // sends the email itself, the way the compliance notification already does.
+  sendTemplateId?: string
   // Only the negative gearing email carries a link to the opportunity page.
   // Minting one for every template put a long green URL under templates that
   // have nowhere to put it.
@@ -64,6 +65,11 @@ export default function SimpleTemplateForm({
   const [linkPending, setLinkPending] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showPaste, setShowPaste] = useState(false)
+  const [files, setFiles] = useState<File[]>([])
+  const [confirming, setConfirming] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState('')
+  const [sent, setSent] = useState<{ to: string[]; copies: string[]; attached: number } | null>(null)
   const [err, setErr] = useState('')
 
   const second = joint ? secondName.trim() : ''
@@ -128,11 +134,9 @@ export default function SimpleTemplateForm({
       brokerName: sender.broker.name,
       calendlyUrl: sender.calendlyUrl,
       opportunityUrl,
-      // The email says "I have attached", so the template that says it always
-      // means it — the sender drags the PDFs in before pressing Send.
-      attachmentCount: attachReminder ? '1' : '0',
+      attachmentCount: String(files.length),
     })
-  }, [greeting, sender.broker, sender.calendlyUrl, opportunityUrl, extra, build, attachReminder])
+  }, [greeting, sender.broker, sender.calendlyUrl, opportunityUrl, extra, build, files.length])
 
   const missing: string[] = []
   for (const f of extras || []) {
@@ -164,8 +168,51 @@ export default function SimpleTemplateForm({
     }
   }
 
+  const MAX_BYTES = 3.5 * 1024 * 1024
+  const addFiles = (list: FileList | null) => {
+    if (!list || list.length === 0) return
+    setSendError('')
+    const next = [...files, ...Array.from(list)]
+    if (next.reduce((n, f) => n + f.size, 0) > MAX_BYTES) {
+      setSendError('That comes to more than 3.5MB of attachments, which is more than the send will carry.')
+      return
+    }
+    setFiles(next)
+  }
+
+  // The portal sends it. The email is rebuilt on the server from these same
+  // inputs, so what was previewed is what goes out.
+  const sendNow = async () => {
+    if (!built || !sender.broker) return
+    setSending(true); setSendError('')
+    try {
+      const fd = new FormData()
+      fd.set('template', sendTemplateId || '')
+      fd.set('brokerKey', sender.broker.key)
+      fd.set('to', recipients)
+      fd.set('bcc', bcc)
+      fd.set('ctx', JSON.stringify({
+        ...extra, clientFirstName: greeting, calendlyUrl: sender.calendlyUrl, opportunityUrl,
+      }))
+      files.forEach(f => fd.append('file', f))
+      const res = await fetch('/api/send-template-email', { method: 'POST', body: fd })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !json?.ok) {
+        setSendError(json?.error || `The send failed (${res.status}). Nothing was sent.`)
+        setSending(false)
+        return
+      }
+      setSent({ to: json.sentTo || [], copies: json.copiedTo || [], attached: json.attached || 0 })
+      setConfirming(false)
+    } catch (e: any) {
+      setSendError('Could not reach the server, so nothing was sent.')
+    }
+    setSending(false)
+  }
+
   // A client email is a fixed 600px, wider than this column, so the preview is
   // scaled rather than clipped.
+  const fileRef = useRef<HTMLInputElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
@@ -216,12 +263,54 @@ export default function SimpleTemplateForm({
           </div>
         )}
 
+        {sendTemplateId && (
+          <div className={panel} style={panelS}>
+            <h3 className="text-[11px] font-bold tracking-[.08em] uppercase mb-3" style={{ color: TONE.label }}>
+              Attachments
+            </h3>
+            {files.map((file, i) => (
+              <div key={`${file.name}-${i}`}
+                   className="flex items-center gap-2.5 border rounded-lg px-2.5 py-2 mb-2 text-[12.5px]"
+                   style={{ borderColor: TONE.line, background: '#fff' }}>
+                <span className="rounded-[3px] text-white text-[7.5px] font-bold flex items-center justify-center shrink-0"
+                      style={{ width: 20, height: 24, background: TONE.neg }}>PDF</span>
+                <span className="flex-1 leading-[1.3] break-all" style={{ color: TONE.ink }}>{file.name}</span>
+                <span className="text-[11px] shrink-0" style={{ color: TONE.label }}>
+                  {(file.size / (1024 * 1024)).toFixed(1)} MB
+                </span>
+                <button onClick={() => setFiles(f2 => f2.filter((_, j) => j !== i))}
+                        className="text-[15px] leading-none px-1 shrink-0"
+                        style={{ color: TONE.label }} aria-label={`Remove ${file.name}`}>&times;</button>
+              </div>
+            ))}
+            <input ref={fileRef} type="file" accept="application/pdf" multiple className="hidden"
+                   onChange={e => { addFiles(e.target.files); e.target.value = '' }} />
+            <button onClick={() => fileRef.current?.click()}
+                    className="w-full border border-dashed rounded-[10px] py-3 text-[12.5px]"
+                    style={{ borderColor: TONE.line, background: TONE.zebra, color: TONE.label }}>
+              {files.length ? 'Add another PDF' : 'Choose a PDF'}
+            </button>
+            <p className="text-[11px] mt-2 leading-[1.55]" style={{ color: TONE.faint }}>
+              These go out attached to the email. Up to 3.5MB in total. The email only mentions an
+              attachment once there is one here.
+            </p>
+          </div>
+        )}
+
         <div className="flex gap-2.5 items-center flex-wrap">
-          <button onClick={openMail} disabled={!ready}
-            className="rounded-lg px-4 py-[9px] text-[13px] font-semibold disabled:opacity-40"
-            style={{ background: TONE.accent, color: '#fff' }}>
-            {copied ? 'Copied — paste with Cmd V' : linkPending ? 'Preparing…' : 'Open in mail'}
-          </button>
+          {sendTemplateId ? (
+            <button onClick={() => { setSendError(''); setConfirming(true) }} disabled={!ready || !!sent}
+              className="rounded-lg px-4 py-[9px] text-[13px] font-semibold disabled:opacity-40"
+              style={{ background: sent ? TONE.pos : TONE.accent, color: '#fff' }}>
+              {sent ? 'Sent' : 'Send the email'}
+            </button>
+          ) : (
+            <button onClick={openMail} disabled={!ready}
+              className="rounded-lg px-4 py-[9px] text-[13px] font-semibold disabled:opacity-40"
+              style={{ background: TONE.accent, color: '#fff' }}>
+              {copied ? 'Copied — paste with Cmd V' : linkPending ? 'Preparing…' : 'Open in mail'}
+            </button>
+          )}
           {missing.length > 0 && (
             <span className="text-[11.5px]" style={{ color: TONE.faint }}>Still needs {missing.join(', ')}</span>
           )}
@@ -240,10 +329,23 @@ export default function SimpleTemplateForm({
             Link ready — {opportunityUrl}
           </p>
         ) : null}
+        {sent && (
+          <div className="rounded-xl border px-4 py-3 mt-3 text-[12.5px] leading-[1.6]"
+               style={{ borderColor: '#CFE6D5', background: '#F1F7F3', color: TONE.ink }}>
+            <b>Sent to {sent.to.join(', ')}</b>
+            {sent.attached > 0 && <> with {sent.attached} attachment{sent.attached > 1 ? 's' : ''}</>}.
+            {sent.copies.length > 0 && <> A copy is in {sent.copies.join(' and ')}.</>}
+            {' '}It will not be in your Sent items.
+          </div>
+        )}
+        {sendError && !confirming && (
+          <p className="text-[12px] mt-2" style={{ color: TONE.neg }}>{sendError}</p>
+        )}
         <p className="text-[11.5px] mt-2.5 leading-[1.6]" style={{ color: TONE.label }}>
-          {attachReminder
-            ? 'Open in mail copies the email first, then opens a message with the address, BCC and ' +
-              'subject already filled. Paste it in, attach the project PDFs, and send.'
+          {sendTemplateId
+            ? 'The portal sends this one itself, which is the only way the PDFs can travel with it. ' +
+              'Your mail program does not open, and it will not appear in your Sent items — you are ' +
+              'BCC\u2019d so a copy reaches your inbox. Replies come back to you.'
             : 'No figures to enter — the email reads the same for every investor, so it is ready as ' +
               'soon as the client is filled in. Open in mail copies it first, then opens a message ' +
               'with the address, BCC and subject already filled.'}
@@ -279,8 +381,12 @@ export default function SimpleTemplateForm({
           </div>
         )}
       </div>
-      <PasteReminder open={showPaste} onClose={() => setShowPaste(false)}
-                     onRetry={openMail} alsoDo={attachReminder} />
+      <PasteReminder open={showPaste} onClose={() => setShowPaste(false)} onRetry={openMail} />
+      <SendConfirm open={confirming} to={recipients.split(',').filter(Boolean)}
+                   copies={bcc.trim() ? [bcc.trim()] : []}
+                   attachments={files.map(f => f.name)}
+                   sending={sending} error={sendError}
+                   onSend={sendNow} onClose={() => setConfirming(false)} />
     </div>
   )
 }

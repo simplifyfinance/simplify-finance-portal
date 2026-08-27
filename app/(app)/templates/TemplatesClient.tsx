@@ -51,7 +51,7 @@ const TEMPLATES = [
     blurb: 'New stock keeps the negative gearing treatment established property has lost, and the ' +
            'developer rebate is passed straight back to the client.',
     needs: 'the client and a rebate amount',
-    needsTail: '— then attach the project PDFs in your mail program',
+    needsTail: '— sent by the portal, with the project PDFs attached',
   },
 ] as const
 
@@ -99,7 +99,7 @@ export default function TemplatesClient() {
         {chosen === 'price-opportunity' && <SimpleTemplateForm build={buildPriceOpportunityEmail} />}
         {chosen === 'new-property-rebate' && (
           <SimpleTemplateForm build={buildRebateEmail} extras={REBATE_FIELDS} extrasTitle="This project"
-                              attachReminder="Attach the project PDFs — the email tells the client they are there." />
+                              sendTemplateId="new-property-rebate" />
         )}
       </div>
     )
