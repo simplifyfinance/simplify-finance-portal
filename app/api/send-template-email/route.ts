@@ -78,7 +78,11 @@ export async function POST(req: NextRequest) {
   // exactly what happened on the first send. The copy now comes from the
   // portal's own address, which the domain has always sent from, and says what
   // it is in the subject line so it cannot be mistaken for the real thing.
-  const senderCopy = (auth.user.email || '').trim().toLowerCase()
+  // The copy goes to the broker the email went out as, not to whoever happened
+  // to press the button. It left their address and replies come back to them,
+  // so they are the one who needs the record — Fabio sending as Kylie should
+  // put the copy in Kylie's inbox.
+  const senderCopy = brokerEmail || (auth.user.email || '').trim().toLowerCase()
   const bcc = addressList(String(form.get('bcc') || ''))
 
   const files = form.getAll('file').filter((f): f is File => f instanceof File && f.size > 0)
@@ -136,7 +140,7 @@ export async function POST(req: NextRequest) {
     try {
       const note = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F4FAFE" style="background-color:#F4FAFE;"><tr>
 <td bgcolor="#F4FAFE" style="background-color:#F4FAFE;padding:14px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#3d3d3a;line-height:1.6;">
-<span style="color:#3d3d3a;"><b style="color:#1a1a1a;">This is your copy.</b> The email below was sent to ${to.join(', ')}${attachments.length ? ` with ${attachments.length} attachment${attachments.length > 1 ? 's' : ''}` : ''}. It will not be in your Sent items, because it left the portal rather than your mailbox. Replies come to you.</span>
+<span style="color:#3d3d3a;"><b style="color:#1a1a1a;">This is your copy.</b> The email below went out in your name to ${to.join(', ')}${attachments.length ? ` with ${attachments.length} attachment${attachments.length > 1 ? 's' : ''}` : ''}, sent from the portal by ${auth.user.email || 'a member of the team'}. It will not be in your Sent items, because it left the portal rather than your mailbox. Replies come to you.</span>
 </td></tr></table>`
       const copyRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -144,9 +148,9 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           from: `Simplify Finance Portal <${FALLBACK_FROM}>`,
           to: [senderCopy],
-          subject: `Your copy — ${email.subject}`,
+          subject: `Your copy \u2014 ${email.subject}`,
           html: note + email.html,
-          text: `This is your copy. The email below was sent to ${to.join(', ')}.\n\n${email.plainText}`,
+          text: `This is your copy. The email below went out in your name to ${to.join(', ')}, sent from the portal by ${auth.user.email || 'a member of the team'}.\n\n${email.plainText}`,
           ...(attachments.length ? { attachments } : {}),
         }),
       })

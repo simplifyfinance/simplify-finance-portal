@@ -63,9 +63,9 @@ export default function SendConfirm({
             <div className="text-[11px] font-bold uppercase tracking-[.09em] mb-1.5"
                  style={{ color: TONE.label }}>Worth knowing</div>
             <p className="text-[13px] leading-[1.6]" style={{ color: TONE.ink }}>
-              Because it leaves the portal and not your mailbox, <b>it will not appear in your Sent
-              items</b>. A separate copy is sent to you straight after, with <b>Your copy</b> at the front
-              of the subject line — file that if you want a record. Replies come back to you as normal.
+              Because it leaves the portal and not a mailbox, <b>it will not appear in Sent items</b>.
+              A separate copy goes to the broker it is sent as, straight after, with <b>Your copy</b> at
+              the front of the subject line. Replies come back to them as normal.
             </p>
           </div>
 

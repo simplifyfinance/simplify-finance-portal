@@ -42,16 +42,18 @@ export function SenderPanel({
             Signs the email and takes the bookings.
           </p>
         </div>
-        {/* Only shown once there is more than one to choose between, so a single
-            brand business never sees a dropdown with one item in it. */}
-        {brands && brands.length > 1 && setBrandId && (
+        {/* Always shown. Hiding it when a broker had only one brand meant the
+            control simply was not there, with nothing to say why. */}
+        {brands && brands.length > 0 && setBrandId && (
           <div>
             <label className={lab} style={{ color: TONE.label }}>Brand</label>
             <select className={inp} style={inpS} value={brandId || ''} onChange={e => setBrandId(e.target.value)}>
               {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
             <p className={hint} style={{ color: TONE.faint }}>
-              Sets the logo, the header colour and the licence in the footer.
+              {brands.length > 1
+                ? 'Sets the logo, the header colour and the licence in the footer.'
+                : 'The only brand on this broker\u2019s profile. Add more in Settings, Brokers.'}
             </p>
           </div>
         )}

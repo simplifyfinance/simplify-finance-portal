@@ -286,7 +286,7 @@ export default function RefinanceTemplateForm() {
                 The email is signed by this broker and books into their calendar.
               </p>
             </div>
-            {availableBrands.length > 1 && (
+            {availableBrands.length > 0 && (
               <div>
                 <label className={lab} style={{ color: TONE.label }}>Brand</label>
                 <select className={inp} style={inpS} value={brandId}
@@ -294,7 +294,9 @@ export default function RefinanceTemplateForm() {
                   {availableBrands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
                 <p className={hint} style={{ color: TONE.faint }}>
-                  Sets the logo, the header colour and the licence in the footer.
+                  {availableBrands.length > 1
+                    ? 'Sets the logo, the header colour and the licence in the footer.'
+                    : 'The only brand on this broker\u2019s profile. Add more in Settings, Brokers.'}
                 </p>
               </div>
             )}

@@ -342,9 +342,9 @@ export default function SimpleTemplateForm({
             {sent.attached > 0 && <> with {sent.attached} attachment{sent.attached > 1 ? 's' : ''}</>}.
             {sent.copies.length > 0 && <> BCC to {sent.copies.join(' and ')}.</>}
             {sent.copyTo
-              ? <> Your copy is on its way to {sent.copyTo}, subject line starting &ldquo;Your copy&rdquo;.</>
-              : <> Your copy could not be sent, so check with me before you rely on having one.</>}
-            {' '}It will not be in your Sent items.
+              ? <> A copy is on its way to {sent.copyTo}, subject line starting &ldquo;Your copy&rdquo;.</>
+              : <> The copy could not be sent, so check before relying on having one.</>}
+            {' '}It will not be in Sent items.
           </div>
         )}
         {sendError && !confirming && (
@@ -353,8 +353,8 @@ export default function SimpleTemplateForm({
         <p className="text-[11.5px] mt-2.5 leading-[1.6]" style={{ color: TONE.label }}>
           {sendTemplateId
             ? 'The portal sends this one itself, which is the only way the PDFs can travel with it. ' +
-              'Your mail program does not open, and it will not appear in your Sent items — you are ' +
-              'BCC\u2019d so a copy reaches your inbox. Replies come back to you.'
+              'Your mail program does not open, and it will not appear in Sent items \u2014 a copy is ' +
+              'emailed to the broker it is sent as. Replies come back to them.'
             : 'No figures to enter — the email reads the same for every investor, so it is ready as ' +
               'soon as the client is filled in. Open in mail copies it first, then opens a message ' +
               'with the address, BCC and subject already filled.'}
