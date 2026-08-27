@@ -69,7 +69,8 @@ export default function SimpleTemplateForm({
   const [confirming, setConfirming] = useState(false)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState('')
-  const [sent, setSent] = useState<{ to: string[]; copies: string[]; attached: number } | null>(null)
+  const [sent, setSent] = useState<
+    { to: string[]; copies: string[]; attached: number; copyTo: string | null } | null>(null)
   const [err, setErr] = useState('')
 
   const second = joint ? secondName.trim() : ''
@@ -202,7 +203,8 @@ export default function SimpleTemplateForm({
         setSending(false)
         return
       }
-      setSent({ to: json.sentTo || [], copies: json.copiedTo || [], attached: json.attached || 0 })
+      setSent({ to: json.sentTo || [], copies: json.copiedTo || [], attached: json.attached || 0,
+                copyTo: json.copyTo || null })
       setConfirming(false)
     } catch (e: any) {
       setSendError('Could not reach the server, so nothing was sent.')
@@ -334,7 +336,10 @@ export default function SimpleTemplateForm({
                style={{ borderColor: '#CFE6D5', background: '#F1F7F3', color: TONE.ink }}>
             <b>Sent to {sent.to.join(', ')}</b>
             {sent.attached > 0 && <> with {sent.attached} attachment{sent.attached > 1 ? 's' : ''}</>}.
-            {sent.copies.length > 0 && <> A copy is in {sent.copies.join(' and ')}.</>}
+            {sent.copies.length > 0 && <> BCC to {sent.copies.join(' and ')}.</>}
+            {sent.copyTo
+              ? <> Your copy is on its way to {sent.copyTo}, subject line starting &ldquo;Your copy&rdquo;.</>
+              : <> Your copy could not be sent, so check with me before you rely on having one.</>}
             {' '}It will not be in your Sent items.
           </div>
         )}

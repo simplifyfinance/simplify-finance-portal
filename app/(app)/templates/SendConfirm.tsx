@@ -64,8 +64,8 @@ export default function SendConfirm({
                  style={{ color: TONE.label }}>Worth knowing</div>
             <p className="text-[13px] leading-[1.6]" style={{ color: TONE.ink }}>
               Because it leaves the portal and not your mailbox, <b>it will not appear in your Sent
-              items</b>. You are BCC&rsquo;d, so a copy lands in your inbox — file that if you want a
-              record. Replies come back to you as normal.
+              items</b>. A separate copy is sent to you straight after, with <b>Your copy</b> at the front
+              of the subject line — file that if you want a record. Replies come back to you as normal.
             </p>
           </div>
 

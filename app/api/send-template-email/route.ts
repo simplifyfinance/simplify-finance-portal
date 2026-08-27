@@ -71,12 +71,14 @@ export async function POST(req: NextRequest) {
   const fromAddress = brokerEmail.endsWith(DOMAIN) ? brokerEmail : FALLBACK_FROM
   const replyTo = brokerEmail || auth.user.email || FALLBACK_FROM
 
-  // The sender gets a copy, since it will not be in their Sent items.
+  // The sender's copy is sent separately, not as a BCC on the client's message.
+  // BCCing them meant a message from their own address arriving from an outside
+  // server, which Microsoft treats as spoofing and quietly junks — which is
+  // exactly what happened on the first send. The copy now comes from the
+  // portal's own address, which the domain has always sent from, and says what
+  // it is in the subject line so it cannot be mistaken for the real thing.
   const senderCopy = (auth.user.email || '').trim().toLowerCase()
-  const bcc = Array.from(new Set([
-    ...addressList(String(form.get('bcc') || '')),
-    ...(senderCopy ? [senderCopy] : []),
-  ]))
+  const bcc = addressList(String(form.get('bcc') || ''))
 
   const files = form.getAll('file').filter((f): f is File => f instanceof File && f.size > 0)
   let bytes = 0
@@ -122,11 +124,40 @@ export async function POST(req: NextRequest) {
       { status: 502 })
   }
 
+  // The client's email has gone. A copy that fails from here is worth saying
+  // out loud, but it must not be reported as a failed send.
+  let copySent = false
+  if (senderCopy) {
+    try {
+      const note = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F4FAFE" style="background-color:#F4FAFE;"><tr>
+<td bgcolor="#F4FAFE" style="background-color:#F4FAFE;padding:14px 18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#3d3d3a;line-height:1.6;">
+<span style="color:#3d3d3a;"><b style="color:#1a1a1a;">This is your copy.</b> The email below was sent to ${to.join(', ')}${attachments.length ? ` with ${attachments.length} attachment${attachments.length > 1 ? 's' : ''}` : ''}. It will not be in your Sent items, because it left the portal rather than your mailbox. Replies come to you.</span>
+</td></tr></table>`
+      const copyRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: `Simplify Finance Portal <${FALLBACK_FROM}>`,
+          to: [senderCopy],
+          subject: `Your copy — ${email.subject}`,
+          html: note + email.html,
+          text: `This is your copy. The email below was sent to ${to.join(', ')}.\n\n${email.plainText}`,
+          ...(attachments.length ? { attachments } : {}),
+        }),
+      })
+      copySent = copyRes.ok
+      if (!copyRes.ok) console.error('[send-template-email] copy failed', copyRes.status, await copyRes.text())
+    } catch (e) {
+      console.error('[send-template-email] copy failed', e)
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     id: (json as any)?.id || null,
     sentTo: to,
     copiedTo: bcc,
+    copyTo: copySent ? senderCopy : null,
     attached: attachments.length,
   })
 }
