@@ -1,4 +1,4 @@
-// The one shell every template email wears: charcoal header with the logo,
+// The one shell every template email wears: the brand's header with its logo,
 // white body, charcoal footer carrying the disclaimer and the licence.
 //
 // It lives here so a second template cannot drift from the first, and so the
@@ -15,35 +15,41 @@
 // the foot of the white body under a hairline, and the only thing left inside
 // the charcoal band is the logo, which is artwork and cannot be recoloured.
 
-const CHARCOAL = '#343333'
+import { type Brand, DEFAULT_BRAND, brandLegal } from './brand'
+
 const SMALL_INK = '#8a8a84'
 const LEGAL_INK = '#9e9e98'
 const HAIRLINE = '#E4E2DC'
-const LOGO_URL = 'https://simplify-finance-portal.vercel.app/logo-charcoal-tagline.png'
 export const FONT = "-apple-system, 'Segoe UI', Arial, Helvetica, sans-serif"
-
-const LEGAL =
-  '&copy; 2026 Simplify Finance | Mortgage Specialists Pty Ltd | St Leonards, Sydney | ' +
-  'Australian Credit Licence 387025'
 
 // The disclaimer, as the email's own last paragraph rather than a band beneath
 // it. Dark on white, so it reads whether or not the colour survives the trip.
-function smallPrint(disclaimer: string): string {
+function smallPrint(disclaimer: string, brand: Brand): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 0;"><tr>
 <td bgcolor="#ffffff" style="background-color:#ffffff;border-top:1px solid ${HAIRLINE};padding:12px 0 0;font-family:${FONT};">
 <div style="font-size:10px;line-height:1.65;color:${SMALL_INK};"><span style="color:${SMALL_INK};">${disclaimer}</span></div>
-<div style="font-size:10px;line-height:1.65;color:${LEGAL_INK};padding-top:6px;"><span style="color:${LEGAL_INK};">${LEGAL}</span></div>
+<div style="font-size:10px;line-height:1.65;color:${LEGAL_INK};padding-top:6px;"><span style="color:${LEGAL_INK};">${brandLegal(brand)}</span></div>
 </td></tr></table>`
 }
 
-export function emailShell(inner: string, disclaimer: string): string {
+// A brand with no artwork of its own gets its name set dark on white rather
+// than a band it cannot be seen against — the same rule the borrowing capacity
+// email follows, and the reason its white fallback had to go.
+function header(brand: Brand): string {
+  if (!brand.logoUrl) {
+    return `<tr><td bgcolor="#ffffff" align="center" style="background-color:#ffffff;padding:26px 20px 8px;font-family:${FONT};font-size:22px;font-weight:bold;color:#1a1a1a;"><span style="color:#1a1a1a;">${brand.name}</span></td></tr>`
+  }
+  return `<tr><td bgcolor="${brand.headerColor}" align="center" style="background-color:${brand.headerColor};padding:26px 20px;font-family:${FONT};">
+<img src="${brand.logoUrl}" alt="${brand.name}" height="94" style="height:94px;display:block;margin:0 auto;border:0;" />
+</td></tr>`
+}
+
+export function emailShell(inner: string, disclaimer: string, brand: Brand = DEFAULT_BRAND): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5f5f3" style="background-color:#f5f5f3;">
 <tr><td align="center" bgcolor="#f5f5f3" style="background-color:#f5f5f3;padding:24px 12px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" align="center" style="width:600px;max-width:600px;background-color:#ffffff;">
-<tr><td bgcolor="${CHARCOAL}" align="center" style="background-color:${CHARCOAL};padding:26px 20px;font-family:${FONT};">
-<img src="${LOGO_URL}" alt="Simplify Finance" height="94" style="height:94px;display:block;margin:0 auto;border:0;" />
-</td></tr>
-<tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding:20px 22px 26px;font-family:${FONT};">${inner}${smallPrint(disclaimer)}</td></tr>
+${header(brand)}
+<tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding:20px 22px 26px;font-family:${FONT};">${inner}${smallPrint(disclaimer, brand)}</td></tr>
 </table>
 </td></tr></table>`
 }

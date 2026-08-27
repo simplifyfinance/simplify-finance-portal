@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { resolveBrokerProfile } from '@/lib/broker-profile'
+import { resolveBrand } from '@/lib/brand'
 import { buildRebateEmail } from '@/lib/new-property-rebate-email'
 import { buildNegativeGearingEmail } from '@/lib/negative-gearing-email'
 import { buildPriceOpportunityEmail } from '@/lib/price-opportunity-email'
@@ -94,7 +95,11 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  const email = build({ ...ctx, brokerName: broker.name, attachmentCount: String(attachments.length) })
+  // Resolved here rather than trusted from the browser, for the same reason the
+  // email itself is rebuilt here: the licence number in the footer is a
+  // compliance statement, not a display preference.
+  const brand = await resolveBrand(String(form.get('brandId') || ''))
+  const email = build({ ...ctx, brand, brokerName: broker.name, attachmentCount: String(attachments.length) })
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

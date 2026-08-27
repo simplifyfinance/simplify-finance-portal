@@ -1,4 +1,5 @@
 import { emailShell, shellButton, FONT } from './email-shell'
+import { type Brand, DEFAULT_BRAND } from './brand'
 
 // New property rebate.
 //
@@ -11,6 +12,9 @@ import { emailShell, shellButton, FONT } from './email-shell'
 // swap the PDFs, retype the rebate, send it again.
 
 export type RebateContext = {
+  // Which trading name this goes out under. Defaults to Simplify Finance so
+  // an email built without one is still correctly licensed.
+  brand?: Brand
   clientFirstName: string
   brokerName: string
   calendlyUrl: string
@@ -113,6 +117,7 @@ export function buildRebateEmail(ctx: RebateContext): {
   html: string
   plainText: string
 } {
+  const brand = ctx.brand || DEFAULT_BRAND
   const name = ctx.clientFirstName.trim() || 'there'
   const amount = (ctx.rebate || '').replace(/[^0-9.,]/g, '').trim()
   const hasAmount = !!amount
@@ -142,7 +147,7 @@ export function buildRebateEmail(ctx: RebateContext): {
     (attached
       ? attachBlock()
       : p('If it is worth a conversation, we will run the numbers against your own position.')) +
-    shellButton(ctx.calendlyUrl || '#', 'Book a 15-minute chat') +
+    shellButton(ctx.calendlyUrl || '#', 'Book a 15-minute chat', brand.accentColor) +
     `<p style="margin:10px 0 0;font-family:${FONT};font-size:13.5px;color:${GREY};text-align:center;"><span style="color:${GREY};">Or simply reply to this email.</span></p>` +
     `<p style="margin:22px 0 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;"><span style="color:${BODY};">` +
       `<span style="font-weight:600;color:${INK};">${ctx.brokerName}</span><br>Simplify Finance</span></p>`
@@ -170,7 +175,7 @@ export function buildRebateEmail(ctx: RebateContext): {
 
   return {
     subject: 'New property still negatively gears — and right now it comes with cash back',
-    html: emailShell(body, disclaimer),
+    html: emailShell(body, disclaimer, brand),
     plainText,
   }
 }

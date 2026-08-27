@@ -95,6 +95,9 @@ type LOData = {
   // Carried through from the BC so the email can name the state the duty
   // belongs to, rather than printing NSW for everybody.
   dutyState: string
+  // And the trading name, so the LO cannot go out under a different brand from
+  // the borrowing capacity email that preceded it on the same deal.
+  brandId: string
   existingLoan: string
   brokerPersonalisation: string
   documentsRequired: string[]
@@ -260,6 +263,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
       deposit: bc.deposit || '',
       stampDuty: bc.stampDuty || '',
       dutyState: bc.dutyState || '',
+      brandId: bc.brand || '',
       existingLoan: bc.existingLoanBal || '',
       brokerPersonalisation: '',
       documentsRequired: [],
@@ -353,6 +357,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
       deposit: bc.deposit || '',
       stampDuty: bc.stampDuty || '',
       dutyState: bc.dutyState || '',
+      brandId: bc.brand || '',
       existingLoan: bc.existingLoanBal || '',
       refinanceSplits: initRefinanceSplits(),
     }))

@@ -14,6 +14,7 @@ import {
   buildMailtoUrl,
 } from '@/lib/refinance-email-template'
 import { TONE } from '@/lib/tone'
+import { type Brand, DEFAULT_BRAND, normaliseBrand } from '@/lib/brand'
 import PasteReminder from './PasteReminder'
 
 // The email goes out in a broker's name, and anyone on the team may be the one
@@ -26,12 +27,17 @@ import PasteReminder from './PasteReminder'
 
 const STORAGE_KEY = 'sf_template_defaults_v3'
 
-type Broker = { key: string; name: string; calendly: string }
+type Broker = { key: string; name: string; calendly: string; brandIds: string[] }
 
 export default function RefinanceTemplateForm() {
   const supabase = createSupabaseBrowser()
 
   const [brokers, setBrokers] = useState<Broker[]>([])
+  // This form loads its own broker list rather than sharing the hook the other
+  // templates use. Brands are loaded the same way here so the two cannot end up
+  // offering different lists.
+  const [brandList, setBrandList] = useState<Brand[]>([])
+  const [brandId, setBrandId] = useState('')
   const [brokerKey, setBrokerKey] = useState('')
   const [calendlyOverride, setCalendlyOverride] = useState('')
   const [proceedUrl, setProceedUrl] = useState('')
@@ -81,15 +87,21 @@ export default function RefinanceTemplateForm() {
     if (!loaded) return
     ;(async () => {
       const { data: rows } = await supabase.from('brokers')
-        .select('broker_key, name, calendly, active').order('name')
+        .select('broker_key, name, calendly, active, brand_ids').order('name')
       const list: Broker[] = (rows || [])
         .filter((r: any) => r.active !== false)
         .map((r: any) => ({
           key: String(r.broker_key).toLowerCase(),
           name: r.name || r.broker_key,
           calendly: r.calendly || '',
+          brandIds: Array.isArray(r.brand_ids) ? r.brand_ids.map(String) : [],
         }))
       setBrokers(list)
+      const { data: st } = await supabase.from('settings').select('brands').eq('id', 'singleton').maybeSingle()
+      const brandRows: Brand[] = Array.isArray((st as any)?.brands) && (st as any).brands.length
+        ? (st as any).brands.map(normaliseBrand)
+        : [DEFAULT_BRAND]
+      setBrandList(brandRows)
       if (brokerKey) return
       const { data: u } = await supabase.auth.getUser()
       if (u?.user) {
@@ -114,6 +126,17 @@ export default function RefinanceTemplateForm() {
   const broker = brokers.find(b => b.key === brokerKey) || null
   const calendlyUrl = calendlyOverride.trim() || broker?.calendly || ''
   useEffect(() => setCalendlyOverride(''), [brokerKey])
+
+  const allowedBrands = broker && broker.brandIds.length
+    ? brandList.filter(b => broker.brandIds.includes(b.id))
+    : brandList
+  const availableBrands = allowedBrands.length ? allowedBrands : brandList
+  useEffect(() => {
+    if (!availableBrands.length) return
+    if (!availableBrands.some(b => b.id === brandId)) setBrandId(availableBrands[0].id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brokerKey, brandList])
+  const brand = availableBrands.find(b => b.id === brandId) || availableBrands[0] || DEFAULT_BRAND
 
   const input: RefinanceInput | null = useMemo(() => {
     const b = parseFloat(balance.replace(/[^0-9.]/g, ''))
@@ -185,8 +208,9 @@ export default function RefinanceTemplateForm() {
       brokerName: broker?.name || 'Simplify Finance',
       calendlyUrl: calendlyUrl || '#',
       proceedUrl: proceedUrl.trim() || readyUrl || calendlyUrl || '#',
+      brand,
     })
-  }, [input, result, greeting, clientFirstName, broker, calendlyUrl, proceedUrl, readyUrl])
+  }, [input, result, greeting, clientFirstName, broker, calendlyUrl, proceedUrl, readyUrl, brand])
 
   useEffect(() => {
     const frame = frameRef.current, inner = innerRef.current
@@ -262,6 +286,18 @@ export default function RefinanceTemplateForm() {
                 The email is signed by this broker and books into their calendar.
               </p>
             </div>
+            {availableBrands.length > 1 && (
+              <div>
+                <label className={lab} style={{ color: TONE.label }}>Brand</label>
+                <select className={inp} style={inpS} value={brandId}
+                        onChange={e => setBrandId(e.target.value)}>
+                  {availableBrands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+                <p className={hint} style={{ color: TONE.faint }}>
+                  Sets the logo, the header colour and the licence in the footer.
+                </p>
+              </div>
+            )}
             <div>
               <label className={lab} style={{ color: TONE.label }}>Calendly link</label>
               <input className={inp} style={inpS} value={calendlyUrl}

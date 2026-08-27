@@ -16,6 +16,7 @@ const hint = 'text-[11px] mt-1'
 
 export function SenderPanel({
   brokers, brokerKey, setBrokerKey, broker, calendlyUrl, setCalendlyOverride,
+  brands, brandId, setBrandId,
 }: {
   brokers: Broker[]
   brokerKey: string
@@ -23,6 +24,9 @@ export function SenderPanel({
   broker: Broker | null
   calendlyUrl: string
   setCalendlyOverride: (v: string) => void
+  brands?: { id: string; name: string }[]
+  brandId?: string
+  setBrandId?: (v: string) => void
 }) {
   return (
     <div className={panel} style={panelS}>
@@ -38,6 +42,19 @@ export function SenderPanel({
             Signs the email and takes the bookings.
           </p>
         </div>
+        {/* Only shown once there is more than one to choose between, so a single
+            brand business never sees a dropdown with one item in it. */}
+        {brands && brands.length > 1 && setBrandId && (
+          <div>
+            <label className={lab} style={{ color: TONE.label }}>Brand</label>
+            <select className={inp} style={inpS} value={brandId || ''} onChange={e => setBrandId(e.target.value)}>
+              {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+            <p className={hint} style={{ color: TONE.faint }}>
+              Sets the logo, the header colour and the licence in the footer.
+            </p>
+          </div>
+        )}
         <div>
           <label className={lab} style={{ color: TONE.label }}>Calendly link</label>
           <input className={inp} style={inpS} value={calendlyUrl}

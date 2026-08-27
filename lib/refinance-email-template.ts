@@ -9,6 +9,8 @@
  * mail client, so it must survive a paste into Outlook and Gmail.
  */
 
+import { emailShell } from './email-shell';
+import { type Brand, DEFAULT_BRAND } from './brand';
 import {
   calculateRefinance,
   formatCurrency,
@@ -18,6 +20,8 @@ import {
 } from './refinance-calculations';
 
 export interface EmailContext {
+  /** Which trading name this goes out under. Defaults to Simplify Finance. */
+  brand?: Brand;
   clientFirstName: string;
   brokerName: string;
   calendlyUrl: string;
@@ -57,7 +61,7 @@ const DISCLAIMER =
   'schedule, and that the rate does not change over the period. They exclude fees, ' +
   'charges and any lender-specific conditions. This is general information, not credit ' +
   'assistance or a recommendation, and is not an offer of finance. Any refinance is ' +
-  'subject to lender assessment and approval. Mortgage Specialists Pty Ltd, ACL 387025.';
+  'subject to lender assessment and approval.';
 
 const IO_TAX_NOTE =
   'Interest on investment loans is generally deductible, so your after-tax position ' +
@@ -105,19 +109,10 @@ function comparisonBlock(
 </table>`;
 }
 
-function shell(inner: string): string {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#f5f5f3" style="background-color:#f5f5f3;">
-<tr><td align="center" bgcolor="#f5f5f3" style="background-color:#f5f5f3;padding:24px 12px;">
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" bgcolor="#ffffff" style="width:600px;max-width:600px;background-color:#ffffff;">
-<tr><td bgcolor="${NAVY}" align="center" style="background-color:${NAVY};padding:26px 20px;font-family:${FONT};">
-<img src="${LOGO_URL}" alt="Simplify Finance" height="94" style="height:94px;display:block;margin:0 auto;border:0;" />
-</td></tr>
-<tr><td bgcolor="#ffffff" style="background-color:#ffffff;padding:20px 20px 24px;">${inner}
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:18px 0 0;"><tr>
-<td bgcolor="#ffffff" style="background-color:#ffffff;border-top:1px solid ${BORDER};padding:12px 0 0;font-family:${FONT};font-size:10px;line-height:1.65;color:${SMALL_INK};"><span style="color:${SMALL_INK};">${DISCLAIMER}</span></td>
-</tr></table></td></tr>
-</table>
-</td></tr></table>`;
+// This kept its own copy of the shell, which is how it ended up one brand
+// behind the rest. It now wears the same one every other template does.
+function shell(inner: string, brand: Brand): string {
+  return emailShell(inner, DISCLAIMER, brand);
 }
 
 function signOff(ctx: EmailContext): string {
@@ -194,7 +189,7 @@ ${signOff(ctx)}`;
     DISCLAIMER,
   ].join('\n');
 
-  return { subject, html: shell(inner), plainText };
+  return { subject, html: shell(inner, ctx.brand || DEFAULT_BRAND), plainText };
 }
 
 /**

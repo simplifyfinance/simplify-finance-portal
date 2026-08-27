@@ -1,4 +1,5 @@
 import { emailShell, shellButton, FONT } from './email-shell'
+import { type Brand, DEFAULT_BRAND } from './brand'
 
 // The negative gearing email. No figures and nothing calculated — the argument
 // is the same for every investor, so the only variable is who it is addressed
@@ -9,6 +10,9 @@ import { emailShell, shellButton, FONT } from './email-shell'
 // supports it; both are the same blue, which he chose over an amber second box.
 
 export type NegativeGearingContext = {
+  // Which trading name this goes out under. Defaults to Simplify Finance so
+  // an email built without one is still correctly licensed.
+  brand?: Brand
   clientFirstName: string      // "Sarah", or "Sarah and Andrew" for a couple
   brokerName: string
   calendlyUrl: string
@@ -60,6 +64,7 @@ export function buildNegativeGearingEmail(ctx: NegativeGearingContext): {
   html: string
   plainText: string
 } {
+  const brand = ctx.brand || DEFAULT_BRAND
   const name = ctx.clientFirstName.trim() || 'there'
 
   const body =
@@ -85,7 +90,7 @@ export function buildNegativeGearingEmail(ctx: NegativeGearingContext): {
     p(em('The market has changed. Good investors adapt.')) +
     p('If you have put your next investment on hold because of negative gearing, let us look at the ' +
       'opportunities under the new rules.') +
-    shellButton(ctx.calendlyUrl || '#', 'Book a 15-minute chat') +
+    shellButton(ctx.calendlyUrl || '#', 'Book a 15-minute chat', brand.accentColor) +
     `<p style="margin:9px 0 0;font-family:${FONT};font-size:13.5px;color:${GREY};text-align:center;"><span style="color:${GREY};">Or simply reply to this email.</span></p>` +
     `<p style="margin:20px 0 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;"><span style="color:${BODY};">` +
       `<span style="font-weight:600;color:${INK};">${ctx.brokerName}</span><br>Simplify Finance</span></p>`
@@ -112,7 +117,7 @@ export function buildNegativeGearingEmail(ctx: NegativeGearingContext): {
     // Curiosity rather than alarm: the argument of the email is that everyone
     // else is reacting and this is a considered take.
     subject: 'A different way to look at negative gearing',
-    html: emailShell(body, DISCLAIMER),
+    html: emailShell(body, DISCLAIMER, brand),
     plainText,
   }
 }

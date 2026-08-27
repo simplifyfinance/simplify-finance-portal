@@ -1,6 +1,7 @@
 'use client'
 import { useMemo, useRef, useState, useEffect } from 'react'
 import { TONE } from '@/lib/tone'
+import { type Brand } from '@/lib/brand'
 import { mailtoUrl } from '@/lib/email-shell'
 import { useSender } from './useSender'
 import { SenderPanel, ClientPanel, inp, inpS, panel, panelS } from './TemplateFields'
@@ -20,7 +21,8 @@ export type EmailBuilder = (ctx: {
   brokerName: string
   calendlyUrl: string
   opportunityUrl?: string
-  [key: string]: string | undefined
+  brand?: Brand
+  [key: string]: string | Brand | undefined
 }) => BuiltEmail
 
 // A template that needs one or two things beyond the client — a rebate amount,
@@ -135,9 +137,10 @@ export default function SimpleTemplateForm({
       brokerName: sender.broker.name,
       calendlyUrl: sender.calendlyUrl,
       opportunityUrl,
+      brand: sender.brand,
       attachmentCount: String(files.length),
     })
-  }, [greeting, sender.broker, sender.calendlyUrl, opportunityUrl, extra, build, files.length])
+  }, [greeting, sender.broker, sender.calendlyUrl, sender.brand, opportunityUrl, extra, build, files.length])
 
   const missing: string[] = []
   for (const f of extras || []) {
@@ -190,6 +193,7 @@ export default function SimpleTemplateForm({
       const fd = new FormData()
       fd.set('template', sendTemplateId || '')
       fd.set('brokerKey', sender.broker.key)
+      fd.set('brandId', sender.brand.id)
       fd.set('to', recipients)
       fd.set('bcc', bcc)
       fd.set('ctx', JSON.stringify({

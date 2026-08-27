@@ -1,4 +1,5 @@
 import { emailShell, shellButton, FONT } from './email-shell'
+import { type Brand, DEFAULT_BRAND } from './brand'
 
 // The price-versus-tax-refund email. Like the negative gearing one, nothing is
 // calculated per client — the argument rests on a single real example, so the
@@ -9,6 +10,9 @@ import { emailShell, shellButton, FONT } from './email-shell'
 // announcement.
 
 export type PriceOpportunityContext = {
+  // Which trading name this goes out under. Defaults to Simplify Finance so
+  // an email built without one is still correctly licensed.
+  brand?: Brand
   clientFirstName: string
   brokerName: string
   calendlyUrl: string
@@ -127,17 +131,18 @@ export function buildPriceOpportunityEmail(ctx: PriceOpportunityContext): {
   html: string
   plainText: string
 } {
+  const brand = ctx.brand || DEFAULT_BRAND
   const name = ctx.clientFirstName.trim() || 'there'
   const body =
     argument(name) +
     punch('Let us run yours.') +
-    shellButton(ctx.calendlyUrl || '#', 'Book a 15-minute chat') +
+    shellButton(ctx.calendlyUrl || '#', 'Book a 15-minute chat', brand.accentColor) +
     `<p style="margin:10px 0 0;font-family:${FONT};font-size:13.5px;color:${GREY};text-align:center;"><span style="color:${GREY};">Or simply reply to this email.</span></p>` +
     signature(ctx.brokerName)
 
   return {
     subject: 'What if the tax change actually created an opportunity?',
-    html: emailShell(body, DISCLAIMER),
+    html: emailShell(body, DISCLAIMER, brand),
     plainText: plain(name, ctx.brokerName, [
       'Let us run yours.',
       ctx.calendlyUrl ? `Book a 15-minute chat: ${ctx.calendlyUrl}` : '',
@@ -150,14 +155,16 @@ export function buildPriceOpportunityEmail(ctx: PriceOpportunityContext): {
 // button and no reply line — the action lives in the email that brought them
 // here, so the page points back to it rather than dead-ending.
 export function buildPriceOpportunityPage(ctx: {
+  brand?: Brand
   clientFirstName: string
   brokerName: string
 }): { html: string; disclaimer: string } {
+  const brand = ctx.brand || DEFAULT_BRAND
   const name = ctx.clientFirstName.trim() || 'there'
   const first = (ctx.brokerName || '').trim().split(/\s+/)[0] || 'me'
   const body =
     argument(name) +
     punch(`Reply to ${first === 'me' ? 'my' : first + '&rsquo;s'} email and let us run yours.`) +
     signature(ctx.brokerName)
-  return { html: emailShell(body, DISCLAIMER), disclaimer: DISCLAIMER }
+  return { html: emailShell(body, DISCLAIMER, brand), disclaimer: DISCLAIMER }
 }

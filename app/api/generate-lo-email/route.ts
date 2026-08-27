@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
+import { type Brand, resolveBrand, brandLegal } from '@/lib/brand'
 
 
-function shell(body: string) {
-  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5f5f3" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr><td bgcolor="#f5f5f3" align="center" style="background:#f5f5f3;padding:24px 12px"><table width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" align="center" style="background:#ffffff;margin:0 auto"><tr><td bgcolor="#343333" align="center" style="background:#343333;padding:28px 24px;text-align:center"><img src="https://simplify-finance-portal.vercel.app/logo-charcoal-tagline.png" alt="Simplify Finance" height="94" style="height:94px;display:block;margin:0 auto;border:0" /></td></tr><tr><td bgcolor="#ffffff" style="background:#ffffff;padding:20px 28px 28px">${body}<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 0"><tr><td bgcolor="#ffffff" style="background:#ffffff;border-top:1px solid #E4E2DC;padding:12px 0 0"><p style="color:#8a8a84;font-size:10px;line-height:1.65;margin:0"><span style="color:#8a8a84;">Rates quoted are indicative only and subject to change. This email does not constitute formal approval.</span></p><p style="color:#9e9e98;font-size:10px;margin:6px 0 0;line-height:1.65"><span style="color:#9e9e98;">&copy; 2026 Simplify Finance | St Leonards, Sydney | Australian Credit Licence: 387025</span></p></td></tr></table></td></tr></table></td></tr></table>`
+// Was hardcoded to Simplify Finance, licence number included, so a second
+// trading name would have gone out under the wrong licence. The brand now comes
+// from settings the same way the borrowing capacity email has always read it.
+function shell(body: string, brand: Brand) {
+  const header = brand.logoUrl
+    ? `<tr><td bgcolor="${brand.headerColor}" align="center" style="background:${brand.headerColor};padding:28px 24px;text-align:center"><img src="${brand.logoUrl}" alt="${brand.name}" height="94" style="height:94px;display:block;margin:0 auto;border:0" /></td></tr>`
+    : `<tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;padding:28px 24px 8px;text-align:center"><p style="color:#1a1a1a;font-size:22px;font-weight:700;margin:0"><span style="color:#1a1a1a;">${brand.name}</span></p></td></tr>`
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5f5f3" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr><td bgcolor="#f5f5f3" align="center" style="background:#f5f5f3;padding:24px 12px"><table width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" align="center" style="background:#ffffff;margin:0 auto">${header}<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:20px 28px 28px">${body}<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 0"><tr><td bgcolor="#ffffff" style="background:#ffffff;border-top:1px solid #E4E2DC;padding:12px 0 0"><p style="color:#8a8a84;font-size:10px;line-height:1.65;margin:0"><span style="color:#8a8a84;">Rates quoted are indicative only and subject to change. This email does not constitute formal approval.</span></p><p style="color:#9e9e98;font-size:10px;margin:6px 0 0;line-height:1.65"><span style="color:#9e9e98;">${brandLegal(brand)}</span></p></td></tr></table></td></tr></table></td></tr></table>`
 }
 
 function brokerBox(text: string, firstName?: string, jointFirstName?: string, joint?: string) {
@@ -195,6 +202,7 @@ export async function POST(req: NextRequest) {
   body += notesBox(d.importantNotesList || ['Any rates or fees quoted are subject to change', 'This email does not constitute as a formal approval'])
   body += sig(b)
 
-  const html = shell(body)
+  const brand = await resolveBrand(d.brandId)
+  const html = shell(body, brand)
   return NextResponse.json({ html })
 }
