@@ -17,15 +17,21 @@ function shell(body: string, b: { name: string; title: string; crn: string; cale
   const logoUrl = brand?.logoUrl || DEFAULT_BRAND.logoUrl
   const footerAddress = brand?.footerAddress || DEFAULT_BRAND.footerAddress
   const acl = brand?.acl || DEFAULT_BRAND.acl
-  const logoBlock = logoUrl
+  // A brand with no logo file used to set its name in white on the charcoal —
+  // the same pale-on-dark trap as the disclaimer, and one nobody would notice
+  // until a client got an email with an apparently empty header. Without
+  // artwork the band is dropped and the name is set dark on white instead.
+  const hasLogo = !!logoUrl
+  const logoBlock = hasLogo
     ? `<img src="${logoUrl}" alt="${brandName}" height="94" style="height:94px;display:block;margin:0 auto;border:0" />`
-    : `<p style="color:#ffffff;font-size:22px;font-weight:700;margin:0 0 8px"><span style="color:#ffffff;">${brandName}</span></p>`
+    : ''
+  const header = hasLogo
+    ? `<tr><td bgcolor="${headerColor}" style="background:${headerColor};padding:28px 24px;text-align:center">${logoBlock}</td></tr>`
+    : `<tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;padding:28px 24px 8px;text-align:center"><p style="color:#1a1a1a;font-size:22px;font-weight:700;margin:0"><span style="color:#1a1a1a;">${brandName}</span></p></td></tr>`
   return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5f5f3" style="background:#f5f5f3;font-family:Arial,sans-serif"><tr>
   <td bgcolor="#f5f5f3" align="center" style="background:#f5f5f3;padding:24px 12px">
   <table width="600" cellpadding="0" cellspacing="0" border="0" align="center" bgcolor="#ffffff" style="background:#ffffff;margin:0 auto">
-    <tr><td bgcolor="${headerColor}" style="background:${headerColor};padding:28px 24px;text-align:center">
-      ${logoBlock}
-    </td></tr>
+    ${header}
     <tr><td bgcolor="#ffffff" style="background:#ffffff;padding:20px 28px 28px">${body}
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 0"><tr>
       <td bgcolor="#ffffff" style="background:#ffffff;border-top:1px solid #E4E2DC;padding:12px 0 0">
