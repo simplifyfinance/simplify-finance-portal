@@ -5,6 +5,7 @@ import TrailBook from '@/components/TrailBook'
 import MissingStatements from '@/components/MissingStatements'
 import MissedTrail from '@/components/MissedTrail'
 import ClawbackWatch from '@/components/ClawbackWatch'
+import SettlementReconcile from '@/components/SettlementReconcile'
 import CommissionByMonth from '@/components/CommissionByMonth'
 import { COMMISSION_START } from '@/lib/commission-schedule'
 import { money } from '@/lib/tone'
@@ -239,6 +240,11 @@ export default function CommissionsPage() {
           <MissedTrail brokers={brokers} />
 
           <ClawbackWatch brokers={brokers} />
+
+          <div className="text-[11px] font-bold uppercase tracking-[.08em] text-[#7A7266] mb-2">
+            Settlements against what SFG paid
+          </div>
+          <SettlementReconcile brokers={brokers} />
 
         </>
       )}
