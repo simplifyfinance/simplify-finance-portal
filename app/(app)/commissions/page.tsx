@@ -4,6 +4,7 @@ import CommissionRevenue from '@/components/CommissionRevenue'
 import TrailBook from '@/components/TrailBook'
 import MissingStatements from '@/components/MissingStatements'
 import MissedTrail from '@/components/MissedTrail'
+import ClawbackWatch from '@/components/ClawbackWatch'
 import CommissionByMonth from '@/components/CommissionByMonth'
 import { COMMISSION_START } from '@/lib/commission-schedule'
 import { money } from '@/lib/tone'
@@ -237,6 +238,7 @@ export default function CommissionsPage() {
           </div>
           <MissedTrail brokers={brokers} />
 
+          <ClawbackWatch brokers={brokers} />
 
         </>
       )}
