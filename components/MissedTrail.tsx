@@ -17,8 +17,9 @@ const GONE_AFTER = 3
 const DEFAULT_TO = 'commissions@spfgroup.com.au'
 // A loan that was paying nothing and resumed paying nothing owes nothing. Those
 // rows made up half of the first query email and gave the lender an easy reason
-// to dismiss the whole thing, so they are kept out of the list entirely.
-const MIN_VALUE = 1
+// to dismiss the whole thing, so they are kept out of the list entirely. Small
+// change is the same problem: nobody is chasing a lender for four dollars.
+const MIN_VALUE = 5
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 const FULL = ['January','February','March','April','May','June','July','August','September','October','November','December']
@@ -481,9 +482,9 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
           want, or leave them all unticked to include every one in the email. The export takes every row on this
           tab, not just the ones on screen.
           {worthless > 0 && (
-            <> {' '}<b style={{ color: TONE.ink }}>{worthless} gap{worthless === 1 ? '' : 's'} worth under a dollar
-            {worthless === 1 ? ' is' : ' are'} not shown</b> — the loan was paying nothing when it stopped, so
-            nothing is owed and there is nothing to query.</>
+            <> {' '}<b style={{ color: TONE.ink }}>{worthless} gap{worthless === 1 ? '' : 's'} worth under ${MIN_VALUE}
+            {worthless === 1 ? ' is' : ' are'} not shown</b> — too small to be worth a lender's time, and a list
+            full of them invites the whole query to be dismissed.</>
           )}
         </div>
       </div>
