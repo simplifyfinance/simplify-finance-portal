@@ -43,6 +43,15 @@ export async function POST(req: NextRequest) {
     keyByEmail.set(String((p as any).email || '').toLowerCase(), String((p as any).broker_key).toLowerCase())
   }
   const knownKeys = new Set((brokers || []).map((b: any) => String(b.broker_key).toLowerCase()))
+  // Full names, so a statement can be matched on the whole name rather than on
+  // its first word. Nothing has been misfiled yet, but a rule that accepts any
+  // invoice starting with "Fabio" would file someone else's book under his
+  // without a word, and that is not a thing to find out from a revenue figure.
+  const keyByName = new Map<string, string>()
+  for (const b of (brokers || [])) {
+    const nm = String((b as any).name || '').trim().toLowerCase()
+    if (nm) keyByName.set(nm, String((b as any).broker_key).toLowerCase())
+  }
 
   const form = await req.formData()
   const files = form.getAll('files').filter(f => f instanceof File) as File[]
@@ -55,15 +64,22 @@ export async function POST(req: NextRequest) {
     try {
       const parsed = await parseSfg(await file.arrayBuffer())
 
-      // broker: the invoice email first, then the name on it
+      // Whose statement this is. The recipient's email on the invoice identifies
+      // a person exactly, so it is tried first and is what matches in practice.
+      // Failing that the whole name must match, or the broker key exactly. What
+      // it will not do is take the first word of a name and hope.
+      const invoiceName = parsed.brokerName.trim().toLowerCase()
+      // "Fabio De Castro - Head Agreement Holder" is a title, not a different person.
+      const bareName = invoiceName.split(/\s+[-\u2013]\s+/)[0].trim()
       let brokerKey = keyByEmail.get(parsed.brokerEmail) || ''
-      if (!brokerKey) {
-        const first = parsed.brokerName.trim().split(/\s+/)[0]?.toLowerCase() || ''
-        if (knownKeys.has(first)) brokerKey = first
-      }
+      if (!brokerKey) brokerKey = keyByName.get(invoiceName) || keyByName.get(bareName) || ''
+      if (!brokerKey && knownKeys.has(bareName)) brokerKey = bareName
       if (!brokerKey) {
         results.push({ name, status: 'rejected',
-          detail: `Could not tell which broker this belongs to (invoice says "${parsed.brokerName}", ${parsed.brokerEmail || 'no email'}).` })
+          detail: `Could not tell whose statement this is. The invoice is addressed to "${parsed.brokerName}"` +
+                  `${parsed.brokerEmail ? ` (${parsed.brokerEmail})` : ' with no email the portal recognises'}, ` +
+                  `which does not match a broker. Add that name or email to the broker's profile in Settings, ` +
+                  `then upload again. Nothing was imported.` })
         continue
       }
 

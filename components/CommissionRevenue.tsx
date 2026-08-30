@@ -139,11 +139,15 @@ export default function CommissionRevenue({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-4 gap-[11px] mb-3.5 max-[860px]:grid-cols-2">
+          {/* Five parts, because that is what the sum has. Showing four of them
+              made the row look broken and cost an afternoon proving it was not:
+              gross less third parties, less clawbacks, plus referrals, is banked. */}
+          <div className="grid grid-cols-5 gap-[11px] mb-3.5 max-[1100px]:grid-cols-3 max-[720px]:grid-cols-2">
             {[
               { k: 'Gross', v: total.gross, s: 'what the lenders paid', c: TONE.ink },
               { k: 'To third parties', v: -total.third, s: 'referral and split arrangements', c: TONE.ink },
               { k: 'Clawbacks', v: total.claw, s: 'net of what came back', c: TONE.ink },
+              { k: 'Referrals', v: total.referrals, s: 'paid to us on others\u2019 loans', c: TONE.ink },
               { k: 'Banked', v: total.banked, s: 'actually received, ex GST', c: TONE.pos },
             ].map(t => (
               <div key={t.k} className={card + ' px-[15px] py-[13px]'} style={cardS}>
