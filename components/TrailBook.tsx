@@ -287,7 +287,10 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
             {money(-goneValue)}
           </div>
           <div className="text-[11.5px] mt-[1px]" style={{ color: TONE.label }}>
-            {gone.length} loans stopped, silent {GONE_AFTER}+ months
+            {/* The figure above leaves transfers out, so the count must too, or
+                the card contradicts itself. */}
+            {lost.length} loans lost, silent {GONE_AFTER}+ months
+            {moved > 0 && <>; {moved} moved to us</>}
           </div>
         </div>
       </div>
