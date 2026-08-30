@@ -4,6 +4,41 @@ import { notifyCrisMoveCard } from '@/lib/salestrekker-notify'
 
 type ProceedStage = 'BC' | 'LO'
 
+// Reading the deal, without touching it.
+//
+// The page used to record the client as proceeding simply by being loaded, and
+// loading is not something only the client does: mail security scanners follow
+// every link in an email before it reaches the inbox. That moved the deal a
+// stage, allocated a credit officer and emailed two people, all without anyone
+// having read the message. Nothing here writes; the write happens when a button
+// is pressed.
+export async function loadProceed(dealId: string) {
+  const supabase = await createSupabaseServer()
+  const { data: deal, error } = await supabase
+    .from('deals')
+    .select('*, clients(first_name, last_name, email)')
+    .eq('id', dealId)
+    .single()
+  if (error || !deal) return { ok: false as const }
+
+  const { data: settings } = await supabase.from('settings')
+    .select('wealth_desk_link').eq('id', 'singleton').single()
+
+  return { ok: true as const, deal, wealthDeskLink: settings?.wealth_desk_link || '' }
+}
+
+// Which step this is. The link carries a hint, but a link can be old or
+// forwarded, so the deal's own record decides when there is no hint.
+export function stageFor(deal: any, hint?: string): ProceedStage {
+  if (hint === 'LO') return 'LO'
+  if (hint === 'BC') return 'BC'
+  return deal?.client_proceeded ? 'LO' : 'BC'
+}
+
+export function hasProceeded(deal: any, stage: ProceedStage): boolean {
+  return stage === 'BC' ? !!deal?.client_proceeded : !!deal?.lo_client_proceeded
+}
+
 export async function markProceeded(dealId: string, stage: ProceedStage) {
   const supabase = await createSupabaseServer()
 

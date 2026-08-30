@@ -1,27 +1,52 @@
 import { notFound } from 'next/navigation'
-import { markProceeded, buildNextStepsContent } from '@/lib/proceed-flow'
+import { loadProceed, stageFor, hasProceeded, buildNextStepsContent } from '@/lib/proceed-flow'
+import { confirmProceed } from './actions'
 
+// Opening this page reads the deal and nothing more. Until the client presses
+// the button, no stage moves, no credit officer is allocated and nobody is
+// emailed — which is what used to happen every time a mail scanner followed the
+// link on its way to the inbox.
 export default async function ProceedPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ from?: string }> }) {
   const { id } = await params
   const { from } = await searchParams
-  const stage: 'BC' | 'LO' = from === 'LO' ? 'LO' : 'BC'
 
-  const result = await markProceeded(id, stage)
+  const result = await loadProceed(id)
   if (!result.ok) return notFound()
 
   const { deal, wealthDeskLink } = result
+  const stage = stageFor(deal, from)
+  const done = hasProceeded(deal, stage)
   const clientName = deal.clients?.first_name || 'there'
   const { heading, steps } = buildNextStepsContent(stage, wealthDeskLink)
+
+  async function submit() {
+    'use server'
+    await confirmProceed(id, stage)
+  }
 
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', backgroundColor: '#F2E8DB', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '40px', maxWidth: '480px', width: '100%', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
 
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{ width: '56px', height: '56px', backgroundColor: '#2DBEFF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '22px', color: '#fff', fontWeight: 'bold' }}>✓</div>
-          <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#343333', margin: '0 0 6px' }}>Great news, {clientName}!</h1>
-          <p style={{ fontSize: '13px', color: '#666', margin: 0, lineHeight: '1.5' }}>We're moving your application forward. Here's exactly what happens next.</p>
+          <div style={{ width: '56px', height: '56px', backgroundColor: '#2DBEFF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '22px', color: '#fff', fontWeight: 'bold' }}>{done ? '\u2713' : '\u2192'}</div>
+          <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#343333', margin: '0 0 6px' }}>
+            {done ? `Great news, ${clientName}!` : `Ready to go ahead, ${clientName}?`}
+          </h1>
+          <p style={{ fontSize: '13px', color: '#666', margin: 0, lineHeight: '1.5' }}>
+            {done
+              ? "We're moving your application forward. Here's exactly what happens next."
+              : "Here is what happens once you confirm. Nothing moves until you press the button below."}
+          </p>
         </div>
+
+        {!done && (
+          <form action={submit} style={{ textAlign: 'center', marginBottom: '26px' }}>
+            <button type="submit" style={{ backgroundColor: '#2DBEFF', color: '#fff', border: 0, padding: '13px 22px', borderRadius: '8px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', width: '100%' }}>
+              Yes, let&rsquo;s proceed
+            </button>
+          </form>
+        )}
 
         <div style={{ position: 'relative' }}>
           <div style={{ position: 'absolute', left: '13px', top: '30px', bottom: '30px', width: '2px', backgroundColor: '#e0e0e0' }} />
