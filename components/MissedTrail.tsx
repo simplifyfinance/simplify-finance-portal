@@ -15,6 +15,10 @@ import { downloadCsv, stamp } from '@/lib/csv'
 //                most likely discharged and no one owes anything.
 const GONE_AFTER = 3
 const DEFAULT_TO = 'commissions@spfgroup.com.au'
+// A loan that was paying nothing and resumed paying nothing owes nothing. Those
+// rows made up half of the first query email and gave the lender an easy reason
+// to dismiss the whole thing, so they are kept out of the list entirely.
+const MIN_VALUE = 1
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 const FULL = ['January','February','March','April','May','June','July','August','September','October','November','December']
@@ -78,10 +82,14 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
   const mine = useMemo(
     () => who === 'all' ? gaps : gaps.filter(g => sameBroker(g.broker_key, who)), [gaps, who])
 
-  const back = useMemo(() => mine.filter(g => g.came_back), [mine])
+  // Anything worth less than a dollar is noise, not a claim.
+  const valued = useMemo(() => mine.filter(g => Number(g.trail_missed || 0) >= MIN_VALUE), [mine])
+  const worthless = mine.length - valued.length
+
+  const back = useMemo(() => valued.filter(g => g.came_back), [valued])
   // still away but not yet written off — beyond the threshold it belongs on the Gone list
   const away = useMemo(
-    () => mine.filter(g => !g.came_back && g.months_away < GONE_AFTER), [mine])
+    () => valued.filter(g => !g.came_back && g.months_away < GONE_AFTER), [valued])
   const rows = tab === 'back' ? back : away
   const shown = rows.slice(0, limit)
 
@@ -139,57 +147,87 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
   function compose() {
     const list = chosen.length ? chosen : rows
     if (!list.length) return
-    const allMonths = new Set<string>()
-    for (const g of list) monthsBetween(g.last_paid, g.returned_in, g.months_away).forEach(m => allMonths.add(m))
-    const months = Array.from(allMonths).sort()
-    const span = months.length === 1 ? mFull(months[0])
-      : `${mFull(months[0])} to ${mFull(months[months.length - 1])}`
 
-    const byLender = new Map<string, Gap[]>()
+    // The same loan can have gone quiet more than once. The lender wants one
+    // line per loan with every month on it, not the same account three times.
+    type Item = { client: string; loan: string; lender: string; months: string[]; value: number; lastPaid: string }
+    const byLoan = new Map<string, Item>()
     for (const g of list) {
-      const k = g.lender || 'Lender not identified'
-      byLender.set(k, [...(byLender.get(k) || []), g])
+      const key = `${g.lender || ''}|${g.loan_ref}`
+      const found = byLoan.get(key)
+      const ms = monthsBetween(g.last_paid, g.returned_in, g.months_away)
+      if (found) {
+        found.months = Array.from(new Set([...found.months, ...ms])).sort()
+        found.value += Number(g.trail_missed || 0)
+        if (g.last_paid > found.lastPaid) found.lastPaid = g.last_paid
+      } else {
+        byLoan.set(key, {
+          client: g.client_name || 'Client not named',
+          loan: g.loan_ref,
+          lender: g.lender || 'Lender not identified',
+          months: ms, value: Number(g.trail_missed || 0), lastPaid: g.last_paid,
+        })
+      }
     }
+    const items = Array.from(byLoan.values())
+
+    const allMonths = new Set<string>()
+    for (const it of items) it.months.forEach(m => allMonths.add(m))
+    const months = Array.from(allMonths).sort()
+    const span = months.length === 0 ? ''
+      : months.length === 1 ? mFull(months[0])
+      : `${mFull(months[0])} and ${mFull(months[months.length - 1])}`
+
+    const byLender = new Map<string, Item[]>()
+    for (const it of items) byLender.set(it.lender, [...(byLender.get(it.lender) || []), it])
+
+    const total = items.reduce((t, it) => t + it.value, 0)
+    const n = items.length
+    const loans = `${n} ${n === 1 ? 'loan' : 'loans'}`
 
     const lines: string[] = []
     lines.push('Hello,')
     lines.push('')
     lines.push(
-      `We are reconciling our trail statements and have found ${list.length} ` +
-      `${list.length === 1 ? 'loan' : 'loans'} where trail did not appear for one or more months ` +
-      `between ${span}.`)
+      tab === 'back'
+        ? `We are reconciling our trail statements and have found ${loans} where trail did not arrive ` +
+          `for one or more months between ${span}. Each of these loans resumed paying afterwards, so ` +
+          `the account was open throughout and the trail appears to have been owed.`
+        : `We are reconciling our trail statements and have found ${loans} that were paying trail and ` +
+          `have not appeared since. Before we treat the trail as ended, we would like to confirm ` +
+          `whether the accounts are still open.`)
     lines.push('')
     lines.push(
       tab === 'back'
-        ? 'In each case the loan resumed paying trail afterwards, so the loan was still active and the ' +
-          'commission appears to have been owed for the months in between.'
-        : 'These loans were paying trail and have not appeared since. We would like to confirm whether they ' +
-          'are still active before we treat the trail as ended.')
+        ? 'Amounts are our estimate, at the rate each loan was paying when it stopped.'
+        : 'Amounts are what has not arrived so far, at the rate each loan was last paying.')
     lines.push('')
+
     for (const [lender, rs] of Array.from(byLender.entries()).sort()) {
       lines.push(`${lender}`)
-      for (const g of rs.sort((a, b) => b.trail_missed - a.trail_missed)) {
-        const miss = monthsBetween(g.last_paid, g.returned_in, g.months_away).map(mLabel).join(', ')
+      for (const it of rs.sort((a, b) => b.value - a.value)) {
         lines.push(
-          `  ${g.client_name || 'Client not named'} — loan ${g.loan_ref}, last paid ${mLabel(g.last_paid)}` +
-          (g.returned_in ? `, resumed ${mLabel(g.returned_in)}` : ', nothing since') +
-          `. Missing: ${miss}. Approximately ${money(g.trail_missed)} ex GST at the ` +
-          `${money(g.monthly_trail)} a month it was paying.`)
+          tab === 'back'
+            ? `  ${it.client} \u2014 ${it.loan} \u2014 ${it.months.map(mLabel).join(', ')} \u2014 ${money(it.value)}`
+            : `  ${it.client} \u2014 ${it.loan} \u2014 last paid ${mLabel(it.lastPaid)} \u2014 ${money(it.value)} to date`)
       }
       lines.push('')
     }
-    lines.push(`Total in question: ${money(sum(list))} ex GST across ${list.length} ` +
-               `${list.length === 1 ? 'loan' : 'loans'}.`)
+
+    lines.push(`Total ${money(total)} ex GST across ${loans}.`)
     lines.push('')
-    lines.push('Could you please confirm whether these months were paid, and if not, arrange for them to be ' +
-               'included in the next statement.')
+    lines.push(
+      tab === 'back'
+        ? 'Could you please confirm whether these months were paid, and if not, include them in the ' +
+          'next statement.'
+        : 'Could you please confirm the status of these accounts and whether trail remains payable.')
     lines.push('')
     lines.push('Thank you,')
     lines.push('Simplify Finance')
 
     setDraft({
       to: DEFAULT_TO,
-      subject: `Trail not received — ${list.length} ${list.length === 1 ? 'loan' : 'loans'}, ${span}`,
+      subject: `Trail not received \u2014 ${loans}${span ? `, ${span}` : ''}`,
       body: lines.join('\n'),
     })
     setCopied(false)
@@ -315,6 +353,11 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
           Trail missed is the months of silence at the rate the loan was paying when it stopped. Tick the rows you
           want, or leave them all unticked to include every one in the email. The export takes every row on this
           tab, not just the ones on screen.
+          {worthless > 0 && (
+            <> {' '}<b style={{ color: TONE.ink }}>{worthless} gap{worthless === 1 ? '' : 's'} worth under a dollar
+            {worthless === 1 ? ' is' : ' are'} not shown</b> — the loan was paying nothing when it stopped, so
+            nothing is owed and there is nothing to query.</>
+          )}
         </div>
       </div>
 
