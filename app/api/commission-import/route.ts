@@ -160,11 +160,39 @@ export async function POST(req: NextRequest) {
       if (written !== payload.length) {
         throw new Error(`the database accepted ${written} of ${payload.length} lines`)
       }
+      // The referral rows, kept alongside the total so the figure can be
+      // explained later. They cascade away with the statement if it is removed.
+      if (parsed.referralLines.length) {
+        const refPayload = parsed.referralLines.map(r => ({
+          statement_id: (stmt as any).id,
+          broker_key: brokerKey,
+          period_month: parsed.periodMonth,
+          statement_kind: parsed.kind,
+          row_type: r.rowType || null,
+          source_broker: r.sourceBroker || null,
+          lender_raw: r.lenderRaw || null,
+          client_name: r.clientName || null,
+          split_name: r.splitName || null,
+          payment_type: r.paymentType || null,
+          payment_rate: r.paymentRate,
+          commission_ex_gst: r.commissionExGst,
+          gst: r.gst,
+          net_inc_gst: r.netIncGst,
+        }))
+        const { data: refWritten, error: refErr } = await admin
+          .from('commission_referral_lines').insert(refPayload).select('id')
+        if (refErr || (refWritten?.length || 0) !== refPayload.length) {
+          throw new Error(refErr?.message
+            || `the database accepted ${refWritten?.length || 0} of ${refPayload.length} referral rows`)
+        }
+      }
+
       await admin.from('commission_statements').update({ rows_imported: written }).eq('id', (stmt as any).id)
 
       results.push({
         name, status: 'imported', broker: brokerKey,
         period: parsed.periodMonth.slice(0, 7), kind: parsed.kind, rows: written,
+        referralRows: parsed.referralLines.length,
         gross: parsed.totals.grossExGst, thirdParty: parsed.totals.thirdPartyExGst,
         clawback: parsed.totals.clawbackExGst, referrals: parsed.totals.referralsExGst,
         banked: parsed.totals.bankedExGst,

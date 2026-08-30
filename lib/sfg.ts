@@ -33,6 +33,21 @@ export type SfgLine = {
   grossIncGst: number
 }
 
+// A row from the Referrals tab. No loan reference on that tab, so these belong
+// to the statement rather than to a loan.
+export type SfgReferralLine = {
+  rowType: string
+  sourceBroker: string
+  lenderRaw: string
+  clientName: string
+  splitName: string
+  paymentType: string
+  paymentRate: number | null
+  commissionExGst: number
+  gst: number | null
+  netIncGst: number | null
+}
+
 export type SfgStatement = {
   kind: 'trail' | 'upfront'
   periodMonth: string          // YYYY-MM-01
@@ -41,6 +56,7 @@ export type SfgStatement = {
   brokerEmail: string
   brokerName: string
   lines: SfgLine[]
+  referralLines: SfgReferralLine[]
   // loan ref -> what was paid away to third parties, ex GST
   thirdParty: Record<string, number>
   splitName: Record<string, string>
@@ -173,13 +189,30 @@ export async function parseSfg(buffer: ArrayBuffer | Buffer): Promise<SfgStateme
   // in the wrong bucket. No loan reference on the tab, so it stays statement-level.
   let referralsExGst = 0
   let referralClawbackExGst = 0
+  // The rows themselves are kept, not just the total. A single number with
+  // nothing behind it is unanswerable: $34,182 sat on one statement for months
+  // and took an afternoon and a spreadsheet to explain.
+  const referralLines: SfgReferralLine[] = []
   const refWs = wb.getWorksheet('Referrals')
   if (refWs) {
     for (const r of rows(refWs)) {
       const amt = num(r['Commission'])
       if (!amt) continue
-      if (/clawback/i.test(str(r['Type']))) referralClawbackExGst += amt
+      const rowType = str(r['Type'])
+      if (/clawback/i.test(rowType)) referralClawbackExGst += amt
       else referralsExGst += amt
+      referralLines.push({
+        rowType,
+        sourceBroker: str(r['Broker']),
+        lenderRaw: str(r['Lender']),
+        clientName: str(r['Client']),
+        splitName: str(r['Split Name']),
+        paymentType: str(r['Payment Type']),
+        paymentRate: num(r['Payment Rate']),
+        commissionExGst: amt,
+        gst: num(r['GST']),
+        netIncGst: num(r['Remitted/Net']),
+      })
     }
   }
 
@@ -218,7 +251,7 @@ export async function parseSfg(buffer: ArrayBuffer | Buffer): Promise<SfgStateme
 
   return {
     kind, periodMonth, periodLabel, daysInMonth, brokerEmail, brokerName,
-    lines, thirdParty, splitName,
+    lines, referralLines, thirdParty, splitName,
     totals: {
       grossExGst: Math.round(grossExGst * 100) / 100,
       netCommissionExGst: Math.round(netCommissionExGst * 100) / 100,

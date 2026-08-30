@@ -6,6 +6,7 @@ import MissingStatements from '@/components/MissingStatements'
 import MissedTrail from '@/components/MissedTrail'
 import ClawbackWatch from '@/components/ClawbackWatch'
 import SettlementReconcile from '@/components/SettlementReconcile'
+import StatementsLoaded from '@/components/StatementsLoaded'
 import CommissionByMonth from '@/components/CommissionByMonth'
 import { COMMISSION_START } from '@/lib/commission-schedule'
 import { money } from '@/lib/tone'
@@ -245,6 +246,8 @@ export default function CommissionsPage() {
             Settlements against what SFG paid
           </div>
           <SettlementReconcile brokers={brokers} />
+
+          <StatementsLoaded statements={statements} brokers={brokers} onChanged={load} />
 
         </>
       )}
