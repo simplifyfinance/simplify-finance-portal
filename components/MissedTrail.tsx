@@ -57,6 +57,12 @@ function monthsBetween(lastPaid: string, backIn: string | null, away: number): s
   return out
 }
 
+type Resolved = { outcome: 'paid' | 'not_owed' | 'queried'; note: string | null; resolved_at: string }
+
+const OUTCOME_LABEL: Record<string, string> = {
+  paid: 'Paid', not_owed: 'Not owed', queried: 'Queried',
+}
+
 type Gap = {
   broker_key: string; loan_ref: string; client_name: string | null; months_away: number; came_back: boolean
   last_paid: string; returned_in: string | null
@@ -72,11 +78,30 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
   const [draft, setDraft] = useState<{ to: string; subject: string; body: string } | null>(null)
   const [copied, setCopied] = useState(false)
   const [limit, setLimit] = useState<number>(STEPS[0])
+  // Once the lender answers, a gap is finished with. Cleared rows drop off the
+  // list and stay off, so the same query is not sent twice next month.
+  const [resolved, setResolved] = useState<Map<string, Resolved>>(new Map())
+  const [showCleared, setShowCleared] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+
+  async function loadResolved() {
+    const { data, error } = await supabase.from('commission_trail_resolved').select('*')
+    if (error) { setSaveError('Could not read what has already been cleared.'); return }
+    const m = new Map<string, Resolved>()
+    for (const r of (data || []) as any[]) {
+      m.set(`${r.broker_key}|${r.loan_ref}|${String(r.last_paid).slice(0, 10)}`,
+            { outcome: r.outcome, note: r.note, resolved_at: r.resolved_at })
+    }
+    setResolved(m)
+  }
 
   useEffect(() => {
     supabase.from('commission_trail_gaps').select('*')
       .order('trail_missed', { ascending: false }).limit(2000)
       .then(({ data }) => setGaps((data || []) as Gap[]))
+    loadResolved()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const mine = useMemo(
@@ -86,14 +111,22 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
   const valued = useMemo(() => mine.filter(g => Number(g.trail_missed || 0) >= MIN_VALUE), [mine])
   const worthless = mine.length - valued.length
 
-  const back = useMemo(() => valued.filter(g => g.came_back), [valued])
+  const isCleared = (g: Gap) => resolved.has(`${g.broker_key}|${g.loan_ref}|${String(g.last_paid).slice(0, 10)}`)
+  const open = useMemo(() => showCleared ? valued : valued.filter(g => !isCleared(g)),
+                       [valued, resolved, showCleared])
+  const clearedCount = valued.filter(isCleared).length
+  const recovered = valued
+    .filter(g => resolved.get(`${g.broker_key}|${g.loan_ref}|${String(g.last_paid).slice(0, 10)}`)?.outcome === 'paid')
+    .reduce((t, g) => t + Number(g.trail_missed || 0), 0)
+
+  const back = useMemo(() => open.filter(g => g.came_back), [open])
   // still away but not yet written off — beyond the threshold it belongs on the Gone list
   const away = useMemo(
-    () => valued.filter(g => !g.came_back && g.months_away < GONE_AFTER), [valued])
+    () => open.filter(g => !g.came_back && g.months_away < GONE_AFTER), [open])
   const rows = tab === 'back' ? back : away
   const shown = rows.slice(0, limit)
 
-  const idOf = (g: Gap) => `${g.broker_key}|${g.loan_ref}|${g.last_paid}`
+  const idOf = (g: Gap) => `${g.broker_key}|${g.loan_ref}|${String(g.last_paid).slice(0, 10)}`
   const chosen = rows.filter(g => picked.has(idOf(g)))
   const sum = (rs: Gap[]) => rs.reduce((t, g) => t + Number(g.trail_missed || 0), 0)
 
@@ -117,7 +150,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
     downloadCsv(
       `trail-${label}-${name}-${stamp()}`,
       ['Broker', 'Client', 'Loan reference', 'Lender', 'Balance', 'Monthly trail',
-       'Months missed', 'Trail missed', 'Last paid', 'Came back', 'Returned in', 'Months to query'],
+       'Months missed', 'Trail missed', 'Last paid', 'Came back', 'Returned in', 'Months to query', 'Status'],
       rows.map(g => [
         brokers.find(b => sameBroker(g.broker_key, b.key))?.name || g.broker_key,
         g.client_name || '',
@@ -139,11 +172,55 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
           if (!ms.length) return ''
           return `${ms.length} ${ms.length === 1 ? 'month' : 'months'}: ${ms.map(mFull).join('; ')}`
         })(),
+        OUTCOME_LABEL[resolved.get(idOf(g))?.outcome || ''] || 'Open',
       ]))
   }
 
   // The draft is prepared, never sent. It opens for you to read, edit and send
   // from your own mail app.
+  // Postgres returns no rows and no error when a policy blocks a write, so the
+  // result is checked rather than assumed. A silent failure here would mean a
+  // query sent twice next month.
+  async function mark(outcome: Resolved['outcome']) {
+    if (!chosen.length || saving) return
+    setSaving(true); setSaveError('')
+    const { data: u } = await supabase.auth.getUser()
+    const payload = chosen.map(g => ({
+      broker_key: g.broker_key,
+      loan_ref: g.loan_ref,
+      last_paid: String(g.last_paid).slice(0, 10),
+      outcome,
+      resolved_by: u?.user?.id || null,
+      resolved_at: new Date().toISOString(),
+    }))
+    const { data, error } = await supabase.from('commission_trail_resolved')
+      .upsert(payload, { onConflict: 'broker_key,loan_ref,last_paid' }).select()
+    if (error || !data || data.length !== payload.length) {
+      setSaveError(error?.message || 'Nothing was saved — you may not have permission to clear these.')
+      setSaving(false)
+      return
+    }
+    await loadResolved()
+    setPicked(new Set())
+    setSaving(false)
+  }
+
+  async function unmark() {
+    if (!chosen.length || saving) return
+    setSaving(true); setSaveError('')
+    let failed = 0
+    for (const g of chosen) {
+      const { data, error } = await supabase.from('commission_trail_resolved').delete()
+        .eq('broker_key', g.broker_key).eq('loan_ref', g.loan_ref)
+        .eq('last_paid', String(g.last_paid).slice(0, 10)).select()
+      if (error || !data) failed += 1
+    }
+    if (failed) setSaveError(`${failed} could not be put back on the list.`)
+    await loadResolved()
+    setPicked(new Set())
+    setSaving(false)
+  }
+
   function compose() {
     const list = chosen.length ? chosen : rows
     if (!list.length) return
@@ -270,6 +347,46 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
         </button>
       </div>
 
+      {/* What has already been dealt with, and what it was worth. */}
+      <div className="flex items-center gap-2.5 mb-2 flex-wrap text-[12px]" style={{ color: TONE.label }}>
+        <button onClick={() => { setShowCleared(v => !v); setPicked(new Set()) }}
+          className="border rounded-lg px-2.5 py-[4px] bg-white"
+          style={{ borderColor: TONE.line, color: showCleared ? TONE.ink : TONE.label }}>
+          {showCleared ? 'Hide cleared' : `Show cleared (${clearedCount})`}
+        </button>
+        {recovered > 0 && (
+          <span><b style={{ color: TONE.pos }}>{money(recovered)}</b> recovered so far</span>
+        )}
+        {saveError && <span style={{ color: TONE.neg }}>{saveError}</span>}
+      </div>
+
+      {/* Only once rows are ticked, so the bar is never in the way. */}
+      {chosen.length > 0 && (
+        <div className="flex items-center gap-2 mb-2 flex-wrap border rounded-xl px-3 py-2"
+             style={{ borderColor: TONE.accentLine, background: TONE.accentSoft }}>
+          <span className="text-[12.5px]" style={{ color: TONE.ink }}>
+            {chosen.length} selected
+          </span>
+          <button onClick={() => mark('paid')} disabled={saving}
+            className="rounded-lg px-3 py-[5px] text-[12px] font-medium border bg-white disabled:opacity-40"
+            style={{ borderColor: '#CFE6D5', color: TONE.pos }}>They paid it</button>
+          <button onClick={() => mark('not_owed')} disabled={saving}
+            className="rounded-lg px-3 py-[5px] text-[12px] font-medium border bg-white disabled:opacity-40"
+            style={{ borderColor: TONE.line, color: TONE.body }}>Not owed</button>
+          <button onClick={() => mark('queried')} disabled={saving}
+            className="rounded-lg px-3 py-[5px] text-[12px] font-medium border bg-white disabled:opacity-40"
+            style={{ borderColor: TONE.line, color: TONE.body }}>Queried, waiting</button>
+          {showCleared && (
+            <button onClick={unmark} disabled={saving}
+              className="rounded-lg px-3 py-[5px] text-[12px] border bg-white disabled:opacity-40 ml-auto"
+              style={{ borderColor: TONE.line, color: TONE.label }}>Put back on the list</button>
+          )}
+          <span className="text-[11.5px]" style={{ color: TONE.label }}>
+            {saving ? 'Saving…' : 'Clearing a row hides it here and keeps it out of the next email.'}
+          </span>
+        </div>
+      )}
+
       <div className={card + ' overflow-x-auto'} style={cardS}>
         <table className="w-full min-w-[900px]">
           <thead>
@@ -298,7 +415,17 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
                          aria-label={`Select loan ${g.loan_ref}`} />
                 </td>
                 <td className="px-3 py-[9px] text-[13px] border-b"
-                    style={{ color: TONE.ink, fontWeight: 520, borderColor: TONE.hair }}>{g.client_name || '—'}</td>
+                    style={{ color: TONE.ink, fontWeight: 520, borderColor: TONE.hair }}>
+                  {g.client_name || '—'}
+                  {/* Only visible while cleared rows are being shown, so the list
+                      stays plain the rest of the time. */}
+                  {isCleared(g) && (
+                    <span className="ml-2 text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[1px] border align-middle"
+                          style={{ borderColor: TONE.line, color: TONE.label, background: '#fff' }}>
+                      {OUTCOME_LABEL[resolved.get(idOf(g))?.outcome || ''] || 'Cleared'}
+                    </span>
+                  )}
+                </td>
                 <td className="px-3 py-[9px] text-[13px] border-b"
                     style={{ color: TONE.body, borderColor: TONE.hair }}>{g.loan_ref}</td>
                 <td className="px-3 py-[9px] text-[13px] border-b" style={{ color: TONE.body, borderColor: TONE.hair }}>
