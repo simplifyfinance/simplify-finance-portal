@@ -55,6 +55,7 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
   const [who, setWho] = useState('all')
   const [lookback, setLookback] = useState(12)
   const [limit, setLimit] = useState<number>(STEPS[0])
+  const [goneTab, setGoneTab] = useState<'lost' | 'moved'>('lost')
   const [ready, setReady] = useState(false)
   const [newLoans, setNewLoans] = useState<NewLoan[]>([])
   const [reasons, setReasons] = useState<Map<string, Reason>>(new Map())
@@ -157,9 +158,21 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
   // Loans that moved to another of our own loans are not a loss.
   const lost = gone.filter(l => reasonFor(l) !== 'moved_to_us')
   const moved = gone.length - lost.length
+  const movedList = gone.filter(l => reasonFor(l) === 'moved_to_us')
   const goneValue = lost.reduce((t, l) => t + Number(l.annual_trail || 0), 0)
-  const movedValue = gone.filter(l => reasonFor(l) === 'moved_to_us')
-    .reduce((t, l) => t + Number(l.annual_trail || 0), 0)
+  const movedValue = movedList.reduce((t, l) => t + Number(l.annual_trail || 0), 0)
+
+  // The cards sat side by side on different scales — a month of book against a
+  // year of losses — which read as though the whole book had walked out. Trail
+  // a year is what the loan state holds, so it is divided back to a month here.
+  const goneMonthly = goneValue / 12
+
+  // Runoff, the way the industry quotes it: of the book you had at the start of
+  // the window, how much has stopped paying. Around 10% a year is the usual
+  // yardstick.
+  const monthsBack = lookback >= 999 ? series.length - 1 : lookback
+  const opening = series[Math.max(0, series.length - 1 - monthsBack)]
+  const runoffPct = opening && opening.trail > 0 ? (goneMonthly / opening.trail) * 100 : null
 
   const chosen = gone.filter(l => picked.has(keyOf(l)))
 
@@ -215,17 +228,20 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
   const slot = (X1 - X0) / series.length
   const bw = Math.min(17, Math.max(4, (slot - 12) / 2))
   const yOf = (v: number) => Y1 - (v / top) * (Y1 - Y0)
-  const shown = gone.slice(0, limit)
+  // Two answers to different questions: money out of the book, against a client
+  // who stayed and simply changed loans.
+  const listed = goneTab === 'lost' ? lost : movedList
+  const shown = listed.slice(0, limit)
 
   // Every gone loan in the chosen window and broker, not the twenty on screen.
   function exportCsv() {
     const name = who === 'all' ? 'all-brokers' : who
     const win = lookback >= 999 ? 'all-time' : `last-${lookback}-months`
     downloadCsv(
-      `trail-gone-${name}-${win}-${stamp()}`,
+      `trail-${goneTab === 'lost' ? 'lost' : 'moved-to-us'}-${name}-${win}-${stamp()}`,
       ['Broker', 'Client', 'Loan reference', 'Lender', 'Balance', 'Trail a year',
        'Last paid', 'Months silent', 'Why it went', 'Confirmed'],
-      gone.map(l => [
+      listed.map(l => [
         brokers.find(b => sameBroker(l.broker_key, b.key))?.name || l.broker_key,
         l.client_name || '',
         l.loan_ref,
@@ -284,13 +300,16 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
             </select>
           </div>
           <div className="text-[27px] font-[640] tracking-[-.02em] leading-[1.15]" style={{ color: TONE.neg }}>
-            {money(-goneValue)}
+            {money(-goneMonthly)}
+            {/* Every card on this row is now a month, so they can be read across. */}
+            <span className="text-[13px] font-normal" style={{ color: TONE.label }}> a month</span>
           </div>
           <div className="text-[11.5px] mt-[1px]" style={{ color: TONE.label }}>
-            {/* The figure above leaves transfers out, so the count must too, or
-                the card contradicts itself. */}
-            {lost.length} loans lost, silent {GONE_AFTER}+ months
-            {moved > 0 && <>; {moved} moved to us</>}
+            {runoffPct === null
+              ? <>{lost.length} loans lost, silent {GONE_AFTER}+ months</>
+              : <><b style={{ color: runoffPct > 10 ? TONE.neg : TONE.ink }}>{runoffPct.toFixed(1)}%</b> of the
+                  book {opening ? mLabel(opening.m) : ''} — {lost.length} loans</>}
+
           </div>
         </div>
       </div>
@@ -339,16 +358,26 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
         </div>
       </div>
 
-      <div className="flex items-baseline gap-2.5 mt-5 mb-2 flex-wrap">
-        <div className="text-[11px] font-bold uppercase tracking-[.08em]" style={{ color: TONE.label }}>
+      <div className="flex items-center gap-2.5 mt-5 mb-2 flex-wrap">
+        <div className="text-[11px] font-bold tracking-[.08em] uppercase" style={{ color: TONE.label }}>
           Loans gone — {windows.find(w => w.n === lookback)?.label.toLowerCase()}
         </div>
-        {moved > 0 && (
-          <span className="text-[12px]" style={{ color: TONE.label }}>
-            <b style={{ color: TONE.pos }}>{moved}</b> of these moved to another of our own loans, worth{' '}
-            {money(movedValue)} a year — not counted as lost.
-          </span>
-        )}
+        <div className="inline-flex rounded-lg p-[2px] border"
+             style={{ background: TONE.hair, borderColor: TONE.line }}>
+          {([['lost', `Lost (${lost.length})`],
+             ['moved', `Moved to us (${movedList.length})`]] as const).map(([id, lab]) => (
+            <button key={id} onClick={() => { setGoneTab(id); setPicked(new Set()) }}
+              className="px-3 py-1 text-[12.5px] rounded-[6px]"
+              style={goneTab === id
+                ? { background: '#fff', color: TONE.ink, fontWeight: 600, boxShadow: '0 1px 2px rgba(0,0,0,.07)' }
+                : { color: TONE.body }}>{lab}</button>
+          ))}
+        </div>
+        <span className="text-[12px]" style={{ color: TONE.label }}>
+          {goneTab === 'lost'
+            ? <>Trail out of the book — {money(goneMonthly)} a month.</>
+            : <>The client stayed, the loan changed — {money(movedValue / 12)} a month, back in the book elsewhere.</>}
+        </span>
         {saveError && <span className="text-[12px]" style={{ color: TONE.neg }}>{saveError}</span>}
       </div>
 
@@ -376,8 +405,8 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
             <tr>
               <th className={th + ' text-left w-[34px]'} style={{ color: TONE.label, borderColor: TONE.hair }}>
                 <input type="checkbox"
-                       checked={gone.length > 0 && chosen.length === gone.length}
-                       onChange={() => setPicked(chosen.length === gone.length ? new Set() : new Set(gone.map(keyOf)))}
+                       checked={listed.length > 0 && chosen.length === listed.length}
+                       onChange={() => setPicked(chosen.length === listed.length ? new Set() : new Set(listed.map(keyOf)))}
                        aria-label="Select all" />
               </th>
               {['Client', 'Loan', 'Broker', 'Lender', 'Why it went', 'Balance last seen', 'Trail a year',
@@ -458,17 +487,18 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
                 <td className="px-3 py-[9px] text-[13px] font-[640] border-t"
                     style={{ color: TONE.ink, borderColor: TONE.line }}>
                   {/* The total counts what was actually lost, so it has to say so. */}
-                  {lost.length} lost{moved > 0 && `, ${moved} moved`}
+                  {listed.length} {goneTab === 'lost' ? 'lost' : 'moved to us'}
                 </td>
                 <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className={td + ' font-[640] border-b-0 border-t'} style={{ color: TONE.ink, borderColor: TONE.line }}>
-                  {money(lost.reduce((t, l) => t + Number(l.balance || 0), 0))}
+                  {money(listed.reduce((t, l) => t + Number(l.balance || 0), 0))}
                 </td>
-                <td className={td + ' font-[640] border-b-0 border-t'} style={{ color: TONE.neg, borderColor: TONE.line }}>
-                  {money(-goneValue)}
+                <td className={td + ' font-[640] border-b-0 border-t'}
+                    style={{ color: goneTab === 'lost' ? TONE.neg : TONE.pos, borderColor: TONE.line }}>
+                  {money(goneTab === 'lost' ? -goneValue : movedValue)}
                 </td>
                 <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className="border-t" style={{ borderColor: TONE.line }} />
@@ -477,11 +507,11 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
           </tbody>
         </table>
         <div className="flex items-center gap-2 flex-wrap">
-          <RowLimit shown={shown.length} total={gone.length} limit={limit} onChange={setLimit} />
-          <button onClick={exportCsv} disabled={!gone.length}
+          <RowLimit shown={shown.length} total={listed.length} limit={limit} onChange={setLimit} />
+          <button onClick={exportCsv} disabled={!listed.length}
                   className="text-[11.5px] border rounded-md px-2.5 py-[3px] bg-white disabled:opacity-40 mr-3"
                   style={{ borderColor: TONE.line, color: TONE.label }}>
-            Export {gone.length} to Excel
+            Export {listed.length} to Excel
           </button>
         </div>
         <div className="px-3 py-2.5 border-t text-[11.5px]" style={{ borderColor: TONE.hair, color: TONE.label }}>
