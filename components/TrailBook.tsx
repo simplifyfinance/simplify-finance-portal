@@ -6,6 +6,7 @@ import { sameBroker } from '@/lib/broker-key'
 import { stepMonth } from '@/lib/commission-schedule'
 import RowLimit, { STEPS } from '@/components/RowLimit'
 import { downloadCsv, stamp } from '@/lib/csv'
+import { nameMatches } from '@/lib/settlement-match'
 
 // Trail is a book, not a payment. Two questions matter: is it growing or
 // leaking, and which loans have actually left.
@@ -18,10 +19,28 @@ import { downloadCsv, stamp } from '@/lib/csv'
 // box, where it can be queried rather than written off.
 const GONE_AFTER = 3
 
+// Why a loan left. A loan that moved to a new loan of ours has not been lost at
+// all — the trail simply started again somewhere else in the book, and counting
+// it as attrition both overstates the loss and hides the real one.
+type Reason = 'moved_to_us' | 'refinanced_away' | 'sold' | 'paid_out' | 'unknown'
+const REASON_LABEL: Record<Reason, string> = {
+  moved_to_us: 'Moved to us',
+  refinanced_away: 'Refinanced away',
+  sold: 'Sold',
+  paid_out: 'Paid out',
+  unknown: 'Unknown',
+}
+// A new loan for the same client counts as the same client moving if it settled
+// anywhere from shortly before the trail stopped to a year after.
+const MOVE_FROM = -3
+const MOVE_TO = 12
+
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 const mLabel = (m: string) => `${MONTHS[Number(m.slice(5, 7)) - 1]} ${m.slice(2, 4)}`
 
 type MonthRow = { broker_key: string; period_month: string; loans: number; trail_ex_gst: number }
+type NewLoan = { client: string; loanRef: string; lender: string; started: string }
+
 type LoanState = {
   broker_key: string; loan_ref: string; client_name: string | null; last_paid: string
   annual_trail: number; balance: number | null; lender: string | null
@@ -37,17 +56,42 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
   const [lookback, setLookback] = useState(12)
   const [limit, setLimit] = useState<number>(STEPS[0])
   const [ready, setReady] = useState(false)
+  const [newLoans, setNewLoans] = useState<NewLoan[]>([])
+  const [reasons, setReasons] = useState<Map<string, Reason>>(new Map())
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+
+  async function loadReasons() {
+    const { data, error } = await supabase.from('commission_trail_gone_reason')
+      .select('broker_key, loan_ref, reason')
+    if (error) { setSaveError('Could not read the reasons already recorded.'); return }
+    const m = new Map<string, Reason>()
+    for (const r of (data || []) as any[]) m.set(`${r.broker_key}|${r.loan_ref}`, r.reason)
+    setReasons(m)
+  }
 
   useEffect(() => {
     (async () => {
-      const [m, l, s] = await Promise.all([
+      const [m, l, s, u] = await Promise.all([
         supabase.from('commission_trail_months').select('*').order('period_month'),
         supabase.from('commission_trail_loan_state').select('*')
           .gte('months_absent', GONE_AFTER).order('annual_trail', { ascending: false }).limit(2000),
         supabase.from('commission_statements').select('kind, period_month, gross_ex_gst'),
+        // Every upfront we have been paid: proof that a loan actually started.
+        supabase.from('commission_lines')
+          .select('client_name, loan_ref, lender_raw, settlement_date, period_month')
+          .eq('kind', 'upfront').limit(5000),
       ])
       setMonths((m.data || []) as MonthRow[])
       setSilent((l.data || []) as LoanState[])
+      setNewLoans(((u.data || []) as any[]).map(x => ({
+        client: x.client_name || '',
+        loanRef: x.loan_ref || '',
+        lender: x.lender_raw || '',
+        started: String(x.settlement_date || `${String(x.period_month).slice(0, 7)}-01`).slice(0, 7),
+      })))
+      loadReasons()
       const up: Record<string, number> = {}
       for (const row of (s.data || []) as any[]) {
         if (row.kind !== 'upfront') continue
@@ -88,7 +132,56 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
   const gone = useMemo(
     () => lookback >= 999 ? mineGone : mineGone.filter(l => String(l.last_paid).slice(0, 7) >= windowStart),
     [mineGone, windowStart, lookback])
-  const goneValue = gone.reduce((t, l) => t + Number(l.annual_trail || 0), 0)
+  // A new loan of ours for the same client, started around the time this one
+  // went quiet, at a different account. That is the client moving, not leaving.
+  const movedTo = useMemo(() => {
+    const out = new Map<string, NewLoan>()
+    for (const l of gone) {
+      const from = stepMonth(String(l.last_paid).slice(0, 7), MOVE_FROM)
+      const to = stepMonth(String(l.last_paid).slice(0, 7), MOVE_TO)
+      const hit = newLoans.find(n =>
+        n.loanRef && n.loanRef !== l.loan_ref &&
+        n.started >= from && n.started <= to &&
+        nameMatches(n.client, l.client_name || ''))
+      if (hit) out.set(`${l.broker_key}|${l.loan_ref}`, hit)
+    }
+    return out
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gone, newLoans])
+
+  const keyOf = (l: LoanState) => `${l.broker_key}|${l.loan_ref}`
+  // A person's answer always beats the guess.
+  const reasonFor = (l: LoanState): Reason | null =>
+    reasons.get(keyOf(l)) || (movedTo.has(keyOf(l)) ? 'moved_to_us' : null)
+
+  // Loans that moved to another of our own loans are not a loss.
+  const lost = gone.filter(l => reasonFor(l) !== 'moved_to_us')
+  const moved = gone.length - lost.length
+  const goneValue = lost.reduce((t, l) => t + Number(l.annual_trail || 0), 0)
+  const movedValue = gone.filter(l => reasonFor(l) === 'moved_to_us')
+    .reduce((t, l) => t + Number(l.annual_trail || 0), 0)
+
+  const chosen = gone.filter(l => picked.has(keyOf(l)))
+
+  async function setReason(reason: Reason) {
+    if (!chosen.length || saving) return
+    setSaving(true); setSaveError('')
+    const { data: u } = await supabase.auth.getUser()
+    const payload = chosen.map(l => ({
+      broker_key: l.broker_key, loan_ref: l.loan_ref, reason,
+      marked_by: u?.user?.id || null,
+    }))
+    // A blocked write returns no rows and no error, so the rows back are the proof.
+    const { data, error } = await supabase.from('commission_trail_gone_reason')
+      .upsert(payload, { onConflict: 'broker_key,loan_ref' }).select()
+    if (error || !data || data.length !== payload.length) {
+      setSaveError(error?.message || 'Nothing was saved.')
+    } else {
+      await loadReasons()
+      setPicked(new Set())
+    }
+    setSaving(false)
+  }
 
   // Only offer a window the data can actually fill.
   const windows = useMemo(() => {
@@ -131,7 +224,7 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
     downloadCsv(
       `trail-gone-${name}-${win}-${stamp()}`,
       ['Broker', 'Client', 'Loan reference', 'Lender', 'Balance', 'Trail a year',
-       'Last paid', 'Months silent'],
+       'Last paid', 'Months silent', 'Why it went', 'Confirmed'],
       gone.map(l => [
         brokers.find(b => sameBroker(l.broker_key, b.key))?.name || l.broker_key,
         l.client_name || '',
@@ -141,6 +234,8 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
         Number(l.annual_trail || 0).toFixed(2),
         l.last_paid,
         l.months_absent,
+        (() => { const r = reasonFor(l); return r ? REASON_LABEL[r] : '' })(),
+        reasons.has(keyOf(l)) ? 'Yes' : (reasonFor(l) ? 'Likely, not confirmed' : ''),
       ]))
   }
 
@@ -241,28 +336,72 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
         </div>
       </div>
 
-      <div className="text-[11px] font-bold uppercase tracking-[.08em] mt-5 mb-2" style={{ color: TONE.label }}>
-        Loans gone — {windows.find(w => w.n === lookback)?.label.toLowerCase()}
+      <div className="flex items-baseline gap-2.5 mt-5 mb-2 flex-wrap">
+        <div className="text-[11px] font-bold uppercase tracking-[.08em]" style={{ color: TONE.label }}>
+          Loans gone — {windows.find(w => w.n === lookback)?.label.toLowerCase()}
+        </div>
+        {moved > 0 && (
+          <span className="text-[12px]" style={{ color: TONE.label }}>
+            <b style={{ color: TONE.pos }}>{moved}</b> of these moved to another of our own loans, worth{' '}
+            {money(movedValue)} a year — not counted as lost.
+          </span>
+        )}
+        {saveError && <span className="text-[12px]" style={{ color: TONE.neg }}>{saveError}</span>}
       </div>
+
+      {/* Only once rows are ticked, so the list stays plain the rest of the time. */}
+      {chosen.length > 0 && (
+        <div className="flex items-center gap-2 mb-2 flex-wrap border rounded-xl px-3 py-2"
+             style={{ borderColor: TONE.accentLine, background: TONE.accentSoft }}>
+          <span className="text-[12.5px]" style={{ color: TONE.ink }}>{chosen.length} selected — why did it go?</span>
+          {(['refinanced_away', 'sold', 'paid_out', 'moved_to_us', 'unknown'] as Reason[]).map(r => (
+            <button key={r} onClick={() => setReason(r)} disabled={saving}
+              className="rounded-lg px-3 py-[5px] text-[12px] font-medium border bg-white disabled:opacity-40"
+              style={{ borderColor: r === 'moved_to_us' ? '#CFE6D5' : TONE.line,
+                       color: r === 'moved_to_us' ? TONE.pos : TONE.body }}>
+              {REASON_LABEL[r]}
+            </button>
+          ))}
+          <span className="text-[11.5px]" style={{ color: TONE.label }}>
+            {saving ? 'Saving…' : 'Only “moved to us” changes the loss figure.'}
+          </span>
+        </div>
+      )}
       <div className={card + ' overflow-x-auto'} style={cardS}>
         <table className="w-full min-w-[760px]">
           <thead>
             <tr>
-              {['Client', 'Loan', 'Broker', 'Lender', 'Balance last seen', 'Trail a year', 'Last paid', 'Silent']
-                .map((h, i) => (
-                  <th key={h} className={th + (i < 4 ? ' text-left' : ' text-right')}
+              <th className={th + ' text-left w-[34px]'} style={{ color: TONE.label, borderColor: TONE.hair }}>
+                <input type="checkbox"
+                       checked={gone.length > 0 && chosen.length === gone.length}
+                       onChange={() => setPicked(chosen.length === gone.length ? new Set() : new Set(gone.map(keyOf)))}
+                       aria-label="Select all" />
+              </th>
+              {['Client', 'Loan', 'Broker', 'Lender', 'Why it went', 'Balance last seen', 'Trail a year',
+                'Last paid', 'Silent'].map((h, i) => (
+                  <th key={h} className={th + (i < 5 ? ' text-left' : ' text-right')}
                       style={{ color: TONE.label, borderColor: TONE.hair }}>{h}</th>
                 ))}
             </tr>
           </thead>
           <tbody>
             {shown.length === 0 && (
-              <tr><td colSpan={8} className="px-3 py-6 text-[13px]" style={{ color: TONE.label }}>
+              <tr><td colSpan={10} className="px-3 py-6 text-[13px]" style={{ color: TONE.label }}>
                 No loans have stopped paying in this window.
               </td></tr>
             )}
             {shown.map((l, i) => (
-              <tr key={l.broker_key + l.loan_ref} style={{ background: i % 2 ? TONE.zebra : '#fff' }}>
+              <tr key={l.broker_key + l.loan_ref}
+                  style={{ background: picked.has(keyOf(l)) ? TONE.accentSoft : i % 2 ? TONE.zebra : '#fff' }}>
+                <td className="px-3 py-[9px] border-b" style={{ borderColor: TONE.hair }}>
+                  <input type="checkbox" checked={picked.has(keyOf(l))}
+                         onChange={() => setPicked(p => {
+                           const next = new Set(p)
+                           next.has(keyOf(l)) ? next.delete(keyOf(l)) : next.add(keyOf(l))
+                           return next
+                         })}
+                         aria-label={`Select loan ${l.loan_ref}`} />
+                </td>
                 <td className="px-3 py-[9px] text-[13px] border-b"
                     style={{ color: TONE.ink, fontWeight: 520, borderColor: TONE.hair }}>
                   {l.client_name || '—'}
@@ -281,6 +420,23 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
                 <td className="px-3 py-[9px] text-[13px] border-b" style={{ color: TONE.body, borderColor: TONE.hair }}>
                   {l.lender || '—'}
                 </td>
+                {/* The guess is shown as a guess until somebody says otherwise. */}
+                <td className="px-3 py-[9px] text-[12.5px] border-b" style={{ borderColor: TONE.hair }}>
+                  {(() => {
+                    const r = reasonFor(l)
+                    if (!r) return <span style={{ color: TONE.faint }}>—</span>
+                    const said = reasons.has(keyOf(l))
+                    const hit = movedTo.get(keyOf(l))
+                    return (
+                      <span style={{ color: r === 'moved_to_us' ? TONE.pos : TONE.body }}
+                            title={!said && hit
+                              ? `Looks like it: ${hit.client} started ${hit.loanRef} with ${hit.lender} around then`
+                              : ''}>
+                        {REASON_LABEL[r]}{!said && ' (likely)'}
+                      </span>
+                    )
+                  })()}
+                </td>
                 <td className={td} style={{ color: TONE.ink, borderColor: TONE.hair }}>{money(l.balance || 0)}</td>
                 <td className={td} style={{ color: TONE.neg, borderColor: TONE.hair }}>
                   {money(-Math.abs(Number(l.annual_trail || 0)))}
@@ -295,13 +451,18 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
             ))}
             {gone.length > 0 && (
               <tr style={{ background: TONE.hair }}>
+                <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className="px-3 py-[9px] text-[13px] font-[640] border-t"
-                    style={{ color: TONE.ink, borderColor: TONE.line }}>{gone.length} loans</td>
+                    style={{ color: TONE.ink, borderColor: TONE.line }}>
+                  {/* The total counts what was actually lost, so it has to say so. */}
+                  {lost.length} lost{moved > 0 && `, ${moved} moved`}
+                </td>
+                <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className={td + ' font-[640] border-b-0 border-t'} style={{ color: TONE.ink, borderColor: TONE.line }}>
-                  {money(gone.reduce((t, l) => t + Number(l.balance || 0), 0))}
+                  {money(lost.reduce((t, l) => t + Number(l.balance || 0), 0))}
                 </td>
                 <td className={td + ' font-[640] border-b-0 border-t'} style={{ color: TONE.neg, borderColor: TONE.line }}>
                   {money(-goneValue)}
