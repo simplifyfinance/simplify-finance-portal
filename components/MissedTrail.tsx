@@ -22,10 +22,31 @@ const mLabel = (m: string) => `${MONTHS[Number(m.slice(5, 7)) - 1]} ${m.slice(2,
 const mFull = (m: string) => `${FULL[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}`
 
 // The months between one payment and the next, which are the months to ask about.
+//
+// Where the loan came back, the two dates are the answer on their own: last paid
+// November, back in January, so December is the month to query. Counting
+// forward from a months-away figure instead left the column empty on every
+// single-month gap in the first export — the dates cannot disagree with
+// themselves, so they are used wherever they exist.
 function monthsBetween(lastPaid: string, backIn: string | null, away: number): string[] {
+  if (!lastPaid) return []
   const out: string[] = []
   let y = Number(lastPaid.slice(0, 4)), n = Number(lastPaid.slice(5, 7))
-  for (let i = 0; i < away; i++) {
+  if (!y || !n) return []
+
+  if (backIn) {
+    const end = backIn.slice(0, 7)
+    // A guard, so a bad date can never spin here.
+    for (let i = 0; i < 120; i++) {
+      n += 1; if (n > 12) { n = 1; y += 1 }
+      const m = `${y}-${String(n).padStart(2, '0')}`
+      if (m >= end) break
+      out.push(m)
+    }
+    return out
+  }
+
+  for (let i = 0; i < Math.max(0, Number(away) || 0); i++) {
     n += 1; if (n > 12) { n = 1; y += 1 }
     out.push(`${y}-${String(n).padStart(2, '0')}`)
   }
@@ -96,7 +117,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
         g.lender || '',
         g.balance ?? '',
         Number(g.monthly_trail || 0).toFixed(2),
-        g.months_away,
+        monthsBetween(g.last_paid, g.returned_in, g.months_away).length || g.months_away,
         Number(g.trail_missed || 0).toFixed(2),
         mFull(g.last_paid),
         g.came_back ? 'Yes' : 'No',
