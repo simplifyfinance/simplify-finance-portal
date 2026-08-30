@@ -122,7 +122,15 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
         mFull(g.last_paid),
         g.came_back ? 'Yes' : 'No',
         g.returned_in ? mFull(g.returned_in) : '',
-        monthsBetween(g.last_paid, g.returned_in, g.months_away).map(mFull).join('; '),
+        // Prefixed with the count, which reads better and, not incidentally,
+        // stops Excel parsing a lone "December 2025" as a date. It was doing
+        // that and right-aligning it off the edge of the column, which looked
+        // for all the world like an empty cell.
+        (() => {
+          const ms = monthsBetween(g.last_paid, g.returned_in, g.months_away)
+          if (!ms.length) return ''
+          return `${ms.length} ${ms.length === 1 ? 'month' : 'months'}: ${ms.map(mFull).join('; ')}`
+        })(),
       ]))
   }
 
