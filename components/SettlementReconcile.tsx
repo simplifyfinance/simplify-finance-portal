@@ -2,10 +2,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { TONE, money } from '@/lib/tone'
-import { sameBroker } from '@/lib/broker-key'
+import { sameBroker, brokerKey as normKey } from '@/lib/broker-key'
 import { calcCommission, lvrOf, type CommissionRate } from '@/lib/commission'
 import { todayYmd } from '@/lib/periods'
-import { COMMISSION_START, isIssued } from '@/lib/commission-schedule'
+import { COMMISSION_START, isIssued, stepMonth } from '@/lib/commission-schedule'
 import { reconcile, type PortalDeal, type PaidLine } from '@/lib/settlement-match'
 import { downloadCsv, stamp } from '@/lib/csv'
 import RowLimit, { STEPS } from '@/components/RowLimit'
@@ -35,31 +35,47 @@ export default function SettlementReconcile({ brokers }: {
   const [who, setWho] = useState('all')
   const [limit, setLimit] = useState<number>(STEPS[0])
   const [ready, setReady] = useState(false)
+  // Settled deals whose upfront statement has not been loaded, so nothing can
+  // be said about them either way.
+  const [unchecked, setUnchecked] = useState(0)
 
   useEffect(() => {
     (async () => {
       const today = todayYmd()
-      const [d, r, l, c] = await Promise.all([
+      const [d, r, l, c, st] = await Promise.all([
         supabase.from('deals').select('*').not('settled_at', 'is', null),
         supabase.from('commission_rates').select('*'),
         supabase.from('lenders').select('id, name'),
         supabase.from('commission_lines').select('*').eq('kind', 'upfront').limit(5000),
+        supabase.from('commission_statements').select('broker_key, kind, period_month').eq('kind', 'upfront'),
       ])
+      // Which upfront statements we actually hold. Without the statement that
+      // would have carried a deal's upfront, we cannot say it was never paid —
+      // only that we have not looked. An empty statement still counts: it was
+      // loaded, and it said nothing was paid.
+      const haveStatement = new Set(((st.data || []) as any[]).map(
+        x => `${normKey(x.broker_key)}|${String(x.period_month).slice(0, 7)}`))
       const rateBy = new Map<string, CommissionRate>()
       for (const x of (r.data || []) as any[]) rateBy.set(String(x.lender_id), x)
       const nameBy = new Map<string, string>()
       for (const x of (l.data || []) as any[]) nameBy.set(String(x.id), x.name)
 
       const pd: PortalDeal[] = []
+      let blind = 0
       for (const deal of (d.data || []) as any[]) {
         const settledOn = String(deal.settled_at || '').slice(0, 10)
         const month = settledOn.slice(0, 7)
         if (!month || month < COMMISSION_START) continue        // before the records start
         if (!isIssued('upfront', month, today)) continue        // not due yet, so not missing
 
-        const brokerKey = String(deal.assigned_broker || deal.broker_key || '')
-        const from = brokers.find(b => sameBroker(b.key, brokerKey))?.from || ''
+        const bKey = String(deal.assigned_broker || deal.broker_key || '')
+        const from = brokers.find(b => sameBroker(b.key, bKey))?.from || ''
         if (from && month < from) continue                      // earned elsewhere at the time
+
+        // The upfront for a settlement in month M lands on the statement for
+        // M+1. Without that statement loaded we have not looked, so the deal
+        // cannot be called unpaid — it is counted as unknown instead.
+        if (!haveStatement.has(`${normKey(bKey)}|${stepMonth(month, 1)}`)) { blind += 1; continue }
 
         const rate = rateBy.get(String(deal.lender_id)) || null
         const amount = deal.settled_total ?? deal.lodged_total ?? deal.loan_amount ?? null
@@ -67,7 +83,7 @@ export default function SettlementReconcile({ brokers }: {
         pd.push({
           id: String(deal.id),
           client: deal.client_name || deal.name || '',
-          brokerKey,
+          brokerKey: bKey,
           lenderId: deal.lender_id ? String(deal.lender_id) : null,
           lender: nameBy.get(String(deal.lender_id)) || '—',
           settledOn,
@@ -92,6 +108,7 @@ export default function SettlementReconcile({ brokers }: {
 
       setDeals(pd)
       setLines(pl)
+      setUnchecked(blind)
       setReady(true)
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -249,6 +266,11 @@ export default function SettlementReconcile({ brokers }: {
           </button>
         </div>
         <div className="px-3 py-2.5 border-t text-[11.5px]" style={{ borderColor: TONE.hair, color: TONE.label }}>
+          {unchecked > 0 && (
+            <><b style={{ color: TONE.ink }}>{unchecked} settled {unchecked === 1 ? 'deal is' : 'deals are'} not
+            checked</b> — the upfront statement that would have carried them has not been loaded, so nothing can be
+            said either way. Load it and they will appear here or disappear.{' '}</>
+          )}
           The two sides share no reference number, so deals and payments are paired on the client&rsquo;s name and
           the lender, with the settlement amount as a second opinion. Pairing is deliberately generous: a wrong
           pair would hide money, a missed pair only shows up as a row worth checking. A deal is not asked about
