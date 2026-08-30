@@ -522,6 +522,27 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
   const depositFrom = (price: number, loan: number, stampDuty: number) =>
     formatNumber(Math.max(0, Math.round(price - loan + stampDuty)).toString())
 
+  // Deals saved before the deposit rule changed still carry the old figure: the
+  // handlers only recalculate when somebody retypes a field, so an untouched
+  // deal keeps a deposit that is short by the stamp duty. The three numbers are
+  // checked against each other on every render, and where they disagree it is
+  // said out loud rather than quietly corrected — a broker may have set a figure
+  // deliberately, and rewriting saved numbers under them is worse than a warning.
+  const depositGap = (() => {
+    const price = num(d.purchasePrice), dep = num(d.deposit)
+    const loan = num(d.loanAmount), sd = num(d.stampDuty)
+    if (!price || !dep || !loan) return null
+    const expectedLoan = Math.max(0, Math.round(price - Math.max(0, dep - sd)))
+    const gap = Math.round(loan - expectedLoan)
+    if (Math.abs(gap) <= 1) return null
+    return {
+      gap,
+      // Out by the stamp duty is the fingerprint of the old rule.
+      looksLikeOldRule: sd > 0 && Math.abs(Math.abs(gap) - sd) <= 2,
+      suggestedDeposit: formatNumber(Math.max(0, Math.round(price - loan + sd)).toString()),
+    }
+  })()
+
   function handleLoPurchasePriceChange(val: string) {
     const price = num(val), dep = num(d.deposit), sd = num(d.stampDuty)
     if (dep > 0) {
@@ -792,6 +813,23 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
                   })()}
                 </Field>
                 <Field label="Stamp duty"><NumberInput value={d.stampDuty} onChange={handleLoStampDutyChange} /></Field>
+                {depositGap && (
+                  <div className="col-span-2 rounded-lg border px-3 py-2.5 text-[12px] leading-[1.6]"
+                       style={{ borderColor: '#EBD9BE', background: '#FDF6EC', color: '#7A5F17' }}>
+                    <b>These three numbers do not agree.</b>{' '}
+                    {depositGap.looksLikeOldRule
+                      ? <>The deposit looks like it was worked out before stamp duty was included, so it is short
+                          by about ${formatNumber(String(Math.round(num(d.stampDuty))))}. </>
+                      : <>Purchase price less the deposit after stamp duty does not come to the loan amount, out
+                          by ${formatNumber(String(Math.abs(depositGap.gap)))}. </>}
+                    Setting the deposit to <b>${depositGap.suggestedDeposit}</b> makes them line up.
+                    <button onClick={() => handleLoDepositChange(depositGap.suggestedDeposit)}
+                            className="ml-2 rounded-md border px-2 py-[2px] bg-white"
+                            style={{ borderColor: '#EBD9BE', color: '#7A5F17' }}>
+                      Use ${depositGap.suggestedDeposit}
+                    </button>
+                  </div>
+                )}
                 {/* Comes across from the BC. Editable here so an LO built without
                     one, or corrected after the fact, still names the right state. */}
                 <Field label="State">
