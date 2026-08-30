@@ -30,6 +30,19 @@ if ! ./scripts/check-email-html.sh; then
   exit 1
 fi
 
+# The refinance figures go straight into a client's email. They were covered by
+# tests from the start, but the runner was never installed, so for months the
+# checks existed and never ran. They run here now, before anything is built.
+echo "Checking the maths..."
+if ! npx vitest run > /tmp/ship-test.log 2>&1; then
+  echo
+  echo "TESTS FAILED - nothing committed, nothing pushed."
+  echo
+  tail -30 /tmp/ship-test.log
+  exit 1
+fi
+echo "Maths OK - $(grep -oE 'Tests +[0-9]+ passed' /tmp/ship-test.log | tail -1)."
+
 echo "Building..."
 if ! npm run build > /tmp/ship-build.log 2>&1; then
   echo
