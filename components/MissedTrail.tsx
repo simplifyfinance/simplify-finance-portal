@@ -4,6 +4,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { TONE, money } from '@/lib/tone'
 import { sameBroker } from '@/lib/broker-key'
 import RowLimit, { STEPS } from '@/components/RowLimit'
+import { downloadCsv, stamp } from '@/lib/csv'
 
 // Trail that stopped arriving. Two kinds, and they are not the same thing:
 //
@@ -77,6 +78,31 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
   function toggleAll() {
     if (chosen.length === rows.length) return setPicked(new Set())
     setPicked(new Set(rows.map(idOf)))
+  }
+
+  // Whatever the tab and the broker filter are showing, all of it — not just the
+  // rows on screen. A spreadsheet cut short at twenty rows is worse than none.
+  function exportCsv() {
+    const label = tab === 'back' ? 'came-back' : 'still-missing'
+    const name = who === 'all' ? 'all-brokers' : who
+    downloadCsv(
+      `trail-${label}-${name}-${stamp()}`,
+      ['Broker', 'Client', 'Loan reference', 'Lender', 'Balance', 'Monthly trail',
+       'Months missed', 'Trail missed', 'Last paid', 'Came back', 'Returned in', 'Months to query'],
+      rows.map(g => [
+        brokers.find(b => sameBroker(g.broker_key, b.key))?.name || g.broker_key,
+        g.client_name || '',
+        g.loan_ref,
+        g.lender || '',
+        g.balance ?? '',
+        Number(g.monthly_trail || 0).toFixed(2),
+        g.months_away,
+        Number(g.trail_missed || 0).toFixed(2),
+        mFull(g.last_paid),
+        g.came_back ? 'Yes' : 'No',
+        g.returned_in ? mFull(g.returned_in) : '',
+        monthsBetween(g.last_paid, g.returned_in, g.months_away).map(mFull).join('; '),
+      ]))
   }
 
   // The draft is prepared, never sent. It opens for you to read, edit and send
@@ -248,10 +274,18 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
             )}
           </tbody>
         </table>
-        <RowLimit shown={shown.length} total={rows.length} limit={limit} onChange={setLimit} />
+        <div className="flex items-center gap-2 flex-wrap">
+          <RowLimit shown={shown.length} total={rows.length} limit={limit} onChange={setLimit} />
+          <button onClick={exportCsv} disabled={!rows.length}
+                  className="text-[11.5px] border rounded-md px-2.5 py-[3px] bg-white disabled:opacity-40 mr-3"
+                  style={{ borderColor: TONE.line, color: TONE.label }}>
+            Export {rows.length} to Excel
+          </button>
+        </div>
         <div className="px-3 py-2.5 border-t text-[11.5px]" style={{ borderColor: TONE.hair, color: TONE.label }}>
           Trail missed is the months of silence at the rate the loan was paying when it stopped. Tick the rows you
-          want, or leave them all unticked to include every one in the email.
+          want, or leave them all unticked to include every one in the email. The export takes every row on this
+          tab, not just the ones on screen.
         </div>
       </div>
 

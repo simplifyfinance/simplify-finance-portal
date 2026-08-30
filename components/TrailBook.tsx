@@ -5,6 +5,7 @@ import { TONE, money } from '@/lib/tone'
 import { sameBroker } from '@/lib/broker-key'
 import { stepMonth } from '@/lib/commission-schedule'
 import RowLimit, { STEPS } from '@/components/RowLimit'
+import { downloadCsv, stamp } from '@/lib/csv'
 
 // Trail is a book, not a payment. Two questions matter: is it growing or
 // leaking, and which loans have actually left.
@@ -122,6 +123,26 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
   const bw = Math.min(17, Math.max(4, (slot - 12) / 2))
   const yOf = (v: number) => Y1 - (v / top) * (Y1 - Y0)
   const shown = gone.slice(0, limit)
+
+  // Every gone loan in the chosen window and broker, not the twenty on screen.
+  function exportCsv() {
+    const name = who === 'all' ? 'all-brokers' : who
+    const win = lookback >= 999 ? 'all-time' : `last-${lookback}-months`
+    downloadCsv(
+      `trail-gone-${name}-${win}-${stamp()}`,
+      ['Broker', 'Client', 'Loan reference', 'Lender', 'Balance', 'Trail a year',
+       'Last paid', 'Months silent'],
+      gone.map(l => [
+        brokers.find(b => sameBroker(l.broker_key, b.key))?.name || l.broker_key,
+        l.client_name || '',
+        l.loan_ref,
+        l.lender || '',
+        l.balance ?? '',
+        Number(l.annual_trail || 0).toFixed(2),
+        l.last_paid,
+        l.months_absent,
+      ]))
+  }
 
   return (
     <div className="mb-6">
@@ -291,10 +312,18 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
             )}
           </tbody>
         </table>
-        <RowLimit shown={shown.length} total={gone.length} limit={limit} onChange={setLimit} />
+        <div className="flex items-center gap-2 flex-wrap">
+          <RowLimit shown={shown.length} total={gone.length} limit={limit} onChange={setLimit} />
+          <button onClick={exportCsv} disabled={!gone.length}
+                  className="text-[11.5px] border rounded-md px-2.5 py-[3px] bg-white disabled:opacity-40 mr-3"
+                  style={{ borderColor: TONE.line, color: TONE.label }}>
+            Export {gone.length} to Excel
+          </button>
+        </div>
         <div className="px-3 py-2.5 border-t text-[11.5px]" style={{ borderColor: TONE.hair, color: TONE.label }}>
           A loan counts here by the month it stopped paying, so the figure stays a rate of loss rather than a pile
-          that only ever grows. Trail a year is the monthly rate it was last paying, annualised.
+          that only ever grows. Trail a year is the monthly rate it was last paying, annualised. The export takes
+          every loan in the window above, not just the ones on screen.
         </div>
       </div>
     </div>
