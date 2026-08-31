@@ -42,6 +42,33 @@ if [ -n "$frozen" ]; then
   fail=1
 fi
 
+# The key is the join, not a label. Printing it straight into JSX is how every
+# screen came to say "fabio" and "kylie". Use the register: useBrokerNames() in a
+# client component, or brokerLabel() where only a tidied key is possible.
+# A screen that deliberately shows the key itself marks the line "shows-the-key:".
+raw_shown=$(grep -rnE "(^|[^=$])\{[A-Za-z_$][A-Za-z0-9_.$?]*\.(assigned_broker|broker_key)\}" \
+        --include=*.tsx app components 2>/dev/null || true)
+
+# The marker usually reads better on the line above, so look back a little.
+shown=""
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  f="${line%%:*}"; r="${line#*:}"; n="${r%%:*}"
+  if echo "$line" | grep -q "shows-the-key:"; then continue; fi
+  from=$(( n - 3 )); [ "$from" -lt 1 ] && from=1
+  prev=$(( n - 1 ))
+  if [ "$prev" -ge 1 ] && sed -n "${from},${prev}p" "$f" 2>/dev/null | grep -q "shows-the-key:"; then continue; fi
+  shown="${shown}${line}"$'\n'
+done <<< "$raw_shown"
+
+if [ -n "${shown// /}" ] && [ "$shown" != $'\n' ]; then
+  echo
+  echo "BROKER KEY CHECK FAILED - a broker key is being rendered to the screen."
+  echo "It is lower case by design. Show the name from the register instead."
+  echo "$shown"
+  fail=1
+fi
+
 lender=$(grep -rn "\.eq('lender'," --include=*.ts --include=*.tsx app lib components 2>/dev/null || true)
 if [ -n "$lender" ]; then
   echo

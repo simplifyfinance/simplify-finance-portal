@@ -244,7 +244,7 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
                   <div className="text-xs text-gray-400 flex items-center gap-2">
                     <span>{deal.clients?.first_name} {deal.clients?.last_name}</span>
                     {deal.assigned_broker && (
-                      <span className="text-[11px] font-medium px-1.5 py-0.5 rounded border border-gray-200 text-gray-500">Broker: {deal.assigned_broker}</span>
+                      <span className="text-[11px] font-medium px-1.5 py-0.5 rounded border border-gray-200 text-gray-500">Broker: {labelFor(brokerKey_(deal.assigned_broker))}</span>
                     )}
                   </div>
                 </div>

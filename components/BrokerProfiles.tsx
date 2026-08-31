@@ -124,6 +124,7 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
                 <input className="font-semibold text-[#2E2A26] w-full border border-[#E8E1D6] rounded-lg px-3 py-2 focus:outline-none focus:border-[#2DBEFF]"
                   value={val(r, 'name')} onChange={e => edit(r.broker_key, { name: e.target.value })} placeholder="Broker name" />
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  {/* shows-the-key: this screen is where the key is managed, so it is the subject, not a label. */}
                   <span className="text-[11px] font-mono text-[#A29889]">key: {r.broker_key}</span>
                   {login
                     ? <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-[#F1F7F3] border border-[#CFE6D5] text-[#25794C] rounded-full px-2 py-[2px]">Has a login</span>
@@ -158,6 +159,7 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
               <div>
                 <label className={label}>Login</label>
                 <div className="text-[13px] text-[#6E665C] py-2">
+                  {/* shows-the-key: the person has to type this exact string into Team. */}
                   {login ? login.full_name : <span className="text-[#A29889]">none — invite them in Team with the key “{r.broker_key}”</span>}
                 </div>
               </div>

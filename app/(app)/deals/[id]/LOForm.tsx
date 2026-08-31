@@ -197,7 +197,7 @@ function LibraryField({ label, value, onChange }: { label: string; value: string
   )
 }
 
-export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: { deal: any; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void }) {
+export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, onDealFieldChange }: { deal: any; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void; onDealFieldChange?: (field: string, value: any) => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `lo_${deal.id}`
   const bc = deal.bc_data || {}
@@ -630,20 +630,45 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus }: 
         .filter((e: string) => !!e)
       const to = applicantEmails.length > 0 ? Array.from(new Set(applicantEmails)).join(',') : (deal.clients?.email || '')
       const bccParam = deal.salestrekker_bcc ? `&bcc=${encodeURIComponent(deal.salestrekker_bcc)}` : ''
-      window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}${bccParam}`
-      setSent(true)
-      setTimeout(() => setSent(false), 6000)
+      const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}${bccParam}`
+
+      // Persist BEFORE navigating to mailto. Handing the browser a mailto: can
+      // abort requests already in flight, and this write was fired unawaited
+      // with .then(() => {}) - so "sent" was shown while lo_sent_at never
+      // landed, and the deal sat on "Waiting on: Broker to review and send"
+      // forever. BC was fixed for exactly this; LO never was.
       const wasNotYetCompleted = !loCompletedAt
       const nowIso = new Date().toISOString()
       const updates: any = { lo_sent_at: nowIso }
-      if (!deal.assigned_credit_officer && !loCompletedAt) {
-        updates.lo_completed_at = nowIso
-        setLoCompletedAt(nowIso)
+      if (!deal.assigned_credit_officer && !loCompletedAt) updates.lo_completed_at = nowIso
+
+      // A blocked policy returns no rows and no error, so the row is what proves it.
+      const { data: saved, error: updErr } = await supabase
+        .from('deals').update(updates).eq('id', deal.id).select('id')
+      if (updErr || !saved || saved.length === 0) {
+        setSendError(updErr?.message
+          || 'The email was copied, but the deal was not marked as sent — nothing was saved. Do not close this tab.')
+        setSending(false)
+        return
       }
-      supabase.from('deals').update(updates).eq('id', deal.id).then(() => {})
+
+      if (updates.lo_completed_at) setLoCompletedAt(nowIso)
+      // Tell the page, so the badge at the top moves to "Waiting on: Client to
+      // respond" now rather than at the next refresh.
+      onDealFieldChange?.('lo_sent_at', nowIso)
+      if (updates.lo_completed_at) onDealFieldChange?.('lo_completed_at', nowIso)
+
       if (wasNotYetCompleted) {
-        fetch('/api/notify-salestrekker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId: deal.id, trigger: 'lo_sent' }) }).catch(() => {})
+        // keepalive, because the mailto below can cut a normal fetch short
+        fetch('/api/notify-salestrekker', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dealId: deal.id, trigger: 'lo_sent' }), keepalive: true,
+        }).catch(() => {})
       }
+
+      window.location.href = mailto
+      setSent(true)
+      setTimeout(() => setSent(false), 6000)
     } catch (e: any) { setSendError(e?.message || 'Could not copy the email — nothing was sent.') }
     setSending(false)
   }

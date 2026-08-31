@@ -434,3 +434,47 @@ case by design — it is the join, not a label.
   that would have shown an empty screen rather than an error.
 - **The new rule was proved by reintroducing the bug** and watching the ship
   refuse, then putting it back. A guard nobody has seen fail is not a guard.
+
+Swept the rest of the portal on 31 Aug: the deal header's broker chip, the
+Dashboard deal rows, and the deals list. Also removed `BROKER_DISPLAY`, a
+two-person map hard-coded into the deals page whose keys were capitalised and so
+never matched a key anyway, and the `['Fabio', 'Mark']` fallback beside it — a
+team list in code, twice over.
+
+- **`lib/broker-names.ts` is the one loader.** `useBrokerNames()` returns the
+  register's options and a `nameFor(key)`. Three screens had each written their
+  own version of the same query and each thrown the name away.
+- **A new deal no longer defaults to a named person.** It was `brokerKey ||
+  'Fabio'`. An unassigned deal is visible and fixable; one quietly filed under
+  the wrong broker is neither, so the picker now requires a choice.
+- **`check-broker-keys.sh` refuses a key rendered as text.** It ignores props,
+  form values and template-literal map keys, which is the key doing its job. The
+  Broker profiles screen shows the key deliberately and says so with a
+  `shows-the-key:` comment.
+
+## Sending the LO never recorded that it was sent (31 Aug 2026)
+
+A deal that had gone to the client still read "Waiting on: Broker to review and
+send". The label logic was right all along — `lo_sent_at` was simply never
+written.
+
+- **The write was fired and abandoned.** `supabase...update(updates).then(() => {})`,
+  unawaited and unchecked, immediately after `window.location.href = mailto:`.
+  Handing the browser a mailto can abort a request already in flight, so the
+  write frequently never completed — and "Sent" was shown before it was even
+  attempted.
+- **BC had already been fixed for exactly this** and carries a comment saying so
+  ("Navigation can abort in-flight requests, which previously lost Ellie's
+  notification silently"). LO was never brought across. Fixing one of a pair and
+  not auditing the other is how this returns.
+- **Now: persist first, await it, `.select()` it, check the row, and only then
+  navigate.** A failure says so instead of showing "Sent".
+- **The page is told immediately**, via `onDealFieldChange`, so the badge moves to
+  "Waiting on: Client to respond" without a refresh.
+- **`scripts/check-writes.sh` now fails the ship** on any `.then(() => {})` or
+  `.catch(() => {})` attached to an update, insert, upsert or delete. CLAUDE.md
+  calls unchecked writes the most repeated failure in this codebase; this was the
+  fifth. A write that genuinely does not matter opts out with a
+  `fire-and-forget: <why>` comment — writing the reason is the point. Only one
+  qualifies today: remembering which tab was last open.
+- **Proved by reintroducing the bug** and watching the ship refuse.

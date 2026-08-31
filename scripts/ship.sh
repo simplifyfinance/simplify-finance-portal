@@ -30,6 +30,13 @@ if ! ./scripts/check-email-html.sh; then
   exit 1
 fi
 
+echo "Checking database writes..."
+if ! ./scripts/check-writes.sh; then
+  echo
+  echo "NOT SHIPPED - fix the above first."
+  exit 1
+fi
+
 # The refinance figures go straight into a client's email. They were covered by
 # tests from the start, but the runner was never installed, so for months the
 # checks existed and never ran. They run here now, before anything is built.

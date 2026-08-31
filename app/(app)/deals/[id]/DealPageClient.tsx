@@ -68,6 +68,9 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
 
   function changeStage(newStage: string) {
     setStage(newStage)
+    // fire-and-forget: remembering the last tab is a convenience. If it does not
+    // save, the deal opens on the stage the progress bar says is current, which
+    // is the correct behaviour anyway. Nobody is told it worked.
     supabase.from('deals').update({ last_tab: newStage }).eq('id', deal.id).then(() => {})
   }
 
@@ -187,7 +190,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
       {stage === 'FactFind' && <FactFindForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
       {stage === 'Statements' && <StatementAnalysis deal={dealData} />}
       {stage === 'BC' && <BCForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
-      {stage === 'LO' && <LOForm deal={dealData} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
+      {stage === 'LO' && <LOForm deal={dealData} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} />}
       {stage === 'Compliance' && <ComplianceForm deal={dealData} onSaveStatus={setSaveStatus} />}
     </div>
   )

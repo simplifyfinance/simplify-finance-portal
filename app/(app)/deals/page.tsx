@@ -6,16 +6,17 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
 import { ageGroupOf, stageAge, GROUP_ORDER, GROUP_STYLE } from '@/lib/deal-age'
+import { useBrokerNames } from '@/lib/broker-names'
 type Client = { id: string; first_name: string; last_name: string; email?: string; phone?: string }
 type Deal = {
   id: string; deal_name: string; deal_type: string; stage: string; status: string; assigned_broker: string;
   created_at: string; clients: Client; client_proceeded?: boolean
   bc_completed_at?: string | null; lo_completed_at?: string | null; compliance_completed_at?: string | null
 }
-const BROKER_DISPLAY: Record<string, string> = { Fabio: 'Fabio De Castro', Mark: 'Mark Gallo' }
 export default function DealsPage() {
   const browser = createSupabaseBrowser()
   const router = useRouter()
+  const { nameFor } = useBrokerNames()
   const [deals, setDeals] = useState<Deal[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -222,7 +223,7 @@ export default function DealsPage() {
                   <div className="text-xs text-gray-400 mt-0.5">
                     {deal.clients?.first_name} {deal.clients?.last_name}
                     {deal.deal_type && <> · {deal.deal_type}</>}
-                    {deal.assigned_broker && <> · {BROKER_DISPLAY[deal.assigned_broker] || deal.assigned_broker}</>}
+                    {deal.assigned_broker && <> · {nameFor(deal.assigned_broker)}</>}
                     {(deal as any).credit_officers?.name && <> · Credit: {(deal as any).credit_officers.name}</>}
                   </div>
                 </div>
@@ -285,17 +286,14 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
   const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone: '' })
   const [showSecondApplicant, setShowSecondApplicant] = useState(false)
   const [form2, setForm2] = useState({ first_name: '', last_name: '', email: '', phone: '', client_id: '' })
-  const [deal, setDeal] = useState({ deal_type: 'Purchase', assigned_broker: brokerKey || 'Fabio', lead_source: '' })
+  // No fallback to a named person. An unassigned deal is visible and fixable;
+  // one quietly filed under the wrong broker is neither.
+  const [deal, setDeal] = useState({ deal_type: 'Purchase', assigned_broker: brokerKey || '', lead_source: '' })
   const [saving, setSaving] = useState(false)
-  const [brokerList, setBrokerList] = useState<string[]>([])
+  const { options: brokerList } = useBrokerNames()
 
   useEffect(() => {
     browser.from('clients').select('*').order('first_name').then(({ data }) => { if (data) setClients(data) })
-    browser.from('user_profiles').select('broker_key').not('broker_key', 'is', null)
-      .then(({ data }) => {
-        if (data && data.length > 0) setBrokerList(data.map((d: any) => d.broker_key).filter(Boolean))
-        else setBrokerList(['Fabio', 'Mark'])
-      })
   }, [])
 
   const app1First = selectedClient?.first_name || form.first_name || ''
@@ -447,7 +445,8 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Assigned broker</label>
               <select value={deal.assigned_broker} onChange={e => setDeal({...deal, assigned_broker: e.target.value})} className={sel}>
-                {brokerList.map(b => <option key={b} value={b}>{BROKER_DISPLAY[b] || b}</option>)}
+                <option value="">— select broker —</option>
+                {brokerList.map(b => <option key={b.key} value={b.key}>{b.name}</option>)}
               </select>
             </div>
           )}
@@ -465,7 +464,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
 
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-          <button onClick={handleCreate} disabled={saving || (!selectedClient && !form.first_name)}
+          <button onClick={handleCreate} disabled={saving || (!selectedClient && !form.first_name) || !deal.assigned_broker}
             className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-40">
             {saving ? 'Creating...' : 'Create deal'}
           </button>
