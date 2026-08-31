@@ -16,6 +16,22 @@ if [ -n "$raw" ]; then
   fail=1
 fi
 
+# A lowercased comparison looks careful and is not: brokerKey() takes the FIRST
+# WORD and strips punctuation, so "Fabio De Castro".toLowerCase() never equals
+# "fabio". Two of these sat on the dashboard and this check walked straight past
+# them, because it only looked for a bare ===.
+lower=$(grep -rnE "(assigned_broker|broker_key|broker_slug)[^=]*\.toLowerCase\(\)[[:space:]]*===" \
+        --include=*.ts --include=*.tsx app lib components 2>/dev/null \
+        | grep -v "lib/broker-key.ts" || true)
+if [ -n "$lower" ]; then
+  echo
+  echo "BROKER KEY CHECK FAILED - broker identity compared by lower-casing it."
+  echo "brokerKey() takes the first word; a full name will never match a key this way."
+  echo "Use sameBroker() from lib/broker-key.ts."
+  echo "$lower"
+  fail=1
+fi
+
 frozen=$(grep -rn "select('brokers')" --include=*.ts --include=*.tsx app lib components 2>/dev/null \
          | grep -v "lib/broker-profile.ts" || true)
 if [ -n "$frozen" ]; then

@@ -1,5 +1,5 @@
 'use client'
-import { brokerLabel } from '@/lib/broker-key'
+import { brokerLabel, sameBroker } from '@/lib/broker-key'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -88,7 +88,7 @@ export default function SettlementsPage() {
   useEffect(() => { load() }, [])
 
   const scoped = useMemo(
-    () => deals.filter(d => !scope || String(d.assigned_broker || '').toLowerCase() === scope),
+    () => deals.filter(d => !scope || sameBroker(d.assigned_broker, scope)),
     [deals, scope])
 
   // Confirmed and forecast for the month on screen. The grouping comes from the

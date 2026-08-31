@@ -1,5 +1,6 @@
 'use client'
 import { useMemo, useState } from 'react'
+import { brokerKey as brokerKey_, brokerLabel, sameBroker } from '@/lib/broker-key'
 import Link from 'next/link'
 
 type Deal = {
@@ -25,6 +26,7 @@ type Props = {
   creditOfficerId: string | null
   allowToggle: boolean
   defaultView: 'team' | 'mine'
+  brokerNames?: Record<string, string>
 }
 
 const stageColor: Record<string, string> = {
@@ -49,7 +51,7 @@ const actionColor: Record<ActionType, string> = {
   lo_to_compliance: 'bg-purple-100 text-purple-700',
 }
 
-export default function DashboardClient({ deals, fullName, brokerKey, creditOfficerId, allowToggle, defaultView }: Props) {
+export default function DashboardClient({ deals, fullName, brokerKey, creditOfficerId, allowToggle, defaultView, brokerNames = {} }: Props) {
   const [view, setView] = useState<'team' | 'mine'>(defaultView)
   const effectiveView = allowToggle ? view : defaultView
 
@@ -57,23 +59,29 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
     const byBroker: Record<string, { BC: number; LO: number; Compliance: number; total: number }> = {}
     const source = effectiveView === 'mine' && (brokerKey || creditOfficerId)
       ? deals.filter(d =>
-          (brokerKey && d.assigned_broker?.toLowerCase() === brokerKey.toLowerCase()) ||
+          sameBroker(d.assigned_broker, brokerKey) ||
           (creditOfficerId && d.assigned_credit_officer === creditOfficerId)
         )
       : deals
     source.forEach(d => {
-      const key = d.assigned_broker || 'Unassigned'
+      // Group on the key, because that is what the deal stores and what matches.
+      // The label is looked up separately - the two must not be the same string.
+      const key = brokerKey_(d.assigned_broker) || 'unassigned'
       if (!byBroker[key]) byBroker[key] = { BC: 0, LO: 0, Compliance: 0, total: 0 }
       if (d.stage === 'BC' || d.stage === 'LO' || d.stage === 'Compliance') byBroker[key][d.stage]++
       byBroker[key].total++
     })
     return Object.entries(byBroker).sort((a, b) => b[1].total - a[1].total)
-  }, [deals])
+  }, [deals, effectiveView, brokerKey, creditOfficerId])
+
+  // The register first, then a tidied key for a broker with no name recorded.
+  const labelFor = (key: string) =>
+    key === 'unassigned' ? 'Unassigned' : (brokerNames[key] || brokerLabel(key))
 
   const filteredDeals = useMemo(() => {
     if (effectiveView === 'mine' && (brokerKey || creditOfficerId)) {
       return deals.filter(d =>
-        (brokerKey && d.assigned_broker?.toLowerCase() === brokerKey.toLowerCase()) ||
+        sameBroker(d.assigned_broker, brokerKey) ||
         (creditOfficerId && d.assigned_credit_officer === creditOfficerId)
       )
     }
@@ -83,7 +91,7 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
   const actionItems = useMemo(() => {
     const items: { deal: Deal; type: ActionType }[] = []
     for (const d of filteredDeals) {
-      const isDealsBroker = !!brokerKey && d.assigned_broker?.toLowerCase() === brokerKey.toLowerCase()
+      const isDealsBroker = sameBroker(d.assigned_broker, brokerKey)
       // Both "client proceeded" checks are scoped to the CURRENT stage and not-yet-completed -
       // these flags never reset once set, so without this scoping they'd stay flagged forever
       // even after the deal has long since moved past that point.
@@ -157,7 +165,7 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
           <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(brokerSummary.length, 4)}, minmax(0, 1fr))` }}>
             {brokerSummary.map(([broker, counts]) => (
               <div key={broker} className="bg-gray-50 rounded-lg p-3">
-                <div className="text-xs font-medium text-[#343333] mb-1">{broker}</div>
+                <div className="text-xs font-medium text-[#343333] mb-1">{labelFor(broker)}</div>
                 <div className="text-xl font-medium text-[#343333] mb-2">{counts.total}</div>
                 <div className="flex h-1.5 rounded-sm overflow-hidden">
                   {counts.BC > 0 && <div className="bg-blue-500" style={{ width: `${(counts.BC / counts.total) * 100}%` }} />}

@@ -113,7 +113,7 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
       </h2>
 
       {rows.map(r => {
-        const login = logins.find(l => (l.broker_key || '').toLowerCase() === r.broker_key)
+        const login = logins.find(l => sameBroker(l.broker_key, r.broker_key))
         const nameDrift = !!login && login.full_name.trim().toLowerCase() !== String(val(r, 'name')).trim().toLowerCase()
         const m = msg[r.broker_key] || ''
         const failed = m.startsWith('NOT ')

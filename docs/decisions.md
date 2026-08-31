@@ -412,3 +412,25 @@ taken down until it clears: 5.32:1 on white, 4.96:1 on the chip. Measured, not
 eyeballed. `TONE.warn` is the token; only files that already import TONE use it,
 because rewriting a Tailwind class string into a JS expression breaks the class
 silently — which is exactly what happened on the first attempt.
+
+## The broker key is never what a person reads (31 Aug 2026)
+
+Team workload and the Dashboard were printing the broker key straight onto the
+screen, so every broker appeared as "fabio", "kylie", "mark". The key is lower
+case by design — it is the join, not a label.
+
+- **Name from the register, key for matching.** Team workload was already
+  querying `brokers` for both and then mapping to the key, throwing the name
+  away. The Dashboard had no register at all; its server page now loads one and
+  passes it down.
+- **A tidied key is the fallback, and only for a profile with no name recorded.**
+  Never for a name we simply did not bother to fetch.
+- **`check-broker-keys.sh` had a hole and has been closed.** It caught a bare
+  `assigned_broker ===` but walked straight past
+  `assigned_broker?.toLowerCase() === brokerKey.toLowerCase()`, which looks
+  careful and is not: `brokerKey()` takes the first word, so "Fabio De Castro"
+  lower-cased never equals "fabio". Two of those were live on the Dashboard.
+  Extending the check found four more, including a Settlements broker filter
+  that would have shown an empty screen rather than an error.
+- **The new rule was proved by reintroducing the bug** and watching the ship
+  refuse, then putting it back. A guard nobody has seen fail is not a guard.

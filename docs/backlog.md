@@ -21,6 +21,13 @@ had already been done. Check `docs/decisions.md` before trusting a blocker here.
 
 ## Next to build
 
+**SETTLEMENTS IS NEXT.** Agreed 17 Aug, re-confirmed 31 Aug. It is the screen the
+team touches daily. Blocked on one thing only: the settlement team's spreadsheet
+— their actual columns, what they tick off monthly, and anything colour-coded
+(usually a status nobody wrote down). Ask for it at the start of the next
+session rather than starting something else.
+
+
 1. **Loans at risk of clawback.** No new plumbing — settled dates and clawback
    windows are loaded. Total exposure, the 100% band (first 12 months), what clears
    each month, by lender. Works on unconfirmed rates: it only uses the window.

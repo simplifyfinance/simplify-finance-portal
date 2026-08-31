@@ -1,5 +1,5 @@
 'use client'
-import { sameBroker } from '@/lib/broker-key'
+import { brokerLabel, sameBroker } from '@/lib/broker-key'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
@@ -13,7 +13,7 @@ type DealRow = {
   credit_assigned_at: string | null
 }
 
-type BrokerStat = { name: string; total: number; inBC: number; inLO: number; inCompliance: number; completed: number }
+type BrokerStat = { key: string; name: string; total: number; inBC: number; inLO: number; inCompliance: number; completed: number }
 type OfficerStat = { id: string; name: string; total: number; active: number; completed: number; avgBcDays: number | null; avgLoComplianceDays: number | null }
 
 const BAR_COLOR = '#2DBEFF'
@@ -33,10 +33,15 @@ export default function WorkloadClient() {
     setError('')
 
     const { data: brokerRows } = await supabase.from('brokers').select('broker_key, name, active').order('name')
-    const brokerNames: string[] = (brokerRows || [])
+    const brokerList = (brokerRows || [])
       .filter((b: any) => b.active !== false)
-      .map((b: any) => String(b.broker_key))
-      .filter(Boolean)
+      .map((b: any) => ({
+        key: String(b.broker_key || ''),
+        // The register is where a broker's name lives. Falling back to a tidied
+        // key is only for a profile that has not been given a name yet.
+        name: String(b.name || '').trim() || brokerLabel(b.broker_key),
+      }))
+      .filter((b: any) => b.key)
 
     const { data: officers, error: officersError } = await supabase
       .from('credit_officers')
@@ -52,8 +57,8 @@ export default function WorkloadClient() {
 
     const dealRows = (deals || []) as DealRow[]
 
-    const brokers: BrokerStat[] = brokerNames.map(name => {
-      const myDeals = dealRows.filter(d => sameBroker(d.assigned_broker, name))
+    const brokers: BrokerStat[] = brokerList.map(b => {
+      const myDeals = dealRows.filter(d => sameBroker(d.assigned_broker, b.key))
       // Active-stage buckets must exclude deals already marked completed/lost overall -
       // relying on the bc/lo/compliance_completed_at timestamps alone is misleading for
       // deals that reached status='completed' through some other path without those
@@ -64,7 +69,7 @@ export default function WorkloadClient() {
       const inCompliance = activeDeals.filter(d => d.lo_completed_at && !d.compliance_completed_at).length
       const inLO = activeDeals.filter(d => d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at).length
       const inBC = activeDeals.filter(d => !d.bc_completed_at).length
-      return { name, total: myDeals.length, inBC, inLO, inCompliance, completed }
+      return { key: b.key, name: b.name, total: myDeals.length, inBC, inLO, inCompliance, completed }
     })
 
     function daysBetween(startIso: string, endIso: string): number {
@@ -145,7 +150,7 @@ export default function WorkloadClient() {
               <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Deals per broker</div>
               <div className="flex flex-col gap-3">
                 {brokerStats.map(b => (
-                  <div key={b.name}>
+                  <div key={b.key}>
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
                       <span className="font-medium text-[#343333]">{b.name}</span>
                       <span>{b.total}</span>

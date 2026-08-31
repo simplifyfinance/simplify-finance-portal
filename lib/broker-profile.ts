@@ -1,4 +1,5 @@
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
+import { sameBroker } from '@/lib/broker-key'
 
 export type BrokerProfile = {
   id?: string; brokerKey?: string; name: string; title?: string; crn?: string
@@ -25,7 +26,7 @@ export async function resolveBrokerProfile(key: string | null | undefined): Prom
       .select('broker_key, name, title, crn, calendly, brand_ids, user_id')
 
     const rows = (all || []) as any[]
-    const row = rows.find(b => String(b.broker_key || '').toLowerCase() === wanted)
+    const row = rows.find(b => sameBroker(b.broker_key, wanted))
       || rows.find(b => String(b.name || '').trim().toLowerCase() === wanted)
       || rows.find(b => String(b.name || '').trim().toLowerCase().split(' ')[0] === wanted)
 

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { ROLES } from '@/lib/permissions'
+import { sameBroker } from '@/lib/broker-key'
 
 type UserProfile = {
   id: string
@@ -84,7 +85,7 @@ export default function TeamSection() {
     const value = raw === '' ? null : raw
     setAccessMsg('')
     if (value) {
-      const clash = users.find(u => u.id !== user.id && (u.broker_key || '').toLowerCase() === value)
+      const clash = users.find(u => u.id !== user.id && sameBroker(u.broker_key, value))
       if (clash) { setAccessMsg(`That key already belongs to ${clash.full_name}. Two people cannot share one.`); return }
     }
     if (!(await writeProfile(user.id, { broker_key: value }))) return

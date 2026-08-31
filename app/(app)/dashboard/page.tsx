@@ -43,6 +43,17 @@ export default async function Dashboard() {
 
   const { data: deals } = await dealsQuery
 
+  // Broker names come from the register, never from the key stored on a deal.
+  // The key is lower case by design and was being printed straight onto the
+  // screen, so every broker read as "fabio" or "kylie".
+  const { data: brokerRows } = await supabase.from('brokers').select('broker_key, name')
+  const brokerNames: Record<string, string> = {}
+  for (const b of (brokerRows || []) as any[]) {
+    const k = String(b.broker_key || '').toLowerCase()
+    const n = String(b.name || '').trim()
+    if (k && n) brokerNames[k] = n
+  }
+
   const allowToggle = !!brokerKey && hasTeamAccess
   const defaultView: 'team' | 'mine' = creditOfficerId ? 'mine' : 'team'
 
@@ -54,6 +65,7 @@ export default async function Dashboard() {
       creditOfficerId={creditOfficerId}
       allowToggle={allowToggle}
       defaultView={defaultView}
+      brokerNames={brokerNames}
     />
   )
 }
