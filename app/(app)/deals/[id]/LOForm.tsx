@@ -492,6 +492,41 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     setD({ ...d, lenders: updated })
   }
 
+  const [flagOpen, setFlagOpen] = useState(false)
+  const [flagNote, setFlagNote] = useState('')
+  const [flagSubmitting, setFlagSubmitting] = useState(false)
+  const [flagMsg, setFlagMsg] = useState('')
+  const [loStyleNotes, setLoStyleNotes] = useState<string[]>([])
+
+  useEffect(() => {
+    supabase.from('settings').select('lo_style_notes').eq('id', 'singleton').single()
+      .then(({ data }) => { if (data?.lo_style_notes?.length) setLoStyleNotes(data.lo_style_notes) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function submitFlag() {
+    if (!flagNote.trim()) return
+    setFlagSubmitting(true); setFlagMsg('')
+    const { data: userData } = await supabase.auth.getUser()
+    // A blocked policy returns no rows and no error, so the row is what proves it.
+    const { data, error } = await supabase.from('compliance_flags').insert({
+      deal_id: deal.id,
+      stage: 'lo',
+      field_key: 'lo_recommendation',
+      field_label: 'LO recommendation paragraph',
+      note: flagNote.trim(),
+      flagged_by: userData?.user?.email || 'unknown',
+    }).select('id')
+    setFlagSubmitting(false)
+    if (error || !data || data.length === 0) {
+      setFlagMsg('NOT SENT — ' + (error?.message || 'the database refused it. Nothing was saved.'))
+      return
+    }
+    setFlagOpen(false); setFlagNote('')
+    setFlagMsg('Flag sent. It will appear in Settings → Compliance AI.')
+    setTimeout(() => setFlagMsg(''), 6000)
+  }
+
   async function generateRecommendation() {
     setGeneratingRec(true)
     const rec = d.lenders.find(l => l.lenderName === d.recommendedLender)
@@ -503,7 +538,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     const loanPurposeContext = ff.loanPurpose ? `\n\nThe client's stated purpose for this loan: "${ff.loanPurpose}". Where genuinely relevant, briefly connect the recommendation to this stated purpose — do not force it if there's no natural connection.` : ''
     const prompt = `You are a mortgage broker writing a recommendation for a client. Here are all the lending options reviewed:\n${lenderSummaries}\n\nThe research criteria that mattered for this client: ${criteriaList}.${loanPurposeContext}\n\nWrite 2-3 professional sentences recommending ${d.recommendedLender} (${rec?.productName}) for a loan amount of ${d.loanAmount}. Explicitly compare it against the other option(s) listed above — reference rate, fees, and approval turnaround days where the recommended lender is genuinely better, and mention which of the client's research criteria it satisfies. Be specific and factual, don't just describe the recommended lender in isolation. Do not use placeholder text.`
     try {
-      const res = await fetch('/api/generate-lo-recommendation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) })
+      const res = await fetch('/api/generate-lo-recommendation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, styleNotes: loStyleNotes }) })
       const data = await res.json()
       if (data.error) { alert('Error generating recommendation: ' + data.error); setGeneratingRec(false); return }
       const text = data.text || ''
@@ -1156,6 +1191,31 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             <button onClick={generateRecommendation} disabled={generatingRec || !d.recommendedLender} className="mt-2 text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-4 py-2 hover:bg-blue-50 transition disabled:opacity-40">
               {generatingRec ? 'Generating...' : '✦ AI draft recommendation'}
             </button>
+            <button onClick={() => { setFlagOpen(v => !v); setFlagNote('') }}
+              className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
+            {loStyleNotes.length > 0 && (
+              <span className="ml-2 text-[11px] text-gray-400">
+                {loStyleNotes.length} style note{loStyleNotes.length === 1 ? '' : 's'} applied
+              </span>
+            )}
+            {flagOpen && (
+              <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <textarea spellCheck="true" className={inp + ' min-h-[60px] resize-y bg-white'} autoFocus
+                  placeholder="What was wrong with this recommendation?"
+                  value={flagNote} onChange={e => setFlagNote(e.target.value)} />
+                <div className="flex gap-2 mt-2">
+                  <button onClick={submitFlag} disabled={flagSubmitting || !flagNote.trim()}
+                    className="text-xs bg-amber-500 text-white rounded-lg px-3 py-1.5 hover:bg-amber-600 disabled:opacity-40">
+                    {flagSubmitting ? 'Submitting...' : 'Submit flag'}
+                  </button>
+                  <button onClick={() => { setFlagOpen(false); setFlagNote('') }}
+                    className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                </div>
+              </div>
+            )}
+            {flagMsg && (
+              <div className={`mt-2 text-xs ${flagMsg.startsWith('NOT SENT') ? 'text-red-600' : 'text-green-600'}`}>{flagMsg}</div>
+            )}
           </div>
 
           {/* Research criteria */}

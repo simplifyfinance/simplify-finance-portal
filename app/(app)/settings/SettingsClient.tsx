@@ -50,6 +50,8 @@ export default function SettingsPage() {
   const [newDealNotificationUserId, setNewDealNotificationUserId] = useState('')
   const [stageMoveNotificationUserId, setStageMoveNotificationUserId] = useState('')
   const [complianceStyleNotes, setComplianceStyleNotes] = useState<string[]>([])
+  const [loStyleNotes, setLoStyleNotes] = useState<string[]>([])
+  const [newLoStyleNote, setNewLoStyleNote] = useState('')
   const [newStyleNote, setNewStyleNote] = useState('')
   const [statementRules, setStatementRules] = useState<any>(null)
   const [complianceFlags, setComplianceFlags] = useState<any[]>([])
@@ -63,9 +65,17 @@ export default function SettingsPage() {
   }
 
   async function promoteFlag(flag: any) {
-    const updatedNotes = [...complianceStyleNotes, flag.note]
-    setComplianceStyleNotes(updatedNotes)
-    await supabase.from('settings').upsert({ id: 'singleton', compliance_style_notes: updatedNotes, updated_at: new Date().toISOString() })
+    const isLo = flag.stage === 'lo'
+    const updated = isLo ? [...loStyleNotes, flag.note] : [...complianceStyleNotes, flag.note]
+    if (isLo) setLoStyleNotes(updated); else setComplianceStyleNotes(updated)
+    const patch: any = { id: 'singleton', updated_at: new Date().toISOString() }
+    if (isLo) patch.lo_style_notes = updated; else patch.compliance_style_notes = updated
+    const { data: wrote, error } = await supabase.from('settings').upsert(patch).select('id')
+    if (error || !wrote?.length) {
+      alert('The note was not saved: ' + (error?.message || 'the database refused it.'))
+      if (isLo) setLoStyleNotes(loStyleNotes); else setComplianceStyleNotes(complianceStyleNotes)
+      return
+    }
     await supabase.from('compliance_flags').update({ promoted: true }).eq('id', flag.id)
     loadComplianceFlags()
   }
@@ -122,6 +132,7 @@ export default function SettingsPage() {
         if (data.new_deal_notification_user_id) setNewDealNotificationUserId(data.new_deal_notification_user_id)
         if (data.stage_move_notification_user_id) setStageMoveNotificationUserId(data.stage_move_notification_user_id)
         if (data.compliance_style_notes?.length) setComplianceStyleNotes(data.compliance_style_notes)
+        if (data.lo_style_notes?.length) setLoStyleNotes(data.lo_style_notes)
         if (data.statement_rules) setStatementRules(data.statement_rules)
       }
       setLoading(false)
@@ -163,6 +174,7 @@ export default function SettingsPage() {
       new_deal_notification_user_id: newDealNotificationUserId || null,
       stage_move_notification_user_id: stageMoveNotificationUserId || null,
       compliance_style_notes: complianceStyleNotes,
+      lo_style_notes: loStyleNotes,
       statement_rules: statementRules,
       updated_at: new Date().toISOString()
     })
@@ -377,9 +389,30 @@ export default function SettingsPage() {
       )}
       {pane === 'compliance' && (
       <section className="mb-10">
-        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Compliance AI Flags {complianceFlags.length > 0 && <span className="bg-amber-100 text-amber-600 rounded-full px-2 py-0.5 ml-1">{complianceFlags.length}</span>}</h2>
+        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Lending Options AI Style Notes</h2>
         <div className="border border-[#EDE7DD] rounded-xl p-5 bg-white">
-          <p className="text-[11.5px] text-[#A29889] mb-3">Issues flagged by the team on live deals. Promote a flag to turn it into a permanent Style Note applied to every future generation, or dismiss it if it doesn't need to become a standing rule.</p>
+          <p className="text-[11.5px] text-[#A29889] mb-3">The same idea for the LO recommendation paragraph. Kept apart from the Compliance notes on purpose — a correction about how a recommendation should read has no business changing a Compliance answer.</p>
+          <div className="flex flex-col gap-2 mb-3">
+            {loStyleNotes.map((note, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
+                <span className="flex-1">{note}</span>
+                <button onClick={() => setLoStyleNotes(prev => prev.filter((_, idx) => idx !== i))} className="text-xs text-[#C9C1B4] hover:text-red-400">✕</button>
+              </div>
+            ))}
+            {loStyleNotes.length === 0 && <p className="text-[11.5px] text-[#A29889]">None yet.</p>}
+          </div>
+          <div className="flex gap-2">
+            <input className="flex-1 text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={newLoStyleNote} onChange={e => setNewLoStyleNote(e.target.value)} placeholder="Add a style note..." onKeyDown={e => { if (e.key === 'Enter' && newLoStyleNote.trim()) { setLoStyleNotes(prev => [...prev, newLoStyleNote.trim()]); setNewLoStyleNote('') } }} />
+            <button onClick={() => { if (newLoStyleNote.trim()) { setLoStyleNotes(prev => [...prev, newLoStyleNote.trim()]); setNewLoStyleNote('') } }} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">Add</button>
+          </div>
+        </div>
+      </section>
+      )}
+      {pane === 'compliance' && (
+      <section className="mb-10">
+        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Open Flags {complianceFlags.length > 0 && <span className="bg-amber-100 text-amber-600 rounded-full px-2 py-0.5 ml-1">{complianceFlags.length}</span>}</h2>
+        <div className="border border-[#EDE7DD] rounded-xl p-5 bg-white">
+          <p className="text-[11.5px] text-[#A29889] mb-3">Issues flagged by the team on live deals, from both Compliance and Lending Options. Promote a flag to turn it into a permanent Style Note applied to every future generation, or dismiss it if it doesn't need to become a standing rule.</p>
           {loadingFlags ? (
             <p className="text-[11.5px] text-[#A29889]">Loading...</p>
           ) : complianceFlags.length === 0 ? (
@@ -389,12 +422,19 @@ export default function SettingsPage() {
               {complianceFlags.map((flag) => (
                 <div key={flag.id} className="bg-gray-50 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11.5px] font-medium text-[#6E665C]">{flag.field_label} — {flag.deals?.deal_name || 'Unknown deal'}</span>
+                    <span className="text-[11.5px] font-medium text-[#6E665C]">
+                      <span className={`text-[9.5px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[1px] border mr-1.5 ${flag.stage === 'lo' ? 'bg-[#EAF7FE] border-[#BFE6F9] text-[#0E8FCB]' : 'bg-[#FAF7F2] border-[#E8E1D6] text-[#6E665C]'}`}>
+                        {flag.stage === 'lo' ? 'LO' : 'Compliance'}
+                      </span>
+                      {flag.field_label} — {flag.deals?.deal_name || 'Unknown deal'}
+                    </span>
                     <span className="text-[10px] text-[#C9C1B4]">{flag.flagged_by} · {new Date(flag.created_at).toLocaleDateString()}</span>
                   </div>
                   <p className="text-sm mb-2">{flag.note}</p>
                   <div className="flex gap-2">
-                    <button onClick={() => promoteFlag(flag)} className="text-[11.5px] bg-[#343333] text-white rounded-lg px-3 py-1.5 hover:bg-[#2a2a2a]">Promote to Style Note</button>
+                    <button onClick={() => promoteFlag(flag)} className="text-[11.5px] bg-[#343333] text-white rounded-lg px-3 py-1.5 hover:bg-[#2a2a2a]">
+                      Promote to {flag.stage === 'lo' ? 'LO' : 'Compliance'} Style Note
+                    </button>
                     <button onClick={() => dismissFlag(flag.id)} className="text-[11.5px] text-[#A29889] hover:text-[#2E2A26]">Dismiss</button>
                   </div>
                 </div>

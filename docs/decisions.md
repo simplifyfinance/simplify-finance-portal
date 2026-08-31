@@ -508,3 +508,28 @@ A deal whose LO had been written, sent and was sitting with the client still rea
 Separately: `deals.stage` now drives almost nothing but is still stored. Either
 it should be removed or it should be maintained. Leaving it half-true is what
 caused this.
+
+## Flagging an LO recommendation feeds the next one (31 Aug 2026)
+
+Compliance already had a feedback loop: flag a bad AI answer, the flag lands in
+Settings, promote it and it becomes a style note the next draft has to obey. The
+Lending Options recommendation had the AI button but no way to say it got it
+wrong.
+
+- **The LO now has the same flag panel**, next to the "✦ AI draft recommendation"
+  button. A flag writes to `compliance_flags` with `stage = 'lo'`.
+- **LO flags and Compliance flags are stored in the same table but kept apart.**
+  Promoting an LO flag writes to `settings.lo_style_notes`; promoting a
+  Compliance flag writes to `settings.compliance_style_notes`, exactly as before.
+  A correction about how a recommendation should be worded must never be able to
+  change a Compliance answer — different documents, different regulator, different
+  audience. Settings shows an LO/Compliance chip on every flag so it is obvious
+  which pile a correction is going into.
+- `compliance_flags.stage` defaults to 'compliance', so every existing flag keeps
+  behaving the way it always did.
+- The generate route takes `styleNotes` and appends them to the prompt, mirroring
+  `generate-compliance`. The LO form shows "N style notes applied" so it is clear
+  the corrections are actually being used.
+- Both promote paths now check the returned row and roll back the on-screen list
+  if the write did not happen — RLS returns zero rows and no error, so an
+  unchecked write looks like success.
