@@ -492,3 +492,48 @@ describe('a pay run with a hole in it', () => {
     expect(c.detail.gap).toBeNull()
   })
 })
+
+// ---------------------------------------------------------------------------
+// One cause, one question.
+//
+// Fabio, 31 Aug 2026, looking at three worklist rows on the Viragova file:
+// "these 3 all cover the same". He was right — the 124 day gap was also why the
+// credits came out 55.8% under declared and why four stability tests failed.
+describe('the worklist does not ask the same thing three times', () => {
+  const a = analyse(viragova(), KORNELIA_FF)
+  const keys = a.worklist.map((w: any) => w.key)
+
+  it('does not raise the stability tests separately when a gap caused them', () => {
+    expect(keys).not.toContain('income_stability')
+  })
+
+  it('says on the gap what it is now covering', () => {
+    const gap = a.worklist.find((w: any) => w.key === 'salary_gap')
+    expect(gap.text).toContain('income stability tests failed')
+    expect(gap.text).toContain('asked once here rather than three times')
+  })
+
+  it('keeps the variance only because it is still short on the CURRENT pay', () => {
+    // ~$105k on the run rate against $125k declared is a real question. The
+    // 55.8% figure is just the leave period and would not be.
+    const v = a.worklist.find((w: any) => w.key === 'salary_variance')
+    expect(v.text).toContain('current run rate')
+    expect(v.text).not.toContain('55.8%')
+  })
+
+  it('drops the variance entirely when the current pay matches what was declared', () => {
+    const ff = { ...KORNELIA_FF, applicants: [{ ...KORNELIA_FF.applicants[0], income: [{ grossSalary: '105000', grossSalaryFrequency: 'Annually' }] }] }
+    const keys2 = analyse(viragova(), ff).worklist.map((w: any) => w.key)
+    expect(keys2).not.toContain('salary_variance')
+    expect(keys2).toContain('salary_gap')
+  })
+
+  it('still raises stability on its own when there is no gap to blame', () => {
+    // Steady dates, wildly different amounts — nothing to do with a gap.
+    const wobbly = build([])
+    wobbly.transactions = wobbly.transactions.map((x, i) =>
+      x.description.includes('PAYROLL') ? { ...x, amount: i % 2 ? 1200 : 7300 } : x)
+    const w = analyse(wobbly, FACT_FIND).worklist.map((x: any) => x.key)
+    expect(w).toContain('income_stability')
+  })
+})

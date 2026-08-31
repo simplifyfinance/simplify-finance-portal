@@ -645,8 +645,10 @@ export function analyse(parsed: ParsedStatements, factFind: any, rulesInput?: an
 
   // Only worth showing when the run is uneven. On a steady fortnightly cycle it
   // would just repeat the card above.
+  const runGrossUp = (salaryIrregular && runRateMonthly > 0) ? grossFromNet(runRateAnnualNet, domFy) : null
+  const runGrossAnnual = runGrossUp ? round2(runGrossUp.gross) : 0
   if (salaryIrregular && runRateMonthly > 0) {
-    const runGross = grossFromNet(runRateAnnualNet, domFy)
+    const runGross = runGrossUp!
     cards.push({
       key: 'runrate', title: 'Recent run rate',
       value: fmtMoney(runRateMonthly), valueNumber: runRateMonthly,
@@ -1219,10 +1221,36 @@ export function analyse(parsed: ParsedStatements, factFind: any, rulesInput?: an
     key: 'undisclosed_commitments', flag: 'action', label: 'Action', card: 'undisclosed',
     text: `${fmtMoney(undeclaredMonthly)} a month of commitments not declared — ${undeclared.map(c => c.provider).join(', ')}. Re-run servicing before you call the client.`,
   })
-  if (salaryVariancePct !== null && Math.abs(salaryVariancePct) > R.salaryQueryPct) worklist.push({
-    key: 'salary_variance', flag: Math.abs(salaryVariancePct) > R.salaryActionPct ? 'action' : 'query', label: 'Query', card: 'salaryVariance',
-    text: `Salary credits sit ${Math.abs(salaryVariancePct)}% ${salaryVariancePct < 0 ? 'below' : 'above'} the declared gross — HELP or salary sacrifice would explain a shortfall, but it needs an answer on file.`,
-  })
+  // One cause, one question.
+  //
+  // Fabio, 31 Aug 2026, on the Viragova file: "these 3 all cover the same". He
+  // was right — a 124 day hole in the pay run is ALSO why the credits came out
+  // 55.8% under the declared gross and why four stability tests failed. Three
+  // rows, one fact, and answering any of them answers the others. A list that
+  // repeats itself stops being read.
+  //
+  // So when there is a gap, the gap owns the question. The variance is not simply
+  // dropped though: it is re-measured against the run rate, because "still short
+  // even on what they earn NOW" is a different question from "short because of
+  // the months they were not paid", and only the first one deserves its own row.
+  const runVariancePct = (salaryHasGap && runGrossAnnual && declaredInc.employmentAnnual)
+    ? Math.round(((runGrossAnnual - declaredInc.employmentAnnual) / declaredInc.employmentAnnual) * 1000) / 10
+    : null
+  const varianceIsJustTheGap = salaryHasGap
+    && (runVariancePct === null || Math.abs(runVariancePct) <= R.salaryQueryPct)
+
+  if (salaryVariancePct !== null && Math.abs(salaryVariancePct) > R.salaryQueryPct && !varianceIsJustTheGap) {
+    const onRunRate = salaryHasGap && runVariancePct !== null
+    const pct = onRunRate ? Math.abs(runVariancePct!) : Math.abs(salaryVariancePct)
+    const dir = (onRunRate ? runVariancePct! : salaryVariancePct) < 0 ? 'below' : 'above'
+    worklist.push({
+      key: 'salary_variance',
+      flag: pct > R.salaryActionPct ? 'action' : 'query', label: 'Query', card: 'salaryVariance',
+      text: onRunRate
+        ? `Even on the current run rate — leaving the ${salaryGapDays} day gap out of it — the pay grosses to about ${fmtMoney(runGrossAnnual, 0)}, ${pct}% ${dir} the declared ${fmtMoney(declaredInc.employmentAnnual, 0)}. HELP or salary sacrifice would explain a shortfall, but it needs an answer on file.`
+        : `Salary credits sit ${pct}% ${dir} the declared gross — HELP or salary sacrifice would explain a shortfall, but it needs an answer on file.`,
+    })
+  }
   if (unrepaid) worklist.push({
     key: 'dishonours', flag: 'action', label: 'Explain', card: 'dishonours',
     text: `${unrepaid} dishonour${unrepaid === 1 ? '' : 's'} with no repayment found afterwards.`,
@@ -1235,13 +1263,24 @@ export function analyse(parsed: ParsedStatements, factFind: any, rulesInput?: an
     key: 'gambling', flag: 'query', label: 'Note', card: 'gambling',
     text: `Gambling is ${gamblingPct}% of credits${gRising ? ' and rising month on month' : ''}.`,
   })
-  if (stabilityFails > 0) worklist.push({
+  // Every stability test that fails on a file with a gap fails BECAUSE of the
+  // gap — irregular cycle, cycles missed, longest gap, amounts moving. Asking
+  // about it separately is asking the same question twice.
+  if (stabilityFails > 0 && !salaryHasGap) worklist.push({
     key: 'income_stability', flag: 'query', label: 'Check', card: 'stability',
     text: `${stabilityFails} income stability test${stabilityFails === 1 ? '' : 's'} failed, so the annualised salary is less reliable than usual.`,
   })
   if (salaryHasGap) worklist.push({
     key: 'salary_gap', flag: 'action', label: 'Ask the client', card: 'salary',
-    text: `No salary credit between ${auDate(salaryGapFrom)} and ${auDate(salaryGapTo)} — ${salaryGapDays} days. Ask the client why and put the answer on file: parental leave, a change of employer, or pay going to an account we have not been given. Until it is answered the monthly average above is understated.`,
+    text: `No salary credit between ${auDate(salaryGapFrom)} and ${auDate(salaryGapTo)} — ${salaryGapDays} days.`
+      + (stabilityFails > 0 || varianceIsJustTheGap
+        ? ` That one gap is also why ${[
+            stabilityFails > 0 ? `${stabilityFails} of the income stability tests failed` : '',
+            varianceIsJustTheGap && salaryVariancePct !== null ? `the credits come out ${Math.abs(salaryVariancePct)}% under the declared gross` : '',
+          ].filter(Boolean).join(' and ')}, so it is asked once here rather than three times.`
+        : '')
+      + ` Ask the client why and put the answer on file: parental leave, a change of employer, or pay going to an account we have not been given.`
+      + (runRateMonthly > 0 ? ` Until it is answered, assess on the run rate of ${fmtMoney(runRateMonthly)} a month rather than the period average.` : ''),
   })
   if (!coverageComplete) worklist.push({
     key: 'coverage', flag: 'query', label: 'Coverage', card: 'overdrawn',
