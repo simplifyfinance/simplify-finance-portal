@@ -306,3 +306,10 @@ Settings later.
 - **The four-character rule is shown in the interface**, not just enforced. A
   short code matches whole words only; a longer one matches anywhere. Someone
   adding a term needs to know which they are getting.
+
+## CashDeck is the only bank statement format (FINAL — 31 Aug 2026)
+
+Simplify uses CashDeck and nothing else, so the statement parser reads CashDeck
+and refuses anything else by name rather than guessing at it. illion was
+considered and dropped — not deferred. Do not build a second parser without a
+real reason and a real file to build it from.

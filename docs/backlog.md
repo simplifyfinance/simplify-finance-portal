@@ -140,5 +140,3 @@ Still to do:
 - Multiple uploads per deal: the tab reads the most recent and Remove deletes it.
   If a deal ever needs two periods side by side, the tables already support it -
   only the tab assumes one.
-- illion is the other format the industry uses. The parser is CashDeck only and
-  says so plainly when handed something else.
