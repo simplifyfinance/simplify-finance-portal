@@ -16,9 +16,10 @@ import DealSettlementPanel from './DealSettlementPanel'
 import DealCommission from './DealCommission'
 import CloseDeal from './CloseDeal'
 import { templateLabel } from '@/lib/templates'
+import StatementAnalysis from '@/components/StatementAnalysis'
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
-  const validStages = ['FactFind', 'BC', 'LO', 'Compliance']
+  const validStages = ['FactFind', 'Statements', 'BC', 'LO', 'Compliance']
   // Always open on the stage the progress bar marks as current, so whoever opens the deal
   // lands where the work actually is rather than on whichever tab was viewed last.
   const startStage = currentStage(deal)
@@ -72,6 +73,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
 
   const tabs = [
     { key: 'FactFind', label: 'Fact Find' },
+    { key: 'Statements', label: 'Statements' },
     { key: 'BC', label: 'BC — Borrowing capacity' },
     { key: 'LO', label: 'Lending options' },
     { key: 'Compliance', label: 'Compliance' },
@@ -183,6 +185,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
       </div>
 
       {stage === 'FactFind' && <FactFindForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
+      {stage === 'Statements' && <StatementAnalysis deal={dealData} />}
       {stage === 'BC' && <BCForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
       {stage === 'LO' && <LOForm deal={dealData} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
       {stage === 'Compliance' && <ComplianceForm deal={dealData} onSaveStatus={setSaveStatus} />}

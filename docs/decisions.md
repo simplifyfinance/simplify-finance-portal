@@ -227,3 +227,59 @@ Bank Australia is clawback_months = 0, meaning genuinely nil — not unknown.
 
 Nothing in commission or clawback reporting is blocked on data any more.
 Both can be built with no "rate not confirmed" tail.
+
+## Statement analysis — the Statements tab (31 Aug 2026)
+
+A CashDeck income verification workbook is dropped on a deal, read against that
+deal's fact find, and the differences flagged. Decisions made building it:
+
+- **The tab NEVER writes to the fact find.** Every difference is a flag for a
+  person to answer. A tool that silently corrects a declared figure would put a
+  number in a client file that nobody chose.
+- **The score reads the FILE, not the client.** It measures how much of what was
+  declared the statements confirm and how many questions are open. A number
+  banded "strong / weak" against a person is a credit opinion generated inside an
+  ACL business, and it would live in the file forever. The score is never shown
+  to the client and never sent to a lender. Four components, weighted: income
+  verified 30, commitments matched 30, conduct 25, coverage 15.
+- **Every transaction is stored against the deal**, so the drill-downs still work
+  months later without the original upload. Both tables sit behind the deals
+  policy — the policy asks whether the user can see the deal and lets the deals
+  policy answer, so visibility is decided in one place.
+- **Nothing is annualised from a single occurrence.** One rent credit, one
+  dividend, one debit to a lender: listed, never multiplied up. Money that does
+  not repeat says nothing about a year.
+- **A figure that cannot be worked out honestly is withheld with a reason.** When
+  no closing balances are supplied, overdrawn days, lowest balance, genuine
+  savings and the savings trend all read "—" with an explanation. They never read
+  zero. An account with no balance is left out of the combined figure rather than
+  counted as nothing.
+- **The financial year comes from the statement dates, not from today.** A period
+  crossing 1 July is grossed up under both scales and the dominant year is the
+  headline. The first bracket steps 16% → 15% on 1 July 2026 and → 14% a year
+  later, so this matters immediately.
+- **The gross-up can only understate.** It assumes no HELP debt, no salary
+  sacrifice and no pre-tax deduction, so the real gross is always at least the
+  figure shown. That asymmetry is stated on the card, because a broker acting on
+  it in the other direction would be wrong.
+- **Commitments are matched by lender name, not by amount.** A loan declared at
+  $500 and debiting $585 is declared — a value difference, not a hidden
+  liability. Treating it as hidden would train people to ignore the card.
+- **Undisclosed income is read as a find in the client's favour**, not as a
+  flag against them, and it is a prompt to go and get the evidence rather than a
+  figure to type into a servicing calculator.
+- **Short provider codes must match a whole word.** "ppl" lives inside "apple"
+  and "ing" inside almost everything; both produced wrong findings on a real
+  file before the split existed. Anything four characters or shorter is matched
+  as a word, never as a substring.
+- **Money that is not income is set aside and shown, never dropped silently.**
+  Transfers between the client's own accounts, credits carrying the client's own
+  name, and refunds or Medicare rebates each get their own line in the Other
+  income drill-down so a reviewer can disagree.
+- **No Export CSV and no Copy to file notes.** Asked for and declined — the
+  drill-downs are for reading on screen.
+
+The provider watchlists (buy now pay later, gambling, small amount credit
+lenders, real estate agents, benefit types, lender aliases) live in
+`lib/statement-watchlists.ts` so they can be read at a glance and moved into
+Settings later.

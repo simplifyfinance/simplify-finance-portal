@@ -52,3 +52,6 @@ private/
 # scratch used to render and validate emails locally
 .tmp-check/
 *.eml
+
+# Scratch that the Linux side cannot delete itself
+_to_delete/

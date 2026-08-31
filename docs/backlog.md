@@ -89,3 +89,33 @@ Was next-to-build. It is a dollar figure — what commission comes back if a loa
 repays inside its window — so it needs the commission platform. Counting loans
 and months without dollars is not something anyone would act on. Sits AFTER
 commission calculation.
+
+## Statement analysis — BUILT, not yet run on a live deal (31 Aug 2026)
+
+The Statements tab sits between Fact Find and BC on every deal. Drop the CashDeck
+income verification workbook on it and it reads the statements against that deal's
+fact find.
+
+Shipped:
+- `lib/tax-au.ts` — resident rate scales by financial year, Medicare levy, LITO,
+  and the reverse solve from net to gross. 16 tests.
+- `lib/statement-parse.ts` — reads the CashDeck workbook. Reads only, judges
+  nothing, so a change to their export breaks one file.
+- `lib/statement-watchlists.ts` — the named providers and benefit types.
+- `lib/statement-analysis.ts` — the findings, the cards, the worklist, the score.
+  37 tests.
+- `app/api/statement-analysis/route.ts` — upload and delete, both counting rows.
+- `components/StatementAnalysis.tsx` — the tab.
+- `docs/statements-schema.sql` — two tables, run once in Supabase.
+
+Still to do:
+- Run it on a real deal on Vercel and check the findings against the file by hand.
+- The watchlists are constants. They want to be a Settings screen once the list
+  starts changing — same shape as the commission library.
+- The $1,000 large-cash threshold and the 90-day genuine savings window are
+  constants in `statement-analysis.ts`. Same story.
+- Multiple uploads per deal: the tab reads the most recent and Remove deletes it.
+  If a deal ever needs two periods side by side, the tables already support it -
+  only the tab assumes one.
+- illion is the other format the industry uses. The parser is CashDeck only and
+  says so plainly when handed something else.
