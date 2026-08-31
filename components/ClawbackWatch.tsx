@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { TONE, money } from '@/lib/tone'
 import { sameBroker } from '@/lib/broker-key'
-import { calcCommission, lvrOf, type CommissionRate } from '@/lib/commission'
+import { buildClawback, daysBetween } from '@/lib/clawback'
 import { todayYmd } from '@/lib/periods'
 import { downloadCsv, stamp } from '@/lib/csv'
 import RowLimit, { STEPS } from '@/components/RowLimit'
@@ -15,22 +15,20 @@ import RowLimit, { STEPS } from '@/components/RowLimit'
 // point of the list is to know which clients those are while there is still
 // time to talk to them.
 //
-// The figure is the whole upfront. Some lenders taper — full in the first year,
-// half in the second — but the rate library holds a single clawback_months and
-// no taper, so a tapered lender is overstated here. Said plainly under the
-// table rather than quietly assumed away.
+// It reads the commission statements, not the deals table. It used to read
+// `deals` filtered on settled_at, which is the portal's own pipeline - and not
+// one deal in it has ever been ticked as settled, so the screen was blank while
+// the statements held 766 upfronts with real settlement dates on them. The
+// settled book lives in the statements; that is where this looks.
+//
+// Because it reads the statements, the figure at risk is the upfront that was
+// actually paid, not one worked out from the rate library. The library is only
+// asked how long each lender's window is.
 
 type Row = {
-  id: string; client: string; broker_key: string; lender: string
+  id: string; client: string; broker_key: string; lender: string; loanRef: string
   settled_on: string; ends_on: string; days_left: number
   amount: number | null; upfront: number
-}
-
-const DAY = 86400000
-function daysBetween(a: string, b: string): number {
-  const x = Date.parse(a + 'T00:00:00Z'), y = Date.parse(b + 'T00:00:00Z')
-  if (isNaN(x) || isNaN(y)) return 0
-  return Math.round((y - x) / DAY)
 }
 
 export default function ClawbackWatch({ brokers }: { brokers: { key: string; name: string }[] }) {
@@ -43,55 +41,31 @@ export default function ClawbackWatch({ brokers }: { brokers: { key: string; nam
 
   useEffect(() => {
     (async () => {
-      const [d, r, l] = await Promise.all([
-        supabase.from('deals').select('*').not('settled_at', 'is', null),
-        supabase.from('commission_rates').select('*'),
+      const [u, cb, r, l] = await Promise.all([
+        // The settled book. Every upfront the group has ever paid us.
+        supabase.from('commission_lines')
+          .select('id, loan_ref, client_name, broker_key, lender_id, lender_raw, settlement_date, settlement_amount, gross_ex_gst')
+          .eq('kind', 'upfront').limit(20000),
+        // Loans already clawed back are not at risk of it happening again.
+        supabase.from('commission_lines').select('loan_ref').eq('kind', 'clawback').limit(20000),
+        supabase.from('commission_rates').select('lender_id, clawback_months'),
         supabase.from('lenders').select('id, name'),
       ])
-      const rateBy = new Map<string, CommissionRate>()
-      for (const x of (r.data || []) as any[]) rateBy.set(String(x.lender_id), x)
-      const nameBy = new Map<string, string>()
-      for (const x of (l.data || []) as any[]) nameBy.set(String(x.id), x.name)
 
-      const today = todayYmd()
-      const live: Row[] = []
-      const cannotTell: { client: string; lender: string; reason: string }[] = []
-
-      for (const deal of (d.data || []) as any[]) {
-        const settledOn = String(deal.settled_at || '').slice(0, 10)
-        if (!settledOn) continue
-        const lender = nameBy.get(String(deal.lender_id)) || '—'
-        const rate = rateBy.get(String(deal.lender_id)) || null
-        const amount = deal.settled_total ?? deal.lodged_total ?? deal.loan_amount ?? null
-        const c = calcCommission({ amount, rate, lvr: lvrOf(deal), settledOn })
-
-        // No clawback window means nothing to watch, not a problem to report.
-        if (!c.clawbackEndsOn) {
-          if (!c.ok && rate?.clawback_months) {
-            cannotTell.push({
-              client: deal.client_name || deal.name || 'Client not named',
-              lender,
-              reason: c.reason || 'The commission could not be worked out.',
-            })
-          }
-          continue
-        }
-        if (today > c.clawbackEndsOn) continue          // window already closed
-
-        live.push({
-          id: String(deal.id),
-          client: deal.client_name || deal.name || 'Client not named',
-          broker_key: String(deal.assigned_broker || deal.broker_key || ''),
-          lender,
-          settled_on: settledOn,
-          ends_on: c.clawbackEndsOn,
-          days_left: daysBetween(today, c.clawbackEndsOn),
-          amount,
-          upfront: Number(c.upfront || 0),
-        })
+      const monthsByLender = new Map<string, number>()
+      for (const x of (r.data || []) as any[]) {
+        const m = Number(x.clawback_months)
+        if (Number.isFinite(m) && m > 0) monthsByLender.set(String(x.lender_id), m)
       }
+      const nameByLender = new Map<string, string>()
+      for (const x of (l.data || []) as any[]) nameByLender.set(String(x.id), x.name)
 
-      live.sort((a, b) => a.days_left - b.days_left)
+      const { rows: live, unknown: cannotTell } = buildClawback({
+        upfronts: (u.data || []) as any[],
+        clawedBackRefs: ((cb.data || []) as any[]).map(x => x.loan_ref),
+        monthsByLender, nameByLender, today: todayYmd(),
+      })
+
       setRows(live)
       setUnknown(cannotTell)
       setReady(true)
@@ -155,9 +129,9 @@ export default function ClawbackWatch({ brokers }: { brokers: { key: string; nam
   function exportCsv() {
     downloadCsv(
       `clawback-window-${who === 'all' ? 'all-brokers' : who}-${stamp()}`,
-      ['Client', 'Broker', 'Lender', 'Settled', 'Window closes', 'Days left', 'Loan amount', 'Upfront at risk'],
+      ['Client', 'Loan account', 'Broker', 'Lender', 'Settled', 'Window closes', 'Days left', 'Loan amount', 'Upfront at risk'],
       mine.map(r => [
-        r.client,
+        r.client, r.loanRef,
         brokers.find(b => sameBroker(r.broker_key, b.key))?.name || r.broker_key,
         r.lender, r.settled_on, r.ends_on, r.days_left,
         r.amount ?? '', r.upfront.toFixed(2),
@@ -168,7 +142,9 @@ export default function ClawbackWatch({ brokers }: { brokers: { key: string; nam
   if (rows.length === 0) return (
     <div className="border rounded-xl bg-white px-4 py-6 text-[13px]"
          style={{ borderColor: TONE.line, color: TONE.label }}>
-      No settled loan is inside a clawback window right now.
+      No settled loan is inside a clawback window right now. This reads the upfronts on the
+      commission statements, so if it looks empty and should not, the statements for those
+      settlements have not been loaded.
     </div>
   )
 
@@ -214,11 +190,12 @@ export default function ClawbackWatch({ brokers }: { brokers: { key: string; nam
       <div className="rounded-xl border px-4 py-3 mb-2.5 text-[12.5px] leading-[1.65]"
            style={{ borderColor: '#EBD9BE', background: '#FDF6EC', color: TONE.body }}>
         <b style={{ color: TONE.ink }}>Read these as the worst case, not a forecast.</b> The figure is the
-        whole upfront for as long as a loan sits inside its window. Most lenders take all of it back in the
-        first year and only part of it in the second, so anything past twelve months is overstated here —
-        the rate library holds the length of each window but not what a lender claws in year two, and it is
-        not guessed at. Nor is any of it a loss: it only becomes real if the loan discharges or refinances
-        away before its window closes.
+        upfront that was actually paid on the statement, counted in full for as long as the loan sits inside
+        its window. Most lenders take all of it back in the first year and only part of it in the second, so
+        anything past twelve months is overstated here — the rate library holds the length of each window but
+        not what a lender claws in year two, and it is not guessed at. Any referral share already paid out on
+        these loans is on top and is not shown. None of it is a loss: it only becomes real if the loan
+        discharges or refinances away before its window closes.
       </div>
 
       {/* When it clears. One series, so the heading is the legend. */}
@@ -323,13 +300,15 @@ export default function ClawbackWatch({ brokers }: { brokers: { key: string; nam
           </button>
         </div>
         <div className="px-3 py-2.5 border-t text-[11.5px]" style={{ borderColor: TONE.hair, color: TONE.label }}>
-          Counted from the settlement date and the clawback months on the lender's rate. The figure is the whole
-          upfront: where a lender claws back only part of it in the second year, this overstates the exposure,
+          Every upfront on the commission statements, grouped by loan account, with loans already clawed back
+          left out. The window runs from the settlement date on the statement for as long as the lender's rate
+          says. Where a lender claws back only part of it in the second year this overstates the exposure,
           because the rate library holds one clawback period and no taper.
           {unknown.length > 0 && (
             <> {' '}<b style={{ color: TONE.ink }}>{unknown.length}{' '}
-            {unknown.length === 1 ? 'loan is' : 'loans are'} not shown</b> — the lender has a clawback period but
-            the commission itself could not be worked out, so the amount at risk is unknown rather than zero.</>
+            {unknown.length === 1 ? 'loan is' : 'loans are'} not shown</b> — either the lender on the statement is
+            not in the rate register, so its window is unknown, or the line carried no settlement date. Unknown,
+            not zero.</>
           )}
         </div>
       </div>

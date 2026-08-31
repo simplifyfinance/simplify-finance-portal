@@ -576,3 +576,33 @@ broken screen — and that is how it was reported.
 - The proceed write is now checked — it `.select()`s and fails loudly. It was a
   bare update, and RLS refuses by returning no rows and no error, so a refused
   write would have reported the client as having agreed.
+
+## Clawback risk was blank because it read the wrong table (31 Aug 2026)
+
+The screen showed nothing at all. Not a rendering fault — it had nothing to draw.
+
+- **It read `deals` filtered on `settled_at`.** That is the portal's own pipeline,
+  and **not one deal in it has ever been ticked as settled** — confirmed by query,
+  the count is zero. Meanwhile the commission statements hold **766 upfronts, 732
+  of them settled in the last two years**, each with a settlement date on it. The
+  settled book is in the statements. That is where it looks now.
+- **The figure at risk is the upfront that was actually paid**, straight off the
+  statement, not one worked out from the rate library. The library is now only
+  asked one thing: how many months each lender's window runs.
+- **One loan, not one line.** A loan paid across two lines — a split, an increase —
+  is added up and listed once, and its window runs from the earliest settlement.
+- **Loans already clawed back are left out.** They are not at risk of it twice.
+- **Two things are called unknown rather than safe:** a line whose lender is not
+  in the rate register, and a line with no settlement date. Both are listed under
+  the table. A lender that genuinely has no clawback period is skipped silently —
+  nothing to watch is not a problem to report.
+- The maths moved to `lib/clawback.ts` with 11 tests, including the boundary
+  (a window closing today is still open; closing yesterday is not) and the
+  already-clawed-back case. It was inline in the component and untestable.
+
+Same shape checked elsewhere: `SettlementReconcile` also reads `deals` on
+`settled_at`. Its "unpaid" tab is empty for the same reason, but that is correct —
+it exists to reconcile portal deals against statements, and with no settled portal
+deals there is nothing to reconcile. Its "Paid, no deal" tab reads the statements
+and still works. **Fabio: if portal deals are never going to be marked settled,
+that tab is dead weight and should be said so out loud on the screen.**
