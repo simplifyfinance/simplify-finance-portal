@@ -492,6 +492,11 @@ const fmtMoney = (n: number, dp = 2) =>
   '$' + Math.abs(n).toLocaleString('en-AU', { minimumFractionDigits: dp, maximumFractionDigits: dp })
 const signed = (n: number, dp = 2) => (n < 0 ? '−' : '') + fmtMoney(n, dp)
 const ids = (ts: ParsedTxn[]) => ts.map(t => t.externalId)
+const auDate = (iso: string) => {
+  const d = new Date(iso + 'T00:00:00Z')
+  return isNaN(d.getTime()) ? iso
+    : d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+}
 
 export type Analysis = {
   version: number
@@ -565,12 +570,51 @@ export function analyse(parsed: ParsedStatements, factFind: any, rulesInput?: an
   const salaryCandidates = credits.filter(t =>
     !govIds.has(t.externalId) && !rentIds.has(t.externalId) && !interestIds.has(t.externalId) &&
     !rebateIds.has(t.externalId) && isSalaryLike(t))
+  // Pay does not have to be tidy to be pay.
+  //
+  // Kornelia Viragova, 31 Aug 2026: three credits from one employer - 12 Mar,
+  // 14 Jul, 14 Aug - $23,135 of salary, against $125,000 declared. The cadence
+  // filter here only accepted weekly, fortnightly or monthly, so the lot was
+  // thrown away and the card read "no regular salary credits found". A four
+  // month hole in someone's pay and a declaration the statements do not support,
+  // and the screen said nothing. She was on maternity leave, which explains a
+  // lower figure - it does not explain a blank one.
+  //
+  // An irregular run is counted and then marked irregular, loudly. What still
+  // needs a cycle is a credit that only LOOKS like an employer - a company name
+  // with no pay word anywhere on it - because for those the rhythm is the only
+  // evidence there is.
+  const REGULAR_PAY: Cadence[] = ['weekly', 'fortnightly', 'monthly']
+  const isPayWorded = (g: Group) => g.txns.some(t =>
+    matchesAny(`${t.category} ${t.summaryCategory} ${t.merchant} ${t.description}`, SALARY_WORDS))
   const salaryGroups = groupBy(salaryCandidates)
-    .filter(g => g.count >= 2 && ['weekly', 'fortnightly', 'monthly'].includes(g.cadence))
+    .filter(g => g.count >= 2 && (REGULAR_PAY.includes(g.cadence) || isPayWorded(g)))
+  const salaryIrregular = salaryGroups.length > 0 && salaryGroups.some(g => !REGULAR_PAY.includes(g.cadence))
   const salaryTxns = salaryGroups.flatMap(g => g.txns)
   const salaryTotal = round2(salaryTxns.reduce((s, t) => s + t.amount, 0))
   const salaryAnnualNet = round2(salaryTotal * perYear)
   const salaryMonthlyNet = round2(salaryTotal * perMonth)
+
+  // The longest stretch with no pay in it. A month either side of a monthly cycle
+  // is normal; anything past that is a hole somebody has to explain.
+  const SALARY_GAP_DAYS = 45
+  const salaryDates = salaryTxns.map(t => t.date).sort()
+  let salaryGapDays = 0, salaryGapFrom = '', salaryGapTo = ''
+  for (let i = 1; i < salaryDates.length; i++) {
+    const d = daysBetween(salaryDates[i - 1], salaryDates[i]) - 1
+    if (d > salaryGapDays) { salaryGapDays = d; salaryGapFrom = salaryDates[i - 1]; salaryGapTo = salaryDates[i] }
+  }
+  const salaryHasGap = salaryGapDays >= SALARY_GAP_DAYS
+
+  // What they are being paid NOW. Averaging across months with no pay in them
+  // answers a different question from "what does this person earn today", and on
+  // a return-to-work file the second one is what a lender is assessing.
+  const lastTwo = salaryTxns.slice().sort((a, b) => a.date.localeCompare(b.date)).slice(-2)
+  const runSpacing = lastTwo.length === 2 ? daysBetween(lastTwo[0].date, lastTwo[1].date) - 1 : 0
+  const runRateMonthly = (lastTwo.length === 2 && runSpacing > 0)
+    ? round2(((lastTwo[0].amount + lastTwo[1].amount) / 2) * (30.44 / runSpacing))
+    : 0
+  const runRateAnnualNet = round2(runRateMonthly * 12)
 
   const grossUps = fys.map(fy => ({ fy, up: grossFromNet(salaryAnnualNet, fy) }))
   const headline = grossUps.find(g => g.fy === domFy) || grossUps[0]
@@ -580,25 +624,53 @@ export function analyse(parsed: ParsedStatements, factFind: any, rulesInput?: an
     key: 'salary', title: 'Net salary credits',
     value: salaryGroups.length ? fmtMoney(salaryMonthlyNet) : '—',
     valueNumber: salaryGroups.length ? salaryMonthlyNet : null,
-    sub: salaryGroups.length
-      ? `per month · ${salaryGroups.length} employer${salaryGroups.length === 1 ? '' : 's'} · paid ${salaryGroups[0].cadence}`
-      : 'No regular salary credits found in this period',
-    flag: salaryGroups.length ? 'ok' : 'unavailable',
+    sub: !salaryGroups.length
+      ? 'No salary credits found in this period'
+      : salaryIrregular
+        ? `per month across ${days} days · ${salaryGroups.length} employer${salaryGroups.length === 1 ? '' : 's'} · ${salaryTxns.length} credits, no steady cycle — the average is spread over months with no pay in them`
+        : `per month · ${salaryGroups.length} employer${salaryGroups.length === 1 ? '' : 's'} · paid ${salaryGroups[0].cadence}`,
+    flag: !salaryGroups.length ? 'unavailable' : salaryIrregular ? 'query' : 'ok',
+    flagLabel: salaryIrregular ? 'Irregular' : undefined,
     drill: 'transactions', txnIds: ids(salaryTxns),
     detail: {
       sources: salaryGroups.map(g => ({ payer: g.payer, count: g.count, cadence: g.cadence, meanDays: g.meanDays, total: g.total, meanAmount: g.meanAmount })),
       total: salaryTotal, days, annualNet: salaryAnnualNet, monthlyNet: salaryMonthlyNet,
+      irregular: salaryIrregular,
+      gap: salaryHasGap ? { days: salaryGapDays, from: salaryGapFrom, to: salaryGapTo } : null,
     },
   })
+
+  // Only worth showing when the run is uneven. On a steady fortnightly cycle it
+  // would just repeat the card above.
+  if (salaryIrregular && runRateMonthly > 0) {
+    const runGross = grossFromNet(runRateAnnualNet, domFy)
+    cards.push({
+      key: 'runrate', title: 'Recent run rate',
+      value: fmtMoney(runRateMonthly), valueNumber: runRateMonthly,
+      sub: `per month · the last two pays, ${runSpacing} days apart · grosses to about ${fmtMoney(runGross.gross, 0)}`,
+      flag: 'ok',
+      drill: 'transactions', txnIds: ids(lastTwo),
+      detail: {
+        pays: lastTwo.map(t => ({ date: t.date, amount: t.amount, description: t.description })),
+        spacingDays: runSpacing, monthlyNet: runRateMonthly, annualNet: runRateAnnualNet,
+        gross: round2(runGross.gross), scale: runGross.scale.label,
+        why: 'What they are being paid now. The card beside it averages across the whole period, including any months with no pay in them.',
+      },
+    })
+  }
 
   cards.push({
     key: 'gross', title: 'Grosses up to',
     value: grossedUp ? fmtMoney(grossedUp, 0) : '—',
     valueNumber: grossedUp || null,
-    sub: grossedUp
-      ? `${headline.up.scale.label} rates · before HELP or salary sacrifice`
-      : 'Nothing to gross up without regular salary credits',
-    flag: grossedUp ? 'ok' : 'unavailable',
+    sub: !grossedUp
+      ? 'Nothing to gross up — no salary credits found'
+      : salaryIrregular
+        ? `${headline.up.scale.label} rates · this is the whole period, gaps included — see the run rate for what they earn now`
+        : `${headline.up.scale.label} rates · before HELP or salary sacrifice`,
+    // Grossing up a period with a hole in it understates the income, and saying
+    // so is the difference between a figure and a misleading figure.
+    flag: !grossedUp ? 'unavailable' : salaryIrregular ? 'query' : 'ok',
     drill: 'working', txnIds: ids(salaryTxns),
     detail: {
       annualNet: salaryAnnualNet,
@@ -1097,6 +1169,10 @@ export function analyse(parsed: ParsedStatements, factFind: any, rulesInput?: an
   if (salaryGroups.length && !declaredInc.employmentAnnual) { incomeScore -= 20; incomeOpen++; incomeNotes.push('salary credits found with no employment income declared') }
   if (undeclaredIncome > 0) { incomeScore -= 15; incomeOpen++; incomeNotes.push(`${fmtMoney(otherMonthly)} a month of income not on the fact find`) }
   if (stabilityFails > 0) { incomeScore -= 15; incomeOpen++; incomeNotes.push(`${stabilityFails} income stability test${stabilityFails === 1 ? '' : 's'} failed`) }
+  // A hole in the pay run is not automatically a problem - parental leave, a
+  // change of employer, pay landing in an account we were not given. It IS
+  // automatically a question, and it must not be able to pass unasked.
+  if (salaryHasGap) { incomeScore -= 15; incomeOpen++; incomeNotes.push(`${salaryGapDays} days with no pay credit`) }
   if (rentVariancePct !== null && rentVariancePct < -R.rentalTolerancePct) { incomeScore -= 10; incomeOpen++; incomeNotes.push('rent received well under declared') }
   else if (rentVariancePct !== null) incomeNotes.push('rental consistent')
   incomeScore = Math.max(0, incomeScore)
@@ -1159,6 +1235,10 @@ export function analyse(parsed: ParsedStatements, factFind: any, rulesInput?: an
   if (stabilityFails > 0) worklist.push({
     flag: 'query', label: 'Check', card: 'stability',
     text: `${stabilityFails} income stability test${stabilityFails === 1 ? '' : 's'} failed, so the annualised salary is less reliable than usual.`,
+  })
+  if (salaryHasGap) worklist.push({
+    flag: 'action', label: 'Ask the client', card: 'salary',
+    text: `No salary credit between ${auDate(salaryGapFrom)} and ${auDate(salaryGapTo)} — ${salaryGapDays} days. Ask the client why and put the answer on file: parental leave, a change of employer, or pay going to an account we have not been given. Until it is answered the monthly average above is understated.`,
   })
   if (!coverageComplete) worklist.push({
     flag: 'query', label: 'Coverage', card: 'overdrawn',

@@ -391,3 +391,104 @@ describe('income is read from the category, not just the narration', () => {
     expect(isRebate(txn({ category: 'Refunds', description: 'MCARE BENEFIT', amount: 87 }))).toBe(true)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Irregular pay is still pay.
+//
+// Kornelia Viragova, 31 Aug 2026. Three credits from one employer — 12 Mar,
+// 14 Jul, 14 Aug — $23,135 against $125,000 declared, and the card read
+// "no regular salary credits found in this period" because the cadence filter
+// only accepted weekly, fortnightly or monthly. She was on maternity leave,
+// which explains a lower figure. It does not explain a blank one.
+
+function viragova(): ParsedStatements {
+  seq = 0
+  const txns: ParsedTxn[] = [
+    t('2026-03-12', 'Salary SWISS RE ASIA PT 900306', 9424.00, { merchant: 'SALARY SWISS ASIA: Income', category: 'Wages', accountName: 'Nela' }),
+    t('2026-07-14', 'Salary SWISS RE ASIA PT 900306', 5990.00, { merchant: 'SALARY SWISS ASIA: Income', category: 'Wages', accountName: 'Nela' }),
+    t('2026-08-14', 'Salary SWISS RE ASIA PT 900306', 7721.27, { merchant: 'SALARY SWISS ASIA: Income', category: 'Wages', accountName: 'Nela' }),
+    // CashDeck filed all eight of these as Wages. They are savings interest.
+    t('2026-03-31', 'Interest Credit', 916.45, { category: 'Wages', accountNumber: ING, accountName: 'Savings IN' }),
+    t('2026-03-31', 'Bonus Interest Credit - Receipt 929411', 219.16, { category: 'Wages', accountNumber: ING, accountName: 'Savings IN' }),
+    t('2026-04-30', 'Interest Credit', 941.97, { category: 'Wages', accountNumber: ING, accountName: 'Savings IN' }),
+    t('2026-04-30', 'Bonus Interest Credit - Receipt 900794', 215.02, { category: 'Wages', accountNumber: ING, accountName: 'Savings IN' }),
+    t('2026-05-31', 'Interest Credit', 992.40, { category: 'Wages', accountNumber: ING, accountName: 'Savings IN' }),
+    t('2026-05-31', 'Bonus Interest Credit - Receipt 926309', 178.63, { category: 'Wages', accountNumber: ING, accountName: 'Savings IN' }),
+    t('2026-06-30', 'Interest Credit', 969.05, { category: 'Wages', accountNumber: ING, accountName: 'Savings IN' }),
+    t('2026-07-31', 'Interest Credit', 991.03, { category: 'Wages', accountNumber: ING, accountName: 'Savings IN' }),
+  ]
+  return {
+    source: 'cashdeck',
+    client: { firstName: 'Kornelia', lastName: 'Viragova', email: '', mobile: '', externalId: '1' },
+    accounts: [
+      { accountNumber: CBA, name: 'Nela', institution: 'Commonwealth Bank', available: 5000, currentBalance: 5000, from: '2026-03-05', to: '2026-08-31', txnCount: 3 },
+      { accountNumber: ING, name: 'Savings IN', institution: 'ING', available: 40000, currentBalance: 40000, from: '2026-03-13', to: '2026-08-17', txnCount: 8 },
+    ],
+    institutions: ['Commonwealth Bank', 'ING'],
+    transactions: txns,
+    periodFrom: '2026-03-05', periodTo: '2026-08-31',
+    days: 180, balancesAvailable: true, warnings: [],
+  }
+}
+const KORNELIA_FF = {
+  applicants: [{ firstName: 'Kornelia', lastName: 'Viragova', income: [{ grossSalary: '125000', grossSalaryFrequency: 'Annually' }] }],
+  properties: [], liabilities: [],
+}
+
+describe('a pay run with a hole in it', () => {
+  const a = analyse(viragova(), KORNELIA_FF)
+
+  it('counts the wages instead of showing a dash', () => {
+    const c = card(a, 'salary')
+    expect(c.valueNumber).toBeGreaterThan(3500)
+    expect(c.valueNumber).toBeLessThan(4200)          // ~$3,856 a month over 180 days
+    expect(c.sub).not.toContain('No salary credits')
+  })
+
+  it('counts only the three real pay credits, not the interest', () => {
+    expect(card(a, 'salary').txnIds).toHaveLength(3)
+    expect(card(a, 'salary').detail.total).toBeCloseTo(23135.27, 2)
+  })
+
+  it('says out loud that the run is irregular', () => {
+    const c = card(a, 'salary')
+    expect(c.flag).toBe('query')
+    expect(c.detail.irregular).toBe(true)
+    expect(c.sub).toContain('no steady cycle')
+  })
+
+  it('finds the four month hole and names both ends of it', () => {
+    const gap = card(a, 'salary').detail.gap
+    expect(gap).not.toBeNull()
+    expect(gap.days).toBeGreaterThan(100)
+    expect(gap.from).toBe('2026-03-12')
+    expect(gap.to).toBe('2026-07-14')
+  })
+
+  it('tells credit to ask the client, so it cannot pass unasked', () => {
+    const item = a.worklist.find((w: any) => w.card === 'salary')
+    expect(item).toBeDefined()
+    expect(item.flag).toBe('action')
+    expect(item.text.toLowerCase()).toContain('ask the client')
+  })
+
+  it('shows what she is being paid now, separately from the period average', () => {
+    const rr = card(a, 'runrate')
+    expect(rr).toBeDefined()
+    expect(rr.valueNumber).toBeGreaterThan(6500)      // ~$6,856 from the last two pays
+    expect(rr.valueNumber).toBeLessThan(7200)
+    expect(rr.valueNumber).toBeGreaterThan(card(a, 'salary').valueNumber)
+    expect(rr.txnIds).toHaveLength(2)
+  })
+
+  it('does not offer a run rate when the pay is already steady', () => {
+    expect(card(analyse(build(), FACT_FIND), 'runrate')).toBeUndefined()
+  })
+
+  it('leaves a steady fortnightly run alone', () => {
+    const c = card(analyse(build(), FACT_FIND), 'salary')
+    expect(c.flag).toBe('ok')
+    expect(c.sub).toContain('fortnightly')
+    expect(c.detail.gap).toBeNull()
+  })
+})

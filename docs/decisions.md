@@ -636,3 +636,42 @@ pressed on the upload. The transactions are stored, so nothing needs re-uploadin
 **Still open:** `Other Credit` on that file is $26,165 across 29 lines. Some of it
 may be income and some transfers, and nothing tells us which. That is what the
 audit view is for.
+
+## Irregular pay is still pay (31 Aug 2026)
+
+Kornelia Viragova's salary card read **"no regular salary credits found in this
+period"** and showed a dash. The file held three credits from one employer —
+12 Mar $9,424, 14 Jul $5,990, 14 Aug $7,721 — $23,135 net, against **$125,000
+declared** on the fact find. She was on parental leave. **That explains a lower
+figure. It does not explain a blank one.**
+
+- **The cadence filter was throwing the lot away.** Salary only counted if the
+  credits landed weekly, fortnightly or monthly. Anything uneven was discarded
+  silently, which meant the biggest discrepancy on the file was invisible.
+- **An uneven run is now counted, then marked irregular.** What still needs a
+  rhythm is a credit that only *looks* like an employer — a company name with no
+  pay-word anywhere on it — because for those the cadence is the only evidence
+  there is. A line worded as salary counts however lumpy it is.
+- **Two figures, because they answer different questions.** The period average
+  ($3,912 a month, grossing to ~$55,000) is what she actually received, gaps
+  included. The new **run rate** card takes the last two pays, adjusts for their
+  spacing, and gives what she is being paid *now* — $6,732 a month, grossing to
+  ~$105,000, which lands close to the $125,000 declared. On a return-to-work file
+  the second is what a lender assesses; the first belongs on the record. The
+  gross-up card now says which one it is showing instead of quietly presenting
+  the low number as the answer.
+- **The gap cannot pass unasked.** 45 days or more with no pay credit costs 15
+  income points and raises an *Ask the client* item naming both ends of the hole
+  and the three usual explanations. **Fabio, 31 Aug 2026: the reason is NOT fed
+  to the AI** — it is a file note for the credit team, not something that writes
+  itself into a regulated document. The point of the flag is that credit knows to
+  query the client when no explanation was given.
+- Kornelia's score moves 94 → 78, which is the honest number for a file with a
+  four-month hole in the income and a $70,000 variance.
+
+**CashDeck's categories are a strong hint, not gospel.** Of the eleven lines it
+filed under "Wages" on this file, eight were savings interest — $5,423 of it. Our
+own interest test caught them and kept them out of income, which is the only
+reason yesterday's "trust the category" change did not import CashDeck's mistake
+wholesale. Any classifier that reads the category must stay overridable by our
+own checks.
