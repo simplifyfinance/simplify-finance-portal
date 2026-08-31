@@ -1,23 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { markProceeded, buildNextStepsContent } from '@/lib/proceed-flow'
+import { createSupabaseServer } from '@/lib/supabase-server'
 
+// This route is only ever reached from the "Client agreed" button on the BC and
+// LO tabs, which only we can see. So anything arriving here was recorded by our
+// office, not pressed by the client - and we name who, so the two are never
+// confused later.
 export async function POST(req: NextRequest) {
   const { dealId, stage } = await req.json()
   if (!dealId || (stage !== 'BC' && stage !== 'LO')) {
     return NextResponse.json({ ok: false, error: 'Missing dealId or invalid stage' }, { status: 400 })
   }
 
-  const result = await markProceeded(dealId, stage)
+  let byName: string | null = null
+  try {
+    const supabase = await createSupabaseServer()
+    const { data: auth } = await supabase.auth.getUser()
+    if (auth?.user?.id) {
+      const { data: prof } = await supabase.from('user_profiles')
+        .select('full_name').eq('id', auth.user.id).maybeSingle()
+      byName = (prof as any)?.full_name || auth.user.email || null
+    }
+  } catch {
+    // Not knowing the name is survivable - it still records that we pressed it.
+  }
+
+  const result = await markProceeded(dealId, stage, { source: 'office', name: byName })
   if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 404 })
 
   const { deal, alreadyProceeded, wealthDeskLink } = result
   if (alreadyProceeded) {
-    return NextResponse.json({ ok: true, alreadyProceeded: true })
+    return NextResponse.json({ ok: true, alreadyProceeded: true, by: byName })
   }
 
   const clientEmail = deal.clients?.email
   if (!clientEmail) {
-    return NextResponse.json({ ok: true, emailSent: false, reason: 'No email on file for this client' })
+    return NextResponse.json({ ok: true, emailSent: false, by: byName, reason: 'No email on file for this client' })
   }
 
   const { steps } = buildNextStepsContent(stage, wealthDeskLink)
@@ -74,8 +92,8 @@ export async function POST(req: NextRequest) {
         html
       })
     })
-    return NextResponse.json({ ok: true, emailSent: true })
+    return NextResponse.json({ ok: true, emailSent: true, by: byName })
   } catch (e) {
-    return NextResponse.json({ ok: true, emailSent: false, reason: 'Email failed to send' })
+    return NextResponse.json({ ok: true, emailSent: false, by: byName, reason: 'Email failed to send' })
   }
 }

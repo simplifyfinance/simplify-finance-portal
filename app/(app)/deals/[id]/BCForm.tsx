@@ -7,6 +7,15 @@ import BrokerAssignment from './BrokerAssignment'
 import CurrencyInput from './CurrencyInput'
 import { can } from '@/lib/permissions'
 import { templateLabel } from '@/lib/templates'
+import { proceedCredit } from '@/lib/deal-status'
+
+// A finished "client agreed" is not something to hide. It used to disappear the
+// instant it was pressed, which made "already done" look exactly like "broken".
+function agreedDay(v: any): string {
+  if (!v) return ''
+  const d = new Date(v)
+  return isNaN(d.getTime()) ? '' : ' ' + d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short' })
+}
 
 function annualizeAmount(amount: string | undefined, frequency: string | undefined): number {
   const n = Number(amount) || 0
@@ -646,6 +655,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // Mirror save state up to the deal header, which owns the single indicator.
   useEffect(() => { onSaveStatus?.({ at: savedAt, error: saveError }) }, [savedAt, saveError])
   const [clientProceeded, setClientProceeded] = useState<boolean>(!!deal.client_proceeded)
+  const [proceedInfo, setProceedInfo] = useState(() => proceedCredit(deal, 'BC'))
   const [showMoveToLoPopup, setShowMoveToLoPopup] = useState(false)
   const [sendingMoveToLo, setSendingMoveToLo] = useState(false)
   const [moveToLoMsg, setMoveToLoMsg] = useState('')
@@ -785,6 +795,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
       const data = await res.json()
       if (!data.ok) { setMoveToLoMsg(data.error || 'Failed'); setSendingMoveToLo(false); return }
       setClientProceeded(true)
+      setProceedInfo({ when: new Date().toISOString(), who: data.by ? `recorded by ${data.by}` : 'recorded by our office' })
       setShowMoveToLoPopup(false)
       setMoveToLoMsg(data.alreadyProceeded ? 'Already moved to LO' : data.emailSent ? 'Moved to LO — client emailed' : 'Moved to LO — no email on file for client')
       onStageChange?.('LO')
@@ -1436,7 +1447,15 @@ Key assumptions: ${checklistText}`
                     {bcCompletedAt ? '✓ Sent to broker for review' : markingComplete ? 'Marking...' : 'Done — send to broker for review'}
                   </button>
                 ) : null}
-                {!clientProceeded && (
+{clientProceeded ? (
+                  <div className="flex items-center gap-2">
+                    <button disabled title={proceedInfo.when ? new Date(proceedInfo.when).toLocaleString('en-AU') : undefined}
+                      className="px-3 py-1.5 text-sm rounded-lg font-medium bg-green-50 text-green-600 border border-green-200 cursor-default">
+                      {'\u2713'} Client agreed{agreedDay(proceedInfo.when)}
+                    </button>
+                    <span className="text-xs text-gray-400">{proceedInfo.who}</span>
+                  </div>
+                ) : (
                   <button onClick={() => setShowMoveToLoPopup(true)}
                     className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
                     Client agreed — move to LO

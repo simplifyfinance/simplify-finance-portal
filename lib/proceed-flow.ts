@@ -39,7 +39,14 @@ export function hasProceeded(deal: any, stage: ProceedStage): boolean {
   return stage === 'BC' ? !!deal?.client_proceeded : !!deal?.lo_client_proceeded
 }
 
-export async function markProceeded(dealId: string, stage: ProceedStage) {
+// Who pressed it. 'client' is the Proceed button on the client's own page;
+// 'office' is one of us recording that they rang or replied instead. Both doors
+// used to write client_proceeded and nothing else, so afterwards there was no way
+// to tell them apart - and the button on the BC tab vanished, so there was no way
+// to tell "already done" from "broken" either.
+export type ProceedBy = { source: 'client' | 'office'; name?: string | null }
+
+export async function markProceeded(dealId: string, stage: ProceedStage, by: ProceedBy) {
   const supabase = await createSupabaseServer()
 
   const { data: deal, error } = await supabase
@@ -58,7 +65,15 @@ export async function markProceeded(dealId: string, stage: ProceedStage) {
   if (!alreadyProceeded) {
     const nowIso = new Date().toISOString()
     if (stage === 'BC') {
-      await supabase.from('deals').update({ stage: 'LO', last_tab: 'LO', client_proceeded: true, proceeded_at: nowIso }).eq('id', dealId)
+      const { data: wrote, error: wErr } = await supabase.from('deals').update({
+        stage: 'LO', last_tab: 'LO', client_proceeded: true, proceeded_at: nowIso,
+        proceeded_source: by.source, proceeded_by: by.source === 'office' ? (by.name || null) : null,
+      }).eq('id', dealId).select('id')
+      // RLS refuses a write by returning no rows and no error. Saying the client
+      // agreed when nothing was stored would be the worst kind of quiet failure.
+      if (wErr || !wrote || wrote.length === 0) {
+        return { ok: false as const, error: wErr?.message || 'The deal would not save. Nothing was recorded.' }
+      }
 
       if (!deal.assigned_credit_officer) {
         try {
@@ -71,7 +86,13 @@ export async function markProceeded(dealId: string, stage: ProceedStage) {
         }
       }
     } else {
-      await supabase.from('deals').update({ stage: 'Compliance', last_tab: 'Compliance', lo_client_proceeded: true, lo_proceeded_at: nowIso }).eq('id', dealId)
+      const { data: wrote, error: wErr } = await supabase.from('deals').update({
+        stage: 'Compliance', last_tab: 'Compliance', lo_client_proceeded: true, lo_proceeded_at: nowIso,
+        lo_proceeded_source: by.source, lo_proceeded_by: by.source === 'office' ? (by.name || null) : null,
+      }).eq('id', dealId).select('id')
+      if (wErr || !wrote || wrote.length === 0) {
+        return { ok: false as const, error: wErr?.message || 'The deal would not save. Nothing was recorded.' }
+      }
       try {
         await notifyCrisMoveCard(deal.deal_name, deal.assigned_broker, 'Move this deal card to Compliance (to be actioned)')
       } catch (e) {

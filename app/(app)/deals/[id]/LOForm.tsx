@@ -5,6 +5,15 @@ import CreditOfficerAssignment from './CreditOfficerAssignment'
 import BrokerAssignment from './BrokerAssignment'
 import { can } from '@/lib/permissions'
 import { templateLabel } from '@/lib/templates'
+import { proceedCredit } from '@/lib/deal-status'
+
+// A finished "client agreed" is not something to hide. It used to disappear the
+// instant it was pressed, which made "already done" look exactly like "broken".
+function agreedDay(v: any): string {
+  if (!v) return ''
+  const d = new Date(v)
+  return isNaN(d.getTime()) ? '' : ' ' + d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short' })
+}
 
 function makeUid() {
   return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)
@@ -225,6 +234,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   const [creditTeamErr, setCreditTeamErr] = useState('')
   const [assignmentRefreshKey, setAssignmentRefreshKey] = useState(0)
   const [clientProceeded, setClientProceeded] = useState<boolean>(!!deal.lo_client_proceeded)
+  const [proceedInfo, setProceedInfo] = useState(() => proceedCredit(deal, 'LO'))
   const [showMoveToCompliancePopup, setShowMoveToCompliancePopup] = useState(false)
   const [sendingMoveToCompliance, setSendingMoveToCompliance] = useState(false)
   const [moveToComplianceMsg, setMoveToComplianceMsg] = useState('')
@@ -733,7 +743,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       const res = await fetch('/api/send-next-steps-email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId: deal.id, stage: 'LO' }) })
       const data = await res.json()
       if (!data.ok) { setMoveToComplianceMsg(data.error || 'Failed'); setSendingMoveToCompliance(false); return }
-      setClientProceeded(true); setShowMoveToCompliancePopup(false)
+      setClientProceeded(true)
+      setProceedInfo({ when: new Date().toISOString(), who: data.by ? `recorded by ${data.by}` : 'recorded by our office' })
+      setShowMoveToCompliancePopup(false)
       setMoveToComplianceMsg(data.alreadyProceeded ? 'Already moved to Compliance' : data.emailSent ? 'Moved to Compliance — client emailed' : 'Moved to Compliance — no email on file')
       onStageChange?.('Compliance')
     } catch (e: any) { setMoveToComplianceMsg(e.message) }
@@ -1286,11 +1298,20 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                       {loCompletedAt ? '✓ Sent to broker for review' : markingLoComplete ? 'Marking...' : 'Done — send to broker for review'}
                     </button>
                   )}
-                  {!clientProceeded && (
-                    <button onClick={() => setShowMoveToCompliancePopup(true)} className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
-                      Client agreed — move to Compliance
+{clientProceeded ? (
+                  <div className="flex items-center gap-2">
+                    <button disabled title={proceedInfo.when ? new Date(proceedInfo.when).toLocaleString('en-AU') : undefined}
+                      className="px-3 py-1.5 text-sm rounded-lg font-medium bg-green-50 text-green-600 border border-green-200 cursor-default">
+                      {'\u2713'} Client agreed{agreedDay(proceedInfo.when)}
                     </button>
-                  )}
+                    <span className="text-xs text-gray-400">{proceedInfo.who}</span>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowMoveToCompliancePopup(true)}
+                    className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
+                    Client agreed — move to Compliance
+                  </button>
+                )}
                 </div>
                 <div className="w-px h-8 bg-gray-200" />
                 <div className="flex items-center gap-3">

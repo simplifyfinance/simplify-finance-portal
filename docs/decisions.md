@@ -533,3 +533,46 @@ wrong.
 - Both promote paths now check the returned row and roll back the on-screen list
   if the write did not happen — RLS returns zero rows and no error, so an
   unchecked write looks like success.
+
+## The progress bar was ticking the wrong thing (31 Aug 2026)
+
+Two deals looked identical on the bar — Fact Find and BC green, Lending Options
+lit up — while the amber chip underneath correctly said one was waiting on the
+client to respond to the BC and the other on the credit officer to write the LO.
+
+- **The BC bead was ticking on `bc_completed_at`.** That timestamp means the
+  credit officer finished typing and handed it to the broker. Not sent, not
+  agreed. So a BC sitting unanswered with the client showed as finished, and the
+  LO showed as under way when nobody had opened it. Lending Options had the same
+  fault on `lo_completed_at`.
+- **A stage is finished when the client agrees to move past it.** BC closes on
+  `client_proceeded`, LO on `lo_client_proceeded`. Nothing else closes them.
+- **The beads and the chip now come out of one file**, `lib/deal-status.ts`.
+  They disagreed because they were two separate ladders; there is now one.
+  `currentStage` — which decides the tab the deal page opens on — comes from the
+  same beads, so the blue bead and the open tab cannot disagree either.
+- The skipped-step rule from earlier today still holds: a BC done outside the
+  portal does not hold the bar at BC forever. A test covers it.
+- The live bead now carries one short word — "with client", "with credit",
+  "with broker" — so the bar says who is holding the deal up without reading the
+  chip.
+
+## "Client agreed" stays on screen, and says who pressed it (31 Aug 2026)
+
+The button vanished the instant it was pressed. On a deal where someone had
+already pressed it there was nothing there at all, which looks exactly like a
+broken screen — and that is how it was reported.
+
+- **It now stays, ticked and locked, with the date**, matching the "✓ Sent to
+  broker for review" button beside it. Both the BC and the LO tab.
+- **There are two doors onto the same lock.** The client presses Proceed on their
+  own page, or one of us presses "Client agreed" because they rang or replied.
+  Both used to write `client_proceeded` and nothing else. They now stamp
+  `proceeded_source` ('client' or 'office') and, for the office, who.
+- **Deals recorded before today say so.** `proceeded_source` is NULL on all of
+  them and has no default, so the button reads "recorded before we started
+  tracking who pressed it". Guessing "the client pressed it" on a deal where one
+  of us did would be worse than saying nothing.
+- The proceed write is now checked — it `.select()`s and fails loudly. It was a
+  bare update, and RLS refuses by returning no rows and no error, so a refused
+  write would have reported the client as having agreed.

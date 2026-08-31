@@ -74,3 +74,84 @@ describe('what a deal is waiting on', () => {
     expect(getWaitingOnLabel(null)).toBeNull()
   })
 })
+
+// ---------------------------------------------------------------------------
+// The progress bar beads. These exist because the bar and the chip disagreed:
+// the bar ticked BC green on bc_completed_at, which only means the credit officer
+// finished typing.
+import { dealBeads, currentStage, proceedCredit } from './deal-status'
+
+const beadOf = (d: any, key: string) => dealBeads(d).find(b => b.key === key)!
+
+describe('progress beads', () => {
+  it('does not tick BC just because the credit officer finished typing', () => {
+    // Clementine: BC written, sent, sitting with the client unanswered.
+    const d = { ...base, fact_find_data: { a: 1 }, bc_completed_at: 'x', bc_sent_at: 'x', client_proceeded: false }
+    expect(beadOf(d, 'bc').done).toBe(false)
+    expect(beadOf(d, 'bc').current).toBe(true)
+    expect(beadOf(d, 'lo').current).toBe(false)
+  })
+
+  it('ticks BC once the client has agreed', () => {
+    // Kornelia: client agreed, LO now being written.
+    const d = { ...base, fact_find_data: { a: 1 }, bc_completed_at: 'x', bc_sent_at: 'x', client_proceeded: true }
+    expect(beadOf(d, 'bc').done).toBe(true)
+    expect(beadOf(d, 'lo').current).toBe(true)
+  })
+
+  it('tells those two deals apart', () => {
+    const ff = { ...base, fact_find_data: { a: 1 }, bc_completed_at: 'x', bc_sent_at: 'x' }
+    const clementine = dealBeads({ ...ff, client_proceeded: false }).map(b => b.done).join()
+    const kornelia = dealBeads({ ...ff, client_proceeded: true }).map(b => b.done).join()
+    expect(clementine).not.toBe(kornelia)
+  })
+
+  it('does not hold the bar back for a BC done outside the portal', () => {
+    const d = { ...base, fact_find_data: { a: 1 }, client_proceeded: false, lo_client_proceeded: true }
+    expect(beadOf(d, 'bc').done).toBe(true)          // history, not a task
+    expect(beadOf(d, 'compliance').current).toBe(true)
+  })
+
+  it('names who is holding the live stage up, and only on that bead', () => {
+    const withClient = { ...base, fact_find_data: { a: 1 }, bc_completed_at: 'x', bc_sent_at: 'x' }
+    expect(beadOf(withClient, 'bc').state).toBe('with client')
+    expect(beadOf(withClient, 'lo').state).toBe(null)
+
+    const withCredit = { ...base, fact_find_data: { a: 1 }, assigned_credit_officer: 'Mellissa' }
+    expect(beadOf(withCredit, 'bc').state).toBe('with credit')
+
+    const withBroker = { ...base, fact_find_data: { a: 1 }, bc_completed_at: 'x' }
+    expect(beadOf(withBroker, 'bc').state).toBe('with broker')
+  })
+
+  it('opens the deal page on the same stage the blue bead is on', () => {
+    expect(currentStage({ ...base, fact_find_data: null })).toBe('FactFind')
+    expect(currentStage({ ...base, fact_find_data: { a: 1 } })).toBe('BC')
+    expect(currentStage({ ...base, fact_find_data: { a: 1 }, client_proceeded: true })).toBe('LO')
+    expect(currentStage({ ...base, fact_find_data: { a: 1 }, client_proceeded: true, lo_client_proceeded: true })).toBe('Compliance')
+  })
+})
+
+describe('who pressed the client-agreed button', () => {
+  it('says the client pressed it when the client pressed it', () => {
+    const r = proceedCredit({ proceeded_at: '2026-08-26T06:12:00Z', proceeded_source: 'client' }, 'BC')
+    expect(r.who).toBe('client pressed Proceed')
+  })
+
+  it('names whoever in the office recorded it', () => {
+    const r = proceedCredit({ proceeded_at: 'x', proceeded_source: 'office', proceeded_by: 'Mellissa Sedin' }, 'BC')
+    expect(r.who).toBe('recorded by Mellissa Sedin')
+  })
+
+  it('does not credit the client on a deal recorded before we tracked it', () => {
+    const r = proceedCredit({ proceeded_at: '2026-08-26T06:12:00Z' }, 'BC')
+    expect(r.who).not.toContain('client pressed')
+    expect(r.who).toContain('before we started tracking')
+  })
+
+  it('reads the LO fields for the LO stage', () => {
+    const d = { proceeded_source: 'client', lo_proceeded_source: 'office', lo_proceeded_by: 'Katie', lo_proceeded_at: 'y' }
+    expect(proceedCredit(d, 'LO').who).toBe('recorded by Katie')
+    expect(proceedCredit(d, 'BC').who).toBe('client pressed Proceed')
+  })
+})
