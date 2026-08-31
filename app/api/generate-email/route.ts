@@ -263,8 +263,8 @@ export async function POST(req: NextRequest) {
       p(`Based on your current financial position, you have sufficient capacity to refinance your property and access approximately ${amt(d.splits?.[1]?.amount, '[equity amount]')} in equity, while also securing a competitive rate.`) +
       p13('Here is a breakdown of the structure:') +
       propHead(`Against ${d.suburb || '[Property Address]'}`, d.incomeRental) +
-      card('Split 1 - Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + row('Loan amount', '$' + d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
-      card('Split 2 - Equity Release', row('Equity release amount', '$' + (d.equityRelease || '')) + row('Loan amount', '$' + d.splits?.[1]?.amount || '') + row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[1]?.repayment ? '$' + (parseFloat(String(d.splits[1].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[1]?.type || 'Interest Only') + buildLVRLine(d)) +
+      card('Split 1 - Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
+      card('Split 2 - Equity Release', row('Equity release amount', '$' + (d.equityRelease || '')) + row('Loan amount', '$' + (d.splits?.[1]?.amount || '')) + row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[1]?.repayment ? '$' + (parseFloat(String(d.splits[1].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[1]?.type || 'Interest Only') + buildLVRLine(d)) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
@@ -275,7 +275,7 @@ export async function POST(req: NextRequest) {
       p('Based on your current financial position, you have sufficient capacity to refinance your existing loan and secure a competitive rate.') +
       p13('Here is a breakdown of the structure:') +
       propHead(`Against ${d.suburb || '[Property Address]'}`, d.incomeRental) +
-      card('Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + row('New loan amount', '$' + d.splits?.[0]?.amount || '') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years') + buildLVRLine(d)) +
+      card('Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + row('New loan amount', '$' + (d.splits?.[0]?.amount || '')) + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years') + buildLVRLine(d)) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
@@ -333,10 +333,10 @@ export async function POST(req: NextRequest) {
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>.`) +
       p13('Here is a breakdown of the structure:') +
       card('Your Loan Structure',
-        row('Purchase price', '$' + d.purchasePrice || '') +
-        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
-        row(dutyLabel(d), '$' + d.stampDuty || '') +
-        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Purchase price', '$' + (d.purchasePrice || '')) +
+        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + (d.deposit || '')) +
+        row(dutyLabel(d), '$' + (d.stampDuty || '')) +
+        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
         buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
@@ -398,14 +398,14 @@ export async function POST(req: NextRequest) {
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>.`) +
       card('Your Loan Structure',
-        row('Purchase price', '$' + d.purchasePrice || '') +
-        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
-        row(dutyLabel(d), '$' + d.stampDuty || '') +
-        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Purchase price', '$' + (d.purchasePrice || '')) +
+        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + (d.deposit || '')) +
+        row(dutyLabel(d), '$' + (d.stampDuty || '')) +
+        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
         buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
-        row('Repayment type', d.splits?.[0]?.type || 'Interest Only (5 years)')
+        row('Repayment type', `${d.splits?.[0]?.type || 'Interest Only (5 years)'} over ${d.loanTerm || '30'} years`)
       ) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
@@ -423,10 +423,10 @@ export async function POST(req: NextRequest) {
         `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Net proceeds (est.)</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">$${d.netProceeds || ''}</span></td></tr>`
       ) +
       card('New Purchase',
-        row('Purchase price', '$' + d.purchasePrice || '') +
-        row(depositLabel, '$' + d.deposit || '') +
-        row(dutyLabel(d), '$' + d.stampDuty || '') +
-        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Purchase price', '$' + (d.purchasePrice || '')) +
+        row(depositLabel, '$' + (d.deposit || '')) +
+        row(dutyLabel(d), '$' + (d.stampDuty || '')) +
+        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
         buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
@@ -486,11 +486,11 @@ export async function POST(req: NextRequest) {
       <p style="font-size:12px;color:#777;margin:0 0 16px;line-height:1.6"><span style="color:#777;">**Retained savings explanation: after the payment of your 5% deposit (plus any relevant stamp duty), the government allows you to retain up to 6 months of living expenses AND up to 6 months of scheduled loan repayments.</span></p>
       <p style="font-size:13px;color:#555;margin:0 0 16px"><span style="color:#555;">Further information: <a href="https://firsthomebuyers.gov.au/australian-government-5-percent-deposit-scheme" style="color:#2DBEFF">firsthomebuyers.gov.au/australian-government-5-percent-deposit-scheme</a></span></p>` +
       card('Your Loan Structure',
-        row('Purchase price', '$' + d.purchasePrice || '') +
-        row(dutyLabel(d), '$' + d.stampDuty || '/bin/zsh — first home buyer exemption') +
-        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Purchase price', '$' + (d.purchasePrice || '')) +
+        row(dutyLabel(d), d.stampDuty ? '$' + d.stampDuty : '$0 — first home buyer exemption') +
+        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
         row('LMI', 'Waived under Gov. Deposit Scheme') +
-        row('Your contribution required', '$' + d.deposit || '') +
+        row('Your contribution required', '$' + (d.deposit || '')) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
@@ -513,14 +513,14 @@ export async function POST(req: NextRequest) {
         row('End debt', '$' + (d.splits?.[1]?.amount || ''))
       ) +
       card('Loan 1 - Bridging Loan',
-        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
         row('Rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Interest treatment', 'Capitalised \u2014 no repayments during the bridging period') +
         row('Bridging period', (d.bridgingPeriod || '12') + ' months') +
         (d.splits?.[0]?.interestCapitalised ? row('Estimated interest capitalised', '$' + (parseFloat(String(d.splits[0].interestCapitalised).replace(/,/g,'')) || 0).toLocaleString('en-AU')) : '')
       ) +
       card('Loan 2 - End Debt (your ongoing repayments)',
-        row('Loan amount', '$' + d.splits?.[1]?.amount || '') +
+        row('Loan amount', '$' + (d.splits?.[1]?.amount || '')) +
         row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', d.splits?.[1]?.repayment ? '$' + (parseFloat(String(d.splits[1].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
         row('Repayment type', `${d.splits?.[1]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
@@ -536,10 +536,10 @@ export async function POST(req: NextRequest) {
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong> — using your parents' property as a security guarantee to avoid Lenders Mortgage Insurance.`) +
       card('Your Loan Structure',
-        row('Purchase price', '$' + d.purchasePrice || '') +
-        row(dutyLabel(d), '$' + d.stampDuty || '') +
-        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
-        row('Your contribution required', '$' + d.deposit || '') +
+        row('Purchase price', '$' + (d.purchasePrice || '')) +
+        row(dutyLabel(d), '$' + (d.stampDuty || '')) +
+        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
+        row('Your contribution required', '$' + (d.deposit || '')) +
         row('Guarantor', d.guarantorName || '') +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
@@ -555,10 +555,10 @@ export async function POST(req: NextRequest) {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('When looking at your numbers, your borrowing capacity is looking strong for an SMSF purchase.') +
       card('Your Loan Structure',
-        row('Purchase price', '$' + d.purchasePrice || '') +
-        row(dutyLabel(d), '$' + d.stampDuty || '') +
-        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
-        row('Your contribution required', '$' + d.deposit || '') +
+        row('Purchase price', '$' + (d.purchasePrice || '')) +
+        row(dutyLabel(d), '$' + (d.stampDuty || '')) +
+        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
+        row('Your contribution required', '$' + (d.deposit || '')) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
@@ -584,7 +584,7 @@ export async function POST(req: NextRequest) {
         row(dutyLabel(d), '$' + (d.stampDuty || '')) +
         `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Total cost</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">$${totalCost.toLocaleString('en-AU')}</span></td></tr>` +
         row('"As if complete" valuation', '$' + (d.asIfCompleteValue || '')) +
-        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
         row('Deposit required', '$' + depositRequired.toLocaleString('en-AU')) +
         buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
@@ -653,10 +653,10 @@ export async function POST(req: NextRequest) {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       card('Your Loan Structure',
-        row('Purchase price', '$' + d.purchasePrice || '') +
-        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + d.deposit || '') +
-        row(dutyLabel(d), '$' + d.stampDuty || '') +
-        row('Loan amount', '$' + d.splits?.[0]?.amount || '') +
+        row('Purchase price', '$' + (d.purchasePrice || '')) +
+        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + (d.deposit || '')) +
+        row(dutyLabel(d), '$' + (d.stampDuty || '')) +
+        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
         buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +

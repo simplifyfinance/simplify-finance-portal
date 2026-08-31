@@ -53,10 +53,22 @@ Current state. Update as things land.
 
 ## Small things
 
-- `custom` email template renders `$undefined` (operator precedence on purchase price).
-- `investment_purchase` repayment line omits the loan term.
-- Compare-options checkbox ungated on ten templates.
-- No build-time guard against field drift — agreed after the blank-data incident.
+- ~~`custom` email template renders `$undefined`~~ FIXED 31 Aug. It was 34 lines
+  across seven templates, not one, and it hid a second fault: an unquoted shell
+  heredoc had turned `$0` into `/bin/zsh` in the first home buyer duty line.
+  Fixing the precedence alone would have put that in a client email. Guarded by
+  `lib/email-money.test.ts`.
+- ~~`investment_purchase` repayment line omits the loan term~~ FIXED 31 Aug.
+- **Compare-options checkbox — the note does not match the code.** The checkbox is
+  gated to oo_purchase, investment_purchase and refinance_equity in BCForm, and
+  the email route honours `compareOptions` for exactly those three. Nothing is
+  ungated. What IS true: `compareOptions` and `altScenarios` stay in `bc_data`
+  after switching to a template that does not use them, so stale scenarios sit on
+  the deal and would appear if a template were ever added to that list. Needs
+  Fabio to say which was meant before anything changes.
+- ~~No build-time guard against field drift~~ DONE 31 Aug — `lib/bc-fields.test.ts`
+  compares `buildBcData()` against the autosave dependency array and fails the
+  build when they disagree.
 - Confirm Dinisha and Ria should see zero deals (no `credit_officers` rows).
 - Rename `notifyEllieCreateCard` / `notifyCrisMoveCard` — internal names only.
 
