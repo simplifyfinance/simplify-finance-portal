@@ -363,3 +363,18 @@ $67.90, and the balances prove which is which: 533,132.57 sits between November'
 - **The amount is not the test either.** The summed figure does come out at
   roughly double, but the ratio is unreliable: on a nearly-offset loan paying
   $0.54 a month, ordinary movement produces ratios of 16 or 29.
+
+## A query is tracked until it is answered (31 Aug 2026)
+
+"Queried, waiting" used to clear the row off the list and record the date without
+ever showing it. A query nobody replied to and a query nobody sent looked
+identical once the row had gone.
+
+- **The badge carries the age.** "Queried · 6 weeks" rather than "Queried".
+- **After 21 days with no answer it comes back on the list by itself**, in amber.
+  SFG normally answer inside a fortnight, so three weeks is late rather than
+  merely pending. Marking it again resets the clock; a real answer — paid, not
+  owed, in arrears — closes it properly.
+- **The toolbar says how many are waiting and how long the longest has been.**
+- **Nothing new is stored.** resolved_at was always being written; it was simply
+  never read. The fix was to show it.

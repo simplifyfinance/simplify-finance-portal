@@ -131,8 +131,26 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
   const valued = useMemo(() => mine.filter(g => Number(g.trail_missed || 0) >= MIN_VALUE), [mine])
   const worthless = mine.length - valued.length
 
-  const isCleared = (g: Gap) => resolved.has(`${g.broker_key}|${g.loan_ref}|${String(g.last_paid).slice(0, 10)}`)
-  const isMarked = isCleared
+  const isMarked = (g: Gap) => resolved.has(`${g.broker_key}|${g.loan_ref}|${String(g.last_paid).slice(0, 10)}`)
+
+  // A query is not an answer. Once the row disappears, a query nobody replied to
+  // and a query nobody ever sent look exactly the same - so an unanswered one
+  // comes back on the list by itself and says how long it has been waiting.
+  const daysSince = (iso: string) => {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return 0
+    return Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000))
+  }
+  // Days before an unanswered query returns to the list. SFG normally come back
+  // within a fortnight, so three weeks is late rather than merely pending.
+  const CHASE_AFTER_DAYS = 21
+  function waitingDays(g: Gap): number {
+    const r = resolved.get(`${g.broker_key}|${g.loan_ref}|${String(g.last_paid).slice(0, 10)}`)
+    if (!r || r.outcome !== 'queried') return 0
+    return daysSince(r.resolved_at)
+  }
+  const isOverdueQuery = (g: Gap) => waitingDays(g) >= CHASE_AFTER_DAYS
+  const isCleared = (g: Gap) => isMarked(g) && !isOverdueQuery(g)
   // Paid more than once in the month it came back. SFG pay a missed month as an
   // extra line in a later statement, so this is very often the missed month
   // already arriving. It is shown as a flag and nothing else: the row stays on
@@ -158,6 +176,8 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
                        [valued, resolved, showCleared])
   const clearedCount = valued.filter(isCleared).length
   const paidTwice = valued.filter(isPaidTwice)
+  const waiting = valued.filter(g => waitingDays(g) > 0)
+  const longestWait = waiting.reduce((m, g) => Math.max(m, waitingDays(g)), 0)
   const recovered = valued
     .filter(g => resolved.get(`${g.broker_key}|${g.loan_ref}|${String(g.last_paid).slice(0, 10)}`)?.outcome === 'paid')
     .reduce((t, g) => t + Number(g.trail_missed || 0), 0)
@@ -216,7 +236,11 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
           if (!ms.length) return ''
           return `${ms.length} ${ms.length === 1 ? 'month' : 'months'}: ${ms.map(mFull).join('; ')}`
         })(),
-        OUTCOME_LABEL[resolved.get(idOf(g))?.outcome || ''] || 'Open',
+        (() => {
+          const label = OUTCOME_LABEL[resolved.get(idOf(g))?.outcome || ''] || 'Open'
+          const d = waitingDays(g)
+          return d > 0 ? `${label} — ${d} day${d === 1 ? '' : 's'}` : label
+        })(),
         isPaidTwice(g)
           ? `Paid ${g.lines_at_return} times${g.returned_in ? ` in ${mFull(g.returned_in)}` : ''} (normally ${g.usual_lines})`
           : '',
@@ -410,6 +434,12 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
         {recovered > 0 && (
           <span><b style={{ color: TONE.pos }}>{money(recovered)}</b> recovered so far</span>
         )}
+        {waiting.length > 0 && (
+          <span title={`A query is only tracked while you can see it. Anything unanswered after ${CHASE_AFTER_DAYS} days comes back on the list on its own.`}>
+            <b style={{ color: longestWait >= CHASE_AFTER_DAYS ? '#B4761F' : TONE.ink }}>{waiting.length}</b> queried, waiting
+            {longestWait >= 14 ? ` · longest ${Math.floor(longestWait / 7)} weeks` : ''}
+          </span>
+        )}
         {paidTwice.length > 0 && (
           <span title="SFG pay a missed month as an extra line in a later statement, so these are very likely already covered. They stay on the list — check one before you ask about it.">
             <b style={{ color: TONE.pos }}>{paidTwice.length}</b> paid twice in the month they came back
@@ -489,12 +519,23 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
                       Paid twice{g.returned_in ? ` in ${mLabel(g.returned_in)}` : ''}
                     </span>
                   )}
-                  {isMarked(g) && (
-                    <span className="ml-2 text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[1px] border align-middle"
-                          style={{ borderColor: TONE.line, color: TONE.label, background: '#fff' }}>
-                      {OUTCOME_LABEL[resolved.get(idOf(g))?.outcome || ''] || 'Cleared'}
-                    </span>
-                  )}
+                  {isMarked(g) && (() => {
+                    const d = waitingDays(g)
+                    const late = isOverdueQuery(g)
+                    const age = d >= 14 ? `${Math.floor(d / 7)} weeks` : d === 1 ? '1 day' : `${d} days`
+                    return (
+                      <span className="ml-2 text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[1px] border align-middle"
+                            style={late
+                              ? { borderColor: '#EBD9BE', color: '#B4761F', background: '#FDF6EC' }
+                              : { borderColor: TONE.line, color: TONE.label, background: '#fff' }}
+                            title={d > 0
+                              ? `Queried ${age} ago${late ? ' and still no answer, so it is back on the list' : ''}.`
+                              : undefined}>
+                        {OUTCOME_LABEL[resolved.get(idOf(g))?.outcome || ''] || 'Cleared'}
+                        {d > 0 ? ` · ${age}` : ''}
+                      </span>
+                    )
+                  })()}
                   {/* This loan has been in arrears before. A prompt, never an
                       answer - it is a reason to check, not a reason to clear. */}
                   {(() => {
