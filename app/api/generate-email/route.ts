@@ -35,7 +35,6 @@ function shell(body: string, b: { name: string; title: string; crn: string; cale
     <tr><td bgcolor="#ffffff" style="background:#ffffff;padding:20px 28px 28px">${body}
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 0"><tr>
       <td bgcolor="#ffffff" style="background:#ffffff;border-top:1px solid #E4E2DC;padding:12px 0 0">
-      <p style="font-size:10px;color:#8a8a84;margin:0 0 6px;line-height:1.65"><span style="color:#8a8a84;">Rates quoted are indicative only and subject to change. Figures are based on information provided and are not a formal credit assessment. Subject to lender approval.</span></p>
       <p style="font-size:10px;color:#9e9e98;margin:0;line-height:1.65"><span style="color:#9e9e98;">&copy; 2026 ${brandName} | ${footerAddress} | Australian Credit Licence: ${acl}</span></p>
       </td></tr></table>
     </td></tr>
