@@ -131,11 +131,13 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
   const valued = useMemo(() => mine.filter(g => Number(g.trail_missed || 0) >= MIN_VALUE), [mine])
   const worthless = mine.length - valued.length
 
-  const isMarked = (g: Gap) => resolved.has(`${g.broker_key}|${g.loan_ref}|${String(g.last_paid).slice(0, 10)}`)
-  const isCaughtUp = (g: Gap) => Boolean(g.caught_up)
-  // Off the chase list either way: one because a person answered it, the other
-  // because the money already arrived.
-  const isCleared = (g: Gap) => isMarked(g) || isCaughtUp(g)
+  const isCleared = (g: Gap) => resolved.has(`${g.broker_key}|${g.loan_ref}|${String(g.last_paid).slice(0, 10)}`)
+  const isMarked = isCleared
+  // Paid more than once in the month it came back. SFG pay a missed month as an
+  // extra line in a later statement, so this is very often the missed month
+  // already arriving. It is shown as a flag and nothing else: the row stays on
+  // the list, the totals do not move, and you decide.
+  const isPaidTwice = (g: Gap) => Number(g.extra_payments || 0) > 0
 
   // Was this loan ever marked as being in arrears, in any earlier gap? Returns
   // when it was last marked, so the row can say how old that is.
@@ -155,8 +157,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
   const open = useMemo(() => showCleared ? valued : valued.filter(g => !isCleared(g)),
                        [valued, resolved, showCleared])
   const clearedCount = valued.filter(isCleared).length
-  const caughtUp = valued.filter(isCaughtUp)
-  const caughtUpValue = caughtUp.reduce((t, g) => t + Number(g.trail_missed || 0), 0)
+  const paidTwice = valued.filter(isPaidTwice)
   const recovered = valued
     .filter(g => resolved.get(`${g.broker_key}|${g.loan_ref}|${String(g.last_paid).slice(0, 10)}`)?.outcome === 'paid')
     .reduce((t, g) => t + Number(g.trail_missed || 0), 0)
@@ -193,7 +194,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
       `trail-${label}-${name}-${stamp()}`,
       ['Broker', 'Client', 'Loan reference', 'Lender', 'Balance', 'Monthly trail',
        'Months missed', 'Trail missed', 'Last paid', 'Came back', 'Returned in', 'Months to query', 'Status',
-       'Caught up', 'In arrears before'],
+       'Paid more than once', 'In arrears before'],
       rows.map(g => [
         brokers.find(b => sameBroker(g.broker_key, b.key))?.name || g.broker_key,
         g.client_name || '',
@@ -215,9 +216,9 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
           if (!ms.length) return ''
           return `${ms.length} ${ms.length === 1 ? 'month' : 'months'}: ${ms.map(mFull).join('; ')}`
         })(),
-        isCaughtUp(g) ? 'Caught up' : (OUTCOME_LABEL[resolved.get(idOf(g))?.outcome || ''] || 'Open'),
-        isCaughtUp(g)
-          ? `${g.extra_payments} extra payment${g.extra_payments === 1 ? '' : 's'}${g.returned_in ? ` in ${mFull(g.returned_in)}` : ''}`
+        OUTCOME_LABEL[resolved.get(idOf(g))?.outcome || ''] || 'Open',
+        isPaidTwice(g)
+          ? `Paid ${g.lines_at_return} times${g.returned_in ? ` in ${mFull(g.returned_in)}` : ''} (normally ${g.usual_lines})`
           : '',
         // Carried into the export as well, because this is the column that turns
         // a chase list into "ask about the arrears first".
@@ -409,12 +410,9 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
         {recovered > 0 && (
           <span><b style={{ color: TONE.pos }}>{money(recovered)}</b> recovered so far</span>
         )}
-        {/* Money that never needed chasing. Said out loud, because a list that
-            silently shrinks is harder to trust than one that explains itself. */}
-        {caughtUp.length > 0 && (
-          <span title="SFG pay a missed month as an extra line in a later statement. These loans got more payments in the month they came back than they normally receive, so the missed months have already been paid.">
-            <b style={{ color: TONE.pos }}>{caughtUp.length}</b> caught up by the lender
-            {caughtUpValue > 0 ? <> · <b style={{ color: TONE.pos }}>{money(caughtUpValue)}</b> that was never missing</> : null}
+        {paidTwice.length > 0 && (
+          <span title="SFG pay a missed month as an extra line in a later statement, so these are very likely already covered. They stay on the list — check one before you ask about it.">
+            <b style={{ color: TONE.pos }}>{paidTwice.length}</b> paid twice in the month they came back
           </span>
         )}
         {saveError && <span style={{ color: TONE.neg }}>{saveError}</span>}
@@ -484,11 +482,11 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
                   {g.client_name || '—'}
                   {/* Only visible while cleared rows are being shown, so the list
                       stays plain the rest of the time. */}
-                  {isCaughtUp(g) && (
+                  {isPaidTwice(g) && (
                     <span className="ml-2 text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[1px] border align-middle"
                           style={{ borderColor: '#CFE6D5', color: TONE.pos, background: '#F1F7F3' }}
-                          title={`${g.extra_payments} extra payment${g.extra_payments === 1 ? '' : 's'} arrived${g.returned_in ? ` in ${mLabel(g.returned_in)}` : ''} — ${g.lines_at_return} lines where this loan normally gets ${g.usual_lines}. Nothing to chase.`}>
-                      Caught up
+                          title={`This loan was paid ${g.lines_at_return} times${g.returned_in ? ` in ${mLabel(g.returned_in)}` : ''}, where it normally gets ${g.usual_lines} a month. SFG pay a missed month as an extra line in a later statement, so this is very likely the missed month. Worth checking before you ask.`}>
+                      Paid twice{g.returned_in ? ` in ${mLabel(g.returned_in)}` : ''}
                     </span>
                   )}
                   {isMarked(g) && (

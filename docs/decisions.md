@@ -349,10 +349,17 @@ $67.90, and the balances prove which is which: 533,132.57 sits between November'
   per month away.** Extra means more than that loan normally gets, not more than
   one: about forty loans are split loans that receive two lines every month, and
   for them two is normal and three is the catch-up.
-- **Caught-up rows leave the chase list, and say why.** Green badge, the evidence
-  in the tooltip, and a line in the toolbar saying how many and what they were
-  worth. A list that silently shrinks is harder to trust than one that explains
-  itself.
-- **The amount is not the test.** The summed figure does come out at roughly
-  double, but the line count is exact and the ratio is not: on a nearly-offset
-  loan paying $0.54 a month, ordinary movement produces ratios of 16 or 29.
+- **It is a flag, not a verdict. The row stays on the list.** Fabio, 31 Aug 2026:
+  keep showing missing trail exactly as before, and just say when that loan was
+  paid twice that month so he does not ask about it twice. Nothing is cleared,
+  no total moves. A row that vanishes on a guess is worse than a row that asks a
+  question — and the check is not safe enough to clear money on, which the MA
+  Money rows proved within minutes of it being written.
+- **Why it is not safe to clear on.** Counting lines counts nil-value lines too,
+  and those are common — May 2025 alone had 81 trail lines worth zero. Three MA
+  Money loans came back "caught up" when Usha's file note said the trail amount
+  was NIL and nothing was ever owed. Good enough to raise a flag; nowhere near
+  good enough to take money off a chase list.
+- **The amount is not the test either.** The summed figure does come out at
+  roughly double, but the ratio is unreliable: on a nearly-offset loan paying
+  $0.54 a month, ordinary movement produces ratios of 16 or 29.
