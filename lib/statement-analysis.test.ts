@@ -337,3 +337,57 @@ describe('the file score', () => {
     expect(a.worklist[0].flag).toBe('action')
   })
 })
+
+// ---------------------------------------------------------------------------
+// CashDeck's own category is read before we guess from the narration.
+//
+// Kornelia Viragova, 31 Aug 2026: $28,559 of wages across 11 credits, filed in
+// the workbook under the category "Wages", and none of it counted as income —
+// the employer pays under its own name and the bank narration carries no
+// pay-word. The answer was in the file.
+import { isSalaryLike, isGovernment, isRebate } from './statement-analysis'
+
+const txn = (o: any) => ({
+  externalId: 'x', date: '2026-08-15', description: '', merchant: '',
+  accountNumber: '1', accountName: 'a', institution: 'CBA',
+  category: '', summaryCategory: '', categoryType: '', amount: 100, ...o,
+})
+
+describe('income is read from the category, not just the narration', () => {
+  it('counts a wages credit with nothing recognisable in the narration', () => {
+    // The real shape of the Viragova lines.
+    expect(isSalaryLike(txn({ category: 'Wages', categoryType: 'Income',
+      description: 'SWISS ASIA', merchant: '', amount: 7721.27 }))).toBe(true)
+  })
+
+  it('counts a wages credit with no name on it at all', () => {
+    // The "(blank)" rows in the pivot — $5,423.71 of them.
+    expect(isSalaryLike(txn({ category: 'Wages', categoryType: 'Income',
+      description: '', merchant: '', amount: 991.03 }))).toBe(true)
+  })
+
+  it('still ignores a credit CashDeck did not call wages', () => {
+    expect(isSalaryLike(txn({ category: 'Other Credit', categoryType: 'Income',
+      description: 'TFR FROM J SMITH', amount: 8000 }))).toBe(false)
+  })
+
+  it('never treats money going out as income', () => {
+    expect(isSalaryLike(txn({ category: 'Wages', amount: -500 }))).toBe(false)
+  })
+
+  it('reads a government category the same way', () => {
+    expect(isGovernment(txn({ category: 'Government Benefits', amount: 220 }))).toBe(true)
+    expect(isGovernment(txn({ category: 'Other Credit', amount: 220 }))).toBe(false)
+  })
+
+  it('does not let a pay run be written off as a rebate', () => {
+    // "reimbursement" in the narration of a line CashDeck called Wages.
+    const t = txn({ category: 'Wages', description: 'PAYRUN REIMBURSEMENT', amount: 1200 })
+    expect(isRebate(t)).toBe(false)
+    expect(isSalaryLike(t)).toBe(true)
+  })
+
+  it('still catches a rebate CashDeck filed as one', () => {
+    expect(isRebate(txn({ category: 'Refunds', description: 'MCARE BENEFIT', amount: 87 }))).toBe(true)
+  })
+})

@@ -210,6 +210,10 @@ export function isCommitment(t: ParsedTxn, R: StatementRules = DEFAULT_RULES): b
 
 export function isGovernment(t: ParsedTxn, R: StatementRules = DEFAULT_RULES): boolean {
   if (t.amount <= 0) return false
+  // Same rule as salary: CashDeck's own category is read first.
+  const cats = `${t.category} ${t.summaryCategory}`
+  if (/\bgovernment\b/i.test(cats)) return true
+  if (matchesAny(cats, GOVERNMENT_PAYERS)) return true
   const hay = `${t.merchant} ${t.description}`
   if (matchesAny(hay, GOVERNMENT_PAYERS)) return true
   return R.benefits.some(b => matchesAny(hay, b.terms))
@@ -227,6 +231,14 @@ export function isRealEstateAgent(t: ParsedTxn, R: StatementRules = DEFAULT_RULE
 
 export function isSalaryLike(t: ParsedTxn): boolean {
   if (t.amount <= 0) return false
+  // CashDeck has already read the line and called it Wages. That beats anything
+  // we could infer from the narration, and it is checked first.
+  //
+  // Kornelia Viragova, 31 Aug 2026: $28,559 of wages across 11 credits, sitting
+  // in the file under the category "Wages", and this function found none of it -
+  // because the employer pays under its own name and the bank narration carries
+  // no pay-word for us to match. We had the answer in the file and threw it away.
+  if (matchesAny(`${t.category} ${t.summaryCategory}`, SALARY_WORDS)) return true
   const hay = `${t.merchant} ${t.description}`
   if (matchesAny(hay, SALARY_WORDS)) return true
   // An employer paying by name rather than by the word "payroll" still looks like
@@ -243,7 +255,12 @@ export function isCash(t: ParsedTxn): boolean {
 // Money coming back is not money earned. A Medicare rebate, an ATO refund or a
 // retailer reversal all land as credits and none of them is servicing income.
 export function isRebate(t: ParsedTxn, R: StatementRules = DEFAULT_RULES): boolean {
-  return t.amount > 0 && matchesAny(`${t.merchant} ${t.description}`, R.rebates)
+  if (t.amount <= 0) return false
+  // Wages win. A pay run narrated with the word "reimbursement" in it is still a
+  // pay run, and calling it a rebate would drop it out of income entirely.
+  if (matchesAny(`${t.category} ${t.summaryCategory}`, SALARY_WORDS)) return false
+  if (matchesAny(`${t.category} ${t.summaryCategory}`, R.rebates)) return true
+  return matchesAny(`${t.merchant} ${t.description}`, R.rebates)
 }
 
 export function isInterest(t: ParsedTxn): boolean {

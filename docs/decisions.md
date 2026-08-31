@@ -606,3 +606,33 @@ it exists to reconcile portal deals against statements, and with no settled port
 deals there is nothing to reconcile. Its "Paid, no deal" tab reads the statements
 and still works. **Fabio: if portal deals are never going to be marked settled,
 that tab is dead weight and should be said so out loud on the screen.**
+
+## CashDeck's own category is read before we guess (31 Aug 2026)
+
+Kornelia Viragova's file showed **$208.33 a month** of income not on the fact
+find. The workbook she was analysed from showed **$28,559 of wages** across 11
+credits over six months. We found almost none of it.
+
+- **The category column was being ignored for income.** CashDeck reads every line
+  and files it — these were filed under `Wages`. Our `isSalaryLike` only ever
+  looked at the merchant and the bank narration, matching words like "payroll"
+  and "salary". This employer pays under its own name and the narration carries
+  no pay-word, so we saw nothing. $5,423 of it had no name on the line at all.
+  The answer was in the file and we threw it away.
+- **The category is now checked first, before the narration.** If CashDeck says
+  Wages, it is wages.
+- **Audited the same shape everywhere else.** `isCommitment` and `isCash` already
+  read the category — that is why liabilities and cash were never wrong.
+  `isGovernment` and `isRebate` did not, and now do.
+- **Wages beat rebates.** A pay run narrated with "reimbursement" in it used to be
+  written off as a rebate and dropped out of income entirely. The rebate test now
+  refuses to fire on a line CashDeck called wages.
+- Covered by 7 tests using the real shape of the Viragova lines, including the
+  nameless ones.
+
+Anything analysed before this ships keeps its old figures until **Re-analyse** is
+pressed on the upload. The transactions are stored, so nothing needs re-uploading.
+
+**Still open:** `Other Credit` on that file is $26,165 across 29 lines. Some of it
+may be income and some transfers, and nothing tells us which. That is what the
+audit view is for.
