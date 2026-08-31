@@ -478,3 +478,33 @@ written.
   `fire-and-forget: <why>` comment — writing the reason is the point. Only one
   qualifies today: remembering which tab was last open.
 - **Proved by reintroducing the bug** and watching the ship refuse.
+
+## What a deal is waiting on comes from the timestamps (31 Aug 2026)
+
+A deal whose LO had been written, sent and was sitting with the client still read
+"Waiting on: Broker to review and send".
+
+- **The label was reading `deals.stage`.** That column is advanced in exactly one
+  place in the codebase — when a client clicks proceed. This client never had, so
+  `stage` was still 'BC' and the label was answering a question about the BC and
+  had never looked at the LO at all. The progress bar above it was right the whole
+  time, because it reads timestamps.
+- **It now reads the same timestamps.** Find the furthest milestone reached, name
+  the next one that has not happened. `deals.stage` is not consulted, and a test
+  asserts the answer is identical whatever that column says.
+- **A skipped step behind the furthest milestone is history, not a task.** This
+  deal never had `bc_sent_at` ticked, yet the LO was finished and sent. Walking
+  the ladder from the top would have stuck on the BC forever.
+  **Fabio, 31 Aug 2026: this is normal and the behaviour is deliberate.** The BC
+  is often done outside the portal and only the LO is entered here, so BC
+  milestones will legitimately be missing on plenty of deals. A deal is never
+  chased for a step it was never going to have. Do not "fix" this by requiring
+  the steps in order.
+- **The labels now name the stage** — "review and send the LO", "respond to the
+  BC". The old wording was identical for both and that is what made this so hard
+  to see.
+- Covered by `lib/deal-status.test.ts`, including the exact row that exposed it.
+
+Separately: `deals.stage` now drives almost nothing but is still stored. Either
+it should be removed or it should be maintained. Leaving it half-true is what
+caused this.
