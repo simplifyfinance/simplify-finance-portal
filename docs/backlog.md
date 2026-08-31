@@ -69,6 +69,10 @@ Current state. Update as things land.
 - ~~No build-time guard against field drift~~ DONE 31 Aug — `lib/bc-fields.test.ts`
   compares `buildBcData()` against the autosave dependency array and fails the
   build when they disagree.
+- Trail arrears: only the marker is built. Deliberately not built yet, and worth
+  revisiting once it has been used a few times — a note box against the reason,
+  the other reasons a trail stops (fully offset, hardship, first year, not fully
+  drawn), and on "came back", whether the lender back-paid the months it missed.
 - Confirm Dinisha and Ria should see zero deals (no `credit_officers` rows).
 - Rename `notifyEllieCreateCard` / `notifyCrisMoveCard` — internal names only.
 

@@ -313,3 +313,46 @@ Simplify uses CashDeck and nothing else, so the statement parser reads CashDeck
 and refuses anything else by name rather than guessing at it. illion was
 considered and dropped — not deferred. Do not build a second parser without a
 real reason and a real file to build it from.
+
+## Arrears is remembered against the loan (31 Aug 2026)
+
+A trail can stop because the borrower is behind. Marking that is now a fourth
+outcome on Trail missing, beside Paid, Not owed and Queried.
+
+- **The memory is keyed on the loan, not the gap.** Every other outcome is filed
+  against broker + loan + the month it last paid, which is right for "we chased
+  this one". Arrears is different: the same loan goes quiet again months later
+  under a new key, and everything learned the first time would be lost. So the
+  lookup ignores the month.
+- **It prompts, it never clears.** A loan that has been in arrears before carries
+  an amber marker saying so and how long ago. It does not pre-tick anything and
+  it does not clear the row. A ten-month-old arrears note is a reason to check,
+  not an answer.
+- **The marker hides on the gap it belongs to.** Where this gap is itself the one
+  marked arrears, the existing status badge already says so and a second badge
+  beside it would be noise.
+- **It rides along in the Excel export**, because that is the column that turns a
+  chase list into "ask about the arrears first".
+
+## A missed trail month is usually not missing (31 Aug 2026)
+
+Usha at SFG, 31 Aug 2026, confirmed by four Bendigo loans: when a trail month is
+skipped, the lender does not drop it. It is paid as an **extra line item** in a
+later statement — not as one doubled figure. Mehta had two January 2026 lines of
+$67.90, and the balances prove which is which: 533,132.57 sits between November's
+533,784.02 and January's 532,559.07, so the second line is December's payment.
+
+- **Count the payments, not the months.** The view grouped a loan's lines by
+  month and summed them, so two January lines looked like one January payment and
+  the hole at December looked real. It now counts lines as well.
+- **A gap is caught up when the returning month carried at least one extra line
+  per month away.** Extra means more than that loan normally gets, not more than
+  one: about forty loans are split loans that receive two lines every month, and
+  for them two is normal and three is the catch-up.
+- **Caught-up rows leave the chase list, and say why.** Green badge, the evidence
+  in the tooltip, and a line in the toolbar saying how many and what they were
+  worth. A list that silently shrinks is harder to trust than one that explains
+  itself.
+- **The amount is not the test.** The summed figure does come out at roughly
+  double, but the line count is exact and the ratio is not: on a nearly-offset
+  loan paying $0.54 a month, ordinary movement produces ratios of 16 or 29.

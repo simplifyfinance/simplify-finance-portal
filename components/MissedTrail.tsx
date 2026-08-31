@@ -58,16 +58,21 @@ function monthsBetween(lastPaid: string, backIn: string | null, away: number): s
   return out
 }
 
-type Resolved = { outcome: 'paid' | 'not_owed' | 'queried'; note: string | null; resolved_at: string }
+type Resolved = { outcome: 'paid' | 'not_owed' | 'queried' | 'arrears'; note: string | null; resolved_at: string }
 
 const OUTCOME_LABEL: Record<string, string> = {
-  paid: 'Paid', not_owed: 'Not owed', queried: 'Queried',
+  paid: 'Paid', not_owed: 'Not owed', queried: 'Queried', arrears: 'In arrears',
 }
 
 type Gap = {
   broker_key: string; loan_ref: string; client_name: string | null; months_away: number; came_back: boolean
   last_paid: string; returned_in: string | null
   monthly_trail: number; trail_missed: number; balance: number | null; lender: string | null
+  // Added 31 Aug 2026. SFG do not skip a missed month - they pay it as an extra
+  // line item in a later statement, so the month it came back in carries more
+  // payments than that loan normally gets. The view counts them.
+  caught_up: boolean | null; extra_payments: number | null
+  usual_lines: number | null; lines_at_return: number | null; trail_at_return: number | null
 }
 
 export default function MissedTrail({ brokers }: { brokers: { key: string; name: string }[] }) {
@@ -82,6 +87,11 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
   // Once the lender answers, a gap is finished with. Cleared rows drop off the
   // list and stay off, so the same query is not sent twice next month.
   const [resolved, setResolved] = useState<Map<string, Resolved>>(new Map())
+  // Arrears is remembered against the LOAN, not against one gap. A gap is keyed
+  // by the month it last paid, so the next time the same loan goes quiet that is
+  // a brand new key and everything learned in March would be lost. This map is
+  // keyed on the loan alone, so the note survives into the next gap.
+  const [arrearsByLoan, setArrearsByLoan] = useState<Map<string, string>>(new Map())
   const [showCleared, setShowCleared] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -90,11 +100,20 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
     const { data, error } = await supabase.from('commission_trail_resolved').select('*')
     if (error) { setSaveError('Could not read what has already been cleared.'); return }
     const m = new Map<string, Resolved>()
+    const a = new Map<string, string>()
     for (const r of (data || []) as any[]) {
       m.set(`${r.broker_key}|${r.loan_ref}|${String(r.last_paid).slice(0, 10)}`,
             { outcome: r.outcome, note: r.note, resolved_at: r.resolved_at })
+      if (r.outcome === 'arrears') {
+        const loan = `${r.broker_key}|${r.loan_ref}`
+        const seen = a.get(loan)
+        // Keep the most recent time it was marked, so the prompt shows the age
+        // that matters rather than the first one ever recorded.
+        if (!seen || String(r.resolved_at) > seen) a.set(loan, String(r.resolved_at))
+      }
     }
     setResolved(m)
+    setArrearsByLoan(a)
   }
 
   useEffect(() => {
@@ -112,10 +131,32 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
   const valued = useMemo(() => mine.filter(g => Number(g.trail_missed || 0) >= MIN_VALUE), [mine])
   const worthless = mine.length - valued.length
 
-  const isCleared = (g: Gap) => resolved.has(`${g.broker_key}|${g.loan_ref}|${String(g.last_paid).slice(0, 10)}`)
+  const isMarked = (g: Gap) => resolved.has(`${g.broker_key}|${g.loan_ref}|${String(g.last_paid).slice(0, 10)}`)
+  const isCaughtUp = (g: Gap) => Boolean(g.caught_up)
+  // Off the chase list either way: one because a person answered it, the other
+  // because the money already arrived.
+  const isCleared = (g: Gap) => isMarked(g) || isCaughtUp(g)
+
+  // Was this loan ever marked as being in arrears, in any earlier gap? Returns
+  // when it was last marked, so the row can say how old that is.
+  function arrearsBefore(g: Gap): string | null {
+    const at = arrearsByLoan.get(`${g.broker_key}|${g.loan_ref}`)
+    if (!at) return null
+    const thisGap = resolved.get(`${g.broker_key}|${g.loan_ref}|${String(g.last_paid).slice(0, 10)}`)
+    // If THIS gap is the one marked arrears, the badge beside it already says so.
+    if (thisGap?.outcome === 'arrears' && String(thisGap.resolved_at) === at) return null
+    return at
+  }
+  const monthsSince = (iso: string) => {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return 0
+    return Math.max(0, Math.round((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24 * 30.44)))
+  }
   const open = useMemo(() => showCleared ? valued : valued.filter(g => !isCleared(g)),
                        [valued, resolved, showCleared])
   const clearedCount = valued.filter(isCleared).length
+  const caughtUp = valued.filter(isCaughtUp)
+  const caughtUpValue = caughtUp.reduce((t, g) => t + Number(g.trail_missed || 0), 0)
   const recovered = valued
     .filter(g => resolved.get(`${g.broker_key}|${g.loan_ref}|${String(g.last_paid).slice(0, 10)}`)?.outcome === 'paid')
     .reduce((t, g) => t + Number(g.trail_missed || 0), 0)
@@ -151,7 +192,8 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
     downloadCsv(
       `trail-${label}-${name}-${stamp()}`,
       ['Broker', 'Client', 'Loan reference', 'Lender', 'Balance', 'Monthly trail',
-       'Months missed', 'Trail missed', 'Last paid', 'Came back', 'Returned in', 'Months to query', 'Status'],
+       'Months missed', 'Trail missed', 'Last paid', 'Came back', 'Returned in', 'Months to query', 'Status',
+       'Caught up', 'In arrears before'],
       rows.map(g => [
         brokers.find(b => sameBroker(g.broker_key, b.key))?.name || g.broker_key,
         g.client_name || '',
@@ -173,7 +215,16 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
           if (!ms.length) return ''
           return `${ms.length} ${ms.length === 1 ? 'month' : 'months'}: ${ms.map(mFull).join('; ')}`
         })(),
-        OUTCOME_LABEL[resolved.get(idOf(g))?.outcome || ''] || 'Open',
+        isCaughtUp(g) ? 'Caught up' : (OUTCOME_LABEL[resolved.get(idOf(g))?.outcome || ''] || 'Open'),
+        isCaughtUp(g)
+          ? `${g.extra_payments} extra payment${g.extra_payments === 1 ? '' : 's'}${g.returned_in ? ` in ${mFull(g.returned_in)}` : ''}`
+          : '',
+        // Carried into the export as well, because this is the column that turns
+        // a chase list into "ask about the arrears first".
+        (() => {
+          const at = arrearsBefore(g)
+          return at ? new Date(at).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' }) : ''
+        })(),
       ]))
   }
 
@@ -358,6 +409,14 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
         {recovered > 0 && (
           <span><b style={{ color: TONE.pos }}>{money(recovered)}</b> recovered so far</span>
         )}
+        {/* Money that never needed chasing. Said out loud, because a list that
+            silently shrinks is harder to trust than one that explains itself. */}
+        {caughtUp.length > 0 && (
+          <span title="SFG pay a missed month as an extra line in a later statement. These loans got more payments in the month they came back than they normally receive, so the missed months have already been paid.">
+            <b style={{ color: TONE.pos }}>{caughtUp.length}</b> caught up by the lender
+            {caughtUpValue > 0 ? <> · <b style={{ color: TONE.pos }}>{money(caughtUpValue)}</b> that was never missing</> : null}
+          </span>
+        )}
         {saveError && <span style={{ color: TONE.neg }}>{saveError}</span>}
       </div>
 
@@ -377,6 +436,11 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
           <button onClick={() => mark('queried')} disabled={saving}
             className="rounded-lg px-3 py-[5px] text-[12px] font-medium border bg-white disabled:opacity-40"
             style={{ borderColor: TONE.line, color: TONE.body }}>Queried, waiting</button>
+          {/* The trail is still owed - the borrower is behind. Marked against the
+              loan so the next gap on the same loan says so before you chase it. */}
+          <button onClick={() => mark('arrears')} disabled={saving}
+            className="rounded-lg px-3 py-[5px] text-[12px] font-medium border disabled:opacity-40"
+            style={{ borderColor: '#EBD9BE', background: '#FDF6EC', color: '#B4761F' }}>In arrears</button>
           {showCleared && (
             <button onClick={unmark} disabled={saving}
               className="rounded-lg px-3 py-[5px] text-[12px] border bg-white disabled:opacity-40 ml-auto"
@@ -420,12 +484,33 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
                   {g.client_name || '—'}
                   {/* Only visible while cleared rows are being shown, so the list
                       stays plain the rest of the time. */}
-                  {isCleared(g) && (
+                  {isCaughtUp(g) && (
+                    <span className="ml-2 text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[1px] border align-middle"
+                          style={{ borderColor: '#CFE6D5', color: TONE.pos, background: '#F1F7F3' }}
+                          title={`${g.extra_payments} extra payment${g.extra_payments === 1 ? '' : 's'} arrived${g.returned_in ? ` in ${mLabel(g.returned_in)}` : ''} — ${g.lines_at_return} lines where this loan normally gets ${g.usual_lines}. Nothing to chase.`}>
+                      Caught up
+                    </span>
+                  )}
+                  {isMarked(g) && (
                     <span className="ml-2 text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[1px] border align-middle"
                           style={{ borderColor: TONE.line, color: TONE.label, background: '#fff' }}>
                       {OUTCOME_LABEL[resolved.get(idOf(g))?.outcome || ''] || 'Cleared'}
                     </span>
                   )}
+                  {/* This loan has been in arrears before. A prompt, never an
+                      answer - it is a reason to check, not a reason to clear. */}
+                  {(() => {
+                    const at = arrearsBefore(g)
+                    if (!at) return null
+                    const m = monthsSince(at)
+                    return (
+                      <span className="ml-2 text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[1px] border align-middle"
+                            style={{ borderColor: '#EBD9BE', color: '#B4761F', background: '#FDF6EC' }}
+                            title={`Marked in arrears on ${new Date(at).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}. Worth checking whether that is still the reason.`}>
+                        Was in arrears{m > 0 ? ` · ${m} month${m === 1 ? '' : 's'} ago` : ''}
+                      </span>
+                    )
+                  })()}
                 </td>
                 <td className="px-3 py-[9px] text-[13px] border-b"
                     style={{ color: TONE.body, borderColor: TONE.hair }}>{g.loan_ref}</td>
