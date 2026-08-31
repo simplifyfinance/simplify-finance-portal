@@ -771,3 +771,36 @@ people already look.
   changed is history, not a second finding.
 - The footer on the worklist now says where answers go instead of claiming to be
   a file note.
+
+## One internal notes box, on all five tabs (1 Sep 2026)
+
+Fabio, reading the Fact Find: *"it says internal notes it stays visible in every
+tab? where can I see that carried across the system"*. It wasn't carried
+anywhere.
+
+- **There were three boxes all labelled "Internal notes"** — Fact Find
+  (`fact_find_data.internalNotes`), BC (`bc_data.internalNotes`) and Lending
+  Options (its own field). Different fields, same label, none aware of the
+  others. "Stays visible on every tab" described the Fact Find box being *sticky
+  while you scrolled that one tab*, which is not what those words mean to anyone
+  reading them.
+- **The trap it set:** write the background on Fact Find, open BC, find an empty
+  box with the same label, write more there. Half the story in each, no signpost,
+  and whoever reads the file next sees whichever tab they opened.
+- **And Compliance had no notes box at all** — the tab where the regulated
+  write-up is drafted. Nor did Statements.
+- **Now one field, `deals.internal_notes`, on all five tabs.** Fact Find keeps its
+  sticky left column; the other four get a collapsed strip above the tab content
+  that opens with a click and writes the same field. **It starts open on
+  Compliance**, because that is where the background was most missing.
+- **Compliance's "Application submission notes" is untouched.** Lender
+  instructions and submission contacts are a different thing with a real job.
+- The write is checked and the box shows Saving/Saved. Notes that looked saved and
+  were not is exactly the loss this was built to stop.
+- **Migration:** counted first — 13 fact find notes, 4 BC, 1 LO, and exactly one
+  deal holding both. So five deals touched, one needing its two notes joined.
+  Where text is joined it carries a dated line saying which tab it came from. The
+  old keys are deliberately left in the JSON: they cost nothing and they are the
+  only record of what the text looked like before the move.
+- SalesTrekker now reads the new column, falling back to the fact find copy so a
+  deal written before the migration still carries its notes across.

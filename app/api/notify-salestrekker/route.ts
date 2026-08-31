@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     const supabase = await createSupabaseServer()
     const { data: deal, error } = await supabase
       .from('deals')
-      .select('deal_name, assigned_broker, assigned_credit_officer, lead_source, deal_type, salestrekker_created_at, fact_find_data, clients(first_name, last_name)')
+      .select('deal_name, assigned_broker, assigned_credit_officer, lead_source, deal_type, salestrekker_created_at, fact_find_data, internal_notes, clients(first_name, last_name)')
       .eq('id', dealId)
       .single()
 
@@ -82,7 +82,10 @@ export async function POST(req: NextRequest) {
           leadSource: deal.lead_source || '',
           dealType: deal.deal_type || '',
           incomeType,
-          internalNotes: ff.internalNotes || '',
+          // The deal's own notes column since 1 Sep 2026. The fact find copy is
+          // read as a fallback so a deal written before the migration still
+          // carries its notes into SalesTrekker.
+          internalNotes: deal.internal_notes || ff.internalNotes || '',
           creditOfficerName,
           alreadyBcActioned,
           recipientEmail: ellieEmail

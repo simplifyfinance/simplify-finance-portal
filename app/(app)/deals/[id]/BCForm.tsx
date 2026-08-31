@@ -996,9 +996,10 @@ Key assumptions: ${checklistText}`
                   <Field label="Important things to note (included in email, one per line — pre-filled per template)">
                     <textarea spellCheck="true" className={`${inputCls} min-h-40 resize-y`} value={templateNotes} onChange={e => setTemplateNotes(e.target.value)} placeholder="One note per line..." />
                   </Field>
-                  <Field label="Internal assessor notes (internal only)">
-                    <textarea spellCheck="true" className={`${inputCls} min-h-16 resize-y`} value={internalNotes} onChange={e => setInternalNotes(e.target.value)} placeholder="Internal notes..." />
-                  </Field>
+                  {/* The internal notes box that used to sit here saved to
+                      bc_data.internalNotes - a different field from the one on
+                      Fact Find, with the same label. The deal's notes are now one
+                      field, in the strip above the tabs. */}
                   <Field label="Broker signature">
                     <select className={selectCls} value={brokerSig} onChange={e => setBrokerSig(e.target.value)}>
                       {brokersList.map((b: any, i: number) => (

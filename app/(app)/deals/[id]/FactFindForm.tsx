@@ -8,7 +8,7 @@ import CurrencyInput from './CurrencyInput'
 import BankSelect from './BankSelect'
 
 import { seYearTotalFF, calculateSeAssessableIncome } from '@/lib/income-calculations'
-import StatementQueries from '@/components/StatementQueries'
+import InternalNotes from '@/components/InternalNotes'
 
 function incrementFY(fy: string): string {
   const match = fy.match(/^(\d{4})\/(\d{2})$/)
@@ -762,24 +762,11 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
 
   return (
     <div className="grid grid-cols-[480px_1fr] gap-4 items-start">
-      <div className="bg-white border border-gray-100 rounded-xl p-4 sticky top-4">
-        <div className="flex items-center gap-2 mb-2">
-          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
-          </svg>
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Internal notes</span>
-        </div>
-        <p className="text-xs text-gray-400 mb-2">Stays visible on every tab — not client facing</p>
-        <textarea spellCheck="true"
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-[400px] resize-y"
-          placeholder="Jot notes while on the phone with the client..."
-          value={d.internalNotes}
-          onChange={e => setD(prev => ({ ...prev, internalNotes: e.target.value }))}
-        />
-
-        {/* Answers to the statement queries. Read-only on purpose - see the
-            component for why they are not appended into the notes above. */}
-        <StatementQueries dealId={deal.id} />
+      <div>
+        {/* One notes field for the whole deal. This used to be a box of its own
+            saving to fact_find_data.internalNotes, with two more like it on BC
+            and Lending Options and none at all on Compliance. */}
+        <InternalNotes dealId={deal.id} initial={deal.internal_notes || ''} />
 
         {showExtractReview && extractedData && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowExtractReview(false)}>

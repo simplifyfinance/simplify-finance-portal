@@ -1266,11 +1266,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             <textarea spellCheck="true" className={inp + ' min-h-[80px] resize-y'} value={d.additionalNotes} onChange={e => setD({ ...d, additionalNotes: e.target.value })} placeholder="e.g. Debt recycling wording, rate reduction requested..." />
           </div>
 
-          {/* Internal notes */}
-          <div className="bg-white border border-gray-100 rounded-xl p-5">
-            <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Internal notes</div>
-            <textarea spellCheck="true" className={inp + ' min-h-[80px] resize-y'} value={d.internalNotes} onChange={e => setD({ ...d, internalNotes: e.target.value })} placeholder="Internal notes — not included in the email" />
-          </div>
+          {/* The internal notes box that used to sit here saved to the LO's own
+              internalNotes field. The deal's notes are one field now, in the
+              strip above the tabs. */}
 
           <div className="flex items-center justify-between">
             

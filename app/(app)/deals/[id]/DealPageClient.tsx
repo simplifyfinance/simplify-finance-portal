@@ -17,6 +17,7 @@ import DealCommission from './DealCommission'
 import CloseDeal from './CloseDeal'
 import { templateLabel } from '@/lib/templates'
 import StatementAnalysis from '@/components/StatementAnalysis'
+import InternalNotesStrip from '@/components/InternalNotesStrip'
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
   const validStages = ['FactFind', 'Statements', 'BC', 'LO', 'Compliance']
@@ -186,6 +187,14 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           </button>
         ))}
       </div>
+
+      {/* The notes live in Fact Find's own left column; every other tab gets the
+          same field as a strip. Compliance opens it by default — it is where the
+          write-up is drafted and it had no background on screen at all. */}
+      {stage !== 'FactFind' && (
+        <InternalNotesStrip dealId={dealData.id} initial={dealData.internal_notes || ''}
+          openByDefault={stage === 'Compliance'} />
+      )}
 
       {stage === 'FactFind' && <FactFindForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
       {stage === 'Statements' && <StatementAnalysis deal={dealData} />}
