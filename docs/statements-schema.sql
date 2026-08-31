@@ -68,3 +68,20 @@ create policy "Statement transactions via deals"
   as permissive for all to authenticated
   using      (exists (select 1 from public.deals d where d.id = deal_statement_transactions.deal_id))
   with check (exists (select 1 from public.deals d where d.id = deal_statement_transactions.deal_id));
+
+-- ---------------------------------------------------------------------------
+-- Statement rules in Settings, and re-analysing without a re-upload.
+-- Run this second, after the two tables above.
+--
+-- An analysis keeps the rules it was run under, so changing a threshold never
+-- silently rewrites a file someone has already reviewed. parsed_meta holds the
+-- account details and balances the transactions alone do not carry, which is
+-- what lets a re-run rebuild the picture from the stored ledger.
+
+alter table public.settings
+  add column if not exists statement_rules jsonb;
+
+alter table public.deal_statement_uploads
+  add column if not exists rules         jsonb not null default '{}'::jsonb,
+  add column if not exists parsed_meta   jsonb not null default '{}'::jsonb,
+  add column if not exists reanalysed_at timestamptz;

@@ -36,6 +36,12 @@ export const HIGH_COST_LENDERS: { name: string; match: string[] }[] = [
   { name: 'MyPayNow',      match: ['mypaynow'] },
 ]
 
+// Credits that are money coming back rather than money earned.
+export const REBATE_WORDS = [
+  'medicare benefit', 'mcare benefit', 'medicare rebate', 'refund', 'reversal',
+  'chargeback', 'rebate', 'cashback', 'ato refund', 'tax refund', 'reimbursement',
+]
+
 export const GAMBLING_MERCHANTS = [
   'sportsbet', 'tabltd', 'tablimited', 'tabcorp', 'ladbrokes', 'bet365', 'neds',
   'pointsbet', 'unibet', 'betfair', 'palmerbet', 'dabble', 'topsport', 'bluebet',

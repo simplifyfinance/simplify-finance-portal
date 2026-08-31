@@ -1,10 +1,10 @@
 import type { ParsedStatements, ParsedTxn } from './statement-parse'
 import { grossFromNet, fysInPeriod, dominantFy } from './tax-au'
 import {
-  BNPL_PROVIDERS, HIGH_COST_LENDERS, GAMBLING_MERCHANTS, REAL_ESTATE_AGENTS,
-  GOVERNMENT_PAYERS, BENEFIT_TYPES, SALARY_WORDS, DISHONOUR_WORDS,
-  INTERNAL_TRANSFER_WORDS, LENDER_ALIASES, normKey, matchesAny,
+  GOVERNMENT_PAYERS, SALARY_WORDS, DISHONOUR_WORDS,
+  INTERNAL_TRANSFER_WORDS, normKey, matchesAny,
 } from './statement-watchlists'
+import { type StatementRules, DEFAULT_RULES, normaliseRules } from './statement-rules'
 
 // Reads the parsed statements against the deal's fact find and produces the
 // findings the Statements tab shows.
@@ -18,7 +18,6 @@ import {
 //      can show exactly what it was reading and nothing more.
 
 export const ANALYSIS_VERSION = 1
-export const CASH_THRESHOLD = 1000
 export const DAY = 86400000
 
 export type Flag = 'ok' | 'query' | 'action' | 'favourable' | 'unavailable'
@@ -181,49 +180,49 @@ export function isDishonour(t: ParsedTxn): boolean {
   return matchesAny(t.description, DISHONOUR_WORDS)
 }
 
-export function isGambling(t: ParsedTxn): boolean {
+export function isGambling(t: ParsedTxn, R: StatementRules = DEFAULT_RULES): boolean {
   if (t.category.toLowerCase() === 'gambling') return true
-  return matchesAny(t.merchant || t.description, GAMBLING_MERCHANTS)
+  return matchesAny(t.merchant || t.description, R.gambling)
 }
 
-export function bnplProvider(t: ParsedTxn): string | null {
+export function bnplProvider(t: ParsedTxn, R: StatementRules = DEFAULT_RULES): string | null {
   const hay = `${t.merchant} ${t.description}`
-  for (const p of BNPL_PROVIDERS) if (matchesAny(hay, p.match)) return p.name
+  for (const p of R.bnpl) if (matchesAny(hay, p.terms)) return p.name
   if (t.category.toLowerCase().startsWith('buy now')) return t.merchant || 'Buy now pay later'
   return null
 }
 
-export function highCostLender(t: ParsedTxn): string | null {
+export function highCostLender(t: ParsedTxn, R: StatementRules = DEFAULT_RULES): string | null {
   const hay = `${t.merchant} ${t.description}`
-  for (const p of HIGH_COST_LENDERS) if (matchesAny(hay, p.match)) return p.name
+  for (const p of R.highCost) if (matchesAny(hay, p.terms)) return p.name
   return null
 }
 
-export function isCommitment(t: ParsedTxn): boolean {
+export function isCommitment(t: ParsedTxn, R: StatementRules = DEFAULT_RULES): boolean {
   if (t.amount >= 0) return false
   const cat = t.category.toLowerCase()
   const sum = t.summaryCategory.toLowerCase()
   if (['credit card', 'loans', 'non sacc loans', 'sacc loans', 'buy now, pay later',
        'wage advance', 'debt collection', 'debt management'].includes(cat)) return true
   if (['loans', 'credit card'].includes(sum)) return true
-  return Boolean(bnplProvider(t) || highCostLender(t))
+  return Boolean(bnplProvider(t, R) || highCostLender(t, R))
 }
 
-export function isGovernment(t: ParsedTxn): boolean {
+export function isGovernment(t: ParsedTxn, R: StatementRules = DEFAULT_RULES): boolean {
   if (t.amount <= 0) return false
   const hay = `${t.merchant} ${t.description}`
   if (matchesAny(hay, GOVERNMENT_PAYERS)) return true
-  return BENEFIT_TYPES.some(b => matchesAny(hay, b.match))
+  return R.benefits.some(b => matchesAny(hay, b.terms))
 }
 
-export function benefitType(t: ParsedTxn): { name: string; servicingUse: string } {
+export function benefitType(t: ParsedTxn, R: StatementRules = DEFAULT_RULES): { name: string; servicingUse: string } {
   const hay = `${t.merchant} ${t.description}`
-  for (const b of BENEFIT_TYPES) if (matchesAny(hay, b.match)) return { name: b.name, servicingUse: b.servicingUse }
+  for (const b of R.benefits) if (matchesAny(hay, b.terms)) return { name: b.name, servicingUse: b.servicingUse }
   return { name: 'Government payment', servicingUse: 'sometimes' }
 }
 
-export function isRealEstateAgent(t: ParsedTxn): boolean {
-  return matchesAny(`${t.merchant} ${t.description}`, REAL_ESTATE_AGENTS)
+export function isRealEstateAgent(t: ParsedTxn, R: StatementRules = DEFAULT_RULES): boolean {
+  return matchesAny(`${t.merchant} ${t.description}`, R.agents)
 }
 
 export function isSalaryLike(t: ParsedTxn): boolean {
@@ -243,12 +242,8 @@ export function isCash(t: ParsedTxn): boolean {
 
 // Money coming back is not money earned. A Medicare rebate, an ATO refund or a
 // retailer reversal all land as credits and none of them is servicing income.
-const REBATE_WORDS = [
-  'medicare benefit', 'mcare benefit', 'medicare rebate', 'refund', 'reversal',
-  'chargeback', 'rebate', 'cashback', 'ato refund', 'tax refund', 'reimbursement',
-]
-export function isRebate(t: ParsedTxn): boolean {
-  return t.amount > 0 && matchesAny(`${t.merchant} ${t.description}`, REBATE_WORDS)
+export function isRebate(t: ParsedTxn, R: StatementRules = DEFAULT_RULES): boolean {
+  return t.amount > 0 && matchesAny(`${t.merchant} ${t.description}`, R.rebates)
 }
 
 export function isInterest(t: ParsedTxn): boolean {
@@ -333,13 +328,13 @@ export function readDeclaredLiabilities(factFind: any): DeclaredLiability[] {
 // Does a commitment seen in the account match one the client declared? Names, not
 // amounts - a car loan declared at $500 and debiting $585 is still declared, and
 // showing it as hidden would train people to ignore the card.
-export function matchesDeclared(seenName: string, seenType: string, declared: DeclaredLiability[]): DeclaredLiability | null {
+export function matchesDeclared(seenName: string, seenType: string, declared: DeclaredLiability[], R: StatementRules = DEFAULT_RULES): DeclaredLiability | null {
   const seen = normKey(seenName)
   if (!seen) return null
   const expand = (s: string) => {
     const k = normKey(s)
     const out = [k]
-    for (const [canon, aliases] of Object.entries(LENDER_ALIASES)) {
+    for (const { name: canon, terms: aliases } of R.lenderAliases) {
       const all = [normKey(canon), ...aliases.map(normKey)]
       if (all.some(a => a && (k.includes(a) || a.includes(k)))) out.push(...all)
     }
@@ -497,10 +492,12 @@ export type Analysis = {
     components: { key: string; label: string; weight: number; score: number; open: number; note: string }[]
     openItems: number
   }
+  rules: StatementRules
   warnings: string[]
 }
 
-export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
+export function analyse(parsed: ParsedStatements, factFind: any, rulesInput?: any): Analysis {
+  const R = normaliseRules(rulesInput)
   const all = parsed.transactions
   const days = Math.max(1, parsed.days)
   const perYear = 365.25 / days
@@ -542,11 +539,11 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
     : `${shortAccounts.length} of ${covAccounts.length} accounts cover less than the full period — ${shortAccounts.map(a => `${a.name} ${a.pct}%`).join(', ')}. Annualised figures below are less reliable because of it.`
 
   // ---- salary ---------------------------------------------------------
-  const govIds = new Set(credits.filter(isGovernment).map(t => t.externalId))
-  const rentAgentCredits = credits.filter(t => !govIds.has(t.externalId) && (isRealEstateAgent(t) || t.category.toLowerCase() === 'rent'))
+  const govIds = new Set(credits.filter(t => isGovernment(t, R)).map(t => t.externalId))
+  const rentAgentCredits = credits.filter(t => !govIds.has(t.externalId) && (isRealEstateAgent(t, R) || t.category.toLowerCase() === 'rent'))
   const rentIds = new Set(rentAgentCredits.map(t => t.externalId))
   const interestIds = new Set(credits.filter(isInterest).map(t => t.externalId))
-  const rebateIds = new Set(credits.filter(t => isRebate(t) && !interestIds.has(t.externalId)).map(t => t.externalId))
+  const rebateIds = new Set(credits.filter(t => isRebate(t, R) && !interestIds.has(t.externalId)).map(t => t.externalId))
 
   const salaryCandidates = credits.filter(t =>
     !govIds.has(t.externalId) && !rentIds.has(t.externalId) && !interestIds.has(t.externalId) &&
@@ -613,7 +610,8 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
   const salaryVariancePct = salaryVariance !== null && declaredInc.employmentAnnual
     ? Math.round((salaryVariance / declaredInc.employmentAnnual) * 1000) / 10 : null
   const salaryFlag: Flag = salaryVariancePct === null ? 'unavailable'
-    : Math.abs(salaryVariancePct) <= 5 ? 'ok' : Math.abs(salaryVariancePct) <= 15 ? 'query' : 'action'
+    : Math.abs(salaryVariancePct) <= R.salaryQueryPct ? 'ok'
+    : Math.abs(salaryVariancePct) <= R.salaryActionPct ? 'query' : 'action'
 
   cards.push({
     key: 'salaryVariance', title: 'Salary variance',
@@ -644,7 +642,7 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
   // Agent-managed rent always lands net of fees, so a gap of up to a quarter is
   // what fees look like, not a discrepancy. Past that it is vacancy or arrears.
   const rentFlag: Flag = rentVariancePct === null ? 'unavailable'
-    : rentVariancePct >= -25 ? 'ok' : 'query'
+    : rentVariancePct >= -R.rentalTolerancePct ? 'ok' : 'query'
 
   cards.push({
     key: 'rent', title: 'Rent credits received',
@@ -675,7 +673,7 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
     value: rentVariance === null ? '—' : signed(rentVariance, 0),
     valueNumber: rentVariance,
     sub: rentVariancePct === null ? 'Nothing to compare'
-      : rentVariancePct >= -25 && rentVariancePct <= 0
+      : rentVariancePct >= -R.rentalTolerancePct && rentVariancePct <= 0
         ? `${Math.abs(rentVariancePct)}% — within the normal agent-fee range`
         : `${Math.abs(rentVariancePct)}% ${rentVariancePct < 0 ? 'below' : 'above'} declared`,
     flag: rentFlag,
@@ -731,7 +729,7 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
 
   const describeOther = (g: Group) => {
     const t = g.txns[0]
-    if (govIds.has(t.externalId)) return benefitType(t).name
+    if (govIds.has(t.externalId)) return benefitType(t, R).name
     return g.payer
   }
 
@@ -768,7 +766,7 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
 
   const govByType = new Map<string, { name: string; servicingUse: string; txns: ParsedTxn[] }>()
   for (const t of govTxns) {
-    const b = benefitType(t)
+    const b = benefitType(t, R)
     if (!govByType.has(b.name)) govByType.set(b.name, { ...b, txns: [] })
     govByType.get(b.name)!.txns.push(t)
   }
@@ -814,28 +812,28 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
     flagLabel: undeclaredIncome ? 'In their favour' : undefined,
     drill: 'compare', txnIds: ids(otherCandidates.filter(t => !oneOffOther.some(g => g.txns.includes(t)))),
     detail: {
-      sources: recurringOther.map(g => ({ name: describeOther(g), monthly: round2(g.total * perMonth), annual: round2(g.total * perYear), servicingUse: govIds.has(g.txns[0].externalId) ? benefitType(g.txns[0]).servicingUse : 'sometimes' })),
+      sources: recurringOther.map(g => ({ name: describeOther(g), monthly: round2(g.total * perMonth), annual: round2(g.total * perYear), servicingUse: govIds.has(g.txns[0].externalId) ? benefitType(g.txns[0], R).servicingUse : 'sometimes' })),
       declared: declaredInc.otherAnnual, found: otherAnnual, difference: undeclaredIncome,
     },
   })
 
   // ---- commitments ----------------------------------------------------
-  const commitmentTxns = debits.filter(isCommitment)
+  const commitmentTxns = debits.filter(t => isCommitment(t, R))
   // A commitment is something that keeps coming out. A single debit to a lender
   // is a one-off payment until it happens twice; it is listed, not counted.
   const commitAll = groupBy(commitmentTxns)
   const commitOnce = commitAll.filter(g => g.count < 2)
   const commitGroups = commitAll.filter(g => g.count >= 2).map(g => {
     const t = g.txns[0]
-    const provider = bnplProvider(t) || highCostLender(t) || g.payer
-    const kind = bnplProvider(t) ? 'Buy now pay later'
-      : highCostLender(t) ? 'Small amount credit'
+    const provider = bnplProvider(t, R) || highCostLender(t, R) || g.payer
+    const kind = bnplProvider(t, R) ? 'Buy now pay later'
+      : highCostLender(t, R) ? 'Small amount credit'
       : t.category || 'Credit'
-    const declared = matchesDeclared(provider, kind, declaredLiabs)
+    const declared = matchesDeclared(provider, kind, declaredLiabs, R)
     return {
       provider, kind, group: g,
       monthly: round2(Math.abs(g.total) * perMonth),
-      declared, isBnpl: Boolean(bnplProvider(t)),
+      declared, isBnpl: Boolean(bnplProvider(t, R)),
     }
   }).sort((a, b) => b.monthly - a.monthly)
 
@@ -908,7 +906,7 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
         returns: c.group.txns.filter(isDishonour).length,
       })),
       monthly: bnplMonthly,
-      watchlist: BNPL_PROVIDERS.map(p => p.name),
+      watchlist: R.bnpl.map(p => p.name),
     },
   })
 
@@ -941,7 +939,7 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
     detail: { events: dishonourEvents, unrepaid },
   })
 
-  const gamblingTxns = debits.filter(isGambling)
+  const gamblingTxns = debits.filter(t => isGambling(t, R))
   const gamblingTotal = round2(Math.abs(gamblingTxns.reduce((s, t) => s + t.amount, 0)))
   const gamblingPct = totalCredits > 0 ? Math.round((gamblingTotal / totalCredits) * 1000) / 10 : 0
   const gamblingByMonth = new Map<string, number>()
@@ -958,13 +956,13 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
     sub: gamblingTxns.length
       ? `${gamblingTxns.length} debits over ${days} days · ${gamblingPct}% of credits${gRising ? ' · rising' : ''}`
       : 'None in the period',
-    flag: !gamblingTxns.length ? 'ok' : (gamblingPct >= 5 || gRising) ? 'action' : gamblingPct >= 2 ? 'query' : 'query',
-    flagLabel: gamblingTxns.length ? ((gamblingPct >= 5 || gRising) ? 'Explain' : 'Note') : undefined,
+    flag: !gamblingTxns.length ? 'ok' : (gamblingPct >= R.gamblingPct || gRising) ? 'action' : 'query',
+    flagLabel: gamblingTxns.length ? ((gamblingPct >= R.gamblingPct || gRising) ? 'Explain' : 'Note') : undefined,
     drill: 'transactions', txnIds: ids(gamblingTxns),
     detail: { total: gamblingTotal, pctOfCredits: gamblingPct, byMonth: gMonths.map(([m, v]) => ({ month: m, amount: v })), rising: gRising, count: gamblingTxns.length },
   })
 
-  const cashTxns = external.filter(t => isCash(t) && Math.abs(t.amount) >= CASH_THRESHOLD)
+  const cashTxns = external.filter(t => isCash(t) && Math.abs(t.amount) >= R.cashThreshold)
   const cashIn = cashTxns.filter(t => t.amount > 0)
   // A cash deposit with a cash withdrawal of similar size just before it is money
   // going back in. One with nothing behind it is a question: gift, or income.
@@ -977,13 +975,13 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
     value: fmtMoney(cashTotal, 0),
     valueNumber: cashTotal,
     sub: cashTxns.length
-      ? `${cashTxns.length} over ${fmtMoney(CASH_THRESHOLD, 0)}${unexplainedIn.length ? ` · ${unexplainedIn.length} deposit${unexplainedIn.length === 1 ? '' : 's'} unexplained` : ''}`
-      : `Nothing over ${fmtMoney(CASH_THRESHOLD, 0)}`,
+      ? `${cashTxns.length} over ${fmtMoney(R.cashThreshold, 0)}${unexplainedIn.length ? ` · ${unexplainedIn.length} deposit${unexplainedIn.length === 1 ? '' : 's'} unexplained` : ''}`
+      : `Nothing over ${fmtMoney(R.cashThreshold, 0)}`,
     flag: unexplainedIn.length ? 'query' : cashTxns.length ? 'query' : 'ok',
     flagLabel: cashTxns.length ? 'Note' : undefined,
     drill: 'transactions', txnIds: ids(cashTxns),
     detail: {
-      threshold: CASH_THRESHOLD, count: cashTxns.length, total: cashTotal,
+      threshold: R.cashThreshold, count: cashTxns.length, total: cashTotal,
       unexplainedDeposits: unexplainedIn.map(t => ({ date: t.date, description: t.description, amount: t.amount, id: t.externalId })),
     },
   })
@@ -1003,7 +1001,7 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
   })
 
   // ---- savings and housing --------------------------------------------
-  const rentPaidTxns = debits.filter(t => t.category.toLowerCase() === 'rent' || (isRealEstateAgent(t) && !isCommitment(t)))
+  const rentPaidTxns = debits.filter(t => t.category.toLowerCase() === 'rent' || (isRealEstateAgent(t, R) && !isCommitment(t, R)))
   const rentPaidGroups = groupBy(rentPaidTxns).filter(g => g.count >= 2)
   const rentPaidRecurring = rentPaidGroups.flatMap(g => g.txns)
   const rentPaidAnnualisable = rentPaidRecurring.length > 0
@@ -1030,7 +1028,7 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
 
   // Genuine savings is not the balance - it is the part that has stayed put. The
   // lowest the combined balance reached is the honest floor.
-  const seasonFrom = new Date(Math.max(ms(parsed.periodFrom), ms(parsed.periodTo) - 90 * DAY)).toISOString().slice(0, 10)
+  const seasonFrom = new Date(Math.max(ms(parsed.periodFrom), ms(parsed.periodTo) - R.savingsWindowDays * DAY)).toISOString().slice(0, 10)
   const seasonPoints = balances.combined.filter(p => p.date >= seasonFrom)
   const genuine = seasonPoints.length ? round2(Math.min(...seasonPoints.map(p => p.balance))) : null
   const seasonDays = seasonPoints.length
@@ -1076,13 +1074,13 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
   // client and never sent to a lender.
   let incomeScore = 100, incomeOpen = 0
   const incomeNotes: string[] = []
-  if (salaryVariancePct !== null && Math.abs(salaryVariancePct) > 15) { incomeScore -= 25; incomeOpen++; incomeNotes.push(`salary credits ${Math.abs(salaryVariancePct)}% ${salaryVariancePct < 0 ? 'under' : 'over'} declared`) }
-  else if (salaryVariancePct !== null && Math.abs(salaryVariancePct) > 5) { incomeScore -= 15; incomeOpen++; incomeNotes.push(`salary credits ${Math.abs(salaryVariancePct)}% ${salaryVariancePct < 0 ? 'under' : 'over'} declared`) }
+  if (salaryVariancePct !== null && Math.abs(salaryVariancePct) > R.salaryActionPct) { incomeScore -= 25; incomeOpen++; incomeNotes.push(`salary credits ${Math.abs(salaryVariancePct)}% ${salaryVariancePct < 0 ? 'under' : 'over'} declared`) }
+  else if (salaryVariancePct !== null && Math.abs(salaryVariancePct) > R.salaryQueryPct) { incomeScore -= 15; incomeOpen++; incomeNotes.push(`salary credits ${Math.abs(salaryVariancePct)}% ${salaryVariancePct < 0 ? 'under' : 'over'} declared`) }
   else if (salaryVariancePct !== null) incomeNotes.push('salary credits agree with the fact find')
   if (salaryGroups.length && !declaredInc.employmentAnnual) { incomeScore -= 20; incomeOpen++; incomeNotes.push('salary credits found with no employment income declared') }
   if (undeclaredIncome > 0) { incomeScore -= 15; incomeOpen++; incomeNotes.push(`${fmtMoney(otherMonthly)} a month of income not on the fact find`) }
   if (stabilityFails > 0) { incomeScore -= 15; incomeOpen++; incomeNotes.push(`${stabilityFails} income stability test${stabilityFails === 1 ? '' : 's'} failed`) }
-  if (rentVariancePct !== null && rentVariancePct < -25) { incomeScore -= 10; incomeOpen++; incomeNotes.push('rent received well under declared') }
+  if (rentVariancePct !== null && rentVariancePct < -R.rentalTolerancePct) { incomeScore -= 10; incomeOpen++; incomeNotes.push('rent received well under declared') }
   else if (rentVariancePct !== null) incomeNotes.push('rental consistent')
   incomeScore = Math.max(0, incomeScore)
 
@@ -1102,7 +1100,7 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
   if (balances.available && balances.daysOverdrawn > 3) { conductScore -= 20; conductOpen++; conductNotes.push(`${balances.daysOverdrawn} days overdrawn`) }
   else if (balances.available && balances.daysOverdrawn) { conductScore -= 10; conductOpen++; conductNotes.push(`${balances.daysOverdrawn} day${balances.daysOverdrawn === 1 ? '' : 's'} overdrawn`) }
   else if (balances.available) conductNotes.push('no overdrawn days')
-  if (gamblingPct >= 5 || gRising) { conductScore -= 15; conductOpen++; conductNotes.push(`gambling ${gamblingPct}% of credits${gRising ? ' and rising' : ''}`) }
+  if (gamblingPct >= R.gamblingPct || gRising) { conductScore -= 15; conductOpen++; conductNotes.push(`gambling ${gamblingPct}% of credits${gRising ? ' and rising' : ''}`) }
   else if (gamblingTxns.length) { conductScore -= 5; conductNotes.push(`gambling present at ${gamblingPct}% of credits`) }
   if (unexplainedIn.length) { conductScore -= Math.min(20, unexplainedIn.length * 10); conductOpen += unexplainedIn.length; conductNotes.push(`${unexplainedIn.length} unexplained cash deposit${unexplainedIn.length === 1 ? '' : 's'}`) }
   conductScore = Math.max(0, conductScore)
@@ -1125,8 +1123,8 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
     flag: 'action', label: 'Action', card: 'undisclosed',
     text: `${fmtMoney(undeclaredMonthly)} a month of commitments not declared — ${undeclared.map(c => c.provider).join(', ')}. Re-run servicing before you call the client.`,
   })
-  if (salaryVariancePct !== null && Math.abs(salaryVariancePct) > 5) worklist.push({
-    flag: Math.abs(salaryVariancePct) > 15 ? 'action' : 'query', label: 'Query', card: 'salaryVariance',
+  if (salaryVariancePct !== null && Math.abs(salaryVariancePct) > R.salaryQueryPct) worklist.push({
+    flag: Math.abs(salaryVariancePct) > R.salaryActionPct ? 'action' : 'query', label: 'Query', card: 'salaryVariance',
     text: `Salary credits sit ${Math.abs(salaryVariancePct)}% ${salaryVariancePct < 0 ? 'below' : 'above'} the declared gross — HELP or salary sacrifice would explain a shortfall, but it needs an answer on file.`,
   })
   if (unrepaid) worklist.push({
@@ -1137,7 +1135,7 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
     flag: 'query', label: 'Note', card: 'cash',
     text: `${unexplainedIn.map(t => fmtMoney(t.amount)).join(', ')} deposited in cash with no matching withdrawal — gift letter or undeclared income.`,
   })
-  if (gamblingPct >= 5 || gRising) worklist.push({
+  if (gamblingPct >= R.gamblingPct || gRising) worklist.push({
     flag: 'query', label: 'Note', card: 'gambling',
     text: `Gambling is ${gamblingPct}% of credits${gRising ? ' and rising month on month' : ''}.`,
   })
@@ -1166,6 +1164,7 @@ export function analyse(parsed: ParsedStatements, factFind: any): Analysis {
     cards,
     worklist,
     score: { total, components, openItems },
+    rules: R,
     warnings,
   }
 }

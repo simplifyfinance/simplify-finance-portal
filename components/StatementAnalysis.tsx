@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import DropZone from '@/components/DropZone'
+import { rulesChanged } from '@/lib/statement-rules'
 
 // The Statements tab. Everything on screen comes from one stored analysis and
 // one stored ledger, so a card and the transactions behind it can never drift.
@@ -15,6 +16,7 @@ type Upload = {
   id: string; file_name: string; uploaded_at: string; uploaded_by_email: string | null
   client_name: string | null; period_from: string; period_to: string; days: number
   txn_count: number; institutions: string[]; score: number; analysis: any
+  rules: any; parsed_meta: any; reanalysed_at: string | null
 }
 
 const INK = '#221F1B', BODY = '#575046', LABEL = '#7A7266', LINE = '#E5DED2'
@@ -397,9 +399,15 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [open, setOpen] = useState<any>(null)
+  const [liveRules, setLiveRules] = useState<any>(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError('')
+    // The rules as they are now, so the tab can say when a stored analysis was
+    // run under different ones rather than quietly showing stale findings.
+    const { data: st } = await supabase.from('settings').select('statement_rules').eq('id', 'singleton').maybeSingle()
+    setLiveRules((st as any)?.statement_rules ?? {})
+
     const { data: ups, error: upErr } = await supabase
       .from('deal_statement_uploads').select('*')
       .eq('deal_id', deal.id).order('uploaded_at', { ascending: false }).limit(1)
@@ -442,6 +450,23 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
     } finally { setBusy(false) }
   }
 
+  async function reanalyse() {
+    if (!upload) return
+    setBusy(true); setError('')
+    try {
+      const res = await fetch('/api/statement-analysis', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uploadId: upload.id, dealId: deal.id }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) { setError(body.error || `Could not re-analyse (${res.status}).`); return }
+      await load()
+    } catch (e: any) {
+      setError(`Could not re-analyse: ${e?.message || 'unknown error'}`)
+    } finally { setBusy(false) }
+  }
+
   async function remove() {
     if (!upload) return
     if (!confirm('Remove this statement analysis and every transaction stored with it?')) return
@@ -456,6 +481,9 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
 
   const a = upload?.analysis
   const cardBy = (k: string) => (a?.cards || []).find((c: any) => c.key === k)
+  // What has moved in Settings since this analysis ran. Empty means the findings
+  // on screen are what the current rules would produce.
+  const stale = upload && liveRules !== null ? rulesChanged(upload.rules, liveRules) : []
 
   if (loading) return <p className="text-[13px] text-[#7A7266] py-6">Loading statements…</p>
 
@@ -484,13 +512,37 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
               <span className="text-[11.5px] text-[#7A7266]">
                 {upload.client_name ? `${upload.client_name} · ` : ''}uploaded {new Date(upload.uploaded_at).toLocaleString('en-AU', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
                 {upload.uploaded_by_email ? ` by ${upload.uploaded_by_email}` : ''}
+                {upload.reanalysed_at ? ` · re-analysed ${new Date(upload.reanalysed_at).toLocaleString('en-AU', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}` : ''}
               </span>
             </span>
-            <button onClick={remove} disabled={busy}
-              className="ml-auto text-[11.5px] text-[#7A7266] border border-[#E5DED2] rounded-lg px-2.5 py-1 bg-white hover:text-[#221F1B] disabled:opacity-40">
-              {busy ? 'Working…' : 'Remove'}
-            </button>
+            <span className="ml-auto flex gap-2">
+              <button onClick={reanalyse} disabled={busy}
+                className="text-[11.5px] font-semibold text-[#0E8FCB] border border-[#BFE2F5] rounded-lg px-2.5 py-1 bg-[#EAF6FD] hover:bg-[#DCEDF8] disabled:opacity-40">
+                {busy ? 'Working…' : 'Re-analyse'}
+              </button>
+              <button onClick={remove} disabled={busy}
+                className="text-[11.5px] text-[#7A7266] border border-[#E5DED2] rounded-lg px-2.5 py-1 bg-white hover:text-[#221F1B] disabled:opacity-40">
+                Remove
+              </button>
+            </span>
           </div>
+
+          {stale.length > 0 && (
+            <div className="rounded-xl border border-[#EBD9BE] bg-[#FDF6EC] px-3.5 py-2.5 text-[12.5px] text-[#575046] mb-3 flex items-center gap-2.5 flex-wrap leading-[1.55]">
+              <span>
+                <b className="text-[#221F1B]">The rules have changed since this was analysed.</b>{' '}
+                {stale.join(', ')}{stale.length === 1 ? ' has' : ' have'} moved in Settings. These findings
+                still show what you saw
+                {upload.reanalysed_at
+                  ? ` on ${new Date(upload.reanalysed_at).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}`
+                  : ` on ${new Date(upload.uploaded_at).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}`}.
+              </span>
+              <button onClick={reanalyse} disabled={busy}
+                className="ml-auto text-[11.5px] font-semibold text-white bg-[#0E8FCB] border border-[#0E8FCB] rounded-lg px-3 py-1.5 disabled:opacity-40">
+                {busy ? 'Working…' : 'Re-analyse now'}
+              </button>
+            </div>
+          )}
 
           {/* period and accounts */}
           <div className="border border-[#E5DED2] rounded-xl bg-white overflow-hidden mb-3">

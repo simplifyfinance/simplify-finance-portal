@@ -108,12 +108,23 @@ Shipped:
 - `components/StatementAnalysis.tsx` — the tab.
 - `docs/statements-schema.sql` — two tables, run once in Supabase.
 
+Rules moved into Settings (31 Aug 2026):
+- `lib/statement-rules.ts` — the shape, the defaults, field-by-field fallback for
+  a half-saved copy, and `rulesChanged` for telling someone in plain words what
+  has moved. 16 tests.
+- `components/StatementRules.tsx` — Settings → Statement analysis. Six thresholds
+  and every named list.
+- `PUT /api/statement-analysis` re-runs the findings over the stored ledger under
+  the current rules. No file, no second copy of the client's banking data, and the
+  transactions are never touched.
+- An analysis stores the rules it ran under, so changing a threshold never
+  silently rewrites a file someone reviewed. The deal shows what moved and offers
+  to re-run.
+
 Still to do:
 - Run it on a real deal on Vercel and check the findings against the file by hand.
-- The watchlists are constants. They want to be a Settings screen once the list
-  starts changing — same shape as the commission library.
-- The $1,000 large-cash threshold and the 90-day genuine savings window are
-  constants in `statement-analysis.ts`. Same story.
+- An analysis saved before 31 Aug has no `parsed_meta`, so Re-analyse refuses and
+  says to remove and upload again. Only affects files loaded on the first day.
 - Multiple uploads per deal: the tab reads the most recent and Remove deletes it.
   If a deal ever needs two periods side by side, the tables already support it -
   only the tab assumes one.

@@ -282,6 +282,36 @@ describe('rent paid', () => {
   })
 })
 
+describe('settings actually change what is flagged', () => {
+  it('shows a smaller cash movement once the threshold drops', () => {
+    const txns = [t('2026-07-03', 'CASH DEPOSIT BRANCH', 600)]
+    const atDefault = analyse(build(txns), FACT_FIND)
+    expect(card(atDefault, 'cash').txnIds).toHaveLength(0)
+    const atFiveHundred = analyse(build(txns), FACT_FIND, { cashThreshold: 500 })
+    expect(card(atFiveHundred, 'cash').txnIds).toHaveLength(1)
+  })
+  it('turns the salary variance amber or red depending on the tolerance', () => {
+    const strict = analyse(build(), FACT_FIND, { salaryQueryPct: 1, salaryActionPct: 2 })
+    expect(card(strict, 'salaryVariance').flag).toBe('action')
+    const loose = analyse(build(), FACT_FIND, { salaryQueryPct: 60, salaryActionPct: 80 })
+    expect(card(loose, 'salaryVariance').flag).toBe('ok')
+  })
+  it('recognises a provider added to the buy now pay later list', () => {
+    const txns = MONTHS.map(d => t(d, 'SEZZLE INSTALMENT', -45))
+    const before = analyse(build(txns), FACT_FIND)
+    expect(card(before, 'bnpl').detail.providers.map((p: any) => p.provider)).not.toContain('Sezzle')
+    const after = analyse(build(txns), FACT_FIND, {
+      bnpl: [{ name: 'Sezzle', terms: ['sezzle'] }],
+    })
+    expect(card(after, 'bnpl').detail.providers.map((p: any) => p.provider)).toContain('Sezzle')
+  })
+  it('records the rules it ran under, so a stored analysis can be compared later', () => {
+    const a = analyse(build(), FACT_FIND, { cashThreshold: 750 })
+    expect(a.rules.cashThreshold).toBe(750)
+    expect(a.rules.bnpl.length).toBeGreaterThan(0)
+  })
+})
+
 describe('the file score', () => {
   it('scores the file, and every card carries the ids it was reading', () => {
     const a = analyse(build(), FACT_FIND)

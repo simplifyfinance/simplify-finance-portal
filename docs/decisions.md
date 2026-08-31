@@ -283,3 +283,26 @@ The provider watchlists (buy now pay later, gambling, small amount credit
 lenders, real estate agents, benefit types, lender aliases) live in
 `lib/statement-watchlists.ts` so they can be read at a glance and moved into
 Settings later.
+
+## Statement rules live in Settings (31 Aug 2026)
+
+- **An analysis stores the rules it was run under.** Changing a threshold must
+  never silently rewrite a file someone has already reviewed. The deal compares
+  the two, names in plain words what has moved, and offers to re-run.
+- **Re-analysing reads the stored ledger, not a new upload.** Every transaction
+  is already against the deal, so the findings can be recomputed without asking
+  for the file again and without a second copy of the client's banking data. The
+  transactions themselves are never rewritten — they are what the bank said.
+- **A half-saved rule set falls back field by field.** Adding a rule later must
+  not break a portal saved before it existed, and an empty list falls back to the
+  shipped one rather than matching nothing.
+- **An empty number box means "not set", not zero.** Reading it as zero turned
+  every threshold into its minimum the first time settings were saved. Caught by
+  a test, not by looking at it.
+- **The serious salary threshold cannot sit below the question one.** Otherwise a
+  variance could be amber and red at once and the card would contradict itself.
+- **A row with a name but no terms is dropped, not kept.** A rule that matches
+  nothing while looking like it works is worse than no rule.
+- **The four-character rule is shown in the interface**, not just enforced. A
+  short code matches whole words only; a longer one matches anywhere. Someone
+  adding a term needs to know which they are getting.

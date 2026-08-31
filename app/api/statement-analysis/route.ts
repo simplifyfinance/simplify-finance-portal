@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
-import { parseCashDeck, StatementParseError } from '@/lib/statement-parse'
+import { parseCashDeck, StatementParseError, type ParsedStatements } from '@/lib/statement-parse'
 import { analyse, ANALYSIS_VERSION } from '@/lib/statement-analysis'
+import { normaliseRules } from '@/lib/statement-rules'
 
 export const maxDuration = 60
 
-// Upload, parse, store and analyse one CashDeck workbook against a deal.
+// Upload, re-analyse and delete a statement analysis on a deal.
 //
 // Who may do this is decided by the database, not here: the deal is read with the
 // signed-in user's own client, so row level security answers the question. Only
@@ -14,7 +15,7 @@ export const maxDuration = 60
 // rather than assumed - Postgres returns zero rows and no error when a policy
 // blocks an insert, and a success message on top of that is a lie.
 
-async function dealFor(req: NextRequest, dealId: string) {
+async function dealFor(dealId: string) {
   const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: NextResponse.json({ error: 'Not signed in.' }, { status: 401 }) }
@@ -28,17 +29,34 @@ async function dealFor(req: NextRequest, dealId: string) {
   return { user, deal }
 }
 
+// The rules live in Settings. An unsaved or half-saved copy falls back field by
+// field, so the analysis never runs on a half-built rule set.
+async function currentRules(admin: ReturnType<typeof createSupabaseAdmin>) {
+  const { data } = await admin.from('settings').select('statement_rules').eq('id', 'singleton').maybeSingle()
+  return normaliseRules((data as any)?.statement_rules)
+}
+
+// Everything about the statements except the transactions themselves. Stored so
+// a re-analysis can rebuild the picture without asking for the file again.
+function metaOf(p: ParsedStatements) {
+  return {
+    source: p.source, client: p.client, accounts: p.accounts, institutions: p.institutions,
+    periodFrom: p.periodFrom, periodTo: p.periodTo, days: p.days,
+    balancesAvailable: p.balancesAvailable, warnings: p.warnings,
+  }
+}
+
 export async function POST(req: NextRequest) {
   const form = await req.formData()
   const dealId = String(form.get('dealId') || '')
-  const got = await dealFor(req, dealId)
+  const got = await dealFor(dealId)
   if ('error' in got) return got.error
   const { user, deal } = got
 
   const file = form.get('file')
   if (!(file instanceof File)) return NextResponse.json({ error: 'No file was sent.' }, { status: 400 })
 
-  let parsed
+  let parsed: ParsedStatements
   try {
     parsed = await parseCashDeck(await file.arrayBuffer())
   } catch (e: any) {
@@ -46,11 +64,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 400 })
   }
 
-  const analysis = analyse(parsed, deal.fact_find_data || {})
   const admin = createSupabaseAdmin()
+  const rules = await currentRules(admin)
+  const analysis = analyse(parsed, deal.fact_find_data || {}, rules)
 
-  // One upload row per file. Replacing an analysis means removing the old one
-  // first, which the Remove button does, so nothing is silently overwritten.
   const { data: uploadRows, error: upErr } = await admin
     .from('deal_statement_uploads')
     .insert([{
@@ -66,9 +83,11 @@ export async function POST(req: NextRequest) {
       txn_count: parsed.transactions.length,
       institutions: parsed.institutions,
       accounts: analysis.coverage.accounts,
+      parsed_meta: metaOf(parsed),
       coverage_complete: analysis.coverage.complete,
       score: analysis.score.total,
       analysis_version: ANALYSIS_VERSION,
+      rules,
       analysis,
     }])
     .select('id')
@@ -108,11 +127,85 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, uploadId, written, analysis, warnings: analysis.warnings })
 }
 
+// Re-run the findings over the transactions already stored, under the rules as
+// they are now. No file, no second copy of the client's banking data, and the
+// transactions themselves are never touched - they are what the bank said.
+export async function PUT(req: NextRequest) {
+  const body = await req.json().catch(() => ({}))
+  const dealId = String(body.dealId || '')
+  const uploadId = String(body.uploadId || '')
+  const got = await dealFor(dealId)
+  if ('error' in got) return got.error
+  const { deal } = got
+  if (!uploadId) return NextResponse.json({ error: 'No analysis was given to re-run.' }, { status: 400 })
+
+  const admin = createSupabaseAdmin()
+  const { data: up } = await admin
+    .from('deal_statement_uploads').select('*').eq('id', uploadId).eq('deal_id', dealId).maybeSingle()
+  if (!up) return NextResponse.json({ error: 'No analysis with that id belongs to this deal.' }, { status: 404 })
+
+  const meta = (up as any).parsed_meta
+  if (!meta || !meta.periodFrom) {
+    return NextResponse.json({
+      error: 'This analysis was saved before re-running was possible, so the account details it needs were not kept. Remove it and upload the file again.',
+    }, { status: 409 })
+  }
+
+  const stored: any[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await admin
+      .from('deal_statement_transactions').select('*')
+      .eq('upload_id', uploadId).order('txn_date', { ascending: true }).range(from, from + 999)
+    if (error) return NextResponse.json({ error: `The stored transactions could not be read: ${error.message}` }, { status: 500 })
+    stored.push(...(data || []))
+    if (!data || data.length < 1000) break
+  }
+  if (stored.length === 0) {
+    return NextResponse.json({ error: 'No stored transactions were found for this analysis, so there is nothing to re-run.' }, { status: 409 })
+  }
+  if (up.txn_count && stored.length !== up.txn_count) {
+    return NextResponse.json({
+      error: `The stored ledger holds ${stored.length} transactions but this analysis was built from ${up.txn_count}. Re-running would not match the file, so nothing was changed.`,
+    }, { status: 409 })
+  }
+
+  const parsed: ParsedStatements = {
+    ...meta,
+    transactions: stored.map(r => ({
+      externalId: r.external_id, date: r.txn_date, description: r.description || '',
+      merchant: r.merchant || '', accountNumber: r.account_number || '', accountName: r.account_name || '',
+      institution: r.institution || '', category: r.category || '', summaryCategory: r.summary_category || '',
+      categoryType: r.category_type || '', amount: Number(r.amount),
+    })),
+  }
+
+  const rules = await currentRules(admin)
+  const analysis = analyse(parsed, deal.fact_find_data || {}, rules)
+
+  const { data: saved, error: saveErr } = await admin
+    .from('deal_statement_uploads')
+    .update({
+      analysis, rules, analysis_version: ANALYSIS_VERSION,
+      score: analysis.score.total,
+      accounts: analysis.coverage.accounts,
+      coverage_complete: analysis.coverage.complete,
+      reanalysed_at: new Date().toISOString(),
+    })
+    .eq('id', uploadId).eq('deal_id', dealId).select('id')
+
+  if (saveErr) return NextResponse.json({ error: `The new findings could not be saved: ${saveErr.message}` }, { status: 500 })
+  if (!saved || saved.length === 0) {
+    return NextResponse.json({ error: 'Nothing was updated — the database accepted the request but changed no row.' }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true, uploadId, transactions: stored.length, analysis })
+}
+
 export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const uploadId = searchParams.get('uploadId') || ''
   const dealId = searchParams.get('dealId') || ''
-  const got = await dealFor(req, dealId)
+  const got = await dealFor(dealId)
   if ('error' in got) return got.error
   if (!uploadId) return NextResponse.json({ error: 'No upload was given.' }, { status: 400 })
 

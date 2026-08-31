@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import PipelineTargets from '@/components/PipelineTargets'
 import BrokerProfiles from '@/components/BrokerProfiles'
+import StatementRulesPane from '@/components/StatementRules'
 import CommissionLibrary from '@/components/CommissionLibrary'
 import AiExpenses from '@/components/AiExpenses'
 
@@ -50,6 +51,7 @@ export default function SettingsPage() {
   const [stageMoveNotificationUserId, setStageMoveNotificationUserId] = useState('')
   const [complianceStyleNotes, setComplianceStyleNotes] = useState<string[]>([])
   const [newStyleNote, setNewStyleNote] = useState('')
+  const [statementRules, setStatementRules] = useState<any>(null)
   const [complianceFlags, setComplianceFlags] = useState<any[]>([])
   const [loadingFlags, setLoadingFlags] = useState(true)
 
@@ -120,6 +122,7 @@ export default function SettingsPage() {
         if (data.new_deal_notification_user_id) setNewDealNotificationUserId(data.new_deal_notification_user_id)
         if (data.stage_move_notification_user_id) setStageMoveNotificationUserId(data.stage_move_notification_user_id)
         if (data.compliance_style_notes?.length) setComplianceStyleNotes(data.compliance_style_notes)
+        if (data.statement_rules) setStatementRules(data.statement_rules)
       }
       setLoading(false)
     }
@@ -160,6 +163,7 @@ export default function SettingsPage() {
       new_deal_notification_user_id: newDealNotificationUserId || null,
       stage_move_notification_user_id: stageMoveNotificationUserId || null,
       compliance_style_notes: complianceStyleNotes,
+      statement_rules: statementRules,
       updated_at: new Date().toISOString()
     })
     setSaving(false)
@@ -246,6 +250,7 @@ export default function SettingsPage() {
     { key: 'notifications', label: 'Notifications', blurb: 'Who is emailed as deals move through the pipeline.' },
     { key: 'compliance', label: 'Compliance AI', blurb: 'Style notes and flags fed into every Compliance generation.' },
     { key: 'connections', label: 'Connections', blurb: 'Bank statement collection and other outside services.' },
+    { key: 'statements', label: 'Statement analysis', blurb: 'What the statement analysis looks for, and when it raises a flag.' },
   ]
   const [pane, setPane] = useState('brands')
   useEffect(() => {
@@ -303,6 +308,7 @@ export default function SettingsPage() {
       </section>
       )}
       {pane === 'brokers' && <BrokerProfiles brands={brands} />}
+      {pane === 'statements' && <StatementRulesPane value={statementRules} onChange={setStatementRules} />}
 
       {pane === 'connections' && (
       <section className="mb-10">
