@@ -508,7 +508,10 @@ export type Analysis = {
   txnCount: number
   balances: Balances
   cards: Card[]
-  worklist: { flag: Flag; label: string; text: string; card: string }[]
+  // `key` is stable across re-analyses so an answer recorded against an item
+  // still belongs to it after the file is analysed again. `card` only says
+  // which figure to scroll to, and two items can point at the same one.
+  worklist: { key: string; flag: Flag; label: string; text: string; card: string }[]
   score: {
     total: number
     components: { key: string; label: string; weight: number; score: number; open: number; note: string }[]
@@ -1213,39 +1216,39 @@ export function analyse(parsed: ParsedStatements, factFind: any, rulesInput?: an
   // ---- worklist -------------------------------------------------------
   const worklist: Analysis['worklist'] = []
   if (undeclared.length) worklist.push({
-    flag: 'action', label: 'Action', card: 'undisclosed',
+    key: 'undisclosed_commitments', flag: 'action', label: 'Action', card: 'undisclosed',
     text: `${fmtMoney(undeclaredMonthly)} a month of commitments not declared — ${undeclared.map(c => c.provider).join(', ')}. Re-run servicing before you call the client.`,
   })
   if (salaryVariancePct !== null && Math.abs(salaryVariancePct) > R.salaryQueryPct) worklist.push({
-    flag: Math.abs(salaryVariancePct) > R.salaryActionPct ? 'action' : 'query', label: 'Query', card: 'salaryVariance',
+    key: 'salary_variance', flag: Math.abs(salaryVariancePct) > R.salaryActionPct ? 'action' : 'query', label: 'Query', card: 'salaryVariance',
     text: `Salary credits sit ${Math.abs(salaryVariancePct)}% ${salaryVariancePct < 0 ? 'below' : 'above'} the declared gross — HELP or salary sacrifice would explain a shortfall, but it needs an answer on file.`,
   })
   if (unrepaid) worklist.push({
-    flag: 'action', label: 'Explain', card: 'dishonours',
+    key: 'dishonours', flag: 'action', label: 'Explain', card: 'dishonours',
     text: `${unrepaid} dishonour${unrepaid === 1 ? '' : 's'} with no repayment found afterwards.`,
   })
   if (unexplainedIn.length) worklist.push({
-    flag: 'query', label: 'Note', card: 'cash',
+    key: 'cash_deposits', flag: 'query', label: 'Note', card: 'cash',
     text: `${unexplainedIn.map(t => fmtMoney(t.amount)).join(', ')} deposited in cash with no matching withdrawal — gift letter or undeclared income.`,
   })
   if (gamblingPct >= R.gamblingPct || gRising) worklist.push({
-    flag: 'query', label: 'Note', card: 'gambling',
+    key: 'gambling', flag: 'query', label: 'Note', card: 'gambling',
     text: `Gambling is ${gamblingPct}% of credits${gRising ? ' and rising month on month' : ''}.`,
   })
   if (stabilityFails > 0) worklist.push({
-    flag: 'query', label: 'Check', card: 'stability',
+    key: 'income_stability', flag: 'query', label: 'Check', card: 'stability',
     text: `${stabilityFails} income stability test${stabilityFails === 1 ? '' : 's'} failed, so the annualised salary is less reliable than usual.`,
   })
   if (salaryHasGap) worklist.push({
-    flag: 'action', label: 'Ask the client', card: 'salary',
+    key: 'salary_gap', flag: 'action', label: 'Ask the client', card: 'salary',
     text: `No salary credit between ${auDate(salaryGapFrom)} and ${auDate(salaryGapTo)} — ${salaryGapDays} days. Ask the client why and put the answer on file: parental leave, a change of employer, or pay going to an account we have not been given. Until it is answered the monthly average above is understated.`,
   })
   if (!coverageComplete) worklist.push({
-    flag: 'query', label: 'Coverage', card: 'overdrawn',
+    key: 'coverage', flag: 'query', label: 'Coverage', card: 'overdrawn',
     text: coverageNote,
   })
   if (undeclaredIncome > 0) worklist.push({
-    flag: 'favourable', label: 'In their favour', card: 'incomeNotDeclared',
+    key: 'income_not_declared', flag: 'favourable', label: 'In their favour', card: 'incomeNotDeclared',
     text: `${fmtMoney(undeclaredIncome, 0)} a year of income not declared — ${recurringOther.map(describeOther).join(', ')}. Get the evidence and it may cover the commitments above.`,
   })
 

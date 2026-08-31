@@ -675,3 +675,51 @@ own interest test caught them and kept them out of income, which is the only
 reason yesterday's "trust the category" change did not import CashDeck's mistake
 wholesale. Any classifier that reads the category must stay overridable by our
 own checks.
+
+## An audit you can run yourself (31 Aug 2026)
+
+The only way to check a figure was to open the workbook and build a pivot by
+hand. That is how the Viragova file was caught, and it is not a process.
+
+- **New Audit tab** beside All transactions and By category. Every line with the
+  bank narration, the account, **what CashDeck called it**, and **what our
+  figures counted it as**, side by side. Disagreements first, then money in that
+  no figure uses, then everything else.
+- **It is derived from the cards, not from a second run of the classifiers.** If
+  a transaction is not in a card's `txnIds` then nothing on the screen used it,
+  whatever we might think it should have been. The audit therefore cannot quietly
+  disagree with the numbers it is auditing.
+- On Kornelia Viragova it lists the **eight interest credits — $5,423.71 —** that
+  CashDeck filed as Wages, which is exactly the "(blank)" row in the pivot Fabio
+  built by hand. **A disagreement is not automatically our mistake**, and the tab
+  says so: CashDeck mis-files often enough to matter.
+- Money out that no card uses is marked "Spending" and stays quiet. Money in that
+  no card uses is raised, because it is either a transfer between the client's own
+  accounts or income we have not recognised, and those are not the same thing.
+- Exports to Excel with the reason column intact.
+
+## The worklist can be answered (31 Aug 2026)
+
+Every item on that list is a question somebody eventually asks the client, and
+the answer used to live in a phone call and then nowhere. The same query got
+raised twice, or got answered once and forgotten by the time the file went to a
+lender.
+
+- **Reason buttons on every item**, wording per item — parental leave, salary
+  sacrifice, gift, bank error, and so on — plus **Other** with a box to type what
+  the client actually said.
+- **Answered rows turn green**, carry who and when, and the count in the banner
+  falls. "Change" reopens it.
+- **Answers are stored against the deal, not the upload**, so they survive new
+  statements being loaded. Where an answer predates the last re-analysis the row
+  says so rather than assuming it still holds.
+- **Fabio, 31 Aug 2026: answers are NEVER given to the AI** and never appear in
+  the LO or the compliance write-up. They are a file note for the credit team. If
+  the explanation belongs in a regulated document, a person types it there. The
+  screen says this out loud at the foot of the list so nobody assumes otherwise.
+- The insert is checked. RLS refuses by returning no rows and no error, and an
+  answer that looked saved but was not would put the query back on the list
+  tomorrow with nobody expecting it.
+- `worklist` items now carry a stable `key`, separate from `card`. Two items can
+  point at the same figure, and an answer has to belong to the question rather
+  than to whatever the item happens to scroll to.

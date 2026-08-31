@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import DropZone from '@/components/DropZone'
 import { rulesChanged } from '@/lib/statement-rules'
+import { buildAudit, auditSummary, type AuditRow } from '@/lib/statement-audit'
+import { reasonsFor, describeAnswer, answerFor, openCount, type Answer } from '@/lib/statement-answers'
 
 // The Statements tab. Everything on screen comes from one stored analysis and
 // one stored ledger, so a card and the transactions behind it can never drift.
@@ -150,6 +152,78 @@ function TxnTable({ rows }: { rows: Txn[] }) {
       </table>
     </div>
   )
+}
+
+// The audit table. Three columns side by side — the bank line, what CashDeck
+// called it, and what our figures did with it — because that comparison is the
+// whole point and it is what was being done by hand in a spreadsheet.
+function AuditTable({ rows }: { rows: AuditRow[] }) {
+  if (rows.length === 0) return (
+    <p className="text-[12px] text-[#7A7266] py-3">
+      Nothing here. Every line agrees with CashDeck and every credit is used by a figure above.
+    </p>
+  )
+  const chip = (f: string) =>
+    f === 'differ' ? { t: 'Disagrees', c: 'text-[#AD4227] bg-[#FCF4F1] border-[#E8CFC6]' }
+    : f === 'uncounted' ? { t: 'Not counted', c: 'text-[#946017] bg-[#FDF6EC] border-[#EBD9BE]' }
+    : f === 'agree' ? { t: 'Agrees', c: 'text-[#1E7A4A] bg-[#F1F7F3] border-[#CFE6D5]' }
+    : { t: 'Spending', c: 'text-[#7A7266] bg-[#FCFAF6] border-[#EFEAE0]' }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-[12px] min-w-[820px]">
+        <thead>
+          <tr className="border-b border-[#E5DED2]">
+            {['', 'Date', 'Line on the statement', 'Account', 'CashDeck called it', 'We counted it as', 'Amount'].map((h, i) => (
+              <th key={h + i} className={`text-[9.5px] font-bold tracking-[0.07em] uppercase text-[#7A7266] pb-1.5 pr-2 whitespace-nowrap ${i === 6 ? 'text-right pr-0' : 'text-left'}`}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(r => {
+            const k = chip(r.flag)
+            return (
+              <tr key={r.externalId} className="border-b border-[#EFEAE0] align-top">
+                <td className="py-1.5 pr-2 whitespace-nowrap">
+                  <span className={`text-[9px] font-bold tracking-wide uppercase rounded-full px-1.5 py-0.5 border ${k.c}`}>{k.t}</span>
+                </td>
+                <td className="py-1.5 pr-2 whitespace-nowrap text-[#575046]">{dateAu(r.date)}</td>
+                <td className="py-1.5 pr-2 text-[#221F1B]">
+                  {r.description || r.merchant || '—'}
+                  {r.why && <span className="block text-[11px] text-[#7A7266] leading-[1.45] mt-0.5">{r.why}</span>}
+                </td>
+                <td className="py-1.5 pr-2 whitespace-nowrap text-[11px] text-[#7A7266]">{r.account}</td>
+                <td className="py-1.5 pr-2 whitespace-nowrap text-[11px] text-[#7A7266]">{r.cashdeck}</td>
+                <td className="py-1.5 pr-2 text-[11px] text-[#575046]">
+                  {r.ours.length ? r.ours.join(', ') : <span className="text-[#B3ABA0]">nothing uses it</span>}
+                </td>
+                <td className="py-1.5 text-right tabular-nums font-semibold text-[#221F1B] whitespace-nowrap">{money(r.amount)}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function downloadAudit(rows: AuditRow[]) {
+  const head = ['Status', 'Date', 'Line on the statement', 'Merchant', 'Account', 'Institution', 'CashDeck called it', 'We counted it as', 'Why', 'Amount']
+  const esc = (v: any) => {
+    const t = String(v ?? '')
+    return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t
+  }
+  const body = rows.map(r => [
+    r.flag === 'differ' ? 'Disagrees' : r.flag === 'uncounted' ? 'Not counted' : r.flag === 'agree' ? 'Agrees' : 'Spending',
+    r.date, r.description, r.merchant, r.account, r.institution, r.cashdeck,
+    r.ours.join(' / '), r.why, r.amount,
+  ])
+  const csv = [head, ...body].map(row => row.map(esc).join(',')).join('\n')
+  const url = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `statement-audit-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 function Rows({ head, body }: { head: string[]; body: (string | number | React.ReactNode)[][] }) {
@@ -326,8 +400,8 @@ function Detail({ card, txns }: { card: any; txns: Txn[] }) {
   )
 }
 
-function Ledger({ txns }: { txns: Txn[] }) {
-  const [tab, setTab] = useState<'all' | 'cat'>('all')
+function Ledger({ txns, cards }: { txns: Txn[]; cards: any[] }) {
+  const [tab, setTab] = useState<'all' | 'cat' | 'audit'>('all')
   const [q, setQ] = useState('')
   const [acct, setAcct] = useState('')
   const [cat, setCat] = useState('')
@@ -339,6 +413,29 @@ function Ledger({ txns }: { txns: Txn[] }) {
     (!acct || `${t.institution} ${t.account_number}` === acct) &&
     (!cat || t.category === cat)
   ).sort((a, b) => a.txn_date < b.txn_date ? 1 : -1), [txns, q, acct, cat])
+
+  // The audit is built from the cards, so it can never disagree with the figures
+  // it is auditing: if a transaction is not in a card's txnIds then nothing on
+  // the screen used it, whatever we might think it should have been.
+  const [auditView, setAuditView] = useState<'attention' | 'everything'>('attention')
+  const audit = useMemo(
+    () => buildAudit(txns.map(t => ({
+      externalId: t.external_id, date: t.txn_date, description: t.description || '',
+      merchant: t.merchant || '', accountNumber: t.account_number, accountName: t.account_name || '',
+      institution: t.institution || '', category: t.category || '', summaryCategory: t.summary_category || '',
+      categoryType: t.category_type || '', amount: Number(t.amount),
+    })), (cards || []).map((c: any) => ({ key: c.key, title: c.title, txnIds: c.txnIds || [] }))),
+    [txns, cards])
+  const auditSum = useMemo(() => auditSummary(audit), [audit])
+  const auditRows = useMemo(() => {
+    const base = auditView === 'attention'
+      ? audit.filter(r => r.flag === 'differ' || r.flag === 'uncounted')
+      : audit
+    return base.filter(r =>
+      (!q || `${r.description} ${r.merchant} ${r.cashdeck} ${r.ours.join(' ')}`.toLowerCase().includes(q.toLowerCase())) &&
+      (!acct || `${r.institution} ${r.account}`.includes(acct.split(' ').slice(1).join(' '))) &&
+      (!cat || r.cashdeck === cat))
+  }, [audit, auditView, q, acct, cat])
 
   const byCat = useMemo(() => {
     const g: Record<string, { n: number; i: number; o: number }> = {}
@@ -355,7 +452,7 @@ function Ledger({ txns }: { txns: Txn[] }) {
   return (
     <div className="border border-[#E5DED2] rounded-xl bg-white overflow-hidden mt-6">
       <div className="flex gap-0.5 border-b border-[#E5DED2] px-3 bg-[#FCFAF6] flex-wrap">
-        {([['all', 'All transactions'], ['cat', 'By category']] as const).map(([k, label]) => (
+        {([['all', 'All transactions'], ['cat', 'By category'], ['audit', 'Audit']] as const).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`text-[12.5px] px-3 py-2 border-b-2 ${tab === k ? 'text-[#221F1B] font-[640] border-[#0E8FCB]' : 'text-[#575046] border-transparent'}`}>
             {label}
@@ -380,12 +477,48 @@ function Ledger({ txns }: { txns: Txn[] }) {
           </div>
           <div className="max-h-[430px] overflow-auto px-3.5 py-2"><TxnTable rows={filtered} /></div>
         </>
-      ) : (
+      ) : tab === 'cat' ? (
         <div className="max-h-[430px] overflow-auto px-3.5 py-3">
           <Rows head={['Category', 'Count', 'Money in', 'Money out', 'Net']} body={byCat.map(([k, v]) => [
             k, v.n, v.i ? money(v.i) : '—', v.o ? money(-v.o) : '—', money(v.i - v.o),
           ])} />
         </div>
+      ) : (
+        <>
+          <div className="px-4 py-3 border-b border-[#EFEAE0] text-[12.5px] leading-[1.6] text-[#575046]">
+            <b className="text-[#221F1B]">Every line, what CashDeck called it, and what we counted it as.</b>{' '}
+            {auditSum.differ === 0 && auditSum.uncounted === 0
+              ? 'Nothing disagrees and every credit is accounted for.'
+              : <>
+                  <b className="text-[#AD4227]">{auditSum.differ}</b> {auditSum.differ === 1 ? 'line where we disagree' : 'lines where we disagree'} with
+                  CashDeck ({money(auditSum.differValue)}), and <b className="text-[#946017]">{auditSum.uncounted}</b>{' '}
+                  {auditSum.uncounted === 1 ? 'credit' : 'credits'} no income figure uses ({money(auditSum.uncountedValue)}).
+                  A disagreement is not automatically our mistake — CashDeck files savings interest as wages often enough to matter.
+                </>}
+          </div>
+          <div className="flex gap-2 items-center flex-wrap px-3.5 py-2.5 border-b border-[#EFEAE0]">
+            <div className="flex gap-0.5 border border-[#E5DED2] rounded-lg overflow-hidden">
+              {([['attention', `Needs a look (${auditSum.differ + auditSum.uncounted})`], ['everything', `Everything (${auditSum.total})`]] as const).map(([k, label]) => (
+                <button key={k} onClick={() => setAuditView(k)}
+                  className={`text-[12px] px-2.5 py-1 ${auditView === k ? 'bg-[#0E8FCB] text-white font-[600]' : 'bg-white text-[#575046]'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search line, category or figure…"
+              className={`${sel} flex-1 min-w-[180px]`} />
+            <select value={cat} onChange={e => setCat(e.target.value)} className={sel}>
+              <option value="">All categories</option>{cats.map(c => <option key={c}>{c}</option>)}
+            </select>
+            <button onClick={() => downloadAudit(auditRows)}
+              className="text-[11.5px] border border-[#E5DED2] rounded-md px-2.5 py-1 bg-white text-[#7A7266]">
+              Export {auditRows.length} to Excel
+            </button>
+          </div>
+          <div className="max-h-[470px] overflow-auto px-3.5 py-2">
+            <AuditTable rows={auditRows} />
+          </div>
+        </>
       )}
     </div>
   )
@@ -400,6 +533,13 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
   const [error, setError] = useState('')
   const [open, setOpen] = useState<any>(null)
   const [liveRules, setLiveRules] = useState<any>(null)
+  // Answers to the worklist. File notes for the credit team — never sent to the
+  // AI, never written into an LO or a compliance document.
+  const [answers, setAnswers] = useState<Answer[]>([])
+  const [asking, setAsking] = useState<string | null>(null)   // item awaiting free text
+  const [askNote, setAskNote] = useState('')
+  const [saving, setSaving] = useState('')
+  const [answerErr, setAnswerErr] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true); setError('')
@@ -428,8 +568,51 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
       if (!data || data.length < 1000) break
     }
     setTxns(all)
+
+    const { data: ans } = await supabase
+      .from('deal_statement_answers').select('*')
+      .eq('deal_id', deal.id).order('answered_at', { ascending: false })
+    setAnswers((ans || []) as Answer[])
     setLoading(false)
   }, [supabase, deal.id])
+
+  async function saveAnswer(itemKey: string, reasonId: string, reasonLabel: string, note: string) {
+    setSaving(itemKey); setAnswerErr('')
+    let who: string | null = null
+    try {
+      const { data: auth } = await supabase.auth.getUser()
+      if (auth?.user?.id) {
+        const { data: prof } = await supabase.from('user_profiles')
+          .select('full_name').eq('id', auth.user.id).maybeSingle()
+        who = (prof as any)?.full_name || auth.user.email || null
+      }
+    } catch { /* not knowing the name is survivable; the answer still counts */ }
+
+    const row = {
+      deal_id: deal.id, upload_id: upload?.id ?? null,
+      item_key: itemKey, reason_id: reasonId, reason_label: reasonLabel,
+      note: note.trim() || null, answered_by: who, answered_at: new Date().toISOString(),
+    }
+    // RLS refuses a write by returning no rows and no error. An answer that
+    // looked saved and was not would put the query back on the list tomorrow
+    // with nobody expecting it.
+    const { data, error: err } = await supabase.from('deal_statement_answers').insert(row).select('id')
+    if (err || !data || data.length === 0) {
+      setAnswerErr(err?.message || 'That would not save. Nothing was recorded — try again.')
+      setSaving(''); return
+    }
+    setAnswers(prev => [{ ...row } as Answer, ...prev])
+    setAsking(null); setAskNote(''); setSaving('')
+  }
+
+  async function clearAnswer(itemKey: string) {
+    setSaving(itemKey); setAnswerErr('')
+    const { error: err } = await supabase.from('deal_statement_answers')
+      .delete().eq('deal_id', deal.id).eq('item_key', itemKey)
+    if (err) { setAnswerErr(err.message); setSaving(''); return }
+    setAnswers(prev => prev.filter(a => a.item_key !== itemKey))
+    setAsking(itemKey); setAskNote(''); setSaving('')
+  }
 
   useEffect(() => { load() }, [load])
 
@@ -480,6 +663,9 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
   }
 
   const a = upload?.analysis
+  // What is still unanswered. The count on the banner has to fall as answers go
+  // in, or the list stops meaning anything and people stop reading it.
+  const stillOpen = openCount((a?.worklist || []).map((w: any) => ({ key: w.key || w.card })), answers)
   const cardBy = (k: string) => (a?.cards || []).find((c: any) => c.key === k)
   // What has moved in Settings since this analysis ran. Empty means the findings
   // on screen are what the current rules would produce.
@@ -608,18 +794,82 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
           {a?.worklist?.length > 0 && (
             <div className="rounded-xl border border-[#BFE2F5] bg-[#EAF6FD] overflow-hidden mb-5">
               <div className="px-4 py-3 border-b border-[#BFE2F5] text-[13.5px] leading-[1.55] text-[#221F1B]">
-                {a.score.openItems === 0
-                  ? 'Nothing on this file needs an answer.'
-                  : `${a.worklist.length} thing${a.worklist.length === 1 ? '' : 's'} to look at before this goes to a lender.`}
+                {stillOpen === 0
+                  ? `Every question on this file has been answered. ${a.worklist.length} ${a.worklist.length === 1 ? 'item is' : 'items are'} on the record below.`
+                  : `${stillOpen} thing${stillOpen === 1 ? '' : 's'} to look at before this goes to a lender.`}
               </div>
-              {a.worklist.map((w: any, i: number) => (
-                <button key={i} onClick={() => setOpen(cardBy(w.card))}
-                  className="w-full text-left flex items-start gap-2.5 px-4 py-2.5 text-[12.5px] text-[#575046] leading-[1.5] border-b border-[#DCEDF8] last:border-b-0 hover:bg-[#E1F1FB]">
-                  <span className={`text-[9.5px] font-bold tracking-wide uppercase rounded-full px-2 py-0.5 border flex-none mt-0.5 ${flagChip(w.flag)}`}>{w.label}</span>
-                  <span>{w.text}</span>
-                  <span className="ml-auto text-[11.5px] font-semibold text-[#0E8FCB] whitespace-nowrap">Open ›</span>
-                </button>
-              ))}
+              {answerErr && (
+                <div className="px-4 py-2 text-[12px] text-[#AD4227] bg-[#FCF4F1] border-b border-[#E8CFC6]">{answerErr}</div>
+              )}
+              {a.worklist.map((w: any, i: number) => {
+                const key = w.key || w.card
+                const answered = answerFor(answers, key)
+                // An answer given before the current analysis was run may have been
+                // about different numbers. Said out loud rather than assumed fine.
+                const stale = answered && upload?.reanalysed_at
+                  && answered.answered_at < String(upload.reanalysed_at)
+                return (
+                  <div key={key || i} className="border-b border-[#DCEDF8] last:border-b-0">
+                    <div className="flex items-start gap-2.5 px-4 py-2.5 text-[12.5px] text-[#575046] leading-[1.5]">
+                      <span className={`text-[9.5px] font-bold tracking-wide uppercase rounded-full px-2 py-0.5 border flex-none mt-0.5 ${
+                        answered ? 'text-[#1E7A4A] bg-[#F1F7F3] border-[#CFE6D5]' : flagChip(w.flag)}`}>
+                        {answered ? 'Answered' : w.label}
+                      </span>
+                      <div className="flex-1">
+                        <span>{w.text}</span>
+
+                        {answered ? (
+                          <div className="mt-1.5 text-[12px] text-[#1E7A4A]">
+                            ✓ {describeAnswer(answered)}
+                            <span className="text-[11px] text-[#7A7266]">
+                              {' '}· {answered.answered_by || 'recorded'} · {new Date(answered.answered_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              {' '}· <button onClick={() => clearAnswer(key)} disabled={saving === key}
+                                        className="underline text-[#0E8FCB] disabled:opacity-50">Change</button>
+                            </span>
+                            {stale && (
+                              <span className="block text-[11px] text-[#946017] mt-0.5">
+                                Answered before the statements were last re-analysed — worth confirming it still holds.
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="mt-2 flex gap-1.5 flex-wrap items-center">
+                            <span className="text-[11px] text-[#7A7266] mr-0.5">Reason:</span>
+                            {reasonsFor(key).map(r => (
+                              <button key={r.id} disabled={saving === key}
+                                onClick={() => r.id === 'other'
+                                  ? (setAsking(asking === key ? null : key), setAskNote(''))
+                                  : saveAnswer(key, r.id, r.label, '')}
+                                className={`text-[11.5px] rounded-lg px-2.5 py-[3px] border bg-white text-[#221F1B] hover:bg-[#FCFAF6] disabled:opacity-50 ${
+                                  asking === key && r.id === 'other' ? 'border-[#0E8FCB] text-[#0E8FCB] font-[600]' : 'border-[#E5DED2]'}`}>
+                                {r.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {asking === key && !answered && (
+                          <div className="mt-2 flex gap-1.5 items-start">
+                            <textarea value={askNote} onChange={e => setAskNote(e.target.value)} autoFocus
+                              placeholder="What did the client say?"
+                              className="flex-1 text-[12.5px] leading-[1.5] rounded-lg border border-[#EBD9BE] bg-[#FDF6EC] px-2.5 py-2 text-[#575046] min-h-[54px]" />
+                            <button disabled={!askNote.trim() || saving === key}
+                              onClick={() => saveAnswer(key, 'other', 'Other', askNote)}
+                              className="text-[11.5px] rounded-lg px-3 py-[5px] bg-[#0E8FCB] text-white font-[600] disabled:opacity-40">
+                              {saving === key ? 'Saving…' : 'Save'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <button onClick={() => setOpen(cardBy(w.card))}
+                        className="ml-auto text-[11.5px] font-semibold text-[#0E8FCB] whitespace-nowrap mt-0.5">Open ›</button>
+                    </div>
+                  </div>
+                )
+              })}
+              <div className="px-4 py-2 text-[11px] text-[#7A7266] border-t border-[#DCEDF8]">
+                Answers are a file note for the credit team. They are not given to the AI and do not appear in the lending options or compliance write-up.
+              </div>
             </div>
           )}
 
@@ -650,7 +900,7 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
             </div>
           ))}
 
-          <Ledger txns={txns} />
+          <Ledger txns={txns} cards={a?.cards || []} />
 
           {a?.warnings?.length > 0 && (
             <div className="mt-3 rounded-xl border border-[#EBD9BE] bg-[#FDF6EC] px-4 py-3 text-[12.5px] text-[#575046] leading-[1.65]">
