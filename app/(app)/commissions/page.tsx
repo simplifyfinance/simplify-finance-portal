@@ -31,8 +31,30 @@ function monthsSince(start = COMMISSION_START): string[] {
   return out
 }
 
+// The sections of this page, and the words that go above each one. The keys are
+// the sidebar's hash values, so this list and the sidebar cannot drift.
+const PANES: { key: string; label: string; blurb: string }[] = [
+  { key: 'revenue',    label: 'Revenue',              blurb: 'What has been banked, by broker and by kind.' },
+  { key: 'months',     label: 'By month',             blurb: 'Upfront, trail and clawback month by month.' },
+  { key: 'trail',      label: 'The trail book',       blurb: 'What the book pays each month, what has left it, and how fast.' },
+  { key: 'missing',    label: 'Trail missing',        blurb: 'Loans that stopped paying trail, and what happened next.' },
+  { key: 'clawback',   label: 'Clawback risk',        blurb: 'Settled loans still inside the lender\u2019s clawback window.' },
+  { key: 'reconcile',  label: 'Settlements vs paid',  blurb: 'Deals marked settled here against what SFG actually paid.' },
+  { key: 'statements', label: 'Statements loaded',    blurb: 'Every statement imported, and what each one contained.' },
+]
+
 export default function CommissionsPage() {
   const supabase = createSupabaseBrowser()
+  const [pane, setPane] = useState('revenue')
+  useEffect(() => {
+    const read = () => {
+      const h = (window.location.hash || '#revenue').slice(1)
+      setPane(PANES.some(x => x.key === h) ? h : 'revenue')
+    }
+    read()
+    window.addEventListener('hashchange', read)
+    return () => window.removeEventListener('hashchange', read)
+  }, [])
   const [allowed, setAllowed] = useState<boolean | null>(null)
   const [statements, setStatements] = useState<any[]>([])
   const [brokers, setBrokers] = useState<{ key: string; name: string; from: string }[]>([])
@@ -210,7 +232,7 @@ export default function CommissionsPage() {
                   {r.thirdParty ? ` · to third parties ${money(-Math.abs(r.thirdParty))}` : ''}
                   {' · banked '}<b>{money(r.banked)}</b>
                   {r.unknownLenders?.length > 0 && (
-                    <span className="text-[#B4761F]"> · lenders not in the register: {r.unknownLenders.join(', ')}</span>
+                    <span className="text-[#946017]"> · lenders not in the register: {r.unknownLenders.join(', ')}</span>
                   )}
                 </div>
               )}
@@ -220,37 +242,25 @@ export default function CommissionsPage() {
         </div>
       )}
 
-      {statements.length > 0 && (
+      {statements.length > 0 && (() => {
+        const activePane = PANES.find(x => x.key === pane) || PANES[0]
+        return (
         <>
-          <div className="text-[11px] font-bold uppercase tracking-[.08em] text-[#7A7266] mb-2">
-            Revenue
-          </div>
-          <CommissionRevenue statements={statements} brokers={brokers} />
+          {/* One section at a time, chosen from the sidebar, the same way Settings
+              works. Seven of these on one page had become a very long scroll. */}
+          <div className="text-[13px] text-[#6E665C] mb-1">{activePane.label}</div>
+          <div className="text-[11.5px] text-[#7A7266] mb-5">{activePane.blurb}</div>
 
-          <div className="text-[11px] font-bold uppercase tracking-[.08em] text-[#7A7266] mb-2">By month</div>
-          <CommissionByMonth statements={statements} />
-
-          <div className="text-[11px] font-bold uppercase tracking-[.08em] text-[#7A7266] mb-2">
-            The trail book
-          </div>
-          <TrailBook brokers={brokers} />
-
-          <div className="text-[11px] font-bold uppercase tracking-[.08em] text-[#7A7266] mb-2">
-            Trail that went missing
-          </div>
-          <MissedTrail brokers={brokers} />
-
-          <ClawbackWatch brokers={brokers} />
-
-          <div className="text-[11px] font-bold uppercase tracking-[.08em] text-[#7A7266] mb-2">
-            Settlements against what SFG paid
-          </div>
-          <SettlementReconcile brokers={brokers} />
-
-          <StatementsLoaded statements={statements} brokers={brokers} onChanged={load} />
-
+          {pane === 'revenue'    && <CommissionRevenue statements={statements} brokers={brokers} />}
+          {pane === 'months'     && <CommissionByMonth statements={statements} />}
+          {pane === 'trail'      && <TrailBook brokers={brokers} />}
+          {pane === 'missing'    && <MissedTrail brokers={brokers} />}
+          {pane === 'clawback'   && <ClawbackWatch brokers={brokers} />}
+          {pane === 'reconcile'  && <SettlementReconcile brokers={brokers} />}
+          {pane === 'statements' && <StatementsLoaded statements={statements} brokers={brokers} onChanged={load} />}
         </>
-      )}
+        )
+      })()}
     </div>
   )
 }

@@ -373,7 +373,7 @@ export default function CommissionLibrary() {
 
       {unconfirmed > 0 && (
         <div className="flex items-start gap-3 bg-[#FDF6E7] border border-[#EFE0BC] rounded-xl px-4 py-3 mb-4">
-          <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#B4761F" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2" /><path d="M8 5v3.4M8 10.8v.2" /></svg>
+          <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#946017" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2" /><path d="M8 5v3.4M8 10.8v.2" /></svg>
           <span className="text-[12.5px] text-[#7A5F17]">
             <strong className="text-[#5E4A11]">{unconfirmed} of {rates.length} lenders are not confirmed.</strong>{' '}
             Commission is only calculated from confirmed rates — anything unconfirmed reads &ldquo;rate not confirmed&rdquo; rather than a number.

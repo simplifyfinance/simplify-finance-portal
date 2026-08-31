@@ -219,7 +219,7 @@ export default function PipelineSnapshot({ hist, dealRows, targets, brokers, bro
 
       {!L.month && (
         <div className="flex items-start gap-3 bg-[#FDF6E7] border border-[#EFE0BC] rounded-xl px-4 py-3 mt-3">
-          <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#B4761F" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
+          <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#946017" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
           <span className="text-[12.5px] text-[#7A5F17]">
             <strong className="text-[#5E4A11]">Nothing is recorded for this month yet.</strong>{' '}
             It is left out of every figure above rather than counted as a zero. Enter it in Monthly actuals and

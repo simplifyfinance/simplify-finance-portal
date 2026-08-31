@@ -224,7 +224,7 @@ export default function PipelineTargets() {
 
         {totals.set < 12 && (
           <div className="flex items-center gap-3 bg-[#FDF6E7] border-b border-[#EFE0BC] px-5 py-2.5">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#B4761F" strokeWidth="1.6" strokeLinecap="round"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#946017" strokeWidth="1.6" strokeLinecap="round"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
             <span className="text-[12.5px] text-[#7A5F17]">
               <strong className="text-[#5E4A11]">FY{String(fy).slice(2)} targets for {scopeName} are incomplete.</strong>{' '}
               {12 - totals.set} of 12 months still to set.

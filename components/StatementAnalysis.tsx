@@ -20,12 +20,12 @@ type Upload = {
 }
 
 const INK = '#221F1B', BODY = '#575046', LABEL = '#7A7266', LINE = '#E5DED2'
-const POS = '#1E7A4A', WARN = '#B4761F', NEG = '#AD4227', ACCENT = '#0E8FCB'
+const POS = '#1E7A4A', WARN = '#946017', NEG = '#AD4227', ACCENT = '#0E8FCB'
 
 const flagInk = (f: string) => f === 'action' ? NEG : f === 'query' ? WARN : (f === 'ok' || f === 'favourable') ? POS : LABEL
 const flagChip = (f: string) =>
   f === 'action' ? 'text-[#AD4227] bg-[#FCF4F1] border-[#E8CFC6]'
-  : f === 'query' ? 'text-[#B4761F] bg-[#FDF6EC] border-[#EBD9BE]'
+  : f === 'query' ? 'text-[#946017] bg-[#FDF6EC] border-[#EBD9BE]'
   : 'text-[#1E7A4A] bg-[#F1F7F3] border-[#CFE6D5]'
 
 const money = (n: number, dp = 2) =>
@@ -205,7 +205,7 @@ function Detail({ card, txns }: { card: any; txns: Txn[] }) {
         <H>Both financial years the period touches</H>
         <Rows head={['Financial year', 'Gross salary']} body={d.byFy.map((f: any) => [f.label + (f.headline ? ' — used' : ''), money(f.gross, 0)])} />
       </>}
-      {d.caveats?.length > 0 && <p className="text-[12px] text-[#B4761F] mt-3">{d.caveats.join(' ')}</p>}
+      {d.caveats?.length > 0 && <p className="text-[12px] text-[#946017] mt-3">{d.caveats.join(' ')}</p>}
     </>
   } else if (card.drill === 'source') {
     summary = <Rows head={['Line', 'Per year']} body={[
@@ -304,7 +304,7 @@ function Detail({ card, txns }: { card: any; txns: Txn[] }) {
   } else if (card.drill === 'balances') {
     const b = d.balances || d
     summary = <>
-      <p className="text-[12px] text-[#B4761F] mb-3">{b.reason || d.reason}</p>
+      <p className="text-[12px] text-[#946017] mb-3">{b.reason || d.reason}</p>
       {(b.monthEnds || d.monthEnds || []).length > 0 &&
         <Rows head={['Month end', 'Combined balance']} body={(b.monthEnds || d.monthEnds).map((p: any) => [dateAu(p.date), money(p.balance)])} />}
       {card.key === 'genuineSavings' && d.genuine !== null && d.genuine !== undefined &&
@@ -548,7 +548,7 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
           <div className="border border-[#E5DED2] rounded-xl bg-white overflow-hidden mb-3">
             <div className="px-3.5 py-2 border-b border-[#EFEAE0] bg-[#FCFAF6] text-[10px] font-bold tracking-[0.08em] uppercase text-[#7A7266] flex gap-2.5 flex-wrap items-center">
               Period and accounts analysed
-              <span className={a?.coverage?.complete ? 'text-[#1E7A4A] tracking-normal' : 'text-[#B4761F] tracking-normal'}>
+              <span className={a?.coverage?.complete ? 'text-[#1E7A4A] tracking-normal' : 'text-[#946017] tracking-normal'}>
                 · {a?.coverage?.complete ? 'Coverage complete' : 'Coverage partial'}
               </span>
             </div>
@@ -570,7 +570,7 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
               <div key={acc.accountNumber} className="flex items-center gap-2.5 px-3.5 py-2 border-b border-[#EFEAE0] last:border-b-0 text-[12.5px] flex-wrap">
                 <span className="text-[#221F1B] font-[560]">{acc.institution}</span>
                 <span className="text-[11.5px] text-[#7A7266]">· {acc.name} {acc.accountNumber}</span>
-                <span className={`ml-auto text-[11.5px] whitespace-nowrap ${acc.pct >= 90 ? 'text-[#575046]' : 'text-[#B4761F]'}`}>
+                <span className={`ml-auto text-[11.5px] whitespace-nowrap ${acc.pct >= 90 ? 'text-[#575046]' : 'text-[#946017]'}`}>
                   {dateAu(acc.from)} → {dateAu(acc.to)} · {acc.txnCount} transactions · {acc.pct}% of the period
                 </span>
               </div>

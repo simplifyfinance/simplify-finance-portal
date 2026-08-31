@@ -266,7 +266,7 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
     <div className="mt-4 border-t border-[#F6F2EA] pt-3">
       {nameDrift && login && (
         <div className="flex items-start gap-3 bg-[#FDF6E7] border border-[#EFE0BC] rounded-lg px-3 py-2.5 mb-3">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#B4761F" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#946017" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
           <span className="text-[12px] text-[#7A5F17] flex-1">
             <strong className="text-[#5E4A11]">Two different names.</strong> This profile says
             &ldquo;{name}&rdquo;, their login says &ldquo;{login.full_name}&rdquo;. The login name is what the

@@ -165,7 +165,7 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
 
             {nameDrift && login && (
               <div className="flex items-start gap-3 bg-[#FDF6E7] border border-[#EFE0BC] rounded-lg px-3 py-2.5 mt-3">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#B4761F" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#946017" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
                 <span className="text-[12px] text-[#7A5F17] flex-1">
                   Their login reads &ldquo;{login.full_name}&rdquo;. Saving here does not change it.
                 </span>

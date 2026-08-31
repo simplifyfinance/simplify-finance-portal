@@ -459,7 +459,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
         )}
         {waiting.length > 0 && (
           <span title={`A query is only tracked while you can see it. Anything unanswered after ${CHASE_AFTER_DAYS} days comes back on the list on its own.`}>
-            <b style={{ color: longestWait >= CHASE_AFTER_DAYS ? '#B4761F' : TONE.ink }}>{waiting.length}</b> queried, waiting
+            <b style={{ color: longestWait >= CHASE_AFTER_DAYS ? TONE.warn : TONE.ink }}>{waiting.length}</b> queried, waiting
             {longestWait >= 14 ? ` · longest ${Math.floor(longestWait / 7)} weeks` : ''}
           </span>
         )}
@@ -491,7 +491,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
               loan so the next gap on the same loan says so before you chase it. */}
           <button onClick={() => mark('arrears')} disabled={saving}
             className="rounded-lg px-3 py-[5px] text-[12px] font-medium border disabled:opacity-40"
-            style={{ borderColor: '#EBD9BE', background: '#FDF6EC', color: '#B4761F' }}>In arrears</button>
+            style={{ borderColor: '#EBD9BE', background: '#FDF6EC', color: TONE.warn }}>In arrears</button>
           {view !== 'open' && (
             <button onClick={unmark} disabled={saving}
               className="rounded-lg px-3 py-[5px] text-[12px] border bg-white disabled:opacity-40 ml-auto"
@@ -551,7 +551,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
                     return (
                       <span className="ml-2 text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[1px] border align-middle"
                             style={late
-                              ? { borderColor: '#EBD9BE', color: '#B4761F', background: '#FDF6EC' }
+                              ? { borderColor: '#EBD9BE', color: TONE.warn, background: '#FDF6EC' }
                               : { borderColor: TONE.line, color: TONE.label, background: '#fff' }}
                             title={d > 0
                               ? `Queried ${age} ago${late ? ' and still no answer, so it is back on the list' : ''}.`
@@ -569,7 +569,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
                     const m = monthsSince(at)
                     return (
                       <span className="ml-2 text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[1px] border align-middle"
-                            style={{ borderColor: '#EBD9BE', color: '#B4761F', background: '#FDF6EC' }}
+                            style={{ borderColor: '#EBD9BE', color: TONE.warn, background: '#FDF6EC' }}
                             title={`Marked in arrears on ${new Date(at).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}. Worth checking whether that is still the reason.`}>
                         Was in arrears{m > 0 ? ` · ${m} month${m === 1 ? '' : 's'} ago` : ''}
                       </span>
@@ -585,7 +585,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
                   {g.lender || '—'}
                 </td>
                 <td className={td} style={{ color: TONE.label, borderColor: TONE.hair }}>{mLabel(g.last_paid)}</td>
-                <td className={td} style={{ color: g.returned_in ? TONE.pos : '#B4761F', borderColor: TONE.hair }}>
+                <td className={td} style={{ color: g.returned_in ? TONE.pos : TONE.warn, borderColor: TONE.hair }}>
                   {g.returned_in ? mLabel(g.returned_in) : 'nothing yet'}
                 </td>
                 <td className={td} style={{ color: TONE.ink, borderColor: TONE.hair }}>

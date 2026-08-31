@@ -4,11 +4,11 @@ Current state. Update as things land.
 
 ## Waiting on Fabio
 
-- **Confirm the 22 commission rates** (Settings → Commission library). Gates the
-  commission calculation, RCTI reconciliation and the clawback report. Bankwest 34
-  deals, St George 30, ING 19, ANZ 17, Ubank 15, CBA 14 — those six are 129 deals.
-- **A figure for La Trobe and ME Bank.** La Trobe's schedule is fee-based; ME Bank
-  isn't in the SFG schedule at all (now part of BOQ).
+Nothing is blocked on commission rates. The library was completed 17 Aug 2026 —
+all 35 lenders confirmed, every upfront, trail and clawback window present. The
+old "confirm the 22 rates" line lived here until 31 Aug 2026 and was wrong; it
+had already been done. Check `docs/decisions.md` before trusting a blocker here.
+
 - **Alan's FY27 monthly targets.** Until they land, every "vs target" panel reads
   "not set".
 - **Test the stage snapshots** (`f2d64e8`) on a cloned deal: Lodged, then Formal with

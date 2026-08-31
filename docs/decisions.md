@@ -383,3 +383,32 @@ identical once the row had gone.
   a real claim with no way to put it back.
 - **Nothing new is stored.** resolved_at was always being written; it was simply
   never read. The fix was to show it.
+
+## Clawback risk, and the amber that was never readable (31 Aug 2026)
+
+The loan list already existed as `ClawbackWatch`. What was missing was the shape
+of it — four figures, when it clears, and which lenders carry it — so the section
+no longer opens straight into a 147-row table.
+
+- **The window comes from the dates, not from a second lookup.** Each lender's
+  window is derived from settled date to window end on the loans themselves, so
+  the months column can never disagree with the figure beside it.
+- **"Upfront at risk" is the whole upfront, and says so.** Most lenders claw the
+  lot in year one and part of it in year two, but the library holds the window
+  length and no taper. Worst case, stated plainly, until someone supplies the
+  year-two percentages. It is not guessed.
+- **"Settled in the last 12 months" makes no claim about recovery.** It is the
+  newest and most exposed part of the book, nothing more.
+- **Commissions is now one section at a time**, chosen from the sidebar, the same
+  way Settings works. Seven sections stacked on one page had become a very long
+  scroll. `PANES` on the page and `SUBNAV` in the sidebar share their keys.
+- **The overstatement warning sits above the numbers, not under the table.** A
+  caveat below a figure someone has already read and believed is decoration.
+
+The amber, separately: `#B4761F` had been typed by hand into ten files and
+measures **3.78:1 on white** — under the 4.5:1 floor `lib/tone.ts` exists to
+hold, and worse on its own chip at 3.52:1. It is now `#946017`, the same hue
+taken down until it clears: 5.32:1 on white, 4.96:1 on the chip. Measured, not
+eyeballed. `TONE.warn` is the token; only files that already import TONE use it,
+because rewriting a Tailwind class string into a JS expression breaks the class
+silently — which is exactly what happened on the first attempt.

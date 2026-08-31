@@ -40,6 +40,15 @@ const SUBNAV: Record<string, { key: string; label: string; adminOnly?: boolean; 
   '/lenders': [
     { key: 'lenders', label: 'Products & policy' },
   ],
+  '/commissions': [
+    { key: 'revenue',    label: 'Revenue' },
+    { key: 'months',     label: 'By month' },
+    { key: 'trail',      label: 'Trail book' },
+    { key: 'missing',    label: 'Trail missing' },
+    { key: 'clawback',   label: 'Clawback risk' },
+    { key: 'reconcile',  label: 'Settlements vs paid' },
+    { key: 'statements', label: 'Statements loaded' },
+  ],
   '/settings': [
     { key: 'brands', label: 'Brands' },
     { key: 'brokers', label: 'Broker profiles' },

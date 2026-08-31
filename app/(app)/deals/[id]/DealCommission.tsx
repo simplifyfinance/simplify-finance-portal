@@ -93,7 +93,7 @@ export default function DealCommission({ deal }: { deal: any }) {
               <div className="text-[21px] font-semibold tracking-[-.02em] text-[#2E2A26]">
                 {c.clawbackMonths === null ? '—' : c.clawbackMonths === 0 ? 'None' : `${c.clawbackMonths} mo`}
               </div>
-              <div className={`text-[11.5px] ${inClawback ? 'text-[#B4761F]' : 'text-[#A29889]'}`}>
+              <div className={`text-[11.5px] ${inClawback ? 'text-[#946017]' : 'text-[#A29889]'}`}>
                 {c.clawbackMonths === 0
                   ? 'this lender claws back nothing'
                   : c.clawbackEndsOn

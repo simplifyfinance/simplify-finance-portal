@@ -18,6 +18,11 @@ export const TONE = {
   accentLine: '#BFE2F5',
   pos:    '#1E7A4A',
   neg:    '#AD4227',
+  // Needs an answer, not a loss. #B4761F was used by hand in several places and
+  // measures 3.78:1 on white and 3.52:1 on its own amber chip - under the floor
+  // this file exists to hold. This is the same hue taken down until it clears:
+  // 5.32:1 on white, 4.96:1 on #FDF6EC.
+  warn:   '#946017',
 } as const
 
 // Money, the way the mock reads it: a negative is -$144,316, never $-144,316,
