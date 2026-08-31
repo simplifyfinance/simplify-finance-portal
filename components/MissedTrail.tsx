@@ -92,7 +92,11 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
   // a brand new key and everything learned in March would be lost. This map is
   // keyed on the loan alone, so the note survives into the next gap.
   const [arrearsByLoan, setArrearsByLoan] = useState<Map<string, string>>(new Map())
-  const [showCleared, setShowCleared] = useState(false)
+  // Three views, not a checkbox. An answer that is not a query - paid, not owed,
+  // in arrears - is finished and leaves the list for good. Queries are the only
+  // thing still waiting on someone, so they get their own view. Answered stays
+  // reachable because otherwise one misclick hides a real claim with no way back.
+  const [view, setView] = useState<'open' | 'queries' | 'answered'>('open')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
 
@@ -172,9 +176,17 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
     if (isNaN(d.getTime())) return 0
     return Math.max(0, Math.round((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24 * 30.44)))
   }
-  const open = useMemo(() => showCleared ? valued : valued.filter(g => !isCleared(g)),
-                       [valued, resolved, showCleared])
-  const clearedCount = valued.filter(isCleared).length
+  const isQueried = (g: Gap) =>
+    resolved.get(`${g.broker_key}|${g.loan_ref}|${String(g.last_paid).slice(0, 10)}`)?.outcome === 'queried'
+  const isAnswered = (g: Gap) => isMarked(g) && !isQueried(g)
+
+  const open = useMemo(() =>
+    view === 'queries'  ? valued.filter(isQueried)
+    : view === 'answered' ? valued.filter(isAnswered)
+    : valued.filter(g => !isCleared(g)),          // open, plus any query gone quiet
+    [valued, resolved, view])
+  const queriesCount = valued.filter(isQueried).length
+  const answeredCount = valued.filter(isAnswered).length
   const paidTwice = valued.filter(isPaidTwice)
   const waiting = valued.filter(g => waitingDays(g) > 0)
   const longestWait = waiting.reduce((m, g) => Math.max(m, waitingDays(g)), 0)
@@ -424,13 +436,24 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
         </button>
       </div>
 
-      {/* What has already been dealt with, and what it was worth. */}
+      {/* Open, waiting on someone, or finished. */}
       <div className="flex items-center gap-2.5 mb-2 flex-wrap text-[12px]" style={{ color: TONE.label }}>
-        <button onClick={() => { setShowCleared(v => !v); setPicked(new Set()) }}
-          className="border rounded-lg px-2.5 py-[4px] bg-white"
-          style={{ borderColor: TONE.line, color: showCleared ? TONE.ink : TONE.label }}>
-          {showCleared ? 'Hide cleared' : `Show cleared (${clearedCount})`}
-        </button>
+        <span className="inline-flex rounded-lg overflow-hidden border" style={{ borderColor: TONE.line }}>
+          {([
+            ['open', 'To chase'],
+            ['queries', `Queries (${queriesCount})`],
+            ['answered', `Answered (${answeredCount})`],
+          ] as const).map(([k, label], i) => (
+            <button key={k} onClick={() => { setView(k); setPicked(new Set()) }}
+              className="px-2.5 py-[4px]"
+              style={{
+                background: view === k ? '#fff' : TONE.zebra,
+                color: view === k ? TONE.ink : TONE.label,
+                fontWeight: view === k ? 600 : 400,
+                borderLeft: i === 0 ? 'none' : `1px solid ${TONE.line}`,
+              }}>{label}</button>
+          ))}
+        </span>
         {recovered > 0 && (
           <span><b style={{ color: TONE.pos }}>{money(recovered)}</b> recovered so far</span>
         )}
@@ -469,7 +492,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
           <button onClick={() => mark('arrears')} disabled={saving}
             className="rounded-lg px-3 py-[5px] text-[12px] font-medium border disabled:opacity-40"
             style={{ borderColor: '#EBD9BE', background: '#FDF6EC', color: '#B4761F' }}>In arrears</button>
-          {showCleared && (
+          {view !== 'open' && (
             <button onClick={unmark} disabled={saving}
               className="rounded-lg px-3 py-[5px] text-[12px] border bg-white disabled:opacity-40 ml-auto"
               style={{ borderColor: TONE.line, color: TONE.label }}>Put back on the list</button>
@@ -498,7 +521,9 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
           <tbody>
             {rows.length === 0 && (
               <tr><td colSpan={9} className="px-3 py-6 text-[13px]" style={{ color: TONE.label }}>
-                Nothing here{who === 'all' ? '' : ' for this broker'}.
+                {view === 'queries' ? 'No queries waiting.'
+                  : view === 'answered' ? 'Nothing answered yet.'
+                  : `Nothing to chase${who === 'all' ? '' : ' for this broker'}.`}
               </td></tr>
             )}
             {shown.map((g, i) => (

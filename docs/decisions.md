@@ -376,5 +376,10 @@ identical once the row had gone.
   merely pending. Marking it again resets the clock; a real answer — paid, not
   owed, in arrears — closes it properly.
 - **The toolbar says how many are waiting and how long the longest has been.**
+- **Three views, not a "show cleared" checkbox.** Paid, not owed and in arrears
+  are finished answers and leave the chase list for good. A query is the only
+  outcome still waiting on somebody, so it gets its own view. Answered stays
+  reachable rather than vanishing entirely, because otherwise one misclick hides
+  a real claim with no way to put it back.
 - **Nothing new is stored.** resolved_at was always being written; it was simply
   never read. The fix was to show it.
