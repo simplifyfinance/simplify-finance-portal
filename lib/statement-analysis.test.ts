@@ -537,3 +537,57 @@ describe('the worklist does not ask the same thing three times', () => {
     expect(w).toContain('income_stability')
   })
 })
+
+// ---------------------------------------------------------------------------
+// A person overruling the machine, and the figures actually moving.
+describe('corrections made in the audit change the numbers', () => {
+  const base = viragova()
+  const payid = { ...base.transactions[0], externalId: 'payid-1', date: '2026-06-02',
+    description: 'Fast Transfer From MALGORZATA ZABLOCKA PayID', merchant: '', category: '', amount: 2500 }
+  const withPayid = { ...base, transactions: [...base.transactions, payid] }
+
+  it('drops a credit from income when someone says it is a transfer', () => {
+    const before = analyse(withPayid, KORNELIA_FF)
+    const after = analyse(withPayid, KORNELIA_FF, undefined, {
+      overrides: [{ external_id: 'payid-1', signature: null, treat_as: 'not_income', created_at: 'x' }],
+    })
+    const otherOf = (a: any) => card(a, 'other').detail.oneOff?.length ?? 0
+    expect(JSON.stringify(after.cards)).not.toContain('MALGORZATA')
+    expect(JSON.stringify(before.cards)).toContain('MALGORZATA')
+    expect(otherOf(after)).toBeLessThanOrEqual(otherOf(before))
+  })
+
+  it('counts a credit as salary when someone says it is salary', () => {
+    const before = card(analyse(base, KORNELIA_FF), 'salary').detail.total
+    const after = card(analyse(base, KORNELIA_FF, undefined, {
+      // The June interest credit, insisted upon as pay. Wrong in real life;
+      // the point is that a person's answer wins.
+      overrides: [{ external_id: base.transactions[9].externalId, signature: null, treat_as: 'salary', created_at: 'x' }],
+    }), 'salary').detail.total
+    expect(after).toBeGreaterThan(before)
+  })
+
+  it('takes an ignored line out of every figure, including the count', () => {
+    const before = analyse(base, KORNELIA_FF).txnCount
+    const after = analyse(base, KORNELIA_FF, undefined, {
+      overrides: [{ external_id: base.transactions[3].externalId, signature: null, treat_as: 'ignore', created_at: 'x' }],
+    }).txnCount
+    expect(after).toBe(before - 1)
+  })
+
+  it('records what was overruled and where the correction came from', () => {
+    const a = analyse(base, KORNELIA_FF, undefined, {
+      payerRules: [{ match: payerKey(base.transactions[0]), label: 'Swiss Re',
+        treat_as: 'salary', added_by: 'Fabio', added_at: 'x' }],
+    })
+    expect(a.corrections.length).toBeGreaterThan(0)
+    expect(a.corrections[0].source).toBe('always')
+  })
+
+  it('changes nothing at all when there are no corrections', () => {
+    const plain = analyse(base, KORNELIA_FF)
+    const empty = analyse(base, KORNELIA_FF, undefined, { overrides: [], payerRules: [] })
+    expect(empty.score.total).toBe(plain.score.total)
+    expect(empty.corrections).toEqual([])
+  })
+})

@@ -5,6 +5,7 @@ import {
   INTERNAL_TRANSFER_WORDS, normKey, matchesAny,
 } from './statement-watchlists'
 import { type StatementRules, DEFAULT_RULES, normaliseRules } from './statement-rules'
+import { resolveOverrides, type Override, type PayerRule } from './statement-overrides'
 
 // Reads the parsed statements against the deal's fact find and produces the
 // findings the Statements tab shows.
@@ -518,12 +519,29 @@ export type Analysis = {
     openItems: number
   }
   rules: StatementRules
+  // Lines a person overruled us on, and where the correction came from. Kept on
+  // the analysis so the screen can say plainly that a figure is not purely the
+  // machine's opinion.
+  corrections: { externalId: string; treat: string; label: string; source: 'file' | 'always' }[]
   warnings: string[]
 }
 
-export function analyse(parsed: ParsedStatements, factFind: any, rulesInput?: any): Analysis {
+export function analyse(
+  parsed: ParsedStatements,
+  factFind: any,
+  rulesInput?: any,
+  corrections?: { overrides?: Override[]; payerRules?: PayerRule[] },
+): Analysis {
   const R = normaliseRules(rulesInput)
-  const all = parsed.transactions
+  // What a person has overruled us on. A correction made on this file beats a
+  // standing rule; both beat anything the classifiers work out for themselves,
+  // because a person looking at the client's own statements knows things no rule
+  // can. Resolved once, up front, so every bucket below reads the same answer.
+  const forced = resolveOverrides(
+    parsed.transactions, corrections?.overrides || [], corrections?.payerRules || [], payerKey)
+  const forcedAs = (t: ParsedTxn, treat: string) => forced.get(t.externalId)?.treat === treat
+  const isForced = (t: ParsedTxn) => forced.has(t.externalId)
+  const all = parsed.transactions.filter(t => !forcedAs(t, 'ignore'))
   const days = Math.max(1, parsed.days)
   const perYear = 365.25 / days
   const perMonth = perYear / 12
@@ -541,7 +559,10 @@ export function analyse(parsed: ParsedStatements, factFind: any, rulesInput?: an
     nameTokens.some(tok => normKey(`${t.merchant} ${t.description}`).includes(tok))
   ).map(t => t.externalId))
   const ownTxns = external.filter(t => ownIds.has(t.externalId))
-  const credits = external.filter(t => t.amount > 0 && !ownIds.has(t.externalId))
+  // "Not income - a transfer" takes a credit out of every income figure at once,
+  // rather than needing it excluded from each one separately.
+  const notIncome = new Set(all.filter(t => forcedAs(t, 'not_income')).map(t => t.externalId))
+  const credits = external.filter(t => t.amount > 0 && !ownIds.has(t.externalId) && !notIncome.has(t.externalId))
   const debits = external.filter(t => t.amount < 0)
   const totalCredits = round2(credits.reduce((s, t) => s + t.amount, 0))
 
@@ -570,9 +591,14 @@ export function analyse(parsed: ParsedStatements, factFind: any, rulesInput?: an
   const interestIds = new Set(credits.filter(isInterest).map(t => t.externalId))
   const rebateIds = new Set(credits.filter(t => isRebate(t, R) && !interestIds.has(t.externalId)).map(t => t.externalId))
 
-  const salaryCandidates = credits.filter(t =>
-    !govIds.has(t.externalId) && !rentIds.has(t.externalId) && !interestIds.has(t.externalId) &&
-    !rebateIds.has(t.externalId) && isSalaryLike(t))
+  const salaryCandidates = credits.filter(t => {
+    // A person saying "this is salary" ends the argument, whatever the narration
+    // looks like and whatever CashDeck filed it as.
+    if (forcedAs(t, 'salary')) return true
+    if (isForced(t)) return false
+    return !govIds.has(t.externalId) && !rentIds.has(t.externalId) && !interestIds.has(t.externalId) &&
+      !rebateIds.has(t.externalId) && isSalaryLike(t)
+  })
   // Pay does not have to be tidy to be pay.
   //
   // Kornelia Viragova, 31 Aug 2026: three credits from one employer - 12 Mar,
@@ -590,8 +616,12 @@ export function analyse(parsed: ParsedStatements, factFind: any, rulesInput?: an
   const REGULAR_PAY: Cadence[] = ['weekly', 'fortnightly', 'monthly']
   const isPayWorded = (g: Group) => g.txns.some(t =>
     matchesAny(`${t.category} ${t.summaryCategory} ${t.merchant} ${t.description}`, SALARY_WORDS))
-  const salaryGroups = groupBy(salaryCandidates)
-    .filter(g => g.count >= 2 && (REGULAR_PAY.includes(g.cadence) || isPayWorded(g)))
+  const salaryGroups = groupBy(salaryCandidates).filter(g =>
+    // A person who marked a line as salary in the audit has already answered
+    // this. The "two credits or a rhythm" rule exists to stop us GUESSING that
+    // something is pay; it must not overrule someone who actually knows.
+    g.txns.some(x => forcedAs(x, 'salary')) ||
+    (g.count >= 2 && (REGULAR_PAY.includes(g.cadence) || isPayWorded(g))))
   const salaryIrregular = salaryGroups.length > 0 && salaryGroups.some(g => !REGULAR_PAY.includes(g.cadence))
   const salaryTxns = salaryGroups.flatMap(g => g.txns)
   const salaryTotal = round2(salaryTxns.reduce((s, t) => s + t.amount, 0))
@@ -807,9 +837,12 @@ export function analyse(parsed: ParsedStatements, factFind: any, rulesInput?: an
   // ---- other income ---------------------------------------------------
   const salaryIds = new Set(salaryTxns.map(t => t.externalId))
   const govTxns = credits.filter(t => govIds.has(t.externalId))
-  const otherCandidates = credits.filter(t =>
-    !salaryIds.has(t.externalId) && !rentIds.has(t.externalId) &&
-    !interestIds.has(t.externalId) && !rebateIds.has(t.externalId))
+  const otherCandidates = credits.filter(t => {
+    if (forcedAs(t, 'other_income')) return true
+    if (isForced(t)) return false          // already placed by a person elsewhere
+    return !salaryIds.has(t.externalId) && !rentIds.has(t.externalId) &&
+      !interestIds.has(t.externalId) && !rebateIds.has(t.externalId)
+  })
   const rebateTxns = credits.filter(t => rebateIds.has(t.externalId))
   const otherGroups = groupBy(otherCandidates)
   // Only money that repeats is treated as income. One credit in ninety days says
@@ -912,7 +945,8 @@ export function analyse(parsed: ParsedStatements, factFind: any, rulesInput?: an
   })
 
   // ---- commitments ----------------------------------------------------
-  const commitmentTxns = debits.filter(t => isCommitment(t, R))
+  const commitmentTxns = debits.filter(t =>
+    forcedAs(t, 'commitment') || (!isForced(t) && isCommitment(t, R)))
   // A commitment is something that keeps coming out. A single debit to a lender
   // is a one-off payment until it happens twice; it is listed, not counted.
   const commitAll = groupBy(commitmentTxns)
@@ -1304,6 +1338,9 @@ export function analyse(parsed: ParsedStatements, factFind: any, rulesInput?: an
     worklist,
     score: { total, components, openItems },
     rules: R,
+    corrections: [...forced.entries()].map(([externalId, r]) => ({
+      externalId, treat: r.treat, label: r.label, source: r.source,
+    })),
     warnings,
   }
 }

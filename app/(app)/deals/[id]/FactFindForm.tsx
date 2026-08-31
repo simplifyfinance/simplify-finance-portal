@@ -8,6 +8,7 @@ import CurrencyInput from './CurrencyInput'
 import BankSelect from './BankSelect'
 
 import { seYearTotalFF, calculateSeAssessableIncome } from '@/lib/income-calculations'
+import StatementQueries from '@/components/StatementQueries'
 
 function incrementFY(fy: string): string {
   const match = fy.match(/^(\d{4})\/(\d{2})$/)
@@ -775,6 +776,10 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
           value={d.internalNotes}
           onChange={e => setD(prev => ({ ...prev, internalNotes: e.target.value }))}
         />
+
+        {/* Answers to the statement queries. Read-only on purpose - see the
+            component for why they are not appended into the notes above. */}
+        <StatementQueries dealId={deal.id} />
 
         {showExtractReview && extractedData && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowExtractReview(false)}>

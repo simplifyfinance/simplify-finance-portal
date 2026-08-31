@@ -5,6 +5,7 @@ import DropZone from '@/components/DropZone'
 import { rulesChanged } from '@/lib/statement-rules'
 import { buildAudit, auditSummary, type AuditRow } from '@/lib/statement-audit'
 import { reasonsFor, describeAnswer, answerFor, openCount, type Answer } from '@/lib/statement-answers'
+import { TREATMENTS, signatureOf, upsertRule, type TreatAs, type PayerRule } from '@/lib/statement-overrides'
 
 // The Statements tab. Everything on screen comes from one stored analysis and
 // one stored ledger, so a card and the transactions behind it can never drift.
@@ -157,7 +158,19 @@ function TxnTable({ rows }: { rows: Txn[] }) {
 // The audit table. Three columns side by side — the bank line, what CashDeck
 // called it, and what our figures did with it — because that comparison is the
 // whole point and it is what was being done by hand in a spreadsheet.
-function AuditTable({ rows }: { rows: AuditRow[] }) {
+function AuditTable({ rows, txns, corrections, onCorrect, correcting }: {
+  rows: AuditRow[]; txns: Txn[]
+  corrections: Record<string, { label: string; source: string }>
+  onCorrect: (t: Txn, treat: TreatAs, always: boolean) => void
+  correcting: string
+}) {
+  const [menu, setMenu] = useState('')
+  const [always, setAlways] = useState(false)
+  const txnBy = useMemo(() => {
+    const m: Record<string, Txn> = {}
+    for (const t of txns) m[t.external_id] = t
+    return m
+  }, [txns])
   if (rows.length === 0) return (
     <p className="text-[12px] text-[#7A7266] py-3">
       Nothing here. Every line agrees with CashDeck and every credit is used by a figure above.
@@ -181,6 +194,7 @@ function AuditTable({ rows }: { rows: AuditRow[] }) {
         <tbody>
           {rows.map(r => {
             const k = chip(r.flag)
+            const fixed = corrections[r.externalId]
             return (
               <tr key={r.externalId} className="border-b border-[#EFEAE0] align-top">
                 <td className="py-1.5 pr-2 whitespace-nowrap">
@@ -193,8 +207,41 @@ function AuditTable({ rows }: { rows: AuditRow[] }) {
                 </td>
                 <td className="py-1.5 pr-2 whitespace-nowrap text-[11px] text-[#7A7266]">{r.account}</td>
                 <td className="py-1.5 pr-2 whitespace-nowrap text-[11px] text-[#7A7266]">{r.cashdeck}</td>
-                <td className="py-1.5 pr-2 text-[11px] text-[#575046]">
-                  {r.ours.length ? r.ours.join(', ') : <span className="text-[#B3ABA0]">nothing uses it</span>}
+                <td className="py-1.5 pr-2 text-[11px] text-[#575046] min-w-[210px]">
+                  {fixed ? (
+                    <span className="text-[#1E7A4A]">
+                      ✓ {fixed.label}
+                      <span className="text-[#7A7266]"> · {fixed.source === 'always' ? 'standing rule' : 'set on this file'}</span>
+                    </span>
+                  ) : r.ours.length ? r.ours.join(', ') : <span className="text-[#B3ABA0]">nothing uses it</span>}
+
+                  {/* Reading it is only half a tool. This is where a person who
+                      can see the answer tells us, and the figures move. */}
+                  <button onClick={() => { setMenu(menu === r.externalId ? '' : r.externalId); setAlways(false) }}
+                    disabled={!txnBy[r.externalId] || !!correcting}
+                    className="block mt-1 text-[11px] text-[#0E8FCB] underline disabled:opacity-40">
+                    {correcting === r.externalId ? 'Saving…' : fixed ? 'Change this' : 'Count this as…'}
+                  </button>
+
+                  {menu === r.externalId && (
+                    <div className="mt-1.5 rounded-lg border border-[#E5DED2] bg-white p-2 shadow-[0_3px_12px_rgba(60,48,30,0.10)] w-[268px]">
+                      {TREATMENTS.map(tr => (
+                        <button key={tr.id}
+                          onClick={() => { onCorrect(txnBy[r.externalId], tr.id, always); setMenu('') }}
+                          className="block w-full text-left px-2 py-1.5 rounded-md hover:bg-[#FCFAF6]">
+                          <span className="text-[12px] text-[#221F1B] font-[560]">{tr.label}</span>
+                          <span className="block text-[10.5px] text-[#7A7266] leading-[1.4]">{tr.help}</span>
+                        </button>
+                      ))}
+                      <label className="flex gap-1.5 items-start mt-1.5 pt-1.5 border-t border-[#EFEAE0] px-2 cursor-pointer">
+                        <input type="checkbox" checked={always} onChange={e => setAlways(e.target.checked)} className="mt-[3px]" />
+                        <span className="text-[10.5px] text-[#575046] leading-[1.45]">
+                          Always treat this payer this way, on every client.
+                          <span className="block text-[#946017]">Changes how other people’s statements are read — removable in Settings.</span>
+                        </span>
+                      </label>
+                    </div>
+                  )}
                 </td>
                 <td className="py-1.5 text-right tabular-nums font-semibold text-[#221F1B] whitespace-nowrap">{money(r.amount)}</td>
               </tr>
@@ -400,7 +447,12 @@ function Detail({ card, txns }: { card: any; txns: Txn[] }) {
   )
 }
 
-function Ledger({ txns, cards }: { txns: Txn[]; cards: any[] }) {
+function Ledger({ txns, cards, corrections, onCorrect, correcting }: {
+  txns: Txn[]; cards: any[]
+  corrections: Record<string, { label: string; source: string }>
+  onCorrect: (t: Txn, treat: TreatAs, always: boolean) => void
+  correcting: string
+}) {
   const [tab, setTab] = useState<'all' | 'cat' | 'audit'>('all')
   const [q, setQ] = useState('')
   const [acct, setAcct] = useState('')
@@ -516,7 +568,8 @@ function Ledger({ txns, cards }: { txns: Txn[]; cards: any[] }) {
             </button>
           </div>
           <div className="max-h-[470px] overflow-auto px-3.5 py-2">
-            <AuditTable rows={auditRows} />
+            <AuditTable rows={auditRows} txns={txns}
+              corrections={corrections} onCorrect={onCorrect} correcting={correcting} />
           </div>
         </>
       )}
@@ -540,6 +593,7 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
   const [askNote, setAskNote] = useState('')
   const [saving, setSaving] = useState('')
   const [answerErr, setAnswerErr] = useState('')
+  const [correcting, setCorrecting] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true); setError('')
@@ -605,6 +659,56 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
     setAsking(null); setAskNote(''); setSaving('')
   }
 
+  // Overruling the machine on one line. Saved, then the whole file is
+  // re-analysed, because a correction that does not move the figures above it is
+  // just a note nobody reads.
+  async function correctLine(t: Txn, treat: TreatAs, always: boolean) {
+    if (!t || !upload) return
+    setCorrecting(t.external_id); setError('')
+    let who: string | null = null
+    try {
+      const { data: auth } = await supabase.auth.getUser()
+      if (auth?.user?.id) {
+        const { data: prof } = await supabase.from('user_profiles').select('full_name').eq('id', auth.user.id).maybeSingle()
+        who = (prof as any)?.full_name || auth.user.email || null
+      }
+    } catch { /* the correction still stands without a name on it */ }
+
+    const signature = signatureOf({
+      date: t.txn_date, description: t.description || '', merchant: t.merchant || '', amount: Number(t.amount),
+    })
+    // One correction per line. Replacing it outright avoids two rows for the
+    // same transaction with no way to tell which one won.
+    await supabase.from('deal_statement_overrides').delete()
+      .eq('deal_id', deal.id).eq('external_id', t.external_id)
+    const { data: wrote, error: ovErr } = await supabase.from('deal_statement_overrides').insert({
+      deal_id: deal.id, upload_id: upload.id, external_id: t.external_id, signature,
+      treat_as: treat, created_by: who, created_at: new Date().toISOString(),
+    }).select('id')
+    if (ovErr || !wrote || wrote.length === 0) {
+      setError(ovErr?.message || 'That correction would not save. Nothing was changed.')
+      setCorrecting(''); return
+    }
+
+    if (always) {
+      const { data: st } = await supabase.from('settings').select('statement_payer_rules').eq('id', 'singleton').maybeSingle()
+      const existing = (((st as any)?.statement_payer_rules) || []) as PayerRule[]
+      const label = (t.merchant || t.description || '').slice(0, 80)
+      const next = upsertRule(existing, {
+        match: `${t.merchant || ''} ${t.description || ''}`.trim(), label,
+        treat_as: treat, added_by: who, added_at: new Date().toISOString(), from_deal: deal.id,
+      })
+      const { data: sw, error: sErr } = await supabase.from('settings')
+        .update({ statement_payer_rules: next }).eq('id', 'singleton').select('id')
+      if (sErr || !sw || sw.length === 0) {
+        setError('The correction was saved on this file, but the "always" rule was not. Set it again from Settings if you need it.')
+      }
+    }
+
+    await reanalyse()
+    setCorrecting('')
+  }
+
   async function clearAnswer(itemKey: string) {
     setSaving(itemKey); setAnswerErr('')
     const { error: err } = await supabase.from('deal_statement_answers')
@@ -663,6 +767,11 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
   }
 
   const a = upload?.analysis
+  const correctionMap: Record<string, { label: string; source: string }> = useMemo(() => {
+    const m: Record<string, { label: string; source: string }> = {}
+    for (const c of (a?.corrections || [])) m[c.externalId] = { label: c.label, source: c.source }
+    return m
+  }, [a])
   // What is still unanswered. The count on the banner has to fall as answers go
   // in, or the list stops meaning anything and people stop reading it.
   const stillOpen = openCount((a?.worklist || []).map((w: any) => ({ key: w.key || w.card })), answers)
@@ -868,7 +977,7 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
                 )
               })}
               <div className="px-4 py-2 text-[11px] text-[#7A7266] border-t border-[#DCEDF8]">
-                Answers are a file note for the credit team. They are not given to the AI and do not appear in the lending options or compliance write-up.
+                Answers appear under Internal notes on the Fact Find, so a broker opening the deal sees them without coming here. They are not given to the AI and do not appear in the lending options or compliance write-up.
               </div>
             </div>
           )}
@@ -900,7 +1009,8 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
             </div>
           ))}
 
-          <Ledger txns={txns} cards={a?.cards || []} />
+          <Ledger txns={txns} cards={a?.cards || []}
+            corrections={correctionMap} onCorrect={correctLine} correcting={correcting} />
 
           {a?.warnings?.length > 0 && (
             <div className="mt-3 rounded-xl border border-[#EBD9BE] bg-[#FDF6EC] px-4 py-3 text-[12.5px] text-[#575046] leading-[1.65]">

@@ -4,6 +4,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import PipelineTargets from '@/components/PipelineTargets'
 import BrokerProfiles from '@/components/BrokerProfiles'
 import StatementRulesPane from '@/components/StatementRules'
+import { removeRule, TREATMENT_LABEL, type TreatAs } from '@/lib/statement-overrides'
 import CommissionLibrary from '@/components/CommissionLibrary'
 import AiExpenses from '@/components/AiExpenses'
 
@@ -54,6 +55,11 @@ export default function SettingsPage() {
   const [newLoStyleNote, setNewLoStyleNote] = useState('')
   const [newStyleNote, setNewStyleNote] = useState('')
   const [statementRules, setStatementRules] = useState<any>(null)
+  // Standing rules set from the Audit tab. They change how EVERY client's
+  // statements are read, so they have to be visible somewhere central and
+  // removable by anyone, not buried on the file that created them.
+  const [payerRules, setPayerRules] = useState<any[]>([])
+  const [rulesMsg, setRulesMsg] = useState('')
   const [complianceFlags, setComplianceFlags] = useState<any[]>([])
   const [loadingFlags, setLoadingFlags] = useState(true)
 
@@ -134,6 +140,7 @@ export default function SettingsPage() {
         if (data.compliance_style_notes?.length) setComplianceStyleNotes(data.compliance_style_notes)
         if (data.lo_style_notes?.length) setLoStyleNotes(data.lo_style_notes)
         if (data.statement_rules) setStatementRules(data.statement_rules)
+        setPayerRules(Array.isArray(data.statement_payer_rules) ? data.statement_payer_rules : [])
       }
       setLoading(false)
     }
@@ -176,6 +183,7 @@ export default function SettingsPage() {
       compliance_style_notes: complianceStyleNotes,
       lo_style_notes: loStyleNotes,
       statement_rules: statementRules,
+      statement_payer_rules: payerRules,
       updated_at: new Date().toISOString()
     })
     setSaving(false)
@@ -320,7 +328,45 @@ export default function SettingsPage() {
       </section>
       )}
       {pane === 'brokers' && <BrokerProfiles brands={brands} />}
-      {pane === 'statements' && <StatementRulesPane value={statementRules} onChange={setStatementRules} />}
+      {pane === 'statements' && (
+        <>
+          <StatementRulesPane value={statementRules} onChange={setStatementRules} />
+
+          <div className="bg-white border border-[#E5DED2] rounded-xl p-5 mt-4">
+            <h3 className="text-[13px] font-[640] text-[#221F1B] mb-1">Standing corrections</h3>
+            <p className="text-[12.5px] text-[#575046] leading-[1.6] mb-3">
+              Set from the Audit tab on a deal, by ticking “always treat this payer this way”.
+              Each one changes how <b>every</b> client’s statements are read from the next
+              re-analysis onwards. A correction made on a single file always beats these.
+            </p>
+            {rulesMsg && <p className="text-[12px] text-[#1E7A4A] mb-2">{rulesMsg}</p>}
+            {payerRules.length === 0 ? (
+              <p className="text-[12.5px] text-[#7A7266]">None. Nothing is being forced on any file.</p>
+            ) : (
+              <div className="border border-[#EFEAE0] rounded-lg overflow-hidden">
+                {payerRules.map((r: any, i: number) => (
+                  <div key={r.match + i} className="flex items-start gap-3 px-3 py-2.5 border-b border-[#EFEAE0] last:border-b-0">
+                    <div className="flex-1">
+                      <p className="text-[12.5px] text-[#221F1B] m-0">{r.label || r.match}</p>
+                      <p className="text-[11px] text-[#7A7266] m-0">
+                        counted as <b className="text-[#575046]">{TREATMENT_LABEL[r.treat_as as TreatAs] || r.treat_as}</b>
+                        {r.added_by ? ` · added by ${r.added_by}` : ''}
+                        {r.added_at ? ` · ${new Date(r.added_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => { setPayerRules(removeRule(payerRules as any, r.match) as any); setRulesMsg('Removed. Press Save, then re-analyse any file it was affecting.') }}
+                      className="text-[11.5px] text-[#AD4227] underline">Remove</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-[11px] text-[#7A7266] mt-2.5 leading-[1.5]">
+              Removing a rule does not change a file that has already been analysed. Press Re-analyse on that deal.
+            </p>
+          </div>
+        </>
+      )}
 
       {pane === 'connections' && (
       <section className="mb-10">

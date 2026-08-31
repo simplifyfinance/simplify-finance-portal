@@ -723,3 +723,51 @@ lender.
 - `worklist` items now carry a stable `key`, separate from `card`. Two items can
   point at the same figure, and an answer has to belong to the question rather
   than to whatever the item happens to scroll to.
+
+## The audit can be overruled, not just read (31 Aug 2026)
+
+Fabio: *"what is the purpose of that tab if I can only read it"*. Fair. Seeing
+that a figure was wrong and then coming back to have the code changed is half a
+tool.
+
+- **Every audit row now has "Count this as…"** — Salary, Other income, Not income
+  (a transfer), A credit commitment, or Ignore. The file is re-analysed straight
+  after, because a correction that does not move the figures above it is a note
+  nobody reads.
+- **A person's answer beats the rules.** A line marked as salary is counted even
+  if it is a single credit with no rhythm — the "two credits or a cycle" test
+  exists to stop us *guessing* something is pay, and it must not overrule someone
+  who actually knows. That was a real bug, caught by a test, not by reading.
+- **Corrections survive a re-upload.** As well as the transaction id we store a
+  signature — same day, same wording, same cents — because CashDeck renumbers
+  rows when a client re-sends their statements.
+- **Two reaches, chosen per correction.** On this file only, which is always safe;
+  or "always treat this payer this way", which changes how every other client's
+  statements are read. Fabio chose to have both, 31 Aug 2026. The standing rules
+  live in `settings.statement_payer_rules` and are listed in Settings →
+  Statements with who added each one and a Remove button, because a rule set on
+  one client's file that quietly shapes everyone else's must be visible somewhere
+  central. **A correction on a file always beats a standing rule** — it was made
+  by someone looking at that client.
+- Removing a standing rule does not retro-fix files already analysed. The panel
+  says so; press Re-analyse on the deal.
+
+## Where a statement answer goes (31 Aug 2026)
+
+Fabio: *"it says answers are a file note for the credit team — which one? where
+does the answers go"*. Nowhere. They lived on one row of the Statements tab and
+nothing else knew about them, which is barely better than the phone call they
+replaced. Calling it a "file note" was wrong — that implies it lands somewhere
+people already look.
+
+- **They now appear under Internal notes on the Fact Find** — Fabio's suggestion,
+  and the right box: it stays visible on every tab, it is already the
+  not-client-facing pile, and it already reaches SalesTrekker.
+- **Shown, not appended.** Internal notes is free text somebody types into. An
+  answer written into it could be edited or deleted by the next person tidying
+  the box, and two people saving at once would overwrite each other. The answers
+  table stays the record; the fact find renders it read-only beneath the notes.
+- Only the most recent answer per question is shown. An answer that was later
+  changed is history, not a second finding.
+- The footer on the worklist now says where answers go instead of claiming to be
+  a file note.

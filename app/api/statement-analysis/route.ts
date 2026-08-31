@@ -36,6 +36,22 @@ async function currentRules(admin: ReturnType<typeof createSupabaseAdmin>) {
   return normaliseRules((data as any)?.statement_rules)
 }
 
+// What a person has overruled us on: corrections made on this deal in the Audit
+// tab, and standing rules that apply to every file. Both are read fresh on every
+// analysis, so a correction takes effect the moment Re-analyse is pressed.
+async function currentCorrections(admin: ReturnType<typeof createSupabaseAdmin>, dealId: string) {
+  const [{ data: ovs }, { data: st }] = await Promise.all([
+    admin.from('deal_statement_overrides')
+      .select('external_id, signature, treat_as, note, created_by, created_at')
+      .eq('deal_id', dealId),
+    admin.from('settings').select('statement_payer_rules').eq('id', 'singleton').maybeSingle(),
+  ])
+  return {
+    overrides: (ovs || []) as any[],
+    payerRules: (((st as any)?.statement_payer_rules) || []) as any[],
+  }
+}
+
 // Everything about the statements except the transactions themselves. Stored so
 // a re-analysis can rebuild the picture without asking for the file again.
 function metaOf(p: ParsedStatements) {
@@ -66,7 +82,8 @@ export async function POST(req: NextRequest) {
 
   const admin = createSupabaseAdmin()
   const rules = await currentRules(admin)
-  const analysis = analyse(parsed, deal.fact_find_data || {}, rules)
+  const corrections = await currentCorrections(admin, dealId)
+  const analysis = analyse(parsed, deal.fact_find_data || {}, rules, corrections)
 
   const { data: uploadRows, error: upErr } = await admin
     .from('deal_statement_uploads')
@@ -180,7 +197,8 @@ export async function PUT(req: NextRequest) {
   }
 
   const rules = await currentRules(admin)
-  const analysis = analyse(parsed, deal.fact_find_data || {}, rules)
+  const corrections = await currentCorrections(admin, dealId)
+  const analysis = analyse(parsed, deal.fact_find_data || {}, rules, corrections)
 
   const { data: saved, error: saveErr } = await admin
     .from('deal_statement_uploads')
