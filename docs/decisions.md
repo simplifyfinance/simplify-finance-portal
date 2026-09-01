@@ -968,3 +968,43 @@ list is for searching and reads better on a phone.
   the panel that asks for those**, rather than writing a half-record. It is the
   same button, reached a different way, which is exactly what
   `docs/settlements.md` asked for.
+
+## The loan amount reaches the deal (1 Sep 2026)
+
+I audited nine legacy deals and concluded the process had a hole in it. Fabio:
+*"look at the actual code not the deal cards... for a deal to move from BC to LO
+we need a field for the loan amount otherwise how are we comparing the offers,
+same for Compliance we already have a pop up box saying confirm if customer
+accepted the LO option"*. He was right on all counts. Those nine predate the
+portal being used properly; they say nothing about how the system works.
+
+**What the code actually shows.** The fields all exist:
+
+- The LO has a loan amount input, saved to `lo_data.loanAmount`.
+- Compliance already captures `clientAgreedLender`, `clientChosenLender`,
+  `clientChosenLenderOther` and a reason.
+
+**The fault was one line of plumbing.** `deals.loan_amount` is read by the
+pipeline, the settlements board, the cheat sheet, the commission panel and the
+deal board — and **written by nothing**. The figure was typed into the LO, saved
+into `lo_data`, and every screen that wanted it looked at the empty column
+instead. Same for `deals.lender_id`.
+
+- **The LO autosave now writes `loan_amount` and `lender_id`** alongside
+  `lo_data` — the recommended lender resolved to its id.
+- **Compliance writes `lender_id` when the client chose someone else.** That
+  answer used to stay inside `compliance_data`, so the commission maths, the
+  clawback window and the settlement board kept the lender the LO recommended even
+  when the client went elsewhere.
+- **Nothing before Lending Options carries a figure.** Fabio's rule, and it is
+  right: a BC number is a borrowing capacity, not a loan. Nobody has applied for
+  it, and on the LVR comparison template it is two alternatives for one deal.
+  Counting it makes the board claim a pipeline that does not exist. The BC-splits
+  fallback I had added is removed — it was papering over the missing plumbing
+  instead of finding it.
+- The nine legacy deals stay blank, which is correct. Nothing to backfill.
+
+**The lesson, written down because I got it wrong twice in one session:** when
+asking "does this system capture X", read the code. Deal rows tell you what
+happened to be entered on a handful of files, and on a system still being adopted
+that is a story about history, not about design.

@@ -127,7 +127,10 @@ export default function DealBoard({ deals, nameFor, colours }: {
                       onDragEnd={() => { setDragging(''); setOver('') }}
                       className={`block bg-white border rounded-lg px-2.5 py-2 mb-1.5 hover:border-[#D6CCBC] transition ${
                         dragging === d.id ? 'opacity-40 border-[#0E8FCB]' : 'border-[#E5DED2]'}`}>
-                      <p className="text-[11.5px] font-semibold text-[#221F1B] leading-[1.35] m-0">
+                      {/* Deal names are underscored and long — Sasa_Kalajdzic_Tori_Headington_Refinance_2026
+                          has no spaces to break on, so without this it runs straight out of the card. */}
+                      <p className="text-[11.5px] font-semibold text-[#221F1B] leading-[1.35] m-0 break-all"
+                         title={d.deal_name}>
                         {d.deal_name}
                       </p>
                       <div className="flex gap-1 flex-wrap mt-1.5">

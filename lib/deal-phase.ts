@@ -105,16 +105,41 @@ export function tabForPhase(p: Phase): string {
   return 'Compliance'
 }
 
-// The loan value to show on the card, and to total up per column. Whatever is
-// most true right now: what settled beats what was lodged beats what was asked
-// for. A column adding these up is the honest "how much is sitting here".
+// The loan value to show on the card, and to total up per column.
+//
+// Fabio, 1 Sep 2026: nothing before Lending Options. A BC figure is a borrowing
+// CAPACITY, not a loan — nobody has applied for it, and on the LVR comparison
+// template it is literally two alternatives for the same deal. Showing it as
+// money makes the board claim a pipeline that does not exist.
+//
+// From the LO onwards there is a real figure: a specific lender, specific splits,
+// an amount the client was actually shown. That is what gets counted.
+//
+// `deals.loan_amount` is the column every other screen reads — the pipeline, the
+// settlements board, the cheat sheet, the commission panel. It used to be read in
+// five places and written in none, which is the whole reason every card said "no
+// amount yet". The LO writes it now.
+const num = (v: any): number | null => {
+  if (v === null || v === undefined || v === '') return null
+  const x = Number(String(v).replace(/[^0-9.\-]/g, ''))
+  return Number.isFinite(x) && x !== 0 ? x : null
+}
+
+function splitsTotal(splits: any): number | null {
+  if (!Array.isArray(splits) || splits.length === 0) return null
+  const amounts = splits.map((s: any) => num(s?.amount)).filter((n): n is number => n !== null)
+  if (amounts.length === 0) return null
+  return Math.round(amounts.reduce((a, b) => a + b, 0) * 100) / 100
+}
+
 export function amountOf(deal: any): number | null {
-  const n = (v: any) => {
-    if (v === null || v === undefined || v === '') return null
-    const x = Number(String(v).replace(/[^0-9.\-]/g, ''))
-    return Number.isFinite(x) ? x : null
-  }
-  return n(deal?.settled_total) ?? n(deal?.lodged_total) ?? n(deal?.loan_amount) ?? null
+  return num(deal?.settled_total)
+    ?? splitsTotal(deal?.settled_splits)
+    ?? num(deal?.lodged_total)
+    ?? splitsTotal(deal?.lodged_splits)
+    ?? num(deal?.loan_amount)
+    ?? num(deal?.lo_data?.loanAmount)
+    ?? splitsTotal(deal?.lo_data?.refinanceSplits)
 }
 
 // When the deal entered the phase it is in — the milestone that put it there.

@@ -342,6 +342,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     }
     syncRateObservations()
   }, [d.lenders, d.loanAmount, d.purchasePrice, d.bcTemplate])
+  const [lenderIdByName, setLenderIdByName] = useState<Record<string, string>>({})
   const [brokersList, setBrokersList] = useState<{ name: string }[]>([{ name: 'Fabio' }, { name: 'Mark' }])
 
   useEffect(() => {
@@ -386,6 +387,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         const lenderMap: Record<string, string> = {}
         lenders.forEach((l: any) => { lenderMap[l.id] = l.name })
         setAllProducts(products.map((p: any) => ({ ...p, lender_name: lenderMap[p.lender_id] || '' })))
+        // Name to id, so the recommended lender can be recorded on the deal.
+        const byName: Record<string, string> = {}
+        lenders.forEach((l: any) => { byName[String(l.name || '').trim().toLowerCase()] = l.id })
+        setLenderIdByName(byName)
       }
     })
     supabase.from('deals').select('lo_data').eq('id', deal.id).single().then(({ data }) => {
@@ -405,7 +410,20 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     // record. Debounced because this previously wrote on every keystroke, which hammers the
     // database and lets an older payload land after a newer one.
     const t = setTimeout(() => {
-      supabase.from('deals').update({ lo_data: d }).eq('id', deal.id).select('id').then(({ data: rows, error }) => {
+      // The loan amount goes onto the DEAL, not just into lo_data.
+      //
+      // `deals.loan_amount` is read by the pipeline, the settlements board, the
+      // cheat sheet, the commission panel and the deal board — and until now
+      // nothing ever wrote it. The figure was typed here, saved into lo_data, and
+      // every screen that wanted it looked at the empty column instead. Same for
+      // the lender: the LO knows which one is recommended and the deal did not.
+      const loanNum = Number(String(d.loanAmount || '').replace(/[^0-9.]/g, '')) || null
+      const recId = lenderIdByName[String(d.recommendedLender || '').trim().toLowerCase()] || null
+      const patch: any = { lo_data: d }
+      if (loanNum) patch.loan_amount = loanNum
+      if (recId) patch.lender_id = recId
+
+      supabase.from('deals').update(patch).eq('id', deal.id).select('id').then(({ data: rows, error }) => {
         if (error) { console.error('LO autosave failed:', error); setSaveError('NOT SAVED - ' + error.message); return }
         if (!rows || rows.length === 0) { console.error('LO autosave affected zero rows'); setSaveError('NOT SAVED - your changes did not reach the database. Do not close this tab.'); return }
         setSaveError('')

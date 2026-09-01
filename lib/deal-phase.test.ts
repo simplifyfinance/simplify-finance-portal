@@ -71,6 +71,35 @@ describe('which column a deal is in', () => {
     expect(amountOf({})).toBeNull()
   })
 
+  it('shows nothing before Lending Options — a BC figure is a capacity, not a loan', () => {
+    // Nobody has applied for a borrowing capacity, and on the comparison template
+    // it is two alternatives for one deal. Counting it inflates the pipeline.
+    const bcOnly = { bc_data: { template: 'refinance_equity', splits: [
+      { label: 'Existing loan refinanced', amount: '640000' },
+      { label: 'Equity access', amount: '60,000' },
+    ] } }
+    expect(amountOf(bcOnly)).toBeNull()
+  })
+
+  it('counts the Lending Options figure once it exists', () => {
+    expect(amountOf({ lo_data: { loanAmount: '387,000' } })).toBe(387000)
+    expect(amountOf({ lo_data: { refinanceSplits: [{ amount: '400000' }, { amount: '60000' }] } })).toBe(460000)
+  })
+
+  it('prefers the deal\'s own column, which the LO now writes', () => {
+    const d = { loan_amount: 530000, lo_data: { loanAmount: '500,000' } }
+    expect(amountOf(d)).toBe(530000)
+  })
+
+  it('ignores an LO figure that was never filled in', () => {
+    expect(amountOf({ lo_data: { loanAmount: '' } })).toBeNull()
+    expect(amountOf({ lo_data: { refinanceSplits: [{ label: 'Owner-occupied loan', amount: '' }] } })).toBeNull()
+  })
+
+  it('adds up the real splits on a lodged loan', () => {
+    expect(amountOf({ lodged_splits: [{ amount: 400000 }, { amount: 150000 }] })).toBe(550000)
+  })
+
   it('ages from the milestone that put the deal in its column', () => {
     const d = { ...ff, compliance_completed_at: '2026-08-20', compliance_sent_at: '2026-08-21' }
     expect(phaseSince(d)).toBe('2026-08-21')        // not when compliance was finished

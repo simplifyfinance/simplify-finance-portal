@@ -333,12 +333,36 @@ export default function ComplianceForm({ deal, onSaveStatus }: { deal: any; onSa
     })
   }, [])
 
+  // Name to id, so the lender the client accepted can be recorded on the deal.
+  const [lenderIdByName, setLenderIdByName] = useState<Record<string, string>>({})
+  useEffect(() => {
+    supabase.from('lenders').select('id, name').then(({ data }) => {
+      const byName: Record<string, string> = {}
+      ;(data || []).forEach((l: any) => { byName[String(l.name || '').trim().toLowerCase()] = l.id })
+      setLenderIdByName(byName)
+    })
+  }, [])
+
   useEffect(() => {
     // The database is the only store - no localStorage copy. Debounced because this
     // previously wrote on every keystroke, and the row count is now checked because
     // a refused write returns zero rows with no error.
     const t = setTimeout(() => {
-      supabase.from('deals').update({ compliance_data: d }).eq('id', deal.id).select('id').then(({ data: rows, error }) => {
+      // The lender the CLIENT actually accepted goes onto the deal.
+      //
+      // Compliance already asks whether they took the recommendation or chose
+      // something else. Until now that answer stayed inside compliance_data, so
+      // `deals.lender_id` — which the commission maths, the clawback window and
+      // the settlement board all read — kept whatever the LO recommended, even
+      // when the client went elsewhere.
+      const chosenName = d.clientAgreedLender === 'No'
+        ? (d.clientChosenLender === '__other__' ? d.clientChosenLenderOther : d.clientChosenLender)
+        : ''
+      const chosenId = chosenName ? lenderIdByName[String(chosenName).trim().toLowerCase()] : null
+      const patch: any = { compliance_data: d }
+      if (chosenId) patch.lender_id = chosenId
+
+      supabase.from('deals').update(patch).eq('id', deal.id).select('id').then(({ data: rows, error }) => {
         if (error) { console.error('Compliance autosave failed:', error); setSaveError('NOT SAVED - ' + error.message); return }
         if (!rows || rows.length === 0) { console.error('Compliance autosave affected zero rows'); setSaveError('NOT SAVED - your changes did not reach the database. Do not close this tab.'); return }
         setSaveError('')
