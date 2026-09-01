@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
 import { ageGroupOf, stageAge, GROUP_ORDER, GROUP_STYLE } from '@/lib/deal-age'
 import { useBrokerNames } from '@/lib/broker-names'
+import { phaseOf, isFinished, isInApplication, PHASE_LABEL } from '@/lib/deal-phase'
 type Client = { id: string; first_name: string; last_name: string; email?: string; phone?: string }
 type Deal = {
   id: string; deal_name: string; deal_type: string; stage: string; status: string; assigned_broker: string;
@@ -99,9 +100,15 @@ export default function DealsPage() {
     }
     setDeals(prev => prev.filter(d => d.id !== id))
   }
-  const [showClosed, setShowClosed] = useState(false)
+  // Two toggles, because settled and lost are two different things. There used to
+  // be one, and it hid `completed` while permanently showing `lost` — so three
+  // dead deals sat at the bottom of the list forever and nine live post-compliance
+  // ones were invisible.
+  const [showSettled, setShowSettled] = useState(false)
+  const [showLost, setShowLost] = useState(false)
   const filtered = deals.filter(d =>
-    (showClosed || d.status !== 'completed') &&
+    (showSettled || phaseOf(d) !== 'settled') &&
+    (showLost || phaseOf(d) !== 'lost') &&
     (boxFilter === 'all' ||
       (boxFilter === 'bc' && d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at) ||
       (boxFilter === 'lo' && d.lo_completed_at && !d.compliance_completed_at) ||
@@ -177,9 +184,13 @@ export default function DealsPage() {
           <input type="text" placeholder="Search by name, client, purpose..." value={search} onChange={e => setSearch(e.target.value)}
             className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-[#2DBEFF]" />
         </div>
-        <button onClick={() => setShowClosed(!showClosed)}
-          className={`px-3 py-2 text-sm rounded-lg border transition ${showClosed ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
-          {showClosed ? '✓ Showing closed deals' : 'Show closed deals'}
+        <button onClick={() => setShowSettled(!showSettled)}
+          className={`px-3 py-2 text-sm rounded-lg border transition ${showSettled ? 'border-[#25794C] text-[#25794C] bg-[#F1F7F3]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+          {showSettled ? '✓ Showing settled' : 'Show settled'}
+        </button>
+        <button onClick={() => setShowLost(!showLost)}
+          className={`px-3 py-2 text-sm rounded-lg border transition ${showLost ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+          {showLost ? '✓ Showing lost' : 'Show lost'}
         </button>
         <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-3 py-2 bg-[#2DBEFF] text-white text-sm font-medium rounded-lg hover:opacity-90">
           <Plus size={14} />New deal
@@ -236,12 +247,16 @@ export default function DealsPage() {
                 {readyStage && (
                   <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-amber-100 text-amber-700">{readyStage} ready for review</span>
                 )}
-                {grp !== 'closed' && age.days !== null && (
+                {grp !== 'settled' && grp !== 'lost' && age.days !== null && (
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-md whitespace-nowrap ${GROUP_STYLE[grp].chip}`}
                         title={`In this stage for ${age.label} (business days)`}>{age.label}</span>
                 )}
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${deal.status === 'in_progress' ? 'bg-[#2DBEFF]/10 text-[#2DBEFF]' : 'bg-gray-100 text-gray-500'}`}>
-                  {deal.status === 'in_progress' ? (deal.stage || 'In progress') : deal.status}
+                {/* This printed deals.stage — the column that only ever moved when a
+                    client clicked proceed, so it lied on most deals. It says which
+                    phase the deal is actually in now. */}
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${
+                  isFinished(deal) ? 'bg-gray-100 text-gray-500' : 'bg-[#2DBEFF]/10 text-[#2DBEFF]'}`}>
+                  {PHASE_LABEL[phaseOf(deal)]}
                 </span>
               </Link>
               <button onClick={e => cloneDeal(e, deal)}

@@ -804,3 +804,101 @@ anywhere.
   only record of what the text looked like before the move.
 - SalesTrekker now reads the new column, falling back to the fact find copy so a
   deal written before the migration still carries its notes across.
+
+## The deal board — decisions taken 1 Sep 2026
+
+Fabio answered every open question in one go. Recorded here because the answers
+shape the build and none of them should have to be asked twice.
+
+**Ownership.** Option B: the portal owns the whole life of a deal, compliance to
+settlement. `status = 'completed'` is retired — a deal is Settled or it is Lost,
+nothing else is an ending. Pushing to SalesTrekker moves a deal to
+**Compliance sent**, where it stays on the board, keeps ageing and keeps an owner.
+
+**Who ticks Lodged.** Driven by the notification settings: when a deal moves
+stage, the portal notifies Cris or the team to move the card in SalesTrekker, and
+that notification is where the lodgement gets recorded. The manual SalesTrekker
+step stays until there is an API; the difference is the portal now remembers it
+asked, and chases.
+
+**Preapproved is a column, not a tick.** Fabio: *"we need to see those deals at
+all times so we can either chase all clients, do marketing campaign etc"*. A
+preapproved client still looking for a property is a live opportunity, not a
+milestone already passed. Burying it as a tick would hide it the same way
+compliance-sent deals were being hidden.
+
+**A deal that dies after compliance was sent** closes with the same reasons as one
+that dies at BC. No separate vocabulary.
+
+**Settled cards stay on the board until the commission is reconciled**, not until
+the money lands. The system marks them paid off the back of the commission
+statements. See the note below on how.
+
+**Anyone can drag a card.** No per-role restriction.
+
+**The board opens on the whole business**, not the viewer's own deals.
+
+**Cards carry the current loan value, and every column carries its total** — so
+the board reads "$50m in Lodged" at a glance.
+
+**Deal types** gain Owner Occupied. The label should be **derived from the BC and
+LO data** rather than typed, so it cannot drift from what the deal actually is.
+
+**Broker colours** live in Settings → Team, beside the name.
+
+**Stale thresholds stay editable in Settings.** New defaults: Compliance sent 3/5,
+Lodged 3/5. Formal has none for now — it is governed by the settlement date — but
+the setting exists so it can be given one later.
+
+**Microsoft 365 consent**: Julian and Alan administer it and will grant it. Tasks
+can therefore write to a dedicated Outlook calendar per person.
+
+**Tasks are visible to the assignee and admins only.** Ticking a task never moves
+a deal — a task is a nudge, a stage change is a fact.
+
+### Marking a settled deal as paid
+
+The reconciliation already half exists: `commission_lines` holds every upfront SFG
+has paid, with `loan_ref`, `client_name`, `settlement_amount` and
+`settlement_date`. What is missing is the key to join on. `deals.lender_ref` is a
+column nothing writes — `docs/settlements.md` flagged it months ago.
+
+So: **capture the lender reference at lodgement**, alongside lender and splits, and
+a settled deal matches its upfront line exactly. Where the reference is missing,
+fall back to client surname plus settlement date within a few days plus amount
+within a tolerance, and show it as a suggested match for a person to confirm
+rather than asserting it. A card marked paid drops off the board; anything settled
+and unpaid past the expected date is a chase, which is the same question the
+Settlement reconcile screen already asks.
+
+## One canonical phase (1 Sep 2026)
+
+`docs/settlements.md` named this months ago as the thing that had to exist before
+a board could: *"Needs ONE canonical 'which column is this deal in' function
+first, because pre-lodgement uses `stage` and post-lodgement uses timestamps."*
+It is `lib/deal-phase.ts`, and nothing in it reads `deals.stage`.
+
+- **Ten phases**: fact find, BC, LO, compliance, **compliance sent**, lodged,
+  preapproved, formal, settled, lost.
+- **A column is named for what HAS happened, not what is being waited on.** The
+  first draft of the file got this wrong — the ladder was written as "waiting for
+  X" while the later columns are named "reached X", which would have put deals
+  that had *not* been sent into a column called Compliance sent. A test caught it
+  before it shipped. Naming a column for something that has not happened is
+  exactly how `deals.stage` came to mean nothing.
+- **A skipped milestone is history, not a blocker.** A BC done outside the portal,
+  a loan that never had a preapproval — the deal sits at the furthest thing it
+  reached.
+- **`status = 'completed'` is retired.** It was set when compliance was emailed
+  out. A deal is finished when it settles or when it dies.
+- **Settled and lost are separated everywhere.** They were folded into one
+  "closed" group with a single toggle that hid `completed` and permanently showed
+  `lost` — which is why three dead deals sat at the bottom of the list forever
+  while nine live ones were invisible. Two toggles now, Show settled and Show lost.
+- **A new list section, "In application"** — compliance sent, lodged, preapproved,
+  formal. Live loans with real work left, no longer mixed in with deals still
+  being written.
+- Ageing thresholds move to `DEFAULT_THRESHOLDS`, keyed by phase, and take a
+  parameter so Settings can override them. Compliance sent 3/5, Lodged 3/5,
+  Preapproved 20/30 — Fabio's numbers.
+- The deals list also stopped printing `deal.stage` as a chip. It prints the phase.

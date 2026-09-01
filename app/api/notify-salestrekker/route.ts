@@ -171,7 +171,25 @@ export async function POST(req: NextRequest) {
       }
 
       await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to Compliance Issued', true, attachments, crisEmail)
-      await supabase.from('deals').update({ status: 'completed' }).eq('id', dealId)
+
+      // This used to set status = 'completed', and the deals list hides anything
+      // completed — so the loan vanished the moment compliance went out, before it
+      // was lodged, approved or settled. On 1 Sep 2026 that was nine of twenty-one
+      // deals: none lodged, the oldest eight business days old, and no way to tell
+      // one progressing nicely from one that had fallen over.
+      //
+      // It now records that compliance WAS SENT. The deal stays on the board, keeps
+      // ageing, and keeps someone to chase. A deal is finished when it settles or
+      // when it dies, and emailing a PDF is neither.
+      const { data: wrote, error: sentErr } = await supabase.from('deals')
+        .update({ compliance_sent_at: new Date().toISOString() })
+        .eq('id', dealId).select('id')
+      if (sentErr || !wrote || wrote.length === 0) {
+        return NextResponse.json({
+          ok: false,
+          error: 'The documents were sent, but the deal was not marked as compliance sent. Mark it on the deal so it does not fall off the board.',
+        }, { status: 500 })
+      }
       return NextResponse.json({ ok: true })
     }
 
