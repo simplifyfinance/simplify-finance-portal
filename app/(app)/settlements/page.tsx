@@ -4,6 +4,8 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { todayYmd } from '@/lib/periods'
+import LoanIds, { LoanIdChip } from '@/components/LoanIds'
+import { loanIdStatus } from '@/lib/loan-id'
 import {
   ATTENTION, STATE_LABEL, attentionFor, settlementDate, purposeLabel, isRefinance, isPurchase,
   stepLabel, monthOf, addMonths, monthLabel, businessDaysBetween,
@@ -250,6 +252,7 @@ export default function SettlementsPage() {
             {d.settled_at && !d.review_sent && <Chip tone="warn">Review not sent</Chip>}
             {d.settled_at && d.compliance_finalised && <Chip tone="ok">Compliance done</Chip>}
             {d.settled_at && d.commission_paid && <Chip tone="ok">Paid</Chip>}
+            <LoanIdChip deal={d} />
             {a && !d.settled_at && <Chip tone={a.level === 'stale' ? 'stop' : 'warn'}>{a.why}</Chip>}
           </span>
           <span className="text-[#C9C1B4] text-[11px] text-center">{isOpen ? '⌄' : '›'}</span>
@@ -319,6 +322,15 @@ export default function SettlementsPage() {
                 </F>
               </>}
             </div>
+
+            {d.settled_at && loanIdStatus(d).tone !== 'complete' && (
+              <div className="border border-[#EBD9BE] bg-[#FDF6EC] rounded-xl px-4 py-3.5 mt-3">
+                <div className="text-[10px] font-bold uppercase tracking-[.08em] text-[#946017] mb-2">
+                  {loanIdStatus(d).label}
+                </div>
+                <LoanIds deal={d} onSaved={() => load()} />
+              </div>
+            )}
 
             {!d.settled_at && (
               <div className="flex gap-2 items-center flex-wrap mt-3">

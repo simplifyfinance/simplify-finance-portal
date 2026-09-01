@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import LoanIds from '@/components/LoanIds'
+import { loanIdStatus } from '@/lib/loan-id'
 
 // Post-compliance stages. Lodged, Formal and Settled each write a snapshot of the loan as it
 // stood at that moment - lender, total and every split with its own amount, rate and repayment
@@ -37,6 +39,10 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
   const [splits, setSplits] = useState<any[]>([])
   const [when, setWhen] = useState(today())
   const [confirming, setConfirming] = useState(false)
+  // Asked for the moment a deal is marked settled - that is when your team rings
+  // the bank for the numbers. Skipping is allowed and expected; the panel below
+  // keeps asking until they are in.
+  const [askLoanIds, setAskLoanIds] = useState(false)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
@@ -122,6 +128,7 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
     if (error) { setErr('NOT SAVED - ' + error.message); return }
     if (!rows || rows.length === 0) { setErr('NOT SAVED - the change did not reach the database.'); return }
     setConfirming(false)
+    if (stage.snap === 'settled') setAskLoanIds(true)
     const { data } = await supabase.from('deal_stage_snapshots').select('*').eq('deal_id', deal.id)
     const m: any = {}; (data || []).forEach((r: any) => { m[r.stage] = r }); setSnaps(m)
     onUpdated?.(patch)
@@ -147,6 +154,16 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
           )
         })}
       </div>
+
+      {/* Once it has settled, the Loan IDs are the only thing left to collect.
+          They stay on screen until every split has one - a deal cannot be
+          matched to the RCTI without them. */}
+      {deal.settled_at && loanIdStatus(deal).tone !== 'complete' && !askLoanIds && (
+        <div className="border border-[#EBD9BE] bg-[#FDF6EC] rounded-xl px-4 py-3.5 mb-4">
+          <div className={K + ' mb-2'} style={{ color: '#946017' }}>{loanIdStatus(deal).label}</div>
+          <LoanIds deal={deal} onSaved={splits => onUpdated?.({ settled_splits: splits })} />
+        </div>
+      )}
 
       {!stage ? (
         <div className="text-[13px] text-[#6E665C]">Settled. Nothing further to record here.</div>
@@ -267,6 +284,23 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
                 {saving ? 'Saving...' : 'Confirm and record'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {askLoanIds && (
+        <div className="fixed inset-0 bg-black/30 flex items-start justify-center z-50 p-6 overflow-y-auto"
+             onClick={() => setAskLoanIds(false)}>
+          <div className="bg-white border border-[#E8E1D6] rounded-2xl px-6 py-5 max-w-[640px] w-full mt-16 shadow-xl"
+               onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2.5 mb-1">
+              <svg width="19" height="19" viewBox="0 0 16 16" fill="none" stroke="#12A150" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.4 L6.2 11.4 L13 4.6"/></svg>
+              <span className="text-[15px] font-semibold text-[#221F1B]">Settled &mdash; {fmtDate(deal.settled_at || when)}</span>
+            </div>
+            <p className="text-[12.5px] text-[#A29889] m-0 mb-4">Last thing.</p>
+            <LoanIds deal={deal}
+              onSaved={splits => { onUpdated?.({ settled_splits: splits }); setAskLoanIds(false) }}
+              onSkip={() => setAskLoanIds(false)} />
           </div>
         </div>
       )}

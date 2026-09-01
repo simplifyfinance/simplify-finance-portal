@@ -44,8 +44,12 @@ describe('the quick look', () => {
   })
 
   it('shows the loan ID as not issued until the lender gives one', () => {
-    expect(buildPeek(deal()).loan.fields[2]).toMatchObject({ key: 'Loan ID', value: 'not issued yet', muted: true })
-    expect(buildPeek(deal({ lender_ref: '4852124' })).loan.fields[2]).toMatchObject({ value: '4852124', muted: false })
+    expect(buildPeek(deal()).loan.fields[2]).toMatchObject({ key: 'Loan ID', value: 'not entered yet', muted: true })
+    expect(buildPeek(deal({ settled_splits: [{ amount: 5e5, loanId: '4852124' }] })).loan.fields[2])
+      .toMatchObject({ value: '4852124', muted: false })
+    // Two splits, two numbers, both shown - a deal is not matched until every one is.
+    expect(buildPeek(deal({ settled_splits: [{ amount: 3e5, loanId: 'A1' }, { amount: 2e5, loanId: 'B2' }] })).loan.fields[2])
+      .toMatchObject({ value: 'A1, B2', muted: false })
   })
 
   it('prefers a confirmed settlement date over an expected one', () => {

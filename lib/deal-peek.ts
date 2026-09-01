@@ -11,6 +11,7 @@
 
 import { phaseOf, phaseSince, amountOf, PHASE_LABEL, type Phase } from './deal-phase'
 import { chipsFor, dealTitle, type Chip } from './deal-labels'
+import { loanIdRows } from './loan-id'
 
 export type PeekField = { key: string; value: string; muted?: boolean }
 export type PeekSection = { title: string; fields: PeekField[] }
@@ -81,7 +82,16 @@ export function buildPeek(deal: any, opts: { lenderName?: string; brokerName?: s
         { key: 'Lender', value: opts.lenderName || dash, muted: !opts.lenderName },
         // The loan ID as it appears on the RCTI. It is what a settled deal is
         // matched against to mark the commission paid.
-        { key: 'Loan ID', value: String(deal?.lender_ref || '') || 'not issued yet', muted: !deal?.lender_ref },
+        //
+        // It lives on the split it was issued against, one per split. This used
+        // to read deals.lender_ref, which nothing has ever written - so it said
+        // "not issued yet" on every deal in the portal and always would have.
+        // lender_ref is still read last in case anything ever put one there.
+        ...(() => {
+          const ids = loanIdRows(deal).map(r => r.loanId).filter(Boolean)
+          const value = ids.length ? ids.join(', ') : (String(deal?.lender_ref || '') || 'not entered yet')
+          return [{ key: 'Loan ID', value, muted: ids.length === 0 && !deal?.lender_ref }]
+        })(),
         { key: 'Settlement', value: auDate(deal?.settled_at) || auDate(deal?.confirmed_settlement_date) || auDate(deal?.expected_settlement_date) || 'not booked',
           muted: !(deal?.settled_at || deal?.confirmed_settlement_date || deal?.expected_settlement_date) },
       ],
