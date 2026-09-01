@@ -67,12 +67,41 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   const router = useRouter()
   const supabase = createSupabaseBrowser()
 
+  // The milestone columns the progress bar is built from - and NOTHING else.
+  //
+  // The bar reads dealData. Moving from LO to Compliance writes lo_client_proceeded
+  // on the server and then only changed which tab was showing, so the bar sat on
+  // the old stage until the page was reloaded. Re-reading these on every tab
+  // change fixes it wherever it happens, including handoffs added later.
+  //
+  // The JSON blobs - fact_find_data, bc_data, lo_data, compliance_data - are
+  // deliberately NOT re-read. They are being edited on screen and autosave is
+  // debounced, so pulling the server's copy back mid-edit could wipe out the
+  // last thing somebody typed.
+  const MILESTONE_COLUMNS = [
+    'id', 'stage', 'status', 'last_tab', 'assigned_credit_officer',
+    'client_proceeded', 'proceeded_at', 'proceeded_by', 'proceeded_source',
+    'bc_completed_at', 'bc_sent_at',
+    'lo_completed_at', 'lo_sent_at', 'lo_client_proceeded',
+    'lo_proceeded_at', 'lo_proceeded_by', 'lo_proceeded_source',
+    'compliance_completed_at', 'compliance_sent_at',
+    'lodged_at', 'preapproval_at', 'formal_approval_at', 'settled_at',
+    'lodged_total', 'lodged_splits', 'settled_total', 'settled_splits',
+    'lender_id', 'loan_amount',
+  ].join(', ')
+
+  async function refreshMilestones() {
+    const { data } = await supabase.from('deals').select(MILESTONE_COLUMNS).eq('id', deal.id).maybeSingle()
+    if (data) setDealData((prev: any) => ({ ...prev, ...(data as any) }))
+  }
+
   function changeStage(newStage: string) {
     setStage(newStage)
     // fire-and-forget: remembering the last tab is a convenience. If it does not
     // save, the deal opens on the stage the progress bar says is current, which
     // is the correct behaviour anyway. Nobody is told it worked.
     supabase.from('deals').update({ last_tab: newStage }).eq('id', deal.id).then(() => {})
+    refreshMilestones()
   }
 
   const tabs = [

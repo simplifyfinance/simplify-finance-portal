@@ -321,7 +321,7 @@ export default function DealsPage() {
           )})}
         </div>
       )}
-      {showModal && <NewDealModal onClose={() => setShowModal(false)} onCreated={() => { setShowModal(false); fetchDeals(userRole, brokerKey) }} brokerKey={brokerKey} userRole={userRole} />}
+      {showModal && <NewDealModal onClose={() => setShowModal(false)} onCreated={(id) => { setShowModal(false); router.push(`/deals/${id}?stage=FactFind`) }} brokerKey={brokerKey} userRole={userRole} />}
     </div>
   )
 }
@@ -341,7 +341,7 @@ function makeApplicant(first_name: string, last_name: string, email: string, pho
   }
 }
 
-function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: () => void; onCreated: () => void; brokerKey: string | null; userRole: string }) {
+function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: () => void; onCreated: (id: string) => void; brokerKey: string | null; userRole: string }) {
   const browser = createSupabaseBrowser()
   const [mode, setMode] = useState<'new' | 'existing'>('new')
   const [clients, setClients] = useState<Client[]>([])
@@ -352,7 +352,8 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
   const [form2, setForm2] = useState({ first_name: '', last_name: '', email: '', phone: '', client_id: '' })
   // No fallback to a named person. An unassigned deal is visible and fixable;
   // one quietly filed under the wrong broker is neither.
-  const [deal, setDeal] = useState({ deal_type: 'Purchase', assigned_broker: brokerKey || '', lead_source: '' })
+  const [deal, setDeal] = useState({ assigned_broker: brokerKey || '', lead_source: '' })
+  const [createError, setCreateError] = useState('')
   const [saving, setSaving] = useState(false)
   const { options: brokerList } = useBrokerNames()
 
@@ -402,18 +403,22 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
     }
     const fact_find_data = { applicants, assets: [], properties: [], liabilities: [] }
 
-    await browser.from('deals').insert([{
+    // Checked. This used to be a bare insert with no error handling and no
+    // select, so a database refusal closed the modal and looked like success -
+    // the deal simply never appeared.
+    const { data: created, error } = await browser.from('deals').insert([{
       deal_name: dealName,
       client_id: clientId,
-      deal_type: deal.deal_type,
       lead_source: deal.lead_source,
       assigned_broker: deal.assigned_broker,
       stage: 'BC',
       status: 'in_progress',
       fact_find_data
-    }])
+    }]).select('id').single()
     setSaving(false)
-    onCreated()
+    if (error) { setCreateError('NOT CREATED - ' + error.message); return }
+    if (!created) { setCreateError('NOT CREATED - the database refused it.'); return }
+    onCreated(created.id)
   }
 
   const filteredClients = clients.filter(c => `${c.first_name} ${c.last_name}`.toLowerCase().includes(clientSearch.toLowerCase()))
@@ -507,13 +512,13 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
           )
         )}
 
+        {/* The Deal type dropdown used to live here. It was asked at the one
+            moment nobody can answer it - before the fact find - and then it
+            never changed again, so a deal that turned into a refinance was
+            labelled a purchase forever. What kind of deal it is now comes from
+            the BC template and the settlement fields, which are recorded as the
+            deal actually happens. See lib/deal-labels.ts. */}
         <div className="grid grid-cols-2 gap-3 mb-4 mt-4">
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">Deal type</label>
-            <select value={deal.deal_type} onChange={e => setDeal({...deal, deal_type: e.target.value})} className={sel}>
-              {['Purchase','Refinance','Investment','Bridging','Construction','SMSF'].map(t => <option key={t}>{t}</option>)}
-            </select>
-          </div>
           {userRole !== 'broker' && (
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Assigned broker</label>
@@ -533,6 +538,10 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
           <div className="bg-gray-50 rounded-lg px-3 py-2 mb-4 text-xs text-gray-500">
             Deal name: <span className="font-medium text-gray-700">{dealName}</span>
           </div>
+        )}
+
+        {createError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-xs mb-3">{createError}</div>
         )}
 
         <div className="flex justify-end gap-2">
