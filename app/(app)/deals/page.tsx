@@ -10,6 +10,7 @@ import { useBrokerNames } from '@/lib/broker-names'
 import { phaseOf, isFinished, isInApplication, PHASE_LABEL } from '@/lib/deal-phase'
 import DealBoard from '@/components/DealBoard'
 import { useBoardSettings } from '@/lib/use-board-settings'
+import type { Alert } from '@/lib/deal-notes'
 type Client = { id: string; first_name: string; last_name: string; email?: string; phone?: string }
 type Deal = {
   id: string; deal_name: string; deal_type: string; stage: string; status: string; assigned_broker: string;
@@ -24,6 +25,18 @@ export default function DealsPage() {
   // Until somebody sets them this is exactly what the code used before there was
   // a screen for it, so the board looks the same on an unmigrated portal.
   const { look } = useBoardSettings()
+  // Open alerts for every deal on screen, in one query. This is the whole point
+  // of an alert: it has to be visible to somebody who was not going to open that
+  // deal. An empty result is normal and the board just draws no chips.
+  const [alerts, setAlerts] = useState<Record<string, Alert[]>>({})
+  useEffect(() => {
+    browser.from('deal_alerts').select('*').is('resolved_at', null).limit(2000)
+      .then(({ data }) => {
+        const m: Record<string, Alert[]> = {}
+        for (const a of ((data as any[]) || [])) (m[a.deal_id] ||= []).push(a as Alert)
+        setAlerts(m)
+      })
+  }, [])
   const [deals, setDeals] = useState<Deal[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -252,7 +265,7 @@ export default function DealsPage() {
       ) : layout === 'board' ? (
         <DealBoard deals={boardDeals} nameFor={nameFor}
           colours={{ type: look.type, use: look.use, broker: look.broker }}
-          thresholds={look.thresholds} />
+          thresholds={look.thresholds} alerts={alerts} />
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
           <Briefcase size={32} className="text-gray-300 mx-auto mb-3" />

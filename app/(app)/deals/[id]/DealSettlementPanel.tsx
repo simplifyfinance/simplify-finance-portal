@@ -110,6 +110,17 @@ export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; on
       </div>
 
       <div className="grid grid-cols-3 gap-3 px-4 py-4 max-[820px]:grid-cols-1">
+        {/* The date a purchaser loses their deposit if finance is not approved.
+            The most time critical date between lodgement and settlement, and the
+            portal has never held it anywhere. Turns red inside a week while the
+            deal is still not formally approved. */}
+        <div><label className={lab}>Finance clause</label>
+          <input type="date" value={draft.finance_clause_date || ''}
+            onChange={e => setDraft({ ...draft, finance_clause_date: e.target.value })}
+            className={inp + (
+              draft.finance_clause_date && !d.formal_approval_at &&
+              (new Date(String(draft.finance_clause_date)).getTime() - Date.now()) < 7 * 86400000
+                ? ' border-[#EFD3CB] bg-[#FBECEC] text-[#AD4227] font-semibold' : '')} /></div>
         <div><label className={lab}>Expected settlement</label>
           <input type="date" className={inp} value={draft.expected_settlement_date || ''}
             onChange={e => setDraft({ ...draft, expected_settlement_date: e.target.value })} /></div>

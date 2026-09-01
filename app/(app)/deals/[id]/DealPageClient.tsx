@@ -18,6 +18,10 @@ import CloseDeal from './CloseDeal'
 import { templateLabel } from '@/lib/templates'
 import StatementAnalysis from '@/components/StatementAnalysis'
 import InternalNotesStrip from '@/components/InternalNotesStrip'
+import TabLock from '@/components/TabLock'
+import { DealAlerts, FileNotes, AlertChips, useDealFile } from '@/components/DealFile'
+import { isLocked } from '@/lib/deal-lock'
+import { isWithLender } from '@/lib/deal-phase'
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
   const validStages = ['FactFind', 'Statements', 'BC', 'LO', 'Compliance']
@@ -67,6 +71,22 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   const router = useRouter()
   const supabase = createSupabaseBrowser()
 
+  // The live file: alerts and the note log, plus who is writing them.
+  const { notes, alerts, reload: reloadFile } = useDealFile(deal.id)
+  const [me, setMe] = useState<{ id: string | null; name: string }>({ id: null, name: '' })
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      const u = data?.user
+      if (!u) return
+      supabase.from('user_profiles').select('full_name').eq('id', u.id).single()
+        .then(({ data: p }) => setMe({ id: u.id, name: (p as any)?.full_name || u.email || '' }))
+    })
+  }, [])
+
+  // Unlocking is per tab and per visit: leaving the deal, or moving to another
+  // tab, locks it again. Nothing is stored, so nothing can be left unlocked.
+  const [unlockedTab, setUnlockedTab] = useState('')
+
   // The milestone columns the progress bar is built from - and NOTHING else.
   //
   // The bar reads dealData. Moving from LO to Compliance writes lo_client_proceeded
@@ -97,6 +117,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
 
   function changeStage(newStage: string) {
     setStage(newStage)
+    setUnlockedTab('')
     // fire-and-forget: remembering the last tab is a convenience. If it does not
     // save, the deal opens on the stage the progress bar says is current, which
     // is the correct behaviour anyway. Nobody is told it worked.
@@ -160,6 +181,10 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
                 </span>
               ) : null
             })()}
+            {/* Alerts belong in the header, not in a panel further down. An alert
+                is only worth calling urgent if somebody who was not going to
+                scroll sees it anyway. */}
+            <AlertChips alerts={alerts} />
           </div>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
@@ -204,9 +229,30 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
 
       <DealProgress deal={dealData} />
 
-      <DealSettlement deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
-      <DealSettlementPanel deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
-      <DealCommission deal={dealData} />
+      {/* A lodged deal is being TRACKED, not written, and the tracking blocks
+          stacked one under another put the tabs 1300px down the page. Two
+          columns: the deal's own progress and money on the left, what is on fire
+          and what has happened on the right. Before lodgement none of this
+          exists and the page is unchanged. */}
+      {isWithLender(dealData) ? (
+        <div className="grid grid-cols-[1.15fr_1fr] gap-3 max-[900px]:grid-cols-1">
+          <div>
+            <DealSettlement deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+            <DealSettlementPanel deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+            <DealCommission deal={dealData} />
+          </div>
+          <div>
+            <DealAlerts dealId={dealData.id} me={me} alerts={alerts} onChanged={reloadFile} />
+            <FileNotes dealId={dealData.id} me={me} notes={notes} onChanged={reloadFile} />
+          </div>
+        </div>
+      ) : (
+        <>
+          <DealSettlement deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+          <DealSettlementPanel deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+          <DealCommission deal={dealData} />
+        </>
+      )}
 
       <div className="flex gap-2 mb-6">
         {tabs.map(({ key, label }) => (
@@ -225,11 +271,15 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           openByDefault={stage === 'Compliance'} />
       )}
 
-      {stage === 'FactFind' && <FactFindForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
-      {stage === 'Statements' && <StatementAnalysis deal={dealData} />}
-      {stage === 'BC' && <BCForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
-      {stage === 'LO' && <LOForm deal={dealData} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} />}
-      {stage === 'Compliance' && <ComplianceForm deal={dealData} onSaveStatus={setSaveStatus} />}
+      <TabLock locked={isLocked(dealData) && unlockedTab !== stage} tab={stage} dealId={dealData.id}
+        role={userRole} me={me}
+        onUnlocked={() => { setUnlockedTab(stage); reloadFile() }}>
+        {stage === 'FactFind' && <FactFindForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
+        {stage === 'Statements' && <StatementAnalysis deal={dealData} />}
+        {stage === 'BC' && <BCForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
+        {stage === 'LO' && <LOForm deal={dealData} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} />}
+        {stage === 'Compliance' && <ComplianceForm deal={dealData} onSaveStatus={setSaveStatus} />}
+      </TabLock>
     </div>
   )
 }

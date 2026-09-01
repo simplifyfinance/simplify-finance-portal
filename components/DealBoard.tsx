@@ -5,6 +5,8 @@ import { phaseOf, phaseSince, amountOf, PHASE_LABEL, PHASE_ORDER, type Phase } f
 import { stageAge, ageGroupOf } from '@/lib/deal-age'
 import { chipsFor, brokerColour, chipStyle, dealTitle } from '@/lib/deal-labels'
 import { CREDIT_GREY, type ThresholdMap } from '@/lib/board-settings'
+import { AlertChips } from '@/components/DealFile'
+import type { Alert } from '@/lib/deal-notes'
 import DealPeek from '@/components/DealPeek'
 import { brokerKey as keyOf } from '@/lib/broker-key'
 
@@ -37,7 +39,7 @@ const AGE_STYLE: Record<string, string> = {
   long:  'text-[#946017] bg-[#FDF6EC] border-[#EBD9BE]',
 }
 
-export default function DealBoard({ deals, nameFor, colours, thresholds }: {
+export default function DealBoard({ deals, nameFor, colours, thresholds, alerts }: {
   deals: any[]
   nameFor: (k: string) => string
   colours?: { type?: any; use?: any; broker?: Record<string, string> }
@@ -45,6 +47,9 @@ export default function DealBoard({ deals, nameFor, colours, thresholds }: {
   // lib/deal-age.ts, which is what the board used before there was a screen for
   // it - so an unmigrated portal looks exactly the same.
   thresholds?: ThresholdMap
+  // Open alerts keyed by deal id. A card with one shows it; a card without is
+  // unchanged.
+  alerts?: Record<string, Alert[]>
 }) {
   const router = useRouter()
   const [dragging, setDragging] = useState<string>('')
@@ -179,6 +184,14 @@ export default function DealBoard({ deals, nameFor, colours, thresholds }: {
                           : <span className="text-[11.5px] text-[#C3BDB2]">No amount recorded</span>}
                         <span className="ml-auto text-[11px] text-[#7A7266] tabular-nums">{when}</span>
                       </div>
+
+                      {/* Loudest thing on the card, above the labels - somebody
+                          scanning the board is looking for what is wrong. */}
+                      {(alerts?.[d.id]?.length || 0) > 0 && (
+                        <div className="flex gap-1 flex-wrap items-center mb-1.5">
+                          <AlertChips alerts={alerts![d.id]} max={2} />
+                        </div>
+                      )}
 
                       <div className="flex gap-1 flex-wrap items-center">
                         {chipsFor(d, colours).map(c => (
