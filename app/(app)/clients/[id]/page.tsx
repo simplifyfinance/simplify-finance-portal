@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { ArrowLeft } from 'lucide-react'
+import { phaseOf, PHASE_LABEL } from '@/lib/deal-phase'
 
 export default function ClientProfilePage() {
   const params = useParams()
@@ -84,7 +85,7 @@ export default function ClientProfilePage() {
                   <p className="text-sm font-medium text-[#343333]">{d.deal_name}</p>
                   <p className="text-xs text-gray-400 mt-0.5">{d.deal_type} · Broker: {brokerLabel(d.assigned_broker)}</p>
                 </div>
-                <span className="text-xs font-medium bg-[#2DBEFF]/10 text-[#2DBEFF] px-2.5 py-1 rounded-full">{d.stage} →</span>
+                <span className="text-xs font-medium bg-[#2DBEFF]/10 text-[#2DBEFF] px-2.5 py-1 rounded-full">{PHASE_LABEL[phaseOf(d)]} →</span>
               </Link>
             ))}
           </div>

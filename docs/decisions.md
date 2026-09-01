@@ -902,3 +902,25 @@ It is `lib/deal-phase.ts`, and nothing in it reads `deals.stage`.
   parameter so Settings can override them. Compliance sent 3/5, Lodged 3/5,
   Preapproved 20/30 — Fabio's numbers.
 - The deals list also stopped printing `deal.stage` as a chip. It prints the phase.
+
+## The Dashboard and the summary boxes caught up (1 Sep 2026)
+
+The last two screens still reading `deals.stage` and the retired `completed`.
+
+- **Dashboard action items** were scoped by `d.stage === 'LO'` and
+  `d.stage === 'Compliance'`. That column only ever advanced when a client
+  clicked proceed, so on any deal where the client rang instead the action never
+  appeared at all. They read the phase now.
+- **New action: "Compliance sent — waiting to be lodged".** Nothing chased this
+  before, because those deals were marked completed and hidden.
+- **The funnel counts by phase** and gained an "In application" tile. Its headline
+  is live deals, not all deals — settled and dead ones are not work, and counting
+  them made the number bigger than anything anyone could act on.
+- **The "Compliance completed" box on Deals became "In application".** The old one
+  counted compliance-completed deals while the list excluded them, so a headline
+  of nine opened an empty screen. The boxes now count the same way the list
+  groups, so clicking one can never show nothing.
+- The "Your deals" box shows the live count with "N settled or lost" underneath,
+  rather than one number that mixed the two.
+
+Nothing anywhere now reads `deals.stage`. The column should be dropped.

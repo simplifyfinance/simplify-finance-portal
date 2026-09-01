@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import DealNoAccess from '@/components/DealNoAccess'
 import DealPageClient from './DealPageClient'
+import { phaseOf, tabForPhase } from '@/lib/deal-phase'
 
 type DealWithClient = {
   id: string
@@ -52,5 +53,5 @@ export default async function DealPage({ params, searchParams }: { params: Promi
     return notFound()
   }
 
-  return <DealPageClient deal={deal as DealWithClient} initialStage={stage || deal.last_tab || deal.stage} userRole={userRole} />
+  return <DealPageClient deal={deal as DealWithClient} initialStage={stage || deal.last_tab || tabForPhase(phaseOf(deal))} userRole={userRole} />
 }

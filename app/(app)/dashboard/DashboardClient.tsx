@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react'
 import { brokerKey as brokerKey_, brokerLabel, sameBroker } from '@/lib/broker-key'
 import Link from 'next/link'
+import { phaseOf, isFinished, isInApplication } from '@/lib/deal-phase'
 
 type Deal = {
   id: string
@@ -35,13 +36,14 @@ const stageColor: Record<string, string> = {
   Compliance: 'bg-green-100 text-green-600',
 }
 
-type ActionType = 'proceeded_to_lo' | 'proceeded_to_compliance' | 'bc_to_lo' | 'lo_to_compliance'
+type ActionType = 'proceeded_to_lo' | 'proceeded_to_compliance' | 'bc_to_lo' | 'lo_to_compliance' | 'awaiting_lodgement'
 
 const actionLabel: Record<ActionType, string> = {
   proceeded_to_lo: 'Client confirmed ready to proceed to LO',
   proceeded_to_compliance: 'Client confirmed ready to proceed to Compliance',
   bc_to_lo: 'BC ready for your review & send',
   lo_to_compliance: 'LO ready for your review & send',
+  awaiting_lodgement: 'Compliance sent — waiting to be lodged',
 }
 
 const actionColor: Record<ActionType, string> = {
@@ -49,6 +51,7 @@ const actionColor: Record<ActionType, string> = {
   proceeded_to_compliance: 'bg-green-100 text-green-700',
   bc_to_lo: 'bg-blue-100 text-blue-700',
   lo_to_compliance: 'bg-purple-100 text-purple-700',
+  awaiting_lodgement: 'bg-amber-100 text-amber-700',
 }
 
 export default function DashboardClient({ deals, fullName, brokerKey, creditOfficerId, allowToggle, defaultView, brokerNames = {} }: Props) {
@@ -68,8 +71,14 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
       // The label is looked up separately - the two must not be the same string.
       const key = brokerKey_(d.assigned_broker) || 'unassigned'
       if (!byBroker[key]) byBroker[key] = { BC: 0, LO: 0, Compliance: 0, total: 0 }
-      if (d.stage === 'BC' || d.stage === 'LO' || d.stage === 'Compliance') byBroker[key][d.stage]++
-      byBroker[key].total++
+      // By phase, not by the stale stage column.
+      if (!isFinished(d)) {
+        const p = phaseOf(d)
+        if (p === 'bc') byBroker[key].BC++
+        else if (p === 'lo') byBroker[key].LO++
+        else if (p === 'compliance' || isInApplication(d)) byBroker[key].Compliance++
+        byBroker[key].total++
+      }
     })
     return Object.entries(byBroker).sort((a, b) => b[1].total - a[1].total)
   }, [deals, effectiveView, brokerKey, creditOfficerId])
@@ -95,10 +104,20 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
       // Both "client proceeded" checks are scoped to the CURRENT stage and not-yet-completed -
       // these flags never reset once set, so without this scoping they'd stay flagged forever
       // even after the deal has long since moved past that point.
-      if (d.client_proceeded && d.stage === 'LO' && !d.lo_completed_at) {
+      // These used to be scoped by d.stage, a column only ever advanced when a
+      // client clicked proceed — so a deal where the client rang instead never
+      // matched, and the action never appeared. The phase comes from the same
+      // function the list and the ageing use.
+      const phase = phaseOf(d)
+      if (isFinished(d)) continue                       // settled or dead, nothing to do
+      if (d.client_proceeded && phase === 'lo' && !d.lo_completed_at) {
         items.push({ deal: d, type: 'proceeded_to_lo' })
-      } else if (d.lo_client_proceeded && d.stage === 'Compliance' && !d.compliance_completed_at) {
+      } else if (d.lo_client_proceeded && phase === 'compliance' && !d.compliance_completed_at) {
         items.push({ deal: d, type: 'proceeded_to_compliance' })
+      } else if (phase === 'compliance_sent') {
+        // Sent to SalesTrekker and not lodged. Nothing chased this before,
+        // because the deal was marked completed and hidden.
+        items.push({ deal: d, type: 'awaiting_lodgement' })
       } else if (d.bc_completed_at && !d.bc_sent_at) {
         // Review-and-send is always the broker's action, regardless of who did the BC work
         if (isDealsBroker) items.push({ deal: d, type: 'bc_to_lo' })
@@ -109,15 +128,25 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
     return items
   }, [filteredDeals, brokerKey])
 
+  // Counted by phase, not by the stale stage column, and with the post-compliance
+  // life of a deal finally represented.
   const stageCounts = useMemo(() => {
-    const counts: Record<string, number> = { BC: 0, LO: 0, Compliance: 0 }
+    const counts: Record<string, number> = { BC: 0, LO: 0, Compliance: 0, 'In application': 0 }
     for (const d of filteredDeals) {
-      if (counts[d.stage] !== undefined) counts[d.stage]++
+      if (isFinished(d)) continue
+      const p = phaseOf(d)
+      if (p === 'bc') counts.BC++
+      else if (p === 'lo') counts.LO++
+      else if (p === 'compliance') counts.Compliance++
+      else if (isInApplication(d)) counts['In application']++
     }
     return counts
   }, [filteredDeals])
 
   const total = filteredDeals.length
+  // Settled and dead deals are not work. They were counted in the headline, which
+  // made the number bigger than anything anyone could act on.
+  const liveTotal = filteredDeals.filter(d => !isFinished(d)).length
   const recent = filteredDeals.slice(0, 8)
 
   return (
@@ -208,14 +237,14 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
       </div>
 
       {/* Pipeline funnel */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-5 gap-4 mb-6">
         <div className="bg-white border border-gray-100 rounded-xl p-4">
-          <div className="text-xs text-gray-400 mb-1">Total deals</div>
-          <div className="text-2xl font-semibold text-[#343333]">{total}</div>
+          <div className="text-xs text-gray-400 mb-1">Live deals</div>
+          <div className="text-2xl font-semibold text-[#343333]">{liveTotal}</div>
         </div>
-        {(['BC', 'LO', 'Compliance'] as const).map(stage => (
+        {(['BC', 'LO', 'Compliance', 'In application'] as const).map(stage => (
           <div key={stage} className="bg-white border border-gray-100 rounded-xl p-4">
-            <div className="text-xs text-gray-400 mb-1">{stage} stage</div>
+            <div className="text-xs text-gray-400 mb-1">{stage === 'In application' ? stage : stage + ' stage'}</div>
             <div className="text-2xl font-semibold text-[#343333]">{stageCounts[stage] || 0}</div>
           </div>
         ))}

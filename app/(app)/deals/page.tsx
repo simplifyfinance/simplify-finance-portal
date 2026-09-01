@@ -112,7 +112,7 @@ export default function DealsPage() {
     (boxFilter === 'all' ||
       (boxFilter === 'bc' && d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at) ||
       (boxFilter === 'lo' && d.lo_completed_at && !d.compliance_completed_at) ||
-      (boxFilter === 'compliance' && d.compliance_completed_at)) &&
+      (boxFilter === 'compliance' && isInApplication(d))) &&
     (d.deal_name?.toLowerCase().includes(search.toLowerCase()) ||
     d.clients?.first_name?.toLowerCase().includes(search.toLowerCase()) ||
     d.clients?.last_name?.toLowerCase().includes(search.toLowerCase()))
@@ -131,10 +131,15 @@ export default function DealsPage() {
     return (stageAge(y).days || 0) - (stageAge(x).days || 0)
   })
 
-  const bcReady = summaryDeals.filter(d => d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at).length
-  const loReady = summaryDeals.filter(d => d.lo_completed_at && !d.compliance_completed_at).length
-  const complianceReady = summaryDeals.filter(d => d.compliance_completed_at).length
-  const activeForStaff = deals.filter(d => !d.compliance_completed_at).length
+  // The boxes count the same way the list groups, so clicking one can never open
+  // an empty screen. The old "Compliance completed" box did exactly that: it
+  // counted compliance-completed deals while the list excluded them, so a
+  // headline of nine opened nothing.
+  const live = summaryDeals.filter(d => !isFinished(d))
+  const bcReady = live.filter(d => d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at).length
+  const loReady = live.filter(d => d.lo_completed_at && !d.compliance_completed_at).length
+  const inApplication = live.filter(isInApplication).length
+  const activeForStaff = live.length
   function readyStageFor(deal: Deal): 'BC' | 'LO' | null {
     if (deal.lo_completed_at && !deal.compliance_completed_at) return 'LO'
     if (deal.bc_completed_at && !deal.lo_completed_at && !deal.compliance_completed_at) return 'BC'
@@ -147,7 +152,10 @@ export default function DealsPage() {
           <button onClick={() => setBoxFilter('all')}
             className={`text-left bg-white border rounded-xl p-4 transition ${boxFilter === 'all' ? 'border-[#2DBEFF] ring-1 ring-[#2DBEFF]' : 'border-gray-100 hover:border-gray-200'}`}>
             <div className="text-xs text-gray-400 mb-1">{summaryLabel}</div>
-            <div className="text-2xl font-semibold text-[#343333]">{summaryDeals.length}</div>
+            <div className="text-2xl font-semibold text-[#343333]">{live.length}</div>
+            <div className="text-[11px] text-gray-400 mt-0.5">
+              {summaryDeals.length - live.length > 0 ? `${summaryDeals.length - live.length} settled or lost` : 'none closed'}
+            </div>
           </button>
           <button onClick={() => setBoxFilter('bc')}
             className={`text-left bg-amber-50 border rounded-xl p-4 transition ${boxFilter === 'bc' ? 'border-amber-500 ring-1 ring-amber-500' : 'border-amber-200 hover:border-amber-300'}`}>
@@ -161,8 +169,8 @@ export default function DealsPage() {
           </button>
           <button onClick={() => setBoxFilter('compliance')}
             className={`text-left bg-green-50 border rounded-xl p-4 transition ${boxFilter === 'compliance' ? 'border-green-500 ring-1 ring-green-500' : 'border-green-200 hover:border-green-300'}`}>
-            <div className="text-xs text-green-600 mb-1">Compliance completed</div>
-            <div className="text-2xl font-semibold text-green-700">{complianceReady}</div>
+            <div className="text-xs text-green-600 mb-1">In application</div>
+            <div className="text-2xl font-semibold text-green-700">{inApplication}</div>
           </button>
         </div>
       )}
