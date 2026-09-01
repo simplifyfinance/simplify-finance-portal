@@ -167,3 +167,19 @@ export function phaseSince(deal: any): string | null {
 export function loMayWriteAmount(deal: any): boolean {
   return !deal?.lodged_at && !deal?.settled_at
 }
+
+// Is the deal with the lender - lodged or beyond?
+//
+// The line is LODGEMENT, not compliance sent. Between those two the deal is
+// still with support waiting for a SalesTrekker card, and compliance work can
+// still be relevant. Once it is lodged it is out of our hands and the Compliance
+// tab is a record rather than a workbench: the needs and objectives, the AI
+// generation, the PDFs and the push all belong to work that is finished.
+//
+// Fabio, 1 Sep 2026: "needs an objectives, all those things, summary PDF,
+// compliance PDF ... this all belongs to compliance. It should not be showing
+// from lodgement forward."
+export function isWithLender(deal: any): boolean {
+  if (phaseOf(deal) === 'lost') return false
+  return PHASE_ORDER.indexOf(phaseOf(deal)) >= PHASE_ORDER.indexOf('lodged')
+}

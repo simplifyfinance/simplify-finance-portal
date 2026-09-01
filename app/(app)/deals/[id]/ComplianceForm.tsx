@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { isWithLender } from '@/lib/deal-phase'
 import { checkedWrite } from '@/lib/checked-write'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
@@ -667,11 +668,46 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
   const currentApplicant = d.applicants[activeApplicant]
   const currentRisk = d.risks[currentApplicant?.name] || defaultRisk()
 
+  // Once the deal is LODGED this tab is a record, not a workbench. Generating a
+  // write-up with AI, or pushing to SalesTrekker again, is offering to redo
+  // something that already happened - and the push re-emails both PDFs to the
+  // compliance team for a deal that is already with the lender.
+  //
+  // Folded, not removed. The write-up is a regulated document and it does get
+  // corrected after the fact, so it stays one click away and stays editable.
+  const past = isWithLender(deal)
+  const [showWriteUp, setShowWriteUp] = useState(!past)
+  const sentOn = deal.compliance_sent_at || deal.compliance_completed_at || complianceCompletedAt
+
   const stages = ['needs', 'risks', 'product', 'comments', 'expenses'] as const
   const stageLabels = { needs: 'Needs & objectives', risks: 'Risks', product: 'Product requirements', comments: 'Broker comments', expenses: 'Living expenses' }
 
   return (
     <div className="space-y-4">
+      {past && (
+        <div className="bg-white border border-[#CFE6D5] rounded-xl px-4 py-3.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="text-[10px] font-bold uppercase tracking-[.06em] bg-[#F1F7F3] border border-[#CFE6D5] text-[#25794C] rounded-full px-2.5 py-[3px]">
+              Compliance sent
+            </span>
+            <span className="text-[13px] text-[#6E665C]">
+              {sentOn ? new Date(sentOn).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
+              {' '}&middot; both PDFs emailed to the compliance team
+            </span>
+            <button onClick={() => setShowWriteUp(v => !v)}
+              className="ml-auto text-[12.5px] text-[#2DBEFF] hover:underline">
+              {showWriteUp ? 'Hide the write-up' : 'Show the write-up'}
+            </button>
+          </div>
+          <p className="text-[11.5px] text-[#A29889] mt-2 mb-0">
+            This deal is lodged. The write-up is kept here and can still be corrected, but nothing
+            on this tab moves the deal along any more &mdash; it is tracked in After compliance and
+            Settlement above.
+          </p>
+        </div>
+      )}
+
+      {(!past || showWriteUp) && (<>
       {/* Stage tabs */}
       <div className="flex bg-white border border-gray-100 rounded-xl p-1 gap-1">
         {stages.map(s => (
@@ -704,13 +740,28 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
       <div className="bg-white border border-gray-100 rounded-xl p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <button onClick={handlePushToSalesTrekker}
-              className="bg-[#343333] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition inline-flex items-center gap-2">
-              Push to SalesTrekker
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
-            </button>
-            <div className="text-[11.5px] text-[#A29889] mt-2.5 max-w-[46ch]">Marks compliance complete and emails both PDFs to the compliance team.</div>
-            {complianceCompletedAt && <div className="text-[11.5px] text-green-600 mt-1">✓ Compliance completed</div>}
+            {past ? (
+              /* The deal is already with the lender. Pressing this would re-email
+                 both PDFs to the compliance team for something that went weeks
+                 ago, so it is not a button any more. */
+              <div className="text-[13px] text-[#6E665C]">
+                <span className="font-semibold text-[#2E2A26]">Already pushed to SalesTrekker.</span>
+                <div className="text-[11.5px] text-[#A29889] mt-1 max-w-[52ch]">
+                  This deal is lodged. If the write-up genuinely has to go again, send it from the
+                  PDFs rather than pushing the deal a second time.
+                </div>
+              </div>
+            ) : (
+              <>
+                <button onClick={handlePushToSalesTrekker}
+                  className="bg-[#343333] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition inline-flex items-center gap-2">
+                  Push to SalesTrekker
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+                </button>
+                <div className="text-[11.5px] text-[#A29889] mt-2.5 max-w-[46ch]">Marks compliance complete and emails both PDFs to the compliance team.</div>
+                {complianceCompletedAt && <div className="text-[11.5px] text-green-600 mt-1">✓ Compliance completed</div>}
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => downloadPdf('summary')} disabled={!!downloading}
@@ -1232,6 +1283,7 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
           </div>
         </div>
       )}
+      </>)}
     </div>
   )
 }

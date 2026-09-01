@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { phaseOf, isFinished, isInApplication, amountOf, phaseSince, PHASE_ORDER , loMayWriteAmount } from './deal-phase'
+import { phaseOf, isFinished, isInApplication, amountOf, phaseSince, PHASE_ORDER , loMayWriteAmount, isWithLender } from './deal-phase'
 
 const ff = { fact_find_data: { applicants: [{}] } }
 
@@ -129,5 +129,33 @@ describe('the Lending options form may only write the amount before lodgement', 
     // Nine deals were pushed to compliance before lodged_at existed. Opening an
     // LO on one of those must still not overwrite what settled.
     expect(loMayWriteAmount({ settled_at: '2026-07-14' })).toBe(false)
+  })
+})
+
+describe('with the lender', () => {
+  const done = { ...ff, client_proceeded: true, lo_client_proceeded: true }
+
+  it('a deal still being written is not with the lender', () => {
+    expect(isWithLender({})).toBe(false)
+    expect(isWithLender(ff)).toBe(false)
+    expect(isWithLender(done)).toBe(false)
+  })
+
+  it('compliance being SENT is not far enough - support still has it', () => {
+    // The line is lodgement. Between compliance sent and lodged the deal is
+    // waiting on a SalesTrekker card and compliance work can still matter.
+    expect(isWithLender({ ...done, compliance_sent_at: '2026-08-20' })).toBe(false)
+  })
+
+  it('is true from lodgement onwards', () => {
+    expect(isWithLender({ ...done, lodged_at: '2026-08-22' })).toBe(true)
+    expect(isWithLender({ ...done, lodged_at: '2026-08-22', preapproval_at: '2026-08-30' })).toBe(true)
+    expect(isWithLender({ ...done, lodged_at: '2026-08-22', settled_at: '2026-09-01' })).toBe(true)
+  })
+
+  it('a lost deal is never with the lender, whatever order the phases are in', () => {
+    // lost sits last in PHASE_ORDER, which would otherwise make every dead deal
+    // look like it had moved on.
+    expect(isWithLender({ ...done, lodged_at: '2026-08-22', status: 'lost' })).toBe(false)
   })
 })

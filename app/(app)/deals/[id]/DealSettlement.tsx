@@ -46,8 +46,27 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
-  const nextIdx = STAGES.findIndex(s => !deal[s.key])
-  const stage = nextIdx === -1 ? null : STAGES[nextIdx]
+  // What can happen next - not what must.
+  //
+  // These used to be walked in a fixed line, so the moment a deal was lodged the
+  // only button on screen was "Mark as preapproved". It read as an instruction,
+  // and most deals go straight from lodged to formal approval. Preapproval is
+  // for a client still looking for a property.
+  //
+  // Fabio, 1 Sep 2026. Anything not yet recorded is offered; nothing is forced
+  // and nothing is skipped silently - a deal marked formally approved that was
+  // never preapproved simply leaves preapproval blank, which is the truth.
+  const available = STAGES
+    .filter(s => !deal[s.key])
+    // A preapproval after formal approval is meaningless, so it stops being offered.
+    .filter(s => s.key !== 'preapproval_at' || (!deal.formal_approval_at && !deal.settled_at))
+
+  const [pickedKey, setPickedKey] = useState('')
+  // One choice left is not a choice: go straight into it, the way it always did.
+  const stage = available.length === 1
+    ? available[0]
+    : (available.find(s => s.key === pickedKey) || null)
+
   const prior = stage?.snap === 'formal' ? snaps.lodged
     : stage?.snap === 'settled' ? (snaps.formal || snaps.lodged) : null
 
@@ -149,7 +168,16 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#12A150" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.4 L6.2 11.4 L13 4.6"/></svg>
               <span className="font-semibold">{s.label}</span>
               <span className="text-[#A29889]">{fmtDate(deal[s.key])}</span>
-              {sn && <span className="text-[#6E665C] tabular-nums">{sn.lender} &middot; {money(num(sn.total_amount))}</span>}
+              {sn && (
+                /* num(null) is 0, and money(0) is "$0" - so a stage recorded with
+                   no amount used to claim the loan lodged for nothing. */
+                <span className="text-[#6E665C] tabular-nums">
+                  {sn.lender}{sn.lender ? ' \u00b7 ' : ''}
+                  {num(sn.total_amount) > 0
+                    ? money(num(sn.total_amount))
+                    : <i className="text-[#946017] not-italic">amount not recorded</i>}
+                </span>
+              )}
             </div>
           )
         })}
@@ -165,12 +193,32 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
         </div>
       )}
 
-      {!stage ? (
+      {available.length === 0 ? (
         <div className="text-[13px] text-[#6E665C]">Settled. Nothing further to record here.</div>
+      ) : !stage ? (
+        <div className="border-t border-[#F1ECE4] pt-4">
+          <div className="text-[13px] font-semibold mb-1">What happened next?</div>
+          <div className="text-[12px] text-[#A29889] mb-3">
+            Whichever one it was. A deal can go straight to formal approval &mdash; preapproval is
+            only for a client still looking.
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {available.map(s => (
+              <button key={s.key} onClick={() => setPickedKey(s.key)}
+                className="text-[13px] border border-[#E8E1D6] bg-white text-[#2E2A26] rounded-lg px-4 py-2 hover:bg-[#FAF7F2] hover:border-[#D6CCBC] transition">
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
       ) : (
         <div className="border-t border-[#F1ECE4] pt-4">
-          <div className="text-[13px] font-semibold mb-3">
+          <div className="text-[13px] font-semibold mb-3 flex items-center gap-2 flex-wrap">
             Next: {stage.label}
+            {available.length > 1 && (
+              <button onClick={() => { setPickedKey(''); setConfirming(false); setErr('') }}
+                className="font-normal text-[12px] text-[#2DBEFF] hover:underline">change</button>
+            )}
             {prior && <span className="font-normal text-[#A29889]"> &mdash; checked against {stage.snap === 'settled' && snaps.formal ? 'formal approval' : 'lodgement'}</span>}
           </div>
 
