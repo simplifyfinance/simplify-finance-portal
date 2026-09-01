@@ -4,25 +4,32 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { calcCommission, lvrOf, money, type CommissionRate } from '@/lib/commission'
 import { todayYmd } from '@/lib/periods'
 
-// What this loan pays. Finance only - commissions are not visible to the rest of
-// the team. Every figure comes from lib/commission.ts, the same function the
-// reports use, so this can never disagree with them.
+// What this loan is EXPECTED to pay. Every figure comes from lib/commission.ts,
+// the same function the reports use, so this can never disagree with them.
+//
+// Expected, not earned: it is the lender's rate card applied to the loan amount.
+// What actually arrives can be less - an offset loan is paid on the drawn
+// balance, so a $500k settlement with $100k sitting in offset pays on $400k.
+// Saying "expected" here is the difference between a correct figure and somebody
+// chasing SFG for money that was never owed.
 export default function DealCommission({ deal }: { deal: any }) {
   const supabase = createSupabaseBrowser()
-  const [allowed, setAllowed] = useState<boolean | null>(null)
   const [rate, setRate] = useState<CommissionRate | null>(null)
   const [lenderName, setLenderName] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     (async () => {
-      const { data: u } = await supabase.auth.getUser()
-      if (!u?.user) { setAllowed(false); setLoading(false); return }
-      const { data: p } = await supabase.from('user_profiles')
-        .select('is_admin, sees_finance').eq('id', u.user.id).single()
-      const ok = !!(p?.is_admin || p?.sees_finance)
-      setAllowed(ok)
-      if (!ok || !deal?.lender_id) { setLoading(false); return }
+      // Open to anyone who can open the deal. This is one loan's expected
+      // upfront and trail, worked out from the loan amount and the lender's rate
+      // card - arithmetic on figures already on the page, not the firm's book.
+      // Fabio, 1 Sep 2026: "the commission doesn't really matter, it shouldn't
+      // be a finance only ... that is restricted to finance, not the actual
+      // commissions box on the deal card".
+      //
+      // sees_finance still gates the Commissions SECTION - revenue, trail book,
+      // clawbacks, every broker. That stays exactly as it is.
+      if (!deal?.lender_id) { setLoading(false); return }
 
       const [r, l] = await Promise.all([
         supabase.from('commission_rates').select('*').eq('lender_id', deal.lender_id).maybeSingle(),
@@ -34,7 +41,6 @@ export default function DealCommission({ deal }: { deal: any }) {
     })()
   }, [deal?.lender_id])
 
-  if (allowed !== true) return null
   if (!deal?.lodged_at) return null
 
   const amount = deal.settled_total ?? deal.lodged_total ?? deal.loan_amount ?? null
@@ -52,8 +58,8 @@ export default function DealCommission({ deal }: { deal: any }) {
     <div className={box}>
       <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[#F6F2EA] flex-wrap">
         <span className="text-[13.5px] font-semibold text-[#2E2A26]">Commission</span>
-        <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-[#EAF7FE] border border-[#BFE6F9] text-[#0E8FCB] rounded-full px-2 py-[2px]">
-          Finance only
+        <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-full px-2 py-[2px]">
+          Expected
         </span>
         {lenderName && <span className="text-[11.5px] text-[#A29889] ml-auto">{lenderName}</span>}
       </div>

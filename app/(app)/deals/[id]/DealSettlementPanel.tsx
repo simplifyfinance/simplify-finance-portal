@@ -11,23 +11,12 @@ import { STATE_LABEL, isRefinance, isPurchase, stepLabel, attentionFor,
 export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; onUpdated?: (patch: any) => void }) {
   const supabase = createSupabaseBrowser()
   const today = todayYmd()
-  const [allowed, setAllowed] = useState<boolean | null>(null)
   const [d, setD] = useState<any>(deal)
   const [draft, setDraft] = useState<any>({})
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
 
   useEffect(() => { setD(deal) }, [deal])
-
-  useEffect(() => {
-    (async () => {
-      const { data: u } = await supabase.auth.getUser()
-      if (!u?.user) { setAllowed(false); return }
-      const { data: p } = await supabase.from('user_profiles')
-        .select('is_admin, sees_settlements').eq('id', u.user.id).single()
-      setAllowed(!!(p?.is_admin || p?.sees_settlements))
-    })()
-  }, [])
 
   useEffect(() => {
     setDraft({
@@ -47,7 +36,17 @@ export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; on
     })
   }, [d])
 
-  if (allowed !== true) return null
+  // Open to anyone who can open the deal.
+  //
+  // This panel was gated on is_admin || sees_settlements from back when the
+  // portal had no deal board and the only way to keep the credit team out of the
+  // settlement process was to hide the box. The gate that matters is on the deal
+  // itself - row level security decides who can open it at all - and nothing in
+  // here is more sensitive than the rest of the deal. Fabio, 1 Sep 2026:
+  // everyone reads and edits.
+  //
+  // The sees_settlements flag still gates the Settlements SCREEN, which is the
+  // whole book across every broker. That is a different question and it stays.
   if (!d.lodged_at) return null   // nothing to settle until it is lodged
 
   const refi = isRefinance(d)
@@ -95,9 +94,6 @@ export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; on
     <div className="bg-white border border-[#EDE7DD] rounded-xl overflow-hidden mb-6">
       <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[#F6F2EA] flex-wrap">
         <span className="text-[13.5px] font-semibold text-[#2E2A26]">Settlement</span>
-        <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-[#EAF7FE] border border-[#BFE6F9] text-[#0E8FCB] rounded-full px-2 py-[2px]">
-          Settlement &amp; admin only
-        </span>
         {attention && !d.settled_at && (
           <span className={`text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[2px] border ${
             attention.level === 'stale'
