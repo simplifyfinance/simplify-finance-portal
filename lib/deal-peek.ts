@@ -58,7 +58,7 @@ export function securityOf(deal: any): { address: string; detail: string; more: 
   return { address: String(primary.address).trim(), detail, more: Math.max(0, withAddress.length - 1) }
 }
 
-export function buildPeek(deal: any, opts: { lenderName?: string; brokerName?: string; creditName?: string } = {}): Peek {
+export function buildPeek(deal: any, opts: { lenderName?: string; brokerName?: string; creditName?: string; colours?: { type?: any; use?: any } } = {}): Peek {
   const sec = securityOf(deal)
   const applicants: string[] = (deal?.fact_find_data?.applicants || [])
     .map((a: any) => [a?.firstName, a?.lastName].map((x: any) => String(x || '').trim()).filter(Boolean).join(' '))
@@ -73,7 +73,7 @@ export function buildPeek(deal: any, opts: { lenderName?: string; brokerName?: s
     fullName: String(deal?.deal_name || ''),
     phase: phaseOf(deal),
     phaseLabel: PHASE_LABEL[phaseOf(deal)],
-    chips: chipsFor(deal),
+    chips: chipsFor(deal, opts.colours),
     loan: {
       title: 'The loan',
       fields: [

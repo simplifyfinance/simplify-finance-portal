@@ -3,6 +3,8 @@ import { sameBroker } from '@/lib/broker-key'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import BrokerTargets from '@/components/BrokerTargets'
+import { SWATCHES, normHex, tooPaleForWhiteText } from '@/lib/board-settings'
+import { brokerColour } from '@/lib/deal-labels'
 
 type Broker = {
   broker_key: string
@@ -13,8 +15,12 @@ type Broker = {
   brand_ids: string[]
   active: boolean
   user_id: string | null
+  colour: string | null
 }
 type Login = { id: string; full_name: string; broker_key: string | null }
+
+const initialsOf = (n: string) =>
+  String(n || '').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?'
 
 function suggestKey(name: string): string {
   return (name || '').trim().split(/\s+/)[0]?.toLowerCase().replace(/[^a-z0-9]/g, '') || ''
@@ -63,6 +69,7 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
     setBusy(r.broker_key)
     setMsg(m => ({ ...m, [r.broker_key]: '' }))
     const patch: any = { ...draft[r.broker_key], updated_at: new Date().toISOString() }
+    if ('colour' in patch) patch.colour = normHex(patch.colour)
     const { data, error } = await supabase.from('brokers').update(patch).eq('broker_key', r.broker_key).select('broker_key')
     setBusy('')
     if (error) { setMsg(m => ({ ...m, [r.broker_key]: 'NOT SAVED - ' + error.message })); return }
@@ -140,6 +147,46 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
                 <button onClick={() => remove(r)} className="text-[11.5px] text-[#A29889] hover:text-[#C4553B] transition">Delete</button>
               </div>
             </div>
+
+            {(() => {
+              // Their colour on the deal board. It belongs to the broker the same
+              // way their CR number does, so it follows them onto the board, the
+              // quick look, and anything built later - with no second list to keep
+              // in step. Leaving it unset is fine: lib/deal-labels.ts still answers
+              // with a stable guess, which is how the board has always worked.
+              const colour = String(val(r, 'colour') || '')
+              const set = normHex(colour)
+              const pale = tooPaleForWhiteText(colour)
+              return (
+                <div className="flex items-center gap-3 mb-3 flex-wrap">
+                  <label className={label + ' mb-0 min-w-[86px]'}>Board colour</label>
+                  <div className="flex gap-[5px] items-center flex-wrap">
+                    {SWATCHES.map(sw => (
+                      <button key={sw} type="button" title={sw}
+                        onClick={() => edit(r.broker_key, { colour: sw } as any)}
+                        style={{ background: sw }}
+                        className={`w-[22px] h-[22px] rounded-md border border-black/10 shrink-0 ${set === sw ? 'outline outline-2 outline-[#221F1B] outline-offset-2' : ''}`} />
+                    ))}
+                    <input value={colour} placeholder="not set"
+                      onChange={e => edit(r.broker_key, { colour: e.target.value } as any)}
+                      className={'text-[12.5px] font-mono rounded-lg px-2 py-1 w-[94px] border focus:outline-none focus:border-[#2DBEFF] ' + (pale ? 'border-[#EBD9BE] bg-[#FDF6EC] text-[#946017]' : 'border-[#E8E1D6] text-[#2E2A26]')} />
+                  </div>
+                  <span className="w-[26px] h-[26px] rounded-full text-[10.5px] font-bold text-white inline-flex items-center justify-center border-[1.5px] border-white"
+                    style={{ background: set || brokerColour(r.broker_key) }}>
+                    {initialsOf(String(val(r, 'name')))}
+                  </span>
+                  <span className="text-[11.5px] text-[#A29889]">
+                    {pale
+                      ? <b className="text-[#946017] font-semibold">Too pale - the initials disappear on a card. Pick a darker shade.</b>
+                      : set ? 'on their deal cards' : 'not set - the board is guessing this one'}
+                  </span>
+                  {set && (
+                    <button type="button" onClick={() => edit(r.broker_key, { colour: '' } as any)}
+                      className="text-[11px] text-[#0E8FCB] underline">Clear</button>
+                  )}
+                </div>
+              )
+            })()}
 
             <div className="grid grid-cols-2 gap-3">
               <div>

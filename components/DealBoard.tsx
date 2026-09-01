@@ -2,8 +2,9 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { phaseOf, phaseSince, amountOf, PHASE_LABEL, PHASE_ORDER, type Phase } from '@/lib/deal-phase'
-import { stageAge, ageGroupOf, DEFAULT_THRESHOLDS } from '@/lib/deal-age'
+import { stageAge, ageGroupOf } from '@/lib/deal-age'
 import { chipsFor, brokerColour, chipStyle, dealTitle } from '@/lib/deal-labels'
+import { CREDIT_GREY, type ThresholdMap } from '@/lib/board-settings'
 import DealPeek from '@/components/DealPeek'
 import { brokerKey as keyOf } from '@/lib/broker-key'
 
@@ -36,10 +37,14 @@ const AGE_STYLE: Record<string, string> = {
   long:  'text-[#946017] bg-[#FDF6EC] border-[#EBD9BE]',
 }
 
-export default function DealBoard({ deals, nameFor, colours }: {
+export default function DealBoard({ deals, nameFor, colours, thresholds }: {
   deals: any[]
   nameFor: (k: string) => string
   colours?: { type?: any; use?: any; broker?: Record<string, string> }
+  // Set in Settings -> Deal board. Undefined falls through to the defaults in
+  // lib/deal-age.ts, which is what the board used before there was a screen for
+  // it - so an unmigrated portal looks exactly the same.
+  thresholds?: ThresholdMap
 }) {
   const router = useRouter()
   const [dragging, setDragging] = useState<string>('')
@@ -100,7 +105,7 @@ export default function DealBoard({ deals, nameFor, colours }: {
           {COLUMNS.map(p => {
             const cards = byColumn[p] || []
             const total = cards.reduce((t, d) => t + (amountOf(d) || 0), 0)
-            const hot = cards.filter(d => ageGroupOf(d) === 'nudge').length
+            const hot = cards.filter(d => ageGroupOf(d, thresholds) === 'nudge').length
             return (
               <div key={p}
                 onDragOver={e => { e.preventDefault(); setOver(p) }}
@@ -125,8 +130,8 @@ export default function DealBoard({ deals, nameFor, colours }: {
                 </div>
 
                 {cards.map(d => {
-                  const age = stageAge(d)
-                  const grp = ageGroupOf(d)
+                  const age = stageAge(d, thresholds)
+                  const grp = ageGroupOf(d, thresholds)
                   const bKey = keyOf(d.assigned_broker) || ''
                   const amt = amountOf(d)
                   const lender = d.lenders?.name || ''
@@ -138,7 +143,7 @@ export default function DealBoard({ deals, nameFor, colours }: {
                     : age.label
                   const people = [
                     { name: brokerNameOf(d, nameFor), colour: brokerColour(bKey, colours?.broker) },
-                    ...(d.credit_officers?.name ? [{ name: d.credit_officers.name, colour: '#7A7266' }] : []),
+                    ...(d.credit_officers?.name ? [{ name: d.credit_officers.name, colour: CREDIT_GREY }] : []),
                   ].filter(x => x.name)
                   return (
                     <div key={d.id} draggable
@@ -219,6 +224,7 @@ export default function DealBoard({ deals, nameFor, colours }: {
             lenderName={d.lenders?.name || ''}
             brokerName={brokerNameOf(d, nameFor)}
             creditName={d.credit_officers?.name || ''}
+            colours={colours}
             onClose={() => setPeeking(null)}
             onStep={dir => {
               // Wraps, so the end of a column is not a dead end.

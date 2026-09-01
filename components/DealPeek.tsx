@@ -31,16 +31,19 @@ function Section({ s }: { s: PeekSection }) {
   )
 }
 
-export default function DealPeek({ deal, lenderName, brokerName, creditName, onClose, onStep }: {
+export default function DealPeek({ deal, lenderName, brokerName, creditName, colours, onClose, onStep }: {
   deal: any
   lenderName?: string
   brokerName?: string
   creditName?: string
+  // The same label colours the card was drawn with. Opening a quick look must
+  // not repaint the chips.
+  colours?: { type?: any; use?: any }
   onClose: () => void
   onStep?: (dir: -1 | 1) => void
 }) {
   const router = useRouter()
-  const p = buildPeek(deal, { lenderName, brokerName, creditName })
+  const p = buildPeek(deal, { lenderName, brokerName, creditName, colours })
   const waiting = getWaitingOnLabel(deal, creditName)
 
   // Arrow keys walk the column without closing, so nine compliance-sent deals can

@@ -9,6 +9,7 @@ import { ageGroupOf, stageAge, GROUP_ORDER, GROUP_STYLE } from '@/lib/deal-age'
 import { useBrokerNames } from '@/lib/broker-names'
 import { phaseOf, isFinished, isInApplication, PHASE_LABEL } from '@/lib/deal-phase'
 import DealBoard from '@/components/DealBoard'
+import { useBoardSettings } from '@/lib/use-board-settings'
 type Client = { id: string; first_name: string; last_name: string; email?: string; phone?: string }
 type Deal = {
   id: string; deal_name: string; deal_type: string; stage: string; status: string; assigned_broker: string;
@@ -19,6 +20,10 @@ export default function DealsPage() {
   const browser = createSupabaseBrowser()
   const router = useRouter()
   const { nameFor } = useBrokerNames()
+  // Label colours, broker colours and the stale thresholds, all from Settings.
+  // Until somebody sets them this is exactly what the code used before there was
+  // a screen for it, so the board looks the same on an unmigrated portal.
+  const { look } = useBoardSettings()
   const [deals, setDeals] = useState<Deal[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -147,10 +152,12 @@ export default function DealsPage() {
   const summaryDeals = deals
   // Stuck first, and oldest first inside each group. The top of the page is the
   // morning's work.
+  // The same thresholds the board uses, so the two views can never disagree
+  // about what is stuck.
   const grouped = [...filtered].sort((x, y) => {
-    const g = GROUP_ORDER.indexOf(ageGroupOf(x)) - GROUP_ORDER.indexOf(ageGroupOf(y))
+    const g = GROUP_ORDER.indexOf(ageGroupOf(x, look.thresholds)) - GROUP_ORDER.indexOf(ageGroupOf(y, look.thresholds))
     if (g !== 0) return g
-    return (stageAge(y).days || 0) - (stageAge(x).days || 0)
+    return (stageAge(y, look.thresholds).days || 0) - (stageAge(x, look.thresholds).days || 0)
   })
 
   // The boxes count the same way the list groups, so clicking one can never open
@@ -237,7 +244,9 @@ export default function DealsPage() {
       {loading ? (
         <div className="text-sm text-gray-400 text-center py-12">Loading deals...</div>
       ) : layout === 'board' ? (
-        <DealBoard deals={boardDeals} nameFor={nameFor} />
+        <DealBoard deals={boardDeals} nameFor={nameFor}
+          colours={{ type: look.type, use: look.use, broker: look.broker }}
+          thresholds={look.thresholds} />
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
           <Briefcase size={32} className="text-gray-300 mx-auto mb-3" />
@@ -248,9 +257,9 @@ export default function DealsPage() {
         <div className="flex flex-col gap-2">
           {grouped.map((deal, gi) => {
             const readyStage = readyStageFor(deal)
-            const grp = ageGroupOf(deal)
-            const age = stageAge(deal)
-            const showHeader = gi === 0 || ageGroupOf(grouped[gi - 1]) !== grp
+            const grp = ageGroupOf(deal, look.thresholds)
+            const age = stageAge(deal, look.thresholds)
+            const showHeader = gi === 0 || ageGroupOf(grouped[gi - 1], look.thresholds) !== grp
             return (
             <Fragment key={deal.id}>
             {showHeader && (

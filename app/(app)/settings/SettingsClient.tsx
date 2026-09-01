@@ -7,6 +7,7 @@ import StatementRulesPane from '@/components/StatementRules'
 import { removeRule, TREATMENT_LABEL, type TreatAs } from '@/lib/statement-overrides'
 import CommissionLibrary from '@/components/CommissionLibrary'
 import AiExpenses from '@/components/AiExpenses'
+import DealBoardSettings from '@/components/DealBoardSettings'
 
 const supabase = createSupabaseBrowser()
 
@@ -55,6 +56,11 @@ export default function SettingsPage() {
   const [newLoStyleNote, setNewLoStyleNote] = useState('')
   const [newStyleNote, setNewStyleNote] = useState('')
   const [statementRules, setStatementRules] = useState<any>(null)
+  // Label colours and stale thresholds for the deal board. Left as null until
+  // somebody actually opens that pane and changes something, so a portal whose
+  // deal_board column has not been created yet can still save every other
+  // setting on this page.
+  const [dealBoard, setDealBoard] = useState<any>(null)
   // Standing rules set from the Audit tab. They change how EVERY client's
   // statements are read, so they have to be visible somewhere central and
   // removable by anyone, not buried on the file that created them.
@@ -140,6 +146,7 @@ export default function SettingsPage() {
         if (data.compliance_style_notes?.length) setComplianceStyleNotes(data.compliance_style_notes)
         if (data.lo_style_notes?.length) setLoStyleNotes(data.lo_style_notes)
         if (data.statement_rules) setStatementRules(data.statement_rules)
+        if (data.deal_board) setDealBoard(data.deal_board)
         setPayerRules(Array.isArray(data.statement_payer_rules) ? data.statement_payer_rules : [])
       }
       setLoading(false)
@@ -174,7 +181,7 @@ export default function SettingsPage() {
 
   async function handleSave() {
     setSaving(true)
-    const { error } = await supabase.from('settings').upsert({
+    const patch: any = {
       id: 'singleton',
       brands,
       wealth_desk_link: wealthDeskLink,
@@ -185,7 +192,9 @@ export default function SettingsPage() {
       statement_rules: statementRules,
       statement_payer_rules: payerRules,
       updated_at: new Date().toISOString()
-    })
+    }
+    if (dealBoard) patch.deal_board = dealBoard
+    const { error } = await supabase.from('settings').upsert(patch)
     setSaving(false)
     if (error) { alert('Error saving settings: ' + error.message); return }
     setSaved(true)
@@ -263,6 +272,7 @@ export default function SettingsPage() {
   const PANES: { key: string; label: string; blurb: string }[] = [
     { key: 'brands', label: 'Brands', blurb: 'Trading names used on deals and client emails.' },
     { key: 'brokers', label: 'Broker profiles', blurb: 'Everything about one broker: their details for documents, the key that links them to their deals, and their targets.' },
+    { key: 'board', label: 'Deal board', blurb: 'The colour of each label on a card, and how long a column may sit before it goes amber and then red.' },
     { key: 'targets', label: 'Business targets', blurb: 'Monthly lodged and settled targets for the business as a whole. A broker’s own targets live on their profile.' },
     { key: 'commissions', label: 'Commission library', blurb: 'What each lender pays, on what basis, and what they claw back.' },
     { key: 'ai', label: 'AI expenses', blurb: 'What the portal spends on Anthropic, by month, person and feature.' },
@@ -328,6 +338,7 @@ export default function SettingsPage() {
       </section>
       )}
       {pane === 'brokers' && <BrokerProfiles brands={brands} />}
+      {pane === 'board' && <DealBoardSettings value={dealBoard} onChange={setDealBoard} />}
       {pane === 'statements' && (
         <>
           <StatementRulesPane value={statementRules} onChange={setStatementRules} />

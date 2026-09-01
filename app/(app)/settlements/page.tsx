@@ -1,6 +1,6 @@
 'use client'
 import { brokerLabel, sameBroker } from '@/lib/broker-key'
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { todayYmd } from '@/lib/periods'
@@ -47,6 +47,19 @@ function Chip({ tone, children }: { tone: Tone; children: React.ReactNode }) {
 }
 
 const GRID = 'grid grid-cols-[78px_1.6fr_1fr_1.05fr_96px_1.5fr_24px] gap-2.5 items-center'
+
+// At module level on purpose. Declared inside the page component it is a new
+// component type on every render, so React unmounts and remounts whatever it
+// wraps - and every one of these wraps an input in the settlement edit panel.
+function F({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-[10px] font-bold uppercase tracking-[.08em] text-[#A29889] mb-1">{label}</div>
+      {children}
+    </div>
+  )
+}
+
 
 export default function SettlementsPage() {
   const supabase = createSupabaseBrowser()
@@ -200,6 +213,10 @@ export default function SettlementsPage() {
     </div>
   )
 
+  // Called directly, never written as <Row />. Declared inside this component,
+  // it is a new component type on every render, so React would unmount and
+  // remount the open edit panel on each keystroke and the field would lose
+  // focus after one character. Calling it inlines the elements instead.
   function Row({ d }: { d: any }) {
     const a = attentionFor(d, today)
     const date = settlementDate(d)
@@ -337,14 +354,6 @@ export default function SettlementsPage() {
   }
 
   const inp = 'w-full text-[12.5px] border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:border-[#2DBEFF]'
-  function F({ label, children }: { label: string; children: React.ReactNode }) {
-    return (
-      <div>
-        <div className="text-[10px] font-bold uppercase tracking-[.08em] text-[#A29889] mb-1">{label}</div>
-        {children}
-      </div>
-    )
-  }
   function Group({ title, sub, rows }: { title: string; sub: string; rows: any[] }) {
     return (
       <>
@@ -359,7 +368,7 @@ export default function SettlementsPage() {
           </div>
           {rows.length === 0
             ? <div className="px-4 py-6 text-center text-[13px] text-[#A29889]">Nothing here for {monthLabel(month)}.</div>
-            : rows.map(d => <Row key={d.id} d={d} />)}
+            : rows.map(d => <Fragment key={d.id}>{Row({ d })}</Fragment>)}
         </div>
       </>
     )
@@ -415,7 +424,7 @@ export default function SettlementsPage() {
               ? <div className="px-4 py-8 text-center text-[13px] text-[#A29889]">Nothing needs chasing. </div>
               : attention
                   .sort((x, y) => String(settlementDate(x.d) || '9999').localeCompare(String(settlementDate(y.d) || '9999')))
-                  .map(({ d }) => <Row key={d.id} d={d} />)}
+                  .map(({ d }) => <Fragment key={d.id}>{Row({ d })}</Fragment>)}
           </div>
         </>
       ) : (
@@ -430,12 +439,12 @@ export default function SettlementsPage() {
               sub="click to see them" onClick={() => setView('attention')} />
           </div>
 
-          <Group title="Confirmed to settle" rows={sorted(groups.confirmed)}
-            sub={`${groups.confirmed.length} deals · ${compact(confirmedVol || null)} · formally approved`} />
-          <Group title="Submitted, not yet formal" rows={sorted(groups.forecast)}
-            sub={`${groups.forecast.length} deals · ${compact(forecastVol || null)} · refinances lodged and still possible this month`} />
-          <Group title="Settled this month" rows={sorted(groups.settled)}
-            sub={`${groups.settled.length} deals · ${compact(settledVol || null)} · reviews, compliance and commission`} />
+          {Group({ title: 'Confirmed to settle', rows: sorted(groups.confirmed),
+            sub: `${groups.confirmed.length} deals · ${compact(confirmedVol || null)} · formally approved` })}
+          {Group({ title: 'Submitted, not yet formal', rows: sorted(groups.forecast),
+            sub: `${groups.forecast.length} deals · ${compact(forecastVol || null)} · refinances lodged and still possible this month` })}
+          {Group({ title: 'Settled this month', rows: sorted(groups.settled),
+            sub: `${groups.settled.length} deals · ${compact(settledVol || null)} · reviews, compliance and commission` })}
         </>
       )}
     </div>
