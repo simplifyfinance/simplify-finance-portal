@@ -47,7 +47,7 @@ export default function DealsPage() {
     })
   }, [])
   async function fetchDeals(role?: string, broker?: string | null, creditOfficerId?: string | null) {
-    let query = browser.from('deals').select('*, clients(first_name, last_name), credit_officers(name)').order('created_at', { ascending: false })
+    let query = browser.from('deals').select('*, clients(first_name, last_name), credit_officers(name), lenders(name)').order('created_at', { ascending: false })
     if (role === 'broker' && broker) {
       query = query.ilike('assigned_broker', broker)
     } else if (role === 'staff' && creditOfficerId) {
@@ -65,8 +65,9 @@ export default function DealsPage() {
     const { data: fullDeal } = await browser.from('deals').select('fact_find_data, client_id, deal_type, assigned_broker').eq('id', deal.id).single()
     if (!fullDeal) { alert('Could not load deal to clone'); return }
 
-    const namePart = deal.deal_name.replace(/_\d{4}$/, '')
-    const newDealName = `${namePart}_${new Date().getFullYear()}_Copy`
+    // A clone is marked as one and keeps the original's name otherwise, so the two
+    // sit next to each other on the board and it is obvious which is which.
+    const newDealName = `${deal.deal_name}_clone`
 
     const { data: inserted, error } = await browser.from('deals').insert([{
       deal_name: newDealName,
@@ -108,7 +109,10 @@ export default function DealsPage() {
   // Two ways of looking at the same deals, never two sources of truth. The board
   // is the morning "where is everything"; the list is for searching, and reads
   // better on a phone.
-  const [layout, setLayout] = useState<'list' | 'board'>('list')
+  // The board is what everyone opens on. Fabio, 1 Sep 2026 — it is the morning
+  // "where is everything and what is stuck", and a list of twenty-one rows does
+  // not answer that. The List toggle is still there for searching.
+  const [layout, setLayout] = useState<'list' | 'board'>('board')
   const [showSettled, setShowSettled] = useState(false)
   const [showLost, setShowLost] = useState(false)
   const filtered = deals.filter(d =>
@@ -351,10 +355,19 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
   const app1Last = selectedClient?.last_name || form.last_name || ''
   const app2First = form2.first_name || ''
   const app2Last = form2.last_name || ''
+  // Deals used to be saved as ClientName_Purpose_Year. On a board the underscores
+  // do not wrap so the name ran out of the card, and the purpose is already shown
+  // as a chip beside it. Fabio, 2 Sep 2026: "First Name Last Name & First Name
+  // Last Name Year Created".
+  //
+  // Two deals for the same client in the same year now collide, and that is fine —
+  // the SalesTrekker card carries the identity for the API. Existing deals keep
+  // the names they were saved with; this is the format for new ones only.
+  const person = (f: string, l: string) => [f, l].map(x => String(x || '').trim()).filter(Boolean).join(' ')
   const namePart = showSecondApplicant && (app2First || app2Last)
-    ? `${app1First}_${app1Last}_${app2First}_${app2Last}`
-    : `${app1First}_${app1Last}`
-  const dealName = `${namePart}_${deal.deal_type}_${new Date().getFullYear()}`
+    ? [person(app1First, app1Last), person(app2First, app2Last)].filter(Boolean).join(' & ')
+    : person(app1First, app1Last)
+  const dealName = `${namePart} ${new Date().getFullYear()}`.trim()
 
   async function handleCreate() {
     setSaving(true)
@@ -405,7 +418,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl p-6 w-[520px] max-h-[90vh] overflow-y-auto shadow-xl">
         <div className="text-base font-semibold mb-1">New deal</div>
-        <div className="text-xs text-gray-400 mb-5">Deal name format: ClientName_Purpose_Year</div>
+        <div className="text-xs text-gray-400 mb-5">Deal name format: First Last &amp; First Last Year</div>
 
         <div className="flex gap-2 mb-5">
           <button onClick={() => { setMode('new'); setSelectedClient(null) }} className={`flex-1 py-2 rounded-lg text-sm font-medium border ${mode==='new' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>New client</button>

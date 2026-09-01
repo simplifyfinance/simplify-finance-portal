@@ -1,10 +1,10 @@
 'use client'
 import { useMemo, useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { phaseOf, phaseSince, amountOf, PHASE_LABEL, PHASE_ORDER, type Phase } from '@/lib/deal-phase'
 import { stageAge, ageGroupOf, DEFAULT_THRESHOLDS } from '@/lib/deal-age'
-import { chipsFor, brokerColour, chipStyle } from '@/lib/deal-labels'
+import { chipsFor, brokerColour, chipStyle, dealTitle } from '@/lib/deal-labels'
+import DealPeek from '@/components/DealPeek'
 import { brokerKey as keyOf } from '@/lib/broker-key'
 
 // The whole book, in columns.
@@ -25,6 +25,12 @@ const money = (n: number) => {
   return '$' + Math.round(n)
 }
 
+const initials = (n: string) => String(n || '').trim().split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase()
+const brokerNameOf = (d: any, nameFor: (k: string) => string) => {
+  const k = keyOf(d.assigned_broker) || ''
+  return k ? (nameFor(k) || k) : ''
+}
+
 const AGE_STYLE: Record<string, string> = {
   nudge: 'text-[#AD4227] bg-[#FBEDE9] border-[#EFD3CB]',
   long:  'text-[#946017] bg-[#FDF6EC] border-[#EBD9BE]',
@@ -39,6 +45,9 @@ export default function DealBoard({ deals, nameFor, colours }: {
   const [dragging, setDragging] = useState<string>('')
   const [over, setOver] = useState<Phase | ''>('')
   const [msg, setMsg] = useState('')
+  // Which card is being looked at, and which column it sits in — so the arrow
+  // keys can walk along that column without closing.
+  const [peeking, setPeeking] = useState<{ id: string; phase: Phase } | null>(null)
 
   const byColumn = useMemo(() => {
     const m: Record<string, any[]> = {}
@@ -87,7 +96,7 @@ export default function DealBoard({ deals, nameFor, colours }: {
         </div>
       )}
       <div className="overflow-x-auto pb-2">
-        <div className="flex gap-2.5" style={{ minWidth: 1500 }}>
+        <div className="flex gap-2.5" style={{ minWidth: 2280 }}>
           {COLUMNS.map(p => {
             const cards = byColumn[p] || []
             const total = cards.reduce((t, d) => t + (amountOf(d) || 0), 0)
@@ -97,7 +106,7 @@ export default function DealBoard({ deals, nameFor, colours }: {
                 onDragOver={e => { e.preventDefault(); setOver(p) }}
                 onDragLeave={() => setOver(o => o === p ? '' : o)}
                 onDrop={() => onDrop(p)}
-                className={`flex-1 min-w-[168px] rounded-xl border p-2.5 transition ${
+                className={`flex-1 min-w-[248px] rounded-xl border p-2.5 transition ${
                   over === p ? 'border-[#0E8FCB] bg-[#EAF6FD]'
                   : hot > 0 ? 'border-[#EFD3CB] bg-[#FBEDE9]'
                   : 'border-[#EFEAE0] bg-[#FCFAF6]'}`}>
@@ -119,41 +128,75 @@ export default function DealBoard({ deals, nameFor, colours }: {
                   const age = stageAge(d)
                   const grp = ageGroupOf(d)
                   const bKey = keyOf(d.assigned_broker) || ''
-                  const bCol = brokerColour(bKey, colours?.broker)
                   const amt = amountOf(d)
+                  const lender = d.lenders?.name || ''
+                  // Whichever date matters at this stage: when it is due to settle
+                  // once that is known, otherwise how long it has sat here.
+                  const settleOn = d.settled_at || d.confirmed_settlement_date || d.expected_settlement_date
+                  const when = settleOn
+                    ? new Date(settleOn).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+                    : age.label
+                  const people = [
+                    { name: brokerNameOf(d, nameFor), colour: brokerColour(bKey, colours?.broker) },
+                    ...(d.credit_officers?.name ? [{ name: d.credit_officers.name, colour: '#7A7266' }] : []),
+                  ].filter(x => x.name)
                   return (
-                    <Link key={d.id} href={`/deals/${d.id}`} draggable
+                    <div key={d.id} draggable
                       onDragStart={() => setDragging(d.id)}
                       onDragEnd={() => { setDragging(''); setOver('') }}
-                      className={`block bg-white border rounded-lg px-2.5 py-2 mb-1.5 hover:border-[#D6CCBC] transition ${
+                      onClick={() => router.push(`/deals/${d.id}`)}
+                      className={`relative bg-white border rounded-[10px] px-2.5 pt-2.5 pb-2.5 mb-2 cursor-pointer transition hover:border-[#D6CCBC] ${
                         dragging === d.id ? 'opacity-40 border-[#0E8FCB]' : 'border-[#E5DED2]'}`}>
-                      {/* Deal names are underscored and long — Sasa_Kalajdzic_Tori_Headington_Refinance_2026
-                          has no spaces to break on, so without this it runs straight out of the card. */}
-                      <p className="text-[11.5px] font-semibold text-[#221F1B] leading-[1.35] m-0 break-all"
-                         title={d.deal_name}>
-                        {d.deal_name}
+
+                      {/* A look before committing to opening it. */}
+                      <button title="Quick look"
+                        onClick={e => { e.stopPropagation(); setPeeking({ id: d.id, phase: p }) }}
+                        className="absolute top-[7px] right-2 w-[22px] h-[22px] rounded-md border border-[#E5DED2] bg-white text-[#7A7266] flex items-center justify-center hover:border-[#0E8FCB] hover:text-[#0E8FCB] hover:bg-[#EAF6FD]">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="7" cy="15" r="4" /><circle cx="17" cy="15" r="4" />
+                          <path d="M11 15h2M6 11V5h3v6M15 11V5h3v6" />
+                        </svg>
+                      </button>
+
+                      {/* One line, ellipsis, full name on hover — the same shape a
+                          long client name gets anywhere else. */}
+                      <p className="text-[12.5px] font-[640] text-[#221F1B] m-0 mr-[22px] truncate" title={d.deal_name}>
+                        {dealTitle(d.deal_name)}
                       </p>
-                      <div className="flex gap-1 flex-wrap mt-1.5">
+                      <p className="text-[9.5px] font-bold tracking-[.07em] uppercase text-[#A29889] m-0 mb-[7px]">
+                        Home loan{lender ? ` · ${lender}` : ''}
+                      </p>
+
+                      {/* The money is the biggest thing on a card about a loan book. */}
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        {amt !== null
+                          ? <span className="text-[14px] font-[680] text-[#221F1B] tabular-nums tracking-[-.01em]">{money(amt)}</span>
+                          : <span className="text-[11.5px] text-[#C3BDB2]">No amount recorded</span>}
+                        <span className="ml-auto text-[11px] text-[#7A7266] tabular-nums">{when}</span>
+                      </div>
+
+                      <div className="flex gap-1 flex-wrap items-center">
                         {chipsFor(d, colours).map(c => (
-                          <span key={c.id} className="text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[1.5px] border"
+                          <span key={c.id} className="text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border whitespace-nowrap"
                                 style={chipStyle(c.colour)}>{c.label}</span>
                         ))}
-                        {bKey && (
-                          <span className="text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[1.5px] border"
-                                style={chipStyle(bCol)}>{nameFor(bKey).split(' ')[0] || bKey}</span>
-                        )}
                         {age.days !== null && (
-                          <span className={`text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[1.5px] border ${
+                          <span className={`text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border whitespace-nowrap ${
                             AGE_STYLE[grp] || 'text-[#A29889] bg-[#FCFAF6] border-[#EFEAE0]'}`}>
                             {age.label}
                           </span>
                         )}
+                        <span className="ml-auto flex">
+                          {people.map((x, i) => (
+                            <span key={x.name + i} title={x.name}
+                              className="w-[19px] h-[19px] rounded-full text-[8.5px] font-bold text-white flex items-center justify-center border-[1.5px] border-white -ml-[5px] first:ml-0"
+                              style={{ background: x.colour }}>
+                              {initials(x.name)}
+                            </span>
+                          ))}
+                        </span>
                       </div>
-                      <p className="text-[10px] text-[#A29889] m-0 mt-1.5 tabular-nums">
-                        {amt ? money(amt) : 'no amount yet'}
-                        {d.credit_officers?.name ? ` · ${String(d.credit_officers.name).split(' ')[0]}` : ''}
-                      </p>
-                    </Link>
+                    </div>
                   )
                 })}
 
@@ -165,6 +208,25 @@ export default function DealBoard({ deals, nameFor, colours }: {
           })}
         </div>
       </div>
+
+      {peeking && (() => {
+        const list = byColumn[peeking.phase] || []
+        const i = list.findIndex(x => x.id === peeking.id)
+        const d = list[i]
+        if (!d) return null
+        return (
+          <DealPeek deal={d}
+            lenderName={d.lenders?.name || ''}
+            brokerName={brokerNameOf(d, nameFor)}
+            creditName={d.credit_officers?.name || ''}
+            onClose={() => setPeeking(null)}
+            onStep={dir => {
+              // Wraps, so the end of a column is not a dead end.
+              const next = list[(i + dir + list.length) % list.length]
+              if (next) setPeeking({ id: next.id, phase: peeking.phase })
+            }} />
+        )
+      })()}
     </div>
   )
 }

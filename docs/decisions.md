@@ -1008,3 +1008,62 @@ instead. Same for `deals.lender_id`.
 asking "does this system capture X", read the code. Deal rows tell you what
 happened to be entered on a handful of files, and on a system still being adopted
 that is a story about history, not about design.
+
+## The board is the default view, and deal names are readable on a card (1 Sep 2026)
+
+- **Everyone opens on the board.** It answers "where is everything and what is
+  stuck", which a list of twenty-one rows does not. List stays on the toggle for
+  searching, and reads better on a phone. No preference is stored yet — if people
+  start switching to List and staying there, that is worth knowing before building
+  somewhere to remember it.
+- **Cards show the client, not the filename.** Deals are saved as
+  `Firstname_Lastname_Type_Year`, which is right for a filename and wrong on a
+  card: underscores do not wrap so the name ran out of the card, and both the type
+  and the year are already on screen — the type as a chip directly beneath it, and
+  every deal is the current year. `dealTitle()` strips those and swaps the
+  underscores for spaces.
+- **Nothing is renamed.** Display only; the deal keeps the name it was saved with
+  and the full string is on hover. The way deals are named is not changing.
+- Clamped to two lines, so a deal with three applicants cannot stretch one card
+  and break the column.
+
+## Wider cards, and a look before opening a deal (2 Sep 2026)
+
+Shape borrowed from SalesTrekker's board, information kept as ours.
+
+- **Columns 248px instead of 168px.** The name gets one line and truncates with an
+  ellipsis, full name on hover and in the quick look, so nothing is lost.
+- **The amount is the biggest thing on the card**, because on a board about a loan
+  book that is what the eye should land on. Beside it, whichever date matters at
+  that stage: the settlement date once there is one, otherwise how long it has
+  been sitting there.
+- **The team become avatars** rather than a text chip, which is what freed the
+  width.
+
+### The quick look
+
+- **A binoculars button on every card.** One job: answer "does this need me
+  today". Everything on it is already recorded somewhere; nothing new to fill in.
+- **Nothing on it is editable.** It is a look, not a second place to change
+  things — the same reason dragging a card opens the real panel rather than
+  writing a half record.
+- **No statement figures on it.** Fabio, 2 Sep 2026. A score without its working
+  is worse than no score, and Statements is a screen of its own — the button at
+  the foot goes straight there. The **security address** is on it instead, which
+  is the thing you cannot get from anywhere else at a glance.
+- **The security is the property the loan is actually against.** A fact find can
+  hold several — the family home, an investment, one being sold — so the one being
+  purchased or borrowed against comes first and the rest are counted rather than
+  listed. A panel listing four addresses answers nothing at a glance. Before a
+  fact find has a property on it, the BC at least knows the suburb.
+- **Arrow keys walk the column** and wrap at the end, so nine compliance-sent
+  deals can be looked at in a few seconds instead of opening and backing out of
+  each one.
+
+### Deal names
+
+New deals are `First Last & First Last YYYY` — no underscores, no purpose, because
+the purpose is a chip on the card and the year is already known. **Existing deals
+keep the names they were saved with.** Two deals for one client in one year now
+collide, and that is accepted: the SalesTrekker card carries the identity for the
+API. A clone gets `_clone` appended.

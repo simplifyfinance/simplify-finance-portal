@@ -137,3 +137,26 @@ export function brokerColour(key: string, overrides?: Record<string, string>): s
 export function chipStyle(colour: string): { color: string; background: string; borderColor: string } {
   return { color: colour, background: colour + '14', borderColor: colour + '38' }
 }
+
+// The deal name, as a person would read it.
+//
+// Deals are saved as Firstname_Lastname_Type_Year, which is right for a filename
+// and wrong on a card: underscores do not wrap, so the name ran out of the card,
+// and the Type and Year are already on screen — Type as a chip beside it, and
+// every deal is the current year. What is left is the only part that identifies
+// the client.
+//
+// Display only. NOTHING is renamed; the deal keeps the name it was saved with,
+// and the full string stays available on hover.
+const TYPE_SUFFIX = /[_\s]*(purchase|refinance|investment|construction|smsf|equity[_\s]*release|preapproval|refi)\s*$/i
+
+export function dealTitle(name: string): string {
+  let s = String(name || '').trim()
+  if (!s) return ''
+  s = s.replace(/[_\s]*(19|20)\d{2}\s*$/, '')   // the year
+  s = s.replace(TYPE_SUFFIX, '')                 // and the type, which is a chip already
+  s = s.replace(/_+/g, ' ').replace(/\s+/g, ' ').trim()
+  // If stripping left nothing — a deal named only "Refinance_2026" — the original
+  // is more use than an empty card.
+  return s || String(name || '').replace(/_+/g, ' ').trim()
+}

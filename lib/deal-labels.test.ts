@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { typeOf, useOf, chipsFor, brokerColour, chipStyle } from './deal-labels'
+import { typeOf, useOf, chipsFor, brokerColour, chipStyle, dealTitle } from './deal-labels'
 
 describe('labels derived from the deal', () => {
   it('takes the settlement fields first — they were set later and are more certain', () => {
@@ -59,5 +59,37 @@ describe('labels derived from the deal', () => {
     expect(s.color).toBe('#0E6FA0')
     expect(s.background).toBe('#0E6FA014')
     expect(s.borderColor).toBe('#0E6FA038')
+  })
+})
+
+describe('the deal name on a card', () => {
+  it('drops the type and the year, because both are already on screen', () => {
+    expect(dealTitle('Kornelia_Viragova_Purchase_2026')).toBe('Kornelia Viragova')
+    expect(dealTitle('Sasa_Kalajdzic_Tori_Headington_Refinance_2026')).toBe('Sasa Kalajdzic Tori Headington')
+  })
+
+  it('copes with the stray spaces people actually type', () => {
+    expect(dealTitle('Blake_Toscan _Refinance_2026')).toBe('Blake Toscan')
+    expect(dealTitle('Santiago _Moscatelli_Investment_2026')).toBe('Santiago Moscatelli')
+    expect(dealTitle('Kendall_Hume_ Sam_Delamont_Purchase_2026')).toBe('Kendall Hume Sam Delamont')
+  })
+
+  it('keeps a surname that already contains a space', () => {
+    expect(dealTitle('Belinda_Birchland Hickson_Simon_Hickson_Purchase_2026'))
+      .toBe('Belinda Birchland Hickson Simon Hickson')
+  })
+
+  it('handles a two-word type', () => {
+    expect(dealTitle('Jo_Sample_Equity_Release_2026')).toBe('Jo Sample')
+  })
+
+  it('leaves a name alone when there is nothing to strip', () => {
+    expect(dealTitle('Jo Sample')).toBe('Jo Sample')
+  })
+
+  it('never returns an empty card', () => {
+    // A deal named only for its type would strip down to nothing.
+    expect(dealTitle('Refinance_2026')).toBe('Refinance 2026')
+    expect(dealTitle('')).toBe('')
   })
 })
