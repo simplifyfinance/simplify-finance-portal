@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { checkedWrite } from '@/lib/checked-write'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
@@ -625,19 +626,24 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
     const ownedProperties = (ffLive.properties || []).filter((p: any) => !!p.ownership?.[applicant.id])
     const ownedLiabilities = (ffLive.liabilities || []).filter((l: any) => !!l.ownership?.[applicant.id])
     const ownedAssets = (ffLive.assets || []).filter((a: any) => !!a.ownership?.[applicant.id])
-    await supabase.from('clients').update({
+    return await checkedWrite(supabase.from('clients').update({
       position_properties: ownedProperties,
       position_liabilities: ownedLiabilities,
       position_assets: ownedAssets,
       position_updated_at: new Date().toISOString(),
       position_updated_from_deal_id: deal.id
-    }).eq('id', applicant.clientId)
+    }).eq('id', applicant.clientId), `${applicant.firstName || 'That applicant'}'s position`)
   }
 
   async function finalizePush() {
+    // The position carried onto the client record is what the next deal for this
+    // person starts from. Failing silently here means the next fact find quietly
+    // begins from stale figures, so compliance is NOT marked complete until it
+    // has actually been written.
     for (const applicant of linkableApplicants) {
       if (positionChoices[applicant.id]) {
-        await updateClientPosition(applicant)
+        const problem = await updateClientPosition(applicant)
+        if (problem) { alert(problem + ' Compliance has not been marked complete.'); return }
       }
     }
     setShowPositionPrompt(false)

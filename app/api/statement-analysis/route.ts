@@ -129,7 +129,11 @@ export async function POST(req: NextRequest) {
     const chunk = rows.slice(i, i + 500)
     const { data, error } = await admin.from('deal_statement_transactions').insert(chunk).select('id')
     if (error) {
-      await admin.from('deal_statement_uploads').delete().eq('id', uploadId)
+      // fire-and-forget: tidying up an upload row that already failed. If the tidy
+      // up also fails the worst case is one abandoned row; the caller is being told
+      // about the real failure either way.
+      // fire-and-forget: as above - cleanup after a failure that is already reported.
+    await admin.from('deal_statement_uploads').delete().eq('id', uploadId)
       return NextResponse.json({ error: `The transactions could not be saved: ${error.message}. Nothing was kept.` }, { status: 500 })
     }
     written += (data || []).length

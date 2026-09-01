@@ -17,8 +17,14 @@ export async function POST(req: NextRequest) {
   const supabaseAdmin = createSupabaseAdmin()
 
   // Clear any credit_officers link first, so deleting the account never leaves an
-  // orphaned reference behind (the officer record itself stays, just unlinked)
-  await supabaseAdmin.from('credit_officers').update({ user_id: null }).eq('user_id', userId)
+  // orphaned reference behind (the officer record itself stays, just unlinked).
+  // Checked: if the link survives, the next line deletes the profile and leaves a
+  // credit officer pointing at an account that no longer exists.
+  const { error: unlinkError } = await supabaseAdmin
+    .from('credit_officers').update({ user_id: null }).eq('user_id', userId).select('id')
+  if (unlinkError) {
+    return NextResponse.json({ ok: false, error: 'Could not unlink their credit officer record: ' + unlinkError.message }, { status: 500 })
+  }
 
   const { error: profileError } = await supabaseAdmin.from('user_profiles').delete().eq('id', userId)
   if (profileError) return NextResponse.json({ ok: false, error: profileError.message }, { status: 500 })

@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { checkedWrite } from '@/lib/checked-write'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { ROLES } from '@/lib/permissions'
 import { sameBroker } from '@/lib/broker-key'
@@ -58,15 +59,22 @@ export default function TeamSection() {
     setLoading(false)
   }
 
+  // Who can see what. A blocked write here used to leave the new role on screen
+  // while the person kept the old one - the worst possible way for a permission
+  // change to fail.
   async function updateRole(id: string, role: string) {
-    await supabase.from('user_profiles').update({ role }).eq('id', id)
+    const problem = await checkedWrite(
+      supabase.from('user_profiles').update({ role }).eq('id', id), 'That role')
+    if (problem) { alert(problem); return }
     setUsers(users.map(u => u.id === id ? { ...u, role } : u))
   }
 
   async function saveName(id: string) {
     const trimmed = nameInput.trim()
     if (!trimmed) return
-    await supabase.from('user_profiles').update({ full_name: trimmed }).eq('id', id)
+    const problem = await checkedWrite(
+      supabase.from('user_profiles').update({ full_name: trimmed }).eq('id', id), 'That name')
+    if (problem) { alert(problem); return }
     setUsers(users.map(u => u.id === id ? { ...u, full_name: trimmed } : u))
     setEditingNameId(null)
   }
@@ -104,7 +112,9 @@ export default function TeamSection() {
   }
 
   async function toggleActive(id: string, active: boolean) {
-    await supabase.from('user_profiles').update({ active: !active }).eq('id', id)
+    const problem = await checkedWrite(
+      supabase.from('user_profiles').update({ active: !active }).eq('id', id), 'That change')
+    if (problem) { alert(problem); return }
     setUsers(users.map(u => u.id === id ? { ...u, active: !active } : u))
   }
 

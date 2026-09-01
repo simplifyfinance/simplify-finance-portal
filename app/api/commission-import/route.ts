@@ -187,6 +187,9 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // fire-and-forget: a count shown beside the statement for information. The
+      // lines themselves are already written and checked; this number being stale
+      // changes no figure anyone is paid on.
       await admin.from('commission_statements').update({ rows_imported: written }).eq('id', (stmt as any).id)
 
       results.push({

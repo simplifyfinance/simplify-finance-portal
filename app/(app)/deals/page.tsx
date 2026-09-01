@@ -97,7 +97,13 @@ export default function DealsPage() {
     if (docs && docs.length > 0) {
       const paths = docs.map((d: any) => d.file_path)
       await browser.storage.from('deal-documents').remove(paths)
-      await browser.from('deal_documents').delete().eq('deal_id', id)
+      const { data: gone, error: docErr } = await browser.from('deal_documents')
+        .delete().eq('deal_id', id).select('id')
+      if (docErr || !gone || gone.length === 0) {
+        alert('The deal was NOT deleted - its document records could not be removed'
+          + (docErr ? ': ' + docErr.message : '.') + ' Nothing has been changed.')
+        return
+      }
     }
 
     const { error } = await browser.from('deals').delete().eq('id', id)

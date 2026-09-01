@@ -679,6 +679,13 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
     })
     // One correction per line. Replacing it outright avoids two rows for the
     // same transaction with no way to tell which one won.
+    //
+    // fire-and-forget: a delete that removes nothing and a delete that was
+    // refused look identical - both come back with zero rows and no error - so
+    // there is nothing here that could be checked. Most of the time there is no
+    // earlier correction to remove. If the policy did block it, the insert on
+    // the very next line hits the same table under the same policy and IS
+    // checked, so the failure surfaces there rather than being lost.
     await supabase.from('deal_statement_overrides').delete()
       .eq('deal_id', deal.id).eq('external_id', t.external_id)
     const { data: wrote, error: ovErr } = await supabase.from('deal_statement_overrides').insert({

@@ -7,6 +7,7 @@ import StatementRulesPane from '@/components/StatementRules'
 import { removeRule, TREATMENT_LABEL, type TreatAs } from '@/lib/statement-overrides'
 import CommissionLibrary from '@/components/CommissionLibrary'
 import AiExpenses from '@/components/AiExpenses'
+import { checkedWrite, checkedWriteAllowingNone } from '@/lib/checked-write'
 import DealBoardSettings from '@/components/DealBoardSettings'
 
 const supabase = createSupabaseBrowser()
@@ -88,12 +89,16 @@ export default function SettingsPage() {
       if (isLo) setLoStyleNotes(loStyleNotes); else setComplianceStyleNotes(complianceStyleNotes)
       return
     }
-    await supabase.from('compliance_flags').update({ promoted: true }).eq('id', flag.id)
+    const problem = await checkedWrite(
+      supabase.from('compliance_flags').update({ promoted: true }).eq('id', flag.id), 'That flag')
+    if (problem) { alert(problem + ' The style note was saved, but the flag will come back.'); return }
     loadComplianceFlags()
   }
 
   async function dismissFlag(flagId: string) {
-    await supabase.from('compliance_flags').update({ promoted: true }).eq('id', flagId)
+    const problem = await checkedWrite(
+      supabase.from('compliance_flags').update({ promoted: true }).eq('id', flagId), 'That flag')
+    if (problem) { alert(problem); return }
     loadComplianceFlags()
   }
   const [saving, setSaving] = useState(false)
@@ -235,22 +240,37 @@ export default function SettingsPage() {
 
   async function updateCreditOfficerName(id: string, name: string) {
     setCreditOfficers(creditOfficers.map(o => o.id === id ? { ...o, name } : o))
-    await supabase.from('credit_officers').update({ name, updated_at: new Date().toISOString() }).eq('id', id)
+    const problem = await checkedWrite(
+      supabase.from('credit_officers').update({ name, updated_at: new Date().toISOString() }).eq('id', id),
+      'That name')
+    if (problem) alert(problem)
   }
 
   async function updateCreditOfficerLeave(id: string, field: 'onLeaveFrom' | 'onLeaveUntil', value: string) {
     setCreditOfficers(creditOfficers.map(o => o.id === id ? { ...o, [field]: value || null } : o))
-    await supabase.from('credit_officers').update({ [field === 'onLeaveFrom' ? 'on_leave_from' : 'on_leave_until']: value || null }).eq('id', id)
+    // Leave dates decide who a deal is auto-allocated to. A silent failure here
+    // sends work to someone who is away.
+    const problem = await checkedWrite(
+      supabase.from('credit_officers')
+        .update({ [field === 'onLeaveFrom' ? 'on_leave_from' : 'on_leave_until']: value || null }).eq('id', id),
+      'That leave date')
+    if (problem) { alert(problem); loadCreditTeam() }
   }
 
   async function toggleCreditOfficerActive(id: string, active: boolean) {
     setCreditOfficers(creditOfficers.map(o => o.id === id ? { ...o, active } : o))
-    await supabase.from('credit_officers').update({ active, updated_at: new Date().toISOString() }).eq('id', id)
+    const problem = await checkedWrite(
+      supabase.from('credit_officers').update({ active, updated_at: new Date().toISOString() }).eq('id', id),
+      'That change')
+    if (problem) { alert(problem); loadCreditTeam() }
   }
 
   async function removeCreditOfficer(id: string) {
     setCreditOfficers(creditOfficers.filter(o => o.id !== id))
-    await supabase.from('credit_officers').delete().eq('id', id)
+    const problem = await checkedWrite(supabase.from('credit_officers').delete().eq('id', id), 'That credit officer')
+    // Put them back on screen rather than leaving the list disagreeing with the
+    // database until somebody reloads.
+    if (problem) { alert(problem); loadCreditTeam() }
   }
 
   async function toggleBrokerCoverage(officerId: string, slug: string) {
@@ -260,11 +280,16 @@ export default function SettingsPage() {
     setCreditOfficers(creditOfficers.map(o => o.id === officerId
       ? { ...o, brokers: covers ? o.brokers.filter(b => b !== slug) : [...o.brokers, slug] }
       : o))
-    if (covers) {
-      await supabase.from('credit_officer_brokers').delete().eq('credit_officer_id', officerId).ilike('broker_slug', slug)
-    } else {
-      await supabase.from('credit_officer_brokers').insert({ credit_officer_id: officerId, broker_slug: slug.toLowerCase() })
-    }
+    // Removing a cover that was never recorded deletes nothing, which is not a
+    // failure. Adding one has to land, or the deal goes to nobody.
+    const problem = covers
+      ? await checkedWriteAllowingNone(
+          supabase.from('credit_officer_brokers').delete().eq('credit_officer_id', officerId).ilike('broker_slug', slug),
+          'That change')
+      : await checkedWrite(
+          supabase.from('credit_officer_brokers').insert({ credit_officer_id: officerId, broker_slug: slug.toLowerCase() }),
+          'That change')
+    if (problem) { alert(problem); loadCreditTeam() }
   }
 
   // Which pane is showing. Driven by the URL hash so the sidebar can steer it and a

@@ -1,5 +1,6 @@
 'use client'
 import DropZone from '@/components/DropZone'
+import { checkedWrite } from '@/lib/checked-write'
 import { useState, useEffect, useRef } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import AddressAutocomplete from './AddressAutocomplete'
@@ -506,7 +507,10 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   const [salestrekkerBcc, setSalestrekkerBcc] = useState(deal.salestrekker_bcc || '')
 
   async function saveDealLinks(field: string, value: string) {
-    await supabase.from('deals').update({ [field]: value }).eq('id', deal.id)
+    const problem = await checkedWrite(
+      supabase.from('deals').update({ [field]: value }).eq('id', deal.id), 'That link')
+    if (problem) { setSaveError(problem); return }
+    setSaveError('')
     onDealFieldChange?.(field, value)
   }
 
@@ -558,7 +562,12 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   async function deleteDocument(id: string, filePath: string) {
     if (!confirm('Delete this document? This cannot be undone.')) return
     await supabase.storage.from('deal-documents').remove([filePath])
-    await supabase.from('deal_documents').delete().eq('id', id)
+    const problem = await checkedWrite(
+      supabase.from('deal_documents').delete().eq('id', id), 'That document')
+    // The file itself is already gone from storage. Leaving the row on screen
+    // when the row is still in the database is the honest thing to show.
+    if (problem) { setSaveError(problem); return }
+    setSaveError('')
     setDocuments(prev => prev.filter(doc => doc.id !== id))
   }
 
@@ -577,13 +586,25 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   async function renameDealForApplicants(applicants: FactFindApplicant[]) {
     const app1 = applicants[0]
     const app2 = applicants[1]
+    // First Last & First Last Year - the same format the New deal box uses.
+    // This still built the retired underscore name, and stuck the deal type in
+    // the middle of it: adding a second applicant renamed a deal back to
+    // "Jane_Smith_Purchase_2026" long after that format was dropped. New deals
+    // have no deal type at all now, so it would have written the word
+    // "Purchase" onto a refinance.
+    const person = (f: any, l: any) => [f, l].map(x => String(x || '').trim()).filter(Boolean).join(' ')
     const namePart = (app2 && (app2.firstName || app2.lastName))
-      ? `${app1?.firstName || ''}_${app1?.lastName || ''}_${app2.firstName || ''}_${app2.lastName || ''}`
-      : `${app1?.firstName || ''}_${app1?.lastName || ''}`
-    const currentParts = (deal.deal_name || '').split('_')
-    const year = currentParts[currentParts.length - 1] || new Date().getFullYear().toString()
-    const newDealName = `${namePart}_${deal.deal_type || 'Purchase'}_${year}`
-    await supabase.from('deals').update({ deal_name: newDealName }).eq('id', deal.id)
+      ? [person(app1?.firstName, app1?.lastName), person(app2.firstName, app2.lastName)].filter(Boolean).join(' & ')
+      : person(app1?.firstName, app1?.lastName)
+    // Keep the year the deal was created in, wherever it sits in the old name.
+    const found = String(deal.deal_name || '').match(/(19|20)\d{2}/)
+    const year = found ? found[0] : new Date().getFullYear().toString()
+    const newDealName = `${namePart} ${year}`.replace(/\s+/g, ' ').trim()
+    const problem = await checkedWrite(
+      supabase.from('deals').update({ deal_name: newDealName }).eq('id', deal.id), 'The deal name')
+    if (problem) { setSaveError(problem); return }
+    setSaveError('')
+    onDealFieldChange?.('deal_name', newDealName)
   }
 
   function addApplicant() {

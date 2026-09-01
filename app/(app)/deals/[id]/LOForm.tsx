@@ -317,6 +317,12 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         const ioRate = lender.variableIO?.enabled ? lender.variableIO.rate : (lender.fixedIO?.enabled ? lender.fixedIO.rate : null)
 
         if (piRate) {
+          // fire-and-forget: an observation log, written as a by-product of saving
+          // the LO so the rate library fills itself up over time. The Lending
+          // Options document itself is saved separately and IS checked. Losing a
+          // row here costs one data point in a reference table; it changes nothing
+          // the client sees and nothing the deal depends on. Reporting it would
+          // make a perfectly saved LO look broken.
           await supabase.from('lender_rate_observations').upsert({
             deal_id: deal.id,
             lender_name: lender.lenderName,
@@ -330,6 +336,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           }, { onConflict: 'deal_id,lender_name,repayment_type' })
         }
         if (ioRate) {
+          // fire-and-forget: as above - the rate library, not the deal.
           await supabase.from('lender_rate_observations').upsert({
             deal_id: deal.id,
             lender_name: lender.lenderName,

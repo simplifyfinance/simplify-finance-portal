@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { checkedWrite, checkedWriteAllowingNone } from '@/lib/checked-write'
 
 type Lender = { id: string; name: string; active: boolean }
 type Product = {
@@ -79,6 +80,10 @@ export default function LenderLibrary() {
   const [importFile, setImportFile] = useState<File | null>(null)
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState('')
+  // Every write on this screen used to update the list on screen and never look
+  // at what the database said. A blocked write left the change visible until the
+  // page was reloaded, and then it was simply gone.
+  const [writeError, setWriteError] = useState('')
   const [extractedProducts, setExtractedProducts] = useState<ExtractedProduct[]>([])
   const [importStep, setImportStep] = useState<'input' | 'review'>('input')
   const [savingImport, setSavingImport] = useState(false)
@@ -114,20 +119,31 @@ export default function LenderLibrary() {
   }
 
   async function toggleLenderActive(id: string, active: boolean) {
-    await supabase.from('lenders').update({ active: !active }).eq('id', id)
+    const problem = await checkedWrite(
+      supabase.from('lenders').update({ active: !active }).eq('id', id), 'That lender')
+    if (problem) { setWriteError(problem); return }
+    setWriteError('')
     setLenders(prev => prev.map(l => l.id === id ? { ...l, active: !active } : l))
   }
 
   async function deleteLender(id: string) {
-    await supabase.from('lender_products').delete().eq('lender_id', id)
-    await supabase.from('lenders').delete().eq('id', id)
+    // A lender with no products deletes nothing here, which is not a failure.
+    const pProblem = await checkedWriteAllowingNone(
+      supabase.from('lender_products').delete().eq('lender_id', id), 'That lender\u2019s products')
+    if (pProblem) { setWriteError(pProblem); return }
+    const problem = await checkedWrite(supabase.from('lenders').delete().eq('id', id), 'That lender')
+    if (problem) { setWriteError(problem); return }
+    setWriteError('')
     setLenders(prev => prev.filter(l => l.id !== id))
     setProducts(prev => prev.filter(p => p.lender_id !== id))
     setConfirmDelete(null)
   }
 
   async function deleteProduct(id: string) {
-    await supabase.from('lender_products').delete().eq('id', id)
+    const problem = await checkedWrite(
+      supabase.from('lender_products').delete().eq('id', id), 'That product')
+    if (problem) { setWriteError(problem); return }
+    setWriteError('')
     setProducts(prev => prev.filter(p => p.id !== id))
     setConfirmDelete(null)
   }
@@ -164,25 +180,38 @@ export default function LenderLibrary() {
     if (!productModal || !productForm.product_name.trim()) return
     setSavingProduct(true)
     if (editProductId) {
-      await supabase.from('lender_products').update(productForm).eq('id', editProductId)
+      const problem = await checkedWrite(
+        supabase.from('lender_products').update(productForm).eq('id', editProductId), 'That product')
+      if (problem) { setWriteError(problem); setSavingProduct(false); return }
       setProducts(prev => prev.map(p => p.id === editProductId ? { ...p, ...productForm } : p))
     } else {
       const payload = { ...productForm, lender_id: productModal.lenderId }
-      const { data } = await supabase.from('lender_products').insert(payload).select().single()
-      if (data) setProducts(prev => [...prev, data])
+      const { data, error } = await supabase.from('lender_products').insert(payload).select().single()
+      if (error || !data) {
+        setWriteError('That product was not saved - ' + (error?.message || 'the database refused it.'))
+        setSavingProduct(false); return
+      }
+      setProducts(prev => [...prev, data])
     }
+    setWriteError('')
     setProductModal(null)
     setEditProductId(null)
     setSavingProduct(false)
   }
 
   async function toggleProductActive(id: string, active: boolean) {
-    await supabase.from('lender_products').update({ active: !active }).eq('id', id)
+    const problem = await checkedWrite(
+      supabase.from('lender_products').update({ active: !active }).eq('id', id), 'That product')
+    if (problem) { setWriteError(problem); return }
+    setWriteError('')
     setProducts(prev => prev.map(p => p.id === id ? { ...p, active: !active } : p))
   }
 
   async function toggleProductDraft(id: string, isDraft: boolean) {
-    await supabase.from('lender_products').update({ is_draft: !isDraft }).eq('id', id)
+    const problem = await checkedWrite(
+      supabase.from('lender_products').update({ is_draft: !isDraft }).eq('id', id), 'That product')
+    if (problem) { setWriteError(problem); return }
+    setWriteError('')
     setProducts(prev => prev.map(p => p.id === id ? { ...p, is_draft: !isDraft } : p))
   }
 
@@ -286,6 +315,12 @@ export default function LenderLibrary() {
 
   return (
     <section className="mb-10">
+      {writeError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-xs mb-3 flex items-start gap-2">
+          <span className="flex-1">{writeError}</span>
+          <button onClick={() => setWriteError('')} className="underline shrink-0">Dismiss</button>
+        </div>
+      )}
       <div className="flex justify-between items-center mb-2">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Lender Library</h2>
         <div className="flex gap-2">

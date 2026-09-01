@@ -92,8 +92,15 @@ export async function POST(req: NextRequest) {
         })
       } catch (e: any) {
         // Release the claim so a later trigger can retry, rather than a timestamp
-        // permanently blocking an email that never actually sent.
-        await supabase.from('deals').update({ salestrekker_created_at: null }).eq('id', dealId)
+        // permanently blocking an email that never actually sent. Checked,
+        // because a rollback that silently fails leaves the deal marked as
+        // pushed forever with no email ever sent - the very fault this line is
+        // here to prevent.
+        const { data: released, error: relErr } = await supabase.from('deals')
+          .update({ salestrekker_created_at: null }).eq('id', dealId).select('id')
+        if (relErr || !released?.length) {
+          console.error('[notify-salestrekker] could not release the claim - this deal will not retry', relErr)
+        }
         console.error('[notify-salestrekker] notifyEllieCreateCard failed', e)
         return NextResponse.json({ ok: false, error: e?.message || 'Notification failed' }, { status: 500 })
       }
@@ -157,12 +164,18 @@ export async function POST(req: NextRequest) {
           })
 
           if (!uploadError) {
-            await supabase.from('deal_documents').insert({
+            // The file is already in storage. Without this row nothing lists it,
+            // so it becomes a file nobody can find - worth a line in the log even
+            // though it must never block the push.
+            const { data: rec, error: recErr } = await supabase.from('deal_documents').insert({
               deal_id: dealId,
               file_name: fileName,
               file_path: filePath,
               file_type: 'application/pdf'
-            })
+            }).select('id')
+            if (recErr || !rec?.length) {
+              console.error('[notify-salestrekker] the pack was uploaded but not recorded on the deal', recErr)
+            }
             attachments.push({ filename: fileName, content: result.buffer.toString('base64') })
           }
         }
