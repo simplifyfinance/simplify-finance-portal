@@ -93,17 +93,23 @@ describe('when it starts asking', () => {
     expect(loanIdStatus({ settled_total: 500000 }).tone).toBe('not_settled')
   })
 
-  it('stays quiet for the first few weeks - the RCTI is a month away', () => {
+  it('stays quiet for the first fortnight - the RCTI is a month away', () => {
     const s = loanIdStatus(settled(), AT('2026-08-04'))
     expect(s.tone).toBe('quiet')
     expect(s.label).toBe('Loan ID needed')
     expect(s.days).toBe(3)
   })
 
-  it('goes amber once the statement is close', () => {
-    const s = loanIdStatus(settled(), AT('2026-08-27'))
-    expect(s.days).toBe(26)
-    expect(s.days! >= QUIET_DAYS).toBe(true)
+  it('the day before the threshold is still quiet', () => {
+    const s = loanIdStatus(settled(), AT('2026-08-15'))
+    expect(s.days).toBe(14)
+    expect(s.tone).toBe('quiet')
+  })
+
+  it('goes amber on day 15, leaving a fortnight to chase the bank', () => {
+    const s = loanIdStatus(settled(), AT('2026-08-16'))
+    expect(s.days).toBe(15)
+    expect(QUIET_DAYS).toBe(15)
     expect(s.tone).toBe('amber')
     expect(s.label).toContain('RCTI is due')
   })

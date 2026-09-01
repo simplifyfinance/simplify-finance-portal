@@ -95,7 +95,7 @@ export default function LoanIds({ deal, onSaved, onSkip, heading }: {
           </button>
         )}
         <span className={`text-[12px] ${failed ? 'text-[#C4553B] font-medium' : msg ? 'text-[#1E7A4A]' : 'text-[#A29889]'}`}>
-          {msg || 'You have about 30 days. Nothing is chased until the statement is close.'}
+          {msg || 'Payment lands about 30 days after settlement. This is chased from day 15.'}
         </span>
       </div>
     </div>

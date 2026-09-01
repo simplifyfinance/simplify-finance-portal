@@ -90,7 +90,11 @@ export function applyLoanIds(deal: any, values: string[]): any[] {
 // time for the input to be made by the time RCTI comes." Flagging on day three
 // would be noise, and a warning people see every day is a warning they stop
 // seeing. It goes amber only when the statement is close.
-export const QUIET_DAYS = 25
+//
+// Fabio, 1 Sep 2026: 15, not 25. Half the run-up rather than the last few days -
+// it leaves the team a fortnight to chase the bank before the statement lands,
+// instead of finding out about it with a week to go.
+export const QUIET_DAYS = 15
 
 export type LoanIdTone = 'not_settled' | 'complete' | 'quiet' | 'amber'
 
