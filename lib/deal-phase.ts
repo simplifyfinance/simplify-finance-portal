@@ -151,3 +151,19 @@ export function phaseSince(deal: any): string | null {
   MILESTONES.forEach((m, i) => { if (m.done(deal)) last = i })
   return last === -1 ? (deal.created_at || null) : MILESTONES[last].at(deal)
 }
+
+// May the Lending options form write the deal's loan_amount?
+//
+// Only until the loan is lodged. Before that the LO figure is the best number
+// anyone has, and writing it is how the board gets an amount at all. After
+// lodgement the lodged and settled snapshots are the record of what actually
+// happened, and the LO is an out-of-date estimate.
+//
+// This exists because the LO autosave had no such guard and no dirty flag, so
+// simply OPENING the Lending options tab on a settled deal replaced the settled
+// figure with the estimate 700ms later - and every screen that reports settled
+// volume fell through to it. Fabio, 1 Sep 2026: lodged and settled are the two
+// amounts that are kept; everything before them is a working figure that moves.
+export function loMayWriteAmount(deal: any): boolean {
+  return !deal?.lodged_at && !deal?.settled_at
+}

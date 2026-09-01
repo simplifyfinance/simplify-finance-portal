@@ -84,8 +84,28 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
     setSaving(true); setErr('')
     const iso = new Date(when + 'T00:00:00').toISOString()
     const patch: any = { [stage.key]: iso }
-    if (stage.snap === 'lodged') { patch.lender = lender || null; patch.loan_amount = total || null }
-    if (stage.snap === 'settled') { patch.lender = lender || null; patch.loan_amount = total || null }
+    // Lodged and settled are the two amounts that are KEPT. Everything before
+    // them - BC, LO, compliance - is a working figure that moves, and the amount
+    // can change at any point along the way.
+    //
+    // Both used to write only loan_amount, so whichever ran last won and the
+    // lodged figure vanished the moment a deal settled. Meanwhile
+    // lodged_total / lodged_splits / settled_total / settled_splits were read in
+    // eight places and written in none. They are written here now, and because
+    // every reader prefers them over loan_amount, what settled can no longer be
+    // overwritten by anything else.
+    if (stage.snap === 'lodged') {
+      patch.lender = lender || null
+      patch.lodged_total = total || null
+      patch.lodged_splits = splits
+      patch.loan_amount = total || null
+    }
+    if (stage.snap === 'settled') {
+      patch.lender = lender || null
+      patch.settled_total = total || null
+      patch.settled_splits = splits
+      patch.loan_amount = total || null
+    }
 
     if (stage.snap) {
       const { data: sess } = await supabase.auth.getUser()

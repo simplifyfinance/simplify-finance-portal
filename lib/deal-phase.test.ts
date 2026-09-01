@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { phaseOf, isFinished, isInApplication, amountOf, phaseSince, PHASE_ORDER } from './deal-phase'
+import { phaseOf, isFinished, isInApplication, amountOf, phaseSince, PHASE_ORDER , loMayWriteAmount } from './deal-phase'
 
 const ff = { fact_find_data: { applicants: [{}] } }
 
@@ -111,5 +111,23 @@ describe('which column a deal is in', () => {
     expect(PHASE_ORDER).toHaveLength(10)
     expect(PHASE_ORDER.indexOf('compliance_sent')).toBeLessThan(PHASE_ORDER.indexOf('lodged'))
     expect(PHASE_ORDER.indexOf('preapproved')).toBeLessThan(PHASE_ORDER.indexOf('formal'))
+  })
+})
+
+describe('the Lending options form may only write the amount before lodgement', () => {
+  it('writes while the deal is still being written', () => {
+    expect(loMayWriteAmount({})).toBe(true)
+    expect(loMayWriteAmount({ lo_completed_at: '2026-08-01' })).toBe(true)
+    expect(loMayWriteAmount({ compliance_sent_at: '2026-08-10' })).toBe(true)
+  })
+
+  it('stops the moment the loan is lodged', () => {
+    expect(loMayWriteAmount({ lodged_at: '2026-08-14' })).toBe(false)
+  })
+
+  it('stops for a settled deal even if lodged was never recorded', () => {
+    // Nine deals were pushed to compliance before lodged_at existed. Opening an
+    // LO on one of those must still not overwrite what settled.
+    expect(loMayWriteAmount({ settled_at: '2026-07-14' })).toBe(false)
   })
 })

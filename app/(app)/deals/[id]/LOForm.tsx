@@ -1,11 +1,12 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
 import BrokerAssignment from './BrokerAssignment'
 import { can } from '@/lib/permissions'
 import { templateLabel } from '@/lib/templates'
 import { proceedCredit } from '@/lib/deal-status'
+import { loMayWriteAmount } from '@/lib/deal-phase'
 
 // A finished "client agreed" is not something to hide. It used to disappear the
 // instant it was pressed, which made "already done" look exactly like "broken".
@@ -297,6 +298,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   }
 
   const [d, setD] = useState<LOData>(initData)
+  // What the database last agreed with. Anything equal to this is not an edit,
+  // so opening the form, or a re-render, never writes.
+  const savedRef = useRef<string | null>(null)
   const canSendToClient = can(userRole, 'sendClientEmails')
 
   useEffect(() => {
@@ -398,6 +402,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         const loaded = data.lo_data as LOData
         if (!loaded.importantNotes) loaded.importantNotes = (LO_TEMPLATE_NOTES[loaded.template] || []).join('\n')
         if (!loaded.refinanceSplits) loaded.refinanceSplits = initRefinanceSplits()
+        // Remembered so the autosave can tell "the form was loaded" apart from
+        // "somebody typed something". Without this, setD below counts as a
+        // change and the form saves itself 700ms after it opens.
+        savedRef.current = JSON.stringify(loaded)
         setD(loaded)
         if (loaded.emailHtml) setEmailHtml(loaded.emailHtml)
       }
@@ -410,6 +418,15 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     // record. Debounced because this previously wrote on every keystroke, which hammers the
     // database and lets an older payload land after a newer one.
     const t = setTimeout(() => {
+      // Opening the form is not editing it. The state changes when the saved
+      // record is loaded in, which looked identical to a keystroke - so every
+      // visit wrote the record back, and on a lodged or settled deal that meant
+      // overwriting the real amount with this form's estimate.
+      const now = JSON.stringify(d)
+      // The very first run is the form arriving on screen, never a person.
+      if (savedRef.current === null) { savedRef.current = now; return }
+      if (now === savedRef.current) return
+
       // The loan amount goes onto the DEAL, not just into lo_data.
       //
       // `deals.loan_amount` is read by the pipeline, the settlements board, the
@@ -420,12 +437,16 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       const loanNum = Number(String(d.loanAmount || '').replace(/[^0-9.]/g, '')) || null
       const recId = lenderIdByName[String(d.recommendedLender || '').trim().toLowerCase()] || null
       const patch: any = { lo_data: d }
-      if (loanNum) patch.loan_amount = loanNum
+      // Only while the deal is still being written. Once it is lodged, what was
+      // lodged and what settled are the record; this figure is an estimate that
+      // has been overtaken. See loMayWriteAmount.
+      if (loanNum && loMayWriteAmount(deal)) patch.loan_amount = loanNum
       if (recId) patch.lender_id = recId
 
       supabase.from('deals').update(patch).eq('id', deal.id).select('id').then(({ data: rows, error }) => {
         if (error) { console.error('LO autosave failed:', error); setSaveError('NOT SAVED - ' + error.message); return }
         if (!rows || rows.length === 0) { console.error('LO autosave affected zero rows'); setSaveError('NOT SAVED - your changes did not reach the database. Do not close this tab.'); return }
+        savedRef.current = now
         setSaveError('')
         setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
       })
