@@ -8,6 +8,7 @@ import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
 import { ageGroupOf, stageAge, GROUP_ORDER, GROUP_STYLE } from '@/lib/deal-age'
 import { useBrokerNames } from '@/lib/broker-names'
 import { phaseOf, isFinished, isInApplication, PHASE_LABEL } from '@/lib/deal-phase'
+import DealBoard from '@/components/DealBoard'
 type Client = { id: string; first_name: string; last_name: string; email?: string; phone?: string }
 type Deal = {
   id: string; deal_name: string; deal_type: string; stage: string; status: string; assigned_broker: string;
@@ -104,6 +105,10 @@ export default function DealsPage() {
   // be one, and it hid `completed` while permanently showing `lost` — so three
   // dead deals sat at the bottom of the list forever and nine live post-compliance
   // ones were invisible.
+  // Two ways of looking at the same deals, never two sources of truth. The board
+  // is the morning "where is everything"; the list is for searching, and reads
+  // better on a phone.
+  const [layout, setLayout] = useState<'list' | 'board'>('list')
   const [showSettled, setShowSettled] = useState(false)
   const [showLost, setShowLost] = useState(false)
   const filtered = deals.filter(d =>
@@ -117,6 +122,19 @@ export default function DealsPage() {
     d.clients?.first_name?.toLowerCase().includes(search.toLowerCase()) ||
     d.clients?.last_name?.toLowerCase().includes(search.toLowerCase()))
   )
+  // The board has a Settled column of its own, so it must not be handed a list
+  // with settled deals already filtered out — it would draw an empty column and
+  // look broken. Lost deals stay off it entirely; a dead deal is not work.
+  const boardDeals = deals.filter(d =>
+    phaseOf(d) !== 'lost' &&
+    (boxFilter === 'all' ||
+      (boxFilter === 'bc' && d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at) ||
+      (boxFilter === 'lo' && d.lo_completed_at && !d.compliance_completed_at) ||
+      (boxFilter === 'compliance' && isInApplication(d))) &&
+    (d.deal_name?.toLowerCase().includes(search.toLowerCase()) ||
+     d.clients?.first_name?.toLowerCase().includes(search.toLowerCase()) ||
+     d.clients?.last_name?.toLowerCase().includes(search.toLowerCase())))
+
   const totalAssigned = deals.length
   const isPersonalViewer = !!brokerKey || (userRole === 'staff' && !!creditOfficerId)
   const summaryLabel = isPersonalViewer ? 'Your deals' : 'Total deals'
@@ -187,6 +205,14 @@ export default function DealsPage() {
         </div>
       )}
       <div className="flex items-center gap-3 mb-6">
+        <div className="flex gap-0.5 border border-gray-200 rounded-lg overflow-hidden bg-white flex-none">
+          {([['list', 'List'], ['board', 'Board']] as const).map(([k, label]) => (
+            <button key={k} onClick={() => setLayout(k)}
+              className={`text-sm px-3 py-2 ${layout === k ? 'bg-[#2DBEFF] text-white font-medium' : 'text-gray-500 hover:bg-gray-50'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input type="text" placeholder="Search by name, client, purpose..." value={search} onChange={e => setSearch(e.target.value)}
@@ -206,6 +232,8 @@ export default function DealsPage() {
       </div>
       {loading ? (
         <div className="text-sm text-gray-400 text-center py-12">Loading deals...</div>
+      ) : layout === 'board' ? (
+        <DealBoard deals={boardDeals} nameFor={nameFor} />
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
           <Briefcase size={32} className="text-gray-300 mx-auto mb-3" />

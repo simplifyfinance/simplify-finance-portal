@@ -924,3 +924,47 @@ The last two screens still reading `deals.stage` and the retired `completed`.
   rather than one number that mixed the two.
 
 Nothing anywhere now reads `deals.stage`. The column should be dropped.
+
+## The deal board (1 Sep 2026)
+
+A List / Board toggle on the Deals page, not a new item in the sidebar. Deals
+already appear in four places — Deals, Dashboard, Pipeline, Settlements — and a
+fifth would make it worse. Same deals, same filters, same phase function, drawn
+two ways: the board is the morning "where is everything and what is stuck", the
+list is for searching and reads better on a phone.
+
+- **Nine columns**, from `PHASE_ORDER`. Lost deals are not on it at all — a dead
+  deal is not work. Settled has its own column, so the board is handed a list
+  that has NOT had settled deals filtered out; otherwise it would draw an empty
+  column and look broken.
+- **Oldest first inside a column.** The top of a column is the thing to do first.
+- **Every column carries its own total.** "How much is sitting here" is the
+  question a board gets asked from across the room. A column with anything red in
+  it goes red itself.
+- **Cards carry derived labels, never typed ones.** Transaction and property use
+  are two independent facts — "Purchase" and "Owner occupied" are both true at
+  once — so they are two chips, from `lib/deal-labels.ts`. The settlement fields
+  win over the BC template, which wins over the words on the deal, because each is
+  set later and is more certain than the one before it.
+- **Broker colour** comes from Settings when someone has picked one, and from a
+  stable hash of the broker key until then, so the board is readable on day one
+  and nobody has to set nine colours before it is useful. Never random — the same
+  key always gives the same colour, or the board would repaint on every load.
+- **Nothing on a card is colour alone.** Every chip has its word in it. A
+  colourblind reader, a printout or a phone in sunlight loses nothing.
+
+### Dragging
+
+**The board is a view of the truth, never a second way of writing it.**
+
+- Dragging backwards is refused, with a sentence saying why and where to undo it
+  properly. A board that lets you unsettle a loan by mis-dropping is worse than no
+  board.
+- Dragging into **Compliance sent** is refused: that state means the pack actually
+  went to SalesTrekker, and dragging cannot make that true.
+- Every remaining step writes a snapshot of the loan as it stood — lender, total,
+  every split — because commission is calculated from what SETTLED and a single
+  overwritten `loan_amount` would destroy that history. A drag therefore **opens
+  the panel that asks for those**, rather than writing a half-record. It is the
+  same button, reached a different way, which is exactly what
+  `docs/settlements.md` asked for.
