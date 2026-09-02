@@ -589,7 +589,7 @@ Client: ${context.clientName}. Purchase price: $${context.purchasePrice}. Loan: 
 
       creditHistoryComment: `CRM FIELD: Credit history comments
 
-Explain any potential credit history comments — must reference any comments about repayment history or conduct (payment history, bankruptcies, judgements, simultaneous credit applications). If all credit history answers are No, confirm a clean credit history and note that no Equifax credit score is currently available, so the credit team should confirm.
+Explain any potential credit history comments — must reference any comments about repayment history or conduct (payment history, bankruptcies, judgements, simultaneous credit applications). If all credit history answers are No, confirm a clean credit history on the basis of the client's declarations, and note that these are declarations rather than a verified credit report, so the credit team should confirm.
 
 Client: ${context.clientName}. Risk answers: ${context.risks}. Write 2-3 paragraphs.`,
 
@@ -1041,7 +1041,7 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
             </div>
 
             <div>
-              <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-2">Credit history <span className="normal-case text-[10px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded font-medium ml-1">⚠ Team must answer — Equifax not integrated</span></div>
+              <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-2">Credit history <span className="normal-case text-[10px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded font-medium ml-1">⚠ Team must answer — from the client's declarations</span></div>
               {[
                 { key: 'problemsMeetingCommitments', label: 'Problems meeting fixed commitments including mobile payments?' },
                 { key: 'officerInLiquidation', label: 'Officer/shareholder of company where liquidator appointed?' },
@@ -1200,7 +1200,7 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
             <div className="grid grid-cols-2 gap-4">
               {[
                 { key: 'depositComment', label: 'Deposit / equity' },
-                { key: 'creditHistoryComment', label: 'Credit history', warning: '⚠ Confirm Equifax with client' },
+                { key: 'creditHistoryComment', label: 'Credit history', warning: '⚠ Confirm credit history with the client' },
               ].map(({ key, label, warning }) => (
                 <div key={key} className="mb-4">
                   <label className="text-xs font-medium text-gray-500 block mb-1">

@@ -77,7 +77,7 @@ export const RISK_GROUPS: Group[] = [
     { key: 'hasWill', label: 'Do you have a will?' },
     { key: 'circumstancesImpact', label: 'Any circumstances that may impact financial commitments?' },
   ]},
-  { title: 'Credit history', note: 'Team must answer — Equifax not integrated', rows: [
+  { title: 'Credit history', note: "Team must answer — from the client's declarations", rows: [
     { key: 'creditImpairment', label: 'Any credit impairment?' },
     { key: 'creditEnquiries', label: 'Recent credit enquiries?' },
   ]},

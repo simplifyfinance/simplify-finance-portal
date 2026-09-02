@@ -53,8 +53,12 @@ describe('the lists are defined once', () => {
     expect(RISK_GROUPS.map(g => g.title))
       .toEqual(['Financial situation', 'Exit strategy', 'Financial security', 'Credit history'])
   })
-  it('flags that credit history cannot be answered automatically', () => {
-    expect(RISK_GROUPS.find(g => g.title === 'Credit history')!.note).toMatch(/Equifax/)
+  it('flags that credit history comes from the client, not from a credit report', () => {
+    const note = RISK_GROUPS.find(g => g.title === 'Credit history')!.note!
+    expect(note).toMatch(/Team must answer/)
+    // Simplify does not use Equifax. Naming a system nobody here uses made the
+    // write-up assert something untrue. Fabio, 2 Sep 2026: "we dont do Equifax".
+    expect(note).not.toMatch(/Equifax/i)
   })
   it('has the six product groups', () => {
     expect(PRODUCT_GROUPS).toHaveLength(6)
