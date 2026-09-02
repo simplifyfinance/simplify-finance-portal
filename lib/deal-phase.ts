@@ -28,8 +28,37 @@ export type Phase =
 // A deal sits in the phase of the FURTHEST milestone it has reached, so a step
 // skipped in real life — a BC done outside the portal, a loan that never had a
 // preapproval — is history, not something holding the deal back.
+// A NEW DEAL STARTS AT FACT FIND.
+//
+// The first milestone used to be "fact_find_data exists and is not empty", and
+// the new-deal form seeds fact_find_data with the applicants from the modal -
+// blank addresses, blank employment, blank income, all of it. So every deal was
+// born in the BC column and opened on the BC tab, before anybody had typed a
+// thing. Fabio, 2 Sep 2026: "when deal is created it sits on BC workflow on
+// board view and it should strat at fact find and open at fact find".
+//
+// Past the fact find means somebody has done fact-find WORK. Only values a
+// person has to type count - never the presence of a row, because the form seeds
+// an empty address, an empty job and an empty income the moment the tab is
+// opened. Starting the BC counts too: if there are BC figures, the fact find is
+// behind us however thin it looks.
+export function pastFactFind(deal: any): boolean {
+  if (deal?.bc_data && Object.keys(deal.bc_data).length > 0) return true
+  const ff = deal?.fact_find_data
+  if (!ff) return false
+  const has = (v: any) => String(v ?? '').trim() !== ''
+  if ((ff.assets || []).length > 0) return true
+  if ((ff.properties || []).length > 0) return true
+  if ((ff.liabilities || []).length > 0) return true
+  return (ff.applicants || []).some((a: any) =>
+    has(a?.dob)
+    || (a?.addresses || []).some((x: any) => has(x?.address))
+    || (a?.employment || []).some((e: any) => has(e?.employerName) || has(e?.occupation))
+    || (a?.income || []).some((i: any) => has(i?.grossSalary) || has(i?.seBusinessName)))
+}
+
 const MILESTONES: { phase: Phase; done: (d: any) => boolean; at: (d: any) => string | null }[] = [
-  { phase: 'bc',              done: d => !!d?.fact_find_data && Object.keys(d.fact_find_data).length > 0,
+  { phase: 'bc',              done: d => pastFactFind(d),
                               at:   d => d?.created_at || null },
   { phase: 'lo',              done: d => !!d?.client_proceeded,
                               at:   d => d?.proceeded_at || d?.bc_completed_at || null },
@@ -217,4 +246,70 @@ export function loMayWriteAmount(deal: any): boolean {
 export function isWithLender(deal: any): boolean {
   if (phaseOf(deal) === 'lost') return false
   return PHASE_ORDER.indexOf(phaseOf(deal)) >= PHASE_ORDER.indexOf('lodged')
+}
+
+
+// MOVING A DEAL BACKWARDS ON THE BOARD.
+//
+// The board refused it outright - "a deal does not go backwards" - which is a
+// fine principle and a bad rule, because deals do get recorded wrongly and the
+// only way out was to hunt for the panel that set the date. Fabio, 2 Sep 2026:
+// "on board view we cant move the deal backwards we should be able to".
+//
+// A phase is not a column somebody dragged a card into; it is derived from these
+// timestamps. So moving back is not a move at all - it is clearing what was
+// recorded. That has to be said out loud before it happens, which is why this
+// returns the field names rather than just doing it.
+export const PHASE_FIELDS: Partial<Record<Phase, string[]>> = {
+  lo:                 ['client_proceeded', 'proceeded_at'],
+  compliance:         ['lo_client_proceeded', 'lo_proceeded_at'],
+  compliance_sent:    ['compliance_sent_at'],
+  lodged:             ['lodged_at'],
+  preapproved:        ['preapproval_at'],
+  offer_accepted:     ['offer_accepted_at'],
+  formal:             ['formal_approval_at'],
+  contracts_returned: ['contracts_returned_at'],
+  settlement_booked:  ['settlement_booked_at'],
+  settled:            ['settled_at'],
+}
+
+// What the deal will stop saying, in the words somebody would use out loud.
+export const PHASE_UNDO_LABEL: Partial<Record<Phase, string>> = {
+  lo:                 'The client agreed to proceed after the BC',
+  compliance:         'The client agreed to proceed after the lending options',
+  compliance_sent:    'Compliance was sent to the credit team',
+  lodged:             'The loan was lodged',
+  preapproved:        'The loan was pre-approved',
+  offer_accepted:     'The offer was accepted',
+  formal:             'The loan was formally approved',
+  contracts_returned: 'The loan documents came back',
+  settlement_booked:  'Settlement was booked',
+  settled:            'The loan settled',
+}
+
+// The two that do more than move a card. Said before it happens, not after.
+export const PHASE_UNDO_WARNING: Partial<Record<Phase, string>> = {
+  compliance_sent: 'The deal can then be pushed to SalesTrekker again, which emails the credit team a second time with both PDFs attached.',
+  settled: 'This loan stops counting as settled, so it drops out of the commission and trail figures until settlement is recorded again.',
+}
+
+export type MoveBack =
+  | { ok: true; clearing: Phase[]; fields: string[] }
+  | { ok: false; because: string }
+
+export function moveBack(from: Phase, to: Phase): MoveBack {
+  const fi = PHASE_ORDER.indexOf(from), ti = PHASE_ORDER.indexOf(to)
+  if (ti < 0 || fi < 0 || ti >= fi) return { ok: false, because: 'That is not a move backwards.' }
+  // Fact Find is not a date anybody set - it is where a deal sits until somebody
+  // types into the fact find. Dragging back to it would mean deleting the fact
+  // find itself, which is not what dropping a card should ever do.
+  if (to === 'fact_find') {
+    return { ok: false, because: 'A deal goes back to Fact Find by clearing the fact find, not by dragging. Nothing has been changed.' }
+  }
+  const clearing = PHASE_ORDER.slice(ti + 1, fi + 1).filter(p => PHASE_FIELDS[p])
+  const fields = clearing.flatMap(p => PHASE_FIELDS[p] || [])
+  if (fields.length === 0) {
+    return { ok: false, because: 'There is nothing recorded between those two stages to undo.' }
+  }
+  return { ok: true, clearing, fields }
 }

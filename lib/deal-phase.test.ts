@@ -1,12 +1,16 @@
 import { describe, it, expect } from 'vitest'
-import { phaseOf, isFinished, isInApplication, amountOf, phaseSince, PHASE_ORDER , loMayWriteAmount, isWithLender } from './deal-phase'
+import { phaseOf, isFinished, isInApplication, amountOf, phaseSince, PHASE_ORDER , loMayWriteAmount, isWithLender, pastFactFind, tabForPhase, moveBack, PHASE_FIELDS, PHASE_UNDO_LABEL } from './deal-phase'
 
-const ff = { fact_find_data: { applicants: [{}] } }
+// A fact find somebody has actually typed into. An applicant row on its own is
+// not that - the new-deal form seeds one before anybody has touched the tab.
+const ff = { fact_find_data: { applicants: [{ dob: '14/03/1988' }] } }
 
 describe('which column a deal is in', () => {
   it('starts at fact find, and stays there until the form has something in it', () => {
     expect(phaseOf({})).toBe('fact_find')
     expect(phaseOf({ fact_find_data: {} })).toBe('fact_find')
+    // The seeded applicant the new-deal form creates is not "something in it".
+    expect(phaseOf({ fact_find_data: { applicants: [{}] } })).toBe('fact_find')
     expect(phaseOf(ff)).toBe('bc')
   })
 
@@ -157,5 +161,118 @@ describe('with the lender', () => {
     // lost sits last in PHASE_ORDER, which would otherwise make every dead deal
     // look like it had moved on.
     expect(isWithLender({ ...done, lodged_at: '2026-08-22', status: 'lost' })).toBe(false)
+  })
+})
+
+// A deal is created with fact_find_data already seeded - the applicants from the
+// modal, plus a blank address, a blank job and a blank income. That is not
+// fact-find work, and treating it as work put every new deal in the BC column
+// and opened it on the BC tab.
+describe('a new deal starts at Fact Find', () => {
+  const seeded = {
+    fact_find_data: {
+      applicants: [{
+        id: 'a1', firstName: 'Natasha', lastName: 'Chapman', dob: '',
+        addresses: [{ id: 'x', address: '', residentialStatus: '', isCurrent: true, startDate: '' }],
+        employment: [{ id: 'y', isCurrent: true, employmentBasis: 'Full time', occupation: '', employerName: '' }],
+        income: [{ id: 'z', incomeType: 'PAYG', grossSalary: '' }],
+      }],
+      assets: [], properties: [], liabilities: [],
+    },
+  }
+
+  it('is at Fact Find the moment it is created', () => {
+    expect(phaseOf(seeded)).toBe('fact_find')
+    expect(pastFactFind(seeded)).toBe(false)
+  })
+
+  it('opens on the Fact Find tab', () => {
+    expect(tabForPhase(phaseOf(seeded))).toBe('FactFind')
+  })
+
+  it('stays at Fact Find when somebody only opens the tab', () => {
+    // Opening the tab autosaves the same empty rows back. Nothing was typed.
+    expect(phaseOf({ fact_find_data: { applicants: [{ addresses: [{ address: '' }], employment: [{}], income: [{}] }] } }))
+      .toBe('fact_find')
+  })
+
+  it('moves to BC once a date of birth is typed', () => {
+    const d = JSON.parse(JSON.stringify(seeded))
+    d.fact_find_data.applicants[0].dob = '14/03/1988'
+    expect(phaseOf(d)).toBe('bc')
+  })
+
+  it('moves to BC once an address is typed', () => {
+    const d = JSON.parse(JSON.stringify(seeded))
+    d.fact_find_data.applicants[0].addresses[0].address = '6 Bella Vista Court'
+    expect(phaseOf(d)).toBe('bc')
+  })
+
+  it('moves to BC once an employer or a salary is typed', () => {
+    const e = JSON.parse(JSON.stringify(seeded))
+    e.fact_find_data.applicants[0].employment[0].employerName = 'Roc Partners'
+    expect(phaseOf(e)).toBe('bc')
+    const i = JSON.parse(JSON.stringify(seeded))
+    i.fact_find_data.applicants[0].income[0].grossSalary = '446,428.63'
+    expect(phaseOf(i)).toBe('bc')
+  })
+
+  it('moves to BC once a property or a liability is added', () => {
+    const d = JSON.parse(JSON.stringify(seeded))
+    d.fact_find_data.properties = [{ address: '6 Bella Vista Court' }]
+    expect(phaseOf(d)).toBe('bc')
+  })
+
+  it('is past the fact find whenever there are BC figures, however thin the fact find', () => {
+    expect(phaseOf({ ...seeded, bc_data: { purchasePrice: '5,250,000' } })).toBe('bc')
+  })
+
+  it('does not disturb a deal that has moved on', () => {
+    expect(phaseOf({ ...seeded, lodged_at: '2026-09-01' })).toBe('lodged')
+  })
+})
+
+// The board refused every backwards move. Deals do get recorded wrongly.
+describe('moving a deal backwards', () => {
+  it('names the dates it would clear', () => {
+    const m = moveBack('lodged', 'compliance_sent')
+    expect(m.ok).toBe(true)
+    if (!m.ok) return
+    expect(m.fields).toEqual(['lodged_at'])
+  })
+
+  it('clears everything between, not just the one step', () => {
+    const m = moveBack('settled', 'lodged')
+    expect(m.ok).toBe(true)
+    if (!m.ok) return
+    expect(m.fields).toContain('settled_at')
+    expect(m.fields).toContain('formal_approval_at')
+    expect(m.fields).toContain('preapproval_at')
+    expect(m.fields).not.toContain('lodged_at')
+  })
+
+  it('clears both halves of a client agreeing to proceed', () => {
+    const m = moveBack('lo', 'bc')
+    expect(m.ok).toBe(true)
+    if (!m.ok) return
+    expect(m.fields).toEqual(['client_proceeded', 'proceeded_at'])
+  })
+
+  it('refuses to drag a deal back to Fact Find', () => {
+    const m = moveBack('lo', 'fact_find')
+    expect(m.ok).toBe(false)
+    if (m.ok) return
+    expect(m.because).toMatch(/clearing the fact find/)
+  })
+
+  it('refuses a forwards move, or a move to where it already is', () => {
+    expect(moveBack('bc', 'lodged').ok).toBe(false)
+    expect(moveBack('lodged', 'lodged').ok).toBe(false)
+  })
+
+  it('has plain wording for every stage it can undo', () => {
+    for (const p of Object.keys(PHASE_FIELDS) as any[]) {
+      expect(PHASE_UNDO_LABEL[p]).toBeTruthy()
+    }
   })
 })

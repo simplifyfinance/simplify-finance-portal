@@ -83,7 +83,7 @@ export async function notifyEllieCreateCard(params: {
           <tr><td style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:0 0 4px"><span style="color:#8A6218;">1 &nbsp;Create the deal card</span></td></tr>
           <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55;padding:0 0 4px"><span style="color:#8A6218;">For <b>${clientName || 'this client'}</b>, allocated to <b>${brokerName || 'the broker above'}</b>.</span></td></tr>
           <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55"><span style="color:#8A6218;">Add the labels from the table above: lead source, deal type and income type${creditOfficerName ? `, and the credit assessor <b>${creditOfficerName}</b>` : ''}.</span></td></tr>
-          ${alreadyBcActioned ? `<tr><td style="padding:8px 0 0"><table cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:6px;padding:7px 11px;font-family:Arial,sans-serif;font-size:12.5px"><span style="color:#B23A34;">This deal is already at <b>BC Actioned</b> &mdash; set the card to that stage as you create it.</span></td></tr></table></td></tr>` : ''}
+          ${alreadyBcActioned ? `<tr><td style="padding:8px 0 0"><table cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:6px;padding:7px 11px;font-family:Arial,sans-serif;font-size:12.5px"><span style="color:#B23A34;">The broker has already done the borrowing capacity on this one, so the card does not start at the beginning &mdash; create it straight at the <b>BC Actioned</b> stage.</span></td></tr></table></td></tr>` : ''}
         </table>
       </td></tr>
       <tr><td style="padding:8px 0 0"></td></tr>

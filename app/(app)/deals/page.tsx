@@ -3,6 +3,7 @@ import { Fragment, useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { Plus, Search, Briefcase, Trash2, Copy } from 'lucide-react'
 import { DeleteDealDialog } from '@/components/DeleteDealDialog'
+import { checkedWrite } from '@/lib/checked-write'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
@@ -120,6 +121,19 @@ export default function DealsPage() {
     const { count } = await browser.from('deal_documents')
       .select('id', { count: 'exact', head: true }).eq('deal_id', deal.id)
     setDeletingDocs(count || 0)
+  }
+
+  // Moving a deal back a column means clearing the timestamps that put it where
+  // it was. Checked, because a write the database quietly refuses would leave
+  // the card where it started and look like the drag simply did not take.
+  async function moveDealBack(deal: any, _target: string, fields: string[]): Promise<string | null> {
+    const patch: Record<string, any> = {}
+    for (const f of fields) patch[f] = null
+    const problem = await checkedWrite(
+      browser.from('deals').update(patch).eq('id', deal.id), 'The move')
+    if (problem) return problem
+    setDeals(prev => prev.map(d => (d.id === deal.id ? { ...d, ...patch } : d)))
+    return null
   }
 
   async function deleteDeal(id: string) {
@@ -317,7 +331,7 @@ export default function DealsPage() {
       {loading ? (
         <div className="text-sm text-gray-400 text-center py-12">Loading deals...</div>
       ) : layout === 'board' ? (
-        <DealBoard deals={boardDeals} nameFor={nameFor} onDelete={askDelete}
+        <DealBoard deals={boardDeals} nameFor={nameFor} onDelete={askDelete} onMoveBack={moveDealBack}
           colours={{ type: look.type, use: look.use, broker: look.broker }}
           thresholds={look.thresholds} alerts={alerts} />
       ) : filtered.length === 0 ? (

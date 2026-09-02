@@ -1,7 +1,7 @@
 'use client'
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { phaseOf, phaseSince, amountOf, PHASE_LABEL, PHASE_ORDER, type Phase } from '@/lib/deal-phase'
+import { phaseOf, phaseSince, amountOf, PHASE_LABEL, PHASE_ORDER, moveBack, PHASE_UNDO_LABEL, PHASE_UNDO_WARNING, type Phase } from '@/lib/deal-phase'
 import { stageAge, ageGroupOf } from '@/lib/deal-age'
 import { chipsFor, brokerColour, chipStyle, dealTitle } from '@/lib/deal-labels'
 import { CREDIT_GREY, type ThresholdMap } from '@/lib/board-settings'
@@ -57,7 +57,7 @@ const AGE_STYLE: Record<string, string> = {
   long:  'text-[#946017] bg-[#FDF6EC] border-[#EBD9BE]',
 }
 
-export default function DealBoard({ deals, nameFor, colours, thresholds, alerts, onDelete }: {
+export default function DealBoard({ deals, nameFor, colours, thresholds, alerts, onDelete, onMoveBack }: {
   deals: any[]
   nameFor: (k: string) => string
   colours?: { type?: any; use?: any; broker?: Record<string, string> }
@@ -74,6 +74,9 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
   // the board is dragged and clicked all day and a delete under the cursor is a
   // delete waiting to happen. The confirmation lives in the handler.
   onDelete?: (e: React.MouseEvent, deal: any) => void
+  // Clears the timestamps that put a deal where it is, so it lands in an earlier
+  // column. The board asks first; the page does the writing.
+  onMoveBack?: (deal: any, target: Phase, fields: string[]) => Promise<string | null>
 }) {
   const router = useRouter()
   // Folded columns, this person's own, remembered across logins.
@@ -84,6 +87,9 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
   // Which card is being looked at, and which column it sits in — so the arrow
   // keys can walk along that column without closing.
   const [peeking, setPeeking] = useState<{ id: string; phase: Phase } | null>(null)
+  // A backwards drop, waiting to be confirmed.
+  const [undoing, setUndoing] = useState<{ deal: any; target: Phase; clearing: Phase[]; fields: string[] } | null>(null)
+  const [undoBusy, setUndoBusy] = useState(false)
 
   const byColumn = useMemo(() => {
     const m: Record<string, any[]> = {}
@@ -115,8 +121,20 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
     if (from === target) return
 
     const fi = COLUMNS.indexOf(from), ti = COLUMNS.indexOf(target)
+
+    // BACKWARDS.
+    //
+    // This used to be refused flat. But a phase is derived from timestamps, and
+    // timestamps get recorded wrongly - so the only way out was to go hunting
+    // for the panel that set the date. Now it asks, names what it is about to
+    // clear, and only then clears it. Fabio, 2 Sep 2026: "on board view we cant
+    // move the deal backwards we should be able to".
     if (ti < fi) {
-      setMsg(`A deal does not go backwards on the board. ${PHASE_LABEL[target]} already happened on ${deal.deal_name} — undo it on the deal itself if it was recorded wrongly.`)
+      const back = moveBack(from, target)
+      if (!back.ok) { setMsg(back.because); return }
+      if (!onMoveBack) { setMsg('Moving a deal backwards is not available here.'); return }
+      setMsg('')
+      setUndoing({ deal, target, clearing: back.clearing, fields: back.fields })
       return
     }
     if (target === 'compliance_sent') {
@@ -135,6 +153,70 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
 
   return (
     <div>
+      {/* Confirming a backwards move. It names the dates it is about to clear,
+          because that is what "moving backwards" actually is. */}
+      {undoing && (
+        <div className="fixed inset-0 bg-black/30 flex items-start justify-center z-50 p-6 overflow-y-auto"
+             onClick={e => { if (e.target === e.currentTarget && !undoBusy) setUndoing(null) }}>
+          <div className="bg-white rounded-2xl w-[560px] max-w-full shadow-2xl mt-16 overflow-hidden">
+            <div className="px-6 pt-5">
+              <h2 className="text-[17px] font-bold text-[#141C24] m-0 mb-1.5">
+                Move this deal back to {PHASE_LABEL[undoing.target]}?
+              </h2>
+              <p className="text-[13px] text-[#7C8894] m-0">{undoing.deal.deal_name}</p>
+            </div>
+            <div className="px-6 pt-4">
+              <div className="border border-[#EBD9BE] bg-[#FDF6E7] rounded-[10px] px-4 py-3.5 text-[13px] text-[#8A6218]">
+                <b className="text-[#141C24]">The deal will stop saying:</b>
+                <ul className="m-0 mt-2 pl-4">
+                  {undoing.clearing.map(p2 => (
+                    <li key={p2} className="mb-0.5">{PHASE_UNDO_LABEL[p2] || PHASE_LABEL[p2]}</li>
+                  ))}
+                </ul>
+                <p className="m-0 mt-2.5">
+                  Do this only if {undoing.clearing.length === 1 ? 'it was' : 'they were'} recorded by
+                  mistake, or {undoing.clearing.length === 1 ? 'it' : 'they'} did not really happen.
+                </p>
+              </div>
+
+              {undoing.clearing.some(p2 => PHASE_UNDO_WARNING[p2]) && (
+                <div className="mt-2.5 border border-[#E9D2CF] bg-[#FDF3F2] rounded-[10px] px-4 py-3.5 text-[13px] text-[#8E3A34]">
+                  <b className="text-[#141C24]">Watch out:</b>
+                  <ul className="m-0 mt-1.5 pl-4">
+                    {undoing.clearing.filter(p2 => PHASE_UNDO_WARNING[p2]).map(p2 => (
+                      <li key={p2} className="mb-0.5">{PHASE_UNDO_WARNING[p2]}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <p className="mt-2.5 mb-0 text-[12.5px] text-[#7C8894]">
+                Everything else stays: the fact find, the write-up, the documents and the notes are
+                untouched. You can record {undoing.clearing.length === 1 ? 'it' : 'them'} again whenever
+                you like.
+              </p>
+            </div>
+            <div className="px-6 py-4 mt-2 flex items-center gap-2.5 flex-wrap">
+              <button disabled={undoBusy}
+                onClick={async () => {
+                  if (!onMoveBack) return
+                  setUndoBusy(true)
+                  const problem = await onMoveBack(undoing.deal, undoing.target, undoing.fields)
+                  setUndoBusy(false)
+                  if (problem) { setMsg(problem); setUndoing(null); return }
+                  setUndoing(null)
+                }}
+                className="rounded-lg px-4 py-2 text-[13px] font-semibold border bg-[#141C24] border-[#141C24] text-white disabled:opacity-40">
+                {undoBusy ? 'Moving…' : `Move it back to ${PHASE_LABEL[undoing.target]}`}
+              </button>
+              <button disabled={undoBusy} onClick={() => setUndoing(null)}
+                className="rounded-lg px-4 py-2 text-[13px] border bg-white border-[#D7DCE1] text-[#3E4C59]">
+                Leave it where it is
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {msg && (
         <div className="mb-3 text-[12.5px] rounded-lg border border-[#EBD9BE] bg-[#FDF6EC] text-[#575046] px-3 py-2">
           {msg} <button onClick={() => setMsg('')} className="underline text-[#946017] ml-1">Dismiss</button>
