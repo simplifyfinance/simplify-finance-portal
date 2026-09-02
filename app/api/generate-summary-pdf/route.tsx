@@ -4,11 +4,25 @@
 // printed most of the money on the file as "0" - because the forms store money
 // as formatted strings and `Number("5,250,000")` is NaN. See lib/money.ts.
 //
-// It is now the whole fact find, section by section in the order the tabs run,
-// in the same clothes as the handover so the two documents that travel together
-// on the push email look like a pair. Fabio, 2 Sep 2026: "I want every section
-// of the FF tab personal details income employment other assets properties
-// liabilities ALL of it".
+// It is now the whole fact find, section by section in the order the tabs run.
+// Fabio, 2 Sep 2026: "I want every section of the FF tab personal details
+// income employment other assets properties liabilities ALL of it".
+//
+// LOOK AND FEEL. This is a data-entry document - somebody reads a field here
+// and types it into SalesTrekker. So the eye has to find the edge of a section
+// without reading. Fabio, 2 Sep 2026: "the boxes are more in line, they're
+// separated... applicants should be a different colour... address history a
+// completely separate field... make those things pop".
+//
+// So: every section owns a colour. The section band, the left edge of each of
+// its cards, and each card's header strip are all that one colour, and the
+// colour changes at every section boundary. Nothing else on the page is
+// coloured, so the colour only ever means "this is where you are".
+//
+// The recommended product is marked the way the lending options email marks it,
+// because staff already read it there: sorted to the front, an amber card, a
+// filled RECOMMENDED pill. (No star glyph - Helvetica in react-pdf has no
+// U+2605 and prints a bare box. Same trap as the HEM dots in the handover.)
 //
 // Named for the client, not for the deal record.
 import { NextRequest, NextResponse } from 'next/server'
@@ -25,6 +39,20 @@ const INK = '#141C24', MUTE = '#7C8894', BODY = '#3D4750'
 const RULE = '#E3E7EA', SOFT = '#F6F8FA', SKY = '#7FD3FF'
 const REDBG = '#FDF0EF', AMB = '#FDF6E7', AMBB = '#EBD9BE', AMBI = '#8A6218'
 
+// One accent per section. `edge` is the 3-4px rail, `tint` the header strip,
+// `ink` the type on that strip. Neighbouring sections never share one.
+type Accent = { edge: string; tint: string; ink: string }
+const A: Record<string, Accent> = {
+  blue:   { edge: '#2DBEFF', tint: '#EAF6FD', ink: '#0B5E8A' },
+  teal:   { edge: '#14A08B', tint: '#E6F5F2', ink: '#0C6355' },
+  violet: { edge: '#7C6BD6', tint: '#F1EEFB', ink: '#463A8C' },
+  green:  { edge: '#22A559', tint: '#EAF7EF', ink: '#15803D' },
+  slate:  { edge: '#8B9AA8', tint: '#F1F4F7', ink: '#3E4C59' },
+  navy:   { edge: '#2F5D8C', tint: '#EBF1F8', ink: '#1F3D5C' },
+  amber:  { edge: '#D9A441', tint: '#FDF6E7', ink: '#8A6218' },
+  red:    { edge: '#E06A62', tint: '#FDF0EF', ink: '#B23A34' },
+}
+
 const s = StyleSheet.create({
   page: { paddingTop: 0, paddingBottom: 42, fontSize: 9.5, fontFamily: 'Helvetica', color: BODY },
   inner: { paddingHorizontal: 34 },
@@ -38,13 +66,30 @@ const s = StyleSheet.create({
   stat: { flex: 1, borderRadius: 7, padding: 9, marginRight: 7 },
   statLab: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', letterSpacing: .6 },
   statVal: { fontSize: 13, fontFamily: 'Helvetica-Bold', marginTop: 4 },
-  secRow: { flexDirection: 'row', alignItems: 'center', marginTop: 15, marginBottom: 8 },
-  secTitle: { fontSize: 8.5, fontFamily: 'Helvetica-Bold', letterSpacing: 1.3, color: INK },
-  secPill: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', letterSpacing: .7, color: MUTE, backgroundColor: '#EEF2F5', borderRadius: 9, paddingVertical: 3, paddingHorizontal: 7, marginLeft: 8 },
-  secLine: { flex: 1, height: 2, backgroundColor: '#EEF2F5', marginLeft: 8 },
-  card: { borderWidth: 1, borderColor: RULE, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 8 },
-  cardTitle: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: INK, marginBottom: 6 },
-  sub: { fontSize: 7, fontFamily: 'Helvetica-Bold', letterSpacing: .8, color: MUTE, marginTop: 7, marginBottom: 4 },
+
+  // The section band. Wide, filled, its own colour - the thing you find when
+  // you flick through looking for "where does address history start".
+  band: { flexDirection: 'row', alignItems: 'center', borderLeftWidth: 5, borderRadius: 4,
+          paddingVertical: 7, paddingHorizontal: 10, marginTop: 20, marginBottom: 8 },
+  bandTitle: { fontSize: 9, fontFamily: 'Helvetica-Bold', letterSpacing: 1.4 },
+  bandPill: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', letterSpacing: .7, borderWidth: 1,
+              backgroundColor: '#fff', borderRadius: 9, paddingVertical: 2.5, paddingHorizontal: 7, marginLeft: 'auto' },
+
+  // Cards carry the section's colour on the left edge and across the header
+  // strip, so a card is always legible as belonging to the band above it.
+  card: { borderWidth: 1, borderColor: RULE, borderLeftWidth: 3, borderRadius: 7, marginBottom: 9 },
+  cardHead: { flexDirection: 'row', alignItems: 'center', paddingVertical: 7, paddingHorizontal: 11,
+              borderBottomWidth: 1, borderBottomColor: RULE },
+  cardTitle: { fontSize: 10, fontFamily: 'Helvetica-Bold' },
+  cardTag: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', letterSpacing: .7, marginLeft: 'auto',
+             borderRadius: 3, paddingVertical: 2.5, paddingHorizontal: 6 },
+  cardBody: { paddingVertical: 9, paddingHorizontal: 11 },
+
+  // CURRENT / PREVIOUS and the like: a chip, not a floating label, so two
+  // addresses inside one card do not read as one address.
+  sub: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', letterSpacing: .9, alignSelf: 'flex-start',
+         borderRadius: 3, paddingVertical: 2.5, paddingHorizontal: 6, marginTop: 8, marginBottom: 4 },
+
   row: { flexDirection: 'row', marginBottom: 3 },
   k: { flex: 1, backgroundColor: SOFT, paddingVertical: 5, paddingHorizontal: 9, fontSize: 8.5, color: BODY },
   v: { width: 230, backgroundColor: SOFT, paddingVertical: 5, paddingHorizontal: 9, fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: INK, textAlign: 'right' },
@@ -54,10 +99,13 @@ const s = StyleSheet.create({
   footText: { fontSize: 7, color: '#A9B7C2' },
 })
 
-const Sec = ({ t, pill }: { t: string; pill?: string }) => (
-  <View style={s.secRow}><Text style={s.secTitle}>{t.toUpperCase()}</Text>
-    {pill ? <Text style={s.secPill}>{pill.toUpperCase()}</Text> : null}<View style={s.secLine} /></View>
+const Sec = ({ t, pill, a, first }: { t: string; pill?: string; a: Accent; first?: boolean }) => (
+  <View style={[s.band, { backgroundColor: a.tint, borderLeftColor: a.edge, marginTop: first ? 12 : 20 }]} wrap={false}>
+    <Text style={[s.bandTitle, { color: a.ink }]}>{t.toUpperCase()}</Text>
+    {pill ? <Text style={[s.bandPill, { color: a.ink, borderColor: a.edge }]}>{pill.toUpperCase()}</Text> : null}
+  </View>
 )
+
 // A row with nothing in it is dropped rather than printed as a dash: a page of
 // dashes reads as data lost.
 const KV = ({ rows }: { rows: [string, any][] }) => (<>
@@ -65,12 +113,52 @@ const KV = ({ rows }: { rows: [string, any][] }) => (<>
     <View style={s.row} key={k} wrap={false}><Text style={s.k}>{k}</Text><Text style={s.v}>{String(v)}</Text></View>
   ))}
 </>)
-// Cards WRAP, unlike the handover's boxes. A handover box is copied whole so
-// splitting one risks half an answer being pasted; a fact find is read, and
-// refusing to split leaves half-empty pages.
-const Card = ({ t, children }: { t: string; children: any }) => (
-  <View style={s.card}><Text style={s.cardTitle}>{t}</Text>{children}</View>
+
+const Sub = ({ t, a }: { t: string; a: Accent }) => (
+  <Text style={[s.sub, { backgroundColor: a.tint, color: a.ink }]}>{t.toUpperCase()}</Text>
 )
+
+// A CARD STAYS WHOLE.
+//
+// Same reason as the handover's boxes: staff read a card here and type it into
+// SalesTrekker, and a card split over two pages is half a card. Fabio, 2 Sep
+// 2026: "dont want this break in page remeber my staff need to copy and paste
+// into a system".
+//
+// `wrap={false}` means a card that does not fit in the space left moves down
+// whole. The only card allowed to break is one TALLER THAN A PAGE, which kept
+// whole would have nowhere to go and would draw on top of itself. Call sites
+// pass `rows` (and `chars` for prose) so we can tell the two apart before
+// layout runs - react-pdf offers no measurement pass. The estimate is
+// deliberately generous: calling a card too tall merely splits it, calling it
+// short when it is not overlaps it, so we round up.
+const ROW_H = 23        // a key/value row: 8.5pt type, 5pt padding each side, 3pt gap
+const CARD_CHROME = 50  // header strip + body padding
+const CARD_BUDGET = 680 // points of usable height on a content page
+
+function cardFitsOnAPage(rows = 0, chars = 0): boolean {
+  return CARD_CHROME + rows * ROW_H + Math.ceil(chars / 100) * 15 <= CARD_BUDGET
+}
+
+const Card = ({ t, a, tag, tagFill, strong, rows, chars, children }:
+  { t: string; a: Accent; tag?: string; tagFill?: boolean; strong?: boolean
+    rows?: number; chars?: number; children: any }) => {
+  const whole = cardFitsOnAPage(rows, chars)
+  return (
+  <View style={[s.card, { borderLeftColor: a.edge },
+                strong ? { borderWidth: 2, borderColor: a.edge, borderLeftWidth: 5 } : {}]}
+        wrap={!whole} minPresenceAhead={whole ? 0 : 26}>
+    <View style={[s.cardHead, { backgroundColor: a.tint }]} wrap={false}>
+      <Text style={[s.cardTitle, { color: a.ink }]}>{t}</Text>
+      {tag ? <Text style={[s.cardTag, tagFill
+        ? { backgroundColor: a.edge, color: '#fff' }
+        : { backgroundColor: '#fff', color: a.ink, borderWidth: 1, borderColor: a.edge }]}>{tag.toUpperCase()}</Text> : null}
+    </View>
+    <View style={s.cardBody}>{children}</View>
+  </View>
+  )
+}
+
 const Foot = ({ who }: { who: string }) => (
   <View style={s.foot} fixed>
     <Text style={s.footText}>Fact Find — {who}</Text>
@@ -119,6 +207,12 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
     words(deal.property_use),
   ].filter(Boolean).join('  ·  ')
 
+  // Sorted the way the lending options email sorts them: the recommendation
+  // first, so nobody has to hunt for it.
+  const loLenders = (lo.lenders || []).filter((l: any) => l.lenderName)
+  const isRec = (l: any) => !!lo.recommendedLender && l.lenderName === lo.recommendedLender
+  const sortedLenders = [...loLenders].sort((x, y) => (isRec(x) ? -1 : 0) - (isRec(y) ? -1 : 0))
+
   const doc = (
     <Document title={fileName}>
       {/* Page 1 — who they are, where they live, what they do */}
@@ -149,11 +243,14 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
               <Text style={[s.statVal, { color: '#15803d' }]}>{money(pos.net) || '—'}</Text></View>
           </View>
 
-          <Sec t="Applicants" pill={`${applicants.length}${ff.dependants ? ` · ${ff.dependants} dependants` : ''}`} />
+          <Sec t="Applicants" a={A.blue} first
+               pill={`${applicants.length}${ff.dependants ? ` · ${ff.dependants} dependants` : ''}`} />
           {applicants.map((a: any, i: number) => {
             const age = ageFrom(a.dob)
             return (
-              <Card key={i} t={[a.title, fullName(a)].filter(Boolean).join(' ') || `Applicant ${i + 1}`}>
+              <Card key={i} a={A.blue}
+                    t={[a.title, fullName(a)].filter(Boolean).join(' ') || `Applicant ${i + 1}`}
+                    tag={`Applicant ${i + 1}`}>
                 <KV rows={[
                   ['Date of birth', a.dob ? `${a.dob}${age !== null ? ` (${age})` : ''}` : ''],
                   ['Gender', a.gender], ['Preferred name', a.preferredName], ['Previous name', a.previousName],
@@ -163,13 +260,14 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
             )
           })}
 
-          <Sec t="Address history" />
+          <Sec t="Address history" a={A.teal} />
           {applicants.map((a: any, i: number) => (
-            <Card key={i} t={fullName(a) || `Applicant ${i + 1}`}>
+            <Card key={i} a={A.teal} t={fullName(a) || `Applicant ${i + 1}`}
+                  rows={(a.addresses || []).length * 5}>
               {(a.addresses || []).length === 0 ? <Text style={s.note}>No address recorded.</Text> : null}
               {(a.addresses || []).map((ad: any, j: number) => (
                 <View key={j}>
-                  <Text style={s.sub}>{ad.isCurrent ? 'CURRENT' : 'PREVIOUS'}</Text>
+                  <Sub t={ad.isCurrent ? 'Current' : 'Previous'} a={A.teal} />
                   <KV rows={[
                     ['Address', ad.address], ['Status', ad.residentialStatus],
                     ['Period', period(ad.startDate, ad.endDate)],
@@ -183,13 +281,14 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
             </Card>
           ))}
 
-          <Sec t="Employment" />
+          <Sec t="Employment" a={A.violet} />
           {applicants.map((a: any, i: number) => (
-            <Card key={i} t={fullName(a) || `Applicant ${i + 1}`}>
+            <Card key={i} a={A.violet} t={fullName(a) || `Applicant ${i + 1}`}
+                  rows={(a.employment || []).length * 12}>
               {(a.employment || []).length === 0 ? <Text style={s.note}>No employment recorded.</Text> : null}
               {(a.employment || []).map((e: any, j: number) => (
                 <View key={j}>
-                  <Text style={s.sub}>{[e.employmentPriority, e.isCurrent ? 'CURRENT' : 'PREVIOUS'].filter(Boolean).join(' · ').toUpperCase()}</Text>
+                  <Sub a={A.violet} t={[e.employmentPriority, e.isCurrent ? 'Current' : 'Previous'].filter(Boolean).join(' · ')} />
                   {/* Not working is an answer. Nothing further is asked of it. */}
                   {notWorking(e)
                     ? <KV rows={[['Employment type', 'Not working'], ['Occupation', e.occupation]]} />
@@ -214,20 +313,22 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
       {/* Page 2 — what they earn and what they own */}
       <Page size="A4" style={s.page}>
         <View style={[s.inner, { paddingTop: 28 }]}>
-          <Sec t="Income" pill="annualised" />
+          <Sec t="Income" pill="annualised" a={A.green} first />
           {applicants.map((a: any, i: number) => {
             const total = annualIncome(a)
             const jobs = currentEmployment(a)
             const idle = jobs.length > 0 && jobs.every(notWorking)
             return (
-              <Card key={i} t={fullName(a) || `Applicant ${i + 1}`}>
+              <Card key={i} a={A.green} t={fullName(a) || `Applicant ${i + 1}`}
+                    tag={total > 0 ? money(total) : undefined}
+                    rows={(a.income || []).length * 12 + 1}>
                 {idle && total === 0
                   ? <Text style={s.note}>Not working, so no income is expected. Recorded on the fact find as an answer, not as a gap.</Text>
                   : (a.income || []).length === 0
                     ? <Text style={s.note}>No income recorded.</Text>
                     : (a.income || []).map((inc: any, j: number) => (
                         <View key={j}>
-                          {(a.income || []).length > 1 ? <Text style={s.sub}>{String(inc.incomeType || 'INCOME').toUpperCase()}</Text> : null}
+                          {(a.income || []).length > 1 ? <Sub a={A.green} t={String(inc.incomeType || 'Income')} /> : null}
                           <KV rows={[
                             ['Gross base salary', withFrequency(inc.grossSalary, inc.grossSalaryFrequency)],
                             ['Bonus', withFrequency(inc.bonusAmount, inc.bonusFrequency)],
@@ -247,10 +348,11 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
             )
           })}
 
-          <Sec t="Other assets" pill={String((ff.assets || []).length)} />
+          <Sec t="Other assets" pill={String((ff.assets || []).length)} a={A.slate} />
           {(ff.assets || []).length === 0 ? <Text style={s.note}>No other assets recorded.</Text> : null}
           {(ff.assets || []).map((a: any, i: number) => (
-            <Card key={i} t={[a.assetType, a.description].filter(Boolean).join(' — ') || 'Asset'}>
+            <Card key={i} a={A.slate} t={[a.assetType, a.description].filter(Boolean).join(' — ') || 'Asset'}
+                  tag={moneyOrBlank(a.value) || undefined}>
               <KV rows={[
                 ['Value', moneyOrBlank(a.value)],
                 ['BSB / account', [a.bsb, a.accountNumber].filter(Boolean).join(' · ')],
@@ -260,10 +362,12 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
             </Card>
           ))}
 
-          <Sec t="Properties" pill={String((ff.properties || []).length)} />
+          <Sec t="Properties" pill={String((ff.properties || []).length)} a={A.violet} />
           {(ff.properties || []).length === 0 ? <Text style={s.note}>No properties recorded.</Text> : null}
           {(ff.properties || []).map((p: any, i: number) => (
-            <Card key={i} t={p.address || `Property ${i + 1}`}>
+            <Card key={i} a={A.violet} t={p.address || `Property ${i + 1}`}
+                  tag={moneyOrBlank(p.value) || undefined}
+                  rows={11 + (p.loans || []).length * 14}>
               <KV rows={[
                 ['Ownership type', p.ownershipType], ['Future use', p.futureUse],
                 ['Property subtype', p.propertySubtype], ['Zoning', p.zoning],
@@ -276,7 +380,7 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
               ]} />
               {(p.loans || []).map((l: any, j: number) => (
                 <View key={j}>
-                  <Text style={s.sub}>LINKED LOAN</Text>
+                  <Sub t="Linked loan" a={A.violet} />
                   <KV rows={[
                     ['Lender', l.lenderName], ['Mortgage type', l.mortgageType],
                     ['BSB / account', [l.bsb, l.accountNumber].filter(Boolean).join(' · ')],
@@ -294,10 +398,11 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
             </Card>
           ))}
 
-          <Sec t="Liabilities" pill="excludes property-linked loans" />
+          <Sec t="Liabilities" pill="excludes property-linked loans" a={A.red} />
           {(ff.liabilities || []).length === 0 ? <Text style={s.note}>No other liabilities recorded.</Text> : null}
           {(ff.liabilities || []).map((l: any, i: number) => (
-            <Card key={i} t={[l.liabilityType, l.lenderName].filter(Boolean).join(' — ') || 'Liability'}>
+            <Card key={i} a={A.red} t={[l.liabilityType, l.lenderName].filter(Boolean).join(' — ') || 'Liability'}
+                  tag={moneyOrBlank(l.balance) || undefined}>
               <KV rows={[
                 ['Account', l.accountNumber],
                 ['Limit', money(l.limitAmount)], ['Balance', moneyOrBlank(l.balance)],
@@ -313,13 +418,14 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
       {/* Page 3 — the deal itself */}
       <Page size="A4" style={s.page}>
         <View style={[s.inner, { paddingTop: 28 }]}>
-          <Sec t="Borrowing capacity" pill={words(bc.template)} />
-          <Card t="Scenario">
+          <Sec t="Borrowing capacity" pill={words(bc.template)} a={A.navy} first />
+          <Card t="Scenario" a={A.navy} tag={lvr ? `${lvr}% LVR` : undefined}
+                rows={20 + (bc.splits || []).length}>
             <KV rows={[
               ['Template', words(bc.template)], ['State', bc.dutyState], ['Suburb', bc.suburb],
               ['Property type', bc.propertyType], ['Loan term', bc.loanTerm ? `${bc.loanTerm} years` : ''],
             ]} />
-            <Text style={s.sub}>FIGURES</Text>
+            <Sub t="Figures" a={A.navy} />
             <KV rows={[
               ['Purchase price', money(bc.purchasePrice) || money(bc.newPurchasePrice)],
               ['Deposit', money(bc.deposit) ? `${money(bc.deposit)}${bc.depositSource ? ` (${bc.depositSource})` : ''}` : ''],
@@ -333,7 +439,7 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
               ['LVR', lvr ? `${lvr}%${lvr <= 80 ? ' (no LMI)' : ''}` : ''],
               ['LMI', money(bc.lmi)],
             ]} />
-            {(bc.splits || []).length ? <Text style={s.sub}>LOAN SPLITS</Text> : null}
+            {(bc.splits || []).length ? <Sub t="Loan splits" a={A.navy} /> : null}
             <KV rows={(bc.splits || []).map((sp: any, i: number) => ([
               sp.label || `Split ${i + 1}`,
               [money(sp.amount), sp.rate ? `${sp.rate}%` : '', sp.type,
@@ -341,19 +447,31 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
             ] as [string, string]))} />
           </Card>
 
-          <Sec t="Lending options" pill={`${(lo.lenders || []).length} lenders compared`} />
-          {(lo.lenders || []).filter((l: any) => l.lenderName).map((l: any, i: number) => {
-            const rate = (m: any, label: string) => m?.enabled
+          <Sec t="Lending options" pill={`${loLenders.length} lenders compared`} a={A.blue} />
+
+          {/* The recommendation leads, exactly as it does in the lending
+              options email the client already received. */}
+          {lo.recommendedLender && lo.recommendationNote
+            ? <Card t={`Our recommendation — ${lo.recommendedLender}`} a={A.amber} tag="Recommended" tagFill strong
+                    chars={String(lo.recommendationNote).length}>
+                <Text style={s.body}>{lo.recommendationNote}</Text>
+              </Card>
+            : null}
+
+          {sortedLenders.map((l: any, i: number) => {
+            const rate = (m: any) => m?.enabled
               ? [`${m.rate}% p.a.`, m.repayment ? `${money(m.repayment)} monthly` : '', m.loanTerm ? `${m.loanTerm} years` : ''].filter(Boolean).join(' · ')
               : ''
+            const rec = isRec(l)
             return (
-              <Card key={i} t={[l.lenderName, l.productName].filter(Boolean).join(' — ')
-                + (lo.recommendedLender === l.lenderName ? '      * RECOMMENDED' : '')}>
+              <Card key={i} a={rec ? A.amber : A.slate} strong={rec}
+                    tag={rec ? 'Recommended' : `Option ${i + 1}`} tagFill={rec}
+                    t={[l.lenderName, l.productName].filter(Boolean).join(' — ')}>
                 <KV rows={[
-                  ['Variable P&I', rate(l.variablePI, 'Variable P&I')],
-                  ['Variable IO', rate(l.variableIO, 'Variable IO')],
-                  ['Fixed P&I', rate(l.fixedPI, 'Fixed P&I')],
-                  ['Fixed IO', rate(l.fixedIO, 'Fixed IO')],
+                  ['Variable P&I', rate(l.variablePI)],
+                  ['Variable IO', rate(l.variableIO)],
+                  ['Fixed P&I', rate(l.fixedPI)],
+                  ['Fixed IO', rate(l.fixedIO)],
                   ['Application fee', money(l.applicationFee)], ['Annual fee', money(l.annualFee)],
                   ['Valuation fee', money(l.valuationFee)], ['Legal fee', money(l.legalFee)],
                   ['Discharge fee', money(l.dischargeFee)],
@@ -363,13 +481,12 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
               </Card>
             )
           })}
-          {lo.recommendationNote ? <Card t="Recommendation"><Text style={s.body}>{lo.recommendationNote}</Text></Card> : null}
 
-          {(ff.loanPurpose || ff.internalNotes) ? <Sec t="Loan purpose & notes" /> : null}
-          {ff.loanPurpose ? <Card t="Loan purpose"><Text style={s.body}>{ff.loanPurpose}</Text></Card> : null}
-          {ff.internalNotes ? <Card t="Internal notes"><Text style={s.body}>{ff.internalNotes}</Text></Card> : null}
+          {(ff.loanPurpose || ff.internalNotes) ? <Sec t="Loan purpose & notes" a={A.slate} /> : null}
+          {ff.loanPurpose ? <Card t="Loan purpose" a={A.slate} chars={String(ff.loanPurpose).length}><Text style={s.body}>{ff.loanPurpose}</Text></Card> : null}
+          {ff.internalNotes ? <Card t="Internal notes" a={A.slate} chars={String(ff.internalNotes).length}><Text style={s.body}>{ff.internalNotes}</Text></Card> : null}
 
-          {toConfirm.length ? <Sec t="Still to confirm" pill={String(toConfirm.length)} /> : null}
+          {toConfirm.length ? <Sec t="Still to confirm" pill={String(toConfirm.length)} a={A.amber} /> : null}
           {toConfirm.length ? (
             <View style={{ borderWidth: 1, borderColor: AMBB, backgroundColor: AMB, borderRadius: 7, padding: 10 }} wrap={false}>
               {toConfirm.map(m => <Text key={m} style={{ fontSize: 9, color: AMBI, lineHeight: 1.6 }}>{m}</Text>)}

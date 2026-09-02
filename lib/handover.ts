@@ -93,3 +93,43 @@ export function plainText(text: any): string {
 export function hasContent(text: any): boolean {
   return String(text ?? '').trim().length > 0
 }
+
+// HOW TALL WILL THIS BOX BE?
+//
+// Why estimate at all. react-pdf gives no measurement pass, and the decision we
+// have to make - keep the box whole, or let it split - has to be made before
+// layout runs. It matters because of how the box is used: the team selects a
+// whole box and pastes it into SalesTrekker, so a box split over two pages is a
+// box pasted in two halves. Fabio, 2 Sep 2026: "dont want this break in page
+// remeber my staff need to copy and paste into a system".
+//
+// A box kept whole that does not fit in the space left simply moves to the next
+// page - fine, that is what we want. A box kept whole that is TALLER THAN A
+// PAGE has nowhere to go and draws every line on top of the one before, which
+// is the bug he sent a screenshot of earlier the same day.
+//
+// So: keep every box whole, and let one break only when it cannot possibly fit.
+// That is what this estimate decides. It is deliberately generous - a box
+// wrongly called "too tall" merely splits (today's behaviour), a box wrongly
+// called "fits" overlaps, so the error is one-sided and we round up.
+export const PAGE_BUDGET = 660  // points of usable height on a content page
+const CHARS_PER_LINE = 96       // Helvetica 9pt across the box's text column
+const LINE = 14.4               // 9pt * 1.6
+const PARA_GAP = 6
+const HEAD_H = 34               // number chip, title, tick square
+const BODY_PAD = 20
+const RULE_H = 12
+
+export function estimateBoxHeight(blocks: Block[]): number {
+  let h = HEAD_H + BODY_PAD
+  for (const b of blocks) {
+    if (b.kind === 'rule') { h += RULE_H; continue }
+    const chars = b.runs.reduce((n, r) => n + r.text.length, 0)
+    h += Math.max(1, Math.ceil(chars / CHARS_PER_LINE)) * LINE + PARA_GAP
+  }
+  return h
+}
+
+export function boxFitsOnAPage(blocks: Block[]): boolean {
+  return estimateBoxHeight(blocks) <= PAGE_BUDGET
+}

@@ -17,7 +17,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import React from 'react'
-import { NEEDS_BOXES, COMMENT_BOXES, parseBlocks, handoverFileName, hasContent, type Box } from '@/lib/handover'
+import { boxFitsOnAPage, NEEDS_BOXES, COMMENT_BOXES, parseBlocks, handoverFileName, hasContent, type Box } from '@/lib/handover'
 import { titleSummary } from '@/lib/title'
 import { hemStateOf, hemTotals, unansweredNote, type ExpenseCategory } from '@/lib/hem'
 import { shortDate } from '@/lib/push-answers'
@@ -45,12 +45,15 @@ const styles = StyleSheet.create({
   secPill: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', letterSpacing: .7, color: MUTE, backgroundColor: '#EEF2F5', borderRadius: 9, paddingVertical: 3, paddingHorizontal: 7, marginLeft: 8 },
   secLine: { flex: 1, height: 2, backgroundColor: '#EEF2F5', marginLeft: 8 },
 
-  box: { flexDirection: 'row', borderWidth: 1, borderColor: RULE, borderRadius: 8, marginBottom: 10, overflow: 'hidden' },
-  rail: { width: 34, backgroundColor: INK, alignItems: 'center', paddingTop: 11, paddingBottom: 11 },
-  railNo: { fontSize: 12, color: '#fff', fontFamily: 'Helvetica-Bold' },
-  railTick: { width: 12, height: 12, borderWidth: 1, borderColor: '#4B5964', borderRadius: 2, marginTop: 8 },
-  boxBody: { flex: 1, paddingVertical: 11, paddingHorizontal: 13 },
-  boxTitle: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: INK, marginBottom: 7 },
+  // A COLUMN, not a row with a dark rail down the side. The rail looked better,
+  // but a flex row cannot break across a page - so a box longer than a page was
+  // crammed onto one and drawn on top of itself. See the note on BoxCard.
+  box: { borderWidth: 1, borderColor: RULE, borderLeftWidth: 4, borderLeftColor: INK, borderRadius: 6, marginBottom: 10 },
+  boxHead: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F7F9FB', paddingVertical: 8, paddingHorizontal: 11 },
+  boxNo: { width: 17, height: 17, borderRadius: 9, backgroundColor: INK, color: '#fff', fontSize: 9, fontFamily: 'Helvetica-Bold', textAlign: 'center', paddingTop: 4 },
+  boxTick: { width: 12, height: 12, borderWidth: 1, borderColor: '#AEB8C0', borderRadius: 2, marginLeft: 'auto' },
+  boxBody: { paddingVertical: 10, paddingHorizontal: 13 },
+  boxTitle: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: INK, marginLeft: 8 },
   para: { fontSize: 9, lineHeight: 1.6, marginBottom: 6 },
   hr: { borderTopWidth: 1, borderTopColor: RULE, marginTop: 3, marginBottom: 8 },
   empty: { fontSize: 9, color: MUTE, fontStyle: 'italic' },
@@ -184,24 +187,36 @@ function Section({ title, pill }: { title: string; pill?: string }) {
   )
 }
 
-// `wrap={false}` is the whole reason this reads well: a box that splits across a
-// page break is how half an answer gets pasted into SalesTrekker.
+// A BOX STAYS WHOLE.
+//
+// The team selects a box and pastes it into SalesTrekker, so a box split over
+// two pages is an answer pasted in two halves. Fabio, 2 Sep 2026: "dont want
+// this break in page remeber my staff need to copy and paste into a system".
+//
+// So `wrap={false}`: a box that does not fit in the space left moves down to
+// the next page whole. The one exception is a box TALLER THAN A PAGE - kept
+// whole it would have nowhere to go and react-pdf would draw every line on top
+// of the one before, which is the bug from earlier the same day. Those, and
+// only those, are allowed to break, and they start on a fresh page so they
+// break once instead of twice. boxFitsOnAPage() decides which is which.
 function BoxCard({ n, label, text }: { n: number; label: string; text: string }) {
   const blocks = parseBlocks(text)
+  const whole = boxFitsOnAPage(blocks)
   return (
-    <View style={styles.box} wrap={false}>
-      <View style={styles.rail}>
-        <Text style={styles.railNo}>{n}</Text>
-        <View style={styles.railTick} />
+    <View style={styles.box} wrap={!whole} break={!whole} minPresenceAhead={whole ? 0 : 70}>
+      <View style={styles.boxHead} wrap={false}>
+        <Text style={styles.boxNo}>{n}</Text>
+        <Text style={styles.boxTitle}>{label}</Text>
+        <View style={styles.boxTick} />
       </View>
       <View style={styles.boxBody}>
-        <Text style={styles.boxTitle}>{label}</Text>
         {blocks.length === 0
           ? <Text style={styles.empty}>Not filled in.</Text>
           : blocks.map((b, i) => b.kind === 'rule'
               ? <View key={i} style={styles.hr} />
               : (
-                <Text key={i} style={styles.para}>
+                // A paragraph stays whole. That is the unit somebody selects.
+                <Text key={i} style={styles.para} wrap={false}>
                   {b.runs.map((r, j) => (
                     <Text key={j} style={r.bold ? { fontFamily: 'Helvetica-Bold', color: INK } : undefined}>{r.text}</Text>
                   ))}

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { handoverFileName, parseRuns, parseBlocks, plainText, hasContent,
-         NEEDS_BOXES, COMMENT_BOXES } from './handover'
+         NEEDS_BOXES, COMMENT_BOXES, boxFitsOnAPage, estimateBoxHeight, PAGE_BUDGET } from './handover'
 
 describe('what the file is called', () => {
   it('is named for the people, not the deal record', () => {
@@ -68,5 +68,26 @@ describe('the boxes', () => {
   it('keeps ownership next to security, where the same question is asked twice', () => {
     const keys = COMMENT_BOXES.map(b => b.key)
     expect(keys.indexOf('__title')).toBe(keys.indexOf('securityComment') + 1)
+  })
+})
+
+// A box is kept whole so the team can paste it into SalesTrekker in one go.
+// Only a box that is taller than a page is allowed to break, because a box kept
+// whole with nowhere to go draws on top of itself.
+describe('boxFitsOnAPage', () => {
+  it('keeps a normal answer whole', () => {
+    const blocks = parseBlocks('Clients are seeking to upgrade their owner occupied home.\n\nThey will sell the existing home and use the net proceeds.')
+    expect(boxFitsOnAPage(blocks)).toBe(true)
+  })
+
+  it('lets a box longer than a page break', () => {
+    const para = 'x'.repeat(900)
+    const blocks = parseBlocks(Array(8).fill(para).join('\n\n'))
+    expect(estimateBoxHeight(blocks)).toBeGreaterThan(PAGE_BUDGET)
+    expect(boxFitsOnAPage(blocks)).toBe(false)
+  })
+
+  it('counts an empty box as fitting', () => {
+    expect(boxFitsOnAPage(parseBlocks(''))).toBe(true)
   })
 })
