@@ -3,6 +3,8 @@ import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { emailParagraphs } from '@/lib/rich-text'
 import { showsOwnLoanAmount } from '@/lib/email-amounts'
+import { totalCost, totalLending, fundsToContribute, repaymentDuringConstruction,
+         num, DRAWDOWN_NOTE } from '@/lib/construction'
 
 
 const DEFAULT_BRAND = {
@@ -585,31 +587,47 @@ export async function POST(req: NextRequest) {
       notesBox(notes) + sig(b)
 
   } else if (template === 'construction') {
-    const landN = parseFloat((d.landValue || '0').replace(/,/g, '')) || 0
-    const constrN = parseFloat((d.constructionCost || '0').replace(/,/g, '')) || 0
-    const sdN = parseFloat((d.stampDuty || '0').replace(/,/g, '')) || 0
-    const totalCost = landN + constrN + sdN
-    const loanAmtN = parseFloat((d.splits?.[0]?.amount || '0').replace(/,/g, '')) || 0
-    const depositRequired = Math.max(0, Math.round(totalCost - loanAmtN))
+    // Every figure here used to read splits[0] and stop, so a land + construction
+    // deal reported half the lending, four times the deposit and half the LVR.
+    // lib/construction.ts holds the arithmetic and the reasoning.
+    const cost = totalCost(d)
+    const lending = totalLending(d.splits)
+    const contribute = fundsToContribute(d, d.splits)
+    const duringConstruction = repaymentDuringConstruction(d.splits)
+
+    // One row per split, so the construction loan and its own rate and repayment
+    // type are actually in the email. They never were.
+    const splitRows = (d.splits || [])
+      .filter((sp: any) => num(sp?.amount) > 0)
+      .map((sp: any, i: number) => row(
+        sp.label || `Split ${i + 1}`,
+        `$${fmtNum(num(sp.amount))} &nbsp;\u00b7&nbsp; ${sp.rate || ''}% &nbsp;\u00b7&nbsp; ${sp.type || 'P&I'}`,
+      )).join('')
+
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
+      p(`When looking at your numbers, your total lending is sitting at around <strong>${amt(lending > 0 ? fmtNum(lending) : '', '[amount]')}</strong>.`) +
       card('Your Loan Structure',
         row('Land value', '$' + (d.landValue || '')) +
         row('Construction cost', '$' + (d.constructionCost || '')) +
         row(dutyLabel(d), '$' + (d.stampDuty || '')) +
-        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Total cost</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">$${totalCost.toLocaleString('en-AU')}</span></td></tr>` +
+        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Total cost</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">$${cost.toLocaleString('en-AU')}</span></td></tr>` +
         row('"As if complete" valuation', '$' + (d.asIfCompleteValue || '')) +
-        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
-        row('Deposit required', '$' + depositRequired.toLocaleString('en-AU')) +
+        splitRows +
+        row('Total lending', '$' + lending.toLocaleString('en-AU')) +
+        // Not "deposit". It is cash found across the land settlement and the
+        // build, not a deposit on a purchase. Fabio, 2 Sep 2026.
+        row('Funds you need to contribute', '$' + contribute.toLocaleString('en-AU')) +
         buildLVRLine(d) +
-        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
-        row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
-        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+        // Left out entirely when nobody has typed a repayment, rather than
+        // mailing a client "$0 / month".
+        (duringConstruction > 0
+          ? row('Repayments during construction', '$' + duringConstruction.toLocaleString('en-AU') + ' / month') +
+            `<tr><td colspan="2" style="font-size:11px;color:#7a5c3a;font-style:italic;line-height:1.5;padding:8px 0 0"><span style="color:#7a5c3a;">${DRAWDOWN_NOTE}</span></td></tr>`
+          : '')
       ) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
-      p('The next step is finding the right lender and construction loan structure for your project — and we will guide you through every step of that process.') +
-      
+      p('The next step is finding the right lender and construction loan structure for your project \u2014 and we will guide you through every step of that process.') +
       notesBox(notes) + sig(b)
 
   } else if (template === 'investment_equity') {

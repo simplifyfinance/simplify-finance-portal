@@ -9,6 +9,7 @@ import { can } from '@/lib/permissions'
 import { templateLabel } from '@/lib/templates'
 import { proceedCredit } from '@/lib/deal-status'
 import { emailParagraphs, htmlToPlainText } from '@/lib/rich-text'
+import { totalCost, fundsToContribute, constructionLvr } from '@/lib/construction'
 
 // A finished "client agreed" is not something to hide. It used to disappear the
 // instant it was pressed, which made "already done" look exactly like "broken".
@@ -580,9 +581,10 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     const endDebt = parseFloat((splits[1]?.amount || '0').replace(/,/g, '')) || 0
     lvrPercent = price > 0 ? Math.ceil((endDebt / price) * 1000) / 10 : 0
   } else if (isConstructionLinked) {
-    const value = parseFloat(asIfCompleteValue.replace(/,/g, '')) || 0
-    const loanAmt = parseFloat((splits[0]?.amount || '0').replace(/,/g, '')) || 0
-    lvrPercent = value > 0 ? Math.ceil((loanAmt / value) * 1000) / 10 : 0
+    // Every split, not the land loan on its own. Reading splits[0] here reported
+    // 40% on a deal lending $1.6m against a $2m as-if-complete valuation, and
+    // told the client there was no LMI to think about.
+    lvrPercent = constructionLvr(asIfCompleteValue, splits)
   }
   const [internalNotes, setInternalNotes] = useState(s.internalNotes || '')
   const [brokerSig, setBrokerSig] = useState(s.brokerSig || deal.assigned_broker || 'Fabio')
@@ -1130,27 +1132,23 @@ Key assumptions: ${checklistText}`
                 <Field label="Total cost (calculated)">
                   <div className={inputCls + " bg-gray-50 text-gray-700"}>
                     {(() => {
-                      const land = parseFloat(landValue.replace(/,/g, '')) || 0
-                      const constr = parseFloat(constructionCost.replace(/,/g, '')) || 0
-                      const sd = parseFloat(stampDuty.replace(/,/g, '')) || 0
-                      const total = land + constr + sd
-                      return total > 0 ? `$${formatNumber(total.toString())}` : '\u2014'
+                      const total = totalCost({ landValue, constructionCost, stampDuty })
+                      return total > 0 ? `$${formatNumber(String(total))}` : '\u2014'
                     })()}
                   </div>
                 </Field>
               )}
               {template === 'construction' && <Field label={'"As if complete" valuation'}><NumberInput value={asIfCompleteValue} onChange={setAsIfCompleteValue} /></Field>}
+              {/* Total cost less EVERY split, and called what it is: cash the
+                  client finds across the land settlement and the build, not a
+                  deposit on a purchase. It read splits[0] only, so on a deal with
+                  a land loan and a construction loan it asked for the build twice. */}
               {template === 'construction' && (
-                <Field label="Deposit required (calculated)">
+                <Field label="Funds to contribute (calculated)">
                   <div className={inputCls + " bg-gray-50 text-gray-700"}>
                     {(() => {
-                      const land = parseFloat(landValue.replace(/,/g, '')) || 0
-                      const constr = parseFloat(constructionCost.replace(/,/g, '')) || 0
-                      const sd = parseFloat(stampDuty.replace(/,/g, '')) || 0
-                      const total = land + constr + sd
-                      const loanAmt = parseFloat((splits[0]?.amount || '0').replace(/,/g, '')) || 0
-                      const req = total - loanAmt
-                      return total > 0 ? `$${formatNumber(Math.max(0, Math.round(req)).toString())}` : '\u2014'
+                      const d = { landValue, constructionCost, stampDuty }
+                      return totalCost(d) > 0 ? `$${formatNumber(String(fundsToContribute(d, splits)))}` : '\u2014'
                     })()}
                   </div>
                 </Field>
