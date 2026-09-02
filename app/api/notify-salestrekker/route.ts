@@ -33,13 +33,19 @@ export async function POST(req: NextRequest) {
     const { data: settingsRow } = await supabase.from('settings').select('new_deal_notification_user_id, stage_move_notification_user_id').eq('id', 'singleton').single()
     let ellieEmail: string | null = null
     let crisEmail: string | null = null
+    // The name as well as the address, so the email can open "Hi Cris," rather
+    // than "Hi,". Same query, one more column.
+    let ellieName: string | null = null
+    let crisName: string | null = null
     if (settingsRow?.new_deal_notification_user_id) {
-      const { data: p } = await supabase.from('user_profiles').select('email').eq('id', settingsRow.new_deal_notification_user_id).single()
+      const { data: p } = await supabase.from('user_profiles').select('email, full_name').eq('id', settingsRow.new_deal_notification_user_id).single()
       ellieEmail = p?.email || null
+      ellieName = p?.full_name || null
     }
     if (settingsRow?.stage_move_notification_user_id) {
-      const { data: p } = await supabase.from('user_profiles').select('email').eq('id', settingsRow.stage_move_notification_user_id).single()
+      const { data: p } = await supabase.from('user_profiles').select('email, full_name').eq('id', settingsRow.stage_move_notification_user_id).single()
       crisEmail = p?.email || null
+      crisName = p?.full_name || null
     }
 
     // Trigger 1: first BC action on a deal — fires once, whichever happens first
@@ -93,7 +99,8 @@ export async function POST(req: NextRequest) {
           internalNotes: deal.internal_notes || ff.internalNotes || '',
           creditOfficerName,
           alreadyBcActioned,
-          recipientEmail: ellieEmail
+          recipientEmail: ellieEmail,
+          recipientName: ellieName
         })
       } catch (e: any) {
         // Release the claim so a later trigger can retry, rather than a timestamp
@@ -125,25 +132,25 @@ export async function POST(req: NextRequest) {
         `Set up a follow-up task on this deal card for ${brokerName} and the support team. Due ${due}.`
         + (c?.next_action ? ` Action: ${c.next_action}.` : '')
         + (c?.close_reason ? ` The deal was closed as: ${String(c.close_reason).replace(/_/g, ' ')}.` : '')
-      await notifyCrisMoveCard(dealName, brokerName, instruction, false, undefined, crisEmail)
+      await notifyCrisMoveCard(dealName, brokerName, instruction, false, undefined, crisEmail, { recipientName: crisName })
       return NextResponse.json({ ok: true })
     }
 
     // Trigger 2: BC sent to client, card already exists
     if (trigger === 'bc_sent') {
-      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to BC Actioned', false, undefined, crisEmail)
+      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to BC Actioned', false, undefined, crisEmail, { recipientName: crisName })
       return NextResponse.json({ ok: true })
     }
 
     // Trigger 3: LO sent to client
     if (trigger === 'lo_sent') {
-      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to LO Actioned', false, undefined, crisEmail)
+      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to LO Actioned', false, undefined, crisEmail, { recipientName: crisName })
       return NextResponse.json({ ok: true })
     }
 
     // Trigger 4: client/broker confirms proceed LO -> Compliance
     if (trigger === 'lo_to_compliance') {
-      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to Compliance (to be actioned)', false, undefined, crisEmail)
+      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to Compliance (to be actioned)', false, undefined, crisEmail, { recipientName: crisName })
       return NextResponse.json({ ok: true })
     }
 
@@ -216,6 +223,10 @@ export async function POST(req: NextRequest) {
         urgent: !!answers?.urgent,
         dealId,
         boxCount,
+        recipientName: crisName,
+        // Named in the email itself, not left to a paperclip at the bottom.
+        // Fabio, 2 Sep 2026: "the atatchments will get misssed at the bottom".
+        attachmentNames: attachments.map(a => a.filename),
       })
 
       // This used to set status = 'completed', and the deals list hides anything

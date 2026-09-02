@@ -25,6 +25,15 @@ async function sendResendEmail(to: string, subject: string, html: string, attach
 }
 
 // Trigger 1 (Path A or B) — whoever Settings nominates creates the deal card in SalesTrekker
+// "Hi Cris," not "Hi,". Both notifications used the bare comma; a name is the
+// cheapest way to make an automated email read as addressed to somebody rather
+// than posted to a list. First name only - a profile often holds
+// "Cristina Alvarez Reyes" and nobody greets a colleague like that.
+function greeting(fullName?: string | null): string {
+  const first = String(fullName || '').trim().split(/\s+/)[0]
+  return first ? `<p>Hi ${first},</p>` : '<p>Hi,</p>'
+}
+
 export async function notifyEllieCreateCard(params: {
   dealId: string
   dealName: string
@@ -37,8 +46,9 @@ export async function notifyEllieCreateCard(params: {
   creditOfficerName?: string | null
   alreadyBcActioned?: boolean
   recipientEmail?: string | null
+  recipientName?: string | null
 }) {
-  const { dealId, dealName, clientName, brokerName, leadSource, dealType, incomeType, internalNotes, creditOfficerName, alreadyBcActioned, recipientEmail } = params
+  const { dealId, dealName, clientName, brokerName, leadSource, dealType, incomeType, internalNotes, creditOfficerName, alreadyBcActioned, recipientEmail, recipientName } = params
   const dealLink = `https://simplify-finance-portal.vercel.app/deals/${dealId}`
 
   const steps = [
@@ -69,7 +79,7 @@ export async function notifyEllieCreateCard(params: {
       </td>
     </tr>`).join('')
 
-  const html = `<p>Hi,</p>
+  const html = `${greeting(recipientName)}
     <p>A new deal is ready to be set up in SalesTrekker. Please complete the following:</p>
     <table style="width:100%;border-collapse:separate;border-spacing:0 8px" cellpadding="0" cellspacing="0">${stepsRows}</table>`
 
@@ -83,16 +93,52 @@ export async function notifyEllieCreateCard(params: {
 //
 // This email is being rewritten properly later. For now the answers are here, in
 // the order credit reads them, so nothing has to be chased.
-export async function notifyCrisMoveCard(dealName: string, brokerName: string, action: string, closed = false, attachments?: { filename: string; content: string }[], recipientEmail?: string | null, answers?: { subject?: string; lines?: string[]; urgent?: boolean; dealId?: string; boxCount?: number }) {
+export async function notifyCrisMoveCard(dealName: string, brokerName: string, action: string, closed = false, attachments?: { filename: string; content: string }[], recipientEmail?: string | null, answers?: { subject?: string; lines?: string[]; urgent?: boolean; dealId?: string; boxCount?: number; recipientName?: string | null; attachmentNames?: string[] }) {
   const bg = closed ? '#E6F5EC' : '#F2E9FB'
   const color = closed ? '#1D9E75' : '#7C3AED'
-  const html = `<p>Hi,</p>
+  const html = `${greeting(answers?.recipientName)}
     <table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 16px" width="100%" cellpadding="0" cellspacing="0" border="0">
       <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Deal</span></td><td style="text-align:right;font-size:13px;font-weight:600;padding:3px 0">${dealName}</td></tr>
       <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Broker</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${brokerName || ''}</td></tr>
     </table>
+    ${answers?.dealId ? `
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px">
+      <tr><td style="font-family:Arial,sans-serif;font-size:15px;font-weight:700;padding:0 0 12px"><span style="color:#141C24;">What to do</span></td></tr>
+
+      <tr><td bgcolor="#FDF6E7" style="background:#FDF6E7;border-radius:8px;padding:13px 16px">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:0 0 4px"><span style="color:#8A6218;">1 &nbsp;Save the ${attachments && attachments.length === 1 ? 'attached PDF' : 'two attached PDFs'} to OneDrive</span></td></tr>
+          <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55;padding:0 0 8px"><span style="color:#8A6218;">Into this client&rsquo;s folder. They are the compliance record of what went to credit today.</span></td></tr>
+          ${(answers?.attachmentNames || []).map(nm => `<tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:6px;padding:7px 10px;font-family:Arial,sans-serif;font-size:12.5px"><span style="color:#141C24;">${nm}</span></td></tr><tr><td style="padding:4px 0 0"></td></tr>`).join('')}
+        </table>
+      </td></tr>
+      <tr><td style="padding:8px 0 0"></td></tr>
+
+      <tr><td bgcolor="#EAF6FD" style="background:#EAF6FD;border-radius:8px;padding:13px 16px">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:0 0 4px"><span style="color:#0B5E8A;">2 &nbsp;Copy ${answers?.boxCount ? `the ${answers.boxCount} boxes` : 'the boxes'} into SalesTrekker &mdash; from the portal, not the PDF</span></td></tr>
+          <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55;padding:0 0 5px"><span style="color:#0B5E8A;">Every box on that page is a field in SalesTrekker with the same name. Press <b>Copy box</b>, paste into the field of that name. Single values &mdash; a date of birth, an ABN, a balance &mdash; copy on click.</span></td></tr>
+          <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55;padding:0 0 11px"><span style="color:#0B5E8A;">Each box turns green once copied and stays green, so you can stop and come back. Do not summarise and do not reword &mdash; the wording is the compliance record.</span></td></tr>
+          <tr><td style="padding:0">
+            <table cellpadding="0" cellspacing="0" border="0" style="margin:0"><tr>
+              <td bgcolor="#2DBEFF" style="background:#2DBEFF;border-radius:8px;padding:11px 20px">
+                <a href="${siteUrl()}/deals/${answers.dealId}/handover" style="color:#08252F;font-family:Arial,sans-serif;font-size:14px;font-weight:700;text-decoration:none">Open the handover to copy &rarr;</a>
+              </td>
+            </tr></table>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td style="padding:8px 0 0"></td></tr>
+
+      <tr><td bgcolor="#E6F5EC" style="background:#E6F5EC;border-radius:8px;padding:13px 16px">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:0 0 4px"><span style="color:#166F52;">3 &nbsp;${action}</span></td></tr>
+          <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55"><span style="color:#166F52;">Once the boxes are in.</span></td></tr>
+        </table>
+      </td></tr>
+    </table>` : `
     <p style="color:#666;font-size:13px;margin:0 0 6px"><span style="color:#666;">Action needed in SalesTrekker:</span></p>
-    <table cellpadding="0" cellspacing="0" border="0" style="margin:0"><tr><td bgcolor="${bg}" style="background:${bg};border-radius:8px;padding:8px 12px;font-family:Arial,sans-serif;font-size:14px;font-weight:600;color:${color}">${action}</td></tr></table>
+    <table cellpadding="0" cellspacing="0" border="0" style="margin:0"><tr><td bgcolor="${bg}" style="background:${bg};border-radius:8px;padding:8px 12px;font-family:Arial,sans-serif;font-size:14px;font-weight:600;color:${color}">${action}</td></tr></table>`}
     ${answers?.lines?.length ? `<table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:16px 0 0" width="100%" cellpadding="0" cellspacing="0" border="0">
       ${answers.lines.map(l => {
         const at = l.indexOf(':')
@@ -100,23 +146,7 @@ export async function notifyCrisMoveCard(dealName: string, brokerName: string, a
         const v = at > 0 ? l.slice(at + 1).trim() : l
         return `<tr><td style="color:#666;font-size:13px;padding:3px 0;vertical-align:top;width:38%"><span style="color:#666;">${k}</span></td><td style="font-size:13px;padding:3px 0">${v}</td></tr>`
       }).join('')}
-    </table>` : ''}
-    ${answers?.dealId ? `
-    <table bgcolor="#EAF6FD" style="background:#EAF6FD;border-radius:8px;padding:14px 16px;margin:18px 0 0" width="100%" cellpadding="0" cellspacing="0" border="0">
-      <tr><td style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:0 0 8px"><span style="color:#141C24;">Do not retype from the PDF. Copy from the portal.</span></td></tr>
-      <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;padding:0 0 5px"><span style="color:#0B5E8A;">1. Open the link below. Every box on that page is a field in SalesTrekker with the same name${answers?.boxCount ? `, ${answers.boxCount} of them` : ''}.</span></td></tr>
-      <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;padding:0 0 5px"><span style="color:#0B5E8A;">2. Press <b>Copy box</b>, then paste straight into the field of that name. Single values &mdash; a date of birth, an ABN, a balance &mdash; copy on click.</span></td></tr>
-      <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;padding:0 0 5px"><span style="color:#0B5E8A;">3. Each box turns green once copied, and that is saved. Stop and come back whenever you like &mdash; the page remembers where you got to, and so does anyone else on this deal.</span></td></tr>
-      <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;padding:0 0 12px"><span style="color:#0B5E8A;">4. Do not summarise and do not reword. The wording is the compliance record.</span></td></tr>
-      <tr><td style="padding:0">
-        <table cellpadding="0" cellspacing="0" border="0" style="margin:0"><tr>
-          <td bgcolor="#2DBEFF" style="background:#2DBEFF;border-radius:8px;padding:11px 20px">
-            <a href="${siteUrl()}/deals/${answers.dealId}/handover" style="color:#08252F;font-family:Arial,sans-serif;font-size:14px;font-weight:700;text-decoration:none">Open the handover to copy &rarr;</a>
-          </td>
-        </tr></table>
-      </td></tr>
-    </table>` : ''}
-    ${attachments && attachments.length ? `<p style="color:#666;font-size:13px;margin:14px 0 0"><span style="color:#666;">The handover and the fact find are attached as PDFs &mdash; these are the compliance record. Please save both into this client&rsquo;s OneDrive folder. Type from the link above, not from the attachments.</span></p>` : ''}`
+    </table>` : ''}`
 
   // The subject carries the urgency, because that is the only part of an email a
   // busy person reads before deciding when to open it.
