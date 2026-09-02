@@ -31,7 +31,7 @@ import { renderToBuffer, Document, Page, Text, View, StyleSheet } from '@react-p
 import React from 'react'
 import { money, moneyOrBlank, withFrequency, readMoney } from '@/lib/money'
 import { notWorking, selfEmployed, currentEmployment, currentAddress, fullName,
-         ageFrom, annualIncome, position, stillToConfirm } from '@/lib/fact-find'
+         annualIncome, position, stillToConfirm, dateAU } from '@/lib/fact-find'
 import { applicantNamesOf } from '@/lib/applicants'
 import { shortDate } from '@/lib/push-answers'
 
@@ -176,12 +176,11 @@ const owners = (ownership: any, applicants: any[]): string =>
     return v === 'Yes' || (Number(v) || 0) > 0
   }).map((a: any) => fullName(a)).join(', ')
 
-const period = (from: any, to: any): string => {
-  const a = String(from || '').trim(), b = String(to || '').trim()
-  if (a && b) return `${a} – ${b}`
-  if (a) return `From ${a}`
-  return b ? `Until ${b}` : ''
-}
+// Start and end as two rows, both dd/mm/yyyy. SalesTrekker has two fields, and
+// a date with a word in front of it cannot be pasted into either. Fabio, 2 Sep
+// 2026: "dates should be dd/mm/yyyy no works 'from' or 'age'".
+const dates = (from: any, to: any): [string, any][] =>
+  [['Start date', dateAU(from)], ['End date', dateAU(to)]]
 
 export async function generateSummaryPdfBuffer(dealId: string, supabase: any): Promise<{ buffer: Buffer; dealName: string } | null> {
   const { data: deal } = await supabase.from('deals')
@@ -246,13 +245,12 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
           <Sec t="Applicants" a={A.blue} first
                pill={`${applicants.length}${ff.dependants ? ` · ${ff.dependants} dependants` : ''}`} />
           {applicants.map((a: any, i: number) => {
-            const age = ageFrom(a.dob)
             return (
               <Card key={i} a={A.blue}
                     t={[a.title, fullName(a)].filter(Boolean).join(' ') || `Applicant ${i + 1}`}
                     tag={`Applicant ${i + 1}`}>
                 <KV rows={[
-                  ['Date of birth', a.dob ? `${a.dob}${age !== null ? ` (${age})` : ''}` : ''],
+                  ['Date of birth', dateAU(a.dob)],
                   ['Gender', a.gender], ['Preferred name', a.preferredName], ['Previous name', a.previousName],
                   ['Mobile', a.phoneMobile], ['Email', a.emailPersonal],
                 ]} />
@@ -270,7 +268,7 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
                   <Sub t={ad.isCurrent ? 'Current' : 'Previous'} a={A.teal} />
                   <KV rows={[
                     ['Address', ad.address], ['Status', ad.residentialStatus],
-                    ['Period', period(ad.startDate, ad.endDate)],
+                    ...dates(ad.startDate, ad.endDate),
                     // Only a renter or boarder is asked for this, so a home owner
                     // gets no empty row rather than a "not recorded".
                     ['Housing expense', /rent|board/i.test(String(ad.residentialStatus || ''))
@@ -298,7 +296,7 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
                         [selfEmployed(e) ? 'Business' : 'Employer', e.employerName],
                         ['ABN', e.employerAbn], ['ACN', e.employerAcn], ['Employer type', e.employerType],
                         ['Employer address', e.employerAddress],
-                        ['Period', period(e.startDate, e.endDate)],
+                        ...dates(e.startDate, e.endDate),
                         ['On probation', e.onProbation ? 'Yes' : ''],
                         ['Contact', [e.contactPersonName, e.contactPersonDetails].filter(Boolean).join(' — ')],
                       ]} />}
@@ -388,8 +386,8 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
                     ['Interest rate', l.interestRate ? `${l.interestRate}%` : ''],
                     ['Repayment', [withFrequency(l.repaymentAmount, l.repaymentFrequency), l.repaymentType].filter(Boolean).join(' · ')],
                     ['Rate type', l.rateType],
-                    ['Interest only expires', l.interestOnlyExpiryDate],
-                    ['Loan term expires', l.loanTermExpiryDate],
+                    ['Interest only expires', dateAU(l.interestOnlyExpiryDate)],
+                    ['Loan term expires', dateAU(l.loanTermExpiryDate)],
                     ['Remaining term', l.remainingLoanTermYears ? `${l.remainingLoanTermYears} years` : ''],
                     ['Status', l.status], ['Owned by', owners(l.ownership, applicants)],
                   ]} />

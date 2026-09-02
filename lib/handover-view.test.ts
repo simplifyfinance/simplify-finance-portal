@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { allSections, handoverSections, factFindSections, copyTextOf, countCards,
-         EXPENSE_CATEGORIES, RISK_GROUPS, PRODUCT_GROUPS } from './handover-view'
+         copyableCards, EXPENSE_CATEGORIES, RISK_GROUPS, PRODUCT_GROUPS } from './handover-view'
+import { NEEDS_BOXES, COMMENT_BOXES } from './handover'
 
 const deal = {
   deal_name: 'Chapman_Purchase_2026',
@@ -64,11 +65,21 @@ describe('the handover boxes', () => {
   const secs = handoverSections(deal)
   const boxes = secs.filter(s => s.accent === 'ink').flatMap(s => s.cards)
 
-  it('numbers the boxes straight through, so box 2 on screen is box 2 on paper', () => {
-    // Continuous across both groups: needs first, then broker comments. A gap
-    // here means the screen and the PDF disagree about which box is which.
-    expect(boxes.map(b => b.no)).toEqual(boxes.map((_, i) => i + 1))
-    expect(boxes[0].key).toBe('needsPrimary')
+  it('numbers a box by which box it is, not by where it sits on the page', () => {
+    // The page runs in SalesTrekker's order, which puts Security up with the
+    // home loan and the written comments after it. The NUMBERS come from the
+    // canonical list, so box 9 is Security on the screen and on the PDF alike.
+    // If these ever came from position, the two documents would disagree.
+    const byKey = Object.fromEntries(boxes.map(b => [b.key, b.no]))
+    const canonical = [...NEEDS_BOXES, ...COMMENT_BOXES].map(b => b.key)
+    const filled = canonical.filter(k => k in byKey)
+    expect(filled.map(k => byKey[k])).toEqual(filled.map((_, i) => i + 1))
+  })
+
+  it('puts security with the home loan and the written comments after it', () => {
+    const keys = allSections(deal).map(s => s.key)
+    expect(keys.indexOf('security')).toBeLessThan(keys.indexOf('broker'))
+    expect(keys.indexOf('applicants')).toBeLessThan(keys.indexOf('needs'))
   })
   it('leaves out a box nobody has written in', () => {
     expect(boxes.map(b => b.key)).not.toContain('needsImmediate')
@@ -141,7 +152,82 @@ describe('every card can be ticked off', () => {
     const keys = allSections(deal).flatMap(s => s.cards).map(c => c.key)
     expect(new Set(keys).size).toBe(keys.length)
   })
-  it('counts the boxes somebody has to work through', () => {
-    expect(countCards(allSections(deal))).toBeGreaterThan(10)
+  it('counts the boxes somebody presses a button on, not every card on the page', () => {
+    const secs = allSections(deal)
+    expect(countCards(secs)).toBe(copyableCards(secs).length)
+    // This number goes into the push email - "copy the 24 boxes" - so it has to
+    // be the number of Copy buttons, not the number of cards.
+    expect(countCards(secs)).toBeLessThan(secs.flatMap(s => s.cards).length)
+  })
+})
+
+// The page runs in the same direction as SalesTrekker's left-hand menu, so
+// somebody loading a deal works down both lists together.
+describe('the order of the page', () => {
+  const keys = allSections(deal).map(s => s.key)
+
+  it('starts with the client profile, not the broker write-up', () => {
+    expect(keys[0]).toBe('applicants')
+  })
+  it('follows SalesTrekker: who they are, what they own, owe and earn', () => {
+    const want = ['applicants', 'address', 'employment', 'liabilities', 'income', 'expenses']
+    const got = want.filter(k => keys.includes(k))
+    expect(got).toEqual(want.filter(k => keys.includes(k)))
+    expect(keys.indexOf('liabilities')).toBeLessThan(keys.indexOf('income'))
+    expect(keys.indexOf('income')).toBeLessThan(keys.indexOf('expenses'))
+  })
+  it('puts the home loan half last', () => {
+    const groups = allSections(deal).map(s => s.group)
+    const firstHome = groups.indexOf('Home loan')
+    expect(firstHome).toBeGreaterThan(-1)
+    expect(groups.slice(firstHome).every(g => g === 'Home loan')).toBe(true)
+  })
+})
+
+// A value is pasted into SalesTrekker exactly as it appears. A word in front of
+// a date makes it unpasteable.
+describe('dates are dates', () => {
+  it('gives a date of birth with no age attached', () => {
+    const card = allSections(deal).find(s => s.key === 'applicants')!.cards[1]
+    const dob = card.rows!.find(r => r.kind === 'kv' && r.k === 'Date of birth') as any
+    expect(dob.v).toBe('02/11/1984')
+  })
+  it('splits a period into a start and an end, with no "From"', () => {
+    const text = copyTextOf(allSections(deal).find(s => s.key === 'address')!.cards[0])
+    expect(text).not.toMatch(/From /)
+    expect(text).not.toMatch(/Period:/)
+  })
+  it('never writes an age into something that gets pasted', () => {
+    const everything = allSections(deal).flatMap(s => s.cards).map(copyTextOf).join('\n')
+    expect(everything).not.toMatch(/\(\d{1,3}\)/)
+  })
+})
+
+// A whole-card Copy button only makes sense where the card IS one SalesTrekker
+// field. A card of key/value rows is a dozen fields; one clipboard cannot fill
+// them, and a button offering to try would have staff pasting a block of labels
+// into a single box.
+describe('what can be copied whole', () => {
+  const secs = allSections(deal)
+
+  it('offers it on the written boxes', () => {
+    const box = secs.flatMap(s => s.cards).find(c => c.key === 'analysisComment')!
+    expect(box.copyable).toBe(true)
+  })
+  it('offers it on the recommendation, which is also one field', () => {
+    const note = secs.find(s => s.key === 'lo')!.cards.find(c => c.key === 'lo:note')!
+    expect(note.copyable).toBe(true)
+  })
+  it('does not offer it on a card of separate fields', () => {
+    for (const key of ['applicants', 'address', 'employment', 'income', 'liabilities', 'bc']) {
+      const sec = secs.find(s => s.key === key)
+      if (!sec) continue
+      for (const card of sec.cards) expect(card.copyable).toBeFalsy()
+    }
+  })
+  it('counts only the boxes somebody presses a button on', () => {
+    const n = copyableCards(secs).length
+    expect(n).toBe(secs.flatMap(s => s.cards).filter(c => c.blocks).length)
+    expect(n).toBeLessThan(secs.flatMap(s => s.cards).length)
   })
 })

@@ -29,6 +29,28 @@ export function fullName(a: any): string {
 
 // Age from a date of birth, in whatever order it was typed. Returns null rather
 // than a wrong number when the date cannot be read.
+// EVERY DATE AS dd/mm/yyyy.
+//
+// These values are copied out of the handover and pasted into SalesTrekker, so
+// a date has to arrive as a date and nothing else. Fabio, 2 Sep 2026: "dates
+// should be dd/mm/yyyy no works 'from' or 'age' as this wont work copy na dpast
+// into system".
+//
+// The forms store dates two ways - "1984-11-02" from a date picker and
+// "02/11/1984" typed by hand - and some fields only ever held a month and a
+// year ("Mar 2019"). A full date is normalised; anything else is handed back
+// untouched, because inventing a day of the month would be worse than leaving
+// the month as written.
+export function dateAU(v: any): string {
+  const raw = String(v ?? '').trim()
+  if (!raw) return ''
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ].*)?$/)
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`
+  const au = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (au) return `${au[1].padStart(2, '0')}/${au[2].padStart(2, '0')}/${au[3]}`
+  return raw
+}
+
 export function ageFrom(dob: any, today = new Date()): number | null {
   const raw = String(dob || '').trim()
   let d: Date | null = null

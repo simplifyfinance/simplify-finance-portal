@@ -202,10 +202,21 @@ export default function HandoverPage() {
           compliance record.
         </div>
 
-        {sections.map(s => {
+        {sections.map((s, si) => {
           const sh = SHADES[s.accent]
+          // SalesTrekker splits its menu into Client profile and Home loan, and
+          // this page runs in the same order, so it carries the same divide.
+          const newGroup = s.group && s.group !== sections[si - 1]?.group
           return (
             <div key={s.key}>
+              {newGroup && (
+                <div className="flex items-center gap-3 mt-9 mb-1">
+                  <span className="text-[11px] font-bold tracking-[.16em] text-[#7C8894]">
+                    {s.group!.toUpperCase()}
+                  </span>
+                  <span className="flex-1 h-px bg-[#DCE1E6]" />
+                </div>
+              )}
               <div id={'sec-' + s.key} className="scroll-mt-28 flex items-center gap-2.5 rounded-md mt-7 mb-2.5 px-3.5 py-2.5"
                    style={{ background: sh.tint, borderLeft: `5px solid ${sh.edge}`, color: sh.ink }}>
                 <span className="text-[12px] font-bold tracking-[.11em]">{s.title.toUpperCase()}</span>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { notWorking, selfEmployed, ageFrom, annualIncome, position, stillToConfirm, fullName } from './fact-find'
+import { notWorking, selfEmployed, ageFrom, annualIncome, position, stillToConfirm, fullName , dateAU } from './fact-find'
 
 // The Chapman file. Natasha is marked Not working; Richard earns.
 const natasha = {
@@ -117,5 +117,28 @@ describe('what is genuinely still to confirm', () => {
     expect(fullName(natasha)).toBe('Natasha Chapman')
     expect(fullName({ firstName: 'Prince' })).toBe('Prince')
     expect(fullName({})).toBe('')
+  })
+})
+
+// A date is pasted into SalesTrekker as a date. Nothing else may ride along.
+describe('dateAU', () => {
+  it('turns a date-picker value into the Australian order', () => {
+    expect(dateAU('1984-11-02')).toBe('02/11/1984')
+  })
+  it('pads a hand-typed date', () => {
+    expect(dateAU('2/3/1988')).toBe('02/03/1988')
+  })
+  it('leaves an already-correct date alone', () => {
+    expect(dateAU('14/03/1988')).toBe('14/03/1988')
+  })
+  it('leaves a month-and-year as written rather than inventing a day', () => {
+    expect(dateAU('Mar 2019')).toBe('Mar 2019')
+  })
+  it('is blank for a blank', () => {
+    expect(dateAU('')).toBe('')
+    expect(dateAU(null)).toBe('')
+  })
+  it('drops the time off a timestamp', () => {
+    expect(dateAU('2026-09-02T10:15:00Z')).toBe('02/09/2026')
   })
 })

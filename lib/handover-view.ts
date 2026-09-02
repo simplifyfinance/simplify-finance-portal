@@ -16,8 +16,8 @@
 // copies. They happened to still agree on 2 Sep 2026; nothing was keeping them
 // that way, and the screen would have made a third copy.
 import { money, moneyOrBlank, withFrequency, readMoney } from './money'
-import { notWorking, selfEmployed, currentEmployment, fullName, ageFrom,
-         annualIncome, stillToConfirm } from './fact-find'
+import { notWorking, selfEmployed, currentEmployment, fullName,
+         annualIncome, stillToConfirm, dateAU } from './fact-find'
 import { parseBlocks, hasContent, NEEDS_BOXES, COMMENT_BOXES, type Block, type Box } from './handover'
 import { titleSummary } from './title'
 import { hemStateOf, hemTotals, unansweredNote, type ExpenseCategory } from './hem'
@@ -125,6 +125,13 @@ export type ViewRow =
 export type ViewCard = {
   key: string          // stable, and what a saved tick is filed under
   title: string
+  // Whether the whole card can be copied in one go. Only the written boxes can:
+  // they go into ONE SalesTrekker field, so one button fills one field. A card
+  // of key/value rows is a dozen separate fields, and a button that puts all
+  // twelve on the clipboard cannot paste into any of them. Fabio, 2 Sep 2026:
+  // "remove copy of flields as copying multiple tabs doesnt work and it will
+  // confuse staff". Those rows copy one at a time instead.
+  copyable?: boolean
   no?: number          // the SalesTrekker box number, where there is one
   tag?: string
   tone?: Tone
@@ -135,6 +142,8 @@ export type ViewCard = {
 
 export type ViewSection = {
   key: string; title: string; pill?: string; accent: Accent; cards: ViewCard[]
+  // Which half of the SalesTrekker menu this belongs to. See ORDER.
+  group?: 'Client profile' | 'Home loan'
 }
 
 const words = (v: any) => {
@@ -142,12 +151,11 @@ const words = (v: any) => {
   return t ? t[0].toUpperCase() + t.slice(1) : ''
 }
 
-const period = (from: any, to: any): string => {
-  const a = String(from || '').trim(), b = String(to || '').trim()
-  if (a && b) return `${a} – ${b}`
-  if (a) return `From ${a}`
-  return b ? `Until ${b}` : ''
-}
+// Start and end are two separate rows, not one "From Mar 2019" line. They are
+// two separate fields in SalesTrekker, and a value with a word in front of it
+// cannot be pasted into either of them.
+const dates = (from: any, to: any): [string, any][] =>
+  [['Start date', dateAU(from)], ['End date', dateAU(to)]]
 
 const owners = (ownership: any, applicants: any[]): string =>
   (applicants || []).filter((a: any) => {
@@ -206,7 +214,7 @@ export function handoverSections(deal: any): ViewSection[] {
     if (!hasContent(text)) return null
     n += 1
     return {
-      key: b.key, no: n, title: b.label, blocks: parseBlocks(text),
+      key: b.key, no: n, title: b.label, blocks: parseBlocks(text), copyable: true,
       // A pre-approval is why the security box says TBA. Saying so on the box
       // stops somebody "fixing" it.
       ...(b.key === 'securityComment' && c.preApproval
@@ -217,11 +225,22 @@ export function handoverSections(deal: any): ViewSection[] {
   const needs = NEEDS_BOXES.map(boxCard).filter(Boolean) as ViewCard[]
   const comments = COMMENT_BOXES.map(boxCard).filter(Boolean) as ViewCard[]
 
+  // Security and ownership are pulled out of the broker comments and put with
+  // Security details, where SalesTrekker asks for them. The numbers do NOT
+  // change when a box moves: a number names the box, not its position, so the
+  // screen and the PDF still agree that box 9 is Security.
+  const SECURITY_KEYS = ['securityComment', '__title']
+  const security = comments.filter(c => SECURITY_KEYS.includes(c.key))
+  const written = comments.filter(c => !SECURITY_KEYS.includes(c.key))
+
+  const boxPill = (n: number) => `${n} ${n === 1 ? 'box' : 'boxes'}`
   const sections: ViewSection[] = []
-  if (needs.length) sections.push({ key: 'needs', title: 'Needs & objectives', accent: 'ink',
-    pill: `${needs.length} ${needs.length === 1 ? 'box' : 'boxes'}`, cards: needs })
-  if (comments.length) sections.push({ key: 'broker', title: 'Broker comments', accent: 'ink',
-    pill: `${comments.length} ${comments.length === 1 ? 'box' : 'boxes'}`, cards: comments })
+  if (needs.length) sections.push({ key: 'needs', title: 'Needs and objectives', accent: 'ink',
+    pill: boxPill(needs.length), cards: needs })
+  if (security.length) sections.push({ key: 'security', title: 'Security details', accent: 'ink',
+    pill: boxPill(security.length), cards: security })
+  if (written.length) sections.push({ key: 'broker', title: 'Compliance comments', accent: 'ink',
+    pill: boxPill(written.length), cards: written })
 
   // Risks: every applicant, every time. An applicant with no answers gets one
   // honest sentence rather than nineteen dashes.
@@ -268,7 +287,7 @@ export function handoverSections(deal: any): ViewSection[] {
   expRows.push({ kind: 'kv', k: 'Total expenses', v: money(totals.all) })
   expRows.push({ kind: 'kv', k: 'In HEM', v: money(totals.inHem), state: 'in' })
   expRows.push({ kind: 'kv', k: 'Not in HEM', v: money(totals.notInHem), state: 'out' })
-  sections.push({ key: 'expenses', title: 'Living expenses', accent: 'green', pill: 'household monthly', cards: [
+  sections.push({ key: 'expenses', title: 'Expenses', accent: 'green', pill: 'household monthly', cards: [
     { key: 'expenses', title: 'Monthly expenses', tag: money(totals.all), rows: expRows,
       note: totals.unanswered > 0 ? unansweredNote(totals.unanswered) : undefined },
   ]})
@@ -291,12 +310,11 @@ export function factFindSections(deal: any): ViewSection[] {
   out.push({ key: 'applicants', title: 'Applicants', accent: 'blue',
     pill: `${applicants.length}${ff.dependants ? ` · ${ff.dependants} dependants` : ''}`,
     cards: applicants.map((a, i) => {
-      const age = ageFrom(a.dob)
       return {
         key: `applicant:${a.id || i}`, tag: `Applicant ${i + 1}`,
         title: [a.title, fullName(a)].filter(Boolean).join(' ') || `Applicant ${i + 1}`,
         rows: kv([
-          ['Date of birth', a.dob ? `${a.dob}${age !== null ? ` (${age})` : ''}` : ''],
+          ['Date of birth', dateAU(a.dob)],
           ['Gender', a.gender], ['Preferred name', a.preferredName], ['Previous name', a.previousName],
           ['Mobile', a.phoneMobile], ['Email', a.emailPersonal],
         ]),
@@ -310,7 +328,7 @@ export function factFindSections(deal: any): ViewSection[] {
         rows.push(sub(ad.isCurrent ? 'Current' : 'Previous'))
         rows.push(...kv([
           ['Address', ad.address], ['Status', ad.residentialStatus],
-          ['Period', period(ad.startDate, ad.endDate)],
+          ...dates(ad.startDate, ad.endDate),
           // Only a renter or boarder is asked this, so an owner gets no row
           // rather than a "not recorded" that reads as a gap.
           ['Housing expense', /rent|board/i.test(String(ad.residentialStatus || ''))
@@ -335,7 +353,7 @@ export function factFindSections(deal: any): ViewSection[] {
               [selfEmployed(e) ? 'Business' : 'Employer', e.employerName],
               ['ABN', e.employerAbn], ['ACN', e.employerAcn], ['Employer type', e.employerType],
               ['Employer address', e.employerAddress],
-              ['Period', period(e.startDate, e.endDate)],
+              ...dates(e.startDate, e.endDate),
               ['On probation', e.onProbation ? 'Yes' : ''],
               ['Contact', [e.contactPersonName, e.contactPersonDetails].filter(Boolean).join(' — ')],
             ])))
@@ -377,7 +395,7 @@ export function factFindSections(deal: any): ViewSection[] {
     })})
 
   const assets: any[] = ff.assets || []
-  out.push({ key: 'assets', title: 'Other assets', accent: 'slate', pill: String(assets.length),
+  out.push({ key: 'assets', title: 'Assets', accent: 'slate', pill: String(assets.length),
     cards: assets.map((a, i) => ({
       key: `asset:${i}`, title: [a.assetType, a.description].filter(Boolean).join(' — ') || 'Asset',
       tag: moneyOrBlank(a.value) || undefined,
@@ -411,8 +429,8 @@ export function factFindSections(deal: any): ViewSection[] {
           ['Interest rate', l.interestRate ? `${l.interestRate}%` : ''],
           ['Repayment', [withFrequency(l.repaymentAmount, l.repaymentFrequency), l.repaymentType].filter(Boolean).join(' · ')],
           ['Rate type', l.rateType],
-          ['Interest only expires', l.interestOnlyExpiryDate],
-          ['Loan term expires', l.loanTermExpiryDate],
+          ['Interest only expires', dateAU(l.interestOnlyExpiryDate)],
+          ['Loan term expires', dateAU(l.loanTermExpiryDate)],
           ['Remaining term', l.remainingLoanTermYears ? `${l.remainingLoanTermYears} years` : ''],
           ['Status', l.status], ['Owned by', owners(l.ownership, applicants)],
         ]))
@@ -461,7 +479,7 @@ export function factFindSections(deal: any): ViewSection[] {
           sp.repayment ? `${money(sp.repayment)} monthly` : ''].filter(Boolean).join(' · '),
     } as ViewRow)))
   }
-  out.push({ key: 'bc', title: 'Borrowing capacity', accent: 'navy', pill: words(bc.template),
+  out.push({ key: 'bc', title: 'Funding worksheet', accent: 'navy', pill: words(bc.template),
     cards: [{ key: 'bc', title: 'Scenario', tag: lvr ? `${lvr}% LVR` : undefined, rows: scenario }]})
 
   // The recommendation leads, as it does in the lending options email the client
@@ -472,7 +490,7 @@ export function factFindSections(deal: any): ViewSection[] {
   const loCards: ViewCard[] = []
   if (lo.recommendedLender && lo.recommendationNote) {
     loCards.push({ key: 'lo:note', title: `Our recommendation — ${lo.recommendedLender}`,
-      tag: 'Recommended', tone: 'warn', blocks: parseBlocks(lo.recommendationNote) })
+      tag: 'Recommended', tone: 'warn', copyable: true, blocks: parseBlocks(lo.recommendationNote) })
   }
   sorted.forEach((l: any, i: number) => {
     const rate = (m: any) => m?.enabled
@@ -493,19 +511,65 @@ export function factFindSections(deal: any): ViewSection[] {
       ]),
     })
   })
-  if (loCards.length) out.push({ key: 'lo', title: 'Lending options', accent: 'amber',
+  if (loCards.length) out.push({ key: 'lo', title: 'Compare products', accent: 'amber',
     pill: `${loLenders.length} lenders compared`, cards: loCards })
 
   // A section with nothing in it is noise on a screen somebody is working down.
   return out.filter(s => s.cards.length > 0)
 }
 
+// THE ORDER OF THE PAGE.
+//
+// It is SalesTrekker's own left-hand menu, top to bottom: Client profile first
+// (the applicant, then what they own, owe and earn), then Home loan. Fabio,
+// 2 Sep 2026, with a screenshot of that menu: "lets match the order how the
+// link is structured... essentially fact find comes first now".
+//
+// Somebody loading a deal works down one menu with the other open beside it, so
+// the two lists have to run in the same direction. A section named here that a
+// deal has nothing for simply does not appear.
+const ORDER: { key: string; group: ViewSection['group'] }[] = [
+  { key: 'applicants',  group: 'Client profile' },
+  { key: 'address',     group: 'Client profile' },
+  { key: 'employment',  group: 'Client profile' },
+  { key: 'assets',      group: 'Client profile' },
+  { key: 'properties',  group: 'Client profile' },
+  { key: 'liabilities', group: 'Client profile' },
+  { key: 'income',      group: 'Client profile' },
+  { key: 'expenses',    group: 'Client profile' },
+  { key: 'needs',       group: 'Client profile' },
+  { key: 'risks',       group: 'Client profile' },
+  { key: 'product',     group: 'Client profile' },
+  { key: 'security',    group: 'Home loan' },
+  { key: 'bc',          group: 'Home loan' },
+  { key: 'lo',          group: 'Home loan' },
+  { key: 'broker',      group: 'Home loan' },
+]
+
 export function allSections(deal: any): ViewSection[] {
-  return [...handoverSections(deal), ...factFindSections(deal)]
+  const built = new Map<string, ViewSection>()
+  for (const sec of [...handoverSections(deal), ...factFindSections(deal)]) built.set(sec.key, sec)
+
+  const out: ViewSection[] = []
+  for (const { key, group } of ORDER) {
+    const sec = built.get(key)
+    if (sec) { out.push({ ...sec, group }); built.delete(key) }
+  }
+  // Anything a future change adds and forgets to place still shows up, at the
+  // end, rather than disappearing off the page unnoticed.
+  for (const sec of built.values()) out.push(sec)
+  return out
+}
+
+// The boxes somebody actually presses a button on. The key/value cards are read
+// and copied a value at a time, so counting them would make a 24-box job look
+// like a 60-box one.
+export function copyableCards(sections: ViewSection[]): ViewCard[] {
+  return sections.flatMap(s => s.cards).filter(c => c.copyable)
 }
 
 export function countCards(sections: ViewSection[]): number {
-  return sections.reduce((n, s) => n + s.cards.length, 0)
+  return copyableCards(sections).length
 }
 
 // The gaps, so the screen can say why something cannot be copied: because nobody
