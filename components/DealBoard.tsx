@@ -112,6 +112,18 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
     return m
   }, [deals])
 
+  // FACT FIND TAKES NO DROPS.
+  //
+  // Which column a deal sits in is derived from what has been done to it, and
+  // "at Fact Find" means the fact find has nothing typed in it yet. There is no
+  // date to clear that would send a deal back there - only the client's own
+  // answers, and a dropped card must never delete those.
+  //
+  // It used to accept the drop and then explain itself in a banner, which is a
+  // dead end dressed up as help. Fabio, 3 Sep 2026, asked for the column simply
+  // not to take the card: it dims while you drag and the cursor says no.
+  const acceptsDrops = (p: Phase) => p !== 'fact_find'
+
   function onDrop(target: Phase) {
     setOver('')
     const deal = deals.find(d => d.id === dragging)
@@ -240,13 +252,14 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
             if (shut) {
               return (
                 <div key={p} title={`${PHASE_LABEL[p]} - ${cards.length} deal${cards.length === 1 ? '' : 's'}${total > 0 ? ' \u00b7 ' + money(total) : ''}. Click to open.`}
-                  onDragOver={e => { e.preventDefault(); setOver(p) }}
+                  onDragOver={e => { if (!acceptsDrops(p)) return; e.preventDefault(); setOver(p) }}
                   onDragLeave={() => setOver(o => o === p ? '' : o)}
-                  onDrop={() => onDrop(p)}
+                  onDrop={() => { if (acceptsDrops(p)) onDrop(p) }}
                   onClick={() => toggle(p)}
                   style={{ width: SHUT_W }}
                   className={`flex-none rounded-xl border border-dashed flex flex-col items-center gap-2 py-2.5 cursor-pointer transition ${
-                    over === p ? 'border-[#0E8FCB] bg-[#EAF6FD]'
+                    dragging && !acceptsDrops(p) ? 'border-[#E5DED2] bg-[#FCFAF6] opacity-40'
+                    : over === p ? 'border-[#0E8FCB] bg-[#EAF6FD]'
                     : hot > 0 ? 'border-[#EFD3CB] bg-[#FBEDE9]'
                     : 'border-[#E5DED2] bg-[#FCFAF6] hover:border-[#D6CCBC]'}`}>
                   <span className={`text-[11px] font-bold tabular-nums ${hot > 0 ? 'text-[#AD4227]' : 'text-[#575046]'}`}>
@@ -266,11 +279,14 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
 
             return (
               <div key={p}
-                onDragOver={e => { e.preventDefault(); setOver(p) }}
+                onDragOver={e => { if (!acceptsDrops(p)) return; e.preventDefault(); setOver(p) }}
                 onDragLeave={() => setOver(o => o === p ? '' : o)}
-                onDrop={() => onDrop(p)}
+                onDrop={() => { if (acceptsDrops(p)) onDrop(p) }}
                 className={`flex-1 min-w-[248px] rounded-xl border p-2.5 transition ${
-                  over === p ? 'border-[#0E8FCB] bg-[#EAF6FD]'
+                  // Dimmed while a card is in the air, so it is visibly not a
+                  // target rather than silently ignoring the drop.
+                  dragging && !acceptsDrops(p) ? 'border-[#EFEAE0] bg-[#FCFAF6] opacity-40'
+                  : over === p ? 'border-[#0E8FCB] bg-[#EAF6FD]'
                   : hot > 0 ? 'border-[#EFD3CB] bg-[#FBEDE9]'
                   : 'border-[#EFEAE0] bg-[#FCFAF6]'}`}>
                 <div className="flex items-baseline gap-1.5 mb-2 px-0.5">
