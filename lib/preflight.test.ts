@@ -67,8 +67,25 @@ describe('the check that runs before a handover prints', () => {
     expect(found.some(x => x.box === 'Deposit / equity')).toBe(false)
   })
 
+  it('flags an applicant nobody has asked the risk questions', () => {
+    // Every joint deal has one of these until the file is reopened: compliance
+    // dropped the second applicant, so nothing was ever recorded for them.
+    const both = { ...compliance, applicants: [{ name: 'Natasha Chapman' }, { name: 'Richard Chapman' }],
+                   risks: { 'Natasha Chapman': { hasWill: 'Yes' } } }
+    const f = preflight(deal, both, []).find(x => x.kind === 'risks')
+    expect(f!.severity).toBe('stop')
+    expect(f!.issue).toContain('Richard Chapman')
+    expect(f!.issue).not.toContain('Natasha Chapman')
+  })
+
+  it('says nothing about risks once everyone has been asked', () => {
+    const both = { ...compliance, applicants: [{ name: 'A B' }], risks: { 'A B': { hasWill: 'Yes' } } }
+    expect(preflight({}, both, []).some(x => x.kind === 'risks')).toBe(false)
+  })
+
   it('says nothing at all about a clean file', () => {
     const clean = { applicants: [{ name: 'Natasha Chapman' }], depositComment: 'All confirmed.',
+                    risks: { 'Natasha Chapman': { hasWill: 'Yes' } },
                     expenses: { healthInsurance: { monthlyAmount: '301', hem: 'in' },
                                 primaryResidenceBodyCorp: { monthlyAmount: '0', hem: 'in' } } }
     expect(preflight({ clients: { first_name: 'Natasha', last_name: 'Chapman' } }, clean, cats)).toEqual([])

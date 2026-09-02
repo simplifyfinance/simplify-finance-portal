@@ -14,7 +14,7 @@
 import { hemStateOf, type ExpenseCategory } from './hem'
 import { borrowerNotOnTitle, nobodyOnTitle, notOnTitle, type TitleInfo } from './title'
 
-export type FindingKind = 'name' | 'placeholder' | 'hem' | 'title'
+export type FindingKind = 'name' | 'placeholder' | 'hem' | 'title' | 'risks'
 export type Finding = {
   kind: FindingKind
   box: string
@@ -146,6 +146,31 @@ export function preflight(
       issue: explained
         ? `${apps.length} applicants, ${owners} on title. ${off.join(' and ')} ${off.length === 1 ? 'is' : 'are'} borrowing but will not own the security. The reason and the legal advice position are recorded and print on the handover.`
         : `${apps.length} applicants, ${owners} on title, and no reason recorded. The bank will ask why ${off.join(' and ')} ${off.length === 1 ? 'is' : 'are'} on the loan. Answer it before this goes out.`,
+    })
+  }
+
+  // --- an applicant nobody has asked ----------------------------------------
+  //
+  // Compliance dropped the second applicant from every joint deal until 2 Sep
+  // 2026, so the files that get fixed will suddenly show a person with nothing
+  // recorded against them. That is the truth and it needs saying out loud - the
+  // lender will ask, and a handover printed with half the applicants answered is
+  // worse than one that admits it.
+  const RISK_KEYS = ['financialExperience', 'interestRateConcern', 'loanFlexibility', 'jobSecurity',
+                     'propertyValueConcern', 'adverseChanges', 'beneficialChanges', 'retirementAge',
+                     'repaymentMethod', 'emergencyFund', 'maintainLifestyle', 'adequateInsurance',
+                     'hasWill', 'circumstancesImpact', 'problemsMeetingCommitments',
+                     'officerInLiquidation', 'unsatisfiedJudgements', 'simultaneousApplications',
+                     'declaredBankrupt']
+  const unanswered = apps.filter(name => {
+    const r = compliance?.risks?.[name] || {}
+    return !RISK_KEYS.some(k => String(r[k] || '').trim())
+  })
+  if (unanswered.length && apps.length > 0) {
+    findings.push({
+      kind: 'risks', severity: 'stop', box: 'Risks',
+      issue: `${unanswered.join(' and ')} ${unanswered.length === 1 ? 'has' : 'have'} no risk answers recorded. `
+           + `The handover will say so, and the lender will ask.`,
     })
   }
 

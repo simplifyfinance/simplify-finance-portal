@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { isWithLender, splitsTotal } from '@/lib/deal-phase'
+import { applicantsOf } from '@/lib/applicants'
 import { hemStateOf, hemTotals, unansweredNote, type HemAnswer } from '@/lib/hem'
 
 // The loan on this deal: what the LO settled on, or failing that the BC's splits
@@ -245,14 +246,11 @@ export default function ComplianceForm({ deal, onSaveStatus }: { deal: any; onSa
   const bc = deal.bc_data || {}
   const lo = deal.lo_data || {}
 
-  const getApplicants = (): Applicant[] => {
-    const apps: Applicant[] = []
-    const first = bc.firstName || deal.clients?.first_name || ''
-    const last = bc.lastName || deal.clients?.last_name || ''
-    if (first || last) apps.push({ name: `${first} ${last}`.trim(), type: 'applicant' })
-    if (bc.joint === 'Yes' && bc.jointFirstName) apps.push({ name: `${bc.jointFirstName} ${bc.jointLastName || ''}`.trim(), type: 'applicant' })
-    return apps.length > 0 ? apps : [{ name: 'Applicant 1', type: 'applicant' }]
-  }
+  // The fact find, not the BC. This used to require `bc.joint === 'Yes' &&
+  // bc.jointFirstName` - and jointFirstName is built when the BC email is
+  // generated and never written into bc_data, so the second applicant was never
+  // added to ANY joint deal. See lib/applicants.ts.
+  const getApplicants = (): Applicant[] => applicantsOf(deal, bc) as Applicant[]
 
   const initData = (): ComplianceData => {
     // Database first, same as FactFindForm.
@@ -420,6 +418,20 @@ export default function ComplianceForm({ deal, onSaveStatus }: { deal: any; onSa
     }))
   }
 
+  // Every question on the Risks tab. Used to tell "nobody has started this
+  // applicant" apart from "somebody answered some of it".
+  const RISK_KEYS = ['financialExperience', 'interestRateConcern', 'loanFlexibility', 'jobSecurity',
+                     'propertyValueConcern', 'adverseChanges', 'beneficialChanges', 'retirementAge',
+                     'repaymentMethod', 'emergencyFund', 'maintainLifestyle', 'adequateInsurance',
+                     'hasWill', 'circumstancesImpact', 'problemsMeetingCommitments',
+                     'officerInLiquidation', 'unsatisfiedJudgements', 'simultaneousApplications',
+                     'declaredBankrupt']
+
+  const riskStarted = (name: string): boolean => {
+    const r: any = d.risks[name]
+    return !!r && RISK_KEYS.some(k => String(r[k] || '').trim())
+  }
+
   function validateBeforePush(): string[] {
     const errors: string[] = []
     if (!d.needsPrimary) errors.push('Needs & objectives — Primary reasons not filled')
@@ -427,7 +439,10 @@ export default function ComplianceForm({ deal, onSaveStatus }: { deal: any; onSa
     if (!d.needsLongTerm) errors.push('Needs & objectives — Long term needs not filled')
     d.applicants.forEach(a => {
       const r = d.risks[a.name]
-      if (!r) return
+      if (!r || !RISK_KEYS.some(k => String((r as any)[k] || '').trim())) {
+        errors.push(`${a.name} — no risk questions answered at all. Every applicant is asked, not one of them.`)
+        return
+      }
       if (!r.adverseChanges) errors.push(`${a.name} — Adverse changes not answered`)
       if (!r.beneficialChanges) errors.push(`${a.name} — Beneficial changes not answered`)
       if (!r.retirementAge) errors.push(`${a.name} — Retirement age not filled`)
@@ -858,14 +873,30 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
       {stage === 'risks' && (
         <div className="space-y-4">
           {/* Applicant tabs */}
-          <div className="flex gap-2">
-            {d.applicants.map((a, i) => (
-              <button key={i} onClick={() => setActiveApplicant(i)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${activeApplicant === i ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-400'}`}>
-                {a.name}
-              </button>
-            ))}
+          <div className="flex gap-2 items-center flex-wrap">
+            {d.applicants.map((a, i) => {
+              const started = riskStarted(a.name)
+              return (
+                <button key={i} onClick={() => setActiveApplicant(i)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition flex items-center gap-2 ${
+                    activeApplicant === i ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5'
+                    : started ? 'border-gray-200 text-gray-400'
+                    : 'border-[#EFD3CB] text-[#AD4227] bg-[#FBEDE9]'}`}>
+                  {a.name}
+                  {!started && <span className="text-[10px] font-bold uppercase tracking-[.05em]">not started</span>}
+                </button>
+              )
+            })}
           </div>
+          {/* These questions are asked of every applicant, never one of them.
+              On a joint deal the second tab is the one that gets forgotten. */}
+          {d.applicants.length > 1 && d.applicants.some(a => !riskStarted(a.name)) && (
+            <div className="text-[12.5px] rounded-lg border border-[#EFD3CB] bg-[#FBEDE9] text-[#8A3A2A] px-3 py-2">
+              These questions are asked of <b>every</b> applicant.
+              {' '}{d.applicants.filter(a => !riskStarted(a.name)).map(a => a.name).join(' and ')}
+              {' '}{d.applicants.filter(a => !riskStarted(a.name)).length === 1 ? 'has' : 'have'} not been started.
+            </div>
+          )}
 
           <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-4">
             <SectionHeader title={`Risks — ${currentApplicant?.name}`} />
