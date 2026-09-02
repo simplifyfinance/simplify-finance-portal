@@ -8,6 +8,7 @@ import { templateLabel } from '@/lib/templates'
 import { proceedCredit } from '@/lib/deal-status'
 import { emailParagraphs, htmlToPlainText } from '@/lib/rich-text'
 import { loMayWriteAmount, splitsTotal } from '@/lib/deal-phase'
+import { resolveLenderSplits, seedFromGlobal } from '@/lib/lo-splits'
 
 // A finished "client agreed" is not something to hide. It used to disappear the
 // instant it was pressed, which made "already done" look exactly like "broken".
@@ -507,10 +508,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
   function addLender() {
     if (d.lenders.length >= 3) return
-    const seededSplits: LenderSplit[] = d.refinanceSplits.map(s => ({
-      id: s.id, label: s.label, amount: s.amount, lvr: '', rate: '', repayment: '', repaymentType: 'P&I'
-    }))
-    setD({ ...d, lenders: [...d.lenders, { ...defaultLenderOption(), lenderSplits: seededSplits }] })
+    setD({ ...d, lenders: [...d.lenders, { ...defaultLenderOption(), lenderSplits: seedFromGlobal(d.refinanceSplits) }] })
   }
 
   function removeLender(i: number) {
@@ -543,17 +541,17 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   }
 
   function syncLenderSplits(lenderIdx: number) {
-    const synced: LenderSplit[] = d.refinanceSplits.map(s => ({
-      id: s.id, label: s.label, amount: s.amount, lvr: '', rate: '', repayment: '', repaymentType: 'P&I'
-    }))
     const updated = [...d.lenders]
-    updated[lenderIdx] = { ...updated[lenderIdx], lenderSplits: synced }
+    updated[lenderIdx] = { ...updated[lenderIdx], lenderSplits: seedFromGlobal(d.refinanceSplits) }
     setD({ ...d, lenders: updated })
   }
 
   function updateLenderSplit(lenderIdx: number, splitIdx: number, field: keyof LenderSplit, value: string) {
     const updated = [...d.lenders]
-    const splits = [...(updated[lenderIdx].lenderSplits || [])]
+    // Resolved, not raw. A lender showing the deal's splits by fallback has an
+    // empty list of its own, so editing a row would otherwise write into nothing
+    // and the typing would vanish. The first edit is what makes the copy real.
+    const splits = [...resolveLenderSplits(updated[lenderIdx], d.refinanceSplits)]
     splits[splitIdx] = { ...splits[splitIdx], [field]: value }
     updated[lenderIdx] = { ...updated[lenderIdx], lenderSplits: splits }
     setD({ ...d, lenders: updated })
@@ -1057,7 +1055,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           {d.lenders.map((lender, i) => {
             const isRec = d.recommendedLender && lender.lenderName === d.recommendedLender
             const isEmpty = !lender.lenderId
-            const lenderSplits = lender.lenderSplits || []
+            const lenderSplits = resolveLenderSplits(lender, d.refinanceSplits)
             return (
               <div key={i} className={`rounded-xl p-5 border transition-all ${isRec ? 'border-[#2DBEFF] bg-blue-50/30' : isEmpty ? 'border-dashed border-amber-200 bg-amber-50/20' : 'bg-white border-gray-100'}`}>
                 <div className="flex justify-between items-center mb-4">
