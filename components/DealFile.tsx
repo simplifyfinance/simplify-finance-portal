@@ -33,7 +33,7 @@ export function AlertChips({ alerts, max = 3 }: { alerts: Alert[]; max?: number 
     <>
       {shown.map(a => (
         <span key={a.id} title={a.title}
-          className={`text-[9.5px] font-bold tracking-[.04em] uppercase rounded-[5px] px-1.5 py-[2px] border whitespace-nowrap ${
+          className={`max-w-full truncate text-[9.5px] font-bold tracking-[.04em] uppercase rounded-[5px] px-1.5 py-[2px] border ${
             toneOf(a) === 'red'
               ? 'text-[#AD4227] bg-[#FBECEC] border-[#EFD3CB]'
               : 'text-[#946017] bg-[#FDF6EC] border-[#EBD9BE]'}`}>
@@ -41,7 +41,7 @@ export function AlertChips({ alerts, max = 3 }: { alerts: Alert[]; max?: number 
         </span>
       ))}
       {rest > 0 && (
-        <span className="text-[9.5px] font-bold tracking-[.04em] uppercase rounded-[5px] px-1.5 py-[2px] border whitespace-nowrap text-[#7A7266] bg-[#FCFAF6] border-[#EFEAE0]">
+        <span className="max-w-full truncate text-[9.5px] font-bold tracking-[.04em] uppercase rounded-[5px] px-1.5 py-[2px] border text-[#7A7266] bg-[#FCFAF6] border-[#EFEAE0]">
           +{rest}
         </span>
       )}

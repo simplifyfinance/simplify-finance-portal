@@ -334,21 +334,22 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                       onDragStart={() => setDragging(d.id)}
                       onDragEnd={() => { setDragging(''); setOver('') }}
                       onClick={() => router.push(`/deals/${d.id}`)}
-                      className={`group relative bg-white border rounded-[10px] px-2.5 pt-2.5 pb-2.5 mb-2 cursor-pointer transition hover:border-[#D6CCBC] ${
+                      className={`group relative overflow-hidden bg-white border rounded-[10px] px-2.5 pt-2.5 pb-2.5 mb-2 cursor-pointer transition hover:border-[#D6CCBC] ${
                         dragging === d.id ? 'opacity-40 border-[#0E8FCB]'
                         : urgent ? 'border-[#E9C9BE] ring-2 ring-[#FBEDE9]' : 'border-[#E5DED2]'}`}>
 
                       {placedByHand(d) && (
-                        <div className="mb-1.5 mr-[50px]">
+                        <div className="mb-1.5 mr-[50px] min-w-0">
                           <span title="Somebody moved this card here. It returns to where the deal actually is as soon as it moves on."
-                            className="text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border whitespace-nowrap text-[#5B646D] bg-[#F1F4F7] border-[#DDE1E5]">
+                            className="block max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border w-fit text-[#5B646D] bg-[#F1F4F7] border-[#DDE1E5]">
                             Placed by hand
                           </span>
                         </div>
                       )}
                       {urgent && (
-                        <div className="mb-1.5 mr-[50px]">
-                          <span className="text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border whitespace-nowrap text-[#AD4227] bg-[#FBEDE9] border-[#EFD3CB]">
+                        <div className="mb-1.5 mr-[50px] min-w-0">
+                          <span title={urgentChipLabel(d)}
+                            className="block max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border w-fit text-[#AD4227] bg-[#FBEDE9] border-[#EFD3CB]">
                             {urgentChipLabel(d)}
                           </span>
                         </div>
@@ -399,13 +400,14 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                         </div>
                       )}
 
-                      <div className="flex gap-1 flex-wrap items-center">
+                      <div className="flex gap-1 flex-wrap items-center min-w-0">
                         {chipsFor(d, colours).map(c => (
-                          <span key={c.id} className="text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border whitespace-nowrap"
+                          <span key={c.id} title={c.label}
+                                className="max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border"
                                 style={chipStyle(c.colour)}>{c.label}</span>
                         ))}
                         {age.days !== null && (
-                          <span className={`text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border whitespace-nowrap ${
+                          <span className={`max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border ${
                             AGE_STYLE[grp] || 'text-[#A29889] bg-[#FCFAF6] border-[#EFEAE0]'}`}>
                             {age.label}
                           </span>
