@@ -159,11 +159,14 @@ export async function POST(req: NextRequest) {
       .update({ docs_assessor_due_at: dueAt.toISOString(), docs_assessor_email_id: queued.id || null })
       .eq('id', dealId).select('id')
     if (!wrote?.length) {
-      // Both emails are away; only our record of when failed. Say so rather than
-      // letting the screen show a deal that looks unscheduled.
+      // Both emails are away; only our record of WHEN failed to save. The due
+      // time still goes back to the screen, because without it the page would
+      // show the red "the assessor was not emailed" panel about an email that
+      // is, in fact, queued - the screen contradicting an inbox.
       return NextResponse.json({
         ok: true, receivedAt: nowIso, by: me, assessorQueued: true,
-        warning: 'Both emails are away, but the deal did not record when the assessor is told. The email will still arrive.',
+        dueAt: dueAt.toISOString(), assessorName,
+        warning: 'Both emails are away, but the deal did not save when the assessor is told, so this line will be gone if you reload. The email still arrives.',
       })
     }
 

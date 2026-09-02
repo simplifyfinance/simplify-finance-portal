@@ -216,7 +216,35 @@ export default function SettingsPage() {
       updated_at: new Date().toISOString()
     }
     if (dealBoard) patch.deal_board = dealBoard
-    const { error } = await supabase.from('settings').upsert(patch)
+    let { error } = await supabase.from('settings').upsert(patch)
+
+    // A NEW COLUMN THAT IS NOT THERE YET MUST NOT BREAK THE WHOLE PAGE.
+    //
+    // Settings is one row upserted whole, so a field the database has never
+    // heard of takes every other setting down with it - brands, style notes,
+    // notification routing, all of it - for anybody who has not run the
+    // migration yet. The documents-received columns shipped on 2 Sep 2026
+    // before the migration was run, which is exactly that situation.
+    //
+    // So: try it whole, and if the database rejects a column by name, save
+    // everything else and say plainly which part did not go.
+    const DEFERRED = ['docs_file_notification_user_id', 'docs_delay_minutes']
+    const missing = error ? DEFERRED.filter(c => (error!.message || '').includes(c)) : []
+    if (missing.length) {
+      const rest: any = { ...patch }
+      for (const c of DEFERRED) delete rest[c]
+      const retry = await supabase.from('settings').upsert(rest)
+      error = retry.error
+      if (!error) {
+        setSaving(false)
+        alert('Everything was saved except the documents-received settings - the database is missing '
+          + missing.join(' and ') + '. Run docs/docs-received-schema.sql, then set them again.')
+        setSaved(true)
+        setTimeout(() => setSaved(false), 3000)
+        return
+      }
+    }
+
     setSaving(false)
     if (error) { alert('Error saving settings: ' + error.message); return }
     setSaved(true)
