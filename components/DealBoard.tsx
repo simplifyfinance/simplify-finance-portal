@@ -6,6 +6,7 @@ import { stageAge, ageGroupOf } from '@/lib/deal-age'
 import { chipsFor, brokerColour, chipStyle, dealTitle } from '@/lib/deal-labels'
 import { CREDIT_GREY, type ThresholdMap } from '@/lib/board-settings'
 import { useColumnFolds } from '@/lib/use-column-folds'
+import { isUrgentNow, urgentChipLabel } from '@/lib/push-answers'
 import { AlertChips } from '@/components/DealFile'
 import type { Alert } from '@/lib/deal-notes'
 import DealPeek from '@/components/DealPeek'
@@ -86,9 +87,15 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts 
       if (p === 'lost') continue          // dead deals are not on the board
       if (m[p]) m[p].push(d)
     }
-    // Oldest first inside a column: the top of a column is the thing to do first.
+    // Urgent first, then oldest - the top of a column is the thing to do first,
+    // and somebody asking for a deal by Friday outranks a deal that has simply
+    // been sitting. The flag ends at lodgement, so this settles itself.
     for (const p of COLUMNS) {
-      m[p].sort((a, b) => String(phaseSince(a) || '').localeCompare(String(phaseSince(b) || '')))
+      m[p].sort((a, b) => {
+        const ua = isUrgentNow(a) ? 0 : 1, ub = isUrgentNow(b) ? 0 : 1
+        if (ua !== ub) return ua - ub
+        return String(phaseSince(a) || '').localeCompare(String(phaseSince(b) || ''))
+      })
     }
     return m
   }, [deals])
@@ -212,6 +219,7 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts 
                   const when = settleOn
                     ? new Date(settleOn).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
                     : age.label
+                  const urgent = isUrgentNow(d)
                   const people = [
                     { name: brokerNameOf(d, nameFor), colour: brokerColour(bKey, colours?.broker) },
                     ...(d.credit_officers?.name ? [{ name: d.credit_officers.name, colour: CREDIT_GREY }] : []),
@@ -222,7 +230,16 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts 
                       onDragEnd={() => { setDragging(''); setOver('') }}
                       onClick={() => router.push(`/deals/${d.id}`)}
                       className={`relative bg-white border rounded-[10px] px-2.5 pt-2.5 pb-2.5 mb-2 cursor-pointer transition hover:border-[#D6CCBC] ${
-                        dragging === d.id ? 'opacity-40 border-[#0E8FCB]' : 'border-[#E5DED2]'}`}>
+                        dragging === d.id ? 'opacity-40 border-[#0E8FCB]'
+                        : urgent ? 'border-[#E9C9BE] ring-2 ring-[#FBEDE9]' : 'border-[#E5DED2]'}`}>
+
+                      {urgent && (
+                        <div className="mb-1.5 mr-[22px]">
+                          <span className="text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border whitespace-nowrap text-[#AD4227] bg-[#FBEDE9] border-[#EFD3CB]">
+                            {urgentChipLabel(d)}
+                          </span>
+                        </div>
+                      )}
 
                       {/* A look before committing to opening it. */}
                       <button title="Quick look"

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { notifyEllieCreateCard, notifyCrisMoveCard } from '@/lib/salestrekker-notify'
+import { emailLines, emailSubject } from '@/lib/push-answers'
 import { generateSummaryPdfBuffer } from '@/app/api/generate-summary-pdf/route'
 import { generateCompliancePdfBuffer } from '@/app/api/generate-compliance-pdf/route'
 
@@ -14,7 +15,10 @@ export async function POST(req: NextRequest) {
     const supabase = await createSupabaseServer()
     const { data: deal, error } = await supabase
       .from('deals')
-      .select('deal_name, assigned_broker, assigned_credit_officer, lead_source, deal_type, salestrekker_created_at, fact_find_data, internal_notes, clients(first_name, last_name)')
+      // push_answers is what the broker was asked on the way out, and
+      // transaction_type / property_use decide which of those answers apply -
+      // a column missing from a select is a value that is silently undefined.
+      .select('deal_name, assigned_broker, assigned_credit_officer, lead_source, deal_type, salestrekker_created_at, fact_find_data, internal_notes, push_answers, transaction_type, property_use, clients(first_name, last_name)')
       .eq('id', dealId)
       .single()
 
@@ -155,7 +159,9 @@ export async function POST(req: NextRequest) {
           complianceResult ? { ...complianceResult, kind: 'compliance' } : null
         ]) {
           if (!result) continue
-          const fileName = `${result.dealName}-${result.kind}.pdf`
+          // The handover is already named for the people it is about; only the
+          // deal summary needs a suffix to tell the two apart.
+          const fileName = result.kind === 'compliance' ? `${result.dealName}.pdf` : `${result.dealName}-summary.pdf`
           const filePath = `${dealId}/${Date.now()}-${fileName}`
 
           const { error: uploadError } = await supabase.storage.from('deal-documents').upload(filePath, result.buffer, {
@@ -183,7 +189,12 @@ export async function POST(req: NextRequest) {
         // Non-fatal — PDF generation/upload failure should never block the actual SalesTrekker push
       }
 
-      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to Compliance Issued', true, attachments, crisEmail)
+      const answers = (deal as any)?.push_answers || null
+      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to Compliance Issued', true, attachments, crisEmail, {
+        subject: emailSubject(dealName, answers),
+        lines: emailLines(deal, answers),
+        urgent: !!answers?.urgent,
+      })
 
       // This used to set status = 'completed', and the deals list hides anything
       // completed — so the loan vanished the moment compliance went out, before it

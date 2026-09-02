@@ -73,7 +73,13 @@ export async function notifyEllieCreateCard(params: {
 }
 
 // Triggers 2-5 — whoever Settings nominates moves/closes the card in SalesTrekker
-export async function notifyCrisMoveCard(dealName: string, brokerName: string, action: string, closed = false, attachments?: { filename: string; content: string }[], recipientEmail?: string | null) {
+// `answers` are what the broker was asked on the way out: commission, urgency,
+// what is closing at settlement, how ID was done. They used to be asked in Slack
+// after the pack had already gone, or not at all.
+//
+// This email is being rewritten properly later. For now the answers are here, in
+// the order credit reads them, so nothing has to be chased.
+export async function notifyCrisMoveCard(dealName: string, brokerName: string, action: string, closed = false, attachments?: { filename: string; content: string }[], recipientEmail?: string | null, answers?: { subject?: string; lines?: string[]; urgent?: boolean }) {
   const bg = closed ? '#E6F5EC' : '#F2E9FB'
   const color = closed ? '#1D9E75' : '#7C3AED'
   const html = `<p>Hi,</p>
@@ -83,7 +89,18 @@ export async function notifyCrisMoveCard(dealName: string, brokerName: string, a
     </table>
     <p style="color:#666;font-size:13px;margin:0 0 6px"><span style="color:#666;">Action needed in SalesTrekker:</span></p>
     <table cellpadding="0" cellspacing="0" border="0" style="margin:0"><tr><td bgcolor="${bg}" style="background:${bg};border-radius:8px;padding:8px 12px;font-family:Arial,sans-serif;font-size:14px;font-weight:600;color:${color}">${action}</td></tr></table>
-    ${attachments && attachments.length ? `<p style="color:#666;font-size:13px;margin:12px 0 0"><span style="color:#666;">Two PDFs are attached to this email (deal summary and compliance summary) — please save both into this client's OneDrive folder.</span></p>` : ''}`
+    ${answers?.lines?.length ? `<table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:16px 0 0" width="100%" cellpadding="0" cellspacing="0" border="0">
+      ${answers.lines.map(l => {
+        const at = l.indexOf(':')
+        const k = at > 0 ? l.slice(0, at) : ''
+        const v = at > 0 ? l.slice(at + 1).trim() : l
+        return `<tr><td style="color:#666;font-size:13px;padding:3px 0;vertical-align:top;width:38%"><span style="color:#666;">${k}</span></td><td style="font-size:13px;padding:3px 0">${v}</td></tr>`
+      }).join('')}
+    </table>` : ''}
+    ${attachments && attachments.length ? `<p style="color:#666;font-size:13px;margin:12px 0 0"><span style="color:#666;">The handover and the deal summary are attached — please save both into this client's OneDrive folder. Each numbered box in the handover is the box of the same name in SalesTrekker.</span></p>` : ''}`
 
-  await sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au', `SalesTrekker update needed — ${dealName}`, html, attachments)
+  // The subject carries the urgency, because that is the only part of an email a
+  // busy person reads before deciding when to open it.
+  const subject = answers?.subject || `SalesTrekker update needed — ${dealName}`
+  await sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au', subject, html, attachments)
 }

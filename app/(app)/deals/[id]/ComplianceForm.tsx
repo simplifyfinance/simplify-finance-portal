@@ -2,6 +2,11 @@
 import { useState, useEffect } from 'react'
 import { isWithLender, splitsTotal } from '@/lib/deal-phase'
 import { applicantsOf } from '@/lib/applicants'
+import { PreflightPanel, PushForm } from '@/components/PushDialogs'
+import { preflight, type Finding } from '@/lib/preflight'
+import { defaultAnswers, type PushAnswers, type LiabilityChoice } from '@/lib/push-answers'
+import { holdersFor, borrowerNotOnTitle, reasonRequired, LEGAL_ADVICE_LABEL,
+         type TitleInfo, type LegalAdvice } from '@/lib/title'
 import { hemStateOf, hemTotals, unansweredNote, type HemAnswer } from '@/lib/hem'
 
 // The loan on this deal: what the LO settled on, or failing that the BC's splits
@@ -72,6 +77,10 @@ type ComplianceData = {
   depositComment: string
   creditHistoryComment: string
   securityComment: string
+  // Who ends up on the title of the security, why a borrower is not on it, and
+  // where independent legal advice stands. Optional: a deal written before this
+  // existed simply has nothing here, and the tick boxes default to everyone on.
+  title?: TitleInfo
   applicationSubmissionComment: string
   expenses: Record<string, ExpenseEntry>
   aiMeta: Record<string, { confidence: string; source: string }>
@@ -333,6 +342,35 @@ export default function ComplianceForm({ deal, onSaveStatus }: { deal: any; onSa
     })
   }, [deal.bc_data, deal.fact_find_data, deal.lo_data])
   const [activeApplicant, setActiveApplicant] = useState(0)
+
+  // Everything the fact find has recorded as a debt, offered for ticking. The
+  // team was being asked "what is closing?" in Slack after the pack had gone.
+  const factFindLiabilities = (): LiabilityChoice[] => {
+    const ff = deal.fact_find_data || {}
+    const rows: LiabilityChoice[] = []
+    for (const l of (ff.liabilities || [])) {
+      const bits = [l.lenderName, l.limitAmount ? `limit $${l.limitAmount}` : (l.balance ? `$${l.balance}` : '')]
+      rows.push({ id: String(l.id || rows.length), label: l.liabilityType || 'Liability',
+                  detail: bits.filter(Boolean).join(' · '), closing: false })
+    }
+    // A property loan being refinanced is a liability closing at settlement, and
+    // it is the one everybody forgets because it lives under the property.
+    for (const prop of (ff.properties || [])) {
+      for (const loan of (prop.loans || [])) {
+        const bits = [loan.lenderName, loan.balance ? `balance $${loan.balance}` : '']
+        rows.push({ id: String(loan.id || `p${rows.length}`), label: 'Home loan',
+                    detail: [prop.address, bits.filter(Boolean).join(' · ')].filter(Boolean).join(' · '), closing: false })
+      }
+    }
+    return rows
+  }
+
+  const [pushAnswers, setPushAnswers] = useState<PushAnswers>(
+    () => (deal.push_answers as PushAnswers) || defaultAnswers(deal, factFindLiabilities()))
+  const [showPushForm, setShowPushForm] = useState(false)
+  const [findings, setFindings] = useState<Finding[]>([])
+  const [showPreflight, setShowPreflight] = useState(false)
+  const [pushing, setPushing] = useState(false)
   const [generating, setGenerating] = useState<Record<string, boolean>>({})
   const [savedAt, setSavedAt] = useState('')
   const [saveError, setSaveError] = useState('')
@@ -690,12 +728,47 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
     markComplianceComplete()
   }
 
+  // Empty boxes first, then what the writing itself says, then what credit needs
+  // to be told. Three gates, in the order somebody can actually act on them.
   function handlePushToSalesTrekker() {
     const errors = validateBeforePush()
     if (errors.length > 0) {
       setValidationErrors(errors)
       setShowValidation(true)
-    } else if (linkableApplicants.length > 0) {
+      return
+    }
+    const found = preflight(deal, d, EXPENSE_CATEGORIES)
+    if (found.length > 0) { setFindings(found); setShowPreflight(true); return }
+    openPushForm()
+  }
+
+  function openPushForm() {
+    setShowPreflight(false)
+    // Re-read the fact find's liabilities every time rather than trusting what
+    // was saved: a debt added since the last push should appear, and one already
+    // ticked should stay ticked.
+    setPushAnswers(prev => {
+      const fresh = factFindLiabilities()
+      const was = new Map((prev.liabilities || []).map(l => [l.id, l.closing]))
+      return { ...prev, liabilities: fresh.map(l => ({ ...l, closing: was.get(l.id) ?? l.closing })) }
+    })
+    setShowPushForm(true)
+  }
+
+  // The answers are written with the deal, not after it. If this fails, nothing
+  // has been marked complete and nothing has been emailed.
+  async function confirmPush() {
+    setPushing(true)
+    const patch: any = {
+      push_answers: { ...pushAnswers, pushedAt: new Date().toISOString() },
+      is_urgent: !!pushAnswers.urgent,
+      compliance_needed_by: pushAnswers.complianceNeededBy || null,
+    }
+    const problem = await checkedWrite(supabase.from('deals').update(patch).eq('id', deal.id), 'The push answers')
+    setPushing(false)
+    if (problem) { alert(problem + ' Nothing has been pushed.'); return }
+    setShowPushForm(false)
+    if (linkableApplicants.length > 0) {
       setPositionChoices(Object.fromEntries(linkableApplicants.map((a: any) => [a.id, true])))
       setShowPositionPrompt(true)
     } else {
@@ -1158,6 +1231,71 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
               ))}
             </div>
 
+            {/* Who ends up on the title.
+                The portal recorded ownership of properties a client already had
+                and nothing at all about the security being bought - so two
+                people could borrow $1.7m on a property going into one name, and
+                nothing noticed. The lender always asks; the answer belongs here. */}
+            {(() => {
+              const names = d.applicants.map(a => a.name)
+              const info: TitleInfo = d.title || {}
+              const holders = holdersFor(info, names)
+              const setTitle = (patch: Partial<TitleInfo>) =>
+                // The reconciled list always wins over whatever was saved: an applicant
+                // added since the last save must not be dropped by writing a reason.
+                setD(prev => ({ ...prev, title: { ...prev.title, holders, ...patch } }))
+              const setHolder = (name: string, patch: any) =>
+                setTitle({ holders: holders.map(h => h.name === name ? { ...h, ...patch } : h) })
+              const mismatch = borrowerNotOnTitle({ ...info, holders }, names)
+              const needReason = reasonRequired({ ...info, holders }, names)
+              return (
+                <div className="mb-4">
+                  <label className="text-xs font-medium text-gray-500 block mb-1">Who will be on the title?</label>
+                  {holders.map(h => (
+                    <div key={h.name}
+                      className={`flex items-center gap-3 px-3 py-2 border rounded-lg mb-1.5 ${h.onTitle ? 'border-gray-100 bg-white' : 'border-gray-100 bg-[#FBFCFD]'}`}>
+                      <input type="checkbox" checked={h.onTitle} onChange={e => setHolder(h.name, { onTitle: e.target.checked })} />
+                      <span className={`text-[13px] text-[#343333] ${h.onTitle ? 'font-medium' : ''}`}>{h.name}</span>
+                      <span className="ml-auto flex items-center gap-2">
+                        <span className="text-[11px] text-gray-400">Share</span>
+                        <input className="border border-gray-200 rounded-lg px-2 py-1 text-[13px] w-[74px]"
+                          value={h.share} onChange={e => setHolder(h.name, { share: e.target.value })} />
+                      </span>
+                    </div>
+                  ))}
+
+                  {mismatch && (
+                    <div className={`mt-2 border rounded-lg px-3.5 py-3 ${needReason ? 'border-[#F5C2C2] bg-[#FDF0EF]' : 'border-[#EBD9BE] bg-[#FDF6EC]'}`}>
+                      <div className={`text-[12.5px] font-semibold mb-1.5 ${needReason ? 'text-[#8A3A3A]' : 'text-[#8A6218]'}`}>
+                        {holders.filter(h => !h.onTitle).map(h => h.name).join(' and ')}
+                        {holders.filter(h => !h.onTitle).length === 1 ? ' is ' : ' are '}
+                        borrowing but will not be on title.
+                      </div>
+                      <label className="text-[11px] text-gray-500 block mb-1">Why are they on the loan, and what benefit do they get from it?</label>
+                      <textarea spellCheck="true" className={inp + ' min-h-[64px] resize-y bg-white'}
+                        value={info.reason || ''} onChange={e => setTitle({ reason: e.target.value })}
+                        placeholder="e.g. spouse, will live in the property as their principal place of residence…" />
+                      <div className="flex items-center gap-2.5 mt-2 flex-wrap">
+                        <span className="text-[11px] text-gray-500">Independent legal advice</span>
+                        <span className="inline-flex rounded-lg border border-gray-200 overflow-hidden bg-white">
+                          {(['not_required', 'arranged', 'not_yet'] as LegalAdvice[]).map((v, i) => (
+                            <button key={v} type="button" onClick={() => setTitle({ legalAdvice: v })}
+                              className={`text-[11.5px] px-2.5 py-1 ${i ? 'border-l border-gray-200' : ''} ${
+                                info.legalAdvice === v ? 'bg-[#343333] text-white font-semibold' : 'text-[#8a9099]'}`}>
+                              {LEGAL_ADVICE_LABEL[v]}
+                            </button>
+                          ))}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-[#a08a5e] mt-2 italic">
+                        This only appears when the borrowers and the owners are not the same people. Match them and it goes away.
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-medium text-gray-500 block mb-1">Security (property)</label>
@@ -1334,6 +1472,35 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
             </div>
           </div>
         </div>
+      )}
+
+      {showPreflight && (
+        <PreflightPanel
+          findings={findings}
+          dealName={d.applicants.map(a => a.name).join(' & ') || deal.deal_name}
+          onOpen={box => {
+            // The box name says which tab it lives on, so the panel takes you
+            // there rather than leaving you to hunt for it.
+            const goto = box === 'Living expenses' ? 'expenses'
+              : box === 'Risks' ? 'risks'
+              : ['Primary reasons for seeking credit', 'Immediate needs & objectives — next 2 years', 'Longer term — 2 to 10 years'].includes(box) ? 'needs'
+              : 'comments'
+            setStage(goto as any)
+            setShowPreflight(false)
+          }}
+          onProceed={openPushForm}
+          onCancel={() => setShowPreflight(false)} />
+      )}
+
+      {showPushForm && (
+        <PushForm
+          deal={deal}
+          dealName={d.applicants.map(a => a.name).join(' & ') || deal.deal_name}
+          answers={pushAnswers}
+          setAnswers={setPushAnswers}
+          busy={pushing}
+          onPush={confirmPush}
+          onCancel={() => setShowPushForm(false)} />
       )}
 
       {showPositionPrompt && (
