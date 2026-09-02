@@ -22,6 +22,10 @@ export type Finding = {
   snippet?: string
   words?: string[]      // what to highlight inside the snippet
   severity: 'warn' | 'stop'
+  // A finding the panel can settle on the spot, rather than sending somebody off
+  // to hunt for a tick box on another tab. 'preApproval' means: this deal has no
+  // property yet, so TBA against the security is the right answer.
+  fix?: 'preApproval'
 }
 
 // The boxes that carry written text, in the order they appear on the handover.
@@ -143,11 +147,18 @@ export function preflight(
 
     const ph = placeholderExpected(key, compliance) ? '' : placeholderIn(text)
     if (ph) {
+      // TBA against the security is the one placeholder with an innocent
+      // explanation, so that finding offers the explanation instead of only
+      // pointing at the problem. Fabio, 2 Sep 2026: "TBA is not a warning".
+      const preApprovable = key === 'securityComment'
       findings.push({
         kind: 'placeholder', severity: 'warn', box: label,
-        issue: 'Still a placeholder. This is copied straight into SalesTrekker as written.',
+        issue: preApprovable
+          ? 'Still a placeholder. This is copied straight into SalesTrekker as written — unless there is no property yet.'
+          : 'Still a placeholder. This is copied straight into SalesTrekker as written.',
         snippet: firstSentenceWith(text, ph) || text.slice(0, 200),
         words: [ph],
+        ...(preApprovable ? { fix: 'preApproval' as const } : {}),
       })
     }
   }

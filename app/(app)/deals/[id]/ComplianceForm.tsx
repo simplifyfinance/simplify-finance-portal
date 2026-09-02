@@ -1508,6 +1508,19 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
             setShowPreflight(false)
           }}
           onProceed={openPushForm}
+          onFix={fix => {
+            if (fix !== 'preApproval') return
+            // The same tick as the checkbox under Security, made where the
+            // question was actually asked. The autosave carries it to the deal.
+            // The checks then RE-RUN against the corrected data rather than the
+            // finding simply being hidden - if something else is wrong, it still
+            // gets said.
+            const next = { ...d, preApproval: true }
+            setD(next)
+            const left = preflight(deal, next, EXPENSE_CATEGORIES)
+            setFindings(left)
+            if (left.length === 0) openPushForm()
+          }}
           onCancel={() => setShowPreflight(false)} />
       )}
 

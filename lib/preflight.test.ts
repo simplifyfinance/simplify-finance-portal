@@ -197,3 +197,37 @@ describe('who goes on the title', () => {
     expect(titleSummary(t, apps)).toContain('No reason has been recorded.')
   })
 })
+
+// TBA against the security is the one placeholder with an innocent explanation:
+// a pre-approval has no property yet. Fabio, 2 Sep 2026: "TBA is not a warning".
+describe('TBA on the security box', () => {
+  const base = {
+    applicants: [{ name: 'Richard Chapman' }],
+    securityComment: 'TBA - owner-occupied residential property, NSW.',
+  }
+
+  it('is raised on a deal that is not marked as a pre-approval', () => {
+    const f = preflight({}, base).filter(x => x.kind === 'placeholder')
+    expect(f).toHaveLength(1)
+    expect(f[0].words).toEqual(['TBA'])
+  })
+
+  it('offers to settle it on the spot instead of sending you to another tab', () => {
+    const f = preflight({}, base).find(x => x.kind === 'placeholder')!
+    expect(f.fix).toBe('preApproval')
+  })
+
+  it('says nothing once the deal is marked as a pre-approval', () => {
+    const f = preflight({}, { ...base, preApproval: true }).filter(x => x.kind === 'placeholder')
+    expect(f).toHaveLength(0)
+  })
+
+  it('still raises TBA left in another box, pre-approval or not', () => {
+    const f = preflight({}, { ...base, preApproval: true, depositComment: 'Deposit TBC' })
+      .filter(x => x.kind === 'placeholder')
+    expect(f).toHaveLength(1)
+    expect(f[0].box).toMatch(/Deposit/)
+    // No one-click fix on that one: it is somebody meaning to come back.
+    expect(f[0].fix).toBeUndefined()
+  })
+})

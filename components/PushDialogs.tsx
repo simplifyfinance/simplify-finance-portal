@@ -66,12 +66,15 @@ function highlight(snippet: string, words: string[] = []) {
   )}</>
 }
 
-export function PreflightPanel({ findings, dealName, onOpen, onProceed, onCancel }: {
+export function PreflightPanel({ findings, dealName, onOpen, onProceed, onCancel, onFix }: {
   findings: Finding[]
   dealName: string
   onOpen: (box: string) => void
   onProceed: () => void
   onCancel: () => void
+  // Settles a finding here rather than sending somebody to another tab to tick
+  // a box and start the push again.
+  onFix?: (fix: NonNullable<Finding['fix']>) => void
 }) {
   return (
     <div className="fixed inset-0 bg-black/30 flex items-start justify-center z-50 p-6 overflow-y-auto" onClick={onCancel}>
@@ -99,6 +102,12 @@ export function PreflightPanel({ findings, dealName, onOpen, onProceed, onCancel
                   <div className="text-[11.5px] text-[#4a5157] bg-white border border-[#E6E2DA] rounded-md px-2.5 py-1.5 mt-1.5 leading-relaxed">
                     … {highlight(f.snippet, f.words)} …
                   </div>
+                )}
+                {f.fix === 'preApproval' && onFix && (
+                  <button onClick={() => onFix('preApproval')}
+                    className="mt-2 bg-white border border-[#C9A227] text-[#7a5c14] text-[11.5px] font-bold rounded-lg px-3 py-1.5 hover:bg-[#FFFCF3]">
+                    This is a pre-approval — there is no property yet
+                  </button>
                 )}
               </div>
             )
