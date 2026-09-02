@@ -48,6 +48,23 @@ export async function POST(req: NextRequest) {
       crisName = p?.full_name || null
     }
 
+    // NOBODY IS EMAILED TO ASK THEMSELVES TO DO SOMETHING.
+    //
+    // These notifications say "please create the card" or "please move the
+    // card". When the person who receives them is the person who just did the
+    // thing, the email is noise - and worse than noise, because a mailbox full
+    // of self-addressed tasks is a mailbox people stop reading. Fabio, 2 Sep
+    // 2026: "when Ellie and Cris or whomever is on the the dropdown box they
+    // should not receive an email to credte the deal card as it redundant".
+    //
+    // Compared on the profile id, which is what Settings actually stores. If
+    // there is no session - a server-to-server call - nothing is skipped, which
+    // is the safe way round.
+    const { data: session } = await supabase.auth.getUser()
+    const actorId = session?.user?.id || null
+    const ellieIsActing = !!actorId && settingsRow?.new_deal_notification_user_id === actorId
+    const crisIsActing = !!actorId && settingsRow?.stage_move_notification_user_id === actorId
+
     // Trigger 1: first BC action on a deal — fires once, whichever happens first
     if (trigger === 'bc_action') {
       // Atomically claim the send. This UPDATE only matches while the timestamp is
@@ -82,6 +99,13 @@ export async function POST(req: NextRequest) {
       } else {
         // Path B: broker completed BC solo, this is the first-ever touchpoint
         alreadyBcActioned = true
+      }
+
+      // The claim above stands whether or not an email goes out: Ellie doing it
+      // herself is exactly as good as Ellie being told to, and leaving the
+      // timestamp null would email her about it later.
+      if (ellieIsActing) {
+        return NextResponse.json({ ok: true, skipped: true, reason: 'the recipient is the one who acted' })
       }
 
       try {
@@ -132,30 +156,43 @@ export async function POST(req: NextRequest) {
         `Set up a follow-up task on this deal card for ${brokerName} and the support team. Due ${due}.`
         + (c?.next_action ? ` Action: ${c.next_action}.` : '')
         + (c?.close_reason ? ` The deal was closed as: ${String(c.close_reason).replace(/_/g, ' ')}.` : '')
+      // Asking somebody to move a card they just moved themselves.
+      if (crisIsActing) return NextResponse.json({ ok: true, skipped: true, reason: 'the recipient is the one who acted' })
       await notifyCrisMoveCard(dealName, brokerName, instruction, false, undefined, crisEmail, { recipientName: crisName })
       return NextResponse.json({ ok: true })
     }
 
     // Trigger 2: BC sent to client, card already exists
     if (trigger === 'bc_sent') {
+      // Asking somebody to move a card they just moved themselves.
+      if (crisIsActing) return NextResponse.json({ ok: true, skipped: true, reason: 'the recipient is the one who acted' })
       await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to BC Actioned', false, undefined, crisEmail, { recipientName: crisName })
       return NextResponse.json({ ok: true })
     }
 
     // Trigger 3: LO sent to client
     if (trigger === 'lo_sent') {
+      // Asking somebody to move a card they just moved themselves.
+      if (crisIsActing) return NextResponse.json({ ok: true, skipped: true, reason: 'the recipient is the one who acted' })
       await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to LO Actioned', false, undefined, crisEmail, { recipientName: crisName })
       return NextResponse.json({ ok: true })
     }
 
     // Trigger 4: client/broker confirms proceed LO -> Compliance
     if (trigger === 'lo_to_compliance') {
+      // Asking somebody to move a card they just moved themselves.
+      if (crisIsActing) return NextResponse.json({ ok: true, skipped: true, reason: 'the recipient is the one who acted' })
       await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to Compliance (to be actioned)', false, undefined, crisEmail, { recipientName: crisName })
       return NextResponse.json({ ok: true })
     }
 
     // Trigger 5: Push to SalesTrekker (final)
     if (trigger === 'push_to_salestrekker') {
+      // Deliberately NOT skipped when the recipient is the one pushing. This
+      // email is not a request to do something - it carries both PDFs, which
+      // have to be filed into the client's OneDrive folder, and the link to the
+      // handover. It is wanted in the inbox even by the person who pressed the
+      // button.
       const attachments: { filename: string; content: string }[] = []
 
       try {
