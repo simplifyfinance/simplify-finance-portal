@@ -84,8 +84,13 @@ function card(title: string, rows: string) {
 
 // Two names for the same number is not information. lib/email-amounts.ts holds
 // the rule and the reasoning; this just builds the row when there is one.
-function loanAmountRow(headline: any, splitAmount: any): string {
-  return showsOwnLoanAmount(headline, splitAmount) ? row('Loan amount', '$' + (splitAmount || '')) : ''
+//
+// Refinance only passes 'New loan amount' as the label. Fabio, 2 Sep 2026: that
+// scenario "is only for dollar for dollar refi" - so the row is normally the
+// balance said twice, and on the rare file where it is not, it stays and the
+// difference is the point.
+function loanAmountRow(headline: any, splitAmount: any, label = 'Loan amount'): string {
+  return showsOwnLoanAmount(headline, splitAmount) ? row(label, '$' + (splitAmount || '')) : ''
 }
 
 function row(l: string, v: string) {
@@ -285,7 +290,7 @@ export async function POST(req: NextRequest) {
       p('Based on your current financial position, you have sufficient capacity to refinance your existing loan and secure a competitive rate.') +
       p13('Here is a breakdown of the structure:') +
       propHead(`Against ${d.suburb || '[Property Address]'}`, d.incomeRental) +
-      card('Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + row('New loan amount', '$' + (d.splits?.[0]?.amount || '')) + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years') + buildLVRLine(d)) +
+      card('Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + loanAmountRow(d.existingLoanBal, d.splits?.[0]?.amount, 'New loan amount') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years') + buildLVRLine(d)) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
