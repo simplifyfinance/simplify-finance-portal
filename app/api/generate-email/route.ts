@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { emailParagraphs } from '@/lib/rich-text'
 
 
 const DEFAULT_BRAND = {
@@ -57,7 +58,7 @@ function brokerBox(personalisation: string, firstName?: string, jointFirstName?:
     <td bgcolor="#FFF8E7" style="background:#FFF8E7;padding:13px 15px">
       <p style="font-size:10px;font-weight:600;color:#92400E;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 6px"><span style="color:#92400E;">Broker personalisation</span></p>
       <p style="font-size:14px;color:#333333;margin:0 0 14px;line-height:1.6"><span style="color:#333333;">Hi ${greetingName},</span></p>
-      <p style="font-size:14px;color:#333333;margin:0;line-height:1.6"><span style="color:#333333;">${personalisation || '[Add your personal opening here.]'}</span></p>
+      ${emailParagraphs(personalisation) || `<p style="font-size:14px;color:#333333;margin:0;line-height:1.6"><span style="color:#333333;">[Add your personal opening here.]</span></p>`}
     </td></tr></table><!--/BROKER-BOX-->`
 }
 

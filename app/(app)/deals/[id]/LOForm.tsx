@@ -6,6 +6,7 @@ import BrokerAssignment from './BrokerAssignment'
 import { can } from '@/lib/permissions'
 import { templateLabel } from '@/lib/templates'
 import { proceedCredit } from '@/lib/deal-status'
+import { emailParagraphs, htmlToPlainText } from '@/lib/rich-text'
 import { loMayWriteAmount } from '@/lib/deal-phase'
 
 // A finished "client agreed" is not something to hide. It used to disappear the
@@ -682,9 +683,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     const jfn = (d.jointFirstName || '').trim()
     const greetingName = (d.joint === 'Yes' && jfn) ? `${fn} and ${jfn}` : fn
     let clean = `<p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">Hi ${greetingName},</p>`
-    if (d.brokerPersonalisation && d.brokerPersonalisation.trim()) {
-      clean += `<p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">${d.brokerPersonalisation}</p>`
-    }
+    // Same as the BC: one <p> per paragraph, not one <p> for the lot.
+    clean += emailParagraphs(d.brokerPersonalisation, { colour: '#333', trailing: true })
     // The broker-only block is marked in the generated HTML, so removing it does
     // not depend on how it is styled. If the marker is ever missing, fail loudly
     // rather than mail a client a box headed "Broker personalisation".
@@ -698,12 +698,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // only text/plain hands Outlook raw markup instead of a formatted email.
   async function copyEmailToClipboard() {
     const cleanHtml = getCleanEmailHtml()
-    const plain = cleanHtml
-      .replace(/<!--[\s\S]*?-->/g, '')
-      .replace(/<\/(p|tr|table|div)>/gi, '\n')
-      .replace(/<[^>]+>/g, '')
-      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&bull;/g, '-').replace(/&#10003;/g, '*')
-      .replace(/\n{3,}/g, '\n\n').trim()
+    // One reader for this, in lib/rich-text.ts. It knows about <br>, which this
+    // did not - so the paragraph breaks we just fixed survived into the HTML half
+    // of the clipboard and were flattened again in the plain-text half.
+    const plain = htmlToPlainText(cleanHtml)
     await navigator.clipboard.write([new ClipboardItem({
       'text/html': new Blob([cleanHtml], { type: 'text/html' }),
       'text/plain': new Blob([plain], { type: 'text/plain' }),
