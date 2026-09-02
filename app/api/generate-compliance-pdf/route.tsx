@@ -59,6 +59,8 @@ const styles = StyleSheet.create({
   tQ: { flex: 1, backgroundColor: SOFT, paddingVertical: 5, paddingHorizontal: 9, fontSize: 8.5, color: BODY },
   tA: { width: 130, backgroundColor: SOFT, paddingVertical: 5, paddingHorizontal: 9, fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: INK, textAlign: 'right' },
   groupLabel: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: MUTE, letterSpacing: .7, marginTop: 7, marginBottom: 4 },
+  groupNote: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#8A6218', backgroundColor: '#FDF6E7', borderRadius: 3, paddingVertical: 2, paddingHorizontal: 5 },
+  noAnswers: { backgroundColor: '#FDF6E7', borderWidth: 1, borderColor: '#EBD9BE', borderRadius: 6, padding: 9, fontSize: 8.5, color: '#8A6218', marginBottom: 4 },
 
   eDotCell: { width: 20, paddingTop: 7, paddingLeft: 9 },
   eDot: { width: 6, height: 6, borderRadius: 3 },
@@ -76,29 +78,32 @@ const styles = StyleSheet.create({
   footText: { fontSize: 7, color: '#A9B7C2' },
 })
 
-const RISK_GROUPS: { title: string; rows: { key: string; label: string }[] }[] = [
-  { title: 'Attitude to risk', rows: [
+const RISK_GROUPS: { title: string; note?: string; rows: { key: string; label: string }[] }[] = [
+  { title: 'Financial situation', rows: [
+    { key: 'adverseChanges', label: 'Adverse changes to financial situation?' },
+    { key: 'beneficialChanges', label: 'Beneficial changes to financial situation?' },
+  ]},
+  { title: 'Exit strategy', rows: [
+    // On the screen and never on the old PDF. A credit assessor reading a
+    // 30-year loan for a 60-year-old wants both of these.
+    { key: 'retirementAge', label: 'Retirement age' },
+    { key: 'repaymentMethod', label: 'Repayment method' },
+  ]},
+  { title: 'Financial security', rows: [
     { key: 'financialExperience', label: 'Level of financial experience' },
     { key: 'interestRateConcern', label: 'Concern about interest rate movements' },
     { key: 'loanFlexibility', label: 'Importance of loan flexibility (offset/redraw)' },
     { key: 'jobSecurity', label: 'Concern about job security' },
     { key: 'propertyValueConcern', label: 'Concern about property value fluctuations' },
-  ]},
-  { title: 'Changes ahead', rows: [
-    { key: 'adverseChanges', label: 'Anticipates adverse changes in circumstances' },
-    { key: 'beneficialChanges', label: 'Anticipates beneficial changes in circumstances' },
-    // On the screen and never on the old PDF, and a credit assessor wants both.
-    { key: 'retirementAge', label: 'Retirement age' },
-    { key: 'repaymentMethod', label: 'How the loan is repaid beyond retirement' },
-  ]},
-  { title: 'Contingency', rows: [
     { key: 'emergencyFund', label: 'Emergency fund / liquid asset or insurance for loss of income?' },
     { key: 'maintainLifestyle', label: 'Maintain commitments if partner unable to earn?' },
     { key: 'adequateInsurance', label: 'Adequate insurance for loan repayments if unable to work?' },
     { key: 'hasWill', label: 'Do you have a will?' },
     { key: 'circumstancesImpact', label: 'Any circumstances that may impact financial commitments?' },
   ]},
-  { title: 'Credit conduct', rows: [
+  // The screen carries this warning next to the heading and the reader of the
+  // handover needs it more than the person who typed the answers does.
+  { title: 'Credit history', note: 'Team must answer — Equifax not integrated', rows: [
     { key: 'problemsMeetingCommitments', label: 'Problems meeting fixed commitments including mobile payments?' },
     { key: 'officerInLiquidation', label: 'Officer/shareholder of company where liquidator appointed?' },
     { key: 'unsatisfiedJudgements', label: 'Unsatisfied judgements in court?' },
@@ -107,23 +112,36 @@ const RISK_GROUPS: { title: string; rows: { key: string; label: string }[] }[] =
   ]},
 ]
 
-const PRODUCT_ROWS: { key: string; label: string }[] = [
-  { key: 'variableRate', label: 'Variable rate' },
-  { key: 'fixedRate', label: 'Fixed rate' },
-  { key: 'fixedAndVariable', label: 'Fixed and variable rate' },
-  { key: 'principalAndInterest', label: 'Principal and interest' },
-  { key: 'interestOnly', label: 'Interest only' },
-  { key: 'interestInAdvance', label: 'Interest in advance' },
-  { key: 'lineOfCredit', label: 'Line of credit' },
-  { key: 'offsetAccount', label: 'Offset account' },
-  { key: 'redraw', label: 'Redraw' },
-  { key: 'lowestCost', label: 'Lowest cost' },
-  { key: 'approvedQuickly', label: 'Approved quickly' },
-  { key: 'specificFeatures', label: 'Specific features' },
-  { key: 'lenderPolicy', label: 'Lender policy' },
-  { key: 'branchFrequency', label: 'How often do you go to a branch?' },
-  { key: 'otherRequirements', label: 'Other requirements' },
+const PRODUCT_GROUPS: { title: string; rows: { key: string; label: string }[] }[] = [
+  { title: 'Rate type', rows: [
+    { key: 'variableRate', label: 'Variable rate' },
+    { key: 'fixedRate', label: 'Fixed rate' },
+    { key: 'fixedAndVariable', label: 'Fixed and variable rate' },
+  ]},
+  { title: 'Repayment type', rows: [
+    { key: 'principalAndInterest', label: 'Principal and interest' },
+    { key: 'interestOnly', label: 'Interest only' },
+    { key: 'interestInAdvance', label: 'Interest in advance' },
+  ]},
+  { title: 'Product type', rows: [
+    { key: 'lineOfCredit', label: 'Line of credit' },
+    { key: 'offsetAccount', label: 'Offset account' },
+    { key: 'redraw', label: 'Redraw' },
+  ]},
+  { title: 'What is important to you', rows: [
+    { key: 'lowestCost', label: 'Lowest overall loan cost' },
+    { key: 'approvedQuickly', label: 'Loan approved quickly' },
+    { key: 'specificFeatures', label: 'Specific loan features' },
+    { key: 'lenderPolicy', label: 'Lender policy / borrowing capacity' },
+  ]},
+  { title: 'Branch access', rows: [
+    { key: 'branchFrequency', label: 'How often do you go to a branch?' },
+  ]},
+  { title: 'Other', rows: [
+    { key: 'otherRequirements', label: 'Other requirements' },
+  ]},
 ]
+
 
 // The same list the Compliance screen uses, with the same two askable rows, so
 // the page and the document cannot disagree about what is in HEM.
@@ -279,24 +297,37 @@ export async function generateCompliancePdfBuffer(dealId: string, supabase: any)
 
           {applicants.map(name => {
             const r = risks[name] || {}
+            // An applicant with nothing recorded used to print nineteen rows of
+            // dashes, which reads as data lost rather than data never entered.
+            const answered = RISK_GROUPS.some(g => g.rows.some(x => String(r[x.key] || '').trim()))
             return (
               <View key={name}>
                 <Section title="Risks" pill={name} />
-                {RISK_GROUPS.map(g => {
-                  const rows = g.rows.map(x => [x.label, String(r[x.key] || '—')] as [string, string])
-                  return (
-                    <View key={g.title}>
+                {!answered ? (
+                  <Text style={styles.noAnswers}>
+                    No risk answers have been recorded for {name}. Nothing has been lost — these
+                    questions have not been asked yet, and the lender will want them.
+                  </Text>
+                ) : RISK_GROUPS.map(g => (
+                  <View key={g.title}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                       <Text style={styles.groupLabel}>{g.title.toUpperCase()}</Text>
-                      <QaRows rows={rows} />
+                      {g.note ? <Text style={[styles.groupNote, { marginLeft: 6, marginTop: 5 }]}>{g.note}</Text> : null}
                     </View>
-                  )
-                })}
+                    <QaRows rows={g.rows.map(x => [x.label, String(r[x.key] || '—')] as [string, string])} />
+                  </View>
+                ))}
               </View>
             )
           })}
 
           <Section title="Product requirements" pill="from the lending options" />
-          <QaRows rows={PRODUCT_ROWS.map(p => [p.label, String(productReqs[p.key] || '—')] as [string, string])} />
+          {PRODUCT_GROUPS.map(g => (
+            <View key={g.title}>
+              <Text style={styles.groupLabel}>{g.title.toUpperCase()}</Text>
+              <QaRows rows={g.rows.map(x => [x.label, String(productReqs[x.key] || '—')] as [string, string])} />
+            </View>
+          ))}
 
           <Section title="Living expenses" pill="household monthly" />
           {EXPENSE_CATEGORIES.map(cat => {
