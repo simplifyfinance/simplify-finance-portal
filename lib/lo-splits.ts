@@ -41,3 +41,62 @@ export function resolveLenderSplits(
   if (own && own.length > 0) return own
   return seedFromGlobal(globals)
 }
+
+// --- the totals under each lender ------------------------------------------
+//
+// LVR is not a property of a split. Fabio, 2 Sep 2026: "dont calcualte LVR per
+// split the LVR is alsways a sum of all splits /property value". The per-split
+// LVR box invited three different answers to a question that has one, and
+// nothing checked them against each other.
+//
+// It is calculated per LENDER, because a lender may lend a different total, and
+// it is calculated rather than typed so the form and the email cannot disagree.
+
+export function amountOf(v: any): number {
+  return parseFloat(String(v ?? '').replace(/[^0-9.]/g, '')) || 0
+}
+
+export function lenderTotal(splits: LenderSplit[] | undefined | null): number {
+  return (splits || []).reduce((sum, s) => sum + amountOf(s?.amount), 0)
+}
+
+// Rounded UP to one decimal, the way every other LVR in the portal is, so a hair
+// over 80 reads as over 80 rather than being rounded down into "no LMI".
+// Zero when there is no value to divide by - the caller leaves the line out
+// rather than printing "LVR 0%".
+export function lenderLvr(splits: LenderSplit[] | undefined | null, propertyValue: any): number {
+  const value = amountOf(propertyValue)
+  if (value <= 0) return 0
+  return Math.ceil((lenderTotal(splits) / value) * 1000) / 10
+}
+
+// Fold a lender's splits into a single loan.
+//
+// Some lenders will not carve a refinance up the way the deal is structured -
+// ubank on Clementine's file wanted one loan of $696,000 where the others took
+// $666,000 plus a $30,000 equity access. There was no way to say that: the
+// per-lender rows had no delete, so the only option was zeroing a split and
+// leaving a $0 line in the client's email.
+//
+// The amounts add up, because that much is arithmetic. The rate and type carry
+// over ONLY if every split already agreed on them - picking the first one when
+// they differ would be inventing a rate. The repayment is always cleared: a
+// merged loan has a new repayment and the old one is now wrong.
+export function combineIntoOneLoan(splits: LenderSplit[] | undefined | null): LenderSplit[] {
+  const rows = splits || []
+  if (rows.length === 0) return []
+  const allSame = (get: (s: LenderSplit) => string) => {
+    const first = get(rows[0]) || ''
+    return rows.every(s => (get(s) || '') === first) ? first : ''
+  }
+  const total = lenderTotal(rows)
+  return [{
+    id: rows[0].id,
+    label: 'One loan',
+    amount: total > 0 ? total.toLocaleString('en-AU') : '',
+    lvr: '',
+    rate: allSame(s => s.rate),
+    repayment: '',
+    repaymentType: allSame(s => s.repaymentType) || 'P&I',
+  }]
+}

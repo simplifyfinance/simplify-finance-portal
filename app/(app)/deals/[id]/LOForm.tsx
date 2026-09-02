@@ -8,7 +8,8 @@ import { templateLabel } from '@/lib/templates'
 import { proceedCredit } from '@/lib/deal-status'
 import { emailParagraphs, htmlToPlainText } from '@/lib/rich-text'
 import { loMayWriteAmount, splitsTotal } from '@/lib/deal-phase'
-import { resolveLenderSplits, seedFromGlobal } from '@/lib/lo-splits'
+import { resolveLenderSplits, seedFromGlobal, combineIntoOneLoan,
+         lenderTotal, lenderLvr } from '@/lib/lo-splits'
 
 // A finished "client agreed" is not something to hide. It used to disappear the
 // instant it was pressed, which made "already done" look exactly like "broken".
@@ -111,6 +112,11 @@ type LOData = {
   // the borrowing capacity email that preceded it on the same deal.
   brandId: string
   existingLoan: string
+  // What the LVR is measured against. On a refinance it is the BC's property
+  // value; on a purchase, the purchase price. Carried across for the same reason
+  // the duty state and the brand are - so the LO does not have to be told again
+  // something the BC already knows.
+  propertyValue: string
   brokerPersonalisation: string
   documentsRequired: string[]
   criteriaUsed: string[]
@@ -287,6 +293,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       dutyState: bc.dutyState || '',
       brandId: bc.brand || '',
       existingLoan: bc.existingLoanBal || '',
+      propertyValue: bc.propertyValue || bc.purchasePrice || '',
       brokerPersonalisation: '',
       documentsRequired: [],
       criteriaUsed: bc.template?.startsWith('refinance') ? ['Competitive interest rate', 'Good turnaround times', 'Ability to have an offset account'] :
@@ -393,6 +400,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       dutyState: bc.dutyState || '',
       brandId: bc.brand || '',
       existingLoan: bc.existingLoanBal || '',
+      propertyValue: bc.propertyValue || bc.purchasePrice || '',
       refinanceSplits: initRefinanceSplits(),
     }))
   }, [deal.bc_data])
@@ -543,6 +551,27 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   function syncLenderSplits(lenderIdx: number) {
     const updated = [...d.lenders]
     updated[lenderIdx] = { ...updated[lenderIdx], lenderSplits: seedFromGlobal(d.refinanceSplits) }
+    setD({ ...d, lenders: updated })
+  }
+
+  // Drop one split on ONE lender. There was no way to do this, so a lender that
+  // wanted the money as a single loan could only have a split zeroed - which put
+  // a "$0" line in the client's email. Sync from top puts them all back.
+  function removeLenderSplit(lenderIdx: number, splitIdx: number) {
+    const updated = [...d.lenders]
+    const splits = resolveLenderSplits(updated[lenderIdx], d.refinanceSplits).filter((_, i) => i !== splitIdx)
+    updated[lenderIdx] = { ...updated[lenderIdx], lenderSplits: splits }
+    setD({ ...d, lenders: updated })
+  }
+
+  // Some lenders will not carve the deal up the way it is structured. One button,
+  // one lender, nothing else on the deal touched.
+  function combineLenderSplits(lenderIdx: number) {
+    const updated = [...d.lenders]
+    updated[lenderIdx] = {
+      ...updated[lenderIdx],
+      lenderSplits: combineIntoOneLoan(resolveLenderSplits(updated[lenderIdx], d.refinanceSplits)),
+    }
     setD({ ...d, lenders: updated })
   }
 
@@ -1125,7 +1154,11 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                         Loan splits
                         <span className="ml-2 normal-case text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">pre-filled · editable per lender</span>
                       </div>
-                      <button onClick={() => syncLenderSplits(i)} className="text-xs text-gray-400 border border-gray-200 rounded-lg px-2.5 py-1 hover:bg-gray-50 transition">↺ Sync from top</button>
+                      <div className="flex gap-2">
+                        <button onClick={() => syncLenderSplits(i)} className="text-xs text-gray-400 border border-gray-200 rounded-lg px-2.5 py-1 hover:bg-gray-50 transition">↺ Sync from top</button>
+                        <button onClick={() => combineLenderSplits(i)} title="Merge this lender's splits into a single loan"
+                          className="text-xs text-gray-400 border border-gray-200 rounded-lg px-2.5 py-1 hover:bg-gray-50 transition">Combine into one loan</button>
+                      </div>
                     </div>
                     {lenderSplits.length === 0 && (
                       <div className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-3">
@@ -1135,15 +1168,19 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                     <div className="space-y-2">
                       {lenderSplits.map((split, sidx) => (
                         <div key={split.id} className="bg-gray-50 border border-gray-100 rounded-lg p-3">
-                          <div className="text-xs font-medium text-gray-500 mb-2">{split.label || `Split ${sidx + 1}`}</div>
-                          <div className="grid grid-cols-5 gap-2">
+                          <div className="flex items-center mb-2">
+                            <div className="text-xs font-medium text-gray-500">{split.label || `Split ${sidx + 1}`}</div>
+                            <button onClick={() => removeLenderSplit(i, sidx)} title="Remove this split from this lender only"
+                              className="ml-auto text-gray-300 hover:text-red-400 text-sm transition">✕</button>
+                          </div>
+                          {/* No LVR box. An LVR is the whole loan over the
+                              property value, not a property of one split - three
+                              typed boxes were three chances to disagree about a
+                              question with one answer. It is calculated below. */}
+                          <div className="grid grid-cols-4 gap-2">
                             <div>
                               <label className="text-xs text-gray-400 block mb-1">Amount</label>
                               <input className={inp} value={split.amount} onChange={e => updateLenderSplit(i, sidx, 'amount', e.target.value)} />
-                            </div>
-                            <div>
-                              <label className="text-xs text-gray-400 block mb-1">LVR</label>
-                              <input className={inp} value={split.lvr} onChange={e => updateLenderSplit(i, sidx, 'lvr', e.target.value)} placeholder="65%" />
                             </div>
                             <div>
                               <label className="text-xs text-gray-400 block mb-1">Rate % p.a.</label>
@@ -1166,6 +1203,21 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                         </div>
                       ))}
                     </div>
+                    {/* One answer, calculated, so the form and the client's email
+                        cannot say different things. */}
+                    {lenderSplits.length > 0 && (() => {
+                      const tot = lenderTotal(lenderSplits)
+                      const lvr = lenderLvr(lenderSplits, d.propertyValue)
+                      return (
+                        <div className="mt-3 text-[12.5px] bg-[#F2F8FB] border border-[#D9ECF6] rounded-lg px-3 py-2 text-[#2C3E46]">
+                          <strong>Total lending ${tot.toLocaleString('en-AU')}</strong>
+                          {lvr > 0
+                            ? <> &middot; LVR <strong>{lvr}%</strong>
+                                <span className="text-[#7B8B93]"> &mdash; against the ${Number(String(d.propertyValue).replace(/[^0-9.]/g, '') || 0).toLocaleString('en-AU')} property value. Calculated, not typed.</span></>
+                            : <span className="text-[#8A6218]"> &mdash; no property value on this deal yet, so there is no LVR to show.</span>}
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
 

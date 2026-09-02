@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { type Brand, resolveBrand, brandLegal } from '@/lib/brand'
 import { emailParagraphs } from '@/lib/rich-text'
+import { resolveLenderSplits, lenderTotal, lenderLvr } from '@/lib/lo-splits'
 
 
 // Was hardcoded to Simplify Finance, licence number included, so a second
@@ -59,7 +60,57 @@ function ctas(calendly: string, proceedUrl?: string) {
   </tr></table>`
 }
 
-function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender?: string) {
+// The loan splits, one row per split across every column.
+//
+// Your team fills these in per lender and the client never saw them: the word
+// `lenderSplits` did not appear in this file. The email said "Loan Amount: $X"
+// and "Existing Loan Balance: $X" - the same figure twice on Clementine's
+// refinance, with the $30,000 equity release nowhere at all.
+//
+// One row per split so the client compares like with like. A lender that folds
+// the deal into a single loan is shorter than the others, and that gap is
+// information rather than a hole - it is exactly what is different about that
+// option.
+function splitBand(lenders: any[], globals: any[], propertyValue: any): string {
+  const per = lenders.map(l => resolveLenderSplits(l, globals))
+  const deepest = per.reduce((m, rows) => Math.max(m, rows.length), 0)
+  if (deepest === 0) return ''
+
+  const cell = (inner: string) =>
+    `<td style="padding:12px 14px;border:1px solid #e0e0e0;vertical-align:top">${inner}</td>`
+  const totalCell = (inner: string) =>
+    `<td bgcolor="#fbfbfb" style="background:#fbfbfb;padding:12px 14px;border:1px solid #e0e0e0;vertical-align:top">${inner}</td>`
+
+  let out = `<tr>${lenders.map(() => `<td bgcolor="#fafafa" style="padding:10px 14px;border:1px solid #e0e0e0;background:#fafafa"><p style="font-size:12px;font-weight:700;color:#343333;margin:0"><span style="color:#343333;">Loan splits</span></p></td>`).join('')}</tr>`
+
+  for (let i = 0; i < deepest; i++) {
+    out += `<tr>${per.map(rows => {
+      const sp = rows[i]
+      if (!sp) return cell(`<p style="font-size:12px;color:#bbbbbb;margin:0"><span style="color:#bbbbbb;">&mdash;</span></p>`)
+      const line2 = [sp.rate ? `${sp.rate}%` : '', sp.repaymentType || ''].filter(Boolean).join(' &nbsp;\u00b7&nbsp; ')
+      return cell(
+        `<p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 2px"><span style="color:#343333;">${sp.label || 'Split'}</span></p>` +
+        `<p style="font-size:12px;color:#444444;margin:0 0 1px"><span style="color:#444444;">$${sp.amount || ''}${line2 ? ' &nbsp;\u00b7&nbsp; ' + line2 : ''}</span></p>` +
+        (sp.repayment ? `<p style="font-size:11px;color:#777777;margin:0"><span style="color:#777777;">$${sp.repayment} / month</span></p>` : '')
+      )
+    }).join('')}</tr>`
+  }
+
+  // One LVR per lender: that lender's whole loan over the property value. Never
+  // per split - an LVR is a question about the deal, and it is calculated here
+  // rather than typed so the email and the form cannot disagree.
+  out += `<tr>${per.map(rows => {
+    const tot = lenderTotal(rows)
+    const lvr = lenderLvr(rows, propertyValue)
+    return totalCell(
+      `<p style="font-size:12px;color:#343333;margin:0"><span style="color:#343333;"><strong>Total lending $${tot.toLocaleString('en-AU')}</strong>${lvr > 0 ? ` &nbsp;\u00b7&nbsp; LVR ${lvr}%` : ''}</span></p>`,
+    )
+  }).join('')}</tr>`
+
+  return out
+}
+
+function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender?: string, globals?: any[], propertyValue?: any) {
   const cols = lenders.length
   const pct = cols === 1 ? '100%' : cols === 2 ? '50%' : '33%'
 
@@ -115,7 +166,11 @@ function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender
     featureCells += `<tr>${feeRows}</tr>`
   }
 
-  return `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px"><tr>${headers}</tr>${featureCells}</table>`
+  // Splits go directly under the lender names, before the rates: the client's
+  // first question about an option is what the money looks like, not what the
+  // annual fee is. Bridging keeps its own structure block instead.
+  const splits = isBridging ? '' : splitBand(lenders, globals || [], propertyValue)
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px"><tr>${headers}</tr>${splits}${featureCells}</table>`
 }
 
 function walletLinkBox(link: string) {
@@ -196,7 +251,7 @@ export async function POST(req: NextRequest) {
     body += p(d.recommendationNote)
   }
   const sortedLenders = d.recommendedLender ? [...d.lenders].sort((a: any, b: any) => a.lenderName === d.recommendedLender ? -1 : b.lenderName === d.recommendedLender ? 1 : 0) : d.lenders
-  body += buildLenderTable(sortedLenders, isBridging, d.recommendedLender)
+  body += buildLenderTable(sortedLenders, isBridging, d.recommendedLender, d.refinanceSplits, d.propertyValue)
 
   body += p('Please let us know which lender you would like to proceed with and if you have any questions regarding the numbers above.')
   body += ctas(b.calendly, proceedUrl)
