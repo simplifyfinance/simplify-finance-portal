@@ -80,3 +80,40 @@ describe('the drawdown note', () => {
     expect(DRAWDOWN_NOTE).toMatch(/progress payment/i)
   })
 })
+
+// ---------------------------------------------------------------------------
+// The carry-forward. Fabio, 2 Sep 2026: "when i am chagin the BC are you making
+// sure these issues are not carrying forward to LO correcT?"
+//
+// They were carrying forward. The Lending Options form seeded its loan amount
+// from bc.splits[0], and that field is written to deals.loan_amount - which the
+// board, the pipeline, the settlements screen and the commission panel all read.
+// So a multi-split BC became half a deal everywhere downstream.
+import { splitsTotal } from './deal-phase'
+
+describe('what the BC hands to Lending Options', () => {
+  const refiEquity = [{ amount: '500,000' }, { amount: '200,000' }]
+  const construction = [{ amount: '800,000' }, { amount: '800,000' }]
+
+  it('hands over the whole loan, not the first split', () => {
+    expect(splitsTotal(refiEquity)).toBe(700000)
+    expect(splitsTotal(construction)).toBe(1600000)
+  })
+
+  it('is the same number the BC email now shows', () => {
+    expect(splitsTotal(construction)).toBe(totalLending(construction))
+    expect(splitsTotal(refiEquity)).toBe(totalLending(refiEquity))
+  })
+
+  it('leaves a single-split deal exactly as it was', () => {
+    expect(splitsTotal([{ amount: '650,000' }])).toBe(650000)
+  })
+
+  it('hands over nothing rather than a zero when the BC has no splits', () => {
+    // The LO field stays empty and the broker fills it in, which is what
+    // happened before. A "0" would be written onto the deal as its loan amount.
+    expect(splitsTotal([])).toBe(null)
+    expect(splitsTotal(undefined)).toBe(null)
+    expect(splitsTotal([{ amount: '' }])).toBe(null)
+  })
+})

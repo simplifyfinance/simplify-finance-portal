@@ -158,7 +158,9 @@ const num = (v: any): number | null => {
   return Number.isFinite(x) && x !== 0 ? x : null
 }
 
-function splitsTotal(splits: any): number | null {
+// Every split added up. Exported because three screens were each adding up
+// splits their own way, and two of them stopped at the first one.
+export function splitsTotal(splits: any): number | null {
   if (!Array.isArray(splits) || splits.length === 0) return null
   const amounts = splits.map((s: any) => num(s?.amount)).filter((n): n is number => n !== null)
   if (amounts.length === 0) return null

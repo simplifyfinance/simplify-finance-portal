@@ -1,6 +1,15 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { isWithLender } from '@/lib/deal-phase'
+import { isWithLender, splitsTotal } from '@/lib/deal-phase'
+
+// The loan on this deal: what the LO settled on, or failing that the BC's splits
+// added up. It used to fall back to the FIRST BC split, so a multi-split deal
+// with no LO yet showed - and told the AI - half the loan.
+const dealLoanAmount = (lo: any, bc: any): string => {
+  if (lo?.loanAmount) return String(lo.loanAmount)
+  const total = splitsTotal(bc?.splits)
+  return total ? total.toLocaleString('en-AU') : ''
+}
 import { checkedWrite } from '@/lib/checked-write'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
@@ -427,7 +436,7 @@ export default function ComplianceForm({ deal, onSaveStatus }: { deal: any; onSa
     const recLender = (lo.lenders || []).find((l: any) => l.lenderName === lo.recommendedLender) || lo.lenders?.[0] || {}
     const context = {
       clientName: d.applicants.map(a => a.name).join(' and '),
-      loanAmount: lo.loanAmount || bc.splits?.[0]?.amount || '',
+      loanAmount: dealLoanAmount(lo, bc),
       purchasePrice: bc.purchasePrice || '',
       deposit: bc.deposit || '',
       loanType: bc.template || '',
@@ -724,7 +733,7 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
         <div className="grid grid-cols-4 gap-3">
           {[
             ['Client', d.applicants.map(a => a.name).join(', ')],
-            ['Loan amount', `$${lo.loanAmount || bc.splits?.[0]?.amount || '—'}`],
+            ['Loan amount', `$${dealLoanAmount(lo, bc) || '—'}`],
             ['Lender', (d.clientAgreedLender === 'No' ? ((d.clientChosenLender === '__other__' ? d.clientChosenLenderOther : d.clientChosenLender) || lo.recommendedLender) : lo.recommendedLender) || lo.lenders?.[0]?.lenderName || '—'],
             ['Loan type', bc.template?.replace(/_/g, ' ') || '—'],
           ].map(([label, value]) => (

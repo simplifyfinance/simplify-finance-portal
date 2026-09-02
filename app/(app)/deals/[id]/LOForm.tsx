@@ -7,7 +7,7 @@ import { can } from '@/lib/permissions'
 import { templateLabel } from '@/lib/templates'
 import { proceedCredit } from '@/lib/deal-status'
 import { emailParagraphs, htmlToPlainText } from '@/lib/rich-text'
-import { loMayWriteAmount } from '@/lib/deal-phase'
+import { loMayWriteAmount, splitsTotal } from '@/lib/deal-phase'
 
 // A finished "client agreed" is not something to hide. It used to disappear the
 // instant it was pressed, which made "already done" look exactly like "broken".
@@ -241,6 +241,14 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   const [sendingMoveToCompliance, setSendingMoveToCompliance] = useState(false)
   const [moveToComplianceMsg, setMoveToComplianceMsg] = useState('')
 
+  // What the BC says the whole loan is. A deal with a land loan and a
+  // construction loan, or a refinance with an equity release, has more than one
+  // split and the total is the loan - not whichever one happens to be first.
+  const bcLoanAmount = (): string => {
+    const total = splitsTotal(bc.splits)
+    return total ? formatNumber(String(total)) : ''
+  }
+
   const initRefinanceSplits = (): RefinanceSplit[] => {
     if (bc.splits?.length > 0) {
       return bc.splits.map((s: any, i: number) => ({
@@ -270,7 +278,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       joint: bc.joint || 'No',
       jointFirstName: ffApp2.firstName || '',
       jointLastName: ffApp2.lastName || '',
-      loanAmount: bc.splits?.[0]?.amount || '',
+      // EVERY split, not the first. See the note on splitsTotal.
+      loanAmount: bcLoanAmount(),
       purchasePrice: bc.purchasePrice || '',
       deposit: bc.deposit || '',
       stampDuty: bc.stampDuty || '',
@@ -375,7 +384,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       joint: bc.joint || 'No',
       jointFirstName: ffApp2.firstName || '',
       jointLastName: ffApp2.lastName || '',
-      loanAmount: bc.splits?.[0]?.amount || '',
+      // EVERY split, not the first. See the note on splitsTotal.
+      loanAmount: bcLoanAmount(),
       purchasePrice: bc.purchasePrice || '',
       deposit: bc.deposit || '',
       stampDuty: bc.stampDuty || '',

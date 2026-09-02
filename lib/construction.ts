@@ -15,6 +15,8 @@
 // be 440K". His figure is the arithmetic below, which is how I know the rule:
 // $2,040,000 total cost less $1,600,000 of total lending.
 
+import { splitsTotal } from './deal-phase'
+
 export type Split = { label?: string; amount?: string; rate?: string; type?: string; repayment?: string }
 
 export function num(v: any): number {
@@ -28,7 +30,7 @@ export function totalCost(d: { landValue?: any; constructionCost?: any; stampDut
 
 // Every split, not the first one. This is the whole bug.
 export function totalLending(splits: Split[] | undefined | null): number {
-  return (splits || []).reduce((sum, s) => sum + num(s?.amount), 0)
+  return splitsTotal(splits) ?? 0
 }
 
 // The cash the client has to find. Never negative - a project lent more than it
