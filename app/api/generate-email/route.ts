@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { emailParagraphs } from '@/lib/rich-text'
+import { showsOwnLoanAmount } from '@/lib/email-amounts'
 
 
 const DEFAULT_BRAND = {
@@ -79,6 +80,12 @@ function card(title: string, rows: string) {
     <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 10px"><span style="color:#7a5c3a;">${title}</span></p>
     <table width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>
   </td></tr></table>`
+}
+
+// Two names for the same number is not information. lib/email-amounts.ts holds
+// the rule and the reasoning; this just builds the row when there is one.
+function loanAmountRow(headline: any, splitAmount: any): string {
+  return showsOwnLoanAmount(headline, splitAmount) ? row('Loan amount', '$' + (splitAmount || '')) : ''
 }
 
 function row(l: string, v: string) {
@@ -260,11 +267,14 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'refinance_equity') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`Based on your current financial position, you have sufficient capacity to refinance your property and access approximately ${amt(d.splits?.[1]?.amount, '[equity amount]')} in equity, while also securing a competitive rate.`) +
+      // Reads the equity release field FIRST, which is what the card underneath
+      // shows. It read the split amount, and a broker who edited one and not the
+      // other got an email whose opening sentence contradicted its own numbers.
+      p(`Based on your current financial position, you have sufficient capacity to refinance your property and access approximately ${amt(d.equityRelease || d.splits?.[1]?.amount, '[equity amount]')} in equity, while also securing a competitive rate.`) +
       p13('Here is a breakdown of the structure:') +
       propHead(`Against ${d.suburb || '[Property Address]'}`, d.incomeRental) +
-      card('Split 1 - Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
-      card('Split 2 - Equity Release', row('Equity release amount', '$' + (d.equityRelease || '')) + row('Loan amount', '$' + (d.splits?.[1]?.amount || '')) + row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[1]?.repayment ? '$' + (parseFloat(String(d.splits[1].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[1]?.type || 'Interest Only') + buildLVRLine(d)) +
+      card('Split 1 - Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + loanAmountRow(d.existingLoanBal, d.splits?.[0]?.amount) + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
+      card('Split 2 - Equity Release', row('Equity release amount', '$' + (d.equityRelease || '')) + loanAmountRow(d.equityRelease, d.splits?.[1]?.amount) + row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[1]?.repayment ? '$' + (parseFloat(String(d.splits[1].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[1]?.type || 'Interest Only') + buildLVRLine(d)) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
