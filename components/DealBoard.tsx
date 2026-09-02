@@ -57,7 +57,7 @@ const AGE_STYLE: Record<string, string> = {
   long:  'text-[#946017] bg-[#FDF6EC] border-[#EBD9BE]',
 }
 
-export default function DealBoard({ deals, nameFor, colours, thresholds, alerts }: {
+export default function DealBoard({ deals, nameFor, colours, thresholds, alerts, onDelete }: {
   deals: any[]
   nameFor: (k: string) => string
   colours?: { type?: any; use?: any; broker?: Record<string, string> }
@@ -68,6 +68,12 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts 
   // Open alerts keyed by deal id. A card with one shows it; a card without is
   // unchanged.
   alerts?: Record<string, Alert[]>
+  // Deleting was only ever possible from the list, and the board is what
+  // everyone actually works on. Fabio, 2 Sep 2026: "we cant delete deals on
+  // board view only grud". Hidden until the card is hovered, because a card on
+  // the board is dragged and clicked all day and a delete under the cursor is a
+  // delete waiting to happen. The confirmation lives in the handler.
+  onDelete?: (e: React.MouseEvent, deal: any) => void
 }) {
   const router = useRouter()
   // Folded columns, this person's own, remembered across logins.
@@ -229,16 +235,26 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts 
                       onDragStart={() => setDragging(d.id)}
                       onDragEnd={() => { setDragging(''); setOver('') }}
                       onClick={() => router.push(`/deals/${d.id}`)}
-                      className={`relative bg-white border rounded-[10px] px-2.5 pt-2.5 pb-2.5 mb-2 cursor-pointer transition hover:border-[#D6CCBC] ${
+                      className={`group relative bg-white border rounded-[10px] px-2.5 pt-2.5 pb-2.5 mb-2 cursor-pointer transition hover:border-[#D6CCBC] ${
                         dragging === d.id ? 'opacity-40 border-[#0E8FCB]'
                         : urgent ? 'border-[#E9C9BE] ring-2 ring-[#FBEDE9]' : 'border-[#E5DED2]'}`}>
 
                       {urgent && (
-                        <div className="mb-1.5 mr-[22px]">
+                        <div className="mb-1.5 mr-[50px]">
                           <span className="text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border whitespace-nowrap text-[#AD4227] bg-[#FBEDE9] border-[#EFD3CB]">
                             {urgentChipLabel(d)}
                           </span>
                         </div>
+                      )}
+
+                      {onDelete && (
+                        <button title="Delete this deal"
+                          onClick={e => onDelete(e, d)}
+                          className="absolute top-[7px] right-[30px] w-[22px] h-[22px] rounded-md border border-[#E5DED2] bg-white text-[#B0A79B] flex items-center justify-center opacity-0 group-hover:opacity-100 transition hover:border-[#D9534F] hover:text-[#D9534F] hover:bg-[#FDF0EF]">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                            <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
+                          </svg>
+                        </button>
                       )}
 
                       {/* A look before committing to opening it. */}
@@ -253,7 +269,7 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts 
 
                       {/* One line, ellipsis, full name on hover — the same shape a
                           long client name gets anywhere else. */}
-                      <p className="text-[12.5px] font-[640] text-[#221F1B] m-0 mr-[22px] truncate" title={d.deal_name}>
+                      <p className="text-[12.5px] font-[640] text-[#221F1B] m-0 mr-[50px] truncate" title={d.deal_name}>
                         {dealTitle(d.deal_name)}
                       </p>
                       <p className="text-[9.5px] font-bold tracking-[.07em] uppercase text-[#A29889] m-0 mb-[7px]">

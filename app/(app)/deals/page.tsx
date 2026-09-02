@@ -2,6 +2,7 @@
 import { Fragment, useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { Plus, Search, Briefcase, Trash2, Copy } from 'lucide-react'
+import { DeleteDealDialog } from '@/components/DeleteDealDialog'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
@@ -101,11 +102,28 @@ export default function DealsPage() {
     router.push(`/deals/${inserted.id}`)
   }
 
-  async function deleteDeal(e: React.MouseEvent, id: string, name: string) {
+  // ASKING BEFORE DELETING.
+  //
+  // This used to be a one-line browser confirm. The useful thing to say is not
+  // "are you sure" but "did you mean to mark it lost?" - which is what almost
+  // every deletion actually is. See lib/delete-deal.ts and DeleteDealDialog.
+  const [deleting, setDeleting] = useState<any>(null)
+  const [deletingDocs, setDeletingDocs] = useState(0)
+  const [deleteBusy, setDeleteBusy] = useState(false)
+
+  async function askDelete(e: React.MouseEvent, deal: any) {
     e.preventDefault()
     e.stopPropagation()
-    if (!confirm(`Delete "${name}"? This will also delete its attached documents. This cannot be undone.`)) return
+    setDeleting(deal)
+    setDeletingDocs(0)
+    // Counted, not guessed: the warning names how many documents go with it.
+    const { count } = await browser.from('deal_documents')
+      .select('id', { count: 'exact', head: true }).eq('deal_id', deal.id)
+    setDeletingDocs(count || 0)
+  }
 
+  async function deleteDeal(id: string) {
+    setDeleteBusy(true)
     const { data: docs } = await browser.from('deal_documents').select('id, file_path').eq('deal_id', id)
     if (docs && docs.length > 0) {
       const paths = docs.map((d: any) => d.file_path)
@@ -113,6 +131,7 @@ export default function DealsPage() {
       const { data: gone, error: docErr } = await browser.from('deal_documents')
         .delete().eq('deal_id', id).select('id')
       if (docErr || !gone || gone.length === 0) {
+        setDeleteBusy(false)
         alert('The deal was NOT deleted - its document records could not be removed'
           + (docErr ? ': ' + docErr.message : '.') + ' Nothing has been changed.')
         return
@@ -120,11 +139,13 @@ export default function DealsPage() {
     }
 
     const { error } = await browser.from('deals').delete().eq('id', id)
+    setDeleteBusy(false)
     if (error) {
       alert('Error deleting deal: ' + error.message)
       return
     }
     setDeals(prev => prev.filter(d => d.id !== id))
+    setDeleting(null)
   }
   // Two toggles, because settled and lost are two different things. There used to
   // be one, and it hid `completed` while permanently showing `lost` — so three
@@ -139,29 +160,39 @@ export default function DealsPage() {
   const [layout, setLayout] = useState<'list' | 'board'>('board')
   const [showSettled, setShowSettled] = useState(false)
   const [showLost, setShowLost] = useState(false)
+  // The two filters were written out twice, once for the list and once for the
+  // board, so a change to one silently did not reach the other.
+  const term = search.trim().toLowerCase()
+  const matchesSearch = (d: any) => !term
+    || d.deal_name?.toLowerCase().includes(term)
+    || d.clients?.first_name?.toLowerCase().includes(term)
+    || d.clients?.last_name?.toLowerCase().includes(term)
+  const matchesBox = (d: any) => boxFilter === 'all'
+    || (boxFilter === 'bc' && d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at)
+    || (boxFilter === 'lo' && d.lo_completed_at && !d.compliance_completed_at)
+    || (boxFilter === 'compliance' && isInApplication(d))
+
+  // A SEARCH OVERRIDES THE TOGGLES.
+  //
+  // Typing a client's name is somebody looking for one particular deal. Hiding
+  // it because it happens to be lost or settled is the one thing they did not
+  // ask for - and the toggles are at the other end of the page, so the deal
+  // simply looked deleted. Fabio, 2 Sep 2026: "lost deals not appreating on
+  // search when we search".
   const filtered = deals.filter(d =>
-    (showSettled || phaseOf(d) !== 'settled') &&
-    (showLost || phaseOf(d) !== 'lost') &&
-    (boxFilter === 'all' ||
-      (boxFilter === 'bc' && d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at) ||
-      (boxFilter === 'lo' && d.lo_completed_at && !d.compliance_completed_at) ||
-      (boxFilter === 'compliance' && isInApplication(d))) &&
-    (d.deal_name?.toLowerCase().includes(search.toLowerCase()) ||
-    d.clients?.first_name?.toLowerCase().includes(search.toLowerCase()) ||
-    d.clients?.last_name?.toLowerCase().includes(search.toLowerCase()))
-  )
+    (term || showSettled || phaseOf(d) !== 'settled') &&
+    (term || showLost || phaseOf(d) !== 'lost') &&
+    matchesBox(d) && matchesSearch(d))
+
   // The board has a Settled column of its own, so it must not be handed a list
   // with settled deals already filtered out — it would draw an empty column and
-  // look broken. Lost deals stay off it entirely; a dead deal is not work.
-  const boardDeals = deals.filter(d =>
-    phaseOf(d) !== 'lost' &&
-    (boxFilter === 'all' ||
-      (boxFilter === 'bc' && d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at) ||
-      (boxFilter === 'lo' && d.lo_completed_at && !d.compliance_completed_at) ||
-      (boxFilter === 'compliance' && isInApplication(d))) &&
-    (d.deal_name?.toLowerCase().includes(search.toLowerCase()) ||
-     d.clients?.first_name?.toLowerCase().includes(search.toLowerCase()) ||
-     d.clients?.last_name?.toLowerCase().includes(search.toLowerCase())))
+  // look broken. There is no Lost column: a dead deal is not work, and inventing
+  // a column for it would put one on every screen every morning. So a search
+  // that only matches lost deals says so, and offers the list instead.
+  const boardDeals = deals.filter(d => phaseOf(d) !== 'lost' && matchesBox(d) && matchesSearch(d))
+  const lostMatches = term
+    ? deals.filter(d => phaseOf(d) === 'lost' && matchesBox(d) && matchesSearch(d))
+    : []
 
   const totalAssigned = deals.length
   const isPersonalViewer = !!brokerKey || (userRole === 'staff' && !!creditOfficerId)
@@ -260,10 +291,33 @@ export default function DealsPage() {
           <Plus size={14} />New deal
         </button>
       </div>
+      {/* The board has no Lost column, so a search that finds only dead deals
+          would otherwise look like it found nothing at all. */}
+      {layout === 'board' && lostMatches.length > 0 && (
+        <div className="mb-3 border border-[#E1E5E9] bg-[#F4F6F8] rounded-lg px-3.5 py-2.5 text-[12.5px] text-[#5B646D] flex items-center gap-2.5 flex-wrap">
+          <span>
+            {lostMatches.length} lost {lostMatches.length === 1 ? 'deal matches' : 'deals match'}
+            {' '}&ldquo;{search.trim()}&rdquo;. The board has no column for a lost deal.
+          </span>
+          <button onClick={() => { setLayout('list'); setShowLost(true) }}
+            className="ml-auto text-[12.5px] font-semibold text-[#0E8FCB] border border-[#BFE0F2] bg-white rounded-md px-2.5 py-1 hover:bg-[#EAF6FD]">
+            See {lostMatches.length === 1 ? 'it' : 'them'} in the list
+          </button>
+        </div>
+      )}
+      {deleting && (
+        <DeleteDealDialog
+          deal={deleting}
+          documentCount={deletingDocs}
+          busy={deleteBusy}
+          onMarkLost={() => router.push(`/deals/${deleting.id}?close=1`)}
+          onDelete={() => deleteDeal(deleting.id)}
+          onCancel={() => { if (!deleteBusy) setDeleting(null) }} />
+      )}
       {loading ? (
         <div className="text-sm text-gray-400 text-center py-12">Loading deals...</div>
       ) : layout === 'board' ? (
-        <DealBoard deals={boardDeals} nameFor={nameFor}
+        <DealBoard deals={boardDeals} nameFor={nameFor} onDelete={askDelete}
           colours={{ type: look.type, use: look.use, broker: look.broker }}
           thresholds={look.thresholds} alerts={alerts} />
       ) : filtered.length === 0 ? (
@@ -331,7 +385,7 @@ export default function DealsPage() {
                 className="w-8 h-8 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-300 hover:text-[#2DBEFF] hover:border-blue-200 hover:bg-blue-50 flex-shrink-0 transition">
                 <Copy size={13} />
               </button>
-              <button onClick={e => deleteDeal(e, deal.id, deal.deal_name)}
+              <button onClick={e => askDelete(e, deal)}
                 className="w-8 h-8 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-300 hover:text-red-400 hover:border-red-200 hover:bg-red-50 flex-shrink-0 transition">
                 <Trash2 size={13} />
               </button>

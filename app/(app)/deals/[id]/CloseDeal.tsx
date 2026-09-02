@@ -1,5 +1,6 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
 export const CLOSE_REASONS: { value: string; label: string; needsDate?: boolean }[] = [
@@ -18,7 +19,14 @@ export function reasonLabel(v?: string | null) {
 
 export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (patch: any) => void }) {
   const supabase = createSupabaseBrowser()
+  // ?close=1 opens this panel on arrival. The delete dialog on the deals list
+  // offers "mark it as lost instead", and that has to land on the reason list
+  // rather than on the deal page with a hint to go looking for it.
+  const params = useSearchParams()
   const [open, setOpen] = useState(false)
+  useEffect(() => {
+    if (params?.get('close') === '1' && deal?.status !== 'lost') setOpen(true)
+  }, [params, deal?.status])
   const [reason, setReason] = useState('')
   const [note, setNote] = useState('')
   const [savePosition, setSavePosition] = useState(true)
