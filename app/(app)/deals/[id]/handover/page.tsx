@@ -18,7 +18,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite } from '@/lib/checked-write'
-import { allSections, copyTextOf, outstanding,
+import { allSections, copyableCards, copyTextOf, outstanding,
          type ViewSection, type ViewCard, type Accent } from '@/lib/handover-view'
 import { applicantNamesOf } from '@/lib/applicants'
 import { money, readMoney } from '@/lib/money'
@@ -70,7 +70,9 @@ export default function HandoverPage() {
   }, [id, supabase])
 
   const sections: ViewSection[] = useMemo(() => (deal ? allSections(deal) : []), [deal])
-  const cards = useMemo(() => sections.flatMap(s => s.cards), [sections])
+  // Only the written boxes have a Copy button, so only they count towards
+  // "8 of 24 copied" and only they are what Jump to next jumps to.
+  const cards = useMemo(() => copyableCards(sections), [sections])
   const gaps = useMemo(() => (deal ? outstanding(deal) : []), [deal])
   const doneCount = cards.filter(c => progress[c.key]).length
 
@@ -173,14 +175,15 @@ export default function HandoverPage() {
         </div>
         <div className="max-w-[1120px] mx-auto px-5 pb-2.5 flex gap-1.5 overflow-x-auto">
           {sections.map(s => {
-            const n = s.cards.filter(x => progress[x.key]).length
-            const all = n === s.cards.length
+            const box = s.cards.filter(x => x.copyable)
+            const n = box.filter(x => progress[x.key]).length
+            const all = box.length > 0 && n === box.length
             const sh = all ? GOOD : SHADES[s.accent]
             return (
               <a key={s.key} href={'#sec-' + s.key}
                  className="rounded-full border px-3 py-[5px] text-[12px] font-semibold whitespace-nowrap"
                  style={{ borderColor: all ? sh.edge : '#E3E7EA', background: all ? sh.tint : '#fff', color: sh.ink }}>
-                {s.title} <span className="opacity-60">{n}/{s.cards.length}</span>
+                {s.title}{box.length > 0 && <span className="opacity-60"> {n}/{box.length}</span>}
               </a>
             )
           })}
@@ -195,11 +198,13 @@ export default function HandoverPage() {
         )}
 
         <div className="mt-4 rounded-xl border border-[#CBE7F8] bg-[#EAF6FD] text-[#0B5E8A] px-4 py-3.5 text-[13px] leading-relaxed">
-          <b className="text-[#141C24]">How this works.</b> Every box below is a field in SalesTrekker with the
-          same name. Press <b>Copy box</b>, paste it into the field, and the box turns green so you can see where
-          you got to — the ticks are saved, so you can stop and come back, and anyone else on this deal sees the
-          same progress. Single values copy on click. Do not retype and do not summarise: the wording is the
-          compliance record.
+          <b className="text-[#141C24]">How this works.</b> The written boxes — the ones with a <b>Copy box</b>
+          button — are single fields in SalesTrekker with the same name. Press the button, paste it into that
+          field, and the box turns green so you can see where you got to. The ticks are saved, so you can stop
+          and come back, and anyone else on this deal sees the same progress.
+          <br /><br />
+          Everything else on this page is a list of separate fields. <b>Click any row to copy just that value</b>
+          — one row, one field. Do not retype and do not summarise: the wording is the compliance record.
         </div>
 
         {sections.map((s, si) => {
@@ -283,14 +288,25 @@ function CardBlock({ card, shade, done, onCopy, onValue }: {
             {card.tag.toUpperCase()}
           </span>
         )}
-        <button onClick={onCopy}
-          className={'shrink-0 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold border '
-            + (card.tag ? 'ml-2.5 ' : 'ml-auto ')}
-          style={done
-            ? { background: GOOD.tint, borderColor: GOOD.edge, color: GOOD.ink }
-            : { background: '#141C24', borderColor: '#141C24', color: '#fff' }}>
-          {done ? 'Copied ✓' : card.blocks ? 'Copy box' : 'Copy all fields'}
-        </button>
+        {card.copyable
+          ? (
+            <button onClick={onCopy}
+              className={'shrink-0 rounded-lg px-3 py-1.5 text-[12.5px] font-semibold border '
+                + (card.tag ? 'ml-2.5 ' : 'ml-auto ')}
+              style={done
+                ? { background: GOOD.tint, borderColor: GOOD.edge, color: GOOD.ink }
+                : { background: '#141C24', borderColor: '#141C24', color: '#fff' }}>
+              {done ? 'Copied ✓' : 'Copy box'}
+            </button>
+          )
+          : (
+            // No whole-card button here on purpose: these rows are separate
+            // SalesTrekker fields and a clipboard holding all of them at once
+            // pastes into none of them.
+            <span className={'shrink-0 text-[11.5px] text-[#8B9AA8] ' + (card.tag ? 'ml-2.5' : 'ml-auto')}>
+              click a row to copy it
+            </span>
+          )}
       </div>
 
       <div className="px-3.5 py-3">
