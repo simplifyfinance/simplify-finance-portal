@@ -1,6 +1,7 @@
 'use client'
 import DropZone from '@/components/DropZone'
 import { checkedWrite } from '@/lib/checked-write'
+import { copyPlan, copyAddresses, recorded } from '@/lib/copy-history'
 import { useState, useEffect, useRef } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import AddressAutocomplete from './AddressAutocomplete'
@@ -368,6 +369,13 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   const [stage, setStage] = useState<'personal' | 'employment' | 'income' | 'assets' | 'properties' | 'liabilities'>('personal')
   const [addIncomeMenuOpen, setAddIncomeMenuOpen] = useState(false)
   const [activeApplicant, setActiveApplicant] = useState(0)
+  // Copying an address history across: whether the "this will delete something"
+  // question is showing, what was just copied, and what to put back on Undo.
+  const [confirmCopy, setConfirmCopy] = useState(false)
+  const [copiedCount, setCopiedCount] = useState(0)
+  const [undoAddresses, setUndoAddresses] = useState<Address[]>([])
+  // Moving to another applicant starts the question again.
+  useEffect(() => { setConfirmCopy(false); setCopiedCount(0) }, [activeApplicant])
   const [savedAt, setSavedAt] = useState('')
   const [saveError, setSaveError] = useState('')
   // Mirror save state up to the deal header, which owns the single indicator.
@@ -1000,19 +1008,90 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
           </div>
 
           <SectionHeader title="Address history" />
-          {activeApplicant > 0 && (
-            <button
-              onClick={() => {
-                const primary = d.applicants[0]
-                if (!primary) return
-                const copied = primary.addresses.map(a => ({ ...a, id: uid() }))
-                updateApplicant('addresses', copied)
-              }}
-              className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition mb-3"
-            >
-              Copy address from Applicant 1
-            </button>
-          )}
+          {/* COPYING THE ADDRESS HISTORY ACROSS.
+              This was a bare "Copy address from Applicant 1" that named nobody,
+              said nothing about what it would do, and replaced whatever was
+              already typed with no warning and no undo. It now names the person,
+              says how many addresses are coming, asks before deleting anything,
+              and can be undone. See lib/copy-history.ts. */}
+          {activeApplicant > 0 && (() => {
+            const primary = d.applicants[0]
+            if (!primary) return null
+            const who = primary.firstName || 'Applicant 1'
+            const plan = copyPlan(primary.addresses, applicant.addresses)
+            const months = totalHistoryMonths(recorded(primary.addresses) as any)
+            const span = months >= 24 ? ` covering ${Math.floor(months / 12)} years`
+              : months > 0 ? ` covering ${months} months` : ''
+            const doCopy = () => {
+              setUndoAddresses(applicant.addresses)
+              updateApplicant('addresses', copyAddresses(primary.addresses, uid))
+              setConfirmCopy(false)
+              setCopiedCount(recorded(primary.addresses).length)
+            }
+
+            if (copiedCount > 0) return (
+              <div className="border border-[#BFE3CC] bg-[#EFF9F2] rounded-lg px-3.5 py-2.5 mb-3 flex items-center gap-2.5 flex-wrap">
+                <span className="text-[13px] text-[#15803D]">
+                  <b className="text-[#0F5C33]">Copied {copiedCount} {copiedCount === 1 ? 'address' : 'addresses'} from {who}.</b>
+                  {' '}Edit anything below that is different for {applicant.firstName || 'this applicant'}.
+                </span>
+                <button
+                  onClick={() => { updateApplicant('addresses', undoAddresses); setCopiedCount(0) }}
+                  className="ml-auto text-[12.5px] text-[#3E4C59] border border-[#D7DCE1] bg-white rounded-md px-2.5 py-1">
+                  Undo
+                </button>
+              </div>
+            )
+
+            if (plan.kind === 'nothing') return (
+              <div className="border border-[#E1E5E9] bg-[#F4F6F8] rounded-lg px-3.5 py-2.5 mb-3 text-[12.5px] text-[#5B646D]">
+                Nothing to copy yet — {who} has no addresses recorded either. Fill in {who}&rsquo;s first
+                if they live together.
+              </div>
+            )
+
+            if (plan.kind === 'replace' && confirmCopy) return (
+              <div className="border border-[#EBD9BE] bg-[#FDF6E7] rounded-lg px-3.5 py-3 mb-3 text-[13px] text-[#8A6218]">
+                <b className="text-[#141C24]">
+                  {applicant.firstName || 'This applicant'} already has {plan.removing.length}
+                  {' '}{plan.removing.length === 1 ? 'address' : 'addresses'} recorded.
+                </b><br />
+                Copying {who}&rsquo;s {plan.count} will replace {plan.removing.length === 1 ? 'it' : 'them'}.
+                {' '}{plan.removing.length === 1 ? 'The address' : 'The addresses'} currently here —{' '}
+                <b className="text-[#141C24]">{plan.removing.join(', ')}</b> — will be removed.
+                <div className="flex gap-2 flex-wrap mt-2.5">
+                  <button onClick={doCopy}
+                    className="bg-[#B23A34] border border-[#B23A34] text-white rounded-lg px-3 py-1.5 text-[12.5px] font-semibold">
+                    Replace {plan.removing.length === 1 ? 'it' : 'them'} with {who}&rsquo;s
+                  </button>
+                  <button onClick={() => setConfirmCopy(false)}
+                    className="bg-white border border-[#D7DCE1] text-[#3E4C59] rounded-lg px-3 py-1.5 text-[12.5px]">
+                    Keep what is here
+                  </button>
+                </div>
+              </div>
+            )
+
+            return (
+              <div className="border border-[#CBE7F8] bg-[#EAF6FD] rounded-lg px-3.5 py-3 mb-3">
+                <div className="text-[13px] text-[#0B5E8A] mb-2.5">
+                  <b className="text-[#141C24]">
+                    Does {applicant.firstName || 'this applicant'} live at the same addresses as {who}?
+                  </b><br />
+                  {who} has {plan.count} {plan.count === 1 ? 'address' : 'addresses'} recorded{span}.
+                  Copying brings {plan.count === 1 ? 'it' : 'them all'} across, and you can edit
+                  {plan.count === 1 ? ' it' : ' any of them'} afterwards.
+                </div>
+                <div className="flex gap-2 items-center flex-wrap">
+                  <button onClick={() => (plan.kind === 'replace' ? setConfirmCopy(true) : doCopy())}
+                    className="bg-[#141C24] border border-[#141C24] text-white rounded-lg px-3 py-1.5 text-[12.5px] font-semibold hover:bg-[#28323c]">
+                    Copy {plan.count} {plan.count === 1 ? 'address' : 'addresses'} from {who}
+                  </button>
+                  <span className="text-[11.5px] text-[#7C8894]">or fill them in below</span>
+                </div>
+              </div>
+            )
+          })()}
           {applicant.addresses.map((addr, i) => (
             <div key={addr.id} className="border border-gray-100 rounded-lg p-3 mb-2">
               <div className="flex justify-between items-center mb-2">
