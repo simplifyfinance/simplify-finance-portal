@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { legalFeeLabel, rowLegalFeeLabel } from '@/lib/lender-fees'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
 import BrokerAssignment from './BrokerAssignment'
 import { can } from '@/lib/permissions'
@@ -72,6 +73,9 @@ type LenderOption = {
   annualFee: string
   valuationFee: string
   legalFee: string
+  // What this bank calls it, copied at the moment the lender was chosen so a
+  // document written last month keeps the wording it was written with.
+  legalFeeLabel?: string
   rateLockFee: string
   earlyRepaymentFee: string
   dischargeFee: string
@@ -139,7 +143,7 @@ const defaultRateModule: RateModule = { enabled: false, rate: '', repayment: '',
 
 const defaultLenderOption = (): LenderOption => ({
   lenderId: '', lenderProductId: '', lenderName: '', productName: '', approvalDays: '',
-  applicationFee: '', annualFee: '', valuationFee: '', legalFee: '', rateLockFee: '',
+  applicationFee: '', annualFee: '', valuationFee: '', legalFee: '', legalFeeLabel: '', rateLockFee: '',
   earlyRepaymentFee: '', dischargeFee: '', offsetAccount: '', libraryNotes: '',
   maxEquity: '', specialNote: '',
   variablePI: { ...defaultRateModule },
@@ -490,7 +494,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   function selectLenderName(i: number, lenderId: string) {
     const lender = uniqueLenders.find(l => l.id === lenderId)
     const updated = [...d.lenders]
-    updated[i] = { ...updated[i], lenderId, lenderName: lender?.name || '', lenderProductId: '', productName: '', applicationFee: '', annualFee: '', valuationFee: '', legalFee: '', rateLockFee: '', earlyRepaymentFee: '', dischargeFee: '', offsetAccount: '', libraryNotes: '' }
+    updated[i] = { ...updated[i], lenderId, lenderName: lender?.name || '', legalFeeLabel: legalFeeLabel(lender), lenderProductId: '', productName: '', applicationFee: '', annualFee: '', valuationFee: '', legalFee: '', rateLockFee: '', earlyRepaymentFee: '', dischargeFee: '', offsetAccount: '', libraryNotes: '' }
     setD({ ...d, lenders: updated })
   }
 
@@ -1125,7 +1129,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                       <LibraryField label="Application fee" value={lender.applicationFee} onChange={v => updateLender(i, 'applicationFee', v)} />
                       <LibraryField label="Annual fee" value={lender.annualFee} onChange={v => updateLender(i, 'annualFee', v)} />
                       <LibraryField label="Valuation fee" value={lender.valuationFee} onChange={v => updateLender(i, 'valuationFee', v)} />
-                      <LibraryField label="Legal fee" value={lender.legalFee} onChange={v => updateLender(i, 'legalFee', v)} />
+                      <LibraryField label={rowLegalFeeLabel(lender)} value={lender.legalFee} onChange={v => updateLender(i, 'legalFee', v)} />
                       <LibraryField label="Rate lock fee" value={lender.rateLockFee} onChange={v => updateLender(i, 'rateLockFee', v)} />
                       <LibraryField label="Early repayment fee" value={lender.earlyRepaymentFee} onChange={v => updateLender(i, 'earlyRepaymentFee', v)} />
                       <LibraryField label="Discharge fee" value={lender.dischargeFee} onChange={v => updateLender(i, 'dischargeFee', v)} />

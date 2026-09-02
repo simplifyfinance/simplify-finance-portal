@@ -21,6 +21,7 @@ import { notWorking, selfEmployed, currentEmployment, fullName,
 import { parseBlocks, hasContent, NEEDS_BOXES, COMMENT_BOXES, type Block, type Box } from './handover'
 import { titleSummary } from './title'
 import { hemStateOf, hemTotals, unansweredNote, type ExpenseCategory } from './hem'
+import { rowLegalFeeLabel } from './lender-fees'
 
 // --- the lists ---------------------------------------------------------------
 
@@ -504,7 +505,7 @@ export function factFindSections(deal: any): ViewSection[] {
         ['Variable P&I', rate(l.variablePI)], ['Variable IO', rate(l.variableIO)],
         ['Fixed P&I', rate(l.fixedPI)], ['Fixed IO', rate(l.fixedIO)],
         ['Application fee', money(l.applicationFee)], ['Annual fee', money(l.annualFee)],
-        ['Valuation fee', money(l.valuationFee)], ['Legal fee', money(l.legalFee)],
+        ['Valuation fee', money(l.valuationFee)], [rowLegalFeeLabel(l), money(l.legalFee)],
         ['Discharge fee', money(l.dischargeFee)],
         ['Offset account', l.offsetAccount], ['Approval', l.approvalDays],
         ['Note', l.specialNote],

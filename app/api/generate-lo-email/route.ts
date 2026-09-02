@@ -4,6 +4,7 @@ import { type Brand, resolveBrand, brandLegal } from '@/lib/brand'
 import { emailParagraphs } from '@/lib/rich-text'
 import { resolveLenderSplits, lenderTotal, lenderLvr, equityReleaseAmount } from '@/lib/lo-splits'
 import { showsOwnLoanAmount } from '@/lib/email-amounts'
+import { rowLegalFeeLabel } from '@/lib/lender-fees'
 
 
 // Was hardcoded to Simplify Finance, licence number included, so a second
@@ -155,7 +156,7 @@ function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender
       if (l.applicationFee) fees += tick("Application fee: " + l.applicationFee)
       if (l.annualFee) fees += tick("Annual fee: " + l.annualFee)
       if (l.valuationFee) fees += tick("Valuation fee: " + l.valuationFee)
-      if (l.legalFee) fees += tick("Legal fee: " + l.legalFee)
+      if (l.legalFee) fees += tick(rowLegalFeeLabel(l) + ": " + l.legalFee)
       if (l.rateLockFee) fees += tick("Rate lock fee: " + l.rateLockFee)
       // What it costs to leave. Clients ask about these when comparing two
       // lenders, and until now they were nowhere in the email.

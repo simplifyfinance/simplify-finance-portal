@@ -2,8 +2,12 @@
 import { useEffect, useState, useRef } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite, checkedWriteAllowingNone } from '@/lib/checked-write'
+import { legalFeeLabel, confirmedFeeLabel, DEFAULT_LEGAL_FEE_LABEL } from '@/lib/lender-fees'
 
-type Lender = { id: string; name: string; active: boolean }
+// legal_fee_label: what THIS bank calls the fee charged at settlement. Most say
+// "Settlement fee"; Bankwest says "Legal fee". Blank means Legal fee, which is
+// what every lender said before the column existed. See lib/lender-fees.ts.
+type Lender = { id: string; name: string; active: boolean; legal_fee_label?: string | null }
 type Product = {
   id: string
   lender_id: string
@@ -116,6 +120,16 @@ export default function LenderLibrary() {
     setNewLenderName('')
     setShowAddLender(false)
     setSavingLender(false)
+  }
+
+  // Set once on the bank; every product underneath it inherits the wording.
+  async function setLegalFeeLabel(id: string, label: string) {
+    const value = label.trim() || null
+    const problem = await checkedWrite(
+      supabase.from('lenders').update({ legal_fee_label: value }).eq('id', id), 'The fee wording')
+    if (problem) { setWriteError(problem); return }
+    setWriteError('')
+    setLenders(prev => prev.map(l => l.id === id ? { ...l, legal_fee_label: value } : l))
   }
 
   async function toggleLenderActive(id: string, active: boolean) {
@@ -360,7 +374,11 @@ export default function LenderLibrary() {
                   <span className={`text-gray-400 text-xs transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}>▶</span>
                   <div>
                     <p className="text-sm font-medium text-[#343333]">{lender.name}</p>
-                    <p className="text-xs text-gray-400">{lps.length} product{lps.length !== 1 ? 's' : ''}</p>
+                    <p className="text-xs text-gray-400">
+                      {lps.length} product{lps.length !== 1 ? 's' : ''}
+                      {' · '}{legalFeeLabel(lender)}
+                      {!confirmedFeeLabel(lender) && <span className="text-[#B58A2B]"> (not checked)</span>}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
@@ -371,6 +389,24 @@ export default function LenderLibrary() {
               </div>
               {isOpen && (
                 <div className="border-t border-gray-100">
+                  {/* One setting for the whole bank, so the wording does not have
+                      to be fixed product by product. */}
+                  <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2.5 flex-wrap">
+                    <span className="text-xs text-gray-500">This bank calls the settlement charge</span>
+                    <select value={legalFeeLabel(lender)} onChange={e => setLegalFeeLabel(lender.id, e.target.value)}
+                      className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-[#343333]">
+                      <option value={DEFAULT_LEGAL_FEE_LABEL}>{DEFAULT_LEGAL_FEE_LABEL}</option>
+                      <option value="Settlement fee">Settlement fee</option>
+                    </select>
+                    {!confirmedFeeLabel(lender) && (
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-[#8A6218] bg-[#FDF6E7] border border-[#EBD9BE] rounded px-1.5 py-0.5">
+                        Not checked
+                      </span>
+                    )}
+                    <span className="text-[11px] text-gray-400">
+                      Used on the lending options email, the fact find and the handover.
+                    </span>
+                  </div>
                   {lps.length === 0 && <p className="text-xs text-gray-400 px-5 py-3">No products yet.</p>}
                   {lps.map(product => {
                     const fees = [
@@ -574,8 +610,8 @@ export default function LenderLibrary() {
                     <input className={inp} value={productForm.valuation_fee} onChange={e => setProductForm({...productForm, valuation_fee: e.target.value})} placeholder="e.g. Free up to $360" />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 block mb-1">Legal fee</label>
-                    <input className={inp} value={productForm.legal_fee} onChange={e => setProductForm({...productForm, legal_fee: e.target.value})} placeholder="e.g. $150 or At cost" />
+                    <label className="text-xs text-gray-400 block mb-1">{legalFeeLabel(lenders.find(l => l.id === productModal.lenderId))}</label>
+                    <input className={inp} value={productForm.legal_fee} onChange={e => setProductForm({...productForm, legal_fee: e.target.value})} placeholder="e.g. $150, or None — government fees only" />
                   </div>
                   {(productForm.rate_type === 'fixed' || productForm.rate_type === 'both') && (
                     <div>

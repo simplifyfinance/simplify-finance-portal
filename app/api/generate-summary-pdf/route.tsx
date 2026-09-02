@@ -34,6 +34,7 @@ import { notWorking, selfEmployed, currentEmployment, currentAddress, fullName,
          annualIncome, position, stillToConfirm, dateAU } from '@/lib/fact-find'
 import { applicantNamesOf } from '@/lib/applicants'
 import { shortDate } from '@/lib/push-answers'
+import { rowLegalFeeLabel } from '@/lib/lender-fees'
 
 const INK = '#141C24', MUTE = '#7C8894', BODY = '#3D4750'
 const RULE = '#E3E7EA', SOFT = '#F6F8FA', SKY = '#7FD3FF'
@@ -471,7 +472,7 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
                   ['Fixed P&I', rate(l.fixedPI)],
                   ['Fixed IO', rate(l.fixedIO)],
                   ['Application fee', money(l.applicationFee)], ['Annual fee', money(l.annualFee)],
-                  ['Valuation fee', money(l.valuationFee)], ['Legal fee', money(l.legalFee)],
+                  ['Valuation fee', money(l.valuationFee)], [rowLegalFeeLabel(l), money(l.legalFee)],
                   ['Discharge fee', money(l.dischargeFee)],
                   ['Offset account', l.offsetAccount], ['Approval', l.approvalDays],
                   ['Note', l.specialNote],
