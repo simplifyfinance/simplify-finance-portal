@@ -51,7 +51,7 @@ const TONE: Record<string, { chip: string; box: string; text: string }> = {
   warn: { chip: 'text-[#8A6218] border-[#EBD9BE]', box: 'border-[#EBD9BE] bg-[#FDF6EC]', text: 'text-[#8A6218]' },
 }
 const KIND_LABEL: Record<string, string> = {
-  name: 'Name', placeholder: 'Placeholder', hem: 'HEM', title: 'Title', risks: 'Risks',
+  pronoun: 'One person?', placeholder: 'Placeholder', hem: 'HEM', title: 'Title', risks: 'Risks',
 }
 
 function highlight(snippet: string, words: string[] = []) {

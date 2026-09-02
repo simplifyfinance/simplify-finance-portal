@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { preflight, peopleOnDeal, applicantNames, preflightHeadline } from './preflight'
+import { preflight, peopleOnDeal, applicantNames, preflightHeadline, singularPronounsIn } from './preflight'
 import { defaultHolders, holdersFor, borrowerNotOnTitle, nobodyOnTitle,
          reasonRequired, titleSummary } from './title'
 import { type ExpenseCategory } from './hem'
@@ -15,6 +15,8 @@ const compliance: any = {
   applicants: [{ name: 'Natasha Chapman' }],
   needsPrimary: 'With a base income of $446,428.63, Richard has strong servicing capacity, and the offset facility provides flexibility.',
   borrowingPowerComment: 'Richard Chapman has demonstrated a strong capacity to service the proposed loan. Subject to confirmation, it is not anticipated that any credit card liability would materially impact serviceability given the strength of Natasha’s income profile.',
+  // Fabio's real Chapman text: opens plural, then drifts into one woman.
+  needsImmediate: 'Clients are purchasing an owner-occupied property. The offset account will allow clients to reduce their interest costs by parking surplus funds against her loan balance, providing flexibility should she have upcoming expenses within the next two years.',
   securityComment: 'TBA — owner-occupied residential property, NSW.',
   depositComment: 'Our clients are purchasing a property for $5,250,000 with a loan of $1,700,000.',
   expenses: { healthInsurance: { monthlyAmount: '301' }, primaryResidenceBodyCorp: { monthlyAmount: '0' } },
@@ -34,22 +36,44 @@ describe('who the deal knows about', () => {
   it('knows which of them are actually applicants', () => {
     expect(applicantNames(compliance)).toEqual(['Natasha Chapman'])
   })
+
+  it('finds the singular pronouns in a piece of writing', () => {
+    expect(singularPronounsIn('should she have upcoming expenses against her loan balance')).toEqual(['she', 'her'])
+    expect(singularPronounsIn('The applicants and their savings')).toEqual([])
+    expect(singularPronounsIn('The shed, the history and the others')).toEqual([])
+  })
 })
 
 describe('the check that runs before a handover prints', () => {
-  const found = preflight(deal, compliance, cats)
+  const joint = { ...compliance, applicants: [{ name: 'Natasha Chapman' }, { name: 'Richard Chapman' }],
+                  risks: { 'Natasha Chapman': { hasWill: 'Yes' }, 'Richard Chapman': { hasWill: 'Yes' } } }
+  const found = preflight(deal, joint, cats)
 
-  it('catches a name that is not on the file', () => {
-    const f = found.find(x => x.kind === 'name' && x.box.startsWith('Primary reasons'))
+  it('catches a joint file written about one person', () => {
+    // Fabio's Chapman text: "should she have upcoming expenses", "her actual
+    // financial needs" - on a deal with two applicants.
+    const f = found.find(x => x.kind === 'pronoun')
     expect(f).toBeTruthy()
-    expect(f!.issue).toContain('Richard Chapman')
-    expect(f!.issue).toContain('Natasha Chapman')
-    expect(f!.snippet).toContain('Richard')
+    expect(f!.issue).toContain('they')
+    expect(f!.words).toContain('her')
   })
 
-  it('says when one box names two different people', () => {
-    const f = found.find(x => x.kind === 'name' && x.box === 'Borrowing power')
-    expect(f!.issue).toContain('in the same box')
+  it('says nothing about a single applicant, where the singular is correct', () => {
+    const solo = { applicants: [{ name: 'Natasha Chapman' }], risks: { 'Natasha Chapman': { hasWill: 'Yes' } },
+                   depositComment: 'She is purchasing a property and her savings will fund the deposit.' }
+    expect(preflight({}, solo, []).some(x => x.kind === 'pronoun')).toBe(false)
+  })
+
+  it('does not flag a joint file written properly', () => {
+    const good = { applicants: [{ name: 'A B' }, { name: 'C D' }], risks: { 'A B': { hasWill: 'Yes' }, 'C D': { hasWill: 'Yes' } },
+                   depositComment: 'The applicants are purchasing a property and their savings will fund the deposit.' }
+    expect(preflight({}, good, []).some(x => x.kind === 'pronoun')).toBe(false)
+  })
+
+  it('does not match a pronoun inside a longer word', () => {
+    const g = { applicants: [{ name: 'A B' }, { name: 'C D' }], risks: { 'A B': { hasWill: 'Yes' }, 'C D': { hasWill: 'Yes' } },
+                depositComment: 'The shed and the history of the property were reviewed.' }
+    expect(preflight({}, g, []).some(x => x.kind === 'pronoun')).toBe(false)
   })
 
   it('catches the TBA left in the security box', () => {
@@ -58,44 +82,38 @@ describe('the check that runs before a handover prints', () => {
     expect(f!.words).toContain('TBA')
   })
 
+  it('leaves TBA alone on a pre-approval, where there is no property yet', () => {
+    const pre = { ...joint, preApproval: true }
+    expect(preflight(deal, pre, cats).some(x => x.kind === 'placeholder')).toBe(false)
+  })
+
+  it('still catches a TBA left anywhere else on a pre-approval', () => {
+    const pre = { ...joint, preApproval: true, depositComment: 'Deposit source TBA.' }
+    const f = preflight(deal, pre, cats).find(x => x.kind === 'placeholder')
+    expect(f!.box).toBe('Deposit / equity')
+  })
+
   it('catches the unanswered HEM rows', () => {
     const f = found.find(x => x.kind === 'hem')
     expect(f!.issue).toContain('Health insurance and Strata (primary residence)')
   })
 
-  it('does not invent problems in a clean box', () => {
-    expect(found.some(x => x.box === 'Deposit / equity')).toBe(false)
-  })
-
   it('flags an applicant nobody has asked the risk questions', () => {
-    // Every joint deal has one of these until the file is reopened: compliance
-    // dropped the second applicant, so nothing was ever recorded for them.
-    const both = { ...compliance, applicants: [{ name: 'Natasha Chapman' }, { name: 'Richard Chapman' }],
-                   risks: { 'Natasha Chapman': { hasWill: 'Yes' } } }
-    const f = preflight(deal, both, []).find(x => x.kind === 'risks')
+    const one = { ...compliance, applicants: [{ name: 'Natasha Chapman' }, { name: 'Richard Chapman' }],
+                  risks: { 'Natasha Chapman': { hasWill: 'Yes' } } }
+    const f = preflight(deal, one, []).find(x => x.kind === 'risks')
     expect(f!.severity).toBe('stop')
     expect(f!.issue).toContain('Richard Chapman')
-    expect(f!.issue).not.toContain('Natasha Chapman')
-  })
-
-  it('says nothing about risks once everyone has been asked', () => {
-    const both = { ...compliance, applicants: [{ name: 'A B' }], risks: { 'A B': { hasWill: 'Yes' } } }
-    expect(preflight({}, both, []).some(x => x.kind === 'risks')).toBe(false)
   })
 
   it('says nothing at all about a clean file', () => {
-    const clean = { applicants: [{ name: 'Natasha Chapman' }], depositComment: 'All confirmed.',
+    const clean = { applicants: [{ name: 'Natasha Chapman' }],
                     risks: { 'Natasha Chapman': { hasWill: 'Yes' } },
+                    depositComment: 'All confirmed.',
                     expenses: { healthInsurance: { monthlyAmount: '301', hem: 'in' },
                                 primaryResidenceBodyCorp: { monthlyAmount: '0', hem: 'in' } } }
     expect(preflight({ clients: { first_name: 'Natasha', last_name: 'Chapman' } }, clean, cats)).toEqual([])
     expect(preflightHeadline([])).toBe('')
-  })
-
-  it('does not match a name inside a longer word', () => {
-    const d2 = { clients: { first_name: 'Ann', last_name: 'Lee' } }
-    const c2 = { applicants: [{ name: 'Bob Smith' }], depositComment: 'Settlement is on the anniversary date.' }
-    expect(preflight(d2, c2, []).some(f => f.kind === 'name')).toBe(false)
   })
 
   it('counts what it found', () => {

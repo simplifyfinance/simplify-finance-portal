@@ -14,7 +14,7 @@
 import { hemStateOf, type ExpenseCategory } from './hem'
 import { borrowerNotOnTitle, nobodyOnTitle, notOnTitle, type TitleInfo } from './title'
 
-export type FindingKind = 'name' | 'placeholder' | 'hem' | 'title' | 'risks'
+export type FindingKind = 'pronoun' | 'placeholder' | 'hem' | 'title' | 'risks'
 export type Finding = {
   kind: FindingKind
   box: string
@@ -38,11 +38,29 @@ export const TEXT_BOXES: { key: string; label: string }[] = [
   { key: 'applicationSubmissionComment', label: 'Application submission' },
 ]
 
-// --- names ------------------------------------------------------------------
+// --- one person, or two? ----------------------------------------------------
 //
-// Only names the deal already knows are looked for. Guessing at capitalised
-// words would flag every lender and suburb in the file.
+// This started as a check that flagged any NAME in the text that was not a
+// recorded applicant. It was wrong twice over: the applicant list itself was
+// broken (see lib/applicants.ts), so the second borrower was flagged in every
+// box he appeared in - and naming the working applicant in a sentence about
+// income is not an error, it is the correct thing to write.
+//
+// What IS wrong with the same text is the drift. Fabio's Chapman file opens
+// "Clients are seeking..." - plural, correct for a couple - and two sentences
+// later says "should she have upcoming expenses" and "her actual financial
+// needs". A joint application written about as one woman goes to the lender
+// that way. Fabio, 2 Sep 2026: "sentences start with clients we are referring to
+// both".
+//
+// Only ever on a deal with two or more applicants. On a single applicant "she"
+// is simply correct.
 
+export function applicantNames(compliance: any): string[] {
+  return (compliance?.applicants || []).map((a: any) => String(a?.name || '').trim()).filter(Boolean)
+}
+
+// Everyone the deal knows about. Kept because the title and risk checks read it.
 export function peopleOnDeal(deal: any, compliance: any): string[] {
   const out = new Set<string>()
   const add = (v: any) => { const s = String(v || '').trim(); if (s) out.add(s) }
@@ -55,22 +73,18 @@ export function peopleOnDeal(deal: any, compliance: any): string[] {
   return [...out]
 }
 
-export function applicantNames(compliance: any): string[] {
-  return (compliance?.applicants || []).map((a: any) => String(a?.name || '').trim()).filter(Boolean)
+const SINGULAR = /\b(she|her|hers|herself|he|him|his|himself)\b/i
+
+export function singularPronounsIn(text: string): string[] {
+  const found = new Set<string>()
+  const re = new RegExp(SINGULAR.source, 'gi')
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text))) found.add(m[1].toLowerCase())
+  return [...found]
 }
 
-const firstNameOf = (full: string) => String(full || '').trim().split(/\s+/)[0] || ''
-
-// A whole word, so "Richard" does not match "Richardson" and "Ann" does not
-// match "Anniversary".
-function mentions(text: string, name: string): boolean {
-  if (!name) return false
-  const safe = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return new RegExp(`\\b${safe}\\b`, 'i').test(text)
-}
-
-function firstSentenceWith(text: string, name: string): string {
-  const safe = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+function firstSentenceWith(text: string, needle: string): string {
+  const safe = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const re = new RegExp(`[^.!?\\n]*\\b${safe}\\b[^.!?\\n]*[.!?]?`, 'i')
   const m = text.match(re)
   return (m?.[0] || '').trim().slice(0, 240)
@@ -80,6 +94,16 @@ function firstSentenceWith(text: string, name: string): string {
 // Left in and copied into SalesTrekker exactly as written. Chapman's Security
 // box says "TBA".
 const PLACEHOLDERS = [/\bTBA\b/i, /\bTBC\b/i, /\bXXX+\b/i, /\bTODO\b/i, /\[[^\]\n]{2,40}\]/]
+
+// On a PRE-APPROVAL there is no property yet, so "TBA" against the security is
+// the correct answer rather than an unfinished one. Fabio, 2 Sep 2026: "TBA is
+// not an error on security as this is a pre-approval".
+//
+// Only the security box, and only on a deal marked as a pre-approval. A TBA left
+// in the Analysis or the Deposit box is still somebody meaning to come back.
+function placeholderExpected(boxKey: string, compliance: any): boolean {
+  return boxKey === 'securityComment' && !!compliance?.preApproval
+}
 
 function placeholderIn(text: string): string {
   for (const re of PLACEHOLDERS) {
@@ -98,28 +122,26 @@ export function preflight(
 ): Finding[] {
   const findings: Finding[] = []
   const apps = applicantNames(compliance)
-  const others = peopleOnDeal(deal, compliance).filter(p => !apps.includes(p))
+  const joint = apps.length > 1
 
   for (const { key, label } of TEXT_BOXES) {
     const text = String(compliance?.[key] || '')
     if (!text.trim()) continue
 
-    // Someone named who is not a recorded applicant.
-    const strangers = others.filter(p => mentions(text, firstNameOf(p)) || mentions(text, p))
-    if (strangers.length) {
-      const who = strangers.join(', ')
-      const also = apps.filter(a => mentions(text, firstNameOf(a)))
-      findings.push({
-        kind: 'name', severity: 'warn', box: label,
-        issue: also.length
-          ? `Mentions ${who} and ${also.join(', ')} in the same box. ${apps.length === 1 ? 'Only ' + apps[0] + ' is' : 'Only ' + apps.join(' and ') + ' are'} recorded as ${apps.length === 1 ? 'an applicant' : 'applicants'}.`
-          : `Mentions ${who}. ${apps.length === 1 ? 'The only applicant recorded on this file is ' + apps[0] : 'The applicants recorded on this file are ' + apps.join(' and ')}.`,
-        snippet: firstSentenceWith(text, firstNameOf(strangers[0])),
-        words: [...strangers.map(firstNameOf), ...also.map(firstNameOf)],
-      })
+    if (joint) {
+      const pronouns = singularPronounsIn(text)
+      if (pronouns.length) {
+        findings.push({
+          kind: 'pronoun', severity: 'warn', box: label,
+          issue: `Written about one person on a joint application. `
+               + `${apps.join(' and ')} are both applicants, so this should say "they" and "their".`,
+          snippet: firstSentenceWith(text, pronouns[0]),
+          words: pronouns,
+        })
+      }
     }
 
-    const ph = placeholderIn(text)
+    const ph = placeholderExpected(key, compliance) ? '' : placeholderIn(text)
     if (ph) {
       findings.push({
         kind: 'placeholder', severity: 'warn', box: label,
@@ -153,9 +175,7 @@ export function preflight(
   //
   // Compliance dropped the second applicant from every joint deal until 2 Sep
   // 2026, so the files that get fixed will suddenly show a person with nothing
-  // recorded against them. That is the truth and it needs saying out loud - the
-  // lender will ask, and a handover printed with half the applicants answered is
-  // worse than one that admits it.
+  // recorded against them. That is the truth and it needs saying out loud.
   const RISK_KEYS = ['financialExperience', 'interestRateConcern', 'loanFlexibility', 'jobSecurity',
                      'propertyValueConcern', 'adverseChanges', 'beneficialChanges', 'retirementAge',
                      'repaymentMethod', 'emergencyFund', 'maintainLifestyle', 'adequateInsurance',

@@ -254,6 +254,8 @@ export async function generateCompliancePdfBuffer(dealId: string, supabase: any)
     return s ? s[0].toUpperCase() + s.slice(1) : ''
   }
   const meta = [
+    // A pre-approval leads, because it explains the TBA further down.
+    c.preApproval ? 'Pre-approval — no security yet' : '',
     words(deal.transaction_type),
     deal.lenders?.name || lo.recommendedLender || '',
     deal.loan_amount ? money(Number(deal.loan_amount)) : '',

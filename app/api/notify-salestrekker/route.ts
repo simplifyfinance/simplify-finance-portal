@@ -159,9 +159,9 @@ export async function POST(req: NextRequest) {
           complianceResult ? { ...complianceResult, kind: 'compliance' } : null
         ]) {
           if (!result) continue
-          // The handover is already named for the people it is about; only the
-          // deal summary needs a suffix to tell the two apart.
-          const fileName = result.kind === 'compliance' ? `${result.dealName}.pdf` : `${result.dealName}-summary.pdf`
+          // Both documents are already named for the people they are about -
+          // "Handover - ..." and "Fact Find - ..." - so neither needs a suffix.
+          const fileName = `${result.dealName}.pdf`
           const filePath = `${dealId}/${Date.now()}-${fileName}`
 
           const { error: uploadError } = await supabase.storage.from('deal-documents').upload(filePath, result.buffer, {

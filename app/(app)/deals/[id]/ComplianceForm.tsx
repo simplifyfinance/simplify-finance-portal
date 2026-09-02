@@ -81,6 +81,9 @@ type ComplianceData = {
   // where independent legal advice stands. Optional: a deal written before this
   // existed simply has nothing here, and the tick boxes default to everyone on.
   title?: TitleInfo
+  // No property identified yet. Makes "TBA" against the security the right
+  // answer rather than an unfinished one, and says so on the handover.
+  preApproval?: boolean
   applicationSubmissionComment: string
   expenses: Record<string, ExpenseEntry>
   aiMeta: Record<string, { confidence: string; source: string }>
@@ -502,7 +505,16 @@ export default function ComplianceForm({ deal, onSaveStatus }: { deal: any; onSa
   async function generateField(field: string) {
     setGenerating(prev => ({ ...prev, [field]: true }))
     const recLender = (lo.lenders || []).find((l: any) => l.lenderName === lo.recommendedLender) || lo.lenders?.[0] || {}
+    // The model is told plainly how many people this loan is for. It used to be
+    // handed one joined-up string and wrote about "her" on a couple's file.
     const context = {
+      applicantCount: d.applicants.length,
+      applicantNames: d.applicants.map(a => a.name),
+      howToRefer: d.applicants.length > 1
+        ? `This is a JOINT application for ${d.applicants.length} applicants: ${d.applicants.map(a => a.name).join(' and ')}. `
+          + `Write in the plural - "the applicants", "they", "their". Do not use "she", "her", "he" or "his" `
+          + `except where a fact belongs to one of them alone.`
+        : `This is a single applicant: ${d.applicants[0]?.name || 'the applicant'}. The singular is correct.`,
       clientName: d.applicants.map(a => a.name).join(' and '),
       loanAmount: dealLoanAmount(lo, bc),
       purchasePrice: bc.purchasePrice || '',
@@ -613,7 +625,9 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
       const res = await fetch('/api/generate-compliance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: prompts[field] || '', styleNotes })
+        // How many people this loan is for goes in front of EVERY field, rather
+        // than being edited into nine prompt strings one at a time.
+        body: JSON.stringify({ prompt: context.howToRefer + '\n\n' + (prompts[field] || ''), styleNotes })
       })
       const data = await res.json()
       const raw = data.text || ''
@@ -680,12 +694,17 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
       const res = await fetch(kind === 'summary' ? '/api/generate-summary-pdf' : '/api/generate-compliance-pdf', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId: deal.id })
       })
-      if (!res.ok) { alert('Could not generate the ' + kind + ' PDF. Nothing was downloaded.'); return }
+      if (!res.ok) { alert('Could not generate the ' + (kind === 'summary' ? 'Fact Find' : 'Handover') + ' PDF. Nothing was downloaded.'); return }
       const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = pdfBaseName + '-' + kind + '.pdf'
+      // Both PDFs name themselves after the client - "Fact Find - Natasha
+      // Chapman & Richard Chapman.pdf" - so the name the server chose is used
+      // rather than the deal record's, which is not a client's name.
+      const sent = res.headers.get('Content-Disposition') || ''
+      const named = /filename="([^"]+)"/.exec(sent)?.[1]
+      a.download = named || (pdfBaseName + '-' + kind + '.pdf')
       a.click()
       window.URL.revokeObjectURL(url)
     } catch (e: any) {
@@ -879,12 +898,12 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
             <button onClick={() => downloadPdf('summary')} disabled={!!downloading}
               className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-lg px-3.5 py-2 text-[12.5px] font-medium hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition inline-flex items-center gap-1.5 disabled:opacity-40">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v8M4.5 7l3.5 3.5L11.5 7M3 13h10"/></svg>
-              {downloading === 'summary' ? 'Preparing...' : 'Summary PDF'}
+              {downloading === 'summary' ? 'Preparing...' : 'Fact Find PDF'}
             </button>
             <button onClick={() => downloadPdf('compliance')} disabled={!!downloading}
               className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-lg px-3.5 py-2 text-[12.5px] font-medium hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition inline-flex items-center gap-1.5 disabled:opacity-40">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v8M4.5 7l3.5 3.5L11.5 7M3 13h10"/></svg>
-              {downloading === 'compliance' ? 'Preparing...' : 'Compliance PDF'}
+              {downloading === 'compliance' ? 'Preparing...' : 'Handover PDF'}
             </button>
           </div>
         </div>
@@ -1230,6 +1249,20 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
                 </div>
               ))}
             </div>
+
+            {/* A pre-approval has no security yet, so the box below says TBA and
+                that is correct. Marked here so nothing downstream treats it as
+                an unfinished form. */}
+            <label className="flex items-start gap-3 mb-4 border border-gray-100 rounded-lg px-3.5 py-3 cursor-pointer hover:bg-[#FBFCFD]">
+              <input type="checkbox" className="mt-0.5" checked={!!d.preApproval}
+                onChange={e => setD(prev => ({ ...prev, preApproval: e.target.checked }))} />
+              <span>
+                <span className="block text-[13px] font-medium text-[#343333]">This is a pre-approval — no security identified yet</span>
+                <span className="block text-[11.5px] text-gray-400 mt-0.5">
+                  &ldquo;TBA&rdquo; in the Security box stops being flagged, and the handover says the property is still to be found.
+                </span>
+              </span>
+            </label>
 
             {/* Who ends up on the title.
                 The portal recorded ownership of properties a client already had
