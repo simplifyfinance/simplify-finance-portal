@@ -114,6 +114,9 @@ export async function POST(req: NextRequest) {
       dealId, dealName: deal.deal_name, clientName,
       brokerName: deal.assigned_broker || '',
       recipientEmail: filerEmail, recipientName: filerName,
+      // Keyed on this press, so a cancelled-then-repressed deal is not refused
+      // by Resend as a duplicate of the first one.
+      idempotencyKey: `docs-file:${dealId}:${nowIso}`,
     })
     if (!filed.ok) {
       // Release the claim rather than leaving a deal marked with nobody told.
@@ -138,6 +141,7 @@ export async function POST(req: NextRequest) {
       filedBy: me,
       recipientEmail: assessorEmail, recipientName: assessorName,
       scheduledAt: dueAt.toISOString(),
+      idempotencyKey: `docs-ready:${dealId}:${nowIso}`,
     })
 
     if (!queued.ok) {

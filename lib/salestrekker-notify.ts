@@ -9,9 +9,14 @@ import { siteUrl } from './ready-link'
 // anything the screen then claims was sent. It now returns what happened, and
 // callers who care can say so.
 //
-// `scheduledAt` hands the send to Resend with a time on it. That is how the
-// documents-received email waits half an hour without anything of ours staying
-// awake - no timer in a browser, no job to run, nothing to miss.
+// `scheduledAt` hands the send to Resend with a time on it (ISO 8601). That is
+// how the documents-received email waits half an hour without anything of ours
+// staying awake - no timer in a browser, no job to run, nothing to miss.
+//
+// `idempotencyKey` is Resend's own guard against a duplicate: send the same key
+// twice inside 24 hours and the second one does not go out. Better than any
+// check of ours, because it holds even if this route runs twice from different
+// machines. Keys are per email per deal, e.g. "docs-file:<deal id>".
 export type SendResult = { ok: boolean; id?: string; error?: string }
 
 async function sendResendEmail(
@@ -20,13 +25,16 @@ async function sendResendEmail(
   html: string,
   attachments?: { filename: string; content: string }[],
   scheduledAt?: string,
+  idempotencyKey?: string,
 ): Promise<SendResult> {
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        // Max 256 characters, expires after 24 hours.
+        ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey.slice(0, 256) } : {}),
       },
       body: JSON.stringify({
         from: 'Simplify Finance Portal <notifications@simplifyfinance.com.au>',
@@ -246,8 +254,9 @@ export async function notifyCrisMoveCard(dealName: string, brokerName: string, a
 export async function notifyDocsToFile(params: {
   dealId: string; dealName: string; clientName: string; brokerName: string
   recipientEmail?: string | null; recipientName?: string | null
+  idempotencyKey?: string
 }): Promise<SendResult> {
-  const { dealId, dealName, clientName, brokerName, recipientEmail, recipientName } = params
+  const { dealId, dealName, clientName, brokerName, recipientEmail, recipientName, idempotencyKey } = params
   const html = `${greeting(recipientName)}
     <p>The supporting documents for this client have come in.</p>
     <table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 18px" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -265,7 +274,7 @@ export async function notifyDocsToFile(params: {
       </td>
     </tr></table>`
   return sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au',
-    `Documents received — please file — ${dealName}`, html)
+    `Documents received — please file — ${dealName}`, html, undefined, undefined, idempotencyKey)
 }
 
 export async function notifyDocsReadyForAssessor(params: {
@@ -274,8 +283,9 @@ export async function notifyDocsReadyForAssessor(params: {
   recipientEmail?: string | null; recipientName?: string | null
   // When Resend should send it. Absent means now.
   scheduledAt?: string
+  idempotencyKey?: string
 }): Promise<SendResult> {
-  const { dealId, dealName, clientName, brokerName, filedBy, recipientEmail, recipientName, scheduledAt } = params
+  const { dealId, dealName, clientName, brokerName, filedBy, recipientEmail, recipientName, scheduledAt, idempotencyKey } = params
   const html = `${greeting(recipientName)}
     <p>The supporting documents for this client are in and have been filed.</p>
     <table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 18px" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -294,5 +304,5 @@ export async function notifyDocsReadyForAssessor(params: {
       </td>
     </tr></table>`
   return sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au',
-    `Documents ready — lending options can be completed — ${dealName}`, html, undefined, scheduledAt)
+    `Documents ready — lending options can be completed — ${dealName}`, html, undefined, scheduledAt, idempotencyKey)
 }
