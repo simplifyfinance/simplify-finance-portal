@@ -393,16 +393,21 @@ export default function LenderLibrary() {
                       to be fixed product by product. */}
                   <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2.5 flex-wrap">
                     <span className="text-xs text-gray-500">This bank calls the settlement charge</span>
-                    <select value={legalFeeLabel(lender)} onChange={e => setLegalFeeLabel(lender.id, e.target.value)}
-                      className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white text-[#343333]">
-                      <option value={DEFAULT_LEGAL_FEE_LABEL}>{DEFAULT_LEGAL_FEE_LABEL}</option>
+                    {/* The value is the lender's own setting, NOT what it falls
+                        back to. Showing the fallback here made the two states
+                        look identical, so a lender already reading "Settlement
+                        fee" could not be confirmed - picking the value it was
+                        already showing is not a change, and nothing saved.
+                        Fabio, 3 Sep 2026: "I can't mark checked on the ones that
+                        I confirmed the wording. So what's the point of that?" */}
+                    <select value={lender.legal_fee_label || ''}
+                      onChange={e => setLegalFeeLabel(lender.id, e.target.value)}
+                      className={`text-xs border rounded-lg px-2 py-1 bg-white ${
+                        confirmedFeeLabel(lender) ? 'border-gray-200 text-[#343333]' : 'border-[#EBD9BE] text-[#8A6218]'}`}>
+                      <option value="">Not checked — uses {DEFAULT_LEGAL_FEE_LABEL}</option>
                       <option value="Settlement fee">Settlement fee</option>
+                      <option value="Legal fee">Legal fee</option>
                     </select>
-                    {!confirmedFeeLabel(lender) && (
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-[#8A6218] bg-[#FDF6E7] border border-[#EBD9BE] rounded px-1.5 py-0.5">
-                        Not checked
-                      </span>
-                    )}
                     <span className="text-[11px] text-gray-400">
                       Used on the lending options email, the fact find and the handover.
                     </span>
