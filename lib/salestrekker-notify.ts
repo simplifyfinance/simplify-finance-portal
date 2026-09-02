@@ -306,3 +306,37 @@ export async function notifyDocsReadyForAssessor(params: {
   return sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au',
     `Documents ready — lending options can be completed — ${dealName}`, html, undefined, scheduledAt, idempotencyKey)
 }
+
+// --- a deal pulled back a column --------------------------------------------
+//
+// If an assessor is allocated, they are working the file. Moving it back without
+// telling them leaves somebody doing work that has just been taken off them, or
+// waiting for a deal that is no longer coming. Fabio, 3 Sep 2026: "if a BC was
+// assigned send an email to credit assessor... check with broker if this deal
+// needs working on".
+export async function notifyDealMovedBack(params: {
+  dealId: string; dealName: string; clientName: string; brokerName: string
+  fromLabel: string; toLabel: string; movedBy?: string | null
+  recipientEmail?: string | null; recipientName?: string | null
+}): Promise<SendResult> {
+  const { dealId, dealName, clientName, brokerName, fromLabel, toLabel, movedBy, recipientEmail, recipientName } = params
+  const html = `${greeting(recipientName)}
+    <p>A deal you are allocated to has been moved back a stage on the board.</p>
+    <table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 18px" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Deal</span></td><td style="text-align:right;font-size:13px;font-weight:600;padding:3px 0">${dealName}</td></tr>
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Client</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${clientName || ''}</td></tr>
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Broker</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${brokerName || ''}</td></tr>
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Moved</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${fromLabel} &rarr; ${toLabel}${movedBy ? ' by ' + movedBy : ''}</td></tr>
+    </table>
+    <table bgcolor="#FDF6E7" style="background:#FDF6E7;border-radius:8px;padding:13px 16px;margin:0 0 16px" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:0 0 4px"><span style="color:#8A6218;">Check with the broker whether this still needs working on.</span></td></tr>
+      <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55"><span style="color:#8A6218;">Nothing on the deal has been deleted &mdash; the fact find, the BC workings and the file notes are all as they were. Only where it sits on the board has changed.</span></td></tr>
+    </table>
+    <table cellpadding="0" cellspacing="0" border="0" style="margin:0"><tr>
+      <td bgcolor="#2DBEFF" style="background:#2DBEFF;border-radius:8px;padding:11px 20px">
+        <a href="${siteUrl()}/deals/${dealId}" style="color:#08252F;font-family:Arial,sans-serif;font-size:14px;font-weight:700;text-decoration:none">Open the deal &rarr;</a>
+      </td>
+    </tr></table>`
+  return sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au',
+    `Moved back to ${toLabel} — ${dealName}`, html)
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { phaseOf, isFinished, isInApplication, amountOf, phaseSince, PHASE_ORDER , loMayWriteAmount, isWithLender, pastFactFind, tabForPhase, moveBack, PHASE_FIELDS, PHASE_UNDO_LABEL } from './deal-phase'
+import { phaseOf, isFinished, isInApplication, amountOf, phaseSince, PHASE_ORDER , loMayWriteAmount, isWithLender, pastFactFind, tabForPhase, moveBack, PHASE_FIELDS, PHASE_UNDO_LABEL, derivedPhaseOf, placedByHand } from './deal-phase'
 
 // A fact find somebody has actually typed into. An applicant row on its own is
 // not that - the new-deal form seeds one before anybody has touched the tab.
@@ -258,11 +258,15 @@ describe('moving a deal backwards', () => {
     expect(m.fields).toEqual(['client_proceeded', 'proceeded_at'])
   })
 
-  it('refuses to drag a deal back to Fact Find', () => {
+  it('allows Fact Find, and clears nothing to get there', () => {
+    // It used to refuse. A deal leaves Fact Find because somebody typed into the
+    // fact find, so there is no date to undo - it is placed by hand instead, and
+    // the client's answers are left alone. See the placing tests below.
     const m = moveBack('lo', 'fact_find')
-    expect(m.ok).toBe(false)
-    if (m.ok) return
-    expect(m.because).toMatch(/clearing the fact find/)
+    expect(m.ok).toBe(true)
+    if (!m.ok) return
+    expect(m.place).toBe(true)
+    expect(m.fields).toEqual([])
   })
 
   it('refuses a forwards move, or a move to where it already is', () => {
@@ -274,5 +278,70 @@ describe('moving a deal backwards', () => {
     for (const p of Object.keys(PHASE_FIELDS) as any[]) {
       expect(PHASE_UNDO_LABEL[p]).toBeTruthy()
     }
+  })
+})
+
+// Dragging a card from BC back to Fact Find. There is no date to clear - a deal
+// leaves Fact Find because somebody typed into the fact find - so it is placed
+// by hand instead. The whole risk is a column that stops meaning anything, which
+// is what deals.stage became. These are the three rules that stop that.
+describe('placing a deal back in Fact Find by hand', () => {
+  const atBc = { fact_find_data: { applicants: [{ dob: '14/03/1988' }] } }
+
+  it('moves the deal, and says so', () => {
+    const placed = { ...atBc, phase_override: 'fact_find', phase_override_from: 'bc' }
+    expect(phaseOf(placed)).toBe('fact_find')
+    expect(placedByHand(placed)).toBe(true)
+  })
+
+  it('leaves the record itself untouched', () => {
+    const placed = { ...atBc, phase_override: 'fact_find', phase_override_from: 'bc' }
+    // What the deal has actually done is unchanged - only where it is shown.
+    expect(derivedPhaseOf(placed)).toBe('bc')
+  })
+
+  it('expires by itself the moment the deal moves on', () => {
+    // Placed while at BC; the client then agrees to proceed, so the deal is at
+    // LO. The placement no longer matches and is ignored - no deal can hide in
+    // the wrong column indefinitely.
+    const movedOn = { ...atBc, client_proceeded: true, phase_override: 'fact_find', phase_override_from: 'bc' }
+    expect(phaseOf(movedOn)).toBe('lo')
+    expect(placedByHand(movedOn)).toBe(false)
+  })
+
+  it('cannot be used to claim progress', () => {
+    const forwards = { ...atBc, phase_override: 'settled', phase_override_from: 'bc' }
+    expect(phaseOf(forwards)).toBe('bc')
+  })
+
+  it('cannot be used to sit still', () => {
+    const sideways = { ...atBc, phase_override: 'bc', phase_override_from: 'bc' }
+    expect(phaseOf(sideways)).toBe('bc')
+  })
+
+  it('ignores a phase that is not a phase', () => {
+    expect(phaseOf({ ...atBc, phase_override: 'Compliance', phase_override_from: 'bc' })).toBe('bc')
+    expect(phaseOf({ ...atBc, phase_override: '', phase_override_from: 'bc' })).toBe('bc')
+  })
+
+  it('ignores a placement with no record of where it came from', () => {
+    expect(phaseOf({ ...atBc, phase_override: 'fact_find' })).toBe('bc')
+  })
+
+  it('does not disturb a deal nobody has touched', () => {
+    expect(phaseOf(atBc)).toBe('bc')
+    expect(placedByHand(atBc)).toBe(false)
+  })
+
+  it('still says a dead deal is dead, whatever the board says', () => {
+    expect(phaseOf({ ...atBc, status: 'lost', phase_override: 'fact_find', phase_override_from: 'bc' })).toBe('lost')
+  })
+
+  it('tells the board there is nothing to clear for Fact Find', () => {
+    const m = moveBack('bc', 'fact_find')
+    expect(m.ok).toBe(true)
+    if (!m.ok) return
+    expect(m.place).toBe(true)
+    expect(m.fields).toEqual([])
   })
 })

@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation'
 import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
 import { ageGroupOf, stageAge, GROUP_ORDER, GROUP_STYLE } from '@/lib/deal-age'
 import { useBrokerNames } from '@/lib/broker-names'
-import { phaseOf, isFinished, isInApplication, PHASE_LABEL } from '@/lib/deal-phase'
+import { phaseOf, derivedPhaseOf, isFinished, isInApplication, PHASE_LABEL } from '@/lib/deal-phase'
 import DealBoard from '@/components/DealBoard'
 import { useBoardSettings } from '@/lib/use-board-settings'
 import type { Alert } from '@/lib/deal-notes'
@@ -123,17 +123,26 @@ export default function DealsPage() {
     setDeletingDocs(count || 0)
   }
 
-  // Moving a deal back a column means clearing the timestamps that put it where
-  // it was. Checked, because a write the database quietly refuses would leave
-  // the card where it started and look like the drag simply did not take.
-  async function moveDealBack(deal: any, _target: string, fields: string[]): Promise<string | null> {
-    const patch: Record<string, any> = {}
-    for (const f of fields) patch[f] = null
-    const problem = await checkedWrite(
-      browser.from('deals').update(patch).eq('id', deal.id), 'The move')
-    if (problem) return problem
-    setDeals(prev => prev.map(d => (d.id === deal.id ? { ...d, ...patch } : d)))
-    return null
+  // Moving a deal back a column. The route does the writing, the history line
+  // and the email to the assessor, so all three either happen or are reported -
+  // see app/api/move-deal-back. Nothing is ever deleted.
+  async function moveDealBack(deal: any, target: string, fields: string[], place?: boolean): Promise<string | null> {
+    try {
+      const res = await fetch('/api/move-deal-back', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId: deal.id, target, fields, place }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) return data.error || 'The move was not saved.'
+      const patch: Record<string, any> = place
+        ? { phase_override: target, phase_override_from: derivedPhaseOf(deal) }
+        : { phase_override: null, phase_override_from: null }
+      for (const f of fields) patch[f] = null
+      setDeals(prev => prev.map(d => (d.id === deal.id ? { ...d, ...patch } : d)))
+      return data.warning || null
+    } catch (e: any) {
+      return e?.message || 'The move was not saved.'
+    }
   }
 
   async function deleteDeal(id: string) {

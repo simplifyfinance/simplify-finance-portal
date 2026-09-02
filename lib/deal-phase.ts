@@ -132,7 +132,8 @@ export const PHASE_LABEL: Record<Phase, string> = {
   lost: 'Lost',
 }
 
-export function phaseOf(deal: any): Phase {
+// What the deal's own record says has happened to it.
+export function derivedPhaseOf(deal: any): Phase {
   if (!deal) return 'fact_find'
   // A dead deal is dead wherever it got to. Nothing else about it matters.
   if (deal.status === 'lost') return 'lost'
@@ -140,6 +141,46 @@ export function phaseOf(deal: any): Phase {
   let last = -1
   MILESTONES.forEach((m, i) => { if (m.done(deal)) last = i })
   return last === -1 ? 'fact_find' : MILESTONES[last].phase
+}
+
+// PUTTING A DEAL BACK IN FACT FIND BY HAND.
+//
+// Every other backwards move on the board clears a timestamp - the pre-approval
+// date, the lodgement date - because that timestamp is the only reason the deal
+// had moved on. Fact Find is the exception: a deal leaves it because somebody
+// typed into the fact find, and no card dropped on a board should delete a
+// client's answers.
+//
+// So this one is an override. Fabio, 3 Sep 2026: "if I wanna drag a deal card
+// from BC back to fact find, I need it to happen. Just make it happen."
+//
+// The danger with an override is a column that stops meaning anything, which is
+// exactly what `deals.stage` used to be - a stale string written from six places
+// that the board eventually had to stop reading. Three rules keep this one
+// honest:
+//
+//   1. It can only ever move a deal BACKWARDS. It cannot claim progress.
+//   2. It is recorded against the phase the deal was in when it was set. The
+//      moment the deal genuinely moves on, the override no longer matches and is
+//      ignored - so it expires by itself rather than hiding a deal forever.
+//   3. The card says it was placed by hand, so nobody reads the column as fact.
+export function overrideApplies(deal: any): boolean {
+  const to = deal?.phase_override
+  if (!to || !PHASE_ORDER.includes(to)) return false
+  const derived = derivedPhaseOf(deal)
+  // Stale: the deal has moved since somebody placed it.
+  if (deal?.phase_override_from !== derived) return false
+  // Backwards only.
+  return PHASE_ORDER.indexOf(to) < PHASE_ORDER.indexOf(derived)
+}
+
+export function phaseOf(deal: any): Phase {
+  return overrideApplies(deal) ? (deal.phase_override as Phase) : derivedPhaseOf(deal)
+}
+
+// For the card: this is where a person put it, not where the record says it is.
+export function placedByHand(deal: any): boolean {
+  return overrideApplies(deal)
 }
 
 // A deal that is finished with the portal. Deliberately only two things - the
@@ -294,17 +335,18 @@ export const PHASE_UNDO_WARNING: Partial<Record<Phase, string>> = {
 }
 
 export type MoveBack =
-  | { ok: true; clearing: Phase[]; fields: string[] }
+  // `place: true` means nothing is cleared - the deal is put in that column by
+  // hand and the override does the rest.
+  | { ok: true; clearing: Phase[]; fields: string[]; place?: boolean }
   | { ok: false; because: string }
 
 export function moveBack(from: Phase, to: Phase): MoveBack {
   const fi = PHASE_ORDER.indexOf(from), ti = PHASE_ORDER.indexOf(to)
   if (ti < 0 || fi < 0 || ti >= fi) return { ok: false, because: 'That is not a move backwards.' }
-  // Fact Find is not a date anybody set - it is where a deal sits until somebody
-  // types into the fact find. Dragging back to it would mean deleting the fact
-  // find itself, which is not what dropping a card should ever do.
+  // Fact Find clears nothing - there is no date that put the deal past it, only
+  // the client's answers. It is placed by hand instead. See overrideApplies.
   if (to === 'fact_find') {
-    return { ok: false, because: 'A deal goes back to Fact Find by clearing the fact find, not by dragging. Nothing has been changed.' }
+    return { ok: true, clearing: [], fields: [], place: true }
   }
   const clearing = PHASE_ORDER.slice(ti + 1, fi + 1).filter(p => PHASE_FIELDS[p])
   const fields = clearing.flatMap(p => PHASE_FIELDS[p] || [])

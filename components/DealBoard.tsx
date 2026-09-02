@@ -1,7 +1,7 @@
 'use client'
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { phaseOf, phaseSince, amountOf, PHASE_LABEL, PHASE_ORDER, moveBack, PHASE_UNDO_LABEL, PHASE_UNDO_WARNING, type Phase } from '@/lib/deal-phase'
+import { phaseOf, phaseSince, amountOf, PHASE_LABEL, PHASE_ORDER, moveBack, placedByHand, PHASE_UNDO_LABEL, PHASE_UNDO_WARNING, type Phase } from '@/lib/deal-phase'
 import { stageAge, ageGroupOf } from '@/lib/deal-age'
 import { chipsFor, brokerColour, chipStyle, dealTitle } from '@/lib/deal-labels'
 import { CREDIT_GREY, type ThresholdMap } from '@/lib/board-settings'
@@ -76,7 +76,7 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
   onDelete?: (e: React.MouseEvent, deal: any) => void
   // Clears the timestamps that put a deal where it is, so it lands in an earlier
   // column. The board asks first; the page does the writing.
-  onMoveBack?: (deal: any, target: Phase, fields: string[]) => Promise<string | null>
+  onMoveBack?: (deal: any, target: Phase, fields: string[], place?: boolean) => Promise<string | null>
 }) {
   const router = useRouter()
   // Folded columns, this person's own, remembered across logins.
@@ -88,7 +88,7 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
   // keys can walk along that column without closing.
   const [peeking, setPeeking] = useState<{ id: string; phase: Phase } | null>(null)
   // A backwards drop, waiting to be confirmed.
-  const [undoing, setUndoing] = useState<{ deal: any; target: Phase; clearing: Phase[]; fields: string[] } | null>(null)
+  const [undoing, setUndoing] = useState<{ deal: any; target: Phase; clearing: Phase[]; fields: string[]; place?: boolean } | null>(null)
   const [undoBusy, setUndoBusy] = useState(false)
 
   const byColumn = useMemo(() => {
@@ -112,18 +112,6 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
     return m
   }, [deals])
 
-  // FACT FIND TAKES NO DROPS.
-  //
-  // Which column a deal sits in is derived from what has been done to it, and
-  // "at Fact Find" means the fact find has nothing typed in it yet. There is no
-  // date to clear that would send a deal back there - only the client's own
-  // answers, and a dropped card must never delete those.
-  //
-  // It used to accept the drop and then explain itself in a banner, which is a
-  // dead end dressed up as help. Fabio, 3 Sep 2026, asked for the column simply
-  // not to take the card: it dims while you drag and the cursor says no.
-  const acceptsDrops = (p: Phase) => p !== 'fact_find'
-
   function onDrop(target: Phase) {
     setOver('')
     const deal = deals.find(d => d.id === dragging)
@@ -146,7 +134,7 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
       if (!back.ok) { setMsg(back.because); return }
       if (!onMoveBack) { setMsg('Moving a deal backwards is not available here.'); return }
       setMsg('')
-      setUndoing({ deal, target, clearing: back.clearing, fields: back.fields })
+      setUndoing({ deal, target, clearing: back.clearing, fields: back.fields, place: !!back.place })
       return
     }
     if (target === 'compliance_sent') {
@@ -178,6 +166,17 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
               <p className="text-[13px] text-[#7C8894] m-0">{undoing.deal.deal_name}</p>
             </div>
             <div className="px-6 pt-4">
+              {undoing.place ? (
+                <div className="border border-[#CBE7F8] bg-[#EAF6FD] rounded-[10px] px-4 py-3.5 text-[13px] text-[#0B5E8A]">
+                  <b className="text-[#141C24]">Nothing is deleted.</b> The fact find, the BC workings
+                  and everything else stay exactly as they are — the deal is simply put back in
+                  {' '}{PHASE_LABEL[undoing.target]} on the board.
+                  <p className="m-0 mt-2.5">
+                    The card is marked as placed by hand, and it returns to
+                    {' '}{PHASE_LABEL[phaseOf(undoing.deal)]} by itself as soon as the deal moves on.
+                  </p>
+                </div>
+              ) : (
               <div className="border border-[#EBD9BE] bg-[#FDF6E7] rounded-[10px] px-4 py-3.5 text-[13px] text-[#8A6218]">
                 <b className="text-[#141C24]">The deal will stop saying:</b>
                 <ul className="m-0 mt-2 pl-4">
@@ -190,8 +189,9 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                   mistake, or {undoing.clearing.length === 1 ? 'it' : 'they'} did not really happen.
                 </p>
               </div>
+              )}
 
-              {undoing.clearing.some(p2 => PHASE_UNDO_WARNING[p2]) && (
+              {!undoing.place && undoing.clearing.some(p2 => PHASE_UNDO_WARNING[p2]) && (
                 <div className="mt-2.5 border border-[#E9D2CF] bg-[#FDF3F2] rounded-[10px] px-4 py-3.5 text-[13px] text-[#8E3A34]">
                   <b className="text-[#141C24]">Watch out:</b>
                   <ul className="m-0 mt-1.5 pl-4">
@@ -202,18 +202,18 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                 </div>
               )}
 
-              <p className="mt-2.5 mb-0 text-[12.5px] text-[#7C8894]">
+              {!undoing.place && <p className="mt-2.5 mb-0 text-[12.5px] text-[#7C8894]">
                 Everything else stays: the fact find, the write-up, the documents and the notes are
                 untouched. You can record {undoing.clearing.length === 1 ? 'it' : 'them'} again whenever
                 you like.
-              </p>
+              </p>}
             </div>
             <div className="px-6 py-4 mt-2 flex items-center gap-2.5 flex-wrap">
               <button disabled={undoBusy}
                 onClick={async () => {
                   if (!onMoveBack) return
                   setUndoBusy(true)
-                  const problem = await onMoveBack(undoing.deal, undoing.target, undoing.fields)
+                  const problem = await onMoveBack(undoing.deal, undoing.target, undoing.fields, undoing.place)
                   setUndoBusy(false)
                   if (problem) { setMsg(problem); setUndoing(null); return }
                   setUndoing(null)
@@ -252,14 +252,13 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
             if (shut) {
               return (
                 <div key={p} title={`${PHASE_LABEL[p]} - ${cards.length} deal${cards.length === 1 ? '' : 's'}${total > 0 ? ' \u00b7 ' + money(total) : ''}. Click to open.`}
-                  onDragOver={e => { if (!acceptsDrops(p)) return; e.preventDefault(); setOver(p) }}
+                  onDragOver={e => { e.preventDefault(); setOver(p) }}
                   onDragLeave={() => setOver(o => o === p ? '' : o)}
-                  onDrop={() => { if (acceptsDrops(p)) onDrop(p) }}
+                  onDrop={() => onDrop(p)}
                   onClick={() => toggle(p)}
                   style={{ width: SHUT_W }}
                   className={`flex-none rounded-xl border border-dashed flex flex-col items-center gap-2 py-2.5 cursor-pointer transition ${
-                    dragging && !acceptsDrops(p) ? 'border-[#E5DED2] bg-[#FCFAF6] opacity-40'
-                    : over === p ? 'border-[#0E8FCB] bg-[#EAF6FD]'
+                    over === p ? 'border-[#0E8FCB] bg-[#EAF6FD]'
                     : hot > 0 ? 'border-[#EFD3CB] bg-[#FBEDE9]'
                     : 'border-[#E5DED2] bg-[#FCFAF6] hover:border-[#D6CCBC]'}`}>
                   <span className={`text-[11px] font-bold tabular-nums ${hot > 0 ? 'text-[#AD4227]' : 'text-[#575046]'}`}>
@@ -279,14 +278,11 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
 
             return (
               <div key={p}
-                onDragOver={e => { if (!acceptsDrops(p)) return; e.preventDefault(); setOver(p) }}
+                onDragOver={e => { e.preventDefault(); setOver(p) }}
                 onDragLeave={() => setOver(o => o === p ? '' : o)}
-                onDrop={() => { if (acceptsDrops(p)) onDrop(p) }}
+                onDrop={() => onDrop(p)}
                 className={`flex-1 min-w-[248px] rounded-xl border p-2.5 transition ${
-                  // Dimmed while a card is in the air, so it is visibly not a
-                  // target rather than silently ignoring the drop.
-                  dragging && !acceptsDrops(p) ? 'border-[#EFEAE0] bg-[#FCFAF6] opacity-40'
-                  : over === p ? 'border-[#0E8FCB] bg-[#EAF6FD]'
+                  over === p ? 'border-[#0E8FCB] bg-[#EAF6FD]'
                   : hot > 0 ? 'border-[#EFD3CB] bg-[#FBEDE9]'
                   : 'border-[#EFEAE0] bg-[#FCFAF6]'}`}>
                 <div className="flex items-baseline gap-1.5 mb-2 px-0.5">
@@ -337,6 +333,14 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                         dragging === d.id ? 'opacity-40 border-[#0E8FCB]'
                         : urgent ? 'border-[#E9C9BE] ring-2 ring-[#FBEDE9]' : 'border-[#E5DED2]'}`}>
 
+                      {placedByHand(d) && (
+                        <div className="mb-1.5 mr-[50px]">
+                          <span title="Somebody moved this card here. It returns to where the deal actually is as soon as it moves on."
+                            className="text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border whitespace-nowrap text-[#5B646D] bg-[#F1F4F7] border-[#DDE1E5]">
+                            Placed by hand
+                          </span>
+                        </div>
+                      )}
                       {urgent && (
                         <div className="mb-1.5 mr-[50px]">
                           <span className="text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border whitespace-nowrap text-[#AD4227] bg-[#FBEDE9] border-[#EFD3CB]">
