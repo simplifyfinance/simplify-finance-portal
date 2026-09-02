@@ -51,37 +51,75 @@ export async function notifyEllieCreateCard(params: {
   const { dealId, dealName, clientName, brokerName, leadSource, dealType, incomeType, internalNotes, creditOfficerName, alreadyBcActioned, recipientEmail, recipientName } = params
   const dealLink = `https://simplify-finance-portal.vercel.app/deals/${dealId}`
 
-  const steps = [
-    `Create a new deal card for <b>${clientName || 'this client'}</b>`,
-    `Allocate to broker: <b>${brokerName || ''}</b>`,
-    `Create a OneDrive folder for this client, and a SalesTrekker BCC code if applicable`,
-    `Paste these into the portal's Fact Find "Deal links" section: <a href="${dealLink}" style="color:#2DBEFF">Open the deal &rarr;</a>
-    <table style="width:100%;margin-top:8px;border-collapse:separate;border-spacing:0 4px" cellpadding="0" cellspacing="0">
-      <tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:6px;padding:6px 10px;font-size:12px;color:#343333">4a. OneDrive folder link</td></tr>
-      <tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:6px;padding:6px 10px;font-size:12px;color:#343333">4b. SalesTrekker card link</td></tr>
-      <tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:6px;padding:6px 10px;font-size:12px;color:#343333">4c. SalesTrekker BCC code</td></tr>
-    </table>`,
-    `Add labels &mdash; Lead source: <b>${leadSource || 'Not provided'}</b>, Deal type: <b>${dealType || ''}</b>, Income type: <b>${incomeType || 'Not yet available — check Fact Find'}</b>`,
-    `Copy internal notes from the portal:<br><span style="color:#666;font-style:italic">${internalNotes ? internalNotes.replace(/\n/g, '<br>') : '(no notes entered yet)'}</span>`,
-  ]
+  // Built to read like the compliance push email, because the same people read
+  // both and two different-looking emails from one system is one system that
+  // looks like two. Fabio, 2 Sep 2026: "I rathe same look and feel as
+  // complaince". Facts first, then What to do as numbered panels, then the
+  // notes.
+  const fact = (k: string, v: string) =>
+    `<tr><td style="color:#666;font-size:13px;padding:3px 0;vertical-align:top;width:38%"><span style="color:#666;">${k}</span></td><td style="font-size:13px;padding:3px 0">${v}</td></tr>`
 
-  if (creditOfficerName) {
-    steps.push(`Assign credit assessor label: <b>${creditOfficerName}</b>`)
-  }
-  if (alreadyBcActioned) {
-    steps.push(`Note: this deal is already at <b>BC Actioned</b> stage — set the card to that stage as part of creating it`)
-  }
-
-  const stepsRows = steps.map((s, i) => `
-    <tr>
-      <td bgcolor="#EBF5FE" style="background:#EBF5FE;border-radius:8px;padding:10px 12px;font-size:13px;color:#343333">
-        <b style="color:#2DBEFF">${i + 1}.</b> ${s}
-      </td>
-    </tr>`).join('')
+  const facts = [
+    fact('Deal', dealName),
+    fact('Client', clientName || 'Not provided'),
+    fact('Broker', brokerName || 'Not provided'),
+    fact('Lead source', leadSource || 'Not provided'),
+    fact('Deal type', dealType || 'Not provided'),
+    fact('Income type', incomeType || 'Not yet available — check the Fact Find'),
+    creditOfficerName ? fact('Credit assessor', creditOfficerName) : '',
+  ].join('')
 
   const html = `${greeting(recipientName)}
-    <p>A new deal is ready to be set up in SalesTrekker. Please complete the following:</p>
-    <table style="width:100%;border-collapse:separate;border-spacing:0 8px" cellpadding="0" cellspacing="0">${stepsRows}</table>`
+    <p>A new deal is ready to be set up in SalesTrekker.</p>
+    <table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 18px" width="100%" cellpadding="0" cellspacing="0" border="0">
+      ${facts}
+    </table>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px">
+      <tr><td style="font-family:Arial,sans-serif;font-size:15px;font-weight:700;padding:0 0 12px"><span style="color:#141C24;">What to do</span></td></tr>
+
+      <tr><td bgcolor="#FDF6E7" style="background:#FDF6E7;border-radius:8px;padding:13px 16px">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:0 0 4px"><span style="color:#8A6218;">1 &nbsp;Create the deal card</span></td></tr>
+          <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55;padding:0 0 4px"><span style="color:#8A6218;">For <b>${clientName || 'this client'}</b>, allocated to <b>${brokerName || 'the broker above'}</b>.</span></td></tr>
+          <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55"><span style="color:#8A6218;">Add the labels from the table above: lead source, deal type and income type${creditOfficerName ? `, and the credit assessor <b>${creditOfficerName}</b>` : ''}.</span></td></tr>
+          ${alreadyBcActioned ? `<tr><td style="padding:8px 0 0"><table cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:6px;padding:7px 11px;font-family:Arial,sans-serif;font-size:12.5px"><span style="color:#B23A34;">This deal is already at <b>BC Actioned</b> &mdash; set the card to that stage as you create it.</span></td></tr></table></td></tr>` : ''}
+        </table>
+      </td></tr>
+      <tr><td style="padding:8px 0 0"></td></tr>
+
+      <tr><td bgcolor="#EAF6FD" style="background:#EAF6FD;border-radius:8px;padding:13px 16px">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:0 0 4px"><span style="color:#0B5E8A;">2 &nbsp;Set up the folders</span></td></tr>
+          <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55"><span style="color:#0B5E8A;">A OneDrive folder for this client, and a SalesTrekker BCC code if one applies.</span></td></tr>
+        </table>
+      </td></tr>
+      <tr><td style="padding:8px 0 0"></td></tr>
+
+      <tr><td bgcolor="#EFF9F2" style="background:#EFF9F2;border-radius:8px;padding:13px 16px">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:0 0 4px"><span style="color:#15803D;">3 &nbsp;Paste the three links back into the portal</span></td></tr>
+          <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55;padding:0 0 9px"><span style="color:#15803D;">Open the deal, go to the Fact Find, and fill in <b>Deal links</b>. Without these nobody else can find the folder or the card.</span></td></tr>
+          <tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:6px;padding:7px 11px;font-family:Arial,sans-serif;font-size:12.5px"><span style="color:#141C24;">OneDrive folder link</span></td></tr>
+          <tr><td style="padding:4px 0 0"></td></tr>
+          <tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:6px;padding:7px 11px;font-family:Arial,sans-serif;font-size:12.5px"><span style="color:#141C24;">SalesTrekker card link</span></td></tr>
+          <tr><td style="padding:4px 0 0"></td></tr>
+          <tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:6px;padding:7px 11px;font-family:Arial,sans-serif;font-size:12.5px"><span style="color:#141C24;">SalesTrekker BCC code</span></td></tr>
+          <tr><td style="padding:11px 0 0">
+            <table cellpadding="0" cellspacing="0" border="0" style="margin:0"><tr>
+              <td bgcolor="#2DBEFF" style="background:#2DBEFF;border-radius:8px;padding:11px 20px">
+                <a href="${dealLink}" style="color:#08252F;font-family:Arial,sans-serif;font-size:14px;font-weight:700;text-decoration:none">Open the deal &rarr;</a>
+              </td>
+            </tr></table>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+
+    <table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="font-family:Arial,sans-serif;font-size:12.5px;font-weight:700;padding:0 0 5px"><span style="color:#141C24;">Internal notes from the broker</span></td></tr>
+      <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6"><span style="color:#555;">${internalNotes ? internalNotes.replace(/\n/g, '<br>') : 'None entered yet.'}</span></td></tr>
+    </table>`
 
   await sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au', `New deal created — ${dealName}`, html)
 }

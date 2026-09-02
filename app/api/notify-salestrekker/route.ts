@@ -62,8 +62,11 @@ export async function POST(req: NextRequest) {
     // is the safe way round.
     const { data: session } = await supabase.auth.getUser()
     const actorId = session?.user?.id || null
+    // Only the "create the card" email. Fabio, 2 Sep 2026: "just create deal
+    // card". The move-the-card notes to Cris are the same shape and could be
+    // skipped the same way, but they were not asked for and a notification that
+    // silently stops arriving is a bad surprise.
     const ellieIsActing = !!actorId && settingsRow?.new_deal_notification_user_id === actorId
-    const crisIsActing = !!actorId && settingsRow?.stage_move_notification_user_id === actorId
 
     // Trigger 1: first BC action on a deal — fires once, whichever happens first
     if (trigger === 'bc_action') {
@@ -156,32 +159,24 @@ export async function POST(req: NextRequest) {
         `Set up a follow-up task on this deal card for ${brokerName} and the support team. Due ${due}.`
         + (c?.next_action ? ` Action: ${c.next_action}.` : '')
         + (c?.close_reason ? ` The deal was closed as: ${String(c.close_reason).replace(/_/g, ' ')}.` : '')
-      // Asking somebody to move a card they just moved themselves.
-      if (crisIsActing) return NextResponse.json({ ok: true, skipped: true, reason: 'the recipient is the one who acted' })
       await notifyCrisMoveCard(dealName, brokerName, instruction, false, undefined, crisEmail, { recipientName: crisName })
       return NextResponse.json({ ok: true })
     }
 
     // Trigger 2: BC sent to client, card already exists
     if (trigger === 'bc_sent') {
-      // Asking somebody to move a card they just moved themselves.
-      if (crisIsActing) return NextResponse.json({ ok: true, skipped: true, reason: 'the recipient is the one who acted' })
       await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to BC Actioned', false, undefined, crisEmail, { recipientName: crisName })
       return NextResponse.json({ ok: true })
     }
 
     // Trigger 3: LO sent to client
     if (trigger === 'lo_sent') {
-      // Asking somebody to move a card they just moved themselves.
-      if (crisIsActing) return NextResponse.json({ ok: true, skipped: true, reason: 'the recipient is the one who acted' })
       await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to LO Actioned', false, undefined, crisEmail, { recipientName: crisName })
       return NextResponse.json({ ok: true })
     }
 
     // Trigger 4: client/broker confirms proceed LO -> Compliance
     if (trigger === 'lo_to_compliance') {
-      // Asking somebody to move a card they just moved themselves.
-      if (crisIsActing) return NextResponse.json({ ok: true, skipped: true, reason: 'the recipient is the one who acted' })
       await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to Compliance (to be actioned)', false, undefined, crisEmail, { recipientName: crisName })
       return NextResponse.json({ ok: true })
     }
