@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { type Brand, resolveBrand, brandLegal } from '@/lib/brand'
 import { emailParagraphs } from '@/lib/rich-text'
-import { resolveLenderSplits, lenderTotal, lenderLvr } from '@/lib/lo-splits'
+import { resolveLenderSplits, lenderTotal, lenderLvr, equityReleaseAmount } from '@/lib/lo-splits'
+import { showsOwnLoanAmount } from '@/lib/email-amounts'
 
 
 // Was hardcoded to Simplify Finance, licence number included, so a second
@@ -218,8 +219,24 @@ export async function POST(req: NextRequest) {
       body += p(`Stamp Duty${st ? ` (${st})` : ''}: $${d.stampDuty}`)
     }
     if (d.deposit) body += p(`Deposit Required: $${d.deposit}`)
-    if (d.loanAmount) body += p(`Loan Amount: $${d.loanAmount}`)
-    if (d.existingLoan) body += p(`Existing Loan Balance: $${d.existingLoan}`)
+
+    // A refinance reads in the order the client thinks in: what I owe now, what
+    // extra I am taking, what the loan ends up being. It used to read "Loan
+    // Amount: $666,000" then "Existing Loan Balance: $666,000" - the same figure
+    // twice, with the equity release missing entirely.
+    if (d.existingLoan) {
+      const total = lenderTotal(d.refinanceSplits)
+      const extra = equityReleaseAmount(d.refinanceSplits, d.existingLoan)
+      body += p(`Existing Loan Balance: $${d.existingLoan}`)
+      if (extra > 0) body += p(`Equity Release: $${extra.toLocaleString('en-AU')}`)
+      // Dropped when it is the balance under a second name - the same rule the
+      // BC follows. A dollar-for-dollar refinance has one number, not two.
+      if (total > 0 && showsOwnLoanAmount(d.existingLoan, total)) {
+        body += p(`Total Loan Amount: $${total.toLocaleString('en-AU')}`)
+      }
+    } else if (d.loanAmount) {
+      body += p(`Loan Amount: $${d.loanAmount}`)
+    }
   }
 
   if (d.documentsRequired.length > 0) {

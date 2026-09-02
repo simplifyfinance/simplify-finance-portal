@@ -44,7 +44,7 @@ describe('a lender with no splits of its own falls back to the deal', () => {
 })
 
 // ---------------------------------------------------------------------------
-import { lenderTotal, lenderLvr, combineIntoOneLoan, amountOf } from './lo-splits'
+import { lenderTotal, lenderLvr, combineIntoOneLoan, amountOf, equityReleaseAmount } from './lo-splits'
 
 const row = (label: string, amount: string, rate = '6.09', repaymentType = 'P&I') =>
   ({ id: label, label, amount, lvr: '', rate, repayment: '100', repaymentType })
@@ -117,5 +117,27 @@ describe('folding a lender into one loan', () => {
     expect(amountOf('$666,000')).toBe(666000)
     expect(amountOf('30000')).toBe(30000)
     expect(amountOf('')).toBe(0)
+  })
+})
+
+describe('the "Your numbers would be" block on a refinance', () => {
+  const globals = [{ amount: '666,000' }, { amount: '30,000' }]
+
+  it('finds the equity release Clementine was never shown', () => {
+    expect(equityReleaseAmount(globals, '666,000')).toBe(30000)
+  })
+
+  it('shows nothing extra on a dollar-for-dollar refinance', () => {
+    expect(equityReleaseAmount([{ amount: '500,000' }], '500,000')).toBe(0)
+  })
+
+  it('never goes negative when the client is borrowing less than they owe', () => {
+    // That is a cash contribution, which is a different sentence. Not this one.
+    expect(equityReleaseAmount([{ amount: '400,000' }], '500,000')).toBe(0)
+  })
+
+  it('copes with a deal that has no splits recorded yet', () => {
+    expect(equityReleaseAmount([], '500,000')).toBe(0)
+    expect(equityReleaseAmount(null, '500,000')).toBe(0)
   })
 })

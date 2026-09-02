@@ -100,3 +100,20 @@ export function combineIntoOneLoan(splits: LenderSplit[] | undefined | null): Le
     repaymentType: allSame(s => s.repaymentType) || 'P&I',
   }]
 }
+
+// What the client is taking on top of what they already owe.
+//
+// The "Your numbers would be" block on a refinance printed "Loan Amount:
+// $666,000" and "Existing Loan Balance: $666,000" - the same figure twice, with
+// the $30,000 equity release nowhere. Fabio, 2 Sep 2026: "did you forget that we
+// also need this section to have the euqity release same as BC".
+//
+// It is the total being borrowed less the loan being paid out, which is what new
+// money means. Zero when there is none, so a plain refinance does not sprout an
+// "Equity release: $0" line - and never negative: a client borrowing LESS than
+// they owe is contributing cash, which is a different sentence and not one this
+// block is trying to write.
+export function equityReleaseAmount(globals: { amount?: string }[] | undefined | null, existingLoan: any): number {
+  const extra = lenderTotal(globals as LenderSplit[]) - amountOf(existingLoan)
+  return extra > 0 ? Math.round(extra) : 0
+}
