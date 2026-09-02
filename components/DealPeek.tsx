@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { buildPeek, peekAge, type PeekSection } from '@/lib/deal-peek'
 import { chipStyle } from '@/lib/deal-labels'
+import { useDealFile } from '@/components/DealFile'
+import { byUrgency, newestFirst, toneOf, whenLabel, dueLabel } from '@/lib/deal-notes'
 import { getWaitingOnLabel } from '@/lib/deal-status'
 
 // A look at a deal without opening it.
@@ -43,6 +45,7 @@ export default function DealPeek({ deal, lenderName, brokerName, creditName, col
   onStep?: (dir: -1 | 1) => void
 }) {
   const router = useRouter()
+  const { notes, alerts } = useDealFile(deal.id)
   const p = buildPeek(deal, { lenderName, brokerName, creditName, colours })
   const waiting = getWaitingOnLabel(deal, creditName)
 
@@ -94,16 +97,63 @@ export default function DealPeek({ deal, lenderName, brokerName, creditName, col
           </div>
         </div>
 
-        <div className="px-[18px] pb-4">
+        {/* What is wrong comes first. The whole point of a quick look is to
+            answer "is anything on fire here" before you commit to opening it. */}
+        {byUrgency(alerts).length > 0 && (
+          <div className="px-[18px] pb-3">
+            <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-[#946017] m-0 mb-2">Important notes</p>
+            {byUrgency(alerts).slice(0, 3).map(a => {
+              const red = toneOf(a) === 'red'
+              return (
+                <div key={a.id}
+                  className={`flex gap-2 items-start rounded-lg px-2.5 py-2 mb-1.5 last:mb-0 border ${
+                    red ? 'border-[#EFD3CB] bg-[#FBECEC]' : 'border-[#EBD9BE] bg-[#FDF6EC]'}`}>
+                  <span className={`w-[6px] h-[6px] rounded-full shrink-0 mt-[6px] ${red ? 'bg-[#AD4227]' : 'bg-[#946017]'}`} />
+                  <span className="min-w-0">
+                    <span className="block text-[12px] text-[#221F1B] font-[600]">{a.title}</span>
+                    <span className="block text-[10.5px] text-[#7A7266]">
+                      {a.owner_name || 'nobody yet'}{a.due_on ? ` · ${dueLabel(a.due_on)}` : ''}
+                    </span>
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        <div className="px-[18px] pb-3">
           <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-[#7A7266] m-0 mb-2">Internal notes</p>
           {p.notes ? (
-            <div className="text-[12px] leading-[1.55] text-[#575046] bg-[#FCFAF6] border border-[#EFEAE0] rounded-lg px-2.5 py-2 max-h-[112px] overflow-auto whitespace-pre-line">
+            <div className="text-[12px] leading-[1.55] text-[#575046] bg-[#FCFAF6] border border-[#EFEAE0] rounded-lg px-2.5 py-2 max-h-[96px] overflow-auto whitespace-pre-line">
               {p.notes}
             </div>
           ) : (
             <p className="text-[12px] text-[#A29889] m-0">Nothing written yet.</p>
           )}
         </div>
+
+        {/* The last few things that happened, so the quick look answers "where
+            is this up to" as well as "what is it". */}
+        {newestFirst(notes).length > 0 && (
+          <div className="px-[18px] pb-4">
+            <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-[#7A7266] m-0 mb-2">
+              File notes
+              {notes.length > 3 && <span className="font-normal normal-case tracking-normal text-[#A29889]"> · {notes.length} in total</span>}
+            </p>
+            <div className="border-l-2 border-[#EFEAE0] pl-2.5 ml-[2px]">
+              {newestFirst(notes).slice(0, 3).map(n => (
+                <div key={n.id} className="mb-2 last:mb-0">
+                  <p className="text-[10px] text-[#A29889] m-0">
+                    {whenLabel(n.created_at)} · {n.kind === 'system' ? 'recorded automatically' : (n.author_name || 'unknown')}
+                  </p>
+                  <p className={`text-[12px] m-0 leading-[1.45] ${n.kind === 'system' ? 'text-[#7A7266] italic' : 'text-[#575046]'}`}>
+                    {n.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-2 items-center px-[18px] py-3 border-t border-[#EFEAE0] bg-[#FCFAF6]">
           <button onClick={() => router.push(`/deals/${deal.id}`)}

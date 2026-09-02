@@ -35,12 +35,33 @@ export function openAlerts(list: Alert[]): Alert[] {
 
 const DAY = 86400000
 
+// The business runs on Sydney time, and some of the team do not.
+//
+// Times used to render in the READER'S timezone, so a note written at 9am in
+// Sydney showed as 6am to somebody in Manila, and a note they wrote back came to
+// Sydney wearing Manila's clock. On a file where "spoke to the bank Tuesday
+// morning" is the whole point, that is quietly wrong rather than obviously
+// wrong. Everything here is Sydney, labelled as Sydney, wherever it is read.
+export const TZ = 'Australia/Sydney'
+
+// Today's date where the business is, not where the reader is. en-CA formats as
+// YYYY-MM-DD, which sorts and compares as a plain string.
+function todayIn(now: Date): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(now)
+  } catch {
+    return now.toISOString().slice(0, 10)
+  }
+}
+
 // Whole days from today until the due date. Negative once it has passed.
 export function daysUntil(due: string | null | undefined, now: Date = new Date()): number | null {
   if (!due) return null
   const d = new Date(String(due).slice(0, 10) + 'T00:00:00Z')
   if (isNaN(d.getTime())) return null
-  const a = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  const a = new Date(todayIn(now) + 'T00:00:00Z').getTime()
   return Math.round((d.getTime() - a) / DAY)
 }
 
@@ -84,13 +105,21 @@ export function byUrgency(list: Alert[], now: Date = new Date()): Alert[] {
   })
 }
 
+// Always Sydney, and it says so - "2 Sep, 9:14 am AEST". The timezone name is
+// not decoration: it is what tells an overseas reader that the time is the
+// office's, not theirs.
 export function whenLabel(iso: string | null | undefined): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (isNaN(d.getTime())) return ''
-  return d.toLocaleString('en-AU', {
-    day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true,
-  })
+  try {
+    return d.toLocaleString('en-AU', {
+      timeZone: TZ, timeZoneName: 'short',
+      day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true,
+    })
+  } catch {
+    return d.toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })
+  }
 }
 
 export function dueLabel(due: string | null | undefined, now: Date = new Date()): string {

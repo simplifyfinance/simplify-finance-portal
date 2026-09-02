@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  daysUntil, toneOf, chipLabel, newestFirst, byUrgency, openAlerts, dueLabel,
+  daysUntil, toneOf, chipLabel, newestFirst, byUrgency, openAlerts, dueLabel, whenLabel,
 } from './deal-notes'
 import { isLocked, canUnlock, unlockNote, reasonIsEnough } from './deal-lock'
 
@@ -125,5 +125,28 @@ describe('how a due date reads', () => {
     expect(dueLabel('2026-09-02', NOW)).toBe('1 day overdue')
     expect(dueLabel('2026-08-31', NOW)).toBe('3 days overdue')
     expect(dueLabel(null, NOW)).toBe('')
+  })
+})
+
+describe('the clock is the office clock, not the reader\'s', () => {
+  it('counts down from today in Sydney, not today in UTC', () => {
+    // 20:00 UTC on 2 Sep is already 6am on 3 Sep in Sydney. A due date of
+    // 3 Sep is TODAY for the business, not tomorrow - and an overseas staff
+    // member reading the same screen must see the same answer.
+    const lateUtc = new Date('2026-09-02T20:00:00Z')
+    expect(daysUntil('2026-09-03', lateUtc)).toBe(0)
+    expect(dueLabel('2026-09-03', lateUtc)).toBe('due today')
+  })
+
+  it('stamps carry the Sydney timezone so nobody reads them as local', () => {
+    const label = whenLabel('2026-09-01T23:14:00Z')   // 9:14 am on 2 Sep in Sydney
+    expect(label).toContain('2 Sep')
+    expect(label).toContain('9:14')
+    expect(label).toMatch(/AE[SD]T|GMT\+/)
+  })
+
+  it('a blank or broken timestamp shows nothing rather than "Invalid Date"', () => {
+    expect(whenLabel(null)).toBe('')
+    expect(whenLabel('not a time')).toBe('')
   })
 })

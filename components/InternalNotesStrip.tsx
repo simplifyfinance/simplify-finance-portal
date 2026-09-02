@@ -17,17 +17,21 @@ export default function InternalNotesStrip({ dealId, initial, openByDefault }: {
   const [open, setOpen] = useState(!!openByDefault)
   const preview = (initial || '').trim().replace(/\s+/g, ' ')
 
+  // Closed, the note itself is the content - not a label announcing that a note
+  // exists. Somebody scanning the deal should read "partner is on a visa, loan
+  // in her name only" without clicking anything.
+  //
+  // This is the SALES team's running context off client calls, kept for credit
+  // to read later. It is not the file note log (what happened, when, by whom)
+  // and it is not an important note (something that needs doing).
   if (!open) return (
     <button onClick={() => setOpen(true)}
-      className="w-full text-left mb-4 bg-white border border-gray-100 rounded-xl px-4 py-2.5 flex items-center gap-2 hover:bg-gray-50">
-      <svg className="w-4 h-4 text-gray-400 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
-      </svg>
-      <span className="text-xs font-medium text-gray-500 uppercase tracking-wider flex-none">Internal notes</span>
-      <span className="text-xs text-gray-400 truncate">
-        {preview ? preview.slice(0, 130) + (preview.length > 130 ? '…' : '') : 'Nothing written yet'}
+      className="w-full text-left mb-3 bg-[#FCFAF6] border border-[#EFEAE0] rounded-xl px-3.5 py-2.5 flex items-start gap-2.5 hover:border-[#D6CCBC] transition">
+      <span className="text-[9.5px] font-bold tracking-[.08em] uppercase text-[#A29889] flex-none mt-[3px]">Internal notes</span>
+      <span className={`text-[12.5px] leading-[1.5] flex-1 ${preview ? 'text-[#575046]' : 'text-[#A29889] italic'}`}>
+        {preview ? preview.slice(0, 180) + (preview.length > 180 ? '…' : '') : 'Nothing written yet — what the client told us goes here.'}
       </span>
-      <span className="ml-auto text-xs text-[#2DBEFF] flex-none">Open</span>
+      <span className="text-[11.5px] text-[#0E8FCB] flex-none mt-[1px]">{preview ? 'Edit' : 'Add'}</span>
     </button>
   )
 

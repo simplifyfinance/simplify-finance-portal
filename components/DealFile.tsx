@@ -91,12 +91,12 @@ export function DealAlerts({ dealId, me, alerts, onChanged }: {
   return (
     <div className={PANEL}>
       <div className={HEAD}>
-        <span>⚠ Needs attention</span>
+        <span>⚠ Important notes</span>
         {open.length > 0 && <span className="ml-auto text-[#946017] font-bold">{open.length}</span>}
       </div>
       <div className={BODY}>
         {open.length === 0 && !adding && (
-          <p className="text-[12px] text-[#A29889] m-0 mb-2">Nothing outstanding.</p>
+          <p className="text-[12px] text-[#A29889] m-0 mb-2">Nothing flagged.</p>
         )}
 
         {open.map(a => {
@@ -123,7 +123,7 @@ export function DealAlerts({ dealId, me, alerts, onChanged }: {
         {adding ? (
           <div className="border border-[#E8E1D6] rounded-lg p-2.5 mt-1">
             <input className={INPUT + ' mb-1.5'} value={title} autoFocus
-              onChange={e => setTitle(e.target.value)} placeholder="What needs attention?" />
+              onChange={e => setTitle(e.target.value)} placeholder="What does everyone need to know?" />
             <div className="grid grid-cols-2 gap-1.5 mb-2">
               <input className={INPUT} value={owner} onChange={e => setOwner(e.target.value)} placeholder="Who owns it" />
               <input className={INPUT} type="date" value={due} onChange={e => setDue(e.target.value)} />

@@ -254,6 +254,16 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
         </>
       )}
 
+      {/* Pinned context, above the tabs. This is what is always true about the
+          deal - "partner is on a visa, loan in her name only" - so it belongs in
+          view before you choose a tab, not inside one. Same single field
+          (deals.internal_notes) it has always been; Fact Find keeps its own left
+          column so it is never shown twice on one screen. */}
+      {stage !== 'FactFind' && (
+        <InternalNotesStrip dealId={dealData.id} initial={dealData.internal_notes || ''}
+          openByDefault={stage === 'Compliance'} />
+      )}
+
       <div className="flex gap-2 mb-6">
         {tabs.map(({ key, label }) => (
           <button key={key} onClick={() => changeStage(key)}
@@ -262,14 +272,6 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           </button>
         ))}
       </div>
-
-      {/* The notes live in Fact Find's own left column; every other tab gets the
-          same field as a strip. Compliance opens it by default — it is where the
-          write-up is drafted and it had no background on screen at all. */}
-      {stage !== 'FactFind' && (
-        <InternalNotesStrip dealId={dealData.id} initial={dealData.internal_notes || ''}
-          openByDefault={stage === 'Compliance'} />
-      )}
 
       <TabLock locked={isLocked(dealData) && unlockedTab !== stage} tab={stage} dealId={dealData.id}
         role={userRole} me={me}
