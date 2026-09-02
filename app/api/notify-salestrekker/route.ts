@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { notifyEllieCreateCard, notifyCrisMoveCard } from '@/lib/salestrekker-notify'
-import { emailLines, emailSubject } from '@/lib/push-answers'
+import { emailLines, emailSubject, shortDate } from '@/lib/push-answers'
 import { allSections, countCards } from '@/lib/handover-view'
 import { generateSummaryPdfBuffer } from '@/app/api/generate-summary-pdf/route'
 import { generateCompliancePdfBuffer } from '@/app/api/generate-compliance-pdf/route'
@@ -162,7 +162,14 @@ export async function POST(req: NextRequest) {
           if (!result) continue
           // Both documents are already named for the people they are about -
           // "Handover - ..." and "Fact Find - ..." - so neither needs a suffix.
-          const fileName = `${result.dealName}.pdf`
+          //
+          // They DO need a date. What is stored here is a snapshot taken at the
+          // moment of the push and it never changes again, while the live
+          // document does. On 2 Sep 2026 that cost an afternoon: the PDFs were
+          // rebuilt and shipped, and the copy opened from the deal's Documents
+          // list was still the old one, with no way to tell. The date on the
+          // name is how you tell.
+          const fileName = `${result.dealName} (${shortDate(new Date().toISOString().slice(0, 10))}).pdf`
           const filePath = `${dealId}/${Date.now()}-${fileName}`
 
           const { error: uploadError } = await supabase.storage.from('deal-documents').upload(filePath, result.buffer, {
