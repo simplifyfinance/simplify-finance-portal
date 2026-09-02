@@ -160,16 +160,43 @@ export function derivedPhaseOf(deal: any): Phase {
 // honest:
 //
 //   1. It can only ever move a deal BACKWARDS. It cannot claim progress.
-//   2. It is recorded against the phase the deal was in when it was set. The
-//      moment the deal genuinely moves on, the override no longer matches and is
-//      ignored - so it expires by itself rather than hiding a deal forever.
+//   2. It expires the moment anything real happens to the deal. Fabio, 3 Sep
+//      2026: "because a deal was moved by hand it doesnt mean it stops any
+//      other rules". Two ways that is checked - see WORK_DONE below.
 //   3. The card says it was placed by hand, so nobody reads the column as fact.
+
+// The dates that mean somebody did something. A phase change is not enough on
+// its own: a deal placed in Fact Find while it sat at BC would still derive as
+// BC after the BC was written and sent to the client, so the phase would not
+// have changed and the card would have stayed in Fact Find with a live BC out
+// with the client. Anything here landing AFTER the card was placed ends the
+// placement.
+const WORK_DONE = [
+  'bc_completed_at', 'bc_sent_at', 'proceeded_at',
+  'lo_completed_at', 'lo_proceeded_at',
+  'compliance_completed_at', 'compliance_sent_at', 'lodged_at',
+  'preapproval_at', 'offer_accepted_at', 'formal_approval_at',
+  'contracts_returned_at', 'settlement_booked_at', 'settled_at',
+  'docs_received_at',
+]
+
+function workedSincePlaced(deal: any): boolean {
+  const placedAt = deal?.phase_override_at ? new Date(deal.phase_override_at).getTime() : null
+  if (!placedAt || Number.isNaN(placedAt)) return false
+  return WORK_DONE.some(f => {
+    const t = deal?.[f] ? new Date(deal[f]).getTime() : null
+    return t !== null && !Number.isNaN(t) && t > placedAt
+  })
+}
+
 export function overrideApplies(deal: any): boolean {
   const to = deal?.phase_override
   if (!to || !PHASE_ORDER.includes(to)) return false
   const derived = derivedPhaseOf(deal)
-  // Stale: the deal has moved since somebody placed it.
+  // The deal has moved on since somebody placed it.
   if (deal?.phase_override_from !== derived) return false
+  // Somebody has worked it since, even if that did not change the column.
+  if (workedSincePlaced(deal)) return false
   // Backwards only.
   return PHASE_ORDER.indexOf(to) < PHASE_ORDER.indexOf(derived)
 }

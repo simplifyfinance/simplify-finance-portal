@@ -35,11 +35,13 @@ export async function POST(req: NextRequest) {
     if (place) {
       patch.phase_override = target
       patch.phase_override_from = from
+      patch.phase_override_at = new Date().toISOString()
     } else {
       for (const f of (fields || [])) patch[f] = null
       // A deliberate move supersedes an older hand placement.
       patch.phase_override = null
       patch.phase_override_from = null
+      patch.phase_override_at = null
     }
 
     const { data: rows, error: upErr } = await supabase.from('deals').update(patch).eq('id', dealId).select('id')

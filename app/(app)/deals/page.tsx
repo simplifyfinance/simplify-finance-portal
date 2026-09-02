@@ -135,8 +135,8 @@ export default function DealsPage() {
       const data = await res.json()
       if (!res.ok || !data.ok) return data.error || 'The move was not saved.'
       const patch: Record<string, any> = place
-        ? { phase_override: target, phase_override_from: derivedPhaseOf(deal) }
-        : { phase_override: null, phase_override_from: null }
+        ? { phase_override: target, phase_override_from: derivedPhaseOf(deal), phase_override_at: new Date().toISOString() }
+        : { phase_override: null, phase_override_from: null, phase_override_at: null }
       for (const f of fields) patch[f] = null
       setDeals(prev => prev.map(d => (d.id === deal.id ? { ...d, ...patch } : d)))
       return data.warning || null

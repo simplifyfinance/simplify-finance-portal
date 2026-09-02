@@ -300,6 +300,35 @@ describe('placing a deal back in Fact Find by hand', () => {
     expect(derivedPhaseOf(placed)).toBe('bc')
   })
 
+  it('expires the moment real work happens, even if the column would not change', () => {
+    // The hole this closed: placed in Fact Find while the deal sat at BC, then
+    // the BC is written and sent to the client. The derived phase is still BC,
+    // so nothing "changed" - and the card would have stayed in Fact Find with a
+    // live BC out with the client. Fabio, 3 Sep 2026: "because a deal was moved
+    // by hand it doesnt mean it stops any other rules".
+    const placed = {
+      ...atBc,
+      phase_override: 'fact_find', phase_override_from: 'bc',
+      phase_override_at: '2026-09-03T01:00:00.000Z',
+    }
+    expect(phaseOf(placed)).toBe('fact_find')
+    expect(phaseOf({ ...placed, bc_sent_at: '2026-09-03T02:00:00.000Z' })).toBe('bc')
+    expect(phaseOf({ ...placed, bc_completed_at: '2026-09-03T02:00:00.000Z' })).toBe('bc')
+    expect(phaseOf({ ...placed, docs_received_at: '2026-09-03T02:00:00.000Z' })).toBe('bc')
+  })
+
+  it('survives work that happened BEFORE it was placed', () => {
+    // Placing a card is a decision made with the file's history in view. Only
+    // what happens next overrides it.
+    const placed = {
+      ...atBc,
+      bc_sent_at: '2026-09-01T00:00:00.000Z',
+      phase_override: 'fact_find', phase_override_from: 'bc',
+      phase_override_at: '2026-09-03T01:00:00.000Z',
+    }
+    expect(phaseOf(placed)).toBe('fact_find')
+  })
+
   it('expires by itself the moment the deal moves on', () => {
     // Placed while at BC; the client then agrees to proceed, so the deal is at
     // LO. The placement no longer matches and is ignored - no deal can hide in

@@ -17,8 +17,12 @@
 
 alter table deals add column if not exists phase_override text;
 alter table deals add column if not exists phase_override_from text;
+alter table deals add column if not exists phase_override_at timestamptz;
 
 comment on column deals.phase_override is
   'A board column somebody dragged this deal into, when nothing could be cleared to put it there. Backwards only. Ignored once phase_override_from stops matching the deal''s derived phase.';
 comment on column deals.phase_override_from is
   'The derived phase at the moment the card was placed. When the deal moves on, this stops matching and the override is ignored - so a hand placement can never hide a deal in the wrong column indefinitely.';
+
+comment on column deals.phase_override_at is
+  'When the card was placed. Any work recorded after this ends the placement - a hand move never suspends the rules, it only survives while nothing has happened.';
