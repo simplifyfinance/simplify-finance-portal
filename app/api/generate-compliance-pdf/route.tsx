@@ -83,7 +83,9 @@ const EXPENSE_CATEGORIES: { key: string; label: string }[] = [
   { key: 'secondaryResidenceRunningCosts', label: 'Secondary residence running costs' },
   { key: 'primaryResidenceRunningCosts', label: 'Primary residence running costs' },
   { key: 'investmentPropertyRunningCosts', label: 'Investment property running costs' },
-  { key: 'primaryResidenceBodyCorp', label: 'Primary residence body corp' },
+  // Australia says strata. The KEY stays as it is - it is written into every
+  // deal already assessed - so only the word on the page changes.
+  { key: 'primaryResidenceBodyCorp', label: 'Strata (primary residence)' },
   { key: 'childSpousalMaintenance', label: 'Child and spousal maintenance' },
   { key: 'rent', label: 'Rent' },
   { key: 'board', label: 'Board' },

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { isWithLender, splitsTotal } from '@/lib/deal-phase'
+import { hemStateOf, hemTotals, unansweredNote, type HemAnswer } from '@/lib/hem'
 
 // The loan on this deal: what the LO settled on, or failing that the BC's splits
 // added up. It used to fall back to the FIRST BC split, so a multi-split deal
@@ -97,7 +98,14 @@ const defaultProductReqs = (): ProductReqs => ({
   branchFrequency: 'Rarely'
 })
 
-const EXPENSE_CATEGORIES: { key: string; label: string; inHem: boolean }[] = [
+// `askHem` puts a toggle on the row and leaves the answer to the person writing
+// the file. Only two, because lenders only disagree about two - a switch on all
+// twenty-three would be twenty-three more chances to get one wrong.
+//
+// The KEYS never change. `primaryResidenceBodyCorp` is written into every deal
+// already assessed; renaming it to match the label would orphan all of them.
+// Australia says strata, so only the words on screen change.
+const EXPENSE_CATEGORIES: { key: string; label: string; inHem: boolean; askHem?: boolean }[] = [
   { key: 'groceries', label: 'Groceries', inHem: true },
   { key: 'clothingPersonalCare', label: 'Clothing and personal care', inHem: true },
   { key: 'petCare', label: 'Pet care', inHem: true },
@@ -110,13 +118,13 @@ const EXPENSE_CATEGORIES: { key: string; label: string; inHem: boolean }[] = [
   { key: 'recreationEntertainment', label: 'Recreation and entertainment', inHem: true },
   { key: 'sicknessAccidentLifeInsurance', label: 'Sickness, accident and life insurance', inHem: false },
   { key: 'medicalHealth', label: 'Medical and health', inHem: true },
-  { key: 'healthInsurance', label: 'Health insurance', inHem: true },
+  { key: 'healthInsurance', label: 'Health insurance', inHem: true, askHem: true },
   { key: 'generalBasicInsurances', label: 'General basic insurances', inHem: true },
   { key: 'transport', label: 'Transport', inHem: true },
   { key: 'secondaryResidenceRunningCosts', label: 'Secondary residence running costs', inHem: false },
   { key: 'primaryResidenceRunningCosts', label: 'Primary residence running costs', inHem: true },
   { key: 'investmentPropertyRunningCosts', label: 'Investment property running costs', inHem: true },
-  { key: 'primaryResidenceBodyCorp', label: 'Primary residence body corp', inHem: true },
+  { key: 'primaryResidenceBodyCorp', label: 'Strata (primary residence)', inHem: true, askHem: true },
   { key: 'childSpousalMaintenance', label: 'Child and spousal maintenance', inHem: false },
   { key: 'rent', label: 'Rent', inHem: true },
   { key: 'board', label: 'Board', inHem: true },
@@ -126,6 +134,9 @@ type ExpenseEntry = {
   monthlyAmount: string
   splits: Record<string, string>
   comment: string
+  // 'in' | 'out'. Absent means nobody has answered, which is a third thing and
+  // is shown as such - see lib/hem.ts.
+  hem?: string
 }
 
 function defaultExpenseSplit(applicants: Applicant[]): Record<string, string> {
@@ -393,6 +404,10 @@ export default function ComplianceForm({ deal, onSaveStatus }: { deal: any; onSa
 
   function updateExpense(key: string, field: 'monthlyAmount' | 'comment', value: string) {
     setD(prev => ({ ...prev, expenses: { ...prev.expenses, [key]: { ...prev.expenses[key], [field]: value } } }))
+  }
+
+  function setExpenseHem(key: string, answer: HemAnswer | '') {
+    setD(prev => ({ ...prev, expenses: { ...prev.expenses, [key]: { ...prev.expenses[key], hem: answer } } }))
   }
 
   function updateExpenseSplit(key: string, applicantName: string, value: string) {
@@ -1168,15 +1183,39 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
             <div className="flex items-center gap-4 mb-3 text-xs text-gray-500">
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />In HEM</span>
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" />Not in HEM</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full border-2 border-[#DC5B5B] bg-white inline-block" />Not answered yet</span>
             </div>
             <div className="flex flex-col gap-2">
               {EXPENSE_CATEGORIES.map(cat => {
                 const entry = d.expenses?.[cat.key] || { monthlyAmount: '', splits: {}, comment: '' }
+                const hem = hemStateOf(cat, entry)
+                const open = hem === 'unanswered'
                 return (
-                  <div key={cat.key} className="border border-gray-100 rounded-lg p-3">
+                  <div key={cat.key} className={`border rounded-lg p-3 ${
+                    open ? 'border-[#F5C2C2] bg-[#FDF0EF]' : 'border-gray-100'}`}>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className={`w-2.5 h-2.5 rounded-full inline-block flex-shrink-0 ${cat.inHem ? 'bg-green-500' : 'bg-red-400'}`} />
+                      <span className={`w-2.5 h-2.5 rounded-full inline-block flex-shrink-0 ${
+                        open ? 'border-2 border-[#DC5B5B] bg-white'
+                        : hem === 'in' ? 'bg-green-500' : 'bg-red-400'}`} />
                       <span className="text-sm font-medium text-[#343333]">{cat.label}</span>
+                      {open && <span className="text-[11px] font-semibold text-[#B04A4A]">needs an answer</span>}
+                      {/* Only the two rows lenders disagree about. Everything else
+                          is settled and shows nothing, so the toggles that ARE
+                          here mean something. */}
+                      {cat.askHem && (
+                        <span className="ml-auto inline-flex rounded-lg border border-gray-200 overflow-hidden bg-white">
+                          {([['', 'Not answered'], ['in', 'In HEM'], ['out', 'Outside HEM']] as const).map(([value, label], vi) => (
+                            <button key={label} type="button"
+                              onClick={() => setExpenseHem(cat.key, value as HemAnswer | '')}
+                              className={`text-[11.5px] px-2.5 py-1 transition ${vi ? 'border-l border-gray-200' : ''} ${
+                                (value === '' ? open : entry.hem === value)
+                                  ? 'bg-[#343333] text-white font-semibold'
+                                  : 'text-[#8a9099] hover:bg-gray-50'}`}>
+                              {label}
+                            </button>
+                          ))}
+                        </span>
+                      )}
                     </div>
                     <div className="grid gap-2 items-end" style={{ gridTemplateColumns: `160px repeat(${d.applicants.length}, 1fr) 1fr` }}>
                       <div>
@@ -1201,10 +1240,10 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
           </div>
 
           {(() => {
-            const toNum = (v: string) => parseFloat(String(v).replace(/,/g, '')) || 0
-            const totalAll = EXPENSE_CATEGORIES.reduce((sum, c) => sum + toNum(d.expenses?.[c.key]?.monthlyAmount || ''), 0)
-            const totalHem = EXPENSE_CATEGORIES.filter(c => c.inHem).reduce((sum, c) => sum + toNum(d.expenses?.[c.key]?.monthlyAmount || ''), 0)
-            const totalNotHem = EXPENSE_CATEGORIES.filter(c => !c.inHem).reduce((sum, c) => sum + toNum(d.expenses?.[c.key]?.monthlyAmount || ''), 0)
+            // One reader, in lib/hem.ts, so the dots on the rows and the money in
+            // the boxes cannot tell different stories.
+            const { all: totalAll, inHem: totalHem, notInHem: totalNotHem, unanswered } =
+              hemTotals(EXPENSE_CATEGORIES, d.expenses as any)
             return (
               <div className="bg-white border border-gray-100 rounded-xl p-5">
                 <SectionHeader title="Totals (monthly)" />
@@ -1222,6 +1261,11 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
                     <div className="text-xl font-semibold text-red-600">${totalNotHem.toLocaleString('en-AU')}</div>
                   </div>
                 </div>
+                {unanswered > 0 && (
+                  <div className="mt-3 rounded-lg border border-[#F5C2C2] bg-[#FDF0EF] px-3 py-2 text-[12.5px] text-[#8A3A3A]">
+                    {unansweredNote(unanswered)}
+                  </div>
+                )}
               </div>
             )
           })()}
