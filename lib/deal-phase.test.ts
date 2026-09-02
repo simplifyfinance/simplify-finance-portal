@@ -108,7 +108,7 @@ describe('which column a deal is in', () => {
   })
 
   it('has every phase in the order the board draws them', () => {
-    expect(PHASE_ORDER).toHaveLength(10)
+    expect(PHASE_ORDER).toHaveLength(13)
     expect(PHASE_ORDER.indexOf('compliance_sent')).toBeLessThan(PHASE_ORDER.indexOf('lodged'))
     expect(PHASE_ORDER.indexOf('preapproved')).toBeLessThan(PHASE_ORDER.indexOf('formal'))
   })

@@ -130,8 +130,16 @@ export default function PipelinePage() {
       lodgedSplits:  Array.isArray(d.lodged_splits)  ? d.lodged_splits.length  : 0,
       settledSplits: Array.isArray(d.settled_splits) ? d.settled_splits.length : 0,
       upfront: num(d.expected_upfront),
-      status: d.settled_at ? 'Settled' : d.formal_approval_at ? 'Formal approval'
-            : d.preapproval_at ? 'Preapproved' : d.lodged_at ? 'Lodged' : '-',
+      // The furthest thing that has happened, same rule as the board. Read in
+      // this order so the three stages added on 2 Sep 2026 cannot be swallowed by
+      // a deal that also has an earlier one recorded.
+      status: d.settled_at ? 'Settled'
+            : d.settlement_booked_at ? 'Settlement booked'
+            : d.contracts_returned_at ? 'Contracts returned'
+            : d.formal_approval_at ? 'Formal approval'
+            : d.offer_accepted_at ? 'Offer accepted'
+            : d.preapproval_at ? 'Preapproved'
+            : d.lodged_at ? 'Lodged' : '-',
     }
   }), [reg])
 

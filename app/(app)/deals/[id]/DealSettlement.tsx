@@ -3,16 +3,35 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import LoanIds from '@/components/LoanIds'
 import { loanIdStatus } from '@/lib/loan-id'
+import { stepLabel } from '@/lib/settlement'
+
+// A refinance has no contracts of sale - it has loan documents. The buttons in
+// the Settlement panel have always said so; this list says the same thing now
+// that the step is a stage that shows up here too.
+const labelOf = (key: string, label: string, deal: any) =>
+  key === 'contracts_returned_at' ? stepLabel('contracts_returned', deal?.transaction_type) : label
 
 // Post-compliance stages. Lodged, Formal and Settled each write a snapshot of the loan as it
 // stood at that moment - lender, total and every split with its own amount, rate and repayment
 // type. The amount is not one number: it changes during the application, and commission is
 // calculated from what SETTLED. Overwriting a single loan_amount would destroy that history.
+//
+// `mark: false` means the stage is shown here when it has happened, but is not
+// offered as a button. Contracts returned and Settlement booked are recorded by
+// the settlements team in the Settlement panel below, where they already click
+// them; putting a second button here would be two doors onto the same lock.
 const STAGES = [
-  { key: 'lodged_at',          snap: 'lodged',   label: 'Lodged',          verb: 'Mark as lodged' },
-  { key: 'preapproval_at',     snap: null,       label: 'Preapproved',     verb: 'Mark as preapproved' },
-  { key: 'formal_approval_at', snap: 'formal',   label: 'Formal approval', verb: 'Mark as formally approved' },
-  { key: 'settled_at',         snap: 'settled',  label: 'Settled',         verb: 'Mark as settled' },
+  { key: 'lodged_at',             snap: 'lodged',  label: 'Lodged',              verb: 'Mark as lodged',              mark: true },
+  { key: 'preapproval_at',        snap: null,      label: 'Preapproved',         verb: 'Mark as preapproved',         mark: true },
+  // The client's offer on a property has been accepted. On a purchase this is a
+  // process in its own right - there is now a property, a price and a settlement
+  // date - and until now those deals sat in Preapproved looking identical to a
+  // client who was still house hunting.
+  { key: 'offer_accepted_at',     snap: null,      label: 'Offer accepted',      verb: 'Mark as offer accepted',      mark: true },
+  { key: 'formal_approval_at',    snap: 'formal',  label: 'Formal approval',     verb: 'Mark as formally approved',   mark: true },
+  { key: 'contracts_returned_at', snap: null,      label: 'Contracts returned',  verb: '',                            mark: false },
+  { key: 'settlement_booked_at',  snap: null,      label: 'Settlement booked',   verb: '',                            mark: false },
+  { key: 'settled_at',            snap: 'settled', label: 'Settled',             verb: 'Mark as settled',             mark: true },
 ]
 
 const TYPES = ['P&I', 'Interest only']
@@ -57,9 +76,13 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
   // and nothing is skipped silently - a deal marked formally approved that was
   // never preapproved simply leaves preapproval blank, which is the truth.
   const available = STAGES
+    .filter(s => s.mark)
     .filter(s => !deal[s.key])
     // A preapproval after formal approval is meaningless, so it stops being offered.
     .filter(s => s.key !== 'preapproval_at' || (!deal.formal_approval_at && !deal.settled_at))
+    // An accepted offer after settlement is not. It stays offered right up to the
+    // end, because it is the kind of thing that gets recorded late.
+    .filter(s => s.key !== 'offer_accepted_at' || !deal.settled_at)
 
   const [pickedKey, setPickedKey] = useState('')
   // One choice left is not a choice: go straight into it, the way it always did.
@@ -166,7 +189,7 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
           return (
             <div key={s.key} className="flex items-center gap-2.5 text-[13px] flex-wrap">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#12A150" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.4 L6.2 11.4 L13 4.6"/></svg>
-              <span className="font-semibold">{s.label}</span>
+              <span className="font-semibold">{labelOf(s.key, s.label, deal)}</span>
               <span className="text-[#A29889]">{fmtDate(deal[s.key])}</span>
               {sn && (
                 /* num(null) is 0, and money(0) is "$0" - so a stage recorded with

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { todayYmd } from '@/lib/periods'
 import { STATE_LABEL, isRefinance, isPurchase, stepLabel, attentionFor,
+         STEPS, stepIsOn, stepPatch,
          type SettlementState, type SettlementStep } from '@/lib/settlement'
 
 // The same fields as the settlements board, on the deal itself, for the people who
@@ -78,12 +79,16 @@ export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; on
     setMsg('Saved at ' + new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
   }
 
-  async function setStep(step: SettlementStep | null) {
-    if (step === 'settlement_booked' && !(draft.confirmed_settlement_date || d.confirmed_settlement_date)) {
+  // Two independent stages now, each with its own date, not one enum holding one
+  // of them. A deal can have its contracts back AND its settlement booked, which
+  // the old field could not say - and neither of them recorded when it happened,
+  // so nobody could see loan docs that had been sitting returned for three weeks.
+  async function setStep(step: SettlementStep, on: boolean) {
+    if (step === 'settlement_booked' && on && !(draft.confirmed_settlement_date || d.confirmed_settlement_date)) {
       setMsg('A confirmed settlement date is needed before this can be marked as booked.')
       return
     }
-    await save({ settlement_step: step })
+    await save(stepPatch(d, step, on))
   }
 
   const inp = 'w-full text-[12.5px] border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:border-[#2DBEFF]'
@@ -186,15 +191,21 @@ export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; on
       {!d.settled_at && (
         <div className="flex gap-2 items-center flex-wrap px-4 pb-4">
           <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#A29889] mr-1">Step</span>
-          {(['contracts_returned','settlement_booked'] as SettlementStep[]).map(s => (
-            <button key={s} type="button" disabled={busy} onClick={() => setStep(d.settlement_step === s ? null : s)}
-              className={`text-[12px] rounded-lg px-3 py-1.5 border transition ${d.settlement_step === s
-                ? 'bg-[#343333] border-[#343333] text-white font-semibold'
-                : 'bg-white border-[#E8E1D6] text-[#6E665C] hover:bg-[#FAF7F2]'}`}>
-              {stepLabel(s, d.transaction_type)}
-            </button>
-          ))}
-          <span className="text-[11px] text-[#A29889]">optional · either can be skipped · a broker sees this deal as Formal</span>
+          {STEPS.map(s => {
+            const on = stepIsOn(d, s)
+            const when = d[s === 'settlement_booked' ? 'settlement_booked_at' : 'contracts_returned_at']
+            return (
+              <button key={s} type="button" disabled={busy} onClick={() => setStep(s, !on)}
+                title={on && when ? `Recorded ${String(when).slice(0, 10)}. Click to undo.` : ''}
+                className={`text-[12px] rounded-lg px-3 py-1.5 border transition ${on
+                  ? 'bg-[#343333] border-[#343333] text-white font-semibold'
+                  : 'bg-white border-[#E8E1D6] text-[#6E665C] hover:bg-[#FAF7F2]'}`}>
+                {stepLabel(s, d.transaction_type)}
+                {on && when && <span className="font-normal opacity-70 ml-1.5">{String(when).slice(8, 10)}/{String(when).slice(5, 7)}</span>}
+              </button>
+            )
+          })}
+          <span className="text-[11px] text-[#A29889]">optional · either can be skipped · both are stages on the board now</span>
         </div>
       )}
 

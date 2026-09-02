@@ -5,6 +5,7 @@ import { phaseOf, phaseSince, amountOf, PHASE_LABEL, PHASE_ORDER, type Phase } f
 import { stageAge, ageGroupOf } from '@/lib/deal-age'
 import { chipsFor, brokerColour, chipStyle, dealTitle } from '@/lib/deal-labels'
 import { CREDIT_GREY, type ThresholdMap } from '@/lib/board-settings'
+import { useColumnFolds } from '@/lib/use-column-folds'
 import { AlertChips } from '@/components/DealFile'
 import type { Alert } from '@/lib/deal-notes'
 import DealPeek from '@/components/DealPeek'
@@ -19,7 +20,23 @@ import { brokerKey as keyOf } from '@/lib/broker-key'
 // splits, or the commission history is destroyed) the drag opens that panel
 // rather than writing a half-record.
 
-const COLUMNS: Phase[] = ['fact_find', 'bc', 'lo', 'compliance', 'compliance_sent', 'lodged', 'preapproved', 'formal', 'settled']
+// Twelve. Offer accepted, Contracts returned and Settlement booked were added on
+// 2 Sep 2026 - the first was a whole process inside Preapproved that the board
+// could not see, and the other two were an enum buried in the Settlement panel.
+//
+// Twelve columns do not fit on a laptop and are not meant to: the board scrolls,
+// every column keeps its full width, and each person folds away the ones they do
+// not use. Fabio, 2 Sep 2026: "12 no issues same sixe just make sure we cna go
+// back and forwards oin the screen".
+const COLUMNS: Phase[] = [
+  'fact_find', 'bc', 'lo', 'compliance', 'compliance_sent',
+  'lodged', 'preapproved', 'offer_accepted', 'formal',
+  'contracts_returned', 'settlement_booked', 'settled',
+]
+
+const OPEN_W = 248        // an open column, wide enough for a card
+const SHUT_W = 38         // a folded one: the count, the name, and nothing else
+const GAP = 10            // gap-2.5
 
 const money = (n: number) => {
   const a = Math.abs(n)
@@ -52,6 +69,8 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts 
   alerts?: Record<string, Alert[]>
 }) {
   const router = useRouter()
+  // Folded columns, this person's own, remembered across logins.
+  const { folds, toggle } = useColumnFolds()
   const [dragging, setDragging] = useState<string>('')
   const [over, setOver] = useState<Phase | ''>('')
   const [msg, setMsg] = useState('')
@@ -98,6 +117,9 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts 
     router.push(`/deals/${deal.id}?stage=Compliance#settlement`)
   }
 
+  const shutCount = COLUMNS.filter(p => folds.includes(p)).length
+  const openCount = COLUMNS.length - shutCount
+
   return (
     <div>
       {msg && (
@@ -106,11 +128,47 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts 
         </div>
       )}
       <div className="overflow-x-auto pb-2">
-        <div className="flex gap-2.5" style={{ minWidth: 2280 }}>
+        <div className="flex gap-2.5" style={{ minWidth: openCount * OPEN_W + shutCount * SHUT_W + (COLUMNS.length - 1) * GAP }}>
           {COLUMNS.map(p => {
             const cards = byColumn[p] || []
             const total = cards.reduce((t, d) => t + (amountOf(d) || 0), 0)
             const hot = cards.filter(d => ageGroupOf(d, thresholds) === 'nudge').length
+            const shut = folds.includes(p)
+
+            // A folded column still counts.
+            //
+            // The number stays on the strip on purpose. A fold that hides its
+            // count is a way to lose deals, and this board exists because nine
+            // of them were hidden once already - sitting in a state the portal
+            // called finished and refused to show. Folding is "I am not working
+            // on this today", never "this does not exist".
+            if (shut) {
+              return (
+                <div key={p} title={`${PHASE_LABEL[p]} - ${cards.length} deal${cards.length === 1 ? '' : 's'}${total > 0 ? ' \u00b7 ' + money(total) : ''}. Click to open.`}
+                  onDragOver={e => { e.preventDefault(); setOver(p) }}
+                  onDragLeave={() => setOver(o => o === p ? '' : o)}
+                  onDrop={() => onDrop(p)}
+                  onClick={() => toggle(p)}
+                  style={{ width: SHUT_W }}
+                  className={`flex-none rounded-xl border border-dashed flex flex-col items-center gap-2 py-2.5 cursor-pointer transition ${
+                    over === p ? 'border-[#0E8FCB] bg-[#EAF6FD]'
+                    : hot > 0 ? 'border-[#EFD3CB] bg-[#FBEDE9]'
+                    : 'border-[#E5DED2] bg-[#FCFAF6] hover:border-[#D6CCBC]'}`}>
+                  <span className={`text-[11px] font-bold tabular-nums ${hot > 0 ? 'text-[#AD4227]' : 'text-[#575046]'}`}>
+                    {cards.length}
+                  </span>
+                  <span className="text-[9.5px] font-bold tracking-[.06em] uppercase text-[#A29889] whitespace-nowrap"
+                        style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                    {PHASE_LABEL[p]}
+                  </span>
+                  <svg className="mt-auto text-[#C3BDB2]" width="11" height="11" viewBox="0 0 24 24" fill="none"
+                       stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
+                </div>
+              )
+            }
+
             return (
               <div key={p}
                 onDragOver={e => { e.preventDefault(); setOver(p) }}
@@ -127,6 +185,14 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts 
                   <span className="ml-auto text-[11px] font-bold text-[#575046] bg-white border border-[#E5DED2] rounded-full px-1.5">
                     {cards.length}
                   </span>
+                  <button type="button" title={`Fold ${PHASE_LABEL[p]} away`}
+                    onClick={e => { e.stopPropagation(); toggle(p) }}
+                    className="text-[#C3BDB2] hover:text-[#575046] leading-none -mb-[1px]">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 6l-6 6 6 6" />
+                    </svg>
+                  </button>
                 </div>
                 {/* The column's own money. "How much is sitting here" is the
                     question a board is asked from across the room. */}

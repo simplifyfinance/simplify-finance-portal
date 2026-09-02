@@ -27,7 +27,8 @@ import { type Phase } from './deal-phase'
 // does nothing.
 export const AGED_PHASES: Phase[] = [
   'fact_find', 'bc', 'lo', 'compliance', 'compliance_sent',
-  'lodged', 'preapproved', 'formal',
+  'lodged', 'preapproved', 'offer_accepted', 'formal',
+  'contracts_returned', 'settlement_booked',
 ]
 
 export type Threshold = { long: number; nudge: number }
@@ -216,5 +217,8 @@ export const WAITING_ON: Partial<Record<Phase, string>> = {
   compliance_sent: 'Support, to move the SalesTrekker card. Should be quick.',
   lodged:          'The lender, to acknowledge the file.',
   preapproved:     'The client, to find a property. Months, not days.',
+  offer_accepted:  'The lender, to turn an accepted offer into a formal approval.',
   formal:          'Governed by the settlement date, not by sitting still.',
+  contracts_returned: 'The settlement date decides this one, not the clock.',
+  settlement_booked:  'Booked. Waiting for the day itself.',
 }

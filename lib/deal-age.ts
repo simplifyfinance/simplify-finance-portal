@@ -27,6 +27,14 @@ export const DEFAULT_THRESHOLDS: Partial<Record<Phase, { long: number; nudge: nu
   compliance_sent: { long: 3,  nudge: 5 },
   lodged:          { long: 3,  nudge: 5 },
   preapproved:     { long: 20, nudge: 30 },
+  // An accepted offer has a settlement date attached to it, so this is the one
+  // stage on the board where sitting still has a deadline behind it. Formal
+  // approval should follow within the week.
+  offer_accepted:  { long: 5,  nudge: 8 },
+  // Contracts returned and Settlement booked ship with none, for the same reason
+  // Formal has none: they are governed by the settlement date rather than by
+  // sitting still, and the Settlement panel already goes red as that date nears.
+  // The boxes exist in Settings so they can be given one later.
 }
 
 // Kept as thin wrappers so callers do not all have to change at once. The answer

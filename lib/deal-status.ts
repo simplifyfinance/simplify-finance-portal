@@ -84,26 +84,50 @@ export type Bead = {
   current: boolean
   date: string | null      // raw value; the component formats it
   state: string | null     // who is holding it up, under the live bead only
+  // Which half of the deal this stage belongs to. The written half folds away on
+  // a lodged deal - see barFolds() below.
+  group: 'written' | 'tracked'
 }
 
-type BeadDef = { key: string; label: string; done: (d: any) => boolean; date: (d: any) => any }
+type BeadDef = { key: string; label: string; done: (d: any) => boolean; date: (d: any) => any
+                 group: 'written' | 'tracked' }
 
 const BEADS: BeadDef[] = [
-  { key: 'fact_find', label: 'Fact Find',
+  { key: 'fact_find', label: 'Fact Find', group: 'written',
     done: d => !!d?.fact_find_data && Object.keys(d.fact_find_data).length > 0,
     date: d => d?.created_at },
   // Closed by the client agreeing, not by the credit officer finishing.
-  { key: 'bc', label: 'BC',
+  { key: 'bc', label: 'BC', group: 'written',
     done: d => !!d?.client_proceeded, date: d => d?.proceeded_at || d?.bc_completed_at },
-  { key: 'lo', label: 'Lending Options',
+  { key: 'lo', label: 'Lending Options', group: 'written',
     done: d => !!d?.lo_client_proceeded, date: d => d?.lo_proceeded_at || d?.lo_completed_at },
-  { key: 'compliance', label: 'Compliance',
+  { key: 'compliance', label: 'Compliance', group: 'written',
     done: d => !!d?.compliance_completed_at, date: d => d?.compliance_completed_at },
-  { key: 'lodged', label: 'Lodged', done: d => !!d?.lodged_at, date: d => d?.lodged_at },
-  { key: 'preapproved', label: 'Preapproved', done: d => !!d?.preapproval_at, date: d => d?.preapproval_at },
-  { key: 'formal', label: 'Formal', done: d => !!d?.formal_approval_at, date: d => d?.formal_approval_at },
-  { key: 'settled', label: 'Settled', done: d => !!d?.settled_at, date: d => d?.settled_at },
+  { key: 'lodged', label: 'Lodged', group: 'tracked', done: d => !!d?.lodged_at, date: d => d?.lodged_at },
+  { key: 'preapproved', label: 'Preapproved', group: 'tracked', done: d => !!d?.preapproval_at, date: d => d?.preapproval_at },
+  { key: 'offer_accepted', label: 'Offer accepted', group: 'tracked',
+    done: d => !!d?.offer_accepted_at, date: d => d?.offer_accepted_at },
+  { key: 'formal', label: 'Formal', group: 'tracked', done: d => !!d?.formal_approval_at, date: d => d?.formal_approval_at },
+  { key: 'contracts_returned', label: 'Contracts returned', group: 'tracked',
+    done: d => !!d?.contracts_returned_at, date: d => d?.contracts_returned_at },
+  { key: 'settlement_booked', label: 'Settlement booked', group: 'tracked',
+    done: d => !!d?.settlement_booked_at, date: d => d?.settlement_booked_at },
+  { key: 'settled', label: 'Settled', group: 'tracked', done: d => !!d?.settled_at, date: d => d?.settled_at },
 ]
+
+// Does the bar fold its written half? Only once the deal is lodged.
+//
+// A lodged deal has the first four behind it by definition, so drawing them full
+// size says nothing and costs half the bar - which the seven tracked stages need,
+// because three of them were added on 2 Sep 2026 and "Settlement booked" does not
+// fit in a ninth of the width. Before lodgement nothing folds: those four stages
+// are the work in front of you.
+//
+// The tabs at the bottom of the deal are untouched by this. Fact Find, BC and LO
+// stay one click away, read only, exactly as they are.
+export function barFolds(deal: any): boolean {
+  return !!deal?.lodged_at
+}
 
 // Which of the eight waiting-on steps we are on, or -1 once they are all behind us.
 function waitingStep(deal: any): number {
@@ -136,6 +160,7 @@ export function dealBeads(deal: any): Bead[] {
   return BEADS.map((b, i) => ({
     key: b.key,
     label: b.label,
+    group: b.group,
     done: i <= last,
     current: i > last && i === currentIdx,
     date: b.date(deal) || null,

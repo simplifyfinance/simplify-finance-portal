@@ -105,7 +105,8 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
     'lo_completed_at', 'lo_sent_at', 'lo_client_proceeded',
     'lo_proceeded_at', 'lo_proceeded_by', 'lo_proceeded_source',
     'compliance_completed_at', 'compliance_sent_at',
-    'lodged_at', 'preapproval_at', 'formal_approval_at', 'settled_at',
+    'lodged_at', 'preapproval_at', 'offer_accepted_at', 'formal_approval_at',
+    'contracts_returned_at', 'settlement_booked_at', 'settlement_step', 'settled_at',
     'lodged_total', 'lodged_splits', 'settled_total', 'settled_splits',
     'lender_id', 'loan_amount',
   ].join(', ')

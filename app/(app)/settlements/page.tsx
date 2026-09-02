@@ -8,7 +8,7 @@ import LoanIds, { LoanIdChip } from '@/components/LoanIds'
 import { loanIdStatus } from '@/lib/loan-id'
 import {
   ATTENTION, STATE_LABEL, attentionFor, settlementDate, purposeLabel, isRefinance, isPurchase,
-  stepLabel, monthOf, addMonths, monthLabel, businessDaysBetween,
+  stepLabel, STEPS, stepIsOn, stepPatch, monthOf, addMonths, monthLabel, businessDaysBetween,
   type SettlementState, type SettlementStep,
 } from '@/lib/settlement'
 
@@ -179,13 +179,16 @@ export default function SettlementsPage() {
     setMsg(`${d.deal_name || 'Deal'} saved.`)
   }
 
-  async function setStep(d: any, step: SettlementStep | null) {
+  // Two independent stages, each with its own date. Same rule as the panel on the
+  // deal itself - lib/settlement.ts decides what gets written so the two screens
+  // cannot drift apart.
+  async function setStep(d: any, step: SettlementStep, on: boolean) {
     // Booking a settlement means a date exists. Enforced here rather than trusted.
-    if (step === 'settlement_booked' && !(draft.confirmed_settlement_date || d.confirmed_settlement_date)) {
+    if (step === 'settlement_booked' && on && !(draft.confirmed_settlement_date || d.confirmed_settlement_date)) {
       setMsg('A confirmed settlement date is needed before this can be marked as booked.')
       return
     }
-    await save(d, { settlement_step: step })
+    await save(d, stepPatch(d, step, on))
   }
 
   async function pushToNextMonth(d: any) {
@@ -335,14 +338,17 @@ export default function SettlementsPage() {
             {!d.settled_at && (
               <div className="flex gap-2 items-center flex-wrap mt-3">
                 <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#A29889] mr-1">Step</span>
-                {(['contracts_returned','settlement_booked'] as SettlementStep[]).map(s => (
-                  <button key={s} onClick={() => setStep(d, d.settlement_step === s ? null : s)} disabled={busy}
-                    className={`text-[12px] rounded-lg px-3 py-1.5 border transition ${d.settlement_step === s
-                      ? 'bg-[#343333] border-[#343333] text-white font-semibold'
-                      : 'bg-white border-[#E8E1D6] text-[#6E665C] hover:bg-[#FAF7F2]'}`}>
-                    {stepLabel(s, d.transaction_type)}
-                  </button>
-                ))}
+                {STEPS.map(s => {
+                  const on = stepIsOn(d, s)
+                  return (
+                    <button key={s} onClick={() => setStep(d, s, !on)} disabled={busy}
+                      className={`text-[12px] rounded-lg px-3 py-1.5 border transition ${on
+                        ? 'bg-[#343333] border-[#343333] text-white font-semibold'
+                        : 'bg-white border-[#E8E1D6] text-[#6E665C] hover:bg-[#FAF7F2]'}`}>
+                      {stepLabel(s, d.transaction_type)}
+                    </button>
+                  )
+                })}
                 <span className="text-[11px] text-[#A29889]">optional · a deal can skip either</span>
               </div>
             )}

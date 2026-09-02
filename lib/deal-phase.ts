@@ -15,7 +15,8 @@
 
 export type Phase =
   | 'fact_find' | 'bc' | 'lo' | 'compliance' | 'compliance_sent'
-  | 'lodged' | 'preapproved' | 'formal' | 'settled' | 'lost'
+  | 'lodged' | 'preapproved' | 'offer_accepted' | 'formal'
+  | 'contracts_returned' | 'settlement_booked' | 'settled' | 'lost'
 
 // In order, and named for what HAS happened — not for what is being waited on.
 // A column called "Compliance sent" must contain deals that were sent, which
@@ -47,16 +48,44 @@ const MILESTONES: { phase: Phase; done: (d: any) => boolean; at: (d: any) => str
   // already passed. Plenty of deals skip it; the ones that do not are the point.
   { phase: 'preapproved',     done: d => !!d?.preapproval_at,
                               at:   d => d?.preapproval_at || null },
+  // Between preapproval and formal approval on a purchase: the client's offer on
+  // a property has been accepted, so the deal has a property, a price and a
+  // settlement date, and the file goes back to the lender for a full approval.
+  // Fabio, 2 Sep 2026: "there's a big process in my team that is what we call
+  // offer accepted." It was invisible - those deals sat in Preapproved looking
+  // identical to a client still house hunting, which is the opposite situation.
+  { phase: 'offer_accepted',  done: d => !!d?.offer_accepted_at,
+                              at:   d => d?.offer_accepted_at || null },
   { phase: 'formal',          done: d => !!d?.formal_approval_at,
                               at:   d => d?.formal_approval_at || null },
+  // The last two used to be `settlement_step`, a single enum with no date on it,
+  // visible only inside the Settlement panel. So a deal whose loan docs came back
+  // three weeks ago and a deal formally approved this morning were the same
+  // column on the board, and nothing recorded WHEN either step happened. They are
+  // stages now, with dates, like everything else on the ladder.
+  { phase: 'contracts_returned', done: d => !!d?.contracts_returned_at,
+                                 at:   d => d?.contracts_returned_at || null },
+  { phase: 'settlement_booked',  done: d => !!d?.settlement_booked_at,
+                                 at:   d => d?.settlement_booked_at || null },
   { phase: 'settled',         done: d => !!d?.settled_at,
                               at:   d => d?.settled_at || null },
 ]
 
 export const PHASE_ORDER: Phase[] = [
   'fact_find', 'bc', 'lo', 'compliance', 'compliance_sent',
-  'lodged', 'preapproved', 'formal', 'settled', 'lost',
+  'lodged', 'preapproved', 'offer_accepted', 'formal',
+  'contracts_returned', 'settlement_booked', 'settled', 'lost',
 ]
+
+// The deal in two halves. Everything up to and including compliance is the deal
+// being WRITTEN - our work, our pace. From lodgement on it is being TRACKED -
+// somebody else's decision, and the job is chasing it.
+//
+// Fabio, 2 Sep 2026: "deal is broken into 2 stages once a deal is lodged we are
+// now tracking". The progress bar folds on this line, because four green ticks
+// on a lodged deal tell you nothing you did not already know and were taking
+// half the width the seven live stages needed.
+export const WRITTEN_PHASES: Phase[] = ['fact_find', 'bc', 'lo', 'compliance', 'compliance_sent']
 
 export const PHASE_LABEL: Record<Phase, string> = {
   fact_find: 'Fact Find',
@@ -66,7 +95,10 @@ export const PHASE_LABEL: Record<Phase, string> = {
   compliance_sent: 'Compliance sent',
   lodged: 'Lodged',
   preapproved: 'Preapproved',
+  offer_accepted: 'Offer accepted',
   formal: 'Formal approval',
+  contracts_returned: 'Contracts returned',
+  settlement_booked: 'Settlement booked',
   settled: 'Settled',
   lost: 'Lost',
 }
@@ -93,7 +125,8 @@ export function isFinished(deal: any): boolean {
 // live loans with real work left on them; they were the ones being hidden.
 export function isInApplication(deal: any): boolean {
   const p = phaseOf(deal)
-  return p === 'compliance_sent' || p === 'lodged' || p === 'preapproved' || p === 'formal'
+  if (p === 'fact_find' || p === 'bc' || p === 'lo' || p === 'compliance') return false
+  return p !== 'settled' && p !== 'lost'
 }
 
 // The tab the deal page opens on. The board and the list use the phase; the deal

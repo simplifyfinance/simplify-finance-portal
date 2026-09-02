@@ -19,11 +19,49 @@ export const STATE_LABEL: Record<SettlementState, string> = {
 
 export type SettlementStep = 'contracts_returned' | 'settlement_booked'
 
+export const STEPS: SettlementStep[] = ['contracts_returned', 'settlement_booked']
+
 // Same field, different word depending on what the deal is. On a purchase these
 // are contracts of sale; on a refinance they are the loan documents.
 export function stepLabel(step: SettlementStep, transactionType?: string | null): string {
   if (step === 'settlement_booked') return 'Settlement booked'
   return transactionType === 'refinance' ? 'Loan docs returned' : 'Contracts returned'
+}
+
+// --- the two steps became two stages ---------------------------------------
+//
+// Until 2 Sep 2026 these lived in `settlement_step`, ONE column holding ONE of
+// them, with no date. Three things were wrong with that. They are not exclusive:
+// a deal can have its contracts back and its settlement booked. There was no
+// record of when either happened, so nobody could see that loan docs had been
+// sitting returned for three weeks. And they were invisible outside the
+// Settlement panel, so on the board those deals looked exactly like a deal that
+// was formally approved this morning.
+//
+// They are stages now, each with its own date, on the same ladder as everything
+// else. The buttons stay exactly where the settlements team already clicks them.
+// `settlement_step` is still written, because the settlements board reads it for
+// its chip, and it is kept as the FURTHEST of the two.
+
+export const STEP_DATE: Record<SettlementStep, string> = {
+  contracts_returned: 'contracts_returned_at',
+  settlement_booked: 'settlement_booked_at',
+}
+
+// Is this step recorded? Falls back to the old enum so a deal whose date has not
+// been backfilled still shows its button pressed rather than silently losing it.
+export function stepIsOn(d: any, step: SettlementStep): boolean {
+  return !!d?.[STEP_DATE[step]] || d?.settlement_step === step
+}
+
+// What to write when a step button is pressed or unpressed. One place, because
+// the deal panel and the settlements board both do this and used to disagree.
+export function stepPatch(d: any, step: SettlementStep, on: boolean): Record<string, any> {
+  const patch: Record<string, any> = { [STEP_DATE[step]]: on ? new Date().toISOString() : null }
+  const returned = step === 'contracts_returned' ? on : stepIsOn(d, 'contracts_returned')
+  const booked = step === 'settlement_booked' ? on : stepIsOn(d, 'settlement_booked')
+  patch.settlement_step = booked ? 'settlement_booked' : returned ? 'contracts_returned' : null
+  return patch
 }
 
 export function isRefinance(d: any): boolean {
