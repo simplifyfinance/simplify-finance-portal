@@ -9,6 +9,7 @@ import CommissionLibrary from '@/components/CommissionLibrary'
 import AiExpenses from '@/components/AiExpenses'
 import { checkedWrite, checkedWriteAllowingNone } from '@/lib/checked-write'
 import DealBoardSettings from '@/components/DealBoardSettings'
+import { DEFAULT_DOCS_DELAY_MINUTES, MIN_DOCS_DELAY_MINUTES, MAX_DOCS_DELAY_MINUTES } from '@/lib/docs-received'
 
 const supabase = createSupabaseBrowser()
 
@@ -52,6 +53,10 @@ export default function SettingsPage() {
   const [wealthDeskLink, setWealthDeskLink] = useState('')
   const [newDealNotificationUserId, setNewDealNotificationUserId] = useState('')
   const [stageMoveNotificationUserId, setStageMoveNotificationUserId] = useState('')
+  // Documents received: who files them, who is told once they are filed, and how
+  // long to leave between the two. See lib/docs-received.ts.
+  const [docsFileNotificationUserId, setDocsFileNotificationUserId] = useState('')
+  const [docsDelayMinutes, setDocsDelayMinutes] = useState('30')
   const [complianceStyleNotes, setComplianceStyleNotes] = useState<string[]>([])
   const [loStyleNotes, setLoStyleNotes] = useState<string[]>([])
   const [newLoStyleNote, setNewLoStyleNote] = useState('')
@@ -148,6 +153,8 @@ export default function SettingsPage() {
         if (data.wealth_desk_link) setWealthDeskLink(data.wealth_desk_link)
         if (data.new_deal_notification_user_id) setNewDealNotificationUserId(data.new_deal_notification_user_id)
         if (data.stage_move_notification_user_id) setStageMoveNotificationUserId(data.stage_move_notification_user_id)
+        if (data.docs_file_notification_user_id) setDocsFileNotificationUserId(data.docs_file_notification_user_id)
+        if (data.docs_delay_minutes !== null && data.docs_delay_minutes !== undefined) setDocsDelayMinutes(String(data.docs_delay_minutes))
         if (data.compliance_style_notes?.length) setComplianceStyleNotes(data.compliance_style_notes)
         if (data.lo_style_notes?.length) setLoStyleNotes(data.lo_style_notes)
         if (data.statement_rules) setStatementRules(data.statement_rules)
@@ -184,6 +191,14 @@ export default function SettingsPage() {
     setLoadingCreditTeam(false)
   }
 
+  // Kept inside the bounds the sending code uses, so a typed "300" cannot park
+  // an email for five hours.
+  function clampDocsDelay(v: string): number {
+    const n = Number(String(v).trim())
+    if (!Number.isFinite(n)) return DEFAULT_DOCS_DELAY_MINUTES
+    return Math.min(MAX_DOCS_DELAY_MINUTES, Math.max(MIN_DOCS_DELAY_MINUTES, Math.round(n)))
+  }
+
   async function handleSave() {
     setSaving(true)
     const patch: any = {
@@ -192,6 +207,8 @@ export default function SettingsPage() {
       wealth_desk_link: wealthDeskLink,
       new_deal_notification_user_id: newDealNotificationUserId || null,
       stage_move_notification_user_id: stageMoveNotificationUserId || null,
+      docs_file_notification_user_id: docsFileNotificationUserId || null,
+      docs_delay_minutes: clampDocsDelay(docsDelayMinutes),
       compliance_style_notes: complianceStyleNotes,
       lo_style_notes: loStyleNotes,
       statement_rules: statementRules,
@@ -432,6 +449,27 @@ export default function SettingsPage() {
               <option value="">— select team member —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold text-[#A29889] block mb-1">When documents are received — who renames and files them</label>
+            <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={docsFileNotificationUserId} onChange={(e) => setDocsFileNotificationUserId(e.target.value)}>
+              <option value="">— select team member —</option>
+              {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold text-[#A29889] block mb-1">How long to wait before telling the credit assessor</label>
+            <div className="flex items-center gap-2">
+              <input type="number" min={0} max={240} value={docsDelayMinutes}
+                onChange={(e) => setDocsDelayMinutes(e.target.value)}
+                className="w-[110px] text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" />
+              <span className="text-[12.5px] text-[#A29889]">minutes</span>
+            </div>
+            <p className="text-[11px] text-[#A29889] mt-1">
+              Roughly how long it takes to rename and file a set of documents. Change it whenever that stops
+              being true. Zero tells both people at once. The assessor is always the credit officer allocated
+              to the deal, so there is nobody to choose here.
+            </p>
           </div>
         </div>
       </section>

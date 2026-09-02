@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { docsStateOf, atTime, assessorMissing, NO_ASSESSOR_MESSAGE } from '@/lib/docs-received'
 import { legalFeeLabel, rowLegalFeeLabel } from '@/lib/lender-fees'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
 import BrokerAssignment from './BrokerAssignment'
@@ -247,6 +248,80 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   const [creditTeamErr, setCreditTeamErr] = useState('')
   const [assignmentRefreshKey, setAssignmentRefreshKey] = useState(0)
   const [clientProceeded, setClientProceeded] = useState<boolean>(!!deal.lo_client_proceeded)
+
+  // --- documents received ---------------------------------------------------
+  //
+  // The deal row carries the two timestamps; Settings carries the wait and who
+  // files. Both are read here so the line under the buttons can say a real time
+  // rather than "in 30 minutes", which a page left open would keep promising.
+  const [docsDeal, setDocsDeal] = useState<any>({
+    docs_received_at: deal.docs_received_at || null,
+    docs_received_by: deal.docs_received_by || null,
+    docs_assessor_due_at: deal.docs_assessor_due_at || null,
+    assigned_credit_officer: deal.assigned_credit_officer || null,
+  })
+  const [docsFiler, setDocsFiler] = useState('')
+  const [docsBusy, setDocsBusy] = useState(false)
+  const [docsErr, setDocsErr] = useState('')
+  const docs = docsStateOf(docsDeal)
+
+  useEffect(() => {
+    let live = true
+    ;(async () => {
+      const { data: st } = await supabase.from('settings')
+        .select('docs_file_notification_user_id').eq('id', 'singleton').single()
+      if (!live || !st) return
+      if (st.docs_file_notification_user_id) {
+        const { data: p } = await supabase.from('user_profiles').select('full_name')
+          .eq('id', st.docs_file_notification_user_id).single()
+        if (live && p?.full_name) setDocsFiler(p.full_name)
+      }
+    })()
+    return () => { live = false }
+  }, [])
+
+  const docsDay = (iso?: string | null) => {
+    if (!iso) return ''
+    return ' \u00b7 ' + new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+  }
+
+  async function markDocsReceived() {
+    setDocsBusy(true); setDocsErr('')
+    try {
+      const res = await fetch('/api/docs-received', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId: deal.id }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) { setDocsErr(data.error || 'Nothing was marked and no email was sent.'); return }
+      setDocsDeal((prev: any) => ({
+        ...prev,
+        docs_received_at: data.receivedAt || new Date().toISOString(),
+        docs_received_by: data.by || null,
+        docs_assessor_due_at: data.dueAt || null,
+      }))
+      // Both emails away but something did not stick: said out loud rather than
+      // left to look finished.
+      if (data.warning) setDocsErr(data.warning)
+    } catch (e: any) {
+      setDocsErr(e?.message || 'Nothing was marked and no email was sent.')
+    } finally { setDocsBusy(false) }
+  }
+
+  async function cancelDocsReceived() {
+    setDocsBusy(true); setDocsErr('')
+    try {
+      const res = await fetch('/api/docs-received', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId: deal.id, cancel: true }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) { setDocsErr(data.error || 'Nothing was changed.'); return }
+      setDocsDeal((prev: any) => ({ ...prev, docs_received_at: null, docs_received_by: null, docs_assessor_due_at: null }))
+    } catch (e: any) {
+      setDocsErr(e?.message || 'Nothing was changed.')
+    } finally { setDocsBusy(false) }
+  }
   const [proceedInfo, setProceedInfo] = useState(() => proceedCredit(deal, 'LO'))
   const [showMoveToCompliancePopup, setShowMoveToCompliancePopup] = useState(false)
   const [sendingMoveToCompliance, setSendingMoveToCompliance] = useState(false)
@@ -866,13 +941,92 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 bg-white border border-gray-100 rounded-xl p-1">
-        {(['form', 'preview'] as const).map(t => (
-          <button key={t} onClick={() => setActiveTab(t)} className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${activeTab === t ? 'bg-[#343333] text-white' : 'text-gray-400 hover:text-gray-600'}`}>
-            {t === 'form' ? 'LO Form' : 'Email Preview'}
+      <div className="flex gap-2 items-center flex-wrap">
+        <div className="flex gap-2 bg-white border border-gray-100 rounded-xl p-1">
+          {(['form', 'preview'] as const).map(t => (
+            <button key={t} onClick={() => setActiveTab(t)} className={`px-6 py-2 rounded-lg text-sm font-medium transition ${activeTab === t ? 'bg-[#343333] text-white' : 'text-gray-400 hover:text-gray-600'}`}>
+              {t === 'form' ? 'LO Form' : 'Email Preview'}
+            </button>
+          ))}
+        </div>
+
+        <span className="w-px h-7 bg-gray-200 mx-1" />
+
+        {/* Documents received. One press, two emails, a gap between them - see
+            lib/docs-received.ts. */}
+        {docs.kind === 'none' && (
+          assessorMissing(docsDeal) ? (
+            // Nothing is sent and nothing is marked. The deal needs an assessor
+            // before there is anybody for the second email to go to.
+            <span title={NO_ASSESSOR_MESSAGE}
+              className="px-3.5 py-2 text-sm rounded-lg border border-[#EFE2C8] bg-[#FDF6E7] text-[#8A6218]">
+              Allocate a credit assessor first
+            </span>
+          ) : (
+            <button onClick={markDocsReceived} disabled={docsBusy}
+              className="px-3.5 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50">
+              {docsBusy ? 'Marking…' : 'Docs received'}
+            </button>
+          )
+        )}
+        {docs.kind === 'waiting' && (
+          <span className="px-3.5 py-2 text-sm rounded-lg font-medium bg-[#EAF6FD] text-[#0B5E8A] border border-[#CBE7F8]">
+            Docs received{docsDay(docs.receivedAt)}
+          </span>
+        )}
+        {docs.kind === 'done' && (
+          <span className="px-3.5 py-2 text-sm rounded-lg font-medium bg-green-50 text-green-600 border border-green-200">
+            {'\u2713'} Docs received{docsDay(docs.receivedAt)}
+          </span>
+        )}
+
+        {clientProceeded ? (
+          <>
+            <span title={proceedInfo.when ? new Date(proceedInfo.when).toLocaleString('en-AU') : undefined}
+              className="px-3.5 py-2 text-sm rounded-lg font-medium bg-green-50 text-green-600 border border-green-200">
+              {'\u2713'} Client agreed{agreedDay(proceedInfo.when)}
+            </span>
+            <span className="text-xs text-gray-400">{proceedInfo.who}</span>
+          </>
+        ) : (
+          <button onClick={() => setShowMoveToCompliancePopup(true)}
+            className="px-3.5 py-2 text-sm rounded-lg font-semibold border border-[#141C24] bg-[#141C24] text-white hover:bg-[#28323c] transition">
+            Client agreed — move to Compliance
           </button>
-        ))}
+        )}
       </div>
+
+      {/* What has happened and what is about to, in words. */}
+      {docs.kind === 'waiting' && (
+        <div className="border border-[#CBE7F8] bg-[#F5FBFE] rounded-xl px-4 py-3 text-[13px] text-[#0B5E8A] leading-relaxed">
+          <b className="text-[#141C24]">{docsFiler || 'The filing team'} has been emailed now</b> to rename
+          the documents and file them.{' '}
+          <b className="text-[#141C24]">The credit assessor will be emailed at {atTime(docs.dueAt)}</b> to say
+          the documents are ready and the lending options can be completed.
+          <button onClick={cancelDocsReceived} disabled={docsBusy}
+            className="ml-2 align-baseline text-[12.5px] text-[#3E4C59] border border-[#D7DCE1] bg-white rounded-md px-2.5 py-1 disabled:opacity-50">
+            Cancel the {atTime(docs.dueAt)} email
+          </button>
+        </div>
+      )}
+      {docs.kind === 'done' && (
+        <div className="border border-[#BFE3CC] bg-[#F6FDF8] rounded-xl px-4 py-3 text-[13px] text-[#15803D] leading-relaxed">
+          <b className="text-[#0F5C33]">{docsFiler || 'The filing team'} was emailed at {atTime(new Date(docs.receivedAt))}</b> to
+          rename and file the documents.{' '}
+          <b className="text-[#0F5C33]">The credit assessor was emailed at {atTime(docs.dueAt)}</b> to
+          say they are ready.
+        </div>
+      )}
+      {docs.kind === 'unscheduled' && (
+        <div className="border border-[#E5B7B2] bg-[#FDF0EF] rounded-xl px-4 py-3 text-[13px] text-[#B23A34] leading-relaxed">
+          <b>{docsFiler || 'The filing team'} was emailed, but the credit assessor was not.</b> The
+          delayed email could not be queued, so nobody is going to be told the documents are ready —
+          tell the assessor yourself.
+        </div>
+      )}
+      {docsErr && (
+        <div className="border border-red-200 bg-red-50 rounded-xl px-4 py-3 text-[13px] text-red-600">{docsErr}</div>
+      )}
 
       {activeTab === 'form' && (
         <div className="space-y-4">
@@ -1404,20 +1558,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                       {loCompletedAt ? '✓ Sent to broker for review' : markingLoComplete ? 'Marking...' : 'Done — send to broker for review'}
                     </button>
                   )}
-{clientProceeded ? (
-                  <div className="flex items-center gap-2">
-                    <button disabled title={proceedInfo.when ? new Date(proceedInfo.when).toLocaleString('en-AU') : undefined}
-                      className="px-3 py-1.5 text-sm rounded-lg font-medium bg-green-50 text-green-600 border border-green-200 cursor-default">
-                      {'\u2713'} Client agreed{agreedDay(proceedInfo.when)}
-                    </button>
-                    <span className="text-xs text-gray-400">{proceedInfo.who}</span>
-                  </div>
-                ) : (
-                  <button onClick={() => setShowMoveToCompliancePopup(true)}
-                    className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
-                    Client agreed — move to Compliance
-                  </button>
-                )}
+{/* "Client agreed" and "Docs received" moved up beside the tabs, so
+                    the two actions that move a deal on are not behind the tab
+                    you would only open to email. Alan, 2 Sep 2026. */}
                 </div>
                 <div className="w-px h-8 bg-gray-200" />
                 <div className="flex items-center gap-3">

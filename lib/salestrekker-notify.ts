@@ -2,9 +2,27 @@
 // a PDF loses the bold and splits words across lines.
 import { siteUrl } from './ready-link'
 
-async function sendResendEmail(to: string, subject: string, html: string, attachments?: { filename: string; content: string }[]) {
+// SENDING, AND KNOWING WHETHER IT SENT.
+//
+// This used to swallow every error with "non-fatal - the underlying action
+// already succeeded". That is true of a card-move reminder and badly untrue of
+// anything the screen then claims was sent. It now returns what happened, and
+// callers who care can say so.
+//
+// `scheduledAt` hands the send to Resend with a time on it. That is how the
+// documents-received email waits half an hour without anything of ours staying
+// awake - no timer in a browser, no job to run, nothing to miss.
+export type SendResult = { ok: boolean; id?: string; error?: string }
+
+async function sendResendEmail(
+  to: string,
+  subject: string,
+  html: string,
+  attachments?: { filename: string; content: string }[],
+  scheduledAt?: string,
+): Promise<SendResult> {
   try {
-    await fetch('https://api.resend.com/emails', {
+    const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
@@ -16,11 +34,38 @@ async function sendResendEmail(to: string, subject: string, html: string, attach
         cc: 'info@simplifyfinance.com.au',
         subject,
         html,
-        ...(attachments && attachments.length ? { attachments } : {})
+        ...(attachments && attachments.length ? { attachments } : {}),
+        ...(scheduledAt ? { scheduled_at: scheduledAt } : {}),
       })
     })
-  } catch (e) {
-    // Non-fatal — the underlying action itself already succeeded
+    const body = await res.json().catch(() => ({} as any))
+    if (!res.ok) {
+      const why = body?.message || body?.error?.message || `Resend returned ${res.status}`
+      console.error('[resend] send failed', why)
+      return { ok: false, error: why }
+    }
+    return { ok: true, id: body?.id }
+  } catch (e: any) {
+    console.error('[resend] send threw', e)
+    return { ok: false, error: e?.message || 'The email could not be sent.' }
+  }
+}
+
+// Calling off a scheduled send. Checked rather than assumed: if Resend will not
+// cancel it, the caller has to tell somebody, not pretend it is stopped.
+export async function cancelResendEmail(id: string): Promise<SendResult> {
+  try {
+    const res = await fetch(`https://api.resend.com/emails/${id}/cancel`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}` },
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({} as any))
+      return { ok: false, error: body?.message || `Resend returned ${res.status}` }
+    }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'The scheduled email could not be cancelled.' }
   }
 }
 
@@ -190,4 +235,64 @@ export async function notifyCrisMoveCard(dealName: string, brokerName: string, a
   // busy person reads before deciding when to open it.
   const subject = answers?.subject || `SalesTrekker update needed — ${dealName}`
   await sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au', subject, html, attachments)
+}
+
+// --- documents received -----------------------------------------------------
+//
+// Two emails, one press, a gap between them. The filing person hears now; the
+// assessor hears once the documents have had time to be renamed and filed. See
+// lib/docs-received.ts for the timing and app/api/docs-received for the sending.
+
+export async function notifyDocsToFile(params: {
+  dealId: string; dealName: string; clientName: string; brokerName: string
+  recipientEmail?: string | null; recipientName?: string | null
+}): Promise<SendResult> {
+  const { dealId, dealName, clientName, brokerName, recipientEmail, recipientName } = params
+  const html = `${greeting(recipientName)}
+    <p>The supporting documents for this client have come in.</p>
+    <table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 18px" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Deal</span></td><td style="text-align:right;font-size:13px;font-weight:600;padding:3px 0">${dealName}</td></tr>
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Client</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${clientName || ''}</td></tr>
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Broker</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${brokerName || ''}</td></tr>
+    </table>
+    <table bgcolor="#FDF6E7" style="background:#FDF6E7;border-radius:8px;padding:13px 16px;margin:0 0 16px" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:0 0 4px"><span style="color:#8A6218;">Please rename them and file them in this client&rsquo;s OneDrive folder.</span></td></tr>
+      <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55"><span style="color:#8A6218;">The credit assessor is told the documents are ready shortly, so this is the step that has to happen first.</span></td></tr>
+    </table>
+    <table cellpadding="0" cellspacing="0" border="0" style="margin:0"><tr>
+      <td bgcolor="#2DBEFF" style="background:#2DBEFF;border-radius:8px;padding:11px 20px">
+        <a href="${siteUrl()}/deals/${dealId}" style="color:#08252F;font-family:Arial,sans-serif;font-size:14px;font-weight:700;text-decoration:none">Open the deal &rarr;</a>
+      </td>
+    </tr></table>`
+  return sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au',
+    `Documents received — please file — ${dealName}`, html)
+}
+
+export async function notifyDocsReadyForAssessor(params: {
+  dealId: string; dealName: string; clientName: string; brokerName: string
+  filedBy?: string | null
+  recipientEmail?: string | null; recipientName?: string | null
+  // When Resend should send it. Absent means now.
+  scheduledAt?: string
+}): Promise<SendResult> {
+  const { dealId, dealName, clientName, brokerName, filedBy, recipientEmail, recipientName, scheduledAt } = params
+  const html = `${greeting(recipientName)}
+    <p>The supporting documents for this client are in and have been filed.</p>
+    <table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 18px" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Deal</span></td><td style="text-align:right;font-size:13px;font-weight:600;padding:3px 0">${dealName}</td></tr>
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Client</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${clientName || ''}</td></tr>
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Broker</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${brokerName || ''}</td></tr>
+      ${filedBy ? `<tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Marked received by</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${filedBy}</td></tr>` : ''}
+    </table>
+    <table bgcolor="#EFF9F2" style="background:#EFF9F2;border-radius:8px;padding:13px 16px;margin:0 0 16px" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:0 0 4px"><span style="color:#15803D;">You can complete the lending options.</span></td></tr>
+      <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55"><span style="color:#15803D;">If anything is missing or unreadable, say so on the deal rather than going back to the client directly.</span></td></tr>
+    </table>
+    <table cellpadding="0" cellspacing="0" border="0" style="margin:0"><tr>
+      <td bgcolor="#2DBEFF" style="background:#2DBEFF;border-radius:8px;padding:11px 20px">
+        <a href="${siteUrl()}/deals/${dealId}?stage=LO" style="color:#08252F;font-family:Arial,sans-serif;font-size:14px;font-weight:700;text-decoration:none">Open the lending options &rarr;</a>
+      </td>
+    </tr></table>`
+  return sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au',
+    `Documents ready — lending options can be completed — ${dealName}`, html, undefined, scheduledAt)
 }

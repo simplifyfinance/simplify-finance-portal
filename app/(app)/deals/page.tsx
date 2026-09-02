@@ -31,6 +31,18 @@ export default function DealsPage() {
   // of an alert: it has to be visible to somebody who was not going to open that
   // deal. An empty result is normal and the board just draws no chips.
   const [alerts, setAlerts] = useState<Record<string, Alert[]>>({})
+  // Releases any delayed "the documents are ready" emails that have come due.
+  //
+  // The portal has no scheduler, and the hosting plan may not allow one. Opening
+  // the deals list is the most reliable thing that happens in this business
+  // every few minutes during working hours, so it doubles as the sweep. The send
+  // itself claims each deal atomically, so four people opening the board at 9am
+  // send one email between them, not four. Fire and forget - a delayed email is
+  // never worth blocking the page for.
+  useEffect(() => {
+    fetch('/api/send-due-notifications', { method: 'POST' }).catch(() => {})
+  }, [])
+
   useEffect(() => {
     browser.from('deal_alerts').select('*').is('resolved_at', null).limit(2000)
       .then(({ data }) => {
