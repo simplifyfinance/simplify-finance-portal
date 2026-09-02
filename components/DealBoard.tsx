@@ -88,7 +88,7 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
   // keys can walk along that column without closing.
   const [peeking, setPeeking] = useState<{ id: string; phase: Phase } | null>(null)
   // A backwards drop, waiting to be confirmed.
-  const [undoing, setUndoing] = useState<{ deal: any; target: Phase; clearing: Phase[]; fields: string[]; place?: boolean } | null>(null)
+  const [undoing, setUndoing] = useState<{ deal: any; target: Phase; clearing: Phase[]; fields: string[] } | null>(null)
   const [undoBusy, setUndoBusy] = useState(false)
 
   const byColumn = useMemo(() => {
@@ -134,7 +134,22 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
       if (!back.ok) { setMsg(back.because); return }
       if (!onMoveBack) { setMsg('Moving a deal backwards is not available here.'); return }
       setMsg('')
-      setUndoing({ deal, target, clearing: back.clearing, fields: back.fields, place: !!back.place })
+      // A placement clears nothing and deletes nothing - the card simply sits in
+      // an earlier column until the deal moves on. There is nothing to warn
+      // about, so it just happens. Fabio, 3 Sep 2026: "with moving card back to
+      // fact find can you stop the message as it feels unecessary". The move
+      // still writes a line in the deal's file notes and emails the allocated
+      // assessor, so the record is the same either way.
+      if (back.place) {
+        void (async () => {
+          const problem = await onMoveBack(deal, target, back.fields, true)
+          if (problem) setMsg(problem)
+        })()
+        return
+      }
+      // Everything else really does undo something - it clears the dates that
+      // put the deal where it is. That still asks first.
+      setUndoing({ deal, target, clearing: back.clearing, fields: back.fields })
       return
     }
     if (target === 'compliance_sent') {
@@ -153,8 +168,10 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
 
   return (
     <div>
-      {/* Confirming a backwards move. It names the dates it is about to clear,
-          because that is what "moving backwards" actually is. */}
+      {/* Confirming a backwards move that really undoes something. It names the
+          dates it is about to clear, because that is what "moving backwards"
+          actually is. A move back to Fact Find clears nothing, so it never gets
+          here - it just happens. */}
       {undoing && (
         <div className="fixed inset-0 bg-black/30 flex items-start justify-center z-50 p-6 overflow-y-auto"
              onClick={e => { if (e.target === e.currentTarget && !undoBusy) setUndoing(null) }}>
@@ -166,17 +183,6 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
               <p className="text-[13px] text-[#7C8894] m-0">{undoing.deal.deal_name}</p>
             </div>
             <div className="px-6 pt-4">
-              {undoing.place ? (
-                <div className="border border-[#CBE7F8] bg-[#EAF6FD] rounded-[10px] px-4 py-3.5 text-[13px] text-[#0B5E8A]">
-                  <b className="text-[#141C24]">Nothing is deleted.</b> The fact find, the BC workings
-                  and everything else stay exactly as they are — the deal is simply put back in
-                  {' '}{PHASE_LABEL[undoing.target]} on the board.
-                  <p className="m-0 mt-2.5">
-                    The card is marked as placed by hand, and it returns to
-                    {' '}{PHASE_LABEL[phaseOf(undoing.deal)]} by itself as soon as the deal moves on.
-                  </p>
-                </div>
-              ) : (
               <div className="border border-[#EBD9BE] bg-[#FDF6E7] rounded-[10px] px-4 py-3.5 text-[13px] text-[#8A6218]">
                 <b className="text-[#141C24]">The deal will stop saying:</b>
                 <ul className="m-0 mt-2 pl-4">
@@ -189,9 +195,8 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                   mistake, or {undoing.clearing.length === 1 ? 'it' : 'they'} did not really happen.
                 </p>
               </div>
-              )}
 
-              {!undoing.place && undoing.clearing.some(p2 => PHASE_UNDO_WARNING[p2]) && (
+              {undoing.clearing.some(p2 => PHASE_UNDO_WARNING[p2]) && (
                 <div className="mt-2.5 border border-[#E9D2CF] bg-[#FDF3F2] rounded-[10px] px-4 py-3.5 text-[13px] text-[#8E3A34]">
                   <b className="text-[#141C24]">Watch out:</b>
                   <ul className="m-0 mt-1.5 pl-4">
@@ -202,18 +207,18 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                 </div>
               )}
 
-              {!undoing.place && <p className="mt-2.5 mb-0 text-[12.5px] text-[#7C8894]">
+              <p className="mt-2.5 mb-0 text-[12.5px] text-[#7C8894]">
                 Everything else stays: the fact find, the write-up, the documents and the notes are
                 untouched. You can record {undoing.clearing.length === 1 ? 'it' : 'them'} again whenever
                 you like.
-              </p>}
+              </p>
             </div>
             <div className="px-6 py-4 mt-2 flex items-center gap-2.5 flex-wrap">
               <button disabled={undoBusy}
                 onClick={async () => {
                   if (!onMoveBack) return
                   setUndoBusy(true)
-                  const problem = await onMoveBack(undoing.deal, undoing.target, undoing.fields, undoing.place)
+                  const problem = await onMoveBack(undoing.deal, undoing.target, undoing.fields)
                   setUndoBusy(false)
                   if (problem) { setMsg(problem); setUndoing(null); return }
                   setUndoing(null)
