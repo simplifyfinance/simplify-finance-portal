@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       // push_answers is what the broker was asked on the way out, and
       // transaction_type / property_use decide which of those answers apply -
       // a column missing from a select is a value that is silently undefined.
-      .select('deal_name, assigned_broker, assigned_credit_officer, lead_source, deal_type, salestrekker_created_at, fact_find_data, internal_notes, push_answers, transaction_type, property_use, clients(first_name, last_name)')
+      .select('deal_name, assigned_broker, assigned_credit_officer, lead_source, deal_type, salestrekker_created_at, bc_completed_at, fact_find_data, internal_notes, push_answers, transaction_type, property_use, clients(first_name, last_name)')
       .eq('id', dealId)
       .single()
 
@@ -93,15 +93,24 @@ export async function POST(req: NextRequest) {
       const incomeType = employmentBasis === 'Self-employed' ? 'Self-employed' : (employmentBasis ? 'PAYG' : '')
 
       let creditOfficerName: string | null = null
-      let alreadyBcActioned = false
+
+      // HAS THE BC ACTUALLY BEEN DONE?
+      //
+      // This used to be "there is no credit officer on the deal, so the broker
+      // must have done it himself". That is a guess, and it is wrong in the case
+      // that fires this email most often: a broker choosing "I'll do the BC
+      // myself" has, at that moment, done nothing. Ellie was being told to create
+      // the card at BC Actioned for a BC nobody had started.
+      //
+      // bc_completed_at is a fact. It is written when the BC is sent to the
+      // client, which is the point at which the stage really is BC Actioned.
+      // Fabio, 2 Sep 2026: "do mark someone BC was done when crteating a deal
+      // card - we do right?" We did not.
+      const alreadyBcActioned = !!deal.bc_completed_at
 
       if (deal.assigned_credit_officer) {
-        // Path A: allocated to credit team
         const { data: officer } = await supabase.from('credit_officers').select('name').eq('id', deal.assigned_credit_officer).single()
         creditOfficerName = officer?.name || null
-      } else {
-        // Path B: broker completed BC solo, this is the first-ever touchpoint
-        alreadyBcActioned = true
       }
 
       // The claim above stands whether or not an email goes out: Ellie doing it
