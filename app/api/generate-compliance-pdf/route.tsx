@@ -19,7 +19,11 @@ import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import React from 'react'
 import { boxFitsOnAPage, NEEDS_BOXES, COMMENT_BOXES, parseBlocks, handoverFileName, hasContent, type Box } from '@/lib/handover'
 import { titleSummary } from '@/lib/title'
-import { hemStateOf, hemTotals, unansweredNote, type ExpenseCategory } from '@/lib/hem'
+import { hemStateOf, hemTotals, unansweredNote } from '@/lib/hem'
+// The lists live in one place now. They used to be declared here AND in
+// ComplianceForm, with a comment in this file claiming they were the same
+// list. They were copies that happened to still agree.
+import { EXPENSE_CATEGORIES, RISK_GROUPS, PRODUCT_GROUPS } from '@/lib/handover-view'
 import { shortDate } from '@/lib/push-answers'
 
 const INK = '#141C24', MUTE = '#7C8894', BODY = '#3D4750'
@@ -81,99 +85,6 @@ const styles = StyleSheet.create({
   footText: { fontSize: 7, color: '#A9B7C2' },
 })
 
-const RISK_GROUPS: { title: string; note?: string; rows: { key: string; label: string }[] }[] = [
-  { title: 'Financial situation', rows: [
-    { key: 'adverseChanges', label: 'Adverse changes to financial situation?' },
-    { key: 'beneficialChanges', label: 'Beneficial changes to financial situation?' },
-  ]},
-  { title: 'Exit strategy', rows: [
-    // On the screen and never on the old PDF. A credit assessor reading a
-    // 30-year loan for a 60-year-old wants both of these.
-    { key: 'retirementAge', label: 'Retirement age' },
-    { key: 'repaymentMethod', label: 'Repayment method' },
-  ]},
-  { title: 'Financial security', rows: [
-    { key: 'financialExperience', label: 'Level of financial experience' },
-    { key: 'interestRateConcern', label: 'Concern about interest rate movements' },
-    { key: 'loanFlexibility', label: 'Importance of loan flexibility (offset/redraw)' },
-    { key: 'jobSecurity', label: 'Concern about job security' },
-    { key: 'propertyValueConcern', label: 'Concern about property value fluctuations' },
-    { key: 'emergencyFund', label: 'Emergency fund / liquid asset or insurance for loss of income?' },
-    { key: 'maintainLifestyle', label: 'Maintain commitments if partner unable to earn?' },
-    { key: 'adequateInsurance', label: 'Adequate insurance for loan repayments if unable to work?' },
-    { key: 'hasWill', label: 'Do you have a will?' },
-    { key: 'circumstancesImpact', label: 'Any circumstances that may impact financial commitments?' },
-  ]},
-  // The screen carries this warning next to the heading and the reader of the
-  // handover needs it more than the person who typed the answers does.
-  { title: 'Credit history', note: 'Team must answer — Equifax not integrated', rows: [
-    { key: 'problemsMeetingCommitments', label: 'Problems meeting fixed commitments including mobile payments?' },
-    { key: 'officerInLiquidation', label: 'Officer/shareholder of company where liquidator appointed?' },
-    { key: 'unsatisfiedJudgements', label: 'Unsatisfied judgements in court?' },
-    { key: 'simultaneousApplications', label: 'Simultaneously applied to other credit providers?' },
-    { key: 'declaredBankrupt', label: 'Ever declared bankrupt?' },
-  ]},
-]
-
-const PRODUCT_GROUPS: { title: string; rows: { key: string; label: string }[] }[] = [
-  { title: 'Rate type', rows: [
-    { key: 'variableRate', label: 'Variable rate' },
-    { key: 'fixedRate', label: 'Fixed rate' },
-    { key: 'fixedAndVariable', label: 'Fixed and variable rate' },
-  ]},
-  { title: 'Repayment type', rows: [
-    { key: 'principalAndInterest', label: 'Principal and interest' },
-    { key: 'interestOnly', label: 'Interest only' },
-    { key: 'interestInAdvance', label: 'Interest in advance' },
-  ]},
-  { title: 'Product type', rows: [
-    { key: 'lineOfCredit', label: 'Line of credit' },
-    { key: 'offsetAccount', label: 'Offset account' },
-    { key: 'redraw', label: 'Redraw' },
-  ]},
-  { title: 'What is important to you', rows: [
-    { key: 'lowestCost', label: 'Lowest overall loan cost' },
-    { key: 'approvedQuickly', label: 'Loan approved quickly' },
-    { key: 'specificFeatures', label: 'Specific loan features' },
-    { key: 'lenderPolicy', label: 'Lender policy / borrowing capacity' },
-  ]},
-  { title: 'Branch access', rows: [
-    { key: 'branchFrequency', label: 'How often do you go to a branch?' },
-  ]},
-  { title: 'Other', rows: [
-    { key: 'otherRequirements', label: 'Other requirements' },
-  ]},
-]
-
-
-// The same list the Compliance screen uses, with the same two askable rows, so
-// the page and the document cannot disagree about what is in HEM.
-export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
-  { key: 'groceries', label: 'Groceries', inHem: true },
-  { key: 'clothingPersonalCare', label: 'Clothing and personal care', inHem: true },
-  { key: 'petCare', label: 'Pet care', inHem: true },
-  { key: 'phoneInternetSubscriptions', label: 'Phone, internet and subscriptions', inHem: true },
-  { key: 'other', label: 'Other', inHem: true },
-  { key: 'privateSchoolingTuition', label: 'Private schooling and tuition', inHem: false },
-  { key: 'childcare', label: 'Childcare', inHem: true },
-  { key: 'publicEducation', label: 'Public education', inHem: true },
-  { key: 'higherEducationTraining', label: 'Higher education and training', inHem: true },
-  { key: 'recreationEntertainment', label: 'Recreation and entertainment', inHem: true },
-  { key: 'sicknessAccidentLifeInsurance', label: 'Sickness, accident and life insurance', inHem: false },
-  { key: 'medicalHealth', label: 'Medical and health', inHem: true },
-  { key: 'healthInsurance', label: 'Health insurance', inHem: true, askHem: true },
-  { key: 'generalBasicInsurances', label: 'General basic insurances', inHem: true },
-  { key: 'transport', label: 'Transport', inHem: true },
-  { key: 'secondaryResidenceRunningCosts', label: 'Secondary residence running costs', inHem: false },
-  { key: 'primaryResidenceRunningCosts', label: 'Primary residence running costs', inHem: true },
-  { key: 'investmentPropertyRunningCosts', label: 'Investment property running costs', inHem: true },
-  // Australia says strata. The KEY stays - it is written into every deal already
-  // assessed - so only the word on the page changes.
-  { key: 'primaryResidenceBodyCorp', label: 'Strata (primary residence)', inHem: true, askHem: true },
-  { key: 'childSpousalMaintenance', label: 'Child and spousal maintenance', inHem: false },
-  { key: 'rent', label: 'Rent', inHem: true },
-  { key: 'board', label: 'Board', inHem: true },
-]
 
 const money = (n: number) => '$' + Math.round(n).toLocaleString('en-AU')
 

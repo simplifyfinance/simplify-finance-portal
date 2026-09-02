@@ -8,6 +8,9 @@ import { defaultAnswers, type PushAnswers, type LiabilityChoice } from '@/lib/pu
 import { holdersFor, borrowerNotOnTitle, reasonRequired, LEGAL_ADVICE_LABEL,
          type TitleInfo, type LegalAdvice } from '@/lib/title'
 import { hemStateOf, hemTotals, unansweredNote, type HemAnswer } from '@/lib/hem'
+// One list, shared with the handover screen and both PDFs. This screen used
+// to keep its own copy of it.
+import { EXPENSE_CATEGORIES } from '@/lib/handover-view'
 
 // The loan on this deal: what the LO settled on, or failing that the BC's splits
 // added up. It used to fall back to the FIRST BC split, so a multi-split deal
@@ -118,30 +121,6 @@ const defaultProductReqs = (): ProductReqs => ({
 // The KEYS never change. `primaryResidenceBodyCorp` is written into every deal
 // already assessed; renaming it to match the label would orphan all of them.
 // Australia says strata, so only the words on screen change.
-const EXPENSE_CATEGORIES: { key: string; label: string; inHem: boolean; askHem?: boolean }[] = [
-  { key: 'groceries', label: 'Groceries', inHem: true },
-  { key: 'clothingPersonalCare', label: 'Clothing and personal care', inHem: true },
-  { key: 'petCare', label: 'Pet care', inHem: true },
-  { key: 'phoneInternetSubscriptions', label: 'Phone, internet and subscriptions', inHem: true },
-  { key: 'other', label: 'Other', inHem: true },
-  { key: 'privateSchoolingTuition', label: 'Private schooling and tuition', inHem: false },
-  { key: 'childcare', label: 'Childcare', inHem: true },
-  { key: 'publicEducation', label: 'Public education', inHem: true },
-  { key: 'higherEducationTraining', label: 'Higher education and training', inHem: true },
-  { key: 'recreationEntertainment', label: 'Recreation and entertainment', inHem: true },
-  { key: 'sicknessAccidentLifeInsurance', label: 'Sickness, accident and life insurance', inHem: false },
-  { key: 'medicalHealth', label: 'Medical and health', inHem: true },
-  { key: 'healthInsurance', label: 'Health insurance', inHem: true, askHem: true },
-  { key: 'generalBasicInsurances', label: 'General basic insurances', inHem: true },
-  { key: 'transport', label: 'Transport', inHem: true },
-  { key: 'secondaryResidenceRunningCosts', label: 'Secondary residence running costs', inHem: false },
-  { key: 'primaryResidenceRunningCosts', label: 'Primary residence running costs', inHem: true },
-  { key: 'investmentPropertyRunningCosts', label: 'Investment property running costs', inHem: true },
-  { key: 'primaryResidenceBodyCorp', label: 'Strata (primary residence)', inHem: true, askHem: true },
-  { key: 'childSpousalMaintenance', label: 'Child and spousal maintenance', inHem: false },
-  { key: 'rent', label: 'Rent', inHem: true },
-  { key: 'board', label: 'Board', inHem: true },
-]
 
 type ExpenseEntry = {
   monthlyAmount: string
@@ -895,6 +874,13 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
             )}
           </div>
           <div className="flex items-center gap-2">
+            {/* The PDFs are the record. This is what people type from - copying
+                out of a PDF loses the bold and breaks words across lines. */}
+            <a href={`/deals/${deal.id}/handover`}
+              className="bg-[#141C24] border border-[#141C24] text-white rounded-lg px-3.5 py-2 text-[12.5px] font-semibold hover:bg-[#28323c] transition inline-flex items-center gap-1.5">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="9" height="11" rx="1.5"/><path d="M11 13v1H2V4h1"/></svg>
+              Open to copy
+            </a>
             <button onClick={() => downloadPdf('summary')} disabled={!!downloading}
               className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-lg px-3.5 py-2 text-[12.5px] font-medium hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition inline-flex items-center gap-1.5 disabled:opacity-40">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v8M4.5 7l3.5 3.5L11.5 7M3 13h10"/></svg>

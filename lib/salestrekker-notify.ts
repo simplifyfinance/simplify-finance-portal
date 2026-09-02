@@ -1,3 +1,7 @@
+// The email tells staff where to go, and then takes them there: copying out of
+// a PDF loses the bold and splits words across lines.
+import { siteUrl } from './ready-link'
+
 async function sendResendEmail(to: string, subject: string, html: string, attachments?: { filename: string; content: string }[]) {
   try {
     await fetch('https://api.resend.com/emails', {
@@ -79,7 +83,7 @@ export async function notifyEllieCreateCard(params: {
 //
 // This email is being rewritten properly later. For now the answers are here, in
 // the order credit reads them, so nothing has to be chased.
-export async function notifyCrisMoveCard(dealName: string, brokerName: string, action: string, closed = false, attachments?: { filename: string; content: string }[], recipientEmail?: string | null, answers?: { subject?: string; lines?: string[]; urgent?: boolean }) {
+export async function notifyCrisMoveCard(dealName: string, brokerName: string, action: string, closed = false, attachments?: { filename: string; content: string }[], recipientEmail?: string | null, answers?: { subject?: string; lines?: string[]; urgent?: boolean; dealId?: string; boxCount?: number }) {
   const bg = closed ? '#E6F5EC' : '#F2E9FB'
   const color = closed ? '#1D9E75' : '#7C3AED'
   const html = `<p>Hi,</p>
@@ -97,7 +101,22 @@ export async function notifyCrisMoveCard(dealName: string, brokerName: string, a
         return `<tr><td style="color:#666;font-size:13px;padding:3px 0;vertical-align:top;width:38%"><span style="color:#666;">${k}</span></td><td style="font-size:13px;padding:3px 0">${v}</td></tr>`
       }).join('')}
     </table>` : ''}
-    ${attachments && attachments.length ? `<p style="color:#666;font-size:13px;margin:12px 0 0"><span style="color:#666;">The handover and the deal summary are attached — please save both into this client's OneDrive folder. Each numbered box in the handover is the box of the same name in SalesTrekker.</span></p>` : ''}`
+    ${answers?.dealId ? `
+    <table bgcolor="#EAF6FD" style="background:#EAF6FD;border-radius:8px;padding:14px 16px;margin:18px 0 0" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:0 0 8px"><span style="color:#141C24;">Do not retype from the PDF. Copy from the portal.</span></td></tr>
+      <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;padding:0 0 5px"><span style="color:#0B5E8A;">1. Open the link below. Every box on that page is a field in SalesTrekker with the same name${answers?.boxCount ? `, ${answers.boxCount} of them` : ''}.</span></td></tr>
+      <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;padding:0 0 5px"><span style="color:#0B5E8A;">2. Press <b>Copy box</b>, then paste straight into the field of that name. Single values &mdash; a date of birth, an ABN, a balance &mdash; copy on click.</span></td></tr>
+      <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;padding:0 0 5px"><span style="color:#0B5E8A;">3. Each box turns green once copied, and that is saved. Stop and come back whenever you like &mdash; the page remembers where you got to, and so does anyone else on this deal.</span></td></tr>
+      <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;padding:0 0 12px"><span style="color:#0B5E8A;">4. Do not summarise and do not reword. The wording is the compliance record.</span></td></tr>
+      <tr><td style="padding:0">
+        <table cellpadding="0" cellspacing="0" border="0" style="margin:0"><tr>
+          <td bgcolor="#2DBEFF" style="background:#2DBEFF;border-radius:8px;padding:11px 20px">
+            <a href="${siteUrl()}/deals/${answers.dealId}/handover" style="color:#08252F;font-family:Arial,sans-serif;font-size:14px;font-weight:700;text-decoration:none">Open the handover to copy &rarr;</a>
+          </td>
+        </tr></table>
+      </td></tr>
+    </table>` : ''}
+    ${attachments && attachments.length ? `<p style="color:#666;font-size:13px;margin:14px 0 0"><span style="color:#666;">The handover and the fact find are attached as PDFs &mdash; these are the compliance record. Please save both into this client&rsquo;s OneDrive folder. Type from the link above, not from the attachments.</span></p>` : ''}`
 
   // The subject carries the urgency, because that is the only part of an email a
   // busy person reads before deciding when to open it.

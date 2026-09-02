@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { notifyEllieCreateCard, notifyCrisMoveCard } from '@/lib/salestrekker-notify'
 import { emailLines, emailSubject } from '@/lib/push-answers'
+import { allSections, countCards } from '@/lib/handover-view'
 import { generateSummaryPdfBuffer } from '@/app/api/generate-summary-pdf/route'
 import { generateCompliancePdfBuffer } from '@/app/api/generate-compliance-pdf/route'
 
@@ -190,10 +191,24 @@ export async function POST(req: NextRequest) {
       }
 
       const answers = (deal as any)?.push_answers || null
+
+      // How many boxes there are to copy, so the email can say. Read from the
+      // whole deal, not from the slim select above - the select is deliberately
+      // narrow and a missing column is a silently undefined value.
+      let boxCount: number | undefined
+      try {
+        const { data: full } = await supabase.from('deals').select('*').eq('id', dealId).single()
+        if (full) boxCount = countCards(allSections(full))
+      } catch {
+        // The count is a nicety. Never let it stop the email.
+      }
+
       await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to Compliance Issued', true, attachments, crisEmail, {
         subject: emailSubject(dealName, answers),
         lines: emailLines(deal, answers),
         urgent: !!answers?.urgent,
+        dealId,
+        boxCount,
       })
 
       // This used to set status = 'completed', and the deals list hides anything
