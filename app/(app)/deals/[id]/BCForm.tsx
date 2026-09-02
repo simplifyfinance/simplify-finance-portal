@@ -952,14 +952,41 @@ Key assumptions: ${checklistText}`
 
   return (
     <div>
-      <div className="flex gap-2 mb-4 items-center">
+      <div className="flex gap-2 mb-4 items-center flex-wrap">
         {[['form','BC form'],['preview','Preview & share']].map(([id,label]) => (
           <button key={id} onClick={() => setActiveTab(id as any)}
             className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${activeTab === id ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500 bg-white'}`}>
             {label}
           </button>
         ))}
+
+        {/* The action that moves the deal on, on the page rather than inside a
+            tab. Shaped as a button, not a third pill, so it does not read as
+            another view of the same thing. */}
+        <span className="w-px h-6 bg-gray-200 mx-1" />
+        {clientProceeded ? (
+          <div className="flex items-center gap-2">
+            <span title={proceedInfo.when ? new Date(proceedInfo.when).toLocaleString('en-AU') : undefined}
+              className="px-3.5 py-1.5 text-sm rounded-lg font-medium bg-green-50 text-green-600 border border-green-200">
+              {'\u2713'} Client agreed{agreedDay(proceedInfo.when)}
+            </span>
+            <span className="text-xs text-gray-400">{proceedInfo.who}</span>
+          </div>
+        ) : (
+          <button onClick={() => setShowMoveToLoPopup(true)}
+            className="px-3.5 py-1.5 text-sm rounded-lg font-semibold border border-[#141C24] bg-[#141C24] text-white hover:bg-[#28323c] transition">
+            Client agreed — move to LO
+          </button>
+        )}
       </div>
+
+      {/* Follows the button. This message only existed inside Preview & share,
+          so pressing the button from the BC form tab said nothing at all. */}
+      {moveToLoMsg && (
+        <div className="mb-4 text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-2 inline-block">
+          {moveToLoMsg}
+        </div>
+      )}
 
 
 
@@ -1423,7 +1450,6 @@ Key assumptions: ${checklistText}`
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               {creditTeamMsg && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">{creditTeamMsg}</span>}
               {creditTeamErr && <span className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{creditTeamErr}</span>}
-              {moveToLoMsg && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">{moveToLoMsg}</span>}
               {sendToClientMsg && <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">{sendToClientMsg}</span>}
             </div>
             <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
@@ -1446,20 +1472,11 @@ Key assumptions: ${checklistText}`
                     {bcCompletedAt ? '✓ Sent to broker for review' : markingComplete ? 'Marking...' : 'Done — send to broker for review'}
                   </button>
                 ) : null}
-{clientProceeded ? (
-                  <div className="flex items-center gap-2">
-                    <button disabled title={proceedInfo.when ? new Date(proceedInfo.when).toLocaleString('en-AU') : undefined}
-                      className="px-3 py-1.5 text-sm rounded-lg font-medium bg-green-50 text-green-600 border border-green-200 cursor-default">
-                      {'\u2713'} Client agreed{agreedDay(proceedInfo.when)}
-                    </button>
-                    <span className="text-xs text-gray-400">{proceedInfo.who}</span>
-                  </div>
-                ) : (
-                  <button onClick={() => setShowMoveToLoPopup(true)}
-                    className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
-                    Client agreed — move to LO
-                  </button>
-                )}
+{/* "Client agreed — move to LO" used to live here, inside Preview &
+                    share, so the one action that moves the deal on was two
+                    clicks deep and behind a tab nobody opens unless they are
+                    emailing. Alan, 2 Sep 2026, asked for it on the deal page
+                    itself - it now sits beside the two tab pills above. */}
               </div>
 
               <div className="w-px h-8 bg-gray-200" />
