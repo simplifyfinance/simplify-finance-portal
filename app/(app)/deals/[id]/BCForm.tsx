@@ -1564,12 +1564,6 @@ Key assumptions: ${checklistText}`
               </button>
             </div>
           )}
-          {freshness.state === 'unknown' && (
-            <div className="mb-3 border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-[12.5px] text-gray-500">
-              This email was generated before the portal started recording which scenario it was written for.
-              If the scenario has changed since, regenerate it — the deal is on <b className="text-[#343333]">{templateLabel(template)}</b>.
-            </div>
-          )}
           {emailHtml ? (
             <div className={`bg-white border border-gray-100 rounded-xl overflow-hidden ${freshness.state === 'stale' ? 'opacity-50' : ''}`}>
               <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between">

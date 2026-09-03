@@ -28,8 +28,14 @@ export type EmailFreshness =
   // Saved for a different scenario. This is the bug, caught.
   | { state: 'stale'; wasFor: string; nowOn: string }
   // Saved before the portal recorded the scenario. We genuinely do not know
-  // whether it matches, so we say that rather than guessing either way - a
-  // false alarm on every old deal is as useless as no alarm at all.
+  // whether it matches, so this is neither "fresh" nor "stale" - it is kept as
+  // its own answer rather than folded into a guess.
+  //
+  // Nothing is SHOWN for it. Fabio, 3 Sep 2026: "Don't worry about all deals.
+  // as long as it's fixed moving forward". Every deal generated before today
+  // looks like this, so a warning on all of them would be noise about a thing
+  // we are not sure of. It resolves itself the first time an email is
+  // regenerated, which stamps it.
   | { state: 'unknown'; nowOn: string }
 
 export function emailFreshness(saved: SavedEmail | null | undefined, template: string): EmailFreshness {
@@ -44,9 +50,7 @@ export function emailFreshness(saved: SavedEmail | null | undefined, template: s
     : { state: 'stale', wasFor, nowOn: template }
 }
 
-// Sending is blocked only on a KNOWN mismatch. An unknown stamp is every deal
-// generated before today, and locking those would break work in flight over a
-// thing we are not sure about.
+// Sending is blocked only on a KNOWN mismatch - the case we can prove.
 export function blocksSending(f: EmailFreshness): boolean {
   return f.state === 'stale'
 }
