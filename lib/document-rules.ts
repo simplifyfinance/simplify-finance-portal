@@ -92,6 +92,12 @@ export function isPurchase(deal: any): boolean {
   return !!t && !REFINANCE_TEMPLATES.includes(t) && t !== 'custom'
 }
 
+// Formal approval is what brings a deferred discharge back. It is one of the
+// milestones the board already runs on, so there is no new trigger to build.
+export function formallyApproved(deal: any): boolean {
+  return !!deal?.formal_approval_at
+}
+
 export function isSmsf(deal: any): boolean {
   return txt(deal?.bc_data?.template) === 'smsf'
 }

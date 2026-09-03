@@ -245,6 +245,70 @@ export async function notifyCrisMoveCard(dealName: string, brokerName: string, a
   await sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au', subject, html, attachments)
 }
 
+// --- requesting documents ---------------------------------------------------
+//
+// The list is built on the deal (lib/document-rules.ts) and this is how it
+// leaves the building. It goes to the person who does the requesting, not to
+// the client - they raise it on SalesTrekker's client portal, which is where
+// the client already logs in. Fabio, 3 Sep 2026: "it goes to an email to Chris
+// and say, hey, Chris. Request this using the client portal on sales trekker."
+//
+// The documents are LISTED, not summarised. The whole point is that the person
+// reading this does not have to work out what to ask for.
+
+export async function notifyDocumentRequest(params: {
+  dealId: string; dealName: string; clientName: string; brokerName: string
+  requestedBy?: string | null
+  documents: { label: string; detail?: string; who: string }[]
+  alreadyAsked: number
+  recipientEmail?: string | null; recipientName?: string | null
+  idempotencyKey?: string
+}): Promise<SendResult> {
+  const { dealId, dealName, clientName, brokerName, requestedBy, documents,
+          alreadyAsked, recipientEmail, recipientName, idempotencyKey } = params
+
+  // Grouped under the person or thing each belongs to, because that is how they
+  // get asked for and how they come back.
+  const byWho = new Map<string, { label: string; detail?: string }[]>()
+  for (const d of documents) {
+    const list = byWho.get(d.who) || []
+    list.push({ label: d.label, detail: d.detail })
+    byWho.set(d.who, list)
+  }
+
+  const groups = [...byWho.entries()].map(([who, docs]) => `
+    <tr><td style="font-family:Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:14px 0 4px">
+      <span style="color:#A29889;">${who}</span></td></tr>
+    ${docs.map(d => `<tr><td style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;padding:3px 0">
+      <span style="color:#221F1B;">&bull; ${d.label}</span>${d.detail
+        ? `<span style="color:#7A7266;"> &mdash; ${d.detail}</span>` : ''}</td></tr>`).join('')}`).join('')
+
+  const html = `${greeting(recipientName)}
+    <p>Please request the documents below from this client, using the client portal on SalesTrekker.</p>
+    <table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 18px" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Deal</span></td><td style="text-align:right;font-size:13px;font-weight:600;padding:3px 0">${dealName}</td></tr>
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Client</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${clientName || ''}</td></tr>
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Broker</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${brokerName || ''}</td></tr>
+      ${requestedBy ? `<tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Asked by</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${requestedBy}</td></tr>` : ''}
+    </table>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px">
+      <tr><td style="font-family:Arial,sans-serif;font-size:15px;font-weight:700;padding:0 0 2px"><span style="color:#221F1B;">${documents.length} ${documents.length === 1 ? 'document' : 'documents'}</span></td></tr>
+      ${groups}
+    </table>
+    ${alreadyAsked > 0 ? `<table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:11px 16px;margin:0 0 16px" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55"><span style="color:#666;">${alreadyAsked} other ${alreadyAsked === 1 ? 'document was' : 'documents were'} already asked for on this deal and ${alreadyAsked === 1 ? 'is' : 'are'} not repeated here.</span></td></tr>
+    </table>` : ''}
+    <table cellpadding="0" cellspacing="0" border="0" style="margin:0"><tr>
+      <td bgcolor="#2DBEFF" style="background:#2DBEFF;border-radius:8px;padding:11px 20px">
+        <a href="${siteUrl()}/deals/${dealId}" style="color:#08252F;font-family:Arial,sans-serif;font-size:14px;font-weight:700;text-decoration:none">Open the deal &rarr;</a>
+      </td>
+    </tr></table>`
+
+  return sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au',
+    `Please request ${documents.length} ${documents.length === 1 ? 'document' : 'documents'} — ${dealName}`,
+    html, undefined, undefined, idempotencyKey)
+}
+
 // --- documents received -----------------------------------------------------
 //
 // Two emails, one press, a gap between them. The filing person hears now; the

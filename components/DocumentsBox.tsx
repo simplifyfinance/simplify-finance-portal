@@ -3,8 +3,9 @@ import { useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite } from '@/lib/checked-write'
 import { documentsFor, documentsDue, groupedDocuments, type DocRound } from '@/lib/document-rules'
-import { rowsFor, tickedCount, withTick, withAdded, withoutAdded, progressOf,
-         COMMON_EXTRAS, type DocProgress, type DocRow } from '@/lib/document-progress'
+import { rowsFor, tickedCount, toRequest, withTick, withAdded, withoutAdded, withDeferred,
+         progressOf, requestRounds, COMMON_EXTRAS, type DocProgress, type DocRow } from '@/lib/document-progress'
+import { formallyApproved } from '@/lib/document-rules'
 
 // THE DOCUMENT BOX.
 //
@@ -14,9 +15,10 @@ import { rowsFor, tickedCount, withTick, withAdded, withoutAdded, progressOf,
 // make sure it all sits on the same button with the same box where we're
 // crossing documents along the way and adding. It's always the same button."
 //
-// NOTHING IS REQUESTED FROM HERE YET. The list appears and ticks save, so the
-// rules can be checked against real deals before a single email goes to a
-// client. The request button is the next block, deliberately.
+// Pressing request emails whoever does the requesting - set in Settings, the
+// same person the "documents received" email goes to - with the list in it, and
+// records on the deal what was asked for. That record is what stops the second
+// press asking a client again for what they already sent.
 
 const TICK = (
   <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor"
@@ -39,6 +41,8 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
   const [adding, setAdding] = useState(false)
   const [newLabel, setNewLabel] = useState('')
   const [showLater, setShowLater] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [sentMsg, setSentMsg] = useState('')
 
   const who = me?.name || 'Somebody'
 
@@ -46,13 +50,57 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
   const { items, gaps } = useMemo(() => documentsFor(deal), [deal])
   const dueNow = useMemo(() => documentsDue(deal, 'proceed').items.map(i => i.key), [deal])
 
-  const rows = useMemo(() => rowsFor(items, progress), [items, progress])
+  const approved = formallyApproved(deal)
+  const rows = useMemo(() => rowsFor(items, progress, { formallyApproved: approved }),
+    [items, progress, approved])
   const nowRows = rows.filter(r => dueNow.includes(r.key) || r.addedByHand)
   const laterRows = rows.filter(r => !dueNow.includes(r.key) && !r.addedByHand)
   const groups = useMemo(() => groupedDocuments(nowRows as any), [nowRows]) as
     { key: string; label: string; items: DocRow[] }[]
 
   const ticked = tickedCount(nowRows)
+  const pending = toRequest(nowRows)
+  const asked = nowRows.filter(r => r.requestedAt).length
+  const rounds = requestRounds(progress)
+
+  // Rebuilt server-side before anything is sent, so this is a request, not an
+  // instruction - a stale browser cannot email a client for a liability that
+  // was deleted this morning.
+  async function requestThem() {
+    if (pending.length === 0) return
+    setSending(true); setSentMsg(''); setErr('')
+    try {
+      const res = await fetch('/api/request-documents', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId: deal.id, keys: pending.map(r => r.key) }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data?.ok) {
+        setErr(data?.error || `The request could not be sent (${res.status}).`)
+        // Recorded but unsent: the screen must show them as asked for, or the
+        // next press sends the lot again.
+        if (data?.recorded) await reload()
+        setSending(false)
+        return
+      }
+      if (data.skipped) { setSentMsg('Those were already asked for.'); await reload(); setSending(false); return }
+      setSentMsg(`${data.count} ${data.count === 1 ? 'document' : 'documents'} sent to ${data.to || 'the requesting team'}.`)
+      await reload()
+    } catch (e: any) {
+      setErr(e?.message || 'The request could not be sent.')
+    }
+    setSending(false)
+  }
+
+  // The request is recorded server-side, so the screen has to go and read it
+  // back rather than guess at what was written.
+  async function reload() {
+    const { data } = await supabase.from('deals').select('document_progress').eq('id', deal.id).single()
+    if (data) {
+      setProgress(progressOf(data))
+      onUpdated?.({ document_progress: data.document_progress })
+    }
+  }
 
   // Optimistic, then verified. A write that silently affects zero rows is the
   // failure this codebase has been bitten by, so the screen goes back to what it
@@ -85,7 +133,9 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
       <button onClick={() => setOpen(o => !o)}
         className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#FDFCFA] transition">
         <span className="text-[9.5px] font-bold tracking-[.07em] uppercase text-[#A29889]">Documents</span>
-        <span className="text-[13px] text-[#221F1B] font-semibold">{ticked} to request</span>
+        <span className="text-[13px] text-[#221F1B] font-semibold">
+          {pending.length > 0 ? `${pending.length} to request` : asked > 0 ? `${asked} requested` : `${ticked} to request`}
+        </span>
         <span className="text-[12px] text-[#A29889]">of {nowRows.length} on the list</span>
         {gaps.length > 0 && (
           <span className="text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border
@@ -104,13 +154,18 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
             </p>
           )}
 
-          {/* Not a request form yet, and saying so beats somebody waiting for an
-              email that was never built. */}
-          <p className="m-4 mb-0 border border-[#CDEBF8] bg-[#F4FCFF] rounded-[10px] px-4 py-2.5 text-[12.5px] text-[#0B5E8A]">
-            <b className="text-[#141C24]">Nothing is requested from here yet.</b> This is the list the fact find
-            works out on its own — tick and untick it, add what is missing, and tell me where it is wrong.
-            The request button comes next.
-          </p>
+          {sentMsg && (
+            <p className="m-4 mb-0 border border-[#BBF7D0] bg-[#F6FDF8] rounded-[10px] px-4 py-2.5 text-[12.5px] text-[#15803D]">
+              {sentMsg}
+            </p>
+          )}
+
+          {rounds.length > 0 && (
+            <p className="m-4 mb-0 text-[12px] text-[#A29889]">
+              {rounds.length === 1 ? 'Asked for' : `Asked for over ${rounds.length} rounds, most recently`}
+              {' '}{whenAsked(rounds[rounds.length - 1].at)} by {rounds[rounds.length - 1].by}.
+            </p>
+          )}
 
           {gaps.map(g => (
             <p key={g.key} className="m-4 mb-0 border border-[#EBD9BE] bg-[#FDF6EC] rounded-[10px] px-4 py-2.5 text-[12.5px] text-[#8A6218]">
@@ -125,23 +180,50 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
               </div>
               {group.items.map(r => (
                 <div key={r.key} className="flex gap-3 items-start px-4 py-[7px] border-t border-[#F7F4EF] hover:bg-[#FDFCFA]">
-                  <button onClick={() => toggle(r)} disabled={busy === r.key}
-                    aria-label={r.ticked ? `Do not ask for ${r.label}` : `Ask for ${r.label}`}
-                    className={`w-4 h-4 rounded-[4px] border-[1.5px] mt-[3px] flex-none grid place-items-center transition
-                      disabled:opacity-40 ${r.ticked
-                        ? 'bg-[#221F1B] border-[#221F1B] text-white'
-                        : 'bg-white border-[#CFC7BA] text-transparent hover:border-[#A29889]'}`}>
-                    {TICK}
-                  </button>
+                  {r.requestedAt ? (
+                    // Asked for. Not a tick any more - a thing being waited on,
+                    // and unticking it would only lie about what went out.
+                    <span title={`Asked for ${whenAsked(r.requestedAt)}`}
+                      className="w-4 h-4 rounded-[4px] border-[1.5px] mt-[3px] flex-none grid place-items-center
+                                 bg-[#EFF9F2] border-[#CFE6D5] text-[#1E7A4A]">
+                      {TICK}
+                    </span>
+                  ) : (
+                    <button onClick={() => toggle(r)} disabled={busy === r.key || !!r.askFirst}
+                      aria-label={r.ticked ? `Do not ask for ${r.label}` : `Ask for ${r.label}`}
+                      className={`w-4 h-4 rounded-[4px] border-[1.5px] mt-[3px] flex-none grid place-items-center transition
+                        disabled:opacity-40 ${r.ticked
+                          ? 'bg-[#221F1B] border-[#221F1B] text-white'
+                          : 'bg-white border-[#CFC7BA] text-transparent hover:border-[#A29889]'}`}>
+                      {TICK}
+                    </button>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className={`text-[13px] ${r.ticked ? 'text-[#221F1B] font-medium' : 'text-[#8B8378]'}`}>
                       {r.label}
                       {r.detail && <span className="font-normal text-[#A29889]"> — {r.detail}</span>}
                     </div>
-                    {(r.why || r.decidedBy) && (
+                    {(r.why || r.decidedBy || r.requestedAt) && (
                       <div className="text-[11.5px] text-[#A29889] mt-[1px]">
-                        {r.why}
-                        {r.decidedBy && <span>{r.why ? ' · ' : ''}{r.ticked ? 'Added back' : 'Unticked'} by {r.decidedBy}</span>}
+                        {r.requestedAt ? <span className="text-[#1E7A4A]">Asked for {whenAsked(r.requestedAt)}</span> : r.why}
+                        {!r.requestedAt && r.decidedBy && <span>{r.why ? ' · ' : ''}{r.ticked ? 'Added back' : 'Unticked'} by {r.decidedBy}</span>}
+                      </div>
+                    )}
+
+                    {/* THE DISCHARGE. Not a tick but a question, because "not
+                        yet" is a real answer that has to come back on its own.
+                        Fabio, 3 Sep 2026: "make it a rule that do you wanna ask
+                        for discharge now, yes or no?" */}
+                    {r.askFirst && !r.requestedAt && (
+                      <div className="flex gap-2 mt-1.5 flex-wrap">
+                        <button onClick={() => save(withTick(progress, r.key, true, who), r.key)}
+                          className="rounded-lg px-2.5 py-1 text-[12px] font-semibold bg-[#221F1B] text-white">
+                          Ask for it now
+                        </button>
+                        <button onClick={() => save(withDeferred(progress, r.key, who), r.key)}
+                          className="rounded-lg px-2.5 py-1 text-[12px] border border-[#D7DCE1] bg-white text-[#3E4C59]">
+                          Not yet — bring it back at formal approval
+                        </button>
                       </div>
                     )}
                   </div>
@@ -159,6 +241,20 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
               ))}
             </div>
           ))}
+
+          <div className="px-4 py-3 border-t border-[#F2EEE7] flex items-center gap-3 flex-wrap">
+            <button onClick={requestThem} disabled={sending || pending.length === 0}
+              className="rounded-lg px-4 py-2 text-[13px] font-semibold bg-[#221F1B] text-white disabled:opacity-30">
+              {sending ? 'Sending…'
+                : pending.length === 0 ? 'Nothing new to request'
+                : `Request ${pending.length} ${pending.length === 1 ? 'document' : 'documents'}`}
+            </button>
+            <span className="text-[12px] text-[#A29889]">
+              {pending.length > 0
+                ? 'Emails the list to whoever does the requesting — set in Settings.'
+                : asked > 0 ? 'Everything ticked has been asked for.' : 'Tick what you need first.'}
+            </span>
+          </div>
 
           {/* Anything the rules would never produce. A short list to pick from,
               because free text alone gives you nine spellings of "accountant's
@@ -209,6 +305,17 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
       )}
     </div>
   )
+}
+
+// A date, not "3 days ago" - a page left open overnight would otherwise keep
+// saying today.
+function whenAsked(iso: string): string {
+  const d = new Date(iso)
+  const today = new Date()
+  const sameDay = d.toDateString() === today.toDateString()
+  return sameDay
+    ? `today at ${d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()}`
+    : `on ${d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`
 }
 
 function roundLabel(r: DocRound): string {

@@ -27,14 +27,30 @@ export type AddedDoc = {
   by: string
 }
 
+// One press of the request button. Append-only: a deal that had two rounds of
+// requests keeps both, because "what did we ask this client for, and when" is a
+// question somebody will ask in three months.
+export type RequestRound = { at: string; by: string; keys: string[] }
+
 export type DocProgress = {
   decisions?: Record<string, Decision>
   added?: AddedDoc[]
+  requests?: RequestRound[]
+  // Rows somebody chose not to ask for YET, which come back on their own later.
+  // Only the discharge uses this today. Keyed the same way as everything else.
+  deferred?: Record<string, { at: string; by: string }>
 }
 
 // A row as the screen renders it: the rule's version, plus whether it is
 // actually ticked and whether a person is the reason.
-export type DocRow = DocItem & { ticked: boolean; decidedBy?: string; addedByHand?: boolean }
+export type DocRow = DocItem & {
+  ticked: boolean
+  decidedBy?: string
+  addedByHand?: boolean
+  // When it was asked for, if it has been. A requested row is no longer a
+  // decision to make; it is a thing being waited on.
+  requestedAt?: string
+}
 
 const now = () => new Date().toISOString()
 
@@ -55,14 +71,27 @@ export function progressOf(deal: any): DocProgress {
 // find still says a bonus was recorded - they know something the fact find does
 // not. And it stays unticked through every later change to the fact find,
 // because the decision was about the document, not about the data.
-export function rowsFor(items: DocItem[], progress: DocProgress): DocRow[] {
+export function rowsFor(items: DocItem[], progress: DocProgress, opts: RowOpts = {}): DocRow[] {
   const decisions = progress?.decisions || {}
-  const derived: DocRow[] = items.map(item => {
-    const d = decisions[item.key]
-    return d
-      ? { ...item, ticked: d.ticked, decidedBy: d.by }
-      : { ...item, ticked: item.auto }
-  })
+  const asked = requestedAtByKey(progress)
+
+  const derived: DocRow[] = items
+    // A deferred row is out of sight until the moment it was deferred TO. The
+    // discharge somebody said "not yet" to comes back the day the loan is
+    // formally approved, without anybody remembering to look for it.
+    .filter(item => !progress?.deferred?.[item.key] || !!opts.formallyApproved)
+    .map(item => {
+      const d = decisions[item.key]
+      const wasDeferred = !!progress?.deferred?.[item.key]
+      const base = d
+        ? { ...item, ticked: d.ticked, decidedBy: d.by }
+        : { ...item, ticked: wasDeferred ? true : item.auto }
+      if (wasDeferred) {
+        return { ...base, askFirst: false, ticked: d ? d.ticked : true,
+          why: 'Put off earlier — the loan is now formally approved', requestedAt: asked[item.key] }
+      }
+      return { ...base, requestedAt: asked[item.key] }
+    })
 
   const added: DocRow[] = (progress?.added || []).map(a => {
     const d = decisions[a.key]
@@ -80,14 +109,38 @@ export function rowsFor(items: DocItem[], progress: DocProgress): DocRow[] {
       ticked: d ? d.ticked : true,
       decidedBy: d?.by,
       addedByHand: true,
+      requestedAt: asked[a.key],
     }
   })
 
   return [...derived, ...added]
 }
 
+export type RowOpts = { formallyApproved?: boolean }
+
 export function tickedCount(rows: DocRow[]): number {
   return rows.filter(r => r.ticked).length
+}
+
+// WHAT THE BUTTON WOULD ACTUALLY SEND.
+//
+// Ticked, and not already asked for. Without the second half, pressing request
+// twice asks the client a second time for the payslips they have already sent -
+// which is the thing this whole feature exists to stop.
+export function toRequest(rows: DocRow[]): DocRow[] {
+  return rows.filter(r => r.ticked && !r.requestedAt && !r.askFirst)
+}
+
+function requestedAtByKey(progress: DocProgress): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const round of progress?.requests || []) {
+    for (const k of round.keys || []) if (!out[k]) out[k] = round.at
+  }
+  return out
+}
+
+export function requestRounds(progress: DocProgress): RequestRound[] {
+  return progress?.requests || []
 }
 
 // --- writing ---------------------------------------------------------------
@@ -108,6 +161,29 @@ export function withAdded(progress: DocProgress, label: string, forWhat: DocFor,
   const doc: AddedDoc = { key: addedKey(), label: clean, forWhat, at: now(), by }
   if (detail && detail.trim()) doc.detail = detail.trim()
   return { ...progress, added: [...(progress.added || []), doc] }
+}
+
+// A round of requests, recorded. Append-only - see RequestRound.
+export function withRequest(progress: DocProgress, keys: string[], by: string, at?: string): DocProgress {
+  const clean = [...new Set(keys.filter(Boolean))]
+  if (clean.length === 0) return progress
+  return {
+    ...progress,
+    requests: [...(progress.requests || []), { at: at || now(), by, keys: clean }],
+  }
+}
+
+// "Not yet." The row disappears and comes back at formal approval, ticked.
+// Fabio, 3 Sep 2026: "if it's no, please make sure that is part of the formal
+// approval process when a loan is formally approved."
+export function withDeferred(progress: DocProgress, key: string, by: string): DocProgress {
+  const decisions = { ...(progress.decisions || {}) }
+  delete decisions[key]
+  return {
+    ...progress,
+    decisions,
+    deferred: { ...(progress.deferred || {}), [key]: { at: now(), by } },
+  }
 }
 
 // Only a row somebody added can be removed - a derived row is a fact about the

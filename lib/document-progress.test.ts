@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   rowsFor, tickedCount, withTick, withAdded, withoutAdded, progressOf, COMMON_EXTRAS,
+  toRequest, withRequest, withDeferred, requestRounds,
 } from './document-progress'
 import type { DocItem } from './document-rules'
 
@@ -132,5 +133,91 @@ describe('the extras list', () => {
   it('has no duplicates and every entry says which pile it goes in', () => {
     expect(new Set(COMMON_EXTRAS.map(e => e.label)).size).toBe(COMMON_EXTRAS.length)
     for (const e of COMMON_EXTRAS) expect(['lodge', 'compliance']).toContain(e.forWhat)
+  })
+})
+
+describe('what the request button would actually send', () => {
+  it('sends the ticked rows and skips the rest', () => {
+    const rows = rowsFor(items, {})
+    expect(toRequest(rows).map(r => r.key)).toEqual(['payslips:a1'])
+  })
+
+  // THE POINT OF RECORDING A REQUEST AT ALL. Without this, pressing the button
+  // twice asks the client again for the payslips they already sent.
+  it('never asks twice for the same document', () => {
+    const p = withRequest({}, ['payslips:a1'], 'Fabio')
+    expect(toRequest(rowsFor(items, p))).toHaveLength(0)
+  })
+
+  it('sends only what is new after something is added', () => {
+    let p = withRequest({}, ['payslips:a1'], 'Fabio')
+    p = withAdded(p, "Accountant's letter", 'lodge', 'Katie')
+    const next = toRequest(rowsFor(items, p))
+    expect(next).toHaveLength(1)
+    expect(next[0].label).toBe("Accountant's letter")
+  })
+
+  it('shows when a row was asked for', () => {
+    const p = withRequest({}, ['payslips:a1'], 'Fabio', '2026-09-03T01:00:00.000Z')
+    expect(rowsFor(items, p).find(r => r.key === 'payslips:a1')!.requestedAt)
+      .toBe('2026-09-03T01:00:00.000Z')
+  })
+
+  it('keeps every round, because "what did we ask for, and when" gets asked later', () => {
+    let p = withRequest({}, ['a'], 'Fabio', '2026-09-01T00:00:00.000Z')
+    p = withRequest(p, ['b'], 'Katie', '2026-09-05T00:00:00.000Z')
+    expect(requestRounds(p)).toHaveLength(2)
+    expect(requestRounds(p)[1].by).toBe('Katie')
+  })
+
+  it('records nothing for an empty press', () => {
+    expect(withRequest({}, [], 'Fabio').requests).toBeUndefined()
+  })
+
+  it('does not double-record a key sent twice in one press', () => {
+    expect(withRequest({}, ['a', 'a', 'b'], 'F').requests![0].keys).toEqual(['a', 'b'])
+  })
+
+  it('holds back a row that is still asking to be decided', () => {
+    const discharge = [item('discharge', false, { askFirst: true })]
+    expect(toRequest(rowsFor(discharge, withTick({}, 'discharge', true, 'F')))).toHaveLength(0)
+  })
+})
+
+describe('putting the discharge off until formal approval', () => {
+  const discharge = [item('discharge', false, { askFirst: true, label: 'Discharge of mortgage' })]
+
+  it('takes it off the list when somebody says not yet', () => {
+    const p = withDeferred({}, 'discharge', 'Fabio')
+    expect(rowsFor(discharge, p)).toHaveLength(0)
+  })
+
+  // The whole reason for deferring rather than unticking: it comes back without
+  // anybody having to remember it.
+  it('brings it back, ticked, once the loan is formally approved', () => {
+    const p = withDeferred({}, 'discharge', 'Fabio')
+    const rows = rowsFor(discharge, p, { formallyApproved: true })
+    expect(rows).toHaveLength(1)
+    expect(rows[0].ticked).toBe(true)
+    expect(rows[0].askFirst).toBe(false)
+    expect(rows[0].why).toContain('formally approved')
+  })
+
+  it('can still be unticked once it is back', () => {
+    let p = withDeferred({}, 'discharge', 'Fabio')
+    p = withTick(p, 'discharge', false, 'Katie')
+    expect(rowsFor(discharge, p, { formallyApproved: true })[0].ticked).toBe(false)
+  })
+
+  it('clears an earlier tick, so a yes then a not-yet does not contradict itself', () => {
+    let p = withTick({}, 'discharge', true, 'Fabio')
+    p = withDeferred(p, 'discharge', 'Fabio')
+    expect(p.decisions?.discharge).toBeUndefined()
+    expect(rowsFor(discharge, p)).toHaveLength(0)
+  })
+
+  it('leaves everything else alone', () => {
+    const p = withDeferred({}, 'discharge', 'Fabio')
+    expect(rowsFor(items, p)).toHaveLength(2)
   })
 })
