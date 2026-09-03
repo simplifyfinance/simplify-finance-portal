@@ -22,6 +22,7 @@ const dealLoanAmount = (lo: any, bc: any): string => {
 }
 import { checkedWrite } from '@/lib/checked-write'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { dealFacts, factsBlock } from '@/lib/deal-facts'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
 
@@ -567,31 +568,31 @@ ASSESSMENT — cover: the client's personal and financial position including emp
 
 APPLICANT EDUCATION — cover: the level of financial understanding driving the education needed; any mitigants (e.g. the client's situation may limit what's available to them); client wants versus needs; how loan types and features work; repayment types and requirements; any complex scenarios (guarantor, exit strategy, foreseeable changes); applicable fees and charges; government schemes or promotional offers; cashback offers; costs of refinancing/extending loan term; professional packages; fixed rates and break costs; pre-approval requirements; seniors' loans if applicable.
 
-Client: ${context.clientName}. Loan: $${context.loanAmount}. Income: $${context.incomeBase}. Dependants: ${context.dependants}. Lender: ${context.recommendedLender}. Product: ${context.product}. Rate: ${context.rate}%. Minimum 500 words total across the three sections.`,
+Cover only what the facts above support. Where a section has little to go on, say so in a sentence rather than filling it.`,
 
       optionsComment: `CRM FIELD: Options presented and recommendation comments
 
 Cover: how the recommended product is in the client's best interests; loan type, repayment type, interest rate type and why; specific lender request versus other cheaper options considered; alternative feature options to what was requested and why (e.g. offset vs redraw); if the cheapest option was not recommended, explain why; whether turnaround times, geographical location, lender policy, borrowing capacity or loan amount available played a part in the recommendation; fees and charges applicable, any fee waivers or professional packages; security or servicing guarantee if applicable; lender service/branch access; credit history if it affected the recommendation; property size; first home buyer scheme if applicable.
 
-All lenders considered: ${context.allLenders}. Originally recommended: ${context.originalRecommendedLender} — ${context.product}. Rate: ${context.rate}%. Application fee: ${context.applicationFee}. Annual fee: ${context.annualFee}. Offset: ${context.offsetAccount}. Broker recommendation note: ${context.recommendationNote}. ${context.clientAgreedLender === 'No' ? `The client did not proceed with the original recommendation and instead selected ${context.recommendedLender}, for the following stated reason: "${context.clientChosenLenderReason || 'not recorded'}". Explain both why the original lender was recommended AND why the client's final choice is understood and documented, referencing their stated reason.` : `The client agreed with and proceeded with the recommended lender.`} Write in professional paragraphs.`,
+All lenders considered: ${context.allLenders}. Originally recommended: ${context.originalRecommendedLender} — ${context.product}. Rate: ${context.rate}%. Application fee: ${context.applicationFee}. Annual fee: ${context.annualFee}. Offset: ${context.offsetAccount}. Broker recommendation note: ${context.recommendationNote}. ${context.clientAgreedLender === 'No' ? `The client did not proceed with the original recommendation and instead selected ${context.recommendedLender}, for the following stated reason: "${context.clientChosenLenderReason || 'not recorded'}". Explain both why the original lender was recommended AND why the client's final choice is understood and documented, referencing their stated reason.` : `The client agreed with and proceeded with the recommended lender.`} Keep it to what the facts support.`,
 
       borrowingPowerComment: `CRM FIELD: Borrowing power comments
 
 Explain the client's ability to repay the loan — reference maximum borrowing capacity, debt-to-income ratio, asset position, LVR, and overall serviceability assessment.
 
-Client: ${context.clientName}. Loan: $${context.loanAmount}. Purchase price: $${context.purchasePrice}. Income: $${context.incomeBase} base, $${context.incomeRental} rental. CC limit: $${context.ccLimit}. Write 3-4 paragraphs.`,
+Use the recorded income by type, the liabilities as listed, and the LVR if one could be worked out. If the LVR is on the NOT RECORDED list, say so rather than estimating one.`,
 
       depositComment: `CRM FIELD: Deposit/Equity comments
 
 Explain the deposit if this is a purchase, or the equity usage if this is a refinance/equity release/cashout — must reference the client's savings position and where funds for completion come from.
 
-Client: ${context.clientName}. Purchase price: $${context.purchasePrice}. Loan: $${context.loanAmount}. Deposit: $${context.deposit}. Existing loan: $${context.existingLoan}. One sentence only.`,
+Use the FUNDS TO COMPLETE working above — it is calculated from the recorded figures. Name the deposit source. Keep it to a sentence or two.`,
 
       creditHistoryComment: `CRM FIELD: Credit history comments
 
 Explain any potential credit history comments — must reference any comments about repayment history or conduct (payment history, bankruptcies, judgements, simultaneous credit applications). If all credit history answers are No, confirm a clean credit history on the basis of the client's declarations, and note that these are declarations rather than a verified credit report, so the credit team should confirm.
 
-Client: ${context.clientName}. Risk answers: ${context.risks}. Write 2-3 paragraphs.`,
+Client: ${context.clientName}. Risk answers: ${context.risks}. Cover what was answered and nothing else.`,
 
       securityComment: `CRM FIELD: Security (property) comments
 
@@ -606,7 +607,14 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
         headers: { 'Content-Type': 'application/json' },
         // How many people this loan is for goes in front of EVERY field, rather
         // than being edited into nine prompt strings one at a time.
-        body: JSON.stringify({ prompt: context.howToRefer + '\n\n' + (prompts[field] || ''), styleNotes })
+        body: JSON.stringify({
+          prompt: context.howToRefer + '\n\n' + (prompts[field] || ''),
+          // EVERYTHING WE ACTUALLY KNOW, read live from the fact find rather
+          // than from the handful of numbers copied onto the BC months ago.
+          // This is the fix for "the notes are not picking up the correct data".
+          facts: factsBlock(dealFacts(deal)),
+          styleNotes,
+        })
       })
       const data = await res.json()
       const raw = data.text || ''
