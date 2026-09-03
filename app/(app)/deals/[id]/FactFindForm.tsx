@@ -1,5 +1,6 @@
 'use client'
 import DropZone from '@/components/DropZone'
+import SectionHeader from '@/components/SectionHeader'
 import { checkedWrite } from '@/lib/checked-write'
 import { copyPlan, copyAddresses, recorded } from '@/lib/copy-history'
 import { useState, useEffect, useRef } from 'react'
@@ -294,14 +295,6 @@ function defaultOwnershipSplit(applicants: FactFindApplicant[]): Record<string, 
   return result
 }
 
-function SectionHeader({ title, badge }: { title: string; badge?: string }) {
-  return (
-    <div className="flex items-center gap-2 mb-3">
-      <span className="text-xs font-medium text-gray-400 uppercase tracking-widest">{title}</span>
-      {badge && <span className="text-[10px] bg-green-50 text-green-600 px-2 py-0.5 rounded font-medium">{badge}</span>}
-    </div>
-  )
-}
 
 function OwnershipSplit({ applicants, ownership, onChange }: { applicants: FactFindApplicant[]; ownership: Record<string, string>; onChange: (v: Record<string, string>) => void }) {
   return (

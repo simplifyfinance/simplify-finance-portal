@@ -1,5 +1,6 @@
 'use client'
 import { brokerLabel } from '@/lib/broker-key'
+import { compactMoney } from '@/lib/money'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -20,13 +21,8 @@ function fmt(v: any): string {
   if (n === null) return '-'
   return '$' + Math.round(n).toLocaleString('en-AU')
 }
-function compact(n: number | null): string {
-  if (n === null) return '-'
-  const a = Math.abs(n)
-  if (a >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'm'
-  if (a >= 1e3) return '$' + Math.round(n / 1e3) + 'k'
-  return '$' + Math.round(n)
-}
+// One copy, in lib/money.ts.
+const compact = compactMoney
 function pct(now: number, base: number): number { return (now - base) / base * 100 }
 function signed(p: number): string { return (p > 0 ? '+' : p < 0 ? '\u2212' : '') + Math.abs(p).toFixed(1) + '%' }
 function dmy(ymd: string): string {

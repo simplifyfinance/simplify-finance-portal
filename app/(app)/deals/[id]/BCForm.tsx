@@ -8,7 +8,7 @@ import CurrencyInput from './CurrencyInput'
 import { can } from '@/lib/permissions'
 import { templateLabel } from '@/lib/templates'
 import { proceedCredit } from '@/lib/deal-status'
-import { emailParagraphs, htmlToPlainText } from '@/lib/rich-text'
+import { emailParagraphs, htmlToPlainText, copyHtmlAndPlain} from '@/lib/rich-text'
 import { totalCost, fundsToContribute, constructionLvr } from '@/lib/construction'
 import { emailFreshness, blocksSending, notesAfterScenarioChange } from '@/lib/email-freshness'
 
@@ -235,21 +235,13 @@ function fieldCls(value: string) {
 }
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
 import { annualIncomeOf, annualIncomeOfApplicant } from '@/lib/income-calculations'
-import { readMoney } from '@/lib/money'
+import { readMoney, formatAsTyped} from '@/lib/money'
 
 const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
 
-function formatNumber(val: string): string {
-  let cleaned = val.replace(/[^0-9.]/g, '')
-  const firstDot = cleaned.indexOf('.')
-  if (firstDot !== -1) {
-    cleaned = cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, '')
-  }
-  const [intPart, decPart] = cleaned.split('.')
-  if (!intPart && decPart === undefined) return ''
-  const formattedInt = (parseInt(intPart || '0', 10) || 0).toLocaleString('en-AU')
-  return decPart !== undefined ? formattedInt + '.' + decPart.slice(0, 2) : formattedInt
-}
+// One copy, in lib/money.ts. This was written out identically here and in the
+// other form.
+const formatNumber = formatAsTyped
 
 // The scenarios that carry a loan being paid out. Same list the "Existing loan
 // balance" field is shown for, named once so the field and the auto-fill cannot
@@ -858,16 +850,9 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
 
   // Puts the email on the clipboard as rich HTML, with a readable plain-text
   // alternative for anything that cannot take HTML. Never writes markup as text.
+  // One copy, in lib/rich-text.ts.
   async function copyEmailToClipboard() {
-    const cleanHtml = getCleanEmailHtml()
-    // One reader for this, in lib/rich-text.ts. It knows about <br>, which this
-    // did not - so the paragraph breaks we just fixed survived into the HTML half
-    // of the clipboard and were flattened again in the plain-text half.
-    const plain = htmlToPlainText(cleanHtml)
-    await navigator.clipboard.write([new ClipboardItem({
-      'text/html': new Blob([cleanHtml], { type: 'text/html' }),
-      'text/plain': new Blob([plain], { type: 'text/plain' }),
-    })])
+    await copyHtmlAndPlain(getCleanEmailHtml())
   }
 
   async function copyEmailOnly() {

@@ -71,3 +71,43 @@ export function withFrequency(amount: any, frequency: any): string {
   const f = String(frequency || '').trim()
   return f ? `${m} ${f.toLowerCase()}` : m
 }
+
+// FORMATTING AS SOMEBODY TYPES.
+//
+// Different from money() above: this runs on every keystroke inside a
+// NumberInput, so it has to cope with a half-typed number - "5,2", "1234." -
+// and hand back exactly what should now be in the box, with no dollar sign.
+//
+// It was written out twice, character for character, in BCForm and LOForm. That
+// is the shape of fault that kept the money bugs alive: a fix to one copy is not
+// a fix, and nothing said the second one existed. See lib/no-duplicate-logic.test.ts.
+export function formatAsTyped(val: string): string {
+  let cleaned = String(val ?? '').replace(/[^0-9.]/g, '')
+  const firstDot = cleaned.indexOf('.')
+  if (firstDot !== -1) {
+    cleaned = cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, '')
+  }
+  const [intPart, decPart] = cleaned.split('.')
+  if (!intPart && decPart === undefined) return ''
+  const formattedInt = (parseInt(intPart || '0', 10) || 0).toLocaleString('en-AU')
+  return decPart !== undefined ? formattedInt + '.' + decPart.slice(0, 2) : formattedInt
+}
+
+// "$1.35m", "$450k" - for a dashboard tile where the exact dollar does not
+// matter and the width does. Also had two copies.
+export function compactMoney(n: number | null | undefined): string {
+  if (n === null || n === undefined) return '—'
+  const a = Math.abs(n)
+  if (a >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'm'
+  if (a >= 1e3) return '$' + Math.round(n / 1e3) + 'k'
+  return '$' + Math.round(n)
+}
+
+// Digits only, for a field where a person types a target or an actual. Null when
+// they have typed nothing, so an empty box stays empty rather than becoming 0.
+export function digitsOnly(s: any): number | null {
+  const d = String(s ?? '').replace(/[^0-9]/g, '')
+  if (d === '') return null
+  const n = Number(d)
+  return Number.isNaN(n) ? null : n
+}

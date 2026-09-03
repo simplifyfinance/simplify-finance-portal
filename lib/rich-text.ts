@@ -81,3 +81,17 @@ export function htmlToPlainText(html: string): string {
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
+
+// PUTTING AN EMAIL ON THE CLIPBOARD, both halves at once.
+//
+// Outlook takes the HTML, a plain-text client takes the other half, and the two
+// have to say the same thing. The BC form and the LO form each had their own
+// identical copy of this - and the comment inside BOTH of them described a bug
+// that had been fixed in one place. See lib/no-duplicate-logic.test.ts.
+export async function copyHtmlAndPlain(html: string): Promise<void> {
+  const plain = htmlToPlainText(html)
+  await navigator.clipboard.write([new ClipboardItem({
+    'text/html': new Blob([html], { type: 'text/html' }),
+    'text/plain': new Blob([plain], { type: 'text/plain' }),
+  })])
+}

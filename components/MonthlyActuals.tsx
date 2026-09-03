@@ -1,5 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import { splitsTotal } from '@/lib/deal-phase'
+import { digitsOnly, compactMoney } from '@/lib/money'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { fyEndYear, todayYmd, toAuDate } from '@/lib/periods'
 
@@ -10,12 +12,8 @@ function monthKey(fyEnd: number, mi: number): string {
   const y = mi >= 7 ? fyEnd - 1 : fyEnd
   return `${y}-${String(mi).padStart(2, '0')}-01`
 }
-function parseNum(s: string): number | null {
-  const d = String(s).replace(/[^0-9]/g, '')
-  if (d === '') return null
-  const n = Number(d)
-  return isNaN(n) ? null : n
-}
+// One copy, in lib/money.ts.
+const parseNum = digitsOnly
 function commas(s: string): string {
   const n = parseNum(s)
   return n === null ? '' : n.toLocaleString('en-AU')
@@ -25,19 +23,9 @@ function num(v: any): number | null {
   const n = Number(String(v).replace(/[^0-9.\-]/g, ''))
   return isNaN(n) ? null : n
 }
-function splitsTotal(sp: any): number | null {
-  if (!Array.isArray(sp) || sp.length === 0) return null
-  let t = 0, seen = false
-  for (const x of sp) { const n = num(x?.amount); if (n !== null) { t += n; seen = true } }
-  return seen ? t : null
-}
-function compact(n: number | null): string {
-  if (n === null) return '-'
-  const a = Math.abs(n)
-  if (a >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'm'
-  if (a >= 1e3) return '$' + Math.round(n / 1e3) + 'k'
-  return '$' + Math.round(n)
-}
+// One copy, in lib/deal-phase.ts — where it already was.
+// One copy, in lib/money.ts.
+const compact = compactMoney
 
 export default function MonthlyActuals() {
   const supabase = createSupabaseBrowser()

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { formatAsTyped } from '@/lib/money'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { docsStateOf, atTime, assessorMissing, NO_ASSESSOR_MESSAGE } from '@/lib/docs-received'
 import { legalFeeLabel, rowLegalFeeLabel } from '@/lib/lender-fees'
@@ -8,7 +9,7 @@ import BrokerAssignment from './BrokerAssignment'
 import { can } from '@/lib/permissions'
 import { templateLabel } from '@/lib/templates'
 import { proceedCredit } from '@/lib/deal-status'
-import { emailParagraphs, htmlToPlainText } from '@/lib/rich-text'
+import { emailParagraphs, htmlToPlainText, copyHtmlAndPlain} from '@/lib/rich-text'
 import { loMayWriteAmount, splitsTotal } from '@/lib/deal-phase'
 import { resolveLenderSplits, seedFromGlobal, combineIntoOneLoan,
          lenderTotal, lenderLvr } from '@/lib/lo-splits'
@@ -195,17 +196,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function formatNumber(val: string): string {
-  let cleaned = val.replace(/[^0-9.]/g, '')
-  const firstDot = cleaned.indexOf('.')
-  if (firstDot !== -1) {
-    cleaned = cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, '')
-  }
-  const [intPart, decPart] = cleaned.split('.')
-  if (!intPart && decPart === undefined) return ''
-  const formattedInt = (parseInt(intPart || '0', 10) || 0).toLocaleString('en-AU')
-  return decPart !== undefined ? formattedInt + '.' + decPart.slice(0, 2) : formattedInt
-}
+// One copy, in lib/money.ts. This was written out identically here and in the
+// other form.
+const formatNumber = formatAsTyped
 
 function NumberInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
@@ -861,16 +854,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
   // One way to put the email on the clipboard, used by both buttons. Writing
   // only text/plain hands Outlook raw markup instead of a formatted email.
+  // One copy, in lib/rich-text.ts.
   async function copyEmailToClipboard() {
-    const cleanHtml = getCleanEmailHtml()
-    // One reader for this, in lib/rich-text.ts. It knows about <br>, which this
-    // did not - so the paragraph breaks we just fixed survived into the HTML half
-    // of the clipboard and were flattened again in the plain-text half.
-    const plain = htmlToPlainText(cleanHtml)
-    await navigator.clipboard.write([new ClipboardItem({
-      'text/html': new Blob([cleanHtml], { type: 'text/html' }),
-      'text/plain': new Blob([plain], { type: 'text/plain' }),
-    })])
+    await copyHtmlAndPlain(getCleanEmailHtml())
   }
 
   async function sendEmail() {

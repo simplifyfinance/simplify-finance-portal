@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { ctas } from '@/lib/email-buttons'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { type Brand, resolveBrand, brandLegal } from '@/lib/brand'
 // EVERY DOLLAR FIGURE IN A CLIENT EMAIL GOES THROUGH money().
@@ -59,20 +60,7 @@ function notesBox(items: string[]) {
       ${items.map(i => `<p style="font-size:12px;color:#334155;margin:4px 0;line-height:1.6"><span style="color:#334155;">&bull; ${i}</span></p>`).join('')}
     </td></tr></table>`
 }
-function ctas(calendly: string, proceedUrl?: string) {
-  // Word will not paint a background on an inline link, so the colour lives on
-  // the cell. Without this these arrived as bare blue and black text.
-  const button = (href: string, bg: string, label: string) =>
-    `<table cellpadding="0" cellspacing="0" border="0" style="display:inline-table"><tr>
-      <td bgcolor="${bg}" align="center" style="background:${bg};border-radius:6px;padding:10px 18px">
-        <a href="${href}" style="color:#ffffff;font-size:13px;font-weight:600;text-decoration:none;display:inline-block">${label}</a>
-      </td></tr></table>`
-  return `<table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px"><tr>
-    <td>${button(proceedUrl || calendly, '#2DBEFF', 'I am ready to proceed')}</td>
-    <td width="10">&nbsp;</td>
-    <td>${button(calendly, '#343333', 'Book a call')}</td>
-  </tr></table>`
-}
+// One copy, in lib/email-buttons.ts.
 
 // The loan splits, one row per split across every column.
 //

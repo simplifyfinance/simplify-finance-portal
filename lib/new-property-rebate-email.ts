@@ -1,4 +1,5 @@
 import { emailShell, shellButton, FONT } from './email-shell'
+import { keyBlock as sharedKeyBlock } from './email-blocks'
 import { type Brand, DEFAULT_BRAND } from './brand'
 
 // New property rebate.
@@ -54,14 +55,9 @@ const p = (t: string) =>
 const punch = (t: string) =>
   `<p style="margin:0 0 15px;font-family:${FONT};font-size:16.5px;color:${INK};font-weight:600;line-height:1.5;"><span style="color:${INK};">${t}</span></p>`
 
-function keyBlock(line: string, payoff: string): string {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0;"><tr>
-<td width="3" bgcolor="${CYAN}" style="background-color:${CYAN};width:3px;font-size:0;line-height:0;">&nbsp;</td>
-<td bgcolor="${TINT}" style="background-color:${TINT};padding:16px 18px;font-family:${FONT};">
-<div style="font-size:19px;font-weight:bold;line-height:1.4;color:${INK};"><span style="color:${INK};">${line}</span></div>
-<div style="font-size:14.5px;font-weight:600;color:#0B6F9E;padding-top:5px;"><span style="color:#0B6F9E;">${payoff}</span></div>
-</td></tr></table>`
-}
+// One copy, in lib/email-blocks.ts. The colours travel with the call.
+const keyBlock = (line: string, payoff: string) =>
+  sharedKeyBlock(line, payoff, { cyan: CYAN, tint: TINT, font: FONT, ink: INK })
 
 // The rebate, given the weight of the one number in the email.
 function rebateBlock(amount: string): string {

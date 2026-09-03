@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
+import SectionHeader from '@/components/SectionHeader'
 import { isWithLender, splitsTotal } from '@/lib/deal-phase'
 import { applicantsOf } from '@/lib/applicants'
 import { PreflightPanel, PushForm } from '@/components/PushDialogs'
@@ -191,14 +192,6 @@ function ToggleRow({ label, value, onChange, options, colors, required }: { labe
   )
 }
 
-function SectionHeader({ title, badge }: { title: string; badge?: string }) {
-  return (
-    <div className="flex items-center gap-2 mb-3">
-      <span className="text-xs font-medium text-gray-400 uppercase tracking-widest">{title}</span>
-      {badge && <span className="text-[10px] bg-green-50 text-green-600 px-2 py-0.5 rounded font-medium">{badge}</span>}
-    </div>
-  )
-}
 
 // THE NINE AI NOTES, NAMED ONCE. Two of the lists that used to hold these
 // disagreed with each other, which is how a field can quietly stop being
