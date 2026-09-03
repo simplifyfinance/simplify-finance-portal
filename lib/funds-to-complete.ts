@@ -190,17 +190,38 @@ export function lvrOf(deal: any): number | null {
   return securityValue(deal).lvr
 }
 
+// Scenarios where the client is buying and nothing is being refinanced. On these
+// an existing loan balance is the mortgage on the home they already own and are
+// keeping - see refinancedDebt.
+const PURCHASE_ONLY_TEMPLATES = new Set([
+  'oo_purchase', 'oo_lvr_compare', 'investment_purchase', 'fhb', 'smsf',
+  'construction', 'family_pledge',
+])
+
 // What is being paid out on a refinance. Not part of funds to complete - it goes
 // in the deal row instead, because it should not vanish just because there is no
 // completion to fund.
+//
+// The BC's existing loan balance is NOT proof of a refinance. Chapman's OO
+// purchase carries $1,279,283.98 in that box - the loan on the home they are
+// selling out of - and reading it as refinanced debt made a plain purchase look
+// like a deal that both refinances and buys, which withheld the funds to
+// complete total and demanded an answer to "what does this split do" that the
+// deal does not have. On a purchase-only scenario the fact find's "To be
+// refinanced" flag is the only authority, because that flag is somebody saying
+// so rather than a number left in a box.
 export function refinancedDebt(deal: any): number {
   const bc = deal?.bc_data || {}
-  if (has(bc.existingLoanBal)) return num(bc.existingLoanBal)
-  let total = 0
+  let flagged = 0
   for (const p of deal?.fact_find_data?.properties || []) {
     for (const l of p?.loans || []) {
-      if (txt(l?.status) === 'To be refinanced') total += num(l?.balance)
+      if (txt(l?.status) === 'To be refinanced') flagged += num(l?.balance)
     }
   }
-  return total
+  // Unchanged for every scenario that does refinance: the BC's figure wins,
+  // because it is the payout the deal was priced on.
+  if (!PURCHASE_ONLY_TEMPLATES.has(txt(bc.template)) && has(bc.existingLoanBal)) {
+    return num(bc.existingLoanBal)
+  }
+  return flagged
 }

@@ -300,3 +300,101 @@ describe('who owns what — the two forms must not fight', () => {
     expect(splitsOf(gone)[0].termYears).toBe('')
   })
 })
+
+// --- Fabio, 3 Sep 2026, looking at Chapman's LO -----------------------------
+// "loan amount is on scenario so why 'set on lo' same with purpose"
+//
+// The block showed a dash for the amount, the rate and the repayment type on a
+// deal whose Scenario box, six inches below, said $1,700,000. The money was
+// there the whole time - it was in the lender's own copy of the split list, and
+// splitsOf only read one list.
+describe('where a split gets its numbers', () => {
+  const chapman = (over: any = {}) => ({
+    bc_data: { template: 'oo_purchase', purchasePrice: '5,250,000', loanTerm: '30' },
+    lo_data: {
+      loanAmount: '1,700,000', recommendedLender: 'ING',
+      refinanceSplits: [{ id: 'a1', label: 'Owner-occupied loan', amount: '' }],
+      lenders: [{ lenderName: 'ING', productName: 'Orange Advantage', lenderSplits: [
+        { id: 'a1', label: 'Owner-occupied loan', amount: '1,700,000', rate: '5.64', repaymentType: 'P&I' }] }],
+      ...over,
+    },
+  })
+
+  it('takes the amount, rate and repayment from the recommended lender', () => {
+    const [s] = splitsOf(chapman())
+    expect(s.amount).toBe('1,700,000')
+    expect(s.rate).toBe('5.64')
+    expect(s.repaymentType).toBe('P&I')
+  })
+
+  it('falls back to the deal loan amount when there is only one split', () => {
+    const [s] = splitsOf({
+      bc_data: { template: 'oo_purchase', purchasePrice: '5,250,000' },
+      lo_data: { loanAmount: '1,700,000', refinanceSplits: [{ id: 'a1', label: 'Owner-occupied loan', amount: '' }] },
+    })
+    expect(s.amount).toBe('1700000')
+  })
+
+  // With two splits there is no way to know how the money divides, and a made-up
+  // division would end up in a credit note.
+  it('invents nothing when two splits are blank', () => {
+    const rows = splitsOf({
+      bc_data: { template: 'oo_purchase', purchasePrice: '900,000' },
+      lo_data: { loanAmount: '740,000', refinanceSplits: [
+        { id: 'p', label: 'Split 1', amount: '' }, { id: 'q', label: 'Split 2', amount: '' }] },
+    })
+    expect(rows.map(r => r.amount)).toEqual(['', ''])
+  })
+
+  it('prefers the split list amount over the lender copy when both are typed', () => {
+    const [s] = splitsOf(chapman({
+      refinanceSplits: [{ id: 'a1', label: 'Owner-occupied loan', amount: '1,650,000' }] }))
+    expect(s.amount).toBe('1,650,000')
+  })
+
+  // Option two's rate under option one's name would be a wrong number rather
+  // than a missing one.
+  it('does not borrow a rate from a lender that is not recommended', () => {
+    const [s] = splitsOf(chapman({
+      recommendedLender: 'ING',
+      lenders: [
+        { lenderName: 'ING', lenderSplits: [] },
+        { lenderName: 'Macquarie', lenderSplits: [{ id: 'a1', amount: '1,700,000', rate: '6.09' }] },
+      ],
+    }))
+    expect(s.rate).toBe('')
+  })
+
+  it('still reads the BC splits when the LO has none', () => {
+    const [s] = splitsOf({ bc_data: { splits: [{ label: 'Refinance', amount: '600,000' }] }, lo_data: {} })
+    expect(s.amount).toBe('600,000')
+    expect(s.label).toBe('Refinance')
+  })
+})
+
+// An existing loan balance left on a purchase scenario is the mortgage on the
+// home being sold, not debt this deal refinances. Reading it as a refinance made
+// Chapman's OO purchase demand an answer to "what does this split do" and
+// withheld the funds to complete total.
+describe('a purchase is not a refinance', () => {
+  const chapman = {
+    bc_data: { template: 'oo_purchase', purchasePrice: '5,250,000', stampDuty: '295,000',
+               deposit: '3,841,500', existingLoanBal: '1279283.98' },
+    lo_data: { loanAmount: '1,700,000' },
+  }
+
+  it('ignores the leftover balance on a purchase-only scenario', () => {
+    expect(isMixed(chapman)).toBe(false)
+    expect(needsFundsRole(chapman)).toBe(false)
+  })
+
+  it('still counts it the moment the fact find says it is being refinanced', () => {
+    expect(isMixed({ ...chapman, fact_find_data: { properties: [{ value: '1,900,000',
+      loans: [{ balance: '1,279,283', status: 'To be refinanced' }] }] } })).toBe(true)
+  })
+
+  it('leaves a scenario that really does both alone', () => {
+    expect(isMixed({ bc_data: { template: 'investment_equity', purchasePrice: '850,000',
+      existingLoanBal: '520,000' } })).toBe(true)
+  })
+})

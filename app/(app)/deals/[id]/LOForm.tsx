@@ -32,6 +32,12 @@ type RefinanceSplit = {
   id: string
   label: string
   amount: string
+  // Owner occupied or investment, and - on a deal that both refinances and buys
+  // - what this part of the money actually does. Recorded per split because a
+  // refinance releasing equity for an investment is both, and deciding it from
+  // the scenario's name filed those deals owner occupied.
+  purpose?: string
+  funds?: string
 }
 
 type LenderSplit = {
@@ -632,6 +638,23 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     setD({ ...d, refinanceSplits: [...d.refinanceSplits, newSplit] })
   }
 
+  // Written from the deal structure block at the top of this tab. It goes
+  // through the LO's own state rather than straight to the database, because
+  // this form autosaves the whole lo_data blob and a second writer would be
+  // overwritten the next time somebody typed in here.
+  function setSplitField(id: string, patch: { purpose?: string; funds?: string }) {
+    setD(x => {
+      const list = x.refinanceSplits || []
+      const m = /^s(\d+)$/.exec(id)
+      const found = list.findIndex(s => s.id === id)
+      const at = found >= 0 ? found : m ? Number(m[1]) : -1
+      if (at < 0 || at >= list.length) return x
+      const next = [...list]
+      next[at] = { ...next[at], ...patch }
+      return { ...x, refinanceSplits: next }
+    })
+  }
+
   function removeRefinanceSplit(idx: number) {
     if (d.refinanceSplits.length <= 1) return
     setD({ ...d, refinanceSplits: d.refinanceSplits.filter((_, i) => i !== idx) })
@@ -1062,8 +1085,14 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
               tab shows - one record, so a change made on either is the change.
               Fabio, 3 Sep 2026: "that will replace these 2 section in LO and
               Compliance (static across)". */}
-          <DealStructure deal={deal}
-            onUpdated={(patch: any) => onDealFieldChange?.('compliance_data', patch.compliance_data)} />
+          {/* The LIVE lo_data, not the copy the page loaded with. Handing over
+              deal.lo_data meant a split amount typed below did not reach this
+              block until the next save and refresh, so it sat there showing a
+              dash next to a Scenario box that already had the number. */}
+          <DealStructure deal={{ ...deal, lo_data: d }}
+            onUpdated={(patch: any) => onDealFieldChange?.('compliance_data', patch.compliance_data)}
+            onSplitChange={setSplitField}
+            onAddSplit={addRefinanceSplit} />
 
           {/* Scenario */}
           <div className="bg-white border border-gray-100 rounded-xl p-5">
@@ -1148,8 +1177,12 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
               </div>
             )}
 
-            {/* Refinance — global loan splits */}
-            {isRefinance && (
+            {/* GLOBAL LOAN SPLITS - on every scenario, not just refinances.
+                Gating this on the refinance template meant a purchase could only
+                ever have the one split the BC gave it, and no way to add a
+                second. Fabio, 3 Sep 2026: "I thought LO had the ability of
+                adding multiple splits??" It always could - on refinances. */}
+            {(
               <div className="border-t border-gray-100 pt-4">
                 <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-3">Global loan splits — define the deal structure</div>
                 <div className="space-y-2 mb-3">

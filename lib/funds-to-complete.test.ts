@@ -231,3 +231,37 @@ describe('LMI is shown but never counted', () => {
     expect(f.missing.some(m => m.includes('LMI'))).toBe(false)
   })
 })
+
+// Chapman's OO purchase carried $1,279,283.98 in the BC's existing loan box -
+// the mortgage on the home they are selling out of. Read as refinanced debt it
+// turned a plain purchase into a deal that "both refinances and buys", which
+// withheld the funds to complete total behind a question the deal cannot answer.
+describe('an existing balance on a purchase is not refinanced debt', () => {
+  const chapman = {
+    bc_data: { template: 'oo_purchase', purchasePrice: '5,250,000', stampDuty: '295,000',
+               deposit: '3,841,500', existingLoanBal: '1279283.98' },
+    lo_data: { loanAmount: '1,700,000' },
+  }
+
+  it('is ignored on a purchase-only scenario', () => {
+    expect(refinancedDebt(chapman)).toBe(0)
+  })
+
+  it('so the whole loan counts and a total is offered', () => {
+    const f = fundsToComplete(chapman)
+    expect(f.workable).toBe(true)
+    expect(amountOf(f, 'Loan')).toBe(1_700_000)
+    expect(f.missing.join(' ')).not.toContain('both refinances and buys')
+  })
+
+  it('counts again as soon as the fact find flags the loan', () => {
+    expect(refinancedDebt({ ...chapman, fact_find_data: { properties: [{ value: '1,900,000',
+      loans: [{ balance: '1,279,283', status: 'To be refinanced' }] }] } })).toBe(1_279_283)
+  })
+
+  it('leaves every refinancing scenario exactly as it was', () => {
+    for (const template of ['refinance_only', 'refinance_equity', 'investment_equity', 'bridging', 'buy_sell', '']) {
+      expect(refinancedDebt({ bc_data: { template, existingLoanBal: '520,000' } })).toBe(520_000)
+    }
+  })
+})

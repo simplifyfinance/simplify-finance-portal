@@ -115,20 +115,63 @@ export type StructureSplit = {
 // The compliance half is filed under the split's id in
 // compliance_data.splitDetail, and merged back here. A split that is deleted
 // leaves its detail behind harmlessly; a key nothing matches is ignored.
+// WHERE THE MONEY ACTUALLY LIVES.
+//
+// The LO keeps a split list in three places and none of them holds everything:
+//
+//   lo_data.refinanceSplits        the deal structure - label and amount
+//   lo_data.lenders[].lenderSplits the per-lender copy - amount, RATE, P&I/IO
+//   bc_data.splits                 what the BC started with
+//
+// The first version read one list and stopped. On Chapman's purchase that meant
+// a row reading "Split 1 - Owner-occupied loan" with a dash for the amount, the
+// rate and the repayment type, while the Scenario box six inches below it said
+// $1,700,000. Fabio, 3 Sep 2026: "loan amount is on scenario so why set on lo".
+//
+// So each field is taken from the first list that has it, matched by id and
+// falling back to position. And a deal with exactly ONE split whose amount was
+// never typed into the split list takes the deal's loan amount, because with one
+// split those are the same number by definition. Two blank splits get nothing -
+// there is no way to know how the money divides, and inventing a division here
+// would put a made-up figure in a credit note.
 export function splitsOf(deal: any): StructureSplit[] {
   const lo = deal?.lo_data || {}
   const detail = deal?.compliance_data?.splitDetail || {}
-  const fromLo = (lo.refinanceSplits || []).filter((s: any) => has(s?.amount) || txt(s?.label))
-  const source = fromLo.length > 0 ? fromLo : (deal?.bc_data?.splits || [])
-  return source.map((s: any, i: number) => {
+
+  const globals: any[] = lo.refinanceSplits || []
+  const bcSplits: any[] = deal?.bc_data?.splits || []
+  const lenderSplits: any[] = recommendedLenderSplits(deal)
+
+  const base = globals.length > 0 ? globals
+    : lenderSplits.length > 0 ? lenderSplits
+    : bcSplits
+  if (base.length === 0) return []
+
+  // Same split, seen from another list. Ids match when the per-lender copy was
+  // seeded from the globals; position is the fallback for a BC list that never
+  // had ids at all.
+  const same = (list: any[], id: string, i: number) =>
+    list.find((x: any) => txt(x?.id) && txt(x?.id) === id) || list[i] || {}
+
+  const firstOf = (...vals: any[]) => vals.find(v => txt(v)) ?? ''
+  const onlySplit = base.length === 1
+
+  return base.map((s: any, i: number) => {
     const id = txt(s?.id) || `s${i}`
     const d = detail[id] || {}
+    const ls = same(lenderSplits, id, i)
+    const bs = same(bcSplits, id, i)
+
+    const amount = firstOf(s?.amount, ls?.amount, bs?.amount,
+      onlySplit && loanAmount(deal) > 0 ? String(loanAmount(deal)) : '')
+
     return {
       id,
-      label: txt(s?.label) || `Split ${i + 1}`,
-      amount: txt(s?.amount),
-      rate: txt(s?.rate),
-      repaymentType: txt(s?.repaymentType) || txt(s?.type),
+      label: firstOf(s?.label, ls?.label, bs?.label) || `Split ${i + 1}`,
+      amount: txt(amount),
+      // Rate and repayment type are only ever typed on the per-lender copy.
+      rate: firstOf(ls?.rate, s?.rate, bs?.rate),
+      repaymentType: firstOf(ls?.repaymentType, s?.repaymentType, s?.type, bs?.repaymentType, bs?.type),
       purpose: (txt(s?.purpose) as SplitPurpose) || '',
       funds: (txt(s?.funds) as SplitFunds) || '',
       // The BC holds one term for the whole deal; it prefills every split, and a
@@ -138,6 +181,18 @@ export function splitsOf(deal: any): StructureSplit[] {
       productType: txt(d?.productType) || txt(s?.productType) || recommendedProduct(deal),
     }
   })
+}
+
+// The recommended lender's own splits, which is where the rate and the P&I/IO
+// answer are typed. With no recommendation yet it uses option one - the way the
+// LO's own splits box does, because option one is usually the recommendation and
+// often the only one filled in. It never reaches past that: option two's rate
+// under option one's name would be a wrong number, not a missing one.
+function recommendedLenderSplits(deal: any): any[] {
+  const lo = deal?.lo_data || {}
+  const list = lo.lenders || []
+  const rec = list.find((l: any) => l?.lenderName && l.lenderName === lo.recommendedLender) || list[0]
+  return (rec?.lenderSplits || []).length > 0 ? rec.lenderSplits : []
 }
 
 function recommendedProduct(deal: any): string {

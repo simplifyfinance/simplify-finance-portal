@@ -29,9 +29,15 @@ const K = 'text-[9.5px] font-semibold tracking-[.09em] uppercase text-[#A29889]'
 const INP = 'border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 text-[13px] text-[#221F1B] bg-white focus:outline-none focus:border-[#2DBEFF]'
 const NEED = 'border-[#D9A441] bg-[#FFFDF8]'
 
-export default function DealStructure({ deal, onUpdated }: {
+export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSplit }: {
   deal: any
   onUpdated?: (patch: any) => void
+  // Supplied only by the Lending options tab, which owns lo_data and can write
+  // to it safely from its own state. On Compliance these are absent and the two
+  // LO-owned answers show a link back instead of a dropdown - the block is in
+  // two places, but only one of them is allowed to change the LO's mind.
+  onSplitChange?: (splitId: string, patch: { purpose?: string; funds?: string }) => void
+  onAddSplit?: () => void
 }) {
   const supabase = createSupabaseBrowser()
   const [err, setErr] = useState('')
@@ -137,11 +143,14 @@ export default function DealStructure({ deal, onUpdated }: {
             : <span className="text-[12.5px] font-semibold text-[#B58A2B]">not known</span>}
         </Field>
 
-        <Field label="Promotion / cashback">
-          <input defaultValue={row.cashback} key={row.cashback}
-            onBlur={e => { if (e.target.value !== row.cashback) setField('cashback', e.target.value) }}
-            placeholder="none" className={`${INP} w-[130px]`} />
-        </Field>
+        {/* Cashback lives beside Product type in the splits table below, where
+            Fabio asked for it. It only appears here when there are no splits to
+            put it next to. */}
+        {splits.length === 0 && (
+          <Field label="Promotion / cashback">
+            <CashbackInput value={row.cashback} onSave={v => setField('cashback', v)} />
+          </Field>
+        )}
       </div>
 
       {/* --- funds to complete ------------------------------------------ */}
@@ -150,8 +159,10 @@ export default function DealStructure({ deal, onUpdated }: {
           {funds.lines.map((l, i) => (
             <div key={l.label} className={`px-4 ${i === 0 ? 'pl-0' : 'border-l border-[#EDE8DF]'}`}>
               <div className={K}>{l.label}</div>
+              {/* Green is what says "this comes off". Fabio, 3 Sep 2026: "just
+                  green number no minus dont like it". */}
               <div className={`text-[14.5px] font-bold whitespace-nowrap ${l.kind === 'source' ? 'text-[#1E7A4A]' : 'text-[#221F1B]'}`}>
-                {l.kind === 'source' ? '− ' : ''}{money(l.amount)}
+                {money(l.amount)}
               </div>
             </div>
           ))}
@@ -182,11 +193,19 @@ export default function DealStructure({ deal, onUpdated }: {
       {splits.length > 0 && (
         <>
           <div className="h-px bg-[#F2F2F2] my-3.5" />
-          <div className="flex items-baseline gap-2.5 mb-2">
+          <div className="flex items-baseline gap-2.5 mb-2 flex-wrap">
             <span className={K}>Loan splits</span>
             <span className="text-[12px] text-[#A29889]">
-              amount, rate, repayment and purpose come from the Lending options tab
+              {onSplitChange
+                ? 'amount and rate come from the lender options below'
+                : 'amount, rate, repayment and purpose come from the Lending options tab'}
             </span>
+            {onAddSplit && (
+              <button onClick={onAddSplit}
+                className="ml-auto text-[12px] text-[#2DBEFF] border border-dashed border-[#2DBEFF] rounded-lg px-2.5 py-[3px] hover:bg-[#F4FCFF] transition">
+                + Add split
+              </button>
+            )}
           </div>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse min-w-[760px]">
@@ -199,6 +218,11 @@ export default function DealStructure({ deal, onUpdated }: {
                   {['Term', 'Product type'].map(h => (
                     <th key={h} className={`${K} text-left pb-1.5 pr-3 whitespace-nowrap text-[#8A6218]`}>{h}</th>
                   ))}
+                  {/* One per deal, not one per split. Fabio, 3 Sep 2026: "cashback
+                      dont do one per split you only get one cashback or not" -
+                      so it is one box spanning every row, sitting where he asked
+                      for it: "just push cashback next to product type". */}
+                  <th className={`${K} text-left pb-1.5 whitespace-nowrap`}>Promotion / cashback</th>
                 </tr>
               </thead>
               <tbody>
@@ -213,8 +237,19 @@ export default function DealStructure({ deal, onUpdated }: {
                     </td>
                     <td className="py-1.5 pr-3 text-[13.5px] font-semibold text-[#221F1B]">{s.rate ? `${s.rate}%` : '—'}</td>
                     <td className="py-1.5 pr-3 text-[13.5px] text-[#221F1B] whitespace-nowrap">{s.repaymentType || '—'}</td>
+                    {/* On the LO this is answered here. It used to say "set on
+                        the LO" on the LO itself, which is a signpost pointing at
+                        the ground you are standing on. */}
                     <td className="py-1.5 pr-3 whitespace-nowrap">
-                      {s.purpose
+                      {onSplitChange
+                        ? <select value={s.purpose || ''}
+                            onChange={e => onSplitChange(s.id, { purpose: e.target.value })}
+                            className={`${INP} ${!s.purpose ? NEED : ''}`}>
+                            <option value="">Owner occupied or investment?</option>
+                            <option value="OO">{PURPOSE_LABEL.OO}</option>
+                            <option value="INV">{PURPOSE_LABEL.INV}</option>
+                          </select>
+                        : s.purpose
                         ? <span className={`text-[9.5px] font-bold tracking-[.05em] rounded px-2 py-[2px] text-white ${
                             s.purpose === 'INV' ? 'bg-[#946017]' : 'bg-[#0E86B8]'}`}>
                             {PURPOSE_LABEL[s.purpose]}
@@ -226,7 +261,16 @@ export default function DealStructure({ deal, onUpdated }: {
                     </td>
                     {askFunds && (
                       <td className="py-1.5 pr-3 whitespace-nowrap">
-                        {s.funds
+                        {onSplitChange
+                          ? <select value={s.funds || ''}
+                              onChange={e => onSplitChange(s.id, { funds: e.target.value })}
+                              className={`${INP} ${!s.funds ? NEED : ''}`}>
+                              <option value="">What does this money do?</option>
+                              {Object.entries(FUNDS_LABEL).map(([k, v]) => (
+                                <option key={k} value={k}>{v}</option>
+                              ))}
+                            </select>
+                          : s.funds
                           ? <span className="text-[12px] text-[#221F1B]">{FUNDS_LABEL[s.funds]}</span>
                           : <a href={`/deals/${deal.id}?stage=LO`}
                               className="text-[11.5px] text-[#8A6218] bg-[#FDF6EC] border border-[#D9A441] rounded px-2 py-[3px] hover:underline">
@@ -244,6 +288,11 @@ export default function DealStructure({ deal, onUpdated }: {
                         onBlur={e => { if (e.target.value !== s.productType) setDetail(s.id, { productType: e.target.value }) }}
                         placeholder="product" className={`${INP} w-[150px] ${!s.productType ? NEED : ''}`} />
                     </td>
+                    {i === 0 && (
+                      <td className="py-1.5 align-top" rowSpan={splits.length}>
+                        <CashbackInput value={row.cashback} onSave={v => setField('cashback', v)} />
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -304,5 +353,16 @@ function Value({ v, src }: { v: string; src?: string }) {
       {v}
       {src && <span className="block text-[10.5px] font-normal text-[#C3BDB2]">{src}</span>}
     </div>
+  )
+}
+
+// Declared out here on purpose. A component defined inside another component is
+// a brand new type on every render, so React throws the old input away and the
+// cursor jumps out of the box while somebody is still typing in it.
+function CashbackInput({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+  return (
+    <input defaultValue={value} key={value}
+      onBlur={e => { if (e.target.value !== value) onSave(e.target.value) }}
+      placeholder="none" className={`${INP} w-[130px]`} />
   )
 }
