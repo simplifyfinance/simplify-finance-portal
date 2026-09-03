@@ -14,7 +14,7 @@
 // block on screen reads, so the page and the portal cannot drift apart.
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { renderToBuffer, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { renderToBuffer, Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer'
 import React from 'react'
 import { dealRow, splitsOf, purposeSummary, PURPOSE_LABEL } from '@/lib/deal-structure'
 import { fundsToComplete } from '@/lib/funds-to-complete'
@@ -23,6 +23,7 @@ import { fullName } from '@/lib/fact-find'
 import { money } from '@/lib/money'
 import { templateLabel } from '@/lib/templates'
 import { shortDate } from '@/lib/push-answers'
+import { SIMPLIFY_LOGO_PNG, LOGO_WIDTH, LOGO_HEIGHT } from '@/lib/brand-logo'
 
 const INK = '#141C24', MUTE = '#7C8894', BODY = '#3D4750'
 const RULE = '#E3E7EA', SOFT = '#F8F9FA', LINE = '#DCE2E7'
@@ -34,7 +35,9 @@ const s = StyleSheet.create({
   head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
   title: { fontSize: 17, fontFamily: 'Helvetica-Bold', color: INK },
   read: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', letterSpacing: 1.3, color: '#C4553B', marginTop: 3 },
-  brand: { fontSize: 15, fontFamily: 'Helvetica-Bold', color: INK, textAlign: 'right', lineHeight: 1.1 },
+  // The real wordmark, not the words set in Helvetica. 116pt wide, in the
+  // artwork's own proportions so it cannot be stretched.
+  logo: { width: 116, height: Math.round(116 * LOGO_HEIGHT / LOGO_WIDTH) },
 
   bar: { backgroundColor: INK, paddingVertical: 5, paddingHorizontal: 9, marginTop: 12,
          borderTopLeftRadius: 3, borderTopRightRadius: 3 },
@@ -112,7 +115,7 @@ export async function generateBrokerNotesPdfBuffer(dealId: string, supabase: any
             <Text style={s.title}>Broker Submission Notes</Text>
             <Text style={s.read}>PLEASE READ</Text>
           </View>
-          <Text style={s.brand}>Simplify{'\n'}Finance.</Text>
+          <Image style={s.logo} src={SIMPLIFY_LOGO_PNG} />
         </View>
 
         <Bar>APPLICANT DETAILS</Bar>

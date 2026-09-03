@@ -16,7 +16,7 @@ Extract into this exact structure:
       "phoneMobile": "", "emailPersonal": "",
       "addresses": [{ "address": "", "residentialStatus": "Renting/Owner/Boarding/Living with family or empty", "startDate": "YYYY-MM-DD or empty" }],
       "employment": [{ "occupation": "", "employerName": "", "employmentBasis": "Full time/Part time/Casual/Self-employed or empty", "startDate": "YYYY-MM-DD or empty" }],
-      "income": [{ "incomeType": "Base salary/Rental/Other or empty", "grossSalary": "", "grossSalaryFrequency": "Annually/Monthly/Fortnightly/Weekly or empty" }]
+      "income": [{ "incomeType": "PAYG/Self-employed/Other taxable/Other non-taxable or empty", "grossSalary": "", "grossSalaryFrequency": "Annually/Monthly/Fortnightly/Weekly or empty" }]
     }
   ],
   "dependants": "number of dependants as a plain digit string, e.g. '2', or empty string if not stated",

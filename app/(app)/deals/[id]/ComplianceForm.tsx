@@ -1043,10 +1043,8 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v8M4.5 7l3.5 3.5L11.5 7M3 13h10"/></svg>
               {downloading === 'compliance' ? 'Preparing...' : 'Handover PDF'}
             </button>
-            {/* The one that goes to the lender, so it is marked out from the two
-                internal records beside it. */}
             <button onClick={() => downloadPdf('broker_notes')} disabled={!!downloading}
-              className="bg-[#F4FCFF] border border-[#2DBEFF] text-[#0B5E8A] rounded-lg px-3.5 py-2 text-[12.5px] font-semibold hover:bg-[#E7F7FF] transition inline-flex items-center gap-1.5 disabled:opacity-40">
+              className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-lg px-3.5 py-2 text-[12.5px] font-medium hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition inline-flex items-center gap-1.5 disabled:opacity-40">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v8M4.5 7l3.5 3.5L11.5 7M3 13h10"/></svg>
               {downloading === 'broker_notes' ? 'Preparing...' : 'Broker Notes'}
             </button>

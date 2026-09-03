@@ -278,3 +278,37 @@ describe('what it refuses to do', () => {
     expect(body).not.toMatch(/[*_#•]/)
   })
 })
+
+// CHAPMAN, 3 SEP 2026. The fact find was filled in by the AI extractor, which
+// writes incomeType "Base salary" — a label nothing else in the portal knew.
+// These notes refused to compose and said "Natasha Chapman has base salary
+// income with no amount recorded", on a file with a salary plainly recorded.
+describe('an income the extractor labelled its own way', () => {
+  const extracted = (incomeType: string) => purchase({ fact_find_data: { applicants: [payg({
+    firstName: 'Natasha', lastName: 'Chapman',
+    income: [{ incomeType, employmentId: 'e1', grossSalary: '300,000', grossSalaryFrequency: 'Annually' }] })] },
+    compliance_data: { risks: { 'Natasha Chapman': {
+      retirementAge: '67', repaymentMethod: 'Superannuation lump sum following retirement' } } } })
+
+  it('composes whatever the label says', () => {
+    for (const label of ['PAYG', 'Base salary', 'Rental', 'Other', '']) {
+      const n = notes(extracted(label))
+      expect(n.ready, `${label}: ${n.missing.join(' / ')}`).toBe(true)
+      expect(n.text).toContain('Gross salary $300,000 p.a.')
+    }
+  })
+
+  it('counts the money either way', () => {
+    expect(para(extracted('Base salary'), 'income')!.lines[0]).toContain('Income used: $300,000 p.a.')
+  })
+
+  // A row somebody started and abandoned is still worth stopping for. With
+  // nothing filled in there is nothing but the label to go on, so "Base salary"
+  // is read as PAYG and the message names the field that is actually blank.
+  it('still refuses on an income row with nothing in it', () => {
+    const empty = purchase({ fact_find_data: { applicants: [payg({
+      income: [{ incomeType: 'Base salary', employmentId: 'e1' }] })] } })
+    expect(notes(empty).ready).toBe(false)
+    expect(notes(empty).missing.join(' ')).toContain('no gross salary recorded')
+  })
+})

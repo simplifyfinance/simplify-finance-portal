@@ -34,6 +34,7 @@ import { fundsToComplete, loanAmount } from './funds-to-complete'
 import { purposeSummary, splitsOf } from './deal-structure'
 import { fullName, ageFrom, currentEmployment, selfEmployed, notWorking } from './fact-find'
 import { annualIncomeOf, calculateSeAssessableIncome, seYearTotalFF } from './income-calculations'
+import { incomeKind, incomeLabel } from './income-kind'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -232,22 +233,27 @@ function incomeUsed(deal: any, missing: string[]): NotesParagraph | null {
     const parts: string[] = []
     for (const inc of incomes) {
       const emp = employments.find((e: any) => e?.id === inc?.employmentId) || employments[0] || {}
-      const type = txt(inc?.incomeType)
+      // What the entry contains, never what it is labelled - see
+      // lib/income-kind.ts. Chapman's fact find was AI-extracted, so every
+      // income on it said "Base salary" and these notes refused to compose.
+      const kind = incomeKind(inc)
 
-      if (type === 'PAYG') {
+      if (kind === 'payg') {
         if (!txt(emp?.employerName)) missing.push(`${name} has PAYG income with no employer recorded`)
         if (!has(inc?.grossSalary)) missing.push(`${name} has PAYG income with no gross salary recorded`)
         parts.push(paygLine(a, inc, emp))
-      } else if (type === 'Self-employed') {
+      } else if (kind === 'self-employed') {
         if (!txt(inc?.seAssessmentMethod)) missing.push(`${name} has self-employed income with no assessment method chosen`)
         const assessed = calculateSeAssessableIncome(inc)
         if (Number.isNaN(assessed)) {
           missing.push(`${name}: the latest financial year is not lower than the previous one, so "latest year because lower" cannot be used — choose another method`)
         }
         parts.push(selfEmployedLine(inc, emp))
-      } else if (type) {
-        if (!has(inc?.otherIncomeAmount)) missing.push(`${name} has ${type.toLowerCase()} income with no amount recorded`)
-        parts.push(`${txt(inc?.otherIncomeType) || type} of ${money(inc?.otherIncomeAmount)} p.a.`)
+      } else if (kind === 'other') {
+        parts.push(`${incomeLabel(inc)} of ${money(inc?.otherIncomeAmount)} p.a.`)
+      } else if (txt(inc?.incomeType)) {
+        // A row with a label and nothing in it. Somebody started it and stopped.
+        missing.push(`${name} has ${txt(inc.incomeType).toLowerCase()} income recorded with no amount against it`)
       }
       total += annualIncomeOf(inc)
     }

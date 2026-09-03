@@ -14,6 +14,7 @@
 // readMoney() is the one way this codebase reads stored money. See lib/money.ts,
 // and the guard in lib/email-money.test.ts that keeps Number() away from it.
 import { readMoney } from './money'
+import { incomeKind } from './income-kind'
 
 // Zero when the box is empty, which is what an add-back nobody typed means.
 const n = (v: any): number => readMoney(v) ?? 0
@@ -62,8 +63,13 @@ export function annualise(amount: any, frequency: any): number {
   return n(amount) * (PER_YEAR[String(frequency || 'Annually')] ?? 1)
 }
 
+// Switched on what the entry CONTAINS, not what it is labelled. The AI fact
+// find extractor writes "Base salary" and "Rental", the form's dropdown offers
+// "PAYG" and "Other taxable", and nothing reconciled them - so a $300,000 salary
+// on an extracted fact find counted as zero here and in the BC's income total.
 export function annualIncomeOf(inc: any): number {
-  if (inc?.incomeType === 'PAYG') {
+  const kind = incomeKind(inc)
+  if (kind === 'payg') {
     return annualise(inc.grossSalary, inc.grossSalaryFrequency)
       + annualise(inc.bonusAmount, inc.bonusFrequency)
       + annualise(inc.overtimeEssentialAmount, inc.overtimeEssentialFrequency)
@@ -71,7 +77,7 @@ export function annualIncomeOf(inc: any): number {
       + annualise(inc.commissionAmount, inc.commissionFrequency)
       + annualise(inc.allowanceAmount, inc.allowanceFrequency)
   }
-  if (inc?.incomeType === 'Self-employed') {
+  if (kind === 'self-employed') {
     const assessed = calculateSeAssessableIncome(inc)
     // "Latest year because lower" when it is not lower is a contradiction, and
     // calculateSeAssessableIncome says so with NaN so the form can show it. A
@@ -80,9 +86,7 @@ export function annualIncomeOf(inc: any): number {
     // picks a method that works.
     return Number.isNaN(assessed) ? 0 : assessed
   }
-  if (inc?.incomeType === 'Other taxable' || inc?.incomeType === 'Other non-taxable') {
-    return n(inc.otherIncomeAmount)
-  }
+  if (kind === 'other') return n(inc.otherIncomeAmount)
   return 0
 }
 
