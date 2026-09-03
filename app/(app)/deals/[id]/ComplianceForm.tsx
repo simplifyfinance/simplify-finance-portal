@@ -1514,8 +1514,9 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
                   </div>
                   <p className="m-0 mt-1.5 text-[12px] leading-[1.55] text-[#0B5E8A]">
                     <b className="text-[#08252F]">This is the only box on this tab the bank reads.</b>{' '}
-                    It is not written by AI — every sentence is copied from the deal. Compose it, read it,
-                    and fix anything that is not right before you push.
+                    It is not written by AI — every sentence is copied from the deal.
+                    <b className="text-[#08252F]"> Press Compose below</b>, read what it writes, and fix anything
+                    that is not right before you push.
                   </p>
                 </div>
                 <textarea spellCheck="true" className={inp + ' min-h-[190px] resize-y font-[13px]'} value={d.applicationSubmissionComment}
