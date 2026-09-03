@@ -184,6 +184,21 @@ export async function notifyEllieCreateCard(params: {
 //
 // This email is being rewritten properly later. For now the answers are here, in
 // the order credit reads them, so nothing has to be chased.
+// "two attached PDFs" was written into the sentence, and there are three now.
+// A count that says two while three are attached is the kind of thing somebody
+// files two of.
+function attachmentCount(attachments?: { filename: string }[]): string {
+  const n = (attachments || []).length
+  if (n === 1) return 'attached PDF'
+  const word = n === 2 ? 'two' : n === 3 ? 'three' : String(n)
+  return `${word} attached PDFs`
+}
+
+// The one document that has somewhere else to go as well.
+function isBrokerNotes(name: string): boolean {
+  return /^broker notes/i.test(String(name || '').trim())
+}
+
 export async function notifyCrisMoveCard(dealName: string, brokerName: string, action: string, closed = false, attachments?: { filename: string; content: string }[], recipientEmail?: string | null, answers?: { subject?: string; lines?: string[]; urgent?: boolean; dealId?: string; boxCount?: number; recipientName?: string | null; attachmentNames?: string[] }) {
   const bg = closed ? '#E6F5EC' : '#F2E9FB'
   const color = closed ? '#1D9E75' : '#7C3AED'
@@ -198,9 +213,10 @@ export async function notifyCrisMoveCard(dealName: string, brokerName: string, a
 
       <tr><td bgcolor="#FDF6E7" style="background:#FDF6E7;border-radius:8px;padding:13px 16px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
-          <tr><td style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:0 0 4px"><span style="color:#8A6218;">1 &nbsp;Save the ${attachments && attachments.length === 1 ? 'attached PDF' : 'two attached PDFs'} to OneDrive</span></td></tr>
+          <tr><td style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:0 0 4px"><span style="color:#8A6218;">1 &nbsp;Save the ${attachmentCount(attachments)} to OneDrive</span></td></tr>
           <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55;padding:0 0 8px"><span style="color:#8A6218;">Into this client&rsquo;s folder. They are the compliance record of what went to credit today.</span></td></tr>
           ${(answers?.attachmentNames || []).map(nm => `<tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:6px;padding:7px 10px;font-family:Arial,sans-serif;font-size:12.5px"><span style="color:#141C24;">${nm}</span></td></tr><tr><td style="padding:4px 0 0"></td></tr>`).join('')}
+          ${(answers?.attachmentNames || []).some(isBrokerNotes) ? `<tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55;padding:6px 0 0"><span style="color:#8A6218;"><b>Broker Notes also goes in the lodgement folder.</b> It is what gets pasted into the lender&rsquo;s portal, so it needs to sit with the lodgement, not only in the client folder.</span></td></tr>` : ''}
         </table>
       </td></tr>
       <tr><td style="padding:8px 0 0"></td></tr>

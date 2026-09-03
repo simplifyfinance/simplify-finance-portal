@@ -12,6 +12,7 @@ import BankSelect from './BankSelect'
 import { seYearTotalFF, calculateSeAssessableIncome } from '@/lib/income-calculations'
 import InternalNotes from '@/components/InternalNotes'
 import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET_TYPES, DEPOSIT_SOURCES, optionsFor } from '@/lib/fact-find-options'
+import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship } from '@/lib/relationship'
 
 function incrementFY(fy: string): string {
   const match = fy.match(/^(\d{4})\/(\d{2})$/)
@@ -116,6 +117,11 @@ type FactFindApplicant = {
   // Citizen, resident or on a visa. Non-resident and visa deals carry their own
   // document requirements, and nothing on the fact find could say which.
   residencyStatus: string
+  // Who these people are to each other. Printed on the broker notes that go to
+  // the lender. The id of the other applicant, never a copy of their name - see
+  // lib/relationship.ts.
+  relationshipStatus: string
+  relatedToApplicantId: string
   addresses: Address[]
   employment: Employment[]
   income: Income[]
@@ -252,7 +258,7 @@ const defaultIncome = (type: string = 'PAYG'): Income => ({
 const defaultApplicant = (): FactFindApplicant => ({
   id: uid(), title: '', firstName: '', middleName: '', lastName: '', preferredName: '',
   previousName: '', gender: '', dob: '', phoneMobile: '', emailPersonal: '',
-  residencyStatus: '',
+  residencyStatus: '', relationshipStatus: '', relatedToApplicantId: '',
   addresses: [defaultAddress(true)],
   employment: [defaultEmployment(true)],
   income: []
@@ -390,6 +396,13 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   const [copiedCount, setCopiedCount] = useState(0)
   const [undoAddresses, setUndoAddresses] = useState<Address[]>([])
   // Moving to another applicant starts the question again.
+  // A fact about a PAIR, so it is written to both. Fabio, 3 Sep 2026:
+  // "applicant two, we don't have to worry about it."
+  function setRelationship(status: string, partnerId: string) {
+    setD(prev => ({ ...prev,
+      applicants: applyRelationship(prev.applicants, prev.applicants[activeApplicant]?.id, status, partnerId) }))
+  }
+
   useEffect(() => { setConfirmCopy(false); setCopiedCount(0) }, [activeApplicant])
   const [savedAt, setSavedAt] = useState('')
   const [saveError, setSaveError] = useState('')
@@ -1038,6 +1051,36 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                 {optionsFor(applicant.residencyStatus, RESIDENCY_STATUSES).map(x => <option key={x}>{x}</option>)}
               </select>
             </div>
+            {/* WHO THESE PEOPLE ARE TO EACH OTHER. Printed on the broker notes
+                that go to the lender, under "Relationship of applicants". */}
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Relationship status</label>
+              <select className={inp} value={applicant.relationshipStatus || ''}
+                onChange={e => setRelationship(e.target.value, applicant.relatedToApplicantId || '')}>
+                <option value="">Select</option>
+                {optionsFor(applicant.relationshipStatus, RELATIONSHIP_STATUSES).map(x => <option key={x}>{x}</option>)}
+              </select>
+            </div>
+            {/* Only for a status that is about somebody else, and only when
+                there is somebody else on the deal to name. */}
+            {needsPartner(applicant.relationshipStatus) && d.applicants.length > 1 && (
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">
+                  {applicant.relationshipStatus} to
+                </label>
+                <select className={inp + (applicant.relatedToApplicantId ? '' : ' border-amber-300 bg-[#FFFBF0]')}
+                  value={applicant.relatedToApplicantId || ''}
+                  onChange={e => setRelationship(applicant.relationshipStatus, e.target.value)}>
+                  <option value="">Select</option>
+                  {partnerOptions(d.applicants, applicant.id).map(o => (
+                    <option key={o.id} value={o.id}>{o.label}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Recorded on both of them, so you do not have to answer it twice.
+                </p>
+              </div>
+            )}
           </div>
 
           <SectionHeader title="Address history" />

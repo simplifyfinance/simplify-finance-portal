@@ -5,6 +5,7 @@ import { emailLines, emailSubject, shortDate } from '@/lib/push-answers'
 import { allSections, countCards } from '@/lib/handover-view'
 import { generateSummaryPdfBuffer } from '@/app/api/generate-summary-pdf/route'
 import { generateCompliancePdfBuffer } from '@/app/api/generate-compliance-pdf/route'
+import { generateBrokerNotesPdfBuffer } from '@/app/api/generate-broker-notes-pdf/route'
 
 type Trigger = 'bc_action' | 'bc_sent' | 'lo_sent' | 'lo_to_compliance' | 'push_to_salestrekker' | 'close_followup'
 
@@ -193,8 +194,8 @@ export async function POST(req: NextRequest) {
     // Trigger 5: Push to SalesTrekker (final)
     if (trigger === 'push_to_salestrekker') {
       // Deliberately NOT skipped when the recipient is the one pushing. This
-      // email is not a request to do something - it carries both PDFs, which
-      // have to be filed into the client's OneDrive folder, and the link to the
+      // email is not a request to do something - it carries the PDFs, which have
+      // to be filed into the client's OneDrive folder, and the link to the
       // handover. It is wanted in the inbox even by the person who pressed the
       // button.
       const attachments: { filename: string; content: string }[] = []
@@ -202,10 +203,16 @@ export async function POST(req: NextRequest) {
       try {
         const summaryResult = await generateSummaryPdfBuffer(dealId, supabase)
         const complianceResult = await generateCompliancePdfBuffer(dealId, supabase)
+        // The third document. Unlike the other two it is not an internal record:
+        // it is what gets pasted into the lender's portal, so the filed copy is
+        // the evidence of what was submitted. It also goes in the lodgement
+        // folder - see the email itself, which says so against this file only.
+        const brokerNotesResult = await generateBrokerNotesPdfBuffer(dealId, supabase)
 
         for (const result of [
           summaryResult ? { ...summaryResult, kind: 'summary' } : null,
-          complianceResult ? { ...complianceResult, kind: 'compliance' } : null
+          complianceResult ? { ...complianceResult, kind: 'compliance' } : null,
+          brokerNotesResult ? { ...brokerNotesResult, kind: 'broker_notes' } : null
         ]) {
           if (!result) continue
           // Both documents are already named for the people they are about -

@@ -822,13 +822,21 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
   const [downloading, setDownloading] = useState('')
   const pdfBaseName = String((deal as any).deal_name || (deal as any).name || (deal as any).title || 'deal').replace(/[^A-Za-z0-9_-]+/g, '_')
 
-  async function downloadPdf(kind: 'summary' | 'compliance') {
+  // The three documents in the pack. Named once so the route, the label and the
+  // error message cannot disagree about which one failed.
+  const PDF_KINDS = {
+    summary:      { route: '/api/generate-summary-pdf',      label: 'Fact Find' },
+    compliance:   { route: '/api/generate-compliance-pdf',   label: 'Handover' },
+    broker_notes: { route: '/api/generate-broker-notes-pdf', label: 'Broker Notes' },
+  } as const
+
+  async function downloadPdf(kind: keyof typeof PDF_KINDS) {
     setDownloading(kind)
     try {
-      const res = await fetch(kind === 'summary' ? '/api/generate-summary-pdf' : '/api/generate-compliance-pdf', {
+      const res = await fetch(PDF_KINDS[kind].route, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId: deal.id })
       })
-      if (!res.ok) { alert('Could not generate the ' + (kind === 'summary' ? 'Fact Find' : 'Handover') + ' PDF. Nothing was downloaded.'); return }
+      if (!res.ok) { alert('Could not generate the ' + PDF_KINDS[kind].label + ' PDF. Nothing was downloaded.'); return }
       const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -1034,6 +1042,13 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
               className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-lg px-3.5 py-2 text-[12.5px] font-medium hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition inline-flex items-center gap-1.5 disabled:opacity-40">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v8M4.5 7l3.5 3.5L11.5 7M3 13h10"/></svg>
               {downloading === 'compliance' ? 'Preparing...' : 'Handover PDF'}
+            </button>
+            {/* The one that goes to the lender, so it is marked out from the two
+                internal records beside it. */}
+            <button onClick={() => downloadPdf('broker_notes')} disabled={!!downloading}
+              className="bg-[#F4FCFF] border border-[#2DBEFF] text-[#0B5E8A] rounded-lg px-3.5 py-2 text-[12.5px] font-semibold hover:bg-[#E7F7FF] transition inline-flex items-center gap-1.5 disabled:opacity-40">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v8M4.5 7l3.5 3.5L11.5 7M3 13h10"/></svg>
+              {downloading === 'broker_notes' ? 'Preparing...' : 'Broker Notes'}
             </button>
           </div>
         </div>
@@ -1494,11 +1509,23 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
                   a credit assessor, so it is composed to a fixed structure from
                   recorded facts rather than written by a model. */}
               <div className="col-span-2">
-                <div className="flex items-baseline gap-2 mb-1 flex-wrap">
-                  <label className="text-xs font-medium text-gray-500">Application submission notes</label>
-                  <span className="text-[10px] font-semibold text-[#0E86B8] bg-[#F4FCFF] border border-[#CDEBF8] rounded px-1.5 py-[1px]">
-                    goes to the lender
-                  </span>
+                {/* LOUD, AND ABOVE THE BOX. This is the only field on the tab
+                    that leaves the building, and it is the one field here that
+                    no model writes. Fabio, 3 Sep 2026: "let's just make sure it
+                    really screams out that they have to complete this section.
+                    This is not done by AI." */}
+                <div className="border-2 border-[#2DBEFF] bg-[#F4FCFF] rounded-lg px-3.5 py-3 mb-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <label className="text-[13px] font-bold text-[#2E2A26]">Application submission notes</label>
+                    <span className="text-[10.5px] font-extrabold tracking-[.06em] uppercase text-[#08252F] bg-[#2DBEFF] rounded px-2 py-[3px]">
+                      Goes to the lender
+                    </span>
+                  </div>
+                  <p className="m-0 mt-1.5 text-[12px] leading-[1.55] text-[#0B5E8A]">
+                    <b className="text-[#08252F]">This is the only box on this tab the bank reads.</b>{' '}
+                    It is not written by AI — every sentence is copied from the deal. Compose it, read it,
+                    and fix anything that is not right before you push.
+                  </p>
                 </div>
                 <textarea spellCheck="true" className={inp + ' min-h-[190px] resize-y font-[13px]'} value={d.applicationSubmissionComment}
                   onChange={e => setD(prev => ({ ...prev, applicationSubmissionComment: e.target.value }))}
