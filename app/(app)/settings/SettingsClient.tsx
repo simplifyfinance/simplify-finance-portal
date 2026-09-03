@@ -36,6 +36,9 @@ type CreditOfficer = {
   active: boolean
   userId: string | null
   brokers: string[] // broker slugs (first names) this officer covers
+  // Printed at the top of the broker notes that go to the lender, so the bank's
+  // assessor has one name and one number instead of a block of them.
+  phone: string | null
   onLeaveFrom: string | null
   onLeaveUntil: string | null
 }
@@ -183,6 +186,7 @@ export default function SettingsPage() {
         active: o.active,
         userId: o.user_id || null,
         brokers: (links || []).filter((l: any) => l.credit_officer_id === o.id).map((l: any) => l.broker_slug),
+        phone: o.phone || null,
         onLeaveFrom: o.on_leave_from || null,
         onLeaveUntil: o.on_leave_until || null
       }))
@@ -273,7 +277,7 @@ export default function SettingsPage() {
   async function addCreditOfficer() {
     const { data, error } = await supabase.from('credit_officers').insert({ name: 'New credit officer', active: true }).select().single()
     if (error) { alert('Error adding credit officer: ' + error.message); return }
-    if (data) setCreditOfficers([...creditOfficers, { id: data.id, name: data.name, active: data.active, userId: null, brokers: [], onLeaveFrom: null, onLeaveUntil: null }])
+    if (data) setCreditOfficers([...creditOfficers, { id: data.id, name: data.name, active: data.active, userId: null, phone: null, brokers: [], onLeaveFrom: null, onLeaveUntil: null }])
   }
 
   async function linkCreditOfficerUser(officerId: string, userId: string) {
@@ -289,6 +293,16 @@ export default function SettingsPage() {
       supabase.from('credit_officers').update({ name, updated_at: new Date().toISOString() }).eq('id', id),
       'That name')
     if (problem) alert(problem)
+  }
+
+  async function updateCreditOfficerPhone(id: string, phone: string) {
+    setCreditOfficers(creditOfficers.map(o => o.id === id ? { ...o, phone } : o))
+    // This number is printed in a submission to a bank. A silent failure would
+    // leave the broker notes refusing to generate with no explanation.
+    const problem = await checkedWrite(
+      supabase.from('credit_officers').update({ phone: phone || null, updated_at: new Date().toISOString() }).eq('id', id),
+      'That phone number')
+    if (problem) { alert(problem); loadCreditTeam() }
   }
 
   async function updateCreditOfficerLeave(id: string, field: 'onLeaveFrom' | 'onLeaveUntil', value: string) {
@@ -624,6 +638,18 @@ export default function SettingsPage() {
                     {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name} ({p.email})</option>)}
                   </select>
                   {!officer.userId && <p className="text-xs text-amber-600 mt-1">⚠ No portal account linked — this person won't receive assignment emails until linked.</p>}
+                </div>
+                <div className="mb-3">
+                  <label className="text-[11px] font-semibold text-[#A29889] block mb-1">Direct phone number</label>
+                  <input className={`w-full text-[13px] border rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF] ${officer.phone ? 'border-[#E8E1D6]' : 'border-[#EBD9BE] bg-[#FDF6EC]'}`}
+                    value={officer.phone || ''} placeholder="e.g. 0412 345 678"
+                    onChange={(e) => updateCreditOfficerPhone(officer.id, e.target.value)} />
+                  {!officer.phone && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      ⚠ Needed before broker notes can be generated on this person&rsquo;s deals — it is the number
+                      the lender&rsquo;s assessor is told to call.
+                    </p>
+                  )}
                 </div>
                 <div className="mb-3 grid grid-cols-2 gap-3">
                   <div>

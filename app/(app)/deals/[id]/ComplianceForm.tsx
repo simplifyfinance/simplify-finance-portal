@@ -28,6 +28,7 @@ import { noteFacts, noteFreshness, reviewNotes, type NoteFacts, type NoteStamp,
 import { purposeSummary, dealRow } from '@/lib/deal-structure'
 import { fundsToComplete } from '@/lib/funds-to-complete'
 import { money } from '@/lib/money'
+import { brokerNotes, type Assessor } from '@/lib/broker-notes'
 import DealStructure from '@/components/DealStructure'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
@@ -291,6 +292,17 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched }: {
       product: String(rec.productName || ''),
     }, factsBlock(dealFacts(deal)))
   }, [deal])
+
+  // WHO THE BANK RINGS. The deal's ASSIGNED credit assessor, not whoever is
+  // logged in - the broker generates these notes as often as the assessor does,
+  // and a submission telling a lender to ring the broker about a credit question
+  // is worse than the block of names this replaces.
+  const [assessor, setAssessor] = useState<Assessor | null>(null)
+  useEffect(() => {
+    if (!deal?.assigned_credit_officer) { setAssessor(null); return }
+    supabase.from('credit_officers').select('name, phone').eq('id', deal.assigned_credit_officer).maybeSingle()
+      .then(({ data }) => setAssessor(data ? { name: (data as any).name || '', phone: (data as any).phone || '' } : null))
+  }, [deal?.assigned_credit_officer])
 
   const [styleNotes, setStyleNotes] = useState<string[]>([])
   const [flaggingField, setFlaggingField] = useState<string | null>(null)
@@ -722,6 +734,16 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
       }
     } catch (e) { console.error(e) }
     setGenerating(prev => ({ ...prev, [field]: false }))
+  }
+
+  // COMPOSED, NOT GENERATED. There is no model in this - see lib/broker-notes.ts
+  // for why. Every sentence is assembled from a recorded value, so it needs no
+  // network call and cannot invent an employer name.
+  const notes = useMemo(() => brokerNotes(deal, assessor), [deal, assessor])
+
+  function writeBrokerNotes() {
+    if (!notes.ready) return
+    setD(prev => ({ ...prev, applicationSubmissionComment: notes.text }))
   }
 
   async function generateAll() {
@@ -1466,11 +1488,45 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
                 )}
                 <NoteMeta meta={d.aiMeta?.['securityComment']} freshness={freshnessOf('securityComment')} />
               </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">Application submission notes</label>
-                <textarea spellCheck="true" className={inp + ' min-h-[80px] resize-y'} value={d.applicationSubmissionComment}
+              {/* THE ONLY BOX ON THIS TAB THAT LEAVES THE BUILDING.
+                  Everything else here is between us, the client and compliance.
+                  This is copied into the lender's application portal and read by
+                  a credit assessor, so it is composed to a fixed structure from
+                  recorded facts rather than written by a model. */}
+              <div className="col-span-2">
+                <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+                  <label className="text-xs font-medium text-gray-500">Application submission notes</label>
+                  <span className="text-[10px] font-semibold text-[#0E86B8] bg-[#F4FCFF] border border-[#CDEBF8] rounded px-1.5 py-[1px]">
+                    goes to the lender
+                  </span>
+                </div>
+                <textarea spellCheck="true" className={inp + ' min-h-[190px] resize-y font-[13px]'} value={d.applicationSubmissionComment}
                   onChange={e => setD(prev => ({ ...prev, applicationSubmissionComment: e.target.value }))}
-                  placeholder="Lender-specific notes, broker contact details..." />
+                  placeholder="Press Compose, or type your own..." />
+                {notes.ready ? (
+                  <button onClick={writeBrokerNotes}
+                    className="mt-2 text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition inline-flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h10" />
+                    </svg>
+                    {d.applicationSubmissionComment ? 'Compose again' : 'Compose from the file'}
+                  </button>
+                ) : (
+                  /* Refuse and name what is missing, rather than leaving
+                     [employer name] in something bound for a bank portal.
+                     Fabio, 3 Sep 2026: "refuse, and name what is missing." */
+                  <div className="mt-2 border border-[#EBD9BE] bg-[#FDF6EC] rounded-lg px-3.5 py-3">
+                    <p className="m-0 text-[12.5px] font-semibold text-[#221F1B]">
+                      These notes cannot be composed yet
+                    </p>
+                    <p className="m-0 mt-0.5 text-[11.5px] text-[#8A6218]">
+                      They go to the lender, so nothing is written until every figure in them is a recorded fact.
+                    </p>
+                    <ul className="mt-1.5 mb-0 pl-5 text-[12px] text-[#8A6218]">
+                      {notes.missing.map((m, i) => <li key={i} className="mb-0.5">{m}</li>)}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
           </div>
