@@ -100,7 +100,10 @@ describe('money in a client email', () => {
   // wolf on a dozen correct lines gets switched off, so this only names the
   // fields the FORMS own.
   it('never passes stored money straight to Number()', () => {
-    const bad = /Number\((?:[a-z]\w*\??\.)?(?:value|balance|limitAmount|deposit|purchasePrice|stampDuty)\b/
+    // se* covers the self-employed year figures, which is where this fault did
+    // the most damage: every self-employed applicant assessed at $0, on all
+    // three methods, in a box labelled "Assessable income (calculated)".
+    const bad = /Number\((?:[a-z]\w*\??\.)?(?:value|balance|limitAmount|deposit|purchasePrice|stampDuty)\b|Number\([a-z]\w*\??[.\[]['"`]?se[A-Z]/
     const hits: string[] = []
     for (const f of FILES) {
       readFileSync(f, 'utf8').split('\n').forEach((line, i) => {

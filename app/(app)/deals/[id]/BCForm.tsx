@@ -23,54 +23,11 @@ function agreedDay(v: any): string {
 // Number('120,000') is NaN, so every comma-formatted salary annualised to zero
 // and the BC's income figure came out short by the whole amount. The fact find
 // stores money comma-formatted - readMoney is what reads it.
-function annualizeAmount(amount: string | undefined, frequency: string | undefined): number {
-  const n = readMoney(amount) || 0
-  if (frequency === 'Weekly') return n * 52
-  if (frequency === 'Fortnightly') return n * 26
-  if (frequency === 'Monthly') return n * 12
-  return n
-}
 
-function seYearTotal(inc: any, year: 1 | 2): number {
-  const p = year === 1 ? 'seYear1' : 'seYear2'
-  return (Number(inc[`${p}Salary`]) || 0) + (Number(inc[`${p}NetProfit`]) || 0) +
-    (Number(inc[`${p}Depreciation`]) || 0) + (Number(inc[`${p}Interest`]) || 0) +
-    (Number(inc[`${p}Super`]) || 0) + (Number(inc[`${p}OneOff`]) || 0) + (Number(inc[`${p}Other`]) || 0)
-}
-
-function calculateIncomeEntryAnnual(inc: any): number {
-  if (inc.incomeType === 'PAYG') {
-    return annualizeAmount(inc.grossSalary, inc.grossSalaryFrequency) +
-      annualizeAmount(inc.bonusAmount, inc.bonusFrequency) +
-      annualizeAmount(inc.overtimeEssentialAmount, inc.overtimeEssentialFrequency) +
-      annualizeAmount(inc.overtimeNonEssentialAmount, inc.overtimeNonEssentialFrequency) +
-      annualizeAmount(inc.commissionAmount, inc.commissionFrequency) +
-      annualizeAmount(inc.allowanceAmount, inc.allowanceFrequency)
-  }
-  if (inc.incomeType === 'Self-employed') {
-    if (inc.seAssessmentMethod === "Director's salary") {
-      return annualizeAmount(inc.seDirectorSalary, inc.seDirectorSalaryFrequency)
-    }
-    const year1 = seYearTotal(inc, 1)
-    if (inc.seAssessmentMethod === 'One year in isolation') return year1
-    const year2 = seYearTotal(inc, 2)
-    if (inc.seGrowthMethod === 'latest_lower') return year2 < year1 ? year2 : 0
-    if (inc.seGrowthMethod === 'previous_plus_growth') {
-      const pct = inc.seGrowthPercentOption === 'Other' ? (Number(inc.seGrowthPercentCustom) || 0) : (Number(inc.seGrowthPercentOption) || 0)
-      return year1 * (1 + pct / 100)
-    }
-    return (year1 + year2) / 2
-  }
-  if (inc.incomeType === 'Other taxable' || inc.incomeType === 'Other non-taxable') {
-    return Number(inc.otherIncomeAmount) || 0
-  }
-  return 0
-}
-
-function calculateApplicantTotalIncome(app: any): number {
-  const incomeList: any[] = app?.income || []
-  return Math.round(incomeList.reduce((sum, inc) => sum + calculateIncomeEntryAnnual(inc), 0))
-}
+// The self-employed maths, the PAYG annualising and the per-applicant total all
+// used to be written out again here, Number() fault and all. Two copies of a
+// calculation is two places for it to be wrong, and fixing one would have left
+// the other reporting zero. See lib/income-calculations.ts.
 
 function buildHousingExpenseLine(app: any): string {
   const addresses: any[] = app?.addresses || []
@@ -180,7 +137,7 @@ function buildIncomeBreakdown(app: any, applicantLabel: string): { label: string
       if (inc.incomeType === 'Self-employed') {
         return { label: `${applicantLabel} \u2014 Self-employed income`, amount: null }
       }
-      const amount = Math.round(calculateIncomeEntryAnnual(inc))
+      const amount = Math.round(annualIncomeOf(inc))
       const typeLabel = inc.incomeType === 'PAYG' ? 'PAYG income' : (inc.otherIncomeType || inc.incomeType)
       return { label: `${applicantLabel} \u2014 ${typeLabel}`, amount }
     })
@@ -277,6 +234,7 @@ function fieldCls(value: string) {
     : "px-2.5 py-1.5 text-sm border border-amber-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-[#FEFBF5] w-full"
 }
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
+import { annualIncomeOf, annualIncomeOfApplicant } from '@/lib/income-calculations'
 import { readMoney } from '@/lib/money'
 
 const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
@@ -345,8 +303,8 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const lastName = ffApp.lastName || deal.clients?.last_name || ''
   const dependants = ff.dependants || '0'
   const joint = ff.applicants?.length > 1 ? 'Yes' : 'No'
-  const [incomeApplicant1, setIncomeApplicant1] = useState(s.incomeApplicant1 || (calculateApplicantTotalIncome(ffApp) || '').toString())
-  const [incomeApplicant2, setIncomeApplicant2] = useState(s.incomeApplicant2 || (calculateApplicantTotalIncome(ffApp2) || '').toString())
+  const [incomeApplicant1, setIncomeApplicant1] = useState(s.incomeApplicant1 || (annualIncomeOfApplicant(ffApp) || '').toString())
+  const [incomeApplicant2, setIncomeApplicant2] = useState(s.incomeApplicant2 || (annualIncomeOfApplicant(ffApp2) || '').toString())
   const incomeBase = (Number(incomeApplicant1) || 0) + (joint === 'Yes' ? (Number(incomeApplicant2) || 0) : 0)
   const [incomeOther, setIncomeOther] = useState(s.incomeOther || '')
   const [incomeRental, setIncomeRental] = useState(s.incomeRental || '')
