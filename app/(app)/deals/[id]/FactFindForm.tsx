@@ -1314,11 +1314,33 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               )}
             </div>
           ))}
-          {totalHistoryMonths(applicant.employment.filter(e => e.employmentPriority === 'Primary')) < REQUIRED_HISTORY_MONTHS && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 mb-2">
-              {totalHistoryMonths(applicant.employment.filter(e => e.employmentPriority === 'Primary'))} months of employment history recorded — add previous employment to reach the required {REQUIRED_HISTORY_MONTHS} months.
-            </div>
-          )}
+          {/* TWO YEARS, WHATEVER IT IS MADE OF.
+              A period of not working counts, and so does the job before it.
+              Fabio, 3 Sep 2026, on an applicant who stopped work twelve months
+              ago: "make sure you ask for previous employment, though." Twelve
+              months of not working is twelve months of history and twelve months
+              short - so the line says how short, and what covers the rest. */}
+          {(() => {
+            // 'Secondary' rather than 'Primary' so an older record with no
+            // priority set still counts towards its own history.
+            const primary = applicant.employment.filter(e => e.employmentPriority !== 'Secondary')
+            const months = totalHistoryMonths(primary)
+            if (months >= REQUIRED_HISTORY_MONTHS) return null
+            const short = REQUIRED_HISTORY_MONTHS - months
+            const mth = (n: number) => `${n} ${n === 1 ? 'month' : 'months'}`
+            const current = primary.find(e => e.isCurrent)
+            const idle = current && current.employmentType === 'Not working' && current.startDate
+              ? totalHistoryMonths([current]) : 0
+            return (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 mb-2">
+                <b>{mth(months)} of the {REQUIRED_HISTORY_MONTHS} a lender needs.</b>{' '}
+                {idle > 0
+                  ? <>Not working accounts for {mth(idle)} of that. Add the employment
+                     before that to cover the remaining {mth(short)}.</>
+                  : <>Add previous employment to cover the remaining {mth(short)}.</>}
+              </div>
+            )
+          })()}
           <div className="flex gap-2">
             <button onClick={addSecondaryEmployment} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
               + Add secondary employment
