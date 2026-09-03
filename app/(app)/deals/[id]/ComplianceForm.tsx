@@ -30,6 +30,7 @@ import { purposeSummary, dealRow } from '@/lib/deal-structure'
 import { fundsToComplete } from '@/lib/funds-to-complete'
 import { money } from '@/lib/money'
 import { brokerNotes, type Assessor } from '@/lib/broker-notes'
+import { comparisonBlock } from '@/lib/lender-comparison'
 import DealStructure from '@/components/DealStructure'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
@@ -668,15 +669,28 @@ Cover only what the facts above support. Where a section has little to go on, sa
 
       optionsComment: `CRM FIELD: Options presented and recommendation comments
 
-Cover: how the recommended product is in the client's best interests; loan type, repayment type, interest rate type and why; specific lender request versus other cheaper options considered; alternative feature options to what was requested and why (e.g. offset vs redraw); if the cheapest option was not recommended, explain why; whether turnaround times, geographical location, lender policy, borrowing capacity or loan amount available played a part in the recommendation; fees and charges applicable, any fee waivers or professional packages; security or servicing guarantee if applicable; lender service/branch access; credit history if it affected the recommendation; property size; first home buyer scheme if applicable.
+Explain why the recommended product is in the client's best interests, against the other options actually researched.
 
-All lenders considered: ${context.allLenders}. Originally recommended: ${context.originalRecommendedLender} — ${context.product}. Rate: ${context.rate}%. Application fee: ${context.applicationFee}. Annual fee: ${context.annualFee}. Offset: ${context.offsetAccount}. Broker recommendation note: ${context.recommendationNote}. ${context.clientAgreedLender === 'No' ? `The client did not proceed with the original recommendation and instead selected ${context.recommendedLender}, for the following stated reason: "${context.clientChosenLenderReason || 'not recorded'}". Explain both why the original lender was recommended AND why the client's final choice is understood and documented, referencing their stated reason.` : `The client agreed with and proceeded with the recommended lender.`} Keep it to what the facts support.`,
+THE LENDERS CONSIDERED, WITH THEIR NUMBERS
+
+${comparisonBlock(lo).join('\n')}
+
+HOW TO USE THAT
+
+- Work through the research criteria the client said mattered. They are the reason these lenders were shortlisted, so the recommendation is judged against them and not against price alone.
+- Where the recommended lender IS the cheapest or the fastest or the only one with the feature, say so and name the figure.
+- Where it is NOT — every line under "WHERE THE RECOMMENDATION IS NOT THE CHEAPEST OR BEST" — address that line directly. Name the cheaper lender, name the difference, and say what the client gets in return that justifies it. If nothing in the facts justifies it, say plainly that the recommendation is not the cheapest on that measure and the reason is not recorded. Do not invent a reason.
+- Compare only on what is listed above. If a rate, a fee or a feature is not there for a lender, it is not recorded — do not assume it is nil, and do not assume it is worse.
+
+Broker's own recommendation note: ${context.recommendationNote || 'not recorded'}. ${context.clientAgreedLender === 'No' ? `The client did not proceed with the original recommendation and instead selected ${context.recommendedLender}, for the following stated reason: "${context.clientChosenLenderReason || 'not recorded'}". Explain both why the original lender was recommended AND why the client's final choice is understood and documented, referencing their stated reason.` : `The client agreed with and proceeded with the recommended lender.`}`,
 
       borrowingPowerComment: `CRM FIELD: Borrowing power comments
 
-Explain the client's ability to repay the loan — reference maximum borrowing capacity, debt-to-income ratio, asset position, LVR, and overall serviceability assessment.
+Explain the client's ability to repay the loan from what is recorded: the income by type and by applicant, the liabilities as listed, the assets held, and the LVR.
 
-Use the recorded income by type, the liabilities as listed, and the LVR if one could be worked out. If the LVR is on the NOT RECORDED list, say so rather than estimating one.`,
+Maximum borrowing capacity and debt-to-income ratio are NOT recorded anywhere in this portal and are not to be mentioned. Fabio, 3 Sep 2026: "it's never gonna be present, so I don't want that to be part of the compliance notes." Do not state them, do not estimate them, and do not note their absence — they are simply not part of this field.
+
+If the LVR is on the NOT RECORDED list, say so rather than estimating one.`,
 
       depositComment: `CRM FIELD: Deposit/Equity comments
 
@@ -694,7 +708,9 @@ Client: ${context.clientName}. Risk answers: ${context.risks}. Cover what was an
 
 Add the security if it is a refinance, or write TBA for a pre-approval — must reference the security in question.
 
-Property type: ${context.propertyType}. Location (may be a suburb or a state): ${context.suburb}. One sentence only. If no address confirmed yet, write "TBA — [property type] [location]".`,
+Security address as recorded on the deal: ${dealRow(deal).securityAddress || 'not recorded'}. Property type: ${context.propertyType}. Location: ${context.suburb}.
+
+Use the security address exactly as recorded. On a pre-approval it will already read "TBA — <state or suburb>", which is the correct answer: there is no property yet. Do not rewrite it, do not add an address, and do not guess a suburb. One sentence only.`,
     }
 
     try {
