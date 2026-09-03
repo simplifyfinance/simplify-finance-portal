@@ -10,6 +10,7 @@ import { templateLabel } from '@/lib/templates'
 import { proceedCredit } from '@/lib/deal-status'
 import { emailParagraphs, htmlToPlainText } from '@/lib/rich-text'
 import { totalCost, fundsToContribute, constructionLvr } from '@/lib/construction'
+import { emailFreshness, blocksSending, notesAfterScenarioChange } from '@/lib/email-freshness'
 
 // A finished "client agreed" is not something to hide. It used to disappear the
 // instant it was pressed, which made "already done" look exactly like "broken".
@@ -612,6 +613,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const [newCheck, setNewCheck] = useState('')
   const [generating, setGenerating] = useState(false)
   const [emailHtml, setEmailHtml] = useState(s.emailHtml || '')
+  // WHICH SCENARIO THE SAVED EMAIL WAS WRITTEN FOR.
+  //
+  // The email above is a saved copy, not something rebuilt when you look at it,
+  // so on its own it cannot tell you whether it still matches the deal. This is
+  // what makes that answerable. Emails generated before today have no stamp -
+  // see emailFreshness(), which says "unknown" rather than guessing.
+  const [emailHtmlTemplate, setEmailHtmlTemplate] = useState<string>(s.emailHtmlTemplate || '')
   const [emailError, setEmailError] = useState('')
   const [savedAt, setSavedAt] = useState('')
   const [bcCompletedAt, setBcCompletedAt] = useState<string | null>(deal.bc_completed_at || null)
@@ -679,21 +687,35 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
       })
     }, 700)
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
   }
 
+  // Does the saved email still match the scenario the deal is on? Read in three
+  // places: the banner, the Send buttons, and the guard inside getCleanEmailHtml.
+  const freshness = emailFreshness({ emailHtml, emailHtmlTemplate }, template)
+  const emailIsStale = blocksSending(freshness)
+
   function selectTemplate(id: string) {
+    const previous = template
     setTemplate(id)
-    setSplits(TEMPLATE_DEFAULTS[id].splits.map((s: Split) => ({ ...s })))
-    // Only auto-populate default notes if the field is genuinely empty - never overwrite
-    // anything the broker has already typed, even if it happens to match an earlier template's defaults.
-    setTemplateNotes((prev: string) => prev && prev.trim() ? prev : (TEMPLATE_NOTES[id] || []).join('\n'))
+    // "Custom (all fields)" is in the list of scenarios but has no split setup
+    // behind it, so this used to throw and take the page down. It means "leave
+    // my structure alone and show me everything", so leaving the splits alone
+    // is also the right behaviour.
+    const defaults = TEMPLATE_DEFAULTS[id]
+    if (defaults) setSplits(defaults.splits.map((s: Split) => ({ ...s })))
+    // Never overwrite anything the broker has typed. But if the notes are still
+    // word for word what the OLD scenario put there, nobody has written
+    // anything and leaving them means a first home buyer is told about rental
+    // yield. notesAfterScenarioChange() is the one that tells those apart.
+    setTemplateNotes((prev: string) =>
+      notesAfterScenarioChange(prev, TEMPLATE_NOTES[previous] || [], TEMPLATE_NOTES[id] || []))
   }
 
   function updateSplit(i: number, key: keyof Split, val: string) {
@@ -811,6 +833,12 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const [sendToClientMsg, setSendToClientMsg] = useState('')
 
   function getCleanEmailHtml() {
+    // Three different buttons reach this. Rather than trusting each one to have
+    // checked, the thing that produces the HTML refuses to produce the wrong
+    // email at all.
+    if (emailIsStale) {
+      throw new Error(`This email was written for ${templateLabel(emailHtmlTemplate)} and the deal is now ${templateLabel(template)}. Regenerate it before sending.`)
+    }
     const fn = (firstName || '[Client First Name]').trim()
     const jfn = (ffApp2.firstName || '').trim()
     const greetingName = (joint === 'Yes' && jfn) ? `${fn} and ${jfn}` : fn
@@ -942,7 +970,7 @@ Key assumptions: ${checklistText}`
         return
       }
       const data = await res.json()
-      if (data.html) { setEmailHtml(data.html); if (data.brokerFirstName) { await supabase.from('deals').update({ broker_first_name: data.brokerFirstName }).eq('id', deal.id) } setActiveTab('preview') }
+      if (data.html) { setEmailHtml(data.html); setEmailHtmlTemplate(template); if (data.brokerFirstName) { await supabase.from('deals').update({ broker_first_name: data.brokerFirstName }).eq('id', deal.id) } setActiveTab('preview') }
       else setEmailError('No email returned. Try again.')
     } catch (e: any) {
       setEmailError(`Error: ${e.message}`)
@@ -1484,10 +1512,11 @@ Key assumptions: ${checklistText}`
               <div className="flex items-center gap-3">
                 {canSendToClient ? (
                   <>
-                    <button onClick={sendToClient}
-                      className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90">Send to client</button>
-                    <button onClick={copyEmailOnly}
-                      className="text-xs text-gray-400 hover:text-gray-600 underline">Copy without opening Outlook</button>
+                    <button onClick={sendToClient} disabled={emailIsStale}
+                      title={emailIsStale ? 'The saved email is for a different scenario. Regenerate it first.' : ''}
+                      className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-40 disabled:hover:opacity-40">Send to client</button>
+                    <button onClick={copyEmailOnly} disabled={emailIsStale}
+                      className="text-xs text-gray-400 hover:text-gray-600 underline disabled:opacity-40 disabled:no-underline">Copy without opening Outlook</button>
                   </>
                 ) : (
                   <span className="text-xs text-gray-400 italic">Only the broker can send this to the client — use "Done — send to broker for review" above.</span>
@@ -1518,11 +1547,34 @@ Key assumptions: ${checklistText}`
               </div>
             </div>
           )}
+          {/* THE EMAIL IS A SAVED COPY, so it can be out of date with the deal
+              sitting next to it. Say so here, where somebody is about to send
+              it, rather than letting the preview look perfectly normal. */}
+          {freshness.state === 'stale' && (
+            <div className="mb-3 border border-[#EBD9BE] bg-[#FDF6E7] rounded-xl px-4 py-3.5 flex items-start gap-3">
+              <span className="text-[15px] leading-none mt-[2px]">⚠</span>
+              <div className="text-[13px] text-[#8A6218] flex-1">
+                <b className="text-[#141C24]">This email was written for {templateLabel(freshness.wasFor)}.</b>
+                {' '}The deal is now on <b className="text-[#141C24]">{templateLabel(freshness.nowOn)}</b>, so what is
+                below is out of date. Sending and copying are switched off until it is regenerated.
+              </div>
+              <button onClick={generateEmail} disabled={generating}
+                className="flex-none px-3 py-1.5 text-[12.5px] font-semibold rounded-lg bg-[#141C24] text-white disabled:opacity-50">
+                {generating ? 'Regenerating…' : 'Regenerate email'}
+              </button>
+            </div>
+          )}
+          {freshness.state === 'unknown' && (
+            <div className="mb-3 border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-[12.5px] text-gray-500">
+              This email was generated before the portal started recording which scenario it was written for.
+              If the scenario has changed since, regenerate it — the deal is on <b className="text-[#343333]">{templateLabel(template)}</b>.
+            </div>
+          )}
           {emailHtml ? (
-            <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+            <div className={`bg-white border border-gray-100 rounded-xl overflow-hidden ${freshness.state === 'stale' ? 'opacity-50' : ''}`}>
               <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between">
                 <span className="text-xs text-gray-500">Email preview — {deal.deal_name}</span>
-                <span className="text-xs text-[#2DBEFF]">AI generated</span>
+                <span className="text-xs text-[#2DBEFF]">{freshness.state === 'stale' ? `Out of date — written for ${templateLabel(freshness.wasFor)}` : 'AI generated'}</span>
               </div>
               <div dangerouslySetInnerHTML={{ __html: emailHtml }} />
             </div>
