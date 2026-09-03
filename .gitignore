@@ -55,3 +55,6 @@ private/
 
 # Scratch that the Linux side cannot delete itself
 _to_delete/
+
+# Mockups and briefs Claude sends across. Not code, and not the repo's business.
+Claude outputs/

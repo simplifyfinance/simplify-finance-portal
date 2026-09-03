@@ -7,7 +7,13 @@ import { legalFeeLabel, confirmedFeeLabel, DEFAULT_LEGAL_FEE_LABEL } from '@/lib
 // legal_fee_label: what THIS bank calls the fee charged at settlement. Most say
 // "Settlement fee"; Bankwest says "Legal fee". Blank means Legal fee, which is
 // what every lender said before the column existed. See lib/lender-fees.ts.
-type Lender = { id: string; name: string; active: boolean; legal_fee_label?: string | null }
+type Lender = { id: string; name: string; active: boolean; legal_fee_label?: string | null
+  // What this bank calls itself on a bank statement. CBA, CommBank, NAB. The
+  // statement analysis reports short codes, the fact find records full names,
+  // and nothing could match the two. Comma separated, because one bank arrives
+  // under more than one code. Fabio, 3 Sep 2026: "I'm okay with adding a short
+  // code column for the lender library."
+  statement_codes?: string | null }
 type Product = {
   id: string
   lender_id: string
@@ -123,6 +129,17 @@ export default function LenderLibrary() {
   }
 
   // Set once on the bank; every product underneath it inherits the wording.
+  async function setStatementCodes(id: string, raw: string) {
+    // Stored tidied, so "cba, CommBank ,, " and "CBA,CommBank" are the same
+    // thing to whatever reads it back.
+    const value = raw.split(',').map(x => x.trim()).filter(Boolean).join(', ')
+    const problem = await checkedWrite(
+      supabase.from('lenders').update({ statement_codes: value || null }).eq('id', id), 'The statement codes')
+    if (problem) { setWriteError(problem); return }
+    setWriteError('')
+    setLenders(prev => prev.map(l => l.id === id ? { ...l, statement_codes: value || null } : l))
+  }
+
   async function setLegalFeeLabel(id: string, label: string) {
     const value = label.trim() || null
     const problem = await checkedWrite(
@@ -410,6 +427,18 @@ export default function LenderLibrary() {
                     </select>
                     <span className="text-[11px] text-gray-400">
                       Used on the lending options email, the fact find and the handover.
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 px-5 py-2.5 border-t border-gray-50 flex-wrap"
+                       onClick={e => e.stopPropagation()}>
+                    <span className="text-xs text-gray-500">On a bank statement this bank shows up as</span>
+                    <input defaultValue={lender.statement_codes || ''}
+                      onBlur={e => { if (e.target.value !== (lender.statement_codes || '')) setStatementCodes(lender.id, e.target.value) }}
+                      placeholder="CBA, CommBank"
+                      className={`text-xs border rounded-lg px-2 py-1 bg-white w-[200px] ${
+                        lender.statement_codes ? 'border-gray-200 text-[#343333]' : 'border-[#EBD9BE] text-[#8A6218] placeholder:text-[#B58A2B]'}`} />
+                    <span className="text-[11px] text-gray-400">
+                      Separate several with commas. Used to tell whether a client&rsquo;s statements already cover this bank.
                     </span>
                   </div>
                   {lps.length === 0 && <p className="text-xs text-gray-400 px-5 py-3">No products yet.</p>}

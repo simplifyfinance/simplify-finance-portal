@@ -11,6 +11,7 @@ import BankSelect from './BankSelect'
 
 import { seYearTotalFF, calculateSeAssessableIncome } from '@/lib/income-calculations'
 import InternalNotes from '@/components/InternalNotes'
+import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET_TYPES, DEPOSIT_SOURCES, optionsFor } from '@/lib/fact-find-options'
 
 function incrementFY(fy: string): string {
   const match = fy.match(/^(\d{4})\/(\d{2})$/)
@@ -48,6 +49,11 @@ type Employment = {
   contactPersonName: string
   contactPersonDetails: string
   employmentType: string
+  // Sole trader or company. Decides five of the documents on the request list -
+  // a sole trader needs personal returns and notices of assessment, a company
+  // needs company returns, financials and BAS on top. The fact find could not
+  // tell them apart before, so neither could anything downstream.
+  selfEmployedStructure: string
 }
 
 type Income = {
@@ -107,6 +113,9 @@ type FactFindApplicant = {
   dob: string
   phoneMobile: string
   emailPersonal: string
+  // Citizen, resident or on a visa. Non-resident and visa deals carry their own
+  // document requirements, and nothing on the fact find could say which.
+  residencyStatus: string
   addresses: Address[]
   employment: Employment[]
   income: Income[]
@@ -185,6 +194,10 @@ type FactFindData = {
   liabilities: Liability[]
   dependants: string
   internalNotes: string
+  // Where the deposit is coming from. A gift needs a gift letter on file, and
+  // this only existed on the BC - by which point the documents have already
+  // been asked for.
+  depositSource: string
   loanPurpose: string
   goals2Years: string
   goals10Years: string
@@ -215,7 +228,7 @@ const defaultEmployment = (isCurrent: boolean): Employment => ({
   id: uid(), isCurrent, employmentPriority: 'Primary', employmentBasis: 'Full time', employmentType: 'PAYG', endDate: '',
   occupation: '', startDate: '', onProbation: false, employerName: '', employerAbn: '',
   employerAcn: '', employerType: '', employerAddress: '',
-  contactPersonName: '', contactPersonDetails: ''
+  contactPersonName: '', contactPersonDetails: '', selfEmployedStructure: ''
 })
 
 const defaultIncome = (type: string = 'PAYG'): Income => ({
@@ -239,6 +252,7 @@ const defaultIncome = (type: string = 'PAYG'): Income => ({
 const defaultApplicant = (): FactFindApplicant => ({
   id: uid(), title: '', firstName: '', middleName: '', lastName: '', preferredName: '',
   previousName: '', gender: '', dob: '', phoneMobile: '', emailPersonal: '',
+  residencyStatus: '',
   addresses: [defaultAddress(true)],
   employment: [defaultEmployment(true)],
   income: []
@@ -359,6 +373,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       liabilities: [],
       dependants: '0',
       internalNotes: '',
+      depositSource: '',
       loanPurpose: '',
       goals2Years: '',
       goals10Years: ''
@@ -933,6 +948,17 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Purpose and goals</div>
           <div className="flex flex-col gap-3">
             <div>
+              <label className="text-xs text-gray-500 block mb-1">Where is the deposit coming from?</label>
+              <select className={inp} value={d.depositSource || ''}
+                onChange={e => setD(prev => ({ ...prev, depositSource: e.target.value }))}>
+                <option value="">Select</option>
+                {optionsFor(d.depositSource, DEPOSIT_SOURCES).map(x => <option key={x}>{x}</option>)}
+              </select>
+              {d.depositSource === 'Gift' && (
+                <p className="text-[11.5px] text-[#8A6218] mt-1 mb-0">A gift letter will be needed on file.</p>
+              )}
+            </div>
+            <div>
               <label className="text-xs text-gray-500 block mb-1">Purpose of loan / primary reason for finance</label>
               <textarea spellCheck="true" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-16 resize-y" placeholder="What the client told you they want this loan for..." value={d.loanPurpose} onChange={e => setD(prev => ({ ...prev, loanPurpose: e.target.value }))} />
             </div>
@@ -1004,6 +1030,13 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
             <div>
               <label className="text-xs text-gray-500 block mb-1">Email</label>
               <input className={inp} value={applicant.emailPersonal} onChange={e => updateApplicant('emailPersonal', e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Residency status</label>
+              <select className={inp} value={applicant.residencyStatus || ''} onChange={e => updateApplicant('residencyStatus', e.target.value)}>
+                <option value="">Select</option>
+                {optionsFor(applicant.residencyStatus, RESIDENCY_STATUSES).map(x => <option key={x}>{x}</option>)}
+              </select>
             </div>
           </div>
 
@@ -1175,6 +1208,13 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                 {emp.employmentType === 'PAYG' && (
                   <select className={inp} value={emp.employmentBasis} onChange={e => updateEmployment(emp.id, 'employmentBasis', e.target.value)}>
                     <option>Full time</option><option>Part time</option><option>Casual</option>
+                  </select>
+                )}
+                {emp.employmentType === 'Self-employed' && (
+                  <select className={inp} value={emp.selfEmployedStructure || ''}
+                    onChange={e => updateEmployment(emp.id, 'selfEmployedStructure', e.target.value)}>
+                    <option value="">Structure — sole trader or company?</option>
+                    {optionsFor(emp.selfEmployedStructure, SELF_EMPLOYED_STRUCTURES).map(x => <option key={x}>{x}</option>)}
                   </select>
                 )}
                 {emp.employmentType !== 'Not working' && (
@@ -1441,7 +1481,15 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Income type</label>
-                    <input className={inp} placeholder="Describe the income" value={inc.otherIncomeType} onChange={e => updateIncome(inc.id, 'otherIncomeType', e.target.value)} />
+                    {/* Typed by hand, this could never be counted or acted on -
+                        "centrelink", "Centrelink FTB" and "family tax" were three
+                        different things to everything downstream. Anything already
+                        typed is kept and still offered; see optionsFor(). */}
+                    <select className={inp} value={inc.otherIncomeType || ''}
+                      onChange={e => updateIncome(inc.id, 'otherIncomeType', e.target.value)}>
+                      <option value="">Select</option>
+                      {optionsFor(inc.otherIncomeType, OTHER_INCOME_TYPES).map(x => <option key={x}>{x}</option>)}
+                    </select>
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Annual income</label>
@@ -1512,7 +1560,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
             <div key={asset.id} className="border border-gray-100 rounded-lg p-4 mb-2">
               <div className="flex justify-between items-center mb-3">
                 <select className="text-xs font-medium text-gray-500 border-0" value={asset.assetType} onChange={e => updateAsset(asset.id, 'assetType', e.target.value)}>
-                  <option>Bank account</option><option>Vehicle</option><option>Home Contents</option><option>Super</option><option>Other</option>
+                  {optionsFor(asset.assetType, ASSET_TYPES).map(x => <option key={x}>{x}</option>)}
                 </select>
                 <button onClick={() => removeAsset(asset.id)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
               </div>
@@ -1522,6 +1570,9 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                 )}
                 {asset.assetType === 'Super' && (
                   <input className={inp} placeholder="Fund Name" value={asset.description} onChange={e => updateAsset(asset.id, 'description', e.target.value)} />
+                )}
+                {asset.assetType === 'Shares' && (
+                  <input className={inp} placeholder="Holding — company or fund" value={asset.description} onChange={e => updateAsset(asset.id, 'description', e.target.value)} />
                 )}
                 {asset.assetType === 'Vehicle' && (
                   <input className={inp} placeholder="Description" value={asset.description} onChange={e => updateAsset(asset.id, 'description', e.target.value)} />
@@ -1670,7 +1721,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               )}
               {liab.liabilityType === 'Credit card' && (
                 <div className="grid grid-cols-4 gap-3 mb-3">
-                  <input className={inp} placeholder="Financial institution" value={liab.lenderName} onChange={e => updateLiability(liab.id, 'lenderName', e.target.value)} />
+                  <BankSelect className={inp} value={liab.lenderName} onChange={v => updateLiability(liab.id, 'lenderName', v)} />
                   <CurrencyInput className={inp} placeholder="Credit limit" value={liab.limitAmount} onChange={val => updateLiability(liab.id, 'limitAmount', val)} />
                   <CurrencyInput className={inp} placeholder="Current balance" value={liab.balance} onChange={val => updateLiability(liab.id, 'balance', val)} />
                   <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}>
@@ -1681,7 +1732,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               {(liab.liabilityType === 'Car loan' || liab.liabilityType === 'Personal loan' || liab.liabilityType === 'Other') && (
                 <>
                   <div className="grid grid-cols-2 gap-3 mb-3">
-                    <input className={inp} placeholder="Bank / lender" value={liab.lenderName} onChange={e => updateLiability(liab.id, 'lenderName', e.target.value)} />
+                    <BankSelect className={inp} value={liab.lenderName} onChange={v => updateLiability(liab.id, 'lenderName', v)} />
                     <CurrencyInput className={inp} placeholder="Balance" value={liab.balance} onChange={val => updateLiability(liab.id, 'balance', val)} />
                   </div>
                   <div className="grid grid-cols-3 gap-3 mb-3">
