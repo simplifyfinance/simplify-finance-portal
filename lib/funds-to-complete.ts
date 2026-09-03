@@ -19,7 +19,16 @@ export type FundsLine = { label: string; amount: number; kind: 'cost' | 'source'
 
 export type FundsToComplete = {
   lines: FundsLine[]
+  // SHOWN, BUT NOT ADDED UP. LMI and the risk fee are capitalised onto the loan
+  // - the client does not find that money at settlement, the loan carries it. So
+  // it belongs on the strip where somebody can see it, and nowhere near the
+  // arithmetic. Fabio, 3 Sep 2026: "add LMI ... it doesnt impact funds to
+  // complete as LMI and risk fee is capitalised on the loans".
+  capitalised: FundsLine[]
   toFind: number
+  // False when the deal is mixed and the split roles are unanswered. The lines
+  // are still worth showing; the total is not, because it would be wrong.
+  workable: boolean
   // Named, so the strip can say "stamp duty has not been recorded" rather than
   // treating a blank as zero and quoting a total that is short by $45,000.
   missing: string[]
@@ -42,26 +51,49 @@ export function isConstruction(deal: any): boolean {
     || has(deal?.bc_data?.constructionCost)
 }
 
-// A refinance has no funds to complete, and ANY refinance component is enough to
-// switch it off. Fabio, 3 Sep 2026: "no funds to complete if a refinance".
-//
-// This is not tidiness. The sum is price + duty − deposit − loan, and on a deal
-// that also refinances, the loan contains money that never touches the purchase:
-// $1,350,000 of lending against an $850,000 purchase reported "$625,000 over",
-// which is nonsense. The simple sum is only true of a simple purchase, so that
-// is the only place it is shown. Anything else would need the fees, payouts and
-// per-split apportionment that were deliberately cut out.
+// A pure refinance has no funds to complete - there is no settlement to fund.
+// A deal that BOTH refinances and buys does: the purchase still has to settle.
 export function fundsApply(deal: any): boolean {
   const bc = deal?.bc_data || {}
-  if (refinancedDebt(deal) > 0) return false
   return isConstruction(deal) || has(bc.purchasePrice) || has(bc.newPurchasePrice)
+}
+
+// A deal that both refinances and buys.
+function mixed(deal: any): boolean {
+  const bc = deal?.bc_data || {}
+  return (has(bc.purchasePrice) || has(bc.newPurchasePrice)) && refinancedDebt(deal) > 0
+}
+
+// THE LENDING THAT ACTUALLY REACHES THE PURCHASE.
+//
+// Counting the whole loan reported "$625,000 over" on a deal whose real answer
+// was $75,000, because most of that lending paid out an old mortgage and
+// released equity - money the purchase never sees. On a mixed deal only the
+// splits somebody marked as funding the purchase are counted.
+//
+// Null means "cannot be worked out yet": the deal is mixed and at least one
+// split has not been answered. A partial sum would look finished and be wrong.
+//
+// This reads splits directly rather than through deal-structure's splitsOf(),
+// which imports from this file. One narrow duplication beats a circular import,
+// and all it needs here is an amount and a role.
+function purchaseLoan(deal: any): number | null {
+  if (!mixed(deal)) return loanAmount(deal)
+  const lo = deal?.lo_data || {}
+  const fromLo = (lo.refinanceSplits || []).filter((s: any) => has(s?.amount) || txt(s?.label))
+  const splits: any[] = fromLo.length > 0 ? fromLo : (deal?.bc_data?.splits || [])
+  if (splits.length === 0) return null
+  if (splits.some((s: any) => !txt(s?.funds))) return null
+  return splits.filter((s: any) => txt(s.funds) === 'purchase')
+    .reduce((t: number, s: any) => t + num(s?.amount), 0)
 }
 
 export function fundsToComplete(deal: any): FundsToComplete {
   const bc = deal?.bc_data || {}
-  if (!fundsApply(deal)) return { lines: [], toFind: 0, missing: [], applies: false }
+  if (!fundsApply(deal)) return { lines: [], capitalised: [], toFind: 0, workable: false, missing: [], applies: false }
 
   const lines: FundsLine[] = []
+  const capitalised: FundsLine[] = []
   const missing: string[] = []
 
   if (isConstruction(deal)) {
@@ -82,16 +114,37 @@ export function fundsToComplete(deal: any): FundsToComplete {
   if (has(bc.deposit)) lines.push({ label: 'Deposit', amount: num(bc.deposit), kind: 'source' })
   else missing.push('No deposit has been recorded')
 
-  const loan = loanAmount(deal)
-  if (loan > 0) lines.push({ label: 'Loan', amount: loan, kind: 'source' })
-  else missing.push('No loan amount has been recorded')
+  const loan = purchaseLoan(deal)
+  if (loan === null) {
+    // Mixed deal, unanswered splits. Nothing is guessed and no total is offered.
+    missing.push('This deal both refinances and buys. Say what each split does — funds the purchase, pays out existing debt, or releases equity — and the funds to complete can be worked out.')
+  } else if (loan > 0) {
+    lines.push({ label: mixed(deal) ? 'Loan funding the purchase' : 'Loan', amount: loan, kind: 'source' })
+  } else {
+    missing.push('No loan amount has been recorded')
+  }
+
+  // Capitalised onto the loan, so it changes what is borrowed and never what is
+  // found at settlement. Listed so nobody wonders where it went.
+  if (has(bc.lmi)) {
+    capitalised.push({ label: 'LMI', amount: num(bc.lmi), kind: 'cost' })
+  } else if (txt(bc.lmiApplicable).toLowerCase().startsWith('y')) {
+    missing.push('LMI applies but no amount has been recorded')
+  }
 
   const costs = lines.filter(l => l.kind === 'cost').reduce((s, l) => s + l.amount, 0)
   const sources = lines.filter(l => l.kind === 'source').reduce((s, l) => s + l.amount, 0)
 
   // Never negative. A purchase where the loan and deposit exceed the price and
   // duty needs nothing found; "minus $4,000" reads like a refund.
-  return { lines, toFind: Math.max(0, Math.round(costs - sources)), missing, applies: true }
+  // No answer at all while the split roles are unanswered - see purchaseLoan().
+  const known = loan !== null
+  return {
+    lines, capitalised,
+    toFind: known ? Math.max(0, Math.round(costs - sources)) : 0,
+    workable: known,
+    missing, applies: true,
+  }
 }
 
 // The LO's figure when there is one, otherwise the BC's splits added up.

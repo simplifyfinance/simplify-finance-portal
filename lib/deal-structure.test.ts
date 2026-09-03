@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { suggestPurpose, splitsOf, stillNeeded, canGenerateNotes,
-         defaultSecurityAddress, dealRow, purposeSummary, PURPOSE_LABEL } from './deal-structure'
+         defaultSecurityAddress, dealRow, purposeSummary, PURPOSE_LABEL,
+         isMixed, needsFundsRole, purchaseLending, suggestFunds, FUNDS_LABEL } from './deal-structure'
 
 const deal = (over: any = {}) => ({
   bc_data: { purchasePrice: '850,000', stampDuty: '45,000', deposit: '170,000',
@@ -179,5 +180,69 @@ describe('the labels people read', () => {
   it('spells the purposes out in full', () => {
     expect(PURPOSE_LABEL.OO).toBe('Owner occupied')
     expect(PURPOSE_LABEL.INV).toBe('Investment')
+  })
+})
+
+describe('what each split does, on a mixed deal', () => {
+  const mixed = (funds: string[] = ['', '', '']) => deal({
+    bc_data: { purchasePrice: '850,000' },
+    lo_data: { refinanceSplits: [
+      split({ id: 'a', label: 'Existing loan refinanced', amount: '520,000', purpose: 'OO', termYears: '30', productType: 'X' }),
+      split({ id: 'b', label: 'Equity access', amount: '180,000', purpose: 'INV', termYears: '30', productType: 'X' }),
+      split({ id: 'c', label: 'New purchase', amount: '650,000', purpose: 'OO', termYears: '30', productType: 'X' }),
+    ].map((s, i) => ({ ...s, funds: funds[i] })) },
+    fact_find_data: { properties: [{ value: '620,000',
+      loans: [{ balance: '380,000', status: 'To be refinanced' }] }] },
+  })
+
+  it('knows a mixed deal when it sees one', () => {
+    expect(isMixed(mixed())).toBe(true)
+    expect(needsFundsRole(mixed())).toBe(true)
+  })
+
+  // Nobody is made to answer a question with an obvious answer.
+  it('does not ask on a plain purchase or a plain refinance', () => {
+    expect(needsFundsRole(deal())).toBe(false)
+    expect(needsFundsRole(deal({ bc_data: { purchasePrice: '', existingLoanBal: '520,000' } }))).toBe(false)
+  })
+
+  it('asks for it on every split of a mixed deal', () => {
+    const n = stillNeeded(mixed())
+    expect(n.filter(x => x.what.startsWith('what it does'))).toHaveLength(3)
+  })
+
+  it('stops asking once answered', () => {
+    expect(stillNeeded(mixed(['payout', 'equity', 'purchase']))).toHaveLength(0)
+  })
+
+  it('counts only the purchase money', () => {
+    expect(purchaseLending(mixed(['payout', 'equity', 'purchase']))).toBe(650_000)
+  })
+
+  it('refuses a partial answer rather than returning half a number', () => {
+    expect(purchaseLending(mixed(['payout', '', 'purchase']))).toBeNull()
+  })
+
+  it('returns the whole loan on a deal that is not mixed', () => {
+    expect(purchaseLending(deal())).toBe(1_350_000)
+  })
+})
+
+describe('suggesting what a split does', () => {
+  it('reads the obvious ones', () => {
+    expect(suggestFunds('Existing loan refinanced')).toBe('payout')
+    expect(suggestFunds('Equity access')).toBe('equity')
+    expect(suggestFunds('New purchase')).toBe('purchase')
+  })
+
+  it('says nothing when the label gives nothing away', () => {
+    expect(suggestFunds('Split 2')).toBe('')
+    expect(suggestFunds('')).toBe('')
+  })
+
+  it('spells the answers out in full', () => {
+    expect(FUNDS_LABEL.purchase).toBe('Funds the purchase')
+    expect(FUNDS_LABEL.payout).toBe('Pays out existing debt')
+    expect(FUNDS_LABEL.equity).toBe('Releases equity')
   })
 })

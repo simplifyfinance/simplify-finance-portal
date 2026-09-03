@@ -371,9 +371,17 @@ export function dealFacts(deal: any): DealFacts {
   const funds = fundsToComplete(deal)
   if (funds.applies) {
     const lines = funds.lines.map(l => `${l.kind === 'cost' ? '+' : '−'} ${l.label}: ${money(l.amount)}`)
-    lines.push(funds.toFind > 0
-      ? `= Funds to complete: ${money(funds.toFind)}`
-      : '= Funds to complete: nil')
+    // No total while a mixed deal's splits are unanswered - see purchaseLoan().
+    if (funds.workable) {
+      lines.push(funds.toFind > 0
+        ? `= Funds to complete: ${money(funds.toFind)}`
+        : '= Funds to complete: nil')
+    }
+    // Capitalised, so it is stated but kept out of the sum - otherwise the
+    // notes would describe money the client has to find that they do not.
+    for (const c of funds.capitalised) {
+      lines.push(`${c.label}: ${money(c.amount)} — capitalised onto the loan, not part of the funds to complete`)
+    }
     sections.push({ title: 'FUNDS TO COMPLETE', lines })
     missing.push(...funds.missing)
   }

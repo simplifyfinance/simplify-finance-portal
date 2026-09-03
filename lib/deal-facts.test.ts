@@ -185,10 +185,22 @@ describe('funds to complete', () => {
     expect(all(d)).not.toContain('FUNDS TO COMPLETE')
   })
 
-  // The Chapman deal refinances a property AND buys one. The simple sum cannot
-  // be true of it, so it is not shown at all.
-  it('says nothing on a deal that both refinances and buys', () => {
-    expect(all(chapman())).not.toContain('FUNDS TO COMPLETE')
+  // The Chapman deal refinances a property AND buys one. The splits carry no
+  // role yet, so there is no total — but the section still appears, saying what
+  // it needs.
+  it('asks what each split does before totalling a mixed deal', () => {
+    const out = all(chapman())
+    expect(out).toContain('both refinances and buys')
+    expect(out).not.toMatch(/= Funds to complete: \$/)
+  })
+
+  // Answered, the real number appears: 850,000 + 45,000 − 170,000 − 650,000.
+  it('totals a mixed deal once every split has been answered', () => {
+    const d = chapman()
+    d.bc_data.splits[0].funds = 'payout'
+    d.bc_data.splits[1].funds = 'equity'
+    d.bc_data.splits[2].funds = 'purchase'
+    expect(all(d)).toContain('= Funds to complete: $75,000')
   })
 })
 

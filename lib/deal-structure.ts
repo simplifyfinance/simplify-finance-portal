@@ -48,6 +48,20 @@ export const PURPOSE_LABEL: Record<string, string> = {
 const INV_WORDS = /invest|equity (access|release)|cash ?out/i
 const OO_WORDS = /owner.?occup|\bOO\b|home loan|end debt|principal place/i
 
+const PAYOUT_WORDS = /refinanc|existing loan|pay ?out|discharg/i
+const EQUITY_WORDS = /equity (access|release)|cash ?out/i
+const PURCHASE_WORDS = /purchase|new loan|end debt/i
+
+// A suggestion, like suggestPurpose - offered, never applied.
+export function suggestFunds(label: string): SplitFunds {
+  const l = txt(label)
+  if (!l) return ''
+  if (EQUITY_WORDS.test(l)) return 'equity'
+  if (PAYOUT_WORDS.test(l)) return 'payout'
+  if (PURCHASE_WORDS.test(l)) return 'purchase'
+  return ''
+}
+
 // A SUGGESTION, never a default. Shown under the empty dropdown so somebody can
 // agree in one click - but the field stays unset until they do, because the
 // label is a guess and this answer ends up in a regulated document.
@@ -59,6 +73,21 @@ export function suggestPurpose(label: string): SplitPurpose {
   return ''
 }
 
+// WHAT THIS PART OF THE MONEY DOES - which is a different question from what it
+// is FOR. A split can be for investment (purpose) and still be paying out an old
+// debt rather than funding a purchase (this).
+//
+// It exists for one reason: on a deal that both refinances and buys, funds to
+// complete must count only the money that reaches the purchase. Counting the
+// whole loan reported "$625,000 over" on a deal whose real answer was $75,000.
+export type SplitFunds = 'purchase' | 'payout' | 'equity' | ''
+
+export const FUNDS_LABEL: Record<string, string> = {
+  purchase: 'Funds the purchase',
+  payout: 'Pays out existing debt',
+  equity: 'Releases equity',
+}
+
 export type StructureSplit = {
   id: string
   label: string
@@ -66,6 +95,9 @@ export type StructureSplit = {
   rate?: string
   repaymentType?: string
   purpose?: SplitPurpose
+  // Only asked on a deal that both refinances and buys - see needsFundsRole().
+  // Everywhere else the answer is obvious and nobody is made to type it.
+  funds?: SplitFunds
   // Recorded on the block itself - neither exists per split anywhere else.
   termYears?: string
   productType?: string
@@ -85,6 +117,7 @@ export function splitsOf(deal: any): StructureSplit[] {
     rate: txt(s?.rate),
     repaymentType: txt(s?.repaymentType) || txt(s?.type),
     purpose: (txt(s?.purpose) as SplitPurpose) || '',
+    funds: (txt(s?.funds) as SplitFunds) || '',
     termYears: txt(s?.termYears),
     productType: txt(s?.productType),
   }))
@@ -94,17 +127,47 @@ export function splitsOf(deal: any): StructureSplit[] {
 
 export type Needed = { where: 'deal' | 'split'; splitId?: string; splitLabel?: string; what: string }
 
+// A deal that BOTH refinances and buys. The only shape where "what does this
+// split do" has to be asked, because everywhere else it is obvious: on a pure
+// purchase every split funds the purchase, and on a pure refinance there is no
+// completion to fund at all.
+export function isMixed(deal: any): boolean {
+  const bc = deal?.bc_data || {}
+  const buying = has(bc.purchasePrice) || has(bc.newPurchasePrice)
+  return buying && refinancedDebt(deal) > 0
+}
+
+export function needsFundsRole(deal: any): boolean {
+  return isMixed(deal)
+}
+
 // Only the things that block the credit notes. Cashback is NOT here - "none" is
 // a real answer and most deals have none, so an empty box is not a gap. Fabio,
 // 3 Sep 2026: "cashback dont do one per split you only get one cashback or not".
 export function stillNeeded(deal: any): Needed[] {
   const out: Needed[] = []
+  const askFunds = needsFundsRole(deal)
   for (const s of splitsOf(deal)) {
     if (!s.purpose) out.push({ where: 'split', splitId: s.id, splitLabel: s.label, what: 'purpose — owner occupied or investment' })
+    if (askFunds && !s.funds) {
+      out.push({ where: 'split', splitId: s.id, splitLabel: s.label, what: 'what it does — funds the purchase, pays out debt, or releases equity' })
+    }
     if (!s.termYears) out.push({ where: 'split', splitId: s.id, splitLabel: s.label, what: 'term' })
     if (!s.productType) out.push({ where: 'split', splitId: s.id, splitLabel: s.label, what: 'product type' })
   }
   return out
+}
+
+// The lending that actually reaches the purchase. On a plain purchase that is
+// all of it; on a mixed deal it is only the splits somebody marked as funding
+// the purchase. Null when the deal is mixed and not every split has been
+// answered - a partial sum here is worse than none, because it looks finished.
+export function purchaseLending(deal: any): number | null {
+  if (!isMixed(deal)) return loanAmount(deal)
+  const splits = splitsOf(deal)
+  if (splits.length === 0) return null
+  if (splits.some(s => !s.funds)) return null
+  return splits.filter(s => s.funds === 'purchase').reduce((t, s) => t + num(s.amount), 0)
 }
 
 // The credit notes read this block. Written from a blank purpose they would

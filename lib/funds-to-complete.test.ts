@@ -139,28 +139,54 @@ describe('the loan amount', () => {
   })
 })
 
-describe('a deal that refinances AND buys — the sum does not hold', () => {
-  // Reported "$625,000 over" on a real-shaped deal: $1,350,000 of lending
-  // against an $850,000 purchase, because $520,000 of that loan repays existing
-  // debt the purchase never sees.
-  const mixed = {
+describe('a deal that refinances AND buys — only the purchase money counts', () => {
+  // The deal that reported "$625,000 over". $1,350,000 of lending against an
+  // $850,000 purchase — but $520,000 pays out the old loan and $180,000 is
+  // equity released. Only $650,000 ever reaches the purchase.
+  const mixed = (funds: [string, string, string] | null) => ({
     bc_data: { purchasePrice: '850,000', stampDuty: '45,000', deposit: '170,000' },
-    lo_data: { loanAmount: '1,350,000' },
+    lo_data: { loanAmount: '1,350,000', refinanceSplits: [
+      { id: 'a', label: 'Existing loan refinanced', amount: '520,000', funds: funds?.[0] ?? '' },
+      { id: 'b', label: 'Equity access', amount: '180,000', funds: funds?.[1] ?? '' },
+      { id: 'c', label: 'New purchase', amount: '650,000', funds: funds?.[2] ?? '' },
+    ] },
     fact_find_data: { properties: [{ value: '620,000',
       loans: [{ balance: '380,000', status: 'To be refinanced' }] }] },
-  }
-
-  it('shows nothing rather than a figure that is not true', () => {
-    expect(fundsApply(mixed)).toBe(false)
-    expect(fundsToComplete(mixed).applies).toBe(false)
   })
 
-  it('switches off on the BC figure too, not just the fact find', () => {
-    expect(fundsApply({ bc_data: { purchasePrice: '850,000', existingLoanBal: '520,000' } })).toBe(false)
+  it('counts only the split that funds the purchase', () => {
+    const f = fundsToComplete(mixed(['payout', 'equity', 'purchase']))
+    expect(amountOf(f, 'Loan funding the purchase')).toBe(650_000)
+    // 850,000 + 45,000 − 170,000 − 650,000
+    expect(f.toFind).toBe(75_000)
+    expect(f.workable).toBe(true)
   })
 
-  it('leaves a plain purchase alone', () => {
-    expect(fundsApply({ bc_data: { purchasePrice: '850,000' } })).toBe(true)
+  it('no longer reports a nonsense surplus', () => {
+    expect(fundsToComplete(mixed(['payout', 'equity', 'purchase'])).toFind).not.toBe(0)
+  })
+
+  // A partial sum would look finished and be wrong.
+  it('offers no total at all until every split has been answered', () => {
+    const f = fundsToComplete(mixed(['payout', '', 'purchase']))
+    expect(f.workable).toBe(false)
+    expect(f.toFind).toBe(0)
+    expect(f.missing.join(' ')).toContain('both refinances and buys')
+  })
+
+  it('still applies — the purchase has to settle', () => {
+    expect(fundsApply(mixed(null))).toBe(true)
+  })
+
+  it('leaves a plain purchase alone, whole loan counted', () => {
+    const f = fundsToComplete({ bc_data: { purchasePrice: '850,000', stampDuty: '45,000',
+      deposit: '170,000' }, lo_data: { loanAmount: '680,000' } })
+    expect(amountOf(f, 'Loan')).toBe(680_000)
+    expect(f.workable).toBe(true)
+  })
+
+  it('a pure refinance still shows nothing', () => {
+    expect(fundsApply({ bc_data: { existingLoanBal: '520,000' } })).toBe(false)
   })
 })
 
@@ -169,5 +195,39 @@ describe('it never reports a negative', () => {
     const over = fundsToComplete({ bc_data: { purchasePrice: '500,000', stampDuty: '20,000',
       deposit: '200,000' }, lo_data: { loanAmount: '400,000' } })
     expect(over.toFind).toBe(0)
+  })
+})
+
+describe('LMI is shown but never counted', () => {
+  // Capitalised onto the loan. The client does not find it at settlement, so it
+  // must not move the total - but it must be visible, or people wonder.
+  const withLmi = { bc_data: { purchasePrice: '850,000', stampDuty: '45,000',
+    deposit: '170,000', lmi: '18,000' }, lo_data: { loanAmount: '680,000' } }
+
+  it('appears on its own list', () => {
+    const f = fundsToComplete(withLmi)
+    expect(f.capitalised.map(l => l.label)).toEqual(['LMI'])
+    expect(f.capitalised[0].amount).toBe(18_000)
+  })
+
+  it('does not change what the client has to find', () => {
+    const without = fundsToComplete({ ...withLmi, bc_data: { ...withLmi.bc_data, lmi: '' } })
+    expect(fundsToComplete(withLmi).toFind).toBe(without.toFind)
+    expect(fundsToComplete(withLmi).toFind).toBe(45_000)
+  })
+
+  it('is not in the added-up lines', () => {
+    expect(fundsToComplete(withLmi).lines.some(l => l.label === 'LMI')).toBe(false)
+  })
+
+  it('still says so when LMI applies and no figure was typed', () => {
+    const f = fundsToComplete({ ...withLmi, bc_data: { ...withLmi.bc_data, lmi: '', lmiApplicable: 'Yes' } })
+    expect(f.missing).toContain('LMI applies but no amount has been recorded')
+    expect(f.capitalised).toHaveLength(0)
+  })
+
+  it('says nothing about LMI when it does not apply', () => {
+    const f = fundsToComplete({ ...withLmi, bc_data: { ...withLmi.bc_data, lmi: '', lmiApplicable: 'No' } })
+    expect(f.missing.some(m => m.includes('LMI'))).toBe(false)
   })
 })
