@@ -51,6 +51,25 @@ export const OTHER_INCOME_TYPES = [
 
 // 'Shares' was missing, which is why a share statement could never be asked for
 // automatically. 'Home Contents' stays because deals already carry it.
+// WHAT KIND OF PROPERTY IT IS - which decides whether insurance evidence is
+// needed. Fabio, 3 Sep 2026: "we only need the insurance for a single dwelling,
+// or properties like houses that are not strata title."
+//
+// The fact find has asked this about properties a client already owns since the
+// beginning. Nothing asked it about the one being BOUGHT, so the document
+// checklist put insurance on every purchase to be safe and told you why. This
+// is the same list, so the two screens cannot drift into different words for
+// the same thing.
+export const PROPERTY_SUBTYPES = [
+  'House',
+  'Unit',
+  'Townhouse',
+  'Land',
+  'Commercial',
+  'Rural',
+  'Other',
+] as const
+
 export const ASSET_TYPES = [
   'Bank account',
   'Shares',

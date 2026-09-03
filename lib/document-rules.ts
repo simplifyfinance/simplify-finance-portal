@@ -329,11 +329,34 @@ function dealItems(deal: any, ff: any, out: DocItem[], gaps: DocGap[]) {
     out.push({ ...g, key: 'contract-of-sale', label: 'Updated contract of sale',
       forWhat: 'lodge', round: 'offer_accepted', auto: true })
 
-    // Only a standalone dwelling. Fabio, 3 Sep 2026: "we only need the insurance
-    // for a single dwelling, or properties like houses that are not strata
-    // title." The fact find records this for properties a client already owns,
-    // but nothing yet records it for the one being bought.
+    // INSURANCE, UNLESS THERE IS A REASON NOT TO.
+    //
+    // Fabio, 3 Sep 2026: "we only need the insurance for a single dwelling, or
+    // properties like houses that are not strata title." Two reasons not to ask,
+    // and only two: the building is insured by somebody else, or there is no
+    // building.
+    //
+    //   Strata (unit, townhouse)  the body corporate insures the building
+    //   Land                      nothing built yet. Fabio: "nothing at all, ever"
+    //
+    // Everything else is asked - house, commercial, rural, and anything not on
+    // the list. Written as a list of exemptions rather than a list of what
+    // qualifies ON PURPOSE: the first version listed 'House' and silently asked
+    // for nothing on a commercial purchase, which reads exactly like a deal
+    // that needs no insurance. A property type added to the pick list next year
+    // will now ask for insurance until somebody decides it should not, which is
+    // the safe direction to be wrong in.
     const buying = txt(deal?.bc_data?.purchasePropertySubtype)
+    const STRATA = ['Unit', 'Townhouse']
+    // Said in words, per type. Built from the value it produced sentences like
+    // "the property being bought is a commercial, not strata", which is not
+    // English and ends up on a document request a client reads.
+    const INSURANCE_WHY: Record<string, string> = {
+      House: 'The property being bought is a house, not strata',
+      Commercial: 'The property being bought is a commercial property',
+      Rural: 'The property being bought is a rural property',
+      Other: 'The property type is recorded as Other, so insurance is on the list to be safe',
+    }
     if (!buying) {
       gaps.push({
         key: 'purchase-property-type',
@@ -342,9 +365,9 @@ function dealItems(deal: any, ff: any, out: DocItem[], gaps: DocGap[]) {
       out.push({ ...g, key: 'insurance', label: 'Insurance — certificate of currency',
         why: 'On the list because the property type has not been recorded',
         forWhat: 'lodge', round: 'offer_accepted', auto: true })
-    } else if (buying === 'House') {
+    } else if (!STRATA.includes(buying) && buying !== 'Land') {
       out.push({ ...g, key: 'insurance', label: 'Insurance — certificate of currency',
-        why: 'The property being bought is a house, not strata',
+        why: INSURANCE_WHY[buying] || `The property being bought is recorded as ${buying}`,
         forWhat: 'lodge', round: 'offer_accepted', auto: true })
     }
   }

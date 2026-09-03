@@ -395,3 +395,69 @@ describe('an empty or broken deal never throws', () => {
     expect(documentsFor({}).items.map(x => x.key)).toContain('expenses-account')
   })
 })
+
+// HOUSE OR STRATA, ON THE PROPERTY BEING BOUGHT.
+//
+// The fact find has asked this about properties a client already owns since the
+// beginning; nothing asked it about the one being purchased, so the BC now does.
+// Fabio, 3 Sep 2026, on the two edge cases: land needs "nothing at all, ever",
+// and commercial gets the certificate of currency the same as a house.
+describe('insurance on the property being bought', () => {
+  const buying = (purchasePropertySubtype: string) => documentsFor({
+    bc_data: { template: 'oo_purchase', purchasePrice: '850,000', purchasePropertySubtype },
+    fact_find_data: { applicants: [{ firstName: 'A', lastName: 'B' }] },
+  })
+  const asks = (sub: string) => buying(sub).items.some((i: any) => i.key === 'insurance')
+  const why = (sub: string) => buying(sub).items.find((i: any) => i.key === 'insurance')?.why || ''
+
+  it('asks for it on a house', () => {
+    expect(asks('House')).toBe(true)
+  })
+
+  // The body corporate insures the building.
+  it('does not ask on strata', () => {
+    expect(asks('Unit')).toBe(false)
+    expect(asks('Townhouse')).toBe(false)
+  })
+
+  // Nothing built yet.
+  it('never asks on land', () => {
+    expect(asks('Land')).toBe(false)
+  })
+
+  it('asks on commercial and rural', () => {
+    expect(asks('Commercial')).toBe(true)
+    expect(asks('Rural')).toBe(true)
+  })
+
+  // The first version listed the one type that qualified, so a commercial
+  // purchase silently asked for nothing - which reads exactly like a deal that
+  // needs no insurance rather than a rule nobody had written yet.
+  it('asks for anything not on the list, rather than going quiet', () => {
+    expect(asks('Warehouse')).toBe(true)
+    expect(why('Warehouse')).toContain('recorded as Warehouse')
+  })
+
+  it('says why in words a client can read', () => {
+    expect(why('Commercial')).toBe('The property being bought is a commercial property')
+    expect(why('House')).toContain('not strata')
+    // "is a commercial, not strata" and "is an other" are not English, and this
+    // ends up on a document request somebody outside the business reads.
+    for (const sub of ['House', 'Commercial', 'Rural', 'Other', 'Warehouse']) {
+      expect(why(sub)).not.toMatch(/is an? (commercial|rural|other)\b(?! property)/i)
+    }
+  })
+
+  it('still asks, and still says why, when nobody has answered', () => {
+    const d = buying('')
+    expect(d.items.some((i: any) => i.key === 'insurance')).toBe(true)
+    expect(d.gaps.some((g: any) => g.key === 'purchase-property-type')).toBe(true)
+  })
+
+  // Answered, the question stops being asked.
+  it('drops the gap once the question is answered', () => {
+    for (const sub of ['House', 'Unit', 'Land', 'Commercial']) {
+      expect(buying(sub).gaps.some((g: any) => g.key === 'purchase-property-type')).toBe(false)
+    }
+  })
+})

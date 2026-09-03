@@ -273,6 +273,8 @@ function fieldCls(value: string) {
     ? "px-2.5 py-1.5 text-sm border border-green-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
     : "px-2.5 py-1.5 text-sm border border-amber-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-[#FEFBF5] w-full"
 }
+import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
+
 const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
 
 function formatNumber(val: string): string {
@@ -290,6 +292,11 @@ function formatNumber(val: string): string {
 // The scenarios that carry a loan being paid out. Same list the "Existing loan
 // balance" field is shown for, named once so the field and the auto-fill cannot
 // drift apart - they already had, which is how a purchase ended up holding one.
+// The scenarios where something is being bought, and so where "house or
+// strata" is a question with an answer.
+const BUYING_TEMPLATES = ['oo_purchase', 'oo_lvr_compare', 'investment_purchase', 'fhb',
+  'investment_equity', 'buy_sell', 'bridging', 'smsf', 'family_pledge', 'construction']
+
 const REFINANCING_TEMPLATES = ['refinance_equity', 'refinance_only', 'investment_equity', 'buy_sell', 'bridging']
 
 const STATES = ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'] as const
@@ -347,6 +354,11 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const [living, setLiving] = useState(s.living || '')
   const [suburb, setSuburb] = useState(s.suburb || '')
   const [propertyType, setPropertyType] = useState(s.propertyType || 'Owner-occupied')
+  // HOUSE OR STRATA, for the property being bought. The document checklist has
+  // wanted this since it was written: without it, insurance evidence goes on
+  // every purchase to be safe, and the checklist has to explain that it is only
+  // there because nobody said. A house needs it; a unit or townhouse does not.
+  const [purchasePropertySubtype, setPurchasePropertySubtype] = useState(s.purchasePropertySubtype || '')
   const [purchasePrice, setPurchasePrice] = useState(s.purchasePrice || '')
   const [deposit, setDeposit] = useState(s.deposit || '')
   const [depositSource, setDepositSource] = useState(s.depositSource || '')
@@ -713,13 +725,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
       })
     }, 700)
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
   }
 
   // Does the saved email still match the scenario the deal is on? Read in three
@@ -1107,6 +1119,19 @@ Key assumptions: ${checklistText}`
                 <div className="grid grid-cols-2 gap-2">
                   <Field label={['refinance_equity', 'refinance_only'].includes(template) ? 'Suburb' : 'State'}><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
                   {template !== "fhb" && <Field label="Property type"><select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>}
+                  {/* Amber until answered, the same way the LO marks a split
+                      with no purpose - it is not optional, it decides a
+                      document. */}
+                  {BUYING_TEMPLATES.includes(template) && (
+                    <Field label="House or strata?">
+                      <select className={selectCls + (purchasePropertySubtype ? '' : ' border-amber-300 bg-[#FFFBF0]')}
+                              value={purchasePropertySubtype}
+                              onChange={e => setPurchasePropertySubtype(e.target.value)}>
+                        <option value="">Not recorded</option>
+                        {PROPERTY_SUBTYPES.map(x => <option key={x} value={x}>{x}</option>)}
+                      </select>
+                    </Field>
+                  )}
                   {["oo_purchase", "investment_purchase", "refinance_equity"].includes(template) && (
                     <div className="flex items-center gap-2 col-span-2">
                       <input type="checkbox" id="compareOptions" checked={compareOptions} onChange={e => setCompareOptions(e.target.checked)} />
