@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { isWithLender, splitsTotal } from '@/lib/deal-phase'
 import { applicantsOf } from '@/lib/applicants'
 import { PreflightPanel, PushForm } from '@/components/PushDialogs'
@@ -23,6 +23,11 @@ const dealLoanAmount = (lo: any, bc: any): string => {
 import { checkedWrite } from '@/lib/checked-write'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { dealFacts, factsBlock, dealPurpose } from '@/lib/deal-facts'
+import { noteFacts, noteFreshness, reviewNotes, type NoteFacts, type NoteStamp,
+         type NoteFreshness } from '@/lib/notes-freshness'
+import { purposeSummary, dealRow } from '@/lib/deal-structure'
+import { fundsToComplete } from '@/lib/funds-to-complete'
+import { money } from '@/lib/money'
 import DealStructure from '@/components/DealStructure'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
@@ -91,7 +96,10 @@ type ComplianceData = {
   preApproval?: boolean
   applicationSubmissionComment: string
   expenses: Record<string, ExpenseEntry>
-  aiMeta: Record<string, { confidence: string; source: string }>
+  // What each generated note was written from, so the tab can say when the deal
+  // has moved on underneath it. Notes written before this existed have the old
+  // two-field shape and are left alone - see lib/notes-freshness.ts.
+  aiMeta: Record<string, NoteStamp>
   clientAgreedLender: string
   clientChosenLender: string
   clientChosenLenderOther: string
@@ -191,6 +199,60 @@ function SectionHeader({ title, badge }: { title: string; badge?: string }) {
   )
 }
 
+// THE NINE AI NOTES, NAMED ONCE. Two of the lists that used to hold these
+// disagreed with each other, which is how a field can quietly stop being
+// included in "Generate all fields" and nobody notices for a month.
+const AI_FIELDS = [
+  { key: 'needsPrimary', label: 'Primary reasons for seeking credit' },
+  { key: 'needsImmediate', label: 'Immediate needs & objectives' },
+  { key: 'needsLongTerm', label: 'Longer term' },
+  { key: 'analysisComment', label: 'Analysis, assessment & applicant education' },
+  { key: 'optionsComment', label: 'Options presented & recommendation' },
+  { key: 'borrowingPowerComment', label: 'Borrowing power' },
+  { key: 'depositComment', label: 'Deposit / equity' },
+  { key: 'creditHistoryComment', label: 'Credit history' },
+  { key: 'securityComment', label: 'Security comments' },
+] as const
+
+const AI_FIELD_LABEL: Record<string, string> =
+  Object.fromEntries(AI_FIELDS.map(f => [f.key, f.label]))
+
+const when = (iso?: string) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('en-AU',
+    { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+}
+
+// One place, four call sites. The confidence and source chips were written out
+// four times, so the freshness flag would have had to be too - and the fourth
+// copy is always the one that gets missed.
+function NoteMeta({ meta, freshness }: { meta?: NoteStamp; freshness: NoteFreshness }) {
+  const conf = meta?.confidence || ''
+  const stale = freshness.state === 'stale'
+  if (!conf && !meta?.source && !stale && freshness.state !== 'fresh') return null
+  return (
+    <div className="flex items-center gap-2 mt-1 flex-wrap">
+      {conf && (
+        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+          conf.toLowerCase().includes('high') ? 'bg-green-50 text-green-600' :
+          conf.toLowerCase().includes('low') ? 'bg-red-50 text-red-600' :
+          'bg-amber-50 text-amber-600'
+        }`}>{conf} confidence</span>
+      )}
+      {meta?.source && <span className="text-[10px] text-gray-400">Source: {meta.source}</span>}
+      {stale && (
+        <span className="text-[10px] font-medium text-[#8A6218] bg-[#FDF6EC] border border-[#EBD9BE] rounded px-1.5 py-0.5">
+          written before {freshness.changes[0]}
+        </span>
+      )}
+      {freshness.state === 'fresh' && freshness.at && (
+        <span className="text-[10px] text-gray-400">written {when(freshness.at)} · matches the deal</span>
+      )}
+    </div>
+  )
+}
+
 function AIButton({ onClick, loading, label = 'Generate with AI' }: { onClick: () => void; loading?: boolean; label?: string }) {
   return (
     <button onClick={onClick} disabled={loading}
@@ -211,6 +273,25 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched }: {
   onDealPatched?: (patch: any) => void
 }) {
   const supabase = createSupabaseBrowser()
+
+  // WHAT THE NOTES WERE WRITTEN FROM. Six headline facts, plus a fingerprint of
+  // the whole facts block so an income or a liability moving is caught too -
+  // those do not show up in the six, and they still make the prose wrong.
+  const nowFacts: NoteFacts = useMemo(() => {
+    const lo = deal?.lo_data || {}
+    const row = dealRow(deal)
+    const rec = (lo.lenders || []).find((l: any) => l?.lenderName === lo.recommendedLender) || lo.lenders?.[0] || {}
+    const funds = fundsToComplete(deal)
+    return noteFacts({
+      lender: String(lo.recommendedLender || ''),
+      loanAmount: money(dealLoanAmount(lo, deal?.bc_data || {})),
+      purpose: purposeSummary(deal),
+      fundsToComplete: funds.applies && funds.workable ? (funds.toFind > 0 ? money(funds.toFind) : 'nil') : '',
+      approval: row.preApproval ? 'a pre-approval' : 'a formal approval',
+      product: String(rec.productName || ''),
+    }, factsBlock(dealFacts(deal)))
+  }, [deal])
+
   const [styleNotes, setStyleNotes] = useState<string[]>([])
   const [flaggingField, setFlaggingField] = useState<string | null>(null)
   const [flagNote, setFlagNote] = useState('')
@@ -635,15 +716,49 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
         const answer = answerMatch ? answerMatch[1].trim() : raw.trim()
         const confidence = confidenceMatch ? confidenceMatch[1].trim() : ''
         const source = sourceMatch ? sourceMatch[1].trim() : ''
-        setD(prev => ({ ...prev, [field]: answer, aiMeta: { ...prev.aiMeta, [field]: { confidence, source } } }))
+        // Stamped with what it was written from, at the moment it was written.
+        setD(prev => ({ ...prev, [field]: answer,
+          aiMeta: { ...prev.aiMeta, [field]: { confidence, source, at: new Date().toISOString(), facts: nowFacts } } }))
       }
     } catch (e) { console.error(e) }
     setGenerating(prev => ({ ...prev, [field]: false }))
   }
 
   async function generateAll() {
-    const fields = ['needsPrimary', 'needsImmediate', 'needsLongTerm', 'analysisComment', 'optionsComment', 'borrowingPowerComment', 'depositComment', 'creditHistoryComment', 'securityComment']
-    for (const f of fields) { await generateField(f) }
+    for (const f of AI_FIELDS.map(x => x.key)) { await generateField(f) }
+  }
+
+  // THE NOTES ARE PROSE, AND PROSE DOES NOT UPDATE ITSELF.
+  //
+  // Nine paragraphs are written from the deal as it stands and saved. Change the
+  // lender afterwards and every figure on screen updates while the prose still
+  // names the old one - which on a regulated file is worse than a blank field,
+  // because a blank field is obviously unfinished.
+  //
+  // A warning, never a block. Fabio, 3 Sep 2026, asked for (a): he is the one
+  // who knows whether the change actually matters.
+  const notesReview = useMemo(
+    () => reviewNotes(AI_FIELDS.map(f => ({ field: f.key, text: (d as any)[f.key] })), d.aiMeta, nowFacts),
+    [d, nowFacts])
+
+  const freshnessOf = (key: string): NoteFreshness =>
+    noteFreshness((d as any)[key], d.aiMeta?.[key], nowFacts)
+
+  // "They still read right". Re-stamps the stale notes against the deal as it is
+  // now WITHOUT touching a word of the text, so a note somebody has already
+  // corrected by hand stops asking - and the next real change is still caught.
+  function acceptNotesAsTheyAre() {
+    setD(prev => {
+      const meta = { ...prev.aiMeta }
+      for (const key of notesReview.staleFields) {
+        meta[key] = { ...(meta[key] || {}), facts: nowFacts }
+      }
+      return { ...prev, aiMeta: meta }
+    })
+  }
+
+  async function regenerateStale() {
+    for (const key of notesReview.staleFields) { await generateField(key) }
   }
 
   async function generateNeeds() {
@@ -902,6 +1017,49 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
         </div>
       </div>
 
+      {/* THE DEAL MOVED AFTER THE NOTES WERE WRITTEN.
+          A warning, never a block - Fabio picked (a): he is the one who knows
+          whether the change matters. It sits above the stage content rather than
+          inside one, because the nine notes are spread across two stages and a
+          warning you can navigate away from is not a warning. */}
+      {notesReview.staleFields.length > 0 && (
+        <div className="border border-[#EBD9BE] bg-[#FDF6EC] rounded-xl px-4 py-3.5 mb-4">
+          <div className="flex items-start gap-4 flex-wrap">
+            <div className="flex-1 min-w-[300px]">
+              <h4 className="m-0 mb-1 text-[13.5px] font-semibold text-[#221F1B]">
+                ⚠ {notesReview.staleFields.length === 1
+                  ? 'One note was'
+                  : `${notesReview.staleFields.length} notes were`} written before the deal changed
+              </h4>
+              <p className="m-0 text-[12.5px] text-[#8A6218]">
+                {notesReview.staleFields.length === 1 ? 'It still says' : 'They still say'} what
+                {notesReview.staleFields.length === 1 ? ' it said' : ' they said'} at the time. Nothing has been
+                rewritten — that is yours to decide.
+              </p>
+              <ul className="mt-1.5 mb-0 pl-5 text-[12.5px] text-[#8A6218]">
+                {notesReview.changes.map((c, i) => <li key={i} className="mb-0.5">{c}</li>)}
+              </ul>
+              <p className="m-0 mt-1.5 text-[12px] text-[#8A6218]">
+                {notesReview.writtenAt && <>Oldest written <b className="text-[#221F1B]">{when(notesReview.writtenAt)}</b> · </>}
+                {notesReview.staleFields.map(f => AI_FIELD_LABEL[f] || f).join(', ')}
+              </p>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <button onClick={regenerateStale} disabled={Object.values(generating).some(Boolean)}
+                className="bg-[#221F1B] text-white rounded-lg px-3 py-1.5 text-[12.5px] hover:bg-[#3a3733] transition disabled:opacity-40 whitespace-nowrap">
+                {Object.values(generating).some(Boolean) ? 'Rewriting…' : `Rewrite ${notesReview.staleFields.length === 1 ? 'it' : `those ${notesReview.staleFields.length}`}`}
+              </button>
+              {/* Re-stamps them against the deal as it is now, without touching a
+                  word - for a note somebody has already corrected by hand. */}
+              <button onClick={acceptNotesAsTheyAre}
+                className="bg-white border border-[#EBD9BE] text-[#7A5F17] rounded-lg px-3 py-1.5 text-[12.5px] hover:bg-[#FBF5EA] transition whitespace-nowrap">
+                They still read right
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* STAGE: Needs & Objectives */}
       {stage === 'needs' && (
         <div className="space-y-4">
@@ -931,18 +1089,7 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
                     </div>
                   </div>
                 )}
-                {d.aiMeta?.[key] && (d.aiMeta[key].confidence || d.aiMeta[key].source) && (
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    {d.aiMeta[key].confidence && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                        d.aiMeta[key].confidence.toLowerCase().includes('high') ? 'bg-green-50 text-green-600' :
-                        d.aiMeta[key].confidence.toLowerCase().includes('low') ? 'bg-red-50 text-red-600' :
-                        'bg-amber-50 text-amber-600'
-                      }`}>{d.aiMeta[key].confidence} confidence</span>
-                    )}
-                    {d.aiMeta[key].source && <span className="text-[10px] text-gray-400">Source: {d.aiMeta[key].source}</span>}
-                  </div>
-                )}
+                <NoteMeta meta={d.aiMeta?.[key]} freshness={freshnessOf(key)} />
               </div>
             ))}
             <div className="mt-2">
@@ -1189,18 +1336,7 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
                     </div>
                   </div>
                 )}
-                {d.aiMeta?.[key] && (d.aiMeta[key].confidence || d.aiMeta[key].source) && (
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    {d.aiMeta[key].confidence && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                        d.aiMeta[key].confidence.toLowerCase().includes('high') ? 'bg-green-50 text-green-600' :
-                        d.aiMeta[key].confidence.toLowerCase().includes('low') ? 'bg-red-50 text-red-600' :
-                        'bg-amber-50 text-amber-600'
-                      }`}>{d.aiMeta[key].confidence} confidence</span>
-                    )}
-                    {d.aiMeta[key].source && <span className="text-[10px] text-gray-400">Source: {d.aiMeta[key].source}</span>}
-                  </div>
-                )}
+                <NoteMeta meta={d.aiMeta?.[key]} freshness={freshnessOf(key)} />
               </div>
             ))}
 
@@ -1227,18 +1363,7 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
                     </div>
                   </div>
                 )}
-                {d.aiMeta?.[key] && (d.aiMeta[key].confidence || d.aiMeta[key].source) && (
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    {d.aiMeta[key].confidence && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                        d.aiMeta[key].confidence.toLowerCase().includes('high') ? 'bg-green-50 text-green-600' :
-                        d.aiMeta[key].confidence.toLowerCase().includes('low') ? 'bg-red-50 text-red-600' :
-                        'bg-amber-50 text-amber-600'
-                      }`}>{d.aiMeta[key].confidence} confidence</span>
-                    )}
-                    {d.aiMeta[key].source && <span className="text-[10px] text-gray-400">Source: {d.aiMeta[key].source}</span>}
-                  </div>
-                )}
+                <NoteMeta meta={d.aiMeta?.[key]} freshness={freshnessOf(key)} />
                 </div>
               ))}
             </div>
@@ -1339,18 +1464,7 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
                     </div>
                   </div>
                 )}
-                {d.aiMeta?.['securityComment'] && (d.aiMeta['securityComment'].confidence || d.aiMeta['securityComment'].source) && (
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    {d.aiMeta['securityComment'].confidence && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                        d.aiMeta['securityComment'].confidence.toLowerCase().includes('high') ? 'bg-green-50 text-green-600' :
-                        d.aiMeta['securityComment'].confidence.toLowerCase().includes('low') ? 'bg-red-50 text-red-600' :
-                        'bg-amber-50 text-amber-600'
-                      }`}>{d.aiMeta['securityComment'].confidence} confidence</span>
-                    )}
-                    {d.aiMeta['securityComment'].source && <span className="text-[10px] text-gray-400">Source: {d.aiMeta['securityComment'].source}</span>}
-                  </div>
-                )}
+                <NoteMeta meta={d.aiMeta?.['securityComment']} freshness={freshnessOf('securityComment')} />
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500 block mb-1">Application submission notes</label>
