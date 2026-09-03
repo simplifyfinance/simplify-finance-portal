@@ -173,12 +173,24 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
               <div className="text-[10.5px] text-[#A29889]">capitalised</div>
             </div>
           ))}
+          {/* THE DEPOSIT IS THE ANSWER, NOT A DEDUCTION. Fabio, 3 Sep 2026:
+              "missed that funds to complete IS deposit not one or the other!"
+              So the BC's deposit sits beside the total as a check on it -
+              agreeing to the dollar on Chapman - instead of being subtracted
+              and driving a $3,841,500 answer down to nil. */}
           {funds.workable && (
             <div className="ml-auto pl-5 border-l border-[#E0D8CB]">
               <div className={`${K} text-[#7A7266]`}>Funds to complete</div>
-              <div className="text-[17px] font-bold text-[#221F1B] whitespace-nowrap">
+              <div className="text-[17px] font-bold text-[#1E7A4A] whitespace-nowrap">
                 {funds.toFind > 0 ? money(funds.toFind) : 'nil'}
               </div>
+              {funds.deposit !== null && (
+                <div className={`text-[10.5px] whitespace-nowrap ${funds.depositAgrees ? 'text-[#A29889]' : 'text-[#8A6218] font-semibold'}`}>
+                  {funds.depositAgrees
+                    ? 'matches the deposit on the BC'
+                    : `BC deposit ${money(funds.deposit)} — out by ${money(Math.abs(funds.deposit - funds.toFind))}`}
+                </div>
+              )}
             </div>
           )}
           {funds.missing.length > 0 && (

@@ -11,9 +11,19 @@
 // the same dollars, and a purchase-plus-refinance produced a six-figure surplus
 // that did not exist. Cutting them out removed the bugs with them.
 //
-// Purchase:      price + stamp duty  −  deposit  −  loan
-// Construction:  land + build + stamp duty  −  deposit  −  loan
+// Purchase:      price + stamp duty  −  loan
+// Construction:  land + build + stamp duty  −  loan
 // Refinance:     nothing at all. There is no completion to fund.
+//
+// THE DEPOSIT IS NOT SUBTRACTED. Fabio, 3 Sep 2026, looking at Chapman: "missed
+// that funds to complete IS deposit not one or the other!" The deposit is not
+// money already handed over and taken off the bill - it is the money the client
+// has to produce, which is the whole question this strip answers. Subtracting it
+// answered "nil" on a deal where the client has to find $3,841,500.
+//
+// So the recorded deposit is carried alongside as a CHECK. On Chapman the two
+// agree to the dollar. When they do not, the strip says so, because one of the
+// two numbers is then wrong and it is worth knowing before settlement.
 
 export type FundsLine = { label: string; amount: number; kind: 'cost' | 'source' }
 
@@ -26,6 +36,12 @@ export type FundsToComplete = {
   // complete as LMI and risk fee is capitalised on the loans".
   capitalised: FundsLine[]
   toFind: number
+  // The deposit the BC records. It should BE the funds to complete - it is the
+  // same money described from the other end - so it is shown beside the total
+  // rather than taken off it. Null when none has been recorded.
+  deposit: number | null
+  // False when a deposit IS recorded and does not match, to the dollar.
+  depositAgrees: boolean
   // False when the deal is mixed and the split roles are unanswered. The lines
   // are still worth showing; the total is not, because it would be wrong.
   workable: boolean
@@ -90,7 +106,10 @@ function purchaseLoan(deal: any): number | null {
 
 export function fundsToComplete(deal: any): FundsToComplete {
   const bc = deal?.bc_data || {}
-  if (!fundsApply(deal)) return { lines: [], capitalised: [], toFind: 0, workable: false, missing: [], applies: false }
+  if (!fundsApply(deal)) {
+    return { lines: [], capitalised: [], toFind: 0, deposit: null, depositAgrees: true,
+             workable: false, missing: [], applies: false }
+  }
 
   const lines: FundsLine[] = []
   const capitalised: FundsLine[] = []
@@ -110,9 +129,6 @@ export function fundsToComplete(deal: any): FundsToComplete {
   // and a total that quietly leaves it out looks exactly like a correct one.
   if (has(bc.stampDuty)) lines.push({ label: 'Stamp duty', amount: num(bc.stampDuty), kind: 'cost' })
   else missing.push('Stamp duty has not been recorded')
-
-  if (has(bc.deposit)) lines.push({ label: 'Deposit', amount: num(bc.deposit), kind: 'source' })
-  else missing.push('No deposit has been recorded')
 
   const loan = purchaseLoan(deal)
   if (loan === null) {
@@ -139,9 +155,17 @@ export function fundsToComplete(deal: any): FundsToComplete {
   // duty needs nothing found; "minus $4,000" reads like a refund.
   // No answer at all while the split roles are unanswered - see purchaseLoan().
   const known = loan !== null
+  const toFind = known ? Math.max(0, Math.round(costs - sources)) : 0
+
+  // The cross-check. Not an error either way - a deposit that disagrees means
+  // one of the two figures needs another look, and the strip is the place to
+  // notice that rather than the settlement statement.
+  const deposit = has(bc.deposit) ? num(bc.deposit) : null
+  if (deposit === null) missing.push('No deposit has been recorded')
+
   return {
-    lines, capitalised,
-    toFind: known ? Math.max(0, Math.round(costs - sources)) : 0,
+    lines, capitalised, toFind, deposit,
+    depositAgrees: deposit === null || !known || Math.abs(deposit - toFind) < 1,
     workable: known,
     missing, applies: true,
   }

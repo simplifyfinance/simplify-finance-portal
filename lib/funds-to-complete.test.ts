@@ -10,16 +10,38 @@ const purchase = (over: any = {}) => ({
   lo_data: {},
 })
 
-describe('a purchase — four numbers, nothing else', () => {
-  const f = fundsToComplete(purchase())
+describe('a purchase — three numbers, nothing else', () => {
+  const f = fundsToComplete(purchase({ deposit: '215,000' }))
 
-  it('is price plus duty, less deposit and loan', () => {
+  it('is price plus duty, less the loan', () => {
     expect(amountOf(f, 'Purchase price')).toBe(850_000)
     expect(amountOf(f, 'Stamp duty')).toBe(45_000)
-    expect(amountOf(f, 'Deposit')).toBe(170_000)
     expect(amountOf(f, 'Loan')).toBe(680_000)
-    expect(f.toFind).toBe(45_000)
+    expect(f.toFind).toBe(215_000)
     expect(f.applies).toBe(true)
+  })
+
+  // Fabio, 3 Sep 2026: "missed that funds to complete IS deposit not one or the
+  // other!" Subtracting it answered nil on a deal where the client has to find
+  // $3,841,500. It is the same money seen from the other end, so it is a check.
+  it('never subtracts the deposit', () => {
+    expect(f.lines.some(l => l.label === 'Deposit')).toBe(false)
+    expect(f.deposit).toBe(215_000)
+    expect(f.depositAgrees).toBe(true)
+  })
+
+  it('says so when the recorded deposit does not match', () => {
+    const off = fundsToComplete(purchase({ deposit: '170,000' }))
+    expect(off.toFind).toBe(215_000)
+    expect(off.deposit).toBe(170_000)
+    expect(off.depositAgrees).toBe(false)
+  })
+
+  it('has nothing to disagree with when no deposit is recorded', () => {
+    const none = fundsToComplete(purchase({ deposit: '' }))
+    expect(none.deposit).toBeNull()
+    expect(none.depositAgrees).toBe(true)
+    expect(none.toFind).toBe(215_000)
   })
 
   // Everything the first version added, gone. Each was a way to be wrong.
@@ -30,8 +52,8 @@ describe('a purchase — four numbers, nothing else', () => {
         equityRelease: '80,000', splits: [{ amount: '680,000' }] },
       lo_data: { lenders: [{ lenderName: 'ING', applicationFee: '600', legalFee: '350' }] },
     })
-    expect(rich.lines).toHaveLength(4)
-    expect(rich.toFind).toBe(45_000)
+    expect(rich.lines).toHaveLength(3)
+    expect(rich.toFind).toBe(215_000)
   })
 })
 
@@ -72,7 +94,7 @@ describe('construction', () => {
     expect(amountOf(f, 'Land value')).toBe(480_000)
     expect(amountOf(f, 'Construction cost')).toBe(620_000)
     expect(amountOf(f, 'Purchase price')).toBeUndefined()
-    expect(f.toFind).toBe(64_500)
+    expect(f.toFind).toBe(244_500)
   })
 
   it('applies even with no purchase price', () => {
@@ -157,8 +179,8 @@ describe('a deal that refinances AND buys — only the purchase money counts', (
   it('counts only the split that funds the purchase', () => {
     const f = fundsToComplete(mixed(['payout', 'equity', 'purchase']))
     expect(amountOf(f, 'Loan funding the purchase')).toBe(650_000)
-    // 850,000 + 45,000 − 170,000 − 650,000
-    expect(f.toFind).toBe(75_000)
+    // 850,000 + 45,000 − 650,000
+    expect(f.toFind).toBe(245_000)
     expect(f.workable).toBe(true)
   })
 
@@ -191,9 +213,9 @@ describe('a deal that refinances AND buys — only the purchase money counts', (
 })
 
 describe('it never reports a negative', () => {
-  it('says nil when the loan and deposit cover everything', () => {
+  it('says nil when the loan covers the price and the duty', () => {
     const over = fundsToComplete({ bc_data: { purchasePrice: '500,000', stampDuty: '20,000',
-      deposit: '200,000' }, lo_data: { loanAmount: '400,000' } })
+      deposit: '0' }, lo_data: { loanAmount: '560,000' } })
     expect(over.toFind).toBe(0)
   })
 })
@@ -213,7 +235,7 @@ describe('LMI is shown but never counted', () => {
   it('does not change what the client has to find', () => {
     const without = fundsToComplete({ ...withLmi, bc_data: { ...withLmi.bc_data, lmi: '' } })
     expect(fundsToComplete(withLmi).toFind).toBe(without.toFind)
-    expect(fundsToComplete(withLmi).toFind).toBe(45_000)
+    expect(fundsToComplete(withLmi).toFind).toBe(215_000)
   })
 
   it('is not in the added-up lines', () => {

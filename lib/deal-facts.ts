@@ -366,8 +366,10 @@ export function dealFacts(deal: any): DealFacts {
   if (exp.length) sections.push({ title: 'LIVING EXPENSES', lines: exp })
   else missing.push('No living expenses have been recorded')
 
-  // Purchase price + stamp duty, less deposit and loan. Nothing else, and
-  // nothing at all on a refinance - there is no completion to fund.
+  // Purchase price + stamp duty, less the loan. Nothing else, and nothing at all
+  // on a refinance - there is no completion to fund. The deposit is NOT
+  // subtracted: it is the client's contribution, which is the same money the
+  // total describes, and taking it off answered nil on a deal needing $3.8m.
   const funds = fundsToComplete(deal)
   if (funds.applies) {
     const lines = funds.lines.map(l => `${l.kind === 'cost' ? '+' : '−'} ${l.label}: ${money(l.amount)}`)
@@ -376,6 +378,14 @@ export function dealFacts(deal: any): DealFacts {
       lines.push(funds.toFind > 0
         ? `= Funds to complete: ${money(funds.toFind)}`
         : '= Funds to complete: nil')
+      // The notes describe the client's contribution, so it has to be here -
+      // and where the two figures disagree the model is told they disagree
+      // rather than being handed one of them to state as fact.
+      if (funds.deposit !== null) {
+        lines.push(funds.depositAgrees
+          ? `Client contribution (deposit recorded on the BC): ${money(funds.deposit)} — matches the funds to complete`
+          : `Client contribution (deposit recorded on the BC): ${money(funds.deposit)} — this does NOT match the funds to complete above. Do not state either figure as settled; the file needs checking.`)
+      }
     }
     // Capitalised, so it is stated but kept out of the sum - otherwise the
     // notes would describe money the client has to find that they do not.

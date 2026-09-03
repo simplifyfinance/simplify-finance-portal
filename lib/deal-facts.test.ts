@@ -174,8 +174,23 @@ describe('funds to complete', () => {
     expect(out).toContain('FUNDS TO COMPLETE')
     expect(out).toContain('+ Purchase price: $850,000')
     expect(out).toContain('+ Stamp duty: $45,000')
-    expect(out).toContain('− Deposit: $170,000')
     expect(out).toContain('= Funds to complete')
+  })
+
+  // The deposit is what the client HAS TO FIND, not a deduction from it.
+  // Subtracting it answered nil on a deal needing $3,841,500. It is stated as
+  // the contribution, because the notes have to describe it.
+  it('does not subtract the deposit, it reports it', () => {
+    const out = all(plain())
+    expect(out).not.toContain('− Deposit: $170,000')
+    expect(out).toContain('Client contribution (deposit recorded on the BC): $170,000')
+  })
+
+  // 850,000 + 45,000 − 680,000 = 215,000, against a deposit recorded as
+  // 170,000. Handed one of those to state as fact, the notes would be wrong
+  // whichever one it picked.
+  it('tells the model plainly when the two figures disagree', () => {
+    expect(all(plain())).toContain('does NOT match the funds to complete')
   })
 
   // No completion to fund, so no section at all.
@@ -194,13 +209,15 @@ describe('funds to complete', () => {
     expect(out).not.toMatch(/= Funds to complete: \$/)
   })
 
-  // Answered, the real number appears: 850,000 + 45,000 − 170,000 − 650,000.
+  // Answered, the real number appears: 850,000 + 45,000 − 650,000. Only the
+  // split that funds the purchase counts; the other $700,000 pays out an old
+  // loan and releases equity, and never reaches this settlement.
   it('totals a mixed deal once every split has been answered', () => {
     const d = chapman()
     d.bc_data.splits[0].funds = 'payout'
     d.bc_data.splits[1].funds = 'equity'
     d.bc_data.splits[2].funds = 'purchase'
-    expect(all(d)).toContain('= Funds to complete: $75,000')
+    expect(all(d)).toContain('= Funds to complete: $245,000')
   })
 })
 

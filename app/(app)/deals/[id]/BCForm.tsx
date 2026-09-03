@@ -287,6 +287,11 @@ function formatNumber(val: string): string {
   return decPart !== undefined ? formattedInt + '.' + decPart.slice(0, 2) : formattedInt
 }
 
+// The scenarios that carry a loan being paid out. Same list the "Existing loan
+// balance" field is shown for, named once so the field and the auto-fill cannot
+// drift apart - they already had, which is how a purchase ended up holding one.
+const REFINANCING_TEMPLATES = ['refinance_equity', 'refinance_only', 'investment_equity', 'buy_sell', 'bridging']
+
 const STATES = ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'] as const
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -352,12 +357,33 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const [dutyState, setDutyState] = useState(s.dutyState || '')
   const [existingLoanBal, setExistingLoanBal] = useState(s.existingLoanBal || '')
 
+  // WHERE $1279283.98 CAME FROM.
+  //
+  // This filled itself from the fact find and got three things wrong at once. It
+  // took properties[0].loans[0] - the first loan on the first property, whether
+  // or not this deal touches it. It ran on EVERY scenario, so Chapman's OO
+  // purchase quietly carried the balance of the home they are selling, in a box
+  // the purchase form does not even display - and funds to complete then read
+  // that as debt being refinanced and called a plain purchase mixed. And it
+  // stored the raw string, so a balance the fact find held as 1279283.98 was
+  // printed straight into a client's email with no commas and stray cents,
+  // because everything else in this form arrives via NumberInput and is already
+  // formatted.
+  //
+  // Now: only on a scenario that actually refinances, only from a loan somebody
+  // marked "To be refinanced", and formatted the way every other figure here is.
   useEffect(() => {
     if (existingLoanBal) return
-    const ffProperties = ff.properties || []
-    const firstLoanBalance = ffProperties[0]?.loans?.[0]?.balance
-    if (firstLoanBalance) setExistingLoanBal(String(firstLoanBalance))
-  }, [ff.properties])
+    if (!REFINANCING_TEMPLATES.includes(template)) return
+    for (const prop of ff.properties || []) {
+      for (const loan of prop?.loans || []) {
+        if (String(loan?.status || '').trim() === 'To be refinanced' && loan?.balance) {
+          setExistingLoanBal(formatNumber(String(loan.balance)))
+          return
+        }
+      }
+    }
+  }, [ff.properties, template])
   const [newPurchasePrice, setNewPurchasePrice] = useState(s.newPurchasePrice || '')
   const [newPurchaseDeposit, setNewPurchaseDeposit] = useState(s.newPurchaseDeposit || '')
   const [newPurchaseSuburb, setNewPurchaseSuburb] = useState(s.newPurchaseSuburb || '')
@@ -1124,7 +1150,7 @@ Key assumptions: ${checklistText}`
                       </select>
                     </Field>
                   )}
-              {["refinance_equity", "refinance_only", "investment_equity", "buy_sell", "bridging"].includes(template) && <Field label="Existing loan balance"><NumberInput value={existingLoanBal} onChange={handleExistingLoanBalChange} /></Field>}
+              {REFINANCING_TEMPLATES.includes(template) && <Field label="Existing loan balance"><NumberInput value={existingLoanBal} onChange={handleExistingLoanBalChange} /></Field>}
               {template === "buy_sell" && <Field label="Expected sale price"><NumberInput value={salePrice} onChange={setSalePrice} /></Field>}
               {template === "buy_sell" && <Field label="Agent fees / selling costs"><NumberInput value={agentFees} onChange={setAgentFees} /></Field>}
               {template === "buy_sell" && (
