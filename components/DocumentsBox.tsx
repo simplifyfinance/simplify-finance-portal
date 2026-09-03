@@ -1,11 +1,13 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite } from '@/lib/checked-write'
 import { documentsFor, documentsDue, groupedDocuments, type DocRound } from '@/lib/document-rules'
 import { rowsFor, tickedCount, toRequest, withTick, withAdded, withoutAdded, withDeferred,
          progressOf, requestRounds, COMMON_EXTRAS, type DocProgress, type DocRow } from '@/lib/document-progress'
 import { formallyApproved } from '@/lib/document-rules'
+import { banksSeen, accountsPerBank, coveredRows, shortOfPeriod, salaryAccounts,
+         expensesAccount, undeclaredBanks, type BanksSeen, type NamedAccount } from '@/lib/statement-cover'
 
 // THE DOCUMENT BOX.
 //
@@ -43,12 +45,47 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
   const [showLater, setShowLater] = useState(false)
   const [sending, setSending] = useState(false)
   const [sentMsg, setSentMsg] = useState('')
+  // Loaded only when the box is opened. A deal can carry eight hundred
+  // transactions and the deal page has no business fetching them to draw a
+  // collapsed strip.
+  const [cover, setCover] = useState<{
+    seen: BanksSeen; perBank: Record<string, number>
+    salary: NamedAccount[]; expenses: NamedAccount | null; undeclared: string[]
+  } | null>(null)
 
   const who = me?.name || 'Somebody'
 
   // Worked out fresh on every render of a changed deal. Never stored.
   const { items, gaps } = useMemo(() => documentsFor(deal), [deal])
   const dueNow = useMemo(() => documentsDue(deal, 'proceed').items.map(i => i.key), [deal])
+
+  // WHAT THE STATEMENTS ALREADY COVER.
+  //
+  // Bank level, no account numbers - see lib/statement-cover.ts for why. Fetched
+  // once, the first time somebody opens the box.
+  useEffect(() => {
+    if (!open || cover) return
+    let alive = true
+    ;(async () => {
+      const [{ data: uploads }, { data: txns }, { data: lenders }] = await Promise.all([
+        supabase.from('deal_statement_uploads').select('institutions, period_from, period_to, days').eq('deal_id', deal.id),
+        supabase.from('deal_statement_transactions')
+          .select('institution, account_number, account_name, category, summary_category, amount').eq('deal_id', deal.id),
+        supabase.from('lenders').select('name, statement_codes'),
+      ])
+      if (!alive) return
+      const ls = lenders || []
+      const seen = banksSeen(uploads || [], ls)
+      setCover({
+        seen,
+        perBank: accountsPerBank(txns || [], ls),
+        salary: salaryAccounts(txns || [], ls),
+        expenses: expensesAccount(txns || [], ls),
+        undeclared: undeclaredBanks(seen, deal, ls),
+      })
+    })().catch(() => { /* the list still works without them */ })
+    return () => { alive = false }
+  }, [open, cover, deal.id])
 
   const approved = formallyApproved(deal)
   const rows = useMemo(() => rowsFor(items, progress, { formallyApproved: approved }),
@@ -58,8 +95,15 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
   const groups = useMemo(() => groupedDocuments(nowRows as any), [nowRows]) as
     { key: string; label: string; items: DocRow[] }[]
 
+  // A covered row goes quiet, but is NEVER hidden and never untickable. A wrong
+  // guess about a bank should cost a glance, not a document.
+  const covered = useMemo(() => {
+    if (!cover) return new Map<string, { bank: string; days: number }>()
+    return new Map(coveredRows(nowRows, cover.seen).map(c => [c.key, c]))
+  }, [cover, nowRows])
+
   const ticked = tickedCount(nowRows)
-  const pending = toRequest(nowRows)
+  const pending = toRequest(nowRows).filter(r => !covered.has(r.key))
   const asked = nowRows.filter(r => r.requestedAt).length
   const rounds = requestRounds(progress)
 
@@ -136,7 +180,9 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
         <span className="text-[13px] text-[#221F1B] font-semibold">
           {pending.length > 0 ? `${pending.length} to request` : asked > 0 ? `${asked} requested` : `${ticked} to request`}
         </span>
-        <span className="text-[12px] text-[#A29889]">of {nowRows.length} on the list</span>
+        <span className="text-[12px] text-[#A29889]">
+          of {nowRows.length} on the list{covered.size > 0 ? ` · ${covered.size} covered by statements` : ''}
+        </span>
         {gaps.length > 0 && (
           <span className="text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border
                            text-[#946017] bg-[#FDF6EC] border-[#EBD9BE]">
@@ -158,6 +204,61 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
             <p className="m-4 mb-0 border border-[#BBF7D0] bg-[#F6FDF8] rounded-[10px] px-4 py-2.5 text-[12.5px] text-[#15803D]">
               {sentMsg}
             </p>
+          )}
+
+          {cover && cover.seen.known.length > 0 && (
+            <div className="m-4 mb-0 border border-[#CDEBF8] bg-[#F4FCFF] rounded-[10px] px-4 py-3 text-[12.5px] text-[#0B5E8A]">
+              <b className="text-[#141C24]">
+                Statements received — {cover.seen.known.join(' and ')}
+                {cover.seen.from && cover.seen.to ? `, ${cover.seen.days} days to ${shortDate(cover.seen.to)}` : ''}.
+              </b>
+              {Object.keys(cover.perBank).length > 0 && (
+                <span> {Object.entries(cover.perBank)
+                  .map(([b, n]) => `${b} · ${n} ${n === 1 ? 'account' : 'accounts'}`).join('  ·  ')}</span>
+              )}
+              {(cover.salary.length > 0 || cover.expenses) && (
+                <p className="m-0 mt-2">
+                  {cover.salary.map((a, i) => (
+                    <span key={a.bank + a.account}>
+                      {i > 0 ? ', ' : ''}salary credited to <b className="text-[#141C24]">{a.bank}{a.account ? ` ${a.account}` : ''}</b>
+                    </span>
+                  ))}
+                  {cover.expenses && (
+                    <span>{cover.salary.length > 0 ? '; ' : ''}most spending runs through
+                      {' '}<b className="text-[#141C24]">{cover.expenses.bank}{cover.expenses.account ? ` ${cover.expenses.account}` : ''}</b>
+                      {' '}<span className="text-[#7C8894]">(a best guess — there is no “expenses” label on a statement)</span>
+                    </span>
+                  )}
+                </p>
+              )}
+              {covered.size > 0 && (
+                <p className="m-0 mt-2">{covered.size} {covered.size === 1 ? 'row has' : 'rows have'} crossed
+                  {covered.size === 1 ? ' itself' : ' themselves'} off below. Tick any of them back on if you still want it.</p>
+              )}
+            </div>
+          )}
+
+          {cover && cover.undeclared.length > 0 && (
+            <div className="m-4 mb-0 border border-[#E8CFC6] bg-[#FCF4F1] rounded-[10px] px-4 py-3 text-[12.5px] text-[#AD4227]">
+              <b className="text-[#141C24]">
+                Statements arrived from {cover.undeclared.join(' and ')}, and there
+                {cover.undeclared.length === 1 ? ' is no such account' : ' are no such accounts'} on the fact find.
+              </b>
+              <p className="m-0 mt-1">Either it is on there under a different name, or it was not declared. Worth one question
+                before this goes to a lender.</p>
+            </div>
+          )}
+
+          {cover && cover.seen.unrecognised.length > 0 && (
+            <div className="m-4 mb-0 border border-[#EBD9BE] bg-[#FDF6EC] rounded-[10px] px-4 py-3 text-[12.5px] text-[#8A6218]">
+              <b className="text-[#141C24]">
+                Statements arrived from {cover.seen.unrecognised.map(c => `"${c}"`).join(' and ')}, which
+                {cover.seen.unrecognised.length === 1 ? ' is not a code' : ' are not codes'} the lender library knows.
+              </b>
+              <p className="m-0 mt-1">Nothing has been crossed off for
+                {cover.seen.unrecognised.length === 1 ? ' it' : ' them'}. Add the code against the right bank in the
+                lender library and it will be recognised from then on.</p>
+            </div>
           )}
 
           {rounds.length > 0 && (
@@ -199,13 +300,22 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
                     </button>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className={`text-[13px] ${r.ticked ? 'text-[#221F1B] font-medium' : 'text-[#8B8378]'}`}>
+                    <div className={`text-[13px] ${covered.has(r.key) && !r.requestedAt ? 'text-[#8B8378]'
+                      : r.ticked ? 'text-[#221F1B] font-medium' : 'text-[#8B8378]'}`}>
                       {r.label}
                       {r.detail && <span className="font-normal text-[#A29889]"> — {r.detail}</span>}
                     </div>
-                    {(r.why || r.decidedBy || r.requestedAt) && (
+                    {(r.why || r.decidedBy || r.requestedAt || covered.has(r.key)) && (
                       <div className="text-[11.5px] text-[#A29889] mt-[1px]">
-                        {r.requestedAt ? <span className="text-[#1E7A4A]">Asked for {whenAsked(r.requestedAt)}</span> : r.why}
+                        {r.requestedAt ? <span className="text-[#1E7A4A]">Asked for {whenAsked(r.requestedAt)}</span>
+                          : covered.has(r.key) ? (
+                            <span className="text-[#1E7A4A]">
+                              ✓ On file — {covered.get(r.key)!.bank} statements came through
+                              {shortOfPeriod(r.detail, covered.get(r.key)!.days)
+                                ? <span className="text-[#AD4227]">, but only {covered.get(r.key)!.days} days of them</span>
+                                : `, ${covered.get(r.key)!.days} days`}
+                            </span>
+                          ) : r.why}
                         {!r.requestedAt && r.decidedBy && <span>{r.why ? ' · ' : ''}{r.ticked ? 'Added back' : 'Unticked'} by {r.decidedBy}</span>}
                       </div>
                     )}
@@ -252,6 +362,7 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
             <span className="text-[12px] text-[#A29889]">
               {pending.length > 0
                 ? 'Emails the list to whoever does the requesting — set in Settings.'
+                : covered.size > 0 ? 'Everything ticked is either asked for or already covered by the statements.'
                 : asked > 0 ? 'Everything ticked has been asked for.' : 'Tick what you need first.'}
             </span>
           </div>
@@ -305,6 +416,11 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
       )}
     </div>
   )
+}
+
+function shortDate(d: string): string {
+  return new Date(d + 'T00:00:00Z').toLocaleDateString('en-AU',
+    { day: 'numeric', month: 'short', timeZone: 'UTC' })
 }
 
 // A date, not "3 days ago" - a page left open overnight would otherwise keep
