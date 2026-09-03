@@ -1,0 +1,115 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Compliance notes — where every box gets its data</title>
+<style>
+ body { margin:0; background:#EDEDEA; font:14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#221F1B; }
+ .wrap { max-width:1000px; margin:0 auto; padding:26px 20px 70px; }
+ h1 { font-size:19px; margin:0 0 5px; }
+ .sub { font-size:13px; color:#7E766B; margin:0 0 4px; line-height:1.65; }
+ h2 { font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:#8E8578; font-weight:700;
+      margin:34px 0 12px; padding-bottom:7px; border-bottom:1px solid #DDD8CE; }
+ table { width:100%; border-collapse:collapse; }
+ td { font-size:12.5px; line-height:1.55; color:#5F584F; padding:7px 10px 7px 0;
+      border-bottom:1px solid #F2EEE7; vertical-align:top; }
+ td.f { color:#2E2A26; font-weight:600; width:34%; }
+ tr:last-child td { border-bottom:0; }
+ .sec, .box { background:#fff; border:1px solid #E5E0D6; border-radius:10px; margin-bottom:11px; padding:0 16px; }
+ .sec h3 { font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:#8E8578;
+           margin:0; padding:11px 0 8px; border-bottom:1px solid #EFEAE0; }
+ .box { padding:0; overflow:hidden; }
+ .bh { background:#FAF9F7; border-bottom:1px solid #EFEAE0; padding:10px 16px;
+       display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+ .bh h3 { font-size:14px; margin:0; }
+ .bh code { font-size:11px; color:#A29889; }
+ .tab { font-size:9px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#6E665C;
+        background:#EFEAE0; border-radius:4px; padding:2px 7px; }
+ .asks { margin:0; padding:12px 16px 0; font-size:12.5px; line-height:1.6; color:#5F584F; }
+ .plus { margin:10px 16px 2px; font-size:10px; letter-spacing:.07em; text-transform:uppercase; color:#A29889; font-weight:700; }
+ table.extra { padding:0 16px 12px; }
+ table.extra td:last-child { width:82px; text-align:right; padding-right:0; }
+ .pill { display:inline-block; font-size:9px; font-weight:800; letter-spacing:.05em;
+         border-radius:4px; padding:2px 6px; white-space:nowrap; }
+ code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px;
+        background:#F2EFEA; border-radius:3px; padding:1px 4px; }
+ .lede { background:#fff; border:1px solid #E5E0D6; border-radius:10px; padding:15px 18px; margin-bottom:6px; }
+ .lede p { margin:0 0 9px; font-size:13px; line-height:1.65; color:#5F584F; }
+ .lede p:last-child { margin-bottom:0; }
+ .lede b { color:#2E2A26; }
+</style>
+<div class="wrap">
+<h1>Compliance notes — where every box gets its data</h1>
+<p class="sub">Every box on Needs &amp; objectives and Broker comments, traced field by field to the screen it
+came from. Code as shipped at <code>4c895bd</code>.</p>
+
+<h2>How a box is written</h2>
+<div class="lede">
+<p>One model call per box — Claude Sonnet, <b>temperature 0</b>, so the same deal writes the same way twice.
+Each call receives <b>the facts block</b> (the whole deal, assembled fresh from the fact find every time)
+followed by that one box's instruction.</p>
+<p>The system prompt's first rule is <b>never invent</b>: every number and name in the answer must appear in the
+facts given. The facts end with a <b>NOT RECORDED</b> list, and the model is told that anything on it is
+genuinely unknown and must be stated as unknown rather than filled in or written around.</p>
+<p><b>Where the risk sits.</b> The facts block is live and correct. But six of the nine boxes also receive a
+short <code>context</code> summary of BC fields — a leftover from before the facts block existed. Those two
+sources can disagree, and nothing decides which wins. That is the single thread running through every HIGH
+below.</p>
+</div>
+
+<h2>The facts block — every line, and where it comes from</h2>
+<div class="sec"><h3>THE LOAN</h3><table><tr><td class="f">Scenario</td><td>BC → template, run through templateLabel() so it reads “OO purchase”, not oo_purchase</td></tr><tr><td class="f">What the client said they want it for</td><td>Fact find → loanPurpose (the client's own words, verbatim)</td></tr><tr><td class="f">Each split: label, amount, rate, P&amp;I/IO, purpose</td><td>LO → global splits + the recommended lender's own splits; purpose is the dropdown on the LO</td></tr><tr><td class="f">Total lending</td><td>LO → loanAmount, else the BC splits added up</td></tr><tr><td class="f">Purpose (OO / INV / both)</td><td>Added up from the splits' own purpose answers — never guessed from the scenario name</td></tr><tr><td class="f">LVR</td><td>Total lending ÷ every security recorded. Absent, not estimated, if either half is missing</td></tr><tr><td class="f">Recommended lender</td><td>LO → recommendedLender</td></tr></table></div><div class="sec"><h3>THE APPLICANTS</h3><table><tr><td class="f">Name</td><td>Fact find → applicant first + last name</td></tr><tr><td class="f">Age</td><td>Fact find → date of birth. If absent, goes on NOT RECORDED</td></tr><tr><td class="f">Residency</td><td>Fact find → residency status</td></tr><tr><td class="f">Currently renting / owner / boarding + housing cost</td><td>Fact find → current address, residential status and housing expense</td></tr><tr><td class="f">Employment: PAYG or self-employed, basis, occupation, employer, years, probation</td><td>Fact find → current employment entries</td></tr><tr><td class="f">Income, by type</td><td>Fact find → income rows. Salary, bonus, overtime, commission, allowances and self-employed each named separately</td></tr><tr><td class="f">“No income — not working”</td><td>Fact find → employment type. <b>Fixed tonight</b> — previously reported as a missing figure</td></tr><tr><td class="f">Dependants</td><td>Fact find → dependants. If absent, goes on NOT RECORDED</td></tr></table></div><div class="sec"><h3>LIABILITIES</h3><table><tr><td class="f">Each debt: type, lender, limit, balance</td><td>Fact find → liabilities, plus loans recorded against properties</td></tr></table></div><div class="sec"><h3>PROPERTIES HELD</h3><table><tr><td class="f">Address, owner-occupied or investment, value, loans against it</td><td>Fact find → properties</td></tr></table></div><div class="sec"><h3>ASSETS</h3><table><tr><td class="f">Type, description, value</td><td>Fact find → assets</td></tr></table></div><div class="sec"><h3>LIVING EXPENSES</h3><table><tr><td class="f">Each category, amount, and whether it sits in or outside HEM</td><td>Compliance → expenses, with the HEM answer per category</td></tr></table></div><div class="sec"><h3>FUNDS TO COMPLETE</h3><table><tr><td class="f">Purchase price, stamp duty</td><td>BC</td></tr><tr><td class="f">Loan (or the split that funds the purchase)</td><td>LO, using only the splits marked as funding the purchase on a mixed deal</td></tr><tr><td class="f">= Funds to complete</td><td>Worked out and shown line by line so the assessor can check it</td></tr><tr><td class="f">Client contribution</td><td>BC → deposit, cross-checked against the total</td></tr><tr><td class="f">LMI</td><td>BC — shown as capitalised, deliberately not counted in the total</td></tr></table></div><div class="sec"><h3>NOT RECORDED</h3><table><tr><td class="f">Everything genuinely unknown</td><td>Built as the facts are assembled. The model is told this list is unknown and must say so rather than fill it</td></tr></table></div>
+<h2>Box by box — what each one gets on top</h2>
+<div class="box">
+      <div class="bh"><span class="tab">Needs &amp; objectives</span><h3>Primary reasons for seeking credit</h3><code>needsPrimary</code></div>
+      <p class="asks"><b>Told to cover:</b> Purpose of the loan and why; amount and term and why; features, lenders, rate or repayment types requested and why; flexibility on stated needs; savings held and retention; personal circumstances; first home buyer.</p>
+      <p class="plus">Receives the full facts block, plus:</p>
+      <table class="extra"><tr><td class="f"><code>clientName</code></td><td>Compliance → applicant list, rebuilt from the fact find on every load</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr><tr><td class="f"><code>loanAmount</code></td><td>LO → loanAmount, else BC splits added up</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr><tr><td class="f"><code>loanType</code></td><td>BC → template, <b>raw database key</b> — the model is handed <code>oo_purchase</code></td><td><span class="pill" style="color:#C4553B;background:#FDF2F0">HIGH</span></td></tr><tr><td class="f"><code>suburb</code></td><td>BC → suburb</td><td><span class="pill" style="color:#8A6218;background:#FDF6EC">CHECK</span></td></tr><tr><td class="f"><code>incomeBase</code></td><td>BC → incomeBase, <b>one number</b> — a second, thinner answer to what the facts block already gives by type and by applicant</td><td><span class="pill" style="color:#C4553B;background:#FDF2F0">HIGH</span></td></tr><tr><td class="f"><code>recommendedLender, product</code></td><td>LO → recommended lender</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr><tr><td class="f"><code>offsetAccount, redraw</code></td><td>LO → recommended lender's feature answers. Prompt forbids naming a feature that is not confirmed</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr><tr><td class="f"><code>loanPurpose</code></td><td>Fact find → the client's own words</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr></table></div><div class="box">
+      <div class="bh"><span class="tab">Needs &amp; objectives</span><h3>Immediate needs &amp; objectives — next 2 years</h3><code>needsImmediate</code></div>
+      <p class="asks"><b>Told to cover:</b> What the client wants in the next two years and how it affects the loan — travel, family, upgrading property, investments.</p>
+      <p class="plus">Receives the full facts block, plus:</p>
+      <table class="extra"><tr><td class="f"><code>clientName</code></td><td>Compliance → applicant list</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr><tr><td class="f"><code>loanType</code></td><td>BC → template, <b>raw key</b></td><td><span class="pill" style="color:#C4553B;background:#FDF2F0">HIGH</span></td></tr><tr><td class="f"><code>offsetAccount, redraw</code></td><td>LO → recommended lender</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr><tr><td class="f"><code>goals2Years</code></td><td>Fact find → the client's own words</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr></table></div><div class="box">
+      <div class="bh"><span class="tab">Needs &amp; objectives</span><h3>Longer term — 2 to 10 years</h3><code>needsLongTerm</code></div>
+      <p class="asks"><b>Told to cover:</b> Reducing the loan; dependants and schooling or childcare costs; retiring before the term ends; vehicle upgrades.</p>
+      <p class="plus">Receives the full facts block, plus:</p>
+      <table class="extra"><tr><td class="f"><code>clientName</code></td><td>Compliance → applicant list</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr><tr><td class="f"><code>dependants</code></td><td>BC → dependants, <b>defaulting to '0'</b> when blank. The facts block reads the fact find instead, so the two can disagree</td><td><span class="pill" style="color:#C4553B;background:#FDF2F0">HIGH</span></td></tr><tr><td class="f"><code>offsetAccount, redraw</code></td><td>LO → recommended lender</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr><tr><td class="f"><code>goals10Years</code></td><td>Fact find → the client's own words</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr><tr><td class="f"><code>retirement age, repayment method</code></td><td><b>Not passed.</b> Recorded on the Risks tab; this box asks about retiring and never receives them</td><td><span class="pill" style="color:#C4553B;background:#FDF2F0">HIGH</span></td></tr></table></div><div class="box">
+      <div class="bh"><span class="tab">Broker comments</span><h3>Analysis, assessment &amp; applicant education</h3><code>analysisComment</code></div>
+      <p class="asks"><b>Told to cover:</b> Three labelled sections — analysis of the situation, assessment of position against needs, and what the client was educated on. Roughly thirty topics.</p>
+      <p class="plus">Receives the full facts block, plus:</p>
+      <table class="extra"><tr><td class="f"><code>(nothing)</code></td><td><b>Facts block only.</b> No BC snapshots layered on top. This is the pattern the other boxes should follow</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr></table></div><div class="box">
+      <div class="bh"><span class="tab">Broker comments</span><h3>Options presented &amp; recommendation</h3><code>optionsComment</code></div>
+      <p class="asks"><b>Told to cover:</b> Why the recommendation is in the client&#x27;s best interests; alternatives and cheaper options considered; why the cheapest was not chosen; fees, waivers, turnaround, policy, capacity.</p>
+      <p class="plus">Receives the full facts block, plus:</p>
+      <table class="extra"><tr><td class="f"><code>allLenders</code></td><td>LO → every lender option, <b>name and product only</b></td><td><span class="pill" style="color:#C4553B;background:#FDF2F0">HIGH</span></td></tr><tr><td class="f"><code>originalRecommendedLender, product, rate</code></td><td>LO → recommended lender</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr><tr><td class="f"><code>applicationFee, annualFee, offsetAccount</code></td><td>LO → <b>recommended lender only</b>. The other options' fees and rates are never passed, so the comparison this box asks for cannot be made from the facts</td><td><span class="pill" style="color:#C4553B;background:#FDF2F0">HIGH</span></td></tr><tr><td class="f"><code>recommendationNote</code></td><td>LO → the broker's own words</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr><tr><td class="f"><code>clientAgreedLender + stated reason</code></td><td>Captured when the deal moves LO → Compliance</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr></table></div><div class="box">
+      <div class="bh"><span class="tab">Broker comments</span><h3>Borrowing power</h3><code>borrowingPowerComment</code></div>
+      <p class="asks"><b>Told to cover:</b> Ability to repay — maximum capacity, debt-to-income, asset position, LVR, overall serviceability.</p>
+      <p class="plus">Receives the full facts block, plus:</p>
+      <table class="extra"><tr><td class="f"><code>(nothing)</code></td><td><b>Facts block only.</b> Told explicitly: if LVR is on the NOT RECORDED list, say so rather than estimating</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr><tr><td class="f"><code>maximum capacity, DTI</code></td><td><b>Asked for, never supplied.</b> Nothing in the facts carries either figure</td><td><span class="pill" style="color:#C4553B;background:#FDF2F0">HIGH</span></td></tr></table></div><div class="box">
+      <div class="bh"><span class="tab">Broker comments</span><h3>Deposit / equity</h3><code>depositComment</code></div>
+      <p class="asks"><b>Told to cover:</b> The deposit on a purchase or equity usage on a refinance; the savings position; where completion funds come from.</p>
+      <p class="plus">Receives the full facts block, plus:</p>
+      <table class="extra"><tr><td class="f"><code>(nothing)</code></td><td><b>Facts block only</b>, which carries the funds-to-complete working and names the deposit source</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr></table></div><div class="box">
+      <div class="bh"><span class="tab">Broker comments</span><h3>Credit history</h3><code>creditHistoryComment</code></div>
+      <p class="asks"><b>Told to cover:</b> Payment history, bankruptcies, judgements, simultaneous applications. If all are No, confirm clean history on the basis of declarations — and say they are declarations, not a verified report.</p>
+      <p class="plus">Receives the full facts block, plus:</p>
+      <table class="extra"><tr><td class="f"><code>clientName</code></td><td>Compliance → applicant list</td><td><span class="pill" style="color:#1E7A4A;background:#EAF7EF">OK</span></td></tr><tr><td class="f"><code>risks</code></td><td>Compliance → the <b>whole Risks object as raw JSON</b>, keyed by applicant name. Nineteen answers per person; four of them are about credit history</td><td><span class="pill" style="color:#8A6218;background:#FDF6EC">CHECK</span></td></tr></table></div><div class="box">
+      <div class="bh"><span class="tab">Broker comments</span><h3>Security (property)</h3><code>securityComment</code></div>
+      <p class="asks"><b>Told to cover:</b> Name the security, or TBA on a pre-approval.</p>
+      <p class="plus">Receives the full facts block, plus:</p>
+      <table class="extra"><tr><td class="f"><code>propertyType</code></td><td>BC → propertyType (owner-occupied / investment)</td><td><span class="pill" style="color:#8A6218;background:#FDF6EC">CHECK</span></td></tr><tr><td class="f"><code>suburb</code></td><td>BC → suburb</td><td><span class="pill" style="color:#8A6218;background:#FDF6EC">CHECK</span></td></tr><tr><td class="f"><code>security address</code></td><td><b>Not passed.</b> Recorded in the deal structure block on the LO and Compliance tabs; this box gets only the suburb</td><td><span class="pill" style="color:#C4553B;background:#FDF2F0">HIGH</span></td></tr></table></div>
+<h2>What I would change</h2>
+<div class="lede">
+<p><b>1 — Delete the <code>context</code> summary.</b> Every value in it is already in the facts block, live and
+correct. Keeping both is how a prompt states one thing while the facts state another.
+<code>analysisComment</code>, <code>borrowingPowerComment</code> and <code>depositComment</code> already run on
+the facts alone, and they are the three with no HIGH against them. That is not a coincidence.</p>
+<p><b>2 — Stop asking for figures that are never supplied.</b> Maximum borrowing capacity, debt-to-income, and
+the other lenders' rates and fees. Either pass them or take them out of the instruction — asking for a number
+the model does not have is how an invented number gets written.</p>
+<p><b>3 — Pass what is already recorded.</b> The security address, and the retirement age and repayment method
+from the Risks tab. Three boxes ask about things the portal knows and does not hand over.</p>
+<p><b>4 — Split <code>analysisComment</code>.</b> Thirty topics in one call, asking for bold subheadings that
+arrive as raw markdown. It is the box most likely to pad.</p>
+</div>
+<p class="sub" style="margin-top:20px"><b>Fixed tonight, in the repo, not shipped.</b> An applicant recorded as
+not working was listed under NOT RECORDED as having no income — so every box was written around a gap that did
+not exist. That is what happened on Chapman. It now reads <i>“No income — not working”</i>, as a fact.</p>
+</div>

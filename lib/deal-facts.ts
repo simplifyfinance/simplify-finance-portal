@@ -205,8 +205,21 @@ function applicantLines(a: any, i: number, ff: any, missing: string[]): string[]
 
   // INCOME BY TYPE. The BC added all of this into one number before the model
   // ever saw it, so bonus, commission and overtime were invisible.
+  // NOT WORKING IS AN ANSWER, NOT A GAP.
+  //
+  // This said "No income is recorded for Natasha Chapman" on an applicant whose
+  // employment record plainly says she does not work - and it said it in the
+  // NOT RECORDED list, which the model is told is genuinely unknown. So every
+  // one of the nine compliance boxes was written around a hole that was not
+  // there. Fabio, 3 Sep 2026: "because Natasha wasn't working, you just freaked
+  // the system out."
+  //
+  // The same rule the broker notes follow: once somebody has said "not working",
+  // no income is asked of them.
+  const idle = jobs.length > 0 && jobs.every((e: any) => notWorking(e))
   const inc = incomeLines(a)
   if (inc.length > 0) out.push('  Income:', ...inc.map(l => `    ${l}`))
+  else if (idle) out.push('  No income — not working')
   else missing.push(`No income is recorded for ${who}`)
 
   return out
