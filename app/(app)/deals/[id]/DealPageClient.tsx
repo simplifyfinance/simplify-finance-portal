@@ -22,6 +22,7 @@ import TabLock from '@/components/TabLock'
 import { DealAlerts, FileNotes, AlertChips, useDealFile } from '@/components/DealFile'
 import { isLocked } from '@/lib/deal-lock'
 import { isWithLender } from '@/lib/deal-phase'
+import DocumentsBox from '@/components/DocumentsBox'
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
   const validStages = ['FactFind', 'Statements', 'BC', 'LO', 'Compliance']
@@ -264,6 +265,13 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
         <InternalNotesStrip dealId={dealData.id} initial={dealData.internal_notes || ''}
           openByDefault={stage === 'Compliance'} />
       )}
+
+      {/* THE DOCUMENT LIST. Same place on every stage, above the tabs, because
+          documents are not a stage of the deal - they run alongside all of
+          them. Fabio, 3 Sep 2026: "It's always the same button. Make it across
+          all stages. It's static across next to the deal card information." */}
+      <DocumentsBox deal={dealData} me={me}
+        onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
 
       <div className="flex gap-2 mb-6">
         {tabs.map(({ key, label }) => (
