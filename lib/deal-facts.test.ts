@@ -1,14 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import { dealFacts, factsBlock, purposeLines } from './deal-facts'
+import { dealFacts, factsBlock, purposeLines, dealPurpose } from './deal-facts'
 
 const chapman = () => ({
   bc_data: {
     template: 'investment_equity',
     purchasePrice: '850,000', deposit: '170,000', depositSource: 'Savings', stampDuty: '45,000',
+    propertyType: 'Owner-occupied',
     splits: [
-      { label: 'Existing loan refinanced', amount: '520,000', rate: '6.14', type: 'P&I' },
-      { label: 'Equity access', amount: '180,000', rate: '6.14', type: 'P&I' },
-      { label: 'New purchase', amount: '650,000', rate: '6.39', type: 'P&I' },
+      { id: 'a', label: 'Existing loan refinanced', amount: '520,000', rate: '6.14', repaymentType: 'P&I', purpose: 'OO' },
+      { id: 'b', label: 'Equity access', amount: '180,000', rate: '6.14', repaymentType: 'P&I', purpose: 'INV' },
+      { id: 'c', label: 'New purchase', amount: '650,000', rate: '6.39', repaymentType: 'P&I', purpose: 'INV' },
     ],
     brokerNotes: 'Client wants offset on the OO split only.',
   },
@@ -67,10 +68,28 @@ describe('the purpose — the complaint that started this', () => {
   })
 
   it('does not make a fuss about a single split', () => {
-    const one = chapman(); one.bc_data.splits = [{ label: 'Owner-occupied loan', amount: '680,000', rate: '6.14', type: 'P&I' }]
+    const one = chapman()
+    one.bc_data.splits = [{ id: 'x', label: 'Owner-occupied loan', amount: '680,000', rate: '6.14', repaymentType: 'P&I', purpose: 'OO' }]
     const out = purposeLines(one).join('\n')
-    expect(out).toContain('Owner-occupied loan: $680,000')
+    expect(out).toContain('Owner-occupied loan, $680,000, Owner occupied')
     expect(out).not.toContain('parts')
+  })
+
+  // The number nothing in the portal could state before: how much of the
+  // lending is for what.
+  it('adds the splits up by purpose and says the deal is both', () => {
+    const out = purposeLines(chapman()).join('\n')
+    expect(out).toContain('Owner occupied $520,000, investment $830,000')
+    expect(out).toContain('this deal is BOTH')
+  })
+
+  // Fabio, 3 Sep 2026: "I do not want to invent things ever."
+  it('says out loud when a split has no purpose recorded', () => {
+    const d = chapman()
+    delete (d.bc_data.splits[1] as any).purpose
+    const out = purposeLines(d).join('\n')
+    expect(out).toContain('PURPOSE NOT RECORDED')
+    expect(out).toContain('$180,000 of the lending has no purpose recorded')
   })
 })
 
@@ -143,13 +162,33 @@ describe('properties and their loans', () => {
 })
 
 describe('funds to complete', () => {
+  // A plain purchase: no refinance anywhere, so the simple sum holds.
+  const plain = () => {
+    const d = chapman()
+    d.fact_find_data.properties = []
+    return d
+  }
+
   it('shows the working and the answer', () => {
-    const out = all(chapman())
+    const out = all(plain())
     expect(out).toContain('FUNDS TO COMPLETE')
     expect(out).toContain('+ Purchase price: $850,000')
     expect(out).toContain('+ Stamp duty: $45,000')
-    expect(out).toContain('− Deposit — Savings: $170,000')
-    expect(out).toMatch(/= (Funds the client must contribute|Surplus after everything is paid)/)
+    expect(out).toContain('− Deposit: $170,000')
+    expect(out).toContain('= Funds to complete')
+  })
+
+  // No completion to fund, so no section at all.
+  it('says nothing on a refinance', () => {
+    const d = plain()
+    d.bc_data.purchasePrice = ''
+    expect(all(d)).not.toContain('FUNDS TO COMPLETE')
+  })
+
+  // The Chapman deal refinances a property AND buys one. The simple sum cannot
+  // be true of it, so it is not shown at all.
+  it('says nothing on a deal that both refinances and buys', () => {
+    expect(all(chapman())).not.toContain('FUNDS TO COMPLETE')
   })
 })
 
@@ -159,6 +198,7 @@ describe('what it refuses to do', () => {
   it('names every hole out loud, at the end, under its own heading', () => {
     const d = chapman()
     d.fact_find_data.dependants = ''
+    d.fact_find_data.properties = []      // a plain purchase, so funds applies
     d.bc_data.stampDuty = ''
     const out = all(d)
     expect(out).toContain('NOT RECORDED')
@@ -202,5 +242,96 @@ describe('what it refuses to do', () => {
 describe('the broker’s own words are kept, not paraphrased', () => {
   it('passes the notes through', () => {
     expect(all(chapman())).toContain('Client wants offset on the OO split only.')
+  })
+})
+
+describe('owner occupied, investment, or both', () => {
+
+  // THE HOLE THE AUDIT FOUND. Decided everywhere by whether the scenario NAME
+  // contained "investment", so this deal was filed Owner occupied outright.
+  it('sees both when the splits say both', () => {
+    const p = dealPurpose(chapman())
+    expect(p.ownerOccupied).toBe(true)
+    expect(p.investment).toBe(true)
+    expect(p.label).toBe('Both')
+  })
+
+  it('says so in the facts, in words the model cannot miss', () => {
+    expect(all(chapman())).toContain('this deal is BOTH')
+  })
+
+  it('picks investment as the single answer when a screen can only hold one', () => {
+    expect(dealPurpose(chapman()).binary).toBe('Investment')
+  })
+
+  it('reads a plain owner-occupied purchase correctly', () => {
+    const d = chapman()
+    d.bc_data.propertyType = 'Owner-occupied'
+    d.bc_data.template = 'oo_purchase'
+    d.bc_data.splits = [{ label: 'Owner-occupied loan', amount: '680,000', rate: '6.14', type: 'P&I' }]
+    d.fact_find_data.properties = []
+    const p = dealPurpose(d)
+    expect(p.label).toBe('Owner occupied')
+    expect(p.investment).toBe(false)
+  })
+
+  it('reads a plain investment purchase correctly', () => {
+    const d = chapman()
+    d.bc_data.propertyType = 'Investment'
+    d.bc_data.template = 'investment_purchase'
+    d.bc_data.splits = [{ label: 'Investment loan', amount: '680,000', rate: '6.39', type: 'P&I' }]
+    d.fact_find_data.properties = []
+    expect(dealPurpose(d).label).toBe('Investment')
+  })
+
+  // The property being refinanced is investment; the scenario name says nothing
+  // about investment. The old test would have said Owner occupied.
+  it('notices an investment property being refinanced even when the name does not', () => {
+    const d = chapman()
+    d.bc_data.template = 'refinance_only'
+    d.bc_data.splits = [{ label: 'Refinanced loan', amount: '380,000', rate: '6.14', type: 'P&I' }]
+    delete (d.bc_data as any).propertyType
+    delete (d.bc_data as any).purchasePrice
+    expect(dealPurpose(d).investment).toBe(true)
+  })
+
+  it('falls back to the scenario name only when the deal itself says nothing', () => {
+    expect(dealPurpose({ bc_data: { template: 'investment_purchase' } }).label).toBe('Investment')
+    expect(dealPurpose({ bc_data: { template: 'oo_purchase' } }).label).toBe('Owner occupied')
+  })
+
+
+  // Honest, not clever. The splits are generically named and nothing records
+  // what the purchase is for, so there is no owner-occupied evidence to find.
+  it('does not invent an owner-occupied half it cannot see', () => {
+    const d = chapman()
+    delete (d.bc_data as any).propertyType
+    const p = dealPurpose(d)
+    expect(p.investment).toBe(true)
+    expect(p.ownerOccupied).toBe(false)
+    expect(p.label).toBe('Investment')
+  })
+
+  it('says nothing at all about an empty deal', () => {
+    expect(dealPurpose({}).label).toBe('')
+  })
+})
+
+describe('the broker’s own summary', () => {
+  it('comes first, so it frames everything under it', () => {
+    const out = all(chapman())
+    expect(out.indexOf('OWN WORDS')).toBeLessThan(out.indexOf('THE LOAN'))
+  })
+
+  it('is passed word for word', () => {
+    expect(all(chapman())).toContain('Buy the investment property.')
+  })
+
+  it('says so when nobody has written one', () => {
+    const d = chapman()
+    d.fact_find_data.goals2Years = ''
+    d.bc_data.brokerNotes = ''
+    ;(d.lo_data as any).recommendationNote = ''
+    expect(dealFacts(d).missing.join(' ')).toContain('goals boxes on the fact find')
   })
 })

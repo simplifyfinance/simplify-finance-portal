@@ -22,7 +22,7 @@ const dealLoanAmount = (lo: any, bc: any): string => {
 }
 import { checkedWrite } from '@/lib/checked-write'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { dealFacts, factsBlock } from '@/lib/deal-facts'
+import { dealFacts, factsBlock, dealPurpose } from '@/lib/deal-facts'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
 
@@ -284,7 +284,10 @@ export default function ComplianceForm({ deal, onSaveStatus }: { deal: any; onSa
       entityType: 'Individual(s)',
       applicants: apps,
       needsPrimary: '', needsImmediate: '', needsLongTerm: '',
-      requirementsType: bc.template?.includes('investment') ? 'Investment' : 'Owner occupied',
+      // Was decided by whether the scenario NAME contained "investment", so a
+      // refinance releasing equity for an investment was filed Owner occupied.
+      // Now read from the splits, the properties and what is being bought.
+      requirementsType: dealPurpose(deal).binary,
       risks,
       productReqs: pReqs,
       analysisComment: '', optionsComment: '', borrowingPowerComment: '',
@@ -303,7 +306,7 @@ export default function ComplianceForm({ deal, onSaveStatus }: { deal: any; onSa
 
   useEffect(() => {
     const freshApps = getApplicants()
-    const freshRequirementsType = bc.template?.includes('investment') ? 'Investment' : 'Owner occupied'
+    const freshRequirementsType = dealPurpose(deal).binary
     const ffLive = deal.fact_find_data || {}
     const loLive = deal.lo_data || {}
     setD(prev => {

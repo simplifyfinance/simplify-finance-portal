@@ -23,6 +23,7 @@
 import { currentAddress, currentEmployment, fullName, notWorking, selfEmployed, ageFrom } from './fact-find'
 import { templateLabel } from './templates'
 import { fundsToComplete, loanAmount, securityValue } from './funds-to-complete'
+import { splitsOf, dealRow, purposeSummary, PURPOSE_LABEL } from './deal-structure'
 
 const txt = (v: any) => String(v ?? '').trim()
 const num = (v: any) => {
@@ -59,20 +60,102 @@ export function purposeLines(deal: any): string[] {
   const ffPurpose = txt(deal?.fact_find_data?.loanPurpose)
   if (ffPurpose) out.push(`What the client said they want it for: ${ffPurpose}`)
 
-  const splits = (bc.splits || []).filter((s: any) => has(s?.amount))
+  // EACH SPLIT'S PURPOSE, AS A PERSON RECORDED IT. Not sniffed from the label
+  // and not inferred from the scenario name - answered on the LO, read here.
+  const splits = splitsOf(deal).filter((s: any) => has(s?.amount))
   if (splits.length > 1) {
     out.push(`The loan is in ${splits.length} parts, and they are for different purposes:`)
     for (const s of splits) {
-      const bits = [txt(s?.label) || 'Unlabelled split', money(num(s.amount))]
-      if (txt(s?.rate)) bits.push(`${txt(s.rate)}% p.a.`)
-      if (txt(s?.type)) bits.push(txt(s.type))
+      const bits = [s.label || 'Unlabelled split', money(num(s.amount))]
+      if (s.rate) bits.push(`${s.rate}% p.a.`)
+      if (s.repaymentType) bits.push(s.repaymentType)
+      if (s.termYears) bits.push(`${s.termYears} year term`)
+      if (s.productType) bits.push(s.productType)
+      bits.push(s.purpose ? PURPOSE_LABEL[s.purpose] : 'PURPOSE NOT RECORDED')
       out.push(`  - ${bits.join(', ')}`)
     }
+    const r = dealRow(deal)
+    if (r.ooTotal > 0 && r.invTotal > 0) {
+      out.push(`Owner occupied ${money(r.ooTotal)}, investment ${money(r.invTotal)} — this deal is BOTH. Treat each part as what it is; do not describe the whole loan as one or the other.`)
+    }
+    if (r.unsetTotal > 0) {
+      out.push(`${money(r.unsetTotal)} of the lending has no purpose recorded. Say so rather than assuming.`)
+    }
   } else if (splits.length === 1) {
-    out.push(`${txt(splits[0].label) || 'Loan'}: ${money(num(splits[0].amount))}`)
+    const s = splits[0]
+    const bits = [s.label || 'Loan', money(num(s.amount))]
+    if (s.purpose) bits.push(PURPOSE_LABEL[s.purpose])
+    out.push(bits.join(', '))
   }
 
   return out
+}
+
+// OWNER OCCUPIED, INVESTMENT, OR BOTH.
+//
+// This was decided everywhere by asking whether the scenario NAME contained the
+// word "investment". So "refinance_equity" - an owner-occupied refinance whose
+// released equity is very often going into an investment - was filed as Owner
+// occupied, unconditionally, and a deal that is genuinely both could not be
+// represented at all.
+//
+// Read from what the deal actually contains instead: the labels on the splits,
+// the properties involved, and what is being bought.
+export type DealPurpose = {
+  ownerOccupied: boolean
+  investment: boolean
+  // 'Owner occupied' | 'Investment' | 'Both' | '' when nothing says either way.
+  label: string
+  // The single answer for screens that can only hold one. Investment wins when
+  // both are true, because it is the stricter set of requirements.
+  binary: 'Owner occupied' | 'Investment'
+}
+
+const OO_WORDS = /owner.?occup|\bOO\b|home loan|end debt|principal place/i
+const INV_WORDS = /invest/i
+
+export function dealPurpose(deal: any): DealPurpose {
+  const bc = deal?.bc_data || {}
+  let ownerOccupied = false
+  let investment = false
+
+  // What the broker called each part of the loan. The most direct evidence
+  // there is, and it was being thrown away.
+  for (const sp of bc.splits || []) {
+    const label = txt(sp?.label)
+    if (!label) continue
+    if (INV_WORDS.test(label)) investment = true
+    if (OO_WORDS.test(label)) ownerOccupied = true
+  }
+
+  // The property being bought.
+  const buyingUse = txt(bc.propertyType) || txt(bc.newPurchasePropertyType)
+  if (INV_WORDS.test(buyingUse)) investment = true
+  else if (OO_WORDS.test(buyingUse)) ownerOccupied = true
+
+  // Properties already held whose loans are part of this deal.
+  for (const p of deal?.fact_find_data?.properties || []) {
+    const involved = (p?.loans || []).some((l: any) =>
+      ['To be refinanced', 'To be consolidated'].includes(txt(l?.status)))
+    if (!involved) continue
+    if (txt(p?.ownershipType) === 'Investment') investment = true
+    if (txt(p?.ownershipType) === 'Owner occupied') ownerOccupied = true
+  }
+
+  // Last resort: the scenario name. Only when nothing above said anything, so
+  // it can no longer overrule the deal's own contents.
+  if (!ownerOccupied && !investment) {
+    const t = txt(bc.template)
+    if (INV_WORDS.test(t)) investment = true
+    else if (t) ownerOccupied = true
+  }
+
+  const label = ownerOccupied && investment ? 'Both'
+    : investment ? 'Investment'
+    : ownerOccupied ? 'Owner occupied'
+    : ''
+
+  return { ownerOccupied, investment, label, binary: investment ? 'Investment' : 'Owner occupied' }
 }
 
 // --- who they are -----------------------------------------------------------
@@ -242,6 +325,9 @@ export function dealFacts(deal: any): DealFacts {
   const loan = loanAmount(deal)
   const loanLines = [...purpose]
   if (loan > 0) loanLines.push(`Total lending: ${money(loan)}`)
+  const recorded = purposeSummary(deal)
+  if (recorded) loanLines.push(`Purpose: ${recorded}`)
+
   const sec = securityValue(deal)
   if (sec.lvr !== null) {
     loanLines.push(sec.count > 1
@@ -280,24 +366,32 @@ export function dealFacts(deal: any): DealFacts {
   if (exp.length) sections.push({ title: 'LIVING EXPENSES', lines: exp })
   else missing.push('No living expenses have been recorded')
 
+  // Purchase price + stamp duty, less deposit and loan. Nothing else, and
+  // nothing at all on a refinance - there is no completion to fund.
   const funds = fundsToComplete(deal)
-  if (funds.usable) {
-    const lines = funds.lines.map(l =>
-      `${l.kind === 'cost' ? '+' : '−'} ${l.label}: ${money(l.amount)}`)
-    lines.push(funds.shortfall > 0
-      ? `= Funds the client must contribute: ${money(funds.shortfall)}`
-      : `= Surplus after everything is paid: ${money(Math.abs(funds.shortfall))}`)
+  if (funds.applies) {
+    const lines = funds.lines.map(l => `${l.kind === 'cost' ? '+' : '−'} ${l.label}: ${money(l.amount)}`)
+    lines.push(funds.toFind > 0
+      ? `= Funds to complete: ${money(funds.toFind)}`
+      : '= Funds to complete: nil')
     sections.push({ title: 'FUNDS TO COMPLETE', lines })
+    missing.push(...funds.missing)
   }
-  missing.push(...funds.missing)
 
-  // Anything the broker typed that is not a number.
+  // ANYTHING A PERSON WROTE, FIRST. The goals boxes on the front page of the
+  // fact find are where the broker writes their own summary of the deal, so it
+  // frames everything below rather than trailing after it as an afterthought.
+  // Passed through word for word - never paraphrased, never summarised.
   const notes: string[] = []
   if (txt(ff.goals2Years)) notes.push(`Goals, next 2 years: ${txt(ff.goals2Years)}`)
   if (txt(ff.goals10Years)) notes.push(`Goals, next 10 years: ${txt(ff.goals10Years)}`)
   if (txt(bc.brokerNotes)) notes.push(`Broker notes: ${txt(bc.brokerNotes)}`)
   if (txt(lo.recommendationNote)) notes.push(`Why this lender: ${txt(lo.recommendationNote)}`)
-  if (notes.length) sections.push({ title: 'IN THE BROKER’S OWN WORDS', lines: notes })
+  if (notes.length) {
+    sections.unshift({ title: 'IN THE BROKER’S OWN WORDS — use these, they are a person’s summary of this deal', lines: notes })
+  } else {
+    missing.push('The broker has not written a summary in the goals boxes on the fact find')
+  }
 
   return { sections, missing }
 }

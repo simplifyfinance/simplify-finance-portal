@@ -13,6 +13,7 @@ import { loMayWriteAmount, splitsTotal } from '@/lib/deal-phase'
 import { resolveLenderSplits, seedFromGlobal, combineIntoOneLoan,
          lenderTotal, lenderLvr } from '@/lib/lo-splits'
 import { emailFreshness, blocksSending, notesAfterScenarioChange } from '@/lib/email-freshness'
+import { dealPurpose } from '@/lib/deal-facts'
 
 // A finished "client agreed" is not something to hide. It used to disappear the
 // instant it was pressed, which made "already done" look exactly like "broken".
@@ -407,7 +408,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
   useEffect(() => {
     async function syncRateObservations() {
-      const purpose = d.bcTemplate.includes('investment') ? 'Investment' : 'Owner Occupied'
+      // Same fix as the compliance form: read the deal, not the scenario's name.
+      const purpose = dealPurpose(deal).binary === 'Investment' ? 'Investment' : 'Owner Occupied'
       const loanAmountNum = Number((d.loanAmount || '').toString().replace(/,/g, '')) || 0
       const purchasePriceNum = Number((d.purchasePrice || '').toString().replace(/,/g, '')) || 0
       const lvr = purchasePriceNum > 0 && loanAmountNum > 0 ? Math.round((loanAmountNum / purchasePriceNum) * 1000) / 10 : null
