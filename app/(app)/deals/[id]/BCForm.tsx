@@ -20,8 +20,11 @@ function agreedDay(v: any): string {
   return isNaN(d.getTime()) ? '' : ' ' + d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short' })
 }
 
+// Number('120,000') is NaN, so every comma-formatted salary annualised to zero
+// and the BC's income figure came out short by the whole amount. The fact find
+// stores money comma-formatted - readMoney is what reads it.
 function annualizeAmount(amount: string | undefined, frequency: string | undefined): number {
-  const n = Number(amount) || 0
+  const n = readMoney(amount) || 0
   if (frequency === 'Weekly') return n * 52
   if (frequency === 'Fortnightly') return n * 26
   if (frequency === 'Monthly') return n * 12
@@ -274,6 +277,7 @@ function fieldCls(value: string) {
     : "px-2.5 py-1.5 text-sm border border-amber-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-[#FEFBF5] w-full"
 }
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
+import { readMoney } from '@/lib/money'
 
 const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
 

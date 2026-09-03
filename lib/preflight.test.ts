@@ -231,3 +231,83 @@ describe('TBA on the security box', () => {
     expect(f[0].fix).toBeUndefined()
   })
 })
+
+// THE SECOND APPLICANT WHO IS NOT THERE.
+//
+// Compliance built its applicant list from bc.jointFirstName, which is assembled
+// when the BC email is generated and never written to bc_data - so it was always
+// undefined and every joint deal carried one person. The code is fixed; the
+// files already in that state are not, and nothing said so.
+//
+// The check reads COMPLIANCE'S list, not the fact find, because that list is
+// what the risk answers, the notes and the handover are all built from. A fact
+// find with both people on it does not help if compliance never read it - and
+// that is a different fix, so the finding says which one it is.
+describe('a joint deal with one applicant', () => {
+  const named = (...names: string[]) => ({ applicants: names.map(name => ({ name })) })
+  const ff = (...names: string[]) => ({
+    applicants: names.map(n => ({ firstName: n.split(' ')[0], lastName: n.split(' ')[1] })),
+  })
+  const deal = (factFind: string[], joint = 'Yes') => ({
+    bc_data: { joint, firstName: 'Natasha', lastName: 'Chapman' },
+    fact_find_data: ff(...factFind),
+  })
+  const has = (f: any[]) => f.some(x => x.kind === 'applicants')
+  const issue = (f: any[]) => f.find(x => x.kind === 'applicants')?.issue || ''
+
+  it('says so, and names who is recorded', () => {
+    const f = preflight(deal(['Natasha Chapman']), named('Natasha Chapman'))
+    expect(has(f)).toBe(true)
+    expect(issue(f)).toContain('Natasha Chapman')
+    expect(issue(f)).toContain('joint application')
+  })
+
+  // Not a warning. Everything downstream - the risk answers, the notes, the
+  // handover - is about one person on a loan two people are taking.
+  it('stops the handover rather than warning about it', () => {
+    const f = preflight(deal(['Natasha Chapman']), named('Natasha Chapman'))
+    expect(f.find(x => x.kind === 'applicants')?.severity).toBe('stop')
+  })
+
+  it('is quiet once both are recorded', () => {
+    const f = preflight(deal(['Natasha Chapman', 'Richard Chapman']),
+                        named('Natasha Chapman', 'Richard Chapman'))
+    expect(has(f)).toBe(false)
+  })
+
+  // The fact find was fixed, compliance was not. Sending somebody to the fact
+  // find to add a person who is already on it is how a warning gets ignored.
+  it('sends you to the right screen when compliance is the stale one', () => {
+    const f = preflight(deal(['Natasha Chapman', 'Richard Chapman']), named('Natasha Chapman'))
+    expect(has(f)).toBe(true)
+    expect(issue(f)).toContain('reopen the applicant list')
+    expect(issue(f)).not.toContain('Add the second applicant on the fact find')
+  })
+
+  it('sends you to the fact find when the person is genuinely not there', () => {
+    const f = preflight(deal(['Natasha Chapman']), named('Natasha Chapman'))
+    expect(issue(f)).toContain('Add the second applicant on the fact find')
+  })
+
+  it('is quiet on a deal that is not joint', () => {
+    expect(has(preflight(deal(['Natasha Chapman'], 'No'), named('Natasha Chapman')))).toBe(false)
+  })
+
+  it('is quiet when the BC has not been asked', () => {
+    expect(has(preflight({ bc_data: {}, fact_find_data: {} }, named('Natasha Chapman')))).toBe(false)
+  })
+
+  it('copes with nobody recorded at all', () => {
+    const f = preflight(deal([]), {})
+    expect(has(f)).toBe(true)
+    expect(issue(f)).toContain('nobody is recorded')
+  })
+
+  // It does not invent one. bc.jointFirstName is never stored, so there is no
+  // name to copy across - and a file naming "Applicant 2" looks finished and
+  // tells the lender nothing.
+  it('does not make a second applicant up', () => {
+    expect(issue(preflight(deal(['Natasha Chapman']), named('Natasha Chapman'))))
+      .not.toContain('Applicant 2')
+  })
+})

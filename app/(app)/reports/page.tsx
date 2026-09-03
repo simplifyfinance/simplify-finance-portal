@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { readMoney } from '@/lib/money'
 
 function fmtMoney(v: any): string {
   const n = Number(v)
@@ -44,8 +45,11 @@ export default function ReportsPage() {
 
   const lvrRows = clients.flatMap((c: any) =>
     (c.position_properties || []).map((p: any) => {
-      const value = Number(p.value) || 0
-      const totalBalance = (p.loans || []).reduce((sum: number, l: any) => sum + (Number(l.balance) || 0), 0)
+      // Number('620,000') is NaN, so every property whose value carried commas
+      // fell to zero, its LVR came out null, and it dropped off this report
+      // silently. The report looked like it had nothing to say.
+      const value = readMoney(p.value) || 0
+      const totalBalance = (p.loans || []).reduce((sum: number, l: any) => sum + (readMoney(l.balance) || 0), 0)
       const lvr = value > 0 ? Math.round((totalBalance / value) * 1000) / 10 : null
       return {
         clientId: c.id,

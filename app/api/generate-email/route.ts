@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
+// EVERY DOLLAR FIGURE IN A CLIENT EMAIL GOES THROUGH money().
+//
+// This file used to write `'$' + (d.purchasePrice || '')` in a hundred
+// places, which is correct only for as long as every value reaches the
+// database already comma-formatted. One did not: the BC filled its existing
+// loan balance straight from the fact find with String(), and $1,279,283.98
+// went to a client as $1279283.98. Formatting at the point of DISPLAY means
+// the next leak, wherever it comes from, cannot reach anybody.
+//
+// money('') is the empty string, not a lonely '$' - so a field nobody filled
+// in prints as nothing rather than as a dollar sign with no number.
+import { money, readMoney } from '@/lib/money'
 import { emailParagraphs } from '@/lib/rich-text'
 import { showsOwnLoanAmount } from '@/lib/email-amounts'
 import { totalCost, totalLending, fundsToContribute, repaymentDuringConstruction,
@@ -92,7 +104,7 @@ function card(title: string, rows: string) {
 // balance said twice, and on the rare file where it is not, it stays and the
 // difference is the point.
 function loanAmountRow(headline: any, splitAmount: any, label = 'Loan amount'): string {
-  return showsOwnLoanAmount(headline, splitAmount) ? row(label, '$' + (splitAmount || '')) : ''
+  return showsOwnLoanAmount(headline, splitAmount) ? row(label, money(splitAmount)) : ''
 }
 
 function row(l: string, v: string) {
@@ -136,14 +148,14 @@ function amt(v: unknown, placeholder: string): string {
   const t = String(v ?? '').trim()
   if (!t) return placeholder
   if (t.startsWith('$')) return t
-  return /[0-9]/.test(t) ? `$${t}` : t
+  return /[0-9]/.test(t) ? `${money(t)}` : t
 }
 
 function p(t: string) { return `<p style="font-size:14px;color:#333;margin-bottom:14px"><span style="color:#333;">${t}</span></p>` }
 function p13(t: string) { return `<p style="font-size:13px;color:#555;margin-bottom:12px"><span style="color:#555;">${t}</span></p>` }
 function propHead(t: string, rentalIncome?: string) {
   return `<p style="font-size:13px;color:#343333;font-weight:600;margin-bottom:8px"><span style="color:#343333;">&#127968; ${t}</span></p>` +
-    (rentalIncome ? `<p style="font-size:12px;color:#666;margin-bottom:8px"><span style="color:#666;">Rental income: $${rentalIncome}/week</span></p>` : '')
+    (rentalIncome ? `<p style="font-size:12px;color:#666;margin-bottom:8px"><span style="color:#666;">Rental income: ${money(rentalIncome)}/week</span></p>` : '')
 }
 
 function buildLVRLine(d: any) {
@@ -153,7 +165,7 @@ function buildLVRLine(d: any) {
   }
   if (pct > 80) {
     if (d.lmiApplicable === 'Applicable' && d.lmi) {
-      return row('LVR', `${pct}%`) + row('LMI (estimated)', '$' + d.lmi)
+      return row('LVR', `${pct}%`) + row('LMI (estimated)', money(d.lmi))
     }
     if (d.lmiApplicable === 'Waived') {
       return row('LVR', `${pct}% (LMI waived)`)
@@ -180,11 +192,11 @@ function buildChecklist(d: any) {
       if (entry.amount === null) {
         items.push(`${entry.label}: Income as per tax returns provided`)
       } else {
-        items.push(`${entry.label} $${fmtNum(entry.amount)} p.a.`)
+        items.push(`${entry.label} ${money(entry.amount)} p.a.`)
       }
     })
   } else if (d.incomeBase) {
-    items.push(`Base salary (excl. super) $${fmtNum(d.incomeBase)} p.a.`)
+    items.push(`Base salary (excl. super) ${money(d.incomeBase)} p.a.`)
   }
   if (d.housingExpense) items.push(d.housingExpense)
   if (d.joint === 'Yes') items.push('Joint application')
@@ -236,20 +248,20 @@ export async function POST(req: NextRequest) {
       const equityReleaseN = parseFloat((opt.equityReleaseAmount || '0').replace(/,/g, '')) || 0
       const lvrNum = propertyValueN > 0 ? Math.ceil(((existingLoanN + equityReleaseN) / propertyValueN) * 1000) / 10 : 0
       const actions = []
-      if (opt.ccPayoff) actions.push((Number(opt.ccPayoffAmount) || 0) > 0 ? `Reduce credit card by $${opt.ccPayoffAmount}` : 'Credit card closed')
-      if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by $${opt.hecsPayoffAmount}` : 'HECS closed')
+      if (opt.ccPayoff) actions.push((Number(opt.ccPayoffAmount) || 0) > 0 ? `Reduce credit card by ${money(opt.ccPayoffAmount)}` : 'Credit card closed')
+      if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by ${money(opt.hecsPayoffAmount)}` : 'HECS closed')
       if (opt.carLoanPayoff) actions.push('Car loan closed')
       if (opt.personalLoanPayoff) actions.push('Personal loan closed')
       const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px"><span style="color:#555;">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</span></p>` : ''
       let lmiLine = ''
       if (lvrNum > 80) {
-        if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI (estimated): $${opt.lmi}</span></p>`
+        if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI (estimated): ${money(opt.lmi)}</span></p>`
         else if (opt.lmiApplicable === 'Waived') lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI waived</span></p>`
       }
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Existing loan balance: $${d.existingLoanBal || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Equity release amount: $${opt.equityReleaseAmount || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Existing loan balance: ${money(d.existingLoanBal) || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Equity release amount: ${money(opt.equityReleaseAmount) || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
         ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px"><span style="color:#343333;">To achieve this option:</span></p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">&#10003; ${a}</span></p>`).join('') : ''}${nonBankNote}
       </td>`
@@ -280,8 +292,8 @@ export async function POST(req: NextRequest) {
       p(`Based on your current financial position, you have sufficient capacity to refinance your property and access approximately ${amt(d.equityRelease || d.splits?.[1]?.amount, '[equity amount]')} in equity, while also securing a competitive rate.`) +
       p13('Here is a breakdown of the structure:') +
       propHead(`Against ${d.suburb || '[Property Address]'}`, d.incomeRental) +
-      card('Split 1 - Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + loanAmountRow(d.existingLoanBal, d.splits?.[0]?.amount) + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
-      card('Split 2 - Equity Release', row('Equity release amount', '$' + (d.equityRelease || '')) + loanAmountRow(d.equityRelease, d.splits?.[1]?.amount) + row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[1]?.repayment ? '$' + (parseFloat(String(d.splits[1].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[1]?.type || 'Interest Only') + buildLVRLine(d)) +
+      card('Split 1 - Refinanced Loan', row('Existing loan balance', money(d.existingLoanBal)) + loanAmountRow(d.existingLoanBal, d.splits?.[0]?.amount) + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', money(d.splits?.[0]?.repayment) || '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
+      card('Split 2 - Equity Release', row('Equity release amount', money(d.equityRelease)) + loanAmountRow(d.equityRelease, d.splits?.[1]?.amount) + row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') + row('Estimated repayments', money(d.splits?.[1]?.repayment) || '[calculated]') + row('Repayment type', d.splits?.[1]?.type || 'Interest Only') + buildLVRLine(d)) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
@@ -292,7 +304,7 @@ export async function POST(req: NextRequest) {
       p('Based on your current financial position, you have sufficient capacity to refinance your existing loan and secure a competitive rate.') +
       p13('Here is a breakdown of the structure:') +
       propHead(`Against ${d.suburb || '[Property Address]'}`, d.incomeRental) +
-      card('Refinanced Loan', row('Existing loan balance', '$' + (d.existingLoanBal || '')) + loanAmountRow(d.existingLoanBal, d.splits?.[0]?.amount, 'New loan amount') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years') + buildLVRLine(d)) +
+      card('Refinanced Loan', row('Existing loan balance', money(d.existingLoanBal)) + loanAmountRow(d.existingLoanBal, d.splits?.[0]?.amount, 'New loan amount') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + row('Estimated repayments', money(d.splits?.[0]?.repayment) || '[calculated]') + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years') + buildLVRLine(d)) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
@@ -304,25 +316,25 @@ export async function POST(req: NextRequest) {
       const loanNum = parseFloat((opt.loanAmount || '').replace(/,/g, '')) || 0
       const lvrNum = priceNum > 0 ? Math.ceil((loanNum / priceNum) * 1000) / 10 : 0
       const actions = []
-      if (opt.ccPayoff) actions.push((Number(opt.ccPayoffAmount) || 0) > 0 ? `Reduce credit card by $${opt.ccPayoffAmount}` : 'Credit card closed')
-      if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by $${opt.hecsPayoffAmount}` : 'HECS closed')
+      if (opt.ccPayoff) actions.push((Number(opt.ccPayoffAmount) || 0) > 0 ? `Reduce credit card by ${money(opt.ccPayoffAmount)}` : 'Credit card closed')
+      if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by ${money(opt.hecsPayoffAmount)}` : 'HECS closed')
       if (opt.carLoanPayoff) actions.push('Car loan closed')
       if (opt.personalLoanPayoff) actions.push('Personal loan closed')
       const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px"><span style="color:#555;">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</span></p>` : ''
       let lmiLine = ''
       if (lvrNum > 80) {
-        if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI (estimated): $${opt.lmi}</span></p>`
+        if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI (estimated): ${money(opt.lmi)}</span></p>`
         else if (opt.lmiApplicable === 'Waived') lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI waived</span></p>`
       }
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Purchase price: $${opt.purchasePrice || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit: $${opt.deposit || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">${dutyLabel(d)}: $${opt.stampDuty || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: $${opt.loanAmount || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Purchase price: ${money(opt.purchasePrice) || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit: ${money(opt.deposit) || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">${dutyLabel(d)}: ${money(opt.stampDuty) || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: ${money(opt.loanAmount) || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Est. repayment: ${opt.repayment ? '$' + (parseFloat(String(opt.repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]'}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Est. repayment: ${money(opt.repayment) || '[calculated]'}</span></p>
         ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px"><span style="color:#343333;">To achieve this option:</span></p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">&#10003; ${a}</span></p>`).join('') : ''}${nonBankNote}
       </td>`
     }
@@ -350,13 +362,13 @@ export async function POST(req: NextRequest) {
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>.`) +
       p13('Here is a breakdown of the structure:') +
       card('Your Loan Structure',
-        row('Purchase price', '$' + (d.purchasePrice || '')) +
-        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + (d.deposit || '')) +
-        row(dutyLabel(d), '$' + (d.stampDuty || '')) +
-        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
+        row('Purchase price', money(d.purchasePrice)) +
+        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, money(d.deposit)) +
+        row(dutyLabel(d), money(d.stampDuty)) +
+        row('Loan amount', money(d.splits?.[0]?.amount)) +
         buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
-        row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
+        row('Estimated repayments', money(d.splits?.[0]?.repayment) || '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
@@ -370,25 +382,25 @@ export async function POST(req: NextRequest) {
       const loanNum = parseFloat((opt.loanAmount || '').replace(/,/g, '')) || 0
       const lvrNum = priceNum > 0 ? Math.ceil((loanNum / priceNum) * 1000) / 10 : 0
       const actions = []
-      if (opt.ccPayoff) actions.push((Number(opt.ccPayoffAmount) || 0) > 0 ? `Reduce credit card by $${opt.ccPayoffAmount}` : 'Credit card closed')
-      if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by $${opt.hecsPayoffAmount}` : 'HECS closed')
+      if (opt.ccPayoff) actions.push((Number(opt.ccPayoffAmount) || 0) > 0 ? `Reduce credit card by ${money(opt.ccPayoffAmount)}` : 'Credit card closed')
+      if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by ${money(opt.hecsPayoffAmount)}` : 'HECS closed')
       if (opt.carLoanPayoff) actions.push('Car loan closed')
       if (opt.personalLoanPayoff) actions.push('Personal loan closed')
       const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px"><span style="color:#555;">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</span></p>` : ''
       let lmiLine = ''
       if (lvrNum > 80) {
-        if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI (estimated): $${opt.lmi}</span></p>`
+        if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI (estimated): ${money(opt.lmi)}</span></p>`
         else if (opt.lmiApplicable === 'Waived') lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI waived</span></p>`
       }
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Purchase price: $${opt.purchasePrice || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit: $${opt.deposit || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">${dutyLabel(d)}: $${opt.stampDuty || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: $${opt.loanAmount || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Purchase price: ${money(opt.purchasePrice) || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit: ${money(opt.deposit) || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">${dutyLabel(d)}: ${money(opt.stampDuty) || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: ${money(opt.loanAmount) || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Est. repayment: ${opt.repayment ? '$' + (parseFloat(String(opt.repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]'}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Est. repayment: ${money(opt.repayment) || '[calculated]'}</span></p>
         ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px"><span style="color:#343333;">To achieve this option:</span></p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">&#10003; ${a}</span></p>`).join('') : ''}${nonBankNote}
       </td>`
     }
@@ -415,13 +427,13 @@ export async function POST(req: NextRequest) {
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>.`) +
       card('Your Loan Structure',
-        row('Purchase price', '$' + (d.purchasePrice || '')) +
-        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + (d.deposit || '')) +
-        row(dutyLabel(d), '$' + (d.stampDuty || '')) +
-        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
+        row('Purchase price', money(d.purchasePrice)) +
+        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, money(d.deposit)) +
+        row(dutyLabel(d), money(d.stampDuty)) +
+        row('Loan amount', money(d.splits?.[0]?.amount)) +
         buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
-        row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
+        row('Estimated repayments', money(d.splits?.[0]?.repayment) || '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'Interest Only (5 years)'} over ${d.loanTerm || '30'} years`)
       ) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
@@ -434,19 +446,19 @@ export async function POST(req: NextRequest) {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       card('Sale Proceeds Summary',
-        row('Expected sale price', '$' + (d.salePrice || '')) +
-        row('Agent fees / selling costs', '$' + (d.agentFees || '')) +
-        row('Existing loan balance (to be discharged)', '$' + (d.existingLoanBal || '')) +
-        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Net proceeds (est.)</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">$${d.netProceeds || ''}</span></td></tr>`
+        row('Expected sale price', money(d.salePrice)) +
+        row('Agent fees / selling costs', money(d.agentFees)) +
+        row('Existing loan balance (to be discharged)', money(d.existingLoanBal)) +
+        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Net proceeds (est.)</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">${money(d.netProceeds) || ''}</span></td></tr>`
       ) +
       card('New Purchase',
-        row('Purchase price', '$' + (d.purchasePrice || '')) +
-        row(depositLabel, '$' + (d.deposit || '')) +
-        row(dutyLabel(d), '$' + (d.stampDuty || '')) +
-        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
+        row('Purchase price', money(d.purchasePrice)) +
+        row(depositLabel, money(d.deposit)) +
+        row(dutyLabel(d), money(d.stampDuty)) +
+        row('Loan amount', money(d.splits?.[0]?.amount)) +
         buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
-        row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
+        row('Estimated repayments', money(d.splits?.[0]?.repayment) || '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
@@ -464,14 +476,14 @@ export async function POST(req: NextRequest) {
       let lmiLine = ''
       if (lvrNum > 80) {
         if (s.lmiApplicable === 'Applicable' && s.lmi) {
-          lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI (estimated): $${s.lmi}</span></p>`
+          lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI (estimated): ${money(s.lmi)}</span></p>`
         } else if (s.lmiApplicable === 'Waived') {
           lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI waived</span></p>`
         }
       }
       return `<td style="width:${Math.floor(100/splits.length)}%;vertical-align:top;padding:0 4px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${s.label}</td></tr></table>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: $${s.amount}</span></p>${s.deposit ? `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit required: $${s.deposit}</span></p>` : ""}
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: ${money(s.amount)}</span></p>${s.deposit ? `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit required: ${money(s.deposit)}</span></p>` : ""}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${s.rate}% p.a.*</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Type: ${s.type}</span></p>
@@ -503,13 +515,13 @@ export async function POST(req: NextRequest) {
       <p style="font-size:12px;color:#777;margin:0 0 16px;line-height:1.6"><span style="color:#777;">**Retained savings explanation: after the payment of your 5% deposit (plus any relevant stamp duty), the government allows you to retain up to 6 months of living expenses AND up to 6 months of scheduled loan repayments.</span></p>
       <p style="font-size:13px;color:#555;margin:0 0 16px"><span style="color:#555;">Further information: <a href="https://firsthomebuyers.gov.au/australian-government-5-percent-deposit-scheme" style="color:#2DBEFF">firsthomebuyers.gov.au/australian-government-5-percent-deposit-scheme</a></span></p>` +
       card('Your Loan Structure',
-        row('Purchase price', '$' + (d.purchasePrice || '')) +
-        row(dutyLabel(d), d.stampDuty ? '$' + d.stampDuty : '$0 — first home buyer exemption') +
-        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
+        row('Purchase price', money(d.purchasePrice)) +
+        row(dutyLabel(d), d.stampDuty ? money(d.stampDuty) : '$0 — first home buyer exemption') +
+        row('Loan amount', money(d.splits?.[0]?.amount)) +
         row('LMI', 'Waived under Gov. Deposit Scheme') +
-        row('Your contribution required', '$' + (d.deposit || '')) +
+        row('Your contribution required', money(d.deposit)) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
-        row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
+        row('Estimated repayments', money(d.splits?.[0]?.repayment) || '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
@@ -522,24 +534,24 @@ export async function POST(req: NextRequest) {
       p('Based on your current financial position, bridging finance is achievable for your next owner-occupied purchase.') +
       p('Bridging finance lets you buy your new home before your current one sells. Here is how it works: while you hold both properties, your bridging loan accrues interest at the rate below, but that interest is <strong>capitalised</strong> \u2014 added to your loan balance rather than paid month to month. When your existing property sells, the proceeds pay off that combined balance. Whatever is left over becomes your <strong>end debt</strong>: an ordinary home loan with regular repayments, which you will see broken out below.') +
       card('New Purchase Details',
-        row('Purchase price', '$' + (d.purchasePrice || '')) +
-        row(dutyLabel(d), '$' + (d.stampDuty || '')) +
-        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Total cost</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">$${(() => { const pp = parseFloat((d.purchasePrice||'0').replace(/,/g,'')) || 0; const sd = parseFloat((d.stampDuty||'0').replace(/,/g,'')) || 0; return (pp+sd).toLocaleString('en-AU') })()}</span></td></tr>` +
-        row(`Contribution${d.depositSource ? ` (from ${d.depositSource})` : ''}`, '$' + (d.deposit || '')) +
-        row('Bridging loan (peak debt)', '$' + (d.splits?.[0]?.amount || '')) +
-        row('End debt', '$' + (d.splits?.[1]?.amount || ''))
+        row('Purchase price', money(d.purchasePrice)) +
+        row(dutyLabel(d), money(d.stampDuty)) +
+        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Total cost</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">${money((readMoney(d.purchasePrice) || 0) + (readMoney(d.stampDuty) || 0))}</span></td></tr>` +
+        row(`Contribution${d.depositSource ? ` (from ${d.depositSource})` : ''}`, money(d.deposit)) +
+        row('Bridging loan (peak debt)', money(d.splits?.[0]?.amount)) +
+        row('End debt', money(d.splits?.[1]?.amount))
       ) +
       card('Loan 1 - Bridging Loan',
-        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
+        row('Loan amount', money(d.splits?.[0]?.amount)) +
         row('Rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         row('Interest treatment', 'Capitalised \u2014 no repayments during the bridging period') +
         row('Bridging period', (d.bridgingPeriod || '12') + ' months') +
-        (d.splits?.[0]?.interestCapitalised ? row('Estimated interest capitalised', '$' + (parseFloat(String(d.splits[0].interestCapitalised).replace(/,/g,'')) || 0).toLocaleString('en-AU')) : '')
+        (d.splits?.[0]?.interestCapitalised ? row('Estimated interest capitalised', money(d.splits[0].interestCapitalised)) : '')
       ) +
       card('Loan 2 - End Debt (your ongoing repayments)',
-        row('Loan amount', '$' + (d.splits?.[1]?.amount || '')) +
+        row('Loan amount', money(d.splits?.[1]?.amount)) +
         row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') +
-        row('Estimated repayments', d.splits?.[1]?.repayment ? '$' + (parseFloat(String(d.splits[1].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
+        row('Estimated repayments', money(d.splits?.[1]?.repayment) || '[calculated]') +
         row('Repayment type', `${d.splits?.[1]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
@@ -553,13 +565,13 @@ export async function POST(req: NextRequest) {
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong> — using your parents' property as a security guarantee to avoid Lenders Mortgage Insurance.`) +
       card('Your Loan Structure',
-        row('Purchase price', '$' + (d.purchasePrice || '')) +
-        row(dutyLabel(d), '$' + (d.stampDuty || '')) +
-        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
-        row('Your contribution required', '$' + (d.deposit || '')) +
+        row('Purchase price', money(d.purchasePrice)) +
+        row(dutyLabel(d), money(d.stampDuty)) +
+        row('Loan amount', money(d.splits?.[0]?.amount)) +
+        row('Your contribution required', money(d.deposit)) +
         row('Guarantor', d.guarantorName || '') +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
-        row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
+        row('Estimated repayments', money(d.splits?.[0]?.repayment) || '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
@@ -572,12 +584,12 @@ export async function POST(req: NextRequest) {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('When looking at your numbers, your borrowing capacity is looking strong for an SMSF purchase.') +
       card('Your Loan Structure',
-        row('Purchase price', '$' + (d.purchasePrice || '')) +
-        row(dutyLabel(d), '$' + (d.stampDuty || '')) +
-        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
-        row('Your contribution required', '$' + (d.deposit || '')) +
+        row('Purchase price', money(d.purchasePrice)) +
+        row(dutyLabel(d), money(d.stampDuty)) +
+        row('Loan amount', money(d.splits?.[0]?.amount)) +
+        row('Your contribution required', money(d.deposit)) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
-        row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
+        row('Estimated repayments', money(d.splits?.[0]?.repayment) || '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
@@ -601,27 +613,27 @@ export async function POST(req: NextRequest) {
       .filter((sp: any) => num(sp?.amount) > 0)
       .map((sp: any, i: number) => row(
         sp.label || `Split ${i + 1}`,
-        `$${fmtNum(num(sp.amount))} &nbsp;\u00b7&nbsp; ${sp.rate || ''}% &nbsp;\u00b7&nbsp; ${sp.type || 'P&I'}`,
+        `${money(num(sp.amount))} &nbsp;\u00b7&nbsp; ${sp.rate || ''}% &nbsp;\u00b7&nbsp; ${sp.type || 'P&I'}`,
       )).join('')
 
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p(`When looking at your numbers, your total lending is sitting at around <strong>${amt(lending > 0 ? fmtNum(lending) : '', '[amount]')}</strong>.`) +
       card('Your Loan Structure',
-        row('Land value', '$' + (d.landValue || '')) +
-        row('Construction cost', '$' + (d.constructionCost || '')) +
-        row(dutyLabel(d), '$' + (d.stampDuty || '')) +
-        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Total cost</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">$${cost.toLocaleString('en-AU')}</span></td></tr>` +
-        row('"As if complete" valuation', '$' + (d.asIfCompleteValue || '')) +
+        row('Land value', money(d.landValue)) +
+        row('Construction cost', money(d.constructionCost)) +
+        row(dutyLabel(d), money(d.stampDuty)) +
+        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Total cost</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">${money(cost)}</span></td></tr>` +
+        row('"As if complete" valuation', money(d.asIfCompleteValue)) +
         splitRows +
-        row('Total lending', '$' + lending.toLocaleString('en-AU')) +
+        row('Total lending', money(lending)) +
         // Not "deposit". It is cash found across the land settlement and the
         // build, not a deposit on a purchase. Fabio, 2 Sep 2026.
-        row('Funds you need to contribute', '$' + contribute.toLocaleString('en-AU')) +
+        row('Funds you need to contribute', money(contribute)) +
         buildLVRLine(d) +
         // Left out entirely when nobody has typed a repayment, rather than
         // mailing a client "$0 / month".
         (duringConstruction > 0
-          ? row('Repayments during construction', '$' + duringConstruction.toLocaleString('en-AU') + ' / month') +
+          ? row('Repayments during construction', money(duringConstruction) + ' / month') +
             `<tr><td colspan="2" style="font-size:11px;color:#7a5c3a;font-style:italic;line-height:1.5;padding:8px 0 0"><span style="color:#7a5c3a;">${DRAWDOWN_NOTE}</span></td></tr>`
           : '')
       ) +
@@ -634,36 +646,36 @@ export async function POST(req: NextRequest) {
     const npPrice   = d.newPurchasePrice     || d.purchasePrice || ''
     const npStamp   = d.newPurchaseStampDuty || d.stampDuty     || ''
     const npDeposit = d.newPurchaseDeposit   || d.equityRelease || d.deposit || ''
-    const totalCost = npPrice && npStamp ? `$${npPrice} + $${npStamp}` : ''
+    const totalCost = npPrice && npStamp ? `${money(npPrice)} + ${money(npStamp)}` : ''
     const existingLoanCol = `
       <p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 6px"><span style="color:#343333;">Existing loan refinanced</span></p>
-      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Loan amount: $${d.splits?.[0]?.amount || ''}</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Loan amount: ${money(d.splits?.[0]?.amount) || ''}</span></p>
       <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Indicative rate: ${d.splits?.[0]?.rate || ''}% p.a.*</span></p>
-      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Estimated repayments: ${d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]'}</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Estimated repayments: ${money(d.splits?.[0]?.repayment) || '[calculated]'}</span></p>
       <p style="font-size:11px;color:#555;margin:2px 0 10px"><span style="color:#555;">Repayment type: ${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years</span></p>
       <p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 6px"><span style="color:#343333;">Equity access</span></p>
-      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Loan amount: $${d.splits?.[1]?.amount || ''}</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Loan amount: ${money(d.splits?.[1]?.amount) || ''}</span></p>
       <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Indicative rate: ${d.splits?.[1]?.rate || ''}% p.a.*</span></p>
-      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Estimated repayments: ${d.splits?.[1]?.repayment ? '$' + (parseFloat(String(d.splits[1].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]'}</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Estimated repayments: ${money(d.splits?.[1]?.repayment) || '[calculated]'}</span></p>
       <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Repayment type: ${d.splits?.[1]?.type || 'P&I'} over ${d.loanTerm || '30'} years</span></p>`
     const newPurchaseCol = `
-      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Loan amount: $${d.splits?.[2]?.amount || ''}</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Loan amount: ${money(d.splits?.[2]?.amount) || ''}</span></p>
       <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Indicative rate: ${d.splits?.[2]?.rate || ''}% p.a.*</span></p>
-      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Estimated repayments: ${d.splits?.[2]?.repayment ? '$' + (parseFloat(String(d.splits[2].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]'}</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Estimated repayments: ${money(d.splits?.[2]?.repayment) || '[calculated]'}</span></p>
       <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Repayment type: ${d.splits?.[2]?.type || 'P&I'} over ${d.loanTerm || '30'} years</span></p>`
 
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have now finalised your review as you are looking at purchasing an owner-occupied/investment property.') +
       p('We would use equity in your owner-occupied/investment property to help fund the deposit plus stamp duty costs.') +
       p('A second loan will be set up against your new purchase, so all properties are stand alone — these are two separate securities, not cross-collateralised.') +
-      p(`Provided you are ok to use equity, we could look at a purchase price of <strong>$${amt(npPrice, '[amount]')}</strong>.`) +
+      p(`Provided you are ok to use equity, we could look at a purchase price of <strong>${amt(npPrice, '[amount]')}</strong>.`) +
       p13('Your numbers would be:') +
       card('Summary',
-        row('Purchase price', '$' + npPrice) +
-        row(dutyLabel(d), '$' + npStamp) +
+        row('Purchase price', money(npPrice)) +
+        row(dutyLabel(d), money(npStamp)) +
         row('Total cost (plus solicitor\'s fees and incidentals)', totalCost) +
-        row('Loan amount', '$' + (d.splits?.[2]?.amount || '')) +
-        row('Deposit needed (from equity release and personal savings)', '$' + npDeposit)
+        row('Loan amount', money(d.splits?.[2]?.amount)) +
+        row('Deposit needed (from equity release and personal savings)', money(npDeposit))
       ) +
       p13('Below is a breakdown of the structure:') +
       `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:14px"><tr>
@@ -686,13 +698,13 @@ export async function POST(req: NextRequest) {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       card('Your Loan Structure',
-        row('Purchase price', '$' + (d.purchasePrice || '')) +
-        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, '$' + (d.deposit || '')) +
-        row(dutyLabel(d), '$' + (d.stampDuty || '')) +
-        row('Loan amount', '$' + (d.splits?.[0]?.amount || '')) +
+        row('Purchase price', money(d.purchasePrice)) +
+        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, money(d.deposit)) +
+        row(dutyLabel(d), money(d.stampDuty)) +
+        row('Loan amount', money(d.splits?.[0]?.amount)) +
         buildLVRLine(d) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
-        row('Estimated repayments', d.splits?.[0]?.repayment ? '$' + (parseFloat(String(d.splits[0].repayment).replace(/,/g,'')) || 0).toLocaleString('en-AU') : '[calculated]') +
+        row('Estimated repayments', money(d.splits?.[0]?.repayment) || '[calculated]') +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +

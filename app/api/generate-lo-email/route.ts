@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { type Brand, resolveBrand, brandLegal } from '@/lib/brand'
+// EVERY DOLLAR FIGURE IN A CLIENT EMAIL GOES THROUGH money().
+//
+// This file used to write `'$' + (d.purchasePrice || '')` in a hundred
+// places, which is correct only for as long as every value reaches the
+// database already comma-formatted. One did not: the BC filled its existing
+// loan balance straight from the fact find with String(), and $1,279,283.98
+// went to a client as $1279283.98. Formatting at the point of DISPLAY means
+// the next leak, wherever it comes from, cannot reach anybody.
+//
+// money('') is the empty string, not a lonely '$' - so a field nobody filled
+// in prints as nothing rather than as a dollar sign with no number.
+import { money } from '@/lib/money'
 import { emailParagraphs } from '@/lib/rich-text'
 import { resolveLenderSplits, lenderTotal, lenderLvr, equityReleaseAmount } from '@/lib/lo-splits'
 import { showsOwnLoanAmount } from '@/lib/email-amounts'
@@ -92,8 +104,8 @@ function splitBand(lenders: any[], globals: any[], propertyValue: any): string {
       const line2 = [sp.rate ? `${sp.rate}%` : '', sp.repaymentType || ''].filter(Boolean).join(' &nbsp;\u00b7&nbsp; ')
       return cell(
         `<p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 2px"><span style="color:#343333;">${sp.label || 'Split'}</span></p>` +
-        `<p style="font-size:12px;color:#444444;margin:0 0 1px"><span style="color:#444444;">$${sp.amount || ''}${line2 ? ' &nbsp;\u00b7&nbsp; ' + line2 : ''}</span></p>` +
-        (sp.repayment ? `<p style="font-size:11px;color:#777777;margin:0"><span style="color:#777777;">$${sp.repayment} / month</span></p>` : '')
+        `<p style="font-size:12px;color:#444444;margin:0 0 1px"><span style="color:#444444;">${money(sp.amount) || ''}${line2 ? ' &nbsp;\u00b7&nbsp; ' + line2 : ''}</span></p>` +
+        (sp.repayment ? `<p style="font-size:11px;color:#777777;margin:0"><span style="color:#777777;">${money(sp.repayment)} / month</span></p>` : '')
       )
     }).join('')}</tr>`
   }
@@ -105,7 +117,7 @@ function splitBand(lenders: any[], globals: any[], propertyValue: any): string {
     const tot = lenderTotal(rows)
     const lvr = lenderLvr(rows, propertyValue)
     return totalCell(
-      `<p style="font-size:12px;color:#343333;margin:0"><span style="color:#343333;"><strong>Total lending $${tot.toLocaleString('en-AU')}</strong>${lvr > 0 ? ` &nbsp;\u00b7&nbsp; LVR ${lvr}%` : ''}</span></p>`,
+      `<p style="font-size:12px;color:#343333;margin:0"><span style="color:#343333;"><strong>Total lending ${money(tot)}</strong>${lvr > 0 ? ` &nbsp;\u00b7&nbsp; LVR ${lvr}%` : ''}</span></p>`,
     )
   }).join('')}</tr>`
 
@@ -124,12 +136,12 @@ function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender
       (l: any) => l.bridgingRate ? tick(`Variable rate from ${l.bridgingRate}% p.a.*`) : '',
       (l: any) => l.bridgingTerm ? tick(`Loan term up to ${l.bridgingTerm} months`) : '',
       () => tick('Interest Only Capitalised'),
-      (l: any) => l.establishmentFee ? tick(`Establishment Fee of $${l.establishmentFee}`) : '',
-      (l: any) => l.monthlyFee ? tick(`Monthly Loan Account Fee of $${l.monthlyFee}`) : '',
-      (l: any) => l.docProcessingFee ? tick(`Document Processing Fee of $${l.docProcessingFee}`) : '',
+      (l: any) => l.establishmentFee ? tick(`Establishment Fee of ${money(l.establishmentFee)}`) : '',
+      (l: any) => l.monthlyFee ? tick(`Monthly Loan Account Fee of ${money(l.monthlyFee)}`) : '',
+      (l: any) => l.docProcessingFee ? tick(`Document Processing Fee of ${money(l.docProcessingFee)}`) : '',
     ]
     featureCells = `<tr>${lenders.map(l => `<td style="padding:14px;border:1px solid #e0e0e0;vertical-align:top">${rows.map(fn => fn(l)).join('')}</td>`).join('')}</tr>`
-    const bridgingRows = lenders.map(l => `<td style="padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:12px;font-weight:600;color:#333;margin:0 0 6px"><span style="color:#333;">Bridging Loan (debt while holding both properties):</span></p><p style="font-size:12px;color:#333;margin:0 0 8px"><span style="color:#333;"><strong>Bridging loan: $${l.bridgingLoanAmount || 'XXX'}</strong></span></p><p style="font-size:12px;color:#333;margin:0"><span style="color:#333;"><strong>Estimated Interest Capitalised (over ${l.bridgingTerm || '12'} months): $${l.estimatedInterest || 'XXX'}</strong></span></p></td>`).join('')
+    const bridgingRows = lenders.map(l => `<td style="padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:12px;font-weight:600;color:#333;margin:0 0 6px"><span style="color:#333;">Bridging Loan (debt while holding both properties):</span></p><p style="font-size:12px;color:#333;margin:0 0 8px"><span style="color:#333;"><strong>Bridging loan: ${money(l.bridgingLoanAmount) || '$XXX'}</strong></span></p><p style="font-size:12px;color:#333;margin:0"><span style="color:#333;"><strong>Estimated Interest Capitalised (over ${l.bridgingTerm || '12'} months): ${money(l.estimatedInterest) || '$XXX'}</strong></span></p></td>`).join('')
     featureCells += `<tr>${bridgingRows}</tr>`
   } else {
     const modules = ['variablePI', 'variableIO', 'fixedPI', 'fixedIO'] as const
@@ -144,7 +156,7 @@ function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender
         if (!m?.enabled) return `<td style="padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:12px;color:#999"><span style="color:#999;">Not offered</span></p></td>`
         let content = tick(`Variable rate from ${m.rate}% p.a.*`)
         if (mod === 'fixedPI' || mod === 'fixedIO') content = tick(`Fixed rate ${m.rate}% p.a.* for ${m.fixedYears} years`)
-        content += tick(`Monthly repayments of $${m.repayment}`)
+        content += tick(`Monthly repayments of ${money(m.repayment)}`)
         if (mod === 'variableIO' || mod === 'fixedIO') content += tick(`Interest Only for ${m.ioYears} years`)
         content += tick(`Over ${m.loanTerm} year loan term`)
         return `<td style="padding:14px;border:1px solid #e0e0e0;vertical-align:top">${content}</td>`
@@ -211,15 +223,15 @@ export async function POST(req: NextRequest) {
 
   if (!isBridging && (d.purchasePrice || d.loanAmount)) {
     body += `<p style="font-size:14px;font-weight:600;color:#343333;margin-bottom:8px"><span style="color:#343333;">Your numbers would be:</span></p>`
-    if (d.purchasePrice) body += p(`Purchase Price: $${d.purchasePrice}`)
+    if (d.purchasePrice) body += p(`Purchase Price: ${money(d.purchasePrice)}`)
     if (d.stampDuty) {
       // Was hardcoded to NSW, which was simply wrong for a client buying
       // anywhere else. It now says whichever state the deal carries, or nothing
       // at all rather than a state the deal never named.
       const st = String(d.dutyState || '').trim().toUpperCase()
-      body += p(`Stamp Duty${st ? ` (${st})` : ''}: $${d.stampDuty}`)
+      body += p(`Stamp Duty${st ? ` (${st})` : ''}: ${money(d.stampDuty)}`)
     }
-    if (d.deposit) body += p(`Deposit Required: $${d.deposit}`)
+    if (d.deposit) body += p(`Deposit Required: ${money(d.deposit)}`)
 
     // A refinance reads in the order the client thinks in: what I owe now, what
     // extra I am taking, what the loan ends up being. It used to read "Loan
@@ -228,15 +240,15 @@ export async function POST(req: NextRequest) {
     if (d.existingLoan) {
       const total = lenderTotal(d.refinanceSplits)
       const extra = equityReleaseAmount(d.refinanceSplits, d.existingLoan)
-      body += p(`Existing Loan Balance: $${d.existingLoan}`)
-      if (extra > 0) body += p(`Equity Release: $${extra.toLocaleString('en-AU')}`)
+      body += p(`Existing Loan Balance: ${money(d.existingLoan)}`)
+      if (extra > 0) body += p(`Equity Release: ${money(extra)}`)
       // Dropped when it is the balance under a second name - the same rule the
       // BC follows. A dollar-for-dollar refinance has one number, not two.
       if (total > 0 && showsOwnLoanAmount(d.existingLoan, total)) {
-        body += p(`Total Loan Amount: $${total.toLocaleString('en-AU')}`)
+        body += p(`Total Loan Amount: ${money(total)}`)
       }
     } else if (d.loanAmount) {
-      body += p(`Loan Amount: $${d.loanAmount}`)
+      body += p(`Loan Amount: ${money(d.loanAmount)}`)
     }
   }
 

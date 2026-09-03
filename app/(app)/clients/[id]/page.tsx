@@ -6,6 +6,10 @@ import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { ArrowLeft } from 'lucide-react'
 import { phaseOf, PHASE_LABEL } from '@/lib/deal-phase'
+// Number('620,000') is NaN, so these three lines printed "$NaN" against every
+// property value and every liability a client had - the fact find stores money
+// comma-formatted. Same fault the deal summary PDF had. See lib/money.ts.
+import { moneyOrBlank, readMoney} from '@/lib/money'
 
 export default function ClientProfilePage() {
   const params = useParams()
@@ -44,7 +48,10 @@ export default function ClientProfilePage() {
   const closedDeals = deals.filter(d => d.status === 'completed')
   const initials = `${client.first_name?.[0] || ''}${client.last_name?.[0] || ''}`.toUpperCase()
 
-  const hasSmsfOpportunity = (client.position_assets || []).some((a: any) => a.assetType === 'Super' && Number(a.value || 0) >= 250000)
+  // Number('300,000') is NaN and NaN >= 250000 is false, so this flag has never
+  // once fired on a client whose super balance was typed with commas - which is
+  // all of them.
+  const hasSmsfOpportunity = (client.position_assets || []).some((a: any) => a.assetType === 'Super' && (readMoney(a.value) || 0) >= 250000)
   const hasCarLoan = (client.position_liabilities || []).some((l: any) => l.liabilityType === 'Car loan')
 
   return (
@@ -132,9 +139,9 @@ export default function ClientProfilePage() {
                         {p.ownershipType}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500">Value: {p.value ? `$${Number(p.value).toLocaleString('en-AU')}` : 'Not provided'}</p>
+                    <p className="text-xs text-gray-500">Value: {moneyOrBlank(p.value, 'Not provided')}</p>
                     {(p.loans || []).map((loan: any, li: number) => (
-                      <p key={li} className="text-xs text-gray-500">{loan.lenderName || 'Lender not set'} — balance ${Number(loan.balance || 0).toLocaleString('en-AU')}{loan.interestRate ? `, ${loan.interestRate}%` : ''}</p>
+                      <p key={li} className="text-xs text-gray-500">{loan.lenderName || 'Lender not set'} — balance {moneyOrBlank(loan.balance)}{loan.interestRate ? `, ${loan.interestRate}%` : ''}</p>
                     ))}
                   </div>
                 ))}
@@ -150,7 +157,7 @@ export default function ClientProfilePage() {
                   <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700 flex-shrink-0">{l.liabilityType}</span>
                     <span className="text-sm text-gray-600 flex-1">
-                      {l.liabilityType === 'Credit card' ? `Limit $${Number(l.limitAmount || 0).toLocaleString('en-AU')}` : `Balance $${Number(l.balance || 0).toLocaleString('en-AU')}`}
+                      {l.liabilityType === 'Credit card' ? `Limit ${moneyOrBlank(l.limitAmount)}` : `Balance ${moneyOrBlank(l.balance)}`}
                     </span>
                   </div>
                 ))}

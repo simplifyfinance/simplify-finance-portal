@@ -14,7 +14,7 @@
 import { hemStateOf, type ExpenseCategory } from './hem'
 import { borrowerNotOnTitle, nobodyOnTitle, notOnTitle, type TitleInfo } from './title'
 
-export type FindingKind = 'pronoun' | 'placeholder' | 'hem' | 'title' | 'risks'
+export type FindingKind = 'pronoun' | 'placeholder' | 'hem' | 'title' | 'risks' | 'applicants'
 export type Finding = {
   kind: FindingKind
   box: string
@@ -179,6 +179,51 @@ export function preflight(
       issue: explained
         ? `${apps.length} applicants, ${owners} on title. ${off.join(' and ')} ${off.length === 1 ? 'is' : 'are'} borrowing but will not own the security. The reason and the legal advice position are recorded and print on the handover.`
         : `${apps.length} applicants, ${owners} on title, and no reason recorded. The bank will ask why ${off.join(' and ')} ${off.length === 1 ? 'is' : 'are'} on the loan. Answer it before this goes out.`,
+    })
+  }
+
+  // --- THE SECOND APPLICANT WHO IS NOT THERE --------------------------------
+  //
+  // The BC asks whether the loan is joint. The fact find is where applicants
+  // actually live. Until 2 Sep 2026 nothing joined the two up, so a deal could
+  // say "Joint: Yes" on the BC and carry exactly one person through compliance,
+  // the risk questions and the handover - and nothing ever said so.
+  //
+  // The code that dropped the second applicant is fixed. The files already
+  // sitting in that state are not, and they will not fix themselves: somebody
+  // has to open the fact find and add the person. This is what tells them.
+  //
+  // Deliberately NOT auto-created from the BC. bc.jointFirstName is assembled
+  // when the BC email is generated and never written to bc_data, so there is no
+  // name to copy - inventing "Applicant 2" would produce a file that looks
+  // complete and names nobody.
+  // There are TWO ways to be short a person here, and they need different fixes,
+  // so the finding says which one this is:
+  //
+  //   the fact find has one   somebody has to add them, and no screen can do it
+  //                           for you - bc.jointFirstName is assembled when the
+  //                           BC email is generated and never stored, so there
+  //                           is no name to copy across
+  //   the fact find has two   compliance is carrying a list built before 2 Sep
+  //                           2026 and has not picked the second one up
+  //
+  // Compliance's own list is what is checked, because that is what the risk
+  // answers, the notes and the handover are all built from. A fact find with
+  // both people on it does not help if compliance never read it.
+  const bcSaysJoint = String(deal?.bc_data?.joint || '').trim().toLowerCase() === 'yes'
+  const inFactFind = ((deal?.fact_find_data || {}).applicants || [])
+    .filter((a: any) => String(a?.firstName || a?.lastName || '').trim()).length
+
+  if (bcSaysJoint && apps.length < 2) {
+    const who = apps.length === 1 ? `only ${apps[0]} is recorded` : 'nobody is recorded'
+    findings.push({
+      kind: 'applicants', severity: 'stop', box: 'Applicants',
+      issue: `The BC says this is a joint application, but ${who} here. `
+           + `The risk answers, the compliance notes and the handover are all built from this list, `
+           + `so every one of them is about one person. `
+           + (inFactFind >= 2
+              ? `The fact find has both — reopen the applicant list on this tab to pick the second one up.`
+              : `Add the second applicant on the fact find.`),
     })
   }
 

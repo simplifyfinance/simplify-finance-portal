@@ -494,7 +494,7 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
                 <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className="border-t" style={{ borderColor: TONE.line }} />
                 <td className={td + ' font-[640] border-b-0 border-t'} style={{ color: TONE.ink, borderColor: TONE.line }}>
-                  {money(listed.reduce((t, l) => t + Number(l.balance || 0), 0))}
+                  {money(listed.reduce((t, l) => t + (l.balance || 0), 0))}
                 </td>
                 <td className={td + ' font-[640] border-b-0 border-t'}
                     style={{ color: goneTab === 'lost' ? TONE.neg : TONE.pos, borderColor: TONE.line }}>
