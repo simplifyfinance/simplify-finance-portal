@@ -23,6 +23,7 @@ const dealLoanAmount = (lo: any, bc: any): string => {
 import { checkedWrite } from '@/lib/checked-write'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { dealFacts, factsBlock, dealPurpose } from '@/lib/deal-facts'
+import DealStructure from '@/components/DealStructure'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
 
@@ -202,7 +203,13 @@ function AIButton({ onClick, loading, label = 'Generate with AI' }: { onClick: (
   )
 }
 
-export default function ComplianceForm({ deal, onSaveStatus }: { deal: any; onSaveStatus?: (s: { at?: string; error?: string }) => void }) {
+export default function ComplianceForm({ deal, onSaveStatus, onDealPatched }: {
+  deal: any
+  onSaveStatus?: (s: { at?: string; error?: string }) => void
+  // The deal structure block writes compliance_data itself; this lets the page
+  // know, so the screen does not sit on a stale copy until a reload.
+  onDealPatched?: (patch: any) => void
+}) {
   const supabase = createSupabaseBrowser()
   const [styleNotes, setStyleNotes] = useState<string[]>([])
   const [flaggingField, setFlaggingField] = useState<string | null>(null)
@@ -839,23 +846,12 @@ Property type: ${context.propertyType}. Location (may be a suburb or a state): $
         ))}
       </div>
 
-      {/* Pre-filled summary */}
-      <div className="bg-white border border-gray-100 rounded-xl p-4">
-        <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-3">Deal summary <span className="normal-case text-[10px] bg-green-50 text-green-600 px-1.5 py-0.5 rounded font-medium ml-1">pre-filled from BC & LO</span></div>
-        <div className="grid grid-cols-4 gap-3">
-          {[
-            ['Client', d.applicants.map(a => a.name).join(', ')],
-            ['Loan amount', `$${dealLoanAmount(lo, bc) || '—'}`],
-            ['Lender', (d.clientAgreedLender === 'No' ? ((d.clientChosenLender === '__other__' ? d.clientChosenLenderOther : d.clientChosenLender) || lo.recommendedLender) : lo.recommendedLender) || lo.lenders?.[0]?.lenderName || '—'],
-            ['Loan type', bc.template?.replace(/_/g, ' ') || '—'],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <div className="text-xs text-gray-400">{label}</div>
-              <div className="text-sm font-medium text-[#343333] truncate">{value}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* THE DEAL, AS ONE BLOCK. Replaces the four-field "pre-filled from BC
+          & LO" strip that used to sit here, and it is the same component the
+          Lending options tab shows - one record, no second copy to drift.
+          Fabio, 3 Sep 2026: "that will replace these 2 section in LO and
+          Compliance (static across)". */}
+      <DealStructure deal={deal} onUpdated={onDealPatched} />
 
       {/* Compliance actions */}
       <div className="bg-white border border-gray-100 rounded-xl p-4">

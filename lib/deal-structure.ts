@@ -103,24 +103,59 @@ export type StructureSplit = {
   productType?: string
 }
 
-// The splits this deal actually has, from the LO's list, falling back to the
-// BC's. Existing deals have no purpose on any split; they are unanswered, not
-// wrong, and nothing is filled in on their behalf.
+// WHO OWNS WHAT, AND WHY IT IS SPLIT THIS WAY.
+//
+// The LO form owns lo_data and autosaves the whole blob. A second component
+// writing into the same blob would have its changes overwritten the next time
+// somebody typed on the LO - so the deal structure block does not touch it.
+//
+//   Lending options owns: label, amount, purpose, funds
+//   Compliance owns:      term, product type, and the deal-level fields
+//
+// The compliance half is filed under the split's id in
+// compliance_data.splitDetail, and merged back here. A split that is deleted
+// leaves its detail behind harmlessly; a key nothing matches is ignored.
 export function splitsOf(deal: any): StructureSplit[] {
   const lo = deal?.lo_data || {}
+  const detail = deal?.compliance_data?.splitDetail || {}
   const fromLo = (lo.refinanceSplits || []).filter((s: any) => has(s?.amount) || txt(s?.label))
   const source = fromLo.length > 0 ? fromLo : (deal?.bc_data?.splits || [])
-  return source.map((s: any, i: number) => ({
-    id: txt(s?.id) || `s${i}`,
-    label: txt(s?.label) || `Split ${i + 1}`,
-    amount: txt(s?.amount),
-    rate: txt(s?.rate),
-    repaymentType: txt(s?.repaymentType) || txt(s?.type),
-    purpose: (txt(s?.purpose) as SplitPurpose) || '',
-    funds: (txt(s?.funds) as SplitFunds) || '',
-    termYears: txt(s?.termYears),
-    productType: txt(s?.productType),
-  }))
+  return source.map((s: any, i: number) => {
+    const id = txt(s?.id) || `s${i}`
+    const d = detail[id] || {}
+    return {
+      id,
+      label: txt(s?.label) || `Split ${i + 1}`,
+      amount: txt(s?.amount),
+      rate: txt(s?.rate),
+      repaymentType: txt(s?.repaymentType) || txt(s?.type),
+      purpose: (txt(s?.purpose) as SplitPurpose) || '',
+      funds: (txt(s?.funds) as SplitFunds) || '',
+      // The BC holds one term for the whole deal; it prefills every split, and a
+      // split that differs is changed here.
+      termYears: txt(d?.termYears) || txt(s?.termYears) || txt(deal?.bc_data?.loanTerm),
+      // The LO holds one product per lender, not per split. Same idea.
+      productType: txt(d?.productType) || txt(s?.productType) || recommendedProduct(deal),
+    }
+  })
+}
+
+function recommendedProduct(deal: any): string {
+  const lo = deal?.lo_data || {}
+  const rec = (lo.lenders || []).find((l: any) => l?.lenderName && l.lenderName === lo.recommendedLender)
+    || (lo.lenders || [])[0]
+  return txt(rec?.productName)
+}
+
+// Writing one split's compliance-side detail, without disturbing the others.
+export function withSplitDetail(complianceData: any, splitId: string,
+                                patch: { termYears?: string; productType?: string }): any {
+  const cd = complianceData && typeof complianceData === 'object' ? complianceData : {}
+  const detail = cd.splitDetail && typeof cd.splitDetail === 'object' ? cd.splitDetail : {}
+  return {
+    ...cd,
+    splitDetail: { ...detail, [splitId]: { ...(detail[splitId] || {}), ...patch } },
+  }
 }
 
 // --- what a person still has to answer --------------------------------------

@@ -289,7 +289,8 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
         {stage === 'Statements' && <StatementAnalysis deal={dealData} />}
         {stage === 'BC' && <BCForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
         {stage === 'LO' && <LOForm deal={dealData} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} />}
-        {stage === 'Compliance' && <ComplianceForm deal={dealData} onSaveStatus={setSaveStatus} />}
+        {stage === 'Compliance' && <ComplianceForm deal={dealData} onSaveStatus={setSaveStatus}
+          onDealPatched={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />}
       </TabLock>
     </div>
   )

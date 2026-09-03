@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { suggestPurpose, splitsOf, stillNeeded, canGenerateNotes,
          defaultSecurityAddress, dealRow, purposeSummary, PURPOSE_LABEL,
-         isMixed, needsFundsRole, purchaseLending, suggestFunds, FUNDS_LABEL } from './deal-structure'
+         isMixed, needsFundsRole, purchaseLending, suggestFunds, FUNDS_LABEL,
+         withSplitDetail } from './deal-structure'
 
 const deal = (over: any = {}) => ({
   bc_data: { purchasePrice: '850,000', stampDuty: '45,000', deposit: '170,000',
@@ -244,5 +245,58 @@ describe('suggesting what a split does', () => {
     expect(FUNDS_LABEL.purchase).toBe('Funds the purchase')
     expect(FUNDS_LABEL.payout).toBe('Pays out existing debt')
     expect(FUNDS_LABEL.equity).toBe('Releases equity')
+  })
+})
+
+describe('who owns what — the two forms must not fight', () => {
+  // The LO form autosaves the whole of lo_data. A second component writing
+  // there would lose its changes the next time somebody typed on the LO.
+  const d = () => deal({
+    bc_data: { loanTerm: '30' },
+    lo_data: { recommendedLender: 'ING', refinanceSplits: [split({ id: 'a', purpose: 'OO' })],
+      lenders: [{ lenderName: 'ING', productName: 'Orange Advantage' }] },
+    compliance_data: { splitDetail: { a: { termYears: '25', productType: 'Fixed 2yr' } } },
+  })
+
+  it('merges the compliance-side detail onto the LO split', () => {
+    const s = splitsOf(d())[0]
+    expect(s.purpose).toBe('OO')          // from the LO
+    expect(s.termYears).toBe('25')        // from compliance
+    expect(s.productType).toBe('Fixed 2yr')
+  })
+
+  it('prefills the term from the BC and the product from the recommended lender', () => {
+    const bare = deal({ bc_data: { loanTerm: '30' },
+      lo_data: { recommendedLender: 'ING', refinanceSplits: [split({ id: 'a' })],
+        lenders: [{ lenderName: 'ING', productName: 'Orange Advantage' }] } })
+    const s = splitsOf(bare)[0]
+    expect(s.termYears).toBe('30')
+    expect(s.productType).toBe('Orange Advantage')
+  })
+
+  it('writes one split without disturbing another', () => {
+    const cd = { preApproval: true, splitDetail: { a: { termYears: '25' }, b: { termYears: '30' } } }
+    const next = withSplitDetail(cd, 'a', { productType: 'Fixed 2yr' })
+    expect(next.splitDetail.a).toEqual({ termYears: '25', productType: 'Fixed 2yr' })
+    expect(next.splitDetail.b).toEqual({ termYears: '30' })
+    expect(next.preApproval).toBe(true)
+  })
+
+  it('never changes what it was given', () => {
+    const cd = { splitDetail: { a: { termYears: '25' } } }
+    const before = JSON.stringify(cd)
+    withSplitDetail(cd, 'a', { termYears: '30' })
+    expect(JSON.stringify(cd)).toBe(before)
+  })
+
+  it('copes with a deal that has never been touched', () => {
+    expect(withSplitDetail(null, 'a', { termYears: '30' }).splitDetail.a.termYears).toBe('30')
+  })
+
+  it('ignores detail for a split that no longer exists', () => {
+    const gone = deal({ lo_data: { refinanceSplits: [split({ id: 'a' })] },
+      compliance_data: { splitDetail: { zzz: { termYears: '99' } } } })
+    expect(splitsOf(gone)).toHaveLength(1)
+    expect(splitsOf(gone)[0].termYears).toBe('')
   })
 })
