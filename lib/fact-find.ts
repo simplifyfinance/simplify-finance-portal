@@ -51,6 +51,37 @@ export function dateAU(v: any): string {
   return raw
 }
 
+// TWO YEARS OF HISTORY, whatever it consists of.
+//
+// A lender wants 24 months of address history and 24 months of employment
+// history. A period of NOT WORKING counts towards it - it is history, it is just
+// not a job - and until 3 Sep 2026 the form hid the dates on a not-working entry
+// entirely, so those applicants sat permanently at "0 months recorded" with no
+// way to answer it.
+//
+// These two live here rather than inside the form because the still-to-confirm
+// list has to agree with the warning on screen. Two copies of a calculation is
+// two places for it to disagree.
+export const REQUIRED_HISTORY_MONTHS = 24
+
+export function monthsBetween(start: any, end: any, today = new Date()): number {
+  const from = String(start ?? '').trim()
+  if (!from) return 0
+  const s = new Date(from)
+  const e = String(end ?? '').trim() ? new Date(String(end)) : today
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return 0
+  const months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth())
+  return Math.max(0, months)
+}
+
+export function totalHistoryMonths(
+  entries: { isCurrent?: boolean; startDate?: string; endDate?: string }[] | null | undefined,
+  today = new Date(),
+): number {
+  return (entries || []).reduce(
+    (sum, e) => sum + monthsBetween(e?.startDate, e?.isCurrent ? '' : (e?.endDate || ''), today), 0)
+}
+
 export function ageFrom(dob: any, today = new Date()): number | null {
   const raw = String(dob || '').trim()
   let d: Date | null = null
@@ -132,8 +163,13 @@ export function stillToConfirm(deal: any): string[] {
     if (jobs.length === 0) { out.push(`${who} — no current employment recorded`); continue }
     for (const e of jobs) {
       // Not working is an ANSWER. No employer, no basis and no income are asked
-      // of somebody who has told us they do not work.
-      if (notWorking(e)) continue
+      // of somebody who has told us they do not work - but the DATE still is,
+      // because two years of history has to add up whatever it is made of.
+      if (notWorking(e)) {
+        if (!String(e.startDate || '').trim()) out.push(`${who} — the date they stopped working`)
+        continue
+      }
+      if (!String(e.startDate || '').trim()) out.push(`${who} — employment start date`)
       if (!String(e.occupation || '').trim()) out.push(`${who} — occupation`)
       if (selfEmployed(e)) {
         if (!String(e.employerName || '').trim() && !(a.income || []).some((i: any) => String(i?.seBusinessName || '').trim())) {
@@ -145,6 +181,12 @@ export function stillToConfirm(deal: any): string[] {
       }
       if (annualIncome(a) === 0) out.push(`${who} — no income recorded against a current job`)
     }
+
+    // The 24-month total is deliberately NOT repeated here. The fact find already
+    // warns about it in amber, on the same screen, right under the entries it is
+    // counting - and a list that repeats a warning somebody is already looking at
+    // is a list people stop reading. What this list adds is the missing DATE,
+    // which is the thing that makes the total wrong in the first place.
   }
 
   // The BC is only asked about the figures its own template uses.

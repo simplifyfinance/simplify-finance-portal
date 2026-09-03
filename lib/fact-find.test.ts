@@ -5,14 +5,18 @@ import { notWorking, selfEmployed, ageFrom, annualIncome, position, stillToConfi
 const natasha = {
   firstName: 'Natasha', lastName: 'Chapman', dob: '14/03/1988', phoneMobile: '0412 345 678',
   addresses: [{ isCurrent: true, address: '6 Bella Vista Court', residentialStatus: 'Owner occupied with a mortgage' }],
-  employment: [{ isCurrent: true, employmentType: 'Not working', occupation: 'Domestic duties' }],
+  // A date even on "not working" — it is history, and a lender wants two years
+  // of it whatever it is made of. See monthsBetween/totalHistoryMonths.
+  employment: [{ isCurrent: true, employmentType: 'Not working', occupation: 'Domestic duties',
+                 employmentPriority: 'Primary', startDate: '2021-06-01' }],
   income: [],
 }
 const richard = {
   firstName: 'Richard', lastName: 'Chapman', dob: '1984-11-02', emailPersonal: 'r@example.com',
   addresses: [{ isCurrent: true, address: '6 Bella Vista Court', residentialStatus: 'Owner occupied with a mortgage' }],
   employment: [{ isCurrent: true, employmentType: 'PAYG', occupation: 'Investment manager',
-                 employmentBasis: 'Full time', employerName: 'Roc Partners' }],
+                 employmentBasis: 'Full time', employerName: 'Roc Partners',
+                 employmentPriority: 'Primary', startDate: '2019-03-04' }],
   income: [{ grossSalary: '446,428.63', grossSalaryFrequency: 'Annually',
              bonusAmount: '120,000', bonusFrequency: 'Annually',
              allowanceAmount: '400', allowanceFrequency: 'Monthly' }],
@@ -140,5 +144,37 @@ describe('dateAU', () => {
   })
   it('drops the time off a timestamp', () => {
     expect(dateAU('2026-09-02T10:15:00Z')).toBe('02/09/2026')
+  })
+})
+
+// THE DATE ON A PERIOD OF NOT WORKING.
+//
+// The form hid every date field on a "Not working" entry, so those applicants
+// sat permanently at "0 months of employment history recorded" with nothing they
+// could do about it. Fabio, 3 Sep 2026: "when someone is not working there's no
+// date, we need to establish 24 months of history not working as well."
+describe('a period of not working still needs its dates', () => {
+  // The file's own way of taking a copy before poking at it.
+  const copy = () => JSON.parse(JSON.stringify(deal))
+  const withoutDate = () => {
+    const d = copy()
+    d.fact_find_data.applicants[0].employment[0].startDate = ''
+    return d
+  }
+
+  it('asks for the date they stopped working', () => {
+    expect(stillToConfirm(withoutDate())).toContain('Natasha Chapman — the date they stopped working')
+  })
+
+  // Not working is still an answer: no employer, no occupation, no income.
+  it('asks for nothing else', () => {
+    const out = stillToConfirm(withoutDate()).filter(x => x.startsWith('Natasha'))
+    expect(out).toEqual(['Natasha Chapman — the date they stopped working'])
+  })
+
+  it('asks a working applicant for their start date too', () => {
+    const d = copy()
+    d.fact_find_data.applicants[1].employment[0].startDate = ''
+    expect(stillToConfirm(d)).toContain('Richard Chapman — employment start date')
   })
 })

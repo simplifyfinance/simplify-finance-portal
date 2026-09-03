@@ -312,3 +312,54 @@ describe('an income the extractor labelled its own way', () => {
     expect(notes(empty).missing.join(' ')).toContain('no gross salary recorded')
   })
 })
+
+// NOT WORKING IS AN ANSWER, NOT A GAP.
+//
+// Fabio, 3 Sep 2026: "she doesn't have a salary, she is not working, the only
+// working applicant is Richard." Natasha was recorded as not working and still
+// held the notes up for a salary, because the fact find had left an empty
+// income row against her and the check only skipped applicants with no rows at
+// all.
+describe('an applicant who is not working', () => {
+  const notWorking = (income: any[]) => purchase({
+    fact_find_data: { applicants: [
+      payg({ firstName: 'Richard', lastName: 'Chapman' }),
+      { id: 'a2', firstName: 'Natasha', lastName: 'Chapman', dob: '1990-08-02',
+        employment: [{ id: 'e2', isCurrent: true, employmentType: 'Not working' }], income },
+    ] },
+    compliance_data: { risks: { 'Matti Hallanoro': {}, 'Richard Chapman': {
+      retirementAge: '67', repaymentMethod: 'Superannuation lump sum following retirement' } } },
+  })
+
+  it('says so, and asks for nothing', () => {
+    const n = notes(notWorking([]))
+    expect(n.ready, n.missing.join(' / ')).toBe(true)
+    expect(n.text).toContain('Natasha Chapman — not working. No income used.')
+  })
+
+  // The row the extractor leaves behind. It is a leftover, not a claim.
+  it('is not held up by an empty income row left against them', () => {
+    const n = notes(notWorking([{ incomeType: 'Base salary', employmentId: 'e2', grossSalary: '' }]))
+    expect(n.ready, n.missing.join(' / ')).toBe(true)
+    expect(n.text).toContain('not working. No income used.')
+    expect(n.missing.join(' ')).not.toContain('Natasha')
+  })
+
+  it('leaves the working applicant counted on their own', () => {
+    expect(notes(notWorking([])).text).toContain('Total income used: $300,000 p.a.')
+  })
+
+  // Somebody who IS employed and has nothing recorded is still a gap.
+  it('still asks when an employed applicant has no income at all', () => {
+    const d = purchase({ fact_find_data: { applicants: [payg({ income: [] })] } })
+    expect(notes(d).ready).toBe(false)
+    expect(notes(d).missing.join(' ')).toContain('no income recorded')
+  })
+
+  // Neither an employment record nor an income: nobody has said anything.
+  it('asks for the employment record when there is none either way', () => {
+    const d = purchase({ fact_find_data: { applicants: [
+      { id: 'a1', firstName: 'Sam', lastName: 'Okafor', dob: '1990-01-01', employment: [], income: [] }] } })
+    expect(notes(d).missing.join(' ')).toContain('if they are not working, say so')
+  })
+})

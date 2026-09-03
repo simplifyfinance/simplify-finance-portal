@@ -13,6 +13,7 @@ import { seYearTotalFF, calculateSeAssessableIncome } from '@/lib/income-calcula
 import InternalNotes from '@/components/InternalNotes'
 import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET_TYPES, DEPOSIT_SOURCES, optionsFor } from '@/lib/fact-find-options'
 import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship } from '@/lib/relationship'
+import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS } from '@/lib/fact-find'
 
 function incrementFY(fy: string): string {
   const match = fy.match(/^(\d{4})\/(\d{2})$/)
@@ -213,17 +214,9 @@ function uid() {
   return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)
 }
 
-function monthsBetween(start: string, end: string): number {
-  if (!start) return 0
-  const s = new Date(start)
-  const e = end ? new Date(end) : new Date()
-  const months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth())
-  return Math.max(0, months)
-}
-
-function totalHistoryMonths(entries: { isCurrent: boolean; startDate: string; endDate?: string }[]): number {
-  return entries.reduce((sum, e) => sum + monthsBetween(e.startDate, e.isCurrent ? '' : (e.endDate || '')), 0)
-}
+// monthsBetween and totalHistoryMonths used to be written out here as well as
+// in lib/fact-find.ts, so the warning on screen and the still-to-confirm list
+// could disagree about the same 24 months. One copy. See lib/fact-find.ts.
 
 const defaultAddress = (isCurrent: boolean): Address => ({
   id: uid(), address: '', residentialStatus: '', isCurrent, startDate: '', endDate: '',
@@ -1217,9 +1210,9 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               )}
             </div>
           ))}
-          {totalHistoryMonths(applicant.addresses) < 24 && (
+          {totalHistoryMonths(applicant.addresses) < REQUIRED_HISTORY_MONTHS && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 mb-2">
-              {totalHistoryMonths(applicant.addresses)} months of address history recorded — add a previous address to reach the required 24 months.
+              {totalHistoryMonths(applicant.addresses)} months of address history recorded — add a previous address to reach the required {REQUIRED_HISTORY_MONTHS} months.
             </div>
           )}
           <button onClick={addAddress} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
@@ -1264,19 +1257,33 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                   <input className={inp} placeholder="Occupation" value={emp.occupation} onChange={e => updateEmployment(emp.id, 'occupation', e.target.value)} />
                 )}
               </div>
-              {emp.employmentType !== 'Not working' && (
-                <>
-                  <div className="grid grid-cols-3 gap-3 mb-3">
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Start date</label>
-                      <input type="date" className={inp} value={emp.startDate} onChange={e => updateEmployment(emp.id, 'startDate', e.target.value)} />
-                    </div>
-                    {!emp.isCurrent && (
-                      <div>
-                        <label className="text-xs text-gray-500 block mb-1">End date</label>
-                        <input type="date" className={inp} value={emp.endDate} onChange={e => updateEmployment(emp.id, 'endDate', e.target.value)} />
-                      </div>
-                    )}
+              {/* THE DATES BELONG TO EVERY KIND OF ENTRY, INCLUDING NOT WORKING.
+                  These used to sit inside the "not Not working" branch with the
+                  employer fields, so a period of not working carried no dates,
+                  counted as nought months, and the 24-month warning sat at
+                  "0 months of employment history recorded" with no way to
+                  satisfy it. Fabio, 3 Sep 2026: "when someone is not working
+                  there's no date, we need to establish 24 months of history not
+                  working as well."
+                  A lender wants two years of history whatever it consists of.
+                  What does NOT apply to a period of not working is the employer,
+                  the ABN and the probation tick - those stay hidden. */}
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">
+                    {emp.employmentType === 'Not working' ? 'Not working since' : 'Start date'}
+                  </label>
+                  <input type="date" className={inp + (emp.startDate ? '' : ' border-amber-300 bg-[#FFFBF0]')}
+                    value={emp.startDate} onChange={e => updateEmployment(emp.id, 'startDate', e.target.value)} />
+                </div>
+                {!emp.isCurrent && (
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">End date</label>
+                    <input type="date" className={inp} value={emp.endDate} onChange={e => updateEmployment(emp.id, 'endDate', e.target.value)} />
+                  </div>
+                )}
+                {emp.employmentType !== 'Not working' && (
+                  <>
                     <input className={inp} placeholder="Employer / business name" value={emp.employerName} onChange={e => updateEmployment(emp.id, 'employerName', e.target.value)} />
                     <AbnAutocomplete
                       value={emp.employerAbn}
@@ -1286,7 +1293,11 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                         updateEmployment(emp.id, 'employerName', result.businessName)
                       }}
                     />
-                  </div>
+                  </>
+                )}
+              </div>
+              {emp.employmentType !== 'Not working' && (
+                <>
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     {emp.employmentType === 'PAYG' && (
                       <select className={inp} value={emp.employerType} onChange={e => updateEmployment(emp.id, 'employerType', e.target.value)}>
@@ -1303,9 +1314,9 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               )}
             </div>
           ))}
-          {totalHistoryMonths(applicant.employment.filter(e => e.employmentPriority === 'Primary')) < 24 && (
+          {totalHistoryMonths(applicant.employment.filter(e => e.employmentPriority === 'Primary')) < REQUIRED_HISTORY_MONTHS && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 mb-2">
-              {totalHistoryMonths(applicant.employment.filter(e => e.employmentPriority === 'Primary'))} months of employment history recorded — add previous employment to reach the required 24 months.
+              {totalHistoryMonths(applicant.employment.filter(e => e.employmentPriority === 'Primary'))} months of employment history recorded — add previous employment to reach the required {REQUIRED_HISTORY_MONTHS} months.
             </div>
           )}
           <div className="flex gap-2">

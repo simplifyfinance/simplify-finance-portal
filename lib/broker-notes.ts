@@ -221,17 +221,36 @@ function incomeUsed(deal: any, missing: string[]): NotesParagraph | null {
     const employments = currentEmployment(a)
     const incomes = (a?.income || [])
 
-    if (employments.length && employments.every((e: any) => notWorking(e)) && incomes.length === 0) {
+    // NOT WORKING IS AN ANSWER, NOT A GAP.
+    //
+    // Fabio, 3 Sep 2026: "she doesn't have a salary, she is not working, the
+    // only working applicant is Richard." The first version only took this path
+    // when the applicant had NO income rows at all - and Natasha had an empty
+    // one, left behind by the extractor. So a woman recorded as not working was
+    // held up for a salary she does not have.
+    //
+    // The employment record is what decides it. Once somebody has said "not
+    // working", nothing on the income list is asked for.
+    if (employments.length > 0 && employments.every((e: any) => notWorking(e))) {
       lines.push(`${name} — not working. No income used.`)
       continue
     }
-    if (incomes.length === 0) {
-      missing.push(`${name} has no income recorded on the fact find`)
+
+    // An income row with NOTHING in it is a leftover, not a claim. Rows are
+    // created automatically alongside an employment and by the fact find
+    // extractor, so an empty one means nobody got to it - not that a figure is
+    // missing. Rows with something in them are still checked properly below.
+    const used = incomes.filter((inc: any) => incomeKind(inc) !== 'none')
+
+    if (used.length === 0) {
+      missing.push(employments.length === 0
+        ? `${name} has no employment and no income recorded — if they are not working, say so on the fact find`
+        : `${name} has no income recorded on the fact find`)
       continue
     }
 
     const parts: string[] = []
-    for (const inc of incomes) {
+    for (const inc of used) {
       const emp = employments.find((e: any) => e?.id === inc?.employmentId) || employments[0] || {}
       // What the entry contains, never what it is labelled - see
       // lib/income-kind.ts. Chapman's fact find was AI-extracted, so every
@@ -258,8 +277,9 @@ function incomeUsed(deal: any, missing: string[]): NotesParagraph | null {
       total += annualIncomeOf(inc)
     }
 
-    const used = (a?.income || []).reduce((t: number, i: any) => t + annualIncomeOf(i), 0)
-    lines.push(`${name} — ${parts.join(' ')} Income used: ${money(Math.round(used))} p.a.`
+    // Named apart from the running deal total below, which it shadowed.
+    const forThisApplicant = used.reduce((t: number, i: any) => t + annualIncomeOf(i), 0)
+    lines.push(`${name} — ${parts.join(' ')} Income used: ${money(Math.round(forThisApplicant))} p.a.`
       .replace(/\.\.+/g, '.').replace(/\s+/g, ' '))
   }
 
