@@ -34,12 +34,29 @@ describe('the contact line', () => {
     const n = notes(purchase())
     expect(n.paragraphs[0].key).toBe('contact')
     expect(n.paragraphs[0].lines[0]).toBe(
-      'Should you have any questions regarding this application, please contact Sarah Nguyen on 0412 345 678.')
+      '**** FOR ANY QUESTIONS RELATING TO THIS APPLICATION PLEASE CALL MY '
+      + 'CUSTOMER RELATIONSHIP MANAGER - Sarah Nguyen 0412 345 678 ****')
   })
 
-  // The old habit was a block with everybody's name in it for the bank to sift.
+  // The old habit was a block with all three names and numbers in it, left for
+  // the bank's assessor to delete down to the right one.
   it('names one person, not the whole team', () => {
-    expect(notes(purchase()).text).not.toMatch(/,\s*[A-Z][a-z]+ [A-Z][a-z]+ on 0.*,/)
+    const line = notes(purchase()).paragraphs[0].lines[0]
+    expect(line).not.toContain('/')
+    expect(line.match(/\d{4}/g) || []).toHaveLength(1)
+  })
+
+  it('keeps the phone number exactly as it was typed', () => {
+    const bracketed = notes(purchase(), { name: 'Mellissa Sedin', phone: '(02) 7228 3834' })
+    expect(bracketed.paragraphs[0].lines[0]).toContain('Mellissa Sedin (02) 7228 3834')
+  })
+
+  // Somebody outside the business reads this. Asymmetric asterisks look like a
+  // file nobody checked.
+  it('opens and closes with the same marker', () => {
+    const line = notes(purchase()).paragraphs[0].lines[0]
+    expect(line.startsWith('****')).toBe(true)
+    expect(line.endsWith('****')).toBe(true)
   })
 
   it('refuses when no assessor is assigned', () => {
@@ -208,6 +225,33 @@ describe('paragraph four — retirement', () => {
   })
 })
 
+describe('the closing declaration', () => {
+  const LINE = 'There are no known conflicts of interest as part of this transaction.'
+
+  it('is the last line of every set of notes', () => {
+    const t = notes(purchase()).text
+    expect(t.trimEnd().endsWith(LINE)).toBe(true)
+  })
+
+  it('is there on a refinance too', () => {
+    const d = purchase({ bc_data: { template: 'refinance_only', purchasePrice: '', stampDuty: '', deposit: '' },
+                         lo_data: { refinanceSplits: [{ id: 'a', amount: '520,000', purpose: 'INV' }] } })
+    expect(notes(d).text.trimEnd().endsWith(LINE)).toBe(true)
+  })
+
+  it('appears once, not once per paragraph', () => {
+    expect(notes(purchase()).text.split(LINE)).toHaveLength(2)
+  })
+
+  // It is always present, so on a deal with nothing filled in it would otherwise
+  // be the one paragraph that exists and make the notes look written.
+  it('does not on its own make an empty deal look finished', () => {
+    const n = notes({ bc_data: {}, lo_data: {}, fact_find_data: {} })
+    expect(n.ready).toBe(false)
+    expect(n.text).toBe('')
+  })
+})
+
 describe('what it refuses to do', () => {
   it('writes nothing at all when anything is missing', () => {
     const n = notes(purchase({ bc_data: { stampDuty: '' } }))
@@ -225,8 +269,12 @@ describe('what it refuses to do', () => {
     expect(new Set(n.missing).size).toBe(n.missing.length)
   })
 
+  // The asterisks around the contact line are deliberate - they are how that
+  // line has always looked to the assessors who read it. Everything else is
+  // plain: a bank's web form does not render markdown.
   it('is plain text — no markdown, no bullets', () => {
-    const t = notes(purchase()).text
-    expect(t).not.toMatch(/[*_#•]/)
+    const body = notes(purchase()).paragraphs.filter(p => p.key !== 'contact')
+      .flatMap(p => p.lines).join('\n')
+    expect(body).not.toMatch(/[*_#•]/)
   })
 })

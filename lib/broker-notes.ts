@@ -68,9 +68,19 @@ function contactLine(assessor: Assessor | null | undefined, missing: string[]): 
   const phone = txt(assessor?.phone)
   if (!name) { missing.push('No credit assessor is assigned to this deal, so the notes cannot say who to call'); return null }
   if (!phone) { missing.push(`No phone number is recorded for ${name} — add it in Settings, Credit team`); return null }
+  // FABIO'S OWN WORDING, VERBATIM. This line has been pasted onto submissions
+  // for years and the assessors on the other end know it on sight, so it is not
+  // being improved into something nicer - the only change is that the portal
+  // fills in the one name instead of listing the whole team for the bank to
+  // sift. Fabio, 3 Sep 2026: "obviously whichever credit assessor in question".
+  //
+  // "Customer relationship manager" is what the LENDER is told. Internally the
+  // same person is the credit assessor, which is what Settings calls them and
+  // what the messages below say.
   return {
     key: 'contact', heading: '',
-    lines: [`Should you have any questions regarding this application, please contact ${name} on ${phone}.`],
+    lines: [`**** FOR ANY QUESTIONS RELATING TO THIS APPLICATION PLEASE CALL MY `
+          + `CUSTOMER RELATIONSHIP MANAGER - ${name} ${phone} ****`],
   }
 }
 
@@ -337,6 +347,22 @@ function retirement(deal: any, missing: string[], today: Date): NotesParagraph |
   return { key: 'retirement', heading: 'RETIREMENT', lines }
 }
 
+// --- the closing declaration -------------------------------------------------
+//
+// On every set of submission notes, last. Fabio, 3 Sep 2026: "can we add this
+// sentence at the bottom of every submission note section?"
+//
+// It is a DECLARATION, not a fact read off the file - nothing in the portal
+// records whether a conflict exists, so this states the normal case. On a deal
+// where there IS one (a related party, a referral arrangement, a family member)
+// the sentence has to be edited by hand, and the text sits in an editable box
+// precisely so it can be.
+const NO_CONFLICTS = 'There are no known conflicts of interest as part of this transaction.'
+
+function declaration(): NotesParagraph {
+  return { key: 'declaration', heading: '', lines: [NO_CONFLICTS] }
+}
+
 // --- the whole thing ---------------------------------------------------------
 
 export function brokerNotes(deal: any, assessor?: Assessor | null, today = new Date()): BrokerNotes {
@@ -347,12 +373,15 @@ export function brokerNotes(deal: any, assessor?: Assessor | null, today = new D
     incomeUsed(deal, missing),
     fundsParagraph(deal, missing),
     retirement(deal, missing, today),
+    declaration(),
   ].filter(Boolean) as NotesParagraph[]
 
   // Deduplicated: a missing stamp duty is one problem however many paragraphs
   // trip over it.
   const gaps = [...new Set(missing)]
-  const ready = gaps.length === 0 && paragraphs.length > 0
+  // The declaration alone is not a set of notes. It is always present, so it
+  // cannot be what makes this look finished.
+  const ready = gaps.length === 0 && paragraphs.some(p => p.key !== 'declaration')
 
   return {
     paragraphs, missing: gaps, ready,
