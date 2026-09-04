@@ -236,7 +236,7 @@ function fieldCls(value: string) {
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
 import { annualIncomeOf, annualIncomeOfApplicant } from '@/lib/income-calculations'
 import SaveConflict from '@/components/SaveConflict'
-import { someoneElseSaved, snapshot } from '@/lib/save-conflict'
+import { newGuard, saveGuarded } from '@/lib/save-conflict'
 import { readMoney, formatAsTyped} from '@/lib/money'
 
 const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
@@ -279,7 +279,34 @@ function NumberInput({ value, onChange, placeholder }: { value: string; onChange
   )
 }
 
-export default function BCForm({ deal, onDataChange, onStageChange, userRole, onSaveStatus }: { deal: any; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void }) {
+type BCFormProps = { deal: any; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void }
+
+// PUTTING SOMEBODY ELSE'S VERSION ON SCREEN.
+//
+// Unlike the other three tabs, this form does not hold its record in one piece
+// of state - it is forty odd useStates, all seeded from bc_data when the
+// component first runs. There is no setD to call, so the only honest way to show
+// a version somebody else saved is to build the form again from it. Changing the
+// key does exactly that, and it is a real reload of the tab rather than a
+// half-updated screen.
+//
+// Only ever used when nothing has been typed here, so there is nothing to lose
+// by rebuilding. See lib/save-conflict.ts.
+export default function BCForm(props: BCFormProps) {
+  const [adopted, setAdopted] = useState<any>(null)
+  const [generation, setGeneration] = useState(0)
+  const deal = adopted === null ? props.deal : { ...props.deal, bc_data: adopted }
+  return (
+    <BCFormInner
+      {...props}
+      key={generation}
+      deal={deal}
+      onAdopt={next => { setAdopted(next); setGeneration(g => g + 1) }}
+    />
+  )
+}
+
+function BCFormInner({ deal, onDataChange, onStageChange, userRole, onSaveStatus, onAdopt }: BCFormProps & { onAdopt: (next: any) => void }) {
   // The database is the only store. No browser-side copy and no fallback: a per-browser
   // cache keyed only by deal id showed one user another user's state, and an empty cache
   // rendered a blank form that the autosave then wrote back over the real record.
@@ -664,8 +691,16 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // Whose copy is on screen — see lib/save-conflict.ts. This form writes on
   // OPEN as well as on edit, so without the guard simply opening a deal card
   // somebody else is working in overwrites what they have typed.
-  const dbRef = useRef<string | null>(snapshot(deal.bc_data))
+  const guardRef = useRef(newGuard(deal.bc_data))
   const [conflict, setConflict] = useState(false)
+  // What the database last agreed with. OPENING THIS FORM IS NOT EDITING IT:
+  // the fields seed themselves from the fact find where bc_data is blank, so the
+  // very first run produces a value that differs from the stored record and used
+  // to be written back 700ms after the tab appeared. Two people with the deal
+  // open therefore moved the record under each other before either had typed.
+  // The seeded values are still written the moment somebody actually edits
+  // something - they are just no longer written by looking.
+  const savedRef = useRef<string | null>(null)
 
   const [showMoveToLoPopup, setShowMoveToLoPopup] = useState(false)
   const [sendingMoveToLo, setSendingMoveToLo] = useState(false)
@@ -679,17 +714,23 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
       // checking `error` alone reports success on a write that saved nothing. setSavedAt
       // previously fired here regardless of outcome - the form said "Saved" while nothing
       // reached the database, which is why silent failures went unnoticed for weeks.
+      const now = JSON.stringify(data)
+      // The very first run is the form arriving on screen, never a person.
+      if (savedRef.current === null) { savedRef.current = now; return }
+      if (now === savedRef.current) return
       ;(async () => {
-        if (await someoneElseSaved(supabase, deal.id, 'bc_data', dbRef.current)) {
-          setConflict(true); setSaveError(''); return
-        }
-        const { data: rows, error } = await supabase.from('deals').update({ bc_data: data }).eq('id', deal.id).select('id')
-        if (error) { console.error('BC autosave failed:', error); setSaveError('NOT SAVED - ' + error.message); return }
-        if (!rows || rows.length === 0) { console.error('BC autosave affected zero rows'); setSaveError('NOT SAVED - your changes did not reach the database. Do not close this tab.'); return }
-        dbRef.current = snapshot(data)
+        const out = await saveGuarded({
+          supabase, dealId: deal.id, column: 'bc_data', guard: guardRef.current, value: data,
+          onAdopt: stored => onAdopt(stored),
+        })
+        if (out.kind === 'superseded') return
+        setConflict(out.kind === 'conflict')
+        if (out.kind === 'error') { console.error('BC autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
-        setConflict(false)
-        setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+        if (out.kind === 'saved') {
+          savedRef.current = now
+          setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+        }
       })()
     }, 700)
     return () => clearTimeout(timeoutId)

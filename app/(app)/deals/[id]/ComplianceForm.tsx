@@ -32,7 +32,7 @@ import { money } from '@/lib/money'
 import { brokerNotes, type Assessor } from '@/lib/broker-notes'
 import { comparisonBlock } from '@/lib/lender-comparison'
 import SaveConflict from '@/components/SaveConflict'
-import { someoneElseSaved, snapshot } from '@/lib/save-conflict'
+import { newGuard, saveGuarded } from '@/lib/save-conflict'
 import DealStructure from '@/components/DealStructure'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
@@ -300,8 +300,9 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched }: {
       .then(({ data }) => setAssessor(data ? { name: (data as any).name || '', phone: (data as any).phone || '' } : null))
   }, [deal?.assigned_credit_officer])
 
-  // Whose copy is on screen — see lib/save-conflict.ts.
-  const dbRef = useRef<string | null>(snapshot(deal.compliance_data))
+  // Whose copy is on screen, and whether writing it would cost anybody
+  // anything — see lib/save-conflict.ts.
+  const guardRef = useRef(newGuard(deal.compliance_data))
   const [conflict, setConflict] = useState(false)
 
   const [styleNotes, setStyleNotes] = useState<string[]>([])
@@ -503,20 +504,22 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched }: {
         ? (d.clientChosenLender === '__other__' ? d.clientChosenLenderOther : d.clientChosenLender)
         : ''
       const chosenId = chosenName ? lenderIdByName[String(chosenName).trim().toLowerCase()] : null
-      const patch: any = { compliance_data: d }
-      if (chosenId) patch.lender_id = chosenId
 
       ;(async () => {
-        if (await someoneElseSaved(supabase, deal.id, 'compliance_data', dbRef.current)) {
-          setConflict(true); setSaveError(''); return
-        }
-        const { data: rows, error } = await supabase.from('deals').update(patch).eq('id', deal.id).select('id')
-        if (error) { console.error('Compliance autosave failed:', error); setSaveError('NOT SAVED - ' + error.message); return }
-        if (!rows || rows.length === 0) { console.error('Compliance autosave affected zero rows'); setSaveError('NOT SAVED - your changes did not reach the database. Do not close this tab.'); return }
-        dbRef.current = snapshot(d)
-        setConflict(false)
+        const out = await saveGuarded({
+          supabase, dealId: deal.id, column: 'compliance_data', guard: guardRef.current, value: d,
+          patch: chosenId ? { lender_id: chosenId } : undefined,
+          // Nothing typed here yet and somebody else has saved: take their
+          // version rather than telling this person off for looking at a deal.
+          // initData returns compliance_data verbatim, so this is exactly what a
+          // fresh load would have put on screen.
+          onAdopt: stored => { if (stored) setD(stored as ComplianceData) },
+        })
+        if (out.kind === 'superseded') return
+        setConflict(out.kind === 'conflict')
+        if (out.kind === 'error') { console.error('Compliance autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
-        setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+        if (out.kind === 'saved') setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
       })()
     }, 700)
     return () => clearTimeout(t)

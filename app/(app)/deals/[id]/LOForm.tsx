@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { formatAsTyped } from '@/lib/money'
 import SaveConflict from '@/components/SaveConflict'
-import { someoneElseSaved, snapshot } from '@/lib/save-conflict'
+import { emptyGuard, adopt, saveGuarded } from '@/lib/save-conflict'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { docsStateOf, atTime, assessorMissing, NO_ASSESSOR_MESSAGE } from '@/lib/docs-received'
 import { legalFeeLabel, rowLegalFeeLabel } from '@/lib/lender-fees'
@@ -522,20 +522,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     })
     supabase.from('deals').select('lo_data').eq('id', deal.id).single().then(({ data }) => {
       if (data?.lo_data && Object.keys(data.lo_data).length > 0) {
-        const loaded = data.lo_data as LOData
-        if (!loaded.importantNotes) loaded.importantNotes = (LO_TEMPLATE_NOTES[loaded.template] || []).join('\n')
-        if (!loaded.refinanceSplits) loaded.refinanceSplits = initRefinanceSplits()
-        // Remembered so the autosave can tell "the form was loaded" apart from
-        // "somebody typed something". Without this, setD below counts as a
-        // change and the form saves itself 700ms after it opens.
-        savedRef.current = JSON.stringify(loaded)
-        // EXACTLY what the database held, before the defaults above were applied.
-        // savedRef cannot be used for the conflict check: it carries those
-        // defaults, so it never matches the stored record and every save would
-        // look like somebody else's.
-        dbRef.current = snapshot(data.lo_data)
-        setD(loaded)
-        if (loaded.emailHtml) setEmailHtml(loaded.emailHtml)
+        putOnScreen(data.lo_data)
       }
     })
   }, [])
@@ -553,8 +540,30 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // somebody else has saved in the meantime it does NOT write - it says so and
   // offers to reload. Refusing to save is the safe failure here; overwriting
   // somebody's afternoon silently is not.
-  const dbRef = useRef<string | null>(null)
+  const guardRef = useRef(emptyGuard())
   const [conflict, setConflict] = useState(false)
+
+  // Put a stored lo_data on screen: the two defaults this form applies on load,
+  // then the state, then the two refs that remember what it came from.
+  //
+  // savedRef and the guard hold DIFFERENT things on purpose. savedRef holds the
+  // value AFTER the defaults, so applying them does not look like typing. The
+  // guard holds EXACTLY what the database had, before them - otherwise it would
+  // never match the stored record and every save would look like somebody
+  // else's.
+  //
+  // Used both on first load and when somebody else has saved while nothing has
+  // been typed here, which is the case that used to put the banner up in front
+  // of people who were only looking.
+  function putOnScreen(stored: any) {
+    const loaded = { ...(stored as LOData) }
+    if (!loaded.importantNotes) loaded.importantNotes = (LO_TEMPLATE_NOTES[loaded.template] || []).join('\n')
+    if (!loaded.refinanceSplits) loaded.refinanceSplits = initRefinanceSplits()
+    savedRef.current = JSON.stringify(loaded)
+    adopt(guardRef.current, stored)
+    setD(loaded)
+    if (loaded.emailHtml) setEmailHtml(loaded.emailHtml)
+  }
 
   useEffect(() => {
     // The database is the only store. No localStorage copy - a per-browser cache keyed only
@@ -580,27 +589,27 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       // the lender: the LO knows which one is recommended and the deal did not.
       const loanNum = Number(String(d.loanAmount || '').replace(/[^0-9.]/g, '')) || null
       const recId = lenderIdByName[String(d.recommendedLender || '').trim().toLowerCase()] || null
-      const patch: any = { lo_data: d }
+      const extraColumns: any = {}
       // Only while the deal is still being written. Once it is lodged, what was
       // lodged and what settled are the record; this figure is an estimate that
       // has been overtaken. See loMayWriteAmount.
-      if (loanNum && loMayWriteAmount(deal)) patch.loan_amount = loanNum
-      if (recId) patch.lender_id = recId
+      if (loanNum && loMayWriteAmount(deal)) extraColumns.loan_amount = loanNum
+      if (recId) extraColumns.lender_id = recId
 
       ;(async () => {
-        // Has anybody else written since this form loaded?
-        if (await someoneElseSaved(supabase, deal.id, 'lo_data', dbRef.current)) {
-          setConflict(true); setSaveError(''); return
-        }
-
-        const { data: rows, error } = await supabase.from('deals').update(patch).eq('id', deal.id).select('id')
-        if (error) { console.error('LO autosave failed:', error); setSaveError('NOT SAVED - ' + error.message); return }
-        if (!rows || rows.length === 0) { console.error('LO autosave affected zero rows'); setSaveError('NOT SAVED - your changes did not reach the database. Do not close this tab.'); return }
-        savedRef.current = now
-        dbRef.current = snapshot(d)
+        const out = await saveGuarded({
+          supabase, dealId: deal.id, column: 'lo_data', guard: guardRef.current, value: d,
+          patch: extraColumns,
+          onAdopt: stored => { if (stored) putOnScreen(stored) },
+        })
+        if (out.kind === 'superseded') return
+        setConflict(out.kind === 'conflict')
+        if (out.kind === 'error') { console.error('LO autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
-        setConflict(false)
-        setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+        if (out.kind === 'saved') {
+          savedRef.current = now
+          setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+        }
       })()
     }, 700)
     return () => clearTimeout(t)

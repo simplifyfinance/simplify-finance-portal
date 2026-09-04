@@ -16,7 +16,7 @@ import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET
 import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship } from '@/lib/relationship'
 import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS } from '@/lib/fact-find'
 import SaveConflict from '@/components/SaveConflict'
-import { someoneElseSaved, snapshot } from '@/lib/save-conflict'
+import { newGuard, saveGuarded } from '@/lib/save-conflict'
 
 function incrementFY(fy: string): string {
   const match = fy.match(/^(\d{4})\/(\d{2})$/)
@@ -397,28 +397,34 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   // Mirror save state up to the deal header, which owns the single indicator.
   useEffect(() => { onSaveStatus?.({ at: savedAt, error: saveError }) }, [savedAt, saveError])
 
-  // Whose copy is on screen — see lib/save-conflict.ts.
-  const dbRef = useRef<string | null>(snapshot(deal.fact_find_data))
+  // Whose copy is on screen, and whether writing it would cost anybody
+  // anything — the whole decision lives in lib/save-conflict.ts so all four
+  // tabs cannot drift into judging it differently.
+  const guardRef = useRef(newGuard(deal.fact_find_data))
   const [conflict, setConflict] = useState(false)
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    // The database is the only store - no localStorage copy. The row count is checked
-    // because a write refused by row-level security returns zero rows and no error.
+    // The database is the only store - no localStorage copy.
     onDataChange?.(d)
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
     saveTimeoutRef.current = setTimeout(() => {
       ;(async () => {
-        if (await someoneElseSaved(supabase, deal.id, 'fact_find_data', dbRef.current)) {
-          setConflict(true); setSaveError(''); return
-        }
-        const { data: rows, error } = await supabase.from('deals').update({ fact_find_data: d }).eq('id', deal.id).select('id')
-        if (error) { console.error('Fact find autosave failed:', error); setSaveError('NOT SAVED - ' + error.message); return }
-        if (!rows || rows.length === 0) { console.error('Fact find autosave affected zero rows'); setSaveError('NOT SAVED - your changes did not reach the database. Do not close this tab.'); return }
-        dbRef.current = snapshot(d)
-        setConflict(false)
+        const out = await saveGuarded({
+          supabase, dealId: deal.id, column: 'fact_find_data', guard: guardRef.current, value: d,
+          // Nothing typed here yet and somebody else has saved: take their
+          // version rather than telling this person off for looking at a deal.
+          // initData returns fact_find_data verbatim, so this is exactly what a
+          // fresh load would have put on screen.
+          onAdopt: stored => { if (stored) setD(stored as FactFindData) },
+        })
+        // A newer save is already queued behind this one. Saying anything here
+        // would be about a payload that has been overtaken.
+        if (out.kind === 'superseded') return
+        setConflict(out.kind === 'conflict')
+        if (out.kind === 'error') { console.error('Fact find autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
-        setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+        if (out.kind === 'saved') setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
       })()
     }, 600)
   }, [d])
@@ -449,7 +455,16 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
           income = income.map(inc => inc.id === orphan.id ? { ...inc, employmentId: emp.id, incomeType: emp.employmentType } : inc)
           changed = true
         } else {
-          income = [...income, { ...defaultIncome(emp.employmentType), employmentId: emp.id }]
+          // A DERIVED ID, NOT A RANDOM ONE.
+          //
+          // This row is created by housekeeping, not by a person - it appears
+          // the moment somebody opens a fact find where a job has no income line
+          // against it. With a random id, two people opening the same deal each
+          // invented a DIFFERENT row, so their two copies of the record could
+          // never agree and each was told the other had saved underneath them.
+          // Derived from the job it belongs to, everybody's housekeeping arrives
+          // at exactly the same row and there is nothing to disagree about.
+          income = [...income, { ...defaultIncome(emp.employmentType), id: `inc-${emp.id}`, employmentId: emp.id }]
           changed = true
         }
       } else if (existing.incomeType !== emp.employmentType) {
