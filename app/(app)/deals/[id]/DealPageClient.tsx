@@ -1,5 +1,6 @@
 'use client'
 import { brokerLabel } from '@/lib/broker-key'
+import DealPresence from '@/components/DealPresence'
 import { useState, useEffect } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -281,6 +282,12 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           </button>
         ))}
       </div>
+
+      {/* WHO ELSE IS IN HERE. Advisory only — it locks nothing. Sits above the
+          tab content so it is read before somebody starts typing, and names the
+          TAB they are on, because two people on different tabs write different
+          columns and are not in each other's way. See lib/presence.ts. */}
+      <DealPresence dealId={dealData.id} tab={tabs.find(t => t.key === stage)?.label || stage} />
 
       <TabLock locked={isLocked(dealData) && unlockedTab !== stage} tab={stage} dealId={dealData.id}
         role={userRole} me={me}
