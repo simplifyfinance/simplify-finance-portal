@@ -62,3 +62,36 @@ export const LEGAL_FEE_LABELS: { lender: string; label: string; fee: string }[] 
   { lender: 'NAB',               label: 'Settlement fee', fee: 'None — government registration fees only' },
   { lender: 'ubank',             label: 'Settlement fee', fee: '$250' },
 ]
+
+// A FEE, WRITTEN THE WAY A FEE IS WRITTEN.
+//
+// The library's fee boxes are free text on purpose - a fee is not always a
+// number. "None — government fees only", "Free up to $360" and "Break cost on
+// fixed" are all real answers, and forcing them through a currency input would
+// lose them.
+//
+// But free text means somebody types 250 and 250 is what the client sees, in a
+// row where every other lender says $350. Fabio, 4 Sep 2026: "I have had to go
+// back and change the lender library a few times as it keeps dropping off the
+// dollar sign."
+//
+// So: a value that is only a number gets a dollar sign. A value with words in it
+// is left exactly as typed. Applied when the library SAVES and again when
+// anything RENDERS - rendering is what repairs the rows already saved without a
+// migration, and stops the next bare one being seen by a client.
+export function feeText(v: any): string {
+  const t = String(v ?? '').trim()
+  if (!t) return ''
+  if (t.startsWith('$')) return t
+
+  // A plain amount, with or without commas or cents: 250, 1,250, 250.00
+  const plain = t.match(/^(\d[\d,]*(?:\.\d{1,2})?)$/)
+  if (plain) return '$' + plain[1]
+
+  // An amount with a unit hanging off it: 395/yr, 250 per year, 120pa
+  const suffixed = t.match(/^(\d[\d,]*(?:\.\d{1,2})?)\s*(\/\s*yr|\/\s*year|p\.?a\.?|per\s+year|per\s+annum|\/\s*mth|\/\s*month|per\s+month)$/i)
+  if (suffixed) return '$' + suffixed[1] + (suffixed[2].startsWith('/') ? suffixed[2].replace(/\s/g, '') : ' ' + suffixed[2])
+
+  // Anything with words in it is somebody's sentence. Leave it alone.
+  return t
+}

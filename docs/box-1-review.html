@@ -1,0 +1,78 @@
+<!doctype html>
+<meta charset="utf-8"><title>Box 1 — Primary reasons for seeking credit</title>
+<style>
+ body { margin:0; background:#EDEDEA; font:14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; color:#221F1B; }
+ .wrap { max-width:900px; margin:0 auto; padding:26px 20px 70px; }
+ h1 { font-size:18px; margin:0 0 3px; }
+ .sub { font-size:12.5px; color:#7E766B; margin:0 0 18px; }
+ h2 { font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:#8E8578; font-weight:700;
+      margin:28px 0 10px; padding-bottom:6px; border-bottom:1px solid #DDD8CE; }
+ .card { background:#fff; border:1px solid #E5E0D6; border-radius:10px; padding:15px 18px; }
+ .card p { margin:0 0 10px; font-size:13px; line-height:1.65; color:#5F584F; }
+ .card p:last-child { margin-bottom:0; }
+ ul { margin:0; padding-left:19px; }
+ li { font-size:13px; line-height:1.62; color:#5F584F; margin-bottom:4px; }
+ .meta { display:flex; gap:0; flex-wrap:wrap; background:#fff; border:1px solid #E5E0D6; border-radius:10px; }
+ .meta div { flex:1 1 190px; padding:12px 16px; border-left:1px solid #F0EBE3; }
+ .meta div:first-child { border-left:0; }
+ .k { font-size:9px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:#A29889; }
+ .v { font-size:13px; color:#2E2A26; margin-top:3px; line-height:1.5; }
+ .fence { border:2px solid #C4553B; background:#FDF2F0; border-radius:10px; padding:14px 17px; }
+ .fence h4 { margin:0 0 6px; font-size:12.5px; color:#8A3A2E; }
+ .fence p { margin:0; font-size:12.5px; line-height:1.6; color:#8A3A2E; }
+ pre { background:#fff; border:1px solid #E5E0D6; border-radius:9px; padding:15px 17px; margin:8px 0 0;
+       font:12px/1.68 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; white-space:pre-wrap; color:#2E2A26; }
+ mark { background:#FFE9A8; padding:0 2px; border-radius:2px; }
+ table { width:100%; border-collapse:collapse; background:#fff; border:1px solid #E5E0D6; border-radius:10px; }
+ td { font-size:12.5px; line-height:1.55; color:#5F584F; padding:8px 12px; border-bottom:1px solid #F2EEE7; vertical-align:top; }
+ td.f { color:#2E2A26; font-weight:600; width:36%; }
+ tr:last-child td { border-bottom:0; }
+</style>
+<div class="wrap">
+<h1>Box 1 — Primary reasons for seeking credit</h1>
+<p class="sub">Draft for review. Nothing wired in.</p>
+
+<h2>What compliance says it must cover</h2>
+<div class="card"><ul><li>Purpose of the loan (owner occupied / investment) and why</li><li>Loan amount / loan term and why</li><li>Any specific features / lenders / interest rate types / repayment types and why</li><li>Any flexibility on the client’s stated needs and objectives and why</li><li>Savings held / retention of any savings and why</li><li>Any personal circumstances that may affect the loan (financial circumstances, employment, family status)</li><li>First home buyer</li></ul></div>
+
+<h2>Their rules</h2>
+<div class="meta">
+ <div><div class="k">Rule</div><div class="v">Must reference client goals</div></div>
+ <div><div class="k">Output style</div><div class="v">Short paragraph</div></div>
+ <div><div class="k">If a fact is missing</div><div class="v">“Not provided – requires confirmation.”</div></div>
+</div>
+
+<h2>The approved example — figures swapped</h2>
+<div class="fence">
+  <h4>Why the numbers look odd</h4>
+  <p>Hand a model a worked example and it borrows from it — a suburb, a lender, a figure. So the real
+  ones are replaced with values no deal will ever have: <b>$1,111,000 · $777,000 · 70% · age 44 ·
+  $111,000 · Exampleton · Example Bank</b>. If any of those ever surfaces in a real answer, it is
+  obvious at a glance and we know the fence failed.</p>
+</div>
+<pre>The applicant is seeking finance to purchase an investment property in Exampleton, NSW valued at approximately $1,111,000. She is requesting a loan amount of $777,000 over a 30-year term, representing a conservative LVR of approximately 70%.
+
+The applicant has requested a split loan structure comprising both Interest Only and Principal &amp; Interest repayments. The Interest Only split will assist with cash flow flexibility, while the Principal &amp; Interest split will facilitate debt reduction and equity accumulation from settlement.
+
+The applicant prefers Example Bank and requires a variable rate loan with offset, redraw and online banking functionality. While Example Bank is the preferred lender, the applicant is willing to consider alternative lenders that meet her requirements and provide a suitable overall outcome.
+
+Funds for the purchase will be sourced from existing savings and the sale of shares. The applicant intends to retain a cash buffer after settlement to provide ongoing financial flexibility and cover unforeseen expenses.
+
+The applicant is a 44-year-old full-time Office Manager earning approximately $111,000 per annum. She has two dependent children under a shared custody arrangement, stable employment, a strong asset position and no adverse credit history.
+
+The applicant is not a first home buyer.</pre>
+
+<h2>Every fact in it, and where it comes from</h2>
+<table><tr><td class="f">Investment or owner occupied</td><td>LO → each split’s purpose dropdown, added up. Never guessed from the scenario name</td></tr><tr><td class="f">Suburb and state</td><td>Compliance → security address on the deal structure block, else BC → suburb</td></tr><tr><td class="f">Property value</td><td>BC → purchase price, or every security added up on a refinance</td></tr><tr><td class="f">Loan amount</td><td>LO → loanAmount, else the BC splits added up</td></tr><tr><td class="f">Loan term</td><td>Compliance → term per split on the deal structure block, else BC → loanTerm</td></tr><tr><td class="f">LVR</td><td>Total lending ÷ every security recorded. Absent, never estimated, if either half is missing</td></tr><tr><td class="f">Split structure, and P&amp;I or IO per split</td><td>LO → the recommended lender’s own splits</td></tr><tr><td class="f">Preferred lender</td><td>LO → recommendedLender</td></tr><tr><td class="f">Rate type</td><td>LO → which rate module the broker switched on (variable or fixed)</td></tr><tr><td class="f">Offset and redraw</td><td>LO → the recommended lender’s feature answers. Never claimed unless confirmed present</td></tr><tr><td class="f">Willingness to consider alternatives</td><td>LO → research criteria ticked, and the lender options actually researched</td></tr><tr><td class="f">Where the funds come from</td><td>BC → deposit source</td></tr><tr><td class="f">Savings retained after settlement</td><td>Fact find → assets, against the funds to complete. Only stated if there is something left over</td></tr><tr><td class="f">Age</td><td>Fact find → date of birth</td></tr><tr><td class="f">Employment basis, occupation, employer, income</td><td>Fact find → current employment and income rows, by type</td></tr><tr><td class="f">Dependants</td><td>Fact find → dependants. Not the BC copy, which defaults to zero when blank</td></tr><tr><td class="f">Custody arrangement</td><td>NOT RECORDED anywhere. Only ever appears if the broker wrote it in the goals boxes</td></tr><tr><td class="f">Credit history</td><td>Compliance → the four credit history answers on the Risks tab, as declarations</td></tr><tr><td class="f">First home buyer</td><td>BC → scenario is fhb, or the fact find shows property already held</td></tr></table>
+
+<h2>The two to talk about first</h2>
+<div class="card">
+<p><b>Custody arrangement.</b> The example says “two dependent children under a shared custody
+arrangement”. The portal records the number of dependants and nothing else — no custody, no ages. So
+that clause can only ever come from the broker writing it in the goals boxes. Either we accept it will
+usually be absent, or the fact find needs to ask.</p>
+<p><b>Savings retained after settlement.</b> “Intends to retain a cash buffer” is a real compliance
+point, and we can only state it when assets exceed the funds to complete. Worth deciding whether the
+model says nothing when it cannot see a surplus, or says the buffer is not recorded.</p>
+</div>
+</div>

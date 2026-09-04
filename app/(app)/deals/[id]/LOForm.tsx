@@ -527,11 +527,32 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         // "somebody typed something". Without this, setD below counts as a
         // change and the form saves itself 700ms after it opens.
         savedRef.current = JSON.stringify(loaded)
+        // EXACTLY what the database held, before the defaults above were applied.
+        // savedRef cannot be used for the conflict check: it carries those
+        // defaults, so it never matches the stored record and every save would
+        // look like somebody else's.
+        dbRef.current = JSON.stringify(data.lo_data)
         setD(loaded)
         if (loaded.emailHtml) setEmailHtml(loaded.emailHtml)
       }
     })
   }, [])
+
+  // WHOSE COPY IS ON SCREEN.
+  //
+  // This form autosaves the WHOLE lo_data blob. With two people on one deal that
+  // is last-write-wins on a shared document: Katie fills in the rates, her
+  // browser writes the blob; the next keystroke in anybody else's browser writes
+  // THEIR blob, loaded before those rates existed, and the rates are gone with no
+  // error and nothing on screen. Fabio, 4 Sep 2026: "Katie put all the rates and
+  // repayments in but when it came to me some of the boxes were blank."
+  //
+  // So before every write it checks the record is still the one it loaded. If
+  // somebody else has saved in the meantime it does NOT write - it says so and
+  // offers to reload. Refusing to save is the safe failure here; overwriting
+  // somebody's afternoon silently is not.
+  const dbRef = useRef<string | null>(null)
+  const [conflict, setConflict] = useState(false)
 
   useEffect(() => {
     // The database is the only store. No localStorage copy - a per-browser cache keyed only
@@ -564,13 +585,25 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       if (loanNum && loMayWriteAmount(deal)) patch.loan_amount = loanNum
       if (recId) patch.lender_id = recId
 
-      supabase.from('deals').update(patch).eq('id', deal.id).select('id').then(({ data: rows, error }) => {
+      ;(async () => {
+        // Has anybody else written since this form loaded?
+        const { data: fresh } = await supabase.from('deals').select('lo_data').eq('id', deal.id).single()
+        const theirs = JSON.stringify(fresh?.lo_data ?? null)
+        if (dbRef.current !== null && theirs !== dbRef.current) {
+          setConflict(true)
+          setSaveError('')
+          return
+        }
+
+        const { data: rows, error } = await supabase.from('deals').update(patch).eq('id', deal.id).select('id')
         if (error) { console.error('LO autosave failed:', error); setSaveError('NOT SAVED - ' + error.message); return }
         if (!rows || rows.length === 0) { console.error('LO autosave affected zero rows'); setSaveError('NOT SAVED - your changes did not reach the database. Do not close this tab.'); return }
         savedRef.current = now
+        dbRef.current = JSON.stringify(d)
         setSaveError('')
+        setConflict(false)
         setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
-      })
+      })()
     }, 700)
     return () => clearTimeout(t)
   }, [d])
@@ -1061,6 +1094,27 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       )}
       {docsErr && (
         <div className="border border-red-200 bg-red-50 rounded-xl px-4 py-3 text-[13px] text-red-600">{docsErr}</div>
+      )}
+
+      {/* SOMEBODY ELSE SAVED WHILE THIS WAS OPEN.
+          Nothing has been written - the autosave stopped rather than overwrite
+          their work. Reloading is the only safe way forward, and it says plainly
+          what happens to anything typed since. */}
+      {conflict && (
+        <div className="border-2 border-[#C4553B] bg-[#FDF2F0] rounded-xl px-4 py-3.5 mb-4">
+          <h4 className="m-0 mb-1 text-[13.5px] font-bold text-[#6E2A20]">
+            Somebody else has saved this Lending options while you had it open
+          </h4>
+          <p className="m-0 text-[12.5px] leading-[1.6] text-[#8A3A2E]">
+            Your screen is out of date, so <b>nothing you have typed since has been saved</b> — saving it
+            would wipe out whatever they just entered. Reload to pick up their version. Anything you typed
+            in the last few minutes will need typing again, so copy it somewhere first if you need it.
+          </p>
+          <button onClick={() => window.location.reload()}
+            className="mt-2.5 bg-[#C4553B] text-white rounded-lg px-3.5 py-1.5 text-[12.5px] font-semibold hover:bg-[#a8492f] transition">
+            Reload this deal
+          </button>
+        </div>
       )}
 
       {activeTab === 'form' && (

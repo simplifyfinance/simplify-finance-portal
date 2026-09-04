@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite, checkedWriteAllowingNone } from '@/lib/checked-write'
-import { legalFeeLabel, confirmedFeeLabel, DEFAULT_LEGAL_FEE_LABEL } from '@/lib/lender-fees'
+import { legalFeeLabel, confirmedFeeLabel, DEFAULT_LEGAL_FEE_LABEL, feeText } from '@/lib/lender-fees'
 
 // legal_fee_label: what THIS bank calls the fee charged at settlement. Most say
 // "Settlement fee"; Bankwest says "Legal fee". Blank means Legal fee, which is
@@ -207,16 +207,33 @@ export default function LenderLibrary() {
     setProductModal({ lenderId: product.lender_id, lenderName })
   }
 
+  // EVERY FEE GETS ITS DOLLAR SIGN ON THE WAY IN.
+  //
+  // These boxes are free text because a fee is not always a number - "None —
+  // government fees only" is a real answer. But it means somebody types 250 and
+  // the client sees 250 next to another lender's $350. Fabio, 4 Sep 2026: "it
+  // keeps dropping off the dollar sign." A bare number gets one; a sentence is
+  // left exactly as typed. See feeText in lib/lender-fees.ts.
+  const FEE_FIELDS = ['application_fee', 'annual_fee', 'valuation_fee', 'legal_fee',
+                      'rate_lock_fee', 'early_repayment_fee', 'discharge_fee'] as const
+
+  function withTidyFees(form: typeof productForm) {
+    const out: any = { ...form }
+    for (const k of FEE_FIELDS) if (k in out) out[k] = feeText(out[k])
+    return out
+  }
+
   async function saveProduct() {
     if (!productModal || !productForm.product_name.trim()) return
     setSavingProduct(true)
+    const tidy = withTidyFees(productForm)
     if (editProductId) {
       const problem = await checkedWrite(
-        supabase.from('lender_products').update(productForm).eq('id', editProductId), 'That product')
+        supabase.from('lender_products').update(tidy).eq('id', editProductId), 'That product')
       if (problem) { setWriteError(problem); setSavingProduct(false); return }
-      setProducts(prev => prev.map(p => p.id === editProductId ? { ...p, ...productForm } : p))
+      setProducts(prev => prev.map(p => p.id === editProductId ? { ...p, ...tidy } : p))
     } else {
-      const payload = { ...productForm, lender_id: productModal.lenderId }
+      const payload = { ...tidy, lender_id: productModal.lenderId }
       const { data, error } = await supabase.from('lender_products').insert(payload).select().single()
       if (error || !data) {
         setWriteError('That product was not saved - ' + (error?.message || 'the database refused it.'))
@@ -633,24 +650,24 @@ export default function LenderLibrary() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-gray-400 block mb-1">Application / advance fee</label>
-                    <input className={inp} value={productForm.application_fee} onChange={e => setProductForm({...productForm, application_fee: e.target.value})} placeholder="e.g. $250" />
+                    <input className={inp} value={productForm.application_fee} onChange={e => setProductForm({...productForm, application_fee: e.target.value})} onBlur={e => setProductForm(f => ({...f, application_fee: feeText(e.target.value)}))} placeholder="e.g. $250" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 block mb-1">Annual / ongoing fee</label>
-                    <input className={inp} value={productForm.annual_fee} onChange={e => setProductForm({...productForm, annual_fee: e.target.value})} placeholder="e.g. $395/yr or None" />
+                    <input className={inp} value={productForm.annual_fee} onChange={e => setProductForm({...productForm, annual_fee: e.target.value})} onBlur={e => setProductForm(f => ({...f, annual_fee: feeText(e.target.value)}))} placeholder="e.g. $395/yr or None" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 block mb-1">Valuation fee</label>
-                    <input className={inp} value={productForm.valuation_fee} onChange={e => setProductForm({...productForm, valuation_fee: e.target.value})} placeholder="e.g. Free up to $360" />
+                    <input className={inp} value={productForm.valuation_fee} onChange={e => setProductForm({...productForm, valuation_fee: e.target.value})} onBlur={e => setProductForm(f => ({...f, valuation_fee: feeText(e.target.value)}))} placeholder="e.g. Free up to $360" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 block mb-1">{legalFeeLabel(lenders.find(l => l.id === productModal.lenderId))}</label>
-                    <input className={inp} value={productForm.legal_fee} onChange={e => setProductForm({...productForm, legal_fee: e.target.value})} placeholder="e.g. $150, or None — government fees only" />
+                    <input className={inp} value={productForm.legal_fee} onChange={e => setProductForm({...productForm, legal_fee: e.target.value})} onBlur={e => setProductForm(f => ({...f, legal_fee: feeText(e.target.value)}))} placeholder="e.g. $150, or None — government fees only" />
                   </div>
                   {(productForm.rate_type === 'fixed' || productForm.rate_type === 'both') && (
                     <div>
                       <label className="text-xs text-gray-400 block mb-1">Rate lock fee</label>
-                      <input className={inp} value={productForm.rate_lock_fee} onChange={e => setProductForm({...productForm, rate_lock_fee: e.target.value})} placeholder="e.g. $500" />
+                      <input className={inp} value={productForm.rate_lock_fee} onChange={e => setProductForm({...productForm, rate_lock_fee: e.target.value})} onBlur={e => setProductForm(f => ({...f, rate_lock_fee: feeText(e.target.value)}))} placeholder="e.g. $500" />
                     </div>
                   )}
                 </div>
@@ -658,11 +675,11 @@ export default function LenderLibrary() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-gray-400 block mb-1">Early repayment fee</label>
-                    <input className={inp} value={productForm.early_repayment_fee} onChange={e => setProductForm({...productForm, early_repayment_fee: e.target.value})} placeholder="e.g. Break cost on fixed, or None" />
+                    <input className={inp} value={productForm.early_repayment_fee} onChange={e => setProductForm({...productForm, early_repayment_fee: e.target.value})} onBlur={e => setProductForm(f => ({...f, early_repayment_fee: feeText(e.target.value)}))} placeholder="e.g. Break cost on fixed, or None" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 block mb-1">Discharge fee</label>
-                    <input className={inp} value={productForm.discharge_fee} onChange={e => setProductForm({...productForm, discharge_fee: e.target.value})} placeholder="e.g. $350" />
+                    <input className={inp} value={productForm.discharge_fee} onChange={e => setProductForm({...productForm, discharge_fee: e.target.value})} onBlur={e => setProductForm(f => ({...f, discharge_fee: feeText(e.target.value)}))} placeholder="e.g. $350" />
                   </div>
                 </div>
               </div>
