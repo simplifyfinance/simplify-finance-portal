@@ -16,7 +16,8 @@ import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET
 import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship } from '@/lib/relationship'
 import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS } from '@/lib/fact-find'
 import SaveConflict from '@/components/SaveConflict'
-import { newGuard, saveGuarded } from '@/lib/save-conflict'
+import SaveMerged from '@/components/SaveMerged'
+import { newGuard, saveGuarded, mergeMessage } from '@/lib/save-conflict'
 
 function incrementFY(fy: string): string {
   const match = fy.match(/^(\d{4})\/(\d{2})$/)
@@ -401,7 +402,9 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   // anything — the whole decision lives in lib/save-conflict.ts so all four
   // tabs cannot drift into judging it differently.
   const guardRef = useRef(newGuard(deal.fact_find_data))
-  const [conflict, setConflict] = useState(false)
+  // The field both people changed, or null when there is nothing to say.
+  const [conflictFields, setConflictFields] = useState<string | null>(null)
+  const [mergedNote, setMergedNote] = useState('')
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
@@ -417,14 +420,19 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
           // initData returns fact_find_data verbatim, so this is exactly what a
           // fresh load would have put on screen.
           onAdopt: stored => { if (stored) setD(stored as FactFindData) },
+          // Somebody else saved different fields while this person was typing.
+          // Their fields go on screen without rebuilding the form, so the caret
+          // stays where it is and the field being typed into is untouched.
+          onMerge: merged => setD(merged as FactFindData),
         })
         // A newer save is already queued behind this one. Saying anything here
         // would be about a payload that has been overtaken.
         if (out.kind === 'superseded') return
-        setConflict(out.kind === 'conflict')
+        setConflictFields(out.kind === 'conflict' ? out.fields : null)
         if (out.kind === 'error') { console.error('Fact find autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
-        if (out.kind === 'saved') setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+        if (out.kind === 'merged') setMergedNote(mergeMessage(out.fields))
+        if (out.kind === 'saved' || out.kind === 'merged') setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
       })()
     }, 600)
   }, [d])
@@ -832,7 +840,8 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
 
   return (
     <div className="grid grid-cols-[480px_1fr] gap-4 items-start">
-      <SaveConflict tab="Fact Find" show={conflict} />
+      <SaveConflict tab="Fact Find" fields={conflictFields} />
+      <SaveMerged message={mergedNote} onDismiss={() => setMergedNote('')} />
       <div>
         {/* One notes field for the whole deal. This used to be a box of its own
             saving to fact_find_data.internalNotes, with two more like it on BC

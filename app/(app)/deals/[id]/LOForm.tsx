@@ -2,7 +2,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { formatAsTyped } from '@/lib/money'
 import SaveConflict from '@/components/SaveConflict'
-import { emptyGuard, adopt, saveGuarded } from '@/lib/save-conflict'
+import SaveMerged from '@/components/SaveMerged'
+import { emptyGuard, adopt, saveGuarded, mergeMessage } from '@/lib/save-conflict'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { docsStateOf, atTime, assessorMissing, NO_ASSESSOR_MESSAGE } from '@/lib/docs-received'
 import { legalFeeLabel, rowLegalFeeLabel } from '@/lib/lender-fees'
@@ -541,7 +542,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // offers to reload. Refusing to save is the safe failure here; overwriting
   // somebody's afternoon silently is not.
   const guardRef = useRef(emptyGuard())
-  const [conflict, setConflict] = useState(false)
+  // The field both people changed, or null when there is nothing to say.
+  const [conflictFields, setConflictFields] = useState<string | null>(null)
+  const [mergedNote, setMergedNote] = useState('')
 
   // Put a stored lo_data on screen: the two defaults this form applies on load,
   // then the state, then the two refs that remember what it came from.
@@ -601,13 +604,20 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           supabase, dealId: deal.id, column: 'lo_data', guard: guardRef.current, value: d,
           patch: extraColumns,
           onAdopt: stored => { if (stored) putOnScreen(stored) },
+          // THE KATIE CASE. She fills in the rates, somebody else is typing in
+          // another part of the same tab. Both are saved and her rates appear
+          // here - as a state update, so nobody loses what they are mid-way
+          // through typing. savedRef is moved with it, or the merged record
+          // would read as something this person typed and save itself again.
+          onMerge: merged => { savedRef.current = JSON.stringify(merged); adopt(guardRef.current, merged); setD(merged as LOData) },
         })
         if (out.kind === 'superseded') return
-        setConflict(out.kind === 'conflict')
+        setConflictFields(out.kind === 'conflict' ? out.fields : null)
         if (out.kind === 'error') { console.error('LO autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
-        if (out.kind === 'saved') {
-          savedRef.current = now
+        if (out.kind === 'merged') setMergedNote(mergeMessage(out.fields))
+        if (out.kind === 'saved') savedRef.current = now
+        if (out.kind === 'saved' || out.kind === 'merged') {
           setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
         }
       })()
@@ -1103,7 +1113,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         <div className="border border-red-200 bg-red-50 rounded-xl px-4 py-3 text-[13px] text-red-600">{docsErr}</div>
       )}
 
-      <SaveConflict tab="Lending options" show={conflict} />
+      <SaveConflict tab="Lending options" fields={conflictFields} />
+      <SaveMerged message={mergedNote} onDismiss={() => setMergedNote('')} />
 
       {activeTab === 'form' && (
         <div className="space-y-4">

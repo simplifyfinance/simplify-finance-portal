@@ -692,7 +692,10 @@ function BCFormInner({ deal, onDataChange, onStageChange, userRole, onSaveStatus
   // OPEN as well as on edit, so without the guard simply opening a deal card
   // somebody else is working in overwrites what they have typed.
   const guardRef = useRef(newGuard(deal.bc_data))
-  const [conflict, setConflict] = useState(false)
+  // The field both people changed, or null when there is nothing to say. BC
+  // cannot merge - see lib/save-conflict.ts - so for this tab it is only ever
+  // the empty string, meaning "somebody else is in here".
+  const [conflictFields, setConflictFields] = useState<string | null>(null)
   // What the database last agreed with. OPENING THIS FORM IS NOT EDITING IT:
   // the fields seed themselves from the fact find where bc_data is blank, so the
   // very first run produces a value that differs from the stored record and used
@@ -724,7 +727,7 @@ function BCFormInner({ deal, onDataChange, onStageChange, userRole, onSaveStatus
           onAdopt: stored => onAdopt(stored),
         })
         if (out.kind === 'superseded') return
-        setConflict(out.kind === 'conflict')
+        setConflictFields(out.kind === 'conflict' ? out.fields : null)
         if (out.kind === 'error') { console.error('BC autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
         if (out.kind === 'saved') {
@@ -1020,7 +1023,7 @@ Key assumptions: ${checklistText}`
 
   return (
     <div>
-      <SaveConflict tab="BC" show={conflict} />
+      <SaveConflict tab="BC" fields={conflictFields} />
       <div className="flex gap-2 mb-4 items-center flex-wrap">
         {[['form','BC form'],['preview','Preview & share']].map(([id,label]) => (
           <button key={id} onClick={() => setActiveTab(id as any)}

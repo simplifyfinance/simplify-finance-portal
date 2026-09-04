@@ -34,8 +34,8 @@ function fakeDb(initial: any, opts: { readError?: any; rlsBlocks?: boolean } = {
   return { supabase, state }
 }
 
-const save = (supabase: any, guard: any, value: any, onAdopt?: any) =>
-  saveGuarded({ supabase, dealId: 'd1', column: 'fact_find_data', guard, value, onAdopt })
+const save = (supabase: any, guard: any, value: any, onAdopt?: any, onMerge?: any) =>
+  saveGuarded({ supabase, dealId: 'd1', column: 'fact_find_data', guard, value, onAdopt, onMerge })
 
 describe('opening a deal is not editing it', () => {
   it('writes nothing when the form has only just appeared on screen', async () => {
@@ -123,16 +123,29 @@ describe('somebody else has saved', () => {
     expect(state.writes).toHaveLength(1)
   })
 
-  it('refuses to save, and says so, when we have typed too', async () => {
+  it('refuses when the form cannot fold their fields in', async () => {
     const loaded = { dependants: '0', suburb: '' }
     const { supabase, state } = fakeDb(loaded)
     const kylie = newGuard(loaded)
     const katie = newGuard(loaded)
     await save(supabase, katie, { dependants: '2', suburb: '' })
-    expect(await save(supabase, kylie, { dependants: '0', suburb: 'Killara' }, () => {}))
-      .toEqual({ kind: 'conflict' })
+    // onAdopt but no onMerge - this is BC.
+    const out = await save(supabase, kylie, { dependants: '0', suburb: 'Killara' }, () => {})
+    expect(out.kind).toBe('conflict')
     expect(state.writes).toHaveLength(1)
     expect(state.value).toEqual({ dependants: '2', suburb: '' })
+  })
+
+  it('refuses on the SAME field, and names it', async () => {
+    const loaded = { dependants: '0' }
+    const { supabase, state } = fakeDb(loaded)
+    const kylie = newGuard(loaded)
+    await save(supabase, newGuard(loaded), { dependants: '2' })
+    const out = await save(supabase, kylie, { dependants: '3' }, () => {}, () => {})
+    expect(out.kind).toBe('conflict')
+    expect((out as any).fields).toBe('Dependants')
+    // Nothing of theirs was touched.
+    expect(state.value).toEqual({ dependants: '2' })
   })
 
   // Refusing has to be recoverable, or it is not a guard, it is a lock.
@@ -141,7 +154,7 @@ describe('somebody else has saved', () => {
     const { supabase } = fakeDb(loaded)
     const kylie = newGuard(loaded)
     await save(supabase, newGuard(loaded), { dependants: '2', suburb: '' })
-    expect(await save(supabase, kylie, { dependants: '0', suburb: 'Killara' }, () => {})).toEqual({ kind: 'conflict' })
+    expect((await save(supabase, kylie, { dependants: '0', suburb: 'Killara' }, () => {})).kind).toBe('conflict')
     // Reload: the form comes back holding what the database now says.
     const afterReload = newGuard({ dependants: '2', suburb: '' })
     expect(await save(supabase, afterReload, { dependants: '2', suburb: 'Killara' })).toEqual({ kind: 'saved' })
@@ -153,7 +166,7 @@ describe('somebody else has saved', () => {
     const { supabase } = fakeDb(loaded)
     const guard = newGuard(loaded)
     await save(supabase, newGuard(loaded), { dependants: '2' })
-    expect(await save(supabase, guard, loaded)).toEqual({ kind: 'conflict' })
+    expect((await save(supabase, guard, loaded)).kind).toBe('conflict')
   })
 
   it('settles when they happened to type exactly what we were about to', async () => {
@@ -207,5 +220,83 @@ describe('what the banner says', () => {
 
   it('says plainly that nothing was saved', () => {
     expect(conflictMessage('BC').body).toContain('has been saved')
+  })
+})
+
+
+// THE CASE THE WHOLE THING EXISTS FOR. Katie fills in the rates while Kylie
+// fills in a date of birth. Neither should be told anything is wrong, and
+// neither should lose a keystroke.
+describe('two people, different fields', () => {
+  const loaded = () => ({
+    dependants: '0',
+    applicants: [{ id: 'a1', firstName: 'Ricardo', dob: '' }],
+    lenders: [{ id: 'l1', lenderName: 'UBank', rate: '' }],
+  })
+
+  it('keeps both, writes once, and says whose came in', async () => {
+    const { supabase, state } = fakeDb(loaded())
+    const katie = newGuard(loaded())
+    const kylie = newGuard(loaded())
+
+    // Katie: the rate.
+    const katieScreen = loaded(); katieScreen.lenders[0].rate = '5.64'
+    expect((await save(supabase, katie, katieScreen)).kind).toBe('saved')
+
+    // Kylie, who never saw that rate, types a date of birth.
+    let kylieScreen: any = loaded(); kylieScreen.applicants[0].dob = '14/03/1979'
+    const out = await save(supabase, kylie, kylieScreen, undefined, (m: any) => { kylieScreen = m })
+    expect(out.kind).toBe('merged')
+    expect((out as any).fields).toBe('Lender option 1 - Rate')
+
+    // Both are in the record.
+    expect(state.value.lenders[0].rate).toBe('5.64')
+    expect(state.value.applicants[0].dob).toBe('14/03/1979')
+    // And on Kylie's screen, so her next keystroke cannot undo Katie's rate.
+    expect(kylieScreen.lenders[0].rate).toBe('5.64')
+  })
+
+  it('does not undo their work on the very next keystroke', async () => {
+    const { supabase, state } = fakeDb(loaded())
+    const katie = newGuard(loaded())
+    const kylie = newGuard(loaded())
+    const katieScreen = loaded(); katieScreen.lenders[0].rate = '5.64'
+    await save(supabase, katie, katieScreen)
+
+    let kylieScreen: any = loaded(); kylieScreen.applicants[0].dob = '14/03/1979'
+    await save(supabase, kylie, kylieScreen, undefined, (m: any) => { kylieScreen = m })
+    // She keeps typing.
+    kylieScreen = { ...kylieScreen, dependants: '2' }
+    expect((await save(supabase, kylie, kylieScreen, undefined, (m: any) => { kylieScreen = m })).kind).toBe('saved')
+    expect(state.value.lenders[0].rate).toBe('5.64')
+    expect(state.value.dependants).toBe('2')
+  })
+
+  it('merges a row they added into a list this screen has never seen it in', async () => {
+    const { supabase, state } = fakeDb(loaded())
+    const katie = newGuard(loaded())
+    const kylie = newGuard(loaded())
+    const katieScreen: any = loaded()
+    katieScreen.applicants.push({ id: 'a2', firstName: 'Joanne', dob: '' })
+    await save(supabase, katie, katieScreen)
+
+    let kylieScreen: any = loaded(); kylieScreen.dependants = '2'
+    const out = await save(supabase, kylie, kylieScreen, undefined, (m: any) => { kylieScreen = m })
+    expect(out.kind).toBe('merged')
+    expect(state.value.applicants.map((a: any) => a.firstName)).toEqual(['Ricardo', 'Joanne'])
+    expect(state.value.dependants).toBe('2')
+  })
+
+  it('refuses when they edit a row this screen has deleted', async () => {
+    const { supabase, state } = fakeDb(loaded())
+    const katie = newGuard(loaded())
+    const kylie = newGuard(loaded())
+    const katieScreen: any = loaded(); katieScreen.lenders[0].rate = '5.64'
+    await save(supabase, katie, katieScreen)
+
+    const kylieScreen: any = loaded(); kylieScreen.lenders = []
+    const out = await save(supabase, kylie, kylieScreen, undefined, () => {})
+    expect(out.kind).toBe('conflict')
+    expect(state.value.lenders[0].rate).toBe('5.64')
   })
 })

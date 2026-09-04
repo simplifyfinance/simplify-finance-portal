@@ -45,6 +45,9 @@
 // merge. This turns a certainty into a rarity. It is not a guarantee and should
 // not be described as one.
 
+import { merge3 } from './deal-merge'
+import { describePaths } from './deal-field-names'
+
 export type DealColumn = 'bc_data' | 'fact_find_data' | 'lo_data' | 'compliance_data'
 
 // What this form believes the database holds. Compared like with like: the raw
@@ -55,15 +58,20 @@ export function snapshot(value: any): string {
 
 export type SaveOutcome =
   | { kind: 'saved' }
+  // Somebody else saved different fields while this person was typing, and the
+  // two fitted together. Both are now written. `fields` names what came from
+  // them, in plain English, so the screen can say so.
+  | { kind: 'merged'; fields: string }
   // Nothing needed doing, or we quietly caught up to somebody else. Not an
   // error, not a conflict - the form should look completely normal.
   | { kind: 'settled' }
   // A newer save was asked for while this one was queued. Dropped on purpose so
   // an older payload can never land on top of a newer one.
   | { kind: 'superseded' }
-  // Real, head on: they changed something, we changed something else, and one
-  // of the two would be lost. This is the only outcome that shows the banner.
-  | { kind: 'conflict' }
+  // The SAME field, changed by both, to different things. Nothing is written.
+  // `fields` names the field, which is the difference between a banner somebody
+  // can act on and one they learn to ignore.
+  | { kind: 'conflict'; fields: string }
   | { kind: 'error'; message: string }
 
 // One per form instance. Held in a ref so it survives re-renders.
@@ -119,6 +127,16 @@ export type SaveRequest = {
   // A form that cannot re-hydrate itself leaves this out, and gets the banner
   // instead - refusing is always the safe answer.
   onAdopt?: (storedValue: any) => void
+  // Called when their fields and this person's fields have been merged. The form
+  // MUST put the merged record on screen - it now holds fields this screen has
+  // never shown, and the next keystroke would otherwise write them back out.
+  //
+  // Unlike onAdopt this happens while somebody is mid-sentence, so it has to be
+  // a state update, not a rebuild: no re-mounting, no losing the caret. A form
+  // that cannot do that leaves this out and gets the banner - which is why BC,
+  // whose fields are forty separate pieces of state with no single setter, still
+  // refuses rather than merges.
+  onMerge?: (mergedValue: any) => void
 }
 
 export async function saveGuarded(req: SaveRequest): Promise<SaveOutcome> {
@@ -132,13 +150,17 @@ export async function saveGuarded(req: SaveRequest): Promise<SaveOutcome> {
 }
 
 async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome> {
-  const { supabase, dealId, column, guard, value, patch, onAdopt } = req
+  const { supabase, dealId, column, guard, value, patch, onAdopt, onMerge } = req
 
   // Somebody asked for a newer save while this one waited its turn. Writing this
   // one now would put an older payload on top of a newer one.
   if (guard.seq !== mySeq) return { kind: 'superseded' }
 
   const next = snapshot(value)
+  // What actually gets written. The same thing this form asked to save, unless
+  // somebody else's fields have been folded in on the way.
+  let toWrite = value
+  let broughtIn = ''
 
   const { data: current, error: readError } = await supabase
     .from('deals').select(column).eq('id', dealId).single()
@@ -178,21 +200,41 @@ async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome> {
       // Take their version quietly. This is the case that was locking the Fact
       // Find: two people with a deal merely OPEN were being told they were in
       // conflict before either had touched a key.
-      else if (next === guard.db && onAdopt) {
+      else if (next === guard.db) {
+        if (!onAdopt) return { kind: 'conflict', fields: '' }
         guard.db = stored
         onAdopt(current?.[column] ?? null)
         return { kind: 'settled' }
       }
-      // Genuinely head on. Do NOT advance guard.db - we have not accepted their
-      // version, and the next attempt must reach this same answer.
+      // BOTH OF US HAVE TYPED. Not necessarily into the same field, though -
+      // Katie in the rates and Kylie in a date of birth are not in conflict at
+      // all, and refusing both is the portal getting in the way of its own
+      // users. So compare all three copies field by field, and only refuse if
+      // something is actually contested. See lib/deal-merge.ts.
       else {
-        return { kind: 'conflict' }
+        // A form that cannot fold their fields onto a screen somebody is typing
+        // into has to refuse. Refusing is always the safe answer.
+        if (!onMerge) return { kind: 'conflict', fields: '' }
+
+        const merge = merge3(JSON.parse(guard.db), current?.[column] ?? null, value)
+        if (!merge.ok) return { kind: 'conflict', fields: describePaths(merge.clashes) }
+
+        toWrite = merge.merged
+        broughtIn = describePaths(merge.fromThem)
+
+        // Their version already covers everything ours had. Nothing to write.
+        if (snapshot(toWrite) === stored) {
+          guard.db = stored
+          remember(guard, stored)
+          onMerge(toWrite)
+          return { kind: 'merged', fields: broughtIn }
+        }
       }
     }
   }
 
   const { data: rows, error } = await supabase
-    .from('deals').update({ [column]: value, ...(patch || {}) }).eq('id', dealId).select('id')
+    .from('deals').update({ [column]: toWrite, ...(patch || {}) }).eq('id', dealId).select('id')
 
   if (error) return { kind: 'error', message: 'NOT SAVED - ' + error.message }
   // A write refused by row level security returns zero rows and NO error.
@@ -200,17 +242,38 @@ async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome> {
     return { kind: 'error', message: 'NOT SAVED - your changes did not reach the database. Do not close this tab.' }
   }
 
-  guard.db = next
-  remember(guard, next)
+  const written = toWrite === value ? next : snapshot(toWrite)
+  guard.db = written
+  remember(guard, written)
+
+  // Only once the write has actually landed. Putting their fields on screen
+  // before knowing they were saved would show somebody work that is not there.
+  if (toWrite !== value && onMerge) {
+    onMerge(toWrite)
+    return { kind: 'merged', fields: broughtIn }
+  }
   return { kind: 'saved' }
 }
 
 // What the banner says. One wording, so all four tabs say the same thing.
-export function conflictMessage(tab: string): { title: string; body: string } {
+export function conflictMessage(tab: string, fields = ''): { title: string; body: string } {
   return {
-    title: `Somebody else is editing this ${tab} at the same time as you`,
-    body: 'They have saved changes since you opened it, so nothing you have typed in the last few minutes has been '
-        + 'saved — saving it would wipe out what they entered. Copy anything you need to keep, then reload to pick '
-        + 'up their version and type it back in.',
+    title: fields
+      ? `You and somebody else have both changed ${fields}`
+      : `Somebody else is editing this ${tab} at the same time as you`,
+    body: (fields
+        ? 'Everything else you both typed fits together — this one field does not, so nothing has been saved. '
+        : 'They have saved changes since you opened it, so nothing you have typed in the last few minutes has been saved. ')
+      + 'Saving it would wipe out what they entered. Copy anything you need to keep, then reload to pick up their '
+      + 'version and type it back in.',
   }
+}
+
+// The quiet one. Somebody else was working on the same tab, their fields and
+// this person's fields fitted together, and both are saved. Worth saying - a
+// screen that changes under you with no explanation is its own kind of bug.
+export function mergeMessage(fields: string): string {
+  return fields
+    ? `Somebody else saved while you were typing. Their changes to ${fields} are now on your screen. Nothing you typed was lost.`
+    : 'Somebody else saved while you were typing. Their changes are now on your screen. Nothing you typed was lost.'
 }

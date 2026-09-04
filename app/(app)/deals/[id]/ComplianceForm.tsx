@@ -32,7 +32,8 @@ import { money } from '@/lib/money'
 import { brokerNotes, type Assessor } from '@/lib/broker-notes'
 import { comparisonBlock } from '@/lib/lender-comparison'
 import SaveConflict from '@/components/SaveConflict'
-import { newGuard, saveGuarded } from '@/lib/save-conflict'
+import SaveMerged from '@/components/SaveMerged'
+import { newGuard, saveGuarded, mergeMessage } from '@/lib/save-conflict'
 import DealStructure from '@/components/DealStructure'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
@@ -303,7 +304,9 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched }: {
   // Whose copy is on screen, and whether writing it would cost anybody
   // anything — see lib/save-conflict.ts.
   const guardRef = useRef(newGuard(deal.compliance_data))
-  const [conflict, setConflict] = useState(false)
+  // The field both people changed, or null when there is nothing to say.
+  const [conflictFields, setConflictFields] = useState<string | null>(null)
+  const [mergedNote, setMergedNote] = useState('')
 
   const [styleNotes, setStyleNotes] = useState<string[]>([])
   const [flaggingField, setFlaggingField] = useState<string | null>(null)
@@ -514,12 +517,16 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched }: {
           // initData returns compliance_data verbatim, so this is exactly what a
           // fresh load would have put on screen.
           onAdopt: stored => { if (stored) setD(stored as ComplianceData) },
+          // Their fields, folded onto a screen somebody is typing into. A state
+          // update, not a rebuild - nobody loses the sentence they are writing.
+          onMerge: merged => setD(merged as ComplianceData),
         })
         if (out.kind === 'superseded') return
-        setConflict(out.kind === 'conflict')
+        setConflictFields(out.kind === 'conflict' ? out.fields : null)
         if (out.kind === 'error') { console.error('Compliance autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
-        if (out.kind === 'saved') setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+        if (out.kind === 'merged') setMergedNote(mergeMessage(out.fields))
+        if (out.kind === 'saved' || out.kind === 'merged') setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
       })()
     }, 700)
     return () => clearTimeout(t)
@@ -981,7 +988,8 @@ Use the security address exactly as recorded. On a pre-approval it will already 
 
   return (
     <div className="space-y-4">
-      <SaveConflict tab="Compliance" show={conflict} />
+      <SaveConflict tab="Compliance" fields={conflictFields} />
+      <SaveMerged message={mergedNote} onDismiss={() => setMergedNote('')} />
       {past && (
         <div className="bg-white border border-[#CFE6D5] rounded-xl px-4 py-3.5">
           <div className="flex items-center gap-2.5 flex-wrap">
