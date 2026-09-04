@@ -15,6 +15,8 @@ import InternalNotes from '@/components/InternalNotes'
 import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET_TYPES, DEPOSIT_SOURCES, optionsFor } from '@/lib/fact-find-options'
 import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship } from '@/lib/relationship'
 import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS } from '@/lib/fact-find'
+import SaveConflict from '@/components/SaveConflict'
+import { someoneElseSaved, snapshot } from '@/lib/save-conflict'
 
 function incrementFY(fy: string): string {
   const match = fy.match(/^(\d{4})\/(\d{2})$/)
@@ -395,6 +397,10 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   // Mirror save state up to the deal header, which owns the single indicator.
   useEffect(() => { onSaveStatus?.({ at: savedAt, error: saveError }) }, [savedAt, saveError])
 
+  // Whose copy is on screen — see lib/save-conflict.ts.
+  const dbRef = useRef<string | null>(snapshot(deal.fact_find_data))
+  const [conflict, setConflict] = useState(false)
+
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     // The database is the only store - no localStorage copy. The row count is checked
@@ -402,12 +408,18 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     onDataChange?.(d)
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
     saveTimeoutRef.current = setTimeout(() => {
-      supabase.from('deals').update({ fact_find_data: d }).eq('id', deal.id).select('id').then(({ data: rows, error }) => {
+      ;(async () => {
+        if (await someoneElseSaved(supabase, deal.id, 'fact_find_data', dbRef.current)) {
+          setConflict(true); setSaveError(''); return
+        }
+        const { data: rows, error } = await supabase.from('deals').update({ fact_find_data: d }).eq('id', deal.id).select('id')
         if (error) { console.error('Fact find autosave failed:', error); setSaveError('NOT SAVED - ' + error.message); return }
         if (!rows || rows.length === 0) { console.error('Fact find autosave affected zero rows'); setSaveError('NOT SAVED - your changes did not reach the database. Do not close this tab.'); return }
+        dbRef.current = snapshot(d)
+        setConflict(false)
         setSaveError('')
         setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
-      })
+      })()
     }, 600)
   }, [d])
 
@@ -805,6 +817,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
 
   return (
     <div className="grid grid-cols-[480px_1fr] gap-4 items-start">
+      <SaveConflict tab="Fact Find" show={conflict} />
       <div>
         {/* One notes field for the whole deal. This used to be a box of its own
             saving to fact_find_data.internalNotes, with two more like it on BC

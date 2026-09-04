@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import SectionHeader from '@/components/SectionHeader'
 import { isWithLender, splitsTotal } from '@/lib/deal-phase'
 import { applicantsOf } from '@/lib/applicants'
@@ -31,6 +31,8 @@ import { fundsToComplete } from '@/lib/funds-to-complete'
 import { money } from '@/lib/money'
 import { brokerNotes, type Assessor } from '@/lib/broker-notes'
 import { comparisonBlock } from '@/lib/lender-comparison'
+import SaveConflict from '@/components/SaveConflict'
+import { someoneElseSaved, snapshot } from '@/lib/save-conflict'
 import DealStructure from '@/components/DealStructure'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
@@ -298,6 +300,10 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched }: {
       .then(({ data }) => setAssessor(data ? { name: (data as any).name || '', phone: (data as any).phone || '' } : null))
   }, [deal?.assigned_credit_officer])
 
+  // Whose copy is on screen — see lib/save-conflict.ts.
+  const dbRef = useRef<string | null>(snapshot(deal.compliance_data))
+  const [conflict, setConflict] = useState(false)
+
   const [styleNotes, setStyleNotes] = useState<string[]>([])
   const [flaggingField, setFlaggingField] = useState<string | null>(null)
   const [flagNote, setFlagNote] = useState('')
@@ -500,12 +506,18 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched }: {
       const patch: any = { compliance_data: d }
       if (chosenId) patch.lender_id = chosenId
 
-      supabase.from('deals').update(patch).eq('id', deal.id).select('id').then(({ data: rows, error }) => {
+      ;(async () => {
+        if (await someoneElseSaved(supabase, deal.id, 'compliance_data', dbRef.current)) {
+          setConflict(true); setSaveError(''); return
+        }
+        const { data: rows, error } = await supabase.from('deals').update(patch).eq('id', deal.id).select('id')
         if (error) { console.error('Compliance autosave failed:', error); setSaveError('NOT SAVED - ' + error.message); return }
         if (!rows || rows.length === 0) { console.error('Compliance autosave affected zero rows'); setSaveError('NOT SAVED - your changes did not reach the database. Do not close this tab.'); return }
+        dbRef.current = snapshot(d)
+        setConflict(false)
         setSaveError('')
         setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
-      })
+      })()
     }, 700)
     return () => clearTimeout(t)
   }, [d])
@@ -966,6 +978,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
 
   return (
     <div className="space-y-4">
+      <SaveConflict tab="Compliance" show={conflict} />
       {past && (
         <div className="bg-white border border-[#CFE6D5] rounded-xl px-4 py-3.5">
           <div className="flex items-center gap-2.5 flex-wrap">

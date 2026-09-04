@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
@@ -235,6 +235,8 @@ function fieldCls(value: string) {
 }
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
 import { annualIncomeOf, annualIncomeOfApplicant } from '@/lib/income-calculations'
+import SaveConflict from '@/components/SaveConflict'
+import { someoneElseSaved, snapshot } from '@/lib/save-conflict'
 import { readMoney, formatAsTyped} from '@/lib/money'
 
 const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
@@ -659,6 +661,12 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   useEffect(() => { onSaveStatus?.({ at: savedAt, error: saveError }) }, [savedAt, saveError])
   const [clientProceeded, setClientProceeded] = useState<boolean>(!!deal.client_proceeded)
   const [proceedInfo, setProceedInfo] = useState(() => proceedCredit(deal, 'BC'))
+  // Whose copy is on screen — see lib/save-conflict.ts. This form writes on
+  // OPEN as well as on edit, so without the guard simply opening a deal card
+  // somebody else is working in overwrites what they have typed.
+  const dbRef = useRef<string | null>(snapshot(deal.bc_data))
+  const [conflict, setConflict] = useState(false)
+
   const [showMoveToLoPopup, setShowMoveToLoPopup] = useState(false)
   const [sendingMoveToLo, setSendingMoveToLo] = useState(false)
   const [moveToLoMsg, setMoveToLoMsg] = useState('')
@@ -671,12 +679,18 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
       // checking `error` alone reports success on a write that saved nothing. setSavedAt
       // previously fired here regardless of outcome - the form said "Saved" while nothing
       // reached the database, which is why silent failures went unnoticed for weeks.
-      supabase.from('deals').update({ bc_data: data }).eq('id', deal.id).select('id').then(({ data: rows, error }) => {
+      ;(async () => {
+        if (await someoneElseSaved(supabase, deal.id, 'bc_data', dbRef.current)) {
+          setConflict(true); setSaveError(''); return
+        }
+        const { data: rows, error } = await supabase.from('deals').update({ bc_data: data }).eq('id', deal.id).select('id')
         if (error) { console.error('BC autosave failed:', error); setSaveError('NOT SAVED - ' + error.message); return }
         if (!rows || rows.length === 0) { console.error('BC autosave affected zero rows'); setSaveError('NOT SAVED - your changes did not reach the database. Do not close this tab.'); return }
+        dbRef.current = snapshot(data)
         setSaveError('')
+        setConflict(false)
         setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
-      })
+      })()
     }, 700)
     return () => clearTimeout(timeoutId)
   }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
@@ -965,6 +979,7 @@ Key assumptions: ${checklistText}`
 
   return (
     <div>
+      <SaveConflict tab="BC" show={conflict} />
       <div className="flex gap-2 mb-4 items-center flex-wrap">
         {[['form','BC form'],['preview','Preview & share']].map(([id,label]) => (
           <button key={id} onClick={() => setActiveTab(id as any)}
