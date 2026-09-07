@@ -263,7 +263,7 @@ function AIButton({ onClick, loading, label = 'Generate with AI' }: { onClick: (
   )
 }
 
-export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoElseHere }: { whoElseHere?: string;
+export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null };
   deal: any
   onSaveStatus?: (s: { at?: string; error?: string }) => void
   // The deal structure block writes compliance_data itself; this lets the page
@@ -306,6 +306,10 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   const guardRef = useRef(newGuard(deal.compliance_data))
   // The field both people changed, or null when there is nothing to say.
   const [conflictFields, setConflictFields] = useState<string | null>(null)
+  // Whoever actually saved the version we are up against, read off the record.
+  // Names them even if they have since closed the deal, which is the case the
+  // presence banner cannot help with.
+  const [conflictWho, setConflictWho] = useState('')
   const [mergedNote, setMergedNote] = useState('')
 
   const [styleNotes, setStyleNotes] = useState<string[]>([])
@@ -523,7 +527,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
 
       ;(async () => {
         const out = await saveGuarded({
-          supabase, dealId: deal.id, column: 'compliance_data', guard: guardRef.current, value: d,
+          supabase, dealId: deal.id, column: 'compliance_data', guard: guardRef.current, savedBy: me, tabLabel: 'Compliance', value: d,
           patch: chosenId ? { lender_id: chosenId } : undefined,
           // Nothing typed here yet and somebody else has saved: take their
           // version rather than telling this person off for looking at a deal.
@@ -536,6 +540,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
         })
         if (out.kind === 'superseded') return
         setConflictFields(out.kind === 'conflict' ? out.fields : null)
+        if (out.kind === 'conflict') setConflictWho(out.who)
         if (out.kind === 'error') { console.error('Compliance autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
         if (out.kind === 'merged') setMergedNote(mergeMessage(out.fields))
@@ -1001,7 +1006,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
 
   return (
     <div className="space-y-4">
-      <SaveConflict tab="Compliance" fields={conflictFields} who={whoElseHere} />
+      <SaveConflict tab="Compliance" fields={conflictFields} who={conflictWho || whoElseHere} />
       <SaveMerged message={mergedNote} onDismiss={() => setMergedNote('')} />
       {past && (
         <div className="bg-white border border-[#CFE6D5] rounded-xl px-4 py-3.5">

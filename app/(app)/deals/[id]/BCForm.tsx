@@ -279,7 +279,7 @@ function NumberInput({ value, onChange, placeholder }: { value: string; onChange
   )
 }
 
-type BCFormProps = { deal: any; whoElseHere?: string; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void }
+type BCFormProps = { deal: any; whoElseHere?: string; me?: { id?: string | null; name?: string | null }; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void }
 
 // PUTTING SOMEBODY ELSE'S VERSION ON SCREEN.
 //
@@ -306,7 +306,7 @@ export default function BCForm(props: BCFormProps) {
   )
 }
 
-function BCFormInner({ deal, onDataChange, onStageChange, userRole, onSaveStatus, whoElseHere, onAdopt }: BCFormProps & { onAdopt: (next: any) => void }) {
+function BCFormInner({ deal, onDataChange, onStageChange, userRole, onSaveStatus, whoElseHere, me, onAdopt }: BCFormProps & { onAdopt: (next: any) => void }) {
   // The database is the only store. No browser-side copy and no fallback: a per-browser
   // cache keyed only by deal id showed one user another user's state, and an empty cache
   // rendered a blank form that the autosave then wrote back over the real record.
@@ -696,6 +696,10 @@ function BCFormInner({ deal, onDataChange, onStageChange, userRole, onSaveStatus
   // cannot merge - see lib/save-conflict.ts - so for this tab it is only ever
   // the empty string, meaning "somebody else is in here".
   const [conflictFields, setConflictFields] = useState<string | null>(null)
+  // Whoever actually saved the version we are up against, read off the record.
+  // Names them even if they have since closed the deal, which is the case the
+  // presence banner cannot help with.
+  const [conflictWho, setConflictWho] = useState('')
   // What the database last agreed with. OPENING THIS FORM IS NOT EDITING IT:
   // the fields seed themselves from the fact find where bc_data is blank, so the
   // very first run produces a value that differs from the stored record and used
@@ -723,11 +727,12 @@ function BCFormInner({ deal, onDataChange, onStageChange, userRole, onSaveStatus
       if (now === savedRef.current) return
       ;(async () => {
         const out = await saveGuarded({
-          supabase, dealId: deal.id, column: 'bc_data', guard: guardRef.current, value: data,
+          supabase, dealId: deal.id, column: 'bc_data', guard: guardRef.current, savedBy: me, tabLabel: 'BC — Borrowing capacity', value: data,
           onAdopt: stored => onAdopt(stored),
         })
         if (out.kind === 'superseded') return
         setConflictFields(out.kind === 'conflict' ? out.fields : null)
+        if (out.kind === 'conflict') setConflictWho(out.who)
         if (out.kind === 'error') { console.error('BC autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
         if (out.kind === 'saved') {
@@ -1023,7 +1028,7 @@ Key assumptions: ${checklistText}`
 
   return (
     <div>
-      <SaveConflict tab="BC" fields={conflictFields} who={whoElseHere} />
+      <SaveConflict tab="BC" fields={conflictFields} who={conflictWho || whoElseHere} />
       <div className="flex gap-2 mb-4 items-center flex-wrap">
         {[['form','BC form'],['preview','Preview & share']].map(([id,label]) => (
           <button key={id} onClick={() => setActiveTab(id as any)}

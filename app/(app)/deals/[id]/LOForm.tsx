@@ -228,7 +228,7 @@ function LibraryField({ label, value, onChange }: { label: string; value: string
   )
 }
 
-export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, onDealFieldChange, whoElseHere }: { whoElseHere?: string; deal: any; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void; onDealFieldChange?: (field: string, value: any) => void }) {
+export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, onDealFieldChange, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null }; deal: any; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void; onDealFieldChange?: (field: string, value: any) => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `lo_${deal.id}`
   const bc = deal.bc_data || {}
@@ -544,6 +544,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   const guardRef = useRef(emptyGuard())
   // The field both people changed, or null when there is nothing to say.
   const [conflictFields, setConflictFields] = useState<string | null>(null)
+  // Whoever actually saved the version we are up against, read off the record.
+  // Names them even if they have since closed the deal, which is the case the
+  // presence banner cannot help with.
+  const [conflictWho, setConflictWho] = useState('')
   const [mergedNote, setMergedNote] = useState('')
 
   // Put a stored lo_data on screen: the two defaults this form applies on load,
@@ -601,7 +605,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
       ;(async () => {
         const out = await saveGuarded({
-          supabase, dealId: deal.id, column: 'lo_data', guard: guardRef.current, value: d,
+          supabase, dealId: deal.id, column: 'lo_data', guard: guardRef.current, savedBy: me, tabLabel: 'Lending options', value: d,
           patch: extraColumns,
           onAdopt: stored => { if (stored) putOnScreen(stored) },
           // THE KATIE CASE. She fills in the rates, somebody else is typing in
@@ -613,6 +617,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         })
         if (out.kind === 'superseded') return
         setConflictFields(out.kind === 'conflict' ? out.fields : null)
+        if (out.kind === 'conflict') setConflictWho(out.who)
         if (out.kind === 'error') { console.error('LO autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
         if (out.kind === 'merged') setMergedNote(mergeMessage(out.fields))
@@ -1113,7 +1118,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         <div className="border border-red-200 bg-red-50 rounded-xl px-4 py-3 text-[13px] text-red-600">{docsErr}</div>
       )}
 
-      <SaveConflict tab="Lending options" fields={conflictFields} who={whoElseHere} />
+      <SaveConflict tab="Lending options" fields={conflictFields} who={conflictWho || whoElseHere} />
       <SaveMerged message={mergedNote} onDismiss={() => setMergedNote('')} />
 
       {activeTab === 'form' && (

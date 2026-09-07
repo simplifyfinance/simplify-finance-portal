@@ -333,7 +333,7 @@ function OwnershipCheckboxes({ applicants, ownership, onChange, label = 'Respons
   )
 }
 
-export default function FactFindForm({ deal, onDataChange, onDealFieldChange, onSaveStatus, whoElseHere }: { whoElseHere?: string; deal: any; onDataChange?: (d: FactFindData) => void; onDealFieldChange?: (field: string, value: string) => void; onSaveStatus?: (s: { at?: string; error?: string }) => void }) {
+export default function FactFindForm({ deal, onDataChange, onDealFieldChange, onSaveStatus, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null }; deal: any; onDataChange?: (d: FactFindData) => void; onDealFieldChange?: (field: string, value: string) => void; onSaveStatus?: (s: { at?: string; error?: string }) => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `fact_find_${deal.id}`
   const bc = deal.bc_data || {}
@@ -404,6 +404,10 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   const guardRef = useRef(newGuard(deal.fact_find_data))
   // The field both people changed, or null when there is nothing to say.
   const [conflictFields, setConflictFields] = useState<string | null>(null)
+  // Whoever actually saved the version we are up against, read off the record.
+  // Names them even if they have since closed the deal, which is the case the
+  // presence banner cannot help with.
+  const [conflictWho, setConflictWho] = useState('')
   const [mergedNote, setMergedNote] = useState('')
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -414,7 +418,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     saveTimeoutRef.current = setTimeout(() => {
       ;(async () => {
         const out = await saveGuarded({
-          supabase, dealId: deal.id, column: 'fact_find_data', guard: guardRef.current, value: d,
+          supabase, dealId: deal.id, column: 'fact_find_data', guard: guardRef.current, savedBy: me, tabLabel: 'Fact Find', value: d,
           // Nothing typed here yet and somebody else has saved: take their
           // version rather than telling this person off for looking at a deal.
           // initData returns fact_find_data verbatim, so this is exactly what a
@@ -429,6 +433,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
         // would be about a payload that has been overtaken.
         if (out.kind === 'superseded') return
         setConflictFields(out.kind === 'conflict' ? out.fields : null)
+        if (out.kind === 'conflict') setConflictWho(out.who)
         if (out.kind === 'error') { console.error('Fact find autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
         if (out.kind === 'merged') setMergedNote(mergeMessage(out.fields))
@@ -840,7 +845,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
 
   return (
     <div className="grid grid-cols-[480px_1fr] gap-4 items-start">
-      <SaveConflict tab="Fact Find" fields={conflictFields} who={whoElseHere} />
+      <SaveConflict tab="Fact Find" fields={conflictFields} who={conflictWho || whoElseHere} />
       <SaveMerged message={mergedNote} onDismiss={() => setMergedNote('')} />
       <div>
         {/* One notes field for the whole deal. This used to be a box of its own

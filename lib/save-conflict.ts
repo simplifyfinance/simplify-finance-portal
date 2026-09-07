@@ -82,7 +82,10 @@ export type SaveOutcome =
   // The SAME field, changed by both, to different things. Nothing is written.
   // `fields` names the field, which is the difference between a banner somebody
   // can act on and one they learn to ignore.
-  | { kind: 'conflict'; fields: string }
+  // `who` is whoever actually saved the version we are up against, read off the
+  // record itself - so it names them whether they are still in the deal or went
+  // home at five. Empty only on a deal saved before that was recorded.
+  | { kind: 'conflict'; fields: string; who: string }
   | { kind: 'error'; message: string }
 
 // Never returned to a form. The database refused the write because the record
@@ -159,6 +162,13 @@ export type SaveRequest = {
   // whose fields are forty separate pieces of state with no single setter, still
   // refuses rather than merges.
   onMerge?: (mergedValue: any) => void
+  // Who is doing the saving. Written down with the record so that the next
+  // person to collide with it can be told a name rather than "somebody else".
+  // Optional: a form that does not know simply leaves the stamp alone.
+  savedBy?: { id?: string | null; name?: string | null }
+  // The tab in the words the rest of the portal uses, recorded alongside the
+  // name so a deal can say what somebody was last working on.
+  tabLabel?: string
 }
 
 export async function saveGuarded(req: SaveRequest): Promise<SaveOutcome> {
@@ -173,7 +183,7 @@ export async function saveGuarded(req: SaveRequest): Promise<SaveOutcome> {
       if (out.kind !== 'overtaken') return out
     }
     // Somebody is saving this record continuously. Refusing is the safe answer.
-    return { kind: 'conflict', fields: '' }
+    return { kind: 'conflict', fields: '', who: '' }
   }
   // Strictly one at a time. Two saves running at once is failure 3 above.
   const queued = guard.queue.then(run, run)
@@ -182,7 +192,7 @@ export async function saveGuarded(req: SaveRequest): Promise<SaveOutcome> {
 }
 
 async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome | Overtaken> {
-  const { supabase, dealId, column, guard, value, patch, onAdopt, onMerge } = req
+  const { supabase, dealId, column, guard, value, patch, onAdopt, onMerge, savedBy, tabLabel } = req
 
   // Somebody asked for a newer save while this one waited its turn. Writing this
   // one now would put an older payload on top of a newer one.
@@ -195,13 +205,17 @@ async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome | O
   let broughtIn = ''
 
   const { data: current, error: readError } = await supabase
-    .from('deals').select(`${column},row_version`).eq('id', dealId).single()
+    .from('deals').select(`${column},row_version,last_saved_name`).eq('id', dealId).single()
 
   // The version this write will be pinned to. Undefined means the migration has
   // not been run yet, and the write goes ahead unpinned - see the note at the
   // top of this file.
   const seenVersion: number | undefined =
     typeof current?.row_version === 'number' ? current.row_version : undefined
+
+  // Whoever put the stored version there. Empty on a deal last saved before this
+  // was recorded, and on any save of our own.
+  const savedByThem = String(current?.last_saved_name || '').trim()
 
   // A failed read is not evidence of anything. A form that silently stops saving
   // because the network hiccuped is worse than the problem this guard solves, so
@@ -239,7 +253,7 @@ async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome | O
       // Find: two people with a deal merely OPEN were being told they were in
       // conflict before either had touched a key.
       else if (next === guard.db) {
-        if (!onAdopt) return { kind: 'conflict', fields: '' }
+        if (!onAdopt) return { kind: 'conflict', fields: '', who: savedByThem }
         guard.db = stored
         onAdopt(current?.[column] ?? null)
         return { kind: 'settled' }
@@ -252,10 +266,10 @@ async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome | O
       else {
         // A form that cannot fold their fields onto a screen somebody is typing
         // into has to refuse. Refusing is always the safe answer.
-        if (!onMerge) return { kind: 'conflict', fields: '' }
+        if (!onMerge) return { kind: 'conflict', fields: '', who: savedByThem }
 
         const merge = merge3(JSON.parse(guard.db), current?.[column] ?? null, value)
-        if (!merge.ok) return { kind: 'conflict', fields: describePaths(merge.clashes) }
+        if (!merge.ok) return { kind: 'conflict', fields: describePaths(merge.clashes), who: savedByThem }
 
         toWrite = merge.merged
         broughtIn = describePaths(merge.fromThem)
@@ -273,6 +287,13 @@ async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome | O
 
   const fields: any = { [column]: toWrite, ...(patch || {}) }
   if (seenVersion !== undefined) fields.row_version = seenVersion + 1
+  // Sign it. See docs/deal-last-saved-by.sql - this is the whole reason the next
+  // person can be told a name instead of "somebody else".
+  if (savedBy?.name) {
+    fields.last_saved_name = savedBy.name
+    fields.last_saved_tab = tabLabel
+    if (savedBy.id) fields.last_saved_by = savedBy.id
+  }
 
   let write = supabase.from('deals').update(fields).eq('id', dealId)
   // AND ONLY IF NOBODY HAS SAVED SINCE I READ IT. Postgres applies this at the

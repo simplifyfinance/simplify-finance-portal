@@ -1,8 +1,33 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
+import { safeNextPath } from '@/lib/safe-next-path'
+
+// STUCK ON "SIGNING IN...".
+//
+// Fabio and Kylie, 7 Sep 2026: the button sat there and the only way into the
+// portal was to reload the address bar by hand.
+//
+// The sign-in itself always worked. What did not was getting off this page. It
+// used router.push(), which asks Next to fetch the next page in the background
+// while this one stays on screen. Every one of those requests goes through the
+// middleware, which asks Supabase who you are - and at that instant the session
+// cookie the browser has only just been handed may not be on the request yet. So
+// the middleware sees nobody, redirects to /login, and we are already on /login,
+// so NOTHING VISIBLE HAPPENS. The button is still disabled, still says "Signing
+// in...", and stays that way forever. Reloading by hand works because by then
+// the cookie is certainly written.
+//
+// A full page load fixes it outright: the browser sends the cookies it now has,
+// the middleware sees the session, and the portal opens. It is a fraction slower
+// than a client-side push and it cannot get into that state.
+//
+// The second half of the bug was that nothing ever put the button back. Even now
+// that this should not happen, it says so and lets them try again rather than
+// leaving somebody looking at a dead screen.
+const STUCK_AFTER_MS = 8000
 
 function LoginForm() {
   const [email, setEmail] = useState('')
@@ -11,39 +36,64 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<'login' | 'forgot'>('login')
   const [resetSent, setResetSent] = useState(false)
-  const router = useRouter()
   const searchParams = useSearchParams()
-  const nextPath = searchParams.get('next') || '/'
+  // Checked, not trusted - it arrives in the URL. See lib/safe-next-path.ts.
+  const nextPath = safeNextPath(searchParams.get('next'))
 
+  // One client for this page. Creating a second one gives the browser two things
+  // both trying to own the session.
+  const supabaseRef = useRef<ReturnType<typeof createSupabaseBrowser> | null>(null)
+  if (!supabaseRef.current) supabaseRef.current = createSupabaseBrowser()
+  const supabase = supabaseRef.current
+
+  const leavingRef = useRef(false)
+  const stuckTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function goIn() {
+    // Only once, however many things notice the sign-in.
+    if (leavingRef.current) return
+    leavingRef.current = true
+    if (stuckTimer.current) clearTimeout(stuckTimer.current)
+    stuckTimer.current = setTimeout(() => {
+      leavingRef.current = false
+      setLoading(false)
+      setError('Signed in, but the portal did not open. Press Sign in again.')
+    }, STUCK_AFTER_MS)
+    // A real page load, so the browser sends the session cookie it has just been
+    // given. This is the whole fix.
+    window.location.assign(nextPath)
+  }
+
+  // Already signed in - somebody with a live session who landed here, or the
+  // session arriving a moment after the button was pressed.
   useEffect(() => {
-    const supabase = createSupabaseBrowser()
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        router.push(nextPath)
-        router.refresh()
-      }
+    supabase.auth.getSession().then(({ data }) => { if (data?.session) goIn() })
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) goIn()
     })
-  }, [router])
+    return () => {
+      sub?.subscription?.unsubscribe()
+      if (stuckTimer.current) clearTimeout(stuckTimer.current)
+    }
+  }, [])
 
   async function handleLogin() {
+    if (loading) return
     setLoading(true)
     setError('')
-    const supabase = createSupabaseBrowser()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       setError('Invalid email or password')
       setLoading(false)
-    } else {
-      router.push(nextPath)
-      router.refresh()
+      return
     }
+    goIn()
   }
 
   async function handleForgot() {
     if (!email) { setError('Please enter your email address'); return }
     setLoading(true)
     setError('')
-    const supabase = createSupabaseBrowser()
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: 'https://simplify-finance-portal.vercel.app/reset-password'
     })

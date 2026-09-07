@@ -6,7 +6,7 @@ import { snapshot, newGuard, emptyGuard, adopt, saveGuarded, conflictMessage } f
 // guard - the failures it exists to stop are writes that should not have
 // happened, not errors.
 function fakeDb(initial: any, opts: { readError?: any; rlsBlocks?: boolean; landsUnderneath?: number } = {}) {
-  const state = { value: initial, writes: [] as any[], reads: 0, version: 0 }
+  const state = { value: initial, writes: [] as any[], reads: 0, version: 0, savedBy: '' }
   // A save that lands in the gap between somebody reading the record and writing
   // it - the one moment the browser cannot see. Counted down so a test can say
   // "this happens once, then stops".
@@ -20,7 +20,7 @@ function fakeDb(initial: any, opts: { readError?: any; rlsBlocks?: boolean; land
             state.reads++
             if (opts.readError) return { data: null, error: opts.readError }
             if (String(cols).trim() === 'row_version') return { data: { row_version: state.version }, error: null }
-            return { data: { fact_find_data: state.value, row_version: state.version }, error: null }
+            return { data: { fact_find_data: state.value, row_version: state.version, last_saved_name: state.savedBy }, error: null }
           },
         }),
       }),
@@ -36,6 +36,7 @@ function fakeDb(initial: any, opts: { readError?: any; rlsBlocks?: boolean; land
             if (pinned !== null && pinned !== state.version) return { data: [], error: null }
             state.writes.push(fields)
             state.value = fields.fact_find_data
+            if (typeof fields.last_saved_name === 'string') state.savedBy = fields.last_saved_name
             state.version = typeof fields.row_version === 'number' ? fields.row_version : state.version + 1
             return { data: [{ id: 'd1' }], error: null }
           },
@@ -388,5 +389,53 @@ describe('somebody saves in the gap between reading and writing', () => {
     const { supabase } = fakeDb({ a: 1 }, { rlsBlocks: true })
     const out = await save(supabase, newGuard({ a: 1 }), { a: 2 })
     expect(out.kind).toBe('error')
+  })
+})
+
+// NAMING SOMEBODY WHO HAS GONE HOME.
+//
+// The presence table only knows who has the deal open right now. On the deal
+// Fabio was looking at on 7 Sep 2026 the person who saved was Kylie, and she had
+// closed the tab thirty six minutes earlier - so presence had nothing to say and
+// the banner said "somebody". A save signs itself instead.
+describe('who saved it', () => {
+  const sign = (supabase: any, guard: any, value: any, name: string, onMerge?: any) =>
+    saveGuarded({ supabase, dealId: 'd1', column: 'fact_find_data', guard, value,
+      savedBy: { id: 'u1', name }, tabLabel: 'Fact Find', onMerge })
+
+  it('writes down who did it', async () => {
+    const { supabase, state } = fakeDb({ a: 1 })
+    await sign(supabase, newGuard({ a: 1 }), { a: 2 }, 'Kylie Searle')
+    expect(state.writes[0].last_saved_name).toBe('Kylie Searle')
+    expect(state.writes[0].last_saved_tab).toBe('Fact Find')
+    expect(state.writes[0].last_saved_by).toBe('u1')
+  })
+
+  it('names them in the banner even though they have left the deal', async () => {
+    const loaded = { dependants: '0' }
+    const { supabase } = fakeDb({ ...loaded })
+    // Kylie saves, then goes home. Presence knows nothing about her any more.
+    await sign(supabase, newGuard(loaded), { dependants: '2' }, 'Kylie Searle')
+    // Fabio, who has had it open since before that, types something else.
+    const out = await sign(supabase, newGuard(loaded), { dependants: '3' }, 'Fabio De Castro', () => {})
+    expect(out.kind).toBe('conflict')
+    expect((out as any).who).toBe('Kylie Searle')
+  })
+
+  // A deal last touched before any of this existed.
+  it('says nothing rather than guessing when the record is unsigned', async () => {
+    const loaded = { dependants: '0' }
+    const { supabase } = fakeDb({ ...loaded })
+    await saveGuarded({ supabase, dealId: 'd1', column: 'fact_find_data', guard: newGuard(loaded),
+      value: { dependants: '2' } })
+    const out = await sign(supabase, newGuard(loaded), { dependants: '3' }, 'Fabio De Castro', () => {})
+    expect(out.kind).toBe('conflict')
+    expect((out as any).who).toBe('')
+  })
+
+  it('leaves the stamp alone when the form does not know who is typing', async () => {
+    const { supabase, state } = fakeDb({ a: 1 })
+    await save(supabase, newGuard({ a: 1 }), { a: 2 })
+    expect(state.writes[0].last_saved_name).toBeUndefined()
   })
 })

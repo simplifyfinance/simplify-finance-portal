@@ -73,7 +73,9 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   const router = useRouter()
   const supabase = createSupabaseBrowser()
 
-  // The live file: alerts and the note log, plus who is writing them.
+  // The live file: alerts and the note log, plus who is writing them. `me` is
+  // also what signs a save, so the next person to collide with it can be told a
+  // name rather than "somebody else" - see docs/deal-last-saved-by.sql.
   const { notes, alerts, reload: reloadFile } = useDealFile(deal.id)
   const [me, setMe] = useState<{ id: string | null; name: string }>({ id: null, name: '' })
   useEffect(() => {
@@ -300,11 +302,11 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
       <TabLock locked={isLocked(dealData) && unlockedTab !== stage} tab={stage} dealId={dealData.id}
         role={userRole} me={me}
         onUnlocked={() => { setUnlockedTab(stage); reloadFile() }}>
-        {stage === 'FactFind' && <FactFindForm whoElseHere={whoElseHere} deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
+        {stage === 'FactFind' && <FactFindForm whoElseHere={whoElseHere} me={me} deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
         {stage === 'Statements' && <StatementAnalysis deal={dealData} />}
-        {stage === 'BC' && <BCForm whoElseHere={whoElseHere} deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
-        {stage === 'LO' && <LOForm whoElseHere={whoElseHere} deal={dealData} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} />}
-        {stage === 'Compliance' && <ComplianceForm whoElseHere={whoElseHere} deal={dealData} onSaveStatus={setSaveStatus}
+        {stage === 'BC' && <BCForm whoElseHere={whoElseHere} me={me} deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
+        {stage === 'LO' && <LOForm whoElseHere={whoElseHere} me={me} deal={dealData} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} />}
+        {stage === 'Compliance' && <ComplianceForm whoElseHere={whoElseHere} me={me} deal={dealData} onSaveStatus={setSaveStatus}
           onDealPatched={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />}
       </TabLock>
     </div>
