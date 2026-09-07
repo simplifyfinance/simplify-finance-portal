@@ -11,6 +11,7 @@ import { proceedCredit } from '@/lib/deal-status'
 import { emailParagraphs, htmlToPlainText, copyHtmlAndPlain} from '@/lib/rich-text'
 import { totalCost, fundsToContribute, constructionLvr } from '@/lib/construction'
 import { emailFreshness, blocksSending, notesAfterScenarioChange } from '@/lib/email-freshness'
+import { missingForEmail, missingSentence } from '@/lib/bc-ready'
 
 // A finished "client agreed" is not something to hide. It used to disappear the
 // instant it was pressed, which made "already done" look exactly like "broken".
@@ -766,6 +767,15 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // places: the banner, the Send buttons, and the guard inside getCleanEmailHtml.
   const freshness = emailFreshness({ emailHtml, emailHtmlTemplate }, template)
   const emailIsStale = blocksSending(freshness)
+
+  // WHICH BOXES THIS EMAIL WANTED AND DID NOT GET.
+  //
+  // An empty box no longer prints a placeholder into a client's email - the line
+  // simply is not there. Which means a half-finished card now LOOKS finished,
+  // just shorter, so the broker has to be told before he presses send.
+  // Fabio, 8 Sep 2026: "the broker needs to see it is wrong before sending."
+  // Advisory only. It never stops anybody sending anything.
+  const missingBoxes = missingForEmail(template, buildBcData())
 
   function selectTemplate(id: string) {
     const previous = template
@@ -1623,6 +1633,27 @@ Key assumptions: ${checklistText}`
           {/* THE EMAIL IS A SAVED COPY, so it can be out of date with the deal
               sitting next to it. Say so here, where somebody is about to send
               it, rather than letting the preview look perfectly normal. */}
+          {missingBoxes.length > 0 && (
+            <div className="mb-3 border border-[#EBD9BE] bg-[#FDF6EC] rounded-xl px-4 py-3.5 flex items-start gap-3">
+              <span className="text-[15px] leading-none mt-[2px]">⚠</span>
+              <div className="text-[13px] text-[#8A6218] flex-1 leading-[1.6]">
+                <b className="text-[#141C24]">
+                  {missingBoxes.length === 1 ? 'One box on the BC is empty' : `${missingBoxes.length} boxes on the BC are empty`},
+                  {' '}so {missingBoxes.length === 1 ? 'that line is' : 'those lines are'} missing from the email below.
+                </b>
+                <div className="mt-1.5">
+                  {missingBoxes.map((m, i) => (
+                    <div key={i} className="text-[12.5px]">
+                      <b className="text-[#141C24]">{m.label}</b> <span className="text-[#A08A5B]">— {m.where}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-1.5 text-[12.5px]">
+                  Fill them in on the BC form and regenerate, or send as it is — nothing is blocked.
+                </div>
+              </div>
+            </div>
+          )}
           {freshness.state === 'stale' && (
             <div className="mb-3 border border-[#EBD9BE] bg-[#FDF6E7] rounded-xl px-4 py-3.5 flex items-start gap-3">
               <span className="text-[15px] leading-none mt-[2px]">⚠</span>
