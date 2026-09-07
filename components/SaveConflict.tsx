@@ -9,9 +9,11 @@ import { conflictMessage } from '@/lib/save-conflict'
 // of the same tab are merged and never see it; this is now only for the same
 // field, changed by both, to different things - which is why it can name the
 // field, and why it is worth reading when it does appear.
-export default function SaveConflict({ tab, fields }: { tab: string; fields: string | null }) {
+export default function SaveConflict({ tab, fields, who }: { tab: string; fields: string | null; who?: string }) {
   if (fields === null) return null
-  const { title, body } = conflictMessage(tab, fields)
+  // Named from the same presence rows the amber banner uses, so the two can
+  // never disagree about who is in the deal.
+  const { title, body } = conflictMessage(tab, fields, who || '')
   return (
     <div className="border-2 border-[#C4553B] bg-[#FDF2F0] rounded-xl px-4 py-3.5 mb-4">
       <h4 className="m-0 mb-1 text-[13.5px] font-bold text-[#6E2A20]">{title}</h4>

@@ -74,6 +74,18 @@ export function tabMerges(tab: string): boolean {
   return MERGING_TABS.includes(txt(tab).toLowerCase())
 }
 
+// WHO THE SAVE BANNER IS TALKING ABOUT.
+//
+// The red banner said "somebody else is editing this" and left it there, which
+// on BC is close to useless - Fabio, 7 Sep 2026: "BC says there's someone there
+// and we don't know who??" The portal knows exactly who; the banner simply never
+// asked. This is the same list the amber banner is drawn from, so the two can
+// never name different people about the same situation.
+export function sameTabNames(others: Presence[], myTab: string): string {
+  const here = others.filter(o => txt(o.tab) === txt(myTab))
+  return here.length === 0 ? '' : names(here)
+}
+
 function names(rows: Presence[]): string {
   const list = [...new Set(rows.map(r => txt(r.name)).filter(Boolean))]
   if (list.length === 0) return 'Somebody else'

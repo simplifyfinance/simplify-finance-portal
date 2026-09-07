@@ -333,7 +333,7 @@ function OwnershipCheckboxes({ applicants, ownership, onChange, label = 'Respons
   )
 }
 
-export default function FactFindForm({ deal, onDataChange, onDealFieldChange, onSaveStatus }: { deal: any; onDataChange?: (d: FactFindData) => void; onDealFieldChange?: (field: string, value: string) => void; onSaveStatus?: (s: { at?: string; error?: string }) => void }) {
+export default function FactFindForm({ deal, onDataChange, onDealFieldChange, onSaveStatus, whoElseHere }: { whoElseHere?: string; deal: any; onDataChange?: (d: FactFindData) => void; onDealFieldChange?: (field: string, value: string) => void; onSaveStatus?: (s: { at?: string; error?: string }) => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `fact_find_${deal.id}`
   const bc = deal.bc_data || {}
@@ -840,7 +840,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
 
   return (
     <div className="grid grid-cols-[480px_1fr] gap-4 items-start">
-      <SaveConflict tab="Fact Find" fields={conflictFields} />
+      <SaveConflict tab="Fact Find" fields={conflictFields} who={whoElseHere} />
       <SaveMerged message={mergedNote} onDismiss={() => setMergedNote('')} />
       <div>
         {/* One notes field for the whole deal. This used to be a box of its own

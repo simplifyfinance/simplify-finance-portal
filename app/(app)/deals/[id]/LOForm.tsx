@@ -228,7 +228,7 @@ function LibraryField({ label, value, onChange }: { label: string; value: string
   )
 }
 
-export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, onDealFieldChange }: { deal: any; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void; onDealFieldChange?: (field: string, value: any) => void }) {
+export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, onDealFieldChange, whoElseHere }: { whoElseHere?: string; deal: any; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void; onDealFieldChange?: (field: string, value: any) => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `lo_${deal.id}`
   const bc = deal.bc_data || {}
@@ -1113,7 +1113,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         <div className="border border-red-200 bg-red-50 rounded-xl px-4 py-3 text-[13px] text-red-600">{docsErr}</div>
       )}
 
-      <SaveConflict tab="Lending options" fields={conflictFields} />
+      <SaveConflict tab="Lending options" fields={conflictFields} who={whoElseHere} />
       <SaveMerged message={mergedNote} onDismiss={() => setMergedNote('')} />
 
       {activeTab === 'form' && (

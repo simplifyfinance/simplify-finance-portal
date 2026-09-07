@@ -234,6 +234,30 @@ describe('what the banner says', () => {
   it('says plainly that nothing was saved', () => {
     expect(conflictMessage('BC').body).toContain('has been saved')
   })
+
+  // Fabio, 7 Sep 2026: "BC says there's someone there and we don't know who??"
+  it('names the person, because the portal knows who it is', () => {
+    expect(conflictMessage('BC', '', 'Katie Amos').title)
+      .toBe('Katie Amos is editing this BC at the same time as you')
+    expect(conflictMessage('BC', '', 'Katie Amos').body).toContain('Katie has saved changes')
+  })
+
+  it('names them on a field clash too', () => {
+    expect(conflictMessage('Fact Find', 'Dependants', 'Kylie Searle').title)
+      .toBe('You and Kylie Searle have both changed Dependants')
+  })
+
+  it('reads properly for more than one person', () => {
+    expect(conflictMessage('BC', '', 'Katie Amos and Ellie').title)
+      .toBe('Katie Amos and Ellie are editing this BC at the same time as you')
+  })
+
+  // They saved and then closed the tab. There is nobody to name, and it must not
+  // read as "and  have both changed".
+  it('falls back gracefully when whoever saved has since left', () => {
+    expect(conflictMessage('BC', '', '').title).toBe('Somebody else is editing this BC at the same time as you')
+    expect(conflictMessage('BC', 'Deposit', '').title).toBe('You and somebody else have both changed Deposit')
+  })
 })
 
 

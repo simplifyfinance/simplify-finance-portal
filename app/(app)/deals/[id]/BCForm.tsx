@@ -279,7 +279,7 @@ function NumberInput({ value, onChange, placeholder }: { value: string; onChange
   )
 }
 
-type BCFormProps = { deal: any; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void }
+type BCFormProps = { deal: any; whoElseHere?: string; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void }
 
 // PUTTING SOMEBODY ELSE'S VERSION ON SCREEN.
 //
@@ -306,7 +306,7 @@ export default function BCForm(props: BCFormProps) {
   )
 }
 
-function BCFormInner({ deal, onDataChange, onStageChange, userRole, onSaveStatus, onAdopt }: BCFormProps & { onAdopt: (next: any) => void }) {
+function BCFormInner({ deal, onDataChange, onStageChange, userRole, onSaveStatus, whoElseHere, onAdopt }: BCFormProps & { onAdopt: (next: any) => void }) {
   // The database is the only store. No browser-side copy and no fallback: a per-browser
   // cache keyed only by deal id showed one user another user's state, and an empty cache
   // rendered a blank form that the autosave then wrote back over the real record.
@@ -1023,7 +1023,7 @@ Key assumptions: ${checklistText}`
 
   return (
     <div>
-      <SaveConflict tab="BC" fields={conflictFields} />
+      <SaveConflict tab="BC" fields={conflictFields} who={whoElseHere} />
       <div className="flex gap-2 mb-4 items-center flex-wrap">
         {[['form','BC form'],['preview','Preview & share']].map(([id,label]) => (
           <button key={id} onClick={() => setActiveTab(id as any)}

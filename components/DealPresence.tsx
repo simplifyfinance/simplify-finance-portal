@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { stillHere, presenceState, presenceMessage, HEARTBEAT_MS, type Presence } from '@/lib/presence'
+import { stillHere, presenceState, presenceMessage, sameTabNames, HEARTBEAT_MS, type Presence } from '@/lib/presence'
 import { otherWindows, selfMessage, SELF_BEAT_MS, type SelfWindow } from '@/lib/self-presence'
 
 // THE BANNER, AND THE HEARTBEAT BEHIND IT.
@@ -14,7 +14,7 @@ import { otherWindows, selfMessage, SELF_BEAT_MS, type SelfWindow } from '@/lib/
 // It never blocks anything. If the table is missing, the query fails, or the
 // user has no session, the banner simply does not appear - presence going quiet
 // must never stop somebody working on a deal.
-export default function DealPresence({ dealId, tab }: { dealId: string; tab: string }) {
+export default function DealPresence({ dealId, tab, onSameTab }: { dealId: string; tab: string; onSameTab?: (who: string) => void }) {
   const supabase = createSupabaseBrowser()
   const [others, setOthers] = useState<Presence[]>([])
 
@@ -97,6 +97,12 @@ export default function DealPresence({ dealId, tab }: { dealId: string; tab: str
 
     return () => { clearInterval(timer); channel.close() }
   }, [dealId, tab])
+
+  // Who else is on THIS tab, in words, for the save banner to name. The save
+  // banner lives inside each form and has no presence of its own; without this
+  // it can only say "somebody else", which on BC is no use to anybody.
+  const sameTab = sameTabNames(others, tab)
+  useEffect(() => { onSameTab?.(sameTab) }, [sameTab])
 
   const selfText = selfMessage(mine, tab)
   const msg = presenceMessage(presenceState(others, tab))

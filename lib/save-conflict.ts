@@ -308,14 +308,25 @@ async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome | O
 }
 
 // What the banner says. One wording, so all four tabs say the same thing.
-export function conflictMessage(tab: string, fields = ''): { title: string; body: string } {
+// `who` comes from the presence rows the amber banner is already drawn from, so
+// the two can never name different people about the same situation. It is empty
+// when the other person has closed the tab since saving - which is a real
+// situation and must read properly, not as "and  have both changed".
+//
+// Fabio, 7 Sep 2026: "BC says there's someone there and we don't know who??"
+// The portal knew. This banner simply never asked.
+export function conflictMessage(tab: string, fields = '', who = ''): { title: string; body: string } {
+  const them = String(who || '').trim()
+  const plural = them.includes(' and ')
   return {
     title: fields
-      ? `You and somebody else have both changed ${fields}`
-      : `Somebody else is editing this ${tab} at the same time as you`,
+      ? (them ? `You and ${them} have both changed ${fields}`
+              : `You and somebody else have both changed ${fields}`)
+      : (them ? `${them} ${plural ? 'are' : 'is'} editing this ${tab} at the same time as you`
+              : `Somebody else is editing this ${tab} at the same time as you`),
     body: (fields
         ? 'Everything else you both typed fits together — this one field does not, so nothing has been saved. '
-        : 'They have saved changes since you opened it, so nothing you have typed in the last few minutes has been saved. ')
+        : `${them ? (plural ? 'They have' : them.split(' ')[0] + ' has') : 'They have'} saved changes since you opened it, so nothing you have typed in the last few minutes has been saved. `)
       + 'Saving it would wipe out what they entered. Copy anything you need to keep, then reload to pick up their '
       + 'version and type it back in.',
   }

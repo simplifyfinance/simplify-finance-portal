@@ -118,6 +118,14 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
     if (data) setDealData((prev: any) => ({ ...prev, ...(data as any) }))
   }
 
+  // WHO ELSE IS ON THE TAB YOU ARE LOOKING AT.
+  //
+  // Presence knows. The save banner inside each form does not, and so it could
+  // only ever say "somebody else is editing this" - which on BC told nobody
+  // anything. Fabio, 7 Sep 2026: "BC says there's someone there and we don't
+  // know who??" One name, passed down from the one place that has it.
+  const [whoElseHere, setWhoElseHere] = useState('')
+
   function changeStage(newStage: string) {
     setStage(newStage)
     setUnlockedTab('')
@@ -287,16 +295,16 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           tab content so it is read before somebody starts typing, and names the
           TAB they are on, because two people on different tabs write different
           columns and are not in each other's way. See lib/presence.ts. */}
-      <DealPresence dealId={dealData.id} tab={tabs.find(t => t.key === stage)?.label || stage} />
+      <DealPresence dealId={dealData.id} tab={tabs.find(t => t.key === stage)?.label || stage} onSameTab={setWhoElseHere} />
 
       <TabLock locked={isLocked(dealData) && unlockedTab !== stage} tab={stage} dealId={dealData.id}
         role={userRole} me={me}
         onUnlocked={() => { setUnlockedTab(stage); reloadFile() }}>
-        {stage === 'FactFind' && <FactFindForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
+        {stage === 'FactFind' && <FactFindForm whoElseHere={whoElseHere} deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
         {stage === 'Statements' && <StatementAnalysis deal={dealData} />}
-        {stage === 'BC' && <BCForm deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
-        {stage === 'LO' && <LOForm deal={dealData} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} />}
-        {stage === 'Compliance' && <ComplianceForm deal={dealData} onSaveStatus={setSaveStatus}
+        {stage === 'BC' && <BCForm whoElseHere={whoElseHere} deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
+        {stage === 'LO' && <LOForm whoElseHere={whoElseHere} deal={dealData} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} />}
+        {stage === 'Compliance' && <ComplianceForm whoElseHere={whoElseHere} deal={dealData} onSaveStatus={setSaveStatus}
           onDealPatched={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />}
       </TabLock>
     </div>

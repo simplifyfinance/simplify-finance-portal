@@ -263,7 +263,7 @@ function AIButton({ onClick, loading, label = 'Generate with AI' }: { onClick: (
   )
 }
 
-export default function ComplianceForm({ deal, onSaveStatus, onDealPatched }: {
+export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoElseHere }: { whoElseHere?: string;
   deal: any
   onSaveStatus?: (s: { at?: string; error?: string }) => void
   // The deal structure block writes compliance_data itself; this lets the page
@@ -1001,7 +1001,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
 
   return (
     <div className="space-y-4">
-      <SaveConflict tab="Compliance" fields={conflictFields} />
+      <SaveConflict tab="Compliance" fields={conflictFields} who={whoElseHere} />
       <SaveMerged message={mergedNote} onDismiss={() => setMergedNote('')} />
       {past && (
         <div className="bg-white border border-[#CFE6D5] rounded-xl px-4 py-3.5">

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { stillHere, presenceState, presenceMessage, STALE_AFTER_MS, type Presence } from './presence'
+import { stillHere, presenceState, presenceMessage, sameTabNames, STALE_AFTER_MS, type Presence } from './presence'
 
 const NOW = Date.parse('2026-09-04T10:00:00Z')
 const ago = (ms: number) => new Date(NOW - ms).toISOString()
@@ -80,5 +80,27 @@ describe('which state the banner is in', () => {
   it('says something sensible when a name is missing', () => {
     const s = presenceState([p('x', '', 'BC')], 'Lending options')
     expect(presenceMessage(s)!.text).toBe('Somebody else is also in this deal, on BC.')
+  })
+})
+
+// What the red save banner is given to name people with. Drawn from the same
+// rows as the amber banner, so the two can never disagree.
+describe('naming whoever else is on this tab', () => {
+  it('names them', () => {
+    expect(sameTabNames([p('k', 'Katie Amos', 'BC — Borrowing capacity')], 'BC — Borrowing capacity'))
+      .toBe('Katie Amos')
+  })
+
+  it('ignores somebody on a different tab', () => {
+    expect(sameTabNames([p('m', 'Mellissa Sedin', 'Lending options')], 'BC — Borrowing capacity')).toBe('')
+  })
+
+  it('reads properly for two', () => {
+    expect(sameTabNames([p('k', 'Katie Amos', 'BC'), p('e', 'Ellie', 'BC')], 'BC'))
+      .toBe('Katie Amos and Ellie')
+  })
+
+  it('is empty when nobody else is here', () => {
+    expect(sameTabNames([], 'BC')).toBe('')
   })
 })
