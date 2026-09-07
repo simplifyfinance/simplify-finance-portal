@@ -33,6 +33,7 @@ import { brokerNotes, type Assessor } from '@/lib/broker-notes'
 import { comparisonBlock } from '@/lib/lender-comparison'
 import SaveNote from '@/components/SaveNote'
 import { newGuard, adopt, saveGuarded, mergeMessage, overwroteMessage, behindMessage } from '@/lib/save-conflict'
+import { selfEmployedParagraphsFor } from '@/lib/self-employed-facts'
 import DealStructure from '@/components/DealStructure'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
@@ -690,7 +691,11 @@ Cover: reducing the home loan and why/how quickly; dependants — commencing or 
 Client: ${context.clientName}. Dependants: ${context.dependants}. Recommended product features: Offset account = ${context.offsetAccount || 'not specified'}, Redraw = ${context.redraw || 'not specified'}. Client's own stated 2-10 year goals: "${context.goals10Years || 'not recorded'}". IMPORTANT: only reference a specific loan feature as helping achieve a goal if it is confirmed present above — otherwise describe the general benefit without naming a feature the product doesn't have. Write 3-4 sentences, no dot points.`,
 
       analysisComment: `CRM FIELD: Analysis, assessment and applicant education comments
-
+${selfEmployedParagraphsFor(deal).length > 0
+  ? '\nA SELF-EMPLOYED INCOME ASSESSMENT HAS ALREADY BEEN WRITTEN and will be placed above whatever you produce. '
+    + 'Do not describe how the self-employed income was assessed, do not restate the assessment method, the financial '
+    + 'years, the net profit, the add-backs or the assessed figure. Refer to the income only as already assessed.\n'
+  : ''}
 Write three clearly labelled sections using bold subheadings:
 
 ANALYSIS — cover: purpose of the loan and loan amount; what the client is hoping to achieve short and long term; overview of the client's situation; ages of applicants and whether an exit strategy is required; residential status (renting, boarding, and history); family status and ages of dependants; employment type, income, stability and any recent/upcoming changes; assets and liabilities including any changes (e.g. credit cards being closed or paid out); financial habits (savings held); financial awareness (loan terms, repayments, interest rates); credit history.
@@ -768,7 +773,22 @@ Use the security address exactly as recorded. On a pre-approval it will already 
         const answerMatch = raw.match(/ANSWER:\s*([\s\S]*?)(?:\n\s*CONFIDENCE:|$)/i)
         const confidenceMatch = raw.match(/CONFIDENCE:\s*([\s\S]*?)(?:\n\s*SOURCE:|$)/i)
         const sourceMatch = raw.match(/SOURCE:\s*([\s\S]*?)$/i)
-        const answer = answerMatch ? answerMatch[1].trim() : raw.trim()
+        let answer = answerMatch ? answerMatch[1].trim() : raw.trim()
+
+        // THE SELF-EMPLOYED INCOME IS COMPOSED, NOT WRITTEN.
+        //
+        // Compliance said nothing at all about how a self-employed income was
+        // arrived at, which on a self-employed file is the most questioned part
+        // of the whole application. It is now assembled from the recorded fields
+        // - the structure, the method, the years, the add-backs, whether the
+        // business is profitable - and put in front of whatever the model wrote,
+        // word for word. A model asked to describe an income assessment will
+        // paraphrase a figure sooner or later; this cannot.
+        // See lib/self-employed-facts.ts.
+        if (field === 'analysisComment') {
+          const composed = selfEmployedParagraphsFor(deal)
+          if (composed.length > 0) answer = composed.join('\n\n') + '\n\n' + answer
+        }
         const confidence = confidenceMatch ? confidenceMatch[1].trim() : ''
         const source = sourceMatch ? sourceMatch[1].trim() : ''
         // Stamped with what it was written from, at the moment it was written.

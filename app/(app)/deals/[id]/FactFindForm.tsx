@@ -11,6 +11,7 @@ import CurrencyInput from './CurrencyInput'
 import BankSelect from './BankSelect'
 
 import { seYearTotalFF, calculateSeAssessableIncome } from '@/lib/income-calculations'
+import { selfEmployedFacts } from '@/lib/self-employed-facts'
 import InternalNotes from '@/components/InternalNotes'
 import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET_TYPES, DEPOSIT_SOURCES, optionsFor } from '@/lib/fact-find-options'
 import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship } from '@/lib/relationship'
@@ -1445,7 +1446,23 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                     </div>
                   )}
 
-                  {Number.isNaN(calculateSeAssessableIncome(inc)) ? (
+                  {/* NOTHING TYPED IN IS NOT ZERO.
+                      This box printed "$0 p.a." in a confident blue panel on an
+                      income nobody had filled in yet, which reads as an answer
+                      rather than an empty form - and $0 then travelled into the
+                      BC total, the client email and the compliance notes.
+                      Fabio, 8 Sep 2026: "flag if no data on income input for
+                      self employed." */}
+                  {!selfEmployedFacts(inc, (applicant?.employment || []).find((e: any) => e.id === inc.employmentId)).hasFigures ? (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                      <div className="text-sm font-semibold text-amber-800">No income figures recorded yet</div>
+                      <div className="text-xs text-amber-700 mt-1">
+                        {inc.seAssessmentMethod === "Director's salary"
+                          ? 'Enter the director\'s salary below. Until then this income counts as nothing on the BC, the client email and the compliance notes.'
+                          : 'Enter the financial year figures below. Until then this income counts as nothing on the BC, the client email and the compliance notes.'}
+                      </div>
+                    </div>
+                  ) : Number.isNaN(calculateSeAssessableIncome(inc)) ? (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
                       <div className="text-sm font-semibold text-red-700">Latest year not lower</div>
                       <div className="text-xs text-red-500 mt-1">FY {inc.seYear2FY} (${Math.round(seYearTotalFF(inc, 2)).toLocaleString()}) is not lower than FY {inc.seYear1FY} (${Math.round(seYearTotalFF(inc, 1)).toLocaleString()}). Choose a different calculation method.</div>
