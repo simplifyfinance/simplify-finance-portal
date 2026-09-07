@@ -63,33 +63,27 @@ describe('labels derived from the deal', () => {
 })
 
 describe('the deal name on a card', () => {
-  it('drops the type and the year, because both are already on screen', () => {
-    expect(dealTitle('Kornelia_Viragova_Purchase_2026')).toBe('Kornelia Viragova')
-    expect(dealTitle('Sasa_Kalajdzic_Tori_Headington_Refinance_2026')).toBe('Sasa Kalajdzic Tori Headington')
+  // It is the name. Not a tidied version of it, not a shortened one.
+  // Fabio, 7 Sep 2026: "whatever the deal name is on the deal card, that's the
+  // name on the board."
+  it('is exactly what the deal is called', () => {
+    expect(dealTitle('Alexis_Janes_Refinance_2026')).toBe('Alexis_Janes_Refinance_2026')
+    expect(dealTitle('Alexis_Janes_INV_Preapp_2026')).toBe('Alexis_Janes_INV_Preapp_2026')
+    expect(dealTitle('Ricardo Fogolin & Joanne Saliba 2026')).toBe('Ricardo Fogolin & Joanne Saliba 2026')
   })
 
-  it('copes with the stray spaces people actually type', () => {
-    expect(dealTitle('Blake_Toscan _Refinance_2026')).toBe('Blake Toscan')
-    expect(dealTitle('Santiago _Moscatelli_Investment_2026')).toBe('Santiago Moscatelli')
-    expect(dealTitle('Kendall_Hume_ Sam_Delamont_Purchase_2026')).toBe('Kendall Hume Sam Delamont')
+  it('never leaves two deals of one client looking identical', () => {
+    const names = ['Alexis_Janes_Refinance_2026', 'Alexis_Janes_INV_Preapp_2026', 'Alexis_Janes_SMSF_Commercial_Preapp_2026']
+    expect(new Set(names.map(dealTitle)).size).toBe(names.length)
   })
 
-  it('keeps a surname that already contains a space', () => {
-    expect(dealTitle('Belinda_Birchland Hickson_Simon_Hickson_Purchase_2026'))
-      .toBe('Belinda Birchland Hickson Simon Hickson')
+  it('takes nothing off the end', () => {
+    expect(dealTitle('Kornelia_Viragova_Purchase_2026')).toBe('Kornelia_Viragova_Purchase_2026')
+    expect(dealTitle('Jo_Sample_Equity_Release_2026')).toBe('Jo_Sample_Equity_Release_2026')
   })
 
-  it('handles a two-word type', () => {
-    expect(dealTitle('Jo_Sample_Equity_Release_2026')).toBe('Jo Sample')
-  })
-
-  it('leaves a name alone when there is nothing to strip', () => {
-    expect(dealTitle('Jo Sample')).toBe('Jo Sample')
-  })
-
-  it('never returns an empty card', () => {
-    // A deal named only for its type would strip down to nothing.
-    expect(dealTitle('Refinance_2026')).toBe('Refinance 2026')
+  it('copes with nothing at all', () => {
     expect(dealTitle('')).toBe('')
+    expect(dealTitle(null as any)).toBe('')
   })
 })

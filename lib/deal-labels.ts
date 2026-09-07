@@ -138,25 +138,21 @@ export function chipStyle(colour: string): { color: string; background: string; 
   return { color: colour, background: colour + '14', borderColor: colour + '38' }
 }
 
-// The deal name, as a person would read it.
+// THE DEAL NAME. NOT A VERSION OF IT.
 //
-// Deals are saved as Firstname_Lastname_Type_Year, which is right for a filename
-// and wrong on a card: underscores do not wrap, so the name ran out of the card,
-// and the Type and Year are already on screen — Type as a chip beside it, and
-// every deal is the current year. What is left is the only part that identifies
-// the client.
+// This used to tidy the name for the card - it took the year off, and for a
+// while it took the deal type off as well, on the reasoning that the type was
+// already shown as a chip beside it. Nobody asked for either. What it produced
+// was two of Alexis Janes's three deals reading the same on the board, on a
+// screen where somebody picks a card and starts typing into it.
 //
-// Display only. NOTHING is renamed; the deal keeps the name it was saved with,
-// and the full string stays available on hover.
-const TYPE_SUFFIX = /[_\s]*(purchase|refinance|investment|construction|smsf|equity[_\s]*release|preapproval|refi)\s*$/i
-
+// Fabio, 7 Sep 2026: "whatever the deal name is on the deal card, that's the
+// name on the board."
+//
+// So it is the name. Whatever it was saved as, character for character, the same
+// on the board as at the top of the deal. If a name reads badly the answer is to
+// rename the deal, which is a thing a person does on purpose - not to have the
+// board quietly show something else.
 export function dealTitle(name: string): string {
-  let s = String(name || '').trim()
-  if (!s) return ''
-  s = s.replace(/[_\s]*(19|20)\d{2}\s*$/, '')   // the year
-  s = s.replace(TYPE_SUFFIX, '')                 // and the type, which is a chip already
-  s = s.replace(/_+/g, ' ').replace(/\s+/g, ' ').trim()
-  // If stripping left nothing — a deal named only "Refinance_2026" — the original
-  // is more use than an empty card.
-  return s || String(name || '').replace(/_+/g, ' ').trim()
+  return String(name || '').trim()
 }

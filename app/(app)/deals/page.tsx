@@ -1,5 +1,6 @@
 'use client'
 import { Fragment, useEffect, useState } from 'react'
+import { dealMatches } from '@/lib/deal-search'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { Plus, Search, Briefcase, Trash2, Copy } from 'lucide-react'
 import { DeleteDealDialog } from '@/components/DeleteDealDialog'
@@ -189,11 +190,11 @@ export default function DealsPage() {
   const [showLost, setShowLost] = useState(false)
   // The two filters were written out twice, once for the list and once for the
   // board, so a change to one silently did not reach the other.
-  const term = search.trim().toLowerCase()
-  const matchesSearch = (d: any) => !term
-    || d.deal_name?.toLowerCase().includes(term)
-    || d.clients?.first_name?.toLowerCase().includes(term)
-    || d.clients?.last_name?.toLowerCase().includes(term)
+  // Searching "Alexis" found three deals and "Janes" found none, on deals called
+  // Alexis_Janes_Refinance_2026 - because an underscore is not a space and a
+  // plain includes() cannot see past one. See lib/deal-search.ts.
+  const term = search.trim()
+  const matchesSearch = (d: any) => dealMatches(d, term)
   const matchesBox = (d: any) => boxFilter === 'all'
     || (boxFilter === 'bc' && d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at)
     || (boxFilter === 'lo' && d.lo_completed_at && !d.compliance_completed_at)

@@ -9,8 +9,12 @@ const deal = (o: any = {}) => ({
 })
 
 describe('the quick look', () => {
-  it('shows the client, not the filename', () => {
-    expect(buildPeek(deal()).title).toBe('Kornelia Viragova')
+  // The name is the name, here as on the board. It used to be tidied - the year
+  // and the deal type taken off - and that made two of one client's deals read
+  // identically on a screen people pick from. Fabio, 7 Sep 2026: "whatever the
+  // deal name is on the deal card, that's the name on the board."
+  it('shows the deal exactly as it is named', () => {
+    expect(buildPeek(deal()).title).toBe('Kornelia_Viragova_Purchase_2026')
     expect(buildPeek(deal()).fullName).toBe('Kornelia_Viragova_Purchase_2026')
   })
 
