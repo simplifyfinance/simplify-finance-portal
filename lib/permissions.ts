@@ -27,6 +27,27 @@ export const CAPABILITIES = {
   viewCommissions:   ['admin'],
 } as const
 
+// WHO CAN LOOK AT PREVIOUS VERSIONS OF A DEAL.
+//
+// Deliberately not a role. Every save now keeps a copy of what it replaced, and
+// that pile is the whole history of a client's file - what a figure used to be,
+// what somebody changed and when. Useful in the right hands and confusing in
+// everybody else's, so it is two named people rather than a job title.
+//
+// Fabio, 7 Sep 2026: "do it next but only me and Kylie to see it."
+//
+// One line to change. Add an address here and that person can see it; take it
+// out and they cannot.
+export const HISTORY_PEOPLE = [
+  'fabio@simplifyfinance.com.au',
+  'kylie@simplifyfinance.com.au',
+]
+
+export function canSeeHistory(email: string | null | undefined): boolean {
+  const e = String(email || '').trim().toLowerCase()
+  return e !== '' && HISTORY_PEOPLE.includes(e)
+}
+
 export type Capability = keyof typeof CAPABILITIES
 
 export function can(role: string | null | undefined, capability: Capability): boolean {

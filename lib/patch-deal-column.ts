@@ -30,6 +30,7 @@
 // how this behaved before it existed.
 
 import { looksLikeAWipe, wipeMessage } from './wipe-guard'
+import { keepVersion, shouldKeep, newHistoryClock } from './deal-history'
 
 export type PatchResult = { next: any; problem: string | null }
 
@@ -46,6 +47,8 @@ export async function patchDealColumn(
   // tick because the network hiccuped is worse than the problem being solved,
   // and this is the behaviour every one of these call sites had before.
   fallback: any,
+  // Who is doing it, so the copy put aside says whose change replaced what.
+  savedBy?: { id?: string | null; name?: string | null },
 ): Promise<PatchResult> {
   let next: any = fallback
 
@@ -57,6 +60,18 @@ export async function patchDealColumn(
     const seenVersion: number | undefined =
       typeof data?.row_version === 'number' ? data.row_version : undefined
     next = apply(current ?? {})
+
+    // Keep what is about to be replaced, exactly as the deal tabs do. These
+    // columns hold every document tick and every handover tick in one lump, so
+    // they are worth being able to get back too. See lib/deal-history.ts.
+    if (!readError) {
+      const previous = data?.[column] ?? null
+      // A fresh clock each time: these are single deliberate presses, not an
+      // autosave running every second, so every one of them is worth keeping.
+      if (shouldKeep(previous, next, newHistoryClock(), Date.now())) {
+        await keepVersion(supabase, dealId, column, previous, savedBy)
+      }
+    }
 
     // The same seatbelt the deal tabs wear. A tick list that comes back nearly
     // empty is not somebody unticking thirty boxes. See lib/wipe-guard.ts.

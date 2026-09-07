@@ -65,3 +65,44 @@ export async function keepVersion(
     console.error('deal_history insert threw', e)
   }
 }
+
+// ---------------------------------------------------------------------------
+// LOOKING AT WHAT WAS KEPT, AND PUTTING ONE BACK.
+// ---------------------------------------------------------------------------
+
+export type Version = {
+  id: number
+  data: any
+  filled: number | null
+  replacedAt: string
+  replacedByName: string | null
+}
+
+export async function listVersions(
+  supabase: any, dealId: string, column: string, limit = 25,
+): Promise<Version[]> {
+  const { data, error } = await supabase
+    .from('deal_history')
+    .select('id, data, filled, replaced_at, replaced_by_name')
+    .eq('deal_id', dealId).eq('column_name', column)
+    .order('replaced_at', { ascending: false })
+    .limit(limit)
+  if (error) { console.error('deal_history read failed', error); return [] }
+  return (data || []).map((r: any) => ({
+    id: r.id, data: r.data, filled: r.filled,
+    replacedAt: r.replaced_at, replacedByName: r.replaced_by_name,
+  }))
+}
+
+// "Today at 2:36pm — Mellissa Sedin — 41 things filled in"
+export function describeVersion(v: Version, now = new Date()): string {
+  const at = new Date(v.replacedAt)
+  const sameDay = at.toDateString() === now.toDateString()
+  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1)
+  const when = sameDay ? 'Today' : at.toDateString() === yesterday.toDateString() ? 'Yesterday'
+    : at.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+  const time = at.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }).toLowerCase()
+  const who = String(v.replacedByName || '').trim()
+  const filled = typeof v.filled === 'number' ? `${v.filled} things filled in` : ''
+  return [`${when} at ${time}`, who, filled].filter(Boolean).join(' — ')
+}

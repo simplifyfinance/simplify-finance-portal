@@ -1,6 +1,8 @@
 'use client'
 import { brokerLabel } from '@/lib/broker-key'
 import DealPresence from '@/components/DealPresence'
+import DealHistory from '@/components/DealHistory'
+import { canSeeHistory } from '@/lib/permissions'
 import { useState, useEffect } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -78,10 +80,14 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   // name rather than "somebody else" - see docs/deal-last-saved-by.sql.
   const { notes, alerts, reload: reloadFile } = useDealFile(deal.id)
   const [me, setMe] = useState<{ id: string | null; name: string }>({ id: null, name: '' })
+  // Kept apart from the name: who may look at previous versions is decided by
+  // address, not by job title. See canSeeHistory in lib/permissions.ts.
+  const [myEmail, setMyEmail] = useState('')
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       const u = data?.user
       if (!u) return
+      setMyEmail(u.email || '')
       supabase.from('user_profiles').select('full_name').eq('id', u.id).single()
         .then(({ data: p }) => setMe({ id: u.id, name: (p as any)?.full_name || u.email || '' }))
     })
@@ -168,6 +174,10 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
                 {saveStatus.error
                   ? <span className="text-xs font-semibold text-red-600">{saveStatus.error}</span>
                   : saveStatus.at ? <span className="text-xs text-gray-400 whitespace-nowrap">Autosaved {saveStatus.at}</span> : null}
+                {/* Next to the autosave line, because that is where somebody
+                    looks the moment they wonder what happened to their work.
+                    Two named people only - see canSeeHistory. */}
+                {canSeeHistory(myEmail) && <DealHistory dealId={dealData.id} tab={stage} me={me} />}
               </div>
               <button onClick={() => setEditingName(true)} className="text-xs text-[#2DBEFF] hover:underline">✎ Edit</button>
             </div>
