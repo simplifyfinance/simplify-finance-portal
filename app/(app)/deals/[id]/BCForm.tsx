@@ -58,11 +58,7 @@ function freqLabel(freq: string | undefined): string {
   return 'month'
 }
 
-function fmtMoney(v: any): string {
-  const n = Number(v)
-  if (!v || isNaN(n)) return '0'
-  return n.toLocaleString('en-AU')
-}
+
 
 function subBlock(lines: string[]): string {
   if (!lines.length) return ''
@@ -95,16 +91,28 @@ function buildPropertyLiabilityChecklist(ff: any): string[] {
     const typeParts = [prop.propertySubtype, prop.zoning].filter(Boolean).join(', ')
     const header = `<strong>${prop.address || 'Property'}</strong>${typeParts ? ' \u2014 ' + typeParts : ''} (${prop.ownershipType || 'Owner occupied'})`
     const subLines: string[] = []
-    if (isInvestment && prop.rentalIncome) {
-      subLines.push(`Rental income: $${fmtMoney(prop.rentalIncome)}/week`)
+    if (isInvestment && money(prop.rentalIncome)) {
+      subLines.push(`Rental income: ${money(prop.rentalIncome)}/week`)
     }
     if (owners) {
       subLines.push(`Owned by: ${owners}`)
     }
     ;(prop.loans || []).forEach((loan: any) => {
-      if (loan.lenderName || loan.balance) {
-        subLines.push(`Linked loan: ${loan.lenderName || 'Lender'} \u2014 Balance $${fmtMoney(loan.balance)}${statusBadge(loan.status)}`)
-      }
+      if (!loan.lenderName && !money(loan.balance) && !money(loan.limitAmount)) return
+      // WHAT THE CLIENT IS TOLD THEY OWE.
+      //
+      // This printed `Balance $${fmtMoney(loan.balance)}`, and fmtMoney turned
+      // anything missing - or anything with a comma in it - into the string "0".
+      // Alexis Janes has eight mortgages recorded by LIMIT, with the balance box
+      // left empty, so the email that went to her said "Balance $0" eight times
+      // against half a million dollars of debt apiece.
+      //
+      // A figure that is not recorded is not zero. Say which figure it is, and
+      // if there is neither, say nothing about the money at all.
+      const bal = money(loan.balance)
+      const limit = money(loan.limitAmount)
+      const figure = bal ? `Balance ${bal}` : limit ? `Limit ${limit}` : ''
+      subLines.push(`Linked loan: ${loan.lenderName || 'Lender'}${figure ? ' \u2014 ' + figure : ''}${statusBadge(loan.status)}`)
     })
     items.push(header + subBlock(subLines))
   })
@@ -114,13 +122,13 @@ function buildPropertyLiabilityChecklist(ff: any): string[] {
     const header = `<strong>${liab.liabilityType}</strong>${statusBadge(liab.status)}`
     const subLines: string[] = []
     if (liab.liabilityType === 'Credit card') {
-      subLines.push(`Limit $${fmtMoney(liab.limitAmount)}`)
+      subLines.push(`Limit ${moneyOrBlank(liab.limitAmount)}`)
     } else if (liab.liabilityType === 'HECS') {
-      subLines.push(`Balance $${fmtMoney(liab.balance)}`)
+      subLines.push(`Balance ${moneyOrBlank(liab.balance)}`)
     } else if (liab.liabilityType === 'Health Insurance') {
-      subLines.push(`$${fmtMoney(liab.repaymentAmount)}/${freqLabel(liab.repaymentFrequency)}`)
+      subLines.push(`${moneyOrBlank(liab.repaymentAmount)}/${freqLabel(liab.repaymentFrequency)}`)
     } else {
-      subLines.push(`Repayment $${fmtMoney(liab.repaymentAmount)}/${freqLabel(liab.repaymentFrequency)}, Balance $${fmtMoney(liab.balance)}`)
+      subLines.push(`Repayment ${moneyOrBlank(liab.repaymentAmount)}/${freqLabel(liab.repaymentFrequency)}, Balance ${moneyOrBlank(liab.balance)}`)
     }
     if (owners) subLines.push(`Owned by: ${owners}`)
     items.push(header + subBlock(subLines))
@@ -237,7 +245,7 @@ import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
 import { annualIncomeOf, annualIncomeOfApplicant } from '@/lib/income-calculations'
 import SaveNote from '@/components/SaveNote'
 import { newGuard, saveGuarded, overwroteMessage, behindMessage } from '@/lib/save-conflict'
-import { readMoney, formatAsTyped} from '@/lib/money'
+import { readMoney, formatAsTyped, money, moneyOrBlank } from '@/lib/money'
 
 const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
 

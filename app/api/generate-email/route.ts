@@ -162,10 +162,14 @@ function buildLVRLine(d: any) {
   return row('LVR', `${pct}% (no LMI)`)
 }
 
+// The fifth hand-written money formatter found in this codebase, and the one
+// closest to the client - it prints figures into the email itself. Number() on
+// "506,514" is NaN, so a stored figure with commas in it fell straight through
+// to being printed raw and unformatted. money() from lib/money.ts is the one way
+// money is printed here; the raw value stays as the fallback so nothing that
+// used to appear can disappear.
 function fmtNum(v: any): string {
-  const n = Number(v)
-  if (!v || isNaN(n)) return String(v || '')
-  return n.toLocaleString('en-AU')
+  return money(v).replace(/^\$/, '') || String(v || '')
 }
 
 function buildChecklist(d: any) {

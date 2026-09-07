@@ -3,12 +3,12 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { calculateSeAssessableIncome } from '@/lib/income-calculations'
+import { money } from '@/lib/money'
 
-function fmtMoney(v: any): string {
-  const n = Number(v)
-  if (!v || isNaN(n)) return ''
-  return '$' + n.toLocaleString('en-AU')
-}
+// Was a hand-written formatter using Number(), which turns "506,514" into
+// nothing at all - the third copy of that mistake in this codebase. money() from
+// lib/money.ts is the one way money is printed here.
+const fmtMoney = (v: any) => money(v)
 
 function getApplicantIncomeLines(applicant: any): { label: string; value: string }[] {
   const employment = applicant.employment || []
