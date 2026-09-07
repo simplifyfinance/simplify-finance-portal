@@ -45,16 +45,33 @@ export type PresenceState =
   | { level: 'none' }
   // Elsewhere in the deal. Different column, nobody in anybody's way.
   | { level: 'elsewhere'; who: string; where: string }
-  // The case that costs an afternoon.
-  | { level: 'same-tab'; who: string }
+  // Same tab. What that costs depends on WHICH tab - see tabMerges.
+  | { level: 'same-tab'; who: string; tab: string }
 
 export function presenceState(others: Presence[], myTab: string): PresenceState {
   if (others.length === 0) return { level: 'none' }
 
   const sameTab = others.filter(o => txt(o.tab) === txt(myTab))
-  if (sameTab.length > 0) return { level: 'same-tab', who: names(sameTab) }
+  if (sameTab.length > 0) return { level: 'same-tab', who: names(sameTab), tab: txt(myTab) }
 
   return { level: 'elsewhere', who: names(others), where: whereList(others) }
+}
+
+// DOES THIS TAB PUT TWO PEOPLE'S WORK TOGETHER, OR PICK ONE?
+//
+// Fact Find, Lending options and Compliance hold their record in one piece of
+// state, so somebody else's fields can be folded onto a screen being typed into
+// without disturbing it - two people on different fields both save, and only the
+// same field, changed by both, refuses. See lib/deal-merge.ts.
+//
+// Everything else cannot. BC holds its record as forty separate pieces of state
+// with no single setter, so it refuses instead. Statements has no guard at all.
+// The banner has to say which of those two worlds you are in, because the
+// difference is "carry on" versus "one of you should stop".
+const MERGING_TABS = ['fact find', 'lending options', 'compliance']
+
+export function tabMerges(tab: string): boolean {
+  return MERGING_TABS.includes(txt(tab).toLowerCase())
 }
 
 function names(rows: Presence[]): string {
@@ -81,10 +98,23 @@ export function presenceMessage(s: PresenceState): { text: string; detail?: stri
   }
   // Says what will HAPPEN, not that something might. A warning that says "be
   // careful" is one people stop reading by the second week.
+  //
+  // This used to say "only the first save lands" on every tab. That stopped
+  // being true on 5 Sep 2026 for three of them, and a warning that overstates
+  // the danger is its own problem - people either stop working together or stop
+  // reading the banner.
   const plural = s.who.includes(' and ')
+  const text = `${s.who} ${plural ? 'are' : 'is'} on this same tab right now.`
+  if (tabMerges(s.tab)) {
+    return {
+      text,
+      detail: 'You can both work. Fill in different fields and both are saved — theirs will appear on your '
+            + 'screen as they go. Only if you both change the SAME field will one of you be asked to reload.',
+    }
+  }
   return {
-    text: `${s.who} ${plural ? 'are' : 'is'} on this same tab right now.`,
-    detail: 'You can both type, but only the first save lands — the other person will be told to reload '
-          + 'and will lose what they typed. Worth a message before you both start filling things in.',
+    text,
+    detail: 'On this tab only one of you should type at a time — the second save is refused and that person '
+          + 'has to reload and type it again. Worth a message before you both start.',
   }
 }

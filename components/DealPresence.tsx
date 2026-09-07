@@ -1,7 +1,8 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { stillHere, presenceState, presenceMessage, HEARTBEAT_MS, type Presence } from '@/lib/presence'
+import { otherWindows, selfMessage, SELF_BEAT_MS, type SelfWindow } from '@/lib/self-presence'
 
 // THE BANNER, AND THE HEARTBEAT BEHIND IT.
 //
@@ -61,11 +62,56 @@ export default function DealPresence({ dealId, tab }: { dealId: string; tab: str
     }
   }, [dealId, tab])
 
+  // AND YOU, IN ANOTHER WINDOW.
+  //
+  // deal_presence cannot see this - both rows would be you, and the banner
+  // ignores you on purpose. Windows of the same browser can talk to each other
+  // directly, so this needs no table and no extra database traffic. See
+  // lib/self-presence.ts.
+  const [mine, setMine] = useState<SelfWindow[]>([])
+  const sessionRef = useRef<string>('')
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof BroadcastChannel === 'undefined') return
+    if (!sessionRef.current) sessionRef.current = Math.random().toString(36).slice(2) + Date.now().toString(36)
+    const me = sessionRef.current
+    const channel = new BroadcastChannel(`deal-window-${dealId}`)
+    let heard: SelfWindow[] = []
+
+    channel.onmessage = (e: MessageEvent) => {
+      const d = e.data as SelfWindow
+      if (!d?.sessionId) return
+      // Stamped on arrival, not on sending. Two machines' clocks disagree, and a
+      // window whose clock is fast would otherwise look permanently fresh.
+      heard = [...heard, { sessionId: d.sessionId, tab: String(d.tab || ''), at: Date.now() }].slice(-40)
+      setMine(otherWindows(heard, me, Date.now()))
+    }
+
+    const beat = () => channel.postMessage({ sessionId: me, tab, at: Date.now() })
+    beat()
+    const timer = setInterval(() => {
+      beat()
+      // Re-checked on every beat, not only when something arrives, or a window
+      // that has been closed would stay on screen forever.
+      setMine(otherWindows(heard, me, Date.now()))
+    }, SELF_BEAT_MS)
+
+    return () => { clearInterval(timer); channel.close() }
+  }, [dealId, tab])
+
+  const selfText = selfMessage(mine, tab)
   const msg = presenceMessage(presenceState(others, tab))
-  if (!msg) return null
-  const loud = !!msg.detail
+  if (!msg && !selfText) return null
+  const loud = !!msg?.detail
 
   return (
+    <>
+    {selfText && (
+      <div className="flex items-start gap-2.5 border border-[#EAE6DE] bg-[#F7F6F3] rounded-lg px-3 py-2 mb-3">
+        <span className="inline-flex items-center justify-center w-[22px] h-[22px] rounded-full bg-[#E8E1D6] text-[#6E665C] text-[11px] font-extrabold flex-shrink-0">2</span>
+        <div className="text-[12.5px] leading-[1.58] text-[#6E665C]">{selfText}</div>
+      </div>
+    )}
+    {msg && (
     <div className={loud
       ? 'flex items-start gap-2.5 border border-[#EBD9BE] bg-[#FDF6EC] rounded-[10px] px-3.5 py-2.5 mb-3'
       : 'flex items-center gap-2.5 border border-[#EAE6DE] bg-[#F7F6F3] rounded-lg px-3 py-2 mb-3'}>
@@ -73,10 +119,12 @@ export default function DealPresence({ dealId, tab }: { dealId: string; tab: str
         {initials(others)}
       </span>
       <div className={loud ? 'text-[12.5px] leading-[1.58] text-[#8A6218]' : 'text-[12.5px] text-[#6E665C]'}>
-        <b className={loud ? 'text-[#6E4E12]' : 'text-[#2E2A26]'}>{msg.text}</b>
-        {msg.detail && <> {msg.detail}</>}
+        <b className={loud ? 'text-[#6E4E12]' : 'text-[#2E2A26]'}>{msg!.text}</b>
+        {msg!.detail && <> {msg!.detail}</>}
       </div>
     </div>
+    )}
+    </>
   )
 }
 

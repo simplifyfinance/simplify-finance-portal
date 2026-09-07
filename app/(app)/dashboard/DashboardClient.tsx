@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react'
 import { brokerKey as brokerKey_, brokerLabel, sameBroker } from '@/lib/broker-key'
 import Link from 'next/link'
-import { phaseOf, isFinished, isInApplication } from '@/lib/deal-phase'
+import { phaseOf, isFinished, isInApplication, PHASE_LABEL } from '@/lib/deal-phase'
 
 type Deal = {
   id: string
@@ -30,10 +30,20 @@ type Props = {
   brokerNames?: Record<string, string>
 }
 
+// WHY THIS IS KEYED ON THE PHASE, NOT ON deals.stage.
+//
+// This chip printed `deal.stage` - a text column set to 'BC' the moment a deal
+// row is inserted and only ever moved when a client clicks proceed. So every
+// brand new deal announced itself as BC on the dashboard before anybody had
+// opened it, which is what Fabio kept reporting: "when I create a deal it should
+// start on Fact Find and it is starting on BC." The board, the pipeline and the
+// deal page had all been moved onto phaseOf months ago; this was the last screen
+// still reading the old column.
 const stageColor: Record<string, string> = {
-  BC: 'bg-blue-100 text-blue-600',
-  LO: 'bg-purple-100 text-purple-600',
-  Compliance: 'bg-green-100 text-green-600',
+  fact_find: 'bg-[#EAF7FE] text-[#0E8FCB]',
+  bc: 'bg-blue-100 text-blue-600',
+  lo: 'bg-purple-100 text-purple-600',
+  compliance: 'bg-green-100 text-green-600',
 }
 
 type ActionType = 'proceeded_to_lo' | 'proceeded_to_compliance' | 'bc_to_lo' | 'lo_to_compliance' | 'awaiting_lodgement'
@@ -278,12 +288,12 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {((deal.client_proceeded && deal.stage === 'LO' && !deal.lo_completed_at) ||
-                    (deal.lo_client_proceeded && deal.stage === 'Compliance' && !deal.compliance_completed_at)) && (
+                  {((deal.client_proceeded && phaseOf(deal) === 'lo' && !deal.lo_completed_at) ||
+                    (deal.lo_client_proceeded && phaseOf(deal) === 'compliance' && !deal.compliance_completed_at)) && (
                     <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Ready to proceed</span>
                   )}
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stageColor[deal.stage] || 'bg-gray-100 text-gray-500'}`}>
-                    {deal.stage}
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stageColor[phaseOf(deal)] || 'bg-gray-100 text-gray-500'}`}>
+                    {PHASE_LABEL[phaseOf(deal)]}
                   </span>
                 </div>
               </Link>

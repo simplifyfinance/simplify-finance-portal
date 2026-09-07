@@ -94,7 +94,11 @@ export default function DealsPage() {
       client_id: fullDeal.client_id,
       deal_type: fullDeal.deal_type,
       assigned_broker: fullDeal.assigned_broker,
-      stage: 'BC',
+      // A NEW DEAL IS NOT A BC. This column is legacy - phaseOf works out where a
+      // deal really is from what has actually been done to it - but it is still
+      // written here, and it was being born as 'BC', which the dashboard printed
+      // on a deal nobody had opened yet.
+      stage: 'FactFind',
       status: 'in_progress',
       fact_find_data: fullDeal.fact_find_data
     }]).select().single()
@@ -507,7 +511,8 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
       client_id: clientId,
       lead_source: deal.lead_source,
       assigned_broker: deal.assigned_broker,
-      stage: 'BC',
+      // A new deal starts at the fact find. See the note on the clone above.
+      stage: 'FactFind',
       status: 'in_progress',
       fact_find_data
     }]).select('id').single()

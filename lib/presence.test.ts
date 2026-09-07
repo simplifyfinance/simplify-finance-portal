@@ -52,12 +52,24 @@ describe('which state the banner is in', () => {
     expect(s.level).toBe('same-tab')
     const m = presenceMessage(s)!
     expect(m.text).toBe('Katie Amos is on this same tab right now.')
-    expect(m.detail).toContain('only the first save lands')
+    expect(m.detail).toContain('both are saved')
+  })
+
+  // BC cannot fold two people's work together, so it must not tell them it can.
+  it('is stricter on the tab that still refuses', () => {
+    const s = presenceState([p('k', 'Katie Amos', 'BC — Borrowing capacity')], 'BC — Borrowing capacity')
+    expect(presenceMessage(s)!.detail).toContain('only one of you should type at a time')
+  })
+
+  // Statements has no save guard at all. Same honest wording.
+  it('is stricter on a tab with no guard', () => {
+    const s = presenceState([p('k', 'Katie', 'Statements')], 'Statements')
+    expect(presenceMessage(s)!.detail).toContain('only one of you should type at a time')
   })
 
   it('takes the same tab seriously even when others are elsewhere', () => {
     const s = presenceState([p('a', 'Ann', 'BC'), p('k', 'Katie', 'Lending options')], 'Lending options')
-    expect(s).toEqual({ level: 'same-tab', who: 'Katie' })
+    expect(s).toEqual({ level: 'same-tab', who: 'Katie', tab: 'Lending options' })
   })
 
   it('names several people properly', () => {
