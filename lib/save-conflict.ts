@@ -38,12 +38,23 @@
 // destroy work that is not mine?" - which is a different and much narrower
 // thing. Everything below exists to answer that one question honestly.
 //
-// WHAT THIS IS NOT. There is still a window of milliseconds between the read and
-// the write where a save could land underneath, and two people editing the same
-// tab at the same time still get the banner - it does not merge their work yet.
-// Closing both properly needs a version column and a field-level three way
-// merge. This turns a certainty into a rarity. It is not a guarantee and should
-// not be described as one.
+// AND THE DATABASE HAS THE LAST WORD.
+//
+// Deciding in the browser leaves a gap: between reading the record and writing
+// it, somebody else's save can land, and by the time this code knows about it
+// the damage is done. deals.row_version closes that. Every write here carries
+// "and only if the record is still on the version I read", so Postgres refuses
+// it at the instant of writing rather than this code guessing beforehand. When
+// that happens nothing is lost - the whole thing is simply done again against
+// what the record now holds. See docs/deal-row-version.sql.
+//
+// If the column is not there yet the write goes ahead without the check, which
+// is exactly how this behaved before it existed. A deploy that gets ahead of the
+// migration loses the guarantee; it does not stop anybody saving.
+//
+// WHAT THIS IS NOT. Two people editing the SAME FIELD on the same tab still get
+// the banner - there is no way to merge "184,500" and "190,000" and the portal
+// should not invent one. And BC cannot merge at all.
 
 import { merge3 } from './deal-merge'
 import { describePaths } from './deal-field-names'
@@ -74,6 +85,11 @@ export type SaveOutcome =
   | { kind: 'conflict'; fields: string }
   | { kind: 'error'; message: string }
 
+// Never returned to a form. The database refused the write because the record
+// moved between reading it and writing it; saveGuarded simply does the whole
+// thing again.
+type Overtaken = { kind: 'overtaken' }
+
 // One per form instance. Held in a ref so it survives re-renders.
 export type SaveGuard = {
   // What we believe the column holds right now.
@@ -86,6 +102,12 @@ export type SaveGuard = {
   // Bumped on every request so a queued save can tell it has been overtaken.
   seq: number
 }
+
+// How many times a save will re-read and try again after the database refuses
+// it for being out of date. Each go round is a fresh read and a fresh merge, so
+// the only way to use them all up is somebody saving continuously in the same
+// fraction of a second. Four is generous; two would almost certainly do.
+const RETRIES = 4
 
 export function newGuard(loadedValue: any): SaveGuard {
   return { db: snapshot(loadedValue), mine: [], queue: Promise.resolve(), seq: 0 }
@@ -142,14 +164,24 @@ export type SaveRequest = {
 export async function saveGuarded(req: SaveRequest): Promise<SaveOutcome> {
   const { guard } = req
   const mySeq = ++guard.seq
-  const run = () => attempt(req, mySeq)
+  const run = async (): Promise<SaveOutcome> => {
+    // The database refuses a write built on a version somebody has since moved
+    // past. That is not a failure and not a conflict - it is "start again", and
+    // starting again re-reads, re-merges and writes the current truth.
+    for (let go = 0; go < RETRIES; go++) {
+      const out = await attempt(req, mySeq)
+      if (out.kind !== 'overtaken') return out
+    }
+    // Somebody is saving this record continuously. Refusing is the safe answer.
+    return { kind: 'conflict', fields: '' }
+  }
   // Strictly one at a time. Two saves running at once is failure 3 above.
   const queued = guard.queue.then(run, run)
   guard.queue = queued.catch(() => {})
   return queued
 }
 
-async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome> {
+async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome | Overtaken> {
   const { supabase, dealId, column, guard, value, patch, onAdopt, onMerge } = req
 
   // Somebody asked for a newer save while this one waited its turn. Writing this
@@ -163,7 +195,13 @@ async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome> {
   let broughtIn = ''
 
   const { data: current, error: readError } = await supabase
-    .from('deals').select(column).eq('id', dealId).single()
+    .from('deals').select(`${column},row_version`).eq('id', dealId).single()
+
+  // The version this write will be pinned to. Undefined means the migration has
+  // not been run yet, and the write goes ahead unpinned - see the note at the
+  // top of this file.
+  const seenVersion: number | undefined =
+    typeof current?.row_version === 'number' ? current.row_version : undefined
 
   // A failed read is not evidence of anything. A form that silently stops saving
   // because the network hiccuped is worse than the problem this guard solves, so
@@ -233,12 +271,26 @@ async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome> {
     }
   }
 
-  const { data: rows, error } = await supabase
-    .from('deals').update({ [column]: toWrite, ...(patch || {}) }).eq('id', dealId).select('id')
+  const fields: any = { [column]: toWrite, ...(patch || {}) }
+  if (seenVersion !== undefined) fields.row_version = seenVersion + 1
+
+  let write = supabase.from('deals').update(fields).eq('id', dealId)
+  // AND ONLY IF NOBODY HAS SAVED SINCE I READ IT. Postgres applies this at the
+  // instant of writing, which is the one moment the browser cannot reach.
+  if (seenVersion !== undefined) write = write.eq('row_version', seenVersion)
+
+  const { data: rows, error } = await write.select('id')
 
   if (error) return { kind: 'error', message: 'NOT SAVED - ' + error.message }
-  // A write refused by row level security returns zero rows and NO error.
+  // Zero rows means one of two very different things, and they must not be
+  // confused: somebody saved in the gap, or row level security refused us.
   if (!rows || rows.length === 0) {
+    if (seenVersion !== undefined) {
+      const { data: now } = await supabase.from('deals').select('row_version').eq('id', dealId).single()
+      // The record moved. Nothing has been written and nothing is lost - go
+      // round again against what it holds now.
+      if (typeof now?.row_version === 'number' && now.row_version !== seenVersion) return { kind: 'overtaken' }
+    }
     return { kind: 'error', message: 'NOT SAVED - your changes did not reach the database. Do not close this tab.' }
   }
 

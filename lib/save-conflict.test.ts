@@ -5,30 +5,43 @@ import { snapshot, newGuard, emptyGuard, adopt, saveGuarded, conflictMessage } f
 // a test can assert that nothing was written, which is half the point of the
 // guard - the failures it exists to stop are writes that should not have
 // happened, not errors.
-function fakeDb(initial: any, opts: { readError?: any; rlsBlocks?: boolean } = {}) {
-  const state = { value: initial, writes: [] as any[], reads: 0 }
+function fakeDb(initial: any, opts: { readError?: any; rlsBlocks?: boolean; landsUnderneath?: number } = {}) {
+  const state = { value: initial, writes: [] as any[], reads: 0, version: 0 }
+  // A save that lands in the gap between somebody reading the record and writing
+  // it - the one moment the browser cannot see. Counted down so a test can say
+  // "this happens once, then stops".
+  let sneak = opts.landsUnderneath || 0
+
   const supabase = {
     from: () => ({
-      select: () => ({
+      select: (cols: string) => ({
         eq: () => ({
           single: async () => {
             state.reads++
-            return opts.readError
-              ? { data: null, error: opts.readError }
-              : { data: { fact_find_data: state.value }, error: null }
+            if (opts.readError) return { data: null, error: opts.readError }
+            if (String(cols).trim() === 'row_version') return { data: { row_version: state.version }, error: null }
+            return { data: { fact_find_data: state.value, row_version: state.version }, error: null }
           },
         }),
       }),
-      update: (patch: any) => ({
-        eq: () => ({
+      update: (fields: any) => {
+        let pinned: number | null = null
+        const chain: any = {
+          eq: (col: string, val: any) => { if (col === 'row_version') pinned = val; return chain },
           select: async () => {
             if (opts.rlsBlocks) return { data: [], error: null }
-            state.writes.push(patch)
-            state.value = patch.fact_find_data
+            // Their save lands HERE - after ours read the record, before ours
+            // writes it. The one moment the browser cannot see.
+            if (sneak > 0) { sneak--; state.version++; state.value = { ...state.value, sneakedIn: true } }
+            if (pinned !== null && pinned !== state.version) return { data: [], error: null }
+            state.writes.push(fields)
+            state.value = fields.fact_find_data
+            state.version = typeof fields.row_version === 'number' ? fields.row_version : state.version + 1
             return { data: [{ id: 'd1' }], error: null }
           },
-        }),
-      }),
+        }
+        return chain
+      },
     }),
   }
   return { supabase, state }
@@ -65,7 +78,7 @@ describe('an ordinary edit', () => {
     const { supabase, state } = fakeDb(loaded)
     const guard = newGuard(loaded)
     expect(await save(supabase, guard, { dependants: '2' })).toEqual({ kind: 'saved' })
-    expect(state.writes).toEqual([{ fact_find_data: { dependants: '2' } }])
+    expect(state.writes).toEqual([{ fact_find_data: { dependants: '2' }, row_version: 1 }])
   })
 
   it('carries the extra columns the LO and compliance put on the deal', async () => {
@@ -73,7 +86,7 @@ describe('an ordinary edit', () => {
     const guard = newGuard({ a: 1 })
     await saveGuarded({ supabase, dealId: 'd1', column: 'fact_find_data', guard,
       value: { a: 2 }, patch: { loan_amount: 1700000, lender_id: 'x' } })
-    expect(state.writes[0]).toEqual({ fact_find_data: { a: 2 }, loan_amount: 1700000, lender_id: 'x' })
+    expect(state.writes[0]).toEqual({ fact_find_data: { a: 2 }, loan_amount: 1700000, lender_id: 'x', row_version: 1 })
   })
 })
 
@@ -298,5 +311,58 @@ describe('two people, different fields', () => {
     const out = await save(supabase, kylie, kylieScreen, undefined, () => {})
     expect(out.kind).toBe('conflict')
     expect(state.value.lenders[0].rate).toBe('5.64')
+  })
+})
+
+// THE GAP THE BROWSER CANNOT SEE.
+//
+// Everything above decides in the browser: read the record, judge it safe, write
+// it. Between those last two steps somebody else's save can land, and by then it
+// is too late to notice. deals.row_version makes Postgres refuse the write at
+// the instant it happens instead. See docs/deal-row-version.sql.
+describe('somebody saves in the gap between reading and writing', () => {
+  it('does not overwrite them - it starts again and writes the truth', async () => {
+    const loaded = { dependants: '0' }
+    const { supabase, state } = fakeDb({ ...loaded }, { landsUnderneath: 1 })
+    const guard = newGuard(loaded)
+    const out = await saveGuarded({ supabase, dealId: 'd1', column: 'fact_find_data', guard,
+      value: { dependants: '2' }, onMerge: () => {}, onAdopt: () => {} })
+    // Their change survived, and so did ours.
+    expect(state.value.sneakedIn).toBe(true)
+    expect(state.value.dependants).toBe('2')
+    expect(out.kind === 'saved' || out.kind === 'merged').toBe(true)
+  })
+
+  it('pins every write to the version it read', async () => {
+    const { supabase, state } = fakeDb({ a: 1 })
+    const guard = newGuard({ a: 1 })
+    await save(supabase, guard, { a: 2 })
+    expect(state.writes[0].row_version).toBe(1)
+    await save(supabase, guard, { a: 3 })
+    expect(state.writes[1].row_version).toBe(2)
+  })
+
+  // A deploy that gets ahead of the migration must not stop anybody saving.
+  it('still saves when the version column is not there yet', async () => {
+    const state = { value: { a: 1 } as any, writes: [] as any[] }
+    const supabase = {
+      from: () => ({
+        select: () => ({ eq: () => ({ single: async () => ({ data: { fact_find_data: state.value }, error: null }) }) }),
+        update: (fields: any) => {
+          const chain: any = { eq: () => chain, select: async () => {
+            state.writes.push(fields); state.value = fields.fact_find_data; return { data: [{ id: 'd1' }], error: null }
+          } }
+          return chain
+        },
+      }),
+    }
+    expect((await save(supabase, newGuard({ a: 1 }), { a: 2 })).kind).toBe('saved')
+    expect(state.writes[0].row_version).toBeUndefined()
+  })
+
+  it('still reports a write row level security refused, rather than trying forever', async () => {
+    const { supabase } = fakeDb({ a: 1 }, { rlsBlocks: true })
+    const out = await save(supabase, newGuard({ a: 1 }), { a: 2 })
+    expect(out.kind).toBe('error')
   })
 })

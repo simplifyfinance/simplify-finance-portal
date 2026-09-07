@@ -15,6 +15,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { notifyDocumentRequest } from '@/lib/salestrekker-notify'
 import { documentsFor, formallyApproved } from '@/lib/document-rules'
 import { progressOf, rowsFor, withRequest, requestRounds } from '@/lib/document-progress'
+import { patchDealColumn } from '@/lib/patch-deal-column'
 
 export async function POST(req: NextRequest) {
   try {
@@ -79,11 +80,15 @@ export async function POST(req: NextRequest) {
     // press would ask the client for the same things all over again. A record
     // with no email is recoverable by pressing again; an email with no record
     // is not.
-    const next = withRequest(progress, fresh.map(r => r.key), me || 'Somebody', nowIso)
-    const { data: saved, error: saveErr } = await supabase.from('deals')
-      .update({ document_progress: next }).eq('id', dealId).select('id')
-    if (saveErr) return NextResponse.json({ ok: false, error: saveErr.message }, { status: 500 })
-    if (!saved?.length) {
+    // Applied to what the deal holds at the moment of writing, not to the copy
+    // read at the top of this request. Every tick lives in this one column, so
+    // writing it back from a copy a few hundred milliseconds old erases anything
+    // somebody ticked off in the browser in between. See lib/patch-deal-column.ts.
+    const askedFor = fresh.map(r => r.key)
+    const { next, problem } = await patchDealColumn(supabase, dealId, 'document_progress',
+      (cur: any) => withRequest(progressOf({ document_progress: cur }), askedFor, me || 'Somebody', nowIso),
+      progress)
+    if (problem) {
       return NextResponse.json({
         ok: false,
         error: 'The request could not be recorded on the deal, so nothing was sent. Try again.',
