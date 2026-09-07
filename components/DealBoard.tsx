@@ -288,12 +288,26 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                 onDrop={() => onDrop(p)}
                 className={`flex-1 min-w-[248px] rounded-xl border p-2.5 transition ${
                   over === p ? 'border-[#0E8FCB] bg-[#EAF6FD]'
-                  : hot > 0 ? 'border-[#EFD3CB] bg-[#FBEDE9]'
                   : 'border-[#EFEAE0] bg-[#FCFAF6]'}`}>
                 <div className="flex items-baseline gap-1.5 mb-2 px-0.5">
-                  <span className={`text-[10.5px] font-bold tracking-[.06em] uppercase ${hot > 0 ? 'text-[#AD4227]' : 'text-[#7A7266]'}`}>
+                  <span className="text-[10.5px] font-bold tracking-[.06em] uppercase text-[#7A7266]">
                     {PHASE_LABEL[p]}
                   </span>
+                  {/* HOW MANY, NOT THE WHOLE COLUMN.
+                      One overdue deal used to turn this entire column red -
+                      including every healthy deal in it - which said a column
+                      had a problem without saying which card, and stopped
+                      meaning anything the moment three columns were red at
+                      once. The count goes here; the colour stays on the cards
+                      that actually need chasing. Fabio, 7 Sep 2026.
+                      Nothing about WHICH deals are overdue changes - same
+                      thresholds, same settings. */}
+                  {hot > 0 && (
+                    <span title={`${hot} deal${hot === 1 ? '' : 's'} in ${PHASE_LABEL[p]} past your nudge setting`}
+                      className="text-[9.5px] font-bold tracking-[.04em] uppercase rounded-full px-[7px] py-[1px] text-[#AD4227] bg-[#FBEDE9] border border-[#EFD3CB] whitespace-nowrap">
+                      {hot} need{hot === 1 ? 's' : ''} a nudge
+                    </span>
+                  )}
                   <span className="ml-auto text-[11px] font-bold text-[#575046] bg-white border border-[#E5DED2] rounded-full px-1.5">
                     {cards.length}
                   </span>
@@ -315,6 +329,9 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                 {cards.map(d => {
                   const age = stageAge(d, thresholds)
                   const grp = ageGroupOf(d, thresholds)
+                  // Now that the column stays calm, the card is the thing that
+                  // has to catch the eye.
+                  const needsNudge = grp === 'nudge'
                   const bKey = keyOf(d.assigned_broker) || ''
                   const amt = amountOf(d)
                   const lender = d.lenders?.name || ''
@@ -336,7 +353,10 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                       onClick={() => router.push(`/deals/${d.id}`)}
                       className={`group relative overflow-hidden bg-white border rounded-[10px] px-2.5 pt-2.5 pb-2.5 mb-2 cursor-pointer transition hover:border-[#D6CCBC] ${
                         dragging === d.id ? 'opacity-40 border-[#0E8FCB]'
-                        : urgent ? 'border-[#E9C9BE] ring-2 ring-[#FBEDE9]' : 'border-[#E5DED2]'}`}>
+                        : urgent ? 'border-[#E9C9BE] ring-2 ring-[#FBEDE9]'
+                        // The column no longer shouts, so the card does - quietly,
+                        // and only the ones that have actually sat too long.
+                        : needsNudge ? 'border-[#EFD3CB]' : 'border-[#E5DED2]'}`}>
 
                       {placedByHand(d) && (
                         <div className="mb-1.5 mr-[50px] min-w-0">
@@ -409,7 +429,7 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                         {age.days !== null && (
                           <span className={`max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border ${
                             AGE_STYLE[grp] || 'text-[#A29889] bg-[#FCFAF6] border-[#EFEAE0]'}`}>
-                            {age.label}
+                            {needsNudge ? `${age.label} \u00b7 nudge` : age.label}
                           </span>
                         )}
                         <span className="ml-auto flex">
