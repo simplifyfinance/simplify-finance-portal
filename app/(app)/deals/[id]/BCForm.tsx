@@ -235,8 +235,8 @@ function fieldCls(value: string) {
 }
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
 import { annualIncomeOf, annualIncomeOfApplicant } from '@/lib/income-calculations'
-import SaveConflict from '@/components/SaveConflict'
-import { newGuard, saveGuarded } from '@/lib/save-conflict'
+import SaveNote from '@/components/SaveNote'
+import { newGuard, saveGuarded, overwroteMessage, behindMessage } from '@/lib/save-conflict'
 import { readMoney, formatAsTyped} from '@/lib/money'
 
 const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
@@ -683,15 +683,9 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // Whose copy is on screen — see lib/save-conflict.ts. This form writes on
   // OPEN as well as on edit, so without the guard simply opening a deal card
   // somebody else is working in overwrites what they have typed.
+  // ONE note, and it never stops anybody. See components/SaveNote.tsx.
+  const [note, setNote] = useState<{ text: string; tone: 'info' | 'warn' } | null>(null)
   const guardRef = useRef(newGuard(deal.bc_data))
-  // The field both people changed, or null when there is nothing to say. BC
-  // cannot merge - see lib/save-conflict.ts - so for this tab it is only ever
-  // the empty string, meaning "somebody else is in here".
-  const [conflictFields, setConflictFields] = useState<string | null>(null)
-  // Whoever actually saved the version we are up against, read off the record.
-  // Names them even if they have since closed the deal, which is the case the
-  // presence banner cannot help with.
-  const [conflictWho, setConflictWho] = useState('')
   // What the database last agreed with. OPENING THIS FORM IS NOT EDITING IT:
   // the fields seed themselves from the fact find where bc_data is blank, so the
   // very first run produces a value that differs from the stored record and used
@@ -725,10 +719,10 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
           // the note at the top of this file.
         })
         if (out.kind === 'superseded') return
-        setConflictFields(out.kind === 'conflict' ? out.fields : null)
-        if (out.kind === 'conflict') setConflictWho(out.who)
         if (out.kind === 'error') { console.error('BC autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
+        if (out.kind === 'overwrote') setNote({ text: overwroteMessage('BC', out.fields, out.who), tone: 'warn' })
+        if (out.kind === 'behind') setNote({ text: behindMessage('BC', out.who), tone: 'info' })
         if (out.kind === 'saved') {
           savedRef.current = now
           setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
@@ -1022,7 +1016,7 @@ Key assumptions: ${checklistText}`
 
   return (
     <div>
-      <SaveConflict tab="BC" fields={conflictFields} who={conflictWho || whoElseHere} />
+      <SaveNote message={note?.text || ''} tone={note?.tone || 'info'} onDismiss={() => setNote(null)} />
       <div className="flex gap-2 mb-4 items-center flex-wrap">
         {[['form','BC form'],['preview','Preview & share']].map(([id,label]) => (
           <button key={id} onClick={() => setActiveTab(id as any)}

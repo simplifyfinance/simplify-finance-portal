@@ -58,6 +58,7 @@
 
 import { merge3 } from './deal-merge'
 import { looksLikeAWipe, wipeMessage } from './wipe-guard'
+import { keepVersion, shouldKeep, newHistoryClock, type HistoryClock } from './deal-history'
 import { describePaths } from './deal-field-names'
 
 export type DealColumn = 'bc_data' | 'fact_find_data' | 'lo_data' | 'compliance_data'
@@ -80,13 +81,22 @@ export type SaveOutcome =
   // A newer save was asked for while this one was queued. Dropped on purpose so
   // an older payload can never land on top of a newer one.
   | { kind: 'superseded' }
-  // The SAME field, changed by both, to different things. Nothing is written.
-  // `fields` names the field, which is the difference between a banner somebody
-  // can act on and one they learn to ignore.
-  // `who` is whoever actually saved the version we are up against, read off the
+  // We have written over a change somebody else made. THIS IS NOT A REFUSAL and
+  // nobody is blocked - the work went in. The version it replaced is kept in
+  // deal_history, so theirs is a click away rather than gone.
+  //
+  // Fabio, 7 Sep 2026: "those warning signs that make no sense... it's blocking
+  // people from using. I cannot have that." Nothing here blocks anybody now. The
+  // only thing that still refuses is a save that would empty the whole form.
+  //
+  // `who` is whoever actually saved the version we went over, read off the
   // record itself - so it names them whether they are still in the deal or went
   // home at five. Empty only on a deal saved before that was recorded.
-  | { kind: 'conflict'; fields: string; who: string }
+  | { kind: 'overwrote'; fields: string; who: string }
+  // Somebody else has saved and this screen has nothing of its own to lose, so
+  // there is nothing to write - but what is on screen is out of date. Not a
+  // refusal either: nothing was typed here to refuse.
+  | { kind: 'behind'; who: string }
   | { kind: 'error'; message: string }
 
 // Never returned to a form. The database refused the write because the record
@@ -105,6 +115,8 @@ export type SaveGuard = {
   queue: Promise<any>
   // Bumped on every request so a queued save can tell it has been overtaken.
   seq: number
+  // When a copy was last put aside. See lib/deal-history.ts.
+  history: HistoryClock
 }
 
 // How many times a save will re-read and try again after the database refuses
@@ -114,13 +126,13 @@ export type SaveGuard = {
 const RETRIES = 4
 
 export function newGuard(loadedValue: any): SaveGuard {
-  return { db: snapshot(loadedValue), mine: [], queue: Promise.resolve(), seq: 0 }
+  return { db: snapshot(loadedValue), mine: [], queue: Promise.resolve(), seq: 0, history: newHistoryClock() }
 }
 
 // A guard for a form that has not read the record yet. It will not judge
 // anything until the first successful write or an explicit adopt().
 export function emptyGuard(): SaveGuard {
-  return { db: null, mine: [], queue: Promise.resolve(), seq: 0 }
+  return { db: null, mine: [], queue: Promise.resolve(), seq: 0, history: newHistoryClock() }
 }
 
 // The form has just read the record itself (LO does this) - this is now what we
@@ -183,8 +195,9 @@ export async function saveGuarded(req: SaveRequest): Promise<SaveOutcome> {
       const out = await attempt(req, mySeq)
       if (out.kind !== 'overtaken') return out
     }
-    // Somebody is saving this record continuously. Refusing is the safe answer.
-    return { kind: 'conflict', fields: '', who: '' }
+    // Somebody is saving this record continuously. Nothing is refused - the last
+    // attempt goes in without the version pin, and what it replaces is kept.
+    return await attempt(req, mySeq, true) as SaveOutcome
   }
   // Strictly one at a time. Two saves running at once is failure 3 above.
   const queued = guard.queue.then(run, run)
@@ -192,7 +205,7 @@ export async function saveGuarded(req: SaveRequest): Promise<SaveOutcome> {
   return queued
 }
 
-async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome | Overtaken> {
+async function attempt(req: SaveRequest, mySeq: number, lastResort = false): Promise<SaveOutcome | Overtaken> {
   const { supabase, dealId, column, guard, value, patch, onAdopt, onMerge, savedBy, tabLabel } = req
 
   // Somebody asked for a newer save while this one waited its turn. Writing this
@@ -204,6 +217,14 @@ async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome | O
   // somebody else's fields have been folded in on the way.
   let toWrite = value
   let broughtIn = ''
+  // Set when this save goes over the top of somebody else's. Not an error, not a
+  // refusal - it is what the note on screen is built from.
+  // Whether this save went over the top of somebody, kept apart from WHO they
+  // were - on a deal last saved before names were recorded we still have to say
+  // it happened, and a missing name is not a reason to stay quiet.
+  let didOverwrite = false
+  let wroteOver = ''
+  let overwroteFields = ''
 
   const { data: current, error: readError } = await supabase
     .from('deals').select(`${column},row_version,last_saved_name`).eq('id', dealId).single()
@@ -254,10 +275,12 @@ async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome | O
       // Find: two people with a deal merely OPEN were being told they were in
       // conflict before either had touched a key.
       else if (next === guard.db) {
-        if (!onAdopt) return { kind: 'conflict', fields: '', who: savedByThem }
         guard.db = stored
-        onAdopt(current?.[column] ?? null)
-        return { kind: 'settled' }
+        // Nothing has been typed here, so there is nothing of ours to write and
+        // nothing to refuse. A form that can refresh itself does; one that
+        // cannot says so quietly and stays completely editable.
+        if (onAdopt) { onAdopt(current?.[column] ?? null); return { kind: 'settled' } }
+        return { kind: 'behind', who: savedByThem }
       }
       // BOTH OF US HAVE TYPED. Not necessarily into the same field, though -
       // Katie in the rates and Kylie in a date of birth are not in conflict at
@@ -265,18 +288,31 @@ async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome | O
       // users. So compare all three copies field by field, and only refuse if
       // something is actually contested. See lib/deal-merge.ts.
       else {
-        // A form that cannot fold their fields onto a screen somebody is typing
-        // into has to refuse. Refusing is always the safe answer.
-        if (!onMerge) return { kind: 'conflict', fields: '', who: savedByThem }
-
-        const merge = merge3(JSON.parse(guard.db), current?.[column] ?? null, value)
-        if (!merge.ok) return { kind: 'conflict', fields: describePaths(merge.clashes), who: savedByThem }
-
-        toWrite = merge.merged
-        broughtIn = describePaths(merge.fromThem)
+        // BOTH OF US HAVE TYPED. This used to refuse. It no longer does: the
+        // save goes in, and the version it replaces is kept in deal_history, so
+        // their work is a click away instead of gone. Nobody is ever stopped.
+        if (!onMerge) {
+          // BC. No way to fold their fields onto a screen somebody is using.
+          didOverwrite = true
+          wroteOver = savedByThem
+        } else {
+          const merge = merge3(JSON.parse(guard.db), current?.[column] ?? null, value)
+          if (merge.ok) {
+            toWrite = merge.merged
+            broughtIn = describePaths(merge.fromThem)
+          } else {
+            // The same field, both of us, different values. There is no honest
+            // merge of "184,500" and "190,000", so this one wins and theirs is
+            // kept. Naming the field is the difference between a note somebody
+            // acts on and one they learn to ignore.
+            didOverwrite = true
+            wroteOver = savedByThem
+            overwroteFields = describePaths(merge.clashes)
+          }
+        }
 
         // Their version already covers everything ours had. Nothing to write.
-        if (snapshot(toWrite) === stored) {
+        if (onMerge && snapshot(toWrite) === stored) {
           guard.db = stored
           remember(guard, stored)
           onMerge(toWrite)
@@ -298,6 +334,16 @@ async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome | O
     }
   }
 
+  // KEEP WHAT WE ARE ABOUT TO REPLACE. Before the write, never after - a copy
+  // taken afterwards is a copy of the wrong thing. See lib/deal-history.ts.
+  if (!readError) {
+    const previous = current?.[column] ?? null
+    if (shouldKeep(previous, toWrite, guard.history, Date.now())) {
+      guard.history.lastKeptAt = Date.now()
+      await keepVersion(supabase, dealId, column, previous, savedBy)
+    }
+  }
+
   const fields: any = { [column]: toWrite, ...(patch || {}) }
   if (seenVersion !== undefined) fields.row_version = seenVersion + 1
   // Sign it. See docs/deal-last-saved-by.sql - this is the whole reason the next
@@ -311,7 +357,9 @@ async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome | O
   let write = supabase.from('deals').update(fields).eq('id', dealId)
   // AND ONLY IF NOBODY HAS SAVED SINCE I READ IT. Postgres applies this at the
   // instant of writing, which is the one moment the browser cannot reach.
-  if (seenVersion !== undefined) write = write.eq('row_version', seenVersion)
+  // Skipped on the last resort pass: at that point somebody is saving without
+  // pause, and going round for ever would be its own kind of blocking.
+  if (seenVersion !== undefined && !lastResort) write = write.eq('row_version', seenVersion)
 
   const { data: rows, error } = await write.select('id')
 
@@ -338,32 +386,35 @@ async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome | O
     onMerge(toWrite)
     return { kind: 'merged', fields: broughtIn }
   }
+  if (didOverwrite) return { kind: 'overwrote', fields: overwroteFields, who: wroteOver }
   return { kind: 'saved' }
 }
 
 // What the banner says. One wording, so all four tabs say the same thing.
-// `who` comes from the presence rows the amber banner is already drawn from, so
-// the two can never name different people about the same situation. It is empty
-// when the other person has closed the tab since saving - which is a real
-// situation and must read properly, not as "and  have both changed".
+// WHAT THE NOTES SAY.
 //
-// Fabio, 7 Sep 2026: "BC says there's someone there and we don't know who??"
-// The portal knew. This banner simply never asked.
-export function conflictMessage(tab: string, fields = '', who = ''): { title: string; body: string } {
-  const them = String(who || '').trim()
-  const plural = them.includes(' and ')
-  return {
-    title: fields
-      ? (them ? `You and ${them} have both changed ${fields}`
-              : `You and somebody else have both changed ${fields}`)
-      : (them ? `${them} ${plural ? 'are' : 'is'} editing this ${tab} at the same time as you`
-              : `Somebody else is editing this ${tab} at the same time as you`),
-    body: (fields
-        ? 'Everything else you both typed fits together — this one field does not, so nothing has been saved. '
-        : `${them ? (plural ? 'They have' : them.split(' ')[0] + ' has') : 'They have'} saved changes since you opened it, so nothing you have typed in the last few minutes has been saved. `)
-      + 'Saving it would wipe out what they entered. Copy anything you need to keep, then reload to pick up their '
-      + 'version and type it back in.',
-  }
+// None of these stops anybody doing anything. Every one of them is something
+// that has ALREADY been dealt with, said out loud so nobody is surprised by
+// their own screen. There is no reload button and no red any more: on 7 Sep 2026
+// Fabio's team spent a day being told they could not save, and being told you
+// cannot save is worse than almost anything it was protecting them from.
+//
+// `who` is read off the record - the person who actually saved the version being
+// talked about - so it works whether they are still in the deal or went home.
+
+// We went over the top of somebody. Their version is in deal_history.
+export function overwroteMessage(tab: string, fields = '', who = ''): string {
+  const them = String(who || '').trim() || 'Somebody else'
+  const what = fields ? ` — you both changed ${fields}` : ''
+  return `Your ${tab} is saved. ${them} had also saved changes${what}, and yours went on top. `
+       + `Nothing is lost: their version is kept and can be put back.`
+}
+
+// Nothing of ours to save, but the screen is out of date.
+export function behindMessage(tab: string, who = ''): string {
+  const them = String(who || '').trim() || 'Somebody else'
+  return `${them} has saved this ${tab} since you opened it. You can carry on typing — nothing is blocked. `
+       + `Reload when you want to see their version.`
 }
 
 // The quiet one. Somebody else was working on the same tab, their fields and

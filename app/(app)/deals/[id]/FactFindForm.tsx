@@ -15,9 +15,8 @@ import InternalNotes from '@/components/InternalNotes'
 import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET_TYPES, DEPOSIT_SOURCES, optionsFor } from '@/lib/fact-find-options'
 import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship } from '@/lib/relationship'
 import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS } from '@/lib/fact-find'
-import SaveConflict from '@/components/SaveConflict'
-import SaveMerged from '@/components/SaveMerged'
-import { newGuard, saveGuarded, mergeMessage } from '@/lib/save-conflict'
+import SaveNote from '@/components/SaveNote'
+import { newGuard, saveGuarded, mergeMessage, overwroteMessage, behindMessage } from '@/lib/save-conflict'
 
 function incrementFY(fy: string): string {
   const match = fy.match(/^(\d{4})\/(\d{2})$/)
@@ -402,13 +401,8 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   // anything — the whole decision lives in lib/save-conflict.ts so all four
   // tabs cannot drift into judging it differently.
   const guardRef = useRef(newGuard(deal.fact_find_data))
-  // The field both people changed, or null when there is nothing to say.
-  const [conflictFields, setConflictFields] = useState<string | null>(null)
-  // Whoever actually saved the version we are up against, read off the record.
-  // Names them even if they have since closed the deal, which is the case the
-  // presence banner cannot help with.
-  const [conflictWho, setConflictWho] = useState('')
-  const [mergedNote, setMergedNote] = useState('')
+  // ONE note, and it never stops anybody. See components/SaveNote.tsx.
+  const [note, setNote] = useState<{ text: string; tone: 'info' | 'warn' } | null>(null)
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
@@ -432,12 +426,12 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
         // A newer save is already queued behind this one. Saying anything here
         // would be about a payload that has been overtaken.
         if (out.kind === 'superseded') return
-        setConflictFields(out.kind === 'conflict' ? out.fields : null)
-        if (out.kind === 'conflict') setConflictWho(out.who)
         if (out.kind === 'error') { console.error('Fact find autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
-        if (out.kind === 'merged') setMergedNote(mergeMessage(out.fields))
-        if (out.kind === 'saved' || out.kind === 'merged') setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+        if (out.kind === 'merged') setNote({ text: mergeMessage(out.fields), tone: 'info' })
+        if (out.kind === 'overwrote') setNote({ text: overwroteMessage('Fact Find', out.fields, out.who), tone: 'warn' })
+        if (out.kind === 'behind') setNote({ text: behindMessage('Fact Find', out.who), tone: 'info' })
+        if (out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote') setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
       })()
     }, 600)
   }, [d])
@@ -845,8 +839,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
 
   return (
     <div className="grid grid-cols-[480px_1fr] gap-4 items-start">
-      <SaveConflict tab="Fact Find" fields={conflictFields} who={conflictWho || whoElseHere} />
-      <SaveMerged message={mergedNote} onDismiss={() => setMergedNote('')} />
+      <SaveNote message={note?.text || ''} tone={note?.tone || 'info'} onDismiss={() => setNote(null)} />
       <div>
         {/* One notes field for the whole deal. This used to be a box of its own
             saving to fact_find_data.internalNotes, with two more like it on BC

@@ -1,19 +1,22 @@
 import { describe, it, expect } from 'vitest'
-import { snapshot, newGuard, emptyGuard, adopt, saveGuarded, conflictMessage } from './save-conflict'
+import { snapshot, newGuard, emptyGuard, adopt, saveGuarded, overwroteMessage, behindMessage } from './save-conflict'
 
 // A deals table with one row, standing in for Postgres. Records every write so
 // a test can assert that nothing was written, which is half the point of the
 // guard - the failures it exists to stop are writes that should not have
 // happened, not errors.
 function fakeDb(initial: any, opts: { readError?: any; rlsBlocks?: boolean; landsUnderneath?: number } = {}) {
-  const state = { value: initial, writes: [] as any[], reads: 0, version: 0, savedBy: '' }
+  const state = { value: initial, writes: [] as any[], reads: 0, version: 0, savedBy: '', history: [] as any[] }
   // A save that lands in the gap between somebody reading the record and writing
   // it - the one moment the browser cannot see. Counted down so a test can say
   // "this happens once, then stops".
   let sneak = opts.landsUnderneath || 0
 
   const supabase = {
-    from: () => ({
+    from: (table: string) => table === 'deal_history' ? ({
+      // The copy put aside before a save. See lib/deal-history.ts.
+      insert: async (row: any) => { state.history.push(row); return { error: null } },
+    }) as any : ({
       select: (cols: string) => ({
         eq: () => ({
           single: async () => {
@@ -91,7 +94,7 @@ describe('an ordinary edit', () => {
   })
 })
 
-describe('a form cannot conflict with itself', () => {
+describe('a form cannot collide with itself', () => {
   // The lockup Kylie hit with nobody else on the deal: two saves in flight,
   // landing out of order, and the form then reading its OWN last save as
   // somebody else's.
@@ -104,7 +107,7 @@ describe('a form cannot conflict with itself', () => {
       save(supabase, guard, { n: 3 }),
     ])
     // Older payloads are dropped rather than landing on top of newer ones.
-    expect(results.filter(r => r.kind === 'conflict')).toHaveLength(0)
+    expect(results.filter(r => r.kind === 'overwrote')).toHaveLength(0)
     expect(results[2]).toEqual({ kind: 'saved' })
     // And the form is still usable afterwards.
     expect(await save(supabase, guard, { n: 4 })).toEqual({ kind: 'saved' })
@@ -137,58 +140,51 @@ describe('somebody else has saved', () => {
     expect(state.writes).toHaveLength(1)
   })
 
-  it('refuses when the form cannot fold their fields in', async () => {
+  // NOTHING IS EVER REFUSED. Before 7 Sep 2026 this returned a red banner and
+  // wrote nothing, which left people unable to save at all.
+  it('saves anyway when the form cannot fold their fields in, and keeps theirs', async () => {
     const loaded = { dependants: '0', suburb: '' }
-    const { supabase, state } = fakeDb(loaded)
+    const { supabase, state } = fakeDb({ ...loaded })
     const kylie = newGuard(loaded)
     const katie = newGuard(loaded)
     await save(supabase, katie, { dependants: '2', suburb: '' })
     // onAdopt but no onMerge - this is BC.
     const out = await save(supabase, kylie, { dependants: '0', suburb: 'Killara' }, () => {})
-    expect(out.kind).toBe('conflict')
-    expect(state.writes).toHaveLength(1)
-    expect(state.value).toEqual({ dependants: '2', suburb: '' })
+    expect(out.kind).toBe('overwrote')
+    expect(state.writes).toHaveLength(2)
+    expect(state.value).toEqual({ dependants: '0', suburb: 'Killara' })
   })
 
-  it('refuses on the SAME field, and names it', async () => {
+  it('names the field when the same one was changed by both', async () => {
     const loaded = { dependants: '0' }
-    const { supabase, state } = fakeDb(loaded)
+    const { supabase, state } = fakeDb({ ...loaded })
     const kylie = newGuard(loaded)
     await save(supabase, newGuard(loaded), { dependants: '2' })
     const out = await save(supabase, kylie, { dependants: '3' }, () => {}, () => {})
-    expect(out.kind).toBe('conflict')
+    expect(out.kind).toBe('overwrote')
     expect((out as any).fields).toBe('Dependants')
-    // Nothing of theirs was touched.
-    expect(state.value).toEqual({ dependants: '2' })
+    // Ours went in. Theirs is not lost - it is in the history.
+    expect(state.value).toEqual({ dependants: '3' })
   })
 
-  // Refusing has to be recoverable, or it is not a guard, it is a lock.
-  it('is over the moment the page is reloaded', async () => {
-    const loaded = { dependants: '0', suburb: '' }
-    const { supabase } = fakeDb(loaded)
-    const kylie = newGuard(loaded)
-    await save(supabase, newGuard(loaded), { dependants: '2', suburb: '' })
-    expect((await save(supabase, kylie, { dependants: '0', suburb: 'Killara' }, () => {})).kind).toBe('conflict')
-    // Reload: the form comes back holding what the database now says.
-    const afterReload = newGuard({ dependants: '2', suburb: '' })
-    expect(await save(supabase, afterReload, { dependants: '2', suburb: 'Killara' })).toEqual({ kind: 'saved' })
-  })
-
-  // A form that cannot re-hydrate itself must not silently drop their work.
-  it('shows the banner rather than adopting when the form cannot refresh itself', async () => {
+  it('says the screen is out of date when there is nothing of ours to save', async () => {
     const loaded = { dependants: '0' }
-    const { supabase } = fakeDb(loaded)
+    const { supabase, state } = fakeDb({ ...loaded })
     const guard = newGuard(loaded)
     await save(supabase, newGuard(loaded), { dependants: '2' })
-    expect((await save(supabase, guard, loaded)).kind).toBe('conflict')
+    // No onAdopt: BC cannot refresh itself, so it is told rather than shown.
+    const out = await save(supabase, guard, loaded)
+    expect(out.kind).toBe('behind')
+    // And nothing of theirs was written over, because we had nothing to write.
+    expect(state.value).toEqual({ dependants: '2' })
   })
 
   it('settles when they happened to type exactly what we were about to', async () => {
     const loaded = { dependants: '0' }
-    const { supabase, state } = fakeDb(loaded)
+    const { supabase, state } = fakeDb({ ...loaded })
     const guard = newGuard(loaded)
     await save(supabase, newGuard(loaded), { dependants: '2' })
-    expect(await save(supabase, guard, { dependants: '2' })).toEqual({ kind: 'settled' })
+    expect((await save(supabase, guard, { dependants: '2' })).kind).toBe('settled')
     expect(state.writes).toHaveLength(1)
   })
 })
@@ -226,169 +222,37 @@ describe('a form that reads the record itself', () => {
   })
 })
 
-describe('what the banner says', () => {
-  it('names the tab', () => {
-    expect(conflictMessage('Lending options').title).toContain('Lending options')
-    expect(conflictMessage('Fact Find').title).toContain('Fact Find')
-  })
-
-  it('says plainly that nothing was saved', () => {
-    expect(conflictMessage('BC').body).toContain('has been saved')
-  })
-
-  // Fabio, 7 Sep 2026: "BC says there's someone there and we don't know who??"
-  it('names the person, because the portal knows who it is', () => {
-    expect(conflictMessage('BC', '', 'Katie Amos').title)
-      .toBe('Katie Amos is editing this BC at the same time as you')
-    expect(conflictMessage('BC', '', 'Katie Amos').body).toContain('Katie has saved changes')
-  })
-
-  it('names them on a field clash too', () => {
-    expect(conflictMessage('Fact Find', 'Dependants', 'Kylie Searle').title)
-      .toBe('You and Kylie Searle have both changed Dependants')
-  })
-
-  it('reads properly for more than one person', () => {
-    expect(conflictMessage('BC', '', 'Katie Amos and Ellie').title)
-      .toBe('Katie Amos and Ellie are editing this BC at the same time as you')
-  })
-
-  // They saved and then closed the tab. There is nobody to name, and it must not
-  // read as "and  have both changed".
-  it('falls back gracefully when whoever saved has since left', () => {
-    expect(conflictMessage('BC', '', '').title).toBe('Somebody else is editing this BC at the same time as you')
-    expect(conflictMessage('BC', 'Deposit', '').title).toBe('You and somebody else have both changed Deposit')
-  })
-})
-
-
-// THE CASE THE WHOLE THING EXISTS FOR. Katie fills in the rates while Kylie
-// fills in a date of birth. Neither should be told anything is wrong, and
-// neither should lose a keystroke.
-describe('two people, different fields', () => {
-  const loaded = () => ({
-    dependants: '0',
-    applicants: [{ id: 'a1', firstName: 'Ricardo', dob: '' }],
-    lenders: [{ id: 'l1', lenderName: 'UBank', rate: '' }],
-  })
-
-  it('keeps both, writes once, and says whose came in', async () => {
-    const { supabase, state } = fakeDb(loaded())
-    const katie = newGuard(loaded())
-    const kylie = newGuard(loaded())
-
-    // Katie: the rate.
-    const katieScreen = loaded(); katieScreen.lenders[0].rate = '5.64'
-    expect((await save(supabase, katie, katieScreen)).kind).toBe('saved')
-
-    // Kylie, who never saw that rate, types a date of birth.
-    let kylieScreen: any = loaded(); kylieScreen.applicants[0].dob = '14/03/1979'
-    const out = await save(supabase, kylie, kylieScreen, undefined, (m: any) => { kylieScreen = m })
-    expect(out.kind).toBe('merged')
-    expect((out as any).fields).toBe('Lender option 1 - Rate')
-
-    // Both are in the record.
-    expect(state.value.lenders[0].rate).toBe('5.64')
-    expect(state.value.applicants[0].dob).toBe('14/03/1979')
-    // And on Kylie's screen, so her next keystroke cannot undo Katie's rate.
-    expect(kylieScreen.lenders[0].rate).toBe('5.64')
-  })
-
-  it('does not undo their work on the very next keystroke', async () => {
-    const { supabase, state } = fakeDb(loaded())
-    const katie = newGuard(loaded())
-    const kylie = newGuard(loaded())
-    const katieScreen = loaded(); katieScreen.lenders[0].rate = '5.64'
-    await save(supabase, katie, katieScreen)
-
-    let kylieScreen: any = loaded(); kylieScreen.applicants[0].dob = '14/03/1979'
-    await save(supabase, kylie, kylieScreen, undefined, (m: any) => { kylieScreen = m })
-    // She keeps typing.
-    kylieScreen = { ...kylieScreen, dependants: '2' }
-    expect((await save(supabase, kylie, kylieScreen, undefined, (m: any) => { kylieScreen = m })).kind).toBe('saved')
-    expect(state.value.lenders[0].rate).toBe('5.64')
-    expect(state.value.dependants).toBe('2')
-  })
-
-  it('merges a row they added into a list this screen has never seen it in', async () => {
-    const { supabase, state } = fakeDb(loaded())
-    const katie = newGuard(loaded())
-    const kylie = newGuard(loaded())
-    const katieScreen: any = loaded()
-    katieScreen.applicants.push({ id: 'a2', firstName: 'Joanne', dob: '' })
-    await save(supabase, katie, katieScreen)
-
-    let kylieScreen: any = loaded(); kylieScreen.dependants = '2'
-    const out = await save(supabase, kylie, kylieScreen, undefined, (m: any) => { kylieScreen = m })
-    expect(out.kind).toBe('merged')
-    expect(state.value.applicants.map((a: any) => a.firstName)).toEqual(['Ricardo', 'Joanne'])
-    expect(state.value.dependants).toBe('2')
-  })
-
-  it('refuses when they edit a row this screen has deleted', async () => {
-    const { supabase, state } = fakeDb(loaded())
-    const katie = newGuard(loaded())
-    const kylie = newGuard(loaded())
-    const katieScreen: any = loaded(); katieScreen.lenders[0].rate = '5.64'
-    await save(supabase, katie, katieScreen)
-
-    const kylieScreen: any = loaded(); kylieScreen.lenders = []
-    const out = await save(supabase, kylie, kylieScreen, undefined, () => {})
-    expect(out.kind).toBe('conflict')
-    expect(state.value.lenders[0].rate).toBe('5.64')
-  })
-})
-
-// THE GAP THE BROWSER CANNOT SEE.
-//
-// Everything above decides in the browser: read the record, judge it safe, write
-// it. Between those last two steps somebody else's save can land, and by then it
-// is too late to notice. deals.row_version makes Postgres refuse the write at
-// the instant it happens instead. See docs/deal-row-version.sql.
-describe('somebody saves in the gap between reading and writing', () => {
-  it('does not overwrite them - it starts again and writes the truth', async () => {
-    const loaded = { dependants: '0' }
-    const { supabase, state } = fakeDb({ ...loaded }, { landsUnderneath: 1 })
-    const guard = newGuard(loaded)
-    const out = await saveGuarded({ supabase, dealId: 'd1', column: 'fact_find_data', guard,
-      value: { dependants: '2' }, onMerge: () => {}, onAdopt: () => {} })
-    // Their change survived, and so did ours.
-    expect(state.value.sneakedIn).toBe(true)
-    expect(state.value.dependants).toBe('2')
-    expect(out.kind === 'saved' || out.kind === 'merged').toBe(true)
-  })
-
-  it('pins every write to the version it read', async () => {
-    const { supabase, state } = fakeDb({ a: 1 })
-    const guard = newGuard({ a: 1 })
-    await save(supabase, guard, { a: 2 })
-    expect(state.writes[0].row_version).toBe(1)
-    await save(supabase, guard, { a: 3 })
-    expect(state.writes[1].row_version).toBe(2)
-  })
-
-  // A deploy that gets ahead of the migration must not stop anybody saving.
-  it('still saves when the version column is not there yet', async () => {
-    const state = { value: { a: 1 } as any, writes: [] as any[] }
-    const supabase = {
-      from: () => ({
-        select: () => ({ eq: () => ({ single: async () => ({ data: { fact_find_data: state.value }, error: null }) }) }),
-        update: (fields: any) => {
-          const chain: any = { eq: () => chain, select: async () => {
-            state.writes.push(fields); state.value = fields.fact_find_data; return { data: [{ id: 'd1' }], error: null }
-          } }
-          return chain
-        },
-      }),
+describe('what the notes say', () => {
+  // Not one of them stops anybody doing anything.
+  it('never tells anybody they cannot save', () => {
+    const all = [
+      overwroteMessage('BC', 'Deposit', 'Katie Amos'),
+      overwroteMessage('Fact Find'),
+      behindMessage('BC', 'Katie Amos'),
+      behindMessage('Compliance'),
+    ]
+    for (const m of all) {
+      expect(m).not.toMatch(/not been saved|cannot|reload to pick up|wipe out/i)
     }
-    expect((await save(supabase, newGuard({ a: 1 }), { a: 2 })).kind).toBe('saved')
-    expect(state.writes[0].row_version).toBeUndefined()
   })
 
-  it('still reports a write row level security refused, rather than trying forever', async () => {
-    const { supabase } = fakeDb({ a: 1 }, { rlsBlocks: true })
-    const out = await save(supabase, newGuard({ a: 1 }), { a: 2 })
-    expect(out.kind).toBe('error')
+  it('says the work went in, and that theirs is kept', () => {
+    const m = overwroteMessage('BC', 'Deposit', 'Katie Amos')
+    expect(m).toContain('Your BC is saved')
+    expect(m).toContain('Katie Amos')
+    expect(m).toContain('you both changed Deposit')
+    expect(m).toContain('Nothing is lost')
+  })
+
+  it('names nobody gracefully when the record is unsigned', () => {
+    expect(overwroteMessage('BC')).toContain('Somebody else')
+    expect(behindMessage('BC')).toContain('Somebody else')
+  })
+
+  it('tells somebody looking at an old screen that they are not blocked', () => {
+    const m = behindMessage('BC', 'Katie Amos')
+    expect(m).toContain('Katie Amos has saved this BC')
+    expect(m).toContain('nothing is blocked')
   })
 })
 
@@ -418,7 +282,7 @@ describe('who saved it', () => {
     await sign(supabase, newGuard(loaded), { dependants: '2' }, 'Kylie Searle')
     // Fabio, who has had it open since before that, types something else.
     const out = await sign(supabase, newGuard(loaded), { dependants: '3' }, 'Fabio De Castro', () => {})
-    expect(out.kind).toBe('conflict')
+    expect(out.kind).toBe('overwrote')
     expect((out as any).who).toBe('Kylie Searle')
   })
 
@@ -429,7 +293,7 @@ describe('who saved it', () => {
     await saveGuarded({ supabase, dealId: 'd1', column: 'fact_find_data', guard: newGuard(loaded),
       value: { dependants: '2' } })
     const out = await sign(supabase, newGuard(loaded), { dependants: '3' }, 'Fabio De Castro', () => {})
-    expect(out.kind).toBe('conflict')
+    expect(out.kind).toBe('overwrote')
     expect((out as any).who).toBe('')
   })
 
@@ -437,5 +301,59 @@ describe('who saved it', () => {
     const { supabase, state } = fakeDb({ a: 1 })
     await save(supabase, newGuard({ a: 1 }), { a: 2 })
     expect(state.writes[0].last_saved_name).toBeUndefined()
+  })
+})
+
+// NOTHING IS EVER LOST.
+//
+// Alexis_Janes_INV_Preapp_2026, 7 Sep 2026: a finished BC was replaced by an
+// almost empty one and there was no copy of it anywhere - not in the portal, not
+// in a backup taken early enough. Fabio: "I cannot have the basic data be lost
+// moving forward." Every save now puts aside what it is replacing.
+describe('keeping what a save replaces', () => {
+  const full = { dependants: '2', suburb: 'Killara', notes: 'a', a: '1', b: '2', c: '3', d: '4', e: '5' }
+
+  it('keeps a copy the first time a form is saved in a sitting', async () => {
+    const { supabase, state } = fakeDb({ ...full })
+    const guard = newGuard(full)
+    await saveGuarded({ supabase, dealId: 'd1', column: 'fact_find_data', guard,
+      value: { ...full, dependants: '3' }, savedBy: { id: 'u1', name: 'Kylie Searle' } })
+    expect(state.history).toHaveLength(1)
+    expect(state.history[0].data).toEqual(full)
+    expect(state.history[0].column_name).toBe('fact_find_data')
+    expect(state.history[0].replaced_by_name).toBe('Kylie Searle')
+    expect(state.history[0].filled).toBe(8)
+  })
+
+  it('does not then keep a copy of every keystroke', async () => {
+    const { supabase, state } = fakeDb({ ...full })
+    const guard = newGuard(full)
+    await save(supabase, guard, { ...full, f: '6' })
+    expect(state.history).toHaveLength(1)
+    // Everything after that, within a few minutes and only adding, is not kept.
+    await save(supabase, guard, { ...full, f: '6', g: '7' })
+    await save(supabase, guard, { ...full, f: '6', g: '7', h: '8' })
+    expect(state.history).toHaveLength(1)
+  })
+
+  // The one that matters: anything being REMOVED is kept, whatever the clock says.
+  it('always keeps a copy when something is being taken away', async () => {
+    const { supabase, state } = fakeDb({ ...full })
+    const guard = newGuard(full)
+    await save(supabase, guard, { ...full, f: '6' })
+    expect(state.history).toHaveLength(1)
+    const { notes, ...withoutNotes } = full
+    await save(supabase, guard, { ...withoutNotes, f: '6' })
+    expect(state.history).toHaveLength(2)
+    expect(state.history[1].data.notes).toBe('a')
+  })
+
+  // A save that is refused writes nothing, so there is nothing to put aside.
+  it('has nothing to keep when the save is refused for emptying the form', async () => {
+    const { supabase, state } = fakeDb({ ...full })
+    const guard = newGuard(full)
+    const out = await save(supabase, guard, { dependants: '2' })
+    expect(out.kind).toBe('error')
+    expect(state.value).toEqual(full)
   })
 })

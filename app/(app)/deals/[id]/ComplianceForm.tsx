@@ -31,9 +31,8 @@ import { fundsToComplete } from '@/lib/funds-to-complete'
 import { money } from '@/lib/money'
 import { brokerNotes, type Assessor } from '@/lib/broker-notes'
 import { comparisonBlock } from '@/lib/lender-comparison'
-import SaveConflict from '@/components/SaveConflict'
-import SaveMerged from '@/components/SaveMerged'
-import { newGuard, adopt, saveGuarded, mergeMessage } from '@/lib/save-conflict'
+import SaveNote from '@/components/SaveNote'
+import { newGuard, adopt, saveGuarded, mergeMessage, overwroteMessage, behindMessage } from '@/lib/save-conflict'
 import DealStructure from '@/components/DealStructure'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
@@ -304,13 +303,8 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   // Whose copy is on screen, and whether writing it would cost anybody
   // anything — see lib/save-conflict.ts.
   const guardRef = useRef(newGuard(deal.compliance_data))
-  // The field both people changed, or null when there is nothing to say.
-  const [conflictFields, setConflictFields] = useState<string | null>(null)
-  // Whoever actually saved the version we are up against, read off the record.
-  // Names them even if they have since closed the deal, which is the case the
-  // presence banner cannot help with.
-  const [conflictWho, setConflictWho] = useState('')
-  const [mergedNote, setMergedNote] = useState('')
+  // ONE note, and it never stops anybody. See components/SaveNote.tsx.
+  const [note, setNote] = useState<{ text: string; tone: 'info' | 'warn' } | null>(null)
 
   const [styleNotes, setStyleNotes] = useState<string[]>([])
   const [flaggingField, setFlaggingField] = useState<string | null>(null)
@@ -539,12 +533,12 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
           onMerge: merged => setD(merged as ComplianceData),
         })
         if (out.kind === 'superseded') return
-        setConflictFields(out.kind === 'conflict' ? out.fields : null)
-        if (out.kind === 'conflict') setConflictWho(out.who)
         if (out.kind === 'error') { console.error('Compliance autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
-        if (out.kind === 'merged') setMergedNote(mergeMessage(out.fields))
-        if (out.kind === 'saved' || out.kind === 'merged') setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+        if (out.kind === 'merged') setNote({ text: mergeMessage(out.fields), tone: 'info' })
+        if (out.kind === 'overwrote') setNote({ text: overwroteMessage('Compliance', out.fields, out.who), tone: 'warn' })
+        if (out.kind === 'behind') setNote({ text: behindMessage('Compliance', out.who), tone: 'info' })
+        if (out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote') setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
       })()
     }, 700)
     return () => clearTimeout(t)
@@ -1006,8 +1000,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
 
   return (
     <div className="space-y-4">
-      <SaveConflict tab="Compliance" fields={conflictFields} who={conflictWho || whoElseHere} />
-      <SaveMerged message={mergedNote} onDismiss={() => setMergedNote('')} />
+      <SaveNote message={note?.text || ''} tone={note?.tone || 'info'} onDismiss={() => setNote(null)} />
       {past && (
         <div className="bg-white border border-[#CFE6D5] rounded-xl px-4 py-3.5">
           <div className="flex items-center gap-2.5 flex-wrap">
