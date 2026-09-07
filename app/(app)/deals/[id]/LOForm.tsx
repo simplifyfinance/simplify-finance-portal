@@ -15,7 +15,7 @@ import { emailParagraphs, htmlToPlainText, copyHtmlAndPlain} from '@/lib/rich-te
 import { loMayWriteAmount, splitsTotal } from '@/lib/deal-phase'
 import { resolveLenderSplits, seedFromGlobal, combineIntoOneLoan,
          lenderTotal, lenderLvr } from '@/lib/lo-splits'
-import { emailFreshness, blocksSending, notesAfterScenarioChange } from '@/lib/email-freshness'
+import { emailFreshness, needsAttention, notesAfterScenarioChange } from '@/lib/email-freshness'
 import { dealPurpose } from '@/lib/deal-facts'
 import DealStructure from '@/components/DealStructure'
 
@@ -877,15 +877,15 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
   // Does the saved email still match the scenario the deal is on?
   const freshness = emailFreshness({ emailHtml, emailHtmlTemplate: d.emailHtmlTemplate }, d.template)
-  const emailIsStale = blocksSending(freshness)
+  // Shown, never acted on - nothing here switches a button off. See
+  // needsAttention() in lib/email-freshness.ts.
+  const emailNeedsAttention = needsAttention(freshness)
   const loTemplateLabel = (id: string) => TEMPLATES.find(t => t.id === id)?.label || id
 
   function getCleanEmailHtml() {
-    // Every path to the clipboard comes through here, so this is where the
-    // wrong email gets refused rather than in each button.
-    if (emailIsStale) {
-      throw new Error(`This email was written for ${loTemplateLabel(d.emailHtmlTemplate)} and the deal is now ${loTemplateLabel(d.template)}. Regenerate it before sending.`)
-    }
+    // This used to refuse to produce the HTML at all when the saved email was
+    // for a different scenario. The banner above the preview says so instead,
+    // and the send is the broker's call.
     const fn = (d.firstName || '[Client First Name]').trim()
     const jfn = (d.jointFirstName || '').trim()
     const greetingName = (d.joint === 'Yes' && jfn) ? `${fn} and ${jfn}` : fn
@@ -1618,15 +1618,15 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 <div className="w-px h-8 bg-gray-200" />
                 <div className="flex items-center gap-3">
                   {canSendToClient ? (
-                    <button onClick={sendEmail} disabled={sending || !emailHtml || emailIsStale}
-                      title={emailIsStale ? 'The saved email is for a different scenario. Regenerate it first.' : ''}
+                    <button onClick={sendEmail} disabled={sending || !emailHtml}
+                      title={emailNeedsAttention ? 'Heads up: this email was written for a different scenario.' : ''}
                       className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-40">
                       {sending ? 'Copying...' : sent ? '✓ Copied — paste in Outlook' : 'Send to client'}
                     </button>
                   ) : (
                     <span className="text-xs text-gray-400 italic">Only the broker can send this to the client — use "Done — send to broker for review" above.</span>
                   )}
-                  <button disabled={emailIsStale}
+                  <button
                     onClick={() => { copyEmailToClipboard().then(() => setSent(true)).catch(e => setSendError(e?.message || 'Copy failed.')) }}
                     className="text-xs text-gray-400 hover:text-gray-600 underline disabled:opacity-40 disabled:no-underline">Copy without opening Outlook</button>
                 </div>
@@ -1682,8 +1682,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
               <span className="text-[15px] leading-none mt-[2px]">⚠</span>
               <div className="text-[13px] text-[#8A6218] flex-1">
                 <b className="text-[#141C24]">This email was written for {loTemplateLabel(freshness.wasFor)}.</b>
-                {' '}The deal is now on <b className="text-[#141C24]">{loTemplateLabel(freshness.nowOn)}</b>, so what is
-                below is out of date. Sending and copying are switched off until it is regenerated.
+                {' '}The deal is now on <b className="text-[#141C24]">{loTemplateLabel(freshness.nowOn)}</b>, so every
+                card and note below is for a different deal. Regenerate before you send it — nothing is blocked, but
+                this one is worth a look.
               </div>
               <button onClick={generateEmail} disabled={generating}
                 className="flex-none px-3 py-1.5 text-[12.5px] font-semibold rounded-lg bg-[#141C24] text-white disabled:opacity-50">
@@ -1691,7 +1692,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
               </button>
             </div>
           )}
-          <div className={`bg-white border border-gray-100 rounded-xl overflow-hidden ${freshness.state === 'stale' ? 'opacity-50' : ''}`}>
+          <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
             {emailHtml ? (
               <iframe srcDoc={emailHtml} className="w-full h-[800px] border-0" title="LO Email Preview" />
             ) : (

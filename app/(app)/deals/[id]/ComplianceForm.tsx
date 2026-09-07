@@ -34,6 +34,7 @@ import { comparisonBlock } from '@/lib/lender-comparison'
 import SaveNote from '@/components/SaveNote'
 import { newGuard, adopt, saveGuarded, mergeMessage, overwroteMessage, behindMessage } from '@/lib/save-conflict'
 import { selfEmployedParagraphsFor } from '@/lib/self-employed-facts'
+import { dealFigures, figureChanges, notesMentioning } from '@/lib/deal-figures'
 import DealStructure from '@/components/DealStructure'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
@@ -225,10 +226,19 @@ const when = (iso?: string) => {
 // One place, four call sites. The confidence and source chips were written out
 // four times, so the freshness flag would have had to be too - and the fourth
 // copy is always the one that gets missed.
-function NoteMeta({ meta, freshness }: { meta?: NoteStamp; freshness: NoteFreshness }) {
+// `onAccept` is the manual override: "I have read this and it is still right"
+// (or "I have already fixed the one number by hand"). It brings the stamp up to
+// date and does not touch a word of the text. Fabio, 8 Sep 2026: "I'd rather
+// have a manual override, to avoid losing all data if we choose to quickly
+// change a figure ourselves to get rid of the warning sign."
+//
+// It lives in here rather than beside each textarea because there are four
+// copies of that block, and the fourth copy is always the one that gets missed.
+function NoteMeta({ meta, freshness, onAccept }: { meta?: NoteStamp; freshness: NoteFreshness; onAccept?: () => void }) {
   const conf = meta?.confidence || ''
   const stale = freshness.state === 'stale'
-  if (!conf && !meta?.source && !stale && freshness.state !== 'fresh') return null
+  const checked = !!meta?.checkedAt
+  if (!conf && !meta?.source && !stale && !checked && freshness.state !== 'fresh') return null
   return (
     <div className="flex items-center gap-2 mt-1 flex-wrap">
       {conf && (
@@ -244,8 +254,22 @@ function NoteMeta({ meta, freshness }: { meta?: NoteStamp; freshness: NoteFreshn
           written before {freshness.changes[0]}
         </span>
       )}
-      {freshness.state === 'fresh' && freshness.at && (
+      {stale && onAccept && (
+        <button onClick={onAccept}
+          title="Leaves every word as it is and brings the stamp up to date"
+          className="text-[10px] font-medium text-[#7A5F17] bg-white border border-[#EBD9BE] rounded px-1.5 py-0.5 hover:bg-[#FBF5EA] transition">
+          This one still reads right
+        </button>
+      )}
+      {freshness.state === 'fresh' && freshness.at && !checked && (
         <span className="text-[10px] text-gray-400">written {when(freshness.at)} · matches the deal</span>
+      )}
+      {/* Checked by hand and regenerated are different claims on a regulated
+          document, so the file says which one happened, and who. */}
+      {freshness.state === 'fresh' && checked && (
+        <span className="text-[10px] text-gray-400">
+          checked by hand{meta?.checkedBy ? ` by ${meta.checkedBy}` : ''} · {when(meta?.checkedAt)}
+        </span>
       )}
     </div>
   )
@@ -272,9 +296,10 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
 }) {
   const supabase = createSupabaseBrowser()
 
-  // WHAT THE NOTES WERE WRITTEN FROM. Six headline facts, plus a fingerprint of
-  // the whole facts block so an income or a liability moving is caught too -
-  // those do not show up in the six, and they still make the prose wrong.
+  // WHAT THE NOTES WERE WRITTEN FROM. Six headline facts, every figure on the
+  // fact find by name, and a fingerprint of the whole block for anything those
+  // two miss. Before the named figures existed, a credit card limit moving came
+  // out as "something in the fact find changed" - see lib/deal-figures.ts.
   const nowFacts: NoteFacts = useMemo(() => {
     const lo = deal?.lo_data || {}
     const row = dealRow(deal)
@@ -287,7 +312,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
       fundsToComplete: funds.applies && funds.workable ? (funds.toFind > 0 ? money(funds.toFind) : 'nil') : '',
       approval: row.preApproval ? 'a pre-approval' : 'a formal approval',
       product: String(rec.productName || ''),
-    }, factsBlock(dealFacts(deal)))
+    }, factsBlock(dealFacts(deal)), dealFigures(deal))
   }, [deal])
 
   // WHO THE BANK RINGS. The deal's ASSIGNED credit assessor, not whoever is
@@ -822,6 +847,24 @@ Use the security address exactly as recorded. On a pre-approval it will already 
   //
   // A warning, never a block. Fabio, 3 Sep 2026, asked for (a): he is the one
   // who knows whether the change actually matters.
+  // WHICH NOTES ACTUALLY CARRY THE OLD FIGURE.
+  //
+  // A change makes every note that was written before it "stale", but only some
+  // of them have the number written into them. Fabio, 8 Sep 2026: "if I refresh,
+  // I don't want it to start completely everything again."
+  //
+  // A pointer, not a guarantee - it can find a figure in the text, it cannot
+  // know that "the card is being closed" is about the card that moved. The
+  // wording on screen says so.
+  const figureChangeDetail = useMemo(() => {
+    const stamped = Object.values(d.aiMeta || {}).find((m: any) => m?.facts?.figures)?.facts?.figures
+    const boxes = AI_FIELDS.map(f => ({ key: f.key, label: f.label, text: String((d as any)[f.key] || '') }))
+    return figureChanges(stamped, dealFigures(deal)).map(c => ({
+      sentence: c.sentence,
+      mentionedIn: notesMentioning(c, boxes),
+    }))
+  }, [d, deal])
+
   const notesReview = useMemo(
     () => reviewNotes(AI_FIELDS.map(f => ({ field: f.key, text: (d as any)[f.key] })), d.aiMeta, nowFacts),
     [d, nowFacts])
@@ -829,15 +872,27 @@ Use the security address exactly as recorded. On a pre-approval it will already 
   const freshnessOf = (key: string): NoteFreshness =>
     noteFreshness((d as any)[key], d.aiMeta?.[key], nowFacts)
 
-  // "They still read right". Re-stamps the stale notes against the deal as it is
+  // "They still read right". Re-stamps a stale note against the deal as it is
   // now WITHOUT touching a word of the text, so a note somebody has already
   // corrected by hand stops asking - and the next real change is still caught.
+  //
+  // Signed, because on a regulated document "somebody read this and confirmed
+  // it" is a different claim from "the model rewrote it", and six months from
+  // now the file has to be able to tell them apart.
+  function acceptedStamp(existing?: NoteStamp): NoteStamp {
+    return { ...(existing || {}), facts: nowFacts, checkedBy: me?.name || '', checkedAt: new Date().toISOString() }
+  }
+
+  // One box. The whole point of the override: change a figure yourself, clear
+  // that one warning, and keep every word of the other eight notes.
+  function acceptNote(key: string) {
+    setD(prev => ({ ...prev, aiMeta: { ...prev.aiMeta, [key]: acceptedStamp(prev.aiMeta?.[key]) } }))
+  }
+
   function acceptNotesAsTheyAre() {
     setD(prev => {
       const meta = { ...prev.aiMeta }
-      for (const key of notesReview.staleFields) {
-        meta[key] = { ...(meta[key] || {}), facts: nowFacts }
-      }
+      for (const key of notesReview.staleFields) meta[key] = acceptedStamp(meta[key])
       return { ...prev, aiMeta: meta }
     })
   }
@@ -1133,11 +1188,32 @@ Use the security address exactly as recorded. On a pre-approval it will already 
               <p className="m-0 text-[12.5px] text-[#8A6218]">
                 {notesReview.staleFields.length === 1 ? 'It still says' : 'They still say'} what
                 {notesReview.staleFields.length === 1 ? ' it said' : ' they said'} at the time. Nothing has been
-                rewritten — that is yours to decide.
+                rewritten — that is yours to decide. Each note below has its own
+                <b className="text-[#221F1B]"> This one still reads right</b> button, for when you have fixed a figure
+                yourself and only that note needs clearing.
               </p>
               <ul className="mt-1.5 mb-0 pl-5 text-[12.5px] text-[#8A6218]">
-                {notesReview.changes.map((c, i) => <li key={i} className="mb-0.5">{c}</li>)}
+                {notesReview.changes.map((c, i) => {
+                  // Where that figure is written down, so nobody has to redo
+                  // nine notes to fix one.
+                  const where = figureChangeDetail.find(f => f.sentence === c)?.mentionedIn || []
+                  return (
+                    <li key={i} className="mb-1">
+                      {c}
+                      {where.length > 0 && (
+                        <span className="block text-[12px] text-[#A08A5B]">
+                          That figure appears in: <b className="text-[#7A5F17]">{where.join(', ')}</b>
+                        </span>
+                      )}
+                    </li>
+                  )
+                })}
               </ul>
+              {figureChangeDetail.some(f => f.mentionedIn.length > 0) && (
+                <p className="m-0 mt-1.5 text-[12px] text-[#A08A5B]">
+                  Only where the figure itself is written down — a note can be about something without quoting it.
+                </p>
+              )}
               <p className="m-0 mt-1.5 text-[12px] text-[#8A6218]">
                 {notesReview.writtenAt && <>Oldest written <b className="text-[#221F1B]">{when(notesReview.writtenAt)}</b> · </>}
                 {notesReview.staleFields.map(f => AI_FIELD_LABEL[f] || f).join(', ')}
@@ -1149,10 +1225,11 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                 {Object.values(generating).some(Boolean) ? 'Rewriting…' : `Rewrite ${notesReview.staleFields.length === 1 ? 'it' : `those ${notesReview.staleFields.length}`}`}
               </button>
               {/* Re-stamps them against the deal as it is now, without touching a
-                  word - for a note somebody has already corrected by hand. */}
+                  word - for notes somebody has already corrected by hand. There
+                  is the same button on each individual note, for clearing one. */}
               <button onClick={acceptNotesAsTheyAre}
                 className="bg-white border border-[#EBD9BE] text-[#7A5F17] rounded-lg px-3 py-1.5 text-[12.5px] hover:bg-[#FBF5EA] transition whitespace-nowrap">
-                They still read right
+                They all still read right
               </button>
             </div>
           </div>
@@ -1188,7 +1265,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                     </div>
                   </div>
                 )}
-                <NoteMeta meta={d.aiMeta?.[key]} freshness={freshnessOf(key)} />
+                <NoteMeta meta={d.aiMeta?.[key]} freshness={freshnessOf(key)} onAccept={() => acceptNote(key)} />
               </div>
             ))}
             <div className="mt-2">
@@ -1435,7 +1512,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                     </div>
                   </div>
                 )}
-                <NoteMeta meta={d.aiMeta?.[key]} freshness={freshnessOf(key)} />
+                <NoteMeta meta={d.aiMeta?.[key]} freshness={freshnessOf(key)} onAccept={() => acceptNote(key)} />
               </div>
             ))}
 
@@ -1462,7 +1539,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                     </div>
                   </div>
                 )}
-                <NoteMeta meta={d.aiMeta?.[key]} freshness={freshnessOf(key)} />
+                <NoteMeta meta={d.aiMeta?.[key]} freshness={freshnessOf(key)} onAccept={() => acceptNote(key)} />
                 </div>
               ))}
             </div>
@@ -1563,7 +1640,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                     </div>
                   </div>
                 )}
-                <NoteMeta meta={d.aiMeta?.['securityComment']} freshness={freshnessOf('securityComment')} />
+                <NoteMeta meta={d.aiMeta?.['securityComment']} freshness={freshnessOf('securityComment')} onAccept={() => acceptNote('securityComment')} />
               </div>
               {/* THE ONLY BOX ON THIS TAB THAT LEAVES THE BUILDING.
                   Everything else here is between us, the client and compliance.

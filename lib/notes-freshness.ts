@@ -22,10 +22,17 @@
 // fact - a dependant count moving from 2 to 3 does not invalidate a paragraph
 // about security. These are the ones the notes are built around and name out
 // loud.
+import type { Figures } from './deal-figures'
+import { figureChanges } from './deal-figures'
+
 export type NoteFacts = {
   // Everything the notes were written from, in one fingerprint. Catches the
-  // changes the headline fields below do not.
+  // changes the named figures below do not.
   hash: string
+  // EVERY FIGURE, BY NAME. Absent on anything stamped before 8 Sep 2026, which
+  // is why changesSince still falls back to the fingerprint - an old stamp can
+  // only say that something moved, never what.
+  figures?: Figures
   lender: string
   loanAmount: string
   purpose: string
@@ -41,6 +48,18 @@ export type NoteStamp = {
   // this existed - see 'unknown'.
   at?: string
   facts?: NoteFacts
+  // SOMEBODY SAID THIS NOTE IS STILL RIGHT.
+  //
+  // A figure moves, the note is flagged, and the person reads it and finds it
+  // still reads correctly - or fixes the one number by hand. Rewriting the
+  // whole paragraph to clear a warning would throw away their editing, so
+  // instead the stamp is brought up to date and the words are left alone.
+  //
+  // Recorded by name, because "this was checked" and "this was regenerated"
+  // are different claims on a regulated document and the file should say which
+  // one happened. Cleared whenever the note is next regenerated.
+  checkedBy?: string
+  checkedAt?: string
 }
 
 export type NoteFreshness =
@@ -70,11 +89,14 @@ export function fingerprint(s: string): string {
   return h.toString(36)
 }
 
-export function noteFacts(headline: Omit<NoteFacts, 'hash'>, factsBlock: string): NoteFacts {
-  return { ...headline, hash: fingerprint(factsBlock) }
+export function noteFacts(headline: Omit<NoteFacts, 'hash' | 'figures'>,
+                          factsBlock: string, figures?: Figures): NoteFacts {
+  return { ...headline, hash: fingerprint(factsBlock), figures }
 }
 
-const LABEL: Record<keyof Omit<NoteFacts, 'hash'>, string> = {
+// The six headline facts. `figures` is not one of them - it is a bag of named
+// values compared separately, in figureChanges.
+const LABEL: Record<keyof Omit<NoteFacts, 'hash' | 'figures'>, string> = {
   lender: 'the lender',
   loanAmount: 'the loan amount',
   purpose: 'the loan purpose',
@@ -95,8 +117,16 @@ export function changesSince(was: NoteFacts | undefined, now: NoteFacts): string
     else if (!after) out.push(`${LABEL[key]} was ${before}, and is now blank`)
     else out.push(`${LABEL[key]} changed from ${before} to ${after}`)
   }
-  // Something moved that the headline fields do not cover - an income, a
-  // liability, a security. Worth saying, without pretending to know what.
+  // THE FIGURES, BY NAME. Everything that is not one of the six above - an
+  // income, a credit card limit, a property value, a loan balance - used to
+  // collapse into "something in the fact find changed", which tells you a note
+  // is stale without telling you whether it matters.
+  // Only when we have both sides. Comparing against an empty bag would read as
+  // "every figure has vanished off the fact find", which is a loud way to be wrong.
+  if (now.figures) for (const c of figureChanges(was.figures, now.figures)) out.push(c.sentence)
+
+  // Still the last resort, and now only for a note stamped before figures were
+  // recorded, or a change no named figure covers - a new applicant, an address.
   if (out.length === 0 && was.hash !== now.hash) {
     out.push('something in the fact find changed after this was written')
   }
