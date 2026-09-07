@@ -1,7 +1,7 @@
 'use client'
 import { useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { checkedWrite } from '@/lib/checked-write'
+import { patchDealColumn } from '@/lib/patch-deal-column'
 import { templateLabel } from '@/lib/templates'
 import {
   splitsOf, dealRow, stillNeeded, needsFundsRole, purposeSummary,
@@ -55,27 +55,54 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
   // Everything editable here lives in compliance_data, deliberately: lo_data is
   // autosaved wholesale by the LO form, and a second writer would lose its
   // changes the next time somebody typed there.
-  async function save(next: any) {
+  //
+  // WHY THIS RE-READS THE RECORD BEFORE EVERY CHANGE.
+  //
+  // This block writes the WHOLE compliance_data column, and it used to build
+  // that from `deal.compliance_data` - the copy the page was rendered with. That
+  // copy goes stale the moment the Compliance tab saves anything, and this block
+  // is also shown on the Lending options tab. So:
+  //
+  //   type the compliance notes on the Compliance tab      saved
+  //   switch to Lending options, tick pre-approval here     writes the copy of
+  //                                                         compliance_data this
+  //                                                         page was BORN with
+  //   the notes are gone                                    no error, nothing on
+  //                                                         screen
+  //
+  // One person, two tabs, no warning - the same shape of bug as two people on
+  // one deal, which is what Fabio's team lost an afternoon to. So the change is
+  // applied to what the database holds RIGHT NOW, not to what this page
+  // remembers. `apply` is a function rather than a value for exactly that
+  // reason: the caller cannot be handed the old record to build from.
+  //
+  // NOT A GUARANTEE. There is still a gap of milliseconds between the read and
+  // the write. See lib/save-conflict.ts - the real fix for the whole class is a
+  // version column, and it is not built yet.
+  async function save(apply: (current: any) => any) {
     setBusy(true)
-    const problem = await checkedWrite(
-      supabase.from('deals').update({ compliance_data: next }).eq('id', deal.id), 'That change')
+    // A failed read falls back to what is on screen, which is what this did
+    // every time before today. See lib/patch-deal-column.ts.
+    const { next, problem } = await patchDealColumn(supabase, deal.id, 'compliance_data', apply, cd)
     setBusy(false)
     if (problem) { setErr(problem); return }
     setErr('')
     onUpdated?.({ compliance_data: next })
   }
 
-  const setField = (k: string, v: any) => save({ ...cd, [k]: v })
-  const setDetail = (id: string, patch: any) => save(withSplitDetail(cd, id, patch))
+  const setField = (k: string, v: any) => save(cur => ({ ...cur, [k]: v }))
+  const setDetail = (id: string, patch: any) => save(cur => withSplitDetail(cur, id, patch))
 
   // Ticking pre-approval fills the address in, because on a pre-approval there
   // is no address yet and an empty box just looks unfinished.
   function setApproval(pre: boolean) {
-    const next = { ...cd, preApproval: pre }
-    if (pre && !String(cd.securityAddress || '').trim()) {
-      next.securityAddress = defaultSecurityAddress(deal, true)
-    }
-    save(next)
+    save(cur => {
+      const next = { ...cur, preApproval: pre }
+      if (pre && !String(cur.securityAddress || '').trim()) {
+        next.securityAddress = defaultSecurityAddress(deal, true)
+      }
+      return next
+    })
   }
 
   return (

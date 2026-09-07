@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { checkedWrite } from '@/lib/checked-write'
+import { patchDealColumn } from '@/lib/patch-deal-column'
 import { documentsFor, documentsDue, groupedDocuments, type DocRound } from '@/lib/document-rules'
 import { rowsFor, tickedCount, toRequest, withTick, withAdded, withoutAdded, withDeferred,
          progressOf, requestRounds, COMMON_EXTRAS, type DocProgress, type DocRow } from '@/lib/document-progress'
@@ -149,19 +149,31 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
   // Optimistic, then verified. A write that silently affects zero rows is the
   // failure this codebase has been bitten by, so the screen goes back to what it
   // was and says so rather than showing a tick that never saved.
-  async function save(next: DocProgress, what: string) {
+  //
+  // AND THE TICK IS APPLIED TO THE LIVE RECORD, NOT TO THIS SCREEN'S COPY.
+  //
+  // document_progress is one column holding every tick, so saving one tick means
+  // writing all of them back. Built from what is on screen, that quietly undid
+  // anybody else's ticks made since this page was opened - two people working
+  // through the same document list is exactly how this box gets used. The change
+  // is now applied to what the database holds at that moment; the optimistic
+  // update below is only what the person sees while it goes.
+  // See lib/patch-deal-column.ts.
+  async function save(apply: (current: any) => DocProgress, what: string) {
     const before = progress
-    setProgress(next)
+    setProgress(apply(progress))
     setBusy(what)
-    const problem = await checkedWrite(
-      supabase.from('deals').update({ document_progress: next }).eq('id', deal.id), 'That change')
+    const { next, problem } = await patchDealColumn(
+      supabase, deal.id, 'document_progress', cur => apply(progressOf({ document_progress: cur })), progress)
     setBusy('')
     if (problem) { setProgress(before); setErr(problem); return }
     setErr('')
+    // What actually landed, which now includes anybody else's ticks.
+    setProgress(next)
     onUpdated?.({ document_progress: next })
   }
 
-  const toggle = (r: DocRow) => save(withTick(progress, r.key, !r.ticked, who), r.key)
+  const toggle = (r: DocRow) => save(cur => withTick(cur, r.key, !r.ticked, who), r.key)
 
   function addTyped() {
     const label = newLabel.trim()
@@ -169,7 +181,7 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
     const known = COMMON_EXTRAS.find(e => e.label.toLowerCase() === label.toLowerCase())
     setNewLabel('')
     setAdding(false)
-    save(withAdded(progress, known?.label || label, known?.forWhat || 'compliance', who, known?.detail), 'add')
+    save(cur => withAdded(cur, known?.label || label, known?.forWhat || 'compliance', who, known?.detail), 'add')
   }
 
   return (
@@ -326,11 +338,11 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
                         for discharge now, yes or no?" */}
                     {r.askFirst && !r.requestedAt && (
                       <div className="flex gap-2 mt-1.5 flex-wrap">
-                        <button onClick={() => save(withTick(progress, r.key, true, who), r.key)}
+                        <button onClick={() => save(cur => withTick(cur, r.key, true, who), r.key)}
                           className="rounded-lg px-2.5 py-1 text-[12px] font-semibold bg-[#221F1B] text-white">
                           Ask for it now
                         </button>
-                        <button onClick={() => save(withDeferred(progress, r.key, who), r.key)}
+                        <button onClick={() => save(cur => withDeferred(cur, r.key, who), r.key)}
                           className="rounded-lg px-2.5 py-1 text-[12px] border border-[#D7DCE1] bg-white text-[#3E4C59]">
                           Not yet — bring it back at formal approval
                         </button>
@@ -344,7 +356,7 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
                     {r.forWhat === 'lodge' ? 'Lodge' : 'Compliance'}
                   </span>
                   {r.addedByHand && (
-                    <button onClick={() => save(withoutAdded(progress, r.key), r.key)}
+                    <button onClick={() => save(cur => withoutAdded(cur, r.key), r.key)}
                       className="text-[11px] text-[#C3BDB2] hover:text-[#B23A34] flex-none mt-[3px]">Remove</button>
                   )}
                 </div>

@@ -17,7 +17,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { checkedWrite } from '@/lib/checked-write'
+import { patchDealColumn } from '@/lib/patch-deal-column'
 import { allSections, copyableCards, copyTextOf, outstanding,
          type ViewSection, type ViewCard, type Accent } from '@/lib/handover-view'
 import { applicantNamesOf } from '@/lib/applicants'
@@ -92,15 +92,21 @@ export default function HandoverPage() {
     catch { say('Your browser blocked the clipboard — select the box and copy by hand.'); return }
     say('Copied — ' + card.title)
 
-    const next: Progress = { ...progress, [card.key]: { at: new Date().toISOString(), by: me } }
-    setProgress(next)
-    const failed = await checkedWrite(
-      supabase.from('deals').update({ handover_progress: next }).eq('id', id), 'The copied tick')
+    // The tick is applied to the LIVE record, not to this screen's copy.
+    // handover_progress is one column holding every tick, so saving one means
+    // writing them all back - and built from what is on screen, that quietly
+    // undoes the ticks of the second person working the same handover. The one
+    // thing a handover has to survive is two people picking it up.
+    // See lib/patch-deal-column.ts.
+    const before = progress
+    setProgress({ ...progress, [card.key]: { at: new Date().toISOString(), by: me } })
+    const { next, problem } = await patchDealColumn(supabase, id, 'handover_progress',
+      (cur: any) => ({ ...(cur || {}), [card.key]: { at: new Date().toISOString(), by: me } }), progress)
     // The paste already happened, so this is not an error to block on - but a
     // tick that silently did not save would have somebody redo the whole
     // handover tomorrow, so it is said out loud.
-    if (failed) { setProgress(progress); setProblem(failed + ' The text is on your clipboard — the tick is not saved.') }
-    else setProblem('')
+    if (problem) { setProgress(before); setProblem(problem + ' The text is on your clipboard — the tick is not saved.') }
+    else { setProgress(next as Progress); setProblem('') }
   }
 
   async function copyValue(v: string) {

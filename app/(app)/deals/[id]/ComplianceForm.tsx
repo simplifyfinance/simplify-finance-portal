@@ -33,7 +33,7 @@ import { brokerNotes, type Assessor } from '@/lib/broker-notes'
 import { comparisonBlock } from '@/lib/lender-comparison'
 import SaveConflict from '@/components/SaveConflict'
 import SaveMerged from '@/components/SaveMerged'
-import { newGuard, saveGuarded, mergeMessage } from '@/lib/save-conflict'
+import { newGuard, adopt, saveGuarded, mergeMessage } from '@/lib/save-conflict'
 import DealStructure from '@/components/DealStructure'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
@@ -471,10 +471,23 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched }: {
   const [stage, setStage] = useState<'needs' | 'risks' | 'product' | 'comments' | 'expenses'>('needs')
   const [complianceCompletedAt, setComplianceCompletedAt] = useState<string | null>(deal.compliance_completed_at || null)
 
+  // WHAT THE RECORD ACTUALLY HOLDS, NOT WHAT THE PAGE WAS RENDERED WITH.
+  //
+  // The page is rendered on the server, so by the time it reaches the browser
+  // somebody may already have saved this tab. This re-read catches that.
+  //
+  // It has to tell the save guard, though. The guard was started from the
+  // server's copy; replacing what is on screen without moving it means the guard
+  // believes the record is something it is not, and the next keystroke looks
+  // like a collision that nobody caused. That produced a banner out of thin air.
+  //
+  // Same split as the LO form: the guard is given EXACTLY what the database held,
+  // before the expenses default below, or it would never match the stored record.
   useEffect(() => {
     supabase.from('deals').select('compliance_data').eq('id', deal.id).single().then(({ data }) => {
       if (data?.compliance_data && Object.keys(data.compliance_data).length > 0) {
-        const loaded = data.compliance_data as ComplianceData
+        adopt(guardRef.current, data.compliance_data)
+        const loaded = { ...(data.compliance_data as ComplianceData) }
         if (!loaded.expenses) loaded.expenses = defaultExpenses(loaded.applicants || [])
         setD(loaded)
       }
