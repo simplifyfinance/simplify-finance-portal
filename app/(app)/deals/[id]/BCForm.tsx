@@ -14,6 +14,17 @@ import { emailFreshness, needsAttention, notesAfterScenarioChange } from '@/lib/
 import { missingForEmail, missingSentence } from '@/lib/bc-ready'
 import { dealFigures } from '@/lib/deal-figures'
 
+// WORKED OUT, NOT TYPED.
+//
+// These seven are in the saved record but have no box and no setter - they are
+// read off the fact find or calculated from other boxes every render, and they
+// recompute themselves the moment anything they depend on lands. Merging them
+// would be merging an answer rather than an input. Named here so the guard in
+// lib/bc-fields.test.ts can tell "derived on purpose" from "somebody added a
+// field and forgot it can be merged", which is the same silent failure that put
+// thirteen fields in the database and none of them in the client email.
+const BC_DERIVED = ['firstName', 'lastName', 'dependants', 'joint', 'incomeBase', 'lvrPercent', 'netProceeds']
+
 // A finished "client agreed" is not something to hide. It used to disappear the
 // instant it was pressed, which made "already done" look exactly like "broken".
 function agreedDay(v: any): string {
@@ -246,7 +257,7 @@ function fieldCls(value: string) {
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
 import { annualIncomeOf, annualIncomeOfApplicant } from '@/lib/income-calculations'
 import SaveNote from '@/components/SaveNote'
-import { newGuard, saveGuarded, overwroteMessage, behindMessage } from '@/lib/save-conflict'
+import { newGuard, saveGuarded, mergeMessage, overwroteMessage, behindMessage } from '@/lib/save-conflict'
 import { readMoney, formatAsTyped, money, moneyOrBlank } from '@/lib/money'
 
 const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
@@ -729,6 +740,55 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // something - they are just no longer written by looking.
   const savedRef = useRef<string | null>(null)
 
+  // PUTTING SOMEBODY ELSE'S BOXES BACK ONTO THIS SCREEN.
+  //
+  // The Fact Find holds its whole tab in one object, so folding in another
+  // person's work is one setD. The BC holds sixty separate pieces of state, and
+  // for that reason alone it was the one tab that could not merge: when Melissa
+  // and Kylie were both in it, the later save wrote the whole tab from one
+  // screen and the other's boxes went with it. Warned about, recoverable from
+  // History - but somebody had to notice.
+  //
+  // This is the missing half. Given a merged record it puts each value back in
+  // its own box, so the save path can do here exactly what it already does on
+  // the Fact Find. Nothing else about it is BC-specific.
+  //
+  // The RAW setters on purpose. setSalePrice() and friends also recompute the
+  // deposit from whatever else is on screen; the merged record already carries
+  // the merged deposit, and recomputing it here would mix half of theirs with
+  // half of ours and call the result a merge.
+  const BC_SETTERS: Record<string, (v: any) => void> = {
+    template: setTemplate, splits: setSplits, incomeOther: setIncomeOther, incomeRental: setIncomeRental,
+    ccLimit: setCcLimit, personalLoan: setPersonalLoan, carLoan: setCarLoan, hecs: setHecs,
+    health: setHealth, living: setLiving, suburb: setSuburb, propertyType: setPropertyType,
+    purchasePropertySubtype: setPurchasePropertySubtype, purchasePrice: setPurchasePrice,
+    deposit: setDeposit, stampDuty: setStampDuty, dutyState: setDutyState, lvr: setLvr,
+    lvrCustom: setLvrCustom, lmiApplicable: setLmiApplicable, loanTerm: setLoanTerm,
+    brokerNotes: setBrokerNotes, templateNotes: setTemplateNotes, internalNotes: setInternalNotes,
+    brokerSig: setBrokerSig, checklist: setChecklist, emailHtml: setEmailHtml,
+    emailHtmlTemplate: setEmailHtmlTemplate, emailFigures: setEmailFigures,
+    existingLoanBal: setExistingLoanBal, propertyValue: setPropertyValue,
+    newPurchasePrice: setNewPurchasePrice, newPurchaseDeposit: setNewPurchaseDeposit,
+    newPurchaseSuburb: setNewPurchaseSuburb, newPurchasePropertyType: setNewPurchasePropertyType,
+    newPurchaseDepositSource: setNewPurchaseDepositSource, newPurchaseStampDuty: setNewPurchaseStampDuty,
+    newPurchaseLoanTerm: setNewPurchaseLoanTerm, salePrice: setSalePriceRaw, agentFees: setAgentFeesRaw,
+    additionalSavings: setAdditionalSavingsRaw, equityRelease: setEquityRelease,
+    depositSource: setDepositSource, lmi: setLmi, fhog: setFhog, guarantorName: setGuarantorName,
+    bridgingPeriod: setBridgingPeriod, constructionCost: setConstructionCostRaw,
+    landValue: setLandValueRaw, asIfCompleteValue: setAsIfCompleteValue,
+    compareOptions: setCompareOptions, optionLabel: setOptionLabel, altScenarios: setAltScenarios,
+    brand: setBrand,
+  }
+
+  // Only the boxes the record actually carries. A record saved before a field
+  // existed must not blank that field out on the person merging.
+  function applyBcData(incoming: any) {
+    if (!incoming || typeof incoming !== 'object') return
+    for (const [key, set] of Object.entries(BC_SETTERS)) {
+      if (Object.prototype.hasOwnProperty.call(incoming, key)) set(incoming[key])
+    }
+  }
+
   const [showMoveToLoPopup, setShowMoveToLoPopup] = useState(false)
   const [sendingMoveToLo, setSendingMoveToLo] = useState(false)
   const [moveToLoMsg, setMoveToLoMsg] = useState('')
@@ -748,17 +808,27 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
       ;(async () => {
         const out = await saveGuarded({
           supabase, dealId: deal.id, column: 'bc_data', guard: guardRef.current, savedBy: me, tabLabel: 'BC — Borrowing capacity', value: data,
-          // No onAdopt and no onMerge, deliberately. Without them the guard
-          // refuses and shows the banner instead of touching this screen - see
-          // the note at the top of this file.
+          // Nothing typed here and somebody else has saved: show their version
+          // rather than sitting on a copy that is already out of date. This is
+          // Kylie opening a deal Melissa has just finished in.
+          onAdopt: stored => applyBcData(stored),
+          // Both of us typing, in different boxes. Theirs go on screen without
+          // rebuilding the form, so the caret stays put and the box being typed
+          // into is never touched. Only the same box, both of us, different
+          // values still comes back as an overwrite - see lib/deal-merge.ts.
+          onMerge: merged => applyBcData(merged),
         })
         if (out.kind === 'superseded') return
         if (out.kind === 'error') { console.error('BC autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
+        if (out.kind === 'merged') setNote({ text: mergeMessage(out.fields), tone: 'info' })
         if (out.kind === 'overwrote') setNote({ text: overwroteMessage('BC', out.fields, out.who), tone: 'warn' })
         if (out.kind === 'behind') setNote({ text: behindMessage('BC', out.who), tone: 'info' })
-        if (out.kind === 'saved') {
-          savedRef.current = now
+        if (out.kind === 'saved') savedRef.current = now
+        // An overwrite and a merge both landed in the database. Showing no
+        // "Saved" stamp after them reads as "nothing happened", which is the
+        // opposite of what occurred.
+        if (out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote') {
           setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
         }
       })()

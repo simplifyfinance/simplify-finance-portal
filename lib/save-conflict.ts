@@ -54,7 +54,11 @@
 //
 // WHAT THIS IS NOT. Two people editing the SAME FIELD on the same tab still get
 // the banner - there is no way to merge "184,500" and "190,000" and the portal
-// should not invent one. And BC cannot merge at all.
+// should not invent one.
+//
+// The BC used to be excluded from all of this, because it holds its tab in
+// sixty separate pieces of state and there was nowhere to put a merged record
+// down. It has one now - BC_SETTERS in BCForm.tsx - so all four tabs merge.
 
 import { merge3 } from './deal-merge'
 import { looksLikeAWipe, wipeMessage } from './wipe-guard'

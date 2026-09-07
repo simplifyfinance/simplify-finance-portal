@@ -50,6 +50,35 @@ describe('the BC form keeps one list of its fields', () => {
     expect(notSent, `Watched by the autosave but not in buildBcData(), so ${notSent.join(', ')} never reaches the database or the client email:\n  ${notSent.join('\n  ')}`).toEqual([])
   })
 
+  // EVERY BOX HAS TO BE PUTTABLE-BACK.
+  //
+  // When two people are in the BC at once, the save path folds the other
+  // person's boxes onto this screen through BC_SETTERS. A field in the saved
+  // record with no setter and no place on the derived list would be dropped on
+  // the floor by that fold - and then written back over the top from stale
+  // state on the very next keystroke. Silent, and the exact shape of the bug
+  // that lost a BC on 7 Sep.
+  it('can put every saved field back onto the screen', () => {
+    const setterMatch = SRC.match(/const BC_SETTERS: Record<string, \(v: any\) => void> = \{([^}]+)\}/)
+    const derivedMatch = SRC.match(/const BC_DERIVED = \[([^\]]+)\]/)
+    expect(setterMatch, 'BC_SETTERS was not found in BCForm.tsx').not.toBeNull()
+    expect(derivedMatch, 'BC_DERIVED was not found in BCForm.tsx').not.toBeNull()
+
+    const settable = names(setterMatch![1])
+    const derived = derivedMatch![1].split(',').map(s => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean)
+    const payload = names(payloadMatch![1])
+
+    const orphans = payload.filter(f => !settable.includes(f) && !derived.includes(f))
+    expect(orphans, `Saved by the BC but with no setter and not listed as derived, so a merge would silently drop ${orphans.join(', ')}:\n  ${orphans.join('\n  ')}`).toEqual([])
+
+    // The other direction: something claimed as derived that is really a box,
+    // or a setter for a field that is no longer saved.
+    const notDerived = derived.filter(f => !payload.includes(f))
+    expect(notDerived, `Listed in BC_DERIVED but not saved at all: ${notDerived.join(', ')}`).toEqual([])
+    const bothWays = settable.filter(f => derived.includes(f))
+    expect(bothWays, `Both settable and derived, which cannot both be true: ${bothWays.join(', ')}`).toEqual([])
+  })
+
   it('lists each field once', () => {
     const payload = names(payloadMatch![1])
     const dupes = payload.filter((f, i) => payload.indexOf(f) !== i)
