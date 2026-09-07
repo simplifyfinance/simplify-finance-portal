@@ -137,10 +137,10 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   function changeStage(newStage: string) {
     setStage(newStage)
     setUnlockedTab('')
-    // fire-and-forget: remembering the last tab is a convenience. If it does not
-    // save, the deal opens on the stage the progress bar says is current, which
-    // is the correct behaviour anyway. Nobody is told it worked.
-    supabase.from('deals').update({ last_tab: newStage }).eq('id', deal.id).then(() => {})
+    // The last tab is no longer remembered. A deal opens on the Fact Find every
+    // time - see the note in page.tsx - so writing this down had nothing left
+    // reading it, and a column that is written but never read is how a record
+    // ends up meaning something nobody intended.
     refreshMilestones()
   }
 

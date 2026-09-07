@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import DealNoAccess from '@/components/DealNoAccess'
 import DealPageClient from './DealPageClient'
-import { phaseOf, tabForPhase } from '@/lib/deal-phase'
+
 
 type DealWithClient = {
   id: string
@@ -53,5 +53,20 @@ export default async function DealPage({ params, searchParams }: { params: Promi
     return notFound()
   }
 
-  return <DealPageClient deal={deal as DealWithClient} initialStage={stage || deal.last_tab || tabForPhase(phaseOf(deal))} userRole={userRole} />
+  // A DEAL OPENS ON THE FACT FIND. ALWAYS.
+  //
+  // It used to open on whichever tab the deal's phase said it had reached, or on
+  // whichever tab anybody last clicked. Both meant that opening a deal to read
+  // it landed you in the BC - and the fact find is where the internal notes, the
+  // purpose and the client's goals are. That is what somebody opening a deal
+  // wants to see first, whatever stage the deal has reached.
+  //
+  // Fabio, 7 Sep 2026: "I wanted to open on the first tab, which is the fact find
+  // tab. The fact find tab that has internal notes, the purpose and the goals of
+  // the deal. That's the point of opening the deal for the first time."
+  //
+  // A link that names a tab still wins - the board's "open at compliance", the
+  // ready-to-proceed emails, "Open BC tab" - because that is somebody asking for
+  // a particular tab rather than opening the deal.
+  return <DealPageClient deal={deal as DealWithClient} initialStage={stage || 'FactFind'} userRole={userRole} />
 }
