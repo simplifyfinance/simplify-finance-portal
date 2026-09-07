@@ -316,9 +316,24 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const lastName = ffApp.lastName || deal.clients?.last_name || ''
   const dependants = ff.dependants || '0'
   const joint = ff.applicants?.length > 1 ? 'Yes' : 'No'
-  const [incomeApplicant1, setIncomeApplicant1] = useState(s.incomeApplicant1 || (annualIncomeOfApplicant(ffApp) || '').toString())
-  const [incomeApplicant2, setIncomeApplicant2] = useState(s.incomeApplicant2 || (annualIncomeOfApplicant(ffApp2) || '').toString())
-  const incomeBase = (Number(incomeApplicant1) || 0) + (joint === 'Yes' ? (Number(incomeApplicant2) || 0) : 0)
+  // THE BC'S INCOME IS THE FACT FIND'S INCOME. Worked out every time, not
+  // remembered.
+  //
+  // These were pieces of state, seeded from bc_data if it had anything and
+  // otherwise from the fact find. Nothing on this form can change them - there
+  // is no box for them and nothing ever calls a setter - so the only thing that
+  // seeding achieved was to FREEZE the figure the first time somebody opened the
+  // BC. Correct an income in the fact find afterwards and the BC kept the old
+  // one for ever, on every total, every client email and every set of notes,
+  // with nothing on screen to say the two disagreed.
+  //
+  // And the total was added up with Number(), which this codebase has been bitten
+  // by more than any other single thing: Number('146,380') is NaN, and NaN || 0
+  // is zero. readMoney is the one way money is read here. See lib/money.ts.
+  const incomeApplicant1 = String(annualIncomeOfApplicant(ffApp) || '')
+  const incomeApplicant2 = String(annualIncomeOfApplicant(ffApp2) || '')
+  const incomeBase = (readMoney(incomeApplicant1) ?? 0)
+    + (joint === 'Yes' ? (readMoney(incomeApplicant2) ?? 0) : 0)
   const [incomeOther, setIncomeOther] = useState(s.incomeOther || '')
   const [incomeRental, setIncomeRental] = useState(s.incomeRental || '')
   const [ccLimit, setCcLimit] = useState(s.ccLimit || ffLiabs.find((l:any) => l.liabilityType === 'Credit card')?.limitAmount || '')
