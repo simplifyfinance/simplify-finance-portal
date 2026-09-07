@@ -281,32 +281,24 @@ function NumberInput({ value, onChange, placeholder }: { value: string; onChange
 
 type BCFormProps = { deal: any; whoElseHere?: string; me?: { id?: string | null; name?: string | null }; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void }
 
-// PUTTING SOMEBODY ELSE'S VERSION ON SCREEN.
+// WHY THIS FORM NEVER REBUILDS ITSELF.
 //
-// Unlike the other three tabs, this form does not hold its record in one piece
-// of state - it is forty odd useStates, all seeded from bc_data when the
-// component first runs. There is no setD to call, so the only honest way to show
-// a version somebody else saved is to build the form again from it. Changing the
-// key does exactly that, and it is a real reload of the tab rather than a
-// half-updated screen.
+// For a few hours on 7 Sep 2026 it did. Unlike the other three tabs this form
+// does not hold its record in one piece of state - it is fifty odd useStates,
+// all seeded from bc_data when the component first runs - so the only way to
+// show a version somebody else had saved was to build the whole form again from
+// it, by changing its key.
 //
-// Only ever used when nothing has been typed here, so there is nothing to lose
-// by rebuilding. See lib/save-conflict.ts.
-export default function BCForm(props: BCFormProps) {
-  const [adopted, setAdopted] = useState<any>(null)
-  const [generation, setGeneration] = useState(0)
-  const deal = adopted === null ? props.deal : { ...props.deal, bc_data: adopted }
-  return (
-    <BCFormInner
-      {...props}
-      key={generation}
-      deal={deal}
-      onAdopt={next => { setAdopted(next); setGeneration(g => g + 1) }}
-    />
-  )
-}
-
-function BCFormInner({ deal, onDataChange, onStageChange, userRole, onSaveStatus, whoElseHere, me, onAdopt }: BCFormProps & { onAdopt: (next: any) => void }) {
+// That is the one and only thing in this file with the power to replace every
+// field at once, and on the morning it existed, Alexis_Janes_INV_Preapp_2026
+// lost a finished BC. I could not prove it was this, and that is exactly the
+// reason it is gone: nothing else here could empty a form in one go, BC does not
+// need it - it shows the banner and asks the person to reload, which is what it
+// did for weeks without incident - and no diagnosis is worth a second deal.
+//
+// If BC is ever to merge like the other three, it needs one piece of state
+// first. Not a remount.
+export default function BCForm({ deal, onDataChange, onStageChange, userRole, onSaveStatus, whoElseHere, me }: BCFormProps) {
   // The database is the only store. No browser-side copy and no fallback: a per-browser
   // cache keyed only by deal id showed one user another user's state, and an empty cache
   // rendered a blank form that the autosave then wrote back over the real record.
@@ -728,7 +720,9 @@ function BCFormInner({ deal, onDataChange, onStageChange, userRole, onSaveStatus
       ;(async () => {
         const out = await saveGuarded({
           supabase, dealId: deal.id, column: 'bc_data', guard: guardRef.current, savedBy: me, tabLabel: 'BC — Borrowing capacity', value: data,
-          onAdopt: stored => onAdopt(stored),
+          // No onAdopt and no onMerge, deliberately. Without them the guard
+          // refuses and shows the banner instead of touching this screen - see
+          // the note at the top of this file.
         })
         if (out.kind === 'superseded') return
         setConflictFields(out.kind === 'conflict' ? out.fields : null)

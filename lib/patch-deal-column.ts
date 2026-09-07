@@ -29,6 +29,8 @@
 // If that column has not been added yet the write goes ahead unpinned, which is
 // how this behaved before it existed.
 
+import { looksLikeAWipe, wipeMessage } from './wipe-guard'
+
 export type PatchResult = { next: any; problem: string | null }
 
 // Each go round is a fresh read and a fresh apply. Using all four up needs
@@ -55,6 +57,16 @@ export async function patchDealColumn(
     const seenVersion: number | undefined =
       typeof data?.row_version === 'number' ? data.row_version : undefined
     next = apply(current ?? {})
+
+    // The same seatbelt the deal tabs wear. A tick list that comes back nearly
+    // empty is not somebody unticking thirty boxes. See lib/wipe-guard.ts.
+    if (!readError) {
+      const verdict = looksLikeAWipe(data?.[column] ?? null, next)
+      if (verdict.wipe) {
+        console.error('REFUSED a save that would have emptied ' + column, verdict)
+        return { next, problem: wipeMessage(column, verdict) }
+      }
+    }
 
     const fields: any = { [column]: next }
     if (seenVersion !== undefined) fields.row_version = seenVersion + 1

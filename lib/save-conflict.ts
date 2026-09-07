@@ -57,6 +57,7 @@
 // should not invent one. And BC cannot merge at all.
 
 import { merge3 } from './deal-merge'
+import { looksLikeAWipe, wipeMessage } from './wipe-guard'
 import { describePaths } from './deal-field-names'
 
 export type DealColumn = 'bc_data' | 'fact_find_data' | 'lo_data' | 'compliance_data'
@@ -282,6 +283,18 @@ async function attempt(req: SaveRequest, mySeq: number): Promise<SaveOutcome | O
           return { kind: 'merged', fields: broughtIn }
         }
       }
+    }
+  }
+
+  // THE SEATBELT. Everything above answers "whose version wins?"; this asks
+  // whether the save makes sense at all. A browser holding an empty form saves
+  // that empty form perfectly correctly and destroys an afternoon. See
+  // lib/wipe-guard.ts - Alexis_Janes_INV_Preapp_2026, 7 Sep 2026.
+  if (!readError) {
+    const verdict = looksLikeAWipe(current?.[column] ?? null, toWrite)
+    if (verdict.wipe) {
+      console.error('REFUSED a save that would have emptied ' + column, verdict)
+      return { kind: 'error', message: wipeMessage(tabLabel || column, verdict) }
     }
   }
 
