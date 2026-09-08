@@ -358,11 +358,20 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const [incomeOther, setIncomeOther] = useState(s.incomeOther || '')
   const [incomeRental, setIncomeRental] = useState(s.incomeRental || '')
   const [ccLimit, setCcLimit] = useState(s.ccLimit || ffLiabs.find((l:any) => l.liabilityType === 'Credit card')?.limitAmount || '')
-  const [personalLoan, setPersonalLoan] = useState(s.personalLoan || ffLiabs.find((l:any) => l.liabilityType === 'Personal loan')?.repaymentAmount || '')
   const [carLoan, setCarLoan] = useState(s.carLoan || ffLiabs.find((l:any) => l.liabilityType === 'Car loan')?.repaymentAmount || '')
-  const [hecs, setHecs] = useState(s.hecs || ffLiabs.find((l:any) => l.liabilityType === 'HECS')?.repaymentAmount || '')
-  const [health, setHealth] = useState(s.health || '')
-  const [living, setLiving] = useState(s.living || '')
+  // personalLoan, hecs, health and living used to sit here too, each copying a
+  // figure off the fact find the first time somebody opened this tab and then
+  // never looking again. They had no box on this form and nothing read them.
+  //
+  // They are the losing half of a duplication that was already settled: the
+  // "Based on your numbers" box in the client email builds those lines from the
+  // fact find liabilities every time it is generated - Credit card, Car loan,
+  // Personal loan, HECS, Health Insurance - correctly formatted and never
+  // frozen. See buildPropertyLiabilityChecklist above, and the note in
+  // app/api/generate-email/route.ts saying these were cut from the email for
+  // double-counting. The storage outlived them by a few months.
+  //
+  // Living expenses are not a BC figure at all. Fabio, 8 Sep 2026.
   const [suburb, setSuburb] = useState(s.suburb || '')
   const [propertyType, setPropertyType] = useState(s.propertyType || 'Owner-occupied')
   // HOUSE OR STRATA, for the property being bought. The document checklist has
@@ -759,8 +768,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // half of ours and call the result a merge.
   const BC_SETTERS: Record<string, (v: any) => void> = {
     template: setTemplate, splits: setSplits, incomeOther: setIncomeOther, incomeRental: setIncomeRental,
-    ccLimit: setCcLimit, personalLoan: setPersonalLoan, carLoan: setCarLoan, hecs: setHecs,
-    health: setHealth, living: setLiving, suburb: setSuburb, propertyType: setPropertyType,
+    ccLimit: setCcLimit, carLoan: setCarLoan, suburb: setSuburb, propertyType: setPropertyType,
     purchasePropertySubtype: setPurchasePropertySubtype, purchasePrice: setPurchasePrice,
     deposit: setDeposit, stampDuty: setStampDuty, dutyState: setDutyState, lvr: setLvr,
     lvrCustom: setLvrCustom, lmiApplicable: setLmiApplicable, loanTerm: setLoanTerm,
@@ -834,13 +842,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
       })()
     }, 700)
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, personalLoan, carLoan, hecs, health, living, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
   }
 
   // Does the saved email still match the scenario the deal is on? Read in three
