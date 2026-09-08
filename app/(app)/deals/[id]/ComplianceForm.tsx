@@ -31,10 +31,10 @@ import { fundsToComplete } from '@/lib/funds-to-complete'
 import { money } from '@/lib/money'
 import { brokerNotes, type Assessor } from '@/lib/broker-notes'
 import { comparisonBlock } from '@/lib/lender-comparison'
-import SaveNote from '@/components/SaveNote'
-import { newGuard, adopt, saveGuarded, mergeMessage, overwroteMessage, behindMessage } from '@/lib/save-conflict'
+import { newGuard, adopt, saveGuarded } from '@/lib/save-conflict'
 import { selfEmployedParagraphsFor } from '@/lib/self-employed-facts'
 import { dealFigures, figureChanges, notesMentioning } from '@/lib/deal-figures'
+import { useLiveColumn } from '@/components/useLiveColumn'
 import DealStructure from '@/components/DealStructure'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
@@ -287,7 +287,7 @@ function AIButton({ onClick, loading, label = 'Generate with AI' }: { onClick: (
   )
 }
 
-export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null };
+export default function ComplianceForm({ live, deal, onSaveStatus, onDealPatched, whoElseHere, me }: { live?: { row: any; at: number } | null; whoElseHere?: string; me?: { id?: string | null; name?: string | null };
   deal: any
   onSaveStatus?: (s: { at?: string; error?: string }) => void
   // The deal structure block writes compliance_data itself; this lets the page
@@ -329,8 +329,18 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   // Whose copy is on screen, and whether writing it would cost anybody
   // anything — see lib/save-conflict.ts.
   const guardRef = useRef(newGuard(deal.compliance_data))
-  // ONE note, and it never stops anybody. See components/SaveNote.tsx.
-  const [note, setNote] = useState<{ text: string; tone: 'info' | 'warn' } | null>(null)
+  // NO NOTES ABOUT OTHER PEOPLE.
+  //
+  // There were three: "their fields came in", "you were behind", "you saved
+  // over theirs". Every one existed because the two screens did not agree and
+  // somebody had to be told after the fact. With live editing they agree as it
+  // happens, so there is nothing left to report - you watch the number change
+  // instead of being told that it did.
+  // Fabio, 8 Sep 2026: "I don't want any warnings. I just want it to work."
+  //
+  // Real errors are untouched: a refused wipe, or a save that did not land,
+  // still show beside the deal name - those are things that went wrong, not
+  // things somebody else did.
 
   const [styleNotes, setStyleNotes] = useState<string[]>([])
   const [flaggingField, setFlaggingField] = useState<string | null>(null)
@@ -431,6 +441,12 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   }
 
   const [d, setD] = useState<ComplianceData>(initData)
+  // SOMEBODY ELSE JUST SAVED. Their fields land on this screen without
+  // disturbing a single thing this person has typed - see
+  // components/useLiveColumn.ts for the rule, and lib/live-deal.ts for why.
+  useLiveColumn({ live, column: 'compliance_data', meId: me?.id, guard: guardRef.current,
+                  current: () => d, apply: v => setD(v as any) })
+
 
   useEffect(() => {
     const freshApps = getApplicants()
@@ -561,9 +577,6 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
         if (out.kind === 'superseded') return
         if (out.kind === 'error') { console.error('Compliance autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
-        if (out.kind === 'merged') setNote({ text: mergeMessage(out.fields), tone: 'info' })
-        if (out.kind === 'overwrote') setNote({ text: overwroteMessage('Compliance', out.fields, out.who), tone: 'warn' })
-        if (out.kind === 'behind') setNote({ text: behindMessage('Compliance', out.who), tone: 'info' })
         if (out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote') setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
       })()
     }, 700)
@@ -1075,7 +1088,6 @@ Use the security address exactly as recorded. On a pre-approval it will already 
 
   return (
     <div className="space-y-4">
-      <SaveNote message={note?.text || ''} tone={note?.tone || 'info'} onDismiss={() => setNote(null)} />
       {past && (
         <div className="bg-white border border-[#CFE6D5] rounded-xl px-4 py-3.5">
           <div className="flex items-center gap-2.5 flex-wrap">

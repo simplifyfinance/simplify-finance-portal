@@ -1,22 +1,41 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { stillHere, presenceState, presenceMessage, sameTabNames, HEARTBEAT_MS, type Presence } from '@/lib/presence'
-import { otherWindows, selfMessage, SELF_BEAT_MS, type SelfWindow } from '@/lib/self-presence'
+import { stillHere, initials, chipTitle, sameTabNames,
+         HEARTBEAT_MS, IDLE_AFTER_MS, type Presence } from '@/lib/presence'
 
-// THE BANNER, AND THE HEARTBEAT BEHIND IT.
+// WHO ELSE IS HERE, AS A ROW OF CIRCLES.
 //
-// Writes one row saying "I am here, on this tab" every twenty seconds, reads
-// back everybody else's, and draws a line about it. Nothing else. See
-// lib/presence.ts for why the tab is the interesting part, and
-// docs/deal-presence-schema.sql for the table.
+// This used to be up to three banners stacked above the form, each appearing
+// and disappearing on its own timer - three seconds, twenty seconds, fifteen
+// seconds. Every time one came or went, every field below it moved. Fabio,
+// 8 Sep 2026, after testing with Kylie: "the fields were moving. It's just not
+// working."
 //
-// It never blocks anything. If the table is missing, the query fails, or the
-// user has no session, the banner simply does not appear - presence going quiet
-// must never stop somebody working on a deal.
-export default function DealPresence({ dealId, tab, onSameTab }: { dealId: string; tab: string; onSameTab?: (who: string) => void }) {
+// That was my mistake and it is the whole reason the page jumped. Notices about
+// people do not belong in the middle of somebody's form. This is a fixed-height
+// row of initials in the deal header: it is always there, whether anybody else
+// is or not, so nothing below it can ever move.
+//
+// It never blocks anything. If the query fails or the user has no session, the
+// row is simply empty - presence going quiet must never stop somebody working.
+export default function DealPresence({ dealId, tab, onSameTab }:
+  { dealId: string; tab: string; onSameTab?: (who: string) => void }) {
   const supabase = createSupabaseBrowser()
   const [others, setOthers] = useState<Presence[]>([])
+
+  // A TAB LEFT OPEN IS NOT A PERSON.
+  //
+  // The heartbeat used to fire for as long as the page existed, so somebody who
+  // opened a deal and switched to Outlook stayed in it until they logged out.
+  // Any real input counts as being here; nothing else does.
+  const lastActive = useRef(Date.now())
+  useEffect(() => {
+    const seen = () => { lastActive.current = Date.now() }
+    const events: (keyof WindowEventMap)[] = ['keydown', 'pointerdown', 'wheel', 'focus']
+    events.forEach(e => window.addEventListener(e, seen, { passive: true }))
+    return () => events.forEach(e => window.removeEventListener(e, seen))
+  }, [])
 
   useEffect(() => {
     let alive = true
@@ -28,115 +47,65 @@ export default function DealPresence({ dealId, tab, onSameTab }: { dealId: strin
       if (!user?.id) return
       meId = user.id
 
-      const profile = await supabase.from('user_profiles').select('full_name').eq('id', user.id).maybeSingle()
-      const name = (user.user_metadata as any)?.full_name || profile.data?.full_name || user.email || ''
+      const here = document.visibilityState === 'visible'
+                && Date.now() - lastActive.current < IDLE_AFTER_MS
 
-      // fire-and-forget: a heartbeat is advisory. If it does not land, the
-      // banner does not draw and nothing else changes - and interrupting
-      // somebody mid-deal to tell them a presence row failed would be worse
-      // than the missing banner. Every other write in this codebase is checked;
-      // this one has nothing to lose.
-      await supabase.from('deal_presence')
-        .upsert({ deal_id: dealId, user_id: user.id, full_name: name, tab, last_seen: new Date().toISOString() },
-                { onConflict: 'deal_id,user_id' })
-        .then(() => {})
+      if (here) {
+        const profile = await supabase.from('user_profiles').select('full_name').eq('id', user.id).maybeSingle()
+        const name = (user.user_metadata as any)?.full_name || profile.data?.full_name || user.email || ''
+        // fire-and-forget: a heartbeat is advisory. If it does not land the row
+        // simply expires and a circle is missing - which is a far smaller
+        // problem than interrupting somebody mid-deal to say so.
+        await supabase.rpc('presence_beat', { p_deal: dealId, p_tab: tab, p_name: name }).then(() => {})
+      }
 
-      const { data } = await supabase.from('deal_presence')
-        .select('user_id, full_name, tab, last_seen').eq('deal_id', dealId)
-
+      // Read regardless: somebody who has stepped away should still see who
+      // arrived while they were gone.
+      const { data } = await supabase.rpc('presence_others', { p_deal: dealId })
       if (!alive) return
       setOthers(stillHere((data || []).map((r: any) => ({
-        userId: r.user_id, name: r.full_name || '', tab: r.tab || '', lastSeen: r.last_seen,
+        userId: r.user_id, name: r.full_name || '', tab: r.tab || '', secondsAgo: Number(r.seconds_ago),
       })), meId))
     }
 
     beat()
     const timer = setInterval(beat, HEARTBEAT_MS)
+    // Coming back to the tab should show the truth immediately, not in fifteen
+    // seconds' time.
+    const onShow = () => { if (document.visibilityState === 'visible') { lastActive.current = Date.now(); beat() } }
+    document.addEventListener('visibilitychange', onShow)
+
     return () => {
       alive = false
       clearInterval(timer)
-      // Drop off straight away rather than making everybody wait out the minute.
-      // fire-and-forget: if this delete never lands the row simply goes stale on
-      // its own after sixty seconds, which is the same outcome one minute later.
-      if (meId) supabase.from('deal_presence').delete().eq('deal_id', dealId).eq('user_id', meId).then(() => {})
+      document.removeEventListener('visibilitychange', onShow)
+      // Instant in the ordinary case. NOT relied on - a closed laptop never
+      // calls it, which is why the sixty second expiry in the database is the
+      // real mechanism. See docs/deal-presence-v2.sql.
+      // fire-and-forget: if it never lands the row expires by itself.
+      if (meId) supabase.rpc('presence_leave').then(() => {})
     }
   }, [dealId, tab])
 
-  // AND YOU, IN ANOTHER WINDOW.
-  //
-  // deal_presence cannot see this - both rows would be you, and the banner
-  // ignores you on purpose. Windows of the same browser can talk to each other
-  // directly, so this needs no table and no extra database traffic. See
-  // lib/self-presence.ts.
-  const [mine, setMine] = useState<SelfWindow[]>([])
-  const sessionRef = useRef<string>('')
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof BroadcastChannel === 'undefined') return
-    if (!sessionRef.current) sessionRef.current = Math.random().toString(36).slice(2) + Date.now().toString(36)
-    const me = sessionRef.current
-    const channel = new BroadcastChannel(`deal-window-${dealId}`)
-    let heard: SelfWindow[] = []
+  // The forms ask so they know they are not alone. Nothing is shown to anybody
+  // because of it.
+  useEffect(() => { onSameTab?.(sameTabNames(others, tab)) }, [others, tab])
 
-    channel.onmessage = (e: MessageEvent) => {
-      const d = e.data as SelfWindow
-      if (!d?.sessionId) return
-      // Stamped on arrival, not on sending. Two machines' clocks disagree, and a
-      // window whose clock is fast would otherwise look permanently fresh.
-      heard = [...heard, { sessionId: d.sessionId, tab: String(d.tab || ''), at: Date.now() }].slice(-40)
-      setMine(otherWindows(heard, me, Date.now()))
-    }
-
-    const beat = () => channel.postMessage({ sessionId: me, tab, at: Date.now() })
-    beat()
-    const timer = setInterval(() => {
-      beat()
-      // Re-checked on every beat, not only when something arrives, or a window
-      // that has been closed would stay on screen forever.
-      setMine(otherWindows(heard, me, Date.now()))
-    }, SELF_BEAT_MS)
-
-    return () => { clearInterval(timer); channel.close() }
-  }, [dealId, tab])
-
-  // Who else is on THIS tab, in words, for the save banner to name. The save
-  // banner lives inside each form and has no presence of its own; without this
-  // it can only say "somebody else", which on BC is no use to anybody.
-  const sameTab = sameTabNames(others, tab)
-  useEffect(() => { onSameTab?.(sameTab) }, [sameTab])
-
-  const selfText = selfMessage(mine, tab)
-  const msg = presenceMessage(presenceState(others, tab))
-  if (!msg && !selfText) return null
-  const loud = !!msg?.detail
-
+  // Fixed height, always rendered. This is the part that stops the page moving.
   return (
-    <>
-    {selfText && (
-      <div className="flex items-start gap-2.5 border border-[#EAE6DE] bg-[#F7F6F3] rounded-lg px-3 py-2 mb-3">
-        <span className="inline-flex items-center justify-center w-[22px] h-[22px] rounded-full bg-[#E8E1D6] text-[#6E665C] text-[11px] font-extrabold flex-shrink-0">2</span>
-        <div className="text-[12.5px] leading-[1.58] text-[#6E665C]">{selfText}</div>
-      </div>
-    )}
-    {msg && (
-    <div className={loud
-      ? 'flex items-start gap-2.5 border border-[#EBD9BE] bg-[#FDF6EC] rounded-[10px] px-3.5 py-2.5 mb-3'
-      : 'flex items-center gap-2.5 border border-[#EAE6DE] bg-[#F7F6F3] rounded-lg px-3 py-2 mb-3'}>
-      <span className="inline-flex items-center justify-center w-[22px] h-[22px] rounded-full bg-[#2DBEFF] text-[#08252F] text-[9.5px] font-extrabold flex-shrink-0">
-        {initials(others)}
-      </span>
-      <div className={loud ? 'text-[12.5px] leading-[1.58] text-[#8A6218]' : 'text-[12.5px] text-[#6E665C]'}>
-        <b className={loud ? 'text-[#6E4E12]' : 'text-[#2E2A26]'}>{msg!.text}</b>
-        {msg!.detail && <> {msg!.detail}</>}
-      </div>
+    <div className="flex items-center gap-1.5 h-[26px]">
+      {others.map(o => {
+        const sameTab = String(o.tab || '').trim() === String(tab || '').trim()
+        return (
+          <span key={o.userId} title={chipTitle(o)}
+            className={`inline-flex items-center justify-center w-[26px] h-[26px] rounded-full
+              text-[10px] font-extrabold select-none cursor-default
+              ${sameTab ? 'bg-[#2DBEFF] text-[#08252F] ring-2 ring-[#2DBEFF]/25'
+                        : 'bg-[#E8E1D6] text-[#6E665C]'}`}>
+            {initials(o.name)}
+          </span>
+        )
+      })}
     </div>
-    )}
-    </>
   )
-}
-
-function initials(others: Presence[]): string {
-  const n = (others[0]?.name || '').trim()
-  if (!n) return '?'
-  const parts = n.split(/\s+/)
-  return ((parts[0]?.[0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase()
 }

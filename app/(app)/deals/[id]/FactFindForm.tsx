@@ -16,8 +16,8 @@ import InternalNotes from '@/components/InternalNotes'
 import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET_TYPES, DEPOSIT_SOURCES, optionsFor } from '@/lib/fact-find-options'
 import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship } from '@/lib/relationship'
 import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS } from '@/lib/fact-find'
-import SaveNote from '@/components/SaveNote'
-import { newGuard, saveGuarded, mergeMessage, overwroteMessage, behindMessage } from '@/lib/save-conflict'
+import { newGuard, saveGuarded } from '@/lib/save-conflict'
+import { useLiveColumn } from '@/components/useLiveColumn'
 
 function incrementFY(fy: string): string {
   const match = fy.match(/^(\d{4})\/(\d{2})$/)
@@ -333,7 +333,7 @@ function OwnershipCheckboxes({ applicants, ownership, onChange, label = 'Respons
   )
 }
 
-export default function FactFindForm({ deal, onDataChange, onDealFieldChange, onSaveStatus, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null }; deal: any; onDataChange?: (d: FactFindData) => void; onDealFieldChange?: (field: string, value: string) => void; onSaveStatus?: (s: { at?: string; error?: string }) => void }) {
+export default function FactFindForm({ live, deal, onDataChange, onDealFieldChange, onSaveStatus, whoElseHere, me }: { live?: { row: any; at: number } | null; whoElseHere?: string; me?: { id?: string | null; name?: string | null }; deal: any; onDataChange?: (d: FactFindData) => void; onDealFieldChange?: (field: string, value: string) => void; onSaveStatus?: (s: { at?: string; error?: string }) => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `fact_find_${deal.id}`
   const bc = deal.bc_data || {}
@@ -402,8 +402,24 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   // anything — the whole decision lives in lib/save-conflict.ts so all four
   // tabs cannot drift into judging it differently.
   const guardRef = useRef(newGuard(deal.fact_find_data))
-  // ONE note, and it never stops anybody. See components/SaveNote.tsx.
-  const [note, setNote] = useState<{ text: string; tone: 'info' | 'warn' } | null>(null)
+  // SOMEBODY ELSE JUST SAVED. Their fields land on this screen without
+  // disturbing a single thing this person has typed - see
+  // components/useLiveColumn.ts for the rule, and lib/live-deal.ts for why.
+  useLiveColumn({ live, column: 'fact_find_data', meId: me?.id, guard: guardRef.current,
+                  current: () => d, apply: v => setD(v as any) })
+
+  // NO NOTES ABOUT OTHER PEOPLE.
+  //
+  // There were three: "their fields came in", "you were behind", "you saved
+  // over theirs". Every one existed because the two screens did not agree and
+  // somebody had to be told after the fact. With live editing they agree as it
+  // happens, so there is nothing left to report - you watch the number change
+  // instead of being told that it did.
+  // Fabio, 8 Sep 2026: "I don't want any warnings. I just want it to work."
+  //
+  // Real errors are untouched: a refused wipe, or a save that did not land,
+  // still show beside the deal name - those are things that went wrong, not
+  // things somebody else did.
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
@@ -429,9 +445,6 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
         if (out.kind === 'superseded') return
         if (out.kind === 'error') { console.error('Fact find autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
-        if (out.kind === 'merged') setNote({ text: mergeMessage(out.fields), tone: 'info' })
-        if (out.kind === 'overwrote') setNote({ text: overwroteMessage('Fact Find', out.fields, out.who), tone: 'warn' })
-        if (out.kind === 'behind') setNote({ text: behindMessage('Fact Find', out.who), tone: 'info' })
         if (out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote') setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
       })()
     }, 600)
@@ -840,7 +853,6 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
 
   return (
     <div className="grid grid-cols-[480px_1fr] gap-4 items-start">
-      <SaveNote message={note?.text || ''} tone={note?.tone || 'info'} onDismiss={() => setNote(null)} />
       <div>
         {/* One notes field for the whole deal. This used to be a box of its own
             saving to fact_find_data.internalNotes, with two more like it on BC

@@ -1,8 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { formatAsTyped } from '@/lib/money'
-import SaveNote from '@/components/SaveNote'
-import { emptyGuard, adopt, saveGuarded, mergeMessage, overwroteMessage, behindMessage } from '@/lib/save-conflict'
+import { emptyGuard, adopt, saveGuarded } from '@/lib/save-conflict'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { docsStateOf, atTime, assessorMissing, NO_ASSESSOR_MESSAGE } from '@/lib/docs-received'
 import { legalFeeLabel, rowLegalFeeLabel } from '@/lib/lender-fees'
@@ -16,6 +15,7 @@ import { loMayWriteAmount, splitsTotal } from '@/lib/deal-phase'
 import { resolveLenderSplits, seedFromGlobal, combineIntoOneLoan,
          lenderTotal, lenderLvr } from '@/lib/lo-splits'
 import { emailFreshness, needsAttention, notesAfterScenarioChange } from '@/lib/email-freshness'
+import { useLiveColumn } from '@/components/useLiveColumn'
 import { dealPurpose } from '@/lib/deal-facts'
 import DealStructure from '@/components/DealStructure'
 
@@ -227,7 +227,7 @@ function LibraryField({ label, value, onChange }: { label: string; value: string
   )
 }
 
-export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, onDealFieldChange, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null }; deal: any; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void; onDealFieldChange?: (field: string, value: any) => void }) {
+export default function LOForm({ live, deal, onStageChange, userRole, onSaveStatus, onDealFieldChange, whoElseHere, me }: { live?: { row: any; at: number } | null; whoElseHere?: string; me?: { id?: string | null; name?: string | null }; deal: any; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void; onDealFieldChange?: (field: string, value: any) => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `lo_${deal.id}`
   const bc = deal.bc_data || {}
@@ -541,8 +541,24 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // offers to reload. Refusing to save is the safe failure here; overwriting
   // somebody's afternoon silently is not.
   const guardRef = useRef(emptyGuard())
-  // ONE note, and it never stops anybody. See components/SaveNote.tsx.
-  const [note, setNote] = useState<{ text: string; tone: 'info' | 'warn' } | null>(null)
+  // SOMEBODY ELSE JUST SAVED. Their fields land on this screen without
+  // disturbing a single thing this person has typed - see
+  // components/useLiveColumn.ts for the rule, and lib/live-deal.ts for why.
+  useLiveColumn({ live, column: 'lo_data', meId: me?.id, guard: guardRef.current,
+                  current: () => d, apply: v => setD(v as any) })
+
+  // NO NOTES ABOUT OTHER PEOPLE.
+  //
+  // There were three: "their fields came in", "you were behind", "you saved
+  // over theirs". Every one existed because the two screens did not agree and
+  // somebody had to be told after the fact. With live editing they agree as it
+  // happens, so there is nothing left to report - you watch the number change
+  // instead of being told that it did.
+  // Fabio, 8 Sep 2026: "I don't want any warnings. I just want it to work."
+  //
+  // Real errors are untouched: a refused wipe, or a save that did not land,
+  // still show beside the deal name - those are things that went wrong, not
+  // things somebody else did.
 
   // Put a stored lo_data on screen: the two defaults this form applies on load,
   // then the state, then the two refs that remember what it came from.
@@ -612,9 +628,6 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         if (out.kind === 'superseded') return
         if (out.kind === 'error') { console.error('LO autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
-        if (out.kind === 'merged') setNote({ text: mergeMessage(out.fields), tone: 'info' })
-        if (out.kind === 'overwrote') setNote({ text: overwroteMessage('Lending options', out.fields, out.who), tone: 'warn' })
-        if (out.kind === 'behind') setNote({ text: behindMessage('Lending options', out.who), tone: 'info' })
         if (out.kind === 'saved') savedRef.current = now
         if (out.kind === 'saved' || out.kind === 'merged') {
           setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
@@ -1112,7 +1125,6 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         <div className="border border-red-200 bg-red-50 rounded-xl px-4 py-3 text-[13px] text-red-600">{docsErr}</div>
       )}
 
-      <SaveNote message={note?.text || ''} tone={note?.tone || 'info'} onDismiss={() => setNote(null)} />
 
       {activeTab === 'form' && (
         <div className="space-y-4">

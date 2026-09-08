@@ -1,132 +1,90 @@
 // WHO ELSE IS IN THIS DEAL CARD.
 //
-// The save guard stops two people overwriting each other. It does not stop the
-// surprise - you still find out only at the moment your work will not save. This
-// says so up front. Fabio, 4 Sep 2026: "I don't wanna lock it to the point that
-// they can't edit, but it will say."
+// A name and a tab, drawn as a small circle in the deal header. It locks
+// nothing, refuses nothing and warns about nothing - with live editing on, two
+// people in one deal is a normal way to work rather than a hazard, and the only
+// question worth answering is "who else is here right now".
 //
-// NOTHING IS EVER LOCKED. Every field stays editable in every state below. The
-// only thing that ever refuses is the save guard, and only at the moment data
-// would actually be lost.
+// WHAT THE FIRST VERSION GOT WRONG (8 Sep 2026)
 //
-// THE TAB IS THE POINT. Each tab writes its own jsonb column - bc_data,
-// fact_find_data, lo_data, compliance_data - so two people on DIFFERENT tabs
-// cannot touch each other's work. Saying "Katie is in this deal" makes you
-// wonder; saying "Katie is on Fact Find" answers it, and usually the answer is
-// that the two of you are fine.
+// It kept a row per person PER DEAL and deleted the old one when somebody moved
+// on. Twenty two rows had built up: Ellie on eight deals at once, one row four
+// and a half days old. The deletes were not landing and nobody noticed, because
+// each browser then filtered the list using ITS OWN clock - so whether a ghost
+// showed depended on whose laptop you were looking at.
+//
+// Fabio: "we had to ask her to physically log out of the portal for this to
+// work."
+//
+// Both halves now live in the database. One row per person, so changing deal
+// card overwrites it and a leftover cannot exist; and one clock deciding who
+// has gone, so the answer is the same on every screen. See
+// docs/deal-presence-v2.sql. This file is only the words and the arithmetic.
 
 export type Presence = {
   userId: string
   name: string
   tab: string
-  lastSeen: string
+  // How long since their last real heartbeat, measured by the DATABASE. Never
+  // by a browser - see above.
+  secondsAgo: number
 }
 
-// A heartbeat older than this is somebody who closed the tab. Three missed
-// beats at twenty seconds, so a slow network does not make people flicker in
-// and out of the banner.
-export const STALE_AFTER_MS = 60_000
-export const HEARTBEAT_MS = 20_000
+// Often enough that somebody appears while you are still reading the screen.
+export const HEARTBEAT_MS = 15_000
+
+// Matches the interval in presence_others(). Kept here so the browser can be
+// defensive about a row that arrives on the edge of it, never so the browser
+// can make the decision itself.
+export const GONE_AFTER_SECONDS = 60
+
+// A TAB LEFT OPEN IS NOT A PERSON.
+//
+// The heartbeat used to fire for as long as the page existed, so somebody who
+// opened a deal and wandered off to Outlook stayed "in the deal" until they
+// logged out. Beating stops when the tab is hidden, and stops after this much
+// quiet even when it is not - so presence means "here now" rather than "opened
+// this at some point today".
+export const IDLE_AFTER_MS = 120_000
 
 const txt = (v: any) => String(v ?? '').trim()
 
-export function stillHere(rows: Presence[] | null | undefined, meId: string, now = Date.now()): Presence[] {
+// The server has already filtered by its own clock. This is a belt and braces
+// pass for a row that was fresh when the query ran and is not by the time it is
+// drawn - never the primary decision.
+export function stillHere(rows: Presence[] | null | undefined, meId: string): Presence[] {
   return (rows || [])
     .filter(r => txt(r?.userId) && txt(r.userId) !== txt(meId))
-    .filter(r => {
-      const t = Date.parse(txt(r?.lastSeen))
-      return Number.isFinite(t) && now - t < STALE_AFTER_MS
-    })
-    // Newest heartbeat first, so the most recently active person reads first.
-    .sort((a, b) => Date.parse(b.lastSeen) - Date.parse(a.lastSeen))
+    .filter(r => Number.isFinite(r?.secondsAgo) && r.secondsAgo < GONE_AFTER_SECONDS)
+    .sort((a, b) => a.secondsAgo - b.secondsAgo)
 }
 
-export type PresenceState =
-  | { level: 'none' }
-  // Elsewhere in the deal. Different column, nobody in anybody's way.
-  | { level: 'elsewhere'; who: string; where: string }
-  // Same tab. What that costs depends on WHICH tab - see tabMerges.
-  | { level: 'same-tab'; who: string; tab: string }
-
-export function presenceState(others: Presence[], myTab: string): PresenceState {
-  if (others.length === 0) return { level: 'none' }
-
-  const sameTab = others.filter(o => txt(o.tab) === txt(myTab))
-  if (sameTab.length > 0) return { level: 'same-tab', who: names(sameTab), tab: txt(myTab) }
-
-  return { level: 'elsewhere', who: names(others), where: whereList(others) }
+// Two letters for the circle. "Katie Amos" is KA, "Ellie" is E.
+export function initials(name: string): string {
+  const parts = txt(name).split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  const first = parts[0][0] || ''
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : ''
+  return (first + last).toUpperCase()
 }
 
-// DOES THIS TAB PUT TWO PEOPLE'S WORK TOGETHER, OR PICK ONE?
-//
-// Fact Find, Lending options and Compliance hold their record in one piece of
-// state, so somebody else's fields can be folded onto a screen being typed into
-// without disturbing it - two people on different fields both save, and only the
-// same field, changed by both, refuses. See lib/deal-merge.ts.
-//
-// Everything else cannot. BC holds its record as forty separate pieces of state
-// with no single setter, so it refuses instead. Statements has no guard at all.
-// The banner has to say which of those two worlds you are in, because the
-// difference is "carry on" versus "one of you should stop".
-const MERGING_TABS = ['fact find', 'lending options', 'compliance']
-
-export function tabMerges(tab: string): boolean {
-  return MERGING_TABS.includes(txt(tab).toLowerCase())
+// What hovering over the circle says. A fact, not an instruction.
+export function chipTitle(p: Presence): string {
+  const who = txt(p.name) || 'Somebody else'
+  const where = txt(p.tab)
+  return where ? `${who} — ${where}` : `${who} is in this deal`
 }
 
-// WHO THE SAVE BANNER IS TALKING ABOUT.
-//
-// The red banner said "somebody else is editing this" and left it there, which
-// on BC is close to useless - Fabio, 7 Sep 2026: "BC says there's someone there
-// and we don't know who??" The portal knows exactly who; the banner simply never
-// asked. This is the same list the amber banner is drawn from, so the two can
-// never name different people about the same situation.
+// Whoever else is on the tab this person is looking at. The forms use it to
+// know they are not alone; nothing is shown to the person because of it.
 export function sameTabNames(others: Presence[], myTab: string): string {
   const here = others.filter(o => txt(o.tab) === txt(myTab))
   return here.length === 0 ? '' : names(here)
 }
 
-function names(rows: Presence[]): string {
+export function names(rows: Presence[]): string {
   const list = [...new Set(rows.map(r => txt(r.name)).filter(Boolean))]
   if (list.length === 0) return 'Somebody else'
   if (list.length === 1) return list[0]
   return list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1]
-}
-
-function whereList(rows: Presence[]): string {
-  const tabs = [...new Set(rows.map(r => txt(r.tab)).filter(Boolean))]
-  if (tabs.length === 0) return 'this deal'
-  if (tabs.length === 1) return tabs[0]
-  return tabs.slice(0, -1).join(', ') + ' and ' + tabs[tabs.length - 1]
-}
-
-// The words. Kept here rather than in the component so they can be tested, and
-// so the three states cannot drift into saying different things about the same
-// situation.
-export function presenceMessage(s: PresenceState): { text: string; detail?: string } | null {
-  if (s.level === 'none') return null
-  if (s.level === 'elsewhere') {
-    return { text: `${s.who} ${s.who.includes(' and ') ? 'are' : 'is'} also in this deal, on ${s.where}.` }
-  }
-  // Says what will HAPPEN, not that something might. A warning that says "be
-  // careful" is one people stop reading by the second week.
-  //
-  // This used to say "only the first save lands" on every tab. That stopped
-  // being true on 5 Sep 2026 for three of them, and a warning that overstates
-  // the danger is its own problem - people either stop working together or stop
-  // reading the banner.
-  const plural = s.who.includes(' and ')
-  const text = `${s.who} ${plural ? 'are' : 'is'} on this same tab right now.`
-  if (tabMerges(s.tab)) {
-    return {
-      text,
-      detail: 'You can both work. Fill in different fields and both are saved — theirs will appear on your '
-            + 'screen as they go. Only if you both change the SAME field will one of you be asked to reload.',
-    }
-  }
-  return {
-    text,
-    detail: 'On this tab only one of you should type at a time — the second save is refused and that person '
-          + 'has to reload and type it again. Worth a message before you both start.',
-  }
 }

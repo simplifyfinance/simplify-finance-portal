@@ -13,6 +13,7 @@ import { totalCost, fundsToContribute, constructionLvr } from '@/lib/constructio
 import { emailFreshness, needsAttention, notesAfterScenarioChange } from '@/lib/email-freshness'
 import { missingForEmail, missingSentence } from '@/lib/bc-ready'
 import { dealFigures } from '@/lib/deal-figures'
+import { useLiveColumn } from '@/components/useLiveColumn'
 
 // WORKED OUT, NOT TYPED.
 //
@@ -256,8 +257,7 @@ function fieldCls(value: string) {
 }
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
 import { annualIncomeOf, annualIncomeOfApplicant } from '@/lib/income-calculations'
-import SaveNote from '@/components/SaveNote'
-import { newGuard, saveGuarded, mergeMessage, overwroteMessage, behindMessage } from '@/lib/save-conflict'
+import { newGuard, saveGuarded } from '@/lib/save-conflict'
 import { readMoney, formatAsTyped, money, moneyOrBlank } from '@/lib/money'
 
 const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
@@ -300,7 +300,7 @@ function NumberInput({ value, onChange, placeholder }: { value: string; onChange
   )
 }
 
-type BCFormProps = { deal: any; whoElseHere?: string; me?: { id?: string | null; name?: string | null }; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void }
+type BCFormProps = { live?: { row: any; at: number } | null; deal: any; whoElseHere?: string; me?: { id?: string | null; name?: string | null }; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void }
 
 // WHY THIS FORM NEVER REBUILDS ITSELF.
 //
@@ -319,7 +319,7 @@ type BCFormProps = { deal: any; whoElseHere?: string; me?: { id?: string | null;
 //
 // If BC is ever to merge like the other three, it needs one piece of state
 // first. Not a remount.
-export default function BCForm({ deal, onDataChange, onStageChange, userRole, onSaveStatus, whoElseHere, me }: BCFormProps) {
+export default function BCForm({ live, deal, onDataChange, onStageChange, userRole, onSaveStatus, whoElseHere, me }: BCFormProps) {
   // The database is the only store. No browser-side copy and no fallback: a per-browser
   // cache keyed only by deal id showed one user another user's state, and an empty cache
   // rendered a blank form that the autosave then wrote back over the real record.
@@ -737,8 +737,18 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // Whose copy is on screen — see lib/save-conflict.ts. This form writes on
   // OPEN as well as on edit, so without the guard simply opening a deal card
   // somebody else is working in overwrites what they have typed.
-  // ONE note, and it never stops anybody. See components/SaveNote.tsx.
-  const [note, setNote] = useState<{ text: string; tone: 'info' | 'warn' } | null>(null)
+  // NO NOTES ABOUT OTHER PEOPLE.
+  //
+  // There were three: "their fields came in", "you were behind", "you saved
+  // over theirs". Every one existed because the two screens did not agree and
+  // somebody had to be told after the fact. With live editing they agree as it
+  // happens, so there is nothing left to report - you watch the number change
+  // instead of being told that it did.
+  // Fabio, 8 Sep 2026: "I don't want any warnings. I just want it to work."
+  //
+  // Real errors are untouched: a refused wipe, or a save that did not land,
+  // still show beside the deal name - those are things that went wrong, not
+  // things somebody else did.
   const guardRef = useRef(newGuard(deal.bc_data))
   // What the database last agreed with. OPENING THIS FORM IS NOT EDITING IT:
   // the fields seed themselves from the fact find where bc_data is blank, so the
@@ -797,6 +807,11 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     }
   }
 
+  // SOMEBODY ELSE JUST SAVED. Their fields land here without disturbing a
+  // single thing this person has typed. See components/useLiveColumn.ts.
+  useLiveColumn({ live, column: 'bc_data', meId: me?.id, guard: guardRef.current,
+                  current: () => buildBcData(), apply: applyBcData })
+
   const [showMoveToLoPopup, setShowMoveToLoPopup] = useState(false)
   const [sendingMoveToLo, setSendingMoveToLo] = useState(false)
   const [moveToLoMsg, setMoveToLoMsg] = useState('')
@@ -829,9 +844,6 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
         if (out.kind === 'superseded') return
         if (out.kind === 'error') { console.error('BC autosave:', out.message); setSaveError(out.message); return }
         setSaveError('')
-        if (out.kind === 'merged') setNote({ text: mergeMessage(out.fields), tone: 'info' })
-        if (out.kind === 'overwrote') setNote({ text: overwroteMessage('BC', out.fields, out.who), tone: 'warn' })
-        if (out.kind === 'behind') setNote({ text: behindMessage('BC', out.who), tone: 'info' })
         if (out.kind === 'saved') savedRef.current = now
         // An overwrite and a merge both landed in the database. Showing no
         // "Saved" stamp after them reads as "nothing happened", which is the
@@ -1142,7 +1154,6 @@ Key assumptions: ${checklistText}`
 
   return (
     <div>
-      <SaveNote message={note?.text || ''} tone={note?.tone || 'info'} onDismiss={() => setNote(null)} />
       <div className="flex gap-2 mb-4 items-center flex-wrap">
         {[['form','BC form'],['preview','Preview & share']].map(([id,label]) => (
           <button key={id} onClick={() => setActiveTab(id as any)}

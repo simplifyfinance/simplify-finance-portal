@@ -1,106 +1,90 @@
 import { describe, it, expect } from 'vitest'
-import { stillHere, presenceState, presenceMessage, sameTabNames, STALE_AFTER_MS, type Presence } from './presence'
+import { stillHere, initials, chipTitle, sameTabNames, names,
+         GONE_AFTER_SECONDS, type Presence } from './presence'
 
-const NOW = Date.parse('2026-09-04T10:00:00Z')
-const ago = (ms: number) => new Date(NOW - ms).toISOString()
-const p = (userId: string, name: string, tab: string, msAgo = 0): Presence =>
-  ({ userId, name, tab, lastSeen: ago(msAgo) })
+const p = (o: Partial<Presence>): Presence =>
+  ({ userId: 'u1', name: 'Katie Amos', tab: 'Fact Find', secondsAgo: 5, ...o })
 
 describe('who is still here', () => {
-  it('leaves me out of my own banner', () => {
-    expect(stillHere([p('me', 'Fabio', 'LO'), p('k', 'Katie', 'LO')], 'me', NOW).map(x => x.name))
-      .toEqual(['Katie'])
+  it('leaves me out of my own list', () => {
+    expect(stillHere([p({ userId: 'me' }), p({ userId: 'u2', name: 'Ellie' })], 'me').map(r => r.name))
+      .toEqual(['Ellie'])
   })
 
+  // THE GHOST. Ellie was showing on eight deals at once because nothing here
+  // could tell a live heartbeat from a four day old one.
   it('drops somebody whose heartbeat stopped', () => {
-    expect(stillHere([p('k', 'Katie', 'LO', STALE_AFTER_MS + 1000)], 'me', NOW)).toEqual([])
+    expect(stillHere([p({ userId: 'u2', secondsAgo: 58388 })], 'me')).toEqual([])
   })
 
-  // Three missed beats before somebody disappears, so a slow network does not
-  // make people flicker in and out of the banner.
-  it('keeps somebody who missed a beat or two', () => {
-    expect(stillHere([p('k', 'Katie', 'LO', 45_000)], 'me', NOW)).toHaveLength(1)
+  it('keeps somebody who missed a beat', () => {
+    expect(stillHere([p({ userId: 'u2', secondsAgo: 45 })], 'me')).toHaveLength(1)
+  })
+
+  it('drops one that went stale between the query and the screen', () => {
+    expect(stillHere([p({ userId: 'u2', secondsAgo: GONE_AFTER_SECONDS })], 'me')).toEqual([])
   })
 
   it('reads the most recently active person first', () => {
-    const rows = [p('a', 'Ann', 'BC', 30_000), p('b', 'Ben', 'BC', 2_000)]
-    expect(stillHere(rows, 'me', NOW).map(x => x.name)).toEqual(['Ben', 'Ann'])
+    const out = stillHere([
+      p({ userId: 'a', name: 'Old', secondsAgo: 50 }),
+      p({ userId: 'b', name: 'New', secondsAgo: 2 }),
+    ], 'me')
+    expect(out.map(r => r.name)).toEqual(['New', 'Old'])
+  })
+
+  it('never trusts a missing or broken age', () => {
+    expect(stillHere([p({ userId: 'u2', secondsAgo: NaN as any })], 'me')).toEqual([])
+    expect(stillHere([p({ userId: 'u2', secondsAgo: undefined as any })], 'me')).toEqual([])
   })
 
   it('copes with nothing at all', () => {
-    expect(stillHere(null, 'me', NOW)).toEqual([])
-    expect(stillHere([], 'me', NOW)).toEqual([])
+    expect(stillHere(null, 'me')).toEqual([])
+    expect(stillHere(undefined, 'me')).toEqual([])
+    expect(stillHere([], 'me')).toEqual([])
   })
 })
 
-describe('which state the banner is in', () => {
-  it('is quiet when nobody else is here', () => {
-    expect(presenceState([], 'LO')).toEqual({ level: 'none' })
+describe('the circle in the header', () => {
+  it('takes the first and last initial', () => {
+    expect(initials('Katie Amos')).toBe('KA')
+    expect(initials('Sri Bindhu Kancharakuntla')).toBe('SK')
   })
 
-  // Different tabs write different columns, so nobody is in anybody's way.
-  it('is informational when they are on another tab', () => {
-    const s = presenceState([p('k', 'Katie Amos', 'Fact Find')], 'Lending options')
-    expect(s).toEqual({ level: 'elsewhere', who: 'Katie Amos', where: 'Fact Find' })
-    expect(presenceMessage(s)!.text).toBe('Katie Amos is also in this deal, on Fact Find.')
-    expect(presenceMessage(s)!.detail).toBeUndefined()
+  it('copes with one name', () => {
+    expect(initials('Ellie')).toBe('E')
   })
 
-  // The case that cost an afternoon.
-  it('warns when they are on the same tab, and says what will happen', () => {
-    const s = presenceState([p('k', 'Katie Amos', 'Lending options')], 'Lending options')
-    expect(s.level).toBe('same-tab')
-    const m = presenceMessage(s)!
-    expect(m.text).toBe('Katie Amos is on this same tab right now.')
-    expect(m.detail).toContain('both are saved')
+  it('never renders empty', () => {
+    expect(initials('')).toBe('?')
+    expect(initials('   ')).toBe('?')
+    expect(initials(null as any)).toBe('?')
   })
 
-  // BC cannot fold two people's work together, so it must not tell them it can.
-  it('is stricter on the tab that still refuses', () => {
-    const s = presenceState([p('k', 'Katie Amos', 'BC — Borrowing capacity')], 'BC — Borrowing capacity')
-    expect(presenceMessage(s)!.detail).toContain('only one of you should type at a time')
+  it('says who and where on hover, as a fact', () => {
+    expect(chipTitle(p({}))).toBe('Katie Amos — Fact Find')
   })
 
-  // Statements has no save guard at all. Same honest wording.
-  it('is stricter on a tab with no guard', () => {
-    const s = presenceState([p('k', 'Katie', 'Statements')], 'Statements')
-    expect(presenceMessage(s)!.detail).toContain('only one of you should type at a time')
-  })
-
-  it('takes the same tab seriously even when others are elsewhere', () => {
-    const s = presenceState([p('a', 'Ann', 'BC'), p('k', 'Katie', 'Lending options')], 'Lending options')
-    expect(s).toEqual({ level: 'same-tab', who: 'Katie', tab: 'Lending options' })
-  })
-
-  it('names several people properly', () => {
-    const s = presenceState([p('a', 'Ann', 'BC'), p('b', 'Ben', 'Fact Find')], 'Lending options')
-    expect(presenceMessage(s)!.text).toBe('Ann and Ben are also in this deal, on BC and Fact Find.')
-  })
-
-  it('says something sensible when a name is missing', () => {
-    const s = presenceState([p('x', '', 'BC')], 'Lending options')
-    expect(presenceMessage(s)!.text).toBe('Somebody else is also in this deal, on BC.')
+  it('still says something when the tab is unknown', () => {
+    expect(chipTitle(p({ tab: '' }))).toBe('Katie Amos is in this deal')
   })
 })
 
-// What the red save banner is given to name people with. Drawn from the same
-// rows as the amber banner, so the two can never disagree.
 describe('naming whoever else is on this tab', () => {
   it('names them', () => {
-    expect(sameTabNames([p('k', 'Katie Amos', 'BC — Borrowing capacity')], 'BC — Borrowing capacity'))
-      .toBe('Katie Amos')
+    expect(sameTabNames([p({ tab: 'Fact Find' })], 'Fact Find')).toBe('Katie Amos')
   })
 
   it('ignores somebody on a different tab', () => {
-    expect(sameTabNames([p('m', 'Mellissa Sedin', 'Lending options')], 'BC — Borrowing capacity')).toBe('')
+    expect(sameTabNames([p({ tab: 'Compliance' })], 'Fact Find')).toBe('')
   })
 
-  it('reads properly for two', () => {
-    expect(sameTabNames([p('k', 'Katie Amos', 'BC'), p('e', 'Ellie', 'BC')], 'BC'))
-      .toBe('Katie Amos and Ellie')
+  it('reads properly for two, and for three', () => {
+    expect(names([p({ name: 'Katie Amos' }), p({ name: 'Ellie' })])).toBe('Katie Amos and Ellie')
+    expect(names([p({ name: 'A' }), p({ name: 'B' }), p({ name: 'C' })])).toBe('A, B and C')
   })
 
-  it('is empty when nobody else is here', () => {
-    expect(sameTabNames([], 'BC')).toBe('')
+  it('says something sensible when a name is missing', () => {
+    expect(names([p({ name: '' })])).toBe('Somebody else')
   })
 })
