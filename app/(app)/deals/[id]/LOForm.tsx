@@ -16,6 +16,7 @@ import { resolveLenderSplits, seedFromGlobal, combineIntoOneLoan,
          lenderTotal, lenderLvr } from '@/lib/lo-splits'
 import { emailFreshness, needsAttention, notesAfterScenarioChange } from '@/lib/email-freshness'
 import { useLiveColumn } from '@/components/useLiveColumn'
+import { loFigures } from '@/lib/deal-figures'
 import { dealPurpose } from '@/lib/deal-facts'
 import DealStructure from '@/components/DealStructure'
 
@@ -147,6 +148,9 @@ type LOData = {
   // Which scenario emailHtml was written for. Same shape as the BC - the saved
   // email cannot otherwise tell you whether it still matches the deal.
   emailHtmlTemplate: string
+  // AND THE FIGURES IT WAS WRITTEN FROM. The Chapman email quoted a rate the
+  // deal no longer held and nothing said so - see loFigures().
+  emailFigures?: Record<string, string> | null
   refinanceSplits: RefinanceSplit[]
   brokerSig: string
   clientAgreedLender: string
@@ -421,6 +425,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       internalNotes: '',
       emailHtml: '',
       emailHtmlTemplate: '',
+      emailFigures: null,
       refinanceSplits: initRefinanceSplits(),
       brokerSig: deal.assigned_broker || 'Fabio',
       clientAgreedLender: '',
@@ -920,7 +925,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   }
 
   // Does the saved email still match the scenario the deal is on?
-  const freshness = emailFreshness({ emailHtml, emailHtmlTemplate: d.emailHtmlTemplate }, d.template)
+  // Worked out every render: the form is the live copy, the stamp is the old
+  // one, and the difference between them is the warning.
+  const freshness = emailFreshness({ emailHtml, emailHtmlTemplate: d.emailHtmlTemplate, emailFigures: d.emailFigures },
+                                   d.template, loFigures(d))
   // Shown, never acted on - nothing here switches a button off. See
   // needsAttention() in lib/email-freshness.ts.
   const emailNeedsAttention = needsAttention(freshness)
@@ -1020,7 +1028,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       return
     }
     const data = await res.json()
-    if (data.html) { setEmailHtml(data.html); setD({ ...d, emailHtml: data.html, emailHtmlTemplate: d.template }); setActiveTab('preview') }
+    if (data.html) { setEmailHtml(data.html); setD({ ...d, emailHtml: data.html, emailHtmlTemplate: d.template, emailFigures: loFigures(d) }); setActiveTab('preview') }
     else alert('No email was returned. Try again.')
     setGenerating(false)
   }
@@ -1718,6 +1726,30 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+          {freshness.state === 'figures-moved' && (
+            <div className="mb-3 border border-[#EBD9BE] bg-[#FDF6E7] rounded-xl px-4 py-3.5 flex items-start gap-3">
+              <span className="text-[15px] leading-none mt-[2px]">⚠</span>
+              <div className="text-[13px] text-[#8A6218] flex-1">
+                <b className="text-[#141C24]">
+                  {freshness.changes.length === 1 ? 'A figure has changed' : `${freshness.changes.length} figures have changed`} since this email was written.
+                </b>
+                <div className="mt-1.5">
+                  {freshness.changes.map((c, i) => (
+                    <div key={i} className="text-[12.5px]">{c}</div>
+                  ))}
+                </div>
+                <div className="mt-1.5 text-[12.5px]">
+                  The email below still has the old {freshness.changes.length === 1 ? 'number' : 'numbers'} — a rate or a
+                  repayment is what the client decides on. Regenerating carries your own wording through and rebuilds the
+                  rest. Nothing is blocked, and this clears itself once you do.
+                </div>
+              </div>
+              <button onClick={generateEmail} disabled={generating}
+                className="flex-none px-3 py-1.5 text-[12.5px] font-semibold rounded-lg bg-[#141C24] text-white disabled:opacity-50">
+                {generating ? 'Regenerating…' : 'Regenerate email'}
+              </button>
             </div>
           )}
           {freshness.state === 'stale' && (

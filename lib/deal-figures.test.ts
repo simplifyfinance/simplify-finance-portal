@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { dealFigures, figureChanges, notesMentioning } from './deal-figures'
+import { dealFigures, loFigures, figureChanges, notesMentioning } from './deal-figures'
 
 // A deal shaped the way the fact find actually stores one: money as
 // comma-formatted strings, income as a list of entries per applicant.
@@ -138,5 +138,95 @@ describe('which notes actually mention the figure', () => {
   it('does not go hunting when the old value was a blank', () => {
     const fromBlank = { name: "Sam's income", was: 'nothing recorded', now: '$90,000', sentence: '' }
     expect(notesMentioning(fromBlank, [{ key: 'a', label: 'Analysis', text: 'nothing recorded here' }])).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// NATASHA & RICHARD CHAPMAN, 9 Sep 2026. The real one.
+//
+// The saved email quoted CBA at 6.09% and $10,291 a month. The deal held 6.07%
+// and $10,269. Nothing on the screen said so, because the LO only checked that
+// the SCENARIO had not changed - and it had not. By the time it was found the
+// deal was five days into Compliance Sent.
+describe('the figures a lending options email quotes', () => {
+  const CHAPMAN = {
+    loanAmount: '1,700,000', purchasePrice: '5,250,000', deposit: '3,841,500',
+    stampDuty: '291,500', existingLoan: '', recommendedLender: 'ING',
+    lenders: [
+      { lenderName: 'ING', applicationFee: '$0', annualFee: '$299/yr', valuationFee: '$0', legalFee: '350',
+        variablePI: { enabled: true, rate: '5.99', repayment: '10,182', loanTerm: '30' },
+        variableIO: { enabled: false, rate: '', repayment: '', loanTerm: '30' },
+        fixedPI:    { enabled: false, rate: '', repayment: '', loanTerm: '30' },
+        fixedIO:    { enabled: false, rate: '', repayment: '', loanTerm: '30' } },
+      { lenderName: 'CBA', applicationFee: '$0', annualFee: '$395/yr', valuationFee: '$0', legalFee: '200',
+        variablePI: { enabled: true, rate: '6.07', repayment: '10,269', loanTerm: '30' },
+        variableIO: { enabled: false, rate: '', repayment: '', loanTerm: '30' },
+        fixedPI:    { enabled: false, rate: '', repayment: '', loanTerm: '30' },
+        fixedIO:    { enabled: false, rate: '', repayment: '', loanTerm: '30' } },
+    ],
+  }
+  // What the email on that deal was actually built from.
+  const AS_THE_EMAIL_WAS_WRITTEN = { ...loFigures(CHAPMAN),
+    "CBA's variable P&I rate": '6.09%', "CBA's variable P&I repayment": '$10,291' }
+
+  it('names each lender rate and repayment by the lender', () => {
+    const f = loFigures(CHAPMAN)
+    expect(f["ING's variable P&I rate"]).toBe('5.99%')
+    expect(f["ING's variable P&I repayment"]).toBe('$10,182')
+    expect(f["CBA's variable P&I rate"]).toBe('6.07%')
+  })
+
+  it('ignores rate types nobody is offering', () => {
+    // Three of the four modules on each lender are switched off and empty.
+    // Recording them would be recording a figure no client was ever told.
+    const f = loFigures(CHAPMAN)
+    expect(Object.keys(f).some(k => k.includes('fixed'))).toBe(false)
+    expect(Object.keys(f).some(k => k.includes('interest only'))).toBe(false)
+  })
+
+  it('keeps the money figures and the recommended lender', () => {
+    const f = loFigures(CHAPMAN)
+    expect(f['the loan amount']).toBe('$1,700,000')
+    expect(f['the purchase price']).toBe('$5,250,000')
+    expect(f['the stamp duty']).toBe('$291,500')
+    expect(f['the recommended lender']).toBe('ING')
+  })
+
+  it('leaves out what this deal does not have', () => {
+    // A purchase has no existing loan. An empty box is not a figure.
+    expect(loFigures(CHAPMAN)['the existing loan balance']).toBeUndefined()
+  })
+
+  // THE ONE THAT MATTERS.
+  it('catches the rate that moved after the email was written', () => {
+    const moved = figureChanges(AS_THE_EMAIL_WAS_WRITTEN, loFigures(CHAPMAN))
+    expect(moved.map(c => c.sentence).sort()).toEqual([
+      "CBA's variable P&I rate changed from 6.09% to 6.07%",
+      "CBA's variable P&I repayment changed from $10,291 to $10,269",
+    ])
+  })
+
+  it('says nothing when the email still matches the deal', () => {
+    expect(figureChanges(loFigures(CHAPMAN), loFigures(CHAPMAN))).toEqual([])
+  })
+
+  it('notices the recommendation being switched to the other lender', () => {
+    const now = loFigures({ ...CHAPMAN, recommendedLender: 'CBA' })
+    expect(figureChanges(loFigures(CHAPMAN), now).map(c => c.sentence))
+      .toEqual(['the recommended lender changed from ING to CBA'])
+  })
+
+  it('does not mistake a fee being written differently for a fee changing', () => {
+    // "$395/yr" is stored as typed. Tidying it here would make a formatting
+    // change look like a price change to the client.
+    const f = loFigures(CHAPMAN)
+    expect(f["CBA's annual fee"]).toBe('$395/yr')
+    expect(f["CBA's legal fee"]).toBe('200')
+  })
+
+  it('survives a deal with no lenders on it yet', () => {
+    expect(() => loFigures({})).not.toThrow()
+    expect(() => loFigures(null)).not.toThrow()
+    expect(loFigures({}) ['the recommended lender']).toBe('not chosen yet')
   })
 })

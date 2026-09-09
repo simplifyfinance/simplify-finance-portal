@@ -111,3 +111,57 @@ export function notesMentioning(change: FigureChange, boxes: { key: string; labe
     .filter(b => forms.some(f => txt(b.text).includes(f)))
     .map(b => b.label)
 }
+
+// THE FIGURES A LENDING OPTIONS EMAIL QUOTES.
+//
+// Natasha & Richard Chapman, 9 Sep 2026. The saved email told them CBA at
+// 6.09% and $10,291 a month. The deal said 6.07% and $10,269. Somebody
+// corrected the rate after the email was written and it was never rebuilt - and
+// by the time anybody noticed, the deal was five days into Compliance Sent.
+//
+// The BC email has had this check since 8 Sep. The LO never got it: it checks
+// only that the SCENARIO has not changed, which on that deal it had not. So the
+// preview looked perfectly healthy while quoting a rate the portal did not
+// hold.
+//
+// A rate and a repayment matter more here than anywhere else in the portal.
+// They are what the client decides on.
+export function loFigures(lo: any): Figures {
+  const out: Figures = {}
+  const t = (v: any) => String(v ?? '').trim()
+
+  out['the loan amount'] = money(lo?.loanAmount) || 'nothing recorded'
+  if (t(lo?.purchasePrice)) out['the purchase price'] = money(lo.purchasePrice)
+  if (t(lo?.deposit)) out['the deposit'] = money(lo.deposit)
+  if (t(lo?.stampDuty)) out['the stamp duty'] = money(lo.stampDuty)
+  if (t(lo?.existingLoan)) out['the existing loan balance'] = money(lo.existingLoan)
+  // Changing which lender is recommended rewrites the point of the email.
+  out['the recommended lender'] = t(lo?.recommendedLender) || 'not chosen yet'
+
+  const RATES: [string, string][] = [
+    ['variablePI', 'variable P&I'], ['variableIO', 'variable interest only'],
+    ['fixedPI', 'fixed P&I'],       ['fixedIO', 'fixed interest only'],
+  ]
+
+  ;(lo?.lenders || []).forEach((l: any, i: number) => {
+    const who = t(l?.lenderName) || `lender ${i + 1}`
+    for (const [key, label] of RATES) {
+      const m = l?.[key]
+      // Only the rate types actually being offered. An untouched fixed module
+      // sitting at blank is not a figure anybody was told.
+      if (!m?.enabled) continue
+      if (t(m.rate)) out[`${who}'s ${label} rate`] = `${t(m.rate)}%`
+      if (t(m.repayment)) out[`${who}'s ${label} repayment`] = money(m.repayment) || t(m.repayment)
+      if (t(m.loanTerm)) out[`${who}'s ${label} term`] = `${t(m.loanTerm)} years`
+    }
+    // Fees are typed as free text in the lender library - "$0", "$395/yr", "350"
+    // - so they are compared exactly as they are stored rather than tidied,
+    // which would make a formatting change look like a price change.
+    if (t(l?.applicationFee)) out[`${who}'s application fee`] = t(l.applicationFee)
+    if (t(l?.annualFee))      out[`${who}'s annual fee`]      = t(l.annualFee)
+    if (t(l?.valuationFee))   out[`${who}'s valuation fee`]   = t(l.valuationFee)
+    if (t(l?.legalFee))       out[`${who}'s legal fee`]       = t(l.legalFee)
+  })
+
+  return out
+}
