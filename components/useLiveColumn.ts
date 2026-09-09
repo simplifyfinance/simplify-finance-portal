@@ -31,6 +31,29 @@ const QUIET_MS = 1500
 // How often to look again while somebody is still going.
 const RETRY_MS = 400
 
+// LIVE EDITING IS OFF.
+//
+// Turned off 9 Sep 2026, after it ate Kylie's writing twice in two days.
+//
+// The first fault was a race and I fixed it. This is a different thing and it
+// is structural: applying somebody else's save changes this screen, a changed
+// screen autosaves, and that save arrives on THEIR screen, which changes, which
+// autosaves back. Two browsers hand the same text back and forth, and every lap
+// carries a copy of it that is a second or two old. Type into it during a lap
+// and the older copy lands on top - which is Kylie watching letters, spaces and
+// full stops vanish out of a sentence she had already written.
+//
+// A screen must not save what it was just handed BY the database. That is the
+// fix, it is not difficult, and it is not going in blind for a third time: it
+// goes back on when somebody has sat with two windows open and watched it
+// behave. One line, here.
+//
+// Until then the deal page works exactly as it did on Monday morning - each
+// browser knows what it loaded, and the save guard, the history and the wipe
+// guard all carry on as they are. Nothing that protects data is switched off by
+// this.
+const LIVE_EDITING = false
+
 export function useLiveColumn({ live, column, meId, guard, current, apply }: {
   live?: { row: any; at: number } | null
   column: DealColumn
@@ -62,6 +85,7 @@ export function useLiveColumn({ live, column, meId, guard, current, apply }: {
   latest.current = { current, apply, guard, meId }
 
   useEffect(() => {
+    if (!LIVE_EDITING) return
     const row = live?.row
     if (!row) return
 
