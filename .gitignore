@@ -58,3 +58,6 @@ _to_delete/
 
 # Mockups and briefs Claude sends across. Not code, and not the repo's business.
 Claude outputs/
+
+# The signed-in session for the browser check. Never committed.
+.auth/

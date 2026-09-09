@@ -68,6 +68,19 @@ if ! npm run build > /tmp/ship-build.log 2>&1; then
 fi
 echo "Build OK."
 
+# LAST, BECAUSE IT NEEDS THE BUILD.
+#
+# Everything above reads the code. This one opens it. Three faults reached the
+# team in the week of 3-9 Sep that no code-level check could have seen - the page
+# jumping, a ghost in a deal, and letters vanishing as Kylie typed - and every one
+# of them would have been caught here in under a minute.
+echo "Checking it in a browser..."
+if ! ./scripts/check-browser.sh; then
+  echo
+  echo "NOT SHIPPED - the browser check failed. Something a person would see is broken."
+  exit 1
+fi
+
 if [ -z "$(git status --porcelain)" ]; then
   echo "Nothing to commit."
   exit 0
