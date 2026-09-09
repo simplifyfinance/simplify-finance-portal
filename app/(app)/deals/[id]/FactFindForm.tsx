@@ -333,7 +333,7 @@ function OwnershipCheckboxes({ applicants, ownership, onChange, label = 'Respons
   )
 }
 
-export default function FactFindForm({ live, deal, onDataChange, onDealFieldChange, onSaveStatus, whoElseHere, me }: { live?: { row: any; at: number } | null; whoElseHere?: string; me?: { id?: string | null; name?: string | null }; deal: any; onDataChange?: (d: FactFindData) => void; onDealFieldChange?: (field: string, value: string) => void; onSaveStatus?: (s: { at?: string; error?: string }) => void }) {
+export default function FactFindForm({ deal, onDataChange, onDealFieldChange, onSaveStatus, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null }; deal: any; onDataChange?: (d: FactFindData) => void; onDealFieldChange?: (field: string, value: string) => void; onSaveStatus?: (s: { at?: string; error?: string }) => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `fact_find_${deal.id}`
   const bc = deal.bc_data || {}
@@ -405,7 +405,7 @@ export default function FactFindForm({ live, deal, onDataChange, onDealFieldChan
   // SOMEBODY ELSE JUST SAVED. Their fields land on this screen without
   // disturbing a single thing this person has typed - see
   // components/useLiveColumn.ts for the rule, and lib/live-deal.ts for why.
-  useLiveColumn({ live, column: 'fact_find_data', meId: me?.id, guard: guardRef.current,
+  useLiveColumn({ dealId: deal.id, column: 'fact_find_data', meId: me?.id, guard: guardRef.current,
                   current: () => d, apply: v => setD(v as any) })
 
   // NO NOTES ABOUT OTHER PEOPLE.

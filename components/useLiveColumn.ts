@@ -1,71 +1,53 @@
 'use client'
 import { useEffect, useRef } from 'react'
+import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { foldIn, isMine, LIVE_EDITING, type DealColumn } from '@/lib/live-deal'
 import { adopt, type SaveGuard } from '@/lib/save-conflict'
 
-// NEVER WHILE SOMEBODY IS TYPING.
+// SOMEBODY ELSE JUST SAVED.
 //
-// The first version of this folded somebody else's save onto the screen the
-// instant it arrived. Kylie, 9 Sep 2026, writing the broker summary notes with
-// Mellissa sitting idle in the same deal: "the letters disappear so I have to
-// go back and type it. So I'm typing it outside of the portal to then just
-// paste it in."
+// Two rules, both learned the hard way on 9 Sep 2026.
 //
-// Which is the worst possible outcome - it drove somebody out of the portal to
-// write in Notepad.
+// ONE: THE LISTENING LIVES HERE, NOT ON THE PAGE.
 //
-// The merge itself is careful: it only takes fields this person has not
-// changed. But "has not changed" is judged against the last version the screen
-// agreed with the database on, and between a keystroke and the render that
-// records it there is a gap. An update landing inside that gap compares against
-// a copy of the box from before the letter, decides nobody has touched it, and
-// writes the older text back.
+// The first version kept the incoming save in a piece of state on the deal
+// page. Every save from anybody - including your own coming back - set that
+// state, and setting state there re-renders the whole page: the header, the
+// pipeline, the documents strip, and the box being typed into. A keystroke
+// that lands during that render is swallowed, which is a letter vanishing out
+// of a finished sentence with nothing to explain it. Kylie: "it is deleting
+// letters, and spaces, and dots."
 //
-// The gap is small and it does not need closing cleverly. It needs not being
-// stood in. Nothing is folded onto a screen that has been typed on in the last
-// second and a half - the update waits, and goes in the moment there is a
-// pause. Nobody loses a letter, and the worst case is that somebody else's
-// figure appears a second later than it might have.
+// Only the tab on screen is mounted, so this is one subscription either way -
+// it just no longer drags the entire page through a render to deliver it.
+//
+// TWO: NEVER WHILE SOMEBODY IS TYPING.
+//
+// The merge only takes fields this person has not changed, but "has not
+// changed" is judged against the last version the screen agreed with the
+// database on, and between a keystroke and the render that records it there is
+// a gap. An update landing inside that gap compares against the box as it was
+// before the letter. So nothing is folded onto a screen typed on in the last
+// second and a half; it waits for a pause.
 const QUIET_MS = 1500
-
-// How often to look again while somebody is still going.
 const RETRY_MS = 400
 
-// LIVE EDITING IS OFF.
-//
-// Turned off 9 Sep 2026, after it ate Kylie's writing twice in two days.
-//
-// The first fault was a race and I fixed it. This is a different thing and it
-// is structural: applying somebody else's save changes this screen, a changed
-// screen autosaves, and that save arrives on THEIR screen, which changes, which
-// autosaves back. Two browsers hand the same text back and forth, and every lap
-// carries a copy of it that is a second or two old. Type into it during a lap
-// and the older copy lands on top - which is Kylie watching letters, spaces and
-// full stops vanish out of a sentence she had already written.
-//
-// A screen must not save what it was just handed BY the database. That is the
-// fix, it is not difficult, and it is not going in blind for a third time: it
-// goes back on when somebody has sat with two windows open and watched it
-// behave. One line, here.
-//
-// Until then the deal page works exactly as it did on Monday morning - each
-// browser knows what it loaded, and the save guard, the history and the wipe
-// guard all carry on as they are. Nothing that protects data is switched off by
-// this.
-export function useLiveColumn({ live, column, meId, guard, current, apply }: {
-  live?: { row: any; at: number } | null
+export function useLiveColumn({ dealId, column, meId, guard, current, apply }: {
+  dealId: string
   column: DealColumn
   meId?: string | null
   guard: SaveGuard
+  // What is on screen right now, including anything half typed.
   current: () => any
+  // Put the folded record back on screen. Each tab holds its state differently.
   apply: (value: any) => void
 }) {
   const lastTyped = useRef(0)
   const pending = useRef<any>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Any real input counts. Not mouse movement, not scrolling - somebody reading
-  // the screen is not somebody who would lose a letter.
+  // Any real input counts. Somebody reading the screen is not somebody who
+  // would lose a letter.
   useEffect(() => {
     const typed = () => { lastTyped.current = Date.now() }
     window.addEventListener('keydown', typed, { passive: true })
@@ -76,23 +58,14 @@ export function useLiveColumn({ live, column, meId, guard, current, apply }: {
     }
   }, [])
 
-  // Held in a ref so the waiting timer always folds against what is on screen
-  // NOW, not against whatever it was when the update arrived. That difference
-  // is the entire bug above.
+  // Read through a ref so the waiting timer always folds against what is on
+  // screen NOW, never against what it was when the update arrived.
   const latest = useRef({ current, apply, guard, meId })
   latest.current = { current, apply, guard, meId }
 
   useEffect(() => {
     if (!LIVE_EDITING) return
-    const row = live?.row
-    if (!row) return
-
-    // My own save coming back is not news.
-    if (isMine({ incoming: null, byId: row.last_saved_by, byName: row.last_saved_name,
-                 version: row.row_version ?? null }, meId)) return
-    if (row[column] === undefined) return
-
-    pending.current = row[column]
+    const supabase = createSupabaseBrowser()
 
     const tryApply = () => {
       timer.current = null
@@ -113,12 +86,33 @@ export function useLiveColumn({ live, column, meId, guard, current, apply }: {
       const fold = foldIn(base, waiting, now())
       if (fold.kind !== 'take') return
       put(fold.value)
+      // The record now says what they saved, whatever else is on screen. This
+      // is also what stops a save going straight back out: with nothing of our
+      // own on top, the next autosave finds the database already agrees and
+      // writes nothing. See saveGuarded.
       adopt(g, waiting)
     }
 
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(tryApply, QUIET_MS)
+    const channel = supabase
+      .channel(`deal-live-${dealId}-${column}`)
+      .on('postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'deals', filter: `id=eq.${dealId}` },
+          (payload: any) => {
+            const row = payload?.new
+            if (!row) return
+            // My own save coming back is not news.
+            if (isMine({ incoming: null, byId: row.last_saved_by, byName: row.last_saved_name,
+                         version: row.row_version ?? null }, latest.current.meId)) return
+            if (row[column] === undefined) return
+            pending.current = row[column]
+            if (timer.current) clearTimeout(timer.current)
+            timer.current = setTimeout(tryApply, QUIET_MS)
+          })
+      .subscribe()
 
-    return () => { if (timer.current) { clearTimeout(timer.current); timer.current = null } }
-  }, [live?.at])
+    return () => {
+      if (timer.current) { clearTimeout(timer.current); timer.current = null }
+      supabase.removeChannel(channel)
+    }
+  }, [dealId, column])
 }

@@ -1,7 +1,6 @@
 'use client'
 import { brokerLabel } from '@/lib/broker-key'
 import DealPresence from '@/components/DealPresence'
-import { LIVE_EDITING } from '@/lib/live-deal'
 import DealHistory from '@/components/DealHistory'
 import { canSeeHistory } from '@/lib/permissions'
 import { useState, useEffect } from 'react'
@@ -135,40 +134,11 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   // know who??" One name, passed down from the one place that has it.
   const [whoElseHere, setWhoElseHere] = useState('')
 
-  // LIVE EDITING.
-  //
-  // The deal page never had this. Every browser loaded the deal once and then
-  // only knew what it loaded, so two people in one deal each worked on a
-  // private copy - and before the save guard existed, the later save wrote the
-  // whole thing over the top with nothing on screen to say so. That is Alexis
-  // Janes and William Welton.
-  //
-  // Fabio, 8 Sep 2026: "I want live editing like google sheets."
-  //
-  // One subscription for the whole page. Each form decides what to do with it,
-  // because only the form knows which fields the person has touched - see
-  // lib/live-deal.ts. Nothing here writes to the forms directly.
-  //
-  // Kept apart from dealData on purpose: dealData is updated BY the forms as
-  // somebody types, so it cannot also be the signal that somebody else saved.
-  const [live, setLive] = useState<{ row: any; at: number } | null>(null)
-  useEffect(() => {
-    // NOT EVEN LISTENING WHILE IT IS OFF.
-    //
-    // Switching off the fold was not enough. Every save still arrived here and
-    // set state, and setting state here re-renders the whole deal page - the
-    // header, the pipeline, the documents strip and the form somebody is typing
-    // into. A keystroke that lands during that render is dropped, which is a
-    // letter gone out of a sentence with nothing to explain it.
-    if (!LIVE_EDITING) return
-    const channel = supabase
-      .channel(`deal-live-${deal.id}`)
-      .on('postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'deals', filter: `id=eq.${deal.id}` },
-          payload => setLive({ row: payload.new, at: Date.now() }))
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [deal.id])
+  // The incoming-save subscription used to live here, in page state. It does
+  // not any more: setting state on this page re-renders the header, the
+  // pipeline, the documents strip and the form somebody is typing into, and a
+  // keystroke landing during that render is lost. Each tab listens for itself
+  // now - see components/useLiveColumn.ts.
 
   function changeStage(newStage: string) {
     setStage(newStage)
@@ -349,11 +319,11 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
       <TabLock locked={isLocked(dealData) && unlockedTab !== stage} tab={stage} dealId={dealData.id}
         role={userRole} me={me}
         onUnlocked={() => { setUnlockedTab(stage); reloadFile() }}>
-        {stage === 'FactFind' && <FactFindForm live={live} whoElseHere={whoElseHere} me={me} deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
+        {stage === 'FactFind' && <FactFindForm whoElseHere={whoElseHere} me={me} deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
         {stage === 'Statements' && <StatementAnalysis deal={dealData} />}
-        {stage === 'BC' && <BCForm live={live} whoElseHere={whoElseHere} me={me} deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
-        {stage === 'LO' && <LOForm live={live} whoElseHere={whoElseHere} me={me} deal={dealData} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} />}
-        {stage === 'Compliance' && <ComplianceForm live={live} whoElseHere={whoElseHere} me={me} deal={dealData} onSaveStatus={setSaveStatus}
+        {stage === 'BC' && <BCForm whoElseHere={whoElseHere} me={me} deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
+        {stage === 'LO' && <LOForm whoElseHere={whoElseHere} me={me} deal={dealData} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} />}
+        {stage === 'Compliance' && <ComplianceForm whoElseHere={whoElseHere} me={me} deal={dealData} onSaveStatus={setSaveStatus}
           onDealPatched={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />}
       </TabLock>
     </div>

@@ -300,7 +300,7 @@ function NumberInput({ value, onChange, placeholder }: { value: string; onChange
   )
 }
 
-type BCFormProps = { live?: { row: any; at: number } | null; deal: any; whoElseHere?: string; me?: { id?: string | null; name?: string | null }; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void }
+type BCFormProps = { deal: any; whoElseHere?: string; me?: { id?: string | null; name?: string | null }; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void }
 
 // WHY THIS FORM NEVER REBUILDS ITSELF.
 //
@@ -319,7 +319,7 @@ type BCFormProps = { live?: { row: any; at: number } | null; deal: any; whoElseH
 //
 // If BC is ever to merge like the other three, it needs one piece of state
 // first. Not a remount.
-export default function BCForm({ live, deal, onDataChange, onStageChange, userRole, onSaveStatus, whoElseHere, me }: BCFormProps) {
+export default function BCForm({ deal, onDataChange, onStageChange, userRole, onSaveStatus, whoElseHere, me }: BCFormProps) {
   // The database is the only store. No browser-side copy and no fallback: a per-browser
   // cache keyed only by deal id showed one user another user's state, and an empty cache
   // rendered a blank form that the autosave then wrote back over the real record.
@@ -809,7 +809,7 @@ export default function BCForm({ live, deal, onDataChange, onStageChange, userRo
 
   // SOMEBODY ELSE JUST SAVED. Their fields land here without disturbing a
   // single thing this person has typed. See components/useLiveColumn.ts.
-  useLiveColumn({ live, column: 'bc_data', meId: me?.id, guard: guardRef.current,
+  useLiveColumn({ dealId: deal.id, column: 'bc_data', meId: me?.id, guard: guardRef.current,
                   current: () => buildBcData(), apply: applyBcData })
 
   const [showMoveToLoPopup, setShowMoveToLoPopup] = useState(false)

@@ -287,7 +287,7 @@ function AIButton({ onClick, loading, label = 'Generate with AI' }: { onClick: (
   )
 }
 
-export default function ComplianceForm({ live, deal, onSaveStatus, onDealPatched, whoElseHere, me }: { live?: { row: any; at: number } | null; whoElseHere?: string; me?: { id?: string | null; name?: string | null };
+export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null };
   deal: any
   onSaveStatus?: (s: { at?: string; error?: string }) => void
   // The deal structure block writes compliance_data itself; this lets the page
@@ -444,7 +444,7 @@ export default function ComplianceForm({ live, deal, onSaveStatus, onDealPatched
   // SOMEBODY ELSE JUST SAVED. Their fields land on this screen without
   // disturbing a single thing this person has typed - see
   // components/useLiveColumn.ts for the rule, and lib/live-deal.ts for why.
-  useLiveColumn({ live, column: 'compliance_data', meId: me?.id, guard: guardRef.current,
+  useLiveColumn({ dealId: deal.id, column: 'compliance_data', meId: me?.id, guard: guardRef.current,
                   current: () => d, apply: v => setD(v as any) })
 
 
