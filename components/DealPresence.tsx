@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { stillHere, initials, chipTitle, sameTabNames,
+import { stillHere, initials, chipTitle, sameTabNames, names,
          HEARTBEAT_MS, IDLE_AFTER_MS, type Presence } from '@/lib/presence'
 
 // WHO ELSE IS HERE, AS A ROW OF CIRCLES.
@@ -92,6 +92,16 @@ export default function DealPresence({ dealId, tab, onSameTab }:
   useEffect(() => { onSameTab?.(sameTabNames(others, tab)) }, [others, tab])
 
   // Fixed height, always rendered. This is the part that stops the page moving.
+  //
+  // The circles alone turned out to be too quiet. Fabio, 9 Sep 2026, with
+  // Mellissa sitting in the deal to test it: "the message doesn't come up now
+  // that someone is in the file." So the name is spelled out beside them - the
+  // row is the same height whether it is there or not, which is the only part
+  // that ever mattered.
+  const line = others.length === 0 ? ''
+    : others.length === 1 ? `${names(others)} is here${others[0].tab ? ` — ${others[0].tab}` : ''}`
+    : `${names(others)} are here`
+
   return (
     <div className="flex items-center gap-1.5 h-[26px]">
       {others.map(o => {
@@ -106,6 +116,7 @@ export default function DealPresence({ dealId, tab, onSameTab }:
           </span>
         )
       })}
+      {line && <span className="text-[11.5px] text-[#6E665C] whitespace-nowrap">{line}</span>}
     </div>
   )
 }

@@ -1,53 +1,102 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { foldIn, isMine, type DealColumn } from '@/lib/live-deal'
 import { adopt, type SaveGuard } from '@/lib/save-conflict'
 
-// ONE COPY OF "SOMEBODY ELSE JUST SAVED", FOR ALL FOUR TABS.
+// NEVER WHILE SOMEBODY IS TYPING.
 //
-// Written once rather than four times, because four copies of a rule is four
-// places for it to be subtly different - which is how a field can quietly stop
-// being merged on one tab and nobody notices for a month.
+// The first version of this folded somebody else's save onto the screen the
+// instant it arrived. Kylie, 9 Sep 2026, writing the broker summary notes with
+// Mellissa sitting idle in the same deal: "the letters disappear so I have to
+// go back and type it. So I'm typing it outside of the portal to then just
+// paste it in."
 //
-// The rule, in full: take the fields they changed and this person has not
-// touched. Leave everything else exactly as it is. If they both changed the
-// same field, leave the screen completely alone - the person is looking at
-// their own version and about to save it, and yanking it out from under them
-// mid-sentence is worse than the disagreement.
+// Which is the worst possible outcome - it drove somebody out of the portal to
+// write in Notepad.
+//
+// The merge itself is careful: it only takes fields this person has not
+// changed. But "has not changed" is judged against the last version the screen
+// agreed with the database on, and between a keystroke and the render that
+// records it there is a gap. An update landing inside that gap compares against
+// a copy of the box from before the letter, decides nobody has touched it, and
+// writes the older text back.
+//
+// The gap is small and it does not need closing cleverly. It needs not being
+// stood in. Nothing is folded onto a screen that has been typed on in the last
+// second and a half - the update waits, and goes in the moment there is a
+// pause. Nobody loses a letter, and the worst case is that somebody else's
+// figure appears a second later than it might have.
+const QUIET_MS = 1500
+
+// How often to look again while somebody is still going.
+const RETRY_MS = 400
+
 export function useLiveColumn({ live, column, meId, guard, current, apply }: {
   live?: { row: any; at: number } | null
   column: DealColumn
   meId?: string | null
   guard: SaveGuard
-  // What is on screen right now, including anything half typed.
   current: () => any
-  // Put the folded record back on screen. Each tab holds its state differently.
   apply: (value: any) => void
 }) {
-  // Deliberately keyed on the moment the update arrived, not on the row. Two
-  // saves a second apart can carry identical data for this column - a stamp is
-  // the only honest "this is a new event".
+  const lastTyped = useRef(0)
+  const pending = useRef<any>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Any real input counts. Not mouse movement, not scrolling - somebody reading
+  // the screen is not somebody who would lose a letter.
+  useEffect(() => {
+    const typed = () => { lastTyped.current = Date.now() }
+    window.addEventListener('keydown', typed, { passive: true })
+    window.addEventListener('paste', typed, { passive: true })
+    return () => {
+      window.removeEventListener('keydown', typed)
+      window.removeEventListener('paste', typed)
+    }
+  }, [])
+
+  // Held in a ref so the waiting timer always folds against what is on screen
+  // NOW, not against whatever it was when the update arrived. That difference
+  // is the entire bug above.
+  const latest = useRef({ current, apply, guard, meId })
+  latest.current = { current, apply, guard, meId }
+
   useEffect(() => {
     const row = live?.row
     if (!row) return
 
-    // My own save coming back. Folding it onto myself is at best wasted work,
-    // and on a slow connection it lands after the next keystroke and eats it.
+    // My own save coming back is not news.
     if (isMine({ incoming: null, byId: row.last_saved_by, byName: row.last_saved_name,
                  version: row.row_version ?? null }, meId)) return
+    if (row[column] === undefined) return
 
-    const incoming = row[column]
-    if (incoming === undefined) return
+    pending.current = row[column]
 
-    // What the database held when this screen last agreed with it.
-    let base: any = null
-    try { base = guard.db ? JSON.parse(guard.db) : null } catch { base = null }
+    const tryApply = () => {
+      timer.current = null
+      const waiting = pending.current
+      if (waiting === null) return
 
-    const fold = foldIn(base, incoming, current())
-    if (fold.kind !== 'take') return
+      // Still going. Come back rather than reaching into the box they are in.
+      if (Date.now() - lastTyped.current < QUIET_MS) {
+        timer.current = setTimeout(tryApply, RETRY_MS)
+        return
+      }
 
-    apply(fold.value)
-    // The record now says what they saved, whatever is additionally on screen.
-    adopt(guard, incoming)
+      pending.current = null
+      const { current: now, apply: put, guard: g } = latest.current
+      let base: any = null
+      try { base = g.db ? JSON.parse(g.db) : null } catch { base = null }
+
+      const fold = foldIn(base, waiting, now())
+      if (fold.kind !== 'take') return
+      put(fold.value)
+      adopt(g, waiting)
+    }
+
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(tryApply, QUIET_MS)
+
+    return () => { if (timer.current) { clearTimeout(timer.current); timer.current = null } }
   }, [live?.at])
 }

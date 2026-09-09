@@ -94,3 +94,39 @@ describe('whose save was it', () => {
     expect(isMine(u(''), '')).toBe(false)
   })
 })
+
+// ---------------------------------------------------------------------------
+// THE REGRESSION, 9 Sep 2026. Kylie writing the broker summary notes with
+// Mellissa idle in the same deal: "the letters disappear so I have to go back
+// and type it."
+//
+// The waiting is in components/useLiveColumn.ts, which needs a browser to test.
+// What is testable here is the thing the waiting protects: that a fold judged
+// against a stale copy of the screen is exactly what eats a keystroke - so if
+// this ever stops being true, the guard above has stopped being needed and
+// somebody should know.
+describe('why a fold must never be judged against a stale screen', () => {
+  const AT_LAST_AGREEMENT = { brokerNotes: 'Hi Alexis, further to our c' }
+
+  it('keeps what is on screen when the screen is read correctly', () => {
+    const onScreenNow = { brokerNotes: 'Hi Alexis, further to our conversation' }
+    const theirs = { brokerNotes: 'Hi Alexis, further to our c' }
+    // They saved nothing new; this person has typed on. Nothing must move.
+    expect(foldIn(AT_LAST_AGREEMENT, theirs, onScreenNow).kind).toBe('nothing')
+  })
+
+  it('eats the letters when the screen is read one keystroke late', () => {
+    // The whole bug in one line: read the box as it was BEFORE the last few
+    // letters and the merge decides nobody has touched it.
+    const readTooEarly = AT_LAST_AGREEMENT
+    const theirs = { brokerNotes: 'Hi Alexis, further to our c' }
+    const out = foldIn(AT_LAST_AGREEMENT, theirs, readTooEarly)
+    // It reports "nothing" only because their value matches too. Change one
+    // character on their side and this becomes a silent overwrite:
+    const theirsDifferent = { brokerNotes: 'Hi Alexis,' }
+    const bad = foldIn(AT_LAST_AGREEMENT, theirsDifferent, readTooEarly)
+    expect(out.kind).toBe('nothing')
+    expect(bad.kind).toBe('take')
+    expect((bad as any).value.brokerNotes).toBe('Hi Alexis,')  // the shorter text wins
+  })
+})
