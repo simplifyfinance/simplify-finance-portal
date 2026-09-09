@@ -1032,10 +1032,17 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // This used to refuse to produce the HTML at all when the email was out of
     // date. It no longer does: the banner above the preview says what has moved
     // and names it, and the send is the broker's call. See needsAttention().
-    const fn = (firstName || '[Client First Name]').trim()
-    const jfn = (ffApp2.firstName || '').trim()
-    const greetingName = (joint === 'Yes' && jfn) ? `${fn} and ${jfn}` : fn
-    let clean = `<p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">Hi ${greetingName},</p>`
+    // NEVER A PLACEHOLDER IN WHAT IS SENT.
+    //
+    // This greeted a client with a literal "Hi [Client First Name]," whenever
+    // the name was blank. The brackets look deliberate on a screen and mortifying
+    // in an inbox. No name means no name - "Hello," is a greeting; an unfilled
+    // form field is not.
+    const fn = String(firstName ?? '').trim()
+    const jfn = String(ffApp2.firstName ?? '').trim()
+    const greetingName = (joint === 'Yes' && jfn && fn) ? `${fn} and ${jfn}` : (fn || jfn)
+    const greeting = greetingName ? `Hi ${greetingName},` : 'Hello,'
+    let clean = `<p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">${greeting}</p>`
     // Every paragraph the broker typed, kept as a paragraph. This used to be one
     // <p>, and HTML does not care about newlines - so a carefully laid out note
     // arrived at the client as a single wall of text.

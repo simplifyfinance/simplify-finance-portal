@@ -116,7 +116,7 @@ function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender
   const cols = lenders.length
   const pct = cols === 1 ? '100%' : cols === 2 ? '50%' : '33%'
 
-  const headers = lenders.map((l, i) => { const isRec = recommendedLender && l.lenderName === recommendedLender; return `<td width="${pct}" bgcolor="#f8f8f8" style="background:#f8f8f8;padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:13px;font-weight:700;color:#343333;margin:0 0 6px"><span style="color:#343333;">OPTION ${i+1}</span></p><p style="font-size:14px;font-weight:700;color:#2DBEFF;margin:0 0 4px"><span style="color:#2DBEFF;">${l.lenderName} &mdash; ${l.productName}</span></p>${l.approvalDays ? `<p style="font-size:12px;color:#777;margin:4px 0 0"><span style="color:#777;">${l.approvalDays} to approval</span></p>` : ''}${isRec ? '<p style="font-size:11px;font-weight:700;color:#D97706;border:1px solid #D97706;display:inline-block;padding:2px 8px;border-radius:3px;margin:6px 0 0"><span style="color:#D97706;">&#9733; Recommended</span></p>' : ''}${l.specialNote ? `<p style="font-size:11px;color:#dc2626;margin:6px 0 0"><span style="color:#dc2626;">&#10071; ${l.specialNote}</span></p>` : ''}</td>` }).join('')
+  const headers = lenders.map((l, i) => { const isRec = recommendedLender && l.lenderName === recommendedLender; return `<td width="${pct}" bgcolor="#f8f8f8" style="background:#f8f8f8;padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:13px;font-weight:700;color:#343333;margin:0 0 6px"><span style="color:#343333;">OPTION ${i+1}</span></p><p style="font-size:14px;font-weight:700;color:#2DBEFF;margin:0 0 4px"><span style="color:#2DBEFF;">${[l.lenderName, l.productName].map((v: any) => String(v ?? '').trim()).filter(Boolean).join(' &mdash; ')}</span></p>${l.approvalDays ? `<p style="font-size:12px;color:#777;margin:4px 0 0"><span style="color:#777;">${l.approvalDays} to approval</span></p>` : ''}${isRec ? '<p style="font-size:11px;font-weight:700;color:#D97706;border:1px solid #D97706;display:inline-block;padding:2px 8px;border-radius:3px;margin:6px 0 0"><span style="color:#D97706;">&#9733; Recommended</span></p>' : ''}${l.specialNote ? `<p style="font-size:11px;color:#dc2626;margin:6px 0 0"><span style="color:#dc2626;">&#10071; ${l.specialNote}</span></p>` : ''}</td>` }).join('')
 
   let featureCells = ''
   if (isBridging) {
@@ -129,7 +129,28 @@ function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender
       (l: any) => l.docProcessingFee ? tick(`Document Processing Fee of ${money(l.docProcessingFee)}`) : '',
     ]
     featureCells = `<tr>${lenders.map(l => `<td style="padding:14px;border:1px solid #e0e0e0;vertical-align:top">${rows.map(fn => fn(l)).join('')}</td>`).join('')}</tr>`
-    const bridgingRows = lenders.map(l => `<td style="padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:12px;font-weight:600;color:#333;margin:0 0 6px"><span style="color:#333;">Bridging Loan (debt while holding both properties):</span></p><p style="font-size:12px;color:#333;margin:0 0 8px"><span style="color:#333;"><strong>Bridging loan: ${money(l.bridgingLoanAmount) || '$XXX'}</strong></span></p><p style="font-size:12px;color:#333;margin:0"><span style="color:#333;"><strong>Estimated Interest Capitalised (over ${l.bridgingTerm || '12'} months): ${money(l.estimatedInterest) || '$XXX'}</strong></span></p></td>`).join('')
+    // NOTHING INVENTED, NOTHING SPELLED "XXX".
+    //
+    // This printed a literal "$XXX" for a bridging amount nobody had entered,
+    // and fell back to "over 12 months" for a term nobody had chosen - so a
+    // client could be told a bridging period out of thin air. Same cleanup the
+    // BC email had on 8 Sep; it never reached here.
+    //
+    // An empty box means the line is not there. A half-finished card looks
+    // shorter, which is honest, instead of finished and wrong.
+    const bridgingRows = lenders.map(l => {
+      const amount = money(l.bridgingLoanAmount)
+      const interest = money(l.estimatedInterest)
+      const term = String(l.bridgingTerm ?? '').trim()
+      const lines = [
+        `<p style="font-size:12px;font-weight:600;color:#333;margin:0 0 6px"><span style="color:#333;">Bridging Loan (debt while holding both properties):</span></p>`,
+        amount ? `<p style="font-size:12px;color:#333;margin:0 0 8px"><span style="color:#333;"><strong>Bridging loan: ${amount}</strong></span></p>` : '',
+        // The interest is only meaningful alongside the period it was worked
+        // out over, so without a term it says the amount and stops.
+        interest ? `<p style="font-size:12px;color:#333;margin:0"><span style="color:#333;"><strong>Estimated Interest Capitalised${term ? ` (over ${term} months)` : ''}: ${interest}</strong></span></p>` : '',
+      ].filter(Boolean).join('')
+      return `<td style="padding:14px;border:1px solid #e0e0e0;vertical-align:top">${lines}</td>`
+    }).join('')
     featureCells += `<tr>${bridgingRows}</tr>`
   } else {
     const modules = ['variablePI', 'variableIO', 'fixedPI', 'fixedIO'] as const

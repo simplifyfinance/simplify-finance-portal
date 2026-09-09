@@ -938,10 +938,17 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     // This used to refuse to produce the HTML at all when the saved email was
     // for a different scenario. The banner above the preview says so instead,
     // and the send is the broker's call.
-    const fn = (d.firstName || '[Client First Name]').trim()
-    const jfn = (d.jointFirstName || '').trim()
-    const greetingName = (d.joint === 'Yes' && jfn) ? `${fn} and ${jfn}` : fn
-    let clean = `<p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">Hi ${greetingName},</p>`
+    // NEVER A PLACEHOLDER IN WHAT IS SENT.
+    //
+    // This greeted a client with a literal "Hi [Client First Name]," whenever
+    // the name was blank. The brackets look deliberate on a screen and mortifying
+    // in an inbox. No name means no name - "Hello," is a greeting; an unfilled
+    // form field is not.
+    const fn = String(d.firstName ?? '').trim()
+    const jfn = String(d.jointFirstName ?? '').trim()
+    const greetingName = (d.joint === 'Yes' && jfn && fn) ? `${fn} and ${jfn}` : (fn || jfn)
+    const greeting = greetingName ? `Hi ${greetingName},` : 'Hello,'
+    let clean = `<p style="font-size:14px;color:#333;margin-bottom:14px;line-height:1.6">${greeting}</p>`
     // Same as the BC: one <p> per paragraph, not one <p> for the lot.
     clean += emailParagraphs(d.brokerPersonalisation, { colour: '#333', trailing: true })
     // The broker-only block is marked in the generated HTML, so removing it does
