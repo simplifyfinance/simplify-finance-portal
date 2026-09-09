@@ -46,7 +46,6 @@ export default function DealsPage() {
   const [showModal, setShowModal] = useState(false)
   const [userRole, setUserRole] = useState<string>('')
   const [brokerKey, setBrokerKey] = useState<string | null>(null)
-  const [creditOfficerId, setCreditOfficerId] = useState<string | null>(null)
   const [boxFilter, setBoxFilter] = useState<'all' | 'bc' | 'lo' | 'compliance'>('all')
   useEffect(() => {
     browser.auth.getUser().then(({ data: { user } }) => {
@@ -57,23 +56,24 @@ export default function DealsPage() {
           const broker = data?.broker_key || null
           setUserRole(role)
           setBrokerKey(broker)
-          if (role === 'staff') {
-            const { data: officer } = await browser.from('credit_officers').select('id').eq('user_id', user.id).single()
-            setCreditOfficerId(officer?.id || null)
-            fetchDeals(role, broker, officer?.id || null)
-          } else {
-            fetchDeals(role, broker)
-          }
+          // The credit officer lookup that used to happen here existed only to
+          // narrow this list down to a staff member's own files. Staff see the
+          // whole book now, so it was a round trip whose answer was thrown away.
+          fetchDeals(role, broker)
         })
     })
   }, [])
-  async function fetchDeals(role?: string, broker?: string | null, creditOfficerId?: string | null) {
+  async function fetchDeals(role?: string, broker?: string | null) {
     let query = browser.from('deals').select('*, clients(first_name, last_name), credit_officers(name), lenders(name)').order('created_at', { ascending: false })
     if (role === 'broker' && broker) {
       query = query.ilike('assigned_broker', broker)
-    } else if (role === 'staff' && creditOfficerId) {
-      query = query.eq('assigned_credit_officer', creditOfficerId)
     }
+    // STAFF SEE THE WHOLE BOOK.
+    //
+    // Staff used to see only the deals they were the credit officer on, so
+    // Kylie could not see Mark's files at all. Fabio, 9 Sep 2026: "the staff
+    // can see all broker deals." A broker still sees only their own - that one
+    // is deliberate.
     const { data, error } = await query
     if (!error && data) setDeals(data)
     setLoading(false)
@@ -217,13 +217,15 @@ export default function DealsPage() {
   // look broken. There is no Lost column: a dead deal is not work, and inventing
   // a column for it would put one on every screen every morning. So a search
   // that only matches lost deals says so, and offers the list instead.
-  const boardDeals = deals.filter(d => phaseOf(d) !== 'lost' && matchesBox(d) && matchesSearch(d))
+  const boardDeals = deals.filter(d => (showLost || phaseOf(d) !== 'lost') && matchesBox(d) && matchesSearch(d))
   const lostMatches = term
     ? deals.filter(d => phaseOf(d) === 'lost' && matchesBox(d) && matchesSearch(d))
     : []
 
   const totalAssigned = deals.length
-  const isPersonalViewer = !!brokerKey || (userRole === 'staff' && !!creditOfficerId)
+  // Only a broker has a list that is just theirs now. Staff see the whole book,
+  // so calling it "Your deals" would be a lie.
+  const isPersonalViewer = !!brokerKey
   const summaryLabel = isPersonalViewer ? 'Your deals' : 'Total deals'
   // deals is already server-filtered to just this person's deals for brokers/staff-with-officer,
   // and unfiltered (team-wide) for admin or staff without a credit officer record
@@ -345,7 +347,7 @@ export default function DealsPage() {
       {loading ? (
         <div className="text-sm text-gray-400 text-center py-12">Loading deals...</div>
       ) : layout === 'board' ? (
-        <DealBoard deals={boardDeals} nameFor={nameFor} onDelete={askDelete} onMoveBack={moveDealBack}
+        <DealBoard deals={boardDeals} showLost={showLost} nameFor={nameFor} onDelete={askDelete} onMoveBack={moveDealBack}
           colours={{ type: look.type, use: look.use, broker: look.broker }}
           thresholds={look.thresholds} alerts={alerts} />
       ) : filtered.length === 0 ? (

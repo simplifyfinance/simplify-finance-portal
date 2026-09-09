@@ -1,10 +1,14 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { can } from '@/lib/permissions'
 
 export default function CreditOfficerAssignment({ dealId, brokerName, userRole }: { dealId: string; brokerName: string; userRole?: string }) {
   const supabase = createSupabaseBrowser()
-  const isAdmin = userRole === 'admin'
+  // Was hard-coded to admin, so opening up reassignDeals would have changed
+  // nothing on screen - the API would have allowed it and the button would
+  // still not have been there.
+  const isAdmin = can(userRole, 'reassignDeals')
   const [assignedId, setAssignedId] = useState<string | null>(null)
   const [assignedName, setAssignedName] = useState<string>('')
   const [eligible, setEligible] = useState<{ id: string; name: string }[]>([])

@@ -5,7 +5,9 @@ import { useBrokerNames } from '@/lib/broker-names'
 import { sameBroker } from '@/lib/broker-key'
 
 export default function BrokerAssignment({ dealId, currentBroker, userRole }: { dealId: string; currentBroker: string; userRole?: string }) {
-  const isAdmin = can(userRole, 'manageAssignments')
+  // Everybody on the team, not just an admin - see reassignDeals in
+  // lib/permissions.ts. manageAssignments is about the settings screens.
+  const isAdmin = can(userRole, 'reassignDeals')
   const [assignedBroker, setAssignedBroker] = useState(currentBroker || '')
   const { options: brokerOptions, nameFor } = useBrokerNames()
   const [showPicker, setShowPicker] = useState(false)

@@ -57,8 +57,19 @@ const AGE_STYLE: Record<string, string> = {
   long:  'text-[#946017] bg-[#FDF6EC] border-[#EBD9BE]',
 }
 
-export default function DealBoard({ deals, nameFor, colours, thresholds, alerts, onDelete, onMoveBack }: {
+export default function DealBoard({ deals, nameFor, colours, thresholds, alerts, onDelete, onMoveBack, showLost }: {
   deals: any[]
+  // A LOST COLUMN, ONLY WHEN ASKED FOR.
+  //
+  // There was no Lost column and the "Show lost" button sat above a board that
+  // filtered lost deals out before ever reading it - so the button lit up and
+  // nothing happened. Ellie, 9 Sep 2026: "once we close a deal, it doesn't
+  // appear at all, even when we click Show Lost."
+  //
+  // The original reasoning still holds - a dead deal is not work, and a Lost
+  // column on every screen every morning is clutter - so the column appears
+  // only while the button is on, and nothing can be dragged into or out of it.
+  showLost?: boolean
   nameFor: (k: string) => string
   colours?: { type?: any; use?: any; broker?: Record<string, string> }
   // Set in Settings -> Deal board. Undefined falls through to the defaults in
@@ -94,15 +105,17 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
   const byColumn = useMemo(() => {
     const m: Record<string, any[]> = {}
     for (const p of COLUMNS) m[p] = []
+    if (showLost) m['lost'] = []
     for (const d of deals) {
       const p = phaseOf(d)
-      if (p === 'lost') continue          // dead deals are not on the board
+      // Dead deals are off the board unless somebody has asked to see them.
+      if (p === 'lost' && !showLost) continue
       if (m[p]) m[p].push(d)
     }
     // Urgent first, then oldest - the top of a column is the thing to do first,
     // and somebody asking for a deal by Friday outranks a deal that has simply
     // been sitting. The flag ends at lodgement, so this settles itself.
-    for (const p of COLUMNS) {
+    for (const p of Object.keys(m)) {
       m[p].sort((a, b) => {
         const ua = isUrgentNow(a) ? 0 : 1, ub = isUrgentNow(b) ? 0 : 1
         if (ua !== ub) return ua - ub
@@ -110,7 +123,7 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
       })
     }
     return m
-  }, [deals])
+  }, [deals, showLost])
 
   function onDrop(target: Phase) {
     setOver('')
@@ -119,6 +132,15 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
     if (!deal) return
     const from = phaseOf(deal)
     if (from === target) return
+
+    // Closing and reopening a deal is done on the deal itself, with a reason
+    // and a note. Dragging a card sideways into Lost would kill it with
+    // neither, and dragging one out would silently reopen it - so the column
+    // shows, and does nothing else.
+    if (target === 'lost' || from === 'lost') {
+      setMsg('Closing or reopening a deal is done inside the deal, so the reason is recorded.')
+      return
+    }
 
     const fi = COLUMNS.indexOf(from), ti = COLUMNS.indexOf(target)
 
@@ -163,8 +185,9 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
     router.push(`/deals/${deal.id}?stage=Compliance#settlement`)
   }
 
-  const shutCount = COLUMNS.filter(p => folds.includes(p)).length
-  const openCount = COLUMNS.length - shutCount
+  const columns: Phase[] = showLost ? [...COLUMNS, 'lost' as Phase] : COLUMNS
+  const shutCount = columns.filter(p => folds.includes(p)).length
+  const openCount = columns.length - shutCount
 
   return (
     <div>
@@ -240,8 +263,8 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
         </div>
       )}
       <div className="overflow-x-auto pb-2">
-        <div className="flex gap-2.5" style={{ minWidth: openCount * OPEN_W + shutCount * SHUT_W + (COLUMNS.length - 1) * GAP }}>
-          {COLUMNS.map(p => {
+        <div className="flex gap-2.5" style={{ minWidth: openCount * OPEN_W + shutCount * SHUT_W + (columns.length - 1) * GAP }}>
+          {columns.map(p => {
             const cards = byColumn[p] || []
             const total = cards.reduce((t, d) => t + (amountOf(d) || 0), 0)
             const hot = cards.filter(d => ageGroupOf(d, thresholds) === 'nudge').length

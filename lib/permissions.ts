@@ -23,7 +23,11 @@ export const CAPABILITIES = {
   sendClientEmails:  ['admin', 'broker'],
   manageAssignments: ['admin'],
   manageTeam:        ['admin'],
-  reassignDeals:     ['admin'],
+  // Everybody. A deal sitting on the wrong person's name is a deal nobody is
+  // doing, and asking an admin to move it is a queue in front of work that
+  // takes one click. Fabio, 9 Sep 2026: "can you allow all team members to
+  // reassign deals". Who moved it is recorded on the deal either way.
+  reassignDeals:     ['admin', 'broker', 'staff'],
   viewCommissions:   ['admin'],
 } as const
 
