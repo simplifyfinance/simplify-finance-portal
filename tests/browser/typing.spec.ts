@@ -34,7 +34,11 @@ test.describe('typing into a deal', () => {
 
   // THE ONE THAT MATTERS. Kylie, 9 Sep 2026: "it is deleting letters, and
   // spaces, and dots." Typed straight through, exactly as she does it.
-  test('a long note keeps every character', async ({ page }) => {
+  //
+  // Typed, saved and reloaded inside ONE test on purpose. Split across two, the
+  // second depends on the first having run, and a test that only passes in
+  // company is a test that lies the first time somebody runs it alone.
+  test('a long note keeps every character, and survives a reload', async ({ page }) => {
     const box = await openBcNotes(page)
     await box.click()
     await box.press('Meta+a')
@@ -42,13 +46,18 @@ test.describe('typing into a deal', () => {
     // Roughly a fast typist. The faults only ever appeared under a sustained
     // run, never on a slow one.
     await box.pressSequentially(NOTE, { delay: 25 })
-    await page.waitForTimeout(2500)
-    expect(await box.inputValue()).toBe(NOTE)
-  })
 
-  test('and it is still there after a reload', async ({ page }) => {
-    const box = await openBcNotes(page)
-    await expect(box).toHaveValue(NOTE, { timeout: 20_000 })
+    // Every character, before anything is saved. This is the letters test.
+    expect(await box.inputValue()).toBe(NOTE)
+
+    // Wait for the save the form says it has made, rather than guessing at a
+    // number of seconds - the deal page prints the time it last autosaved.
+    await expect(page.getByText(/Autosaved/)).toBeVisible({ timeout: 20_000 })
+    await page.waitForTimeout(1500)
+
+    // And now the database's answer, not the screen's.
+    await page.reload()
+    await expect(page.getByLabel(/Broker summary notes/i)).toHaveValue(NOTE, { timeout: 20_000 })
   })
 
   // The deal page used to shove the form down the screen whenever a notice

@@ -279,12 +279,23 @@ const REFINANCING_TEMPLATES = ['refinance_equity', 'refinance_only', 'investment
 
 const STATES = ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'] as const
 
+// THE LABEL IS ATTACHED TO THE BOX, NOT JUST SITTING ABOVE IT.
+//
+// This drew a <label> as a sibling of the input, which looks identical and means
+// nothing: the box has no name. A screen reader announces "edit text, blank",
+// and on 9 Sep 2026 the browser check could not find the broker summary notes at
+// all - it went looking for the box labelled "Broker summary notes" and there
+// wasn't one, only some grey text that happened to be above it.
+//
+// Wrapping the input in the label attaches the two, for everybody: assistive
+// software, the robot, and anyone clicking a caption expecting the cursor to
+// land in the field under it.
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs text-gray-500">{label}</label>
+    <label className="flex flex-col gap-1">
+      <span className="text-xs text-gray-500">{label}</span>
       {children}
-    </div>
+    </label>
   )
 }
 

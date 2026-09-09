@@ -193,12 +193,14 @@ const LO_TEMPLATE_NOTES: Record<string, string[]> = {
   lo_bridging: ['Any rates or fees quoted are subject to change', 'This email does not constitute as a formal approval'],
 }
 
+// Wrapping, not sitting alongside - so the box actually carries its label. See
+// the same note on Field in BCForm.tsx.
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <label className="text-xs font-medium text-gray-500 block mb-1">{label}</label>
+    <label className="block">
+      <span className="text-xs font-medium text-gray-500 block mb-1">{label}</span>
       {children}
-    </div>
+    </label>
   )
 }
 
