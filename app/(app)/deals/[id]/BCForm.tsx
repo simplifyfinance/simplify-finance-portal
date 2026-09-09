@@ -24,7 +24,8 @@ import { useLiveColumn } from '@/components/useLiveColumn'
 // lib/bc-fields.test.ts can tell "derived on purpose" from "somebody added a
 // field and forgot it can be merged", which is the same silent failure that put
 // thirteen fields in the database and none of them in the client email.
-const BC_DERIVED = ['firstName', 'lastName', 'dependants', 'joint', 'incomeBase', 'lvrPercent', 'netProceeds']
+const BC_DERIVED = ['firstName', 'lastName', 'dependants', 'joint', 'incomeBase', 'lvrPercent', 'netProceeds',
+                    'ccLimit', 'carLoan']
 
 // A finished "client agreed" is not something to hide. It used to disappear the
 // instant it was pressed, which made "already done" look exactly like "broken".
@@ -357,8 +358,19 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     + (joint === 'Yes' ? (readMoney(incomeApplicant2) ?? 0) : 0)
   const [incomeOther, setIncomeOther] = useState(s.incomeOther || '')
   const [incomeRental, setIncomeRental] = useState(s.incomeRental || '')
-  const [ccLimit, setCcLimit] = useState(s.ccLimit || ffLiabs.find((l:any) => l.liabilityType === 'Credit card')?.limitAmount || '')
-  const [carLoan, setCarLoan] = useState(s.carLoan || ffLiabs.find((l:any) => l.liabilityType === 'Car loan')?.repaymentAmount || '')
+  // THE LAST TWO FROZEN COPIES, THAWED.
+  //
+  // These were seeded off the fact find the first time anybody opened the BC and
+  // then never looked again - so paying out a car loan, or dropping a card limit
+  // from $15,000 to $10,000, left the BC and the compliance notes quoting the
+  // old figure for the life of the deal. No box on this form ever set them; the
+  // seeding was the only thing that ever wrote them.
+  //
+  // Exactly the fault that made Alexis Janes's income read $146,380 on the fact
+  // find and $0 everywhere else. The income was fixed on 8 Sep by reading it
+  // live every time instead of remembering it. These are the last two.
+  const ccLimit = String(ffLiabs.find((l: any) => l.liabilityType === 'Credit card')?.limitAmount || '')
+  const carLoan = String(ffLiabs.find((l: any) => l.liabilityType === 'Car loan')?.repaymentAmount || '')
   // personalLoan, hecs, health and living used to sit here too, each copying a
   // figure off the fact find the first time somebody opened this tab and then
   // never looking again. They had no box on this form and nothing read them.
@@ -778,7 +790,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // half of ours and call the result a merge.
   const BC_SETTERS: Record<string, (v: any) => void> = {
     template: setTemplate, splits: setSplits, incomeOther: setIncomeOther, incomeRental: setIncomeRental,
-    ccLimit: setCcLimit, carLoan: setCarLoan, suburb: setSuburb, propertyType: setPropertyType,
+    suburb: setSuburb, propertyType: setPropertyType,
     purchasePropertySubtype: setPurchasePropertySubtype, purchasePrice: setPurchasePrice,
     deposit: setDeposit, stampDuty: setStampDuty, dutyState: setDutyState, lvr: setLvr,
     lvrCustom: setLvrCustom, lmiApplicable: setLmiApplicable, loanTerm: setLoanTerm,
