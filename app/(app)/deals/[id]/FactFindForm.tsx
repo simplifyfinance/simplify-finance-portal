@@ -424,9 +424,21 @@ export default function FactFindForm({ live, deal, onDataChange, onDealFieldChan
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     // The database is the only store - no localStorage copy.
-    onDataChange?.(d)
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
     saveTimeoutRef.current = setTimeout(() => {
+    // ONCE A PAUSE, NOT ONCE A KEYSTROKE.
+    //
+    // This ran on every character. It hands the whole record up to the deal
+    // page, which sets state, which re-renders the header, the pipeline, the
+    // documents strip and this form - on every letter somebody types. A
+    // keystroke arriving during that render is swallowed, and a letter goes
+    // missing out of a finished sentence with nothing to explain it. Kylie,
+    // 9 Sep 2026: "it is deleting letters, and spaces, and dots."
+    //
+    // Nothing needs it sooner than this. It exists so the other tabs and the
+    // figures see current data, and they are not being looked at mid-sentence.
+      onDataChange?.(d)
+
       ;(async () => {
         const out = await saveGuarded({
           supabase, dealId: deal.id, column: 'fact_find_data', guard: guardRef.current, savedBy: me, tabLabel: 'Fact Find', value: d,

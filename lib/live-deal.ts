@@ -24,6 +24,17 @@
 
 import { merge3 } from './deal-merge'
 
+// LIVE EDITING IS OFF.
+//
+// Off since 9 Sep 2026. The fold itself was switched off first; this switch is
+// wider, because the SUBSCRIPTION was still running with the fold disabled -
+// and the subscription was the more expensive half. Every save arriving from
+// the database set a piece of state on the deal page, which re-rendered the
+// whole page, including the box somebody was typing into. See
+// DealPageClient. It goes back on when it has been watched working with two
+// windows open. One line, here.
+export const LIVE_EDITING = false
+
 export type DealColumn = 'fact_find_data' | 'bc_data' | 'lo_data' | 'compliance_data'
 
 export type LiveUpdate = {

@@ -1,6 +1,7 @@
 'use client'
 import { brokerLabel } from '@/lib/broker-key'
 import DealPresence from '@/components/DealPresence'
+import { LIVE_EDITING } from '@/lib/live-deal'
 import DealHistory from '@/components/DealHistory'
 import { canSeeHistory } from '@/lib/permissions'
 import { useState, useEffect } from 'react'
@@ -152,6 +153,14 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   // somebody types, so it cannot also be the signal that somebody else saved.
   const [live, setLive] = useState<{ row: any; at: number } | null>(null)
   useEffect(() => {
+    // NOT EVEN LISTENING WHILE IT IS OFF.
+    //
+    // Switching off the fold was not enough. Every save still arrived here and
+    // set state, and setting state here re-renders the whole deal page - the
+    // header, the pipeline, the documents strip and the form somebody is typing
+    // into. A keystroke that lands during that render is dropped, which is a
+    // letter gone out of a sentence with nothing to explain it.
+    if (!LIVE_EDITING) return
     const channel = supabase
       .channel(`deal-live-${deal.id}`)
       .on('postgres_changes',

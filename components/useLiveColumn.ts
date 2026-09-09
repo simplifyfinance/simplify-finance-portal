@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef } from 'react'
-import { foldIn, isMine, type DealColumn } from '@/lib/live-deal'
+import { foldIn, isMine, LIVE_EDITING, type DealColumn } from '@/lib/live-deal'
 import { adopt, type SaveGuard } from '@/lib/save-conflict'
 
 // NEVER WHILE SOMEBODY IS TYPING.
@@ -52,8 +52,6 @@ const RETRY_MS = 400
 // browser knows what it loaded, and the save guard, the history and the wipe
 // guard all carry on as they are. Nothing that protects data is switched off by
 // this.
-const LIVE_EDITING = false
-
 export function useLiveColumn({ live, column, meId, guard, current, apply }: {
   live?: { row: any; at: number } | null
   column: DealColumn
