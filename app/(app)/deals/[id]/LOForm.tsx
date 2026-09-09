@@ -1415,6 +1415,34 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   </Field>
                 </div>
 
+                {/* WHAT THE LENDER LIBRARY KNOWS ABOUT THIS PRODUCT.
+                  *
+                  * Copied onto the deal the moment the product is chosen, and
+                  * then read by absolutely nothing - not the email, not the
+                  * PDFs, not the notes. On Natasha & Richard Chapman that meant
+                  * the portal held "Annual fee waived with $1000+/month
+                  * deposit" against ING, the lender you recommended, and told
+                  * the client "Annual fee: $299/yr" with no mention of it.
+                  *
+                  * It is NOT put in the email automatically. Some library notes
+                  * are for the client and some are for us - "Package product,
+                  * offset on variable only" is not a sentence to send anybody -
+                  * and a machine cannot tell those apart. So it is shown here,
+                  * and one press puts it in the special note, which does go. */}
+                {String(lender.libraryNotes || '').trim() && (
+                  <div className="flex items-start gap-2 -mt-1 mb-3 text-[12px] text-[#6E665C]">
+                    <span className="text-[#A29889] flex-none">From the lender library:</span>
+                    <span className="flex-1 text-[#2E2A26]">{lender.libraryNotes}</span>
+                    {!String(lender.specialNote || '').trim() && (
+                      <button type="button"
+                        onClick={() => updateLender(i, 'specialNote', String(lender.libraryNotes || '').trim())}
+                        className="flex-none text-[#2DBEFF] hover:underline">
+                        Tell the client
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {/* Refinance: per-lender loan splits with LVR, rate, repayment */}
                 {isRefinance && (
                   <div className="border-t border-gray-100 pt-4 mb-4">
