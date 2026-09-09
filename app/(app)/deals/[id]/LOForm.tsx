@@ -353,6 +353,30 @@ export default function LOForm({ live, deal, onStageChange, userRole, onSaveStat
     return [{ id: makeUid(), label: 'Loan to be refinanced', amount: bc.existingLoanBal || '' }]
   }
 
+  // A STORED RECORD NEVER USED TO GAIN A BOX.
+  //
+  // Opening a deal that already had lo_data handed the stored record back word
+  // for word, so any box added to this tab AFTER that deal was created was not
+  // blank on it - it was absent, permanently. On 9 Sep 2026 ten of the thirteen
+  // deals with lending options had no propertyValue: it was added after they
+  // were made, and nothing has ever put it there.
+  //
+  // propertyValue is what the LVR is measured against. With nothing to divide
+  // by the calculation returns zero and the builder drops the line rather than
+  // printing "LVR 0%" - so on ten deals out of thirteen the client was sent a
+  // lender comparison with no LVR on it and nothing said a word.
+  //
+  // Only ABSENT keys are filled. A box somebody has deliberately cleared holds
+  // an empty string, and that is an answer - it is not the same as never having
+  // been asked the question.
+  function fillMissing(stored: any, fresh: LOData): LOData {
+    const out: any = { ...stored }
+    for (const [key, value] of Object.entries(fresh)) {
+      if (!(key in out)) out[key] = value
+    }
+    return out as LOData
+  }
+
   const initData = (): LOData => {
     // Database first, same as FactFindForm. Reading localStorage first meant two people
     // opening the same deal saw different data, and an empty cache built blank defaults
@@ -360,8 +384,12 @@ export default function LOForm({ live, deal, onStageChange, userRole, onSaveStat
     if (deal?.lo_data && Object.keys(deal.lo_data).length > 0) {
       const fromDb: any = deal.lo_data
       if (!fromDb.refinanceSplits) fromDb.refinanceSplits = initRefinanceSplits()
-      return fromDb
+      return fillMissing(fromDb, blankData())
     }
+    return blankData()
+  }
+
+  function blankData(): LOData {
     const initialTemplate = bc.template?.startsWith('refinance') ? 'lo_refinance' : bc.template === 'bridging' ? 'lo_bridging' : 'lo_purchase'
     return {
       template: initialTemplate,
@@ -573,7 +601,10 @@ export default function LOForm({ live, deal, onStageChange, userRole, onSaveStat
   // been typed here, which is the case that used to put the banner up in front
   // of people who were only looking.
   function putOnScreen(stored: any) {
-    const loaded = { ...(stored as LOData) }
+    // Same fill as on first load - a record arriving from the database later
+    // must not be missing boxes that a record arriving at open would have. See
+    // fillMissing().
+    const loaded = fillMissing(stored, blankData())
     if (!loaded.importantNotes) loaded.importantNotes = (LO_TEMPLATE_NOTES[loaded.template] || []).join('\n')
     if (!loaded.refinanceSplits) loaded.refinanceSplits = initRefinanceSplits()
     savedRef.current = JSON.stringify(loaded)
