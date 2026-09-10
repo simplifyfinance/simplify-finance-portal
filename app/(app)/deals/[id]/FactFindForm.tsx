@@ -17,6 +17,7 @@ import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET
 import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship } from '@/lib/relationship'
 import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS } from '@/lib/fact-find'
 import { newGuard, saveGuarded } from '@/lib/save-conflict'
+import { withDefaults } from '@/lib/record-defaults'
 import { useLiveColumn } from '@/components/useLiveColumn'
 
 function incrementFY(fy: string): string {
@@ -357,11 +358,16 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     return apps.length > 0 ? apps : [defaultApplicant()]
   }
 
+  // THE SAME TRAP AS THE COMPLIANCE TAB, FOUND WHILE FIXING IT.
+  //
+  // This returned a saved record untouched too, and this page renders
+  // d.applicants.map, d.assets.map, d.properties.map and d.liabilities.map. A
+  // fact_find_data written by anything other than this form - an import, a
+  // clone, a future screen - with any of those four missing would take the page
+  // down exactly as Wesley Perrott took down compliance on 10 Sep 2026.
+  // Nobody has hit it. It is closed anyway. See lib/record-defaults.ts.
   const initData = (): FactFindData => {
-    if (deal?.fact_find_data && Object.keys(deal.fact_find_data).length > 0) {
-      return deal.fact_find_data as FactFindData
-    }
-    return {
+    const blank: FactFindData = {
       applicants: getInitialApplicants(),
       assets: [],
       properties: [],
@@ -373,6 +379,12 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       goals2Years: '',
       goals10Years: ''
     }
+    return withDefaults<FactFindData>(deal?.fact_find_data, blank, {
+      applicants: 'arrayNotEmpty',   // this page reads d.applicants[activeApplicant]
+      assets: 'array',
+      properties: 'array',
+      liabilities: 'array',
+    })
   }
 
   const [d, setD] = useState<FactFindData>(initData)

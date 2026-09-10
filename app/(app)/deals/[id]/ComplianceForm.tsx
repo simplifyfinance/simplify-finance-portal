@@ -37,6 +37,7 @@ import { creditHistoryFacts, creditHistoryBlock } from '@/lib/credit-history-fac
 import { boxOne, type Gap } from '@/lib/box-one'
 import { boxTwo, boxThree } from '@/lib/box-goals'
 import { boxFour } from '@/lib/box-four'
+import { withDefaults } from '@/lib/record-defaults'
 import { dealFigures, figureChanges, notesMentioning } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import DealStructure from '@/components/DealStructure'
@@ -491,22 +492,15 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
       clientChosenLenderReason: ''
     }
 
-    if (!stored) return blank
-
-    // The saved record wins on everything it holds. The four that the page
-    // cannot render without are taken from the defaults when they are absent or
-    // the wrong shape - a null, an array where an object belongs, a record
-    // written by another screen entirely.
-    const obj = (x: any) => x && typeof x === 'object' && !Array.isArray(x)
-    return {
-      ...blank,
-      ...stored,
-      applicants: Array.isArray(stored.applicants) && stored.applicants.length ? stored.applicants : blank.applicants,
-      risks: obj(stored.risks) ? stored.risks : blank.risks,
-      productReqs: obj(stored.productReqs) ? { ...blank.productReqs, ...stored.productReqs } : blank.productReqs,
-      expenses: obj(stored.expenses) ? stored.expenses : blank.expenses,
-      aiMeta: obj(stored.aiMeta) ? stored.aiMeta : {},
-    }
+    // See lib/record-defaults.ts for the Wesley Perrott failure this prevents,
+    // and its tests for every shape a saved record has turned up in.
+    return withDefaults<ComplianceData>(stored, blank, {
+      applicants: 'arrayNotEmpty',   // the page reads d.applicants[0] on the first render
+      risks: 'object',
+      productReqs: 'object',
+      expenses: 'object',
+      aiMeta: 'object',
+    })
   }
 
   const [d, setD] = useState<ComplianceData>(initData)

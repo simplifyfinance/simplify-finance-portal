@@ -2,6 +2,7 @@
 import { brokerLabel } from '@/lib/broker-key'
 import DealPresence from '@/components/DealPresence'
 import DealHistory from '@/components/DealHistory'
+import TabBoundary from '@/components/TabBoundary'
 import { canSeeHistory } from '@/lib/permissions'
 import { useState, useEffect } from 'react'
 import { ArrowLeft } from 'lucide-react'
@@ -338,12 +339,14 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
       <TabLock locked={isLocked(dealData) && unlockedTab !== stage} tab={stage} dealId={dealData.id}
         role={userRole} me={me}
         onUnlocked={() => { setUnlockedTab(stage); reloadFile() }}>
-        {stage === 'FactFind' && <FactFindForm whoElseHere={whoElseHere} me={me} deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
-        {stage === 'Statements' && <StatementAnalysis deal={dealData} />}
-        {stage === 'BC' && <BCForm whoElseHere={whoElseHere} me={me} deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
-        {stage === 'LO' && <LOForm whoElseHere={whoElseHere} me={me} deal={dealData} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} />}
-        {stage === 'Compliance' && <ComplianceForm whoElseHere={whoElseHere} me={me} deal={dealData} onSaveStatus={setSaveStatus}
-          onDealPatched={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />}
+        <TabBoundary tab={stage}>
+          {stage === 'FactFind' && <FactFindForm whoElseHere={whoElseHere} me={me} deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
+          {stage === 'Statements' && <StatementAnalysis deal={dealData} />}
+          {stage === 'BC' && <BCForm whoElseHere={whoElseHere} me={me} deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
+          {stage === 'LO' && <LOForm whoElseHere={whoElseHere} me={me} deal={dealData} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} />}
+          {stage === 'Compliance' && <ComplianceForm whoElseHere={whoElseHere} me={me} deal={dealData} onSaveStatus={setSaveStatus}
+            onDealPatched={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />}
+        </TabBoundary>
       </TabLock>
     </div>
   )
