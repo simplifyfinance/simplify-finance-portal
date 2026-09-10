@@ -1338,7 +1338,8 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                 <textarea spellCheck="true" aria-label={label} className={inp + ' min-h-[100px] resize-y'} value={(d as any)[key]}
                   onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
                   placeholder="Click Write from the deal, or type it yourself..." />
-                <AIButton onClick={() => generateField(key)} loading={generating[key]} label="Write from the deal" />
+                <AIButton onClick={() => generateField(key)} loading={generating[key]}
+                  label={COMPOSERS[key] ? 'Write from the deal' : undefined} />
                 <button onClick={() => { setFlaggingField(flaggingField === key ? null : key); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
                 {flaggingField === key && (
                   <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
@@ -1597,7 +1598,8 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                 <textarea spellCheck="true" aria-label={label} className={inp + ' min-h-[120px] resize-y'} value={(d as any)[key]}
                   onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
                   placeholder="Click Generate with AI or type manually..." />
-                <AIButton onClick={() => generateField(key)} loading={generating[key]} />
+                <AIButton onClick={() => generateField(key)} loading={generating[key]}
+                  label={COMPOSERS[key] ? 'Write from the deal' : undefined} />
                 <button onClick={() => { setFlaggingField(flaggingField === key ? null : key); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
                 {flaggingField === key && (
                   <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
@@ -1624,7 +1626,8 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                   <textarea spellCheck="true" aria-label={label} className={inp + ' min-h-[100px] resize-y'} value={(d as any)[key]}
                     onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
                     placeholder="Click Generate..." />
-                  <AIButton onClick={() => generateField(key)} loading={generating[key]} />
+                  <AIButton onClick={() => generateField(key)} loading={generating[key]}
+                    label={COMPOSERS[key] ? 'Write from the deal' : undefined} />
                 <button onClick={() => { setFlaggingField(flaggingField === key ? null : key); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
                 {flaggingField === key && (
                   <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
