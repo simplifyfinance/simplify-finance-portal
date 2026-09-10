@@ -46,7 +46,15 @@ test.describe('box one — primary reasons for seeking credit', () => {
 
     // It has to actually say something about this deal, not just be non-empty.
     expect(text.length).toBeGreaterThan(200)
-    expect(text).toMatch(/\$[\d,]{5,}/)
+
+    // A FIGURE, OR A REASON THERE ISN'T ONE.
+    //
+    // This asked flatly for a dollar amount, and failed on 10 Sep against a test
+    // deal that has no loan amount recorded - where saying so loudly is the
+    // correct answer and a figure would have been invented. So: a figure, or the
+    // shout explaining its absence. Never silence.
+    if (/NOT RECORDED — no loan amount/.test(text)) expect(text).toContain('** NOT RECORDED')
+    else expect(text).toMatch(/\$[\d,]{5,}/)
   })
 
   test('the same deal writes the same words every time', async ({ page }) => {

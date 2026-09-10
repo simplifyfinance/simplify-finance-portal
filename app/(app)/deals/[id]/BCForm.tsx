@@ -781,6 +781,29 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // The seeded values are still written the moment somebody actually edits
   // something - they are just no longer written by looking.
   const savedRef = useRef<string | null>(null)
+  // HAS A PERSON TOUCHED THIS FORM YET?
+  //
+  // THE BUG THIS REPLACES, 10 Sep 2026. The autosave waits 700ms after the last
+  // keystroke, and there was a rule saying "the first time this fires is the form
+  // arriving on screen, never a person" - there to stop a freshly opened form
+  // writing itself back over a real record.
+  //
+  // But it meant the first time the TIMER fired, and every keystroke restarts the
+  // timer. So anyone who started typing within 700ms of the page settling never
+  // had that first timer fire on the empty form. It fired later carrying THEIR
+  // TYPING, and threw it away as "the form arriving". No error, no warning, and
+  // the words still sitting on screen looking saved.
+  //
+  // The robot caught it: "NONE. The page never tried to save."
+  //
+  // The intent was right and the test for it was wrong. This is the same rule
+  // asked properly: not "is this the first timer" but "has a human touched this
+  // form". Set from a real input event, so the settings fetch correcting the
+  // brand, or a colleague's fields being folded in, still count as arrival and
+  // still do not write - while the first thing a person types always saves.
+  const touchedRef = useRef(false)
+  const markTouched = () => { touchedRef.current = true }
+
 
   // PUTTING SOMEBODY ELSE'S BOXES BACK ONTO THIS SCREEN.
   //
@@ -861,7 +884,10 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
       // reached the database, which is why silent failures went unnoticed for weeks.
       const now = JSON.stringify(data)
       // The very first run is the form arriving on screen, never a person.
-      if (savedRef.current === null) { savedRef.current = now; return }
+      // Nobody has touched this form, so whatever changed did not come from a
+      // person - the record loading in, a default being applied, somebody else's
+      // fields folded in. That is arrival, not an edit, and arrival never writes.
+      if (!touchedRef.current) { savedRef.current = now; return }
       if (now === savedRef.current) return
       ;(async () => {
         const out = await saveGuarded({
@@ -1195,7 +1221,7 @@ Key assumptions: ${checklistText}`
   }
 
   return (
-    <div>
+    <div onInputCapture={markTouched} onChangeCapture={markTouched}>
       <div className="flex gap-2 mb-4 items-center flex-wrap">
         {[['form','BC form'],['preview','Preview & share']].map(([id,label]) => (
           <button key={id} onClick={() => setActiveTab(id as any)}

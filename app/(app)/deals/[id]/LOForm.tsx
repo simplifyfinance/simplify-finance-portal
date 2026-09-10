@@ -441,6 +441,29 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // What the database last agreed with. Anything equal to this is not an edit,
   // so opening the form, or a re-render, never writes.
   const savedRef = useRef<string | null>(null)
+  // HAS A PERSON TOUCHED THIS FORM YET?
+  //
+  // THE BUG THIS REPLACES, 10 Sep 2026. The autosave waits 700ms after the last
+  // keystroke, and there was a rule saying "the first time this fires is the form
+  // arriving on screen, never a person" - there to stop a freshly opened form
+  // writing itself back over a real record.
+  //
+  // But it meant the first time the TIMER fired, and every keystroke restarts the
+  // timer. So anyone who started typing within 700ms of the page settling never
+  // had that first timer fire on the empty form. It fired later carrying THEIR
+  // TYPING, and threw it away as "the form arriving". No error, no warning, and
+  // the words still sitting on screen looking saved.
+  //
+  // The robot caught it: "NONE. The page never tried to save."
+  //
+  // The intent was right and the test for it was wrong. This is the same rule
+  // asked properly: not "is this the first timer" but "has a human touched this
+  // form". Set from a real input event, so the settings fetch correcting the
+  // brand, or a colleague's fields being folded in, still count as arrival and
+  // still do not write - while the first thing a person types always saves.
+  const touchedRef = useRef(false)
+  const markTouched = () => { touchedRef.current = true }
+
   const canSendToClient = can(userRole, 'sendClientEmails')
 
   useEffect(() => {
@@ -632,7 +655,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       // overwriting the real amount with this form's estimate.
       const now = JSON.stringify(d)
       // The very first run is the form arriving on screen, never a person.
-      if (savedRef.current === null) { savedRef.current = now; return }
+      // Nobody has touched this form, so whatever changed did not come from a
+      // person - the record loading in, a default being applied, somebody else's
+      // fields folded in. That is arrival, not an edit, and arrival never writes.
+      if (!touchedRef.current) { savedRef.current = now; return }
       if (now === savedRef.current) return
 
       // The loan amount goes onto the DEAL, not just into lo_data.
@@ -1085,7 +1111,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   const isRefinance = d.template === 'lo_refinance'
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" onInputCapture={markTouched} onChangeCapture={markTouched}>
       <div className="flex gap-2 items-center flex-wrap">
         <div className="flex gap-2 bg-white border border-gray-100 rounded-xl p-1">
           {(['form', 'preview'] as const).map(t => (

@@ -53,6 +53,26 @@ done
 HEADED_FLAG=""
 if [ -n "${HEADED:-}" ]; then HEADED_FLAG="--headed"; fi
 
+# RUNNING ONE TEST BY HAND.
+#
+# With no arguments this is the ship gate: it runs everything, keeps quiet, and
+# reports only what it did not like. Given a name it runs just that one and puts
+# the whole output on the screen - which is what you want when the test exists to
+# tell you something rather than to pass.
+#
+#   ./scripts/check-browser.sh save-diagnosis
+#
+# It borrows the gate's setup, so .env.local, the signed-in session and the
+# freshly built server are all already in place. Fabio, 10 Sep 2026: running
+# playwright straight off skipped the test, because the deal id lives in
+# .env.local and nothing had loaded it.
+if [ "$#" -gt 0 ]; then
+  PORTAL_TEST_URL="http://localhost:$PORT" npx playwright test "$@" $HEADED_FLAG --reporter=list
+  RESULT=$?
+  kill $SERVER 2>/dev/null || true
+  exit $RESULT
+fi
+
 PORTAL_TEST_URL="http://localhost:$PORT" npx playwright test $HEADED_FLAG > /tmp/ship-browser.log 2>&1
 RESULT=$?
 

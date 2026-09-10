@@ -7,7 +7,7 @@
 # Test info
 
 - Name: boxone.spec.ts >> box one — primary reasons for seeking credit >> the same deal writes the same words every time
-- Location: tests/browser/boxone.spec.ts:52:7
+- Location: tests/browser/boxone.spec.ts:60:7
 
 # Error details
 
@@ -282,58 +282,66 @@ Received: ""
   46  | 
   47  |     // It has to actually say something about this deal, not just be non-empty.
   48  |     expect(text.length).toBeGreaterThan(200)
-  49  |     expect(text).toMatch(/\$[\d,]{5,}/)
-  50  |   })
-  51  | 
-  52  |   test('the same deal writes the same words every time', async ({ page }) => {
-  53  |     // The wording varies across the book and never within one file - otherwise
-  54  |     // pressing the button twice rewords a file underneath the team.
-  55  |     await page.goto(`/deals/${DEAL}`)
-  56  |     await page.getByRole('button', { name: /^Compliance$/ }).click()
-  57  |     await page.getByRole('button', { name: /Needs & objectives/ }).click()
-  58  |     const box = page.getByLabel(/Primary reasons for seeking credit/i)
-  59  |     await expect(box).toBeVisible({ timeout: 20_000 })
-  60  | 
-  61  |     await page.getByRole('button', { name: /Write from the deal/i }).click()
-  62  |     await expect(box).not.toHaveValue('', { timeout: 5_000 })
-  63  |     const first = await box.inputValue()
-  64  | 
-  65  |     await page.getByRole('button', { name: /Write from the deal/i }).click()
-  66  |     await page.waitForTimeout(500)
-> 67  |     expect(await box.inputValue()).toBe(first)
+  49  | 
+  50  |     // A FIGURE, OR A REASON THERE ISN'T ONE.
+  51  |     //
+  52  |     // This asked flatly for a dollar amount, and failed on 10 Sep against a test
+  53  |     // deal that has no loan amount recorded - where saying so loudly is the
+  54  |     // correct answer and a figure would have been invented. So: a figure, or the
+  55  |     // shout explaining its absence. Never silence.
+  56  |     if (/NOT RECORDED — no loan amount/.test(text)) expect(text).toContain('** NOT RECORDED')
+  57  |     else expect(text).toMatch(/\$[\d,]{5,}/)
+  58  |   })
+  59  | 
+  60  |   test('the same deal writes the same words every time', async ({ page }) => {
+  61  |     // The wording varies across the book and never within one file - otherwise
+  62  |     // pressing the button twice rewords a file underneath the team.
+  63  |     await page.goto(`/deals/${DEAL}`)
+  64  |     await page.getByRole('button', { name: /^Compliance$/ }).click()
+  65  |     await page.getByRole('button', { name: /Needs & objectives/ }).click()
+  66  |     const box = page.getByLabel(/Primary reasons for seeking credit/i)
+  67  |     await expect(box).toBeVisible({ timeout: 20_000 })
+  68  | 
+  69  |     await page.getByRole('button', { name: /Write from the deal/i }).click()
+  70  |     await expect(box).not.toHaveValue('', { timeout: 5_000 })
+  71  |     const first = await box.inputValue()
+  72  | 
+  73  |     await page.getByRole('button', { name: /Write from the deal/i }).click()
+  74  |     await page.waitForTimeout(500)
+> 75  |     expect(await box.inputValue()).toBe(first)
       |                                    ^ Error: expect(received).toBe(expected) // Object.is equality
-  68  |   })
-  69  | 
-  70  |   test('a gap is shouted, on the screen and in the text', async ({ page }) => {
-  71  |     // Only meaningful when the test deal actually has a gap. When it has none,
-  72  |     // the paragraph must not be shouting either - both directions are checked.
-  73  |     await page.goto(`/deals/${DEAL}`)
-  74  |     await page.getByRole('button', { name: /^Compliance$/ }).click()
-  75  |     await page.getByRole('button', { name: /Needs & objectives/ }).click()
-  76  |     const box = page.getByLabel(/Primary reasons for seeking credit/i)
-  77  |     await expect(box).toBeVisible({ timeout: 20_000 })
-  78  | 
-  79  |     await page.getByRole('button', { name: /Write from the deal/i }).click()
-  80  |     await expect(box).not.toHaveValue('', { timeout: 5_000 })
-  81  |     const text = await box.inputValue()
-  82  |     const shouting = /\*\* NOT RECORDED|\*\* ONLY ONE LENDER|\*\* NO RECOMMENDED/.test(text)
-  83  |     const list = page.getByText(/Recorded nowhere/)
-  84  | 
-  85  |     if (shouting) await expect(list).toBeVisible()
-  86  |     else await expect(list).toHaveCount(0)
-  87  |   })
-  88  | 
-  89  |   test('the fact find turns red when the purpose is missing', async ({ page }) => {
-  90  |     await page.goto(`/deals/${DEAL}`)
-  91  |     await page.getByRole('button', { name: /^Fact Find$/ }).click()
-  92  |     const purpose = page.getByLabel(/Purpose of loan/i)
-  93  |     await expect(purpose).toBeVisible({ timeout: 20_000 })
-  94  | 
-  95  |     const filled = (await purpose.inputValue()).trim().length > 0
-  96  |     const warning = page.getByText(/Compliance box 1 cannot be written without this/)
-  97  |     if (filled) await expect(warning).toHaveCount(0)
-  98  |     else await expect(warning).toBeVisible()
-  99  |   })
-  100 | })
-  101 | 
+  76  |   })
+  77  | 
+  78  |   test('a gap is shouted, on the screen and in the text', async ({ page }) => {
+  79  |     // Only meaningful when the test deal actually has a gap. When it has none,
+  80  |     // the paragraph must not be shouting either - both directions are checked.
+  81  |     await page.goto(`/deals/${DEAL}`)
+  82  |     await page.getByRole('button', { name: /^Compliance$/ }).click()
+  83  |     await page.getByRole('button', { name: /Needs & objectives/ }).click()
+  84  |     const box = page.getByLabel(/Primary reasons for seeking credit/i)
+  85  |     await expect(box).toBeVisible({ timeout: 20_000 })
+  86  | 
+  87  |     await page.getByRole('button', { name: /Write from the deal/i }).click()
+  88  |     await expect(box).not.toHaveValue('', { timeout: 5_000 })
+  89  |     const text = await box.inputValue()
+  90  |     const shouting = /\*\* NOT RECORDED|\*\* ONLY ONE LENDER|\*\* NO RECOMMENDED/.test(text)
+  91  |     const list = page.getByText(/Recorded nowhere/)
+  92  | 
+  93  |     if (shouting) await expect(list).toBeVisible()
+  94  |     else await expect(list).toHaveCount(0)
+  95  |   })
+  96  | 
+  97  |   test('the fact find turns red when the purpose is missing', async ({ page }) => {
+  98  |     await page.goto(`/deals/${DEAL}`)
+  99  |     await page.getByRole('button', { name: /^Fact Find$/ }).click()
+  100 |     const purpose = page.getByLabel(/Purpose of loan/i)
+  101 |     await expect(purpose).toBeVisible({ timeout: 20_000 })
+  102 | 
+  103 |     const filled = (await purpose.inputValue()).trim().length > 0
+  104 |     const warning = page.getByText(/Compliance box 1 cannot be written without this/)
+  105 |     if (filled) await expect(warning).toHaveCount(0)
+  106 |     else await expect(warning).toBeVisible()
+  107 |   })
+  108 | })
+  109 | 
 ```
