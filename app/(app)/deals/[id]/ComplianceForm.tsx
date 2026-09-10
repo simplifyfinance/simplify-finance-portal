@@ -35,6 +35,7 @@ import { newGuard, adopt, saveGuarded } from '@/lib/save-conflict'
 import { selfEmployedParagraphsFor } from '@/lib/self-employed-facts'
 import { creditHistoryFacts, creditHistoryBlock } from '@/lib/credit-history-facts'
 import { boxOne, type Gap } from '@/lib/box-one'
+import { boxTwo, boxThree } from '@/lib/box-goals'
 import { dealFigures, figureChanges, notesMentioning } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import DealStructure from '@/components/DealStructure'
@@ -660,13 +661,20 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   // There is no model in it, so it cannot invent a purpose, a feature or a
   // figure, and the same deal reads the same way every time it is written. The
   // other eight boxes are untouched.
-  const [boxOneGaps, setBoxOneGaps] = useState<Gap[]>([])
+  const [boxGaps, setBoxGaps] = useState<Record<string, Gap[]>>({})
 
-  function composeBoxOne() {
-    const r = boxOne(deal)
-    setBoxOneGaps(r.gaps)
-    setD(prev => ({ ...prev, needsPrimary: r.text,
-      aiMeta: { ...prev.aiMeta, needsPrimary: {
+  // The three needs and objectives boxes, all composed the same way.
+  const COMPOSERS: Record<string, (deal: any) => { text: string; gaps: Gap[] }> = {
+    needsPrimary: boxOne,
+    needsImmediate: boxTwo,
+    needsLongTerm: boxThree,
+  }
+
+  function compose(field: string) {
+    const r = COMPOSERS[field](deal)
+    setBoxGaps(prev => ({ ...prev, [field]: r.gaps }))
+    setD(prev => ({ ...prev, [field]: r.text,
+      aiMeta: { ...prev.aiMeta, [field]: {
         confidence: r.gaps.length === 0 ? 'High' : 'Medium',
         source: r.gaps.length === 0
           ? 'Composed from the deal - fact find, BC and lending options'
@@ -675,7 +683,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   }
 
   async function generateField(field: string) {
-    if (field === 'needsPrimary') { composeBoxOne(); return }
+    if (COMPOSERS[field]) { compose(field); return }
     setGenerating(prev => ({ ...prev, [field]: true }))
     const recLender = (lo.lenders || []).find((l: any) => l.lenderName === lo.recommendedLender) || lo.lenders?.[0] || {}
     // The model is told plainly how many people this loan is for. It used to be
@@ -1284,7 +1292,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <div className="flex items-center justify-between mb-2">
               <SectionHeader title="Needs & objectives" />
-              <AIButton onClick={generateNeeds} loading={['needsPrimary', 'needsImmediate', 'needsLongTerm'].some(f => generating[f])} label="Generate all fields" />
+              <AIButton onClick={generateNeeds} loading={['needsPrimary', 'needsImmediate', 'needsLongTerm'].some(f => generating[f])} label="Write all three from the deal" />
             </div>
             {[
               { key: 'needsPrimary', label: 'Primary reasons for seeking credit' },
@@ -1295,9 +1303,8 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                 <label className="text-xs font-medium text-gray-500 block mb-1">{label}</label>
                 <textarea spellCheck="true" aria-label={label} className={inp + ' min-h-[100px] resize-y'} value={(d as any)[key]}
                   onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
-                  placeholder={key === 'needsPrimary' ? 'Click Write from the deal, or type it yourself...' : 'Click Generate with AI or type manually...'} />
-                <AIButton onClick={() => generateField(key)} loading={generating[key]}
-                  label={key === 'needsPrimary' ? 'Write from the deal' : undefined} />
+                  placeholder="Click Write from the deal, or type it yourself..." />
+                <AIButton onClick={() => generateField(key)} loading={generating[key]} label="Write from the deal" />
                 <button onClick={() => { setFlaggingField(flaggingField === key ? null : key); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
                 {flaggingField === key && (
                   <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
@@ -1308,10 +1315,10 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                     </div>
                   </div>
                 )}
-                {key === 'needsPrimary' && boxOneGaps.length > 0 && (
+                {(boxGaps[key] || []).length > 0 && (
                   <div className="mt-2 bg-red-50 border border-red-200 border-l-[3px] border-l-red-600 rounded-lg px-3 py-2">
                     <p className="text-xs font-semibold text-red-800 mb-1">Recorded nowhere — these must be filled in before this file is submitted</p>
-                    {boxOneGaps.map(g => (
+                    {(boxGaps[key] || []).map(g => (
                       <p key={g.what} className="text-xs text-red-700">· {g.what} — <span className="text-red-500">{g.where}</span></p>
                     ))}
                   </div>

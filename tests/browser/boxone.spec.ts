@@ -122,3 +122,40 @@ test.describe('box one — primary reasons for seeking credit', () => {
     else await expect(warning).toBeVisible()
   })
 })
+
+// BOXES TWO AND THREE, PRESSED THE SAME WAY.
+//
+// Same button, same composer, same rules. This is deliberately short: the
+// wording is covered by 28 unit tests in lib/box-goals.test.ts, and what a
+// browser adds is proof that the button on the screen reaches them at all.
+test.describe('boxes two and three', () => {
+  test.skip(!DEAL, 'Set PORTAL_TEST_DEAL_ID in .env.local.')
+
+  for (const [label, box] of [
+    ['Immediate needs & objectives — next 2 years', 'two'],
+    ['Longer term — 2 to 10 years', 'three'],
+  ]) {
+    test(`box ${box} writes a paragraph built from the deal`, async ({ page }) => {
+      await page.goto(`/deals/${DEAL}`)
+      await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
+      await page.getByRole('button', { name: /^Compliance$/ }).click()
+      await page.getByRole('button', { name: /Needs & objectives/ }).click()
+
+      const field = page.getByLabel(label)
+      await expect(field).toBeVisible({ timeout: 20_000 })
+      await field.click()
+      await field.press('Meta+a')
+      await field.press('Delete')
+
+      // Each box has its own button; the one directly under this field.
+      await page.getByRole('button', { name: /Write from the deal/i })
+        .nth(box === 'two' ? 1 : 2).click()
+      await expect(field).not.toHaveValue('', { timeout: 5_000 })
+
+      const text = await field.inputValue()
+      expect(text).not.toMatch(/oo_purchase|investment_equity|undefined|NaN|\[calculated\]|\$XXX/)
+      expect(text).not.toMatch(/ {2}|\.\.|,,/)
+      expect(text.length).toBeGreaterThan(80)
+    })
+  }
+})
