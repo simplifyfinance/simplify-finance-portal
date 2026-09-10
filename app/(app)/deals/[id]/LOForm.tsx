@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { formatAsTyped } from '@/lib/money'
 import { emptyGuard, adopt, saveGuarded } from '@/lib/save-conflict'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -274,9 +274,34 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     assigned_credit_officer: deal.assigned_credit_officer || null,
   })
   const [docsFiler, setDocsFiler] = useState('')
+
+  // THE PANEL HAS TO KEEP LOOKING.
+  //
+  // This was seeded once at mount and never looked again, so a page that was
+  // already open while somebody else pressed the button kept showing whatever it
+  // read on the way in - and in Kylie's case that was a red panel saying nobody
+  // would be emailed, about an email that was already with Resend. It follows
+  // the deal now, and a clock nudges it past the two minute mark so "being
+  // scheduled" resolves itself without anybody reloading.
+  useEffect(() => {
+    setDocsDeal({
+      docs_received_at: deal.docs_received_at || null,
+      docs_received_by: deal.docs_received_by || null,
+      docs_assessor_due_at: deal.docs_assessor_due_at || null,
+      assigned_credit_officer: deal.assigned_credit_officer || null,
+    })
+  }, [deal.docs_received_at, deal.docs_received_by, deal.docs_assessor_due_at, deal.assigned_credit_officer])
+
+  const [docsTick, setDocsTick] = useState(0)
+  useEffect(() => {
+    if (!docsDeal.docs_received_at || docsDeal.docs_assessor_due_at) return
+    const t = setInterval(() => setDocsTick(n => n + 1), 15_000)
+    return () => clearInterval(t)
+  }, [docsDeal.docs_received_at, docsDeal.docs_assessor_due_at])
   const [docsBusy, setDocsBusy] = useState(false)
   const [docsErr, setDocsErr] = useState('')
-  const docs = docsStateOf(docsDeal)
+  // docsTick only exists to make this recompute - see the interval above.
+  const docs = useMemo(() => docsStateOf(docsDeal), [docsDeal, docsTick])
 
   useEffect(() => {
     let live = true
@@ -1186,6 +1211,12 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           rename and file the documents.{' '}
           <b className="text-[#0F5C33]">The credit assessor was emailed at {atTime(docs.dueAt)}</b> to
           say they are ready.
+        </div>
+      )}
+      {docs.kind === 'sending' && (
+        <div className="border border-[#CBE7F8] bg-[#F5FBFE] rounded-xl px-4 py-3 text-[13px] text-[#0B5E8A] leading-relaxed">
+          <b className="text-[#141C24]">{docsFiler || 'The filing team'} has been emailed</b> and the
+          credit assessor's email is being scheduled now. This line will name the time in a moment.
         </div>
       )}
       {docs.kind === 'unscheduled' && (

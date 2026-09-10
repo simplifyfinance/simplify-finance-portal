@@ -49,18 +49,45 @@ export function assessorMissing(deal: any): boolean {
 
 export type DocsState =
   | { kind: 'none' }
+  // Pressed a moment ago. The claim is on the record, the emails are still on
+  // their way out - see STILL_GOING_OUT_MS.
+  | { kind: 'sending'; receivedAt: string }
   // Marked. Cris has been told; the assessor's email is sitting with Resend.
   | { kind: 'waiting'; receivedAt: string; dueAt: Date }
   | { kind: 'done'; receivedAt: string; dueAt: Date }
-  // Marked, but the assessor's email could not be scheduled. Said out loud
+  // Marked, and the assessor's email really was never scheduled. Said out loud
   // rather than left looking finished.
   | { kind: 'unscheduled'; receivedAt: string }
+
+// A GAP IS NOT A FAILURE, FOR THE FIRST TWO MINUTES.
+//
+// 10 Sep 2026. Ellie pressed "Docs received" on William Welton. Kylie was in the
+// same deal, her page read the record while the press was still running, and she
+// was told in red that nobody was going to be emailed. The email was with Resend
+// the whole time - id 65aafb98, due 10:57.
+//
+// The route claims the deal FIRST, writing docs_received_at so two people cannot
+// press it at once, and only then emails the filing team, hands the assessor's
+// copy to Resend and writes the due time. For those few seconds the record
+// genuinely reads "marked, assessor not scheduled" - which is the exact shape
+// the red panel tests for.
+//
+// So the red is held back until the press has had time to finish. Before that it
+// is what it actually is: still going out.
+export const STILL_GOING_OUT_MS = 2 * 60_000
 
 export function docsStateOf(deal: any, now = new Date()): DocsState {
   const receivedAt = deal?.docs_received_at
   if (!receivedAt) return { kind: 'none' }
   const due = deal?.docs_assessor_due_at
-  if (!due) return { kind: 'unscheduled', receivedAt }
+  if (!due) {
+    const since = now.getTime() - new Date(receivedAt).getTime()
+    // Negative on a clock that disagrees with the server's; that is still "just
+    // pressed", never "failed two minutes ago".
+    return since < STILL_GOING_OUT_MS
+      ? { kind: 'sending', receivedAt }
+      : { kind: 'unscheduled', receivedAt }
+  }
   const dueAt = new Date(due)
   // The clock decides, because Resend owns the send and will not tell us it
   // happened. Once the time is past, it has gone.

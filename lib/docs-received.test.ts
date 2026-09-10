@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { docsDelayMinutes, assessorDueAt, docsStateOf, stillCancellable, assessorMissing,
-         DEFAULT_DOCS_DELAY_MINUTES, MAX_DOCS_DELAY_MINUTES, NO_ASSESSOR_MESSAGE } from './docs-received'
+         DEFAULT_DOCS_DELAY_MINUTES, MAX_DOCS_DELAY_MINUTES, NO_ASSESSOR_MESSAGE,
+         STILL_GOING_OUT_MS } from './docs-received'
 
 const RECEIVED = '2026-09-02T03:45:00.000Z'   // 1:45 pm Sydney
 const DUE      = '2026-09-02T04:15:00.000Z'   // 2:15 pm
@@ -75,5 +76,37 @@ describe('cancelling the assessor email', () => {
   it('is not offered when nothing was ever queued', () => {
     expect(stillCancellable({ docs_received_at: RECEIVED })).toBe(false)
     expect(stillCancellable({})).toBe(false)
+  })
+})
+
+// THE RED PANEL KYLIE SAW, 10 Sep 2026.
+//
+// Ellie pressed the button; Kylie's page read the record while the press was
+// still running and told her in red that nobody would be emailed. The email was
+// with Resend the whole time. The route claims the deal before it queues
+// anything, so that gap is normal and must not read as a failure.
+describe('the gap between the claim and the queue', () => {
+  const at = (ms: number) => new Date(new Date(RECEIVED).getTime() + ms)
+
+  it('is "sending" the instant it is pressed', () => {
+    expect(docsStateOf({ docs_received_at: RECEIVED }, at(0)).kind).toBe('sending')
+  })
+
+  it('is still "sending" a few seconds in, which is what Kylie hit', () => {
+    expect(docsStateOf({ docs_received_at: RECEIVED }, at(3_000)).kind).toBe('sending')
+    expect(docsStateOf({ docs_received_at: RECEIVED }, at(STILL_GOING_OUT_MS - 1)).kind).toBe('sending')
+  })
+
+  it('turns red only once the press has had time to finish', () => {
+    expect(docsStateOf({ docs_received_at: RECEIVED }, at(STILL_GOING_OUT_MS)).kind).toBe('unscheduled')
+    expect(docsStateOf({ docs_received_at: RECEIVED }, at(10 * 60_000)).kind).toBe('unscheduled')
+  })
+
+  it('never reads a clock that runs behind the server as a failure', () => {
+    expect(docsStateOf({ docs_received_at: RECEIVED }, at(-30_000)).kind).toBe('sending')
+  })
+
+  it('is unaffected once the due time is on the record', () => {
+    expect(docsStateOf({ docs_received_at: RECEIVED, docs_assessor_due_at: DUE }, at(1_000)).kind).toBe('waiting')
   })
 })
