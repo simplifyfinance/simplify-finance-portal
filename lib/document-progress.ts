@@ -201,9 +201,27 @@ export function withoutAdded(progress: DocProgress, key: string): DocProgress {
 // --- the extras somebody can pick from -------------------------------------
 //
 // Free text alone gives you nine spellings of "accountant's letter", which is
-// unreadable in an email and uncountable afterwards. This is the starting list;
-// it is meant to grow, and typing something not on it is always allowed.
+// unreadable in an email and uncountable afterwards. This is the list of
+// suggestions; typing something not on it is always allowed.
+//
+// THE LIST IS NOT CONDITIONAL, AND THAT IS THE POINT.
+//
+// It used to hold only documents the automatic rules never produce. So anything
+// the rules produce CONDITIONALLY could not be added by hand on a deal where the
+// condition did not hold: no discharge of mortgage on a purchase, no company
+// financials on a PAYG-only file, no SMSF deed on an ordinary one. Twenty-four
+// documents the system knows about, none of them offerable.
+//
+// Fabio, 10 Sep 2026: "The manual Add Document dropdown should NOT be
+// conditional. This screenshot is a purchase so Discharge Form shouldn't be
+// automatically requested, but I should still be able to manually select it."
+//
+// So it now carries everything the portal knows about. What the RULES put on the
+// list automatically has not changed at all - only what a person can reach for.
+// document-progress.test.ts asserts every label document-rules.ts can produce
+// appears here, so a new rule cannot quietly go missing from this list again.
 export const COMMON_EXTRAS: { label: string; forWhat: DocFor; detail?: string }[] = [
+  // Not produced by any rule - one-offs an assessor asks for.
   { label: "Accountant's letter", forWhat: 'lodge' },
   { label: 'Bank statements — older period', forWhat: 'compliance', detail: 'say which months' },
   { label: 'Letter of employment', forWhat: 'lodge' },
@@ -214,4 +232,43 @@ export const COMMON_EXTRAS: { label: string; forWhat: DocFor; detail?: string }[
   { label: 'Child support assessment', forWhat: 'compliance' },
   { label: 'Visa grant notice', forWhat: 'lodge' },
   { label: 'Sale contract — property being sold', forWhat: 'lodge' },
+
+  // Per applicant.
+  { label: 'ID — licence, Medicare, passport', forWhat: 'lodge' },
+  { label: 'Salary credit account', forWhat: 'lodge', detail: 'the account the salary is paid into' },
+  { label: 'Superannuation statement', forWhat: 'lodge', detail: 'most recent' },
+  { label: 'Payslips × 2', forWhat: 'lodge' },
+  { label: 'Income statement', forWhat: 'lodge', detail: 'full financial year' },
+  { label: 'Bonus payslip', forWhat: 'lodge' },
+  { label: 'Personal tax returns × 2', forWhat: 'lodge', detail: 'most recent two' },
+  { label: 'Notices of assessment × 2', forWhat: 'lodge' },
+  { label: 'Company tax returns × 2', forWhat: 'lodge' },
+  { label: 'Company financials × 2', forWhat: 'lodge', detail: 'accountant prepared' },
+  { label: 'BAS × 3', forWhat: 'lodge' },
+  { label: 'HECS balance', forWhat: 'lodge' },
+  { label: 'Living at home rent free letter', forWhat: 'compliance' },
+  { label: 'Tenancy agreement', forWhat: 'compliance' },
+
+  // Per property.
+  { label: 'Council rates notice', forWhat: 'compliance' },
+  { label: 'Rental statement', forWhat: 'lodge' },
+
+  // The deal.
+  { label: 'Discharge of mortgage', forWhat: 'compliance' },
+  { label: 'Gift letter', forWhat: 'lodge', detail: 'our template' },
+  { label: 'Updated contract of sale', forWhat: 'lodge' },
+  { label: 'Insurance — certificate of currency', forWhat: 'lodge' },
+  { label: 'SMSF trust deed', forWhat: 'lodge', detail: 'signed and certified' },
+  { label: 'SMSF tax returns × 2', forWhat: 'lodge' },
+  { label: 'Bare trust deed', forWhat: 'lodge', detail: 'signed and certified' },
+  { label: 'Expenses account', forWhat: 'compliance' },
+
+  // Statements. The rules append the bank to each of these when there is one -
+  // "Credit card statement — ANZ" - and they only appear when that liability or
+  // loan is on the fact find. The plain label is offered here so one can be
+  // asked for on a deal where nothing matching is recorded.
+  { label: 'Credit card statement', forWhat: 'compliance', detail: 'last 3 months' },
+  { label: 'Car loan statement', forWhat: 'compliance', detail: 'last 6 months' },
+  { label: 'Personal loan statement', forWhat: 'compliance', detail: 'last 6 months' },
+  { label: 'Home loan statement', forWhat: 'lodge', detail: 'last 6 months' },
 ]

@@ -59,6 +59,12 @@ export default function SettingsPage() {
   // Documents received: who files them, who is told once they are filed, and how
   // long to leave between the two. See lib/docs-received.ts.
   const [docsFileNotificationUserId, setDocsFileNotificationUserId] = useState('')
+  // WHO IS ASKED TO RAISE THE DOCUMENTS, which is not necessarily who files them
+  // when they come back. It used to be one person for both. Fabio, 10 Sep 2026:
+  // "I want a separate one to request documents from the portal as I want
+  // flexibility." Left blank it falls back to the filer, so nothing changes for
+  // anybody who does not set it.
+  const [docsRequestNotificationUserId, setDocsRequestNotificationUserId] = useState('')
   const [docsDelayMinutes, setDocsDelayMinutes] = useState('30')
   const [complianceStyleNotes, setComplianceStyleNotes] = useState<string[]>([])
   const [loStyleNotes, setLoStyleNotes] = useState<string[]>([])
@@ -157,6 +163,7 @@ export default function SettingsPage() {
         if (data.new_deal_notification_user_id) setNewDealNotificationUserId(data.new_deal_notification_user_id)
         if (data.stage_move_notification_user_id) setStageMoveNotificationUserId(data.stage_move_notification_user_id)
         if (data.docs_file_notification_user_id) setDocsFileNotificationUserId(data.docs_file_notification_user_id)
+        if (data.docs_request_notification_user_id) setDocsRequestNotificationUserId(data.docs_request_notification_user_id)
         if (data.docs_delay_minutes !== null && data.docs_delay_minutes !== undefined) setDocsDelayMinutes(String(data.docs_delay_minutes))
         if (data.compliance_style_notes?.length) setComplianceStyleNotes(data.compliance_style_notes)
         if (data.lo_style_notes?.length) setLoStyleNotes(data.lo_style_notes)
@@ -212,6 +219,7 @@ export default function SettingsPage() {
       new_deal_notification_user_id: newDealNotificationUserId || null,
       stage_move_notification_user_id: stageMoveNotificationUserId || null,
       docs_file_notification_user_id: docsFileNotificationUserId || null,
+      docs_request_notification_user_id: docsRequestNotificationUserId || null,
       docs_delay_minutes: clampDocsDelay(docsDelayMinutes),
       compliance_style_notes: complianceStyleNotes,
       lo_style_notes: loStyleNotes,
@@ -232,7 +240,7 @@ export default function SettingsPage() {
     //
     // So: try it whole, and if the database rejects a column by name, save
     // everything else and say plainly which part did not go.
-    const DEFERRED = ['docs_file_notification_user_id', 'docs_delay_minutes']
+    const DEFERRED = ['docs_file_notification_user_id', 'docs_request_notification_user_id', 'docs_delay_minutes']
     const missing = error ? DEFERRED.filter(c => (error!.message || '').includes(c)) : []
     if (missing.length) {
       const rest: any = { ...patch }
@@ -491,6 +499,17 @@ export default function SettingsPage() {
               <option value="">— select team member —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold text-[#A29889] block mb-1">When documents are requested — who raises them on SalesTrekker</label>
+            <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={docsRequestNotificationUserId} onChange={(e) => setDocsRequestNotificationUserId(e.target.value)}>
+              <option value="">— same as the person below —</option>
+              {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+            </select>
+            <p className="text-[11px] text-[#A29889] mt-1">
+              Who gets the email when somebody presses Request documents. Leave it blank and it goes
+              to whoever files them, which is how it worked before this was here.
+            </p>
           </div>
           <div>
             <label className="text-[11px] font-semibold text-[#A29889] block mb-1">When documents are received — who renames and files them</label>

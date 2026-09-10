@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'fs'
 import {
   rowsFor, tickedCount, withTick, withAdded, withoutAdded, progressOf, COMMON_EXTRAS,
   toRequest, withRequest, withDeferred, requestRounds,
@@ -219,5 +220,65 @@ describe('putting the discharge off until formal approval', () => {
   it('leaves everything else alone', () => {
     const p = withDeferred({}, 'discharge', 'Fabio')
     expect(rowsFor(items, p)).toHaveLength(2)
+  })
+})
+
+// EVERY DOCUMENT THE RULES CAN PRODUCE MUST BE PICKABLE BY HAND.
+//
+// 10 Sep 2026. The extras list held only documents the rules never produce, so
+// anything produced CONDITIONALLY could not be added manually on a deal where
+// the condition did not hold. Fabio hit it on a purchase: "this screenshot is a
+// purchase so Discharge Form shouldn't be automatically requested, but I should
+// still be able to manually select it."
+//
+// The labels are read out of document-rules.ts rather than listed here, so a
+// document added to the rules tomorrow fails this until it is offered too.
+describe('the manual list is not conditional', () => {
+  const ruleLabels = () => {
+    const src = readFileSync(new URL('./document-rules.ts', import.meta.url), 'utf8')
+    const out = new Set<string>()
+    for (const m of src.matchAll(/label: '([^']+)'/g)) out.add(m[1])
+    for (const m of src.matchAll(/label: "([^"]+)"/g)) out.add(m[1])
+    // Statements are built with the bank appended - named('Credit card
+    // statement') and `Home loan statement — ${bank}`. The plain label is what
+    // has to be offerable, so it is what this collects.
+    for (const m of src.matchAll(/named\('([^']+)'\)/g)) out.add(m[1])
+    for (const m of src.matchAll(/label: bank \? `([^`\$]+) — \$\{bank\}` : '([^']+)'/g)) out.add(m[2])
+    return [...out]
+  }
+
+  it('reads a real list of labels out of the rules', () => {
+    expect(ruleLabels().length).toBeGreaterThan(15)
+  })
+
+  it('offers every document the rules can produce', () => {
+    const offered = new Set(COMMON_EXTRAS.map(e => e.label))
+    for (const label of ruleLabels()) {
+      expect(offered.has(label), `"${label}" can be produced by a rule but cannot be added by hand`).toBe(true)
+    }
+  })
+
+  it('offers the discharge of mortgage, which is the one that was found', () => {
+    expect(COMMON_EXTRAS.map(e => e.label)).toContain('Discharge of mortgage')
+  })
+
+  it('offers the statements, which only appear when that debt is on the fact find', () => {
+    const offered = COMMON_EXTRAS.map(e => e.label)
+    for (const l of ['Credit card statement', 'Car loan statement',
+                     'Personal loan statement', 'Home loan statement']) {
+      expect(offered).toContain(l)
+    }
+  })
+
+  it('has no duplicate labels', () => {
+    const labels = COMMON_EXTRAS.map(e => e.label)
+    expect(new Set(labels).size).toBe(labels.length)
+  })
+
+  it('keeps the one-offs that no rule produces', () => {
+    const offered = COMMON_EXTRAS.map(e => e.label)
+    for (const l of ["Accountant's letter", 'Letter of employment', 'Trust deed', 'Visa grant notice']) {
+      expect(offered).toContain(l)
+    }
   })
 })

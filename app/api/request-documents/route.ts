@@ -59,14 +59,25 @@ export async function POST(req: NextRequest) {
       ? (await supabase.from('user_profiles').select('full_name').eq('id', u.user.id).single()).data?.full_name || null
       : null
 
-    // Same person the "documents received" email goes to - whoever does the
-    // filing does the requesting. Set in Settings, not hard-wired to a name.
+    // WHO IS ASKED TO RAISE THEM.
+    //
+    // Its own setting since 10 Sep 2026. It used to be the same person who files
+    // the documents when they come back, on the reasoning that whoever does the
+    // filing does the requesting - but they are two jobs and can be two people.
+    // Fabio: "I want a separate one to request documents from the portal as I
+    // want flexibility."
+    //
+    // Blank falls back to the filer, so a portal that has not set it behaves
+    // exactly as it did before the setting existed.
     const { data: settingsRow } = await supabase.from('settings')
-      .select('docs_file_notification_user_id').eq('id', 'singleton').single()
+      .select('docs_file_notification_user_id, docs_request_notification_user_id')
+      .eq('id', 'singleton').single()
+    const askWho = settingsRow?.docs_request_notification_user_id
+      || settingsRow?.docs_file_notification_user_id
     let toEmail: string | null = null, toName: string | null = null
-    if (settingsRow?.docs_file_notification_user_id) {
+    if (askWho) {
       const { data: p } = await supabase.from('user_profiles').select('email, full_name')
-        .eq('id', settingsRow.docs_file_notification_user_id).single()
+        .eq('id', askWho).single()
       toEmail = p?.email || null
       toName = p?.full_name || null
     }
