@@ -37,11 +37,16 @@ export type ExtraField = {
 }
 
 export default function SimpleTemplateForm({
-  build, extras, extrasTitle, sendTemplateId, usesOpportunityLink,
+  build, extras, extrasTitle, sendTemplateId, usesOpportunityLink, audience = 'client',
 }: {
   build: EmailBuilder
   extras?: ExtraField[]
   extrasTitle?: string
+  // WHO THIS EMAIL IS FOR. Four of the five templates go to a borrower. The
+  // referral partner one goes to their accountant, which changes the heading on
+  // the second panel and removes two fields that do not apply to one: an
+  // accountant is not a couple, and there is no deal card to BCC.
+  audience?: 'client' | 'referrer'
   // A template whose email carries attachments cannot go through a mail link —
   // one cannot carry a file. Given an id, the form takes files and the portal
   // sends the email itself, the way the compliance notification already does.
@@ -52,6 +57,8 @@ export default function SimpleTemplateForm({
   usesOpportunityLink?: boolean
 }) {
   const sender = useSender('sf_template_sender_v1')
+  const referrer = audience === 'referrer'
+  const who = referrer ? 'referrer' : 'client'
 
   const [firstName, setFirstName] = useState('')
   const [email, setEmail] = useState('')
@@ -146,8 +153,8 @@ export default function SimpleTemplateForm({
   for (const f of extras || []) {
     if (f.required && !String(extra[f.key] || '').trim()) missing.push(f.label.toLowerCase())
   }
-  if (!firstName.trim()) missing.push('client name')
-  if (!recipients) missing.push('client email')
+  if (!firstName.trim()) missing.push(`${who} name`)
+  if (!recipients) missing.push(`${who} email`)
   if (!sender.broker) missing.push('a broker')
   // Not ready while the link is still coming — otherwise the copy is made from
   // an email the preview is about to replace.
@@ -248,6 +255,11 @@ export default function SimpleTemplateForm({
           secondName={secondName} setSecondName={setSecondName}
           secondEmail={secondEmail} setSecondEmail={setSecondEmail}
           bcc={bcc} setBcc={setBcc}
+          title={referrer ? 'Referrer' : 'Client'}
+          namePlaceholder={referrer ? 'Michael' : 'Sarah'}
+          emailPlaceholder={referrer ? 'michael@bennettpartners.com.au' : 'sarah@example.com'}
+          showJoint={!referrer}
+          showBcc={!referrer}
         />
 
         {extras && extras.length > 0 && (
@@ -314,7 +326,7 @@ export default function SimpleTemplateForm({
             <button onClick={openMail} disabled={!ready}
               className="rounded-lg px-4 py-[9px] text-[13px] font-semibold disabled:opacity-40"
               style={{ background: TONE.accent, color: '#fff' }}>
-              {copied ? 'Copied — paste with Cmd V' : linkPending ? 'Preparing…' : 'Open in mail'}
+              {copied ? 'Copied — paste with Cmd V' : linkPending ? 'Preparing…' : 'Send the email'}
             </button>
           )}
           {missing.length > 0 && (
@@ -356,7 +368,7 @@ export default function SimpleTemplateForm({
               'Your mail program does not open, and it will not appear in Sent items \u2014 a copy is ' +
               'emailed to the broker it is sent as. Replies come back to them.'
             : 'No figures to enter — the email reads the same for every investor, so it is ready as ' +
-              'soon as the client is filled in. Open in mail copies it first, then opens a message ' +
+              'soon as the client is filled in. Send the email copies it first, then opens a message ' +
               'with the address, BCC and subject already filled.'}
         </p>
       </div>

@@ -6,6 +6,7 @@ import SimpleTemplateForm, { type ExtraField } from './SimpleTemplateForm'
 import { buildNegativeGearingEmail } from '@/lib/negative-gearing-email'
 import { buildPriceOpportunityEmail } from '@/lib/price-opportunity-email'
 import { buildRebateEmail } from '@/lib/new-property-rebate-email'
+import { buildReferralPartnerEmail } from '@/lib/referral-partner-email'
 
 // Each card says what the email does and, plainly, what it will ask for. A
 // template needing six loan figures and one needing none should not look like
@@ -53,6 +54,17 @@ const TEMPLATES = [
     needs: 'the client and a rebate amount',
     needsTail: '— sent by the portal, with the project PDFs attached',
   },
+  {
+    // THE FIRST TEMPLATE THAT IS NOT ADDRESSED TO A BORROWER. It goes to an
+    // accountant about the clients they look after, so the second panel says
+    // Referrer rather than Client. Fabio, 10 Sep 2026.
+    id: 'referral-partner',
+    name: 'Referral partner — debt restructure',
+    blurb: 'For accountants. Explains what Simplify Finance can do for clients stuck in private ' +
+           'lending, carrying ATO debt or unsecured liabilities, and who is worth referring.',
+    needs: 'the referrer only',
+    needsTail: '— no figures',
+  },
 ] as const
 
 type Id = typeof TEMPLATES[number]['id']
@@ -97,6 +109,9 @@ export default function TemplatesClient() {
           <SimpleTemplateForm build={buildNegativeGearingEmail} usesOpportunityLink />
         )}
         {chosen === 'price-opportunity' && <SimpleTemplateForm build={buildPriceOpportunityEmail} />}
+        {chosen === 'referral-partner' && (
+          <SimpleTemplateForm build={buildReferralPartnerEmail} audience="referrer" />
+        )}
         {chosen === 'new-property-rebate' && (
           <SimpleTemplateForm build={buildRebateEmail} extras={REBATE_FIELDS} extrasTitle="This project"
                               sendTemplateId="new-property-rebate" />

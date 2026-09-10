@@ -430,7 +430,7 @@ export default function RefinanceTemplateForm() {
           <button onClick={openMail} disabled={!ready}
             className="rounded-lg px-4 py-[9px] text-[13px] font-semibold disabled:opacity-40"
             style={{ background: TONE.accent, color: '#fff' }}>
-            {copied ? 'Copied — paste with Cmd V' : 'Open in mail'}
+            {copied ? 'Copied — paste with Cmd V' : 'Send the email'}
           </button>
           {missing.length > 0 && (
             <span className="text-[11.5px]" style={{ color: TONE.faint }}>Still needs {missing.join(', ')}</span>
@@ -440,7 +440,7 @@ export default function RefinanceTemplateForm() {
         {copyError && <p className="text-[12px] mt-2" style={{ color: TONE.neg }}>{copyError}</p>}
 
         <p className="text-[11.5px] mt-2.5" style={{ color: TONE.label }}>
-          Open in mail copies the email first, then opens a message with the address, BCC and subject already
+          Send the email copies the email first, then opens a message with the address, BCC and subject already
           filled — so all that is left is Cmd V. A mail link cannot carry a formatted body itself; that is the
           standard, not a gap here.
         </p>

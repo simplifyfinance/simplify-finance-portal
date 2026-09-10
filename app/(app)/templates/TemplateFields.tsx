@@ -72,10 +72,17 @@ export function SenderPanel({
   )
 }
 
+// WHO IT GOES TO. Usually a client; on the referral partner template, an
+// accountant - and then two of these fields are wrong rather than merely unused.
+// A referrer is one person, not a couple, and there is no deal card in
+// SalesTrekker to log the send against. So they are absent, not disabled.
+// Fabio, 10 Sep 2026: "we're gonna change the word client to referrer."
 export function ClientPanel({
   firstName, setFirstName, email, setEmail,
   joint, setJoint, secondName, setSecondName, secondEmail, setSecondEmail,
   bcc, setBcc,
+  title = 'Client', namePlaceholder = 'Sarah', emailPlaceholder = 'sarah@example.com',
+  showJoint = true, showBcc = true,
 }: {
   firstName: string; setFirstName: (v: string) => void
   email: string; setEmail: (v: string) => void
@@ -83,28 +90,35 @@ export function ClientPanel({
   secondName: string; setSecondName: (v: string) => void
   secondEmail: string; setSecondEmail: (v: string) => void
   bcc: string; setBcc: (v: string) => void
+  title?: string
+  namePlaceholder?: string
+  emailPlaceholder?: string
+  showJoint?: boolean
+  showBcc?: boolean
 }) {
   return (
     <div className={panel} style={panelS}>
-      <h3 className={h3} style={{ color: TONE.label }}>Client</h3>
+      <h3 className={h3} style={{ color: TONE.label }}>{title}</h3>
       <div className="grid grid-cols-2 gap-3 max-[520px]:grid-cols-1">
         <div>
           <label className={lab} style={{ color: TONE.label }}>First name</label>
           <input className={inp} style={inpS} value={firstName}
-                 onChange={e => setFirstName(e.target.value)} placeholder="Sarah" />
+                 onChange={e => setFirstName(e.target.value)} placeholder={namePlaceholder} />
         </div>
         <div>
           <label className={lab} style={{ color: TONE.label }}>Email</label>
           <input className={inp} style={inpS} value={email} type="email"
-                 onChange={e => setEmail(e.target.value)} placeholder="sarah@example.com" />
+                 onChange={e => setEmail(e.target.value)} placeholder={emailPlaceholder} />
         </div>
+        {showJoint && (
         <div className="col-span-2 max-[520px]:col-span-1">
           <label className="flex items-center gap-2 text-[12.5px] cursor-pointer" style={{ color: TONE.body }}>
             <input type="checkbox" checked={joint} onChange={e => setJoint(e.target.checked)} />
             There are two applicants
           </label>
         </div>
-        {joint && (
+        )}
+        {showJoint && joint && (
           <>
             <div>
               <label className={lab} style={{ color: TONE.label }}>Second first name</label>
@@ -119,6 +133,7 @@ export function ClientPanel({
             </div>
           </>
         )}
+        {showBcc && (
         <div className="col-span-2 max-[520px]:col-span-1">
           <label className={lab} style={{ color: TONE.label }}>SalesTrekker BCC</label>
           <input className={inp} style={inpS} value={bcc}
@@ -127,6 +142,7 @@ export function ClientPanel({
             Specific to this deal card. Without it the send is not logged against the client.
           </p>
         </div>
+        )}
       </div>
     </div>
   )
