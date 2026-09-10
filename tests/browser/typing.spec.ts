@@ -20,6 +20,10 @@ const NOTE =
 
 async function openBcNotes(page: Page) {
   await page.goto(`/deals/${DEAL}`)
+    // The page is HTML before it is a page. See data-ready in DealPageClient -
+    // a click before this appears goes nowhere, which is a race, not a bug in
+    // whatever was clicked.
+    await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
   await page.getByRole('button', { name: /BC — Borrowing capacity/ }).click()
   const box = page.getByLabel(/Broker summary notes/i)
   await expect(box).toBeVisible({ timeout: 20_000 })

@@ -39,6 +39,9 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   // One save indicator for the whole deal, so it sits in the same place on every tab.
   // Each form reports up rather than rendering its own label wherever that form ends.
   const [saveStatus, setSaveStatus] = useState<{ at?: string; error?: string }>({})
+  // True only once the browser has taken this page over from the server.
+  const [pageReady, setPageReady] = useState(false)
+  useEffect(() => { setPageReady(true) }, [])
   const [cloning, setCloning] = useState(false)
 
   async function saveDealName() {
@@ -159,7 +162,23 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   ]
 
   return (
-    <div className="p-6">
+    // WHEN IS THIS PAGE ACTUALLY ALIVE?
+    //
+    // Next sends the finished HTML first and attaches the button handlers a
+    // moment later. In between, every button on this page is a picture of a
+    // button: it can be clicked, and nothing happens. On 10 Sep 2026 the robot
+    // pressed "Write from the deal" on a freshly loaded deal and the box stayed
+    // empty for three and a half seconds, then filled on the second press - and
+    // I spent a while looking for a bug in the button.
+    //
+    // A person hits this too. They open a deal, press something straight away,
+    // and it does not respond; they press again and it does. It looks like the
+    // portal being flaky.
+    //
+    // This flag flips the moment the handlers are live, so the robot can wait
+    // for the page to be real rather than racing it - and so the next person to
+    // chase a "the button did nothing" report can see the race is a known one.
+    <div className="p-6" data-ready={pageReady ? '1' : undefined}>
       <button onClick={() => router.back()} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-5">
         <ArrowLeft size={14} /> Back to deals
       </button>

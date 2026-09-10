@@ -16,6 +16,10 @@ test.describe('box one — primary reasons for seeking credit', () => {
 
   test('the button writes a paragraph built from the deal', async ({ page }) => {
     await page.goto(`/deals/${DEAL}`)
+    // The page is HTML before it is a page. See data-ready in DealPageClient -
+    // a click before this appears goes nowhere, which is a race, not a bug in
+    // whatever was clicked.
+    await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
     await page.getByRole('button', { name: /^Compliance$/ }).click()
     await page.getByRole('button', { name: /Needs & objectives/ }).click()
 
@@ -61,6 +65,10 @@ test.describe('box one — primary reasons for seeking credit', () => {
     // The wording varies across the book and never within one file - otherwise
     // pressing the button twice rewords a file underneath the team.
     await page.goto(`/deals/${DEAL}`)
+    // The page is HTML before it is a page. See data-ready in DealPageClient -
+    // a click before this appears goes nowhere, which is a race, not a bug in
+    // whatever was clicked.
+    await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
     await page.getByRole('button', { name: /^Compliance$/ }).click()
     await page.getByRole('button', { name: /Needs & objectives/ }).click()
     const box = page.getByLabel(/Primary reasons for seeking credit/i)
@@ -79,6 +87,10 @@ test.describe('box one — primary reasons for seeking credit', () => {
     // Only meaningful when the test deal actually has a gap. When it has none,
     // the paragraph must not be shouting either - both directions are checked.
     await page.goto(`/deals/${DEAL}`)
+    // The page is HTML before it is a page. See data-ready in DealPageClient -
+    // a click before this appears goes nowhere, which is a race, not a bug in
+    // whatever was clicked.
+    await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
     await page.getByRole('button', { name: /^Compliance$/ }).click()
     await page.getByRole('button', { name: /Needs & objectives/ }).click()
     const box = page.getByLabel(/Primary reasons for seeking credit/i)
@@ -96,6 +108,10 @@ test.describe('box one — primary reasons for seeking credit', () => {
 
   test('the fact find turns red when the purpose is missing', async ({ page }) => {
     await page.goto(`/deals/${DEAL}`)
+    // The page is HTML before it is a page. See data-ready in DealPageClient -
+    // a click before this appears goes nowhere, which is a race, not a bug in
+    // whatever was clicked.
+    await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
     await page.getByRole('button', { name: /^Fact Find$/ }).click()
     const purpose = page.getByLabel(/Purpose of loan/i)
     await expect(purpose).toBeVisible({ timeout: 20_000 })
