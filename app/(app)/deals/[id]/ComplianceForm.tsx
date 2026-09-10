@@ -1293,7 +1293,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             ].map(({ key, label }) => (
               <div key={key} className="mb-4">
                 <label className="text-xs font-medium text-gray-500 block mb-1">{label}</label>
-                <textarea spellCheck="true" className={inp + ' min-h-[100px] resize-y'} value={(d as any)[key]}
+                <textarea spellCheck="true" aria-label={label} className={inp + ' min-h-[100px] resize-y'} value={(d as any)[key]}
                   onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
                   placeholder={key === 'needsPrimary' ? 'Click Write from the deal, or type it yourself...' : 'Click Generate with AI or type manually...'} />
                 <AIButton onClick={() => generateField(key)} loading={generating[key]}
@@ -1508,7 +1508,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
 
           <div>
             <label className="text-xs font-medium text-gray-500 block mb-1">Other requirements</label>
-            <textarea spellCheck="true" className={inp + ' min-h-[80px] resize-y'} value={d.productReqs.otherRequirements}
+            <textarea spellCheck="true" aria-label="Other requirements" className={inp + ' min-h-[80px] resize-y'} value={d.productReqs.otherRequirements}
               onChange={e => updateProductReqs('otherRequirements', e.target.value)}
               placeholder="Any other requirements not already stated..." />
           </div>
@@ -1549,7 +1549,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             ].map(({ key, label }) => (
               <div key={key} className="mb-4">
                 <label className="text-xs font-medium text-gray-500 block mb-1">{label}</label>
-                <textarea spellCheck="true" className={inp + ' min-h-[120px] resize-y'} value={(d as any)[key]}
+                <textarea spellCheck="true" aria-label={label} className={inp + ' min-h-[120px] resize-y'} value={(d as any)[key]}
                   onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
                   placeholder="Click Generate with AI or type manually..." />
                 <AIButton onClick={() => generateField(key)} loading={generating[key]} />
@@ -1576,7 +1576,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                   <label className="text-xs font-medium text-gray-500 block mb-1">
                     {label} {warning && <span className="text-[10px] text-amber-500">{warning}</span>}
                   </label>
-                  <textarea spellCheck="true" className={inp + ' min-h-[100px] resize-y'} value={(d as any)[key]}
+                  <textarea spellCheck="true" aria-label={label} className={inp + ' min-h-[100px] resize-y'} value={(d as any)[key]}
                     onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
                     placeholder="Click Generate..." />
                   <AIButton onClick={() => generateField(key)} loading={generating[key]} />
@@ -1677,7 +1677,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-medium text-gray-500 block mb-1">Security (property)</label>
-                <textarea spellCheck="true" className={inp + ' min-h-[80px] resize-y'} value={d.securityComment}
+                <textarea spellCheck="true" aria-label="Security comments" className={inp + ' min-h-[80px] resize-y'} value={d.securityComment}
                   onChange={e => setD(prev => ({ ...prev, securityComment: e.target.value }))}
                   placeholder="TBA or enter address..." />
                 <AIButton onClick={() => generateField('securityComment')} loading={generating['securityComment']} />
@@ -1718,7 +1718,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                     that is not right before you push.
                   </p>
                 </div>
-                <textarea spellCheck="true" className={inp + ' min-h-[190px] resize-y font-[13px]'} value={d.applicationSubmissionComment}
+                <textarea spellCheck="true" aria-label="Broker notes for the credit team" className={inp + ' min-h-[190px] resize-y font-[13px]'} value={d.applicationSubmissionComment}
                   onChange={e => setD(prev => ({ ...prev, applicationSubmissionComment: e.target.value }))}
                   placeholder="Press Compose, or type your own..." />
                 {notes.ready ? (

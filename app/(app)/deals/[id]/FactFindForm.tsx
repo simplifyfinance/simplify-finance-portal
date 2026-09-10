@@ -1025,17 +1025,17 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Purpose of loan / primary reason for finance{!d.loanPurpose?.trim() && <span className="text-red-600 font-semibold ml-1">● Required</span>}</label>
-              <textarea spellCheck="true" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.loanPurpose?.trim() ? 'border-gray-200 focus:border-[#2DBEFF]' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="What the client told you they want this loan for..." value={d.loanPurpose} onChange={e => setD(prev => ({ ...prev, loanPurpose: e.target.value }))} />
+              <textarea spellCheck="true" aria-label="Purpose of loan / primary reason for finance" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.loanPurpose?.trim() ? 'border-gray-200 focus:border-[#2DBEFF]' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="What the client told you they want this loan for..." value={d.loanPurpose} onChange={e => setD(prev => ({ ...prev, loanPurpose: e.target.value }))} />
               {!d.loanPurpose?.trim() && <p className="text-[11px] text-red-600 mt-1">Compliance box 1 cannot be written without this</p>}
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Goals — next 2 years{!d.goals2Years?.trim() && <span className="text-red-600 font-semibold ml-1">● Required</span>}</label>
-              <textarea spellCheck="true" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.goals2Years?.trim() ? 'border-gray-200 focus:border-[#2DBEFF]' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="Client's own stated short-term plans..." value={d.goals2Years} onChange={e => setD(prev => ({ ...prev, goals2Years: e.target.value }))} />
+              <textarea spellCheck="true" aria-label="Goals — next 2 years" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.goals2Years?.trim() ? 'border-gray-200 focus:border-[#2DBEFF]' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="Client's own stated short-term plans..." value={d.goals2Years} onChange={e => setD(prev => ({ ...prev, goals2Years: e.target.value }))} />
               {!d.goals2Years?.trim() && <p className="text-[11px] text-red-600 mt-1">Compliance box 2 cannot be written without this</p>}
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Goals — 2 to 10 years{!d.goals10Years?.trim() && <span className="text-red-600 font-semibold ml-1">● Required</span>}</label>
-              <textarea spellCheck="true" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.goals10Years?.trim() ? 'border-gray-200 focus:border-[#2DBEFF]' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="Client's own stated long-term plans..." value={d.goals10Years} onChange={e => setD(prev => ({ ...prev, goals10Years: e.target.value }))} />
+              <textarea spellCheck="true" aria-label="Goals — 2 to 10 years" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.goals10Years?.trim() ? 'border-gray-200 focus:border-[#2DBEFF]' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="Client's own stated long-term plans..." value={d.goals10Years} onChange={e => setD(prev => ({ ...prev, goals10Years: e.target.value }))} />
               {!d.goals10Years?.trim() && <p className="text-[11px] text-red-600 mt-1">Compliance box 3 cannot be written without this</p>}
             </div>
           </div>

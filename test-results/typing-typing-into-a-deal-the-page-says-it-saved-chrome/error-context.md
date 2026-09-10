@@ -6,31 +6,192 @@
 
 # Test info
 
-- Name: typing.spec.ts >> typing into a deal >> a long note keeps every character, and survives a reload
-- Location: tests/browser/typing.spec.ts:41:7
+- Name: typing.spec.ts >> typing into a deal >> the page says it saved
+- Location: tests/browser/typing.spec.ts:76:7
 
 # Error details
 
 ```
-Error: expect(locator).toHaveValue(expected) failed
+Error: expect(locator).toBeVisible() failed
 
-Locator:  getByLabel(/Broker summary notes/i)
-Expected: "Hi Dylan and Megan, further to our conversation last week, we've finalised your borrowing capacity. We've assumed a minimum rental yield of 4% p.a. and used your latest payslips. The figures below are indicative only and subject to a full assessment. Please don't hesitate to call if anything looks wrong."
-Received: "Window one is typing while window two is open. Testing one. Testing two. Testing three. Don't drop anything."
-Timeout:  20000ms
+Locator: getByText(/Autosaved/)
+Expected: visible
+Timeout: 20000ms
+Error: element(s) not found
 
 Call log:
-  - Expect "toHaveValue" getByLabel(/Broker summary notes/i) with timeout 20000ms
-  - waiting for getByLabel(/Broker summary notes/i)
-    44 × locator resolved to <textarea spellcheck="true" placeholder="✏ Add your personalised opening message — this goes directly into the client email..." class="border-green-200 bg-white px-2.5 py-1.5 text-sm rounded-lg focus:outline-none focus:border-[#2DBEFF] w-full min-h-16 resize-y border">Window one is typing while window two is open. Te…</textarea>
-       - unexpected value "Window one is typing while window two is open. Testing one. Testing two. Testing three. Don't drop anything."
+  - Expect "toBeVisible" getByText(/Autosaved/) with timeout 20000ms
+  - waiting for getByText(/Autosaved/)
 
 ```
 
 ```yaml
-- textbox "Broker summary notes (included in email)":
-  - /placeholder: ✏ Add your personalised opening message — this goes directly into the client email...
-  - text: Window one is typing while window two is open. Testing one. Testing two. Testing three. Don't drop anything.
+- complementary:
+  - img "Simplify Finance"
+  - text: Credit & Compliance Portal
+  - navigation:
+    - text: Main
+    - link "Dashboard":
+      - /url: /dashboard
+    - link "Deals":
+      - /url: /deals
+    - link "Pipeline Expand":
+      - /url: /pipeline
+      - text: Pipeline
+      - button "Expand":
+        - img
+    - link "Settlements":
+      - /url: /settlements
+    - link "Clients":
+      - /url: /clients
+    - link "Lender library Expand":
+      - /url: /lenders
+      - text: Lender library
+      - button "Expand":
+        - img
+    - link "Templates":
+      - /url: /templates
+    - link "Reports":
+      - /url: /reports
+    - link "Cheat sheet":
+      - /url: /cheat-sheet
+    - text: Admin
+    - link "Commissions Expand":
+      - /url: /commissions
+      - text: Commissions
+      - button "Expand":
+        - img
+    - link "Team workload":
+      - /url: /credit-team-workload
+    - link "Team":
+      - /url: /team
+    - link "Settings Expand":
+      - /url: /settings
+      - text: Settings
+      - button "Expand":
+        - img
+  - text: FD Fabio De Castro Admin
+  - button "Sign out"
+- main:
+  - button "Back to deals"
+  - text: TestFabioKylie Test 2026
+  - button "History"
+  - button "✎ Edit"
+  - text: Broker Fabio Scenario OO purchase Waiting on Broker to complete BC Deal
+  - link "Summary":
+    - /url: /deals/e3cd45b0-1f1b-493c-8c05-00a789f46073/summary
+    - img
+    - text: Summary
+  - button "Clone":
+    - img
+    - text: Clone
+  - button "Close deal":
+    - img
+    - text: Close deal
+  - img
+  - text: Fact Find 07 Sept BC with broker Lending Options Compliance Lodged Preapproved Offer accepted Formal Contracts returned Settlement booked Settled
+  - button "Internal notes Nothing written yet — what the client told us goes here. Add"
+  - button "Documents 6 to request of 6 on the list 1 to check Show"
+  - button "Fact Find"
+  - button "Statements"
+  - button "BC — Borrowing capacity"
+  - button "Lending options"
+  - button "Compliance"
+  - button "BC form"
+  - button "Preview & share"
+  - button "Client agreed — move to LO"
+  - text: BC template
+  - button "Refinance + equity release"
+  - button "Refinance only"
+  - button "OO purchase"
+  - button "OO purchase — LVR comparison"
+  - button "Investment purchase"
+  - button "Equity release + purchase"
+  - button "Buy / sell"
+  - button "First home buyer"
+  - button "Bridging loan"
+  - button "Family pledge"
+  - button "SMSF purchase"
+  - button "Construction loan"
+  - button "Custom (all fields)"
+  - text: Notes Broker summary notes (included in email)
+  - textbox "Broker summary notes (included in email)":
+    - /placeholder: ✏ Add your personalised opening message — this goes directly into the client email...
+    - text: Window one is typing while window two is open. Testing one. Testing two. Testing three. Don't d Checking the save stamp.rop anything.
+  - text: Important things to note (included in email, one per line — pre-filled per template)
+  - textbox "Important things to note (included in email, one per line — pre-filled per template)":
+    - /placeholder: One note per line...
+  - text: Broker signature
+  - combobox "Broker signature":
+    - option "Fabio de Castro" [selected]
+    - option "Mark Gallo"
+    - option "Keanen Wood"
+    - option "Justin Cornock"
+    - option "Kylie Searle"
+  - text: Brand
+  - combobox "Brand":
+    - option "Simplify Finance" [selected]
+  - text: Scenario details State
+  - textbox "State"
+  - text: Property type
+  - combobox "Property type":
+    - option "Owner-occupied" [selected]
+    - option "Investment"
+  - text: House or strata?
+  - combobox "House or strata?":
+    - option "Not recorded" [selected]
+    - option "House"
+    - option "Unit"
+    - option "Townhouse"
+    - option "Land"
+    - option "Commercial"
+    - option "Rural"
+    - option "Other"
+  - checkbox "Compare multiple options (e.g. different scenarios based on paying down liabilities)"
+  - text: Compare multiple options (e.g. different scenarios based on paying down liabilities) Purchase price $
+  - textbox "Purchase price $"
+  - text: Deposit $
+  - textbox "Deposit $"
+  - text: Deposit source
+  - combobox "Deposit source":
+    - option "Select source" [selected]
+    - option "Savings"
+    - option "Equity"
+    - option "Gift"
+    - option "Combination of savings & equity"
+  - text: Stamp duty $
+  - textbox "Stamp duty $"
+  - text: State
+  - combobox "State":
+    - option "Select" [selected]
+    - option "NSW"
+    - option "VIC"
+    - option "QLD"
+    - option "SA"
+    - option "WA"
+    - option "TAS"
+    - option "NT"
+    - option "ACT"
+  - text: LVR (calculated) — Loan term (years)
+  - textbox "Loan term (years)": "30"
+  - text: Loan splits Split 1 Label
+  - textbox "Label": Owner-occupied loan
+  - text: Amount
+  - textbox "Amount"
+  - text: Rate
+  - textbox "Rate": "6.14"
+  - text: Type
+  - combobox "Type":
+    - option "P&I" [selected]
+    - option "Interest only"
+  - text: Repayment
+  - textbox "Repayment"
+  - button "+ Add split"
+  - text: "\"Based on your numbers\" checklist"
+  - textbox "Add item..."
+  - button "Add"
+  - button "✨ Generate email"
+- alert
 ```
 
 # Test source
@@ -102,8 +263,7 @@ Call log:
   64  | 
   65  |     // And now the database's answer, not the screen's.
   66  |     await page.reload()
-> 67  |     await expect(page.getByLabel(/Broker summary notes/i)).toHaveValue(NOTE, { timeout: 20_000 })
-      |                                                            ^ Error: expect(locator).toHaveValue(expected) failed
+  67  |     await expect(page.getByLabel(/Broker summary notes/i)).toHaveValue(NOTE, { timeout: 20_000 })
   68  |   })
   69  | 
   70  |   // THE STAMP THAT DID NOT APPEAR.
@@ -116,7 +276,8 @@ Call log:
   77  |     const box = await openBcNotes(page)
   78  |     await box.click()
   79  |     await box.pressSequentially(' Checking the save stamp.', { delay: 25 })
-  80  |     await expect(page.getByText(/Autosaved/)).toBeVisible({ timeout: 20_000 })
+> 80  |     await expect(page.getByText(/Autosaved/)).toBeVisible({ timeout: 20_000 })
+      |                                               ^ Error: expect(locator).toBeVisible() failed
   81  |   })
   82  | 
   83  |   // The deal page used to shove the form down the screen whenever a notice

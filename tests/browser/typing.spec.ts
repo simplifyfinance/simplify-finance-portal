@@ -50,14 +50,34 @@ test.describe('typing into a deal', () => {
     // Every character, before anything is saved. This is the letters test.
     expect(await box.inputValue()).toBe(NOTE)
 
-    // Wait for the save the form says it has made, rather than guessing at a
-    // number of seconds - the deal page prints the time it last autosaved.
-    await expect(page.getByText(/Autosaved/)).toBeVisible({ timeout: 20_000 })
-    await page.waitForTimeout(1500)
+    // WAIT FOR THE DATABASE, NOT FOR A STAMP ON THE SCREEN.
+    //
+    // This used to wait for the "Autosaved" line in the header. On 10 Sep it
+    // never appeared, and the run failed there - with the whole note sitting
+    // correctly in the box, which is the thing the test is actually for. A
+    // proxy for the save was standing in front of the save itself.
+    //
+    // The autosave debounce is 700ms. This waits several times that and then
+    // asks the database, which is the only answer that counts. Whether the
+    // stamp appears is a separate question, and it gets its own test below.
+    await page.waitForTimeout(5_000)
 
     // And now the database's answer, not the screen's.
     await page.reload()
     await expect(page.getByLabel(/Broker summary notes/i)).toHaveValue(NOTE, { timeout: 20_000 })
+  })
+
+  // THE STAMP THAT DID NOT APPEAR.
+  //
+  // Separate from the letters test on purpose. On 10 Sep the note typed and held
+  // perfectly and no "Autosaved" line ever showed - so somebody typing has no
+  // confirmation their work went in. Whether that is the stamp failing or the
+  // save failing, this is the test that says which.
+  test('the page says it saved', async ({ page }) => {
+    const box = await openBcNotes(page)
+    await box.click()
+    await box.pressSequentially(' Checking the save stamp.', { delay: 25 })
+    await expect(page.getByText(/Autosaved/)).toBeVisible({ timeout: 20_000 })
   })
 
   // The deal page used to shove the form down the screen whenever a notice
