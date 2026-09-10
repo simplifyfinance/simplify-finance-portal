@@ -33,7 +33,10 @@ test.describe('box one — primary reasons for seeking credit', () => {
     expect(await box.inputValue()).toBe('')
 
     // The button no longer says "Generate with AI", because no AI writes this.
-    await page.getByRole('button', { name: /Write from the deal/i }).click()
+    // THREE BOXES, THREE BUTTONS, THE SAME WORDS ON EACH.
+    // Boxes 2 and 3 got the same button on 10 Sep, so this has to say which
+    // one it means. Box one is the first.
+    await page.getByRole('button', { name: /Write from the deal/i }).first().click()
 
     // Composed, so it is instant - no network call, nothing to wait for.
     await expect(box).not.toHaveValue('', { timeout: 5_000 })
@@ -74,11 +77,17 @@ test.describe('box one — primary reasons for seeking credit', () => {
     const box = page.getByLabel(/Primary reasons for seeking credit/i)
     await expect(box).toBeVisible({ timeout: 20_000 })
 
-    await page.getByRole('button', { name: /Write from the deal/i }).click()
+    // THREE BOXES, THREE BUTTONS, THE SAME WORDS ON EACH.
+    // Boxes 2 and 3 got the same button on 10 Sep, so this has to say which
+    // one it means. Box one is the first.
+    await page.getByRole('button', { name: /Write from the deal/i }).first().click()
     await expect(box).not.toHaveValue('', { timeout: 5_000 })
     const first = await box.inputValue()
 
-    await page.getByRole('button', { name: /Write from the deal/i }).click()
+    // THREE BOXES, THREE BUTTONS, THE SAME WORDS ON EACH.
+    // Boxes 2 and 3 got the same button on 10 Sep, so this has to say which
+    // one it means. Box one is the first.
+    await page.getByRole('button', { name: /Write from the deal/i }).first().click()
     await page.waitForTimeout(500)
     expect(await box.inputValue()).toBe(first)
   })
@@ -96,7 +105,10 @@ test.describe('box one — primary reasons for seeking credit', () => {
     const box = page.getByLabel(/Primary reasons for seeking credit/i)
     await expect(box).toBeVisible({ timeout: 20_000 })
 
-    await page.getByRole('button', { name: /Write from the deal/i }).click()
+    // THREE BOXES, THREE BUTTONS, THE SAME WORDS ON EACH.
+    // Boxes 2 and 3 got the same button on 10 Sep, so this has to say which
+    // one it means. Box one is the first.
+    await page.getByRole('button', { name: /Write from the deal/i }).first().click()
     await expect(box).not.toHaveValue('', { timeout: 5_000 })
     const text = await box.inputValue()
     const shouting = /\*\* NOT RECORDED|\*\* ONLY ONE LENDER|\*\* NO RECOMMENDED/.test(text)
