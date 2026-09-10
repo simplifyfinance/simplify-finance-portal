@@ -67,14 +67,16 @@ describe('what it must never say', () => {
 // deal services as per lender calculator, fits its parameters in DTI and surplus
 // funding including all buffers." True by construction, so it is stated plainly.
 describe('servicing, as a fact about the process', () => {
-  it('names the lender whose calculator was used', () => {
-    expect(boxSix(deal()).text)
-      .toContain("Servicing has been assessed on ING's own calculator, which applies their assessment rate and buffers.")
+  it('says it once, in one sentence', () => {
+    const t = boxSix(deal()).text
+    expect(t).toContain("The recommended product services on ING's own calculator, which applies their assessment rate and buffers, so the deal sits within their debt to income parameters and returns a surplus.")
   })
 
-  it('says the recommended product services, and what follows from it', () => {
-    expect(boxSix(deal()).text)
-      .toContain("The recommended product services on ING's calculator, so the deal sits within their debt to income parameters and returns a surplus after their buffers have been applied.")
+  it('does not name the calculator or the buffers twice', () => {
+    // The first draft was two sentences and the second repeated both.
+    const t = boxSix(deal()).text
+    expect((t.match(/calculator/gi) || []).length).toBe(1)
+    expect((t.match(/buffer/gi) || []).length).toBe(1)
   })
 
   it('says the parameters are met without ever quoting the ratio', () => {

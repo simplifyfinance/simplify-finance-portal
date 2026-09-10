@@ -176,9 +176,12 @@ export function servicingLines(deal: any): { parts: string[]; gaps: Gap[] } {
              gaps: [{ what: 'Recommended lender', where: 'Lending options' }] }
   }
   return {
+    // ONE SENTENCE. The first draft was two, and the second half repeated the
+    // calculator and the buffers the first half had already named.
+    // Fabio, 10 Sep 2026: "this sentence says the same thing twice."
     parts: [
-      `Servicing has been assessed on ${lender}'s own calculator, which applies their assessment rate and buffers.`,
-      `The recommended product services on ${lender}'s calculator, so the deal sits within their debt to income parameters and returns a surplus after their buffers have been applied.`,
+      `The recommended product services on ${lender}'s own calculator, which applies their assessment `
+      + `rate and buffers, so the deal sits within their debt to income parameters and returns a surplus.`,
     ],
     gaps: [],
   }
