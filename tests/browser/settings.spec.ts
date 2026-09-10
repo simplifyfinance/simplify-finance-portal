@@ -24,6 +24,22 @@ test.describe('notification routing', () => {
 
     await page.goto('/settings')
 
+    // SETTINGS IS ADMIN ONLY, and the robot may not be one.
+    //
+    // app/(app)/settings/page.tsx redirects anybody whose role is not admin
+    // straight to /deals. The robot signs in as whoever .auth/portal.json holds,
+    // so on a non-admin account it lands on the deals list and every locator
+    // here fails with "element(s) not found" - which reads like a broken page
+    // and is not one.
+    //
+    // 10 Sep 2026: I chased that for three ships, first blaming the labels.
+    // It skips with a reason now, rather than failing the ship every time.
+    await page.waitForLoadState('domcontentloaded')
+    if (!/\/settings/.test(page.url())) {
+      test.skip(true, 'The signed-in robot account is not an admin, so Settings cannot be opened. '
+        + 'Sign in as an admin with ./scripts/portal-login.sh to run this.')
+    }
+
     // The four rows, in the order they read on the screen.
     const requestRow = page.getByLabel('When documents are requested — who raises them on SalesTrekker')
     const fileRow = page.getByLabel('When documents are received — who renames and files them')
