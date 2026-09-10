@@ -23,6 +23,20 @@ const rate = (v: any) => {
   return Number.isFinite(n) && n > 0 ? n : null
 }
 const fee = (v: any) => readMoney(v) ?? 0
+// A BLANK FEE BOX IS NOT A FEE OF ZERO.
+//
+// 10 Sep 2026. A lender whose fee boxes were simply never filled in summed to
+// $0 and was then declared the cheapest: "Lowest upfront fees: CBA at $0. ING
+// charges $350, $350 more." Nobody had said CBA was free. That sentence was
+// going into the facts behind a compliance note and telling a credit assessor
+// the recommendation was beaten on price by a lender nobody had priced.
+//
+// Fabio, 10 Sep 2026: "make sure rules are in place and not compare things say
+// this is cheaper when it isnt."
+//
+// So a figure is only comparable when somebody typed something into at least one
+// of its boxes. "0" typed in is a real answer and stays comparable; empty is not.
+const recorded = (v: any) => txt(v) !== ''
 const pct = (n: number) => `${Number(n.toFixed(2))}%`
 
 export type Option = {
@@ -32,7 +46,11 @@ export type Option = {
   rates: { label: string; rate: number }[]
   lowestRate: number | null
   upfront: number
+  // False when every box making up that figure is empty. The number is still 0
+  // so nothing downstream breaks, but it must not be compared.
+  upfrontKnown: boolean
   ongoing: number
+  ongoingKnown: boolean
   offset: boolean
   offsetAnswer: string
   approvalDays: number | null
@@ -68,7 +86,9 @@ export function optionsOf(lo: any): Option[] {
         rates,
         lowestRate: rates.length ? Math.min(...rates.map(r => r.rate)) : null,
         upfront: UPFRONT.reduce((t, k) => t + fee(l?.[k]), 0),
+        upfrontKnown: UPFRONT.some(k => recorded(l?.[k])),
         ongoing: ONGOING.reduce((t, k) => t + fee(l?.[k]), 0),
+        ongoingKnown: ONGOING.some(k => recorded(l?.[k])),
         offset: !!offsetAnswer && !/^no$/i.test(offsetAnswer),
         offsetAnswer,
         approvalDays: rate(l?.approvalDays),
@@ -114,8 +134,16 @@ export function compareLenders(lo: any): Comparison {
   }
 
   // --- fees ---------------------------------------------------------------
-  const cheapestUpfront = options.reduce((a, b) => b.upfront < a.upfront ? b : a)
-  if (options.some(o => o.upfront !== cheapestUpfront.upfront)) {
+  // Only the options somebody has actually priced, and only when the recommended
+  // one is among them - otherwise there is no comparison to make.
+  const pricedUp = options.filter(o => o.upfrontKnown)
+  const missingUp = options.filter(o => !o.upfrontKnown).map(o => o.name)
+  if (missingUp.length) {
+    lines.push(`Upfront fees are not recorded for ${missingUp.join(' and ')}, so they have not been compared on cost to set up.`)
+  }
+  const cheapestUpfront = pricedUp.length ? pricedUp.reduce((a, b) => b.upfront < a.upfront ? b : a) : null
+  if (cheapestUpfront && rec.upfrontKnown && pricedUp.length > 1
+      && pricedUp.some(o => o.upfront !== cheapestUpfront.upfront)) {
     if (cheapestUpfront.recommended) {
       lines.push(`Lowest upfront fees: ${rec.name} at ${money(rec.upfront)} — the recommended lender is the cheapest to set up.`)
     } else {
@@ -125,8 +153,14 @@ export function compareLenders(lo: any): Comparison {
     }
   }
 
-  const cheapestOngoing = options.reduce((a, b) => b.ongoing < a.ongoing ? b : a)
-  if (options.some(o => o.ongoing !== cheapestOngoing.ongoing)) {
+  const pricedOn = options.filter(o => o.ongoingKnown)
+  const missingOn = options.filter(o => !o.ongoingKnown).map(o => o.name)
+  if (missingOn.length) {
+    lines.push(`Ongoing fees are not recorded for ${missingOn.join(' and ')}, so they have not been compared on annual cost.`)
+  }
+  const cheapestOngoing = pricedOn.length ? pricedOn.reduce((a, b) => b.ongoing < a.ongoing ? b : a) : null
+  if (cheapestOngoing && rec.ongoingKnown && pricedOn.length > 1
+      && pricedOn.some(o => o.ongoing !== cheapestOngoing.ongoing)) {
     if (cheapestOngoing.recommended) {
       lines.push(`Lowest ongoing fees: ${rec.name} at ${money(rec.ongoing)} a year.`)
     } else {
@@ -137,8 +171,15 @@ export function compareLenders(lo: any): Comparison {
   }
 
   // --- features -----------------------------------------------------------
-  const withOffset = options.filter(o => o.offset).map(o => o.name)
-  if (withOffset.length && withOffset.length < options.length) {
+  // An unanswered offset question is not a No. Only options with an answer are
+  // compared, for the same reason as the fees.
+  const offsetAnswered = options.filter(o => o.offsetAnswer !== '')
+  const offsetUnknown = options.filter(o => o.offsetAnswer === '').map(o => o.name)
+  if (offsetUnknown.length) {
+    lines.push(`Whether an offset account is available is not recorded for ${offsetUnknown.join(' and ')}.`)
+  }
+  const withOffset = offsetAnswered.filter(o => o.offset).map(o => o.name)
+  if (withOffset.length && rec.offsetAnswer !== '' && withOffset.length < offsetAnswered.length) {
     if (rec.offset) lines.push(`Offset account: available with ${withOffset.join(' and ')} — including the recommended lender.`)
     else {
       const l = `Offset account: available with ${withOffset.join(' and ')}, but NOT with ${rec.name}.`

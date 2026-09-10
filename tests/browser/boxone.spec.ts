@@ -362,3 +362,42 @@ test.describe('box nine — security', () => {
     expect(text).not.toMatch(/ {2}|\.\.|,,| ,/)
   })
 })
+
+// BOX FIVE, PRESSED BY A ROBOT.
+//
+// Options presented sits directly under analysis and assessment in the Broker
+// comments panel. The rule it guards: NEVER SAY SOMETHING IS CHEAPER WHEN IT IS
+// NOT. A lender with blank fee boxes used to sum to $0 and be called the
+// cheapest, and that sentence was going to a credit assessor.
+test.describe('box five — options presented', () => {
+  test.skip(!DEAL, 'Set PORTAL_TEST_DEAL_ID in .env.local.')
+
+  test('the button writes the options and the recommendation', async ({ page }) => {
+    await page.goto(`/deals/${DEAL}`)
+    await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
+    await page.getByRole('button', { name: /^Compliance$/ }).click()
+    await page.getByRole('button', { name: /Broker comments/ }).click()
+
+    const field = page.getByLabel('Options presented & recommendation', { exact: true })
+    await expect(field).toBeVisible({ timeout: 20_000 })
+    await field.click()
+    await field.press('Meta+a')
+    await field.press('Delete')
+    expect(await field.inputValue()).toBe('')
+
+    await field.locator('xpath=following::button[contains(., "Write from the deal")][1]').click()
+    await expect(field).not.toHaveValue('', { timeout: 5_000 })
+
+    const text = await field.inputValue()
+
+    expect(text).toMatch(/lender option|NOT RECORDED/i)
+    // Never a $0 fee quoted against a lender nobody priced.
+    expect(text).not.toMatch(/at \$0\b|\$0 in upfront fees|\$0 a year/)
+    // Never this box forming its own judgement about what outweighs what.
+    expect(text).not.toMatch(/outweigh|more than offset|on balance|nonetheless/i)
+    // The comparison library's raw turnaround line is replaced by the rule.
+    expect(text).not.toMatch(/Fastest approval:/)
+    expect(text).not.toMatch(/undefined|NaN|\[object|__other__|lenderName/)
+    expect(text).not.toMatch(/ {2}|\.\.|,,| ,/)
+  })
+})
