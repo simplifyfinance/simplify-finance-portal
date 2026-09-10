@@ -112,6 +112,84 @@ for col in fact_find_data bc_data lo_data compliance_data; do
   done < <(grep -rl "deal\.\?*$col" "$D" components 2>/dev/null | grep -E '\.tsx$' | grep -v _to_delete)
 done
 
+# ------------------------------------------- 6. no reaching into a stored list
+# THE FALL, NOT JUST THE DOOR.
+#
+# Everything above stops a bad record getting to a screen. This stops a bad
+# record KILLING one. A tab that renders one applicant at a time reaches into
+# the list by position, and on an empty list the next line reads a name off
+# nothing - which is a white screen for what is really a missing answer.
+#
+# So a list that came out of a JSON column is never indexed bare. Use ?.[i] and
+# render an empty state; components/NoApplicants.tsx is the one the Compliance
+# and Fact Find tabs use. This applies to forms that do not exist yet, which is
+# the point - the loader rules above only know about the four that exist today.
+#
+# Written in python rather than grep because it has to ignore a TRAILING comment
+# and the inside of a comment block, and the grep version that tried to do that
+# was mis-quoted, found nothing, and reported success. A gate that passes
+# because it is broken is worse than no gate. See the bash -n check in ship.sh.
+INDEX_HITS=$(python3 - <<'PYEOF'
+import os, re
+
+LISTS = "applicants|lenders|splits|assets|properties|liabilities|refinanceSplits"
+# (?<!\.) so the last dot of a `...spread` is not read as a property access:
+# `{ ...splits[i] }` is a local array being copied, not a stored list.
+BARE  = re.compile(r"(?<!\.)\.(" + LISTS + r")\[")
+hits, inblock = [], False
+
+def code_only(line):
+    """The line with its comments removed. `//` inside a URL is not a comment."""
+    out, i = [], 0
+    while i < len(line):
+        if line[i:i+2] == "//" and not (i and line[i-1] == ":"):
+            break
+        out.append(line[i]); i += 1
+    return "".join(out)
+
+for root in ("app", "components"):
+    for base, _, files in os.walk(root):
+        if "_to_delete" in base or "node_modules" in base:
+            continue
+        for name in files:
+            if not name.endswith(".tsx"):
+                continue
+            path = os.path.join(base, name)
+            inblock = False
+            for n, raw in enumerate(io_open(path), 1) if False else enumerate(open(path, encoding="utf8"), 1):
+                line = raw.rstrip("\n")
+                if inblock:
+                    if "*/" in line:
+                        inblock = False
+                        line = line.split("*/", 1)[1]
+                    else:
+                        continue
+                while True:
+                    o = line.find("/*")
+                    if o == -1:
+                        break
+                    c = line.find("*/", o + 2)
+                    if c == -1:
+                        line, inblock = line[:o], True
+                        break
+                    line = line[:o] + line[c+2:]
+                line = code_only(line)
+                if BARE.search(line):
+                    hits.append("%s:%d:%s" % (path, n, raw.rstrip()))
+
+for h in hits:
+    print(h)
+PYEOF
+)
+if [ -n "$INDEX_HITS" ]; then
+  while IFS= read -r hit; do
+    [ -z "$hit" ] && continue
+    say "$hit"
+    say "    ^ reaches into a stored list by position. Use ?.[ ] and show an empty state."
+    fail=1
+  done <<< "$INDEX_HITS"
+fi
+
 if [ $fail -ne 0 ]; then
   echo
   echo "RECORD LOADER CHECK FAILED - a screen would render whatever another screen left behind."

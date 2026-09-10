@@ -16,6 +16,18 @@ if [ "$BRANCH" != "main" ]; then
   exit 1
 fi
 
+# A GATE THAT PASSES BECAUSE IT IS BROKEN IS WORSE THAN NO GATE.
+#
+# 10 Sep 2026: a mis-quoted line inside check-record-loaders.sh made its search
+# find nothing, so it reported success while checking absolutely nothing. Every
+# gate is parsed before any of them is trusted.
+for g in scripts/check-*.sh; do
+  if ! bash -n "$g"; then
+    echo "NOT SHIPPED - $g does not parse, so it cannot be trusted to check anything."
+    exit 1
+  fi
+done
+
 echo "Checking broker keys..."
 if ! ./scripts/check-broker-keys.sh; then
   echo

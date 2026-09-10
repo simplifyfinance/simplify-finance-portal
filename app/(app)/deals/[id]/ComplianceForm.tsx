@@ -776,7 +776,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
         ? `This is a JOINT application for ${d.applicants.length} applicants: ${d.applicants.map(a => a.name).join(' and ')}. `
           + `Write in the plural - "the applicants", "they", "their". Do not use "she", "her", "he" or "his" `
           + `except where a fact belongs to one of them alone.`
-        : `This is a single applicant: ${d.applicants[0]?.name || 'the applicant'}. The singular is correct.`,
+        : `This is a single applicant: ${d.applicants?.[0]?.name || 'the applicant'}. The singular is correct.`,
       clientName: d.applicants.map(a => a.name).join(' and '),
       loanAmount: dealLoanAmount(lo, bc),
       purchasePrice: bc.purchasePrice || '',
@@ -1188,7 +1188,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
   }
 
   const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]"
-  const currentApplicant = d.applicants[activeApplicant]
+  const currentApplicant = d.applicants?.[activeApplicant]
   const currentRisk = d.risks[currentApplicant?.name] || defaultRisk()
 
   // Once the deal is LODGED this tab is a record, not a workbench. Generating a
@@ -1204,6 +1204,23 @@ Use the security address exactly as recorded. On a pre-approval it will already 
 
   const stages = ['needs', 'risks', 'product', 'comments', 'expenses'] as const
   const stageLabels = { needs: 'Needs & objectives', risks: 'Risks', product: 'Product requirements', comments: 'Broker comments', expenses: 'Living expenses' }
+
+  // AN EMPTY APPLICANT LIST IS FINE HERE, AND IS LEFT ALONE.
+  //
+  // 10 Sep 2026. There was a panel here saying "nobody has been added to this
+  // deal". Fabio: "I don't see the point. In the past, if I click on it, it was
+  // just empty anyway. I just want the compliance to be empty."
+  //
+  // He was right, and the code says so: NOTHING below reads the applicant while
+  // the page is being drawn. Every read of currentApplicant.name sits inside an
+  // onChange, which only runs when somebody types. So an empty list renders an
+  // empty tab, exactly as it always did, and a sign would be telling somebody
+  // about a problem they do not have.
+  //
+  // MISSING is what killed Wesley's tab, not EMPTY, and they are not the same:
+  // d.applicants[0] on [] is simply undefined, while the same line on undefined
+  // throws and takes the page with it. shape() guarantees the key exists and the
+  // ?. above means a reach can never throw. That is the whole fix.
 
   return (
     <div className="space-y-4">

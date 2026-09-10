@@ -18,6 +18,7 @@ import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship 
 import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS } from '@/lib/fact-find'
 import { newGuard, saveGuarded } from '@/lib/save-conflict'
 import { withDefaults } from '@/lib/record-defaults'
+import NoApplicants from '@/components/NoApplicants'
 import { useLiveColumn } from '@/components/useLiveColumn'
 
 function incrementFY(fy: string): string {
@@ -409,7 +410,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   // "applicant two, we don't have to worry about it."
   function setRelationship(status: string, partnerId: string) {
     setD(prev => ({ ...prev,
-      applicants: applyRelationship(prev.applicants, prev.applicants[activeApplicant]?.id, status, partnerId) }))
+      applicants: applyRelationship(prev.applicants, prev.applicants?.[activeApplicant]?.id, status, partnerId) }))
   }
 
   useEffect(() => { setConfirmCopy(false); setCopiedCount(0) }, [activeApplicant])
@@ -482,7 +483,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   }, [d])
 
   const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]"
-  const applicant = d.applicants[activeApplicant]
+  const applicant = d.applicants?.[activeApplicant]
 
   function updateApplicant(field: keyof FactFindApplicant, value: any) {
     setD(prev => {
@@ -882,6 +883,10 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     </div>
   )
 
+  // NOBODY ON THE DEAL. See components/NoApplicants.tsx. After every hook, as
+  // React requires.
+  if (!d.applicants?.length) return <NoApplicants tab="Fact Find" />
+
   return (
     <div className="grid grid-cols-[480px_1fr] gap-4 items-start">
       <div>
@@ -1165,7 +1170,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               says how many addresses are coming, asks before deleting anything,
               and can be undone. See lib/copy-history.ts. */}
           {activeApplicant > 0 && (() => {
-            const primary = d.applicants[0]
+            const primary = d.applicants?.[0]
             if (!primary) return null
             const who = primary.firstName || 'Applicant 1'
             const plan = copyPlan(primary.addresses, applicant.addresses)
