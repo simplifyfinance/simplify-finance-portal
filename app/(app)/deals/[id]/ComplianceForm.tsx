@@ -37,6 +37,7 @@ import { creditHistoryFacts, creditHistoryBlock } from '@/lib/credit-history-fac
 import { boxOne, type Gap } from '@/lib/box-one'
 import { boxTwo, boxThree } from '@/lib/box-goals'
 import { boxFour } from '@/lib/box-four'
+import { boxSeven } from '@/lib/box-deposit'
 import { withDefaults } from '@/lib/record-defaults'
 import { dealFigures, figureChanges, notesMentioning } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
@@ -749,6 +750,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
     needsImmediate: boxTwo,
     needsLongTerm: boxThree,
     analysisComment: boxFour,
+    depositComment: boxSeven,
   }
 
   function compose(field: string) {
