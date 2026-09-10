@@ -39,6 +39,7 @@ import { boxTwo, boxThree } from '@/lib/box-goals'
 import { boxFour } from '@/lib/box-four'
 import { boxSeven } from '@/lib/box-deposit'
 import { boxEight } from '@/lib/box-credit'
+import { boxNine } from '@/lib/box-security'
 import { withDefaults } from '@/lib/record-defaults'
 import { dealFigures, figureChanges, notesMentioning } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
@@ -753,6 +754,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
     analysisComment: boxFour,
     depositComment: boxSeven,
     creditHistoryComment: boxEight,
+    securityComment: boxNine,
   }
 
   function compose(field: string) {

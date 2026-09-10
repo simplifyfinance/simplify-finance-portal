@@ -324,3 +324,41 @@ test.describe('box eight — credit history', () => {
     expect(await deposit.inputValue()).not.toBe(text)
   })
 })
+
+// BOX NINE, PRESSED BY A ROBOT. The last of them.
+//
+// Security sits on its own below the deposit / credit pair, with its own button.
+// The one thing this guards that no unit test can: that the button on the screen
+// is wired to lib/box-security.ts and writes into the security box and no other.
+test.describe('box nine — security', () => {
+  test.skip(!DEAL, 'Set PORTAL_TEST_DEAL_ID in .env.local.')
+
+  test('the button writes the security from the deal structure', async ({ page }) => {
+    await page.goto(`/deals/${DEAL}`)
+    await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
+    await page.getByRole('button', { name: /^Compliance$/ }).click()
+    await page.getByRole('button', { name: /Broker comments/ }).click()
+
+    const field = page.getByLabel('Security comments', { exact: true })
+    await expect(field).toBeVisible({ timeout: 20_000 })
+    await field.click()
+    await field.press('Meta+a')
+    await field.press('Delete')
+    expect(await field.inputValue()).toBe('')
+
+    await field.locator('xpath=following::button[contains(., "Write from the deal")][1]').click()
+    await expect(field).not.toHaveValue('', { timeout: 5_000 })
+
+    const text = await field.inputValue()
+
+    // It says what the security is, or says plainly that nothing is recorded.
+    expect(text).toMatch(/security|NOT RECORDED/i)
+    // Never a doubled article or a doubled word - both happened on the first run.
+    expect(text).not.toMatch(/\bthe an?\b/)
+    expect(text).not.toMatch(/\b(\w[\w-]+) \1\b/)
+    // Box four owns the fees. This must not repeat them.
+    expect(text).not.toMatch(/application fee|annual fee|legal fee|government charges/i)
+    expect(text).not.toMatch(/undefined|NaN|\[object|propertySubtype|ownershipType/)
+    expect(text).not.toMatch(/ {2}|\.\.|,,| ,/)
+  })
+})
