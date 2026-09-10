@@ -36,6 +36,7 @@ import { selfEmployedParagraphsFor } from '@/lib/self-employed-facts'
 import { creditHistoryFacts, creditHistoryBlock } from '@/lib/credit-history-facts'
 import { boxOne, type Gap } from '@/lib/box-one'
 import { boxTwo, boxThree } from '@/lib/box-goals'
+import { boxFour } from '@/lib/box-four'
 import { dealFigures, figureChanges, notesMentioning } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import DealStructure from '@/components/DealStructure'
@@ -116,6 +117,25 @@ type ComplianceData = {
   clientChosenLenderReason: string
 }
 
+// THESE ANSWERS ARE PRE-POPULATED ON PURPOSE, AND THAT IS A DECISION.
+//
+// A new applicant arrives with the common answer already selected rather than
+// blank - never bankrupt, no judgements, no adverse changes, has a will. So a
+// deal nobody has opened this tab on still reads as a full set of client
+// declarations, and there is no way from the record to tell an answer somebody
+// gave from an answer the software wrote.
+//
+// I raised that on 10 Sep 2026 as a compliance risk and Fabio ruled on it:
+//
+//   "Just leave those questions because they're prepopulated is because we know
+//    majority of the time the answers will be this way. But my credit team will
+//    tick those boxes in any other way if the answers are different. So still
+//    use the answers as your basis and do not start them empty."
+//
+// So they stay, the compliance notes read them as recorded answers, and
+// preflight's "not answered" checks only ever fire on an applicant with no row
+// at all. Written down because it is the kind of decision that gets quietly
+// reversed by somebody who only sees the risk and not the reasoning.
 const defaultRisk = (): RiskData => ({
   adverseChanges: 'No', beneficialChanges: 'No', retirementAge: '', repaymentMethod: '',
   financialExperience: 'Medium', interestRateConcern: 'Medium', loanFlexibility: 'Medium',
@@ -124,6 +144,19 @@ const defaultRisk = (): RiskData => ({
   problemsMeetingCommitments: 'No', officerInLiquidation: 'No', unsatisfiedJudgements: 'No',
   simultaneousApplications: 'No', declaredBankrupt: 'No'
 })
+
+// How a client says they will clear the debt. lib/box-four.ts turns each of
+// these into a sentence, so a new option added here needs words adding there.
+const REPAYMENT_METHODS = [
+  'Repayment of loan prior to retirement',
+  'Downsizing home',
+  'Sale of assets',
+  'Recurring income from superannuation',
+  'Superannuation lump sum following retirement',
+  'Savings',
+  'Income from other investments',
+  'Co-applicants income',
+]
 
 const defaultProductReqs = (): ProductReqs => ({
   fixedRate: '', variableRate: '', fixedAndVariable: 'Important',
@@ -668,6 +701,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
     needsPrimary: boxOne,
     needsImmediate: boxTwo,
     needsLongTerm: boxThree,
+    analysisComment: boxFour,
   }
 
   function compose(field: string) {
@@ -1388,15 +1422,19 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                   <label className="text-xs text-gray-500 block mb-1">Repayment method</label>
                   <select className={inp} value={currentRisk.repaymentMethod} onChange={e => updateRisk(currentApplicant.name, 'repaymentMethod', e.target.value)}>
                     <option value="">— select —</option>
-                    <option>Repayment of loan prior to retirement</option>
-                    <option>Downsizing home</option>
-                    <option>Sale of assets</option>
-                    <option>Recurring income from superannuation</option>
-                    <option>Superannuation lump sum following retirement</option>
-                    <option>Savings</option>
-                    <option>Income from other investments</option>
-                    <option>Co-applicants income</option>
-                    <option>Other</option>
+                    {/* "Other" was removed on 10 Sep 2026. Nobody had ever chosen
+                        it - checked against every deal - and a retirement strategy
+                        recorded as "other" tells an assessor nothing.
+
+                        A STORED ANSWER IS NEVER DROPPED FROM THE LIST. This was the
+                        only select on the tab without that guard: retire an option
+                        and any deal holding it renders blank, then the next autosave
+                        writes the blank over a real answer. The fact find has done it
+                        this way for months; this now matches. */}
+                    {[...REPAYMENT_METHODS,
+                      ...(currentRisk.repaymentMethod && !REPAYMENT_METHODS.includes(currentRisk.repaymentMethod)
+                          ? [currentRisk.repaymentMethod] : [])]
+                      .map(x => <option key={x}>{x}</option>)}
                   </select>
                 </div>
               </div>

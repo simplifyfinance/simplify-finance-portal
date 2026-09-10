@@ -171,3 +171,38 @@ test.describe('boxes two and three', () => {
     })
   }
 })
+
+// BOX FOUR, WHICH LIVES ON A DIFFERENT SUB-TAB.
+//
+// Analysis and assessment sits under Broker comments rather than Needs &
+// objectives, so it needs its own walk through the screen.
+test.describe('box four — analysis and assessment', () => {
+  test.skip(!DEAL, 'Set PORTAL_TEST_DEAL_ID in .env.local.')
+
+  test('the button writes a paragraph built from the deal', async ({ page }) => {
+    await page.goto(`/deals/${DEAL}`)
+    await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
+    await page.getByRole('button', { name: /^Compliance$/ }).click()
+    await page.getByRole('button', { name: /Broker comments/ }).click()
+
+    const field = page.getByLabel(/Analysis, assessment/i)
+    await expect(field).toBeVisible({ timeout: 20_000 })
+    await field.click()
+    await field.press('Meta+a')
+    await field.press('Delete')
+
+    await page.getByRole('button', { name: /Write from the deal/i }).first().click()
+    await expect(field).not.toHaveValue('', { timeout: 5_000 })
+
+    const text = await field.inputValue()
+    expect(text).toContain('ANALYSIS')
+    expect(text).toContain('ASSESSMENT')
+    // The three things this box used to do and must never do again.
+    expect(text).not.toMatch(/APPLICANT EDUCATION|literacy|assumed to have/i)
+    expect(text).not.toMatch(/typically|usually/i)
+    expect(text).not.toMatch(/oo_purchase|undefined|NaN|\[calculated\]|\$XXX/)
+    expect(text).not.toMatch(/ {2}|\.\.|,,/)
+    expect(text).toMatch(/best interests/i)
+    expect(text).toMatch(/conflicts of interest/i)
+  })
+})
