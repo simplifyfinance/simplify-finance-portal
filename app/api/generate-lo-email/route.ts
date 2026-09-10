@@ -240,7 +240,10 @@ export async function POST(req: NextRequest) {
       const st = String(d.dutyState || '').trim().toUpperCase()
       body += p(`Stamp Duty${st ? ` (${st})` : ''}: ${money(d.stampDuty)}`)
     }
-    if (d.deposit) body += p(`Deposit Required: ${money(d.deposit)}`)
+    // See PLUS_INCIDENTALS in generate-email/route.ts - the same words, on the same
+    // line, so the two emails a client receives do not disagree about what they
+    // have to bring.
+    if (d.deposit) body += p(`Deposit Required (plus solicitor's fees and incidentals): ${money(d.deposit)}`)
 
     // A refinance reads in the order the client thinks in: what I owe now, what
     // extra I am taking, what the loan ends up being. It used to read "Loan

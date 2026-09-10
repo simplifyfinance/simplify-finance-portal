@@ -85,6 +85,28 @@ for f in files:
     for m in re.finditer(r'rgba\(', s):
         issues.append((f, s[:m.start()].count('\n') + 1, 'rgba() — Word has no rgba. Use a solid hex.'))
 
+# EVERY CONTRIBUTION LINE CARRIES THE INCIDENTALS NOTE.
+#
+# Fabio, 10 Sep 2026: the figure a client is told to bring is never the whole of
+# it - conveyancing and the small settlement costs sit on top. A purchase
+# scenario that quietly loses the note tells a client to find less than they
+# need, so this counts them rather than trusting anyone to remember.
+bc = open('app/api/generate-email/route.ts', encoding='utf-8').read()
+lo = open('app/api/generate-lo-email/route.ts', encoding='utf-8').read()
+WORDS = "(plus solicitor's fees and incidentals)"
+if WORDS not in bc:
+    issues.append(('app/api/generate-email/route.ts', 0,
+                   'the incidentals note has gone from the BC email entirely'))
+else:
+    marked = bc.count('PLUS_INCIDENTALS') - 1        # less its own declaration
+    if marked < 13:
+        issues.append(('app/api/generate-email/route.ts', 0,
+                       'only %d contribution lines carry the incidentals note; there were 13. '
+                       'A purchase scenario has lost it.' % marked))
+if WORDS not in lo:
+    issues.append(('app/api/generate-lo-email/route.ts', 0,
+                   'the Deposit Required line has lost the incidentals note'))
+
 if issues:
     print('EMAIL HTML CHECK FAILED - this will not render in Outlook on Windows.')
     for f, line, why in issues:

@@ -157,6 +157,17 @@ function existingLoanRow(d: any) {
   return rowIf('Existing loan balance', money(d.existingLoanBal))
 }
 
+// WHAT THE CLIENT STILL HAS TO FIND ON TOP.
+//
+// The contribution line is the number a client reads as "so that's what I need
+// on the day", and it is never the whole of it - conveyancing and the small
+// costs around settlement sit on top, and they are not figures this portal
+// holds. Fabio, 10 Sep 2026, on every purchase scenario.
+//
+// Plain text inside the label, so it inherits the label's colour and the money
+// column stays a clean column of numbers.
+export const PLUS_INCIDENTALS = " (plus solicitor's fees and incidentals)"
+
 function row(l: string, v: string) {
   return `<tr><td style="font-size:12px;color:#555;padding:3px 0"><span style="color:#555;">${l}</span></td><td style="font-size:12px;color:#343333;font-weight:500;text-align:right"><span style="color:#343333;">${v}</span></td></tr>`
 }
@@ -369,7 +380,7 @@ export async function POST(req: NextRequest) {
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Purchase price: ${money(opt.purchasePrice) || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit: ${money(opt.deposit) || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit${PLUS_INCIDENTALS}: ${money(opt.deposit) || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">${dutyLabel(d)}: ${money(opt.stampDuty) || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: ${money(opt.loanAmount) || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
@@ -403,7 +414,7 @@ export async function POST(req: NextRequest) {
       p13('Here is a breakdown of the structure:') +
       card('Your Loan Structure',
         row('Purchase price', money(d.purchasePrice)) +
-        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, money(d.deposit)) +
+        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}${PLUS_INCIDENTALS}`, money(d.deposit)) +
         row(dutyLabel(d), money(d.stampDuty)) +
         row('Loan amount', money(d.splits?.[0]?.amount)) +
         buildLVRLine(d) +
@@ -435,7 +446,7 @@ export async function POST(req: NextRequest) {
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Purchase price: ${money(opt.purchasePrice) || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit: ${money(opt.deposit) || ''}</span></p>
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit${PLUS_INCIDENTALS}: ${money(opt.deposit) || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">${dutyLabel(d)}: ${money(opt.stampDuty) || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: ${money(opt.loanAmount) || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
@@ -468,7 +479,7 @@ export async function POST(req: NextRequest) {
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>.`) +
       card('Your Loan Structure',
         row('Purchase price', money(d.purchasePrice)) +
-        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, money(d.deposit)) +
+        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}${PLUS_INCIDENTALS}`, money(d.deposit)) +
         row(dutyLabel(d), money(d.stampDuty)) +
         row('Loan amount', money(d.splits?.[0]?.amount)) +
         buildLVRLine(d) +
@@ -493,7 +504,7 @@ export async function POST(req: NextRequest) {
       ) +
       card('New Purchase',
         row('Purchase price', money(d.purchasePrice)) +
-        row(depositLabel, money(d.deposit)) +
+        row(depositLabel + PLUS_INCIDENTALS, money(d.deposit)) +
         row(dutyLabel(d), money(d.stampDuty)) +
         row('Loan amount', money(d.splits?.[0]?.amount)) +
         buildLVRLine(d) +
@@ -523,7 +534,7 @@ export async function POST(req: NextRequest) {
       }
       return `<td style="width:${Math.floor(100/splits.length)}%;vertical-align:top;padding:0 4px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${s.label}</td></tr></table>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: ${money(s.amount)}</span></p>${s.deposit ? `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit required: ${money(s.deposit)}</span></p>` : ""}
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: ${money(s.amount)}</span></p>${s.deposit ? `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit required${PLUS_INCIDENTALS}: ${money(s.deposit)}</span></p>` : ""}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${s.rate}% p.a.*</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Type: ${s.type}</span></p>
@@ -559,7 +570,7 @@ export async function POST(req: NextRequest) {
         row(dutyLabel(d), d.stampDuty ? money(d.stampDuty) : '$0 — first home buyer exemption') +
         row('Loan amount', money(d.splits?.[0]?.amount)) +
         row('LMI', 'Waived under Gov. Deposit Scheme') +
-        row('Your contribution required', money(d.deposit)) +
+        row(`Your contribution required${PLUS_INCIDENTALS}`, money(d.deposit)) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         repaymentRow(d.splits?.[0], d.loanTerm) +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
@@ -577,7 +588,7 @@ export async function POST(req: NextRequest) {
         row('Purchase price', money(d.purchasePrice)) +
         row(dutyLabel(d), money(d.stampDuty)) +
         `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Total cost</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">${money((readMoney(d.purchasePrice) || 0) + (readMoney(d.stampDuty) || 0))}</span></td></tr>` +
-        row(`Contribution${d.depositSource ? ` (from ${d.depositSource})` : ''}`, money(d.deposit)) +
+        row(`Contribution${d.depositSource ? ` (from ${d.depositSource})` : ''}${PLUS_INCIDENTALS}`, money(d.deposit)) +
         row('Bridging loan (peak debt)', money(d.splits?.[0]?.amount)) +
         row('End debt', money(d.splits?.[1]?.amount))
       ) +
@@ -608,7 +619,7 @@ export async function POST(req: NextRequest) {
         row('Purchase price', money(d.purchasePrice)) +
         row(dutyLabel(d), money(d.stampDuty)) +
         row('Loan amount', money(d.splits?.[0]?.amount)) +
-        row('Your contribution required', money(d.deposit)) +
+        row(`Your contribution required${PLUS_INCIDENTALS}`, money(d.deposit)) +
         row('Guarantor', d.guarantorName || '') +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         repaymentRow(d.splits?.[0], d.loanTerm) +
@@ -627,7 +638,7 @@ export async function POST(req: NextRequest) {
         row('Purchase price', money(d.purchasePrice)) +
         row(dutyLabel(d), money(d.stampDuty)) +
         row('Loan amount', money(d.splits?.[0]?.amount)) +
-        row('Your contribution required', money(d.deposit)) +
+        row(`Your contribution required${PLUS_INCIDENTALS}`, money(d.deposit)) +
         row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
         repaymentRow(d.splits?.[0], d.loanTerm) +
         row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
@@ -668,7 +679,7 @@ export async function POST(req: NextRequest) {
         row('Total lending', money(lending)) +
         // Not "deposit". It is cash found across the land settlement and the
         // build, not a deposit on a purchase. Fabio, 2 Sep 2026.
-        row('Funds you need to contribute', money(contribute)) +
+        row(`Funds you need to contribute${PLUS_INCIDENTALS}`, money(contribute)) +
         buildLVRLine(d) +
         // Left out entirely when nobody has typed a repayment, rather than
         // mailing a client "$0 / month".
@@ -715,7 +726,7 @@ export async function POST(req: NextRequest) {
         row(dutyLabel(d), money(npStamp)) +
         row('Total cost (plus solicitor\'s fees and incidentals)', totalCost) +
         row('Loan amount', money(d.splits?.[2]?.amount)) +
-        row('Deposit needed (from equity release and personal savings)', money(npDeposit))
+        row(`Deposit needed (from equity release and personal savings)${PLUS_INCIDENTALS}`, money(npDeposit))
       ) +
       p13('Below is a breakdown of the structure:') +
       `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:14px"><tr>
@@ -739,7 +750,7 @@ export async function POST(req: NextRequest) {
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       card('Your Loan Structure',
         row('Purchase price', money(d.purchasePrice)) +
-        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}`, money(d.deposit)) +
+        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}${PLUS_INCIDENTALS}`, money(d.deposit)) +
         row(dutyLabel(d), money(d.stampDuty)) +
         row('Loan amount', money(d.splits?.[0]?.amount)) +
         buildLVRLine(d) +
