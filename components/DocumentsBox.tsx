@@ -4,7 +4,8 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { patchDealColumn } from '@/lib/patch-deal-column'
 import { documentsFor, documentsDue, groupedDocuments, type DocRound } from '@/lib/document-rules'
 import { rowsFor, tickedCount, toRequest, withTick, withAdded, withoutAdded, withDeferred,
-         progressOf, requestRounds, COMMON_EXTRAS, type DocProgress, type DocRow } from '@/lib/document-progress'
+         progressOf, requestRounds, COMMON_EXTRAS, extrasNotAlreadyListed,
+         type DocProgress, type DocRow } from '@/lib/document-progress'
 import { formallyApproved } from '@/lib/document-rules'
 import { banksSeen, accountsPerBank, coveredRows, shortOfPeriod, salaryAccounts,
          expensesAccount, undeclaredBanks, type BanksSeen, type NamedAccount } from '@/lib/statement-cover'
@@ -92,6 +93,12 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
     [items, progress, approved])
   const nowRows = rows.filter(r => dueNow.includes(r.key) || r.addedByHand)
   const laterRows = rows.filter(r => !dueNow.includes(r.key) && !r.addedByHand)
+
+  // Nothing already on the list is offered again - see extrasNotAlreadyListed()
+  // in lib/document-progress.ts for the rule and why statements are special.
+  const extras = useMemo(
+    () => extrasNotAlreadyListed([...nowRows, ...laterRows].map(r => r.label)),
+    [nowRows, laterRows])
   const groups = useMemo(() => groupedDocuments(nowRows as any), [nowRows]) as
     { key: string; label: string; items: DocRow[] }[]
 
@@ -391,7 +398,7 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
                   placeholder="Accountant's letter, older statements, …"
                   className="flex-1 min-w-[220px] border border-[#E8E1D6] rounded-lg px-3 py-1.5 text-[13px] focus:outline-none focus:border-[#2DBEFF]" />
                 <datalist id="doc-extras">
-                  {COMMON_EXTRAS.map(e => <option key={e.label} value={e.label} />)}
+                  {extras.map(e => <option key={e.label} value={e.label} />)}
                 </datalist>
                 <button onClick={addTyped} disabled={!newLabel.trim()}
                   className="rounded-lg px-3 py-1.5 text-[12.5px] font-semibold bg-[#221F1B] text-white disabled:opacity-40">Add</button>

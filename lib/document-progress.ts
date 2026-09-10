@@ -220,7 +220,7 @@ export function withoutAdded(progress: DocProgress, key: string): DocProgress {
 // list automatically has not changed at all - only what a person can reach for.
 // document-progress.test.ts asserts every label document-rules.ts can produce
 // appears here, so a new rule cannot quietly go missing from this list again.
-export const COMMON_EXTRAS: { label: string; forWhat: DocFor; detail?: string }[] = [
+const EXTRAS: { label: string; forWhat: DocFor; detail?: string }[] = [
   // Not produced by any rule - one-offs an assessor asks for.
   { label: "Accountant's letter", forWhat: 'lodge' },
   { label: 'Bank statements — older period', forWhat: 'compliance', detail: 'say which months' },
@@ -272,3 +272,31 @@ export const COMMON_EXTRAS: { label: string; forWhat: DocFor; detail?: string }[
   { label: 'Personal loan statement', forWhat: 'compliance', detail: 'last 6 months' },
   { label: 'Home loan statement', forWhat: 'lodge', detail: 'last 6 months' },
 ]
+
+// ALPHABETICAL, because a list of thirty-four is scanned, not read.
+//
+// Sorted here rather than by hand, so adding one is a single line in whatever
+// group it belongs to and the order looks after itself. The input it feeds is a
+// datalist, so typing filters it as you go. Fabio, 10 Sep 2026: "alphabetical
+// and ability to type and search."
+export const COMMON_EXTRAS: { label: string; forWhat: DocFor; detail?: string }[] =
+  [...EXTRAS].sort((a, b) => a.label.localeCompare(b.label, 'en'))
+
+// WHAT IS LEFT TO OFFER, given what is already on the list.
+//
+// COMMON_EXTRAS carries everything the portal knows about so that anything can be
+// added by hand on a deal where the rules did not ask for it. On a deal where
+// they DID ask for it, offering it again is an invitation to a double-up.
+// Fabio, 10 Sep 2026: "why would payslips be there if I am already requesting -
+// eliminate double ups."
+//
+// Statements carry the bank on the end - "Credit card statement — ANZ" - so the
+// plain label is matched as a prefix as well, or a deal with a credit card would
+// still be offered a second credit card statement.
+export function extrasNotAlreadyListed(existingLabels: string[]) {
+  const here = (existingLabels || []).map(l => String(l ?? '').trim().toLowerCase())
+  return COMMON_EXTRAS.filter(e => {
+    const label = e.label.trim().toLowerCase()
+    return !here.some(h => h === label || h.startsWith(`${label} — `))
+  })
+}

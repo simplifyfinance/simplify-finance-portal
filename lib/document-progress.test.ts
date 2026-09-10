@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import {
   rowsFor, tickedCount, withTick, withAdded, withoutAdded, progressOf, COMMON_EXTRAS,
+  extrasNotAlreadyListed,
   toRequest, withRequest, withDeferred, requestRounds,
 } from './document-progress'
 import type { DocItem } from './document-rules'
@@ -270,6 +271,18 @@ describe('the manual list is not conditional', () => {
     }
   })
 
+  it('is in alphabetical order', () => {
+    // Thirty-four entries. Fabio, 10 Sep 2026: "alphabetical and ability to type
+    // and search." Sorted on export, so a new one cannot land in the wrong place.
+    const labels = COMMON_EXTRAS.map(e => e.label)
+    const sorted = [...labels].sort((a, b) => a.localeCompare(b, 'en'))
+    expect(labels).toEqual(sorted)
+  })
+
+  it('starts where an alphabetical list should', () => {
+    expect(COMMON_EXTRAS[0].label).toBe("Accountant's letter")
+  })
+
   it('has no duplicate labels', () => {
     const labels = COMMON_EXTRAS.map(e => e.label)
     expect(new Set(labels).size).toBe(labels.length)
@@ -280,5 +293,46 @@ describe('the manual list is not conditional', () => {
     for (const l of ["Accountant's letter", 'Letter of employment', 'Trust deed', 'Visa grant notice']) {
       expect(offered).toContain(l)
     }
+  })
+})
+
+// Fabio, 10 Sep 2026: "why would payslips be there if I am already requesting -
+// eliminate double ups."
+describe('nothing already on the list is offered again', () => {
+  const labels = (list: { label: string }[]) => list.map(e => e.label)
+
+  it('drops a document that is already being asked for', () => {
+    const left = labels(extrasNotAlreadyListed(['Payslips × 2', 'ID — licence, Medicare, passport']))
+    expect(left).not.toContain('Payslips × 2')
+    expect(left).not.toContain('ID — licence, Medicare, passport')
+  })
+
+  it('keeps everything that is not on the list', () => {
+    const left = labels(extrasNotAlreadyListed(['Payslips × 2']))
+    expect(left).toContain('Discharge of mortgage')
+    expect(left).toContain("Accountant's letter")
+  })
+
+  it('matches a statement even though the row carries the bank', () => {
+    // The row reads "Credit card statement — ANZ"; the extra is the plain label.
+    const left = labels(extrasNotAlreadyListed(['Credit card statement — ANZ',
+                                                'Home loan statement — Macquarie']))
+    expect(left).not.toContain('Credit card statement')
+    expect(left).not.toContain('Home loan statement')
+    expect(left).toContain('Car loan statement')
+  })
+
+  it('is not fooled by spacing or case', () => {
+    const left = labels(extrasNotAlreadyListed(['  payslips × 2  ']))
+    expect(left).not.toContain('Payslips × 2')
+  })
+
+  it('offers the whole list when nothing is on the deal yet', () => {
+    expect(extrasNotAlreadyListed([])).toHaveLength(COMMON_EXTRAS.length)
+  })
+
+  it('stays alphabetical after filtering', () => {
+    const left = labels(extrasNotAlreadyListed(['Payslips × 2']))
+    expect(left).toEqual([...left].sort((a, b) => a.localeCompare(b, 'en')))
   })
 })
