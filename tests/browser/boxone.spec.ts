@@ -401,3 +401,49 @@ test.describe('box five — options presented', () => {
     expect(text).not.toMatch(/ {2}|\.\.|,,| ,/)
   })
 })
+
+// BOX SIX, PRESSED BY A ROBOT. The ninth and last.
+//
+// The rule it guards: maximum borrowing capacity and debt-to-income are not
+// recorded in this portal and must never appear - not stated, not estimated, and
+// their absence not noted either. Fabio, 3 Sep 2026: "it's never gonna be
+// present, so I don't want that to be part of the compliance notes."
+test.describe('box six — borrowing power', () => {
+  test.skip(!DEAL, 'Set PORTAL_TEST_DEAL_ID in .env.local.')
+
+  test('the button writes the position from the deal', async ({ page }) => {
+    await page.goto(`/deals/${DEAL}`)
+    await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
+    await page.getByRole('button', { name: /^Compliance$/ }).click()
+    await page.getByRole('button', { name: /Broker comments/ }).click()
+
+    const field = page.getByLabel('Borrowing power', { exact: true })
+    await expect(field).toBeVisible({ timeout: 20_000 })
+    await field.click()
+    await field.press('Meta+a')
+    await field.press('Delete')
+    expect(await field.inputValue()).toBe('')
+
+    await field.locator('xpath=following::button[contains(., "Write from the deal")][1]').click()
+    await expect(field).not.toHaveValue('', { timeout: 5_000 })
+
+    const text = await field.inputValue()
+
+    expect(text).toMatch(/employed|not currently working|liabilit|assets|loan to value|NOT RECORDED/i)
+    // The two that must never appear, in any form.
+    expect(text).not.toMatch(/maximum borrowing|borrowing capacity/i)
+    // It MAY say the lender's debt to income parameters are met - that follows
+    // from the product having serviced on their calculator. It must never quote
+    // a ratio, because ours would not match theirs.
+    expect(text).not.toMatch(/\bDTI\b/i)
+    expect(text).not.toMatch(/debt to income (of|is|ratio|at)\b/i)
+    expect(text).not.toMatch(/\d+(\.\d+)?\s*(times|x)\b/)
+    // And never a judgement.
+    expect(text).not.toMatch(/\brobust|\bstrong\b|comfortabl|excellent|well within/i)
+    // Nor living expenses, nor box four's serviceability conclusion.
+    expect(text).not.toMatch(/living expense|\bHEM\b/i)
+    expect(text).not.toMatch(/calculator|buffer|assessment rate/i)
+    expect(text).not.toMatch(/undefined|NaN|\[object|assetType|employmentType/)
+    expect(text).not.toMatch(/ {2}|\.\.|,,| ,/)
+  })
+})
