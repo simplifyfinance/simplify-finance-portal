@@ -44,6 +44,16 @@ if ! ./scripts/check-blob-writes.sh; then
   exit 1
 fi
 
+# Wesley Perrott, 10 Sep 2026. A record written by one screen took another
+# screen's tab down, and the first fix missed four of the five ways a record
+# reaches a screen. See scripts/check-record-loaders.sh.
+echo "Checking record loaders..."
+if ! ./scripts/check-record-loaders.sh; then
+  echo
+  echo "NOT SHIPPED - fix the above first."
+  exit 1
+fi
+
 # The refinance figures go straight into a client's email. They were covered by
 # tests from the start, but the runner was never installed, so for months the
 # checks existed and never ran. They run here now, before anything is built.

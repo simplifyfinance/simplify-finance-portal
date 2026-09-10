@@ -437,9 +437,27 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   // opened is in this state. The defaults are built first now and the saved
   // record laid over the top, so a missing section is a blank section rather
   // than a broken page. Nothing saved is ever discarded.
-  const initData = (): ComplianceData => {
-    const stored: any = (deal?.compliance_data && Object.keys(deal.compliance_data).length > 0)
-      ? deal.compliance_data : null
+  // EVERY RECORD THAT REACHES THIS SCREEN COMES THROUGH HERE.
+  //
+  // 10 Sep 2026, the second half of the Wesley Perrott failure. The first fix
+  // guarded the record the page opens with. It did not guard the FOUR other
+  // ways a record gets onto this screen - the re-read below, an adopt, a merge,
+  // and somebody else's live save - and the re-read is the one that was killing
+  // the tab. It fetched compliance_data fresh and called setD on it raw:
+  //
+  //     const loaded = { ...(data.compliance_data as ComplianceData) }
+  //     setD(loaded)
+  //
+  // Wesley's record is {preApproval, securityAddress} and nothing else, so the
+  // render after that read d.applicants[0] off undefined. That is why the crash
+  // did not move when the first fix shipped, and why it arrived a moment AFTER
+  // the tab opened rather than on the first render.
+  //
+  // So there is now one door. Anything from the database is shaped on the way
+  // in, wherever it came from. The guard is still given the record EXACTLY as
+  // stored - shaping is for the screen, never for what we claim to have read.
+  const shape = (incoming: any): ComplianceData => {
+    const stored: any = (incoming && Object.keys(incoming).length > 0) ? incoming : null
     const apps = getApplicants()
     const risks: Record<string, RiskData> = {}
     apps.forEach(a => { risks[a.name] = defaultRisk() })
@@ -503,12 +521,14 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
     })
   }
 
+  const initData = (): ComplianceData => shape(deal?.compliance_data)
+
   const [d, setD] = useState<ComplianceData>(initData)
   // SOMEBODY ELSE JUST SAVED. Their fields land on this screen without
   // disturbing a single thing this person has typed - see
   // components/useLiveColumn.ts for the rule, and lib/live-deal.ts for why.
   useLiveColumn({ dealId: deal.id, column: 'compliance_data', meId: me?.id, guard: guardRef.current,
-                  current: () => d, apply: v => setD(v as any) })
+                  current: () => d, apply: v => setD(shape(v)) })
 
 
   useEffect(() => {
@@ -590,9 +610,10 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
     supabase.from('deals').select('compliance_data').eq('id', deal.id).single().then(({ data }) => {
       if (data?.compliance_data && Object.keys(data.compliance_data).length > 0) {
         adopt(guardRef.current, data.compliance_data)
-        const loaded = { ...(data.compliance_data as ComplianceData) }
-        if (!loaded.expenses) loaded.expenses = defaultExpenses(loaded.applicants || [])
-        setD(loaded)
+        // shape(), not a spread. A record written by the deal structure block
+        // has no applicants, no risks and no expenses in it, and this screen
+        // renders all three. Wesley Perrott, 10 Sep 2026.
+        setD(shape(data.compliance_data))
       }
     })
   }, [])
@@ -630,12 +651,11 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
           patch: chosenId ? { lender_id: chosenId } : undefined,
           // Nothing typed here yet and somebody else has saved: take their
           // version rather than telling this person off for looking at a deal.
-          // initData returns compliance_data verbatim, so this is exactly what a
-          // fresh load would have put on screen.
-          onAdopt: stored => { if (stored) setD(stored as ComplianceData) },
+          // Shaped, so it is exactly what a fresh load would have put on screen.
+          onAdopt: stored => { if (stored) setD(shape(stored)) },
           // Their fields, folded onto a screen somebody is typing into. A state
           // update, not a rebuild - nobody loses the sentence they are writing.
-          onMerge: merged => setD(merged as ComplianceData),
+          onMerge: merged => setD(shape(merged)),
         })
         if (out.kind === 'superseded') return
         if (out.kind === 'error') { console.error('Compliance autosave:', out.message); setSaveError(out.message); return }

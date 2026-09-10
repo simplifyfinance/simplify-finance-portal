@@ -366,7 +366,13 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   // clone, a future screen - with any of those four missing would take the page
   // down exactly as Wesley Perrott took down compliance on 10 Sep 2026.
   // Nobody has hit it. It is closed anyway. See lib/record-defaults.ts.
-  const initData = (): FactFindData => {
+  // EVERY RECORD THAT REACHES THIS SCREEN COMES THROUGH HERE.
+  //
+  // 10 Sep 2026. On the compliance tab this exact shape - a record shaped on
+  // open and handed in raw everywhere else - took Wesley Perrott's tab down.
+  // This tab has three other doors too: an adopt, a merge, and somebody else's
+  // live save. They all come through here now.
+  const shape = (incoming: any): FactFindData => {
     const blank: FactFindData = {
       applicants: getInitialApplicants(),
       assets: [],
@@ -379,13 +385,15 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       goals2Years: '',
       goals10Years: ''
     }
-    return withDefaults<FactFindData>(deal?.fact_find_data, blank, {
+    return withDefaults<FactFindData>(incoming, blank, {
       applicants: 'arrayNotEmpty',   // this page reads d.applicants[activeApplicant]
       assets: 'array',
       properties: 'array',
       liabilities: 'array',
     })
   }
+
+  const initData = (): FactFindData => shape(deal?.fact_find_data)
 
   const [d, setD] = useState<FactFindData>(initData)
   const [stage, setStage] = useState<'personal' | 'employment' | 'income' | 'assets' | 'properties' | 'liabilities'>('personal')
@@ -418,7 +426,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   // disturbing a single thing this person has typed - see
   // components/useLiveColumn.ts for the rule, and lib/live-deal.ts for why.
   useLiveColumn({ dealId: deal.id, column: 'fact_find_data', meId: me?.id, guard: guardRef.current,
-                  current: () => d, apply: v => setD(v as any) })
+                  current: () => d, apply: v => setD(shape(v)) })
 
   // NO NOTES ABOUT OTHER PEOPLE.
   //
@@ -456,13 +464,12 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
           supabase, dealId: deal.id, column: 'fact_find_data', guard: guardRef.current, savedBy: me, tabLabel: 'Fact Find', value: d,
           // Nothing typed here yet and somebody else has saved: take their
           // version rather than telling this person off for looking at a deal.
-          // initData returns fact_find_data verbatim, so this is exactly what a
-          // fresh load would have put on screen.
-          onAdopt: stored => { if (stored) setD(stored as FactFindData) },
+          // Shaped, so it is exactly what a fresh load would have put on screen.
+          onAdopt: stored => { if (stored) setD(shape(stored)) },
           // Somebody else saved different fields while this person was typing.
           // Their fields go on screen without rebuilding the form, so the caret
           // stays where it is and the field being typed into is untouched.
-          onMerge: merged => setD(merged as FactFindData),
+          onMerge: merged => setD(shape(merged)),
         })
         // A newer save is already queued behind this one. Saying anything here
         // would be about a payload that has been overtaken.

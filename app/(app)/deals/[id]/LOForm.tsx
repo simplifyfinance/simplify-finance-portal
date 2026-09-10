@@ -628,7 +628,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // disturbing a single thing this person has typed - see
   // components/useLiveColumn.ts for the rule, and lib/live-deal.ts for why.
   useLiveColumn({ dealId: deal.id, column: 'lo_data', meId: me?.id, guard: guardRef.current,
-                  current: () => d, apply: v => setD(v as any) })
+                  current: () => d, apply: v => putOnScreen(v) })
 
   // NO NOTES ABOUT OTHER PEOPLE.
   //
@@ -712,7 +712,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           // here - as a state update, so nobody loses what they are mid-way
           // through typing. savedRef is moved with it, or the merged record
           // would read as something this person typed and save itself again.
-          onMerge: merged => { savedRef.current = JSON.stringify(merged); adopt(guardRef.current, merged); setD(merged as LOData) },
+          onMerge: merged => putOnScreen(merged),
         })
         if (out.kind === 'superseded') return
         if (out.kind === 'error') { console.error('LO autosave:', out.message); setSaveError(out.message); return }
