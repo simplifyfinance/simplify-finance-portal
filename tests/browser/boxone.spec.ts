@@ -240,15 +240,30 @@ test.describe('box seven — deposit and equity', () => {
 
     const text = await field.inputValue()
 
-    // It is one of the four shapes, and it names the money.
-    expect(text).toMatch(/deposit|equity|dollar for dollar/i)
-    expect(text).toMatch(/\$[\d,]{3,}/)
+    // THE TEST DEAL HAS NO MONEY ON IT.
+    //
+    // 10 Sep 2026: this demanded a dollar figure and failed, because the test
+    // deal records no purchase price, no equity release and no debt being paid
+    // out. Box seven said exactly that, correctly, and the test was wrong.
+    //
+    // So the shape is read first and only then judged. A deal with nothing on it
+    // has one right answer and it is not a number.
+    const nothingOnIt = /NOT RECORDED — this deal records neither a purchase price/.test(text)
+    if (nothingOnIt) {
+      expect(text).toMatch(/nothing to say about the deposit or the equity position/)
+    } else {
+      // One of the four shapes, and it names the money.
+      expect(text).toMatch(/deposit|equity|dollar for dollar/i)
+      expect(text).toMatch(/\$[\d,]{3,}/)
+    }
 
     // The things this box must never do.
     // Fabio, 10 Sep 2026: "the equity figure is not necessary."
     expect(text).not.toMatch(/leaving equity|remaining equity/i)
     // The LVR comes off the deal structure block, never the 80/90/95 selector.
-    expect(text).toMatch(/loan to value ratio is [\d.]+%|NOT RECORDED — the loan to value ratio/)
+    if (!nothingOnIt) {
+      expect(text).toMatch(/loan to value ratio is [\d.]+%|NOT RECORDED — the loan to value ratio/)
+    }
     // No raw keys, no placeholders, no arithmetic that failed.
     expect(text).not.toMatch(/oo_purchase|refinance_only|undefined|NaN|\[object/)
     expect(text).not.toMatch(/ {2}|\.\.|,,| ,/)
