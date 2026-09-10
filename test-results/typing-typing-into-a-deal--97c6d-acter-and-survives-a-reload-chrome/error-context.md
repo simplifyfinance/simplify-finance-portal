@@ -16,12 +16,12 @@ Error: expect(locator).toBeVisible() failed
 
 Locator: getByText(/Autosaved/)
 Expected: visible
+Timeout: 20000ms
 Error: element(s) not found
 
 Call log:
   - Expect "toBeVisible" getByText(/Autosaved/) with timeout 20000ms
   - waiting for getByText(/Autosaved/)
-  - Test ended.
 
 ```
 

@@ -33,6 +33,8 @@ import { brokerNotes, type Assessor } from '@/lib/broker-notes'
 import { comparisonBlock } from '@/lib/lender-comparison'
 import { newGuard, adopt, saveGuarded } from '@/lib/save-conflict'
 import { selfEmployedParagraphsFor } from '@/lib/self-employed-facts'
+import { creditHistoryFacts, creditHistoryBlock } from '@/lib/credit-history-facts'
+import { boxOne, type Gap } from '@/lib/box-one'
 import { dealFigures, figureChanges, notesMentioning } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import DealStructure from '@/components/DealStructure'
@@ -652,7 +654,28 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
     return errors
   }
 
+  // BOX ONE IS COMPOSED, NOT GENERATED.
+  //
+  // Every sentence is assembled from a recorded field - see lib/box-one.ts.
+  // There is no model in it, so it cannot invent a purpose, a feature or a
+  // figure, and the same deal reads the same way every time it is written. The
+  // other eight boxes are untouched.
+  const [boxOneGaps, setBoxOneGaps] = useState<Gap[]>([])
+
+  function composeBoxOne() {
+    const r = boxOne(deal)
+    setBoxOneGaps(r.gaps)
+    setD(prev => ({ ...prev, needsPrimary: r.text,
+      aiMeta: { ...prev.aiMeta, needsPrimary: {
+        confidence: r.gaps.length === 0 ? 'High' : 'Medium',
+        source: r.gaps.length === 0
+          ? 'Composed from the deal - fact find, BC and lending options'
+          : 'Composed from the deal. Not recorded: ' + r.gaps.map(g => g.what).join('; '),
+        at: new Date().toISOString(), facts: nowFacts } } }))
+  }
+
   async function generateField(field: string) {
+    if (field === 'needsPrimary') { composeBoxOne(); return }
     setGenerating(prev => ({ ...prev, [field]: true }))
     const recLender = (lo.lenders || []).find((l: any) => l.lenderName === lo.recommendedLender) || lo.lenders?.[0] || {}
     // The model is told plainly how many people this loan is for. It used to be
@@ -691,7 +714,12 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
       applicationFee: recLender.applicationFee || '',
       annualFee: recLender.annualFee || '',
       offsetAccount: recLender.offsetAccount || '',
-      redraw: recLender.redraw || '',
+      // `redraw` used to sit here as recLender.redraw, which does not exist -
+      // not on a lender option, not in the lender library, nowhere. So every
+      // deal ever generated told the model "Redraw = not specified", and since
+      // the prompts forbid naming a feature that is not confirmed, no compliance
+      // note could ever mention redraw even on a product that has it. A feature
+      // nobody records is not a feature to ask about.
       needsPrimary: d.needsPrimary,
       needsImmediate: d.needsImmediate,
       needsLongTerm: d.needsLongTerm,
@@ -714,19 +742,19 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
 
 Cover: purpose of the loan (owner occupied / investment) and why; loan amount and term and why; any specific features, lenders, interest rate types or repayment types requested and why; any flexibility on the client's stated needs and objectives; savings held / retention of savings and why; any personal circumstances that may affect the loan (financial circumstances, employment, family status); whether the client is a first home buyer.
 
-Client: ${context.clientName}. Loan: $${context.loanAmount} for ${context.loanType}. Property location (may be a suburb or a state): ${context.suburb}. Income: $${context.incomeBase} base. Recommended lender: ${context.recommendedLender}, product: ${context.product}. Confirmed product features: Offset account = ${context.offsetAccount || 'not specified'}, Redraw = ${context.redraw || 'not specified'}. Client's own stated purpose for this loan: "${context.loanPurpose || 'not recorded'}". IMPORTANT: only reference a specific loan feature (e.g. offset account) as a benefit if it is confirmed present above — if a feature is not present, describe the general benefit (e.g. reducing debt through extra repayments) without naming a feature the product doesn't have. Write 4-6 sentences, no dot points.`,
+Client: ${context.clientName}. Loan: $${context.loanAmount} for ${context.loanType}. Property location (may be a suburb or a state): ${context.suburb}. Income: $${context.incomeBase} base. Recommended lender: ${context.recommendedLender}, product: ${context.product}. Confirmed product features: Offset account = ${context.offsetAccount || 'not specified'}. Client's own stated purpose for this loan: "${context.loanPurpose || 'not recorded'}". IMPORTANT: only reference a specific loan feature (e.g. offset account) as a benefit if it is confirmed present above — if a feature is not present, describe the general benefit (e.g. reducing debt through extra repayments) without naming a feature the product doesn't have. Write 4-6 sentences, no dot points.`,
 
       needsImmediate: `CRM FIELD: Immediate needs and objectives — within the next two years (e.g. holiday, purchases, renovations, savings, protect the family, etc)
 
 Cover: what the client might want to achieve in the next 2 years and how it may affect the loan — overseas travel, starting a family, upgrading or changing property, investments.
 
-Client: ${context.clientName}. Loan type: ${context.loanType}. Recommended product features: Offset account = ${context.offsetAccount || 'not specified'}, Redraw = ${context.redraw || 'not specified'}. Client's own stated 2-year goals: "${context.goals2Years || 'not recorded'}". IMPORTANT: only reference a specific loan feature as helping achieve a goal if it is confirmed present above — otherwise describe the general benefit without naming a feature the product doesn't have. Write 3-4 sentences, no dot points.`,
+Client: ${context.clientName}. Loan type: ${context.loanType}. Recommended product features: Offset account = ${context.offsetAccount || 'not specified'}. Client's own stated 2-year goals: "${context.goals2Years || 'not recorded'}". IMPORTANT: only reference a specific loan feature as helping achieve a goal if it is confirmed present above — otherwise describe the general benefit without naming a feature the product doesn't have. Write 3-4 sentences, no dot points.`,
 
       needsLongTerm: `CRM FIELD: Longer term needs and objectives — between 2 to 10 years (e.g. repay mortgage, buy a new car, education expenses, purchase investment property, retirement planning, etc)
 
 Cover: reducing the home loan and why/how quickly; dependants — commencing or finishing schooling, childcare costs, affordability; retiring before the end of the requested loan term and how this may affect the loan; vehicle or recreational vehicle upgrade and potential timing.
 
-Client: ${context.clientName}. Dependants: ${context.dependants}. Recommended product features: Offset account = ${context.offsetAccount || 'not specified'}, Redraw = ${context.redraw || 'not specified'}. Client's own stated 2-10 year goals: "${context.goals10Years || 'not recorded'}". IMPORTANT: only reference a specific loan feature as helping achieve a goal if it is confirmed present above — otherwise describe the general benefit without naming a feature the product doesn't have. Write 3-4 sentences, no dot points.`,
+Client: ${context.clientName}. Dependants: ${context.dependants}. Recommended product features: Offset account = ${context.offsetAccount || 'not specified'}. Client's own stated 2-10 year goals: "${context.goals10Years || 'not recorded'}". IMPORTANT: only reference a specific loan feature as helping achieve a goal if it is confirmed present above — otherwise describe the general benefit without naming a feature the product doesn't have. Write 3-4 sentences, no dot points.`,
 
       analysisComment: `CRM FIELD: Analysis, assessment and applicant education comments
 ${selfEmployedParagraphsFor(deal).length > 0
@@ -777,9 +805,11 @@ Use the FUNDS TO COMPLETE working above — it is calculated from the recorded f
 
       creditHistoryComment: `CRM FIELD: Credit history comments
 
-Explain any potential credit history comments — must reference any comments about repayment history or conduct (payment history, bankruptcies, judgements, simultaneous credit applications). If all credit history answers are No, confirm a clean credit history on the basis of the client's declarations, and note that these are declarations rather than a verified credit report, so the credit team should confirm.
+Client: ${context.clientName}.
 
-Client: ${context.clientName}. Risk answers: ${context.risks}. Cover what was answered and nothing else.`,
+${creditHistoryBlock(creditHistoryFacts(d.risks as any, d.applicants))}
+
+Write it as a sentence or two. Cover what is recorded above and nothing else.`,
 
       securityComment: `CRM FIELD: Security (property) comments
 
@@ -1265,8 +1295,9 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                 <label className="text-xs font-medium text-gray-500 block mb-1">{label}</label>
                 <textarea spellCheck="true" className={inp + ' min-h-[100px] resize-y'} value={(d as any)[key]}
                   onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
-                  placeholder="Click Generate with AI or type manually..." />
-                <AIButton onClick={() => generateField(key)} loading={generating[key]} />
+                  placeholder={key === 'needsPrimary' ? 'Click Write from the deal, or type it yourself...' : 'Click Generate with AI or type manually...'} />
+                <AIButton onClick={() => generateField(key)} loading={generating[key]}
+                  label={key === 'needsPrimary' ? 'Write from the deal' : undefined} />
                 <button onClick={() => { setFlaggingField(flaggingField === key ? null : key); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
                 {flaggingField === key && (
                   <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
@@ -1275,6 +1306,14 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                       <button onClick={() => submitFlag(key, label)} disabled={flagSubmitting || !flagNote.trim()} className="text-xs bg-amber-500 text-white rounded-lg px-3 py-1.5 hover:bg-amber-600 disabled:opacity-40">{flagSubmitting ? 'Submitting...' : 'Submit flag'}</button>
                       <button onClick={() => { setFlaggingField(null); setFlagNote('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
                     </div>
+                  </div>
+                )}
+                {key === 'needsPrimary' && boxOneGaps.length > 0 && (
+                  <div className="mt-2 bg-red-50 border border-red-200 border-l-[3px] border-l-red-600 rounded-lg px-3 py-2">
+                    <p className="text-xs font-semibold text-red-800 mb-1">Recorded nowhere — these must be filled in before this file is submitted</p>
+                    {boxOneGaps.map(g => (
+                      <p key={g.what} className="text-xs text-red-700">· {g.what} — <span className="text-red-500">{g.where}</span></p>
+                    ))}
                   </div>
                 )}
                 <NoteMeta meta={d.aiMeta?.[key]} freshness={freshnessOf(key)} onAccept={() => acceptNote(key)} />
