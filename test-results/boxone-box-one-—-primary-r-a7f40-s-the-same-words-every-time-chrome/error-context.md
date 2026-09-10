@@ -12,179 +12,223 @@
 # Error details
 
 ```
-Error: expect(locator).toBeVisible() failed
+Error: expect(received).toBe(expected) // Object.is equality
 
-Locator: getByLabel(/Primary reasons for seeking credit/i)
-Expected: visible
-Timeout: 20000ms
-Error: element(s) not found
-
-Call log:
-  - Expect "toBeVisible" getByLabel(/Primary reasons for seeking credit/i) with timeout 20000ms
-  - waiting for getByLabel(/Primary reasons for seeking credit/i)
-
+Expected: "TestFabioKylie Test is borrowing ** NOT RECORDED — no loan amount has been recorded ** over a thirty year term to buy an owner-occupied property. ** NOT RECORDED — nobody has recorded what these clients said they want the loan for. The fact find question is blank and must be completed before submission. **·
+** NOT RECORDED — no rate type has been recorded against the recommended lender, so the structure of this loan cannot be described. **·
+TestFabioKylie is employed full time.·
+** ONLY ONE LENDER RECORDED — CBA is the only lender option on this file, so the recommendation has not been compared against any alternative. **"
+Received: ""
 ```
 
+# Page snapshot
+
 ```yaml
-- complementary:
-  - img "Simplify Finance"
-  - text: Credit & Compliance Portal
-  - navigation:
-    - text: Main
-    - link "Dashboard":
-      - /url: /dashboard
-    - link "Deals":
-      - /url: /deals
-    - link "Pipeline Expand":
-      - /url: /pipeline
-      - text: Pipeline
-      - button "Expand":
-        - img
-    - link "Settlements":
-      - /url: /settlements
-    - link "Clients":
-      - /url: /clients
-    - link "Lender library Expand":
-      - /url: /lenders
-      - text: Lender library
-      - button "Expand":
-        - img
-    - link "Templates":
-      - /url: /templates
-    - link "Reports":
-      - /url: /reports
-    - link "Cheat sheet":
-      - /url: /cheat-sheet
-    - text: Admin
-    - link "Commissions Expand":
-      - /url: /commissions
-      - text: Commissions
-      - button "Expand":
-        - img
-    - link "Team workload":
-      - /url: /credit-team-workload
-    - link "Team":
-      - /url: /team
-    - link "Settings Expand":
-      - /url: /settings
-      - text: Settings
-      - button "Expand":
-        - img
-  - text: FD Fabio De Castro Admin
-  - button "Sign out"
-- main:
-  - button "Back to deals"
-  - text: TestFabioKylie Test 2026
-  - button "History"
-  - button "✎ Edit"
-  - text: Broker Fabio Scenario OO purchase Waiting on Broker to complete BC Deal
-  - link "Summary":
-    - /url: /deals/e3cd45b0-1f1b-493c-8c05-00a789f46073/summary
-    - img
-    - text: Summary
-  - button "Clone":
-    - img
-    - text: Clone
-  - button "Close deal":
-    - img
-    - text: Close deal
-  - img
-  - text: Fact Find 07 Sept BC with broker Lending Options Compliance Lodged Preapproved Offer accepted Formal Contracts returned Settlement booked Settled
-  - button "Internal notes Nothing written yet — what the client told us goes here. Add"
-  - button "Documents 6 to request of 6 on the list 1 to check Show"
-  - button "Fact Find"
-  - button "Statements"
-  - button "BC — Borrowing capacity"
-  - button "Lending options"
-  - button "Compliance"
-  - button "Needs & objectives"
-  - button "Risks"
-  - button "Product requirements"
-  - button "Broker comments"
-  - button "Living expenses"
-  - text: Deal structure OO purchase 2 to complete
-  - link "Open BC tab →":
-    - /url: /deals/e3cd45b0-1f1b-493c-8c05-00a789f46073?stage=BC
-  - text: Lender CBA from the LO Approval
-  - button "Formal"
-  - button "Pre-approval"
-  - text: Security address
-  - textbox "Street, suburb, state"
-  - text: Property value not recorded LVR not known Loan splits amount, rate, repayment and purpose come from the Lending options tab
-  - table:
-    - rowgroup:
-      - row "Split Amount Rate P&I / IO Purpose Term Product type Promotion / cashback":
-        - columnheader "Split"
-        - columnheader "Amount"
-        - columnheader "Rate"
-        - columnheader "P&I / IO"
-        - columnheader "Purpose"
-        - columnheader "Term"
-        - columnheader "Product type"
-        - columnheader "Promotion / cashback"
-    - rowgroup:
-      - row "Split 1 Owner-occupied loan — 6.14% P&I set on the LO ↗ 30":
-        - cell "Split 1 Owner-occupied loan"
-        - cell "—"
-        - cell "6.14%"
-        - cell "P&I"
-        - cell "set on the LO ↗":
-          - link "set on the LO ↗":
-            - /url: /deals/e3cd45b0-1f1b-493c-8c05-00a789f46073?stage=LO
-        - cell "30":
-          - textbox "years": "30"
-        - cell:
-          - textbox "product"
-        - cell:
-          - textbox "none"
-  - heading "⚠ 2 things are needed before the credit notes can be written" [level=4]
-  - paragraph: Left blank, the notes would either say nothing useful about that money or start guessing.
-  - list:
-    - listitem: Owner-occupied loan — purpose — owner occupied or investment
-    - listitem: Owner-occupied loan — product type
-  - button "Push to SalesTrekker":
-    - text: Push to SalesTrekker
-    - img
-  - text: Marks compliance complete and emails both PDFs to the compliance team.
-  - link "Open to copy":
-    - /url: /deals/e3cd45b0-1f1b-493c-8c05-00a789f46073/handover
-    - img
-    - text: Open to copy
-  - button "Fact Find PDF":
-    - img
-    - text: Fact Find PDF
-  - button "Handover PDF":
-    - img
-    - text: Handover PDF
-  - button "Broker Notes":
-    - img
-    - text: Broker Notes
-  - text: Needs & objectives
-  - button "Generate all fields":
-    - img
-    - text: Generate all fields
-  - text: Primary reasons for seeking credit
-  - textbox "Click Write from the deal, or type it yourself..."
-  - button "Write from the deal":
-    - img
-    - text: Write from the deal
-  - button "Flag an issue"
-  - text: Immediate needs & objectives — next 2 years
-  - textbox "Click Generate with AI or type manually..."
-  - button "Generate with AI":
-    - img
-    - text: Generate with AI
-  - button "Flag an issue"
-  - text: Longer term — 2 to 10 years
-  - textbox "Click Generate with AI or type manually..."
-  - button "Generate with AI":
-    - img
-    - text: Generate with AI
-  - button "Flag an issue"
-  - text: Requirements type
-  - button "Owner occupied"
-  - button "Investment"
-- alert
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - img "Simplify Finance" [ref=e5]
+      - generic [ref=e6]: Credit & Compliance Portal
+      - navigation [ref=e8]:
+        - generic [ref=e9]: Main
+        - link "Dashboard" [ref=e11] [cursor=pointer]:
+          - /url: /dashboard
+        - link "Deals" [ref=e18] [cursor=pointer]:
+          - /url: /deals
+        - link [ref=e23] [cursor=pointer]:
+          - /url: /pipeline
+          - text: Pipeline
+          - button "Expand" [ref=e27]
+        - link "Clients" [ref=e31] [cursor=pointer]:
+          - /url: /clients
+        - link [ref=e38] [cursor=pointer]:
+          - /url: /lenders
+          - text: Lender library
+          - button "Expand" [ref=e43]
+        - link "Templates" [ref=e47] [cursor=pointer]:
+          - /url: /templates
+        - link "Reports" [ref=e52] [cursor=pointer]:
+          - /url: /reports
+        - link "Cheat sheet" [ref=e55] [cursor=pointer]:
+          - /url: /cheat-sheet
+      - generic [ref=e60]:
+        - generic [ref=e61]:
+          - generic [ref=e62]: "?"
+          - generic [ref=e63]:
+            - generic [ref=e64]: ...
+            - generic [ref=e65]: Unknown
+        - button "Sign out" [ref=e66]
+    - main [ref=e70]:
+      - generic [ref=e71]:
+        - button "Back to deals" [ref=e72]
+        - generic [ref=e75]:
+          - generic [ref=e76]:
+            - generic [ref=e77]:
+              - generic [ref=e78]: TestFabioKylie Test 2026
+              - button "✎ Edit" [ref=e80]
+            - generic [ref=e81]:
+              - generic [ref=e82]:
+                - generic [ref=e83]: Broker
+                - generic [ref=e84]: Fabio
+              - generic [ref=e85]:
+                - generic [ref=e86]: Scenario
+                - generic [ref=e87]: OO purchase
+              - generic [ref=e88]:
+                - generic [ref=e89]: Waiting on
+                - generic [ref=e90]: Broker to complete BC
+          - generic [ref=e92]:
+            - generic [ref=e93]: Deal
+            - generic [ref=e94]:
+              - link "Summary" [ref=e95] [cursor=pointer]:
+                - /url: /deals/e3cd45b0-1f1b-493c-8c05-00a789f46073/summary
+              - button "Clone" [ref=e99]
+              - button "Close deal" [ref=e103]
+        - generic [ref=e108]:
+          - generic [ref=e109]:
+            - generic [ref=e113]: Fact Find
+            - generic [ref=e114]: 07 Sept
+          - generic [ref=e115]:
+            - generic [ref=e118]: BC
+            - generic [ref=e119]: with broker
+          - generic [ref=e120]: Lending Options
+          - generic [ref=e125]: Compliance
+          - generic [ref=e130]: Lodged
+          - generic [ref=e135]: Preapproved
+          - generic [ref=e140]: Offer accepted
+          - generic [ref=e145]: Formal
+          - generic [ref=e150]: Contracts returned
+          - generic [ref=e155]: Settlement booked
+          - generic [ref=e160]: Settled
+        - button "Internal notes Nothing written yet — what the client told us goes here. Add" [ref=e165]:
+          - generic [ref=e166]: Internal notes
+          - generic [ref=e167]: Nothing written yet — what the client told us goes here.
+          - generic [ref=e168]: Add
+        - button "Documents 6 to request of 6 on the list 1 to check Show" [ref=e170]:
+          - generic [ref=e171]: Documents
+          - generic [ref=e172]: 6 to request
+          - generic [ref=e173]: of 6 on the list
+          - generic [ref=e174]: 1 to check
+          - generic [ref=e175]: Show
+        - generic [ref=e176]:
+          - button "Fact Find" [ref=e177]
+          - button "Statements" [ref=e178]
+          - button "BC — Borrowing capacity" [ref=e179]
+          - button "Lending options" [ref=e180]
+          - button "Compliance" [ref=e181]
+        - generic [ref=e182]:
+          - generic [ref=e183]:
+            - button "Needs & objectives" [ref=e184]
+            - button "Risks" [ref=e185]
+            - button "Product requirements" [ref=e186]
+            - button "Broker comments" [ref=e187]
+            - button "Living expenses" [ref=e188]
+          - generic [ref=e189]:
+            - generic [ref=e190]:
+              - generic [ref=e191]: Deal structure
+              - generic [ref=e192]: OO purchase
+              - generic [ref=e193]: 2 to complete
+              - link "Open BC tab →" [ref=e194] [cursor=pointer]:
+                - /url: /deals/e3cd45b0-1f1b-493c-8c05-00a789f46073?stage=BC
+            - generic [ref=e195]:
+              - generic [ref=e196]:
+                - generic [ref=e197]: Lender
+                - generic [ref=e198]:
+                  - text: CBA
+                  - generic [ref=e199]: from the LO
+              - generic [ref=e200]:
+                - generic [ref=e201]: Approval
+                - generic [ref=e202]:
+                  - button "Formal" [ref=e203]
+                  - button "Pre-approval" [ref=e204]
+              - generic [ref=e205]:
+                - generic [ref=e206]: Security address
+                - textbox "Street, suburb, state" [ref=e207]
+              - generic [ref=e208]:
+                - generic [ref=e209]: Property value
+                - text: not recorded
+              - generic [ref=e210]:
+                - generic [ref=e211]: LVR
+                - text: not known
+            - generic [ref=e213]:
+              - generic [ref=e214]: Loan splits
+              - generic [ref=e215]: amount, rate, repayment and purpose come from the Lending options tab
+            - table [ref=e217]:
+              - rowgroup [ref=e218]:
+                - row [ref=e219]:
+                  - columnheader "Split" [ref=e220]
+                  - columnheader "Amount" [ref=e221]
+                  - columnheader "Rate" [ref=e222]
+                  - columnheader "P&I / IO" [ref=e223]
+                  - columnheader "Purpose" [ref=e224]
+                  - columnheader "Term" [ref=e225]
+                  - columnheader "Product type" [ref=e226]
+                  - columnheader "Promotion / cashback" [ref=e227]
+              - rowgroup [ref=e228]:
+                - row [ref=e229]:
+                  - cell "Split 1 Owner-occupied loan" [ref=e230]:
+                    - generic [ref=e231]: Split 1
+                    - generic [ref=e232]: Owner-occupied loan
+                  - cell "—" [ref=e233]
+                  - cell "6.14%" [ref=e234]
+                  - cell "P&I" [ref=e235]
+                  - cell [ref=e236]:
+                    - link "set on the LO ↗" [ref=e237] [cursor=pointer]:
+                      - /url: /deals/e3cd45b0-1f1b-493c-8c05-00a789f46073?stage=LO
+                  - cell [ref=e238]:
+                    - textbox "years" [ref=e239]: "30"
+                  - cell [ref=e240]:
+                    - textbox "product" [ref=e241]
+                  - cell [ref=e242]:
+                    - textbox "none" [ref=e243]
+            - generic [ref=e244]:
+              - heading "⚠ 2 things are needed before the credit notes can be written" [level=4] [ref=e245]
+              - paragraph [ref=e246]: Left blank, the notes would either say nothing useful about that money or start guessing.
+              - list [ref=e247]:
+                - listitem [ref=e248]: Owner-occupied loan — purpose — owner occupied or investment
+                - listitem [ref=e249]: Owner-occupied loan — product type
+          - generic [ref=e251]:
+            - generic [ref=e252]:
+              - button "Push to SalesTrekker" [ref=e253]
+              - generic [ref=e256]: Marks compliance complete and emails both PDFs to the compliance team.
+            - generic [ref=e257]:
+              - link "Open to copy" [ref=e258] [cursor=pointer]:
+                - /url: /deals/e3cd45b0-1f1b-493c-8c05-00a789f46073/handover
+              - button "Fact Find PDF" [ref=e262]
+              - button "Handover PDF" [ref=e265]
+              - button "Broker Notes" [ref=e268]
+          - generic [ref=e272]:
+            - generic [ref=e273]:
+              - generic [ref=e274]: Needs & objectives
+              - button "Generate all fields" [ref=e276]
+            - generic [ref=e280]:
+              - generic [ref=e281]: Primary reasons for seeking credit
+              - textbox "Primary reasons for seeking credit" [ref=e282]:
+                - /placeholder: Click Write from the deal, or type it yourself...
+              - button "Write from the deal" [active] [ref=e283]
+              - button "Flag an issue" [ref=e287]
+              - generic [ref=e288]:
+                - paragraph [ref=e289]: Recorded nowhere — these must be filled in before this file is submitted
+                - paragraph [ref=e290]: · The clients' own reason for the loan — Fact Find → Purpose of loan
+                - paragraph [ref=e291]: · Rate type on the recommended lender — Lending options → recommended lender
+                - paragraph [ref=e292]: · Only one lender option recorded — Lending options → lender options
+            - generic [ref=e293]:
+              - generic [ref=e294]: Immediate needs & objectives — next 2 years
+              - textbox "Immediate needs & objectives — next 2 years" [ref=e295]:
+                - /placeholder: Click Generate with AI or type manually...
+              - button "Generate with AI" [ref=e296]
+              - button "Flag an issue" [ref=e300]
+            - generic [ref=e301]:
+              - generic [ref=e302]: Longer term — 2 to 10 years
+              - textbox "Longer term — 2 to 10 years" [ref=e303]:
+                - /placeholder: Click Generate with AI or type manually...
+              - button "Generate with AI" [ref=e304]
+              - button "Flag an issue" [ref=e308]
+            - generic [ref=e309]:
+              - generic [ref=e310]: Requirements type
+              - generic [ref=e311]:
+                - button "Owner occupied" [ref=e312] [cursor=pointer]
+                - button "Investment" [ref=e313] [cursor=pointer]
+  - alert [ref=e314]
 ```
 
 # Test source
@@ -248,8 +292,7 @@ Call log:
   56  |     await page.getByRole('button', { name: /^Compliance$/ }).click()
   57  |     await page.getByRole('button', { name: /Needs & objectives/ }).click()
   58  |     const box = page.getByLabel(/Primary reasons for seeking credit/i)
-> 59  |     await expect(box).toBeVisible({ timeout: 20_000 })
-      |                       ^ Error: expect(locator).toBeVisible() failed
+  59  |     await expect(box).toBeVisible({ timeout: 20_000 })
   60  | 
   61  |     await page.getByRole('button', { name: /Write from the deal/i }).click()
   62  |     await expect(box).not.toHaveValue('', { timeout: 5_000 })
@@ -257,7 +300,8 @@ Call log:
   64  | 
   65  |     await page.getByRole('button', { name: /Write from the deal/i }).click()
   66  |     await page.waitForTimeout(500)
-  67  |     expect(await box.inputValue()).toBe(first)
+> 67  |     expect(await box.inputValue()).toBe(first)
+      |                                    ^ Error: expect(received).toBe(expected) // Object.is equality
   68  |   })
   69  | 
   70  |   test('a gap is shouted, on the screen and in the text', async ({ page }) => {
