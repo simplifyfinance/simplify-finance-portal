@@ -442,7 +442,12 @@ test.describe('box six — borrowing power', () => {
     expect(text).not.toMatch(/\brobust|\bstrong\b|comfortabl|excellent|well within/i)
     // Nor living expenses, nor box four's serviceability conclusion.
     expect(text).not.toMatch(/living expense|\bHEM\b/i)
-    expect(text).not.toMatch(/calculator|buffer|assessment rate/i)
+    // THE CALCULATOR AND THE BUFFERS BELONG HERE NOW, and are said once.
+    // This line used to ban them, from the first draft where servicing was box
+    // four's alone. Box six states it as the fact it is, so the ban became a
+    // count: named once each, never twice.
+    expect((text.match(/calculator/gi) || []).length).toBeLessThanOrEqual(1)
+    expect((text.match(/buffer/gi) || []).length).toBeLessThanOrEqual(1)
     expect(text).not.toMatch(/undefined|NaN|\[object|assetType|employmentType/)
     expect(text).not.toMatch(/ {2}|\.\.|,,| ,/)
   })
