@@ -1798,7 +1798,14 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                 <textarea spellCheck="true" aria-label="Security comments" className={inp + ' min-h-[80px] resize-y'} value={d.securityComment}
                   onChange={e => setD(prev => ({ ...prev, securityComment: e.target.value }))}
                   placeholder="TBA or enter address..." />
-                <AIButton onClick={() => generateField('securityComment')} loading={generating['securityComment']} />
+                {/* THE LABEL COMES FROM THE COMPOSER LIST, NOT FROM A STRING HERE.
+                    10 Sep 2026: box nine shipped wired up and this button still
+                    said "Generate with AI", so the robot timed out looking for
+                    "Write from the deal". Box four did exactly this on 10 Sep
+                    too - the same mistake twice, in the one place it is not
+                    derived. */}
+                <AIButton onClick={() => generateField('securityComment')} loading={generating['securityComment']}
+                  label={COMPOSERS['securityComment'] ? 'Write from the deal' : undefined} />
                 <button onClick={() => { setFlaggingField(flaggingField === 'securityComment' ? null : 'securityComment'); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
                 {flaggingField === 'securityComment' && (
                   <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
