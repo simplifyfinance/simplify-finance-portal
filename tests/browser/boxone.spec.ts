@@ -263,3 +263,49 @@ test.describe('box seven — deposit and equity', () => {
     expect(await credit.inputValue()).not.toBe(text)
   })
 })
+
+// BOX EIGHT, PRESSED BY A ROBOT.
+//
+// Credit history sits beside deposit / equity in the same two-column grid, so
+// this is also the test that the two buttons write into their own boxes.
+//
+// The one thing it guards above all: WE DO NOT PULL CREDIT REPORTS. Fabio,
+// 10 Sep 2026: "stop asking me if we did a credit check. We don't do Equifax."
+// If a bureau, a report or an "unverified" hedge ever appears on the screen,
+// this fails.
+test.describe('box eight — credit history', () => {
+  test.skip(!DEAL, 'Set PORTAL_TEST_DEAL_ID in .env.local.')
+
+  test('the button writes the credit history from the recorded answers', async ({ page }) => {
+    await page.goto(`/deals/${DEAL}`)
+    await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
+    await page.getByRole('button', { name: /^Compliance$/ }).click()
+    await page.getByRole('button', { name: /Broker comments/ }).click()
+
+    const field = page.getByLabel('Credit history', { exact: true })
+    await expect(field).toBeVisible({ timeout: 20_000 })
+    await field.click()
+    await field.press('Meta+a')
+    await field.press('Delete')
+    expect(await field.inputValue()).toBe('')
+
+    await field.locator('xpath=following::button[contains(., "Write from the deal")][1]').click()
+    await expect(field).not.toHaveValue('', { timeout: 5_000 })
+
+    const text = await field.inputValue()
+
+    // Never a bureau, a report, or the hedge that means the same thing.
+    expect(text).not.toMatch(/equifax|experian|illion|veda|credit report|credit file|credit check|credit score|bureau/i)
+    expect(text).not.toMatch(/unverified|rather than a verified|subject to a credit/i)
+    // Never the four things this portal does not ask about.
+    expect(text).not.toMatch(/\bdefaults?\b|credit enquir|credit impairment|payment history/i)
+    // It is built from the five that it does ask about.
+    expect(text).toMatch(/bankrupt|judgement|fixed commitments|liquidation|credit providers|NOT RECORDED/i)
+    expect(text).not.toMatch(/declaredBankrupt|problemsMeeting|undefined|NaN|\[object/)
+    expect(text).not.toMatch(/ {2}|\.\.|,,| ,/)
+
+    // And it did not write into the box next door.
+    const deposit = page.getByLabel('Deposit / equity', { exact: true })
+    expect(await deposit.inputValue()).not.toBe(text)
+  })
+})

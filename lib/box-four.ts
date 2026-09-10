@@ -109,9 +109,9 @@ export function retirementStrategy(deal: any, v: 1 | 2 | 3): { parts: string[]; 
 // The order a person would say them in, which is not the order they sit on the
 // form. Ending a clean credit history on "and has never been declared bankrupt"
 // reads like an afterthought; it belongs first.
-const CLEAN_ORDER = ['declaredBankrupt', 'unsatisfiedJudgements', 'problemsMeetingCommitments',
+export const CLEAN_ORDER = ['declaredBankrupt', 'unsatisfiedJudgements', 'problemsMeetingCommitments',
                      'simultaneousApplications', 'officerInLiquidation']
-const CLEAN_WORDS: Record<string, string> = {
+export const CLEAN_WORDS: Record<string, string> = {
   declaredBankrupt: 'has never been declared bankrupt',
   unsatisfiedJudgements: 'has no unsatisfied judgements',
   problemsMeetingCommitments: 'has had no difficulty meeting fixed commitments',

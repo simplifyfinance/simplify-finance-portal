@@ -38,6 +38,7 @@ import { boxOne, type Gap } from '@/lib/box-one'
 import { boxTwo, boxThree } from '@/lib/box-goals'
 import { boxFour } from '@/lib/box-four'
 import { boxSeven } from '@/lib/box-deposit'
+import { boxEight } from '@/lib/box-credit'
 import { withDefaults } from '@/lib/record-defaults'
 import { dealFigures, figureChanges, notesMentioning } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
@@ -751,6 +752,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
     needsLongTerm: boxThree,
     analysisComment: boxFour,
     depositComment: boxSeven,
+    creditHistoryComment: boxEight,
   }
 
   function compose(field: string) {
