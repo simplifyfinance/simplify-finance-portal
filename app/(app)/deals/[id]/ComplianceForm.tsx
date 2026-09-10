@@ -418,11 +418,27 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   // added to ANY joint deal. See lib/applicants.ts.
   const getApplicants = (): Applicant[] => applicantsOf(deal, bc) as Applicant[]
 
+  // A SAVED RECORD IS TRUSTED FOR WHAT IT HOLDS, NOT FOR WHAT IT IS MISSING.
+  //
+  // 10 Sep 2026, Wesley Perrott: the compliance tab would not load at all. Its
+  // compliance_data was a real object - written by the deal structure block,
+  // which saves securityAddress and the split detail into the same column - but
+  // it had never held applicants, risks, productReqs or expenses, because nobody
+  // had opened this tab.
+  //
+  // This function returned that record untouched the moment it was non-empty. So
+  // the very first render reached `d.applicants.map(...)` on undefined and the
+  // whole page died: "This page couldn't load", every other tab fine. The effect
+  // below that fills the applicants in runs AFTER the first render, so it never
+  // got the chance.
+  //
+  // Every deal whose structure block was filled in before the compliance tab was
+  // opened is in this state. The defaults are built first now and the saved
+  // record laid over the top, so a missing section is a blank section rather
+  // than a broken page. Nothing saved is ever discarded.
   const initData = (): ComplianceData => {
-    // Database first, same as FactFindForm.
-    if (deal?.compliance_data && Object.keys(deal.compliance_data).length > 0) {
-      return deal.compliance_data as ComplianceData
-    }
+    const stored: any = (deal?.compliance_data && Object.keys(deal.compliance_data).length > 0)
+      ? deal.compliance_data : null
     const apps = getApplicants()
     const risks: Record<string, RiskData> = {}
     apps.forEach(a => { risks[a.name] = defaultRisk() })
@@ -454,7 +470,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
         : amount.toString()
     }
 
-    return {
+    const blank: ComplianceData = {
       entityType: 'Individual(s)',
       applicants: apps,
       needsPrimary: '', needsImmediate: '', needsLongTerm: '',
@@ -473,6 +489,23 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
       clientChosenLender: '',
       clientChosenLenderOther: '',
       clientChosenLenderReason: ''
+    }
+
+    if (!stored) return blank
+
+    // The saved record wins on everything it holds. The four that the page
+    // cannot render without are taken from the defaults when they are absent or
+    // the wrong shape - a null, an array where an object belongs, a record
+    // written by another screen entirely.
+    const obj = (x: any) => x && typeof x === 'object' && !Array.isArray(x)
+    return {
+      ...blank,
+      ...stored,
+      applicants: Array.isArray(stored.applicants) && stored.applicants.length ? stored.applicants : blank.applicants,
+      risks: obj(stored.risks) ? stored.risks : blank.risks,
+      productReqs: obj(stored.productReqs) ? { ...blank.productReqs, ...stored.productReqs } : blank.productReqs,
+      expenses: obj(stored.expenses) ? stored.expenses : blank.expenses,
+      aiMeta: obj(stored.aiMeta) ? stored.aiMeta : {},
     }
   }
 
