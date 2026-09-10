@@ -488,21 +488,21 @@ export default function SettingsPage() {
           <p className="text-[11.5px] text-[#A29889] mb-3">Who receives internal notification emails as deals move through the pipeline. Change this anytime without needing a code change.</p>
           <div>
             <label className="text-[11px] font-semibold text-[#A29889] block mb-1">When a new deal is created — who is asked to create the SalesTrekker card</label>
-            <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={newDealNotificationUserId} onChange={(e) => setNewDealNotificationUserId(e.target.value)}>
+            <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" aria-label="When a new deal is created — who is asked to create the SalesTrekker card" value={newDealNotificationUserId} onChange={(e) => setNewDealNotificationUserId(e.target.value)}>
               <option value="">— select team member —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
           </div>
           <div>
             <label className="text-[11px] font-semibold text-[#A29889] block mb-1">When a deal moves stage — who is asked to move the SalesTrekker card</label>
-            <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={stageMoveNotificationUserId} onChange={(e) => setStageMoveNotificationUserId(e.target.value)}>
+            <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" aria-label="When a deal moves stage — who is asked to move the SalesTrekker card" value={stageMoveNotificationUserId} onChange={(e) => setStageMoveNotificationUserId(e.target.value)}>
               <option value="">— select team member —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
           </div>
           <div>
             <label className="text-[11px] font-semibold text-[#A29889] block mb-1">When documents are requested — who raises them on SalesTrekker</label>
-            <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={docsRequestNotificationUserId} onChange={(e) => setDocsRequestNotificationUserId(e.target.value)}>
+            <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" aria-label="When documents are requested — who raises them on SalesTrekker" value={docsRequestNotificationUserId} onChange={(e) => setDocsRequestNotificationUserId(e.target.value)}>
               <option value="">— same as the person below —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
@@ -513,7 +513,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <label className="text-[11px] font-semibold text-[#A29889] block mb-1">When documents are received — who renames and files them</label>
-            <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={docsFileNotificationUserId} onChange={(e) => setDocsFileNotificationUserId(e.target.value)}>
+            <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" aria-label="When documents are received — who renames and files them" value={docsFileNotificationUserId} onChange={(e) => setDocsFileNotificationUserId(e.target.value)}>
               <option value="">— select team member —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
