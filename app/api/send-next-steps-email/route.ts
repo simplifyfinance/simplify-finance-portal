@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { markProceeded, buildNextStepsContent } from '@/lib/proceed-flow'
+import { markProceeded, buildNextStepsContent, nextStepsSubject } from '@/lib/proceed-flow'
 import { createSupabaseServer } from '@/lib/supabase-server'
 
 // This route is only ever reached from the "Client agreed" button on the BC and
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         from: 'Simplify Finance <notifications@simplifyfinance.com.au>',
         to: clientEmail,
-        subject: `${deal.deal_name} — what happens next`,
+        subject: nextStepsSubject(stage, wealthDeskLink),
         html
       })
     })

@@ -2,7 +2,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { resolveBrokerProfile } from '@/lib/broker-profile'
 import { notifyCrisMoveCard } from '@/lib/salestrekker-notify'
 
-type ProceedStage = 'BC' | 'LO'
+import type { ProceedStage } from './next-steps-copy'
 
 // Reading the deal, without touching it.
 //
@@ -124,33 +124,10 @@ export async function markProceeded(dealId: string, stage: ProceedStage, by: Pro
   return { ok: true as const, deal, alreadyProceeded, wealthDeskLink }
 }
 
-type ProceedStep = {
-  num: string
-  title: string
-  desc: string
-  accent: boolean
-  button: boolean
-}
 
-export function buildNextStepsContent(stage: ProceedStage, wealthDeskLink?: string) {
-  if (stage === 'BC') {
-    const steps: ProceedStep[] = wealthDeskLink
-      ? [
-          { num: '1', title: "You'll be invited to our client portal", desc: "You'll receive a text and an email with instructions to log in. That's where you'll upload your supporting documents.", accent: false, button: false },
-          { num: '2', title: 'Share your bank statements', desc: "You'll also need to provide your bank statements. Click the button below now — it'll take you straight to a secure page to connect your bank and share them. It's bank-level encrypted and never stored.", accent: true, button: true },
-          { num: '3', title: 'Your lending options presented', desc: "Once we've received your bank statements and documents through the client portal, we'll present your personalised lending options with rates, comparisons, and our recommendation — within 48 business hours.", accent: false, button: false },
-        ]
-      : [
-          { num: '1', title: "You'll be invited to our client portal", desc: "You'll receive a text and an email with instructions to log in. That's where you'll upload your supporting documents.", accent: false, button: false },
-          { num: '2', title: 'Your lending options presented', desc: "Once we've reviewed everything, we'll present your personalised lending options with rates, comparisons, and our recommendation — within 48 business hours.", accent: false, button: false },
-        ]
-    return { heading: 'What happens next', steps, showWealthDesk: !!wealthDeskLink }
-  }
-  const steps: ProceedStep[] = [
-    { num: '1', title: 'Application prepared', desc: 'Our credit team will finalise your compliance assessment and prepare your application for submission.', accent: false, button: false },
-    { num: '2', title: 'Documents to review and sign', desc: "You'll receive our credit guide, credit proposal, and lender application form via email shortly. Please keep an eye out and sign these when they arrive.", accent: true, button: false },
-    { num: '3', title: 'Lender submission', desc: "We'll submit your application to your chosen lender and keep you updated on their response.", accent: false, button: false },
-    { num: '4', title: 'Approval & next steps', desc: "Once approved, we'll guide you through the remaining steps to settlement.", accent: false, button: false },
-  ]
-  return { heading: 'What happens next', steps, showWealthDesk: false }
-}
+
+// The email's words and its subject line live in one file that imports nothing,
+// so they can be tested without loading the database client. Re-exported here
+// because everything already imports them from this module.
+export { buildNextStepsContent, nextStepsSubject } from './next-steps-copy'
+export type { ProceedStep } from './next-steps-copy'

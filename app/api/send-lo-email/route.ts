@@ -3,7 +3,7 @@ import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 
 export async function POST(req: NextRequest) {
   try {
-    const { to, subject, html, brokerName, dealName } = await req.json()
+    const { to, subject, html, brokerName } = await req.json()
 
     if (!to || !html) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -28,7 +28,9 @@ export async function POST(req: NextRequest) {
         to: [to],
         reply_to: replyTo,
         cc: ['info@simplifyfinance.com.au'],
-        subject: subject || `Your lending options — ${dealName}`,
+        // No file name in a client's subject line. Nothing calls this route today,
+        // so this fallback is a landmine for whoever wires it up later.
+        subject: subject || 'Your lending options',
         html
       })
     })
