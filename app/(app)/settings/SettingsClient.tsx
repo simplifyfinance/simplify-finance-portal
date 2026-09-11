@@ -211,11 +211,33 @@ export default function SettingsPage() {
   }
 
   async function handleSave() {
+    // THE WEALTHDESK LINK IS NOT OPTIONAL.
+    //
+    // It is one static link shared with every client, and it is the only way a
+    // client can send us their bank statements. Saved blank, every "what happens
+    // next" email from that moment on carries a button that goes nowhere - and a
+    // blank Settings box looks exactly like a filled one from the deal screen, so
+    // nobody finds out until a client rings.
+    //
+    // Fabio, 11 Sep 2026: "that box needs to be completed at all times." So it is
+    // refused here rather than degraded downstream.
+    const link = (wealthDeskLink || '').trim()
+    if (!link) {
+      alert('The WealthDesk link cannot be blank.\n\nIt is the only way clients can send us their bank statements, and it goes in every next-steps email. Nothing has been saved.')
+      setPane('connections')
+      return
+    }
+    if (!/^https:\/\//i.test(link)) {
+      alert('The WealthDesk link must start with https://\n\nNothing has been saved.')
+      setPane('connections')
+      return
+    }
+
     setSaving(true)
     const patch: any = {
       id: 'singleton',
       brands,
-      wealth_desk_link: wealthDeskLink,
+      wealth_desk_link: link,
       new_deal_notification_user_id: newDealNotificationUserId || null,
       stage_move_notification_user_id: stageMoveNotificationUserId || null,
       docs_file_notification_user_id: docsFileNotificationUserId || null,

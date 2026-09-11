@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   // reason — Word paints nothing from CSS alone.
   const stepsHtml = steps.map((s: any) => {
     const badge = s.accent ? '#1D9E75' : '#343333'
-    const button = s.button && wealthDeskLink
+    const button = s.button
       ? `<table cellpadding="0" cellspacing="0" border="0" style="margin-top:8px"><tr>
            <td bgcolor="#1D9E75" align="center" style="background:#1D9E75;border-radius:6px;padding:8px 14px">
              <a href="${wealthDeskLink}" style="color:#ffffff;font-size:12px;font-weight:600;text-decoration:none;display:inline-block">Click here to share your bank statements</a>
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         from: 'Simplify Finance <notifications@simplifyfinance.com.au>',
         to: clientEmail,
-        subject: nextStepsSubject(stage, wealthDeskLink),
+        subject: nextStepsSubject(stage),
         html
       })
     })

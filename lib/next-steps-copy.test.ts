@@ -1,24 +1,20 @@
 import { describe, it, expect } from 'vitest'
 import { nextStepsSubject, buildNextStepsContent } from './next-steps-copy'
 
-// THE SUBJECT LINE ON THE CLIENT'S "WHAT HAPPENS NEXT" EMAIL.
+// THE CLIENT'S "WHAT HAPPENS NEXT" EMAIL.
 //
-// 11 Sep 2026. It used to read "Kylie_Searle_Purchase_2026 — what happens next":
-// our internal file reference, in front of the client, as the first thing they
-// read. Fabio: "that's so audit". These tests are the fence around that not
-// coming back.
+// 11 Sep 2026. Two things were wrong. The subject read
+// "Kylie_Searle_Purchase_2026 — what happens next": our internal file reference,
+// in front of the client, as the first thing they read. Fabio: "that's so audit".
+// And the whole bank statements step vanished whenever the WealthDesk link in
+// Settings was blank. These tests are the fence around both.
 
 describe('the subject line the client actually sees', () => {
-  const every = [
-    nextStepsSubject('BC', 'https://wealthdesk.example/abc'),
-    nextStepsSubject('BC', ''),
-    nextStepsSubject('BC'),
-    nextStepsSubject('LO'),
-  ]
+  const every = [nextStepsSubject('BC'), nextStepsSubject('LO')]
 
   it('never carries the deal file name, in any shape', () => {
     // deal_name looks like Kylie_Searle_Purchase_2026. Underscores are the tell,
-    // and there is no client-facing sentence that wants one.
+    // and no client-facing sentence wants one.
     for (const s of every) expect(s, s).not.toMatch(/_/)
   })
 
@@ -32,30 +28,45 @@ describe('the subject line the client actually sees', () => {
 
   it('reads differently at each stage, so the second is not the first resent', () => {
     // The same email fires twice, weeks apart, with completely different steps in
-    // the body. Sending one subject for both made the second look like a resend.
-    expect(nextStepsSubject('BC', 'https://x')).not.toBe(nextStepsSubject('LO'))
-    expect(nextStepsSubject('BC', '')).not.toBe(nextStepsSubject('LO'))
+    // the body. One subject for both made the second look like a resend.
+    expect(nextStepsSubject('BC')).not.toBe(nextStepsSubject('LO'))
   })
 
   it('names the job, which is the thing that gets it opened', () => {
-    expect(nextStepsSubject('BC', 'https://x')).toBe('Next steps \u2014 your client portal and bank statements')
-    expect(nextStepsSubject('LO')).toBe('Next steps \u2014 documents to sign and submission')
+    expect(nextStepsSubject('BC')).toBe('Next steps — your client portal and bank statements')
+    expect(nextStepsSubject('LO')).toBe('Next steps — documents to sign and submission')
   })
 
-  it('only promises bank statements when there is a bank statement step', () => {
-    // Without the WealthDesk link the email has no statements step at all, so the
-    // subject must not offer one.
-    const withLink = buildNextStepsContent('BC', 'https://x')
-    const without = buildNextStepsContent('BC', '')
-    expect(withLink.steps.some(s => /bank statements/i.test(s.title))).toBe(true)
-    expect(without.steps.some(s => /bank statements/i.test(s.title))).toBe(false)
+  it('does not change with the WealthDesk link, because the step never goes away', () => {
+    // The subject takes one argument now. Anything passed as a second is ignored,
+    // which is the point: there is no blank-link wording to fall back to.
+    expect((nextStepsSubject as any)('BC', '')).toBe(nextStepsSubject('BC'))
+    expect((nextStepsSubject as any)('BC', 'https://x')).toBe(nextStepsSubject('BC'))
+  })
+})
 
-    expect(nextStepsSubject('BC', 'https://x')).toMatch(/bank statements/)
-    expect(nextStepsSubject('BC', '')).not.toMatch(/bank statements/)
-    expect(nextStepsSubject('BC', '')).toMatch(/documents/)
+describe('the bank statements step', () => {
+  it('is in the email whether or not the link is set', () => {
+    // It used to disappear with the link, turning a three-step email into a
+    // two-step one that looked completely normal. A broken link gets reported by
+    // the client. A missing step gets reported by nobody.
+    for (const link of ['https://simplify.wealthdesk.com.au/iv/tk/abc', '', undefined]) {
+      const { steps } = buildNextStepsContent('BC', link)
+      expect(steps.length, String(link)).toBe(3)
+      expect(steps.some(s => /bank statements/i.test(s.title)), String(link)).toBe(true)
+      expect(steps.filter(s => s.button).length, String(link)).toBe(1)
+    }
   })
 
-  it('treats a missing link the same as a blank one', () => {
-    expect(nextStepsSubject('BC')).toBe(nextStepsSubject('BC', ''))
+  it('promises in the subject exactly what the email asks for', () => {
+    const { steps } = buildNextStepsContent('BC', '')
+    expect(nextStepsSubject('BC')).toMatch(/bank statements/)
+    expect(steps.some(s => /bank statements/i.test(s.title))).toBe(true)
+  })
+
+  it('is not on the second email, which has nothing to do with statements', () => {
+    const { steps } = buildNextStepsContent('LO')
+    expect(steps.some(s => s.button)).toBe(false)
+    expect(nextStepsSubject('LO')).not.toMatch(/bank statements/)
   })
 })

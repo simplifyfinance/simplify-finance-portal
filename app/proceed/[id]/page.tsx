@@ -57,7 +57,7 @@ export default async function ProceedPage({ params, searchParams }: { params: Pr
               <div>
                 <p style={{ margin: '0 0 4px', fontWeight: '700', color: '#343333', fontSize: '14px' }}>{step.title}</p>
                 <p style={{ margin: step.button ? '0 0 10px' : 0, color: '#666', fontSize: '12.5px', lineHeight: '1.6' }}>{step.desc}</p>
-                {step.button && wealthDeskLink && (
+                {step.button && (
                   <a href={wealthDeskLink} style={{ backgroundColor: '#1D9E75', color: '#fff', padding: '9px 16px', borderRadius: '6px', fontSize: '12.5px', fontWeight: 600, textDecoration: 'none', display: 'inline-block' }}>Click here to share your bank statements</a>
                 )}
               </div>
