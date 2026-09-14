@@ -81,8 +81,11 @@ if [ -n "${HEADED:-}" ]; then HEADED_FLAG="--headed"; fi
 # playwright straight off skipped the test, because the deal id lives in
 # .env.local and nothing had loaded it.
 if [ "$#" -gt 0 ]; then
-  PORTAL_TEST_URL="http://localhost:$PORT" npx playwright test "$@" $HEADED_FLAG --reporter=list
-  RESULT=$?
+  # Printed AND kept. A run by hand is exactly when somebody wants to look at
+  # the output afterwards, and the screen is the one place it cannot be read
+  # from. 14 Sep 2026.
+  PORTAL_TEST_URL="http://localhost:$PORT" npx playwright test "$@" $HEADED_FLAG --reporter=list 2>&1 | tee .robot-logs/browser-check.log
+  RESULT=${PIPESTATUS[0]}
   kill $SERVER 2>/dev/null || true
   exit $RESULT
 fi

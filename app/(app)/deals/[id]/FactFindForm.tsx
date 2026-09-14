@@ -3,7 +3,7 @@ import DropZone from '@/components/DropZone'
 import SectionHeader from '@/components/SectionHeader'
 import { checkedWrite } from '@/lib/checked-write'
 import { copyPlan, copyAddresses, recorded } from '@/lib/copy-history'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import AddressAutocomplete from './AddressAutocomplete'
 import AbnAutocomplete from './AbnAutocomplete'
@@ -450,10 +450,55 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   // things somebody else did.
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // What is on screen right now, readable from a handler created several
+  // keystrokes ago.
+  const liveD = useRef<FactFindData>(d)
+  liveD.current = d
+
+  // THE SAVE ITSELF, so it can be fired by the timer OR straight away.
+  const writeNow = useCallback(async (value: FactFindData) => {
+    onDataChange?.(value)
+    const out = await saveGuarded({
+      supabase, dealId: deal.id, column: 'fact_find_data', guard: guardRef.current,
+      savedBy: me, tabLabel: 'Fact Find', value, shape,
+      // Nothing typed here yet and somebody else has saved: take their version
+      // rather than telling this person off for looking at a deal. Shaped, so it
+      // is exactly what a fresh load would have put on screen.
+      onAdopt: stored => { if (stored) setD(shape(stored)) },
+      // Somebody else saved different fields while this person was typing. Their
+      // fields go on screen without rebuilding the form, so the caret stays where
+      // it is and the field being typed into is untouched.
+      onMerge: merged => setD(shape(merged)),
+    })
+    // A newer save is already queued behind this one. Saying anything here would
+    // be about a payload that has been overtaken.
+    if (out.kind === 'superseded') return
+    if (out.kind === 'error') { console.error('Fact find autosave:', out.message); setSaveError(out.message); return }
+    setSaveError('')
+    if (out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote') {
+      setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+    }
+  }, [deal.id, me])
+
+  // WRITE IT NOW, NOT IN 600 MILLISECONDS.
+  //
+  // 14 Sep 2026, reproduced by a robot after Kylie lost the Goals boxes on a
+  // brand new deal. The save waited 600ms after the last keystroke and there was
+  // NOTHING that wrote when the page went away - no save on leaving a box, none
+  // on closing the tab, none on this form being taken off screen. Type a
+  // sentence, hit refresh or close the tab, and it was gone: not in the deal,
+  // not in the kept copies, no error, nothing.
+  //
+  // The database agreed - her purpose saved and her two goals boxes did not,
+  // with no recoverable copy of either anywhere.
+  const flush = useCallback(() => {
+    if (saveTimeoutRef.current) { clearTimeout(saveTimeoutRef.current); saveTimeoutRef.current = null }
+    void writeNow(liveD.current)
+  }, [writeNow])
+
   useEffect(() => {
     // The database is the only store - no localStorage copy.
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
-    saveTimeoutRef.current = setTimeout(() => {
     // ONCE A PAUSE, NOT ONCE A KEYSTROKE.
     //
     // This ran on every character. It hands the whole record up to the deal
@@ -462,32 +507,21 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     // keystroke arriving during that render is swallowed, and a letter goes
     // missing out of a finished sentence with nothing to explain it. Kylie,
     // 9 Sep 2026: "it is deleting letters, and spaces, and dots."
-    //
-    // Nothing needs it sooner than this. It exists so the other tabs and the
-    // figures see current data, and they are not being looked at mid-sentence.
-      onDataChange?.(d)
+    saveTimeoutRef.current = setTimeout(() => { void writeNow(liveD.current) }, 600)
+  }, [d, writeNow])
 
-      ;(async () => {
-        const out = await saveGuarded({
-          supabase, dealId: deal.id, column: 'fact_find_data', guard: guardRef.current, savedBy: me, tabLabel: 'Fact Find', value: d, shape,
-          // Nothing typed here yet and somebody else has saved: take their
-          // version rather than telling this person off for looking at a deal.
-          // Shaped, so it is exactly what a fresh load would have put on screen.
-          onAdopt: stored => { if (stored) setD(shape(stored)) },
-          // Somebody else saved different fields while this person was typing.
-          // Their fields go on screen without rebuilding the form, so the caret
-          // stays where it is and the field being typed into is untouched.
-          onMerge: merged => setD(shape(merged)),
-        })
-        // A newer save is already queued behind this one. Saying anything here
-        // would be about a payload that has been overtaken.
-        if (out.kind === 'superseded') return
-        if (out.kind === 'error') { console.error('Fact find autosave:', out.message); setSaveError(out.message); return }
-        setSaveError('')
-        if (out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote') setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
-      })()
-    }, 600)
-  }, [d])
+  // Leaving the tab, or hiding the window, writes immediately. These are the
+  // moments a person believes they have finished.
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === 'hidden') flush() }
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      document.removeEventListener('visibilitychange', onHide)
+      // Taken off screen - a tab change, or leaving the deal. Whatever is
+      // pending goes now rather than waiting for a timer that may never run.
+      flush()
+    }
+  }, [flush])
 
   const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]"
   const applicant = d.applicants?.[activeApplicant]
@@ -895,7 +929,11 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   if (!d.applicants?.length) return <NoApplicants tab="Fact Find" />
 
   return (
-    <div className="grid grid-cols-[480px_1fr] gap-4 items-start">
+    // LEAVING A BOX WRITES IT. onBlurCapture catches the moment focus leaves any
+    // box anywhere in this form, which is the other half of the fix above: the
+    // common case is finishing a sentence and clicking the next thing, and that
+    // should not depend on a timer at all.
+    <div className="grid grid-cols-[480px_1fr] gap-4 items-start" onBlurCapture={() => flush()}>
       <div>
         {/* One notes field for the whole deal. This used to be a box of its own
             saving to fact_find_data.internalNotes, with two more like it on BC
