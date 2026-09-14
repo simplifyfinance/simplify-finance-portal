@@ -53,9 +53,26 @@ test.describe('notification routing', () => {
     await expect(requestRow).toBeVisible({ timeout: 20_000 })
     await expect(fileRow).toBeVisible()
 
-    // It offers the team, not an empty dropdown.
+    // IT OFFERS THE TEAM, NOT AN EMPTY DROPDOWN.
+    //
+    // The select renders before loadCreditTeam() comes back, so reading it the
+    // instant it is visible reads a dropdown with nothing in it but the
+    // placeholder. Waited for rather than sampled.
+    //
+    // If it is STILL alone after fifteen seconds that is not a slow network, it
+    // is nobody to choose - and since 14 Sep the portal sends the document
+    // request by itself, so "nobody to choose" means the request has nowhere to
+    // go. The two things to check are named in the failure rather than left for
+    // somebody to work out.
+    const optionCount = requestRow.locator('option')
+    await expect(optionCount,
+      'The team dropdown is empty. Either user_profiles has no rows with active = true '
+      + '(a column added later defaults to null, which eq(active,true) excludes), or the '
+      + 'signed-in account cannot read user_profiles. Nobody can be set as the document '
+      + 'request recipient until this is fixed.')
+      .not.toHaveCount(1, { timeout: 15_000 })
+
     const options = await requestRow.locator('option').allTextContents()
-    expect(options.length).toBeGreaterThan(1)
     expect(options[0]).toContain('same as the person below')
 
     // What it is set to right now, so it can be put back exactly.

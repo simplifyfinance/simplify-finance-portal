@@ -11,6 +11,15 @@ set -uo pipefail
 
 PORT=3100
 
+# THE LOG GOES IN THE REPO FOLDER, NOT /tmp.
+#
+# 14 Sep 2026. It used to be written to /tmp/ship-browser.log, which meant that
+# every time the robot found something the only way to see the detail was to run
+# the test again by hand and copy it out of the terminal. Fabio: "I feel like you
+# are making me paste these commands." test-results/ is already gitignored and
+# already where Playwright puts its screenshots and traces.
+mkdir -p test-results
+
 if [ ! -d node_modules/@playwright/test ]; then
   echo "  (skipped - Playwright is not installed. npm i -D @playwright/test)"
   exit 0
@@ -33,7 +42,7 @@ if [ ! -f .auth/portal.json ]; then
 fi
 
 # The build has already been made by ship.sh at this point.
-npx next start -p "$PORT" > /tmp/ship-browser-server.log 2>&1 &
+npx next start -p "$PORT" > test-results/browser-server.log 2>&1 &
 SERVER=$!
 trap 'kill $SERVER 2>/dev/null || true' EXIT
 
@@ -73,7 +82,7 @@ if [ "$#" -gt 0 ]; then
   exit $RESULT
 fi
 
-PORTAL_TEST_URL="http://localhost:$PORT" npx playwright test $HEADED_FLAG > /tmp/ship-browser.log 2>&1
+PORTAL_TEST_URL="http://localhost:$PORT" npx playwright test $HEADED_FLAG > test-results/browser-check.log 2>&1
 RESULT=$?
 
 kill $SERVER 2>/dev/null || true
@@ -86,10 +95,10 @@ kill $SERVER 2>/dev/null || true
 if [ $RESULT -ne 0 ]; then
   echo
   echo "  *** THE BROWSER CHECK FOUND SOMETHING - shipping anyway, but read this: ***"
-  grep -E "^  [0-9]+\) |Error: |Received: |Expected: " /tmp/ship-browser.log | head -12
-  echo "  (full detail: /tmp/ship-browser.log)"
+  grep -E "^  [0-9]+\) |Error: |Received: |Expected: " test-results/browser-check.log | head -12
+  echo "  (full detail: test-results/browser-check.log)"
   exit 0
 fi
 
-echo "  $(grep -oE '[0-9]+ passed' /tmp/ship-browser.log | tail -1) in a real browser."
+echo "  $(grep -oE '[0-9]+ passed' test-results/browser-check.log | tail -1) in a real browser."
 exit 0
