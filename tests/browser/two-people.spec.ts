@@ -185,4 +185,79 @@ test.describe('two people in the same deal', () => {
       await a.close(); await b.close()
     }
   })
+
+  test('EVERY box on the Fact Find survives the other window saving', async ({ browser }) => {
+    // 14 Sep 2026. Kylie reported Purpose and Goals disappearing, the same way
+    // Melissa reported the internal notes disappearing. Fabio: "why are we just
+    // fixing one box and not checking all?"
+    //
+    // The one-window sweep (typing-survives.spec.ts) already proves these boxes
+    // survive a late read. This is the other half: one person types into EVERY
+    // box on the tab, the other window - loaded before any of it - saves, and
+    // every one of them has to still be there after a reload.
+    //
+    // It puts every box back exactly as it was found.
+    const a = await browser.newContext({ storageState: '.auth/portal.json' })
+    const b = await browser.newContext({ storageState: '.auth/portal.json' })
+    const kylie = await a.newPage()
+    const melissa = await b.newPage()
+    const mark = `robot${Date.now()}`
+    let originals: string[] = []
+
+    try {
+      await openFactFind(kylie)
+      await openFactFind(melissa)
+
+      const boxes = kylie.locator('textarea:visible')
+      await boxes.first().waitFor({ timeout: 20_000 })
+      const count = Math.min(await boxes.count(), 14)
+      expect(count, 'No text boxes on the Fact Find.').toBeGreaterThan(0)
+
+      // KYLIE FILLS THEM ALL IN.
+      for (let i = 0; i < count; i++) {
+        const box = boxes.nth(i)
+        const was = await box.inputValue().catch(() => null)
+        if (was === null) { originals.push('\u0000'); continue }
+        originals.push(was)
+        await box.fill(`${was}\n${mark}-${i}`)
+      }
+      await kylie.waitForTimeout(4000)
+
+      // MELISSA SAVES, from a screen loaded before any of that existed.
+      const hers = melissa.locator('textarea:visible').first()
+      const hersWas = await hers.inputValue()
+      await hers.fill(`${hersWas} `)
+      await melissa.waitForTimeout(5000)
+
+      // AND EVERY ONE OF KYLIE'S BOXES HAS TO STILL BE THERE.
+      await openFactFind(kylie)
+      const after = kylie.locator('textarea:visible')
+      await after.first().waitFor({ timeout: 20_000 })
+      const lost: number[] = []
+      for (let i = 0; i < count; i++) {
+        if (originals[i] === '\u0000') continue
+        const v = await after.nth(i).inputValue().catch(() => '')
+        if (!v.includes(`${mark}-${i}`)) lost.push(i)
+      }
+
+      console.log('\n' + '='.repeat(70))
+      console.log(`FACT FIND - ${count} boxes filled in by one window, then the other saved`)
+      console.log(`  eaten by the other window: ${lost.length ? 'BOXES ' + lost.join(', ') : 'none'}`)
+      console.log('='.repeat(70) + '\n')
+
+      expect(lost, `the other window saving destroyed what was typed in boxes ${lost.join(', ')}`).toEqual([])
+    } finally {
+      try {
+        await openFactFind(kylie)
+        const back = kylie.locator('textarea:visible')
+        await back.first().waitFor({ timeout: 10_000 })
+        for (let i = 0; i < originals.length; i++) {
+          if (originals[i] === '\u0000') continue
+          await back.nth(i).fill(originals[i]).catch(() => {})
+        }
+        await kylie.waitForTimeout(5000)
+      } catch { /* reported by the assertions above */ }
+      await a.close(); await b.close()
+    }
+  })
 })
