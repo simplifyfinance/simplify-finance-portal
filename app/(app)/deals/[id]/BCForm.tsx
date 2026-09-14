@@ -862,9 +862,30 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const [sendingMoveToLo, setSendingMoveToLo] = useState(false)
   const [moveToLoMsg, setMoveToLoMsg] = useState('')
 
+  // THE PENDING SAVE, SO IT CAN BE MADE TO HAPPEN RATHER THAN CANCELLED.
+  //
+  // 14 Sep 2026, Aaron Hooper. The LO tab ended this same effect with
+  // `return () => clearTimeout(...)`, so changing tab within the save delay
+  // CANCELLED the write and the work was gone - thrown away by us, not lost in a
+  // collision. This tab had the identical line.
+  //
+  // BC holds its fields in sixty separate pieces of state, so rather than
+  // restructure its save, the pending write is kept in a ref and run on the way
+  // out. The debounce effect below cannot flush in its own cleanup - that runs on
+  // every keystroke - so the flush lives in an effect of its own that only ever
+  // tears down when the form actually leaves the screen.
+  const pendingSave = useRef<null | (() => void)>(null)
+
+  useEffect(() => {
+    const flush = () => { const run = pendingSave.current; pendingSave.current = null; run?.() }
+    const onHide = () => { if (document.visibilityState === 'hidden') flush() }
+    document.addEventListener('visibilitychange', onHide)
+    return () => { document.removeEventListener('visibilitychange', onHide); flush() }
+  }, [])
+
   useEffect(() => {
     const data = buildBcData()
-    const timeoutId = setTimeout(() => {
+    const write = () => {
     // ONCE A PAUSE, NOT ONCE A KEYSTROKE.
     //
     // This ran on every character. It hands the whole record up to the deal
@@ -913,7 +934,12 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
           setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
         }
       })()
-    }, 700)
+    }
+    pendingSave.current = write
+    const timeoutId = setTimeout(() => { pendingSave.current = null; write() }, 700)
+    // Only the timer is cancelled here - this runs on every keystroke. What was
+    // pending stays in pendingSave and is written by the effect above when the
+    // form actually leaves.
     return () => clearTimeout(timeoutId)
   }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
 

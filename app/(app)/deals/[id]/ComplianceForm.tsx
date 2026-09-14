@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import SectionHeader from '@/components/SectionHeader'
 import { isWithLender, splitsTotal } from '@/lib/deal-phase'
 import { applicantsOf } from '@/lib/applicants'
@@ -576,6 +576,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   // WHAT THIS SCREEN HELD WHEN IT OPENED, and what it holds right now. The late
   // read below uses the two to tell "nobody has touched this" from "somebody has
   // typed, or pressed a button" - see that effect for what went wrong without it.
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const atOpen = useRef<string | null>(null)
   if (atOpen.current === null) atOpen.current = JSON.stringify(d)
   const liveD = useRef<ComplianceData>(d)
@@ -709,43 +710,67 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
     })
   }, [])
 
-  useEffect(() => {
-    // The database is the only store - no localStorage copy. Debounced because this
-    // previously wrote on every keystroke, and the row count is now checked because
-    // a refused write returns zero rows with no error.
-    const t = setTimeout(() => {
-      // The lender the CLIENT actually accepted goes onto the deal.
-      //
-      // Compliance already asks whether they took the recommendation or chose
-      // something else. Until now that answer stayed inside compliance_data, so
-      // `deals.lender_id` — which the commission maths, the clawback window and
-      // the settlement board all read — kept whatever the LO recommended, even
-      // when the client went elsewhere.
-      const chosenName = d.clientAgreedLender === 'No'
-        ? (d.clientChosenLender === '__other__' ? d.clientChosenLenderOther : d.clientChosenLender)
-        : ''
-      const chosenId = chosenName ? lenderIdByName[String(chosenName).trim().toLowerCase()] : null
+  // WRITE IT NOW, NOT IN 700 MILLISECONDS - AND NEVER THROW IT AWAY.
+  //
+  // This effect used to end with `return () => clearTimeout(t)`. Changing tab
+  // takes the form off the screen, which runs that cleanup, which CANCELS a save
+  // that has not fired yet. Work was not overwritten and not lost in a collision
+  // - it was thrown away by us, every time somebody changed tab within 700ms of
+  // typing. See LOForm for the Aaron Hooper case that found it, 14 Sep 2026.
+  const writeNow = useCallback(async () => {
+    // The lender the CLIENT actually accepted goes onto the deal.
+    //
+    // Compliance already asks whether they took the recommendation or chose
+    // something else. Until now that answer stayed inside compliance_data, so
+    // `deals.lender_id` — which the commission maths, the clawback window and
+    // the settlement board all read — kept whatever the LO recommended, even
+    // when the client went elsewhere.
+    const chosenName = liveD.current.clientAgreedLender === 'No'
+      ? (liveD.current.clientChosenLender === '__other__' ? liveD.current.clientChosenLenderOther : liveD.current.clientChosenLender)
+      : ''
+    const chosenId = chosenName ? lenderIdByName[String(chosenName).trim().toLowerCase()] : null
 
-      ;(async () => {
-        const out = await saveGuarded({
-          supabase, dealId: deal.id, column: 'compliance_data', guard, savedBy: me, tabLabel: 'Compliance', value: d, shape,
-          patch: chosenId ? { lender_id: chosenId } : undefined,
-          // Nothing typed here yet and somebody else has saved: take their
-          // version rather than telling this person off for looking at a deal.
-          // Shaped, so it is exactly what a fresh load would have put on screen.
-          onAdopt: stored => { if (stored) setD(shape(stored)) },
-          // Their fields, folded onto a screen somebody is typing into. A state
-          // update, not a rebuild - nobody loses the sentence they are writing.
-          onMerge: merged => setD(shape(merged)),
-        })
-        if (out.kind === 'superseded') return
-        if (out.kind === 'error') { console.error('Compliance autosave:', out.message); setSaveError(out.message); return }
-        setSaveError('')
-        if (out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote') setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
-      })()
-    }, 700)
-    return () => clearTimeout(t)
-  }, [d])
+    ;(async () => {
+      const out = await saveGuarded({
+        supabase, dealId: deal.id, column: 'compliance_data', guard, savedBy: me, tabLabel: 'Compliance', value: liveD.current, shape,
+        patch: chosenId ? { lender_id: chosenId } : undefined,
+        // Nothing typed here yet and somebody else has saved: take their
+        // version rather than telling this person off for looking at a deal.
+        // Shaped, so it is exactly what a fresh load would have put on screen.
+        onAdopt: stored => { if (stored) setD(shape(stored)) },
+        // Their fields, folded onto a screen somebody is typing into. A state
+        // update, not a rebuild - nobody loses the sentence they are writing.
+        onMerge: merged => setD(shape(merged)),
+      })
+      if (out.kind === 'superseded') return
+      if (out.kind === 'error') { console.error('Compliance autosave:', out.message); setSaveError(out.message); return }
+      setSaveError('')
+      if (out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote') setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+    })()
+  }, [deal.id, me, lenderIdByName, guard])
+
+  const flush = useCallback(() => {
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
+    void writeNow()
+  }, [writeNow])
+
+  useEffect(() => {
+    // The database is the only store - no localStorage copy. Debounced because
+    // this previously wrote on every keystroke, and the row count is checked
+    // because a refused write returns zero rows with no error.
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => { void writeNow() }, 700)
+  }, [d, writeNow])
+
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === 'hidden') flush() }
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      document.removeEventListener('visibilitychange', onHide)
+      // TAKEN OFF SCREEN. Whatever is pending goes NOW. This used to cancel it.
+      flush()
+    }
+  }, [flush])
 
   function updateRisk(applicant: string, field: keyof RiskData, value: string) {
     setD(prev => ({ ...prev, risks: { ...prev.risks, [applicant]: { ...prev.risks[applicant], [field]: value } } }))
@@ -1314,7 +1339,9 @@ Use the security address exactly as recorded. On a pre-approval it will already 
   // ?. above means a reach can never throw. That is the whole fix.
 
   return (
-    <div className="space-y-4">
+    // LEAVING A BOX WRITES IT, rather than waiting 700ms and hoping nobody
+    // changes tab in between.
+    <div className="space-y-4" onBlurCapture={() => flush()}>
       {past && (
         <div className="bg-white border border-[#CFE6D5] rounded-xl px-4 py-3.5">
           <div className="flex items-center gap-2.5 flex-wrap">

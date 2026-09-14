@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { formatAsTyped } from '@/lib/money'
 import { emptyGuard, adopt, saveGuarded } from '@/lib/save-conflict'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -462,10 +462,27 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     }
   }
 
-  const [d, setD] = useState<LOData>(initData)
+  // WHO CHANGED THIS - THE PERSON, OR THE FORM LOADING ITSELF?
+  //
+  // The answer decides whether a save happens at all, and it used to be worked
+  // out from input events on the outer container. It never fired: on 14 Sep 2026
+  // the robot showed every single save turned away with "nobody has touched
+  // this", while the record had plainly changed. So the LO tab quietly saved
+  // NOTHING a person typed unless something else happened to mark it - which is
+  // Aaron Hooper, the lending recommendations that vanished on a tab change.
+  //
+  // Now it is decided where it is actually known: every change made through setD
+  // is a person. The three places the FORM changes itself - the record loading
+  // in, somebody else's fields being folded in, the BC's figures being copied
+  // across - go through setDRaw and are not counted, because arrival must never
+  // write (a visit used to overwrite the real lodged amount with this form's
+  // estimate).
+  const [d, setDRaw] = useState<LOData>(initData)
+  const setD: typeof setDRaw = (value) => { touchedRef.current = true; setDRaw(value) }
   // WHAT THIS SCREEN HELD WHEN IT OPENED, and what it holds now. The late read
   // below uses the two to tell "nobody has touched this" from "somebody is
   // already working in it".
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const atOpen = useRef<string | null>(null)
   if (atOpen.current === null) atOpen.current = JSON.stringify(d)
   const liveD = useRef<LOData>(d)
@@ -561,7 +578,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
   useEffect(() => {
     const newTemplate = bc.template?.startsWith('refinance') ? 'lo_refinance' : bc.template === 'bridging' ? 'lo_bridging' : 'lo_purchase'
-    setD(prev => ({
+    // setDRaw: the BC's figures being copied across is the form arranging itself,
+    // not somebody typing.
+    setDRaw(prev => ({
       ...prev,
       template: newTemplate,
       bcTemplate: bc.template || '',
@@ -612,6 +631,20 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     })
     // WHAT THE RECORD ACTUALLY HOLDS - BUT NEVER OVER SOMEBODY'S WORK.
     //
+    // ONLY A PERSON'S TYPING STOPS IT, NOT THE FORM MOVING BY ITSELF.
+    //
+    // The first version of this compared the record on screen against the record
+    // at open, which is wrong here: this form rearranges ITSELF as it opens - the
+    // BC's figures are copied across, defaults are applied - so by the time the
+    // read came back it always looked like somebody had typed, and the fresh
+    // record was refused every single time. The screen then kept the stale copy
+    // the page was rendered with, and the notes box fell back to the template
+    // defaults.
+    //
+    // 14 Sep 2026, and that is the second half of Aaron Hooper: by then the work
+    // WAS being saved, and coming back to the tab still showed an older version.
+    // touchedRef is the honest signal - see the note on setD above.
+    //
     // 14 Sep 2026. The same fault the robot found on Compliance and that the
     // internal notes box had: this is a network round trip, the tab is usable the
     // moment it appears, and putOnScreen replaced everything regardless of what
@@ -623,10 +656,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     // is left alone.
     supabase.from('deals').select('lo_data').eq('id', deal.id).single().then(({ data }) => {
       if (data?.lo_data && Object.keys(data.lo_data).length > 0) {
-        if (JSON.stringify(liveD.current) !== atOpen.current) {
-          adopt(guardRef.current, loShape(data.lo_data))
-          return
-        }
+        if (touchedRef.current) { adopt(guardRef.current, loShape(data.lo_data)); return }
         putOnScreen(data.lo_data)
       }
     })
@@ -698,67 +728,99 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     // The shaped record, not the raw one - the guard has to hold what the screen
     // holds or it cannot tell "nobody typed" from "everything changed".
     adopt(guardRef.current, loaded)
-    setD(loaded)
+    // setDRaw: this is the record arriving, not somebody typing.
+    setDRaw(loaded)
     if (loaded.emailHtml) setEmailHtml(loaded.emailHtml)
   }
 
+  // WRITE IT NOW, NOT IN 700 MILLISECONDS - AND NEVER THROW IT AWAY.
+  //
+  // 14 Sep 2026, Aaron Hooper. Somebody finished the lending recommendations,
+  // clicked the BC tab to copy the important notes, came back, and the whole lot
+  // was gone.
+  //
+  // This effect used to end with `return () => clearTimeout(t)`. Changing tab
+  // takes this form off the screen, which runs that cleanup, which CANCELS the
+  // save that had not fired yet. The work was not overwritten and not lost in a
+  // collision - it was deliberately thrown away, by us, every time somebody
+  // changed tab within 700ms of typing. Coming back then loaded the last version
+  // that did save, which is why it reads as "everything has gone".
+  //
+  // The same line was on the BC and Compliance tabs. The Fact Find never had it,
+  // which is why its version of this was subtler and took a robot to find.
+  //
+  // Now: leaving the tab, hiding the window, or leaving a box writes immediately.
+  const writeNow = useCallback(async () => {
+    const now = JSON.stringify(liveD.current)
+    // The very first run is the form arriving on screen, never a person.
+    // Nobody has touched this form, so whatever changed did not come from a
+    // person - the record loading in, a default being applied, somebody else's
+    // fields folded in. That is arrival, not an edit, and arrival never writes.
+    if (!touchedRef.current) { savedRef.current = now; return }
+    if (now === savedRef.current) return
+
+    // The loan amount goes onto the DEAL, not just into lo_data.
+    //
+    // `deals.loan_amount` is read by the pipeline, the settlements board, the
+    // cheat sheet, the commission panel and the deal board — and until now
+    // nothing ever wrote it. The figure was typed here, saved into lo_data, and
+    // every screen that wanted it looked at the empty column instead. Same for
+    // the lender: the LO knows which one is recommended and the deal did not.
+    const loanNum = Number(String(liveD.current.loanAmount || '').replace(/[^0-9.]/g, '')) || null
+    const recId = lenderIdByName[String(liveD.current.recommendedLender || '').trim().toLowerCase()] || null
+    const extraColumns: any = {}
+    // Only while the deal is still being written. Once it is lodged, what was
+    // lodged and what settled are the record; this figure is an estimate that
+    // has been overtaken. See loMayWriteAmount.
+    if (loanNum && loMayWriteAmount(deal)) extraColumns.loan_amount = loanNum
+    if (recId) extraColumns.lender_id = recId
+
+    ;(async () => {
+      const out = await saveGuarded({
+        supabase, dealId: deal.id, column: 'lo_data', guard: guardRef.current, savedBy: me, tabLabel: 'Lending options', value: liveD.current, shape: loShape,
+        patch: extraColumns,
+        onAdopt: stored => { if (stored) putOnScreen(stored) },
+        // THE KATIE CASE. She fills in the rates, somebody else is typing in
+        // another part of the same tab. Both are saved and her rates appear
+        // here - as a state update, so nobody loses what they are mid-way
+        // through typing. savedRef is moved with it, or the merged record
+        // would read as something this person typed and save itself again.
+        onMerge: merged => putOnScreen(merged),
+      })
+      if (out.kind === 'superseded') return
+      if (out.kind === 'error') { console.error('LO autosave:', out.message); setSaveError(out.message); return }
+      setSaveError('')
+      if (out.kind === 'saved') savedRef.current = now
+      if (out.kind === 'saved' || out.kind === 'merged') {
+        setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+      }
+    })()
+  }, [deal, me, lenderIdByName])
+
+  const flush = useCallback(() => {
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
+    void writeNow()
+  }, [writeNow])
+
   useEffect(() => {
-    // The database is the only store. No localStorage copy - a per-browser cache keyed only
-    // by deal id showed one user another user's state, and let a blank form overwrite a real
-    // record. Debounced because this previously wrote on every keystroke, which hammers the
-    // database and lets an older payload land after a newer one.
-    const t = setTimeout(() => {
-      // Opening the form is not editing it. The state changes when the saved
-      // record is loaded in, which looked identical to a keystroke - so every
-      // visit wrote the record back, and on a lodged or settled deal that meant
-      // overwriting the real amount with this form's estimate.
-      const now = JSON.stringify(d)
-      // The very first run is the form arriving on screen, never a person.
-      // Nobody has touched this form, so whatever changed did not come from a
-      // person - the record loading in, a default being applied, somebody else's
-      // fields folded in. That is arrival, not an edit, and arrival never writes.
-      if (!touchedRef.current) { savedRef.current = now; return }
-      if (now === savedRef.current) return
+    // The database is the only store. No localStorage copy - a per-browser cache
+    // keyed only by deal id showed one user another user's state, and let a blank
+    // form overwrite a real record. Debounced because this previously wrote on
+    // every keystroke, which hammers the database and lets an older payload land
+    // after a newer one.
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => { void writeNow() }, 700)
+  }, [d, writeNow])
 
-      // The loan amount goes onto the DEAL, not just into lo_data.
-      //
-      // `deals.loan_amount` is read by the pipeline, the settlements board, the
-      // cheat sheet, the commission panel and the deal board — and until now
-      // nothing ever wrote it. The figure was typed here, saved into lo_data, and
-      // every screen that wanted it looked at the empty column instead. Same for
-      // the lender: the LO knows which one is recommended and the deal did not.
-      const loanNum = Number(String(d.loanAmount || '').replace(/[^0-9.]/g, '')) || null
-      const recId = lenderIdByName[String(d.recommendedLender || '').trim().toLowerCase()] || null
-      const extraColumns: any = {}
-      // Only while the deal is still being written. Once it is lodged, what was
-      // lodged and what settled are the record; this figure is an estimate that
-      // has been overtaken. See loMayWriteAmount.
-      if (loanNum && loMayWriteAmount(deal)) extraColumns.loan_amount = loanNum
-      if (recId) extraColumns.lender_id = recId
-
-      ;(async () => {
-        const out = await saveGuarded({
-          supabase, dealId: deal.id, column: 'lo_data', guard: guardRef.current, savedBy: me, tabLabel: 'Lending options', value: d, shape: loShape,
-          patch: extraColumns,
-          onAdopt: stored => { if (stored) putOnScreen(stored) },
-          // THE KATIE CASE. She fills in the rates, somebody else is typing in
-          // another part of the same tab. Both are saved and her rates appear
-          // here - as a state update, so nobody loses what they are mid-way
-          // through typing. savedRef is moved with it, or the merged record
-          // would read as something this person typed and save itself again.
-          onMerge: merged => putOnScreen(merged),
-        })
-        if (out.kind === 'superseded') return
-        if (out.kind === 'error') { console.error('LO autosave:', out.message); setSaveError(out.message); return }
-        setSaveError('')
-        if (out.kind === 'saved') savedRef.current = now
-        if (out.kind === 'saved' || out.kind === 'merged') {
-          setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
-        }
-      })()
-    }, 700)
-    return () => clearTimeout(t)
-  }, [d])
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === 'hidden') flush() }
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      document.removeEventListener('visibilitychange', onHide)
+      // TAKEN OFF SCREEN. Whatever is pending goes NOW. This used to cancel it.
+      flush()
+    }
+  }, [flush])
 
   const uniqueLenders = Array.from(new Map(allProducts.map(p => [p.lender_id, { id: p.lender_id, name: p.lender_name }])).values()).sort((a, b) => a.name.localeCompare(b.name))
 
@@ -1170,7 +1232,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   const isRefinance = d.template === 'lo_refinance'
 
   return (
-    <div className="space-y-4" onInputCapture={markTouched} onChangeCapture={markTouched}>
+    // LEAVING A BOX WRITES IT, rather than waiting 700ms and hoping nobody
+    // changes tab. See writeNow above for the Aaron Hooper case.
+    <div className="space-y-4" onInputCapture={markTouched} onChangeCapture={markTouched}
+         onBlurCapture={() => flush()}>
       <div className="flex gap-2 items-center flex-wrap">
         <div className="flex gap-2 bg-white border border-gray-100 rounded-xl p-1">
           {(['form', 'preview'] as const).map(t => (
