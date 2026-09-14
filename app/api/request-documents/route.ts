@@ -1,21 +1,13 @@
-// ASKING A CLIENT FOR THEIR DOCUMENTS.
+// ASKING A CLIENT FOR THEIR DOCUMENTS - the button on the deal.
 //
-// The list is worked out on the deal from the fact find. This is how it leaves
-// the building: one email to whoever does the requesting, listing exactly what
-// to raise on SalesTrekker's client portal, and one record on the deal of what
-// was asked for and when.
-//
-// The RECORD is the important half. Without it, pressing the button a second
-// time asks the client again for the payslips they already sent - see
-// toRequest() in lib/document-progress.ts.
+// The work is in lib/document-request.ts, because since 14 Sep 2026 there are two
+// ways in: this button, and the portal doing it by itself the moment the client
+// agrees to proceed at the end of BC. One function so they cannot drift.
 //
 // POST { dealId, keys: string[] }
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { notifyDocumentRequest } from '@/lib/salestrekker-notify'
-import { documentsFor, formallyApproved } from '@/lib/document-rules'
-import { progressOf, rowsFor, withRequest, requestRounds } from '@/lib/document-progress'
-import { patchDealColumn } from '@/lib/patch-deal-column'
+import { requestDocuments } from '@/lib/document-request'
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,112 +18,24 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = await createSupabaseServer()
-    const { data: deal, error } = await supabase.from('deals')
-      .select('id, deal_name, assigned_broker, fact_find_data, bc_data, document_progress, formal_approval_at, clients(first_name, last_name)')
-      .eq('id', dealId).single()
-    if (error || !deal) return NextResponse.json({ ok: false, error: 'Deal not found' }, { status: 404 })
-
-    // THE LIST IS REBUILT HERE, not trusted from the browser. A key that is not
-    // a real document on this deal is dropped rather than emailed - what goes
-    // out is what the deal actually says is needed, whatever was posted.
-    const progress = progressOf(deal)
-    const { items } = documentsFor(deal)
-    const rows = rowsFor(items, progress, { formallyApproved: formallyApproved(deal) })
-    const byKey = new Map(rows.map(r => [r.key, r]))
-
-    const asking = keys.map(k => byKey.get(k)).filter(Boolean) as typeof rows
-    const unknown = keys.length - asking.length
-    if (asking.length === 0) {
-      return NextResponse.json({
-        ok: false,
-        error: 'None of those are documents on this deal any more. Reload the deal and try again.',
-      }, { status: 409 })
-    }
-
-    // Already asked for, and quietly skipped rather than sent twice.
-    const fresh = asking.filter(r => !r.requestedAt)
-    if (fresh.length === 0) {
-      return NextResponse.json({ ok: true, skipped: true, reason: 'already requested' })
-    }
-
     const { data: u } = await supabase.auth.getUser()
     const me = u?.user?.id
       ? (await supabase.from('user_profiles').select('full_name').eq('id', u.user.id).single()).data?.full_name || null
       : null
 
-    // WHO IS ASKED TO RAISE THEM.
-    //
-    // Its own setting since 10 Sep 2026. It used to be the same person who files
-    // the documents when they come back, on the reasoning that whoever does the
-    // filing does the requesting - but they are two jobs and can be two people.
-    // Fabio: "I want a separate one to request documents from the portal as I
-    // want flexibility."
-    //
-    // Blank falls back to the filer, so a portal that has not set it behaves
-    // exactly as it did before the setting existed.
-    const { data: settingsRow } = await supabase.from('settings')
-      .select('docs_file_notification_user_id, docs_request_notification_user_id')
-      .eq('id', 'singleton').single()
-    const askWho = settingsRow?.docs_request_notification_user_id
-      || settingsRow?.docs_file_notification_user_id
-    let toEmail: string | null = null, toName: string | null = null
-    if (askWho) {
-      const { data: p } = await supabase.from('user_profiles').select('email, full_name')
-        .eq('id', askWho).single()
-      toEmail = p?.email || null
-      toName = p?.full_name || null
-    }
+    const r = await requestDocuments(supabase, { dealId, keys, by: me, origin: 'button' })
 
-    const nowIso = new Date().toISOString()
-    const clientName = `${(deal.clients as any)?.first_name || ''} ${(deal.clients as any)?.last_name || ''}`.trim()
-
-    // RECORD FIRST, THEN SEND - the opposite way round to docs-received, and on
-    // purpose. There, a failed email had to un-mark the deal. Here the worse
-    // outcome is an email going out that nothing remembers, because the next
-    // press would ask the client for the same things all over again. A record
-    // with no email is recoverable by pressing again; an email with no record
-    // is not.
-    // Applied to what the deal holds at the moment of writing, not to the copy
-    // read at the top of this request. Every tick lives in this one column, so
-    // writing it back from a copy a few hundred milliseconds old erases anything
-    // somebody ticked off in the browser in between. See lib/patch-deal-column.ts.
-    const askedFor = fresh.map(r => r.key)
-    const { next, problem } = await patchDealColumn(supabase, dealId, 'document_progress',
-      (cur: any) => withRequest(progressOf({ document_progress: cur }), askedFor, me || 'Somebody', nowIso),
-      progress)
-    if (problem) {
+    if (!r.ok) {
       return NextResponse.json({
-        ok: false,
-        error: 'The request could not be recorded on the deal, so nothing was sent. Try again.',
-      }, { status: 500 })
+        ok: false, error: r.error, recorded: r.recorded, requestedAt: r.requestedAt,
+      }, { status: r.status })
     }
-
-    const sent = await notifyDocumentRequest({
-      dealId, dealName: deal.deal_name, clientName,
-      brokerName: deal.assigned_broker || '',
-      requestedBy: me,
-      documents: fresh.map(r => ({ label: r.label, detail: r.detail, who: r.groupLabel })),
-      // Everything asked for on an earlier round, so the reader knows the list
-      // is short because the rest is already done, not because it is incomplete.
-      alreadyAsked: rows.filter(r => r.requestedAt).length,
-      recipientEmail: toEmail, recipientName: toName,
-      idempotencyKey: `doc-request:${dealId}:${nowIso}`,
-    })
-
-    if (!sent.ok) {
-      return NextResponse.json({
-        ok: false, recorded: true, requestedAt: nowIso,
-        error: `The ${fresh.length} ${fresh.length === 1 ? 'document is' : 'documents are'} recorded as asked for, but the email did not go out (${sent.error}). Tell ${toName || 'the person who does the requesting'} directly.`,
-      }, { status: 502 })
+    if (r.skipped) {
+      return NextResponse.json({ ok: true, skipped: true, reason: r.reason, covered: r.covered })
     }
-
     return NextResponse.json({
-      ok: true,
-      requestedAt: nowIso,
-      count: fresh.length,
-      to: toName,
-      rounds: requestRounds(next).length,
-      ignored: unknown,
+      ok: true, requestedAt: r.requestedAt, count: r.sent, to: r.to,
+      rounds: r.rounds, ignored: r.ignored, covered: r.covered,
     })
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || 'Something went wrong' }, { status: 500 })

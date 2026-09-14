@@ -517,13 +517,52 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
 
     // See lib/record-defaults.ts for the Wesley Perrott failure this prevents,
     // and its tests for every shape a saved record has turned up in.
-    return withDefaults<ComplianceData>(stored, blank, {
+    const shaped = withDefaults<ComplianceData>(stored, blank, {
       applicants: 'arrayNotEmpty',   // the page reads d.applicants[0] on the first render
       risks: 'object',
       productReqs: 'object',
       expenses: 'object',
       aiMeta: 'object',
     })
+
+    // WHO IS ON THE DEAL IS NOT STORED STATE. IT IS DERIVED, EVERY TIME.
+    //
+    // 14 Sep 2026. The robot caught box one writing two names on the first press
+    // and one on the second, on the same deal, seconds apart:
+    //
+    //   "Kylie Searle and TestFabioKylie Test are borrowing..."
+    //   "TestFabioKylie Test is borrowing..."
+    //
+    // Nobody touched the fact find in between. What happened is that a saved
+    // compliance record from before the second applicant existed carries its own
+    // one-name `applicants` array, and withDefaults quite correctly keeps a
+    // stored array that is present and non-empty. So every door that re-shapes a
+    // record - the first render, the live column, an adopt, a merge, the mount
+    // re-read - quietly put the OLD list back, and whichever press landed after
+    // one of those named one borrower.
+    //
+    // The effect below already says out loud that this list is derived: it
+    // overwrites `applicants` with applicantsOf(deal) whenever the fact find
+    // changes. It just could not win a race against a read that arrived later.
+    //
+    // On a joint file that is the Chapman failure all over again - two people
+    // borrowing, a compliance pack naming one, and a handover going to the lender
+    // that way. Fabio, 2 Sep 2026: "it is always should be both and on the
+    // handover." So the fact find wins here, permanently, and the race has
+    // nothing left to decide.
+    //
+    // Risks are keyed by applicant NAME, so a name that is only now appearing
+    // needs its own blank set - otherwise the render reads risks[name] off
+    // undefined, which is exactly how Wesley crashed.
+    const derivedRisks = { ...(shaped.risks || {}) }
+    apps.forEach(a => { if (!derivedRisks[a.name]) derivedRisks[a.name] = defaultRisk() })
+
+    // requirementsType is the SAME KIND OF THING and was three lines away: the
+    // effect below forces it from dealPurpose(deal) on every deal change, so it
+    // is derived too, and a stored copy restoring itself is the same race. Owner
+    // occupied against investment decides how the whole pack reads.
+    return { ...shaped, applicants: apps, risks: derivedRisks,
+             requirementsType: dealPurpose(deal).binary }
   }
 
   const initData = (): ComplianceData => shape(deal?.compliance_data)
@@ -692,7 +731,12 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
       ...prev,
       expenses: {
         ...prev.expenses,
-        [key]: { ...prev.expenses[key], splits: { ...prev.expenses[key].splits, [applicantName]: value } }
+        // A saved record keeps its own expenses object, so a category added to
+        // EXPENSE_CATEGORIES after that record was written is simply not in it.
+        // The row still renders (line ~1936 defaults it), and typing in it used
+        // to read .splits off undefined - the same shape as the Wesley crash.
+        [key]: { ...(prev.expenses?.[key] ?? { monthlyAmount: '', comment: '', splits: {} }),
+                 splits: { ...(prev.expenses?.[key]?.splits || {}), [applicantName]: value } }
       }
     }))
   }

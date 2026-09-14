@@ -22,7 +22,14 @@ test.describe('notification routing', () => {
     const alerts: string[] = []
     page.on('dialog', async d => { alerts.push(d.message()); await d.dismiss() })
 
-    await page.goto('/settings')
+    // THE PANE, NOT JUST THE PAGE.
+    //
+    // Settings is eleven panes and the pane is read from the hash. Landing on
+    // /settings opens Brands, where none of these rows exist - which fails with
+    // "element(s) not found" and reads exactly like a broken page. 10 Sep 2026 I
+    // blamed the labels, then blamed the admin role; the real answer was that
+    // nobody had told the robot which pane to open.
+    await page.goto('/settings#notifications')
 
     // SETTINGS IS ADMIN ONLY, and the robot may not be one.
     //

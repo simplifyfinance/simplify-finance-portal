@@ -1,6 +1,8 @@
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { resolveBrokerProfile } from '@/lib/broker-profile'
 import { notifyCrisMoveCard } from '@/lib/salestrekker-notify'
+import { createSupabaseAdmin } from '@/lib/supabase-admin'
+import { requestDocuments, brokerDocumentLine, type DocRequestResult } from '@/lib/document-request'
 
 import type { ProceedStage } from './next-steps-copy'
 
@@ -62,6 +64,10 @@ export async function markProceeded(dealId: string, stage: ProceedStage, by: Pro
 
   const alreadyProceeded = stage === 'BC' ? !!deal.client_proceeded : !!deal.lo_client_proceeded
 
+  // What the automatic document request did, so the broker's email can say it.
+  // Null means it was never attempted - the LO step, or an already-proceeded deal.
+  let docs: DocRequestResult | null = null
+
   if (!alreadyProceeded) {
     const nowIso = new Date().toISOString()
     if (stage === 'BC') {
@@ -84,6 +90,36 @@ export async function markProceeded(dealId: string, stage: ProceedStage, by: Pro
           })
         } catch (e) {
         }
+      }
+
+      // THE DOCUMENTS GO OUT NOW, NOT WHEN SOMEBODY REMEMBERS.
+      //
+      // The credit team ticks the list during BC. Until 14 Sep 2026 it then sat
+      // there until a broker opened the deal and pressed Request documents - so
+      // the gap between a client saying yes and being asked for anything was
+      // however long it took somebody to notice.
+      //
+      // Fabio, 14 Sep 2026: "can we not automatically have the system send Ellie
+      // the email to load documents to SalesTrekker, so she can share the
+      // portal?" Immediately, and only at this step - the LO one is being brought
+      // forward to here, so it needs nothing.
+      //
+      // THE ADMIN CLIENT, because the client pressing the button on their own
+      // page is not signed in to anything. Row Level Security would hand an
+      // anonymous read an empty settings row and an empty statements list - no
+      // error, just nothing - and the request would go to nobody while asking
+      // for statements already on file. See lib/supabase-admin.ts.
+      //
+      // NON-FATAL. The stage has already moved and that is the thing the client
+      // is waiting on. A failure here is reported in the broker's email rather
+      // than thrown back at a client who has done nothing wrong.
+      try {
+        docs = await requestDocuments(createSupabaseAdmin(), {
+          dealId, origin: 'proceed',
+          by: 'The portal, when the client agreed to proceed',
+        })
+      } catch (e: any) {
+        docs = { ok: false, status: 500, sent: 0, error: e?.message || 'The document request did not run.' }
       }
     } else {
       const { data: wrote, error: wErr } = await supabase.from('deals').update({
@@ -111,8 +147,14 @@ export async function markProceeded(dealId: string, stage: ProceedStage, by: Pro
             from: 'Simplify Finance Portal <notifications@simplifyfinance.com.au>',
             to: brokerRecord.email,
             cc: 'info@simplifyfinance.com.au',
-            subject: `${deal.deal_name} has moved to ${nextStageLabel}`,
-            html: `<p>Hi ${brokerRecord.name?.split(' ')[0] || ''},</p><p><strong>${deal.deal_name}</strong> has progressed to <strong>${nextStageLabel}</strong>.</p><p><a href="https://simplify-finance-portal.vercel.app/deals/${dealId}">Open the deal</a></p>`
+            // An internal email, so the file name belongs on it. It shouts when the
+            // document request failed, because this is the only place anybody
+            // finds out - the client has already been told their documents are
+            // coming.
+            subject: docs && !docs.ok
+              ? `ACTION NEEDED - documents not requested: ${deal.deal_name}`
+              : `${deal.deal_name} has moved to ${nextStageLabel}`,
+            html: `<p>Hi ${brokerRecord.name?.split(' ')[0] || ''},</p><p><strong>${deal.deal_name}</strong> has progressed to <strong>${nextStageLabel}</strong>.</p>${brokerDocumentLine(docs)}<p><a href="https://simplify-finance-portal.vercel.app/deals/${dealId}">Open the deal</a></p>`
           })
         })
       }
