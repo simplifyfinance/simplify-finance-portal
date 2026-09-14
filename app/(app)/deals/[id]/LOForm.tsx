@@ -463,6 +463,13 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   }
 
   const [d, setD] = useState<LOData>(initData)
+  // WHAT THIS SCREEN HELD WHEN IT OPENED, and what it holds now. The late read
+  // below uses the two to tell "nobody has touched this" from "somebody is
+  // already working in it".
+  const atOpen = useRef<string | null>(null)
+  if (atOpen.current === null) atOpen.current = JSON.stringify(d)
+  const liveD = useRef<LOData>(d)
+  liveD.current = d
   // What the database last agreed with. Anything equal to this is not an edit,
   // so opening the form, or a re-render, never writes.
   const savedRef = useRef<string | null>(null)
@@ -603,8 +610,23 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         setLenderIdByName(byName)
       }
     })
+    // WHAT THE RECORD ACTUALLY HOLDS - BUT NEVER OVER SOMEBODY'S WORK.
+    //
+    // 14 Sep 2026. The same fault the robot found on Compliance and that the
+    // internal notes box had: this is a network round trip, the tab is usable the
+    // moment it appears, and putOnScreen replaced everything regardless of what
+    // had been typed while it was in flight. On THIS tab that is rates,
+    // repayments and loan amounts - the exact boxes Fabio reported coming back
+    // blank on 4 Sep.
+    //
+    // The guard is still told what the record holds either way; only the screen
+    // is left alone.
     supabase.from('deals').select('lo_data').eq('id', deal.id).single().then(({ data }) => {
       if (data?.lo_data && Object.keys(data.lo_data).length > 0) {
+        if (JSON.stringify(liveD.current) !== atOpen.current) {
+          adopt(guardRef.current, loShape(data.lo_data))
+          return
+        }
         putOnScreen(data.lo_data)
       }
     })
@@ -628,7 +650,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // disturbing a single thing this person has typed - see
   // components/useLiveColumn.ts for the rule, and lib/live-deal.ts for why.
   useLiveColumn({ dealId: deal.id, column: 'lo_data', meId: me?.id, guard: guardRef.current,
-                  current: () => d, apply: v => putOnScreen(v) })
+                  current: () => d, apply: v => putOnScreen(v), shape: loShape })
 
   // NO NOTES ABOUT OTHER PEOPLE.
   //
@@ -655,15 +677,27 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // Used both on first load and when somebody else has saved while nothing has
   // been typed here, which is the case that used to put the banner up in front
   // of people who were only looking.
+  // THE LO'S OWN DOOR, in one place so the guard and the live column can use the
+  // same one. Everything putOnScreen does to a record before it reaches the
+  // screen - and therefore everything that must happen to a stored record before
+  // it is compared with the screen. See the note on snapshot() in
+  // lib/save-conflict.ts.
+  function loShape(stored: any): any {
+    const loaded = fillMissing(stored, blankData())
+    if (!loaded.importantNotes) loaded.importantNotes = (LO_TEMPLATE_NOTES[loaded.template] || []).join('\n')
+    if (!loaded.refinanceSplits) loaded.refinanceSplits = initRefinanceSplits()
+    return loaded
+  }
+
   function putOnScreen(stored: any) {
     // Same fill as on first load - a record arriving from the database later
     // must not be missing boxes that a record arriving at open would have. See
     // fillMissing().
-    const loaded = fillMissing(stored, blankData())
-    if (!loaded.importantNotes) loaded.importantNotes = (LO_TEMPLATE_NOTES[loaded.template] || []).join('\n')
-    if (!loaded.refinanceSplits) loaded.refinanceSplits = initRefinanceSplits()
+    const loaded = loShape(stored)
     savedRef.current = JSON.stringify(loaded)
-    adopt(guardRef.current, stored)
+    // The shaped record, not the raw one - the guard has to hold what the screen
+    // holds or it cannot tell "nobody typed" from "everything changed".
+    adopt(guardRef.current, loaded)
     setD(loaded)
     if (loaded.emailHtml) setEmailHtml(loaded.emailHtml)
   }
@@ -704,7 +738,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
       ;(async () => {
         const out = await saveGuarded({
-          supabase, dealId: deal.id, column: 'lo_data', guard: guardRef.current, savedBy: me, tabLabel: 'Lending options', value: d,
+          supabase, dealId: deal.id, column: 'lo_data', guard: guardRef.current, savedBy: me, tabLabel: 'Lending options', value: d, shape: loShape,
           patch: extraColumns,
           onAdopt: stored => { if (stored) putOnScreen(stored) },
           // THE KATIE CASE. She fills in the rates, somebody else is typing in

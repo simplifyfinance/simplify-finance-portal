@@ -67,8 +67,31 @@ import { describePaths } from './deal-field-names'
 
 export type DealColumn = 'bc_data' | 'fact_find_data' | 'lo_data' | 'compliance_data'
 
-// What this form believes the database holds. Compared like with like: the raw
-// stored value, before any defaults the form applies on load.
+// What this form believes the database holds.
+//
+// COMPARED LIKE WITH LIKE - AND THAT STOPPED BEING TRUE ON 10 SEP 2026.
+//
+// It used to say "the raw stored value, before any defaults the form applies on
+// load", and that was right while the forms handed their raw record straight to
+// the screen. Then shape() arrived on all four tabs to stop the Wesley crash,
+// and every form began holding - and SAVING - a record with defaults filled in.
+//
+// So the guard was comparing the raw record against the shaped one. They differ
+// on any record missing a key shape() fills, which is most older records. Two
+// consequences, both of which the team felt:
+//
+//   1. OPENING A DEAL LOOKED LIKE EDITING IT AGAIN. `next === guard.db` is how
+//      this file knows nobody has typed, and it was never true. That is failure
+//      2 in the note at the top of this file, back after being fixed once.
+//   2. THE BASE HANDED TO merge3 WAS NOT WHAT THE SCREEN HAD LOADED. A merge
+//      judged against a wrong base decides the wrong owner for a field - which
+//      is one person's tick box quietly going back to what the other person's
+//      screen thought it was.
+//
+// The fix is not to unshape anything. It is to put EVERY copy through the same
+// door before comparing it, so "has this changed?" is asked of two things of the
+// same kind. Forms pass their own shape(); one that has none compares raw, as
+// before.
 export function snapshot(value: any): string {
   return JSON.stringify(value ?? null)
 }
@@ -186,6 +209,11 @@ export type SaveRequest = {
   // The tab in the words the rest of the portal uses, recorded alongside the
   // name so a deal can say what somebody was last working on.
   tabLabel?: string
+  // THE FORM'S OWN DOOR. Every record this form puts on screen goes through
+  // shape(); `value` above is therefore shaped. Give it here and the stored
+  // record is put through the same door before anything is compared to it.
+  // Leave it out and everything is compared raw, exactly as before.
+  shape?: (stored: any) => any
 }
 
 export async function saveGuarded(req: SaveRequest): Promise<SaveOutcome> {
@@ -211,6 +239,8 @@ export async function saveGuarded(req: SaveRequest): Promise<SaveOutcome> {
 
 async function attempt(req: SaveRequest, mySeq: number, lastResort = false): Promise<SaveOutcome | Overtaken> {
   const { supabase, dealId, column, guard, value, patch, onAdopt, onMerge, savedBy, tabLabel } = req
+  // Identity when a form has no shaping of its own.
+  const through = req.shape || ((v: any) => v)
 
   // Somebody asked for a newer save while this one waited its turn. Writing this
   // one now would put an older payload on top of a newer one.
@@ -250,7 +280,10 @@ async function attempt(req: SaveRequest, mySeq: number, lastResort = false): Pro
   // nobody to be in conflict with. The LO reads lo_data itself after mount and
   // is in this state until it has.
   if (!readError && guard.db !== null) {
-    const stored = snapshot(current?.[column])
+    // Through the form's own door, so this is what the screen WOULD hold if it
+    // loaded the record right now - which is the only thing `value` can be
+    // honestly compared against.
+    const stored = snapshot(through(current?.[column]))
 
     // OPENING A DEAL IS NOT EDITING IT. Nothing has moved and we have changed
     // nothing, so there is nothing to write. Every one of these four forms used
@@ -279,6 +312,8 @@ async function attempt(req: SaveRequest, mySeq: number, lastResort = false): Pro
       // Find: two people with a deal merely OPEN were being told they were in
       // conflict before either had touched a key.
       else if (next === guard.db) {
+        // `stored` is already the shaped snapshot - see above. The guard must
+        // hold what the screen holds, never the raw record.
         guard.db = stored
         // Nothing has been typed here, so there is nothing of ours to write and
         // nothing to refuse. A form that can refresh itself does; one that
@@ -300,7 +335,7 @@ async function attempt(req: SaveRequest, mySeq: number, lastResort = false): Pro
           didOverwrite = true
           wroteOver = savedByThem
         } else {
-          const merge = merge3(JSON.parse(guard.db), current?.[column] ?? null, value)
+          const merge = merge3(JSON.parse(guard.db), through(current?.[column] ?? null), value)
           if (merge.ok) {
             toWrite = merge.merged
             broughtIn = describePaths(merge.fromThem)

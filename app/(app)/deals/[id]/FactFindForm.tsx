@@ -422,12 +422,19 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   // Whose copy is on screen, and whether writing it would cost anybody
   // anything — the whole decision lives in lib/save-conflict.ts so all four
   // tabs cannot drift into judging it differently.
-  const guardRef = useRef(newGuard(deal.fact_find_data))
+  // SEEDED WITH WHAT THE SCREEN HOLDS, NOT WITH THE RAW RECORD.
+  //
+  // `value` handed to saveGuarded is `d`, which came through shape(). Seeding
+  // the guard from the raw record meant "has anybody typed?" compared a shaped
+  // thing against a raw one and always answered yes - so merely opening a deal
+  // read as an edit, and every merge was judged against a base this screen had
+  // never held. See the note on snapshot() in lib/save-conflict.ts.
+  const guardRef = useRef(newGuard(shape(deal.fact_find_data)))
   // SOMEBODY ELSE JUST SAVED. Their fields land on this screen without
   // disturbing a single thing this person has typed - see
   // components/useLiveColumn.ts for the rule, and lib/live-deal.ts for why.
   useLiveColumn({ dealId: deal.id, column: 'fact_find_data', meId: me?.id, guard: guardRef.current,
-                  current: () => d, apply: v => setD(shape(v)) })
+                  current: () => d, apply: v => setD(shape(v)), shape })
 
   // NO NOTES ABOUT OTHER PEOPLE.
   //
@@ -462,7 +469,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
 
       ;(async () => {
         const out = await saveGuarded({
-          supabase, dealId: deal.id, column: 'fact_find_data', guard: guardRef.current, savedBy: me, tabLabel: 'Fact Find', value: d,
+          supabase, dealId: deal.id, column: 'fact_find_data', guard: guardRef.current, savedBy: me, tabLabel: 'Fact Find', value: d, shape,
           // Nothing typed here yet and somebody else has saved: take their
           // version rather than telling this person off for looking at a deal.
           // Shaped, so it is exactly what a fresh load would have put on screen.

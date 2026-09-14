@@ -67,3 +67,7 @@ Claude outputs/
 # machine that ran them, not in the history.
 test-results/
 playwright-report/
+
+# The browser robot keeps its output here. Playwright empties test-results/,
+# so it cannot live there.
+.robot-logs/

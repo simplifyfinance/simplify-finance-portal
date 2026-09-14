@@ -77,19 +77,47 @@ test.describe('box one — primary reasons for seeking credit', () => {
     const box = page.getByLabel(/Primary reasons for seeking credit/i)
     await expect(box).toBeVisible({ timeout: 20_000 })
 
-    // THREE BOXES, THREE BUTTONS, THE SAME WORDS ON EACH.
-    // Boxes 2 and 3 got the same button on 10 Sep, so this has to say which
-    // one it means. Box one is the first.
+    // WHO THE PAGE THINKS IS ON THIS DEAL, read off the screen at each press.
+    //
+    // 14 Sep 2026. This test has failed twice with the second press naming ONE
+    // borrower where the first named two, and twice I have explained it from the
+    // code and been wrong. So it reports rather than being reasoned about: the
+    // applicant names the page itself is showing, at the moment of each click.
+    // If they change, the deal changed under the button. If they do not, the
+    // composer did, and that is a different fault entirely.
+    const whoIsShowing = async () => {
+      const t = await page.locator('body').innerText()
+      const names = [...new Set((t.match(/[A-Z][a-zA-Z]+ [A-Z][a-zA-Z]+/g) || []))]
+      // The applicant switcher, when there is one.
+      const tabs = await page.getByRole('button').allTextContents().catch(() => [])
+      return { names: names.slice(0, 12), tabs: tabs.filter(x => /^[A-Z][a-z]+$/.test(x.trim())).slice(0, 8) }
+    }
+
+    const before1 = await whoIsShowing()
     await page.getByRole('button', { name: /Write from the deal/i }).first().click()
     await expect(box).not.toHaveValue('', { timeout: 5_000 })
     const first = await box.inputValue()
 
-    // THREE BOXES, THREE BUTTONS, THE SAME WORDS ON EACH.
-    // Boxes 2 and 3 got the same button on 10 Sep, so this has to say which
-    // one it means. Box one is the first.
+    const before2 = await whoIsShowing()
     await page.getByRole('button', { name: /Write from the deal/i }).first().click()
     await page.waitForTimeout(500)
-    expect(await box.inputValue()).toBe(first)
+    const second = await box.inputValue()
+
+    if (first !== second) {
+      console.log('\n' + '='.repeat(70))
+      console.log('THE SAME BUTTON WROTE TWO DIFFERENT THINGS')
+      console.log('='.repeat(70))
+      console.log('Applicant-looking names on screen BEFORE press 1:', JSON.stringify(before1.names))
+      console.log('Applicant switcher tabs BEFORE press 1          :', JSON.stringify(before1.tabs))
+      console.log('Applicant-looking names on screen BEFORE press 2:', JSON.stringify(before2.names))
+      console.log('Applicant switcher tabs BEFORE press 2          :', JSON.stringify(before2.tabs))
+      console.log('-'.repeat(70))
+      console.log('FIRST  :', first.slice(0, 240))
+      console.log('SECOND :', second.slice(0, 240))
+      console.log('='.repeat(70) + '\n')
+    }
+
+    expect(second).toBe(first)
   })
 
   test('a gap is shouted, on the screen and in the text', async ({ page }) => {

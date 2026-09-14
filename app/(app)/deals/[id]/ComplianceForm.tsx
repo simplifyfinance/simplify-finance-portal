@@ -370,7 +370,9 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
 
   // Whose copy is on screen, and whether writing it would cost anybody
   // anything — see lib/save-conflict.ts.
-  const guardRef = useRef(newGuard(deal.compliance_data))
+  // Seeded below, once shape() exists - see the note in FactFindForm. It has to
+  // hold what the SCREEN holds, and the screen is shaped.
+  const guardRef = useRef<ReturnType<typeof newGuard> | null>(null)
   // NO NOTES ABOUT OTHER PEOPLE.
   //
   // There were three: "their fields came in", "you were behind", "you saved
@@ -566,13 +568,23 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   }
 
   const initData = (): ComplianceData => shape(deal?.compliance_data)
+  // Now that shape() exists. Once, on the first render.
+  if (!guardRef.current) guardRef.current = newGuard(shape(deal?.compliance_data))
+  const guard = guardRef.current
 
   const [d, setD] = useState<ComplianceData>(initData)
+  // WHAT THIS SCREEN HELD WHEN IT OPENED, and what it holds right now. The late
+  // read below uses the two to tell "nobody has touched this" from "somebody has
+  // typed, or pressed a button" - see that effect for what went wrong without it.
+  const atOpen = useRef<string | null>(null)
+  if (atOpen.current === null) atOpen.current = JSON.stringify(d)
+  const liveD = useRef<ComplianceData>(d)
+  liveD.current = d
   // SOMEBODY ELSE JUST SAVED. Their fields land on this screen without
   // disturbing a single thing this person has typed - see
   // components/useLiveColumn.ts for the rule, and lib/live-deal.ts for why.
-  useLiveColumn({ dealId: deal.id, column: 'compliance_data', meId: me?.id, guard: guardRef.current,
-                  current: () => d, apply: v => setD(shape(v)) })
+  useLiveColumn({ dealId: deal.id, column: 'compliance_data', meId: me?.id, guard,
+                  current: () => d, apply: v => setD(shape(v)), shape })
 
 
   useEffect(() => {
@@ -648,12 +660,37 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   // believes the record is something it is not, and the next keystroke looks
   // like a collision that nobody caused. That produced a banner out of thin air.
   //
-  // Same split as the LO form: the guard is given EXACTLY what the database held,
-  // before the expenses default below, or it would never match the stored record.
+  // THE GUARD IS GIVEN WHAT THE SCREEN HOLDS, WHICH IS THE SHAPED RECORD.
+  //
+  // This said the opposite - "EXACTLY what the database held, before the
+  // defaults below, or it would never match the stored record" - and that was
+  // the whole mistake. What gets SAVED is the shaped record, so the guard has to
+  // hold the shaped record or "has anybody typed?" is asked of two different
+  // kinds of thing and always answers yes. saveGuarded now puts the stored
+  // record through shape() before comparing, so this matches it.
+  //
+  // AND IT NEVER PUTS ITSELF OVER SOMETHING SOMEBODY HAS ALREADY DONE.
+  //
+  // 14 Sep 2026, found by the robot. This read is a network round trip, and the
+  // tab is usable the moment it appears. Press "Write from the deal" inside that
+  // window and the freshly composed paragraph was replaced by whatever was last
+  // saved - on the test deal, a version written when it had ONE applicant, so a
+  // joint file silently went back to naming one borrower. Typing in that window
+  // was reverted the same way.
+  //
+  // Exactly the fault the internal notes box had, in a second place: a late read
+  // that puts the database on screen regardless of what has happened since.
+  //
+  // The GUARD is still told, always - it has to know what the record holds even
+  // when the screen keeps what is on it, or the next save reads as a collision
+  // nobody caused. Only the SCREEN is left alone.
   useEffect(() => {
     supabase.from('deals').select('compliance_data').eq('id', deal.id).single().then(({ data }) => {
       if (data?.compliance_data && Object.keys(data.compliance_data).length > 0) {
-        adopt(guardRef.current, data.compliance_data)
+        adopt(guard, shape(data.compliance_data))
+        // Somebody has typed, or pressed a button, while that was in flight.
+        // Their work stays; the save guard sorts the two out on the next save.
+        if (JSON.stringify(liveD.current) !== atOpen.current) return
         // shape(), not a spread. A record written by the deal structure block
         // has no applicants, no risks and no expenses in it, and this screen
         // renders all three. Wesley Perrott, 10 Sep 2026.
@@ -691,7 +728,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
 
       ;(async () => {
         const out = await saveGuarded({
-          supabase, dealId: deal.id, column: 'compliance_data', guard: guardRef.current, savedBy: me, tabLabel: 'Compliance', value: d,
+          supabase, dealId: deal.id, column: 'compliance_data', guard, savedBy: me, tabLabel: 'Compliance', value: d, shape,
           patch: chosenId ? { lender_id: chosenId } : undefined,
           // Nothing typed here yet and somebody else has saved: take their
           // version rather than telling this person off for looking at a deal.

@@ -32,7 +32,7 @@ import { adopt, type SaveGuard } from '@/lib/save-conflict'
 const QUIET_MS = 1500
 const RETRY_MS = 400
 
-export function useLiveColumn({ dealId, column, meId, guard, current, apply }: {
+export function useLiveColumn({ dealId, column, meId, guard, current, apply, shape }: {
   dealId: string
   column: DealColumn
   meId?: string | null
@@ -41,27 +41,48 @@ export function useLiveColumn({ dealId, column, meId, guard, current, apply }: {
   current: () => any
   // Put the folded record back on screen. Each tab holds its state differently.
   apply: (value: any) => void
+  // THE FORM'S OWN DOOR - the same shape() the tab puts every record through.
+  //
+  // Without it this compared the RAW record arriving from the database against
+  // the SHAPED record on screen, and those differ on any record missing a key
+  // shape() fills in. So "nothing of mine to protect" was decided against the
+  // wrong copy, and the three-way merge was handed a base the screen had never
+  // actually held. That is how a tick box goes back to what somebody else's
+  // screen thought it was.
+  shape?: (stored: any) => any
 }) {
   const lastTyped = useRef(0)
   const pending = useRef<any>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Any real input counts. Somebody reading the screen is not somebody who
-  // would lose a letter.
+  // ANY REAL INPUT COUNTS - AND A TICK IS REAL INPUT.
+  //
+  // This listened for keydown and paste only. A tick box, a dropdown, a Remove
+  // link and an ownership checkbox produce neither, so the whole "wait until
+  // they pause" protection simply did not exist for them: an update arriving a
+  // second after somebody ticked a box landed straight on top of the tick, and
+  // the box appeared to untick itself.
+  //
+  // Kylie, 14 Sep 2026, with Melissa in the same deal: "If I tick the box after
+  // a few seconds - it unticks it. If I remove a data - it goes back."
+  //
+  // The fact find is mostly ticks. Ownership, which applicant an asset belongs
+  // to, what is closing, every yes or no - none of them were protected.
+  //
+  // pointerdown rather than click, because it fires BEFORE the change lands, so
+  // the quiet window starts at the moment somebody reaches for the control
+  // rather than after the state has already moved.
   useEffect(() => {
     const typed = () => { lastTyped.current = Date.now() }
-    window.addEventListener('keydown', typed, { passive: true })
-    window.addEventListener('paste', typed, { passive: true })
-    return () => {
-      window.removeEventListener('keydown', typed)
-      window.removeEventListener('paste', typed)
-    }
+    const events = ['keydown', 'paste', 'pointerdown', 'change', 'input'] as const
+    for (const e of events) window.addEventListener(e, typed, { passive: true })
+    return () => { for (const e of events) window.removeEventListener(e, typed) }
   }, [])
 
   // Read through a ref so the waiting timer always folds against what is on
   // screen NOW, never against what it was when the update arrived.
-  const latest = useRef({ current, apply, guard, meId })
-  latest.current = { current, apply, guard, meId }
+  const latest = useRef({ current, apply, guard, meId, shape })
+  latest.current = { current, apply, guard, meId, shape }
 
   useEffect(() => {
     if (!LIVE_EDITING) return
@@ -79,18 +100,21 @@ export function useLiveColumn({ dealId, column, meId, guard, current, apply }: {
       }
 
       pending.current = null
-      const { current: now, apply: put, guard: g } = latest.current
+      const { current: now, apply: put, guard: g, shape: door } = latest.current
       let base: any = null
       try { base = g.db ? JSON.parse(g.db) : null } catch { base = null }
 
-      const fold = foldIn(base, waiting, now())
+      // Their record, through this tab's own door, so all three copies handed to
+      // the fold are the same kind of thing.
+      const theirs = door ? door(waiting) : waiting
+      const fold = foldIn(base, theirs, now())
       if (fold.kind !== 'take') return
       put(fold.value)
       // The record now says what they saved, whatever else is on screen. This
       // is also what stops a save going straight back out: with nothing of our
       // own on top, the next autosave finds the database already agrees and
       // writes nothing. See saveGuarded.
-      adopt(g, waiting)
+      adopt(g, theirs)
     }
 
     const channel = supabase
