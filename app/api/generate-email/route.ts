@@ -17,6 +17,7 @@ import { money, readMoney } from '@/lib/money'
 import { estimatedRepayment } from '@/lib/email-figures'
 import { emailParagraphs } from '@/lib/rich-text'
 import { showsOwnLoanAmount } from '@/lib/email-amounts'
+import { PLEDGE_PROS, PLEDGE_CONS, PLEDGE_LOAN_1, PLEDGE_LOAN_2, guarantorPhrase } from '@/lib/family-pledge-copy'
 import { totalCost, totalLending, fundsToContribute, repaymentDuringConstruction,
          num, DRAWDOWN_NOTE } from '@/lib/construction'
 
@@ -203,6 +204,42 @@ function p13(t: string) { return `<p style="font-size:13px;color:#555;margin-bot
 function propHead(t: string, rentalIncome?: string) {
   return `<p style="font-size:13px;color:#343333;font-weight:600;margin-bottom:8px"><span style="color:#343333;">&#127968; ${t}</span></p>` +
     (rentalIncome ? `<p style="font-size:12px;color:#666;margin-bottom:8px"><span style="color:#666;">Rental income: ${money(rentalIncome)}/week</span></p>` : '')
+}
+
+// FAMILY PLEDGE: ONE CARD PER LOAN, WITH THE SENTENCE THAT EXPLAINS IT.
+//
+// 15 Sep 2026. This template printed splits[0] and nothing else, so the pledge
+// split - the part that IS the family pledge - never reached the client, and
+// the headline said "your borrowing capacity is sitting at around $408,000"
+// when the two splits together were $527,500. Every family pledge email that
+// has gone out understated the loan.
+//
+// Fabio, 15 Sep 2026: "look at bc there 2 splits". And on whether a deal could
+// ever have three: "we can never have 3 splits" - so loan 2 is the guaranteed
+// one, always, and the wording says so rather than being worked out.
+function pledgeLoan(title: string, split: any, loanTerm: any, sentence: string) {
+  if (!split) return ''
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2E8DB" style="background:#F2E8DB;border-radius:8px;margin-bottom:11px"><tr><td bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px">
+    <p style="font-size:11px;font-weight:700;color:#7a5c3a;margin:0 0 6px"><span style="color:#7a5c3a;">${title}${split.label ? ' &mdash; ' + split.label : ''}</span></p>
+    <p style="font-size:12px;color:#5b4a33;margin:0 0 9px;line-height:1.6"><span style="color:#5b4a33;">${sentence}</span></p>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">${
+      rowIf('Loan amount', money(split.amount)) +
+      rowIf('Indicative rate', split.rate ? `${split.rate}% p.a.*` : '') +
+      repaymentRow(split, loanTerm) +
+      rowIf('Repayment type', split.type ? `${split.type} over ${loanTerm || '30'} years` : '')
+    }</table>
+  </td></tr></table>`
+}
+
+// The pros and the cons, in Fabio's words. His wording, his punctuation - this
+// goes to a client and it is not mine to tidy.
+function pledgeList(title: string, items: string[], bar: string, bg: string, heading: string, marker: string) {
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:13px"><tr>
+    <td width="4" bgcolor="${bar}" style="background:${bar};width:4px;font-size:0;line-height:0">&nbsp;</td>
+    <td bgcolor="${bg}" style="background:${bg};padding:13px 15px">
+      <p style="font-size:10px;font-weight:700;color:${heading};text-transform:uppercase;letter-spacing:0.5px;margin:0 0 8px"><span style="color:${heading};">${title}</span></p>
+      ${items.map(i => `<p style="font-size:12px;color:#334155;margin:6px 0;line-height:1.65"><span style="color:${heading};font-weight:700;">${marker}</span> <span style="color:#334155;">${i}</span></p>`).join('')}
+    </td></tr></table>`
 }
 
 function buildLVRLine(d: any) {
@@ -612,23 +649,35 @@ export async function POST(req: NextRequest) {
       notesBox(notes) + sig(b)
 
   } else if (template === 'family_pledge') {
+    // BOTH SPLITS, AND THE WHOLE LOAN AS THE HEADLINE. See pledgeLoan() above
+    // for what this used to do and why it was wrong.
+    const lending = totalLending(d.splits)
+    const priceN = readMoney(d.purchasePrice) ?? 0
+    const dutyN = readMoney(d.stampDuty) ?? 0
+    // Purchase price plus stamp duty, the way the old email did it. The only
+    // arithmetic on this template, and both figures are typed.
+    const cost = priceN > 0 && dutyN > 0 ? priceN + dutyN : 0
+    const guarantor = String(d.guarantorName || '').trim()
+
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
-      p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong> — using your parents' property as a security guarantee to avoid Lenders Mortgage Insurance.`) +
-      card('Your Loan Structure',
-        row('Purchase price', money(d.purchasePrice)) +
-        row(dutyLabel(d), money(d.stampDuty)) +
-        row('Loan amount', money(d.splits?.[0]?.amount)) +
-        row(`Your contribution required${PLUS_INCIDENTALS}`, money(d.deposit)) +
-        row('Guarantor', d.guarantorName || '') +
-        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
-        repaymentRow(d.splits?.[0], d.loanTerm) +
-        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+      (lending > 0 ? p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${money(lending)}</strong>.`) : '') +
+      p(`When using ${guarantorPhrase(guarantor)} property as security you can borrow 100% of the purchase price. You would just need to contribute your own funds to cover stamp duty and costs.`) +
+      p('Your application will be split into 2 loans.') +
+      card('Your numbers would be',
+        rowIf('Purchase price', money(d.purchasePrice)) +
+        rowIf(dutyLabel(d), money(d.stampDuty)) +
+        rowIf(`Total cost${PLUS_INCIDENTALS}`, cost > 0 ? money(cost) : '') +
+        rowIf('Loan amount (borrowing 100% of the purchase price with a family security guarantee)', lending > 0 ? money(lending) : '') +
+        rowIf('Your contribution required (coming from own savings)', money(d.deposit)) +
+        rowIf('Guarantor', guarantor)
       ) +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      pledgeLoan('Loan 1', d.splits?.[0], d.loanTerm, PLEDGE_LOAN_1) +
+      pledgeLoan('Loan 2', d.splits?.[1], d.loanTerm, PLEDGE_LOAN_2) +
+      pledgeList('Pros of doing a family guarantee', PLEDGE_PROS, '#16a34a', '#F0FDF4', '#15803d', '&#10003;') +
+      pledgeList('Cons of doing a family guarantee', PLEDGE_CONS, '#D97706', '#FFFBEB', '#92400E', '&bull;') +
       check(checkItems) +
-      p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-      
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      p('Please let us know your thoughts and if you have any questions regarding the numbers.') +
       notesBox(notes) + sig(b)
 
   } else if (template === 'smsf') {

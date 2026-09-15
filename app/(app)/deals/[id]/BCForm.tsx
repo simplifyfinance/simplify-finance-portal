@@ -16,6 +16,7 @@ import { dealFigures } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, settleSaved, applyOwned } from '@/lib/field-ownership'
 import { useKeepalive } from '@/components/useKeepalive'
+import { GUARANTORS } from '@/lib/family-pledge-copy'
 
 // WORKED OUT, NOT TYPED.
 //
@@ -278,6 +279,7 @@ const BUYING_TEMPLATES = ['oo_purchase', 'oo_lvr_compare', 'investment_purchase'
   'investment_equity', 'buy_sell', 'bridging', 'smsf', 'family_pledge', 'construction']
 
 const REFINANCING_TEMPLATES = ['refinance_equity', 'refinance_only', 'investment_equity', 'buy_sell', 'bridging']
+
 
 const STATES = ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'] as const
 
@@ -1422,6 +1424,18 @@ Key assumptions: ${checklistText}`
                     </div>
                   )}
                   {!["refinance_equity", "refinance_only", "investment_equity", "construction"].includes(template) && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={handlePurchasePriceChange} /></Field>}
+                  {/* THE CONTRIBUTION BOX, BACK ON THE FAMILY PLEDGE.
+                      15 Sep 2026. The deposit box was hidden on this template,
+                      yet the client email prints "Your contribution required"
+                      from it AND the "what is missing before you can send"
+                      check asks for it - so it told the team something was
+                      missing that they had nowhere to type. It is the same
+                      field, under the name this template calls it. */}
+                  {template === 'family_pledge' && (
+                    <Field label="Contribution required (from own savings)">
+                      <NumberInput value={deposit} onChange={handleDepositChange} />
+                    </Field>
+                  )}
                   {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "construction"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={handleDepositChange} />
                     {(() => {
                       const dep = parseFloat(deposit.replace(/,/g, '')) || 0
@@ -1506,7 +1520,26 @@ Key assumptions: ${checklistText}`
                     </Field>
                   )}
                   <Field label="Loan term (years)"><input className={inputCls} value={loanTerm} onChange={e => setLoanTerm(e.target.value)} /></Field>
-              {template === 'family_pledge' && <Field label="Guarantor name"><input className={inputCls} value={guarantorName} onChange={e => setGuarantorName(e.target.value)} placeholder="e.g. John Smith" /></Field>}
+              {/* A LIST, NOT A TYPED NAME. The guarantor goes into the client
+                  email in a sentence - "using your parents' property as
+                  security" - so the handful of answers that actually occur are
+                  offered rather than retyped, and anything else is still
+                  typeable. Fabio confirmed the list on 15 Sep 2026. */}
+              {template === 'family_pledge' && (
+                <Field label="Guarantor">
+                  <select className={selectCls}
+                    value={GUARANTORS.includes(guarantorName) ? guarantorName : (guarantorName ? '__other__' : '')}
+                    onChange={e => setGuarantorName(e.target.value === '__other__' ? '' : e.target.value)}>
+                    <option value="">Select guarantor</option>
+                    {GUARANTORS.map(g => <option key={g} value={g}>{g}</option>)}
+                    <option value="__other__">Other — type it</option>
+                  </select>
+                  {!GUARANTORS.includes(guarantorName) && guarantorName !== '' && (
+                    <input className={inputCls + ' mt-2'} value={guarantorName}
+                      onChange={e => setGuarantorName(e.target.value)} placeholder="e.g. John and Mary Smith" />
+                  )}
+                </Field>
+              )}
               {template === 'bridging' && <Field label="Bridging period (months)"><input className={inputCls} value={bridgingPeriod} onChange={e => setBridgingPeriod(e.target.value)} placeholder="e.g. 6" /></Field>}
               {template === 'construction' && <Field label="Land value"><NumberInput value={landValue} onChange={setLandValue} /></Field>}
               {template === 'construction' && <Field label="Construction cost"><NumberInput value={constructionCost} onChange={setConstructionCost} /></Field>}
