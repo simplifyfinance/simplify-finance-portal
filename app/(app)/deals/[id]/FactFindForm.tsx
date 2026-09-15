@@ -18,6 +18,7 @@ import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship 
 import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS } from '@/lib/fact-find'
 import { newGuard, saveGuarded } from '@/lib/save-conflict'
 import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved } from '@/lib/field-ownership'
+import { useKeepalive } from '@/components/useKeepalive'
 import { withDefaults } from '@/lib/record-defaults'
 import NoApplicants from '@/components/NoApplicants'
 import { useLiveColumn } from '@/components/useLiveColumn'
@@ -441,6 +442,9 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   useLiveColumn({ dealId: deal.id, column: 'fact_find_data', meId: me?.id, guard: guardRef.current,
                   current: () => d, apply: v => setD(shape(keepOwned(v, liveD.current, ownRef.current))), shape })
 
+  // ONE LAST WRITE AS THE PAGE GOES. See components/useKeepalive.ts.
+  useKeepalive({ dealId: deal.id, column: 'fact_find_data', own: ownRef.current, current: () => liveD.current })
+
   // NO NOTES ABOUT OTHER PEOPLE.
   //
   // There were three: "their fields came in", "you were behind", "you saved
@@ -534,7 +538,19 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]"
   const applicant = d.applicants?.[activeApplicant]
 
+  // WHICH ROW WAS TOUCHED. Every edit inside a list says so, and nothing
+  // arriving from the database may write that row's field again until the save
+  // carrying it has landed. See lib/field-ownership.ts.
+  //
+  // Kylie, 14 Sep 2026, with Melissa in the same deal: "If I tick the box after
+  // a few seconds - it unticks it. If I remove a data - it goes back." The fact
+  // find is mostly ticks and they all live inside a list.
+  //
+  // The addresses, employment and income editors all go through here with the
+  // whole list, so marking the list protects every row in it until it is saved.
   function updateApplicant(field: keyof FactFindApplicant, value: any) {
+    const who = d.applicants?.[activeApplicant]?.id
+    if (who) markDirty(ownRef.current, `applicants#${who}.${String(field)}`)
     setD(prev => {
       const apps = [...prev.applicants]
       apps[activeApplicant] = { ...apps[activeApplicant], [field]: value }
@@ -823,6 +839,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   }
 
   function updateAsset(id: string, field: keyof Asset, value: any) {
+    markDirty(ownRef.current, `assets#${id}.${String(field)}`)
     setD(prev => ({ ...prev, assets: prev.assets.map(a => a.id === id ? { ...a, [field]: value } : a) }))
   }
   function addAsset() {
@@ -833,6 +850,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   }
 
   function updateProperty(id: string, field: keyof FactFindProperty, value: any) {
+    markDirty(ownRef.current, `properties#${id}.${String(field)}`)
     setD(prev => ({ ...prev, properties: prev.properties.map(p => p.id === id ? { ...p, [field]: value } : p) }))
   }
   function addProperty() {
@@ -848,6 +866,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     }))
   }
   function updatePropertyLoan(propertyId: string, loanId: string, field: keyof PropertyLoan, value: any) {
+    markDirty(ownRef.current, `properties#${propertyId}.loans#${loanId}.${String(field)}`)
     setD(prev => ({
       ...prev,
       properties: prev.properties.map(p => p.id === propertyId
@@ -863,6 +882,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   }
 
   function updateLiability(id: string, field: keyof Liability, value: any) {
+    markDirty(ownRef.current, `liabilities#${id}.${String(field)}`)
     setD(prev => ({ ...prev, liabilities: prev.liabilities.map(l => l.id === id ? { ...l, [field]: value } : l) }))
   }
   function addLiability() {

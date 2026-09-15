@@ -209,13 +209,43 @@ test.describe('typing into a deal', () => {
       // anything is reloaded.
       expect(await box.inputValue(), 'characters were lost while the other window saved').toBe(GOALS)
 
-      // And the database's answer. A reload does not come back on the tab you
-      // left, so the tab is opened again rather than assumed.
+      // BACK TO THE FRONT BEFORE ASKING THE DATABASE.
+      //
+      // 15 Sep 2026, and this cost a run to find. Clicking into the second
+      // window puts this one in the BACKGROUND, and Chrome throttles a
+      // background tab's timers - so the 600ms autosave simply does not run.
+      // The first version of this test typed the rest of the sentence into a
+      // backgrounded tab and then asked the database for it: it held the 33
+      // characters written when the tab was hidden and nothing after.
+      //
+      // That is not what Kylie does. She types in the window she is looking at.
+      await page.bringToFront()
+      await box.click()
       await page.waitForTimeout(5_000)
+
+      // WHAT THE PAGE ITSELF SAYS.
+      //
+      // 15 Sep 2026. This has now failed twice with the sentence perfect on
+      // screen and the database holding only the first 33 characters, and I
+      // have been wrong twice about why. So it reports rather than guesses:
+      // what is in the box, what the page says about saving it, and what comes
+      // back after the reload. Read the three lines together.
+      const said = await page.locator('body').innerText()
+      const stamp = (said.match(/Autosaved[^\n]*/) || ['(no Autosaved stamp)'])[0]
+      const failed = (said.match(/NOT SAVED[^\n]*/) || ['(no save error)'])[0]
+      console.log('\n=== FACT FIND, TWO WINDOWS ===')
+      console.log('  typed          : ' + GOALS.length + ' characters')
+      console.log('  in the box     : ' + (await box.inputValue()).length + ' characters')
+      console.log('  the page says  : ' + stamp)
+      console.log('                 : ' + failed)
       await page.reload()
       await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
       await page.getByRole('button', { name: /^Fact Find$/ }).click()
-      await expect(page.getByLabel(/Goals — next 2 years/i)).toHaveValue(GOALS, { timeout: 20_000 })
+      const after = page.getByLabel(/Goals — next 2 years/i)
+      await after.waitFor({ timeout: 20_000 })
+      console.log('  after reload   : ' + (await after.inputValue()).length + ' characters')
+      console.log('==============================\n')
+      await expect(after).toHaveValue(GOALS, { timeout: 20_000 })
     } finally {
       // Put both boxes back however this went. Cleanup must never be the thing
       // that reports a failure - the real one would be hidden behind it.

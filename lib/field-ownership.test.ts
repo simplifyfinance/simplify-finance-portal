@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { newOwnership, focusField, blurField, markDirty, markSaved, mayWrite, applyOwned, keepOwned, settleSaved, busyFields, OWNED_FIELDS } from './field-ownership'
+import { newOwnership, focusField, blurField, markDirty, markSaved, mayWrite, applyOwned, keepOwned, settleSaved, busyFields, noteSaved, OWNED_FIELDS } from './field-ownership'
 
 // THE BOX SOMEBODY IS TYPING IN BELONGS TO THEM.
 //
@@ -199,5 +199,24 @@ describe('when a save lands', () => {
     const o = newOwnership()
     focusField(o, 'a'); markDirty(o, 'b')
     expect(busyFields(o).sort()).toEqual(['a', 'b'])
+  })
+})
+
+describe('what this screen last saw saved', () => {
+  it('a save records what it actually wrote, for the last write on the way out', () => {
+    // buildPatch carries this as `was` so the server can refuse to overwrite
+    // somebody else. See lib/keepalive-patch.ts.
+    const o = newOwnership()
+    markDirty(o, 'goals2Years')
+    settleSaved(o, { goals2Years: 'the first half' }, { goals2Years: 'the first half and more' })
+    expect(o.lastSaved.goals2Years).toBe('the first half')
+    expect(mayWrite(o, 'goals2Years'), 'a box still being typed in was let go').toBe(false)
+  })
+
+  it('a box nobody has saved has nothing recorded against it', () => {
+    const o = newOwnership()
+    expect(o.lastSaved.goals2Years).toBeUndefined()
+    noteSaved(o, 'goals2Years', 'now it has')
+    expect(o.lastSaved.goals2Years).toBe('now it has')
   })
 })

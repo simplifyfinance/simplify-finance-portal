@@ -46,6 +46,7 @@ import { withDefaults } from '@/lib/record-defaults'
 import { dealFigures, figureChanges, notesMentioning } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved } from '@/lib/field-ownership'
+import { useKeepalive } from '@/components/useKeepalive'
 import DealStructure from '@/components/DealStructure'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
@@ -590,6 +591,9 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   // components/useLiveColumn.ts for the rule, and lib/live-deal.ts for why.
   useLiveColumn({ dealId: deal.id, column: 'compliance_data', meId: me?.id, guard,
                   current: () => d, apply: v => setD(shape(keepOwned(v, liveD.current, ownRef.current))), shape })
+
+  // ONE LAST WRITE AS THE PAGE GOES. See components/useKeepalive.ts.
+  useKeepalive({ dealId: deal.id, column: 'compliance_data', own: ownRef.current, current: () => liveD.current })
 
 
   useEffect(() => {

@@ -17,6 +17,7 @@ import { resolveLenderSplits, seedFromGlobal, combineIntoOneLoan,
 import { emailFreshness, needsAttention, notesAfterScenarioChange } from '@/lib/email-freshness'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved } from '@/lib/field-ownership'
+import { useKeepalive } from '@/components/useKeepalive'
 import { loFigures } from '@/lib/deal-figures'
 import { dealPurpose } from '@/lib/deal-facts'
 import DealStructure from '@/components/DealStructure'
@@ -684,6 +685,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // components/useLiveColumn.ts for the rule, and lib/live-deal.ts for why.
   useLiveColumn({ dealId: deal.id, column: 'lo_data', meId: me?.id, guard: guardRef.current,
                   current: () => d, apply: v => putOnScreen(v), shape: loShape })
+
+  // ONE LAST WRITE AS THE PAGE GOES. See components/useKeepalive.ts.
+  useKeepalive({ dealId: deal.id, column: 'lo_data', own: ownRef.current, current: () => liveD.current })
 
   // NO NOTES ABOUT OTHER PEOPLE.
   //

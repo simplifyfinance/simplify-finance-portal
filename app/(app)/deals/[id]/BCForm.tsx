@@ -14,8 +14,8 @@ import { emailFreshness, needsAttention, notesAfterScenarioChange } from '@/lib/
 import { missingForEmail, missingSentence } from '@/lib/bc-ready'
 import { dealFigures } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
-import { newOwnership, focusField, blurField, markDirty, markSaved, applyOwned,
-         OWNED_FIELDS } from '@/lib/field-ownership'
+import { newOwnership, focusField, blurField, markDirty, settleSaved, applyOwned } from '@/lib/field-ownership'
+import { useKeepalive } from '@/components/useKeepalive'
 
 // WORKED OUT, NOT TYPED.
 //
@@ -880,6 +880,10 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   useLiveColumn({ dealId: deal.id, column: 'bc_data', meId: me?.id, guard: guardRef.current,
                   current: () => buildBcData(), apply: applyBcData })
 
+  // ONE LAST WRITE AS THE PAGE GOES. See components/useKeepalive.ts - a refresh
+  // inside the 700ms the autosave waits used to take the sentence with it.
+  useKeepalive({ dealId: deal.id, column: 'bc_data', own: ownRef.current, current: () => buildBcData() })
+
   const [showMoveToLoPopup, setShowMoveToLoPopup] = useState(false)
   const [sendingMoveToLo, setSendingMoveToLo] = useState(false)
   const [moveToLoMsg, setMoveToLoMsg] = useState('')
@@ -959,11 +963,11 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
         // Compared against the screen as it is NOW, not as it was when this
         // save was built - anything typed while it was in flight keeps the box
         // hers and keeps it protected.
-        for (const f of OWNED_FIELDS) {
-          if (String((data as any)[f] ?? '') === String(liveOwned.current[f] ?? '')) {
-            markSaved(ownRef.current, f)
-          }
-        }
+        //
+        // It also records what reached the database, which is what the last
+        // write on the way out carries so the server can refuse to overwrite
+        // anybody else. See lib/keepalive-patch.ts.
+        settleSaved(ownRef.current, data, liveOwned.current)
       })()
     }
     pendingSave.current = write
