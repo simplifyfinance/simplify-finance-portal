@@ -126,11 +126,27 @@ export function structureOf(deal: any): Structure {
   const splitTypes = splitsOf(deal).map(s => txt(s.repaymentType).toUpperCase())
   const splitIO = splitTypes.some(t => t.startsWith('IO') || t.includes('INTEREST ONLY'))
   const splitPI = splitTypes.some(t => t.includes('P&I') || t.includes('PRINCIPAL'))
+  // A split's repayment type says whether that money is fixed or variable, the
+  // same way it says P&I or IO: "Fixed P&I" and "Fixed IO" are the fixed ones,
+  // "P&I" and "IO" the variable ones. Added 15 Sep 2026 - until then variable
+  // and fixed came only from the four rate boxes at the top of the lender card,
+  // so a deal recorded in the splits came back as NEITHER, and the flexibility
+  // passage had nothing to hang on.
+  const splitFixed = splitTypes.some(t => t.includes('FIXED'))
+  const splitVariable = splitTypes.some(t => !!t && !t.includes('FIXED'))
 
   const fee = txt(rec.annualFee).replace(/[$,\s]/g, '').toLowerCase()
 
+  // THE RATE BOXES WIN WHERE THEY HAVE BEEN FILLED IN. A lender card that says
+  // "Fixed P&I" at the top has answered the question; a split that says "P&I"
+  // is answering a different one - principal and interest, not variable - and
+  // must not be read as a contradiction. The splits are consulted only where
+  // the boxes at the top say nothing at all.
+  const saidUpTop = variable || fixed
+
   return {
-    variable, fixed,
+    variable: saidUpTop ? variable : splitVariable,
+    fixed: saidUpTop ? fixed : splitFixed,
     interestOnly: io || splitIO,
     principalAndInterest: pi || splitPI,
     offset: txt(rec.offsetAccount).toLowerCase() === 'yes',

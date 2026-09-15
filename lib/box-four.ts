@@ -295,12 +295,46 @@ export function boxFour(deal: any): Box {
   ][v - 1])
 
   // the product, and what it does
-  const rate = txt(lo.lenders?.find?.((l: any) => txt(l?.lenderName) === txt(lo.recommendedLender))?.variablePI?.rate
-    || lo.lenders?.[0]?.variablePI?.rate)
+  //
+  // WHERE THE RATE COMES FROM, AND WHOSE IT IS.
+  //
+  // 15 Sep 2026. This read the recommended lender's "Variable P&I" box at the
+  // top of the lender card and nothing else, so a deal whose rates are typed
+  // into the SPLITS - which is how the team records them - wrote this sentence
+  // with no rate in it at all.
+  //
+  // And where that box was empty it fell back to lo.lenders[0].variablePI.rate,
+  // which is OPTION ONE'S RATE UNDER THE RECOMMENDED LENDER'S NAME. That is a
+  // wrong number rather than a missing one. deal-structure.ts already refuses
+  // to do it and says why. It is gone.
+  //
+  // splitsOf() already merges the recommended lender's own splits, so it is the
+  // one place to ask. The boxes at the top are still read for a lender recorded
+  // the older way.
+  const rateClause = (() => {
+    const priced = splitsOf(deal).filter(x => txt(x.rate))
+    let found: { rate: string; fixed: boolean }[] = priced.map(x => ({
+      rate: txt(x.rate),
+      fixed: /fixed/i.test(txt(x.repaymentType)),
+    }))
+    if (found.length === 0) {
+      const rec = (lo.lenders || []).find((l: any) => txt(l?.lenderName) === txt(lo.recommendedLender))
+      found = ([['variablePI', false], ['variableIO', false], ['fixedPI', true], ['fixedIO', true]] as [string, boolean][])
+        .filter(([k]) => rec?.[k]?.enabled && txt(rec[k]?.rate))
+        .map(([k, fixed]) => ({ rate: txt(rec[k].rate), fixed }))
+    }
+    const rates = [...new Set(found.map(f => f.rate))]
+    if (rates.length === 0) return ''
+    if (rates.length > 1) return `, on rates of ${andList(rates.map(r => `${r}%`))}`
+    // One rate, and a word for it only where every split agrees on the answer.
+    if (found.every(f => f.fixed)) return `, on a fixed rate of ${rates[0]}%`
+    if (found.every(f => !f.fixed)) return `, on a variable rate of ${rates[0]}%`
+    return `, on a rate of ${rates[0]}%`
+  })()
   const repay = splitsOf(deal).map(x => txt(x.repaymentType)).find(Boolean)
   if (s.lender && s.product) {
     let line = `${s.lender}'s ${s.product} has been recommended`
-    if (rate) line += `, on a variable rate of ${rate}%`
+    line += rateClause
     if (repay) line += ` with ${repay.toLowerCase().includes('io') || /interest only/i.test(repay) ? 'interest only' : 'principal and interest'} repayments`
     if (term) line += ` over a ${termInWords(term)} year term`
     assessment.push(line + '.')

@@ -241,3 +241,78 @@ describe('punctuation, because it is read by people', () => {
     expect(t).not.toMatch(/ {2}| ,|,,|\.\./)
   })
 })
+
+// ---------------------------------------------------------------------------
+// RED FIRST. 15 Sep 2026.
+//
+// Whether the loan is variable or fixed was decided only by the four rate boxes
+// at the top of the lender card. The team types the rate into the splits, so on
+// a real deal the structure came back as neither variable nor fixed, and the
+// flexibility passage - redraw, offset, the ability to make extra repayments -
+// had nothing to hang on.
+describe('variable or fixed, read off the splits', () => {
+  const splitDeal = (repaymentType: string) => ({
+    id: 'deal-1',
+    lo_data: {
+      recommendedLender: 'ME Bank',
+      refinanceSplits: [{ id: 's1', label: 'Loan 1', amount: '850,000' }],
+      lenders: [{
+        lenderName: 'ME Bank', productName: 'Flexible Home Loan', offsetAccount: 'Yes',
+        variablePI: { enabled: false, rate: '' }, variableIO: { enabled: false },
+        fixedPI: { enabled: false }, fixedIO: { enabled: false },
+        lenderSplits: [{ id: 's1', label: 'Loan 1', amount: '850,000', lvr: '',
+                         rate: '5.94', repayment: '', repaymentType }],
+      }],
+    },
+  })
+
+  it('a P&I split is a variable loan', () => {
+    const s = structureOf(splitDeal('P&I'))
+    expect(s.variable).toBe(true)
+    expect(s.fixed).toBe(false)
+    expect(s.principalAndInterest).toBe(true)
+  })
+
+  it('an IO split is a variable loan too', () => {
+    const s = structureOf(splitDeal('IO'))
+    expect(s.variable).toBe(true)
+    expect(s.interestOnly).toBe(true)
+  })
+
+  it('a Fixed P&I split is fixed, not variable', () => {
+    const s = structureOf(splitDeal('Fixed P&I'))
+    expect(s.fixed).toBe(true)
+    expect(s.variable).toBe(false)
+    expect(s.principalAndInterest).toBe(true)
+  })
+
+  it('a deal with both is both', () => {
+    const d: any = splitDeal('P&I')
+    // The deal's own split list is what says how many splits there are - see
+    // splitsOf() - so a second split has to exist there as well as under the
+    // lender.
+    d.lo_data.refinanceSplits.push({ id: 's2', label: 'Equity release', amount: '180,000' })
+    d.lo_data.lenders[0].lenderSplits.push({ id: 's2', label: 'Equity release',
+      amount: '180,000', lvr: '', rate: '6.24', repayment: '', repaymentType: 'Fixed IO' })
+    const s = structureOf(d)
+    expect(s.variable).toBe(true)
+    expect(s.fixed).toBe(true)
+  })
+
+  it('lets the rate boxes at the top win where they have been filled in', () => {
+    // "Fixed P&I" at the top has answered the question. A split saying "P&I" is
+    // answering a different one - principal and interest, not variable.
+    const d: any = splitDeal('P&I')
+    d.lo_data.lenders[0].fixedPI = { enabled: true, rate: '5.49' }
+    const s = structureOf(d)
+    expect(s.fixed).toBe(true)
+    expect(s.variable).toBe(false)
+  })
+
+  it('says nothing when no split has a repayment type', () => {
+    const d: any = splitDeal('')
+    const s = structureOf(d)
+    expect(s.variable).toBe(false)
+    expect(s.fixed).toBe(false)
+  })
+})

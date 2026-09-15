@@ -243,3 +243,78 @@ describe('it reads like a person wrote it', () => {
     expect(new Set(['a', 'b', 'c', 'd', 'e', 'f'].map(id => boxFour(deal({ id })).text)).size).toBeGreaterThan(1)
   })
 })
+
+// ---------------------------------------------------------------------------
+// RED FIRST. 15 Sep 2026, the same fault as box five.
+//
+// The product sentence read the recommended lender's "Variable P&I" box at the
+// top of the lender card and nothing else. On a deal whose rates are typed into
+// the splits - which is how the team records them - the sentence came out with
+// no rate in it at all.
+//
+// Worse, when the recommended lender's box was empty it fell back to
+// lo.lenders[0].variablePI.rate: OPTION ONE'S RATE UNDER THE RECOMMENDED
+// LENDER'S NAME. deal-structure.ts already refuses to do that and says why -
+// "option two's rate under option one's name would be a wrong number, not a
+// missing one".
+describe('the product sentence and where the rate comes from', () => {
+  const splitDeal = (over: any = {}) => {
+    const d = deal()
+    d.lo_data = {
+      ...d.lo_data,
+      recommendedLender: 'ME Bank',
+      refinanceSplits: [{ id: 's1', label: 'Loan 1', amount: '850,000' }],
+      lenders: [
+        { ...lender({ lenderName: 'Suncorp', productName: 'Home Package Plus',
+                      variablePI: { enabled: true, rate: '6.13' } }), lenderSplits: [] },
+        { ...lender({ lenderName: 'ME Bank', productName: 'Flexible Home Loan',
+                      variablePI: { enabled: false, rate: '' } }),
+          lenderSplits: [{ id: 's1', label: 'Loan 1', amount: '850,000', lvr: '',
+                           rate: '5.94', repayment: '5,060', repaymentType: 'P&I' }] },
+      ],
+      ...over,
+    }
+    return d
+  }
+
+  it('reads the rate off the split', () => {
+    expect(boxFour(splitDeal()).text)
+      .toContain("ME Bank's Flexible Home Loan has been recommended, on a variable rate of 5.94%")
+  })
+
+  it('NEVER QUOTES ANOTHER LENDER\'S RATE UNDER THE RECOMMENDED LENDER\'S NAME', () => {
+    const d = splitDeal()
+    // Nothing recorded against ME Bank at all. Suncorp is option one and is on
+    // 6.13%. That figure must not appear next to ME Bank's name.
+    d.lo_data.lenders[1].lenderSplits = []
+    d.bc_data = { ...d.bc_data, splits: [] }
+    const t = boxFour(d).text
+    expect(t).toContain("ME Bank's Flexible Home Loan has been recommended")
+    expect(t).not.toContain('6.13')
+  })
+
+  it('says fixed when the split is a fixed one', () => {
+    const d = splitDeal()
+    d.lo_data.lenders[1].lenderSplits[0].repaymentType = 'Fixed P&I'
+    expect(boxFour(d).text).toContain('on a fixed rate of 5.94%')
+  })
+
+  it('names both rates when the splits are on different ones', () => {
+    const d = splitDeal()
+    // The deal's own split list is what says how many splits there are.
+    d.lo_data.refinanceSplits.push({ id: 's2', label: 'Equity release', amount: '180,000' })
+    d.lo_data.lenders[1].lenderSplits.push({ id: 's2', label: 'Equity release',
+      amount: '180,000', lvr: '', rate: '6.24', repayment: '', repaymentType: 'IO' })
+    expect(boxFour(d).text).toContain('on rates of 5.94% and 6.24%')
+  })
+
+  it('still reads the box at the top when that is where it was typed', () => {
+    const d = splitDeal()
+    d.lo_data.lenders[1].lenderSplits = []
+    // The borrowing capacity record also carries a rate per split and
+    // splitsOf() reads it - clear it so this exercises the lender card itself.
+    d.bc_data = { ...d.bc_data, splits: [] }
+    d.lo_data.lenders[1].variablePI = { enabled: true, rate: '5.79' }
+    expect(boxFour(d).text).toContain('on a variable rate of 5.79%')
+  })
+})
