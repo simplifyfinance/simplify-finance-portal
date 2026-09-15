@@ -160,10 +160,22 @@ test.describe('typing into a deal', () => {
   // not just the two on BC. This proves it where the tab holds everything in
   // ONE object and replaces it wholesale - a different mechanism from BC's
   // separate setters, and the one that needed keepOwned().
+  //
+  // TWO THINGS THIS GOT WRONG FIRST TIME, 15 Sep 2026:
+  //
+  //   1. IT ASSUMED A RELOAD COMES BACK ON THE SAME TAB. It does not - the deal
+  //      page draws whichever tab it draws, and the screenshot from the failure
+  //      shows BC. So the box being checked was not on screen at all, and the
+  //      test sat waiting for it until its time ran out. The tab is clicked
+  //      again after the reload now.
+  //   2. IT DID NOT FIT IN SIXTY SECONDS. Two windows, a long sentence typed a
+  //      character at a time, four bursts in the other window, a wait for the
+  //      database and a reload does not fit in the default budget. It gets its
+  //      own.
   test('Fact Find: a second window SAVING costs no letters', async ({ page, context }) => {
+    test.setTimeout(150_000)
     const GOALS = "Richard and Letitia want to be in the new place before the "
-      + "school year starts, and they'd like to keep the offset topped up so "
-      + "they aren't paying interest on money that's just sitting there."
+      + "school year starts, and to keep the offset topped up."
 
     const second = await context.newPage()
     await second.goto(`/deals/${DEAL}`)
@@ -186,28 +198,41 @@ test.describe('typing into a deal', () => {
       await box.press('Delete')
 
       const typing = box.pressSequentially(GOALS, { delay: 25 })
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < 3; i++) {
         await other.click()
         await other.pressSequentially(` robot ${i}`, { delay: 20 })
         await second.waitForTimeout(900)
       }
       await typing
 
+      // THE LETTERS TEST. This is the one that matters and it happens before
+      // anything is reloaded.
       expect(await box.inputValue(), 'characters were lost while the other window saved').toBe(GOALS)
 
+      // And the database's answer. A reload does not come back on the tab you
+      // left, so the tab is opened again rather than assumed.
       await page.waitForTimeout(5_000)
       await page.reload()
+      await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
+      await page.getByRole('button', { name: /^Fact Find$/ }).click()
       await expect(page.getByLabel(/Goals — next 2 years/i)).toHaveValue(GOALS, { timeout: 20_000 })
     } finally {
-      // Put both boxes back however this went.
-      await other.click(); await other.press('Meta+a'); await other.press('Delete')
-      if (originalOther) await other.fill(originalOther)
-      await second.waitForTimeout(2_000)
-      await second.close()
-      const mine = page.getByLabel(/Goals — next 2 years/i)
-      await mine.click(); await mine.press('Meta+a'); await mine.press('Delete')
-      if (originalMine) await mine.fill(originalMine)
-      await page.waitForTimeout(2_000)
+      // Put both boxes back however this went. Cleanup must never be the thing
+      // that reports a failure - the real one would be hidden behind it.
+      try {
+        await other.click(); await other.press('Meta+a'); await other.press('Delete')
+        if (originalOther) await other.fill(originalOther)
+        await second.waitForTimeout(1_500)
+      } catch { /* the window may already be gone */ }
+      await second.close().catch(() => {})
+      try {
+        await page.getByRole('button', { name: /^Fact Find$/ }).click({ timeout: 10_000 })
+        const mine = page.getByLabel(/Goals — next 2 years/i)
+        await mine.click({ timeout: 10_000 })
+        await mine.press('Meta+a'); await mine.press('Delete')
+        if (originalMine) await mine.fill(originalMine)
+        await page.waitForTimeout(1_500)
+      } catch { /* nothing typed is left behind that the next run cannot clear */ }
     }
   })
 

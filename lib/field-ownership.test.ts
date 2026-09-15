@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { newOwnership, focusField, blurField, markDirty, markSaved, mayWrite, applyOwned, OWNED_FIELDS } from './field-ownership'
+import { newOwnership, focusField, blurField, markDirty, markSaved, mayWrite, applyOwned, keepOwned, settleSaved, busyFields, OWNED_FIELDS } from './field-ownership'
 
 // THE BOX SOMEBODY IS TYPING IN BELONGS TO THEM.
 //
@@ -126,5 +126,78 @@ describe('which boxes the rule covers', () => {
     // Widening this is a decision. A figure is typed and left; a sentence is
     // typed over minutes, and it is the sentence that gets destroyed.
     expect([...OWNED_FIELDS]).toEqual(['brokerNotes', 'templateNotes', 'internalNotes'])
+  })
+})
+
+// The Fact Find, Lending options and Compliance tabs hold the whole tab in one
+// object and replace it wholesale. They cannot go field by field through
+// setters the way BC does, so the record itself is repaired before it reaches
+// the screen.
+describe('putting a whole record on screen around the boxes in use', () => {
+  const screen = () => ({
+    goals2Years: 'Kylie is half way through this sentence',
+    loanPurpose: 'Refinance',
+    productReqs: { otherRequirements: 'and half way through this one', offset: 'Important' },
+    dependants: '2',
+  })
+
+  it('passes the record straight through when nobody is typing', () => {
+    const incoming = { ...screen(), dependants: '3' }
+    expect(keepOwned(incoming, screen(), newOwnership())).toEqual(incoming)
+  })
+
+  it('PUTS HER SENTENCE BACK AND KEEPS EVERYTHING ELSE', () => {
+    const o = newOwnership()
+    focusField(o, 'goals2Years')
+    const incoming = { ...screen(), goals2Years: 'the copy from 700ms ago', dependants: '3' }
+    const out = keepOwned(incoming, screen(), o)
+    expect(out.goals2Years).toBe('Kylie is half way through this sentence')
+    expect(out.dependants, "somebody else's change was thrown away").toBe('3')
+  })
+
+  it('reaches a box that lives a level down', () => {
+    const o = newOwnership()
+    markDirty(o, 'productReqs.otherRequirements')
+    const incoming = { ...screen(), productReqs: { otherRequirements: 'stale', offset: 'Do not want' } }
+    const out = keepOwned(incoming, screen(), o)
+    expect(out.productReqs.otherRequirements).toBe('and half way through this one')
+    expect(out.productReqs.offset, 'the rest of that section was thrown away').toBe('Do not want')
+  })
+
+  it('does not touch the record it was given', () => {
+    const o = newOwnership()
+    focusField(o, 'goals2Years')
+    const incoming = { ...screen(), goals2Years: 'stale' }
+    keepOwned(incoming, screen(), o)
+    expect(incoming.goals2Years).toBe('stale')
+  })
+
+  it('leaves a field alone when it is not on screen at all', () => {
+    const o = newOwnership()
+    focusField(o, 'notAFieldAtAll')
+    expect(keepOwned({ dependants: '3' }, screen(), o)).toEqual({ dependants: '3' })
+  })
+
+  it('ignores anything that is not a record', () => {
+    for (const bad of [null, undefined, 'text', 42]) {
+      expect(keepOwned(bad, screen(), newOwnership())).toBe(bad)
+    }
+  })
+})
+
+describe('when a save lands', () => {
+  it('clears the boxes it actually carried, and only those', () => {
+    const o = newOwnership()
+    markDirty(o, 'goals2Years'); markDirty(o, 'loanPurpose')
+    const onScreen = { goals2Years: 'done', loanPurpose: 'still typing this' }
+    settleSaved(o, { goals2Years: 'done', loanPurpose: 'still typ' }, onScreen)
+    expect(mayWrite(o, 'goals2Years')).toBe(true)
+    expect(mayWrite(o, 'loanPurpose'), 'a box she is still typing in was let go').toBe(false)
+  })
+
+  it('names every field it is protecting', () => {
+    const o = newOwnership()
+    focusField(o, 'a'); markDirty(o, 'b')
+    expect(busyFields(o).sort()).toEqual(['a', 'b'])
   })
 })
