@@ -292,11 +292,23 @@ export async function POST(req: NextRequest) {
     body += `<p style="font-size:14px;font-weight:700;color:#343333;margin-bottom:8px"><span style="color:#343333;">Our Recommendation: ${d.recommendedLender}</span></p>`
     body += p(d.recommendationNote)
   }
+  // THE BUTTON GOES ABOVE THE TABLE.
+  //
+  // Fabio, 15 Sep 2026. It used to sit at the very end, so a client had to
+  // scroll past the whole comparison - three option columns, the splits, the
+  // totals and every fee - before anything told them how to reply. It now sits
+  // straight after the recommendation note and straight before the options, so
+  // they read why, then see the button, then look at the numbers.
+  //
+  // The closing line stays where it is: it says "the numbers above", which only
+  // makes sense underneath them. lib/email-buttons.test.ts fails if the button
+  // ever drifts back below the table.
+  body += ctas(b.calendly, proceedUrl)
+
   const sortedLenders = d.recommendedLender ? [...d.lenders].sort((a: any, b: any) => a.lenderName === d.recommendedLender ? -1 : b.lenderName === d.recommendedLender ? 1 : 0) : d.lenders
   body += buildLenderTable(sortedLenders, isBridging, d.recommendedLender, d.refinanceSplits, d.propertyValue)
 
   body += p('Please let us know which lender you would like to proceed with and if you have any questions regarding the numbers above.')
-  body += ctas(b.calendly, proceedUrl)
   body += notesBox(d.importantNotesList || ['Any rates or fees quoted are subject to change', 'This email does not constitute as a formal approval'])
   body += sig(b)
 
