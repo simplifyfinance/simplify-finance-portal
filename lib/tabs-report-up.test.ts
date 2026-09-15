@@ -49,13 +49,43 @@ describe('every tab Compliance reads from reports its changes up', () => {
   }
 })
 
+// AND THE PROPER FIX, 16 Sep 2026.
+//
+// The wiring above covers ONE person moving between tabs. It does not cover the
+// credit officer in her own window putting the rates in while the broker has
+// Compliance open: his page was loaded before her work existed, and nothing
+// about her saving reaches him, because live editing is off on purpose.
+//
+// So the boxes read the four records back at the moment the button is pressed.
+// That makes the wiring above a belt-and-braces check rather than the only
+// thing holding it together - which is the right way round for the one thing in
+// this portal that goes to a credit assessor.
 describe('what Compliance composes from', () => {
-  it('reads the deal object it was handed, not the database', () => {
-    // Stated here so the test above has an obvious reason to exist. Changing
-    // this - having the composers read the record at the moment the button is
-    // pressed - is the proper fix, and it would make the wiring above a
-    // belt-and-braces check rather than the only thing holding it together.
-    const src = read('ComplianceForm.tsx')
-    expect(src).toMatch(/COMPOSERS\[field\]\(deal\)/)
+  const src = () => read('ComplianceForm.tsx')
+
+  it('READS THE RECORD, NOT THE COPY THE PAGE IS HOLDING', () => {
+    expect(src(), 'compose() went back to composing from the page object')
+      .toMatch(/const \{ deal: from, fromRecord \} = await freshDeal\(\)/)
+    expect(src()).toMatch(/COMPOSERS\[field\]\(from\)/)
+    expect(src(), 'the composers are reading `deal` again').not.toMatch(/COMPOSERS\[field\]\(deal\)/)
+  })
+
+  it('reads all four records, so no box composes from a stale one', () => {
+    expect(src()).toMatch(/select\('fact_find_data,bc_data,lo_data,compliance_data'\)/)
+  })
+
+  it('stamps the box with the facts it actually used', () => {
+    // A box composed from the record must be stamped with THOSE facts, or the
+    // staleness check is measuring against something the box was never written
+    // from. See lib/notes-freshness.ts.
+    expect(src()).toMatch(/const facts = factsOf\(from\)/)
+    expect(src()).toMatch(/at: new Date\(\)\.toISOString\(\), facts \} \} \}\)\)/)
+  })
+
+  it('still writes the box when the record cannot be reached, and says so', () => {
+    // Refusing to write over a network hiccup would be the portal getting in
+    // the way. It falls back to the page's copy - which is what it always did -
+    // and records which of the two happened.
+    expect(src()).toMatch(/read from this screen - the saved record could not be reached/)
   })
 })

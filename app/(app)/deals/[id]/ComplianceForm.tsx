@@ -344,20 +344,25 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   // fact find by name, and a fingerprint of the whole block for anything those
   // two miss. Before the named figures existed, a credit card limit moving came
   // out as "something in the fact find changed" - see lib/deal-figures.ts.
-  const nowFacts: NoteFacts = useMemo(() => {
-    const lo = deal?.lo_data || {}
-    const row = dealRow(deal)
+  // Taken of whichever deal it is handed, because a box composed from the
+  // record as it is RIGHT NOW must be stamped with those facts and not with the
+  // ones the page happens to be holding. See freshDeal() below.
+  const factsOf = (from: any): NoteFacts => {
+    const lo = from?.lo_data || {}
+    const row = dealRow(from)
     const rec = (lo.lenders || []).find((l: any) => l?.lenderName === lo.recommendedLender) || lo.lenders?.[0] || {}
-    const funds = fundsToComplete(deal)
+    const funds = fundsToComplete(from)
     return noteFacts({
       lender: String(lo.recommendedLender || ''),
-      loanAmount: money(dealLoanAmount(lo, deal?.bc_data || {})),
-      purpose: purposeSummary(deal),
+      loanAmount: money(dealLoanAmount(lo, from?.bc_data || {})),
+      purpose: purposeSummary(from),
       fundsToComplete: funds.applies && funds.workable ? (funds.toFind > 0 ? money(funds.toFind) : 'nil') : '',
       approval: row.preApproval ? 'a pre-approval' : 'a formal approval',
       product: String(rec.productName || ''),
-    }, factsBlock(dealFacts(deal)), dealFigures(deal))
-  }, [deal])
+    }, factsBlock(dealFacts(from)), dealFigures(from))
+  }
+
+  const nowFacts: NoteFacts = useMemo(() => factsOf(deal), [deal])
 
   // WHO THE BANK RINGS. The deal's ASSIGNED credit assessor, not whoever is
   // logged in - the broker generates these notes as often as the assessor does,
@@ -879,20 +884,56 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
     borrowingPowerComment: boxSix,
   }
 
-  function compose(field: string) {
-    const r = COMPOSERS[field](deal)
-    setBoxGaps(prev => ({ ...prev, [field]: r.gaps }))
-    setD(prev => ({ ...prev, [field]: r.text,
-      aiMeta: { ...prev.aiMeta, [field]: {
-        confidence: r.gaps.length === 0 ? 'High' : 'Medium',
-        source: r.gaps.length === 0
-          ? 'Composed from the deal - fact find, BC and lending options'
-          : 'Composed from the deal. Not recorded: ' + r.gaps.map(g => g.what).join('; '),
-        at: new Date().toISOString(), facts: nowFacts } } }))
+  // THE RECORD AT THE MOMENT THE BUTTON IS PRESSED.
+  //
+  // 16 Sep 2026. These boxes composed from the copy of the deal the page was
+  // handed when it drew. Yesterday's fix made each tab report its edits up, so
+  // one person moving between tabs composes from what they just typed - but
+  // that covers one person in one window.
+  //
+  // It does not cover the credit officer. She is in the same deal in her own
+  // window putting the rates in while the broker has Compliance open; his page
+  // was loaded before her work existed, and nothing about her saving reaches
+  // him, because live editing is off on purpose. He presses the button and gets
+  // regulated wording composed from a deal twenty minutes old, with nothing on
+  // screen to say so.
+  //
+  // A compliance box is the one thing in this portal that must never be built
+  // from a copy. So it reads the four records back before it writes a word.
+  async function freshDeal(): Promise<{ deal: any; fromRecord: boolean }> {
+    const { data, error } = await supabase.from('deals')
+      .select('fact_find_data,bc_data,lo_data,compliance_data')
+      .eq('id', deal.id).maybeSingle()
+    // A failed read is not a reason to refuse to write the box - that would be
+    // the portal getting in the way over a network hiccup. It falls back to the
+    // page's copy, which is exactly what this did before, and SAYS SO in the
+    // stamp so the file records which of the two happened.
+    if (error || !data) return { deal, fromRecord: false }
+    return { deal: { ...deal, ...data }, fromRecord: true }
+  }
+
+  async function compose(field: string) {
+    setGenerating(prev => ({ ...prev, [field]: true }))
+    try {
+      const { deal: from, fromRecord } = await freshDeal()
+      const r = COMPOSERS[field](from)
+      const facts = factsOf(from)
+      setBoxGaps(prev => ({ ...prev, [field]: r.gaps }))
+      setD(prev => ({ ...prev, [field]: r.text,
+        aiMeta: { ...prev.aiMeta, [field]: {
+          confidence: r.gaps.length === 0 ? 'High' : 'Medium',
+          source: (r.gaps.length === 0
+            ? 'Composed from the deal - fact find, BC and lending options'
+            : 'Composed from the deal. Not recorded: ' + r.gaps.map(g => g.what).join('; '))
+            + (fromRecord ? '' : ' (read from this screen - the saved record could not be reached)'),
+          at: new Date().toISOString(), facts } } }))
+    } finally {
+      setGenerating(prev => ({ ...prev, [field]: false }))
+    }
   }
 
   async function generateField(field: string) {
-    if (COMPOSERS[field]) { compose(field); return }
+    if (COMPOSERS[field]) { await compose(field); return }
     setGenerating(prev => ({ ...prev, [field]: true }))
     const recLender = (lo.lenders || []).find((l: any) => l.lenderName === lo.recommendedLender) || lo.lenders?.[0] || {}
     // The model is told plainly how many people this loan is for. It used to be
