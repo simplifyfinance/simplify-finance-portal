@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { bcLanes, inLaneOrder, laneOf, sentOn } from './bc-lanes'
+import { bcLanes, sentOn } from './bc-lanes'
 
 // THE BC COLUMN, IN TWO LANES.
 //
@@ -13,18 +13,6 @@ import { bcLanes, inLaneOrder, laneOf, sentOn } from './bc-lanes'
 const prep = (id: string) => ({ id, deal_name: id })
 const sent = (id: string, at: string) => ({ id, deal_name: id, bc_sent_at: at })
 
-describe('which lane a deal is in', () => {
-  it('is waiting on us until it has been sent', () => {
-    expect(laneOf(prep('a'))).toBe('preparing')
-    expect(laneOf({ id: 'a', bc_sent_at: null })).toBe('preparing')
-    expect(laneOf({ id: 'a', bc_sent_at: '' })).toBe('preparing')
-  })
-
-  it('is with the client once it has', () => {
-    expect(laneOf(sent('a', '2026-09-11T02:00:00.000Z'))).toBe('sent')
-  })
-})
-
 describe('the lanes', () => {
   const cards = [prep('a'), sent('b', '2026-09-11T02:00:00.000Z'), prep('c'), sent('d', '2026-09-08T02:00:00.000Z')]
 
@@ -36,7 +24,7 @@ describe('the lanes', () => {
   })
 
   it('puts what is still on us first', () => {
-    expect(inLaneOrder(cards).map(d => d.id)).toEqual(['a', 'c', 'b', 'd'])
+    expect(bcLanes(cards).flatMap(l => l.items).map(d => d.id)).toEqual(['a', 'c', 'b', 'd'])
   })
 
   it('NEVER SHOWS A HEADING OVER AN EMPTY LANE', () => {
@@ -46,11 +34,18 @@ describe('the lanes', () => {
 
   it('has nothing to say about an empty column', () => {
     expect(bcLanes([])).toEqual([])
-    expect(inLaneOrder([])).toEqual([])
   })
 
   it('keeps every card - a card cannot fall between the lanes', () => {
-    expect(inLaneOrder(cards)).toHaveLength(cards.length)
+    expect(bcLanes(cards).flatMap(l => l.items)).toHaveLength(cards.length)
+  })
+
+  it('SORTS ONLY INTO LANES - it never reorders within one', () => {
+    // The board's own order inside a lane is whatever the column was given.
+    const many = [prep('a'), sent('b', '2026-09-11T02:00:00.000Z'), prep('c'), sent('d', '2026-09-08T02:00:00.000Z')]
+    const lanes = bcLanes(many)
+    expect(lanes[0].items.map(d => d.id)).toEqual(['a', 'c'])
+    expect(lanes[1].items.map(d => d.id)).toEqual(['b', 'd'])
   })
 })
 

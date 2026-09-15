@@ -1,5 +1,5 @@
 'use client'
-import { Fragment, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { phaseOf, phaseSince, amountOf, PHASE_LABEL, PHASE_ORDER, moveBack, placedByHand, PHASE_UNDO_LABEL, PHASE_UNDO_WARNING, type Phase } from '@/lib/deal-phase'
 import { stageAge, ageGroupOf } from '@/lib/deal-age'
@@ -11,7 +11,7 @@ import { AlertChips } from '@/components/DealFile'
 import type { Alert } from '@/lib/deal-notes'
 import DealPeek from '@/components/DealPeek'
 import { brokerKey as keyOf } from '@/lib/broker-key'
-import { bcLanes, inLaneOrder, laneOf, sentOn } from '@/lib/bc-lanes'
+import { bcLanes, sentOn } from '@/lib/bc-lanes'
 
 // The whole book, in columns.
 //
@@ -353,12 +353,8 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                 {/* THE BC COLUMN IS TWO LANES. See lib/bc-lanes.ts - what is
                     still being written, and what is sitting with a client. Every
                     other column is one list, exactly as before. */}
-                {(p === 'bc' ? inLaneOrder(cards) : cards).map((d, i, list) => {
-                  const lane = p === 'bc' ? laneOf(d) : null
-                  const showLane = p === 'bc' && (i === 0 || laneOf(list[i - 1]) !== lane)
-                  const laneCount = p === 'bc'
-                    ? (bcLanes(cards).find(l => l.key === lane)?.items.length || 0) : 0
-                  const laneLabel = lane === 'sent' ? 'With the client' : 'Being prepared'
+                {(() => {
+                  const renderCard = (d: any) => {
                   const sentLabel = p === 'bc' ? sentOn(d) : ''
                   const age = stageAge(d, thresholds)
                   const grp = ageGroupOf(d, thresholds)
@@ -380,22 +376,11 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                     ...(d.credit_officers?.name ? [{ name: d.credit_officers.name, colour: CREDIT_GREY }] : []),
                   ].filter(x => x.name)
                   return (
-                    <Fragment key={d.id}>
-                    {showLane && (
-                      <div className="flex items-center gap-1.5 mx-1 mt-2.5 mb-1.5 first:mt-0">
-                        <span className="h-px flex-1 bg-[#E0D8CA]" />
-                        <span className="text-[9px] font-extrabold tracking-[.07em] uppercase text-[#A29889] whitespace-nowrap">
-                          {laneLabel} &middot; {laneCount}
-                        </span>
-                        <span className="h-px flex-1 bg-[#E0D8CA]" />
-                      </div>
-                    )}
-                    <div draggable
-                      style={lane === 'sent' ? { borderLeft: '3px solid #0E8FCB' } : undefined}
+                    <div key={d.id} draggable
                       onDragStart={() => setDragging(d.id)}
                       onDragEnd={() => { setDragging(''); setOver('') }}
                       onClick={() => router.push(`/deals/${d.id}`)}
-                      className={`group relative overflow-hidden bg-white border rounded-[10px] px-2.5 pt-2.5 pb-2.5 mb-2 cursor-pointer transition hover:border-[#D6CCBC] ${
+                      className={`group relative overflow-hidden bg-white border rounded-[10px] px-2.5 pt-2.5 pb-2.5 mb-2 last:mb-0 cursor-pointer transition hover:border-[#D6CCBC] ${
                         dragging === d.id ? 'opacity-40 border-[#0E8FCB]'
                         : urgent ? 'border-[#E9C9BE] ring-2 ring-[#FBEDE9]'
                         // The column no longer shouts, so the card does - quietly,
@@ -488,9 +473,46 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                         </span>
                       </div>
                     </div>
-                    </Fragment>
                   )
-                })}
+                  }
+
+                  // EVERY OTHER COLUMN IS ONE LIST, EXACTLY AS BEFORE.
+                  if (p !== 'bc') return cards.map(renderCard)
+
+                  // THE BC COLUMN IS TWO AREAS. See lib/bc-lanes.ts - what is
+                  // still being written, and what is sitting with a client.
+                  //
+                  // THE AREA IS COLOURED, NOT THE CARD. Fabio, 15 Sep 2026:
+                  // "dont want the deal colour to chnage as this will be usefull
+                  // later I want the surroounding to change". A card's own
+                  // colours already mean something - white is normal, the red
+                  // ring is urgent - and spending them on "this one has been
+                  // sent" would leave nothing to say the rest with.
+                  return bcLanes(cards).map(lane => lane.key === 'sent' ? (
+                    <div key={lane.key} className="bg-[#E7F2FA] border border-[#D2E6F4] rounded-[10px] p-2 mb-2 mt-2.5">
+                      <div className="flex items-center gap-1.5 mx-0.5 mb-2">
+                        <span className="text-[9px] font-extrabold tracking-[.07em] uppercase text-[#0E6FA0] whitespace-nowrap">
+                          {lane.label}
+                        </span>
+                        <span className="ml-auto bg-white border border-[#D2E6F4] rounded-full px-1.5 text-[9px] font-bold text-[#0E6FA0] leading-[15px]">
+                          {lane.items.length}
+                        </span>
+                      </div>
+                      {lane.items.map(renderCard)}
+                    </div>
+                  ) : (
+                    <div key={lane.key}>
+                      <div className="flex items-center gap-1.5 mx-1 mb-1.5">
+                        <span className="h-px flex-1 bg-[#E0D8CA]" />
+                        <span className="text-[9px] font-extrabold tracking-[.07em] uppercase text-[#A29889] whitespace-nowrap">
+                          {lane.label} &middot; {lane.items.length}
+                        </span>
+                        <span className="h-px flex-1 bg-[#E0D8CA]" />
+                      </div>
+                      {lane.items.map(renderCard)}
+                    </div>
+                  ))
+                })()}
 
                 {cards.length === 0 && (
                   <p className="text-[11px] text-[#C3BDB2] text-center py-4 m-0">—</p>

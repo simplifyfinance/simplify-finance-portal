@@ -29,15 +29,6 @@ export function bcLanes(cards: any[]): Lane[] {
   ] as Lane[]).filter(l => l.items.length > 0)
 }
 
-// The cards in lane order, so the existing list can stay one list and simply
-// draw a heading where the lane changes.
-export function inLaneOrder(cards: any[]): any[] {
-  return bcLanes(cards).flatMap(l => l.items)
-}
-
-export function laneOf(deal: any): 'preparing' | 'sent' {
-  return deal?.bc_sent_at ? 'sent' : 'preparing'
-}
 
 // "sent 11 Sep". Empty for a card that has not been sent, so nothing has to
 // decide whether to show it.
