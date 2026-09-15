@@ -14,6 +14,8 @@ import { emailFreshness, needsAttention, notesAfterScenarioChange } from '@/lib/
 import { missingForEmail, missingSentence } from '@/lib/bc-ready'
 import { dealFigures } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
+import { newOwnership, focusField, blurField, markDirty, markSaved, applyOwned,
+         OWNED_FIELDS } from '@/lib/field-ownership'
 
 // WORKED OUT, NOT TYPED.
 //
@@ -773,6 +775,9 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // still show beside the deal name - those are things that went wrong, not
   // things somebody else did.
   const guardRef = useRef(newGuard(deal.bc_data))
+  // WHICH BOX IS IN USE RIGHT NOW. See lib/field-ownership.ts - nothing external
+  // may write a field that is focused or has unsaved changes.
+  const ownRef = useRef(newOwnership())
   // What the database last agreed with. OPENING THIS FORM IS NOT EDITING IT:
   // the fields seed themselves from the fact find where bc_data is blank, so the
   // very first run produces a value that differs from the stored record and used
@@ -801,6 +806,12 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // form". Set from a real input event, so the settings fetch correcting the
   // brand, or a colleague's fields being folded in, still count as arrival and
   // still do not write - while the first thing a person types always saves.
+  // What the owned boxes hold RIGHT NOW, readable when a save finishes. A save
+  // that wrote exactly what is still on screen means that box is no longer
+  // dirty; one that wrote something older means she has carried on typing and
+  // it stays hers.
+  const liveOwned = useRef<Record<string, any>>({})
+
   const touchedRef = useRef(false)
   const markTouched = () => { touchedRef.current = true }
 
@@ -822,6 +833,8 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // deposit from whatever else is on screen; the merged record already carries
   // the merged deposit, and recomputing it here would mix half of theirs with
   // half of ours and call the result a merge.
+  liveOwned.current = { brokerNotes, templateNotes, internalNotes }
+
   const BC_SETTERS: Record<string, (v: any) => void> = {
     template: setTemplate, splits: setSplits, incomeOther: setIncomeOther, incomeRental: setIncomeRental,
     suburb: setSuburb, propertyType: setPropertyType,
@@ -846,11 +859,20 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
 
   // Only the boxes the record actually carries. A record saved before a field
   // existed must not blank that field out on the person merging.
+  // AND IT GOES AROUND THE BOX SOMEBODY IS TYPING IN.
+  //
+  // Kylie, 15 Sep 2026, broker notes on Jacob Joson: "letters are being
+  // deleted". Live editing was already off, so nothing was being pushed at her
+  // screen - this was her OWN save coming back. onAdopt and onMerge both land
+  // here, and this used to call setBrokerNotes() with the copy read out of the
+  // form 700ms earlier. Every character typed in that gap was gone and the
+  // caret jumped to the end.
+  //
+  // Nothing is lost by holding a field back. saveGuarded has already written
+  // the merged record to the database; the only thing that does not happen is
+  // this screen being rewritten underneath a cursor.
   function applyBcData(incoming: any) {
-    if (!incoming || typeof incoming !== 'object') return
-    for (const [key, set] of Object.entries(BC_SETTERS)) {
-      if (Object.prototype.hasOwnProperty.call(incoming, key)) set(incoming[key])
-    }
+    applyOwned(incoming, BC_SETTERS, ownRef.current)
   }
 
   // SOMEBODY ELSE JUST SAVED. Their fields land here without disturbing a
@@ -932,6 +954,15 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
         // opposite of what occurred.
         if (out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote') {
           setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+        }
+        // THE BOX IS ONLY CLEAN IF WHAT WE WROTE IS STILL WHAT IS IN IT.
+        // Compared against the screen as it is NOW, not as it was when this
+        // save was built - anything typed while it was in flight keeps the box
+        // hers and keeps it protected.
+        for (const f of OWNED_FIELDS) {
+          if (String((data as any)[f] ?? '') === String(liveOwned.current[f] ?? '')) {
+            markSaved(ownRef.current, f)
+          }
         }
       })()
     }
@@ -1321,10 +1352,16 @@ Key assumptions: ${checklistText}`
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Notes</div>
                 <div className="flex flex-col gap-2">
                   <Field label="Broker summary notes (included in email)">
-                    <textarea spellCheck="true" className={`${brokerNotes ? "border-green-200 bg-white" : "border-amber-200 bg-[#FFFBF0]"} px-2.5 py-1.5 text-sm rounded-lg focus:outline-none focus:border-[#2DBEFF] w-full min-h-16 resize-y border`} value={brokerNotes} onChange={e => setBrokerNotes(e.target.value)} placeholder="✏ Add your personalised opening message — this goes directly into the client email..." />
+                    <textarea spellCheck="true" className={`${brokerNotes ? "border-green-200 bg-white" : "border-amber-200 bg-[#FFFBF0]"} px-2.5 py-1.5 text-sm rounded-lg focus:outline-none focus:border-[#2DBEFF] w-full min-h-16 resize-y border`} value={brokerNotes}
+                      onFocus={() => focusField(ownRef.current, 'brokerNotes')}
+                      onBlur={() => blurField(ownRef.current, 'brokerNotes')}
+                      onChange={e => { markDirty(ownRef.current, 'brokerNotes'); setBrokerNotes(e.target.value) }} placeholder="✏ Add your personalised opening message — this goes directly into the client email..." />
                   </Field>
                   <Field label="Important things to note (included in email, one per line — pre-filled per template)">
-                    <textarea spellCheck="true" className={`${inputCls} min-h-40 resize-y`} value={templateNotes} onChange={e => setTemplateNotes(e.target.value)} placeholder="One note per line..." />
+                    <textarea spellCheck="true" className={`${inputCls} min-h-40 resize-y`} value={templateNotes}
+                      onFocus={() => focusField(ownRef.current, 'templateNotes')}
+                      onBlur={() => blurField(ownRef.current, 'templateNotes')}
+                      onChange={e => { markDirty(ownRef.current, 'templateNotes'); setTemplateNotes(e.target.value) }} placeholder="One note per line..." />
                   </Field>
                   {/* The internal notes box that used to sit here saved to
                       bc_data.internalNotes - a different field from the one on

@@ -100,6 +100,60 @@ test.describe('typing into a deal', () => {
     expect(Math.abs((after!.y) - (before!.y))).toBeLessThan(4)
   })
 
+  // A SECOND WINDOW THAT ACTUALLY SAVES.
+  //
+  // 15 Sep 2026. The test below opens a second window and leaves it sitting
+  // there, which is why it has passed all week while Kylie lost letters. A
+  // window that only LOOKS at a deal never saves, so the merge that rewrites
+  // the box being typed in never runs.
+  //
+  // This one types into a different box in the second window, over and over,
+  // while the first window types a long note. That is Kylie and Melissa in
+  // Jacob Joson: two people, different boxes, one record saved whole.
+  test('a second window SAVING costs no letters', async ({ page, context }) => {
+    const second = await context.newPage()
+    await second.goto(`/deals/${DEAL}`)
+    await second.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
+    await second.getByRole('button', { name: /BC — Borrowing capacity/ }).click()
+    const other = second.getByLabel(/Important things to note/i)
+    await expect(other).toBeVisible({ timeout: 20_000 })
+    const originalOther = await other.inputValue()
+
+    const box = await openBcNotes(page)
+    await box.click()
+    await box.press('Meta+a')
+    await box.press('Delete')
+
+    try {
+      // Type the note in the first window while the second keeps saving. Every
+      // burst in the second window is over the 700ms debounce, so a save lands
+      // in the middle of the first window's sentence - repeatedly.
+      const typing = box.pressSequentially(NOTE, { delay: 25 })
+      for (let i = 0; i < 4; i++) {
+        await other.click()
+        await other.pressSequentially(` robot ${i}`, { delay: 20 })
+        await second.waitForTimeout(900)
+      }
+      await typing
+
+      // The letters test, on the window that was being typed in.
+      expect(await box.inputValue(), 'characters were lost while the other window saved').toBe(NOTE)
+
+      // And it is the database's answer that counts.
+      await page.waitForTimeout(5_000)
+      await page.reload()
+      await expect(page.getByLabel(/Broker summary notes/i)).toHaveValue(NOTE, { timeout: 20_000 })
+    } finally {
+      // Put the other box back however this went.
+      await other.click()
+      await other.press('Meta+a')
+      await other.press('Delete')
+      if (originalOther) await other.fill(originalOther)
+      await second.waitForTimeout(2_000)
+      await second.close()
+    }
+  })
+
   // Two windows on one deal is the case that broke twice. Same person is
   // enough to prove nothing is eaten - the portal cannot tell it is a robot.
   test('a second window open on the same deal costs no letters', async ({ page, context }) => {
