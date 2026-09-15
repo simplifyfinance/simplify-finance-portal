@@ -160,3 +160,63 @@ describe('approval turnaround is a phrase, not a number', () => {
     expect(two('5', '12').lines.join(' ')).toContain('Fastest approval: ING at 5 days.')
   })
 })
+
+// ---------------------------------------------------------------------------
+// RED FIRST. 15 Sep 2026, Kylie's ME Bank deal.
+//
+// The rates on a real deal are typed into each SPLIT under the lender, not into
+// the four rate boxes at the top of the lender card. The comparison only ever
+// read the boxes at the top, so a deal whose rates were all recorded properly
+// came out as "** NOT RECORDED — no rate for Suncorp **" for every option.
+describe('rates recorded under the splits', () => {
+  const splitDeal = () => ({
+    recommendedLender: 'ME Bank',
+    refinanceSplits: [{ id: 's1', label: 'Loan 1', amount: '850,000' }],
+    lenders: [
+      { lenderName: 'ME Bank', productName: 'Flexible Home Loan', approvalDays: '5-7 business days',
+        offsetAccount: 'Yes', annualFee: '395', applicationFee: '150',
+        lenderSplits: [{ id: 's1', label: 'Loan 1', amount: '850,000', lvr: '',
+                         rate: '5.94', repayment: '5,060', repaymentType: 'P&I' }] },
+      { lenderName: 'Suncorp', productName: 'Home Package Plus', approvalDays: '3-5 business days',
+        offsetAccount: 'Yes', annualFee: '375',
+        lenderSplits: [{ id: 's1', label: 'Loan 1', amount: '850,000', lvr: '',
+                         rate: '6.13', repayment: '5,180', repaymentType: 'P&I' }] },
+    ],
+  })
+
+  it('reads the rate off the split', () => {
+    const [me, suncorp] = optionsOf(splitDeal())
+    expect(me.lowestRate).toBe(5.94)
+    expect(suncorp.lowestRate).toBe(6.13)
+  })
+
+  it('labels it with the repayment type that was chosen', () => {
+    const [me] = optionsOf(splitDeal())
+    expect(me.rates).toEqual([{ label: 'P&I', rate: 5.94 }])
+  })
+
+  it('keeps every split when they are on different rates', () => {
+    const d: any = splitDeal()
+    d.lenders[0].lenderSplits.push({ id: 's2', label: 'Equity release', amount: '180,000',
+                                     lvr: '', rate: '6.24', repayment: '', repaymentType: 'IO' })
+    const [me] = optionsOf(d)
+    expect(me.rates).toEqual([{ label: 'P&I', rate: 5.94 }, { label: 'IO', rate: 6.24 }])
+    expect(me.lowestRate).toBe(5.94)
+  })
+
+  it('falls back to the splits recorded on the deal when a lender has none of its own', () => {
+    const d: any = splitDeal()
+    d.refinanceSplits = [{ id: 's1', label: 'Loan 1', amount: '850,000' }]
+    d.lenders[1].lenderSplits = []
+    // Nothing on the deal's own splits carries a rate, so there is genuinely
+    // nothing to quote - and it must say so rather than borrow ME Bank's.
+    expect(optionsOf(d)[1].lowestRate).toBe(null)
+  })
+
+  it('still reads the rate boxes at the top when that is where it was typed', () => {
+    const d: any = splitDeal()
+    d.lenders[0].lenderSplits = []
+    d.lenders[0].variablePI = { enabled: true, rate: '5.99' }
+    expect(optionsOf(d)[0].rates).toEqual([{ label: 'Variable P&I', rate: 5.99 }])
+  })
+})

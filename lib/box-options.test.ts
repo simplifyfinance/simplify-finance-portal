@@ -148,6 +148,28 @@ describe('sentence four — the chosen product only', () => {
     expect(t).toContain('$350 in upfront fees')
   })
 
+  it('does not turn "P&I" into "p&I"', () => {
+    // 15 Sep 2026. The repayment type recorded on a split is initials. Lower
+    // casing the first word of "P&I" gave "p&I" and "IO" gave "io".
+    const rec = optionsOf({ recommendedLender: 'ME Bank', lenders: [{
+      lenderName: 'ME Bank', productName: 'Flexible Home Loan', offsetAccount: 'Yes',
+      lenderSplits: [
+        { id: 's1', label: 'Loan 1', amount: '850,000', lvr: '', rate: '5.94', repayment: '', repaymentType: 'P&I' },
+        { id: 's2', label: 'Equity release', amount: '180,000', lvr: '', rate: '6.24', repayment: '', repaymentType: 'IO' },
+      ] }] })[0]
+    const sentence = featureSentence(rec)
+    expect(sentence).toContain('The product is P&I at 5.94% and IO at 6.24%')
+    expect(sentence).not.toContain('p&I')
+    expect(sentence).not.toContain('io at')
+  })
+
+  it('still lower cases a real word at the front', () => {
+    const rec = optionsOf({ recommendedLender: 'ING', lenders: [{
+      lenderName: 'ING', offsetAccount: 'Yes',
+      variablePI: { enabled: true, rate: '5.99' } }] })[0]
+    expect(featureSentence(rec)).toContain('The product is variable P&I at 5.99%')
+  })
+
   it('says nothing about the other lender in that sentence', () => {
     const last = boxFive(deal()).text.split('The product is ')[1] || ''
     expect(last).not.toContain('CBA')

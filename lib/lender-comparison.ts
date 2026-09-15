@@ -16,6 +16,7 @@
 // fee, compare the fees. If he has more features, compare the features."
 
 import { readMoney, money } from './money'
+import { resolveLenderSplits } from './lo-splits'
 
 const txt = (v: any) => String(v ?? '').trim()
 const rate = (v: any) => {
@@ -100,14 +101,42 @@ const UPFRONT = ['applicationFee', 'establishmentFee', 'valuationFee', 'legalFee
 // Paid every year for the life of the loan.
 const ONGOING = ['annualFee']
 
+// WHERE THE RATES ACTUALLY ARE.
+//
+// 15 Sep 2026, Kylie's ME Bank deal. A lender card has two places a rate can be
+// recorded: the four rate modules at the top (Variable P&I, Variable IO, Fixed
+// P&I, Fixed IO) and a Rate box on EVERY SPLIT underneath. The team fills in the
+// splits, because that is where the amount and the repayment go. This only ever
+// read the four boxes at the top, so a deal with every rate properly recorded
+// came out of the compliance box as "NOT RECORDED - no rate for Suncorp" on
+// every option.
+//
+// The splits win where they have been filled in, because they are the more
+// specific answer: a split says what THAT money costs. The boxes at the top are
+// still read for a lender recorded the older way.
+function ratesOf(lo: any, l: any): { label: string; rate: number }[] {
+  const fromSplits = resolveLenderSplits(l, lo?.refinanceSplits)
+    .filter(s => rate(s?.rate) !== null)
+    .map(s => ({ label: txt(s?.repaymentType) || 'Variable P&I', rate: rate(s.rate) as number }))
+  // Two splits on the same terms at the same rate is one thing to say, not two.
+  const seen = new Set<string>()
+  const splits = fromSplits.filter(r => {
+    const k = `${r.label}|${r.rate}`
+    if (seen.has(k)) return false
+    seen.add(k); return true
+  })
+  if (splits.length) return splits
+  return RATE_MODULES
+    .filter(([k]) => l?.[k]?.enabled && rate(l[k]?.rate) !== null)
+    .map(([k, label]) => ({ label, rate: rate(l[k].rate) as number }))
+}
+
 export function optionsOf(lo: any): Option[] {
   const recommended = txt(lo?.recommendedLender)
   return (lo?.lenders || [])
     .filter((l: any) => txt(l?.lenderName))
     .map((l: any) => {
-      const rates = RATE_MODULES
-        .filter(([k]) => l?.[k]?.enabled && rate(l[k]?.rate) !== null)
-        .map(([k, label]) => ({ label, rate: rate(l[k].rate) as number }))
+      const rates = ratesOf(lo, l)
       const offsetAnswer = txt(l?.offsetAccount)
       return {
         name: txt(l.lenderName),

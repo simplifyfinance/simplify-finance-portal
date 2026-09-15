@@ -62,7 +62,11 @@ function namedRate(o: Option): string {
 export function featureSentence(o: Option): string {
   const bits: string[] = []
   if (o.rates.length) {
-    const lower = (l: string) => l.replace(/^(\w+)/, m => m.toLowerCase())
+    // "Variable P&I" reads better mid-sentence as "variable P&I", but "P&I" and
+    // "IO" are how the repayment type is written everywhere else and must not
+    // come out as "p&I" and "io". Only a word that has a lower case letter in it
+    // already is a word; the rest are initials and are left alone.
+    const lower = (l: string) => l.replace(/^(\S+)/, m => /[a-z]/.test(m) ? m.toLowerCase() : m)
     bits.push(andList(o.rates.map(r => `${lower(r.label)} at ${r.rate}%`)))
   }
   // "not recorded" is not "no offset" - it is nobody having answered.
