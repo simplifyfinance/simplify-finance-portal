@@ -322,6 +322,22 @@ describe('the lending options a compliance note was written from', () => {
     expect(names).not.toMatch(/rate|repayment|fee|approval/i)
   })
 
+  it('DOES NOT LIGHT UP EVERY DEAL ALREADY IN THE BUSINESS', () => {
+    // The stamps on every box written before today have no lending options
+    // figures in them at all. A name that was not in the old stamp is not a
+    // change to it - otherwise the morning this ships, every deal on the board
+    // would flag nine stale boxes for a change nobody made.
+    const stampedBeforeToday = { "the number of dependants": '2' }
+    expect(figureChanges(stampedBeforeToday, dealFigures(deal())), 'old deals flagged for nothing').toEqual([])
+  })
+
+  it('but a deal stamped from today on does notice', () => {
+    const was = dealFigures(deal())
+    const d = deal()
+    d.lo_data.lenders[0].lenderSplits[0].rate = '6.94'
+    expect(figureChanges(was, dealFigures(d)).length).toBeGreaterThan(0)
+  })
+
   it('and none of this disturbs the fact find figures', () => {
     const d = deal()
     ;(d.fact_find_data as any).dependants = '3'
