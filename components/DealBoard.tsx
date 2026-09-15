@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { phaseOf, phaseSince, amountOf, PHASE_LABEL, PHASE_ORDER, moveBack, placedByHand, PHASE_UNDO_LABEL, PHASE_UNDO_WARNING, type Phase } from '@/lib/deal-phase'
 import { stageAge, ageGroupOf } from '@/lib/deal-age'
@@ -11,6 +11,7 @@ import { AlertChips } from '@/components/DealFile'
 import type { Alert } from '@/lib/deal-notes'
 import DealPeek from '@/components/DealPeek'
 import { brokerKey as keyOf } from '@/lib/broker-key'
+import { bcLanes, inLaneOrder, laneOf, sentOn } from '@/lib/bc-lanes'
 
 // The whole book, in columns.
 //
@@ -349,7 +350,16 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                   {total > 0 ? money(total) : '—'}
                 </div>
 
-                {cards.map(d => {
+                {/* THE BC COLUMN IS TWO LANES. See lib/bc-lanes.ts - what is
+                    still being written, and what is sitting with a client. Every
+                    other column is one list, exactly as before. */}
+                {(p === 'bc' ? inLaneOrder(cards) : cards).map((d, i, list) => {
+                  const lane = p === 'bc' ? laneOf(d) : null
+                  const showLane = p === 'bc' && (i === 0 || laneOf(list[i - 1]) !== lane)
+                  const laneCount = p === 'bc'
+                    ? (bcLanes(cards).find(l => l.key === lane)?.items.length || 0) : 0
+                  const laneLabel = lane === 'sent' ? 'With the client' : 'Being prepared'
+                  const sentLabel = p === 'bc' ? sentOn(d) : ''
                   const age = stageAge(d, thresholds)
                   const grp = ageGroupOf(d, thresholds)
                   // Now that the column stays calm, the card is the thing that
@@ -370,7 +380,18 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                     ...(d.credit_officers?.name ? [{ name: d.credit_officers.name, colour: CREDIT_GREY }] : []),
                   ].filter(x => x.name)
                   return (
-                    <div key={d.id} draggable
+                    <Fragment key={d.id}>
+                    {showLane && (
+                      <div className="flex items-center gap-1.5 mx-1 mt-2.5 mb-1.5 first:mt-0">
+                        <span className="h-px flex-1 bg-[#E0D8CA]" />
+                        <span className="text-[9px] font-extrabold tracking-[.07em] uppercase text-[#A29889] whitespace-nowrap">
+                          {laneLabel} &middot; {laneCount}
+                        </span>
+                        <span className="h-px flex-1 bg-[#E0D8CA]" />
+                      </div>
+                    )}
+                    <div draggable
+                      style={lane === 'sent' ? { borderLeft: '3px solid #0E8FCB' } : undefined}
                       onDragStart={() => setDragging(d.id)}
                       onDragEnd={() => { setDragging(''); setOver('') }}
                       onClick={() => router.push(`/deals/${d.id}`)}
@@ -423,8 +444,9 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                       <p className="text-[12.5px] font-[640] text-[#221F1B] m-0 mr-[50px] truncate" title={d.deal_name}>
                         {dealTitle(d.deal_name)}
                       </p>
-                      <p className="text-[9.5px] font-bold tracking-[.07em] uppercase text-[#A29889] m-0 mb-[7px]">
-                        Home loan{lender ? ` · ${lender}` : ''}
+                      <p className="text-[9.5px] font-bold tracking-[.07em] uppercase text-[#A29889] m-0 mb-[7px] truncate"
+                         title={`Home loan${lender ? ` · ${lender}` : ''}${sentLabel ? ` · ${sentLabel}` : ''}`}>
+                        Home loan{lender ? ` · ${lender}` : ''}{sentLabel ? ` · ${sentLabel}` : ''}
                       </p>
 
                       {/* The money is the biggest thing on a card about a loan book. */}
@@ -466,6 +488,7 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                         </span>
                       </div>
                     </div>
+                    </Fragment>
                   )
                 })}
 
