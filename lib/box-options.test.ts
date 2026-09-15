@@ -1,244 +1,235 @@
 import { describe, it, expect } from 'vitest'
-import { boxFive, cashbackOf, optionSentence } from './box-options'
+import { boxFive, cashbackOf, featureSentence } from './box-options'
 import { optionsOf } from './lender-comparison'
 import { DEAL } from './box-fixture'
+
+// BOX FIVE — OPTIONS PRESENTED & RECOMMENDATION.
+//
+// Rewritten 15 Sep 2026. It used to write a sentence per option with every fee,
+// offset answer and credit note, then compare them all again underneath: 228
+// words on a two lender deal, most of it said twice. Fabio: "waaaay too long."
+//
+// Four sentences now, in his words:
+//   1. what else was looked at — name, product, rate, nothing else
+//   2. what was chosen, and the research criteria it was chosen on
+//   3. how long that lender takes, and that it suits the clients — ALWAYS
+//   4. the features of the chosen product ONLY
+// then cashback if there is one, and what the clients decided.
 
 const deal = (over: any = {}) => ({ ...JSON.parse(JSON.stringify(DEAL)), id: 'deal-1', ...over })
 const lo = (over: any) => { const d = deal(); d.lo_data = { ...d.lo_data, ...over }; return d }
 const cd = (over: any) => { const d = deal(); d.compliance_data = { ...d.compliance_data, ...over }; return d }
 
-// Blank every fee box on the second lender.
-const unpriced = () => {
-  const d = deal()
-  d.lo_data = { ...d.lo_data, lenders: d.lo_data.lenders.map((l: any, i: number) =>
-    i === 1 ? { ...l, applicationFee: '', valuationFee: '', legalFee: '', annualFee: '' } : l) }
-  return d
-}
-
-// IT NEVER CALLS SOMETHING CHEAPER WHEN IT IS NOT.
-//
-// Fabio, 10 Sep 2026: "make sure rules are in place and not compare things say
-// this is cheaper when it isnt." A lender whose fee boxes were never filled in
-// summed to $0 and was declared the cheapest - a sentence telling a credit
-// assessor the recommendation was beaten on price by a lender nobody had priced.
-describe('an unpriced option is never called cheap', () => {
-  it('names it as unpriced instead of comparing it', () => {
-    const t = boxFive(unpriced()).text
-    expect(t).toContain('Upfront fees are not recorded for CBA, so they have not been compared on cost to set up.')
-    expect(t).toContain('Ongoing fees are not recorded for CBA, so they have not been compared on annual cost.')
-  })
-
-  it('never quotes a fee of $0 against a lender nobody priced', () => {
-    const t = boxFive(unpriced()).text
-    expect(t).not.toMatch(/CBA at \$0/)
-    expect(t).not.toMatch(/\$0 (in upfront fees|a year)/)
-  })
-
-  it('leaves the unpriced lender out of its own fee sentence', () => {
-    const t = boxFive(unpriced()).text
-    expect(t).toContain('CBA, on the Wealth Package product, at a variable P&I rate of 6.07%.')
-  })
-
-  it('still compares where both are priced', () => {
+describe('sentence one — what else was looked at', () => {
+  it('names the alternatives with their product and rate, and nothing else', () => {
     const t = boxFive(deal()).text
-    expect(t).toContain('Lowest upfront fees: CBA at $200. ING charges $350, $150 more.')
+    expect(t).toContain('Lender options compared include CBA Wealth Package with an interest rate of 6.07%.')
   })
 
-  it('treats a typed zero as a real answer', () => {
-    const o = optionsOf({ recommendedLender: 'X',
-      lenders: [{ lenderName: 'X', applicationFee: '0', annualFee: '0' }] })[0]
-    expect(o.upfrontKnown).toBe(true)
-    expect(o.ongoingKnown).toBe(true)
-  })
-})
-
-describe('it never argues the point away', () => {
-  it('states where the recommendation is behind and stops', () => {
+  it('LEAVES THE CHOSEN LENDER OUT of that list', () => {
+    // Fabio's example: Suncorp and ANZ are compared, ME Bank is chosen. The list
+    // is the alternatives.
     const t = boxFive(deal()).text
-    expect(t).toContain('ING charges $350, $150 more')
-    // The judgement is the broker's, recorded in their note. Not this box's.
-    expect(t).not.toMatch(/outweigh|justified by|more than offset|on balance|nonetheless|however this/i)
+    const firstSentence = t.split('. ')[0]
+    expect(firstSentence).not.toContain('ING')
   })
 
-  it('turns every point it is behind on into a gap', () => {
-    const g = boxFive(deal()).gaps.map(x => x.what)
-    expect(g.some(x => /behind on this/.test(x))).toBe(true)
-  })
-
-  it('quotes the broker reason and does not reword it', () => {
+  it('says nothing about their fees, offset or notes', () => {
     const t = boxFive(deal()).text
-    expect(t).toContain('They offer the most competitive variable rate (5.99% P&I) with annual fee.')
-    expect(t).toContain('temporary visa holder')
+    expect(t).not.toContain('CBA at $200')
+    expect(t).not.toContain('Noted against this option')
+    expect(t).not.toMatch(/Lowest (rate|upfront|ongoing)/)
+  })
+
+  it('shouts when an alternative has no rate recorded', () => {
+    const d = lo({ lenders: DEAL.lo_data.lenders.map((l: any, i: number) =>
+      i === 1 ? { ...l, variablePI: { enabled: false, rate: '' } } : l) })
+    expect(boxFive(d).text).toMatch(/NOT RECORDED — no rate for CBA/)
   })
 })
 
-describe('the options themselves', () => {
-  it('says how many were presented', () => {
-    expect(boxFive(deal()).text).toMatch(/^Two lender options were presented to the clients\./)
+describe('only one lender option', () => {
+  const single = () => lo({ lenders: [DEAL.lo_data.lenders[0]] })
+
+  it('TELLS THE BROKER TO WRITE IT THEMSELVES', () => {
+    // Fabio, 15 Sep 2026: "flag to broker only one product selected so THEY need
+    // to elaborate that particular box as we dont have enough data to automate."
+    const t = boxFive(single()).text
+    expect(t).toMatch(/ONLY ONE LENDER OPTION RECORDED/)
+    expect(t).toMatch(/Please write it yourself/)
   })
 
-  it('keeps the capitals in P&I', () => {
-    expect(boxFive(deal()).text).toContain('a variable P&I rate of 5.99%')
-    expect(boxFive(deal()).text).not.toMatch(/p&i/)
+  it('raises it as a gap, not just a line of text', () => {
+    expect(boxFive(single()).gaps.map(g => g.what).join(' '))
+      .toMatch(/written by hand/)
   })
 
-  it('reports an offset answer but never invents one', () => {
-    expect(boxFive(deal()).text).toContain('The product has an offset account.')
-    const none = lo({ lenders: DEAL.lo_data.lenders.map((l: any) => ({ ...l, offsetAccount: '' })) })
-    expect(boxFive(none).text).not.toMatch(/offset account\./)
-  })
-
-  it('shouts for a lender with no rate recorded', () => {
-    const d = lo({ lenders: [DEAL.lo_data.lenders[0],
-      { ...DEAL.lo_data.lenders[1], variablePI: { enabled: false }, variableIO: { enabled: false },
-        fixedPI: { enabled: false }, fixedIO: { enabled: false } }] })
-    expect(boxFive(d).text).toMatch(/\*\* NOT RECORDED — no rate for CBA \*\*/)
-  })
-
-  it('quotes the note against an option as recorded', () => {
-    expect(boxFive(deal()).text).toContain('Noted against this option: "One offset per loan account')
-  })
-
-  it('shouts when only one lender is on the deal', () => {
-    const one = lo({ lenders: [DEAL.lo_data.lenders[0]] })
-    const r = boxFive(one)
-    expect(r.text).toMatch(/\*\* ONLY ONE LENDER RECORDED/)
-    expect(r.gaps.map(g => g.what)).toContain('Only one lender option recorded')
-  })
-
-  it('says so when there are none at all', () => {
-    const r = boxFive(lo({ lenders: [] }))
-    expect(r.text).toMatch(/\*\* NOT RECORDED — no lender options have been recorded/)
-    expect(r.gaps.map(g => g.what)).toContain('Lender options')
+  it('still writes the rest of the box', () => {
+    const t = boxFive(single()).text
+    expect(t).toContain('Ultimately we selected ING Orange Advantage')
+    expect(t).toContain("which is in line with the clients' goals and expectations")
   })
 })
 
-describe('what the clients said mattered', () => {
-  it('lists the criteria ticked on the Lending options tab', () => {
-    expect(boxFive(deal()).text).toContain('competitive interest rate, good turnaround times')
+describe('sentence two — what was chosen and why', () => {
+  it('names the lender and product, and the criteria it was chosen on', () => {
+    expect(boxFive(deal()).text).toContain(
+      'Ultimately we selected ING Orange Advantage based on a competitive interest rate')
   })
 
-  it('shouts when none were ticked', () => {
-    const r = boxFive(lo({ criteriaUsed: [] }))
-    expect(r.text).toMatch(/\*\* NOT RECORDED — what the clients said mattered to them\. \*\*/)
-    expect(r.gaps.map(g => g.what)).toContain('Research criteria')
+  it('does not quote the broker note any more', () => {
+    // It used to reproduce recommendationNote word for word. The criteria say it.
+    expect(boxFive(deal()).text).not.toContain('The reason recorded for the recommendation')
+  })
+
+  it('shouts when nobody recorded what mattered to the clients', () => {
+    const t = boxFive(lo({ criteriaUsed: [] })).text
+    expect(t).toContain('Ultimately we selected ING Orange Advantage.')
+    expect(t).toMatch(/NOT RECORDED — what the clients said mattered/)
+  })
+
+  it('shouts when no lender is marked as recommended', () => {
+    const t = boxFive(lo({ recommendedLender: '' })).text
+    expect(t).toMatch(/NOT RECORDED — which lender was recommended/)
   })
 })
 
-// Fabio, 10 Sep 2026: "if the cashback box was input with a figure in deal
-// structure mention that."
-describe('the cashback', () => {
-  it('states it when a figure is recorded', () => {
-    expect(boxFive(cd({ cashback: '$2,000' })).text)
-      .toContain('A cashback of $2,000 has been recorded against this lending.')
+describe('sentence three — the approval time', () => {
+  it('ALWAYS says it is in line with their goals and expectations', () => {
+    // 10 Sep had three wordings - faster, slower, the same. Replaced 15 Sep:
+    // a recommendation is only made where it suits the client.
+    expect(boxFive(deal()).text).toContain(
+      "ING's approval time is 1-2 business days, which is in line with the clients' goals and expectations.")
   })
 
-  it('quotes it as written when it is not a plain figure, and never re-reads it as a number', () => {
-    // readMoney strips the letters and glues the digits together: "$2,000 after
-    // 6 months" came back as 20006. 10 Sep 2026.
-    const t = boxFive(cd({ cashback: '$2,000 after 6 months' })).text
-    expect(t).toContain('A cashback has been recorded against this lending: $2,000 after 6 months.')
-    expect(t).not.toContain('$20,006')
+  it('says it even when the chosen lender is the slower one', () => {
+    const d = lo({ lenders: DEAL.lo_data.lenders.map((l: any) =>
+      l.lenderName === 'ING' ? { ...l, approvalDays: '30' } : { ...l, approvalDays: '5' }) })
+    expect(boxFive(d).text).toContain("in line with the clients' goals and expectations")
   })
 
-  it('says nothing when the box is empty', () => {
-    expect(boxFive(deal()).text).not.toMatch(/cashback/i)
-  })
-
-  it('says nothing when the box says none', () => {
-    for (const v of ['none', 'None', 'nil', 'N/A', 'no', '0', '$0']) {
-      expect(cashbackOf(cd({ cashback: v })), v).toBe('')
-      expect(boxFive(cd({ cashback: v })).text).not.toMatch(/cashback/i)
+  it('QUOTES THE DROPDOWN WORD FOR WORD, IT DOES NOT INVENT A NUMBER', () => {
+    // 15 Sep 2026. "Approval days" is a dropdown of ranges. Every one of its
+    // choices was being read with the rate parser, which threw the words away
+    // and glued the digits together, so every deal on "1-2 business days" said
+    // "approval time is 12 days" and "7-10 business days" said "710 days".
+    const t = boxFive(deal()).text
+    expect(t).toContain('1-2 business days')
+    expect(t).not.toMatch(/\b12 days\b/)
+    for (const [picked, wrong] of [['3-5 business days', '35'], ['5-7 business days', '57'],
+                                   ['7-10 business days', '710'], ['10+ business days', '10']]) {
+      const d = lo({ lenders: DEAL.lo_data.lenders.map((l: any) =>
+        l.lenderName === 'ING' ? { ...l, approvalDays: picked } : l) })
+      const text = boxFive(d).text
+      expect(text, picked).toContain(`approval time is ${picked}`)
+      expect(text, picked).not.toContain(`${wrong} days,`)
     }
   })
+
+  it('says "days" when somebody typed a bare number', () => {
+    const d = lo({ lenders: DEAL.lo_data.lenders.map((l: any) =>
+      l.lenderName === 'ING' ? { ...l, approvalDays: '5' } : l) })
+    expect(boxFive(d).text).toContain("ING's approval time is 5 days")
+  })
+
+  it('shouts when the chosen lender has no turnaround recorded', () => {
+    const d = lo({ lenders: DEAL.lo_data.lenders.map((l: any) =>
+      l.lenderName === 'ING' ? { ...l, approvalDays: '' } : l) })
+    expect(boxFive(d).text).toMatch(/NOT RECORDED — how long ING takes to approve/)
+  })
 })
 
-// Fabio's rule, 10 Sep 2026, in three shapes.
-describe('the turnaround, and what the difference means', () => {
-  const withDays = (mine: string, theirs: string) => lo({
-    lenders: [{ ...DEAL.lo_data.lenders[0], approvalDays: mine },
-              { ...DEAL.lo_data.lenders[1], approvalDays: theirs }] })
-
-  it('faster: the clients get the product recommended for them, sooner', () => {
-    const t = boxFive(withDays('2', '10')).text
-    expect(t).toContain('At 2 days, ING also has the shortest turnaround of the options presented, so the clients can have the product recommended for them and have it in place sooner.')
-  })
-
-  it('slower: the clients are willing to wait, features first', () => {
-    const t = boxFive(withDays('15', '5')).text
-    expect(t).toContain('ING takes 15 days against 5 for the quickest of the other options. The clients are willing to wait, as the timeframe is secondary to the features they said mattered to them.')
-  })
-
-  it('the same: it fits their timeframe', () => {
-    expect(boxFive(withDays('12', '12')).text)
-      .toContain("The turnaround time of 12 days fits in line with the clients' timeframe and expectations.")
-  })
-
-  it('says nothing at all when no turnaround is recorded', () => {
-    // "good turnaround times" is one of the ticked criteria and "1 business day"
-    // is inside a lender note, so the words appear legitimately. Only the
-    // sentences this rule writes are checked for.
-    const none = lo({ lenders: DEAL.lo_data.lenders.map((l: any) => ({ ...l, approvalDays: '' })) })
-    const t = boxFive(none).text
-    expect(t).not.toMatch(/Approval takes around|turnaround time of|shortest turnaround|days against/)
-  })
-
-  it('does not say it twice', () => {
-    // The comparison library's own "Fastest approval:" line is dropped so the
-    // rule above is the only place approval time is judged.
+describe('sentence four — the chosen product only', () => {
+  it('lists its rate, offset, annual fee and upfront fees', () => {
     const t = boxFive(deal()).text
-    expect(t).not.toMatch(/Fastest approval:/)
-    const judged = t.match(/turnaround time of|shortest turnaround|days against/g) || []
-    expect(judged.length).toBe(1)
+    expect(t).toContain('The product is variable P&I at 5.99%')
+    expect(t).toContain('an offset account')
+    expect(t).toContain('an annual fee of $299')
+    expect(t).toContain('$350 in upfront fees')
+  })
+
+  it('says nothing about the other lender in that sentence', () => {
+    const last = boxFive(deal()).text.split('The product is ')[1] || ''
+    expect(last).not.toContain('CBA')
+  })
+
+  it('NEVER QUOTES A FEE NOBODY RECORDED', () => {
+    // A blank fee box summed to $0 and was once printed as a real figure.
+    const rec = optionsOf({ ...DEAL.lo_data, lenders: [{ ...DEAL.lo_data.lenders[0],
+      applicationFee: '', establishmentFee: '', valuationFee: '', legalFee: '',
+      docProcessingFee: '', annualFee: '' }] })[0]
+    const s = featureSentence(rec)
+    expect(s).not.toMatch(/\$0/)
+    expect(s).not.toContain('annual fee')
+    expect(s).not.toContain('upfront fees')
+  })
+
+  it('distinguishes "no offset" from nobody having answered', () => {
+    const answered = optionsOf({ ...DEAL.lo_data,
+      lenders: [{ ...DEAL.lo_data.lenders[0], offsetAccount: 'No' }] })[0]
+    expect(featureSentence(answered)).toContain('no offset account')
+    const blank = optionsOf({ ...DEAL.lo_data,
+      lenders: [{ ...DEAL.lo_data.lenders[0], offsetAccount: '' }] })[0]
+    expect(featureSentence(blank)).not.toContain('offset')
   })
 })
 
-describe('what the clients decided', () => {
-  it('states it plainly when they agreed', () => {
+describe('what is kept at the end', () => {
+  it('mentions a cashback recorded in the deal structure', () => {
+    const d = cd({ cashback: '2000' })
+    expect(boxFive(d).text).toContain('A cashback of $2,000 has been recorded')
+  })
+
+  it('quotes a cashback carrying words exactly as typed', () => {
+    const d = cd({ cashback: '$2,000 after 6 months' })
+    expect(boxFive(d).text).toContain('$2,000 after 6 months')
+    expect(boxFive(d).text).not.toContain('$20,006')
+  })
+
+  it('says when the clients agreed', () => {
     expect(boxFive(cd({ clientAgreedLender: 'Yes' })).text)
       .toContain('The clients agreed with the recommendation and proceeded with it.')
   })
 
-  it('names the lender they chose instead, and their reason', () => {
-    const t = boxFive(cd({ clientAgreedLender: 'No', clientChosenLender: 'CBA',
-                           clientChosenLenderReason: 'Existing relationship' })).text
-    expect(t).toContain('did not proceed with the recommendation and chose CBA')
-    expect(t).toContain('"Existing relationship"')
+  it('says when they chose somebody else, and why', () => {
+    const t = boxFive(cd({ clientAgreedLender: 'No', clientChosenLender: 'NAB',
+                           clientChosenLenderReason: 'They bank with NAB already' })).text
+    expect(t).toContain('did not proceed with the recommendation and chose NAB')
+    expect(t).toContain('"They bank with NAB already"')
   })
 
-  it('reads the Other box when that is what was picked', () => {
-    const t = boxFive(cd({ clientAgreedLender: 'No', clientChosenLender: '__other__',
-                           clientChosenLenderOther: 'Bendigo' })).text
-    expect(t).toContain('chose Bendigo')
-    expect(t).not.toContain('__other__')
-  })
-
-  it('shouts when nobody has captured the answer', () => {
-    const r = boxFive(deal())
-    expect(r.text).toMatch(/\*\* NOT RECORDED — whether the clients agreed with the recommendation\. \*\*/)
-    expect(r.gaps.map(g => g.what)).toContain("The clients' agreement to the recommendation")
+  it('shouts when nobody recorded whether they agreed', () => {
+    expect(boxFive(cd({ clientAgreedLender: '' })).text)
+      .toMatch(/NOT RECORDED — whether the clients agreed/)
   })
 })
 
-describe('it reads like a person wrote it', () => {
-  it('leaves no raw key, placeholder or double punctuation', () => {
-    for (const d of [deal(), unpriced(), cd({ clientAgreedLender: 'Yes', cashback: '$2,000' })]) {
-      const t = boxFive(d).text
-      expect(t).not.toMatch(/undefined|NaN|\[object|lenderName|variablePI|__other__/)
-      expect(t).not.toMatch(/ {2}|\.\.|,,| ,|""/)
+describe('sentence two — how a ticked criterion reads', () => {
+  it('writes the seven checkboxes the way somebody would say them', () => {
+    const t = boxFive(deal()).text
+    expect(t).toContain('based on a competitive interest rate, good turnaround times, '
+      + 'the ability to have an offset account and fully assessed pre-approval applications.')
+  })
+
+  it('uses a criterion the broker typed in exactly as they typed it', () => {
+    const t = boxFive(lo({ criteriaUsed: ['Accepts our client\'s trust structure'] })).text
+    expect(t).toContain("based on accepts our client's trust structure.")
+  })
+})
+
+describe('it is short', () => {
+  it('writes a fraction of what it used to', () => {
+    // 228 words on this exact deal before 15 Sep 2026.
+    const words = boxFive(deal()).text.split(/\s+/).length
+    expect(words, `box five is ${words} words`).toBeLessThan(110)
+  })
+})
+
+describe('cashback wording', () => {
+  it('treats none, nil and a blank as no cashback', () => {
+    for (const v of ['', 'none', 'Nil', 'n/a', '0', '$0']) {
+      const d = cd({ cashback: v })
+      expect(cashbackOf(d), v).toBe('')
     }
-  })
-
-  it('is the same words every time for one deal', () => {
-    expect(new Set(Array.from({ length: 20 }, () => boxFive(deal()).text)).size).toBe(1)
-  })
-
-  it('describes an option with nothing recorded but a name without falling apart', () => {
-    const bare = optionSentence({ name: 'ANZ', product: '', recommended: false, rates: [],
-      lowestRate: null, upfront: 0, upfrontKnown: false, ongoing: 0, ongoingKnown: false,
-      offset: false, offsetAnswer: '', approvalDays: null, note: '' })
-    expect(bare).toContain('ANZ')
-    expect(bare).toMatch(/NOT RECORDED — no rate for ANZ/)
-    expect(bare).not.toMatch(/\$0|undefined/)
   })
 })

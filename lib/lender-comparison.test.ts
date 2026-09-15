@@ -122,3 +122,41 @@ describe('what it refuses to do', () => {
     expect(optionsOf(lo({ lenders: [{ lenderName: '' }, { lenderName: 'ING' }] }))).toHaveLength(1)
   })
 })
+
+describe('approval turnaround is a phrase, not a number', () => {
+  // 15 Sep 2026. The dropdown only offers ranges of words. Reading them with
+  // the rate parser glued the digits together: "1-2 business days" became 12,
+  // "7-10 business days" became 710, and the comparison then ranked 1-2 days as
+  // slower than 10+ days.
+  const two = (a: string, b: string) => compareLenders({
+    recommendedLender: 'ING',
+    lenders: [
+      { lenderName: 'ING', productName: 'Orange Advantage', approvalDays: a,
+        variablePI: { enabled: true, rate: '5.99' } },
+      { lenderName: 'CBA', productName: 'Wealth Package', approvalDays: b,
+        variablePI: { enabled: true, rate: '6.07' } },
+    ],
+  })
+
+  it('never prints a number nobody recorded', () => {
+    const said = two('1-2 business days', '7-10 business days').lines.join(' ')
+    expect(said).toContain('1-2 business days')
+    expect(said).not.toContain('12 days')
+    expect(said).not.toContain('710')
+  })
+
+  it('puts 1-2 business days ahead of 10+ business days', () => {
+    const said = two('1-2 business days', '10+ business days').lines.join(' ')
+    expect(said).toContain('Fastest approval: ING at 1-2 business days.')
+  })
+
+  it('names the other lender as faster when it is', () => {
+    const c = two('7-10 business days', '1-2 business days')
+    expect(c.lines.join(' ')).toContain('Fastest approval: CBA at 1-2 business days. ING takes 7-10 business days.')
+    expect(c.against.join(' ')).toContain('Fastest approval: CBA')
+  })
+
+  it('still says days when somebody typed a bare number', () => {
+    expect(two('5', '12').lines.join(' ')).toContain('Fastest approval: ING at 5 days.')
+  })
+})

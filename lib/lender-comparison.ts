@@ -23,6 +23,33 @@ const rate = (v: any) => {
   return Number.isFinite(n) && n > 0 ? n : null
 }
 const fee = (v: any) => readMoney(v) ?? 0
+
+// APPROVAL TURNAROUND IS A PHRASE, NOT A NUMBER.
+//
+// 15 Sep 2026. "Approval days" on the Lending options tab is a dropdown, and
+// every one of its choices is a range of words: "1-2 business days", "3-5
+// business days", "7-10 business days", "10+ business days". It was being read
+// with the same digit-stripping parser as an interest rate, which threw the
+// words away and glued the digits together - so "1-2 business days" became the
+// NUMBER 12, and the compliance box printed "ING's approval time is 12 days".
+// "7-10 business days" printed as 710. Nobody had typed either figure.
+//
+// The phrase is now kept exactly as it was recorded and printed word for word.
+// The only thing taken from the digits is an ordering - lowest first, then
+// highest - and that is never shown to anybody.
+const approvalRange = (v: any): [number, number] | null => {
+  const nums = (txt(v).match(/\d+/g) || []).map(Number)
+  if (!nums.length) return null
+  return [nums[0], nums[nums.length - 1]]
+}
+const slower = (a: Option, b: Option) => {
+  const [al, ah] = a.approvalRange as [number, number]
+  const [bl, bh] = b.approvalRange as [number, number]
+  return ah !== bh ? ah - bh : al - bl
+}
+// "5" on its own reads as a count of days; "1-2 business days" says it itself.
+const approvalPhrase = (o: Option) =>
+  /^\d+$/.test(o.approvalText) ? `${o.approvalText} days` : o.approvalText
 // A BLANK FEE BOX IS NOT A FEE OF ZERO.
 //
 // 10 Sep 2026. A lender whose fee boxes were simply never filled in summed to
@@ -53,7 +80,10 @@ export type Option = {
   ongoingKnown: boolean
   offset: boolean
   offsetAnswer: string
-  approvalDays: number | null
+  // APPROVAL TURNAROUND IS A PHRASE, NOT A NUMBER. See approvalRange below.
+  approvalText: string
+  // Only ever used to put the options in order. Never printed.
+  approvalRange: [number, number] | null
   note: string
 }
 
@@ -91,7 +121,8 @@ export function optionsOf(lo: any): Option[] {
         ongoingKnown: ONGOING.some(k => recorded(l?.[k])),
         offset: !!offsetAnswer && !/^no$/i.test(offsetAnswer),
         offsetAnswer,
-        approvalDays: rate(l?.approvalDays),
+        approvalText: txt(l?.approvalDays),
+        approvalRange: approvalRange(l?.approvalDays),
         note: txt(l?.specialNote),
       }
     })
@@ -188,14 +219,14 @@ export function compareLenders(lo: any): Comparison {
   }
 
   // --- turnaround ---------------------------------------------------------
-  const timed = options.filter(o => o.approvalDays !== null)
-  if (timed.length > 1 && rec.approvalDays !== null) {
-    const fastest = timed.reduce((a, b) => (b.approvalDays as number) < (a.approvalDays as number) ? b : a)
+  const timed = options.filter(o => o.approvalRange !== null)
+  if (timed.length > 1 && rec.approvalRange !== null) {
+    const fastest = timed.reduce((a, b) => slower(b, a) < 0 ? b : a)
     if (fastest.recommended) {
-      lines.push(`Fastest approval: ${rec.name} at ${rec.approvalDays} days.`)
+      lines.push(`Fastest approval: ${rec.name} at ${approvalPhrase(rec)}.`)
     } else {
-      const l = `Fastest approval: ${fastest.name} at ${fastest.approvalDays} days. `
-              + `${rec.name} takes ${rec.approvalDays}.`
+      const l = `Fastest approval: ${fastest.name} at ${approvalPhrase(fastest)}. `
+              + `${rec.name} takes ${approvalPhrase(rec)}.`
       lines.push(l); against.push(l)
     }
   }
@@ -216,7 +247,7 @@ export function comparisonBlock(lo: any): string[] {
     else out.push('  No rate recorded')
     out.push(`  Upfront fees ${money(o.upfront)}, annual fee ${money(o.ongoing)}`)
     out.push(`  Offset account: ${o.offsetAnswer || 'not recorded'}`)
-    if (o.approvalDays !== null) out.push(`  Approval turnaround: ${o.approvalDays} days`)
+    if (o.approvalText) out.push(`  Approval turnaround: ${approvalPhrase(o)}`)
     if (o.note) out.push(`  Note: ${o.note}`)
   }
 

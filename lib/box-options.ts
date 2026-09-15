@@ -38,68 +38,61 @@ export function cashbackOf(deal: any): string {
   return raw
 }
 
-// One sentence per option, from what is recorded and nothing else.
-export function optionSentence(o: Option): string {
+// ONE LINE PER ALTERNATIVE: NAME, PRODUCT, RATE. NOTHING ELSE.
+//
+// 15 Sep 2026. This box used to write a full sentence for every option - each
+// one's rate, fees, offset and the credit officer's note - and then compare them
+// all again underneath. On a two lender deal that was 228 words, most of it said
+// twice. Fabio: "waaaay too long."
+//
+// The shape he asked for is four sentences: what else was looked at and its
+// rate, what was chosen and why, how long it takes and that it suits them, and
+// the features of the chosen product only.
+function namedRate(o: Option): string {
+  const named = `${o.name}${o.product ? ` ${o.product}` : ''}`
+  if (o.lowestRate === null) return `${named} ${shout(`NOT RECORDED — no rate for ${o.name}`)}`
+  return `${named} with an interest rate of ${o.lowestRate}%`
+}
+
+// THE CHOSEN PRODUCT, AND ONLY THE CHOSEN PRODUCT.
+//
+// Everything recorded against the recommended lender. A blank fee box is not a
+// free one - see upfrontKnown/ongoingKnown in lender-comparison.ts - so an
+// unpriced fee is left out rather than quoted as $0.
+export function featureSentence(o: Option): string {
   const bits: string[] = []
-  bits.push(`${o.name}${o.product ? `, on the ${o.product} product` : ''}`)
-
   if (o.rates.length) {
-    // "Variable P&I" -> "a variable P&I rate of 5.99%". Only the first word is
-    // lowered; blanket toLowerCase() turned P&I into p&i.
     const lower = (l: string) => l.replace(/^(\w+)/, m => m.toLowerCase())
-    bits.push('at ' + andList(o.rates.map(r => `a ${lower(r.label)} rate of ${r.rate}%`)))
-  } else {
-    bits.push(shout(`NOT RECORDED — no rate for ${o.name}`))
+    bits.push(andList(o.rates.map(r => `${lower(r.label)} at ${r.rate}%`)))
   }
-
-  const fees: string[] = []
-  if (o.upfrontKnown) fees.push(`${money(o.upfront)} in upfront fees`)
-  if (o.ongoingKnown) fees.push(`an annual fee of ${money(o.ongoing)}`)
-  if (fees.length) bits.push('with ' + andList(fees))
-
-  let s = bits.join(', ') + '.'
-
-  const tail: string[] = []
   // "not recorded" is not "no offset" - it is nobody having answered.
-  if (o.offsetAnswer) tail.push(o.offset ? 'The product has an offset account.' : 'The product has no offset account.')
-  if (o.approvalDays !== null) tail.push(`Approval takes around ${o.approvalDays} days.`)
-  if (o.note) tail.push(`Noted against this option: "${o.note.replace(/\s+/g, ' ').trim().replace(/[.\s]+$/, '')}".`)
-  if (tail.length) s += ' ' + tail.join(' ')
-  return s
+  if (o.offsetAnswer) bits.push(o.offset ? 'an offset account' : 'no offset account')
+  if (o.ongoingKnown) bits.push(`an annual fee of ${money(o.ongoing)}`)
+  if (o.upfrontKnown) bits.push(`${money(o.upfront)} in upfront fees`)
+  if (bits.length === 0) return shout(`NOT RECORDED — nothing is recorded against ${o.name}'s product.`)
+  return `The product is ${andList(bits)}.`
 }
 
-// APPROVAL TIME, AND WHAT THE DIFFERENCE MEANS.
+// HOW A TICKED RESEARCH CRITERION READS IN A SENTENCE.
 //
-// Fabio, 10 Sep 2026: "if days for approval of recommended product is lower than
-// other products say something that we can achieve desired product and do it in
-// a shorter time period; if higher than other products say customers are willing
-// to wait as timeframe is secondary to features selected; if the same just
-// mention that turnaround time of x days fits in line with customers timeframe
-// and expectations."
-//
-// Only lenders with a turnaround actually recorded are compared - a blank is not
-// a fast lender.
-export function turnaroundLine(options: Option[], rec: string): string {
-  const timed = options.filter(o => o.approvalDays !== null)
-  const mine = timed.find(o => o.name === rec)
-  if (!mine || mine.approvalDays === null) return ''
-  const days = mine.approvalDays
-  const others = timed.filter(o => o.name !== rec).map(o => o.approvalDays as number)
-
-  if (others.length === 0) {
-    return `The turnaround time of ${days} days fits in line with the clients' timeframe and expectations.`
-  }
-  const fastestOther = Math.min(...others)
-  if (days < fastestOther) {
-    return `At ${days} days, ${rec} also has the shortest turnaround of the options presented, `
-         + 'so the clients can have the product recommended for them and have it in place sooner.'
-  }
-  if (days > fastestOther) {
-    return `${rec} takes ${days} days against ${fastestOther} for the quickest of the other options. `
-         + 'The clients are willing to wait, as the timeframe is secondary to the features they said mattered to them.'
-  }
-  return `The turnaround time of ${days} days fits in line with the clients' timeframe and expectations.`
+// The seven boxes on the Lending options tab are written as headings -
+// "Competitive interest rate", "Ability to have an offset account" - and a
+// heading dropped straight into a sentence reads "selected ING based on
+// competitive interest rate, ability to have an offset account". This is the
+// same seven, written the way somebody would say them. Nothing is added to or
+// taken from what was ticked; a criterion the broker typed in themselves is
+// used exactly as they typed it.
+const CRITERION_WORDING: Record<string, string> = {
+  'Competitive interest rate': 'a competitive interest rate',
+  'Good turnaround times': 'good turnaround times',
+  'Ability to have an offset account': 'the ability to have an offset account',
+  'Fully assessed pre-approval applications': 'fully assessed pre-approval applications',
+  'Flexible with last 12 months bonus income': 'flexibility with last 12 months of bonus income',
+  'Flexible with bridging finance': 'flexibility with bridging finance',
+  'Flexible loan term policy': 'a flexible loan term policy',
 }
+const criterionWords = (c: string) =>
+  CRITERION_WORDING[c] || c.replace(/^(\w+)/, m => m.toLowerCase())
 
 export function boxFive(deal: any): Box {
   const v = variantOf(deal?.id)
@@ -114,55 +107,63 @@ export function boxFive(deal: any): Box {
              gaps: [{ what: 'Lender options', where: 'Lending options' }], variant: v }
   }
 
-  // --- what was presented ---------------------------------------------------
-  parts.push(c.options.length === 1
-    ? 'One lender option was presented to the clients.'
-    : `${inWords(c.options.length).replace(/^\w/, m => m.toUpperCase())} lender options were presented to the clients.`)
-  for (const o of c.options) parts.push(optionSentence(o))
+  const rec = c.options.find(o => o.recommended) || null
+  const others = c.options.filter(o => !o.recommended)
 
-  // --- what the clients said mattered --------------------------------------
-  if (c.criteria.length) {
-    parts.push(`The options were researched against what the clients said mattered to them: ${andList(c.criteria.map(x => x.toLowerCase()))}.`)
+  // --- 1. what else was looked at, rate only --------------------------------
+  //
+  // ONE OPTION IS NOT A COMPARISON, AND THE PORTAL DOES NOT PRETEND IT IS.
+  // Fabio, 15 Sep 2026: "flag to broker only one product selected so THEY need
+  // to elaborate that particular box as we dont have enough data to automate."
+  if (others.length === 0) {
+    parts.push(shout('ONLY ONE LENDER OPTION RECORDED — there is not enough on this deal to write '
+      + 'this box. Please write it yourself, setting out what else was considered and why this '
+      + 'product was chosen.'))
+    gaps.push({ what: 'Only one lender option — this box has to be written by hand',
+                where: 'Lending options' })
   } else {
-    parts.push(shout('NOT RECORDED — what the clients said mattered to them.'))
-    gaps.push({ what: 'Research criteria', where: 'Lending options → research criteria' })
+    parts.push(`Lender options compared include ${andList(others.map(namedRate))}.`)
   }
 
-  // --- the recommendation ---------------------------------------------------
-  const rec = txt(lo.recommendedLender)
+  // --- 2. what was chosen, and why ------------------------------------------
   if (!rec) {
     parts.push(shout('NOT RECORDED — which lender was recommended.'))
     gaps.push({ what: 'Recommended lender', where: 'Lending options' })
-  } else if (c.options.length === 1) {
-    parts.push(`${rec} was recommended. ${shout('ONLY ONE LENDER RECORDED — the recommendation has not been compared against any alternative.')}`)
-    gaps.push({ what: 'Only one lender option recorded', where: 'Lending options' })
   } else {
-    parts.push(`${rec} was recommended.`)
-    // Said plainly, in the comparison library's own words, wins and losses
-    // together and in the same breath.
-    //
-    // The library's raw turnaround line is dropped here - box five says it in
-    // Fabio's words instead, below, because what matters is not which lender is
-    // fastest but what the difference means for the client.
-    const said = c.lines.filter(l => !/^Fastest approval:/.test(l))
-    if (said.length) parts.push(said.map(l => l.replace(/\s+/g, ' ').trim()).join(' '))
-    const turn = turnaroundLine(c.options, rec)
-    if (turn) parts.push(turn)
-    for (const a of c.against) {
-      gaps.push({ what: `The recommendation is behind on this — ${a.split(':')[0]}`, where: 'Lending options' })
+    const named = `${rec.name}${rec.product ? ` ${rec.product}` : ''}`
+    if (c.criteria.length) {
+      parts.push(`Ultimately we selected ${named} based on ${andList(c.criteria.map(criterionWords))}.`)
+    } else {
+      parts.push(`Ultimately we selected ${named}.`)
+      parts.push(shout('NOT RECORDED — what the clients said mattered to them.'))
+      gaps.push({ what: 'Research criteria', where: 'Lending options → research criteria' })
     }
   }
 
-  // --- the broker's own reason, quoted ---------------------------------------
-  const why = txt(lo.recommendationNote).replace(/\s+/g, ' ').trim()
-  if (why) {
-    parts.push(`The reason recorded for the recommendation: "${why.replace(/["]/g, "'").replace(/[.\s]+$/, '')}".`)
-  } else if (rec) {
-    parts.push(shout('NOT RECORDED — why this lender was recommended.'))
-    gaps.push({ what: 'Recommendation note', where: 'Lending options' })
+  // --- 3. how long it takes, and that it suits them -------------------------
+  //
+  // ALWAYS "in line with". On 10 Sep this had three wordings depending on
+  // whether the recommended lender was faster, slower or the same as the others.
+  // Fabio replaced that on 15 Sep: the recommendation is only ever made where it
+  // suits the client, so the sentence says so plainly every time.
+  if (rec) {
+    if (rec.approvalText) {
+      // Word for word as it was recorded. "1-2 business days" used to be read as
+      // the number 12 and printed as "12 days" - see approvalRange in
+      // lender-comparison.ts.
+      const phrase = /^\d+$/.test(rec.approvalText) ? `${rec.approvalText} days` : rec.approvalText
+      parts.push(`${rec.name}'s approval time is ${phrase}, `
+        + `which is in line with the clients' goals and expectations.`)
+    } else {
+      parts.push(shout(`NOT RECORDED — how long ${rec.name} takes to approve.`))
+      gaps.push({ what: 'Approval turnaround for the recommended lender', where: 'Lending options' })
+    }
   }
 
-  // --- cashback, when there is one -------------------------------------------
+  // --- 4. the features of the chosen product only ---------------------------
+  if (rec) parts.push(featureSentence(rec))
+
+  // --- cashback, when there is one ------------------------------------------
   // Fabio, 10 Sep 2026: "if the cashback box was input with a figure in deal
   // structure mention that."
   const cash = cashbackOf(deal)
