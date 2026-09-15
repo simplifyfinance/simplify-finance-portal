@@ -154,6 +154,63 @@ test.describe('typing into a deal', () => {
     }
   })
 
+  // THE SAME THING ON THE FACT FIND.
+  //
+  // 15 Sep 2026. The rule now covers every free typing box on all four tabs,
+  // not just the two on BC. This proves it where the tab holds everything in
+  // ONE object and replaces it wholesale - a different mechanism from BC's
+  // separate setters, and the one that needed keepOwned().
+  test('Fact Find: a second window SAVING costs no letters', async ({ page, context }) => {
+    const GOALS = "Richard and Letitia want to be in the new place before the "
+      + "school year starts, and they'd like to keep the offset topped up so "
+      + "they aren't paying interest on money that's just sitting there."
+
+    const second = await context.newPage()
+    await second.goto(`/deals/${DEAL}`)
+    await second.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
+    await second.getByRole('button', { name: /^Fact Find$/ }).click()
+    const other = second.getByLabel(/Goals — 2 to 10 years/i)
+    await expect(other).toBeVisible({ timeout: 20_000 })
+    const originalOther = await other.inputValue()
+
+    await page.goto(`/deals/${DEAL}`)
+    await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
+    await page.getByRole('button', { name: /^Fact Find$/ }).click()
+    const box = page.getByLabel(/Goals — next 2 years/i)
+    await expect(box).toBeVisible({ timeout: 20_000 })
+    const originalMine = await box.inputValue()
+
+    try {
+      await box.click()
+      await box.press('Meta+a')
+      await box.press('Delete')
+
+      const typing = box.pressSequentially(GOALS, { delay: 25 })
+      for (let i = 0; i < 4; i++) {
+        await other.click()
+        await other.pressSequentially(` robot ${i}`, { delay: 20 })
+        await second.waitForTimeout(900)
+      }
+      await typing
+
+      expect(await box.inputValue(), 'characters were lost while the other window saved').toBe(GOALS)
+
+      await page.waitForTimeout(5_000)
+      await page.reload()
+      await expect(page.getByLabel(/Goals — next 2 years/i)).toHaveValue(GOALS, { timeout: 20_000 })
+    } finally {
+      // Put both boxes back however this went.
+      await other.click(); await other.press('Meta+a'); await other.press('Delete')
+      if (originalOther) await other.fill(originalOther)
+      await second.waitForTimeout(2_000)
+      await second.close()
+      const mine = page.getByLabel(/Goals — next 2 years/i)
+      await mine.click(); await mine.press('Meta+a'); await mine.press('Delete')
+      if (originalMine) await mine.fill(originalMine)
+      await page.waitForTimeout(2_000)
+    }
+  })
+
   // Two windows on one deal is the case that broke twice. Same person is
   // enough to prove nothing is eaten - the portal cannot tell it is a robot.
   test('a second window open on the same deal costs no letters', async ({ page, context }) => {

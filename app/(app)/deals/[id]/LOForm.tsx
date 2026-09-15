@@ -16,6 +16,7 @@ import { resolveLenderSplits, seedFromGlobal, combineIntoOneLoan,
          lenderTotal, lenderLvr } from '@/lib/lo-splits'
 import { emailFreshness, needsAttention, notesAfterScenarioChange } from '@/lib/email-freshness'
 import { useLiveColumn } from '@/components/useLiveColumn'
+import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved } from '@/lib/field-ownership'
 import { loFigures } from '@/lib/deal-figures'
 import { dealPurpose } from '@/lib/deal-facts'
 import DealStructure from '@/components/DealStructure'
@@ -676,6 +677,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // offers to reload. Refusing to save is the safe failure here; overwriting
   // somebody's afternoon silently is not.
   const guardRef = useRef(emptyGuard())
+  // WHICH BOX IS IN USE RIGHT NOW. See lib/field-ownership.ts.
+  const ownRef = useRef(newOwnership())
   // SOMEBODY ELSE JUST SAVED. Their fields land on this screen without
   // disturbing a single thing this person has typed - see
   // components/useLiveColumn.ts for the rule, and lib/live-deal.ts for why.
@@ -727,10 +730,18 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     savedRef.current = JSON.stringify(loaded)
     // The shaped record, not the raw one - the guard has to hold what the screen
     // holds or it cannot tell "nobody typed" from "everything changed".
+    //
+    // AND IT HOLDS THE RECORD AS IT REALLY IS, not the version below with
+    // somebody's half typed sentence put back. If the guard believed the
+    // database already held her sentence, her next save would decide there was
+    // nothing to write and the sentence would never reach it.
     adopt(guardRef.current, loaded)
+    // A box that is focused or has unsaved changes keeps what is in it. The
+    // rest of the record arrives as normal. See lib/field-ownership.ts.
+    const onScreen = loShape(keepOwned(loaded, liveD.current, ownRef.current))
     // setDRaw: this is the record arriving, not somebody typing.
-    setDRaw(loaded)
-    if (loaded.emailHtml) setEmailHtml(loaded.emailHtml)
+    setDRaw(onScreen)
+    if (onScreen.emailHtml) setEmailHtml(onScreen.emailHtml)
   }
 
   // WRITE IT NOW, NOT IN 700 MILLISECONDS - AND NEVER THROW IT AWAY.
@@ -776,8 +787,12 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     if (recId) extraColumns.lender_id = recId
 
     ;(async () => {
+      // The payload as it is at THIS moment. settleSaved below compares it
+      // against the screen as it will be when the save returns - if she has
+      // carried on typing, that box stays hers and stays protected.
+      const payload = liveD.current
       const out = await saveGuarded({
-        supabase, dealId: deal.id, column: 'lo_data', guard: guardRef.current, savedBy: me, tabLabel: 'Lending options', value: liveD.current, shape: loShape,
+        supabase, dealId: deal.id, column: 'lo_data', guard: guardRef.current, savedBy: me, tabLabel: 'Lending options', value: payload, shape: loShape,
         patch: extraColumns,
         onAdopt: stored => { if (stored) putOnScreen(stored) },
         // THE KATIE CASE. She fills in the rates, somebody else is typing in
@@ -794,6 +809,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       if (out.kind === 'saved' || out.kind === 'merged') {
         setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
       }
+      settleSaved(ownRef.current, payload, liveD.current)
     })()
   }, [deal, me, lenderIdByName])
 
@@ -1476,7 +1492,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 <option key={i} value={b.name}>{b.name} — Simplify Finance</option>
               ))}
             </select>
-            <textarea spellCheck="true" className={`${d.brokerPersonalisation ? "border-green-200 bg-white" : "border-amber-200 bg-[#FFFBF0]"} w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-[80px] resize-y border`} value={d.brokerPersonalisation} onChange={e => setD({ ...d, brokerPersonalisation: e.target.value })} placeholder="✏ Add your personalised opening message..." />
+            <textarea spellCheck="true" className={`${d.brokerPersonalisation ? "border-green-200 bg-white" : "border-amber-200 bg-[#FFFBF0]"} w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-[80px] resize-y border`} value={d.brokerPersonalisation}
+              onFocus={() => focusField(ownRef.current, 'brokerPersonalisation')}
+              onBlur={() => blurField(ownRef.current, 'brokerPersonalisation')}
+              onChange={e => { markDirty(ownRef.current, 'brokerPersonalisation'); setD({ ...d, brokerPersonalisation: e.target.value }) }} placeholder="✏ Add your personalised opening message..." />
           </div>
 
           {/* Documents required */}
@@ -1744,7 +1763,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
               </Field>
             </div>
             <Field label="Recommendation paragraph">
-              <textarea spellCheck="true" className={inp + ' min-h-[100px] resize-y'} value={d.recommendationNote} onChange={e => setD({ ...d, recommendationNote: e.target.value })} placeholder="Based on your situation, I would recommend proceeding with..." />
+              <textarea spellCheck="true" className={inp + ' min-h-[100px] resize-y'} value={d.recommendationNote}
+              onFocus={() => focusField(ownRef.current, 'recommendationNote')}
+              onBlur={() => blurField(ownRef.current, 'recommendationNote')}
+              onChange={e => { markDirty(ownRef.current, 'recommendationNote'); setD({ ...d, recommendationNote: e.target.value }) }} placeholder="Based on your situation, I would recommend proceeding with..." />
               {(() => {
                 const mismatchedLender = d.lenders.find(l =>
                   l.lenderName &&
@@ -1816,13 +1838,19 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           {/* Important notes */}
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Important things to note (included in email, one per line)</div>
-            <textarea spellCheck="true" className={inp + ' min-h-40 resize-y'} value={d.importantNotes || ''} onChange={e => setD({ ...d, importantNotes: e.target.value })} placeholder="One note per line..." />
+            <textarea spellCheck="true" className={inp + ' min-h-40 resize-y'} value={d.importantNotes || ''}
+              onFocus={() => focusField(ownRef.current, 'importantNotes')}
+              onBlur={() => blurField(ownRef.current, 'importantNotes')}
+              onChange={e => { markDirty(ownRef.current, 'importantNotes'); setD({ ...d, importantNotes: e.target.value }) }} placeholder="One note per line..." />
           </div>
 
           {/* Additional notes */}
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Additional notes</div>
-            <textarea spellCheck="true" className={inp + ' min-h-[80px] resize-y'} value={d.additionalNotes} onChange={e => setD({ ...d, additionalNotes: e.target.value })} placeholder="e.g. Debt recycling wording, rate reduction requested..." />
+            <textarea spellCheck="true" className={inp + ' min-h-[80px] resize-y'} value={d.additionalNotes}
+              onFocus={() => focusField(ownRef.current, 'additionalNotes')}
+              onBlur={() => blurField(ownRef.current, 'additionalNotes')}
+              onChange={e => { markDirty(ownRef.current, 'additionalNotes'); setD({ ...d, additionalNotes: e.target.value }) }} placeholder="e.g. Debt recycling wording, rate reduction requested..." />
           </div>
 
           {/* The internal notes box that used to sit here saved to the LO's own

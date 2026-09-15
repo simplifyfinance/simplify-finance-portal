@@ -17,6 +17,7 @@ import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET
 import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship } from '@/lib/relationship'
 import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS } from '@/lib/fact-find'
 import { newGuard, saveGuarded } from '@/lib/save-conflict'
+import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved } from '@/lib/field-ownership'
 import { withDefaults } from '@/lib/record-defaults'
 import NoApplicants from '@/components/NoApplicants'
 import { useLiveColumn } from '@/components/useLiveColumn'
@@ -430,11 +431,15 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   // read as an edit, and every merge was judged against a base this screen had
   // never held. See the note on snapshot() in lib/save-conflict.ts.
   const guardRef = useRef(newGuard(shape(deal.fact_find_data)))
+  // WHICH BOX IS IN USE RIGHT NOW. See lib/field-ownership.ts - nothing external
+  // may write a field that is focused or has unsaved changes. Kylie, 15 Sep
+  // 2026, on the BC notes: "letters are being deleted."
+  const ownRef = useRef(newOwnership())
   // SOMEBODY ELSE JUST SAVED. Their fields land on this screen without
   // disturbing a single thing this person has typed - see
   // components/useLiveColumn.ts for the rule, and lib/live-deal.ts for why.
   useLiveColumn({ dealId: deal.id, column: 'fact_find_data', meId: me?.id, guard: guardRef.current,
-                  current: () => d, apply: v => setD(shape(v)), shape })
+                  current: () => d, apply: v => setD(shape(keepOwned(v, liveD.current, ownRef.current))), shape })
 
   // NO NOTES ABOUT OTHER PEOPLE.
   //
@@ -464,11 +469,11 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       // Nothing typed here yet and somebody else has saved: take their version
       // rather than telling this person off for looking at a deal. Shaped, so it
       // is exactly what a fresh load would have put on screen.
-      onAdopt: stored => { if (stored) setD(shape(stored)) },
+      onAdopt: stored => { if (stored) setD(shape(keepOwned(stored, liveD.current, ownRef.current))) },
       // Somebody else saved different fields while this person was typing. Their
       // fields go on screen without rebuilding the form, so the caret stays where
       // it is and the field being typed into is untouched.
-      onMerge: merged => setD(shape(merged)),
+      onMerge: merged => setD(shape(keepOwned(merged, liveD.current, ownRef.current))),
     })
     // A newer save is already queued behind this one. Saying anything here would
     // be about a payload that has been overtaken.
@@ -478,6 +483,9 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     if (out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote') {
       setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
     }
+    // Against the screen as it is NOW: anything typed while this was in flight
+    // keeps that box protected.
+    settleSaved(ownRef.current, value, liveD.current)
   }, [deal.id, me])
 
   // WRITE IT NOW, NOT IN 600 MILLISECONDS.
@@ -1094,17 +1102,26 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Purpose of loan / primary reason for finance{!d.loanPurpose?.trim() && <span className="text-red-600 font-semibold ml-1">● Required</span>}</label>
-              <textarea spellCheck="true" aria-label="Purpose of loan / primary reason for finance" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.loanPurpose?.trim() ? 'border-gray-200 focus:border-[#2DBEFF]' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="What the client told you they want this loan for..." value={d.loanPurpose} onChange={e => setD(prev => ({ ...prev, loanPurpose: e.target.value }))} />
+              <textarea spellCheck="true" aria-label="Purpose of loan / primary reason for finance" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.loanPurpose?.trim() ? 'border-gray-200 focus:border-[#2DBEFF]' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="What the client told you they want this loan for..." value={d.loanPurpose}
+                onFocus={() => focusField(ownRef.current, 'loanPurpose')}
+                onBlur={() => blurField(ownRef.current, 'loanPurpose')}
+                onChange={e => { markDirty(ownRef.current, 'loanPurpose'); setD(prev => ({ ...prev, loanPurpose: e.target.value })) }} />
               {!d.loanPurpose?.trim() && <p className="text-[11px] text-red-600 mt-1">Compliance box 1 cannot be written without this</p>}
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Goals — next 2 years{!d.goals2Years?.trim() && <span className="text-red-600 font-semibold ml-1">● Required</span>}</label>
-              <textarea spellCheck="true" aria-label="Goals — next 2 years" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.goals2Years?.trim() ? 'border-gray-200 focus:border-[#2DBEFF]' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="Client's own stated short-term plans..." value={d.goals2Years} onChange={e => setD(prev => ({ ...prev, goals2Years: e.target.value }))} />
+              <textarea spellCheck="true" aria-label="Goals — next 2 years" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.goals2Years?.trim() ? 'border-gray-200 focus:border-[#2DBEFF]' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="Client's own stated short-term plans..." value={d.goals2Years}
+                onFocus={() => focusField(ownRef.current, 'goals2Years')}
+                onBlur={() => blurField(ownRef.current, 'goals2Years')}
+                onChange={e => { markDirty(ownRef.current, 'goals2Years'); setD(prev => ({ ...prev, goals2Years: e.target.value })) }} />
               {!d.goals2Years?.trim() && <p className="text-[11px] text-red-600 mt-1">Compliance box 2 cannot be written without this</p>}
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Goals — 2 to 10 years{!d.goals10Years?.trim() && <span className="text-red-600 font-semibold ml-1">● Required</span>}</label>
-              <textarea spellCheck="true" aria-label="Goals — 2 to 10 years" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.goals10Years?.trim() ? 'border-gray-200 focus:border-[#2DBEFF]' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="Client's own stated long-term plans..." value={d.goals10Years} onChange={e => setD(prev => ({ ...prev, goals10Years: e.target.value }))} />
+              <textarea spellCheck="true" aria-label="Goals — 2 to 10 years" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.goals10Years?.trim() ? 'border-gray-200 focus:border-[#2DBEFF]' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="Client's own stated long-term plans..." value={d.goals10Years}
+                onFocus={() => focusField(ownRef.current, 'goals10Years')}
+                onBlur={() => blurField(ownRef.current, 'goals10Years')}
+                onChange={e => { markDirty(ownRef.current, 'goals10Years'); setD(prev => ({ ...prev, goals10Years: e.target.value })) }} />
               {!d.goals10Years?.trim() && <p className="text-[11px] text-red-600 mt-1">Compliance box 3 cannot be written without this</p>}
             </div>
           </div>

@@ -74,7 +74,68 @@ export function mayWrite(o: Ownership, field: string): boolean {
   return o.focused !== field && !o.dirty.has(field)
 }
 
+// Every field this rule protects, whether somebody is in it or has left
+// something unsaved in it.
+export function busyFields(o: Ownership): string[] {
+  const out = new Set(o.dirty)
+  if (o.focused) out.add(o.focused)
+  return [...out]
+}
+
 const isRecord = (v: any) => v !== null && typeof v === 'object' && !Array.isArray(v)
+
+// A field is named by its path through the record: "goals2Years", or
+// "productReqs.otherRequirements" for one that lives a level down.
+const parts = (field: string) => field.split('.')
+
+function readPath(obj: any, field: string): any {
+  let at = obj
+  for (const k of parts(field)) {
+    if (!isRecord(at)) return undefined
+    at = at[k]
+  }
+  return at
+}
+
+// Copies only the objects along the path, so nothing else in the record is
+// touched and React still sees a new object where it needs to.
+function writePath(obj: any, field: string, value: any): any {
+  const [head, ...rest] = parts(field)
+  const base: any = isRecord(obj) ? { ...obj } : {}
+  base[head] = rest.length === 0 ? value : writePath(base[head], rest.join('.'), value)
+  return base
+}
+
+// PUT A WHOLE RECORD ON SCREEN WITHOUT DISTURBING THE BOXES IN USE.
+//
+// The Fact Find, Lending options and Compliance tabs hold everything in ONE
+// object and replace it wholesale - setD(record) - so they cannot go field by
+// field through setters the way the BC tab does. This hands back the incoming
+// record with every busy field's ON-SCREEN value put back into it, so setD is
+// safe to call.
+export function keepOwned(incoming: any, onScreen: any, o: Ownership): any {
+  if (!isRecord(incoming)) return incoming
+  let out = incoming
+  for (const field of busyFields(o)) {
+    const mine = readPath(onScreen, field)
+    if (mine === undefined) continue
+    if (JSON.stringify(readPath(out, field)) === JSON.stringify(mine)) continue
+    out = writePath(out, field, mine)
+  }
+  return out
+}
+
+// A SAVE HAS LANDED. Any box whose saved value is still exactly what is on
+// screen is no longer unsaved. Compared against the screen as it is NOW, not as
+// it was when the save was built, so anything typed while it was in flight
+// keeps that box protected.
+export function settleSaved(o: Ownership, saved: any, onScreen: any): void {
+  for (const field of [...o.dirty]) {
+    if (JSON.stringify(readPath(saved, field)) === JSON.stringify(readPath(onScreen, field))) {
+      markSaved(o, field)
+    }
+  }
+}
 
 // Put a record on screen, going around the boxes that are in use. Returns the
 // fields it held back so the screen can say so if it wants to.

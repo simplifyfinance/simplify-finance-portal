@@ -45,6 +45,7 @@ import { boxSix } from '@/lib/box-power'
 import { withDefaults } from '@/lib/record-defaults'
 import { dealFigures, figureChanges, notesMentioning } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
+import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved } from '@/lib/field-ownership'
 import DealStructure from '@/components/DealStructure'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
@@ -373,6 +374,9 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   // Seeded below, once shape() exists - see the note in FactFindForm. It has to
   // hold what the SCREEN holds, and the screen is shaped.
   const guardRef = useRef<ReturnType<typeof newGuard> | null>(null)
+  // WHICH BOX IS IN USE RIGHT NOW. See lib/field-ownership.ts. This tab has
+  // eleven free text boxes, nine of them the regulated write-ups.
+  const ownRef = useRef(newOwnership())
   // NO NOTES ABOUT OTHER PEOPLE.
   //
   // There were three: "their fields came in", "you were behind", "you saved
@@ -585,7 +589,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   // disturbing a single thing this person has typed - see
   // components/useLiveColumn.ts for the rule, and lib/live-deal.ts for why.
   useLiveColumn({ dealId: deal.id, column: 'compliance_data', meId: me?.id, guard,
-                  current: () => d, apply: v => setD(shape(v)), shape })
+                  current: () => d, apply: v => setD(shape(keepOwned(v, liveD.current, ownRef.current))), shape })
 
 
   useEffect(() => {
@@ -731,21 +735,25 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
     const chosenId = chosenName ? lenderIdByName[String(chosenName).trim().toLowerCase()] : null
 
     ;(async () => {
+      // The payload as it is at THIS moment. settleSaved below compares it
+      // against the screen as it will be when the save returns.
+      const payload = liveD.current
       const out = await saveGuarded({
-        supabase, dealId: deal.id, column: 'compliance_data', guard, savedBy: me, tabLabel: 'Compliance', value: liveD.current, shape,
+        supabase, dealId: deal.id, column: 'compliance_data', guard, savedBy: me, tabLabel: 'Compliance', value: payload, shape,
         patch: chosenId ? { lender_id: chosenId } : undefined,
         // Nothing typed here yet and somebody else has saved: take their
         // version rather than telling this person off for looking at a deal.
         // Shaped, so it is exactly what a fresh load would have put on screen.
-        onAdopt: stored => { if (stored) setD(shape(stored)) },
+        onAdopt: stored => { if (stored) setD(shape(keepOwned(stored, liveD.current, ownRef.current))) },
         // Their fields, folded onto a screen somebody is typing into. A state
         // update, not a rebuild - nobody loses the sentence they are writing.
-        onMerge: merged => setD(shape(merged)),
+        onMerge: merged => setD(shape(keepOwned(merged, liveD.current, ownRef.current))),
       })
       if (out.kind === 'superseded') return
       if (out.kind === 'error') { console.error('Compliance autosave:', out.message); setSaveError(out.message); return }
       setSaveError('')
       if (out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote') setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+      settleSaved(ownRef.current, payload, liveD.current)
     })()
   }, [deal.id, me, lenderIdByName, guard])
 
@@ -1518,7 +1526,9 @@ Use the security address exactly as recorded. On a pre-approval it will already 
               <div key={key} className="mb-4">
                 <label className="text-xs font-medium text-gray-500 block mb-1">{label}</label>
                 <textarea spellCheck="true" aria-label={label} className={inp + ' min-h-[100px] resize-y'} value={(d as any)[key]}
-                  onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
+                  onFocus={() => focusField(ownRef.current, key)}
+                  onBlur={() => blurField(ownRef.current, key)}
+                  onChange={e => { markDirty(ownRef.current, key); setD(prev => ({ ...prev, [key]: e.target.value })) }}
                   placeholder="Click Write from the deal, or type it yourself..." />
                 <AIButton onClick={() => generateField(key)} loading={generating[key]}
                   label={COMPOSERS[key] ? 'Write from the deal' : undefined} />
@@ -1737,7 +1747,9 @@ Use the security address exactly as recorded. On a pre-approval it will already 
           <div>
             <label className="text-xs font-medium text-gray-500 block mb-1">Other requirements</label>
             <textarea spellCheck="true" aria-label="Other requirements" className={inp + ' min-h-[80px] resize-y'} value={d.productReqs.otherRequirements}
-              onChange={e => updateProductReqs('otherRequirements', e.target.value)}
+              onFocus={() => focusField(ownRef.current, 'productReqs.otherRequirements')}
+              onBlur={() => blurField(ownRef.current, 'productReqs.otherRequirements')}
+              onChange={e => { markDirty(ownRef.current, 'productReqs.otherRequirements'); updateProductReqs('otherRequirements', e.target.value) }}
               placeholder="Any other requirements not already stated..." />
           </div>
         </div>
@@ -1778,7 +1790,9 @@ Use the security address exactly as recorded. On a pre-approval it will already 
               <div key={key} className="mb-4">
                 <label className="text-xs font-medium text-gray-500 block mb-1">{label}</label>
                 <textarea spellCheck="true" aria-label={label} className={inp + ' min-h-[120px] resize-y'} value={(d as any)[key]}
-                  onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
+                  onFocus={() => focusField(ownRef.current, key)}
+                  onBlur={() => blurField(ownRef.current, key)}
+                  onChange={e => { markDirty(ownRef.current, key); setD(prev => ({ ...prev, [key]: e.target.value })) }}
                   placeholder="Click Generate with AI or type manually..." />
                 <AIButton onClick={() => generateField(key)} loading={generating[key]}
                   label={COMPOSERS[key] ? 'Write from the deal' : undefined} />
@@ -1806,7 +1820,9 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                     {label} {warning && <span className="text-[10px] text-amber-500">{warning}</span>}
                   </label>
                   <textarea spellCheck="true" aria-label={label} className={inp + ' min-h-[100px] resize-y'} value={(d as any)[key]}
-                    onChange={e => setD(prev => ({ ...prev, [key]: e.target.value }))}
+                    onFocus={() => focusField(ownRef.current, key)}
+                    onBlur={() => blurField(ownRef.current, key)}
+                    onChange={e => { markDirty(ownRef.current, key); setD(prev => ({ ...prev, [key]: e.target.value })) }}
                     placeholder="Click Generate..." />
                   <AIButton onClick={() => generateField(key)} loading={generating[key]}
                     label={COMPOSERS[key] ? 'Write from the deal' : undefined} />
@@ -1908,7 +1924,9 @@ Use the security address exactly as recorded. On a pre-approval it will already 
               <div>
                 <label className="text-xs font-medium text-gray-500 block mb-1">Security (property)</label>
                 <textarea spellCheck="true" aria-label="Security comments" className={inp + ' min-h-[80px] resize-y'} value={d.securityComment}
-                  onChange={e => setD(prev => ({ ...prev, securityComment: e.target.value }))}
+                  onFocus={() => focusField(ownRef.current, 'securityComment')}
+                  onBlur={() => blurField(ownRef.current, 'securityComment')}
+                  onChange={e => { markDirty(ownRef.current, 'securityComment'); setD(prev => ({ ...prev, securityComment: e.target.value })) }}
                   placeholder="TBA or enter address..." />
                 {/* THE LABEL COMES FROM THE COMPOSER LIST, NOT FROM A STRING HERE.
                     10 Sep 2026: box nine shipped wired up and this button still
@@ -1956,7 +1974,9 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                   </p>
                 </div>
                 <textarea spellCheck="true" aria-label="Broker notes for the credit team" className={inp + ' min-h-[190px] resize-y font-[13px]'} value={d.applicationSubmissionComment}
-                  onChange={e => setD(prev => ({ ...prev, applicationSubmissionComment: e.target.value }))}
+                  onFocus={() => focusField(ownRef.current, 'applicationSubmissionComment')}
+                  onBlur={() => blurField(ownRef.current, 'applicationSubmissionComment')}
+                  onChange={e => { markDirty(ownRef.current, 'applicationSubmissionComment'); setD(prev => ({ ...prev, applicationSubmissionComment: e.target.value })) }}
                   placeholder="Press Compose, or type your own..." />
                 {notes.ready ? (
                   <button onClick={writeBrokerNotes}
