@@ -66,6 +66,17 @@ if ! ./scripts/check-record-loaders.sh; then
   exit 1
 fi
 
+# EVERY "MY WORK DISAPPEARED" THIS WEEK CAME BACK TO A BOX THAT SAVED ITSELF
+# AROUND THE PROTECTED PATH. The internal notes box destroying a note on one
+# keystroke; LO, BC and Compliance throwing away the last few seconds on a tab
+# change. Both were found by somebody losing work. This finds the next one first.
+echo "Checking nothing typed is saved around the guard..."
+if ! ./scripts/check-typed-fields.sh; then
+  echo
+  echo "NOT SHIPPED - a box would save somebody's typing without the protection."
+  exit 1
+fi
+
 # The refinance figures go straight into a client's email. They were covered by
 # tests from the start, but the runner was never installed, so for months the
 # checks existed and never ran. They run here now, before anything is built.

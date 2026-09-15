@@ -33,7 +33,25 @@ import { merge3 } from './deal-merge'
 // whole page, including the box somebody was typing into. See
 // DealPageClient. It goes back on when it has been watched working with two
 // windows open. One line, here.
-export const LIVE_EDITING = true
+// OFF AGAIN, 15 Sep 2026.
+//
+// On since 9 Sep. Kylie, 14 Sep, in a deal a colleague was also in: "the cursor
+// keeps jumping around as you type, it deletes letters still." That is this
+// subscription: another person's save arrives, the fold puts their version of
+// the record on screen, and the box being typed in is rewritten with a value
+// that does not contain the last character - so the caret goes to the end and a
+// letter is gone.
+//
+// This is containment, not the fix. The fix is that a box being typed in cannot
+// be written by anything except the person typing, which is being built
+// properly. Until then two people in one deal see each other's work on reload
+// rather than live, which is the trade the business has asked for.
+//
+// Nothing else changes by flipping this. It is read in exactly one place - the
+// first line of the effect in components/useLiveColumn.ts, which returns before
+// the subscription is created. Saving, the version check, the three-way merge,
+// onAdopt and onMerge all live in lib/save-conflict.ts and are untouched.
+export const LIVE_EDITING = false
 
 export type DealColumn = 'fact_find_data' | 'bc_data' | 'lo_data' | 'compliance_data'
 
