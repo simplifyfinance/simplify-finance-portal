@@ -19,6 +19,7 @@
 
 import { money, readMoney } from './money'
 import { annualIncomeOfApplicant } from './income-calculations'
+import { resolveLenderSplits } from './lo-splits'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -65,6 +66,71 @@ export function dealFigures(deal: any): Figures {
       const bal = money(l?.balance)
       out[`the ${lender} loan on ${where}`] = bal || money(l?.limitAmount) || 'nothing recorded'
     })
+  })
+
+  // AND THE LENDING OPTIONS, WHICH THIS USED TO IGNORE ENTIRELY.
+  //
+  // 16 Sep 2026. Fabio: "staff will adjust LO and FF data as they go" - so how
+  // does a compliance box written on Monday avoid quietly describing Monday's
+  // deal on Friday?
+  //
+  // The portal already stamps every box with what it was written from and marks
+  // it stale by name when those facts move. But what it watched was the fact
+  // find and six headline facts, and nothing else. Change a rate on a split, a
+  // fee, a product name or a turnaround and NOTHING went stale: nine paragraphs
+  // sat there naming figures the deal no longer held, looking completely
+  // normal.
+  //
+  // These are the figures the compliance prose actually quotes - box five names
+  // the rate, the fees, the offset and the approval time; box four names the
+  // product. If one of them moves, the box that named it is out of date.
+  Object.assign(out, loRecordFigures(deal?.lo_data))
+
+  return out
+}
+
+// THE RATES ARE ON THE SPLITS. See lib/lender-comparison.ts, 15 Sep 2026 - a
+// lender card has four rate boxes at the top and a Rate box on every split
+// underneath, and the team fills in the splits. Reading only the boxes at the
+// top is what made every compliance box quote "NOT RECORDED" for a deal whose
+// rates were all there.
+function loRecordFigures(lo: any): Figures {
+  const out: Figures = {}
+  if (!lo || typeof lo !== 'object') return out
+
+  ;(lo.lenders || []).forEach((l: any, i: number) => {
+    const who = txt(l?.lenderName) || `lender ${i + 1}`
+    if (txt(l?.productName)) out[`${who}'s product`] = txt(l.productName)
+    if (txt(l?.approvalDays)) out[`${who}'s approval turnaround`] = txt(l.approvalDays)
+    if (txt(l?.offsetAccount)) out[`${who}'s offset account`] = txt(l.offsetAccount)
+
+    // Fees are typed as free text in the lender library - "$0", "$395/yr", "350"
+    // - so they are compared exactly as stored rather than tidied, which would
+    // make a formatting change look like a price change.
+    if (txt(l?.annualFee))      out[`${who}'s annual fee`]      = txt(l.annualFee)
+    if (txt(l?.applicationFee)) out[`${who}'s application fee`] = txt(l.applicationFee)
+    if (txt(l?.valuationFee))   out[`${who}'s valuation fee`]   = txt(l.valuationFee)
+    if (txt(l?.legalFee))       out[`${who}'s legal fee`]       = txt(l.legalFee)
+
+    // Named by the split's own label so two options do not collide, and so the
+    // sentence a person reads says which loan moved.
+    resolveLenderSplits(l, lo.refinanceSplits).forEach((sp: any, j: number) => {
+      const which = txt(sp?.label) || `split ${j + 1}`
+      const where = `${who}'s ${which}`
+      if (txt(sp?.rate)) out[`${where} rate`] = `${txt(sp.rate)}%`
+      if (txt(sp?.repayment)) out[`${where} repayment`] = money(sp.repayment) || txt(sp.repayment)
+      if (txt(sp?.repaymentType)) out[`${where} repayment type`] = txt(sp.repaymentType)
+      if (txt(sp?.amount)) out[`${where} amount`] = money(sp.amount) || txt(sp.amount)
+    })
+
+    // The rate boxes at the top, still read for a lender recorded the older way.
+    for (const [key, label] of [['variablePI', 'variable P&I'], ['variableIO', 'variable interest only'],
+                                ['fixedPI', 'fixed P&I'], ['fixedIO', 'fixed interest only']] as [string, string][]) {
+      const m = l?.[key]
+      if (!m?.enabled) continue
+      if (txt(m.rate)) out[`${who}'s ${label} rate`] = `${txt(m.rate)}%`
+      if (txt(m.repayment)) out[`${who}'s ${label} repayment`] = money(m.repayment) || txt(m.repayment)
+    }
   })
 
   return out

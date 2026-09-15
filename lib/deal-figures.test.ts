@@ -230,3 +230,102 @@ describe('the figures a lending options email quotes', () => {
     expect(loFigures({}) ['the recommended lender']).toBe('not chosen yet')
   })
 })
+
+// ---------------------------------------------------------------------------
+// THE LENDING OPTIONS THE COMPLIANCE NOTES WERE WRITTEN FROM.
+//
+// 16 Sep 2026. Fabio: "staff will adjust LO and FF data as they go" - so how
+// does the portal make sure a compliance box written on Monday is not quietly
+// describing Monday's deal on Friday?
+//
+// It already tries. Every box is stamped with what it was written from, and a
+// box whose facts have moved is marked stale by name. But the stamp watched the
+// FACT FIND and six headline facts, and nothing else. Change a rate on a split,
+// a fee, a product name or an approval turnaround and NOTHING went stale - the
+// prose sat there naming figures the deal no longer holds.
+//
+// Same shape as the fault found on 15 Sep in the compliance boxes themselves:
+// the code only ever looked at the four rate boxes at the top of the lender
+// card, and the team types the rates into the splits.
+describe('the lending options a compliance note was written from', () => {
+  const deal = () => ({
+    fact_find_data: { applicants: [], liabilities: [], properties: [], dependants: '2' },
+    lo_data: {
+      recommendedLender: 'ME Bank',
+      refinanceSplits: [{ id: 's1', label: 'Loan 1', amount: '408,000' }],
+      lenders: [{
+        lenderName: 'ME Bank', productName: 'Flexible Home Loan',
+        approvalDays: '5-7 business days', annualFee: '395', offsetAccount: 'Yes',
+        lenderSplits: [{ id: 's1', label: 'Loan 1', amount: '408,000', lvr: '',
+                         rate: '6.46', repayment: '2,569', repaymentType: 'P&I' }],
+      }],
+    },
+  })
+
+  it('A RATE TYPED INTO A SPLIT IS ONE OF THE FIGURES', () => {
+    const was = dealFigures(deal())
+    const d = deal()
+    d.lo_data.lenders[0].lenderSplits[0].rate = '6.94'
+    const moved = figureChanges(was, dealFigures(d))
+    expect(moved.map(c => c.sentence).join(' '),
+      'a rate change on a split marked nothing stale').toMatch(/6\.46.*6\.94|6\.94/)
+  })
+
+  it('so is the repayment on that split', () => {
+    const was = dealFigures(deal())
+    const d = deal()
+    d.lo_data.lenders[0].lenderSplits[0].repayment = '2,780'
+    expect(figureChanges(was, dealFigures(d)).length,
+      'a repayment change marked nothing stale').toBeGreaterThan(0)
+  })
+
+  it('so is the product the client is being recommended', () => {
+    const was = dealFigures(deal())
+    const d = deal()
+    d.lo_data.lenders[0].productName = 'Everyday Home Loan'
+    expect(figureChanges(was, dealFigures(d)).length,
+      'the product name changed and nothing went stale').toBeGreaterThan(0)
+  })
+
+  it('so is a fee', () => {
+    const was = dealFigures(deal())
+    const d = deal()
+    d.lo_data.lenders[0].annualFee = '450'
+    expect(figureChanges(was, dealFigures(d)).length,
+      'a fee changed and nothing went stale').toBeGreaterThan(0)
+  })
+
+  it('so is how long the lender takes', () => {
+    const was = dealFigures(deal())
+    const d = deal()
+    d.lo_data.lenders[0].approvalDays = '10+ business days'
+    expect(figureChanges(was, dealFigures(d)).length,
+      'the approval turnaround changed and nothing went stale').toBeGreaterThan(0)
+  })
+
+  it('names the lender it belongs to, so two options do not collide', () => {
+    const d = deal()
+    d.lo_data.lenders.push({
+      lenderName: 'Suncorp', productName: 'Home Package Plus',
+      approvalDays: '3-5 business days', annualFee: '375', offsetAccount: 'Yes',
+      lenderSplits: [{ id: 's1', label: 'Loan 1', amount: '408,000', lvr: '',
+                       rate: '6.13', repayment: '2,480', repaymentType: 'P&I' }],
+    } as any)
+    const names = Object.keys(dealFigures(d)).join(' | ')
+    expect(names).toMatch(/ME Bank/)
+    expect(names).toMatch(/Suncorp/)
+  })
+
+  it('a deal with no lending options yet says nothing about it', () => {
+    const bare = { fact_find_data: { applicants: [], liabilities: [], properties: [] } }
+    const names = Object.keys(dealFigures(bare)).join(' | ')
+    expect(names).not.toMatch(/rate|repayment|fee|approval/i)
+  })
+
+  it('and none of this disturbs the fact find figures', () => {
+    const d = deal()
+    ;(d.fact_find_data as any).dependants = '3'
+    const moved = figureChanges(dealFigures(deal()), dealFigures(d))
+    expect(moved.map(c => c.sentence).join(' ')).toMatch(/dependants/i)
+  })
+})

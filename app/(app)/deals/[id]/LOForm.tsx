@@ -235,7 +235,7 @@ function LibraryField({ label, value, onChange }: { label: string; value: string
   )
 }
 
-export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, onDealFieldChange, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null }; deal: any; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void; onDealFieldChange?: (field: string, value: any) => void }) {
+export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, onDataChange, onDealFieldChange, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null }; deal: any; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void; onDataChange?: (d: any) => void; onDealFieldChange?: (field: string, value: any) => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `lo_${deal.id}`
   const bc = deal.bc_data || {}
@@ -743,6 +743,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     // A box that is focused or has unsaved changes keeps what is in it. The
     // rest of the record arrives as normal. See lib/field-ownership.ts.
     const onScreen = loShape(keepOwned(loaded, liveD.current, ownRef.current))
+    // The other way this tab's record changes: one arriving from the database.
+    // The deal page has to know about that too, or Compliance composes from
+    // something nobody is looking at.
+    onDataChange?.(onScreen)
     // setDRaw: this is the record arriving, not somebody typing.
     setDRaw(onScreen)
     if (onScreen.emailHtml) setEmailHtml(onScreen.emailHtml)
@@ -795,6 +799,26 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       // against the screen as it will be when the save returns - if she has
       // carried on typing, that box stays hers and stays protected.
       const payload = liveD.current
+
+      // AND THE DEAL PAGE IS TOLD, WHICH THIS TAB NEVER DID.
+      //
+      // 16 Sep 2026. The deal page holds the whole deal in one object and hands
+      // it to whichever tab is open. Compliance does not read the database when
+      // somebody presses "Write from the deal" - it composes the regulated
+      // wording from that object. The only thing that refreshes it during a
+      // session is each tab calling this as it saves.
+      //
+      // The Fact Find and the BC always have. This tab never did, so editing
+      // the lending options and going straight to Compliance composed from the
+      // record as it was when the deal was OPENED. That is the Mark Guiness
+      // fault - "no deal has been selected in LO" with the products sitting
+      // right there on screen - and reloading the page fixed it, which is
+      // exactly what made it dangerous: the wording looked completely normal.
+      //
+      // Before the save rather than after, the same as the other two: the
+      // screen already holds this, so the rest of the portal should not be a
+      // network round trip behind it. See lib/tabs-report-up.test.ts.
+      onDataChange?.(payload)
       const out = await saveGuarded({
         supabase, dealId: deal.id, column: 'lo_data', guard: guardRef.current, savedBy: me, tabLabel: 'Lending options', value: payload, shape: loShape,
         patch: extraColumns,
