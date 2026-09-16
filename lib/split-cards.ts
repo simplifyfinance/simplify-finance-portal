@@ -36,6 +36,10 @@ export type Split = {
   rate?: any
   type?: any
   repayment?: any
+  // How many years the interest-only period runs for. Recorded on the BC split
+  // beside the repayment type - see repaymentTypeLine below for why the loan
+  // term on its own was actively misleading.
+  ioYears?: any
   // What is owed on THIS property today. Fabio, 16 Sep 2026, on a refinance with
   // two splits: "each split is its own property and loan". The deal-level
   // existingLoanBal stays exactly what it was and everything else still reads it;
@@ -133,6 +137,39 @@ export function structureLead(total: number): string {
 // please, both should say existing loan balance."
 export type Pair = { label: string; value: string }
 
+// "INTEREST ONLY OVER 30 YEARS" WAS TELLING CLIENTS THE WRONG THING.
+//
+// That is what the email said, and it reads as thirty years of interest only. It
+// never was: 30 is the loan term, and the interest-only period is a few years at
+// the front of it. Fabio, 16 Sep 2026, after an audit of where the IO period is
+// recorded - it was in Lending Options and nowhere else, so the BC, the one place
+// a client first hears about interest only, could not say how long it lasted.
+//
+// Now: with the years recorded, it says both halves. Without them, it says
+// "Interest only" and stops - because the loan term is not the answer to "how
+// long", and printing it there was worse than saying nothing.
+export function repaymentTypeLine(split: Split | undefined, loanTerm: any, withTerm?: boolean): string {
+  const type = txt(split?.type)
+  if (!type) return ''
+
+  if (!isInterestOnly(type)) {
+    return withTerm && txt(loanTerm) ? `${type} over ${txt(loanTerm)} years` : type
+  }
+
+  const io = readMoney(split?.ioYears)
+  if (!io || io <= 0) return type
+
+  const term = readMoney(loanTerm)
+  const rest = term && term > io ? term - io : null
+  // "for 3 years, then principal and interest for 27" - Fabio's wording, 16 Sep
+  // 2026. The unit is said once; repeating it on the second half reads like a
+  // form rather than a sentence.
+  const years = (n: number) => `${n} ${n === 1 ? 'year' : 'years'}`
+  return rest
+    ? `Interest only for ${years(io)}, then principal and interest for ${rest}`
+    : `Interest only for ${years(io)}`
+}
+
 export type SplitRowOptions = {
   showTerm?: boolean
   // "P&I over 30 years" on one line, the way the purchase templates already
@@ -168,9 +205,7 @@ export function splitRows(split: Split | undefined, loanTerm: any, opts?: SplitR
 
   add('Indicative rate', txt(split.rate) ? `${txt(split.rate)}% p.a.*` : '')
   add('Estimated repayments', repaymentOf(split, loanTerm))
-  const type = txt(split.type)
-  add('Repayment type', type && opts?.termWithType && txt(loanTerm)
-    ? `${type} over ${txt(loanTerm)} years` : type)
+  add('Repayment type', repaymentTypeLine(split, loanTerm, opts?.termWithType))
   if (opts?.showTerm) add('Loan term', txt(loanTerm) ? `${txt(loanTerm)} years` : '')
   return out
 }

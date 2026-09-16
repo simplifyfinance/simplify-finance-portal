@@ -157,7 +157,37 @@ export default function LenderLibrary() {
     setLenders(prev => prev.map(l => l.id === id ? { ...l, active: !active } : l))
   }
 
+  // WHY THE DATABASE WILL REFUSE, SAID BEFORE IT REFUSES.
+  //
+  // A lender that any deal or any commission rate points at cannot be deleted -
+  // the row is holding up real records, and that is right. What was not right is
+  // what a person saw: they pressed "Yes, delete", the database said no, and the
+  // sentence explaining it was drawn underneath the very popup they were looking
+  // at. Fabio, 16 Sep 2026: "delete lender sticks."
+  //
+  // So it is counted first and said in words, with the thing they should do
+  // instead. Marking a lender inactive takes it off every dropdown and keeps
+  // every deal that used it intact, which is what "delete" was being reached for.
+  async function whyItCannotGo(id: string): Promise<string> {
+    const { count: dealCount } = await supabase
+      .from('deals').select('id', { count: 'exact', head: true }).eq('lender_id', id)
+    const { count: rateCount } = await supabase
+      .from('commission_rates').select('id', { count: 'exact', head: true }).eq('lender_id', id)
+
+    const held: string[] = []
+    if (dealCount) held.push(`${dealCount} ${dealCount === 1 ? 'deal has' : 'deals have'} it recorded`)
+    if (rateCount) held.push(`${rateCount} commission ${rateCount === 1 ? 'rate' : 'rates'} point at it`)
+    if (!held.length) return ''
+
+    return `This lender cannot be deleted - ${held.join(' and ')}. Deleting it would take that `
+         + `history with it. Use the Active toggle instead: it comes off every dropdown and every `
+         + `deal that used it stays exactly as it is.`
+  }
+
   async function deleteLender(id: string) {
+    setWriteError('')
+    const inUse = await whyItCannotGo(id)
+    if (inUse) { setWriteError(inUse); return }
     // A lender with no products deletes nothing here, which is not a failure.
     const pProblem = await checkedWriteAllowingNone(
       supabase.from('lender_products').delete().eq('lender_id', id), 'That lender\u2019s products')
@@ -171,6 +201,7 @@ export default function LenderLibrary() {
   }
 
   async function deleteProduct(id: string) {
+    setWriteError('')
     const problem = await checkedWrite(
       supabase.from('lender_products').delete().eq('id', id), 'That product')
     if (problem) { setWriteError(problem); return }
@@ -509,8 +540,20 @@ export default function LenderLibrary() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-xs p-5">
             <p className="font-semibold text-[#343333] mb-1">Delete {confirmDelete.type === 'lender' ? 'lender' : 'product'}?</p>
             <p className="text-sm text-gray-500 mb-4"><span className="font-medium text-[#343333]">{confirmDelete.name}</span>{confirmDelete.type === 'lender' ? ' and all its products will be permanently deleted.' : ' will be permanently deleted.'}</p>
+            {/* THE REASON IT REFUSED, WHERE THE PERSON PRESSING THE BUTTON CAN SEE IT.
+                A failed delete sets writeError and returns without closing this
+                modal - correct, the thing is not deleted - but the banner that
+                carries the message is drawn at the top of the page, underneath
+                this full-screen overlay. So the button did nothing, said nothing,
+                and the explanation was two inches away behind a grey sheet.
+                Fabio, 16 Sep 2026: "delete lender sticks." */}
+            {writeError && (
+              <p className="text-xs text-red-600 leading-relaxed bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">
+                {writeError}
+              </p>
+            )}
             <button onClick={() => confirmDelete.type === 'lender' ? deleteLender(confirmDelete.id) : deleteProduct(confirmDelete.id)} className="w-full bg-red-500 text-white text-sm py-2.5 rounded-lg hover:bg-red-600 mb-2">Yes, delete</button>
-            <button onClick={() => setConfirmDelete(null)} className="w-full text-sm text-gray-400 py-2">Cancel</button>
+            <button onClick={() => { setWriteError(''); setConfirmDelete(null) }} className="w-full text-sm text-gray-400 py-2">Cancel</button>
           </div>
         </div>
       )}

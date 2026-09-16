@@ -213,7 +213,7 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
 // deal's own Existing loan balance in Scenario details is untouched and every
 // other screen still reads that one - this is optional, per split, and only that
 // split's card in the client email uses it. See lib/split-cards.ts.
-type Split = { label: string; amount: string; rate: string; type: string; existingBalance?: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string; interestCapitalised?: string }
+type Split = { label: string; amount: string; rate: string; type: string; ioYears?: string; existingBalance?: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string; interestCapitalised?: string }
 
 type AltScenario = {
   label?: string
@@ -1777,6 +1777,23 @@ Key assumptions: ${checklistText}`
                         )}
                         {template === "oo_lvr_compare" && <Field label="Deposit required"><NumberInput value={s.deposit || ""} onChange={v => updateSplit(i, 'deposit', v)} /></Field>}<Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
                         <Field label="Type"><select className={selectCls} value={s.type} onChange={e => updateSplit(i, 'type', e.target.value)}><option>P&I</option><option>Interest only</option></select></Field>
+                        {/* HOW LONG THE INTEREST ONLY LASTS.
+                            Until now this lived on Lending Options and nowhere
+                            else, so the BC - where a client first hears about
+                            interest only - said "Interest only over 30 years",
+                            which reads as thirty years of it. Same 1 to 5 as the
+                            LO. Left blank, the email says "Interest only" and
+                            stops, rather than printing the loan term as if it
+                            were the answer. See repaymentTypeLine in
+                            lib/split-cards.ts. */}
+                        {/interest only|^io$/i.test(s.type || '') && (
+                          <Field label="IO period (years)">
+                            <select className={selectCls} value={s.ioYears || ''} onChange={e => updateSplit(i, 'ioYears', e.target.value)}>
+                              <option value="">— select —</option>
+                              <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                            </select>
+                          </Field>
+                        )}
                         {!(template === "bridging" && i === 0) && (
                           <Field label="Repayment">
                             <CurrencyInput className={inputCls} value={s.repayment || ""} onChange={v => updateSplit(i, 'repayment', v)} />

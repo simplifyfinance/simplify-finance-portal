@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import {
   repaymentOf, repaymentMismatch, balancesDisagree, cardTitle, structureLead, splitRows, realSplits,
+  repaymentTypeLine,
 } from './split-cards'
 
 // ARVIND MANE, 16 SEP 2026.
@@ -63,6 +64,49 @@ describe('the repayment typed against the wrong type', () => {
   it('says nothing when there is nothing to compare', () => {
     expect(repaymentMismatch(split({ repayment: '' }), '30')).toBeNull()
     expect(repaymentMismatch(split({ rate: '' }), '30')).toBeNull()
+  })
+})
+
+describe('how long the interest only lasts', () => {
+  const io = (over: any = {}) => ({ type: 'Interest only', amount: '560,000', rate: '6.24', ...over })
+
+  it('says both halves when the years are recorded', () => {
+    expect(repaymentTypeLine(io({ ioYears: '3' }), '30'))
+      .toBe('Interest only for 3 years, then principal and interest for 27')
+  })
+
+  it('gets one year right', () => {
+    expect(repaymentTypeLine(io({ ioYears: '1' }), '30'))
+      .toBe('Interest only for 1 year, then principal and interest for 29')
+  })
+
+  it('NEVER says "Interest only over 30 years"', () => {
+    // That is what it said before, and it reads as thirty years of interest
+    // only. 30 is the loan term. Fabio, 16 Sep 2026.
+    expect(repaymentTypeLine(io(), '30', true)).toBe('Interest only')
+    expect(repaymentTypeLine(io(), '30', true)).not.toMatch(/over 30 years/)
+  })
+
+  it('says nothing about a term it has not been told', () => {
+    expect(repaymentTypeLine(io({ ioYears: '5' }), '')).toBe('Interest only for 5 years')
+  })
+
+  it('leaves principal and interest exactly as it was', () => {
+    expect(repaymentTypeLine({ type: 'P&I' }, '30', true)).toBe('P&I over 30 years')
+    expect(repaymentTypeLine({ type: 'P&I' }, '30')).toBe('P&I')
+  })
+
+  it('reaches the card', () => {
+    const rows = splitRows(io({ ioYears: '2', repayment: '2,912' }), '30', { termWithType: true })
+    expect(rows.find(r => r.label === 'Repayment type')!.value)
+      .toBe('Interest only for 2 years, then principal and interest for 28')
+  })
+
+  it('the BC asks for it, and only when the split is interest only', () => {
+    const bc = readFileSync('app/(app)/deals/[id]/BCForm.tsx', 'utf8')
+    expect(bc).toContain('IO period (years)')
+    expect(bc).toContain("updateSplit(i, 'ioYears', e.target.value)")
+    expect(bc, 'the box would show on a P&I split').toMatch(/interest only\|\^io\$/i)
   })
 })
 
