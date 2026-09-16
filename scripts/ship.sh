@@ -16,6 +16,26 @@ if [ "$BRANCH" != "main" ]; then
   exit 1
 fi
 
+# HOW LONG EACH STAGE ACTUALLY TAKES.
+#
+# Fabio, 16 Sep 2026: "the terminal still processing last command, taking longer
+# these days." Neither of us knew whether that was the build or the 42 browser
+# checks, so we were both guessing at which one to speed up. Now it says.
+#
+# SECONDS is a bash builtin holding the seconds since the shell started, so this
+# costs nothing and cannot fail.
+SHIP_START=$SECONDS
+LAST=$SECONDS
+took() {
+  local s=$((SECONDS - LAST))
+  LAST=$SECONDS
+  if [ $# -gt 0 ]; then
+    printf '%s (%dm %02ds)\n' "$1" $((s / 60)) $((s % 60))
+  else
+    printf ' (%dm %02ds)\n' $((s / 60)) $((s % 60))
+  fi
+}
+
 # A GATE THAT PASSES BECAUSE IT IS BROKEN IS WORSE THAN NO GATE.
 #
 # 10 Sep 2026: a mis-quoted line inside check-record-loaders.sh made its search
@@ -80,6 +100,7 @@ fi
 # The refinance figures go straight into a client's email. They were covered by
 # tests from the start, but the runner was never installed, so for months the
 # checks existed and never ran. They run here now, before anything is built.
+took "Code checks OK."
 echo "Checking the maths..."
 if ! npx vitest run > /tmp/ship-test.log 2>&1; then
   echo
@@ -88,7 +109,8 @@ if ! npx vitest run > /tmp/ship-test.log 2>&1; then
   tail -30 /tmp/ship-test.log
   exit 1
 fi
-echo "Maths OK - $(grep -oE 'Tests +[0-9]+ passed' /tmp/ship-test.log | tail -1)."
+printf 'Maths OK - %s.' "$(grep -oE 'Tests +[0-9]+ passed' /tmp/ship-test.log | tail -1)"
+took
 
 echo "Building..."
 if ! npm run build > /tmp/ship-build.log 2>&1; then
@@ -99,7 +121,8 @@ if ! npm run build > /tmp/ship-build.log 2>&1; then
     || tail -25 /tmp/ship-build.log
   exit 1
 fi
-echo "Build OK."
+printf 'Build OK.'
+took
 
 # LAST, BECAUSE IT NEEDS THE BUILD.
 #
@@ -113,6 +136,8 @@ if ! ./scripts/check-browser.sh; then
   echo "NOT SHIPPED - the browser check failed. Something a person would see is broken."
   exit 1
 fi
+printf 'Browser OK.'
+took
 
 if [ -z "$(git status --porcelain)" ]; then
   echo "Nothing to commit."
@@ -124,3 +149,5 @@ git commit -m "$MSG"
 git push origin main
 echo
 echo "PUSHED TO MAIN: $(git rev-parse --short HEAD)"
+TOTAL=$((SECONDS - SHIP_START))
+printf 'Whole run: %dm %02ds\n' $((TOTAL / 60)) $((TOTAL % 60))
