@@ -266,11 +266,6 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // say it, lives in components/useSaveIndicator.ts - shared, so BC cannot end up
   // telling Kylie a different story from the Fact Find.
   const save = useSaveIndicator(onSaveStatus)
-  // A COPY OF UNSAVED WORK THAT SURVIVES THE TAB DYING. Kept only while the
-  // database does not have it, offered rather than applied, and never written
-  // to the database by anything here. See lib/draft-store.ts.
-  const draft = useDraft({ meId: me?.id, dealId: deal.id, column: 'lo_data',
-                           stored: loShape(deal.lo_data) })
   const [newDoc, setNewDoc] = useState('')
   const [newCriteria, setNewCriteria] = useState('')
   const [sending, setSending] = useState(false)
@@ -762,6 +757,18 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     }
     return loaded
   }
+
+  // A COPY OF UNSAVED WORK THAT SURVIVES THE TAB DYING. Kept only while the
+  // database does not have it, offered rather than applied, and never written to
+  // the database by anything here. See lib/draft-store.ts.
+  //
+  // DECLARED HERE, NOT UP WITH THE OTHER HOOKS. It calls loShape(), and loShape
+  // reaches things that are not initialised until further down this component -
+  // so calling it at the top threw "Cannot access before initialization" and took
+  // the whole LO tab out. 16 Sep 2026: it reached production, because the browser
+  // gate reports and does not block.
+  const draft = useDraft({ meId: me?.id, dealId: deal.id, column: 'lo_data',
+                           stored: loShape(deal.lo_data) })
 
   function putOnScreen(stored: any) {
     // Same fill as on first load - a record arriving from the database later
