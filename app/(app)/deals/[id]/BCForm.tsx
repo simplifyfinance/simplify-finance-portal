@@ -17,6 +17,7 @@ import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, settleSaved, applyOwned } from '@/lib/field-ownership'
 import { LMI_CAPITALISED, LMI_SETTLEMENT, lmiAmount, looksAlreadyCapitalised } from '@/lib/lmi'
 import { repaymentMismatch, balancesDisagree } from '@/lib/split-cards'
+import { scenarioChangeCost, keepSplits, splitsAdded, type ChangeCost } from '@/lib/scenario-change'
 import { money as fmtMoney } from '@/lib/money'
 import { useSaveIndicator } from '@/components/useSaveIndicator'
 import type { SaveStatus } from '@/lib/save-indicator'
@@ -1044,7 +1045,25 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // Advisory only. It never stops anybody sending anything.
   const missingBoxes = missingForEmail(template, buildBcData())
 
+  // WHAT A SCENARIO CHANGE WOULD COST, while it can still be stopped. Null the
+  // rest of the time, and then nothing is asked. See lib/scenario-change.ts.
+  const [askScenario, setAskScenario] = useState<{ id: string; cost: ChangeCost; adds: number } | null>(null)
+
   function selectTemplate(id: string) {
+    if (id === template) return
+    // Clicking a chip used to run setSplits(defaults) on the spot, and every
+    // amount, rate, label, repayment and per-property balance went with it - no
+    // confirmation, nothing in deal_history to put back, and the autosave wrote
+    // the empty version 700ms later. Fabio, 16 Sep 2026.
+    const cost = scenarioChangeCost(splits, TEMPLATE_DEFAULTS[template]?.splits)
+    if (cost) {
+      setAskScenario({ id, cost, adds: splitsAdded(splits, TEMPLATE_DEFAULTS[id]?.splits) })
+      return
+    }
+    applyTemplate(id, 'replace')
+  }
+
+  function applyTemplate(id: string, splitsChoice: 'keep' | 'replace') {
     const previous = template
     setTemplate(id)
     // "Custom (all fields)" is in the list of scenarios but has no split setup
@@ -1052,7 +1071,15 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // my structure alone and show me everything", so leaving the splits alone
     // is also the right behaviour.
     const defaults = TEMPLATE_DEFAULTS[id]
-    if (defaults) setSplits(defaults.splits.map((s: Split) => ({ ...s })))
+    if (splitsChoice === 'keep') {
+      // Keep every typed split and add whatever the new scenario still needs,
+      // blank. One split moving to bridging keeps its own and gains an end loan
+      // waiting to be filled, rather than an email describing a loan that is not
+      // there. Splits beyond what the scenario expects are never dropped.
+      if (defaults) setSplits(prev => keepSplits(prev, defaults.splits) as Split[])
+    } else if (defaults) {
+      setSplits(defaults.splits.map((s: Split) => ({ ...s })))
+    }
     // Never overwrite anything the broker has typed. But if the notes are still
     // word for word what the OLD scenario put there, nobody has written
     // anything and leaving them means a first home buyer is told about rental
@@ -1389,6 +1416,42 @@ Key assumptions: ${checklistText}`
               </div>
             )}
           </div>
+
+          {/* KEEP OR REPLACE. Only ever on screen when the click would actually
+              cost something - see scenarioChangeCost in lib/scenario-change.ts.
+              A broker setting a fresh deal up and flicking between scenarios
+              never sees it. */}
+          {askScenario && (
+            <div className="fixed inset-0 z-50 bg-black/25 flex items-center justify-center p-4"
+                 onClick={() => setAskScenario(null)}>
+              <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-5" onClick={e => e.stopPropagation()}>
+                <div className="text-[15px] font-semibold mb-2">
+                  Change to {TEMPLATES.find(t => t.id === askScenario.id)?.label || askScenario.id}?
+                </div>
+                <p className="text-xs text-gray-500 leading-relaxed mb-3">
+                  That scenario sets up its own loan splits. You have typed into the ones you have now.
+                </p>
+                <div className="bg-[#FFF8F8] border border-[#F3D3D3] rounded-lg px-3 py-2.5 mb-4">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-red-700 mb-1.5">Would be replaced</div>
+                  {askScenario.cost.lines.map((l, i) => (
+                    <div key={i} className="text-xs text-[#5B4141] py-0.5">{l}</div>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => { applyTemplate(askScenario.id, 'keep'); setAskScenario(null) }}
+                    className="text-xs font-semibold bg-[#2DBEFF] text-[#343333] rounded-lg px-3.5 py-2">
+                    Keep my splits{askScenario.adds > 0 ? ` (adds ${askScenario.adds} blank)` : ''}
+                  </button>
+                  <button onClick={() => { applyTemplate(askScenario.id, 'replace'); setAskScenario(null) }}
+                    className="text-xs font-semibold border border-gray-200 text-gray-600 rounded-lg px-3.5 py-2 hover:border-gray-300">
+                    Replace them
+                  </button>
+                  <button onClick={() => setAskScenario(null)}
+                    className="text-xs text-gray-400 rounded-lg px-3 py-2 hover:text-gray-600">Cancel</button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-4">
