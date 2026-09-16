@@ -143,10 +143,15 @@ function lineIf(l: string, v: string) {
 function splitCards(d: any, templateName: string, opts?: {
   amountLabel?: string; showTerm?: boolean; termWithType?: boolean
   existingFallback?: any; after?: (i: number, total: number) => string
+  // Templates with hand-written cards of their own - a bridging loan, an equity
+  // release - keep those and use this to pick up anything past them. Numbering
+  // still counts from the whole list, so the third split is "Split 3".
+  from?: number
 }) {
   const splits = realSplits(d.splits)
-  if (splits.length === 0) return ''
-  return splits.map((sp: any, i: number) =>
+  const from = opts?.from || 0
+  if (splits.length <= from) return ''
+  return splits.slice(from).map((sp: any, k: number) => ((i: number) =>
     card(cardTitle(sp, i, splits.length, templateName),
       splitRows(sp, d.loanTerm, {
         amountLabel: opts?.amountLabel,
@@ -157,7 +162,7 @@ function splitCards(d: any, templateName: string, opts?: {
         // printed on one of two property cards would be wrong on both.
         existingFallback: splits.length === 1 ? opts?.existingFallback : undefined,
       }).map(r => row(r.label, r.value)).join('')
-      + (opts?.after ? opts.after(i, splits.length) : ''))).join('')
+      + (opts?.after ? opts.after(i, splits.length) : '')))(from + k)).join('')
 }
 
 function repaymentRow(split: any, loanTerm: any) {
@@ -435,6 +440,9 @@ export async function POST(req: NextRequest) {
       securityHead(d) +
       card('Split 1 - Refinanced Loan', existingLoanRow(d) + loanAmountRow(d.existingLoanBal, d.splits?.[0]?.amount) + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + repaymentRow(d.splits?.[0], d.loanTerm) + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years')) +
       card('Split 2 - Equity Release', row('Equity release amount', money(d.equityRelease)) + loanAmountRow(d.equityRelease, d.splits?.[1]?.amount) + row('Indicative rate', (d.splits?.[1]?.rate || '') + '% p.a.*') + repaymentRow(d.splits?.[1], d.loanTerm) + row('Repayment type', d.splits?.[1]?.type || 'Interest Only') + buildLVRLine(d)) +
+      // Those two cards are written by hand because each has a headline figure of
+      // its own. A third split had nowhere to go and was dropped in silence.
+      splitCards(d, 'Additional lending', { from: 2, amountLabel: 'New loan amount', showTerm: true }) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
@@ -680,6 +688,10 @@ export async function POST(req: NextRequest) {
         repaymentRow(d.splits?.[1], d.loanTerm) +
         row('Repayment type', `${d.splits?.[1]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
       ) +
+      // The bridging loan and the end debt are written by hand - one capitalises
+      // its interest, the other does not. A third split is an ordinary loan and
+      // prints as one, rather than vanishing.
+      splitCards(d, 'Additional lending', { from: 2, termWithType: true }) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right structure for your bridging scenario — and that is exactly what we will do for you.') +
@@ -746,7 +758,7 @@ export async function POST(req: NextRequest) {
 
     // One row per split, so the construction loan and its own rate and repayment
     // type are actually in the email. They never were.
-    const splitRows = (d.splits || [])
+    const splitLines = (d.splits || [])
       .filter((sp: any) => num(sp?.amount) > 0)
       .map((sp: any, i: number) => row(
         sp.label || `Split ${i + 1}`,
@@ -761,7 +773,7 @@ export async function POST(req: NextRequest) {
         row(dutyLabel(d), money(d.stampDuty)) +
         `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Total cost</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">${money(cost)}</span></td></tr>` +
         row('"As if complete" valuation', money(d.asIfCompleteValue)) +
-        splitRows +
+        splitLines +
         row('Total lending', money(lending)) +
         // Not "deposit". It is cash found across the land settlement and the
         // build, not a deposit on a purchase. Fabio, 2 Sep 2026.
@@ -825,6 +837,9 @@ export async function POST(req: NextRequest) {
           ${newPurchaseCol}
         </td>
       </tr></table>` +
+      // Three columns are written by hand because each sits against a different
+      // security. A fourth split belongs to neither and used to disappear.
+      splitCards(d, 'Additional lending', { from: 3, termWithType: true }) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('Please let us know your thoughts and if you have any questions regarding the numbers above.') +

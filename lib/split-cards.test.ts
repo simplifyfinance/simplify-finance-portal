@@ -166,6 +166,20 @@ describe('no template works it out for itself', () => {
     expect(direct, 'a template is calling estimatedRepayment() directly again').toBe(0)
   })
 
+  it('the scenarios with hand-written cards pick up anything past them', () => {
+    // refinance + equity release keeps its two, bridging keeps its two, equity
+    // release + purchase keeps its three - and a split beyond those now prints
+    // instead of vanishing.
+    const froms = (src.match(/from: (\d)/g) || []).sort()
+    expect(froms).toEqual(['from: 2', 'from: 2', 'from: 3'])
+  })
+
+  it('nothing shadows the shared row builder', () => {
+    // The construction branch had a local `splitRows` of its own sitting on top
+    // of the imported one. Legal, and a trap for the next person reading it.
+    expect(src).not.toMatch(/const splitRows = /)
+  })
+
   it('every scenario that had one hard-coded split now prints a card per split', () => {
     for (const name of ['Refinanced Loan', 'Owner-occupied loan', 'Investment loan', 'SMSF loan', 'End debt', 'Your loan']) {
       expect(src, `${name} is not built from splitCards()`).toContain(`splitCards(d, '${name}'`)
