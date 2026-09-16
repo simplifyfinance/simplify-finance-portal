@@ -3,6 +3,7 @@ import { ctas } from '@/lib/email-buttons'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { lmiClientLines } from '@/lib/lmi'
+import { repaymentOf, splitRows, cardTitle, structureLead, realSplits } from '@/lib/split-cards'
 // EVERY DOLLAR FIGURE IN A CLIENT EMAIL GOES THROUGH money().
 //
 // This file used to write `'$' + (d.purchasePrice || '')` in a hundred
@@ -133,9 +134,38 @@ function lineIf(l: string, v: string) {
 // The repayment is worked out from the loan amount the broker actually typed -
 // never from a total inferred off the fact find. If nobody has said what the new
 // loan is, there is no repayment to quote and the row does not appear.
+// ONE CARD PER SPLIT.
+//
+// Most templates were written around splits[0] and printed nothing else, so a
+// second split changed nothing about the email and said nothing about being
+// ignored. Titles, rows and the counting line above them are all decided in
+// lib/split-cards.ts, so no template can drift back into its own answer.
+function splitCards(d: any, templateName: string, opts?: {
+  amountLabel?: string; showTerm?: boolean; termWithType?: boolean
+  existingFallback?: any; after?: (i: number, total: number) => string
+}) {
+  const splits = realSplits(d.splits)
+  if (splits.length === 0) return ''
+  return splits.map((sp: any, i: number) =>
+    card(cardTitle(sp, i, splits.length, templateName),
+      splitRows(sp, d.loanTerm, {
+        amountLabel: opts?.amountLabel,
+        showTerm: opts?.showTerm,
+        termWithType: opts?.termWithType,
+        // The DEAL's balance only stands in for a lone split. With two, each one
+        // carries its own or the row is simply not there - a deal-level figure
+        // printed on one of two property cards would be wrong on both.
+        existingFallback: splits.length === 1 ? opts?.existingFallback : undefined,
+      }).map(r => row(r.label, r.value)).join('')
+      + (opts?.after ? opts.after(i, splits.length) : ''))).join('')
+}
+
 function repaymentRow(split: any, loanTerm: any) {
-  return rowIf('Estimated repayments',
-    estimatedRepayment(split?.amount, split?.rate, loanTerm, split?.type))
+  // THE TYPED BOX WINS. It used to call estimatedRepayment() and print the
+  // portal's own arithmetic over whatever the broker had entered - $2,912 on a
+  // split whose Repayment box said $3,445. Fabio, 16 Sep 2026: "our typed
+  // repayments take over never calculate repayments." See lib/split-cards.ts.
+  return rowIf('Estimated repayments', repaymentOf(split, loanTerm))
 }
 
 // WHERE THE TOP OF THIS EMAIL READS FROM, AND WHY IT IS NOT THE FACT FIND.
@@ -413,9 +443,13 @@ export async function POST(req: NextRequest) {
   } else if (template === 'refinance_only') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('Based on your current financial position, you have sufficient capacity to refinance your existing loan and secure a competitive rate.') +
-      p13('Here is a breakdown of the structure:') +
+      p13(structureLead(realSplits(d.splits).length)) +
       securityHead(d) +
-      card('Refinanced Loan', existingLoanRow(d) + loanAmountRow(d.existingLoanBal, d.splits?.[0]?.amount, 'New loan amount') + row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') + repaymentRow(d.splits?.[0], d.loanTerm) + row('Repayment type', d.splits?.[0]?.type || 'P&I') + row('Loan term', (d.loanTerm || '30') + ' years') + buildLVRLine(d)) +
+      splitCards(d, 'Refinanced Loan', {
+        amountLabel: 'New loan amount', showTerm: true, existingFallback: d.existingLoanBal,
+        // The LVR is a fact about the whole deal, not about a part of it.
+        after: (i) => (i === 0 ? buildLVRLine(d) : ''),
+      }) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
@@ -441,7 +475,7 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: ${money(opt.loanAmount) || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Est. repayment: ${lineIf('Est. repayment', estimatedRepayment(opt.loanAmount || opt.amount, opt.rate, d.loanTerm, opt.type))}</span></p>
+        ${lineIf('Est. repayment', repaymentOf({ ...opt, amount: opt.loanAmount || opt.amount }, d.loanTerm))}
         ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px"><span style="color:#343333;">To achieve this option:</span></p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">&#10003; ${a}</span></p>`).join('') : ''}${nonBankNote}
       </td>`
     }
@@ -468,16 +502,15 @@ export async function POST(req: NextRequest) {
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>.`) +
       p13('Here is a breakdown of the structure:') +
-      card('Your Loan Structure',
+      card('The Purchase',
         row('Purchase price', money(d.purchasePrice)) +
         row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}${PLUS_INCIDENTALS}`, money(d.deposit)) +
         row(dutyLabel(d), money(d.stampDuty)) +
-        row('Loan amount', money(d.splits?.[0]?.amount)) +
-        buildLVRLine(d) +
-        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
-        repaymentRow(d.splits?.[0], d.loanTerm) +
-        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+        row('Total lending', money(totalLending(d.splits))) +
+        buildLVRLine(d)
       ) +
+      p13(structureLead(realSplits(d.splits).length)) +
+      splitCards(d, 'Owner-occupied loan', { termWithType: true }) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
@@ -503,7 +536,7 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: ${money(opt.loanAmount) || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Est. repayment: ${lineIf('Est. repayment', estimatedRepayment(opt.loanAmount || opt.amount, opt.rate, d.loanTerm, opt.type))}</span></p>
+        ${lineIf('Est. repayment', repaymentOf({ ...opt, amount: opt.loanAmount || opt.amount }, d.loanTerm))}
         ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px"><span style="color:#343333;">To achieve this option:</span></p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">&#10003; ${a}</span></p>`).join('') : ''}${nonBankNote}
       </td>`
     }
@@ -529,16 +562,15 @@ export async function POST(req: NextRequest) {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>.`) +
-      card('Your Loan Structure',
+      card('The Purchase',
         row('Purchase price', money(d.purchasePrice)) +
         row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}${PLUS_INCIDENTALS}`, money(d.deposit)) +
         row(dutyLabel(d), money(d.stampDuty)) +
-        row('Loan amount', money(d.splits?.[0]?.amount)) +
-        buildLVRLine(d) +
-        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
-        repaymentRow(d.splits?.[0], d.loanTerm) +
-        row('Repayment type', `${d.splits?.[0]?.type || 'Interest Only (5 years)'} over ${d.loanTerm || '30'} years`)
+        row('Total lending', money(totalLending(d.splits))) +
+        buildLVRLine(d)
       ) +
+      p13(structureLead(realSplits(d.splits).length)) +
+      splitCards(d, 'Investment loan', { termWithType: true }) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right structure for your investment — and that is exactly what we will do for you.') +
@@ -558,12 +590,11 @@ export async function POST(req: NextRequest) {
         row('Purchase price', money(d.purchasePrice)) +
         row(depositLabel + PLUS_INCIDENTALS, money(d.deposit)) +
         row(dutyLabel(d), money(d.stampDuty)) +
-        row('Loan amount', money(d.splits?.[0]?.amount)) +
-        buildLVRLine(d) +
-        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
-        repaymentRow(d.splits?.[0], d.loanTerm) +
-        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+        row('Total lending', money(totalLending(d.splits))) +
+        buildLVRLine(d)
       ) +
+      p13(structureLead(realSplits(d.splits).length)) +
+      splitCards(d, 'End debt', { termWithType: true }) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('Now it is about finding the right lender, the right rate, and making sure the timing between your sale and purchase lines up perfectly. That is exactly what we are here for.') +
@@ -610,16 +641,15 @@ export async function POST(req: NextRequest) {
       </ul>
       <p style="font-size:12px;color:#777;margin:0 0 16px;line-height:1.6"><span style="color:#777;">**Retained savings explanation: after the payment of your 5% deposit (plus any relevant stamp duty), the government allows you to retain up to 6 months of living expenses AND up to 6 months of scheduled loan repayments.</span></p>
       <p style="font-size:13px;color:#555;margin:0 0 16px"><span style="color:#555;">Further information: <a href="https://firsthomebuyers.gov.au/australian-government-5-percent-deposit-scheme" style="color:#2DBEFF">firsthomebuyers.gov.au/australian-government-5-percent-deposit-scheme</a></span></p>` +
-      card('Your Loan Structure',
+      card('The Purchase',
         row('Purchase price', money(d.purchasePrice)) +
         row(dutyLabel(d), d.stampDuty ? money(d.stampDuty) : '$0 — first home buyer exemption') +
-        row('Loan amount', money(d.splits?.[0]?.amount)) +
+        row('Total lending', money(totalLending(d.splits))) +
         row('LMI', 'Waived under Gov. Deposit Scheme') +
-        row(`Your contribution required${PLUS_INCIDENTALS}`, money(d.deposit)) +
-        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
-        repaymentRow(d.splits?.[0], d.loanTerm) +
-        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+        row(`Your contribution required${PLUS_INCIDENTALS}`, money(d.deposit))
       ) +
+      p13(structureLead(realSplits(d.splits).length)) +
+      splitCards(d, 'Owner-occupied loan', { termWithType: true }) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
@@ -691,15 +721,14 @@ export async function POST(req: NextRequest) {
   } else if (template === 'smsf') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('When looking at your numbers, your borrowing capacity is looking strong for an SMSF purchase.') +
-      card('Your Loan Structure',
+      card('The Purchase',
         row('Purchase price', money(d.purchasePrice)) +
         row(dutyLabel(d), money(d.stampDuty)) +
-        row('Loan amount', money(d.splits?.[0]?.amount)) +
-        row(`Your contribution required${PLUS_INCIDENTALS}`, money(d.deposit)) +
-        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
-        repaymentRow(d.splits?.[0], d.loanTerm) +
-        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+        row('Total lending', money(totalLending(d.splits))) +
+        row(`Your contribution required${PLUS_INCIDENTALS}`, money(d.deposit))
       ) +
+      p13(structureLead(realSplits(d.splits).length)) +
+      splitCards(d, 'SMSF loan', { termWithType: true }) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right SMSF structure for your investment — and that is exactly what we will do for you.') +
@@ -759,17 +788,17 @@ export async function POST(req: NextRequest) {
       <p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 6px"><span style="color:#343333;">Existing loan refinanced</span></p>
       <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Loan amount: ${money(d.splits?.[0]?.amount) || ''}</span></p>
       <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Indicative rate: ${d.splits?.[0]?.rate || ''}% p.a.*</span></p>
-      ${lineIf('Estimated repayments', estimatedRepayment(d.splits?.[0]?.amount, d.splits?.[0]?.rate, d.loanTerm, d.splits?.[0]?.type))}
+      ${lineIf('Estimated repayments', repaymentOf(d.splits?.[0], d.loanTerm))}
       <p style="font-size:11px;color:#555;margin:2px 0 10px"><span style="color:#555;">Repayment type: ${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years</span></p>
       <p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 6px"><span style="color:#343333;">Equity access</span></p>
       <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Loan amount: ${money(d.splits?.[1]?.amount) || ''}</span></p>
       <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Indicative rate: ${d.splits?.[1]?.rate || ''}% p.a.*</span></p>
-      ${lineIf('Estimated repayments', estimatedRepayment(d.splits?.[1]?.amount, d.splits?.[1]?.rate, d.loanTerm, d.splits?.[1]?.type))}
+      ${lineIf('Estimated repayments', repaymentOf(d.splits?.[1], d.loanTerm))}
       <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Repayment type: ${d.splits?.[1]?.type || 'P&I'} over ${d.loanTerm || '30'} years</span></p>`
     const newPurchaseCol = `
       <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Loan amount: ${money(d.splits?.[2]?.amount) || ''}</span></p>
       <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Indicative rate: ${d.splits?.[2]?.rate || ''}% p.a.*</span></p>
-      ${lineIf('Estimated repayments', estimatedRepayment(d.splits?.[2]?.amount, d.splits?.[2]?.rate, d.loanTerm, d.splits?.[2]?.type))}
+      ${lineIf('Estimated repayments', repaymentOf(d.splits?.[2], d.loanTerm))}
       <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Repayment type: ${d.splits?.[2]?.type || 'P&I'} over ${d.loanTerm || '30'} years</span></p>`
 
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -805,16 +834,15 @@ export async function POST(req: NextRequest) {
   } else if (template === 'custom') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
-      card('Your Loan Structure',
+      card('The Purchase',
         row('Purchase price', money(d.purchasePrice)) +
         row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}${PLUS_INCIDENTALS}`, money(d.deposit)) +
         row(dutyLabel(d), money(d.stampDuty)) +
-        row('Loan amount', money(d.splits?.[0]?.amount)) +
-        buildLVRLine(d) +
-        row('Indicative rate', (d.splits?.[0]?.rate || '') + '% p.a.*') +
-        repaymentRow(d.splits?.[0], d.loanTerm) +
-        row('Repayment type', `${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years`)
+        row('Total lending', money(totalLending(d.splits))) +
+        buildLVRLine(d)
       ) +
+      p13(structureLead(realSplits(d.splits).length)) +
+      splitCards(d, 'Your loan', { termWithType: true }) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +

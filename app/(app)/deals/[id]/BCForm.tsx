@@ -16,6 +16,7 @@ import { dealFigures } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, settleSaved, applyOwned } from '@/lib/field-ownership'
 import { LMI_CAPITALISED, LMI_SETTLEMENT, lmiAmount, looksAlreadyCapitalised } from '@/lib/lmi'
+import { repaymentMismatch, balancesDisagree } from '@/lib/split-cards'
 import { money as fmtMoney } from '@/lib/money'
 import { useSaveIndicator } from '@/components/useSaveIndicator'
 import type { SaveStatus } from '@/lib/save-indicator'
@@ -204,7 +205,12 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
   construction: { splits: [{ label: 'Land loan', amount: '', rate: '6.14', type: 'P&I' }, { label: 'Construction loan', amount: '', rate: '6.39', type: 'Interest only' }] },
 }
 
-type Split = { label: string; amount: string; rate: string; type: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string; interestCapitalised?: string }
+// existingBalance: what is owed on THIS property today. Fabio, 16 Sep 2026, on a
+// refinance carrying two splits: "each split is its own property and loan". The
+// deal's own Existing loan balance in Scenario details is untouched and every
+// other screen still reads that one - this is optional, per split, and only that
+// split's card in the client email uses it. See lib/split-cards.ts.
+type Split = { label: string; amount: string; rate: string; type: string; existingBalance?: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string; interestCapitalised?: string }
 
 type AltScenario = {
   label?: string
@@ -1624,6 +1630,18 @@ Key assumptions: ${checklistText}`
 
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">{isMultiOption ? "Loan Options — Multiple Deposits" : "Loan splits"}</div>
+                {/* THE PARTS AGAINST THE WHOLE. The same shape as the deposit
+                    cross-check in the funds strip: it names a disagreement between
+                    two figures the broker typed and changes neither. */}
+                {(() => {
+                  const off = balancesDisagree(splits, existingLoanBal)
+                  if (!off) return null
+                  return (
+                    <div className="mb-3 text-xs text-amber-800 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2 leading-snug">
+                      &#9888; The balances on the splits add up to {fmtMoney(off.parts)}, but Scenario details says {fmtMoney(off.deal)}. One of the two needs another look.
+                    </div>
+                  )
+                })()}
                 <div className="flex flex-col gap-3">
                   {splits.map((s, i) => {
                     if (template === 'investment_equity' && i === 2) return null
@@ -1671,9 +1689,32 @@ Key assumptions: ${checklistText}`
                             </span>
                           )}
                         </Field>
+                        {isRefinanceLinked && (
+                          <Field label="Existing balance on this property">
+                            <CurrencyInput className={inputCls} value={s.existingBalance || ""} onChange={v => updateSplit(i, 'existingBalance', v)} />
+                          </Field>
+                        )}
                         {template === "oo_lvr_compare" && <Field label="Deposit required"><NumberInput value={s.deposit || ""} onChange={v => updateSplit(i, 'deposit', v)} /></Field>}<Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
                         <Field label="Type"><select className={selectCls} value={s.type} onChange={e => updateSplit(i, 'type', e.target.value)}><option>P&I</option><option>Interest only</option></select></Field>
-                        {!(template === "bridging" && i === 0) && <Field label="Repayment"><CurrencyInput className={inputCls} value={s.repayment || ""} onChange={v => updateSplit(i, 'repayment', v)} /></Field>}
+                        {!(template === "bridging" && i === 0) && (
+                          <Field label="Repayment">
+                            <CurrencyInput className={inputCls} value={s.repayment || ""} onChange={v => updateSplit(i, 'repayment', v)} />
+                            {/* TYPED AGAINST THE WRONG REPAYMENT TYPE. Only ever shown
+                                when the figure lands exactly on the OTHER type's
+                                arithmetic - a broker typing the lender's own number is
+                                not second-guessed. Nothing is changed and nothing is
+                                blocked. See repaymentMismatch in lib/split-cards.ts. */}
+                            {(() => {
+                              const m = repaymentMismatch(s, loanTerm)
+                              if (!m) return null
+                              return (
+                                <span className="text-[11px] text-amber-800 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1.5 leading-snug">
+                                  &#9888; {fmtMoney(m.typed)} is the {m.looksLike} repayment for this split, but the type says {m.thisLabel} ({fmtMoney(m.thisType)}). Check which is right &mdash; the email sends what is typed here.
+                                </span>
+                              )
+                            })()}
+                          </Field>
+                        )}
                         {template === "bridging" && i === 0 && (
                           <Field label="Estimated interest capitalised">
                             <CurrencyInput className={inputCls} value={s.interestCapitalised || ""} onChange={v => updateSplit(i, 'interestCapitalised', v)} />
