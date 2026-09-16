@@ -85,25 +85,45 @@ for f in files:
     for m in re.finditer(r'rgba\(', s):
         issues.append((f, s[:m.start()].count('\n') + 1, 'rgba() — Word has no rgba. Use a solid hex.'))
 
-# EVERY CONTRIBUTION LINE CARRIES THE INCIDENTALS NOTE.
+# EVERY PURCHASE CARRIES THE INCIDENTALS NOTE - NOW ON THE TOTAL.
 #
 # Fabio, 10 Sep 2026: the figure a client is told to bring is never the whole of
-# it - conveyancing and the small settlement costs sit on top. A purchase
-# scenario that quietly loses the note tells a client to find less than they
-# need, so this counts them rather than trusting anyone to remember.
+# it - conveyancing and the small settlement costs sit on top. That was enforced
+# by counting PLUS_INCIDENTALS against every contribution line, which worked
+# while all eight purchase scenarios wrote their own breakdown.
+#
+# 16 Sep 2026 they stopped. They are all built from one block now
+# (lib/purchase-rows.ts) and Fabio moved the note up onto the total, above the
+# contribution: "Total cost $ (plus solicitor's fees, and incidentals)".
+# Counting occurrences after that measures nothing, so this checks the two
+# things that actually hold it together: the note lives on the Total cost line,
+# and every purchase card is built from that one block rather than by hand.
 bc = open('app/api/generate-email/route.ts', encoding='utf-8').read()
 lo = open('app/api/generate-lo-email/route.ts', encoding='utf-8').read()
-WORDS = "(plus solicitor's fees and incidentals)"
-if WORDS not in bc:
+rows = open('lib/purchase-rows.ts', encoding='utf-8').read()
+
+if "solicitor's fees, and incidentals" not in rows:
+    issues.append(('lib/purchase-rows.ts', 0,
+                   'the incidentals note has gone from the purchase block entirely'))
+elif 'Total cost${INCIDENTALS}' not in rows:
+    issues.append(('lib/purchase-rows.ts', 0,
+                   'the incidentals note is no longer on the Total cost line'))
+
+built = bc.count('purchaseBlock({') + bc.count('purchaseColumn({')
+if built < 10:
     issues.append(('app/api/generate-email/route.ts', 0,
-                   'the incidentals note has gone from the BC email entirely'))
-else:
-    marked = bc.count('PLUS_INCIDENTALS') - 1        # less its own declaration
-    if marked < 13:
-        issues.append(('app/api/generate-email/route.ts', 0,
-                       'only %d contribution lines carry the incidentals note; there were 13. '
-                       'A purchase scenario has lost it.' % marked))
-if WORDS not in lo:
+                   'only %d purchase breakdowns are built from lib/purchase-rows.ts; there were 10. '
+                   'A scenario has gone back to writing its own and will drift.' % built))
+
+# Construction, bridging and the LVR comparison are not purchases in that shape
+# and keep their own wording - and their own note.
+kept = bc.count('PLUS_INCIDENTALS') - 1              # less its own declaration
+if kept < 3:
+    issues.append(('app/api/generate-email/route.ts', 0,
+                   'only %d of construction, bridging and the LVR comparison still carry the '
+                   'incidentals note; there were 3.' % kept))
+
+if 'incidentals' not in lo:
     issues.append(('app/api/generate-lo-email/route.ts', 0,
                    'the Deposit Required line has lost the incidentals note'))
 

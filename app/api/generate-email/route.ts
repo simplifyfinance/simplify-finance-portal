@@ -4,6 +4,7 @@ import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { lmiClientLines } from '@/lib/lmi'
 import { repaymentOf, splitRows, cardTitle, structureLead, realSplits } from '@/lib/split-cards'
+import { purchaseRows } from '@/lib/purchase-rows'
 // EVERY DOLLAR FIGURE IN A CLIENT EMAIL GOES THROUGH money().
 //
 // This file used to write `'$' + (d.purchasePrice || '')` in a hundred
@@ -140,6 +141,20 @@ function lineIf(l: string, v: string) {
 // second split changed nothing about the email and said nothing about being
 // ignored. Titles, rows and the counting line above them are all decided in
 // lib/split-cards.ts, so no template can drift back into its own answer.
+// THE PURCHASE BLOCK - five lines, one order, every scenario that buys. What it
+// says is decided in lib/purchase-rows.ts; this only turns it into table rows.
+function purchaseBlock(input: Parameters<typeof purchaseRows>[0]): string {
+  return purchaseRows(input).map(r => row(r.label, r.value)).join('')
+}
+
+// The same five lines in a comparison column, which stacks them rather than
+// putting them in a two-column table.
+function purchaseColumn(input: Parameters<typeof purchaseRows>[0]): string {
+  return purchaseRows(input).map(r =>
+    `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">${r.label}: ${r.value}</span></p>`
+  ).join('')
+}
+
 function splitCards(d: any, templateName: string, opts?: {
   amountLabel?: string; showTerm?: boolean; termWithType?: boolean
   existingFallback?: any; after?: (i: number, total: number) => string
@@ -477,10 +492,10 @@ export async function POST(req: NextRequest) {
       const lmiLine = lvrNum > 80 ? lmiLines(opt, d.lmiTreatment, loanNum) : ''
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Purchase price: ${money(opt.purchasePrice) || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit${PLUS_INCIDENTALS}: ${money(opt.deposit) || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">${dutyLabel(d)}: ${money(opt.stampDuty) || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: ${money(opt.loanAmount) || ''}</span></p>
+        ${purchaseColumn({
+          price: opt.purchasePrice, duty: opt.stampDuty, dutyLabel: dutyLabel(d),
+          loan: opt.loanAmount, contribution: opt.deposit, contributionFrom: d.depositSource,
+        })}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
         ${lineIf('Est. repayment', repaymentOf({ ...opt, amount: opt.loanAmount || opt.amount }, d.loanTerm))}
@@ -511,10 +526,10 @@ export async function POST(req: NextRequest) {
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>.`) +
       p13('Here is a breakdown of the structure:') +
       card('The Purchase',
-        row('Purchase price', money(d.purchasePrice)) +
-        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}${PLUS_INCIDENTALS}`, money(d.deposit)) +
-        row(dutyLabel(d), money(d.stampDuty)) +
-        row('Total lending', money(totalLending(d.splits))) +
+        purchaseBlock({
+          price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
+          loan: totalLending(d.splits), contribution: d.deposit, contributionFrom: d.depositSource,
+        }) +
         buildLVRLine(d)
       ) +
       p13(structureLead(realSplits(d.splits).length)) +
@@ -538,10 +553,10 @@ export async function POST(req: NextRequest) {
       const lmiLine = lvrNum > 80 ? lmiLines(opt, d.lmiTreatment, loanNum) : ''
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Purchase price: ${money(opt.purchasePrice) || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit${PLUS_INCIDENTALS}: ${money(opt.deposit) || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">${dutyLabel(d)}: ${money(opt.stampDuty) || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: ${money(opt.loanAmount) || ''}</span></p>
+        ${purchaseColumn({
+          price: opt.purchasePrice, duty: opt.stampDuty, dutyLabel: dutyLabel(d),
+          loan: opt.loanAmount, contribution: opt.deposit, contributionFrom: d.depositSource,
+        })}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
         ${lineIf('Est. repayment', repaymentOf({ ...opt, amount: opt.loanAmount || opt.amount }, d.loanTerm))}
@@ -571,10 +586,10 @@ export async function POST(req: NextRequest) {
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       p(`With a contribution of <strong>${amt(d.deposit, '[deposit]')}</strong> in savings, you could achieve a purchase price of <strong>${amt(d.purchasePrice, '[purchase price]')}</strong>.`) +
       card('The Purchase',
-        row('Purchase price', money(d.purchasePrice)) +
-        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}${PLUS_INCIDENTALS}`, money(d.deposit)) +
-        row(dutyLabel(d), money(d.stampDuty)) +
-        row('Total lending', money(totalLending(d.splits))) +
+        purchaseBlock({
+          price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
+          loan: totalLending(d.splits), contribution: d.deposit, contributionFrom: d.depositSource,
+        }) +
         buildLVRLine(d)
       ) +
       p13(structureLead(realSplits(d.splits).length)) +
@@ -595,10 +610,11 @@ export async function POST(req: NextRequest) {
         `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Net proceeds (est.)</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">${money(d.netProceeds) || ''}</span></td></tr>`
       ) +
       card('New Purchase',
-        row('Purchase price', money(d.purchasePrice)) +
-        row(depositLabel + PLUS_INCIDENTALS, money(d.deposit)) +
-        row(dutyLabel(d), money(d.stampDuty)) +
-        row('Total lending', money(totalLending(d.splits))) +
+        purchaseBlock({
+          price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
+          loan: totalLending(d.splits), contribution: d.deposit,
+          contributionFrom: (Number(d.additionalSavings) || 0) > 0 ? 'sale proceeds and savings' : 'sale proceeds',
+        }) +
         buildLVRLine(d)
       ) +
       p13(structureLead(realSplits(d.splits).length)) +
@@ -650,11 +666,12 @@ export async function POST(req: NextRequest) {
       <p style="font-size:12px;color:#777;margin:0 0 16px;line-height:1.6"><span style="color:#777;">**Retained savings explanation: after the payment of your 5% deposit (plus any relevant stamp duty), the government allows you to retain up to 6 months of living expenses AND up to 6 months of scheduled loan repayments.</span></p>
       <p style="font-size:13px;color:#555;margin:0 0 16px"><span style="color:#555;">Further information: <a href="https://firsthomebuyers.gov.au/australian-government-5-percent-deposit-scheme" style="color:#2DBEFF">firsthomebuyers.gov.au/australian-government-5-percent-deposit-scheme</a></span></p>` +
       card('The Purchase',
-        row('Purchase price', money(d.purchasePrice)) +
-        row(dutyLabel(d), d.stampDuty ? money(d.stampDuty) : '$0 — first home buyer exemption') +
-        row('Total lending', money(totalLending(d.splits))) +
-        row('LMI', 'Waived under Gov. Deposit Scheme') +
-        row(`Your contribution required${PLUS_INCIDENTALS}`, money(d.deposit))
+        purchaseBlock({
+          price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
+          dutyText: d.stampDuty ? '' : '$0 — first home buyer exemption',
+          loan: totalLending(d.splits), contribution: d.deposit, contributionFrom: d.depositSource,
+        }) +
+        row('LMI', 'Waived under Gov. Deposit Scheme')
       ) +
       p13(structureLead(realSplits(d.splits).length)) +
       splitCards(d, 'Owner-occupied loan', { termWithType: true }) +
@@ -668,10 +685,16 @@ export async function POST(req: NextRequest) {
       p('Based on your current financial position, bridging finance is achievable for your next owner-occupied purchase.') +
       p('Bridging finance lets you buy your new home before your current one sells. Here is how it works: while you hold both properties, your bridging loan accrues interest at the rate below, but that interest is <strong>capitalised</strong> \u2014 added to your loan balance rather than paid month to month. When your existing property sells, the proceeds pay off that combined balance. Whatever is left over becomes your <strong>end debt</strong>: an ordinary home loan with regular repayments, which you will see broken out below.') +
       card('New Purchase Details',
-        row('Purchase price', money(d.purchasePrice)) +
-        row(dutyLabel(d), money(d.stampDuty)) +
-        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Total cost</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">${money((readMoney(d.purchasePrice) || 0) + (readMoney(d.stampDuty) || 0))}</span></td></tr>` +
-        row(`Contribution${d.depositSource ? ` (from ${d.depositSource})` : ''}${PLUS_INCIDENTALS}`, money(d.deposit)) +
+        // NO "LOAN AMOUNT" ROW ON A BRIDGE. The lending here is two figures
+        // with names of their own - the peak debt and the end debt - and the
+        // first version of this printed the peak debt twice, once as "Loan
+        // amount" and once under its real name. Two names for the same number is
+        // not information; see lib/email-amounts.ts. Passing no loan leaves that
+        // row out and the bridge keeps its own words.
+        purchaseBlock({
+          price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
+          loan: '', contribution: d.deposit, contributionFrom: d.depositSource,
+        }) +
         row('Bridging loan (peak debt)', money(d.splits?.[0]?.amount)) +
         row('End debt', money(d.splits?.[1]?.amount))
       ) +
@@ -734,10 +757,11 @@ export async function POST(req: NextRequest) {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('When looking at your numbers, your borrowing capacity is looking strong for an SMSF purchase.') +
       card('The Purchase',
-        row('Purchase price', money(d.purchasePrice)) +
-        row(dutyLabel(d), money(d.stampDuty)) +
-        row('Total lending', money(totalLending(d.splits))) +
-        row(`Your contribution required${PLUS_INCIDENTALS}`, money(d.deposit))
+        purchaseBlock({
+          price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
+          loan: totalLending(d.splits), contribution: d.deposit, contributionFrom: d.depositSource,
+        }) +
+        buildLVRLine(d)
       ) +
       p13(structureLead(realSplits(d.splits).length)) +
       splitCards(d, 'SMSF loan', { termWithType: true }) +
@@ -795,7 +819,6 @@ export async function POST(req: NextRequest) {
     const npPrice   = d.newPurchasePrice     || d.purchasePrice || ''
     const npStamp   = d.newPurchaseStampDuty || d.stampDuty     || ''
     const npDeposit = d.newPurchaseDeposit   || d.equityRelease || d.deposit || ''
-    const totalCost = npPrice && npStamp ? `${money(npPrice)} + ${money(npStamp)}` : ''
     const existingLoanCol = `
       <p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 6px"><span style="color:#343333;">Existing loan refinanced</span></p>
       <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Loan amount: ${money(d.splits?.[0]?.amount) || ''}</span></p>
@@ -820,11 +843,11 @@ export async function POST(req: NextRequest) {
       p(`Provided you are ok to use equity, we could look at a purchase price of <strong>${amt(npPrice, '[amount]')}</strong>.`) +
       p13('Your numbers would be:') +
       card('Summary',
-        row('Purchase price', money(npPrice)) +
-        row(dutyLabel(d), money(npStamp)) +
-        row('Total cost (plus solicitor\'s fees and incidentals)', totalCost) +
-        row('Loan amount', money(d.splits?.[2]?.amount)) +
-        row(`Deposit needed (from equity release and personal savings)${PLUS_INCIDENTALS}`, money(npDeposit))
+        purchaseBlock({
+          price: npPrice, duty: npStamp, dutyLabel: dutyLabel(d),
+          loan: d.splits?.[2]?.amount, contribution: npDeposit,
+          contributionFrom: 'equity release and personal savings',
+        })
       ) +
       p13('Below is a breakdown of the structure:') +
       `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:14px"><tr>
@@ -850,10 +873,10 @@ export async function POST(req: NextRequest) {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       card('The Purchase',
-        row('Purchase price', money(d.purchasePrice)) +
-        row(`Deposit${d.depositSource ? ` (${d.depositSource})` : ''}${PLUS_INCIDENTALS}`, money(d.deposit)) +
-        row(dutyLabel(d), money(d.stampDuty)) +
-        row('Total lending', money(totalLending(d.splits))) +
+        purchaseBlock({
+          price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
+          loan: totalLending(d.splits), contribution: d.deposit, contributionFrom: d.depositSource,
+        }) +
         buildLVRLine(d)
       ) +
       p13(structureLead(realSplits(d.splits).length)) +
