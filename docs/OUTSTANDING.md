@@ -9,10 +9,16 @@ session and it gets read first, before anything else.
 
 ## Still to build
 
-### 1. Compliance's nine collapsed sections have never been robot-tested
-All 42 browser tests run against open, visible fields. Those nine sections are
-the ones that produce the regulated wording, and nothing automated has ever
-opened them. If something breaks in there, a person finds it, not a test.
+### 1. Press the nine buttons, not just find them
+`tests/browser/compliance-boxes.spec.ts` (16 Sep) now walks both stages, opens
+all nine regulated boxes and checks each is still a box a person can write in,
+and still has a "Write from the deal" button rather than falling back to the
+model. 4 seconds.
+
+What it deliberately does NOT do is press those buttons. That composes the
+regulated wording from the live record, and it wants its own test with its own
+assertions - one test that fails for nine unrelated reasons helps nobody. That
+is the next piece of work on compliance.
 
 ### 2. The ship takes 7 minutes, and 6.5 of it is the browser stage
 Measured 16 Sep: code checks 1s, 1,895 unit tests 4s, build 9s, browser 6m 27s.
