@@ -1,6 +1,6 @@
 # Outstanding — Simplify Finance Portal
 
-Last updated: 16 Sep 2026
+Last updated: 16 Sep 2026 (end of day)
 
 This is the running list. Fabio: say "check the outstanding list" in any future
 session and it gets read first, before anything else.
@@ -9,26 +9,38 @@ session and it gets read first, before anything else.
 
 ## Still to build
 
-### 1. Offline drafts  <- next up
-The keepalive covers a refresh and closing the tab. It does **not** cover the
-laptop losing wifi mid-sentence. The save fails, the indicator goes amber and
-says "keep this tab open" - but if they close it anyway, the text is gone.
-
-A local draft store would survive that. **This is the last real hole in the
-"letters disappearing" family** that has been costing Kylie work since late
-August.
-
-### 2. Compliance's nine collapsed sections have never been robot-tested
+### 1. Compliance's nine collapsed sections have never been robot-tested
 All 42 browser tests run against open, visible fields. Those nine sections are
 the ones that produce the regulated wording, and nothing automated has ever
 opened them. If something breaks in there, a person finds it, not a test.
+
+### 2. The ship takes 7 minutes, and 6.5 of it is the browser stage
+Measured 16 Sep: code checks 1s, 1,895 unit tests 4s, build 9s, browser 6m 27s.
+
+**The easy answer is wrong.** 155s of the browser stage is fixed `waitForTimeout`
+sleeps, and it is tempting to replace them with waiting for a condition. Most of
+them cannot be: those specs prove things DO NOT happen - text not clobbered by
+the other window, a tick box not flipping back, the form not moving under
+somebody's hands. Letting time pass IS the test. One attempt at replacing them
+was made and reverted: waiting for the save line to read "Saved" could be
+satisfied by a stale "Saved" from an earlier write, so the test would pass
+without the save landing.
+
+**The real answer is parallelism**, and the blocker is that ten of the fourteen
+specs drive the SAME deal (`PORTAL_TEST_DEAL_ID`), several of them specifically
+about two people in it at once. Running those side by side would corrupt each
+other and the gate would start failing at random.
+
+So: give each heavy spec its own deal, then raise `workers` in
+playwright.config.ts. Roughly 2 minutes instead of 7. A fresh-day job with proof
+at every step - this is the gate that caught a broken Lending Options tab on
+16 Sep, and a fast gate nobody trusts is worth nothing.
 
 ### 3. Staging - parked
 The honest position: staging was never a copy of production. **16 tables exist
 live with no file anywhere that creates them.** Bringing it up needs
 production's real schema pulled out properly (pg_dump via libpq, already
-installed on the Mac). A sit-down job, not a ten-minute one. Nothing day to day
-depends on it.
+installed on the Mac). A sit-down job. Nothing day to day depends on it.
 
 Project refs: production `brjytbuirbupatjtauhx` (Singapore), staging
 `jfgsyotmvwxeaohwdejv` (Seoul).
@@ -43,8 +55,6 @@ No delete permission on the Mac. Fabio needs to remove these.
 `new-deal-busy.spec.ts` has a hard-refresh case still turned off from the week
 of 8 Sep.
 
----
-
 ## Tidy-ups Fabio wants
 
 (Fabio mentioned a few on 16 Sep, not yet described. Fill these in.)
@@ -52,17 +62,6 @@ of 8 Sep.
 - [ ]
 - [ ]
 - [ ]
-
----
-
-## For the team, not for Claude
-
-- **Arvind Mane** - decide whether **$3,445 (P&I)** or **Interest only** is
-  right. The BC now flags the mismatch but will not choose. The email sends
-  whatever is typed.
-- **William Welton** - pick which Bankwest product is recommended (the dropdown
-  now records the product, not just the bank), and answer the new
-  **"How is the LMI paid?"** question.
 
 ---
 
@@ -103,7 +102,7 @@ Step 4 - the leftover robot clients.
 
 ## Shipped 16 Sep 2026
 
-Tests went 1,730 -> 1,839 across the day.
+Tests went 1,730 -> 1,895 across the day.
 
 | Commit | What |
 |---|---|
@@ -114,8 +113,27 @@ Tests went 1,730 -> 1,839 across the day.
 | `2eb0131` | Every scenario prints every split - no template can silently drop one |
 | `dd51a4b` | Changing scenario asks before it replaces your splits |
 | `b0fc178` | Robot reuses its deal instead of breeding new ones |
+| `08111c6` | Ship timings per stage, and this file |
+| `ce70e26` | One purchase breakdown on every scenario - price, duty, total cost, loan, contribution |
+| `e2be78c` | A copy of unsaved work that survives the tab dying, on all four deal tabs |
+| `b4bdef6` | Notes box stops floating over the documents, keeps a draft, and one handover copy per deal |
+| `ae2159d` | Fix the LO tab - `b4bdef6` declared the draft above the thing it reads and took the tab out |
 
----
+### The one that got away
+`b4bdef6` broke the Lending Options tab and **shipped anyway**, because the
+browser gate reported and did not block. It was live until `ae2159d`. The gate
+now blocks - see scripts/check-browser.sh.
+
+### Letters disappearing - all five faults now closed
+1. Keystrokes swallowed by re-render -> the autosave waits for a pause
+2. Somebody else's save landing on a box being typed in -> field ownership
+3. Nothing written on leaving the page -> keepalive, and a write on leaving a box
+4. The screen claiming "Autosaved" when it had not -> an honest save line
+5. The save failing and the tab dying with the only copy -> the draft store
+
+Covered on Fact Find, BC, Lending Options, Compliance and the Internal notes box.
+Boxes with their own Save button do not have a draft and do not need one: the
+text stays on screen until the person presses Save and sees it fail.
 
 ## Standing rules
 
