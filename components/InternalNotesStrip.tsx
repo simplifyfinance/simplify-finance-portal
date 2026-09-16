@@ -11,8 +11,8 @@ import InternalNotes from '@/components/InternalNotes'
 //
 // It starts OPEN on Compliance. That is where the regulated write-up is drafted
 // and where, until now, there was no background on screen at all.
-export default function InternalNotesStrip({ dealId, initial, openByDefault }: {
-  dealId: string; initial?: string; openByDefault?: boolean
+export default function InternalNotesStrip({ dealId, initial, openByDefault, meId }: {
+  dealId: string; initial?: string; openByDefault?: boolean; meId?: string | null
 }) {
   const [open, setOpen] = useState(!!openByDefault)
   const preview = (initial || '').trim().replace(/\s+/g, ' ')
@@ -39,7 +39,7 @@ export default function InternalNotesStrip({ dealId, initial, openByDefault }: {
     <div className="mb-4 relative">
       <button onClick={() => setOpen(false)}
         className="absolute right-4 top-4 z-10 text-xs text-gray-400 hover:text-gray-600">Hide</button>
-      <InternalNotes dealId={dealId} initial={initial} />
+      <InternalNotes dealId={dealId} initial={initial} meId={meId} />
     </div>
   )
 }

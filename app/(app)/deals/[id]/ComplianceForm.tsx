@@ -47,6 +47,8 @@ import { dealFigures, figureChanges, notesMentioning } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved } from '@/lib/field-ownership'
 import { useSaveIndicator } from '@/components/useSaveIndicator'
+import { useDraft } from '@/components/useDraft'
+import DraftBanner from '@/components/DraftBanner'
 import { recommendedOption } from '@/lib/recommended-option'
 import type { SaveStatus } from '@/lib/save-indicator'
 import { useKeepalive } from '@/components/useKeepalive'
@@ -664,6 +666,11 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   // say it, lives in components/useSaveIndicator.ts - shared, so BC cannot end up
   // telling Kylie a different story from the Fact Find.
   const save = useSaveIndicator(onSaveStatus)
+  // A COPY OF UNSAVED WORK THAT SURVIVES THE TAB DYING. Kept only while the
+  // database does not have it, offered rather than applied, and never written
+  // to the database by anything here. See lib/draft-store.ts.
+  const draft = useDraft({ meId: me?.id, dealId: deal.id, column: 'compliance_data',
+                           stored: shape(deal.compliance_data) })
   const [showValidation, setShowValidation] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [stage, setStage] = useState<'needs' | 'risks' | 'product' | 'comments' | 'expenses'>('needs')
@@ -769,6 +776,8 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
       // 'settled' and 'behind' mean the database had nothing to do: in sync, but no
       // moment worth putting a time on.
       save.landed(token, out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote')
+      // It is in the database now, so the copy has done its job.
+      draft.clear()
       settleSaved(ownRef.current, payload, liveD.current)
     })()
   }, [deal.id, me, lenderIdByName, guard, save])
@@ -787,6 +796,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
     // components/useSaveIndicator.ts - the first run of this effect is the form
     // arriving on screen and does not count.
     save.changed()
+    draft.keep(liveD.current)
     saveTimer.current = setTimeout(() => { void writeNow() }, 700)
   }, [d, writeNow, save])
 
@@ -1406,6 +1416,11 @@ Use the security address exactly as recorded. On a pre-approval it will already 
     // LEAVING A BOX WRITES IT, rather than waiting 700ms and hoping nobody
     // changes tab in between.
     <div className="space-y-4" onBlurCapture={() => flush()}>
+      {draft.offer && (
+        <DraftBanner at={draft.offer.at}
+          onRestore={() => { setD(shape(draft.offer!.value)); draft.taken() }}
+          onDiscard={draft.dismiss} />
+      )}
       {past && (
         <div className="bg-white border border-[#CFE6D5] rounded-xl px-4 py-3.5">
           <div className="flex items-center gap-2.5 flex-wrap">

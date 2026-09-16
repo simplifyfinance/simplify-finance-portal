@@ -4,6 +4,8 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import StatementQueries from '@/components/StatementQueries'
 import { mergeNotes, removesAnything } from '@/lib/notes-merge'
 import { keepVersion } from '@/lib/deal-history'
+import { useDraft } from '@/components/useDraft'
+import DraftBanner from '@/components/DraftBanner'
 
 // The deal's internal notes, on every tab.
 //
@@ -43,12 +45,19 @@ import { keepVersion } from '@/lib/deal-history'
 // See lib/notes-merge.ts for the merge and what it deliberately will not do.
 // ---------------------------------------------------------------------------
 
-export default function InternalNotes({ dealId, initial }: { dealId: string; initial?: string }) {
+// meId is what makes a draft safe to keep. A cache keyed on the deal alone once
+// showed one person another person's work - see lib/draft-store.ts - so with no
+// user id no draft is kept at all.
+export default function InternalNotes({ dealId, initial, meId }: { dealId: string; initial?: string; meId?: string | null }) {
   const [text, setText] = useState(initial || '')
   const [status, setStatus] = useState<'' | 'saving' | 'saved' | 'error'>('')
   const [err, setErr] = useState('')
   const [cameIn, setCameIn] = useState('')
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // A COPY THAT SURVIVES THE TAB DYING. This box has its own save path - a 900ms
+  // debounce, no keepalive - so when the write fails the note lives only in this
+  // tab. It is the same hole the four deal tabs closed on 16 Sep 2026.
+  const draft = useDraft({ meId, dealId, column: 'internal_notes', stored: initial || '' })
 
   // WHAT WE BELIEVE THE DATABASE HOLDS. The third copy the merge needs: without
   // it there is no way to tell "they added a line" from "I deleted one".
@@ -154,6 +163,8 @@ export default function InternalNotes({ dealId, initial }: { dealId: string; ini
 
     base.current = toWrite
     dirty.current = false
+    // It is in the database now, so the copy has done its job.
+    draft.clear()
     setStatus('saved')
   }, [dealId])
 
@@ -161,6 +172,7 @@ export default function InternalNotes({ dealId, initial }: { dealId: string; ini
     setText(v)
     live.current = v
     dirty.current = true
+    draft.keep(v)
     setStatus('saving')
     setCameIn('')
     if (timer.current) clearTimeout(timer.current)
@@ -183,6 +195,14 @@ export default function InternalNotes({ dealId, initial }: { dealId: string; ini
         </span>
       </div>
       <p className="text-xs text-gray-400 mb-2">The same notes on every tab of this deal — not client facing</p>
+      {draft.offer && (
+        <DraftBanner at={draft.offer.at}
+          onRestore={() => {
+            const v = String(draft.offer!.value ?? '')
+            setText(v); live.current = v; dirty.current = true; draft.taken()
+          }}
+          onDiscard={draft.dismiss} />
+      )}
       {err && <p className="text-xs text-red-600 mb-2">{err}</p>}
       {cameIn && <p className="text-xs text-[#0E8FCB] mb-2">{cameIn} Nothing you wrote was lost.</p>}
       <textarea spellCheck="true"

@@ -322,7 +322,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           column so it is never shown twice on one screen. */}
       {stage !== 'FactFind' && (
         <InternalNotesStrip dealId={dealData.id} initial={dealData.internal_notes || ''}
-          openByDefault={stage === 'Compliance'} />
+          openByDefault={stage === 'Compliance'} meId={me?.id} />
       )}
 
       {/* THE DOCUMENT LIST. Same place on every stage, above the tabs, because

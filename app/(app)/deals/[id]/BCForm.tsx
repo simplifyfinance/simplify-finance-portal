@@ -18,6 +18,8 @@ import { newOwnership, focusField, blurField, markDirty, settleSaved, applyOwned
 import { LMI_CAPITALISED, LMI_SETTLEMENT, lmiAmount, looksAlreadyCapitalised } from '@/lib/lmi'
 import { repaymentMismatch, balancesDisagree } from '@/lib/split-cards'
 import { scenarioChangeCost, keepSplits, splitsAdded, type ChangeCost } from '@/lib/scenario-change'
+import { useDraft } from '@/components/useDraft'
+import DraftBanner from '@/components/DraftBanner'
 import { money as fmtMoney } from '@/lib/money'
 import { useSaveIndicator } from '@/components/useSaveIndicator'
 import type { SaveStatus } from '@/lib/save-indicator'
@@ -787,6 +789,14 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // say it, lives in components/useSaveIndicator.ts - shared, so BC cannot end up
   // telling Kylie a different story from the Fact Find.
   const save = useSaveIndicator(onSaveStatus)
+  // A COPY OF UNSAVED WORK THAT SURVIVES THE TAB DYING. Kept only while the
+  // database does not have it, offered rather than applied, and never written to
+  // the database by anything here. See lib/draft-store.ts.
+  //
+  // BC holds its record in sixty pieces of state rather than one object, so the
+  // copy is buildBcData() - the same single list the autosave and the client
+  // email are both built from - and it goes back through BC_SETTERS.
+  const draft = useDraft({ meId: me?.id, dealId: deal.id, column: 'bc_data', stored: deal.bc_data || {} })
   const [clientProceeded, setClientProceeded] = useState<boolean>(!!deal.client_proceeded)
   const [proceedInfo, setProceedInfo] = useState(() => proceedCredit(deal, 'BC'))
   // Whose copy is on screen — see lib/save-conflict.ts. This form writes on
@@ -941,6 +951,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
 
   useEffect(() => {
     const data = buildBcData()
+    if (touchedRef.current) draft.keep(data)
     // The save line stops saying "saved" NOW, not in 700ms. See
     // components/useSaveIndicator.ts - the first run of this effect is the form
     // arriving on screen and does not count.
@@ -1000,6 +1011,8 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
         // 'settled' and 'behind' mean the database had nothing to do: in sync, but
         // no moment worth putting a time on.
         save.landed(token, out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote')
+        // It is in the database now, so the copy has done its job.
+        draft.clear()
         // THE BOX IS ONLY CLEAN IF WHAT WE WROTE IS STILL WHAT IS IN IT.
         // Compared against the screen as it is NOW, not as it was when this
         // save was built - anything typed while it was in flight keeps the box
@@ -1350,6 +1363,11 @@ Key assumptions: ${checklistText}`
 
   return (
     <div onInputCapture={markTouched} onChangeCapture={markTouched}>
+      {draft.offer && (
+        <DraftBanner at={draft.offer.at}
+          onRestore={() => { applyBcData(draft.offer!.value); markTouched(); draft.taken() }}
+          onDiscard={draft.dismiss} />
+      )}
       <div className="flex gap-2 mb-4 items-center flex-wrap">
         {[['form','BC form'],['preview','Preview & share']].map(([id,label]) => (
           <button key={id} onClick={() => setActiveTab(id as any)}

@@ -19,6 +19,8 @@ import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS } from '@/lib/fact-find'
 import { newGuard, saveGuarded } from '@/lib/save-conflict'
 import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved } from '@/lib/field-ownership'
 import { useSaveIndicator } from '@/components/useSaveIndicator'
+import { useDraft } from '@/components/useDraft'
+import DraftBanner from '@/components/DraftBanner'
 import type { SaveStatus } from '@/lib/save-indicator'
 import { useKeepalive } from '@/components/useKeepalive'
 import { withDefaults } from '@/lib/record-defaults'
@@ -422,6 +424,11 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   // say it, lives in components/useSaveIndicator.ts - shared, so BC cannot end up
   // telling Kylie a different story from the Fact Find.
   const save = useSaveIndicator(onSaveStatus)
+  // A COPY OF UNSAVED WORK THAT SURVIVES THE TAB DYING. Kept only while the
+  // database does not have it, offered rather than applied, and never written to
+  // the database by anything here. See lib/draft-store.ts.
+  const draft = useDraft({ meId: me?.id, dealId: deal.id, column: 'fact_find_data',
+                           stored: shape(deal.fact_find_data) })
 
   // Whose copy is on screen, and whether writing it would cost anybody
   // anything — the whole decision lives in lib/save-conflict.ts so all four
@@ -489,6 +496,8 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     // 'settled' and 'behind' mean the database had nothing to do: in sync, but no
     // moment worth putting a time on.
     save.landed(token, out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote')
+    // It is in the database now, so the copy has done its job.
+    draft.clear()
     // Against the screen as it is NOW: anything typed while this was in flight
     // keeps that box protected.
     settleSaved(ownRef.current, value, liveD.current)
@@ -525,6 +534,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     // components/useSaveIndicator.ts - the first run of this effect is the form
     // arriving on screen and does not count.
     save.changed()
+    draft.keep(liveD.current)
     saveTimeoutRef.current = setTimeout(() => { void writeNow(liveD.current) }, 600)
   }, [d, writeNow, save])
 
@@ -969,10 +979,15 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     // should not depend on a timer at all.
     <div className="grid grid-cols-[480px_1fr] gap-4 items-start" onBlurCapture={() => flush()}>
       <div>
+        {draft.offer && (
+          <DraftBanner at={draft.offer.at}
+            onRestore={() => { setD(shape(draft.offer!.value)); draft.taken() }}
+            onDiscard={draft.dismiss} />
+        )}
         {/* One notes field for the whole deal. This used to be a box of its own
             saving to fact_find_data.internalNotes, with two more like it on BC
             and Lending Options and none at all on Compliance. */}
-        <InternalNotes dealId={deal.id} initial={deal.internal_notes || ''} />
+        <InternalNotes dealId={deal.id} initial={deal.internal_notes || ''} meId={me?.id} />
 
         {showExtractReview && extractedData && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowExtractReview(false)}>
