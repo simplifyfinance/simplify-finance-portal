@@ -224,28 +224,54 @@ export async function POST(req: NextRequest) {
           // rebuilt and shipped, and the copy opened from the deal's Documents
           // list was still the old one, with no way to tell. The date on the
           // name is how you tell.
-          const fileName = `${result.dealName} (${shortDate(new Date().toISOString().slice(0, 10))}).pdf`
-          const filePath = `${dealId}/${Date.now()}-${fileName}`
+          // ONE CURRENT COPY PER DEAL, NOT ONE PER PUSH.
+          //
+          // This used to mint a new file and a new row every single time - the
+          // path carried Date.now() and the insert was unconditional - so a deal
+          // pushed five times carried fifteen documents. Natasha Chapman had the
+          // same handover filed nine times over. Fabio, 16 Sep 2026: "I dont
+          // need a new one saving every time."
+          //
+          // A STABLE PATH PER KIND is what fixes it: the same three names every
+          // time, overwritten in place. No duplicate rows to clean up, and
+          // nothing is deleted to achieve it.
+          //
+          // The EMAIL attachment keeps the date in its name, because that copy
+          // lands in somebody's inbox where "which one is this" is a real
+          // question. The deal keeps the current one.
+          const storedName = `${result.dealName}.pdf`
+          const filePath = `${dealId}/${result.kind}.pdf`
+          const sentName = `${result.dealName} (${shortDate(new Date().toISOString().slice(0, 10))}).pdf`
 
           const { error: uploadError } = await supabase.storage.from('deal-documents').upload(filePath, result.buffer, {
             contentType: 'application/pdf',
-            upsert: false
+            // Overwrites the copy from the last push. Same path, same row.
+            upsert: true
           })
 
           if (!uploadError) {
-            // The file is already in storage. Without this row nothing lists it,
-            // so it becomes a file nobody can find - worth a line in the log even
-            // though it must never block the push.
-            const { data: rec, error: recErr } = await supabase.from('deal_documents').insert({
-              deal_id: dealId,
-              file_name: fileName,
-              file_path: filePath,
-              file_type: 'application/pdf'
-            }).select('id')
-            if (recErr || !rec?.length) {
-              console.error('[notify-salestrekker] the pack was uploaded but not recorded on the deal', recErr)
+            // The row only has to exist once. On every push after the first the
+            // file behind it has just been replaced, so there is nothing to
+            // write - and a second row pointing at the same path is exactly the
+            // pile this is fixing.
+            const { data: already } = await supabase.from('deal_documents')
+              .select('id').eq('deal_id', dealId).eq('file_path', filePath).limit(1)
+
+            if (!already?.length) {
+              // Without this row nothing lists the file, so it becomes a file
+              // nobody can find - worth a line in the log even though it must
+              // never block the push.
+              const { data: rec, error: recErr } = await supabase.from('deal_documents').insert({
+                deal_id: dealId,
+                file_name: storedName,
+                file_path: filePath,
+                file_type: 'application/pdf'
+              }).select('id')
+              if (recErr || !rec?.length) {
+                console.error('[notify-salestrekker] the pack was uploaded but not recorded on the deal', recErr)
+              }
             }
-            attachments.push({ filename: fileName, content: result.buffer.toString('base64') })
+            attachments.push({ filename: sentName, content: result.buffer.toString('base64') })
           }
         }
       } catch (e) {

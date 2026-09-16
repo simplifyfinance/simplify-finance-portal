@@ -158,6 +158,15 @@ describe('how the forms use it', () => {
       .toMatch(/<InternalNotesStrip[\s\S]{0,200}meId=/)
   })
 
+  it('the notes box does not float over what is underneath it', () => {
+    // It was sticky, so it sat on top of the documents list as that scrolled
+    // past. Fabio, 16 Sep 2026: "it rolls over everything underneath."
+    const notes = readFileSync('components/InternalNotes.tsx', 'utf8')
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    expect(notes, 'the notes card is pinned again and will cover the documents')
+      .not.toMatch(/className="[^"]*\bsticky\b/)
+  })
+
   it('the hook wraps every touch of localStorage', () => {
     const hook = readFileSync('components/useDraft.ts', 'utf8')
     // It throws in a private window, with site data blocked, and when full. A

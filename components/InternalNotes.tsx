@@ -181,8 +181,18 @@ export default function InternalNotes({ dealId, initial, meId }: { dealId: strin
     timer.current = setTimeout(() => save(v), 900)
   }
 
+  // NOT STICKY.
+  //
+  // This card was pinned to the top of the screen so it would follow somebody
+  // down a long fact find. What it actually did was sit on top of whatever
+  // scrolled underneath - on 16 Sep 2026 that was the documents list, with a row
+  // sliced in half by the bottom edge of this card. Fabio: "it rolls over
+  // everything underneath."
+  //
+  // A notes box that hides the document list is worse than one you scroll back
+  // up to reach.
   return (
-    <div className="bg-white border border-gray-100 rounded-xl p-4 sticky top-4">
+    <div className="bg-white border border-gray-100 rounded-xl p-4">
       <div className="flex items-center gap-2 mb-2">
         <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
