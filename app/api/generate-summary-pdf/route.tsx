@@ -35,6 +35,7 @@ import { notWorking, selfEmployed, currentEmployment, currentAddress, fullName,
 import { applicantNamesOf } from '@/lib/applicants'
 import { shortDate } from '@/lib/push-answers'
 import { rowLegalFeeLabel } from '@/lib/lender-fees'
+import { loanFigureRows } from '@/lib/lmi'
 import { isRecommended, recommendedFirst } from '@/lib/recommended-option'
 
 const INK = '#141C24', MUTE = '#7C8894', BODY = '#3D4750'
@@ -437,9 +438,7 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
               ['Equity release', money(bc.equityRelease)],
               ['Land value', money(bc.landValue)], ['Construction cost', money(bc.constructionCost)],
               ['"As if complete" valuation', money(bc.asIfCompleteValue)],
-              ['Loan amount', loanAmount !== null ? money(loanAmount) : ''],
-              ['LVR', lvr ? `${lvr}%${lvr <= 80 ? ' (no LMI)' : ''}` : ''],
-              ['LMI', money(bc.lmi)],
+              ...loanFigureRows(bc, loanAmount, lvr ? `${lvr}%${lvr <= 80 ? ' (no LMI)' : ''}` : ''),
             ]} />
             {(bc.splits || []).length ? <Sub t="Loan splits" a={A.navy} /> : null}
             <KV rows={(bc.splits || []).map((sp: any, i: number) => ([

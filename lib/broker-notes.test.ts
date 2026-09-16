@@ -178,9 +178,31 @@ describe('paragraph three — funds to complete', () => {
 
   // Fabio was explicit that this has to be on the face of it - it changes the
   // figure the assessor is checking.
+  //
+  // 16 Sep 2026: this used to assert "(including capitalised LMI of $18,000)"
+  // against a loan figure that is the SPLIT TOTAL and does not include the
+  // premium. The sentence was printed whenever any LMI figure existed, so on
+  // every purchase carrying LMI it said something untrue about the number beside
+  // it. The BC now records how the premium is being paid - see lib/lmi.ts - and
+  // the sentence says whichever of the three things is actually so.
   it('says so when LMI is capitalised onto the loan', () => {
+    const d = purchase({ bc_data: { lmi: '18,000', lmiApplicable: 'Applicable', lmiTreatment: 'Capitalised' } })
+    const said = para(d, 'funds')!.lines.join(' ')
+    expect(said).toContain('$1,700,000 base, plus $18,000 capitalised LMI - $1,718,000 in total')
+  })
+
+  it('says so when LMI is paid at settlement instead', () => {
+    const d = purchase({ bc_data: { lmi: '18,000', lmiApplicable: 'Applicable', lmiTreatment: 'Settlement' } })
+    expect(para(d, 'funds')!.lines.join(' '))
+      .toContain('$18,000 LMI is paid at settlement, not included')
+  })
+
+  it('refuses to say either where nobody has answered', () => {
     const d = purchase({ bc_data: { lmi: '18,000', lmiApplicable: 'Applicable' } })
-    expect(para(d, 'funds')!.lines.join(' ')).toContain('including capitalised LMI of $18,000')
+    const said = para(d, 'funds')!.lines.join(' ')
+    expect(said).not.toMatch(/including capitalised/i)
+    expect(said).toContain('not yet said whether it is added to this figure')
+    expect(notes(d).missing.join(' ')).toContain('capitalised onto the loan or paid at settlement')
   })
 
   it('does not appear on a refinance, because there is no completion to fund', () => {

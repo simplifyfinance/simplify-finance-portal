@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ctas } from '@/lib/email-buttons'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { lmiClientLines } from '@/lib/lmi'
 // EVERY DOLLAR FIGURE IN A CLIENT EMAIL GOES THROUGH money().
 //
 // This file used to write `'$' + (d.purchasePrice || '')` in a hundred
@@ -242,6 +243,25 @@ function pledgeList(title: string, items: string[], bar: string, bg: string, hea
     </td></tr></table>`
 }
 
+// ONE SET OF WORDS ABOUT THE LMI, FOUR COLUMN BUILDERS.
+//
+// Each of these used to carry its own copy of the same two lines, and none of
+// them said whether the premium was inside the loan figure above it. What the
+// client is told is decided in lib/lmi.ts; this only wraps it in the markup the
+// columns already use. A deal where nobody has answered yet renders exactly what
+// it rendered before, character for character - see lmiClientLines().
+function lmiLines(opt: any, treatment: any, base: number): string {
+  const rows = lmiClientLines({ lmiApplicable: opt?.lmiApplicable, lmi: opt?.lmi, lmiTreatment: treatment },
+                              base > 0 ? base : null)
+  return rows.map(r => {
+    const colour = r.strong ? '#343333' : '#555'
+    const size = r.strong ? '12.5px' : '11px'
+    const weight = r.strong ? 'font-weight:700;' : ''
+    const text = r.label ? `${r.label}: ${r.value}` : r.value
+    return `<p style="font-size:${size};color:${colour};margin:3px 0"><span style="color:${colour};${weight}">${text}</span></p>`
+  }).join('')
+}
+
 function buildLVRLine(d: any) {
   const pct = Number(d.lvrPercent)
   if (!pct || pct <= 0) {
@@ -249,7 +269,14 @@ function buildLVRLine(d: any) {
   }
   if (pct > 80) {
     if (d.lmiApplicable === 'Applicable' && d.lmi) {
-      return row('LVR', `${pct}%`) + row('LMI (estimated)', money(d.lmi))
+      // The premium, and whether it is inside the loan above. Unanswered reads
+      // exactly as it did before - see lib/lmi.ts.
+      const base = (d.splits || []).reduce((t: number, sp: any) =>
+        t + (parseFloat(String(sp?.amount ?? '').replace(/,/g, '')) || 0), 0)
+      const rows = lmiClientLines({ lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment },
+                                  base > 0 ? base : null)
+      return row('LVR', `${pct}%`)
+        + rows.map(r => row(r.label, r.value)).join('')
     }
     if (d.lmiApplicable === 'Waived') {
       return row('LVR', `${pct}% (LMI waived)`)
@@ -341,11 +368,7 @@ export async function POST(req: NextRequest) {
       if (opt.carLoanPayoff) actions.push('Car loan closed')
       if (opt.personalLoanPayoff) actions.push('Personal loan closed')
       const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px"><span style="color:#555;">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</span></p>` : ''
-      let lmiLine = ''
-      if (lvrNum > 80) {
-        if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI (estimated): ${money(opt.lmi)}</span></p>`
-        else if (opt.lmiApplicable === 'Waived') lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI waived</span></p>`
-      }
+      const lmiLine = lvrNum > 80 ? lmiLines(opt, d.lmiTreatment, existingLoanN + equityReleaseN) : ''
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
         ${lineIf('Existing loan balance', money(d.existingLoanBal))}
@@ -409,11 +432,7 @@ export async function POST(req: NextRequest) {
       if (opt.carLoanPayoff) actions.push('Car loan closed')
       if (opt.personalLoanPayoff) actions.push('Personal loan closed')
       const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px"><span style="color:#555;">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</span></p>` : ''
-      let lmiLine = ''
-      if (lvrNum > 80) {
-        if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI (estimated): ${money(opt.lmi)}</span></p>`
-        else if (opt.lmiApplicable === 'Waived') lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI waived</span></p>`
-      }
+      const lmiLine = lvrNum > 80 ? lmiLines(opt, d.lmiTreatment, loanNum) : ''
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Purchase price: ${money(opt.purchasePrice) || ''}</span></p>
@@ -475,11 +494,7 @@ export async function POST(req: NextRequest) {
       if (opt.carLoanPayoff) actions.push('Car loan closed')
       if (opt.personalLoanPayoff) actions.push('Personal loan closed')
       const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px"><span style="color:#555;">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</span></p>` : ''
-      let lmiLine = ''
-      if (lvrNum > 80) {
-        if (opt.lmiApplicable === 'Applicable' && opt.lmi) lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI (estimated): ${money(opt.lmi)}</span></p>`
-        else if (opt.lmiApplicable === 'Waived') lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI waived</span></p>`
-      }
+      const lmiLine = lvrNum > 80 ? lmiLines(opt, d.lmiTreatment, loanNum) : ''
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Purchase price: ${money(opt.purchasePrice) || ''}</span></p>
@@ -561,14 +576,7 @@ export async function POST(req: NextRequest) {
     const lvrCols = splits.map((s: any) => {
       const amountNum = parseFloat((s.amount || '').replace(/,/g, '')) || 0
       const lvrNum = priceNum > 0 ? Math.ceil((amountNum / priceNum) * 1000) / 10 : 0
-      let lmiLine = ''
-      if (lvrNum > 80) {
-        if (s.lmiApplicable === 'Applicable' && s.lmi) {
-          lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI (estimated): ${money(s.lmi)}</span></p>`
-        } else if (s.lmiApplicable === 'Waived') {
-          lmiLine = `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LMI waived</span></p>`
-        }
-      }
+      const lmiLine = lvrNum > 80 ? lmiLines(s, d.lmiTreatment, amountNum) : ''
       return `<td style="width:${Math.floor(100/splits.length)}%;vertical-align:top;padding:0 4px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${s.label}</td></tr></table>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: ${money(s.amount)}</span></p>${s.deposit ? `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit required${PLUS_INCIDENTALS}: ${money(s.deposit)}</span></p>` : ""}

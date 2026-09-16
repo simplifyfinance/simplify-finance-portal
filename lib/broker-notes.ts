@@ -32,6 +32,7 @@
 import { money, readMoney } from './money'
 import { fundsToComplete, loanAmount } from './funds-to-complete'
 import { purposeSummary, splitsOf } from './deal-structure'
+import { lmiLoanSuffix, lmiAmount, lmiTreatment } from './lmi'
 import { fullName, ageFrom, currentEmployment, selfEmployed, notWorking } from './fact-find'
 import { annualIncomeOf, calculateSeAssessableIncome, seYearTotalFF } from './income-calculations'
 import { incomeKind, incomeLabel } from './income-kind'
@@ -316,10 +317,13 @@ function fundsParagraph(deal: any, missing: string[]): NotesParagraph | null {
   if (loan) {
     // "with or without LMI" - Fabio was explicit that this has to be on the face
     // of it, because it changes the figure the assessor is checking.
-    const lmi = has(bc.lmi)
-      ? ` (including capitalised LMI of ${money(bc.lmi)})`
-      : txt(bc.lmiApplicable).toLowerCase().startsWith('n') ? ' (no LMI applicable)' : ''
-    lines.push(`${loan.label}: ${money(loan.amount)}${lmi}`)
+    //
+    // It used to say "(including capitalised LMI of $X)" whenever an LMI figure
+    // existed. The figure beside it is the split total, which does NOT include
+    // the premium, so on every purchase carrying LMI this sentence asserted
+    // something untrue. It now says what the BC was actually told - see
+    // lib/lmi.ts.
+    lines.push(`${loan.label}: ${money(loan.amount)}${lmiLoanSuffix(bc, loan.amount)}`)
   }
 
   // Where the money comes from. Fabio, 3 Sep 2026: "we just dictate where the
@@ -401,6 +405,20 @@ export function brokerNotes(deal: any, assessor?: Assessor | null, today = new D
     retirement(deal, missing, today),
     declaration(),
   ].filter(Boolean) as NotesParagraph[]
+
+  // THE LMI ANSWER, ON EVERY DEAL AND NOT JUST PURCHASES.
+  //
+  // The funds paragraph above is the only place that says anything about LMI and
+  // it does not run on a refinance - which is exactly the deal Fabio found it on.
+  // A recorded premium with nobody having said whether it sits inside the loan is
+  // a gap the processing team has to close, so it is named here where every deal
+  // passes through. Internal only: nothing a client reads mentions it.
+  {
+    const bc = deal?.bc_data || {}
+    if (lmiAmount(bc) !== null && lmiTreatment(bc) === 'unanswered') {
+      missing.push('LMI is recorded but nobody has said whether it is capitalised onto the loan or paid at settlement, so the loan figure cannot say which it is')
+    }
+  }
 
   // Deduplicated: a missing stamp duty is one problem however many paragraphs
   // trip over it.

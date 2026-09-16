@@ -15,6 +15,8 @@ import { missingForEmail, missingSentence } from '@/lib/bc-ready'
 import { dealFigures } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, settleSaved, applyOwned } from '@/lib/field-ownership'
+import { LMI_CAPITALISED, LMI_SETTLEMENT, lmiAmount, looksAlreadyCapitalised } from '@/lib/lmi'
+import { money as fmtMoney } from '@/lib/money'
 import { useSaveIndicator } from '@/components/useSaveIndicator'
 import type { SaveStatus } from '@/lib/save-indicator'
 import { useKeepalive } from '@/components/useKeepalive'
@@ -537,6 +539,9 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const [lvrCustom, setLvrCustom] = useState(s.lvrCustom || '')
   const [lmi, setLmi] = useState(s.lmi || '')
   const [lmiApplicable, setLmiApplicable] = useState(s.lmiApplicable || '')
+  // Capitalised onto the loan, or paid at settlement. Empty means nobody has
+  // said - which is its own answer everywhere downstream. See lib/lmi.ts.
+  const [lmiTreatment, setLmiTreatment] = useState(s.lmiTreatment || '')
   const [loanTerm, setLoanTerm] = useState(s.loanTerm || '30')
   const [fhog, setFhog] = useState(s.fhog || '')
   const [guarantorName, setGuarantorName] = useState(s.guarantorName || '')
@@ -674,6 +679,20 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // told the client there was no LMI to think about.
     lvrPercent = constructionLvr(asIfCompleteValue, splits)
   }
+
+  // THE PORTAL IS ADDING THE PREMIUM, so the split boxes hold the base loan and
+  // say so. See lib/lmi.ts.
+  const lmiBc = { lmiApplicable, lmi, lmiTreatment, existingLoanBal, purchasePrice, newPurchasePrice, deposit }
+  const lmiPremium = lmiAmount(lmiBc)
+  const capitalisedLmi = lmiPremium !== null && lmiTreatment === LMI_CAPITALISED
+  const asNum = (v: any) => parseFloat(String(v ?? '').replace(/,/g, '')) || 0
+  const splitSum = (amount: any) => {
+    const base = asNum(amount)
+    if (!base || !lmiPremium) return ''
+    return ` ${fmtMoney(base)} + ${fmtMoney(lmiPremium)} = ${fmtMoney(base + lmiPremium)}`
+  }
+  const splitTotal = splits.reduce((t, sp) => t + asNum(sp?.amount), 0)
+  const lmiDoubleCounted = looksAlreadyCapitalised(lmiBc, splitTotal || null)
   const [internalNotes, setInternalNotes] = useState(s.internalNotes || '')
   const [brokerSig, setBrokerSig] = useState(s.brokerSig || deal.assigned_broker || 'Fabio')
   const [brokersList, setBrokersList] = useState<{ name: string; brandIds?: string[] }[]>([{ name: 'Fabio', brandIds: ['simplify'] }, { name: 'Mark', brandIds: ['simplify'] }])
@@ -844,7 +863,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     suburb: setSuburb, propertyType: setPropertyType,
     purchasePropertySubtype: setPurchasePropertySubtype, purchasePrice: setPurchasePrice,
     deposit: setDeposit, stampDuty: setStampDuty, dutyState: setDutyState, lvr: setLvr,
-    lvrCustom: setLvrCustom, lmiApplicable: setLmiApplicable, loanTerm: setLoanTerm,
+    lvrCustom: setLvrCustom, lmiApplicable: setLmiApplicable, lmiTreatment: setLmiTreatment, loanTerm: setLoanTerm,
     brokerNotes: setBrokerNotes, templateNotes: setTemplateNotes, internalNotes: setInternalNotes,
     brokerSig: setBrokerSig, checklist: setChecklist, emailHtml: setEmailHtml,
     emailHtmlTemplate: setEmailHtmlTemplate, emailFigures: setEmailFigures,
@@ -991,13 +1010,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // pending stays in pendingSave and is written by the effect above when the
     // form actually leaves.
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
   }
 
   // Does the saved email still match the scenario the deal is on? Read in three
@@ -1519,6 +1538,25 @@ Key assumptions: ${checklistText}`
                       <CurrencyInput className={inputCls} value={lmi} onChange={setLmi} />
                     </Field>
                   )}
+                  {/* THE QUESTION NOTHING USED TO ASK. Until this is answered the
+                      loan amount and the LMI sit beside each other saying nothing
+                      about whether one is inside the other - see lib/lmi.ts. */}
+                  {showCalculatedLvr && lvrPercent > 80 && lmiApplicable === 'Applicable' && (
+                    <Field label="How is the LMI paid?">
+                      <select className={selectCls} value={lmiTreatment} onChange={e => setLmiTreatment(e.target.value)}>
+                        <option value="">Select</option>
+                        <option value={LMI_CAPITALISED}>Capitalised onto the loan</option>
+                        <option value={LMI_SETTLEMENT}>Paid at settlement</option>
+                      </select>
+                      {lmiDoubleCounted && (
+                        <span className="text-[11px] text-amber-800 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1.5 leading-snug">
+                          &#9888; Check the split is the BASE loan. Taking the {fmtMoney(lmiPremium || 0)} back off
+                          it lands exactly on a figure already recorded on this deal, which is what typing the
+                          capitalised amount in looks like.
+                        </span>
+                      )}
+                    </Field>
+                  )}
                   {!showCalculatedLvr && template !== "oo_lvr_compare" && <Field label="LVR">
                  <select className={selectCls} value={lvr} onChange={e => setLvr(e.target.value)}>
                       <option>80%</option>
@@ -1621,7 +1659,18 @@ Key assumptions: ${checklistText}`
                         ) : (
                           <Field label="Label"><input className={inputCls} value={s.label} onChange={e => updateSplit(i, 'label', e.target.value)} /></Field>
                         )}
-                        <Field label="Amount"><input className={inputCls} value={s.amount} onChange={e => handleLoanAmountChange(i, e.target.value)} /></Field>
+                        {/* THE BOX SAYS WHAT BELONGS IN IT. With the LMI capitalised
+                            the portal adds the premium, so typing the capitalised
+                            figure in here adds it twice. Fabio, 16 Sep 2026: "be
+                            clear we need to input BASE Loan." */}
+                        <Field label={capitalisedLmi ? "Base loan amount \u2014 before LMI" : "Amount"}>
+                          <input className={inputCls} value={s.amount} onChange={e => handleLoanAmountChange(i, e.target.value)} />
+                          {capitalisedLmi && (
+                            <span className="text-[11px] text-[#0E6C93] leading-snug">
+                              Do not add the LMI here \u2014 the portal adds it.{splitSum(s.amount)}
+                            </span>
+                          )}
+                        </Field>
                         {template === "oo_lvr_compare" && <Field label="Deposit required"><NumberInput value={s.deposit || ""} onChange={v => updateSplit(i, 'deposit', v)} /></Field>}<Field label="Rate"><input className={inputCls} value={s.rate} onChange={e => updateSplit(i, 'rate', e.target.value)} /></Field>
                         <Field label="Type"><select className={selectCls} value={s.type} onChange={e => updateSplit(i, 'type', e.target.value)}><option>P&I</option><option>Interest only</option></select></Field>
                         {!(template === "bridging" && i === 0) && <Field label="Repayment"><CurrencyInput className={inputCls} value={s.repayment || ""} onChange={v => updateSplit(i, 'repayment', v)} /></Field>}

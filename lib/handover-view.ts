@@ -20,6 +20,7 @@ import { notWorking, selfEmployed, currentEmployment, fullName,
          annualIncome, stillToConfirm, dateAU } from './fact-find'
 import { parseBlocks, hasContent, NEEDS_BOXES, COMMENT_BOXES, type Block, type Box } from './handover'
 import { titleSummary } from './title'
+import { loanFigureRows } from './lmi'
 import { isRecommended, recommendedFirst, recommendedOption, recommendedLabel } from './recommended-option'
 import { hemStateOf, hemTotals, unansweredNote, type ExpenseCategory } from './hem'
 import { rowLegalFeeLabel } from './lender-fees'
@@ -469,10 +470,10 @@ export function factFindSections(deal: any): ViewSection[] {
     ['Equity release', money(bc.equityRelease)],
     ['Land value', money(bc.landValue)], ['Construction cost', money(bc.constructionCost)],
     ['"As if complete" valuation', money(bc.asIfCompleteValue)],
-    ['Loan amount', loanAmount !== null ? money(loanAmount) : ''],
-    ['LVR', lvr ? `${lvr}%${lvr <= 80 ? ' (no LMI)' : ''}` : ''],
-    ['LMI', money(bc.lmi)],
   ]))
+  // The loan, the premium and whether one is inside the other - one list, shared
+  // with the summary PDF so they cannot describe the same deal differently.
+  scenario.push(...kv(loanFigureRows(bc, loanAmount, lvr ? `${lvr}%${lvr <= 80 ? ' (no LMI)' : ''}` : '')))
   if ((bc.splits || []).length) {
     scenario.push(sub('Loan splits'))
     scenario.push(...(bc.splits || []).map((sp: any, i: number) => ({
