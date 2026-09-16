@@ -20,6 +20,7 @@ import { notWorking, selfEmployed, currentEmployment, fullName,
          annualIncome, stillToConfirm, dateAU } from './fact-find'
 import { parseBlocks, hasContent, NEEDS_BOXES, COMMENT_BOXES, type Block, type Box } from './handover'
 import { titleSummary } from './title'
+import { isRecommended, recommendedFirst, recommendedOption, recommendedLabel } from './recommended-option'
 import { hemStateOf, hemTotals, unansweredNote, type ExpenseCategory } from './hem'
 import { rowLegalFeeLabel } from './lender-fees'
 
@@ -486,11 +487,14 @@ export function factFindSections(deal: any): ViewSection[] {
   // The recommendation leads, as it does in the lending options email the client
   // already read.
   const loLenders = (lo.lenders || []).filter((l: any) => l.lenderName)
-  const isRec = (l: any) => !!lo.recommendedLender && l.lenderName === lo.recommendedLender
-  const sorted = [...loLenders].sort((x, y) => (isRec(x) ? -1 : 0) - (isRec(y) ? -1 : 0))
+  // By option, not by bank. See lib/recommended-option.ts.
+  const isRec = (l: any) => isRecommended(lo, l)
+  const sorted = recommendedFirst(lo, loLenders)
   const loCards: ViewCard[] = []
-  if (lo.recommendedLender && lo.recommendationNote) {
-    loCards.push({ key: 'lo:note', title: `Our recommendation — ${lo.recommendedLender}`,
+  // See the same line in the LO email route: the note stays, the star does not
+  // get handed to both products.
+  if (lo.recommendationNote && (recommendedOption(lo) || lo.recommendedLender)) {
+    loCards.push({ key: 'lo:note', title: `Our recommendation — ${recommendedLabel(lo)}`,
       tag: 'Recommended', tone: 'warn', copyable: true, blocks: parseBlocks(lo.recommendationNote) })
   }
   sorted.forEach((l: any, i: number) => {

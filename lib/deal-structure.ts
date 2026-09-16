@@ -18,6 +18,7 @@
 // guessed, and the credit notes will not be written until they are answered.
 
 import { fundsToComplete, loanAmount, securityValue, refinancedDebt, fundsApply } from './funds-to-complete'
+import { recommendedOption } from './recommended-option'
 
 const txt = (v: any) => String(v ?? '').trim()
 const num = (v: any) => {
@@ -191,14 +192,13 @@ export function splitsOf(deal: any): StructureSplit[] {
 function recommendedLenderSplits(deal: any): any[] {
   const lo = deal?.lo_data || {}
   const list = lo.lenders || []
-  const rec = list.find((l: any) => l?.lenderName && l.lenderName === lo.recommendedLender) || list[0]
+  const rec = recommendedOption(lo) || list[0]
   return (rec?.lenderSplits || []).length > 0 ? rec.lenderSplits : []
 }
 
 function recommendedProduct(deal: any): string {
   const lo = deal?.lo_data || {}
-  const rec = (lo.lenders || []).find((l: any) => l?.lenderName && l.lenderName === lo.recommendedLender)
-    || (lo.lenders || [])[0]
+  const rec = recommendedOption(lo) || (lo.lenders || [])[0]
   return txt(rec?.productName)
 }
 

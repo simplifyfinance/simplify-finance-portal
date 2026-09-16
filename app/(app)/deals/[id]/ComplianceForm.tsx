@@ -47,6 +47,7 @@ import { dealFigures, figureChanges, notesMentioning } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved } from '@/lib/field-ownership'
 import { useSaveIndicator } from '@/components/useSaveIndicator'
+import { recommendedOption } from '@/lib/recommended-option'
 import type { SaveStatus } from '@/lib/save-indicator'
 import { useKeepalive } from '@/components/useKeepalive'
 import DealStructure from '@/components/DealStructure'
@@ -352,7 +353,9 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   const factsOf = (from: any): NoteFacts => {
     const lo = from?.lo_data || {}
     const row = dealRow(from)
-    const rec = (lo.lenders || []).find((l: any) => l?.lenderName === lo.recommendedLender) || lo.lenders?.[0] || {}
+    // The chosen OPTION. Matching on the bank's name alone took whichever of
+    // two same-bank products came first. See lib/recommended-option.ts.
+    const rec = recommendedOption(lo) || lo.lenders?.[0] || {}
     const funds = fundsToComplete(from)
     return noteFacts({
       lender: String(lo.recommendedLender || ''),
@@ -943,7 +946,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   async function generateField(field: string) {
     if (COMPOSERS[field]) { await compose(field); return }
     setGenerating(prev => ({ ...prev, [field]: true }))
-    const recLender = (lo.lenders || []).find((l: any) => l.lenderName === lo.recommendedLender) || lo.lenders?.[0] || {}
+    const recLender = recommendedOption(lo) || lo.lenders?.[0] || {}
     // The model is told plainly how many people this loan is for. It used to be
     // handed one joined-up string and wrote about "her" on a couple's file.
     const context = {

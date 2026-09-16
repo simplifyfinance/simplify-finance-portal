@@ -33,6 +33,7 @@ import { applicantsOf } from './applicants'
 import { variantOf, andList, structureOf, flexibilityPassage, type Gap } from './box-one'
 import { retirementPicture } from './box-goals'
 import { CREDIT_QUESTIONS } from './credit-history-facts'
+import { recommendedOption } from './recommended-option'
 
 const txt = (v: any) => String(v ?? '').trim()
 const shout = (s: string) => `** ${s} **`
@@ -318,10 +319,10 @@ export function boxFour(deal: any): Box {
       fixed: /fixed/i.test(txt(x.repaymentType)),
     }))
     if (found.length === 0) {
-      const rec = (lo.lenders || []).find((l: any) => txt(l?.lenderName) === txt(lo.recommendedLender))
+      const rec = recommendedOption(lo)
       found = ([['variablePI', false], ['variableIO', false], ['fixedPI', true], ['fixedIO', true]] as [string, boolean][])
         .filter(([k]) => rec?.[k]?.enabled && txt(rec[k]?.rate))
-        .map(([k, fixed]) => ({ rate: txt(rec[k].rate), fixed }))
+        .map(([k, fixed]) => ({ rate: txt(rec![k].rate), fixed }))
     }
     const rates = [...new Set(found.map(f => f.rate))]
     if (rates.length === 0) return ''
@@ -361,7 +362,7 @@ export function boxFour(deal: any): Box {
   if (flex) assessment.push(flex)
 
   // the fees, from the lender's own record
-  const rec = (lo.lenders || []).find((l: any) => txt(l?.lenderName) === txt(lo.recommendedLender)) || (lo.lenders || [])[0] || {}
+  const rec = recommendedOption(lo) || (lo.lenders || [])[0] || {}
   const fees: string[] = []
   const fee = (label: string, val: any) => { const t = txt(val); if (t) fees.push(`${label} of ${/^\$/.test(t) ? t.replace(/\/yr$/, '') : '$' + t}`) }
   fee('an application fee', rec.applicationFee)

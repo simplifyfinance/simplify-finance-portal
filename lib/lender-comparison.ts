@@ -17,6 +17,7 @@
 
 import { readMoney, money } from './money'
 import { resolveLenderSplits } from './lo-splits'
+import { isRecommended } from './recommended-option'
 
 const txt = (v: any) => String(v ?? '').trim()
 const rate = (v: any) => {
@@ -132,7 +133,6 @@ function ratesOf(lo: any, l: any): { label: string; rate: number }[] {
 }
 
 export function optionsOf(lo: any): Option[] {
-  const recommended = txt(lo?.recommendedLender)
   return (lo?.lenders || [])
     .filter((l: any) => txt(l?.lenderName))
     .map((l: any) => {
@@ -141,7 +141,9 @@ export function optionsOf(lo: any): Option[] {
       return {
         name: txt(l.lenderName),
         product: txt(l.productName),
-        recommended: txt(l.lenderName) === recommended,
+        // The option, not the bank - otherwise two Bankwest products are both
+        // "the recommended lender" and every comparison line below reads wrong.
+        recommended: isRecommended(lo, l),
         rates,
         lowestRate: rates.length ? Math.min(...rates.map(r => r.rate)) : null,
         upfront: UPFRONT.reduce((t, k) => t + fee(l?.[k]), 0),

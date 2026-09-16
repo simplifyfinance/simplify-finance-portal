@@ -18,6 +18,7 @@ import { emailFreshness, needsAttention, notesAfterScenarioChange } from '@/lib/
 import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved } from '@/lib/field-ownership'
 import { useSaveIndicator } from '@/components/useSaveIndicator'
+import { recommendedOption, isRecommended, recommendedLabel, recommendationIsAmbiguous } from '@/lib/recommended-option'
 import type { SaveStatus } from '@/lib/save-indicator'
 import { useKeepalive } from '@/components/useKeepalive'
 import { loFigures } from '@/lib/deal-figures'
@@ -82,6 +83,11 @@ type LenderProduct = {
 type RateModule = { enabled: boolean; rate: string; repayment: string; loanTerm: string; ioYears?: string; fixedYears?: string }
 
 type LenderOption = {
+  // WHICH OPTION THIS IS. Not the bank, not its place in the list - the option.
+  // Two Bankwest products used to be indistinguishable to everything downstream,
+  // so the client email starred both and the compliance wording quoted whichever
+  // came first. See lib/recommended-option.ts.
+  id: string
   lenderId: string
   lenderProductId: string
   lenderName: string
@@ -145,6 +151,10 @@ type LOData = {
   additionalNotes: string
   importantNotes: string
   lenders: LenderOption[]
+  // The chosen option's id. `recommendedLender` is kept in step with it because
+  // plenty of wording reads the bank's name on its own - but the id is the
+  // answer to "which one", and the name alone never was.
+  recommendedOptionId: string
   recommendedLender: string
   recommendationNote: string
   internalNotes: string
@@ -166,6 +176,7 @@ type LOData = {
 const defaultRateModule: RateModule = { enabled: false, rate: '', repayment: '', loanTerm: '30', ioYears: '5', fixedYears: '2' }
 
 const defaultLenderOption = (): LenderOption => ({
+  id: makeUid(),
   lenderId: '', lenderProductId: '', lenderName: '', productName: '', approvalDays: '',
   applicationFee: '', annualFee: '', valuationFee: '', legalFee: '', legalFeeLabel: '', rateLockFee: '',
   earlyRepaymentFee: '', dischargeFee: '', offsetAccount: '', libraryNotes: '',
@@ -451,6 +462,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       additionalNotes: '',
       importantNotes: (LO_TEMPLATE_NOTES[initialTemplate] || []).join('\n'),
       lenders: [defaultLenderOption()],
+      recommendedOptionId: '',
       recommendedLender: '',
       recommendationNote: '',
       internalNotes: '',
@@ -725,6 +737,22 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     const loaded = fillMissing(stored, blankData())
     if (!loaded.importantNotes) loaded.importantNotes = (LO_TEMPLATE_NOTES[loaded.template] || []).join('\n')
     if (!loaded.refinanceSplits) loaded.refinanceSplits = initRefinanceSplits()
+    // OPTIONS SAVED BEFORE 16 SEP 2026 HAVE NO ID. Backfilled from the position
+    // they are already in, NOT from makeUid(): two people opening the same old
+    // deal have to arrive at the same ids, or a merge would see two different
+    // lists and keep both copies of every option. A new option minted from here
+    // on gets a real uid, which can never collide with "legacy-2".
+    if (Array.isArray(loaded.lenders)) {
+      loaded.lenders = loaded.lenders.map((l: any, i: number) =>
+        l && !l.id ? { ...l, id: `legacy-${i}` } : l)
+    }
+    // And carry an old choice onto the option it can only have meant. Where two
+    // options share the bank it stays empty on purpose - nobody recorded which,
+    // and the banner above the list asks. See lib/recommended-option.ts.
+    if (!loaded.recommendedOptionId) {
+      const rec = recommendedOption(loaded)
+      if (rec?.id) loaded.recommendedOptionId = rec.id
+    }
     return loaded
   }
 
@@ -788,7 +816,12 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     // every screen that wanted it looked at the empty column instead. Same for
     // the lender: the LO knows which one is recommended and the deal did not.
     const loanNum = Number(String(liveD.current.loanAmount || '').replace(/[^0-9.]/g, '')) || null
-    const recId = lenderIdByName[String(liveD.current.recommendedLender || '').trim().toLowerCase()] || null
+    // The chosen option already carries the bank's id. The name lookup stays as
+    // the fallback for options typed in rather than picked from the library.
+    const recOption = recommendedOption(liveD.current)
+    const recId = String(recOption?.lenderId || '').trim()
+      || lenderIdByName[String(liveD.current.recommendedLender || '').trim().toLowerCase()]
+      || null
     const extraColumns: any = {}
     // Only while the deal is still being written. Once it is lodged, what was
     // lodged and what settled are the record; this figure is an estimate that
@@ -1031,14 +1064,14 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
   async function generateRecommendation() {
     setGeneratingRec(true)
-    const rec = d.lenders.find(l => l.lenderName === d.recommendedLender)
+    const rec = recommendedOption(d)
     const lenderSummaries = d.lenders.map(l => {
       const rate = l.variablePI.enabled ? `${l.variablePI.rate}% p.a. variable P&I` : (l.variableIO.enabled ? `${l.variableIO.rate}% p.a. variable IO` : (l.fixedPI.enabled ? `${l.fixedPI.rate}% p.a. fixed P&I` : 'rate not specified'))
-      return `- ${l.lenderName} (${l.productName || 'product not specified'}): ${rate}, annual fee ${l.annualFee || 'nil'}, application fee ${l.applicationFee || 'nil'}, approval turnaround ${l.approvalDays || 'not specified'} days${l.lenderName === d.recommendedLender ? ' [RECOMMENDED]' : ''}`
+      return `- ${l.lenderName} (${l.productName || 'product not specified'}): ${rate}, annual fee ${l.annualFee || 'nil'}, application fee ${l.applicationFee || 'nil'}, approval turnaround ${l.approvalDays || 'not specified'} days${isRecommended(d, l) ? ' [RECOMMENDED]' : ''}`
     }).join('\n')
     const criteriaList = (d.criteriaUsed || []).join(', ') || 'not specified'
     const loanPurposeContext = ff.loanPurpose ? `\n\nThe client's stated purpose for this loan: "${ff.loanPurpose}". Where genuinely relevant, briefly connect the recommendation to this stated purpose — do not force it if there's no natural connection.` : ''
-    const prompt = `You are a mortgage broker writing a recommendation for a client. Here are all the lending options reviewed:\n${lenderSummaries}\n\nThe research criteria that mattered for this client: ${criteriaList}.${loanPurposeContext}\n\nWrite 2-3 professional sentences recommending ${d.recommendedLender} (${rec?.productName}) for a loan amount of ${d.loanAmount}. Explicitly compare it against the other option(s) listed above — reference rate, fees, and approval turnaround days where the recommended lender is genuinely better, and mention which of the client's research criteria it satisfies. Be specific and factual, don't just describe the recommended lender in isolation. Do not use placeholder text.`
+    const prompt = `You are a mortgage broker writing a recommendation for a client. Here are all the lending options reviewed:\n${lenderSummaries}\n\nThe research criteria that mattered for this client: ${criteriaList}.${loanPurposeContext}\n\nWrite 2-3 professional sentences recommending ${recommendedLabel(d)} for a loan amount of ${d.loanAmount}. Explicitly compare it against the other option(s) listed above — reference rate, fees, and approval turnaround days where the recommended lender is genuinely better, and mention which of the client's research criteria it satisfies. Be specific and factual, don't just describe the recommended lender in isolation. Do not use placeholder text.`
     try {
       const res = await fetch('/api/generate-lo-recommendation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, styleNotes: loStyleNotes }) })
       const data = await res.json()
@@ -1549,8 +1582,22 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             </div>
           </div>
 
+          {/* TWO OPTIONS, ONE BANK, AND NOTHING SAYS WHICH.
+              Only reachable on a deal recommended before 16 Sep 2026, when the
+              choice was saved as a bank name. Loud rather than guessed: the
+              wrong guess prints a real rate against the wrong product. */}
+          {recommendationIsAmbiguous(d) && (
+            <div className="flex items-center gap-3 bg-amber-50 border-2 border-amber-400 rounded-xl px-4 py-3">
+              <span className="text-amber-500 text-base">⚠</span>
+              <div>
+                <div className="text-xs font-semibold text-amber-800">Two options are both {d.recommendedLender} — please pick which one</div>
+                <div className="text-xs text-amber-700">This deal was recommended before the portal recorded the product as well as the bank. Until one is chosen, the client email and the compliance wording treat it as not yet recommended.</div>
+              </div>
+            </div>
+          )}
+
           {/* Recommendation warning */}
-          {!d.recommendedLender && d.lenders.some(l => l.lenderName) && (
+          {!recommendedOption(d) && !recommendationIsAmbiguous(d) && d.lenders.some(l => l.lenderName) && (
             <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
               <span className="text-amber-500 text-base">⚠</span>
               <div>
@@ -1562,7 +1609,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
           {/* Lender options */}
           {d.lenders.map((lender, i) => {
-            const isRec = d.recommendedLender && lender.lenderName === d.recommendedLender
+            const isRec = isRecommended(d, lender)
             const isEmpty = !lender.lenderId
             const lenderSplits = resolveLenderSplits(lender, d.refinanceSplits)
             return (
@@ -1574,7 +1621,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   </div>
                   <div className="flex items-center gap-2">
                     {!isRec && lender.lenderName && (
-                      <button onClick={() => setD({ ...d, recommendedLender: lender.lenderName })} className="text-xs text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-2.5 py-1 hover:bg-blue-50 transition">★ Set as recommended</button>
+                      <button onClick={() => setD({ ...d, recommendedOptionId: lender.id, recommendedLender: lender.lenderName })} className="text-xs text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-2.5 py-1 hover:bg-blue-50 transition">★ Set as recommended</button>
                     )}
                     {d.lenders.length > 1 && <button onClick={() => removeLender(i)} className="text-xs text-red-400 hover:text-red-600">Remove</button>}
                   </div>
@@ -1781,18 +1828,25 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           )}
 
           {/* Recommendation */}
-          <div className={`rounded-xl p-5 border-2 transition-all ${d.recommendedLender && d.recommendationNote ? "bg-white border-green-200" : "bg-[#FFF8E6] border-amber-400"}`}>
+          <div className={`rounded-xl p-5 border-2 transition-all ${recommendedOption(d) && d.recommendationNote ? "bg-white border-green-200" : "bg-[#FFF8E6] border-amber-400"}`}>
             <div className="flex items-center justify-between mb-4">
               <div className="text-xs font-medium text-gray-400 uppercase tracking-widest">Recommendation</div>
-              {d.recommendedLender && !d.recommendationNote && (
+              {recommendedOption(d) && !d.recommendationNote && (
                 <span className="text-xs text-amber-700 bg-amber-100 border border-amber-300 rounded-lg px-2.5 py-1">⚠ Add why this product is in the client&#39;s best interests</span>
               )}
             </div>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <Field label="Recommended lender">
-                <select className={sel} value={d.recommendedLender} onChange={e => setD({ ...d, recommendedLender: e.target.value })}>
+                <select className={sel} value={d.recommendedOptionId} onChange={e => {
+                  // The OPTION, not the bank. Picking "Bankwest — Simple" out of
+                  // two Bankwest rows used to save the word "Bankwest" and lose
+                  // the rest. The name is kept beside the id because a lot of
+                  // wording still reads it on its own.
+                  const chosen = d.lenders.find(l => l.id === e.target.value)
+                  setD({ ...d, recommendedOptionId: e.target.value, recommendedLender: chosen?.lenderName || '' })
+                }}>
                   <option value="">Select recommended lender</option>
-                  {d.lenders.filter(l => l.lenderName).map((l, i) => <option key={i} value={l.lenderName}>{l.lenderName} — {l.productName}</option>)}
+                  {d.lenders.filter(l => l.lenderName).map(l => <option key={l.id} value={l.id}>{l.lenderName} — {l.productName}</option>)}
                 </select>
               </Field>
             </div>
@@ -1802,20 +1856,21 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
               onBlur={() => blurField(ownRef.current, 'recommendationNote')}
               onChange={e => { markDirty(ownRef.current, 'recommendationNote'); setD({ ...d, recommendationNote: e.target.value }) }} placeholder="Based on your situation, I would recommend proceeding with..." />
               {(() => {
-                const mismatchedLender = d.lenders.find(l =>
+                const rec = recommendedOption(d)
+                const mismatchedLender = rec && d.lenders.find(l =>
                   l.lenderName &&
-                  l.lenderName !== d.recommendedLender &&
+                  l.lenderName !== rec.lenderName &&
                   d.recommendationNote.toLowerCase().includes(l.lenderName.toLowerCase()) &&
-                  !d.recommendationNote.toLowerCase().includes(d.recommendedLender.toLowerCase())
+                  !d.recommendationNote.toLowerCase().includes(String(rec.lenderName || '').toLowerCase())
                 )
                 return mismatchedLender && (
                   <div className="mt-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-600">
-                    Your note mentions {mismatchedLender.lenderName}, but you've selected {d.recommendedLender} as the recommended lender — please confirm this is correct.
+                    Your note mentions {mismatchedLender.lenderName}, but you've selected {recommendedLabel(d)} as the recommended option — please confirm this is correct.
                   </div>
                 )
               })()}
             </Field>
-            <button onClick={generateRecommendation} disabled={generatingRec || !d.recommendedLender} className="mt-2 text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-4 py-2 hover:bg-blue-50 transition disabled:opacity-40">
+            <button onClick={generateRecommendation} disabled={generatingRec || !recommendedOption(d)} className="mt-2 text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-4 py-2 hover:bg-blue-50 transition disabled:opacity-40">
               {generatingRec ? 'Generating...' : '✦ AI draft recommendation'}
             </button>
             <button onClick={() => { setFlagOpen(v => !v); setFlagNote('') }}
@@ -1952,7 +2007,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 <p className="text-sm text-gray-500 mb-4">This moves the deal to Compliance and emails the client the next-steps content.</p>
 
                 <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                  <label className="text-xs font-medium text-gray-500 block mb-2">Did the client agree with the recommended lender ({d.recommendedLender || 'not yet recommended'})?</label>
+                  <label className="text-xs font-medium text-gray-500 block mb-2">Did the client agree with the recommended lender ({recommendedLabel(d) || 'not yet recommended'})?</label>
                   <div className="flex gap-2">
                     <button onClick={() => setD(prev => ({ ...prev, clientAgreedLender: 'Yes', clientChosenLender: '', clientChosenLenderOther: '', clientChosenLenderReason: '' }))}
                       className={`px-3 py-1.5 text-xs rounded-lg border ${d.clientAgreedLender === 'Yes' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>Yes</button>

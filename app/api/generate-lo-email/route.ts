@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ctas } from '@/lib/email-buttons'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { type Brand, resolveBrand, brandLegal } from '@/lib/brand'
+import { isRecommended, recommendedLabel, recommendedOption, recommendedFirst } from '@/lib/recommended-option'
 // EVERY DOLLAR FIGURE IN A CLIENT EMAIL GOES THROUGH money().
 //
 // This file used to write `'$' + (d.purchasePrice || '')` in a hundred
@@ -112,11 +113,13 @@ function splitBand(lenders: any[], globals: any[], propertyValue: any): string {
   return out
 }
 
-function buildLenderTable(lenders: any[], isBridging: boolean, recommendedLender?: string, globals?: any[], propertyValue?: any) {
+// `lo` rather than a lender name: two options from the same bank both answered
+// yes to a name, so both columns wore the star. See lib/recommended-option.ts.
+function buildLenderTable(lenders: any[], isBridging: boolean, lo?: any, globals?: any[], propertyValue?: any) {
   const cols = lenders.length
   const pct = cols === 1 ? '100%' : cols === 2 ? '50%' : '33%'
 
-  const headers = lenders.map((l, i) => { const isRec = recommendedLender && l.lenderName === recommendedLender; return `<td width="${pct}" bgcolor="#f8f8f8" style="background:#f8f8f8;padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:13px;font-weight:700;color:#343333;margin:0 0 6px"><span style="color:#343333;">OPTION ${i+1}</span></p><p style="font-size:14px;font-weight:700;color:#2DBEFF;margin:0 0 4px"><span style="color:#2DBEFF;">${[l.lenderName, l.productName].map((v: any) => String(v ?? '').trim()).filter(Boolean).join(' &mdash; ')}</span></p>${l.approvalDays ? `<p style="font-size:12px;color:#777;margin:4px 0 0"><span style="color:#777;">${l.approvalDays} to approval</span></p>` : ''}${isRec ? '<p style="font-size:11px;font-weight:700;color:#D97706;border:1px solid #D97706;display:inline-block;padding:2px 8px;border-radius:3px;margin:6px 0 0"><span style="color:#D97706;">&#9733; Recommended</span></p>' : ''}${l.specialNote ? `<p style="font-size:11px;color:#dc2626;margin:6px 0 0"><span style="color:#dc2626;">&#10071; ${l.specialNote}</span></p>` : ''}</td>` }).join('')
+  const headers = lenders.map((l, i) => { const isRec = lo ? isRecommended(lo, l) : false; return `<td width="${pct}" bgcolor="#f8f8f8" style="background:#f8f8f8;padding:14px;border:1px solid #e0e0e0;vertical-align:top"><p style="font-size:13px;font-weight:700;color:#343333;margin:0 0 6px"><span style="color:#343333;">OPTION ${i+1}</span></p><p style="font-size:14px;font-weight:700;color:#2DBEFF;margin:0 0 4px"><span style="color:#2DBEFF;">${[l.lenderName, l.productName].map((v: any) => String(v ?? '').trim()).filter(Boolean).join(' &mdash; ')}</span></p>${l.approvalDays ? `<p style="font-size:12px;color:#777;margin:4px 0 0"><span style="color:#777;">${l.approvalDays} to approval</span></p>` : ''}${isRec ? '<p style="font-size:11px;font-weight:700;color:#D97706;border:1px solid #D97706;display:inline-block;padding:2px 8px;border-radius:3px;margin:6px 0 0"><span style="color:#D97706;">&#9733; Recommended</span></p>' : ''}${l.specialNote ? `<p style="font-size:11px;color:#dc2626;margin:6px 0 0"><span style="color:#dc2626;">&#10071; ${l.specialNote}</span></p>` : ''}</td>` }).join('')
 
   let featureCells = ''
   if (isBridging) {
@@ -288,8 +291,14 @@ export async function POST(req: NextRequest) {
     body += p('Please note, for the requested loan amount, we have added a buffer to cover the last month\'s repayment and any applicable discharge fees. This will ensure there is no shortfall come settlement. Any funds not required will be credited back into your loan so that no additional interest is charged.')
   }
 
-  if (d.recommendedLender && d.recommendationNote) {
-    body += `<p style="font-size:14px;font-weight:700;color:#343333;margin-bottom:8px"><span style="color:#343333;">Our Recommendation: ${d.recommendedLender}</span></p>`
+  // The note is written text and stays, even on an old deal where we cannot tell
+  // which of two same-bank products was meant. recommendedLabel() falls back to
+  // the bank on its own, exactly as this line read before - what changed is that
+  // the table below no longer stars both columns.
+  if (d.recommendationNote && (recommendedOption(d) || d.recommendedLender)) {
+    // The PRODUCT as well as the bank. "Our Recommendation: Bankwest" on a deal
+    // holding two Bankwest products told the processing team nothing.
+    body += `<p style="font-size:14px;font-weight:700;color:#343333;margin-bottom:8px"><span style="color:#343333;">Our Recommendation: ${recommendedLabel(d)}</span></p>`
     body += p(d.recommendationNote)
   }
   // THE BUTTON GOES ABOVE THE TABLE.
@@ -305,8 +314,8 @@ export async function POST(req: NextRequest) {
   // ever drifts back below the table.
   body += ctas(b.calendly, proceedUrl)
 
-  const sortedLenders = d.recommendedLender ? [...d.lenders].sort((a: any, b: any) => a.lenderName === d.recommendedLender ? -1 : b.lenderName === d.recommendedLender ? 1 : 0) : d.lenders
-  body += buildLenderTable(sortedLenders, isBridging, d.recommendedLender, d.refinanceSplits, d.propertyValue)
+  const sortedLenders = recommendedFirst(d, d.lenders || [])
+  body += buildLenderTable(sortedLenders, isBridging, d, d.refinanceSplits, d.propertyValue)
 
   body += p('Please let us know which lender you would like to proceed with and if you have any questions regarding the numbers above.')
   body += notesBox(d.importantNotesList || ['Any rates or fees quoted are subject to change', 'This email does not constitute as a formal approval'])

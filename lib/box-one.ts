@@ -38,6 +38,7 @@ import { splitsOf, dealRow } from './deal-structure'
 import { fullName, currentEmployment, notWorking, selfEmployed } from './fact-find'
 import { annualIncomeOfApplicant } from './income-calculations'
 import { applicantsOf } from './applicants'
+import { recommendedOption } from './recommended-option'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -114,8 +115,7 @@ const on = (mod: any) => !!mod?.enabled
 
 export function structureOf(deal: any): Structure {
   const lo = deal?.lo_data || {}
-  const rec = (lo.lenders || []).find((l: any) => txt(l?.lenderName) === txt(lo.recommendedLender))
-           || (lo.lenders || [])[0] || {}
+  const rec = recommendedOption(lo) || (lo.lenders || [])[0] || {}
   const variable = on(rec.variablePI) || on(rec.variableIO)
   const fixed = on(rec.fixedPI) || on(rec.fixedIO)
   const io = on(rec.variableIO) || on(rec.fixedIO)

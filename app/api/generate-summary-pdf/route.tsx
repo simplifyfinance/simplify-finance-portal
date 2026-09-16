@@ -35,6 +35,7 @@ import { notWorking, selfEmployed, currentEmployment, currentAddress, fullName,
 import { applicantNamesOf } from '@/lib/applicants'
 import { shortDate } from '@/lib/push-answers'
 import { rowLegalFeeLabel } from '@/lib/lender-fees'
+import { isRecommended, recommendedFirst } from '@/lib/recommended-option'
 
 const INK = '#141C24', MUTE = '#7C8894', BODY = '#3D4750'
 const RULE = '#E3E7EA', SOFT = '#F6F8FA', SKY = '#7FD3FF'
@@ -210,8 +211,10 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
   // Sorted the way the lending options email sorts them: the recommendation
   // first, so nobody has to hunt for it.
   const loLenders = (lo.lenders || []).filter((l: any) => l.lenderName)
-  const isRec = (l: any) => !!lo.recommendedLender && l.lenderName === lo.recommendedLender
-  const sortedLenders = [...loLenders].sort((x, y) => (isRec(x) ? -1 : 0) - (isRec(y) ? -1 : 0))
+  // By option, not by bank: two products from the same lender both answered to
+  // the name, so both came back recommended. See lib/recommended-option.ts.
+  const isRec = (l: any) => isRecommended(lo, l)
+  const sortedLenders = recommendedFirst(lo, loLenders)
 
   const doc = (
     <Document title={fileName}>
