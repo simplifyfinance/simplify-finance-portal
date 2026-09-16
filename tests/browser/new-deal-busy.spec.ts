@@ -37,10 +37,22 @@ const goals10 = (p: Page) => p.getByLabel('Goals — 2 to 10 years')
 async function openOrCreate(page: Page): Promise<void> {
   await page.goto('/deals')
   await page.getByPlaceholder(/Search by name, client, purpose/i).fill(FIRST)
-  await page.waitForTimeout(1500)
 
+  // WAIT FOR AN ANSWER, DO NOT GUESS AT ONE.
+  //
+  // This used to wait a flat 1500ms and then count what was on screen. Any
+  // morning the deals list took longer than that - a cold start, a slow query,
+  // someone else mid-save - the count came back 0, the robot decided its deal
+  // did not exist, and it made another one. Every ship, for weeks. Fabio,
+  // 16 Sep 2026: "delete ALL robo created deal cards they are getting a lot."
+  //
+  // waitFor gives the list a real chance and only gives up once the deal has
+  // genuinely not appeared, so a slow page costs seconds instead of another
+  // deal card. It can only ever find more than the old code, never fewer.
   const existing = page.getByText(new RegExp(FIRST, 'i')).first()
-  if (await existing.count() > 0) {
+  const found = await existing.waitFor({ state: 'visible', timeout: 20_000 })
+    .then(() => true).catch(() => false)
+  if (found) {
     await existing.click()
     await page.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
     return
