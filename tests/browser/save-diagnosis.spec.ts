@@ -3,7 +3,7 @@ import { test, expect, type Page } from '@playwright/test'
 // WHY DOES NOTHING SAVE? — a diagnostic, not a gate.
 //
 // On 10 Sep the robot found two things on the BC that fit together: the page
-// never printed its "Autosaved" stamp, and a note typed into the broker summary
+// never printed its saved stamp, and a note typed into the broker summary
 // did not survive a reload - the box came back holding text from an earlier run.
 // The letters themselves were all present on screen the whole time, so this is
 // not the dropped-keystroke fault. It is worse: typing that looks perfect and
@@ -59,8 +59,8 @@ test.describe('what happens when the BC tries to save', () => {
     // Long enough for a 700ms debounce several times over.
     await page.waitForTimeout(6_000)
 
-    const stamp = await page.getByText(/Autosaved/).count()
-    const errorOnScreen = await page.locator('.text-red-600, .text-red-500').allTextContents()
+    const stamp = await page.getByText(/Saved \d{1,2}:\d{2}/).count()
+    const errorOnScreen = await page.locator('.text-red-700, .text-red-600, .text-red-500').allTextContents()
     const stillOnScreen = await box.inputValue()
 
     await page.reload()
@@ -73,7 +73,7 @@ test.describe('what happens when the BC tries to save', () => {
     say(`on screen:      ${JSON.stringify(onScreen)}`)
     say(`still there 6s: ${JSON.stringify(stillOnScreen)}`)
     say(`after reload:   ${JSON.stringify(afterReload)}`)
-    say(`"Autosaved" on screen: ${stamp > 0 ? 'yes' : 'NO'}`)
+    say(`saved stamp on screen: ${stamp > 0 ? 'yes' : 'NO'}`)
     say(`red text on screen: ${JSON.stringify(errorOnScreen.filter(Boolean).slice(0, 6))}`)
     say('\n──────────── WRITES TO THE DEALS TABLE ────────────')
     say(writes.length ? writes.join('\n') : '  NONE. The page never tried to save.')

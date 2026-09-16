@@ -2,6 +2,8 @@
 import { brokerLabel } from '@/lib/broker-key'
 import DealPresence from '@/components/DealPresence'
 import DealHistory from '@/components/DealHistory'
+import { SaveIndicator, SaveIndicatorNote } from '@/components/SaveIndicator'
+import type { SaveStatus } from '@/lib/save-indicator'
 import TabBoundary from '@/components/TabBoundary'
 import { canSeeHistory } from '@/lib/permissions'
 import { useState, useEffect } from 'react'
@@ -39,7 +41,9 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   const [nameInput, setNameInput] = useState(deal.deal_name)
   // One save indicator for the whole deal, so it sits in the same place on every tab.
   // Each form reports up rather than rendering its own label wherever that form ends.
-  const [saveStatus, setSaveStatus] = useState<{ at?: string; error?: string }>({})
+  // THE SAVE LINE, for whichever tab is on screen. One indicator for the page -
+  // see lib/save-indicator.ts for what it is allowed to say.
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>({ stage: 'clean' })
   // True only once the browser has taken this page over from the server.
   const [pageReady, setPageReady] = useState(false)
   useEffect(() => { setPageReady(true) }, [])
@@ -197,9 +201,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
             <div className="flex items-center gap-2 mb-1">
               <div className="flex items-center gap-3">
                 <div className="text-lg font-semibold">{dealData.deal_name}</div>
-                {saveStatus.error
-                  ? <span className="text-xs font-semibold text-red-600">{saveStatus.error}</span>
-                  : saveStatus.at ? <span className="text-xs text-gray-400 whitespace-nowrap">Autosaved {saveStatus.at}</span> : null}
+                <SaveIndicator status={saveStatus} />
                 {/* Next to the autosave line, because that is where somebody
                     looks the moment they wonder what happened to their work.
                     Two named people only - see canSeeHistory. */}
@@ -215,6 +217,9 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
               <button onClick={() => setEditingName(true)} className="text-xs text-[#2DBEFF] hover:underline">✎ Edit</button>
             </div>
           )}
+          {/* Only there when a save has actually gone wrong, so it cannot push the
+              form around on a normal day. */}
+          <SaveIndicatorNote status={saveStatus} />
           {/* Client and loan type are not repeated here - the deal name already contains both. */}
           <div className="flex gap-2 items-center flex-wrap">
             <span className="inline-flex items-baseline gap-1.5 bg-[#FAF7F2] border border-[#E8E1D6] rounded-lg px-2.5 py-1">

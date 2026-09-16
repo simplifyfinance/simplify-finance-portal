@@ -15,6 +15,8 @@ import { missingForEmail, missingSentence } from '@/lib/bc-ready'
 import { dealFigures } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, settleSaved, applyOwned } from '@/lib/field-ownership'
+import { useSaveIndicator } from '@/components/useSaveIndicator'
+import type { SaveStatus } from '@/lib/save-indicator'
 import { useKeepalive } from '@/components/useKeepalive'
 import { GUARANTORS } from '@/lib/family-pledge-copy'
 
@@ -316,7 +318,7 @@ function NumberInput({ value, onChange, placeholder }: { value: string; onChange
   )
 }
 
-type BCFormProps = { deal: any; whoElseHere?: string; me?: { id?: string | null; name?: string | null }; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void }
+type BCFormProps = { deal: any; whoElseHere?: string; me?: { id?: string | null; name?: string | null }; onDataChange?: (d: any) => void; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: SaveStatus) => void }
 
 // WHY THIS FORM NEVER REBUILDS ITSELF.
 //
@@ -715,7 +717,6 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // to report" rather than a false alarm.
   const [emailFigures, setEmailFigures] = useState<any>(s.emailFigures || null)
   const [emailError, setEmailError] = useState('')
-  const [savedAt, setSavedAt] = useState('')
   const [bcCompletedAt, setBcCompletedAt] = useState<string | null>(deal.bc_completed_at || null)
   const [markingComplete, setMarkingComplete] = useState(false)
   const [sendingToCreditTeam, setSendingToCreditTeam] = useState(false)
@@ -755,10 +756,11 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const [creditTeamMsg, setCreditTeamMsg] = useState('')
   const [creditTeamErr, setCreditTeamErr] = useState('')
   const [assignmentRefreshKey, setAssignmentRefreshKey] = useState(0)
-  const [saveError, setSaveError] = useState('')
   const [showAllTemplates, setShowAllTemplates] = useState(false)
-  // Mirror save state up to the deal header, which owns the single indicator.
-  useEffect(() => { onSaveStatus?.({ at: savedAt, error: saveError }) }, [savedAt, saveError])
+  // THE SAVE LINE beside the deal name. What it says, and when it is allowed to
+  // say it, lives in components/useSaveIndicator.ts - shared, so BC cannot end up
+  // telling Kylie a different story from the Fact Find.
+  const save = useSaveIndicator(onSaveStatus)
   const [clientProceeded, setClientProceeded] = useState<boolean>(!!deal.client_proceeded)
   const [proceedInfo, setProceedInfo] = useState(() => proceedCredit(deal, 'BC'))
   // Whose copy is on screen — see lib/save-conflict.ts. This form writes on
@@ -913,6 +915,16 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
 
   useEffect(() => {
     const data = buildBcData()
+    // The save line stops saying "saved" NOW, not in 700ms. See
+    // components/useSaveIndicator.ts - the first run of this effect is the form
+    // arriving on screen and does not count.
+    //
+    // `save` is deliberately NOT in the dependency list below. That list is this
+    // form's field list, not React's - lib/bc-fields.test.ts checks it name for
+    // name against buildBcData(), and anything else in there reads as a field
+    // that never reaches the database. useSaveIndicator hands back one object
+    // that does not change between renders, so there is nothing to depend on.
+    save.changed()
     const write = () => {
     // ONCE A PAUSE, NOT ONCE A KEYSTROKE.
     //
@@ -928,17 +940,19 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
       onDataChange?.(data)
 
       // Verify the write actually landed. RLS denials return zero rows with NO error, so
-      // checking `error` alone reports success on a write that saved nothing. setSavedAt
-      // previously fired here regardless of outcome - the form said "Saved" while nothing
-      // reached the database, which is why silent failures went unnoticed for weeks.
+      // checking `error` alone reports success on a write that saved nothing. The save
+      // line previously moved here regardless of outcome - the form said "Saved" while
+      // nothing reached the database, which is why silent failures went unnoticed for
+      // weeks. See components/useSaveIndicator.ts.
       const now = JSON.stringify(data)
       // The very first run is the form arriving on screen, never a person.
       // Nobody has touched this form, so whatever changed did not come from a
       // person - the record loading in, a default being applied, somebody else's
       // fields folded in. That is arrival, not an edit, and arrival never writes.
-      if (!touchedRef.current) { savedRef.current = now; return }
-      if (now === savedRef.current) return
+      if (!touchedRef.current) { savedRef.current = now; save.settled(); return }
+      if (now === savedRef.current) { save.settled(); return }
       ;(async () => {
+        const token = save.starting()
         const out = await saveGuarded({
           supabase, dealId: deal.id, column: 'bc_data', guard: guardRef.current, savedBy: me, tabLabel: 'BC — Borrowing capacity', value: data,
           // Nothing typed here and somebody else has saved: show their version
@@ -952,15 +966,14 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
           onMerge: merged => applyBcData(merged),
         })
         if (out.kind === 'superseded') return
-        if (out.kind === 'error') { console.error('BC autosave:', out.message); setSaveError(out.message); return }
-        setSaveError('')
+        if (out.kind === 'error') { console.error('BC autosave:', out.message); save.failed(out.message, out.technical); return }
         if (out.kind === 'saved') savedRef.current = now
         // An overwrite and a merge both landed in the database. Showing no
         // "Saved" stamp after them reads as "nothing happened", which is the
         // opposite of what occurred.
-        if (out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote') {
-          setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
-        }
+        // 'settled' and 'behind' mean the database had nothing to do: in sync, but
+        // no moment worth putting a time on.
+        save.landed(token, out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote')
         // THE BOX IS ONLY CLEAN IF WHAT WE WROTE IS STILL WHAT IS IN IT.
         // Compared against the screen as it is NOW, not as it was when this
         // save was built - anything typed while it was in flight keeps the box

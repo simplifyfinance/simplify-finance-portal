@@ -18,6 +18,8 @@ import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship 
 import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS } from '@/lib/fact-find'
 import { newGuard, saveGuarded } from '@/lib/save-conflict'
 import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved } from '@/lib/field-ownership'
+import { useSaveIndicator } from '@/components/useSaveIndicator'
+import type { SaveStatus } from '@/lib/save-indicator'
 import { useKeepalive } from '@/components/useKeepalive'
 import { withDefaults } from '@/lib/record-defaults'
 import NoApplicants from '@/components/NoApplicants'
@@ -337,7 +339,7 @@ function OwnershipCheckboxes({ applicants, ownership, onChange, label = 'Respons
   )
 }
 
-export default function FactFindForm({ deal, onDataChange, onDealFieldChange, onSaveStatus, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null }; deal: any; onDataChange?: (d: FactFindData) => void; onDealFieldChange?: (field: string, value: string) => void; onSaveStatus?: (s: { at?: string; error?: string }) => void }) {
+export default function FactFindForm({ deal, onDataChange, onDealFieldChange, onSaveStatus, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null }; deal: any; onDataChange?: (d: FactFindData) => void; onDealFieldChange?: (field: string, value: string) => void; onSaveStatus?: (s: SaveStatus) => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `fact_find_${deal.id}`
   const bc = deal.bc_data || {}
@@ -416,10 +418,10 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   }
 
   useEffect(() => { setConfirmCopy(false); setCopiedCount(0) }, [activeApplicant])
-  const [savedAt, setSavedAt] = useState('')
-  const [saveError, setSaveError] = useState('')
-  // Mirror save state up to the deal header, which owns the single indicator.
-  useEffect(() => { onSaveStatus?.({ at: savedAt, error: saveError }) }, [savedAt, saveError])
+  // THE SAVE LINE beside the deal name. What it says, and when it is allowed to
+  // say it, lives in components/useSaveIndicator.ts - shared, so BC cannot end up
+  // telling Kylie a different story from the Fact Find.
+  const save = useSaveIndicator(onSaveStatus)
 
   // Whose copy is on screen, and whether writing it would cost anybody
   // anything — the whole decision lives in lib/save-conflict.ts so all four
@@ -467,6 +469,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   // THE SAVE ITSELF, so it can be fired by the timer OR straight away.
   const writeNow = useCallback(async (value: FactFindData) => {
     onDataChange?.(value)
+    const token = save.starting()
     const out = await saveGuarded({
       supabase, dealId: deal.id, column: 'fact_find_data', guard: guardRef.current,
       savedBy: me, tabLabel: 'Fact Find', value, shape,
@@ -482,15 +485,14 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     // A newer save is already queued behind this one. Saying anything here would
     // be about a payload that has been overtaken.
     if (out.kind === 'superseded') return
-    if (out.kind === 'error') { console.error('Fact find autosave:', out.message); setSaveError(out.message); return }
-    setSaveError('')
-    if (out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote') {
-      setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
-    }
+    if (out.kind === 'error') { console.error('Fact find autosave:', out.message); save.failed(out.message, out.technical); return }
+    // 'settled' and 'behind' mean the database had nothing to do: in sync, but no
+    // moment worth putting a time on.
+    save.landed(token, out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote')
     // Against the screen as it is NOW: anything typed while this was in flight
     // keeps that box protected.
     settleSaved(ownRef.current, value, liveD.current)
-  }, [deal.id, me])
+  }, [deal.id, me, save])
 
   // WRITE IT NOW, NOT IN 600 MILLISECONDS.
   //
@@ -519,8 +521,12 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     // keystroke arriving during that render is swallowed, and a letter goes
     // missing out of a finished sentence with nothing to explain it. Kylie,
     // 9 Sep 2026: "it is deleting letters, and spaces, and dots."
+    // The save line stops saying "saved" NOW, not in 600ms. See
+    // components/useSaveIndicator.ts - the first run of this effect is the form
+    // arriving on screen and does not count.
+    save.changed()
     saveTimeoutRef.current = setTimeout(() => { void writeNow(liveD.current) }, 600)
-  }, [d, writeNow])
+  }, [d, writeNow, save])
 
   // Leaving the tab, or hiding the window, writes immediately. These are the
   // moments a person believes they have finished.
@@ -676,8 +682,8 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   async function saveDealLinks(field: string, value: string) {
     const problem = await checkedWrite(
       supabase.from('deals').update({ [field]: value }).eq('id', deal.id), 'That link')
-    if (problem) { setSaveError(problem); return }
-    setSaveError('')
+    if (problem) { save.failed(problem); return }
+    save.recovered()
     onDealFieldChange?.(field, value)
   }
 
@@ -733,8 +739,8 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       supabase.from('deal_documents').delete().eq('id', id), 'That document')
     // The file itself is already gone from storage. Leaving the row on screen
     // when the row is still in the database is the honest thing to show.
-    if (problem) { setSaveError(problem); return }
-    setSaveError('')
+    if (problem) { save.failed(problem); return }
+    save.recovered()
     setDocuments(prev => prev.filter(doc => doc.id !== id))
   }
 
@@ -769,8 +775,8 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     const newDealName = `${namePart} ${year}`.replace(/\s+/g, ' ').trim()
     const problem = await checkedWrite(
       supabase.from('deals').update({ deal_name: newDealName }).eq('id', deal.id), 'The deal name')
-    if (problem) { setSaveError(problem); return }
-    setSaveError('')
+    if (problem) { save.failed(problem); return }
+    save.recovered()
     onDealFieldChange?.('deal_name', newDealName)
   }
 

@@ -124,7 +124,12 @@ export type SaveOutcome =
   // there is nothing to write - but what is on screen is out of date. Not a
   // refusal either: nothing was typed here to refuse.
   | { kind: 'behind'; who: string }
-  | { kind: 'error'; message: string }
+  // `technical` is the database's own words, present ONLY when the failure is a
+  // raw error rather than a sentence written for a person. The save line uses its
+  // presence to decide whether the message can be shown to Kylie as it is - see
+  // plainFailure in lib/save-indicator.ts. Sniffing the English for jargon was the
+  // alternative, and that is a guess.
+  | { kind: 'error'; message: string; technical?: string }
 
 // Never returned to a form. The database refused the write because the record
 // moved between reading it and writing it; saveGuarded simply does the whole
@@ -402,7 +407,7 @@ async function attempt(req: SaveRequest, mySeq: number, lastResort = false): Pro
 
   const { data: rows, error } = await write.select('id')
 
-  if (error) return { kind: 'error', message: 'NOT SAVED - ' + error.message }
+  if (error) return { kind: 'error', message: 'NOT SAVED - ' + error.message, technical: error.message }
   // Zero rows means one of two very different things, and they must not be
   // confused: somebody saved in the gap, or row level security refused us.
   if (!rows || rows.length === 0) {

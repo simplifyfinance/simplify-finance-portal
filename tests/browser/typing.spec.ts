@@ -56,7 +56,7 @@ test.describe('typing into a deal', () => {
 
     // WAIT FOR THE DATABASE, NOT FOR A STAMP ON THE SCREEN.
     //
-    // This used to wait for the "Autosaved" line in the header. On 10 Sep it
+    // This used to wait for the saved line in the header. On 10 Sep it
     // never appeared, and the run failed there - with the whole note sitting
     // correctly in the box, which is the thing the test is actually for. A
     // proxy for the save was standing in front of the save itself.
@@ -74,14 +74,16 @@ test.describe('typing into a deal', () => {
   // THE STAMP THAT DID NOT APPEAR.
   //
   // Separate from the letters test on purpose. On 10 Sep the note typed and held
-  // perfectly and no "Autosaved" line ever showed - so somebody typing has no
+  // perfectly and no saved line ever showed - so somebody typing has no
   // confirmation their work went in. Whether that is the stamp failing or the
   // save failing, this is the test that says which.
   test('the page says it saved', async ({ page }) => {
     const box = await openBcNotes(page)
     await box.click()
     await box.pressSequentially(' Checking the save stamp.', { delay: 25 })
-    await expect(page.getByText(/Autosaved/)).toBeVisible({ timeout: 20_000 })
+    // "Saved 10:52" - the time is what makes it a claim about THIS work rather
+    // than about the record in general. See lib/save-indicator.ts.
+    await expect(page.getByText(/Saved \d{1,2}:\d{2}/)).toBeVisible({ timeout: 20_000 })
   })
 
   // The deal page used to shove the form down the screen whenever a notice
@@ -231,7 +233,7 @@ test.describe('typing into a deal', () => {
       // what is in the box, what the page says about saving it, and what comes
       // back after the reload. Read the three lines together.
       const said = await page.locator('body').innerText()
-      const stamp = (said.match(/Autosaved[^\n]*/) || ['(no Autosaved stamp)'])[0]
+      const stamp = (said.match(/Saved \d{1,2}:\d{2}[^\n]*/) || ['(no saved stamp)'])[0]
       const failed = (said.match(/NOT SAVED[^\n]*/) || ['(no save error)'])[0]
       console.log('\n=== FACT FIND, TWO WINDOWS ===')
       console.log('  typed          : ' + GOALS.length + ' characters')

@@ -17,6 +17,8 @@ import { resolveLenderSplits, seedFromGlobal, combineIntoOneLoan,
 import { emailFreshness, needsAttention, notesAfterScenarioChange } from '@/lib/email-freshness'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved } from '@/lib/field-ownership'
+import { useSaveIndicator } from '@/components/useSaveIndicator'
+import type { SaveStatus } from '@/lib/save-indicator'
 import { useKeepalive } from '@/components/useKeepalive'
 import { loFigures } from '@/lib/deal-figures'
 import { dealPurpose } from '@/lib/deal-facts'
@@ -235,7 +237,7 @@ function LibraryField({ label, value, onChange }: { label: string; value: string
   )
 }
 
-export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, onDataChange, onDealFieldChange, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null }; deal: any; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: { at?: string; error?: string }) => void; onDataChange?: (d: any) => void; onDealFieldChange?: (field: string, value: any) => void }) {
+export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, onDataChange, onDealFieldChange, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null }; deal: any; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: SaveStatus) => void; onDataChange?: (d: any) => void; onDealFieldChange?: (field: string, value: any) => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `lo_${deal.id}`
   const bc = deal.bc_data || {}
@@ -247,10 +249,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   const [generatingRec, setGeneratingRec] = useState(false)
   const [emailHtml, setEmailHtml] = useState('')
   const [activeTab, setActiveTab] = useState<'form' | 'preview'>('form')
-  const [savedAt, setSavedAt] = useState('')
-  const [saveError, setSaveError] = useState('')
-  // Mirror save state up to the deal header, which owns the single indicator.
-  useEffect(() => { onSaveStatus?.({ at: savedAt, error: saveError }) }, [savedAt, saveError])
+  // THE SAVE LINE beside the deal name. What it says, and when it is allowed to
+  // say it, lives in components/useSaveIndicator.ts - shared, so BC cannot end up
+  // telling Kylie a different story from the Fact Find.
+  const save = useSaveIndicator(onSaveStatus)
   const [newDoc, setNewDoc] = useState('')
   const [newCriteria, setNewCriteria] = useState('')
   const [sending, setSending] = useState(false)
@@ -775,8 +777,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     // Nobody has touched this form, so whatever changed did not come from a
     // person - the record loading in, a default being applied, somebody else's
     // fields folded in. That is arrival, not an edit, and arrival never writes.
-    if (!touchedRef.current) { savedRef.current = now; return }
-    if (now === savedRef.current) return
+    if (!touchedRef.current) { savedRef.current = now; save.settled(); return }
+    if (now === savedRef.current) { save.settled(); return }
 
     // The loan amount goes onto the DEAL, not just into lo_data.
     //
@@ -819,6 +821,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       // screen already holds this, so the rest of the portal should not be a
       // network round trip behind it. See lib/tabs-report-up.test.ts.
       onDataChange?.(payload)
+      const token = save.starting()
       const out = await saveGuarded({
         supabase, dealId: deal.id, column: 'lo_data', guard: guardRef.current, savedBy: me, tabLabel: 'Lending options', value: payload, shape: loShape,
         patch: extraColumns,
@@ -831,15 +834,14 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         onMerge: merged => putOnScreen(merged),
       })
       if (out.kind === 'superseded') return
-      if (out.kind === 'error') { console.error('LO autosave:', out.message); setSaveError(out.message); return }
-      setSaveError('')
+      if (out.kind === 'error') { console.error('LO autosave:', out.message); save.failed(out.message, out.technical); return }
       if (out.kind === 'saved') savedRef.current = now
-      if (out.kind === 'saved' || out.kind === 'merged') {
-        setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
-      }
+      // 'settled' and 'behind' mean the database had nothing to do: in sync, but no
+      // moment worth putting a time on.
+      save.landed(token, out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote')
       settleSaved(ownRef.current, payload, liveD.current)
     })()
-  }, [deal, me, lenderIdByName])
+  }, [deal, me, lenderIdByName, save])
 
   const flush = useCallback(() => {
     if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
@@ -853,8 +855,12 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     // every keystroke, which hammers the database and lets an older payload land
     // after a newer one.
     if (saveTimer.current) clearTimeout(saveTimer.current)
+    // The save line stops saying "saved" NOW, not in 700ms. See
+    // components/useSaveIndicator.ts - the first run of this effect is the form
+    // arriving on screen and does not count.
+    save.changed()
     saveTimer.current = setTimeout(() => { void writeNow() }, 700)
-  }, [d, writeNow])
+  }, [d, writeNow, save])
 
   useEffect(() => {
     const onHide = () => { if (document.visibilityState === 'hidden') flush() }

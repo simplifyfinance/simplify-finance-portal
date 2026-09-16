@@ -1,31 +1,39 @@
 -- BRINGING STAGING UP TO DATE WITH PRODUCTION
 --
--- 15 September 2026. The staging Supabase project has the core tables but its
--- schema stopped at roughly 17 August. Everything added since - row versions,
--- the history table that keeps overwritten work, internal notes, presence, the
--- document request recipient - was never applied to it.
---
--- This file is every schema script in docs/, in the order they were originally
--- run, concatenated. Each one was written to be safe to run twice, so running
--- the whole thing against a database that already has some of it is fine.
+-- 16 September 2026, rebuilt. The staging Supabase project has the core tables
+-- but its schema stopped at roughly 17 August. Everything added since - row
+-- versions, the history table that keeps overwritten work, internal notes,
+-- presence, the document request recipient - was never applied to it.
 --
 -- RUN THIS IN THE **STAGING** PROJECT'S SQL EDITOR. NOT PRODUCTION.
+-- Check the project name in the top bar says Staging before you paste.
 --
--- Two files are deliberately NOT included:
---   docs/rls_rollback_2026-08-19.sql - a rollback snapshot. It drops every
---     policy and recreates the ones from before the August security rewrite.
---     Running it would put OLD security rules on staging.
---   docs/migration-audit.sql - read only. Run it afterwards to confirm.
+-- WHY THIS IS IN TWO PARTS, AND WHY THE FIRST VERSION FAILED.
+--
+-- The first version concatenated the 24 schema files in the order they were
+-- originally run, and stopped dead on "column lodged_at does not exist". One
+-- file printed a look-at-the-data report naming a column that a LATER file
+-- creates - which was fine on the day, run by hand, in order, months apart, and
+-- is not fine as one paste.
+--
+-- So: PART ONE is every table and every column, from all 24 files, hoisted to
+-- the front. Every one carries "if not exists", so nothing here can fail on a
+-- database that already has some of it. PART TWO is everything else - indexes,
+-- functions, policies, views, backfills - in the original order, with the
+-- look-at-the-data reports removed. By the time part two runs, every column it
+-- could possibly name already exists.
 --
 -- The only rows this deletes anywhere are presence heartbeats, which are
 -- transient by design. No deal, client or document data is touched.
 --
--- Generated from: 24 files.
-
+-- Safe to run twice. If it stops, fix what it says and run the whole thing
+-- again - it will skip everything it already did.
+--
+-- Generated from 24 files.
 
 
 -- ======================================================================
--- statements-schema.sql
+-- PART ONE - EVERY TABLE AND EVERY COLUMN
 -- ======================================================================
 
 -- Statement analysis: two tables, run once in the Supabase SQL editor.
@@ -75,30 +83,6 @@ create table if not exists public.deal_statement_transactions (
   amount           numeric(14,2) not null
 );
 
-create index if not exists deal_statement_uploads_deal_idx
-  on public.deal_statement_uploads (deal_id, uploaded_at desc);
-create index if not exists deal_statement_txn_upload_idx
-  on public.deal_statement_transactions (upload_id, txn_date);
-create index if not exists deal_statement_txn_deal_idx
-  on public.deal_statement_transactions (deal_id, txn_date);
-
-alter table public.deal_statement_uploads      enable row level security;
-alter table public.deal_statement_transactions enable row level security;
-
-drop policy if exists "Statement uploads via deals" on public.deal_statement_uploads;
-create policy "Statement uploads via deals"
-  on public.deal_statement_uploads
-  as permissive for all to authenticated
-  using      (exists (select 1 from public.deals d where d.id = deal_statement_uploads.deal_id))
-  with check (exists (select 1 from public.deals d where d.id = deal_statement_uploads.deal_id));
-
-drop policy if exists "Statement transactions via deals" on public.deal_statement_transactions;
-create policy "Statement transactions via deals"
-  on public.deal_statement_transactions
-  as permissive for all to authenticated
-  using      (exists (select 1 from public.deals d where d.id = deal_statement_transactions.deal_id))
-  with check (exists (select 1 from public.deals d where d.id = deal_statement_transactions.deal_id));
-
 -- ---------------------------------------------------------------------------
 -- Statement rules in Settings, and re-analysing without a re-upload.
 -- Run this second, after the two tables above.
@@ -116,11 +100,6 @@ alter table public.deal_statement_uploads
   add column if not exists parsed_meta   jsonb not null default '{}'::jsonb,
   add column if not exists reanalysed_at timestamptz;
 
-
--- ======================================================================
--- lo-flags-schema.sql
--- ======================================================================
-
 -- Lending Options AI feedback loop (31 Aug 2026)
 -- Run in the Supabase SQL editor. Safe to re-run.
 
@@ -132,11 +111,6 @@ alter table public.compliance_flags
 -- a correction about an LO recommendation must never change a Compliance answer.
 alter table public.settings
   add column if not exists lo_style_notes jsonb;
-
-
--- ======================================================================
--- proceed-source-schema.sql
--- ======================================================================
 
 -- Who pressed "the client agreed", and when (31 Aug 2026)
 -- Run in the Supabase SQL editor. Safe to re-run.
@@ -154,11 +128,6 @@ alter table public.deals
   add column if not exists proceeded_by text,
   add column if not exists lo_proceeded_source text,
   add column if not exists lo_proceeded_by text;
-
-
--- ======================================================================
--- statement-answers-schema.sql
--- ======================================================================
 
 -- Answers to the statement worklist (31 Aug 2026)
 -- Run in the Supabase SQL editor. Safe to re-run.
@@ -182,23 +151,6 @@ create table if not exists public.deal_statement_answers (
   answered_by  text,
   answered_at  timestamptz not null default now()
 );
-
-create index if not exists deal_statement_answers_deal_idx
-  on public.deal_statement_answers (deal_id, item_key, answered_at desc);
-
-alter table public.deal_statement_answers enable row level security;
-
-drop policy if exists "Statement answers via deals" on public.deal_statement_answers;
-create policy "Statement answers via deals"
-  on public.deal_statement_answers
-  as permissive for all to authenticated
-  using      (exists (select 1 from public.deals d where d.id = deal_statement_answers.deal_id))
-  with check (exists (select 1 from public.deals d where d.id = deal_statement_answers.deal_id));
-
-
--- ======================================================================
--- statement-overrides-schema.sql
--- ======================================================================
 
 -- Overruling a line in the Audit tab (31 Aug 2026)
 -- Run in the Supabase SQL editor. Safe to re-run.
@@ -227,26 +179,9 @@ create table if not exists public.deal_statement_overrides (
   created_at  timestamptz not null default now()
 );
 
-create index if not exists deal_statement_overrides_deal_idx
-  on public.deal_statement_overrides (deal_id, external_id);
-
-alter table public.deal_statement_overrides enable row level security;
-
-drop policy if exists "Statement overrides via deals" on public.deal_statement_overrides;
-create policy "Statement overrides via deals"
-  on public.deal_statement_overrides
-  as permissive for all to authenticated
-  using      (exists (select 1 from public.deals d where d.id = deal_statement_overrides.deal_id))
-  with check (exists (select 1 from public.deals d where d.id = deal_statement_overrides.deal_id));
-
 -- Standing corrections, applied to every file.
 alter table public.settings
   add column if not exists statement_payer_rules jsonb;
-
-
--- ======================================================================
--- internal-notes-schema.sql
--- ======================================================================
 
 -- One internal notes field per deal (1 Sep 2026)
 -- Run in the Supabase SQL editor. Read the SELECT first, then the UPDATEs.
@@ -263,56 +198,6 @@ alter table public.settings
 alter table public.deals
   add column if not exists internal_notes text;
 
--- 2. LOOK BEFORE YOU MOVE ANYTHING. This changes nothing; it shows what the
---    updates below will do to each deal.
-select id, deal_name,
-       length(coalesce(fact_find_data->>'internalNotes','')) as ff_len,
-       length(coalesce(bc_data->>'internalNotes',''))        as bc_len,
-       length(coalesce(lo_data->>'internalNotes',''))        as lo_len
-from public.deals
-where coalesce(fact_find_data->>'internalNotes','') <> ''
-   or coalesce(bc_data->>'internalNotes','')        <> ''
-   or coalesce(lo_data->>'internalNotes','')        <> ''
-order by deal_name;
-
--- 3. Fact find notes move across as they are. Nothing is joined here because
---    nothing is being overwritten — internal_notes is empty on every deal.
-update public.deals
-set internal_notes = fact_find_data->>'internalNotes'
-where coalesce(fact_find_data->>'internalNotes','') <> ''
-  and coalesce(internal_notes,'') = '';
-
--- 4. BC notes. Where the deal already has notes they are joined with a line
---    saying where the text came from, so anyone reading it later knows it was
---    not always one box. Where it has none, the BC text simply becomes them.
-update public.deals
-set internal_notes = case
-      when coalesce(internal_notes,'') = '' then bc_data->>'internalNotes'
-      else internal_notes || E'\n\n— moved from the BC tab''s own notes, 1 Sep 2026 —\n' || (bc_data->>'internalNotes')
-    end
-where coalesce(bc_data->>'internalNotes','') <> '';
-
--- 5. Lending Options notes, same rule.
-update public.deals
-set internal_notes = case
-      when coalesce(internal_notes,'') = '' then lo_data->>'internalNotes'
-      else internal_notes || E'\n\n— moved from the Lending Options tab''s own notes, 1 Sep 2026 —\n' || (lo_data->>'internalNotes')
-    end
-where coalesce(lo_data->>'internalNotes','') <> '';
-
--- 6. Check it landed. Every deal that had notes anywhere should now have them here.
-select count(*) filter (where coalesce(internal_notes,'') <> '') as deals_with_notes
-from public.deals;
-
--- The old fact_find_data/bc_data/lo_data internalNotes keys are deliberately left
--- in place. They cost nothing, and they are the only copy of what the text looked
--- like before the move if anything needs checking.
-
-
--- ======================================================================
--- deal-phase-schema.sql
--- ======================================================================
-
 -- The deal board: one canonical phase (1 Sep 2026)
 -- Run in the Supabase SQL editor. Read step 2 before running step 3.
 --
@@ -327,43 +212,6 @@ from public.deals;
 -- 1. When compliance actually went out.
 alter table public.deals
   add column if not exists compliance_sent_at timestamptz;
-
--- 2. LOOK FIRST. Every deal the old rule marked completed. These are the nine.
---    They are about to reappear on the board in the "Compliance sent" column.
-select deal_name,
-       compliance_completed_at::date as compliance_done,
-       lodged_at::date, preapproval_at::date, formal_approval_at::date, settled_at::date
-from public.deals
-where status = 'completed'
-order by compliance_completed_at;
-
--- 3. Backfill. The date compliance was finished is the best record we have of when
---    it was sent — they happened in the same action.
-update public.deals
-set compliance_sent_at = coalesce(compliance_sent_at, compliance_completed_at)
-where status = 'completed'
-  and compliance_completed_at is not null;
-
--- 4. Retire the status. A deal that genuinely settled keeps its settled_at and is
---    read as settled from that; nothing else was ever really complete.
-update public.deals
-set status = 'in_progress'
-where status = 'completed'
-  and settled_at is null;
-
--- 5. Check. Nine deals should now carry a compliance_sent_at and no longer be
---    hidden, and nothing should still be sitting on the retired status.
-select
-  count(*) filter (where compliance_sent_at is not null) as compliance_sent,
-  count(*) filter (where status = 'completed')           as still_completed,
-  count(*) filter (where status = 'lost')                as lost,
-  count(*) filter (where settled_at is not null)         as settled
-from public.deals;
-
-
--- ======================================================================
--- deal-board-schema.sql
--- ======================================================================
 
 -- Deal board settings: broker colours, label colours, stale thresholds.
 -- Fabio, 1 Sep 2026. Run in the Supabase SQL editor BEFORE deploying.
@@ -387,11 +235,6 @@ alter table brokers
 alter table settings
   add column if not exists deal_board jsonb;
 
-
--- ======================================================================
--- settled-amount-schema.sql
--- ======================================================================
-
 -- Lodged and settled amounts get their own boxes, and the existing deals are
 -- repaired from the snapshots that already hold the truth.
 -- Fabio, 1 Sep 2026. Run in the Supabase SQL editor.
@@ -414,47 +257,12 @@ alter table settings
 
 -- 1. The boxes.
 alter table deals add column if not exists lodged_total   numeric;
+
 alter table deals add column if not exists lodged_splits  jsonb;
+
 alter table deals add column if not exists settled_total  numeric;
+
 alter table deals add column if not exists settled_splits jsonb;
-
--- 2. The repair. Every Mark as lodged and Mark as settled already wrote a
---    snapshot with the real total and every split, so nothing was ever lost -
---    no screen was reading it. Copying it onto the deal fills the columns that
---    every reader prefers, which also CORRECTS any deal whose loan_amount was
---    already overwritten by an opened LO.
-update deals d
-set lodged_total  = s.total_amount,
-    lodged_splits = s.splits
-from deal_stage_snapshots s
-where s.deal_id = d.id
-  and s.stage = 'lodged'
-  and d.lodged_total is null;
-
-update deals d
-set settled_total  = s.total_amount,
-    settled_splits = s.splits
-from deal_stage_snapshots s
-where s.deal_id = d.id
-  and s.stage = 'settled'
-  and d.settled_total is null;
-
--- 3. What the repair did. Any row where these disagree was a deal displaying
---    the wrong amount until a moment ago.
-select d.deal_name,
-       d.lodged_total,
-       d.settled_total,
-       d.loan_amount,
-       d.settled_total - d.loan_amount as was_out_by
-from deals d
-where d.settled_total is not null
-  and d.settled_total is distinct from d.loan_amount
-order by abs(d.settled_total - d.loan_amount) desc;
-
-
--- ======================================================================
--- notes-alerts-schema.sql
--- ======================================================================
 
 -- File notes, alerts, and the finance clause date.
 -- Fabio, 1 Sep 2026. Run in the Supabase SQL editor BEFORE deploying.
@@ -484,7 +292,6 @@ create table if not exists deal_notes (
   author_name text,
   created_at  timestamptz not null default now()
 );
-create index if not exists deal_notes_deal_idx on deal_notes(deal_id, created_at desc);
 
 -- 3. Alerts. An alert must have an owner and a way to close it, or it is just a
 --    note in red.
@@ -500,31 +307,6 @@ create table if not exists deal_alerts (
   author_name text,
   created_at  timestamptz not null default now()
 );
-create index if not exists deal_alerts_deal_idx on deal_alerts(deal_id) where resolved_at is null;
-
--- 4. Row level security. Without this, both tables are readable by anyone with
---    the anon key. Visibility follows the DEAL: the subquery runs as the signed
---    in user, so the existing policies on deals decide it and there is no second
---    copy of those rules to drift.
-alter table deal_notes  enable row level security;
-alter table deal_alerts enable row level security;
-
-drop policy if exists deal_notes_rw on deal_notes;
-create policy deal_notes_rw on deal_notes
-  for all to authenticated
-  using      (exists (select 1 from deals d where d.id = deal_notes.deal_id))
-  with check (exists (select 1 from deals d where d.id = deal_notes.deal_id));
-
-drop policy if exists deal_alerts_rw on deal_alerts;
-create policy deal_alerts_rw on deal_alerts
-  for all to authenticated
-  using      (exists (select 1 from deals d where d.id = deal_alerts.deal_id))
-  with check (exists (select 1 from deals d where d.id = deal_alerts.deal_id));
-
-
--- ======================================================================
--- deal-stages-schema.sql
--- ======================================================================
 
 -- Three more stages, and a place to remember folded board columns.
 -- Run in the Supabase SQL editor. Safe to run twice.
@@ -547,49 +329,15 @@ create policy deal_alerts_rw on deal_alerts
 -- it for its chip. It now holds the FURTHEST of the two.
 
 alter table deals add column if not exists offer_accepted_at      timestamptz;
+
 alter table deals add column if not exists contracts_returned_at  timestamptz;
+
 alter table deals add column if not exists settlement_booked_at   timestamptz;
 
 -- Which board columns this person has folded away. Per person: a fold is a view,
 -- never a setting, and one person hiding a column must not hide it for anybody
 -- else. An empty array, or no column at all, means nothing is folded.
 alter table user_profiles add column if not exists board_folds jsonb not null default '[]'::jsonb;
-
--- The backfill.
---
--- Deals already carrying a step get a date, taken from when the settlement team
--- last touched the record. That is the closest thing to the truth that exists -
--- the step itself was never dated - and it is better than leaving these deals
--- sitting in Formal on a board that now has a column for exactly where they are.
---
--- Only the step actually recorded is filled in. A deal marked 'settlement_booked'
--- does NOT get a contracts_returned_at: the old field could only hold one of the
--- two, so we do not know whether the contracts came back, and inventing a date
--- for a thing nobody recorded is how a board starts lying.
-update deals
-   set contracts_returned_at = coalesce(settlement_updated_at, formal_approval_at, lodged_at)
- where settlement_step = 'contracts_returned'
-   and contracts_returned_at is null;
-
-update deals
-   set settlement_booked_at = coalesce(settlement_updated_at, formal_approval_at, lodged_at)
- where settlement_step = 'settlement_booked'
-   and settlement_booked_at is null;
-
--- What the backfill did, and what is now on the board.
-select settlement_step,
-       count(*)                                              as deals,
-       count(contracts_returned_at)                          as have_contracts_date,
-       count(settlement_booked_at)                           as have_booked_date
-  from deals
- where settled_at is null
- group by settlement_step
- order by settlement_step nulls first;
-
-
--- ======================================================================
--- handover-schema.sql
--- ======================================================================
 
 -- What credit is asked when a deal is pushed to SalesTrekker, and the urgency
 -- that comes out of it. Run in the Supabase SQL editor. Safe to run twice.
@@ -604,26 +352,8 @@ alter table deals add column if not exists push_answers jsonb;
 -- BOARD reads them on every card to decide the order. A sort that has to parse
 -- JSON on every deal is a sort that gets quietly dropped later.
 alter table deals add column if not exists is_urgent boolean not null default false;
+
 alter table deals add column if not exists compliance_needed_by date;
-
--- The flag ends at lodgement, and that is enforced in code (isUrgentNow) rather
--- than by a job that clears the column - a deal that is un-lodged by mistake
--- should get its flag back, and a nightly sweep could not give it back.
-create index if not exists deals_urgent_idx on deals (is_urgent) where is_urgent;
-
--- Ownership of the security - who goes on the title, why a borrower is not on
--- it, and where independent legal advice stands - lives inside compliance_data
--- as `title`. That column is already jsonb, so there is nothing to add for it.
-
-select count(*) filter (where is_urgent) as urgent_now,
-       count(*) filter (where push_answers is not null) as have_push_answers,
-       count(*) as deals
-  from deals;
-
-
--- ======================================================================
--- handover-progress-schema.sql
--- ======================================================================
 
 -- The handover screen: which boxes have been copied into SalesTrekker.
 --
@@ -638,17 +368,6 @@ select count(*) filter (where is_urgent) as urgent_now,
 -- ignored, so deleting a liability cannot break the page.
 
 alter table deals add column if not exists handover_progress jsonb default '{}'::jsonb;
-
-comment on column deals.handover_progress is
-  'Which handover/fact-find boxes have been copied into SalesTrekker, and by whom. Written by the handover screen.';
-
--- Anyone who can already update a deal can tick a box. There is no separate
--- permission here on purpose: the same team does the work.
-
-
--- ======================================================================
--- lender-fee-wording.sql
--- ======================================================================
 
 -- WHAT EACH BANK CALLS THE FEE CHARGED AT SETTLEMENT.
 --
@@ -667,68 +386,6 @@ comment on column deals.handover_progress is
 
 alter table lenders add column if not exists legal_fee_label text;
 
-comment on column lenders.legal_fee_label is
-  'What this lender calls the fee charged at settlement - "Settlement fee" for most, "Legal fee" for Bankwest. Null means Legal fee. Shown on the lending options email, the fact find and the handover.';
-
--- ---------------------------------------------------------------------------
--- STEP 1 - the wording, from Fabio's list.
---
--- Matched on the name as the library holds it, case-insensitively and ignoring
--- full stops, so "St George" and "St.George" both match. Run it and read the
--- count it reports: if a lender is named differently in your library it will not
--- be updated, and the SELECT underneath shows which.
--- ---------------------------------------------------------------------------
-update lenders set legal_fee_label = 'Settlement fee'
-where regexp_replace(lower(name), '[^a-z]', '', 'g') in (
-  'cba', 'anz', 'stgeorge', 'ing', 'westpac', 'suncorp', 'bankofmelbourne',
-  'bankaustralia', 'macquarie', 'mebank', 'nab', 'ubank'
-);
-
-update lenders set legal_fee_label = 'Legal fee'
-where regexp_replace(lower(name), '[^a-z]', '', 'g') = 'bankwest';
-
--- Which lenders in your library still have no wording set. Anything on Fabio's
--- list that appears here is named differently in the library - fix the name or
--- set the wording by hand in Settings -> Lender library.
-select name, coalesce(legal_fee_label, 'Legal fee (default)') as calls_it
-from lenders
-order by legal_fee_label nulls first, name;
-
--- ---------------------------------------------------------------------------
--- STEP 2 - the amounts. OPTIONAL, and destructive: it overwrites the fee on
--- EVERY product of that lender. Only run it if the fee really is the same across
--- all of a bank's products. Check what you have first:
---
---   select l.name, p.product_name, p.legal_fee
---   from lender_products p join lenders l on l.id = p.lender_id
---   order by l.name, p.product_name;
---
--- Then uncomment the ones you want.
--- ---------------------------------------------------------------------------
--- update lender_products p set legal_fee = v.fee from (values
---   ('bankwest',        '$350'),
---   ('cba',             '$200'),
---   ('anz',             '$160'),
---   ('stgeorge',        '$100'),
---   ('ing',             '$350'),
---   ('westpac',         '$100'),
---   ('suncorp',         'None - government fees only'),
---   ('bankofmelbourne', '$100'),
---   ('bankaustralia',   'None - government fees only'),
---   ('macquarie',       '$350'),
---   ('mebank',          '$150'),
---   ('nab',             'None - government registration fees only'),
---   ('ubank',           '$250')
--- ) as v(slug, fee)
--- where p.lender_id in (
---   select id from lenders where regexp_replace(lower(name), '[^a-z]', '', 'g') = v.slug
--- );
-
-
--- ======================================================================
--- docs-received-schema.sql
--- ======================================================================
-
 -- DOCUMENTS RECEIVED, AND THE GAP BEFORE THE ASSESSOR IS TOLD.
 --
 -- One press on the Lending options tab emails the person who files the documents
@@ -742,35 +399,20 @@ order by legal_fee_label nulls first, name;
 -- has to still be awake half an hour later.
 
 alter table deals add column if not exists docs_received_at timestamptz;
-alter table deals add column if not exists docs_received_by text;
-alter table deals add column if not exists docs_assessor_due_at timestamptz;
-alter table deals add column if not exists docs_assessor_email_id text;
 
-comment on column deals.docs_received_at is
-  'When the client''s supporting documents were marked received. Claimed atomically, so two people pressing at once send one pair of emails.';
-comment on column deals.docs_received_by is
-  'Who marked them received.';
-comment on column deals.docs_assessor_due_at is
-  'When Resend will send the assessor "the documents are ready". Null with docs_received_at set means the send could not be queued - the deal shows that in red.';
-comment on column deals.docs_assessor_email_id is
-  'Resend''s id for that queued email, so it can be called off while it is still in the future.';
+alter table deals add column if not exists docs_received_by text;
+
+alter table deals add column if not exists docs_assessor_due_at timestamptz;
+
+alter table deals add column if not exists docs_assessor_email_id text;
 
 -- Settings: who files, and how long the gap is. Both changeable in
 -- Settings -> Notifications without a code change. There is deliberately no
 -- setting for who hears second: it is always the credit officer allocated to the
 -- deal, and a deal without one cannot be marked at all.
 alter table settings add column if not exists docs_file_notification_user_id uuid;
+
 alter table settings add column if not exists docs_delay_minutes integer default 30;
-
-comment on column settings.docs_file_notification_user_id is
-  'Who is emailed to rename and file the documents, the moment they are marked received.';
-comment on column settings.docs_delay_minutes is
-  'Minutes between the two emails. 30 by default, 0 sends both at once, capped at 240.';
-
-
--- ======================================================================
--- phase-override-schema.sql
--- ======================================================================
 
 -- PUTTING A DEAL BACK IN FACT FIND BY HAND.
 --
@@ -790,21 +432,10 @@ comment on column settings.docs_delay_minutes is
 -- moment the deal genuinely moves on, and the card says it was placed by hand.
 
 alter table deals add column if not exists phase_override text;
+
 alter table deals add column if not exists phase_override_from text;
+
 alter table deals add column if not exists phase_override_at timestamptz;
-
-comment on column deals.phase_override is
-  'A board column somebody dragged this deal into, when nothing could be cleared to put it there. Backwards only. Ignored once phase_override_from stops matching the deal''s derived phase.';
-comment on column deals.phase_override_from is
-  'The derived phase at the moment the card was placed. When the deal moves on, this stops matching and the override is ignored - so a hand placement can never hide a deal in the wrong column indefinitely.';
-
-comment on column deals.phase_override_at is
-  'When the card was placed. Any work recorded after this ends the placement - a hand move never suspends the rules, it only survives while nothing has happened.';
-
-
--- ======================================================================
--- fact-find-documents-schema.sql
--- ======================================================================
 
 -- GROUNDWORK FOR THE DOCUMENT REQUEST LIST.
 --
@@ -827,14 +458,6 @@ comment on column deals.phase_override_at is
 --
 -- Comma separated, because one bank arrives under more than one code.
 alter table lenders add column if not exists statement_codes text;
-
-comment on column lenders.statement_codes is
-  'What this lender appears as on a bank statement, comma separated (e.g. "CBA, CommBank"). Used to tell whether a client''s loaded statements already cover an account, so the document request list can cross it off.';
-
-
--- ======================================================================
--- document-requests-schema.sql
--- ======================================================================
 
 -- WHAT A PERSON DECIDED ABOUT THE DOCUMENT LIST.
 --
@@ -862,14 +485,6 @@ comment on column lenders.statement_codes is
 -- reasoning as deals.handover_progress.
 alter table deals add column if not exists document_progress jsonb;
 
-comment on column deals.document_progress is
-  'Human decisions about the document request list: which rows were ticked or unticked, and any documents added by hand. The list itself is derived from fact_find_data and never stored.';
-
-
--- ======================================================================
--- credit-officer-phone-schema.sql
--- ======================================================================
-
 -- THE NUMBER A BANK'S ASSESSOR RINGS.
 --
 -- The broker notes that go into a lender's application portal open with a line
@@ -887,14 +502,6 @@ comment on column deals.document_progress is
 
 alter table credit_officers
   add column if not exists phone text;
-
-comment on column credit_officers.phone is
-  'Direct number for this credit assessor. Printed at the top of the broker notes that go to the lender.';
-
-
--- ======================================================================
--- deal-presence-schema.sql
--- ======================================================================
 
 -- WHO ELSE IS IN THIS DEAL CARD.
 --
@@ -923,37 +530,6 @@ create table if not exists deal_presence (
   last_seen  timestamptz not null default now(),
   primary key (deal_id, user_id)
 );
-
-create index if not exists deal_presence_deal_idx on deal_presence (deal_id, last_seen desc);
-
-alter table deal_presence enable row level security;
-
--- Everybody signed in can see who is in a deal, and write only their own row.
--- Presence is not sensitive - it is a name and a tab - and the whole point is
--- that colleagues can see each other.
-drop policy if exists deal_presence_read on deal_presence;
-create policy deal_presence_read on deal_presence
-  for select to authenticated using (true);
-
-drop policy if exists deal_presence_write_own on deal_presence;
-create policy deal_presence_write_own on deal_presence
-  for insert to authenticated with check (user_id = auth.uid());
-
-drop policy if exists deal_presence_update_own on deal_presence;
-create policy deal_presence_update_own on deal_presence
-  for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
-
-drop policy if exists deal_presence_delete_own on deal_presence;
-create policy deal_presence_delete_own on deal_presence
-  for delete to authenticated using (user_id = auth.uid());
-
-comment on table deal_presence is
-  'Advisory only. Who has a deal card open, refreshed every 20s, stale after 60s. Locks nothing.';
-
-
--- ======================================================================
--- deal-row-version.sql
--- ======================================================================
 
 -- THE DATABASE ITSELF REFUSES A STALE SAVE.
 --
@@ -986,14 +562,6 @@ comment on table deal_presence is
 
 alter table deals add column if not exists row_version bigint not null default 0;
 
-comment on column deals.row_version is
-  'Bumped by every whole-record save (the four deal tabs, deal structure, document and handover ticks). A save writes only if this still matches what it read, so two people cannot overwrite each other in the gap between reading and writing. Timestamps and names do not touch it.';
-
-
--- ======================================================================
--- deal-last-saved-by.sql
--- ======================================================================
-
 -- WHO SAVED IT, NOT WHO IS STANDING THERE.
 --
 -- The red save banner could only ever say "somebody else is editing this",
@@ -1021,16 +589,10 @@ comment on column deals.row_version is
 -- Safe to run twice. Nothing already stored is touched.
 
 alter table deals add column if not exists last_saved_by   uuid;
+
 alter table deals add column if not exists last_saved_name text;
+
 alter table deals add column if not exists last_saved_tab  text;
-
-comment on column deals.last_saved_name is
-  'Who last saved one of the four deal tabs, and on which tab (last_saved_tab). Read by the save conflict banner so it can name the person even after they have closed the deal. Written only by whole-record saves - see lib/save-conflict.ts.';
-
-
--- ======================================================================
--- deal-history.sql
--- ======================================================================
 
 -- THE PORTAL REMEMBERS WHAT IT REPLACED.
 --
@@ -1071,28 +633,412 @@ create table if not exists deal_history (
   replaced_by_name text
 );
 
-create index if not exists deal_history_deal_idx
-  on deal_history (deal_id, column_name, replaced_at desc);
 
-alter table deal_history enable row level security;
 
--- Everybody signed in can read the history of a deal and add to it. It is the
--- same information as the deal itself, one step older.
-drop policy if exists deal_history_read on deal_history;
-create policy deal_history_read on deal_history
+-- ======================================================================
+-- PART TWO - INDEXES, FUNCTIONS, POLICIES, VIEWS AND BACKFILLS
+-- ======================================================================
+
+
+
+-- ----------------------------------------------------------------------
+-- statements-schema.sql
+-- ----------------------------------------------------------------------
+
+create index if not exists deal_statement_uploads_deal_idx
+  on public.deal_statement_uploads (deal_id, uploaded_at desc);
+
+create index if not exists deal_statement_txn_upload_idx
+  on public.deal_statement_transactions (upload_id, txn_date);
+
+create index if not exists deal_statement_txn_deal_idx
+  on public.deal_statement_transactions (deal_id, txn_date);
+
+alter table public.deal_statement_uploads      enable row level security;
+
+alter table public.deal_statement_transactions enable row level security;
+
+drop policy if exists "Statement uploads via deals" on public.deal_statement_uploads;
+
+create policy "Statement uploads via deals"
+  on public.deal_statement_uploads
+  as permissive for all to authenticated
+  using      (exists (select 1 from public.deals d where d.id = deal_statement_uploads.deal_id))
+  with check (exists (select 1 from public.deals d where d.id = deal_statement_uploads.deal_id));
+
+drop policy if exists "Statement transactions via deals" on public.deal_statement_transactions;
+
+create policy "Statement transactions via deals"
+  on public.deal_statement_transactions
+  as permissive for all to authenticated
+  using      (exists (select 1 from public.deals d where d.id = deal_statement_transactions.deal_id))
+  with check (exists (select 1 from public.deals d where d.id = deal_statement_transactions.deal_id));
+
+
+
+-- ----------------------------------------------------------------------
+-- statement-answers-schema.sql
+-- ----------------------------------------------------------------------
+
+create index if not exists deal_statement_answers_deal_idx
+  on public.deal_statement_answers (deal_id, item_key, answered_at desc);
+
+alter table public.deal_statement_answers enable row level security;
+
+drop policy if exists "Statement answers via deals" on public.deal_statement_answers;
+
+create policy "Statement answers via deals"
+  on public.deal_statement_answers
+  as permissive for all to authenticated
+  using      (exists (select 1 from public.deals d where d.id = deal_statement_answers.deal_id))
+  with check (exists (select 1 from public.deals d where d.id = deal_statement_answers.deal_id));
+
+
+
+-- ----------------------------------------------------------------------
+-- statement-overrides-schema.sql
+-- ----------------------------------------------------------------------
+
+create index if not exists deal_statement_overrides_deal_idx
+  on public.deal_statement_overrides (deal_id, external_id);
+
+alter table public.deal_statement_overrides enable row level security;
+
+drop policy if exists "Statement overrides via deals" on public.deal_statement_overrides;
+
+create policy "Statement overrides via deals"
+  on public.deal_statement_overrides
+  as permissive for all to authenticated
+  using      (exists (select 1 from public.deals d where d.id = deal_statement_overrides.deal_id))
+  with check (exists (select 1 from public.deals d where d.id = deal_statement_overrides.deal_id));
+
+
+
+-- ----------------------------------------------------------------------
+-- internal-notes-schema.sql
+-- ----------------------------------------------------------------------
+
+-- 3. Fact find notes move across as they are. Nothing is joined here because
+--    nothing is being overwritten — internal_notes is empty on every deal.
+update public.deals
+set internal_notes = fact_find_data->>'internalNotes'
+where coalesce(fact_find_data->>'internalNotes','') <> ''
+  and coalesce(internal_notes,'') = '';
+
+-- 4. BC notes. Where the deal already has notes they are joined with a line
+--    saying where the text came from, so anyone reading it later knows it was
+--    not always one box. Where it has none, the BC text simply becomes them.
+update public.deals
+set internal_notes = case
+      when coalesce(internal_notes,'') = '' then bc_data->>'internalNotes'
+      else internal_notes || E'\n\n— moved from the BC tab''s own notes, 1 Sep 2026 —\n' || (bc_data->>'internalNotes')
+    end
+where coalesce(bc_data->>'internalNotes','') <> '';
+
+-- 5. Lending Options notes, same rule.
+update public.deals
+set internal_notes = case
+      when coalesce(internal_notes,'') = '' then lo_data->>'internalNotes'
+      else internal_notes || E'\n\n— moved from the Lending Options tab''s own notes, 1 Sep 2026 —\n' || (lo_data->>'internalNotes')
+    end
+where coalesce(lo_data->>'internalNotes','') <> '';
+
+-- The old fact_find_data/bc_data/lo_data internalNotes keys are deliberately left
+-- in place. They cost nothing, and they are the only copy of what the text looked
+-- like before the move if anything needs checking.
+
+
+
+-- ----------------------------------------------------------------------
+-- deal-phase-schema.sql
+-- ----------------------------------------------------------------------
+
+-- 3. Backfill. The date compliance was finished is the best record we have of when
+--    it was sent — they happened in the same action.
+update public.deals
+set compliance_sent_at = coalesce(compliance_sent_at, compliance_completed_at)
+where status = 'completed'
+  and compliance_completed_at is not null;
+
+-- 4. Retire the status. A deal that genuinely settled keeps its settled_at and is
+--    read as settled from that; nothing else was ever really complete.
+update public.deals
+set status = 'in_progress'
+where status = 'completed'
+  and settled_at is null;
+
+
+
+-- ----------------------------------------------------------------------
+-- settled-amount-schema.sql
+-- ----------------------------------------------------------------------
+
+-- 2. The repair. Every Mark as lodged and Mark as settled already wrote a
+--    snapshot with the real total and every split, so nothing was ever lost -
+--    no screen was reading it. Copying it onto the deal fills the columns that
+--    every reader prefers, which also CORRECTS any deal whose loan_amount was
+--    already overwritten by an opened LO.
+update deals d
+set lodged_total  = s.total_amount,
+    lodged_splits = s.splits
+from deal_stage_snapshots s
+where s.deal_id = d.id
+  and s.stage = 'lodged'
+  and d.lodged_total is null;
+
+update deals d
+set settled_total  = s.total_amount,
+    settled_splits = s.splits
+from deal_stage_snapshots s
+where s.deal_id = d.id
+  and s.stage = 'settled'
+  and d.settled_total is null;
+
+
+
+-- ----------------------------------------------------------------------
+-- notes-alerts-schema.sql
+-- ----------------------------------------------------------------------
+
+create index if not exists deal_notes_deal_idx on deal_notes(deal_id, created_at desc);
+
+create index if not exists deal_alerts_deal_idx on deal_alerts(deal_id) where resolved_at is null;
+
+-- 4. Row level security. Without this, both tables are readable by anyone with
+--    the anon key. Visibility follows the DEAL: the subquery runs as the signed
+--    in user, so the existing policies on deals decide it and there is no second
+--    copy of those rules to drift.
+alter table deal_notes  enable row level security;
+
+alter table deal_alerts enable row level security;
+
+drop policy if exists deal_notes_rw on deal_notes;
+
+create policy deal_notes_rw on deal_notes
+  for all to authenticated
+  using      (exists (select 1 from deals d where d.id = deal_notes.deal_id))
+  with check (exists (select 1 from deals d where d.id = deal_notes.deal_id));
+
+drop policy if exists deal_alerts_rw on deal_alerts;
+
+create policy deal_alerts_rw on deal_alerts
+  for all to authenticated
+  using      (exists (select 1 from deals d where d.id = deal_alerts.deal_id))
+  with check (exists (select 1 from deals d where d.id = deal_alerts.deal_id));
+
+
+
+-- ----------------------------------------------------------------------
+-- deal-stages-schema.sql
+-- ----------------------------------------------------------------------
+
+-- The backfill.
+--
+-- Deals already carrying a step get a date, taken from when the settlement team
+-- last touched the record. That is the closest thing to the truth that exists -
+-- the step itself was never dated - and it is better than leaving these deals
+-- sitting in Formal on a board that now has a column for exactly where they are.
+--
+-- Only the step actually recorded is filled in. A deal marked 'settlement_booked'
+-- does NOT get a contracts_returned_at: the old field could only hold one of the
+-- two, so we do not know whether the contracts came back, and inventing a date
+-- for a thing nobody recorded is how a board starts lying.
+update deals
+   set contracts_returned_at = coalesce(settlement_updated_at, formal_approval_at, lodged_at)
+ where settlement_step = 'contracts_returned'
+   and contracts_returned_at is null;
+
+update deals
+   set settlement_booked_at = coalesce(settlement_updated_at, formal_approval_at, lodged_at)
+ where settlement_step = 'settlement_booked'
+   and settlement_booked_at is null;
+
+
+
+-- ----------------------------------------------------------------------
+-- handover-schema.sql
+-- ----------------------------------------------------------------------
+
+-- The flag ends at lodgement, and that is enforced in code (isUrgentNow) rather
+-- than by a job that clears the column - a deal that is un-lodged by mistake
+-- should get its flag back, and a nightly sweep could not give it back.
+create index if not exists deals_urgent_idx on deals (is_urgent) where is_urgent;
+
+
+
+-- ----------------------------------------------------------------------
+-- handover-progress-schema.sql
+-- ----------------------------------------------------------------------
+
+comment on column deals.handover_progress is
+  'Which handover/fact-find boxes have been copied into SalesTrekker, and by whom. Written by the handover screen.';
+
+-- Anyone who can already update a deal can tick a box. There is no separate
+-- permission here on purpose: the same team does the work.
+
+
+
+-- ----------------------------------------------------------------------
+-- lender-fee-wording.sql
+-- ----------------------------------------------------------------------
+
+comment on column lenders.legal_fee_label is
+  'What this lender calls the fee charged at settlement - "Settlement fee" for most, "Legal fee" for Bankwest. Null means Legal fee. Shown on the lending options email, the fact find and the handover.';
+
+-- ---------------------------------------------------------------------------
+-- STEP 1 - the wording, from Fabio's list.
+--
+-- Matched on the name as the library holds it, case-insensitively and ignoring
+-- full stops, so "St George" and "St.George" both match. Run it and read the
+-- count it reports: if a lender is named differently in your library it will not
+-- be updated, and the SELECT underneath shows which.
+-- ---------------------------------------------------------------------------
+update lenders set legal_fee_label = 'Settlement fee'
+where regexp_replace(lower(name), '[^a-z]', '', 'g') in (
+  'cba', 'anz', 'stgeorge', 'ing', 'westpac', 'suncorp', 'bankofmelbourne',
+  'bankaustralia', 'macquarie', 'mebank', 'nab', 'ubank'
+);
+
+update lenders set legal_fee_label = 'Legal fee'
+where regexp_replace(lower(name), '[^a-z]', '', 'g') = 'bankwest';
+
+-- ---------------------------------------------------------------------------
+-- STEP 2 - the amounts. OPTIONAL, and destructive: it overwrites the fee on
+-- EVERY product of that lender. Only run it if the fee really is the same across
+-- all of a bank's products. Check what you have first:
+--
+--   select l.name, p.product_name, p.legal_fee
+--   from lender_products p join lenders l on l.id = p.lender_id
+--   order by l.name, p.product_name;
+--
+-- Then uncomment the ones you want.
+-- ---------------------------------------------------------------------------
+-- update lender_products p set legal_fee = v.fee from (values
+--   ('bankwest',        '$350'),
+--   ('cba',             '$200'),
+--   ('anz',             '$160'),
+--   ('stgeorge',        '$100'),
+--   ('ing',             '$350'),
+--   ('westpac',         '$100'),
+--   ('suncorp',         'None - government fees only'),
+--   ('bankofmelbourne', '$100'),
+--   ('bankaustralia',   'None - government fees only'),
+--   ('macquarie',       '$350'),
+--   ('mebank',          '$150'),
+--   ('nab',             'None - government registration fees only'),
+--   ('ubank',           '$250')
+-- ) as v(slug, fee)
+-- where p.lender_id in (
+--   select id from lenders where regexp_replace(lower(name), '[^a-z]', '', 'g') = v.slug
+-- );
+
+
+
+-- ----------------------------------------------------------------------
+-- docs-received-schema.sql
+-- ----------------------------------------------------------------------
+
+comment on column deals.docs_received_at is
+  'When the client''s supporting documents were marked received. Claimed atomically, so two people pressing at once send one pair of emails.';
+
+comment on column deals.docs_received_by is
+  'Who marked them received.';
+
+comment on column deals.docs_assessor_due_at is
+  'When Resend will send the assessor "the documents are ready". Null with docs_received_at set means the send could not be queued - the deal shows that in red.';
+
+comment on column deals.docs_assessor_email_id is
+  'Resend''s id for that queued email, so it can be called off while it is still in the future.';
+
+comment on column settings.docs_file_notification_user_id is
+  'Who is emailed to rename and file the documents, the moment they are marked received.';
+
+comment on column settings.docs_delay_minutes is
+  'Minutes between the two emails. 30 by default, 0 sends both at once, capped at 240.';
+
+
+
+-- ----------------------------------------------------------------------
+-- phase-override-schema.sql
+-- ----------------------------------------------------------------------
+
+comment on column deals.phase_override is
+  'A board column somebody dragged this deal into, when nothing could be cleared to put it there. Backwards only. Ignored once phase_override_from stops matching the deal''s derived phase.';
+
+comment on column deals.phase_override_from is
+  'The derived phase at the moment the card was placed. When the deal moves on, this stops matching and the override is ignored - so a hand placement can never hide a deal in the wrong column indefinitely.';
+
+comment on column deals.phase_override_at is
+  'When the card was placed. Any work recorded after this ends the placement - a hand move never suspends the rules, it only survives while nothing has happened.';
+
+
+
+-- ----------------------------------------------------------------------
+-- fact-find-documents-schema.sql
+-- ----------------------------------------------------------------------
+
+comment on column lenders.statement_codes is
+  'What this lender appears as on a bank statement, comma separated (e.g. "CBA, CommBank"). Used to tell whether a client''s loaded statements already cover an account, so the document request list can cross it off.';
+
+
+
+-- ----------------------------------------------------------------------
+-- document-requests-schema.sql
+-- ----------------------------------------------------------------------
+
+comment on column deals.document_progress is
+  'Human decisions about the document request list: which rows were ticked or unticked, and any documents added by hand. The list itself is derived from fact_find_data and never stored.';
+
+
+
+-- ----------------------------------------------------------------------
+-- credit-officer-phone-schema.sql
+-- ----------------------------------------------------------------------
+
+comment on column credit_officers.phone is
+  'Direct number for this credit assessor. Printed at the top of the broker notes that go to the lender.';
+
+
+
+-- ----------------------------------------------------------------------
+-- deal-presence-schema.sql
+-- ----------------------------------------------------------------------
+
+create index if not exists deal_presence_deal_idx on deal_presence (deal_id, last_seen desc);
+
+alter table deal_presence enable row level security;
+
+-- Everybody signed in can see who is in a deal, and write only their own row.
+-- Presence is not sensitive - it is a name and a tab - and the whole point is
+-- that colleagues can see each other.
+drop policy if exists deal_presence_read on deal_presence;
+
+create policy deal_presence_read on deal_presence
   for select to authenticated using (true);
 
-drop policy if exists deal_history_write on deal_history;
-create policy deal_history_write on deal_history
-  for insert to authenticated with check (true);
+drop policy if exists deal_presence_write_own on deal_presence;
 
-comment on table deal_history is
-  'What each deal tab held before it was last saved over. Written by lib/deal-history.ts on every whole-record save. Nothing here is ever read by the app automatically - it exists so a lost afternoon costs a minute.';
+create policy deal_presence_write_own on deal_presence
+  for insert to authenticated with check (user_id = auth.uid());
+
+drop policy if exists deal_presence_update_own on deal_presence;
+
+create policy deal_presence_update_own on deal_presence
+  for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists deal_presence_delete_own on deal_presence;
+
+create policy deal_presence_delete_own on deal_presence
+  for delete to authenticated using (user_id = auth.uid());
+
+comment on table deal_presence is
+  'Advisory only. Who has a deal card open, refreshed every 20s, stale after 60s. Locks nothing.';
 
 
--- ======================================================================
+
+-- ----------------------------------------------------------------------
 -- deal-presence-v2.sql
--- ======================================================================
+-- ----------------------------------------------------------------------
 
 -- WHO IS IN A DEAL, TOLD HONESTLY.
 --
@@ -1131,6 +1077,7 @@ delete from deal_presence a
    and a.last_seen < b.last_seen;
 
 alter table deal_presence drop constraint if exists deal_presence_pkey;
+
 alter table deal_presence add primary key (user_id);
 
 -- --- 2. the heartbeat, stamped by the server ---------------------------------
@@ -1181,8 +1128,54 @@ as $$
 $$;
 
 grant execute on function presence_beat(uuid, text, text) to authenticated;
+
 grant execute on function presence_others(uuid)           to authenticated;
+
 grant execute on function presence_leave()                to authenticated;
 
 comment on table deal_presence is
   'One row per person: which deal they have open, which tab, and when they were last really there. Stamped and expired by the server clock only - see docs/deal-presence-v2.sql. Advisory. Locks nothing.';
+
+
+
+-- ----------------------------------------------------------------------
+-- deal-row-version.sql
+-- ----------------------------------------------------------------------
+
+comment on column deals.row_version is
+  'Bumped by every whole-record save (the four deal tabs, deal structure, document and handover ticks). A save writes only if this still matches what it read, so two people cannot overwrite each other in the gap between reading and writing. Timestamps and names do not touch it.';
+
+
+
+-- ----------------------------------------------------------------------
+-- deal-last-saved-by.sql
+-- ----------------------------------------------------------------------
+
+comment on column deals.last_saved_name is
+  'Who last saved one of the four deal tabs, and on which tab (last_saved_tab). Read by the save conflict banner so it can name the person even after they have closed the deal. Written only by whole-record saves - see lib/save-conflict.ts.';
+
+
+
+-- ----------------------------------------------------------------------
+-- deal-history.sql
+-- ----------------------------------------------------------------------
+
+create index if not exists deal_history_deal_idx
+  on deal_history (deal_id, column_name, replaced_at desc);
+
+alter table deal_history enable row level security;
+
+-- Everybody signed in can read the history of a deal and add to it. It is the
+-- same information as the deal itself, one step older.
+drop policy if exists deal_history_read on deal_history;
+
+create policy deal_history_read on deal_history
+  for select to authenticated using (true);
+
+drop policy if exists deal_history_write on deal_history;
+
+create policy deal_history_write on deal_history
+  for insert to authenticated with check (true);
+
+comment on table deal_history is
+  'What each deal tab held before it was last saved over. Written by lib/deal-history.ts on every whole-record save. Nothing here is ever read by the app automatically - it exists so a lost afternoon costs a minute.';

@@ -46,6 +46,8 @@ import { withDefaults } from '@/lib/record-defaults'
 import { dealFigures, figureChanges, notesMentioning } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved } from '@/lib/field-ownership'
+import { useSaveIndicator } from '@/components/useSaveIndicator'
+import type { SaveStatus } from '@/lib/save-indicator'
 import { useKeepalive } from '@/components/useKeepalive'
 import DealStructure from '@/components/DealStructure'
 
@@ -333,7 +335,7 @@ function AIButton({ onClick, loading, label = 'Generate with AI' }: { onClick: (
 
 export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null };
   deal: any
-  onSaveStatus?: (s: { at?: string; error?: string }) => void
+  onSaveStatus?: (s: SaveStatus) => void
   // The deal structure block writes compliance_data itself; this lets the page
   // know, so the screen does not sit on a stale copy until a reload.
   onDealPatched?: (patch: any) => void
@@ -655,10 +657,10 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   const [showPreflight, setShowPreflight] = useState(false)
   const [pushing, setPushing] = useState(false)
   const [generating, setGenerating] = useState<Record<string, boolean>>({})
-  const [savedAt, setSavedAt] = useState('')
-  const [saveError, setSaveError] = useState('')
-  // Mirror save state up to the deal header, which owns the single indicator.
-  useEffect(() => { onSaveStatus?.({ at: savedAt, error: saveError }) }, [savedAt, saveError])
+  // THE SAVE LINE beside the deal name. What it says, and when it is allowed to
+  // say it, lives in components/useSaveIndicator.ts - shared, so BC cannot end up
+  // telling Kylie a different story from the Fact Find.
+  const save = useSaveIndicator(onSaveStatus)
   const [showValidation, setShowValidation] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [stage, setStage] = useState<'needs' | 'risks' | 'product' | 'comments' | 'expenses'>('needs')
@@ -747,6 +749,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
       // The payload as it is at THIS moment. settleSaved below compares it
       // against the screen as it will be when the save returns.
       const payload = liveD.current
+      const token = save.starting()
       const out = await saveGuarded({
         supabase, dealId: deal.id, column: 'compliance_data', guard, savedBy: me, tabLabel: 'Compliance', value: payload, shape,
         patch: chosenId ? { lender_id: chosenId } : undefined,
@@ -759,12 +762,13 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
         onMerge: merged => setD(shape(keepOwned(merged, liveD.current, ownRef.current))),
       })
       if (out.kind === 'superseded') return
-      if (out.kind === 'error') { console.error('Compliance autosave:', out.message); setSaveError(out.message); return }
-      setSaveError('')
-      if (out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote') setSavedAt(new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }))
+      if (out.kind === 'error') { console.error('Compliance autosave:', out.message); save.failed(out.message, out.technical); return }
+      // 'settled' and 'behind' mean the database had nothing to do: in sync, but no
+      // moment worth putting a time on.
+      save.landed(token, out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote')
       settleSaved(ownRef.current, payload, liveD.current)
     })()
-  }, [deal.id, me, lenderIdByName, guard])
+  }, [deal.id, me, lenderIdByName, guard, save])
 
   const flush = useCallback(() => {
     if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
@@ -776,8 +780,12 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
     // this previously wrote on every keystroke, and the row count is checked
     // because a refused write returns zero rows with no error.
     if (saveTimer.current) clearTimeout(saveTimer.current)
+    // The save line stops saying "saved" NOW, not in 700ms. See
+    // components/useSaveIndicator.ts - the first run of this effect is the form
+    // arriving on screen and does not count.
+    save.changed()
     saveTimer.current = setTimeout(() => { void writeNow() }, 700)
-  }, [d, writeNow])
+  }, [d, writeNow, save])
 
   useEffect(() => {
     const onHide = () => { if (document.visibilityState === 'hidden') flush() }
