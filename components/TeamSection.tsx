@@ -44,6 +44,13 @@ export default function TeamSection() {
   const [resendMsg, setResendMsg] = useState<Record<string, string>>({})
   const [editingNameId, setEditingNameId] = useState<string | null>(null)
   const [nameInput, setNameInput] = useState('')
+  // CHANGING AN EMAIL IS CHANGING A LOGIN, so it is asked about rather than
+  // saved - see app/api/change-user-email/route.ts.
+  const [editingEmailId, setEditingEmailId] = useState<string | null>(null)
+  const [emailInput, setEmailInput] = useState('')
+  const [emailAsk, setEmailAsk] = useState<{ user: UserProfile; next: string } | null>(null)
+  const [emailBusy, setEmailBusy] = useState(false)
+  const [emailErr, setEmailErr] = useState('')
   const [accessId, setAccessId] = useState<string | null>(null)
   const [keyInput, setKeyInput] = useState('')
   const [accessMsg, setAccessMsg] = useState('')
@@ -86,6 +93,24 @@ export default function TeamSection() {
     if (error) { setAccessMsg('NOT SAVED - ' + error.message); return false }
     if (!data || data.length === 0) { setAccessMsg('NOT SAVED - the database refused the change.'); return false }
     return true
+  }
+
+  async function changeEmail() {
+    if (!emailAsk) return
+    setEmailBusy(true); setEmailErr('')
+    try {
+      const res = await fetch('/api/change-user-email', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: emailAsk.user.id, email: emailAsk.next }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!body?.ok) { setEmailErr(body?.error || `Could not change it (${res.status}).`); setEmailBusy(false); return }
+      setEmailAsk(null); setEditingEmailId(null)
+      await fetchUsers()
+    } catch (e: any) {
+      setEmailErr(e?.message || 'Could not reach the server. Nothing was changed.')
+    }
+    setEmailBusy(false)
   }
 
   async function saveBrokerKey(user: UserProfile) {
@@ -255,7 +280,26 @@ export default function TeamSection() {
                         className="text-xs text-[#2DBEFF] hover:underline flex-shrink-0">Edit</button>
                     </div>
                   )}
-                  <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                  {editingEmailId === user.id ? (
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap min-w-0">
+                      <input className="text-xs border border-[#2DBEFF] rounded-lg px-2 py-1 w-[250px] min-w-0 focus:outline-none"
+                        value={emailInput} onChange={e => setEmailInput(e.target.value)} autoFocus
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') { setEmailErr(''); setEmailAsk({ user, next: emailInput.trim().toLowerCase() }) }
+                          if (e.key === 'Escape') setEditingEmailId(null)
+                        }} />
+                      <button onClick={() => { setEmailErr(''); setEmailAsk({ user, next: emailInput.trim().toLowerCase() }) }}
+                        className="text-xs font-medium text-white bg-[#2DBEFF] px-2.5 py-1 rounded-lg shrink-0 hover:bg-[#0E8FCB] transition">Save</button>
+                      <button onClick={() => setEditingEmailId(null)}
+                        className="text-xs text-gray-400 hover:text-gray-600 shrink-0">Cancel</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                      <button onClick={() => { setEditingEmailId(user.id); setEmailInput(user.email || ''); setEmailErr('') }}
+                        className="text-[11px] text-[#2DBEFF] hover:underline flex-shrink-0">Edit</button>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-3 flex-shrink-0 flex-wrap justify-end">
@@ -333,6 +377,22 @@ export default function TeamSection() {
                   </div>
                 </div>
 
+                {/* AN ADMIN WHO CANNOT SEE THE BOOK IS NOT AN ADMIN.
+                  *
+                  * 17 Sep 2026: Kylie was admin everywhere except this one flag,
+                  * so the database handed her only her own deals and Mark's were
+                  * invisible. Nothing on this screen said so, because the role and
+                  * the admin flag agreed with each other - it is the third thing
+                  * that decides what a person can see. */}
+                {(user.role === 'admin' || user.is_admin) && !user.sees_all_deals && (
+                  <div className="mt-3 bg-[#FDF6E7] border border-[#EFE0BC] rounded-lg px-3 py-2 text-[12px] text-[#7A5F17]">
+                    <strong className="text-[#5E4A11]">This admin cannot see every deal.</strong>{' '}
+                    {user.full_name} is an admin, but &ldquo;Sees all deals&rdquo; is off &mdash; so the
+                    database gives them only the deals assigned to them, plus anything they are the
+                    credit officer on. Tick it above.
+                  </div>
+                )}
+
                 {(user.role === 'admin') !== !!user.is_admin && (
                   <div className="mt-3 bg-[#FDF6E7] border border-[#EFE0BC] rounded-lg px-3 py-2 text-[12px] text-[#7A5F17]">
                     <strong className="text-[#5E4A11]">Role and admin flag disagree.</strong>{' '}
@@ -353,6 +413,62 @@ export default function TeamSection() {
           ))}
         </div>
       )}
+      {/* CHANGING A LOGIN IS ASKED ABOUT, NOT SAVED.
+        *
+        * It names both addresses rather than saying "are you sure": a
+        * confirmation about a login that does not show the old one and the new
+        * one is one people click through. */}
+      {emailAsk && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
+             onClick={() => !emailBusy && setEmailAsk(null)}>
+          <div className="bg-white rounded-2xl w-[470px] max-w-full shadow-2xl px-6 py-5"
+               onClick={e => e.stopPropagation()}>
+            <div className="text-[15px] font-semibold text-[#1F2328]">
+              Change how {emailAsk.user.full_name.split(' ')[0]} signs in?
+            </div>
+            <p className="text-[12.5px] text-gray-400 mt-0.5 mb-3.5">
+              This is their login, not just a label on this screen.
+            </p>
+
+            <div className="flex justify-between gap-4 text-[12.5px] py-1.5 border-b border-[#F4F6F7]">
+              <span className="text-gray-400">Now</span>
+              <span className="font-semibold text-right break-all">{emailAsk.user.email}</span>
+            </div>
+            <div className="flex justify-between gap-4 text-[12.5px] py-1.5">
+              <span className="text-gray-400">After</span>
+              <span className="font-semibold text-right break-all">{emailAsk.next}</span>
+            </div>
+
+            <div className="mt-3 bg-[#FFF8EC] border border-[#F0DCB4] rounded-lg px-3 py-2.5 text-[12.5px] text-[#92400E] leading-relaxed">
+              <b className="text-[#7a4a08]">They will sign in with the new address from now on.</b>{' '}
+              The old one stops working immediately. If they are signed in right now they stay signed
+              in until they sign out.
+            </div>
+
+            <div className="mt-2.5 bg-[#F2FAFE] border border-[#BFE3F5] rounded-lg px-3 py-2.5 text-[12.5px] text-[#0E5E82] leading-relaxed">
+              Send the invite again once this is saved, so they get a link that works.
+            </div>
+
+            {emailErr && (
+              <div className="mt-2.5 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-[12.5px] text-red-700">
+                {emailErr}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setEmailAsk(null)} disabled={emailBusy}
+                className="text-[13px] text-[#5B646D] border border-[#DDE2E6] rounded-lg px-4 py-2 disabled:opacity-50">
+                Cancel
+              </button>
+              <button onClick={changeEmail} disabled={emailBusy}
+                className="bg-[#2DBEFF] text-white text-[13px] font-semibold rounded-lg px-4 py-2 disabled:opacity-50">
+                {emailBusy ? 'Changing...' : 'Change it'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
+
   )
 }

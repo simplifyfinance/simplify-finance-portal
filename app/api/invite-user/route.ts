@@ -40,6 +40,12 @@ export async function POST(req: NextRequest) {
       role,
       broker_key: role === 'broker' ? key : null,
       is_admin: role === 'admin',
+      // AN ADMIN SEES THE BOOK. 17 Sep 2026: this set the role and the admin
+      // flag and left sees_all_deals alone, so every admin invited here landed
+      // able to administer everything and see only their own deals. Kylie was in
+      // that state for weeks and nothing said so. It was not somebody
+      // forgetting - it was the default.
+      sees_all_deals: role === 'admin',
       active: true
     })
     if (profileError && !profileError.message.includes('duplicate')) {
