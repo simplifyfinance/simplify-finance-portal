@@ -54,6 +54,8 @@ import type { SaveStatus } from '@/lib/save-indicator'
 import { useKeepalive } from '@/components/useKeepalive'
 import DealStructure from '@/components/DealStructure'
 import { hasOffset as productHasOffset } from '@/lib/offset'
+import { householdsOf, isOneHousehold, type HouseholdId } from '@/lib/households'
+import { expensesFor, writeExpenses } from '@/lib/household-expenses'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
 
@@ -677,6 +679,31 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   const [showValidation, setShowValidation] = useState(false)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [stage, setStage] = useState<'needs' | 'risks' | 'product' | 'comments' | 'expenses'>('needs')
+
+  // WHICH HOUSEHOLD IS ON SCREEN.
+  //
+  // One household - almost every deal - and none of this appears: no tabs, no
+  // labels, one set of categories, exactly as it has always been. The tabs only
+  // exist once somebody has said on the Fact Find that there is a second
+  // household. See lib/households.ts.
+  const households = useMemo(() => householdsOf(deal.fact_find_data), [deal.fact_find_data])
+  const oneHousehold = households.length <= 1
+  const [household, setHousehold] = useState<HouseholdId>('1')
+  // An applicant moved out of the household being looked at, or a household was
+  // put back together, and the tab is now pointing at nothing.
+  useEffect(() => {
+    if (!households.some(h => h.id === household)) setHousehold('1')
+  }, [households, household])
+
+  // What this tab is looking at, and whose percentage columns belong on it. On a
+  // one household deal both are exactly what they have always been: the record
+  // in compliance_data.expenses, and every applicant on the deal.
+  const shownExpenses = useMemo(() => expensesFor(d, household), [d, household])
+  const peopleHere: string[] = useMemo(() => {
+    if (oneHousehold) return d.applicants.map((a: Applicant) => a.name)
+    const here = households.find(h => h.id === household)
+    return here ? here.people.map(p => p.name) : []
+  }, [oneHousehold, households, household, d.applicants])
   const [complianceCompletedAt, setComplianceCompletedAt] = useState<string | null>(deal.compliance_completed_at || null)
 
   // WHAT THE RECORD ACTUALLY HOLDS, NOT WHAT THE PAGE WAS RENDERED WITH.
@@ -821,27 +848,34 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
     setD(prev => ({ ...prev, productReqs: { ...prev.productReqs, [field]: value } }))
   }
 
+  // EVERY EXPENSE WRITE GOES THROUGH HERE.
+  //
+  // Household 1 is compliance_data.expenses and stays there - every deal ever
+  // assessed has its figures in that field and nothing is migrated. Households
+  // two and three go in expensesByHousehold. See lib/household-expenses.ts.
+  function patchExpenses(key: string, change: (entry: any) => any) {
+    setD(prev => {
+      const current = expensesFor(prev, household)
+      const entry = current[key] ?? { monthlyAmount: '', comment: '', splits: {} }
+      const next = { ...current, [key]: change(entry) }
+      return { ...prev, ...writeExpenses(prev, household, next) } as any
+    })
+  }
+
   function updateExpense(key: string, field: 'monthlyAmount' | 'comment', value: string) {
-    setD(prev => ({ ...prev, expenses: { ...prev.expenses, [key]: { ...prev.expenses[key], [field]: value } } }))
+    patchExpenses(key, entry => ({ ...entry, [field]: value }))
   }
 
   function setExpenseHem(key: string, answer: HemAnswer | '') {
-    setD(prev => ({ ...prev, expenses: { ...prev.expenses, [key]: { ...prev.expenses[key], hem: answer } } }))
+    patchExpenses(key, entry => ({ ...entry, hem: answer }))
   }
 
   function updateExpenseSplit(key: string, applicantName: string, value: string) {
-    setD(prev => ({
-      ...prev,
-      expenses: {
-        ...prev.expenses,
-        // A saved record keeps its own expenses object, so a category added to
-        // EXPENSE_CATEGORIES after that record was written is simply not in it.
-        // The row still renders (line ~1936 defaults it), and typing in it used
-        // to read .splits off undefined - the same shape as the Wesley crash.
-        [key]: { ...(prev.expenses?.[key] ?? { monthlyAmount: '', comment: '', splits: {} }),
-                 splits: { ...(prev.expenses?.[key]?.splits || {}), [applicantName]: value } }
-      }
-    }))
+    // A saved record keeps its own expenses object, so a category added to
+    // EXPENSE_CATEGORIES after that record was written is simply not in it. The
+    // row still renders, and typing in it used to read .splits off undefined -
+    // the same shape as the Wesley crash. patchExpenses defaults the entry.
+    patchExpenses(key, entry => ({ ...entry, splits: { ...(entry?.splits || {}), [applicantName]: value } }))
   }
 
   // Every question on the Risks tab. Used to tell "nobody has started this
@@ -2094,6 +2128,42 @@ Use the security address exactly as recorded. On a pre-approval it will already 
         <div className="space-y-4">
           <div className="bg-white border border-gray-100 rounded-xl p-5">
             <SectionHeader title="Living expenses" badge="household monthly" />
+            {/* ONE TAB PER HOUSEHOLD, and none at all when there is one.
+              *
+              * Twenty-two categories times three is sixty-six rows, and stacking
+              * them buries the last household where nobody scrolls. Tabs hide
+              * things though, and on this screen an unanswered category is a red
+              * dot - so each tab carries its own count of what is still open, and
+              * the strip at the bottom adds every household up. Nothing can be
+              * missed by being on the wrong tab. */}
+            {!oneHousehold && (
+              <div className="flex gap-2 flex-wrap items-center mb-3.5">
+                {households.map(h => {
+                  const open = hemTotals(EXPENSE_CATEGORIES, expensesFor(d, h.id) as any).unanswered
+                  const on = h.id === household
+                  return (
+                    <button key={h.id} onClick={() => setHousehold(h.id)}
+                      className={`border rounded-lg px-3 py-1.5 flex items-center gap-2 transition ${
+                        on ? 'border-[#141C24] bg-[#141C24]' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                      <span className={`text-[12.5px] font-semibold ${on ? 'text-white' : 'text-[#3A434C]'}`}>
+                        Household {h.id}
+                      </span>
+                      <span className={`text-[11px] max-w-[150px] truncate ${on ? 'text-[#B9C1C9]' : 'text-gray-400'}`}
+                            title={h.people.map(p => p.name).join(', ')}>
+                        {h.people.map(p => p.name).join(', ') || 'nobody'}
+                        {Number(h.dependants) > 0 ? ` \u00b7 ${h.dependants} dep` : ''}
+                      </span>
+                      <span className={`text-[10px] font-bold rounded-full px-2 py-[1px] border ${
+                        open > 0 ? 'bg-[#FDF0EF] text-[#B04A4A] border-[#F5C2C2]'
+                                 : 'bg-[#EFF9F2] text-[#15803D] border-[#BFE3CC]'}`}>
+                        {open > 0 ? `${open} to answer` : 'done'}
+                      </span>
+                    </button>
+                  )
+                })}
+                <span className="text-[11.5px] text-gray-400">set on the Fact Find</span>
+              </div>
+            )}
             <div className="flex items-center gap-4 mb-3 text-xs text-gray-500">
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />In HEM</span>
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" />Not in HEM</span>
@@ -2101,7 +2171,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             </div>
             <div className="flex flex-col gap-2">
               {EXPENSE_CATEGORIES.map(cat => {
-                const entry = d.expenses?.[cat.key] || { monthlyAmount: '', splits: {}, comment: '' }
+                const entry = shownExpenses?.[cat.key] || { monthlyAmount: '', splits: {}, comment: '' }
                 const hem = hemStateOf(cat, entry)
                 const open = hem === 'unanswered'
                 return (
@@ -2131,15 +2201,15 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                         </span>
                       )}
                     </div>
-                    <div className="grid gap-2 items-end" style={{ gridTemplateColumns: `160px repeat(${d.applicants.length}, 1fr) 1fr` }}>
+                    <div className="grid gap-2 items-end" style={{ gridTemplateColumns: `160px repeat(${peopleHere.length}, 1fr) 1fr` }}>
                       <div>
                         <label className="text-xs text-gray-400 block mb-1">Monthly amount</label>
                         <input className={inp} value={entry.monthlyAmount} onChange={e => updateExpense(cat.key, 'monthlyAmount', e.target.value)} />
                       </div>
-                      {d.applicants.map(a => (
-                        <div key={a.name}>
-                          <label className="text-xs text-gray-400 block mb-1">{a.name} %</label>
-                          <input className={inp} value={entry.splits?.[a.name] || ''} onChange={e => updateExpenseSplit(cat.key, a.name, e.target.value)} />
+                      {peopleHere.map(name => (
+                        <div key={name}>
+                          <label className="text-xs text-gray-400 block mb-1">{name} %</label>
+                          <input className={inp} value={entry.splits?.[name] || ''} onChange={e => updateExpenseSplit(cat.key, name, e.target.value)} />
                         </div>
                       ))}
                       <div>
@@ -2157,10 +2227,10 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             // One reader, in lib/hem.ts, so the dots on the rows and the money in
             // the boxes cannot tell different stories.
             const { all: totalAll, inHem: totalHem, notInHem: totalNotHem, unanswered } =
-              hemTotals(EXPENSE_CATEGORIES, d.expenses as any)
+              hemTotals(EXPENSE_CATEGORIES, shownExpenses as any)
             return (
               <div className="bg-white border border-gray-100 rounded-xl p-5">
-                <SectionHeader title="Totals (monthly)" />
+                <SectionHeader title={oneHousehold ? 'Totals (monthly)' : `Household ${household} totals (monthly)`} />
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-gray-50 rounded-lg p-3">
                     <div className="text-xs text-gray-500 mb-1">Total expenses</div>
@@ -2178,6 +2248,70 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                 {unanswered > 0 && (
                   <div className="mt-3 rounded-lg border border-[#F5C2C2] bg-[#FDF0EF] px-3 py-2 text-[12.5px] text-[#8A3A3A]">
                     {unansweredNote(unanswered)}
+                  </div>
+                )}
+
+                {/* EVERY HOUSEHOLD, WHICHEVER TAB IS OPEN.
+                  *
+                  * Two homes are never silently added into one figure: each is
+                  * on its own line and the combined figure is on its own line
+                  * under them, so an assessor reading this sees both. */}
+                {!oneHousehold && (
+                  <div className="mt-4 border-t border-gray-100 pt-3">
+                    <div className="text-[10px] font-bold tracking-[.08em] uppercase text-gray-400 mb-2">
+                      Every household
+                    </div>
+                    <table className="w-full text-[12.5px]">
+                      <thead>
+                        <tr className="text-[9.5px] uppercase tracking-[.06em] text-gray-400">
+                          <th className="text-left font-semibold pb-1.5 pr-3">Household</th>
+                          <th className="text-left font-semibold pb-1.5 pr-3">Who</th>
+                          <th className="text-right font-semibold pb-1.5 pr-3">Total</th>
+                          <th className="text-right font-semibold pb-1.5 pr-3">In HEM</th>
+                          <th className="text-right font-semibold pb-1.5 pr-3">Not in HEM</th>
+                          <th className="text-right font-semibold pb-1.5">To answer</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {households.map(h => {
+                          const t = hemTotals(EXPENSE_CATEGORIES, expensesFor(d, h.id) as any)
+                          return (
+                            <tr key={h.id} className="border-t border-[#F6F8F9]">
+                              <td className="py-1.5 pr-3 text-[#2E3439]">Household {h.id}</td>
+                              <td className="py-1.5 pr-3 text-gray-500 max-w-[200px] truncate"
+                                  title={h.people.map(p => p.name).join(', ')}>
+                                {h.people.map(p => p.name).join(', ') || 'nobody'}
+                              </td>
+                              <td className="py-1.5 pr-3 text-right">${t.all.toLocaleString('en-AU')}</td>
+                              <td className="py-1.5 pr-3 text-right text-green-700">${t.inHem.toLocaleString('en-AU')}</td>
+                              <td className="py-1.5 pr-3 text-right text-red-600">${t.notInHem.toLocaleString('en-AU')}</td>
+                              <td className={`py-1.5 text-right ${t.unanswered > 0 ? 'text-[#B04A4A] font-semibold' : 'text-gray-300'}`}>
+                                {t.unanswered > 0 ? t.unanswered : '\u2014'}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                        {(() => {
+                          const sum = households.reduce((acc, h) => {
+                            const t = hemTotals(EXPENSE_CATEGORIES, expensesFor(d, h.id) as any)
+                            return { all: acc.all + t.all, inHem: acc.inHem + t.inHem,
+                                     notInHem: acc.notInHem + t.notInHem, unanswered: acc.unanswered + t.unanswered }
+                          }, { all: 0, inHem: 0, notInHem: 0, unanswered: 0 })
+                          return (
+                            <tr className="border-t border-gray-200 font-semibold text-[#1F2328]">
+                              <td className="py-1.5 pr-3">All {households.length}</td>
+                              <td className="py-1.5 pr-3 text-gray-500 font-normal">the whole application</td>
+                              <td className="py-1.5 pr-3 text-right">${sum.all.toLocaleString('en-AU')}</td>
+                              <td className="py-1.5 pr-3 text-right text-green-700">${sum.inHem.toLocaleString('en-AU')}</td>
+                              <td className="py-1.5 pr-3 text-right text-red-600">${sum.notInHem.toLocaleString('en-AU')}</td>
+                              <td className={`py-1.5 text-right ${sum.unanswered > 0 ? 'text-[#B04A4A]' : 'text-gray-300'}`}>
+                                {sum.unanswered > 0 ? sum.unanswered : '\u2014'}
+                              </td>
+                            </tr>
+                          )
+                        })()}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>

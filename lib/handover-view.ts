@@ -24,6 +24,8 @@ import { loanFigureRows } from './lmi'
 import { isRecommended, recommendedFirst, recommendedOption, recommendedLabel } from './recommended-option'
 import { hemStateOf, hemTotals, unansweredNote, type ExpenseCategory } from './hem'
 import { rowLegalFeeLabel } from './lender-fees'
+import { householdsOf } from './households'
+import { expensesFor } from './household-expenses'
 
 // --- the lists ---------------------------------------------------------------
 
@@ -274,26 +276,76 @@ export function handoverSections(deal: any): ViewSection[] {
     { key: 'product', title: 'What the clients asked for', rows: prodRows },
   ]})
 
-  // Living expenses, with the HEM flag carried through. A category nobody has
-  // answered the in/out question for is marked, not guessed.
-  const totals = hemTotals(EXPENSE_CATEGORIES, expenses)
-  const expRows: ViewRow[] = []
-  for (const cat of EXPENSE_CATEGORIES) {
-    const entry = (expenses as any)[cat.key]
-    const state = hemStateOf(cat, entry)
-    const amount = readMoney(entry?.monthlyAmount) || 0
-    if (!amount && state !== 'unanswered') continue
-    expRows.push({ kind: 'kv', k: cat.label, state,
-      v: `${money(amount)} · ${state === 'unanswered' ? 'needs a HEM answer' : state === 'in' ? 'in HEM' : 'outside HEM'}` })
+  // LIVING EXPENSES, ONE CARD PER HOUSEHOLD.
+  //
+  // 17 Sep 2026. Two applicants who are not a couple are two homes, and the
+  // lender assesses them that way - so handing over one set of expenses for a
+  // two household deal is handing over an assessment that is wrong for at least
+  // one of them. See lib/households.ts.
+  //
+  // One household and this produces exactly the card it always produced: same
+  // title, same tag, same rows, same note. Nothing about an ordinary handover
+  // changes.
+  const households = householdsOf(deal?.fact_find_data)
+  const manyHomes = households.length > 1
+
+  const cardFor = (id: string, label: string, who: string, record: any) => {
+    const totals = hemTotals(EXPENSE_CATEGORIES, record)
+    const rows: ViewRow[] = []
+    if (who) rows.push({ kind: 'kv', k: 'Who lives here', v: who })
+    for (const cat of EXPENSE_CATEGORIES) {
+      const entry = (record as any)[cat.key]
+      const state = hemStateOf(cat, entry)
+      const amount = readMoney(entry?.monthlyAmount) || 0
+      if (!amount && state !== 'unanswered') continue
+      rows.push({ kind: 'kv', k: cat.label, state,
+        v: `${money(amount)} · ${state === 'unanswered' ? 'needs a HEM answer' : state === 'in' ? 'in HEM' : 'outside HEM'}` })
+    }
+    rows.push(sub('Totals'))
+    rows.push({ kind: 'kv', k: 'Total expenses', v: money(totals.all) })
+    rows.push({ kind: 'kv', k: 'In HEM', v: money(totals.inHem), state: 'in' })
+    rows.push({ kind: 'kv', k: 'Not in HEM', v: money(totals.notInHem), state: 'out' })
+    return { card: { key: id, title: label, tag: money(totals.all), rows,
+                     note: totals.unanswered > 0 ? unansweredNote(totals.unanswered) : undefined },
+             totals }
   }
-  expRows.push(sub('Totals'))
-  expRows.push({ kind: 'kv', k: 'Total expenses', v: money(totals.all) })
-  expRows.push({ kind: 'kv', k: 'In HEM', v: money(totals.inHem), state: 'in' })
-  expRows.push({ kind: 'kv', k: 'Not in HEM', v: money(totals.notInHem), state: 'out' })
-  sections.push({ key: 'expenses', title: 'Expenses', accent: 'green', pill: 'household monthly', cards: [
-    { key: 'expenses', title: 'Monthly expenses', tag: money(totals.all), rows: expRows,
-      note: totals.unanswered > 0 ? unansweredNote(totals.unanswered) : undefined },
-  ]})
+
+  if (!manyHomes) {
+    const { card } = cardFor('expenses', 'Monthly expenses', '', expenses)
+    sections.push({ key: 'expenses', title: 'Expenses', accent: 'green', pill: 'household monthly',
+      cards: [card] })
+  } else {
+    const built = households.map(h => cardFor(
+      `expenses-${h.id}`,
+      `Household ${h.id} — monthly expenses`,
+      `${h.people.map(p => p.name).join(', ') || 'nobody recorded'}`
+        + ` · ${h.dependants === '1' ? '1 dependant' : `${h.dependants || '0'} dependants`}`,
+      expensesFor(c, h.id as any)))
+    // Added up on its own card, never folded into a household's. A credit
+    // assessor has to be able to see both the homes and the whole.
+    const sum = built.reduce((acc, b) => ({
+      all: acc.all + b.totals.all, inHem: acc.inHem + b.totals.inHem,
+      notInHem: acc.notInHem + b.totals.notInHem, unanswered: acc.unanswered + b.totals.unanswered,
+    }), { all: 0, inHem: 0, notInHem: 0, unanswered: 0 })
+    const allRows: ViewRow[] = [
+      { kind: 'kv', k: 'Households', v: String(households.length) },
+      ...households.map(h => ({ kind: 'kv' as const, k: `Household ${h.id}`,
+        v: `${h.people.map(p => p.name).join(', ') || 'nobody recorded'} · `
+           + money(hemTotals(EXPENSE_CATEGORIES, expensesFor(c, h.id as any)).all) })),
+      sub('Totals'),
+      { kind: 'kv', k: 'Total expenses', v: money(sum.all) },
+      { kind: 'kv', k: 'In HEM', v: money(sum.inHem), state: 'in' },
+      { kind: 'kv', k: 'Not in HEM', v: money(sum.notInHem), state: 'out' },
+    ]
+    sections.push({ key: 'expenses', title: 'Expenses', accent: 'green',
+      pill: `${households.length} households, monthly`,
+      cards: [
+        ...built.map(b => b.card),
+        { key: 'expenses-all', title: 'Every household together', tag: money(sum.all), rows: allRows,
+          note: 'These applicants are not one household. Each set above is assessed on its own; '
+              + 'this card is the two added together, shown so neither reading is hidden.' },
+      ]})
+  }
 
   return sections
 }

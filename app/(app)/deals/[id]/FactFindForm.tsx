@@ -26,6 +26,8 @@ import { useKeepalive } from '@/components/useKeepalive'
 import { withDefaults } from '@/lib/record-defaults'
 import NoApplicants from '@/components/NoApplicants'
 import { useLiveColumn } from '@/components/useLiveColumn'
+import { householdsOf, householdOf, isOneHousehold, canAddHousehold, nextHouseholdId,
+         suggestSecondHousehold, setDependants, HOUSEHOLD_IDS } from '@/lib/households'
 
 function incrementFY(fy: string): string {
   const match = fy.match(/^(\d{4})\/(\d{2})$/)
@@ -134,6 +136,10 @@ type FactFindApplicant = {
   // the lender. The id of the other applicant, never a copy of their name - see
   // lib/relationship.ts.
   relationshipStatus: string
+  // WHICH ROOF. Blank means household 1, which is almost every deal - see
+  // lib/households.ts. Two applicants who are not a couple are two households,
+  // with their own dependants and their own living expenses.
+  household?: string
   relatedToApplicantId: string
   addresses: Address[]
   employment: Employment[]
@@ -212,6 +218,12 @@ type FactFindData = {
   properties: FactFindProperty[]
   liabilities: Liability[]
   dependants: string
+  // Per household, used only when there is more than one. The total above stays
+  // the truth for everything that already reads it - see lib/households.ts.
+  householdDependants?: Record<string, string>
+  // Somebody has said these applicants live together, so stop suggesting they
+  // might not. A real answer, recorded, not a dismissal.
+  householdsDismissed?: string
   internalNotes: string
   // Where the deposit is coming from. A gift needs a gift letter on file, and
   // this only existed on the BC - by which point the documents have already
@@ -263,7 +275,7 @@ const defaultIncome = (type: string = 'PAYG'): Income => ({
 const defaultApplicant = (): FactFindApplicant => ({
   id: uid(), title: '', firstName: '', middleName: '', lastName: '', preferredName: '',
   previousName: '', gender: '', dob: '', phoneMobile: '', emailPersonal: '',
-  residencyStatus: '', relationshipStatus: '', relatedToApplicantId: '',
+  residencyStatus: '', relationshipStatus: '', relatedToApplicantId: '', household: '',
   addresses: [defaultAddress(true)],
   employment: [defaultEmployment(true)],
   income: []
@@ -931,6 +943,45 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
         + Add applicant
       </button>
 
+      {/* OFFERED, NEVER APPLIED.
+        *
+        * Two applicants both recorded as Single, all under one roof, is usually
+        * two households nobody has told the portal about - and the first anyone
+        * finds out is a serviceability assessment built on one set of living
+        * expenses. So it says so, once, and waits to be told.
+        *
+        * "They live together" is a real answer, not a dismissal: it is recorded,
+        * and it does not ask again on this deal. */}
+      {suggestSecondHousehold(d) && canAddHousehold(d) && (
+        <div className="w-full mt-3 rounded-xl border border-[#BFE3F5] bg-[#F2FAFE] px-4 py-3 text-[12.5px] text-[#0E5E82] leading-relaxed">
+          <b className="text-[#0B4A68]">
+            {d.applicants.map((a: any) => a.firstName || 'This applicant').join(' and ')} are both
+            recorded as Single.
+          </b>{' '}
+          If they do not live together they are two households, assessed on their own dependants and
+          their own living expenses.
+          <div className="flex gap-2 flex-wrap mt-2.5">
+            <button
+              onClick={() => {
+                const id = nextHouseholdId(d)
+                if (!id) return
+                const last = d.applicants.length - 1
+                setD(prev => ({ ...prev,
+                  applicants: prev.applicants.map((a: any, i: number) =>
+                    i === last ? { ...a, household: id } : a) }))
+              }}
+              className="text-[11.5px] font-semibold border border-[#0E86B8] text-[#0E86B8] bg-white rounded-lg px-3 py-1.5">
+              Put {d.applicants?.[d.applicants.length - 1]?.firstName || 'them'} in Household{' '}
+              {nextHouseholdId(d)}
+            </button>
+            <button onClick={() => setD(prev => ({ ...prev, householdsDismissed: 'yes' }))}
+              className="text-[11.5px] border border-[#D7DCE1] text-[#5B646D] bg-white rounded-lg px-3 py-1.5">
+              They live together
+            </button>
+          </div>
+        </div>
+      )}
+
       {showAddApplicantModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowAddApplicantModal(false)}>
           <div className="bg-white rounded-2xl p-6 w-[420px] max-h-[80vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
@@ -958,13 +1009,41 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
           </div>
         </div>
       )}
-      <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-1.5 ml-1">
-        <svg className="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 4-4h1m5-8a4 4 0 1 1-8 0 4 4 0 0 1 8 0zm6 4a4 4 0 1 0-8 0" />
-        </svg>
-        <span className="text-xs text-gray-500 whitespace-nowrap">Dependants</span>
-        <input type="number" className="w-12 text-center text-sm border-0 focus:outline-none p-0" value={d.dependants || '0'} onChange={e => setD(prev => ({ ...prev, dependants: e.target.value }))} />
-      </div>
+      {/* ONE BOX, OR ONE PER HOUSEHOLD.
+        *
+        * The deal total is written either way and stays the truth, because
+        * nineteen files read it - the BC checklist, four compliance boxes, the
+        * handover, the summary. Per household sits alongside it and the total is
+        * kept as the sum, so nothing downstream can quote a number the
+        * households disagree with. See lib/households.ts. */}
+      {isOneHousehold(d) ? (
+        <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-1.5 ml-1">
+          <svg className="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 4-4h1m5-8a4 4 0 1 1-8 0 4 4 0 0 1 8 0zm6 4a4 4 0 1 0-8 0" />
+          </svg>
+          <span className="text-xs text-gray-500 whitespace-nowrap">Dependants</span>
+          <input type="number" className="w-12 text-center text-sm border-0 focus:outline-none p-0" value={d.dependants || '0'} onChange={e => setD(prev => ({ ...prev, dependants: e.target.value }))} />
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 flex-wrap ml-1">
+          {householdsOf(d).map(h => (
+            <div key={h.id} className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-1.5">
+              <span className="text-[10px] font-bold tracking-[.05em] uppercase text-[#0E86B8] whitespace-nowrap">
+                Household {h.id}
+              </span>
+              <span className="text-xs text-gray-400 whitespace-nowrap max-w-[150px] truncate"
+                    title={h.people.map(p => p.name).join(', ')}>
+                {h.people.map(p => p.name).join(', ') || 'nobody yet'}
+              </span>
+              <span className="text-xs text-gray-500 whitespace-nowrap">dependants</span>
+              <input type="number" className="w-12 text-center text-sm border-0 focus:outline-none p-0"
+                value={h.dependants}
+                onChange={e => setD(prev => ({ ...prev, ...setDependants(prev, h.id, e.target.value) }))} />
+            </div>
+          ))}
+          <span className="text-[11px] text-gray-400">{d.dependants || '0'} in total</span>
+        </div>
+      )}
     </div>
   )
 
@@ -1243,6 +1322,31 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                 {optionsFor(applicant.relationshipStatus, RELATIONSHIP_STATUSES).map(x => <option key={x}>{x}</option>)}
               </select>
             </div>
+            {/* WHICH ROOF THEY LIVE UNDER.
+                Only where it could matter: more than one applicant, and this one
+                not recorded as somebody's partner. A couple never sees it, and
+                everybody starts in household 1, so a normal deal is unchanged.
+                Fabio, 17 Sep 2026 - two applicants who are not married or de
+                facto are two households, and the living expenses in Compliance
+                were being assessed as one. */}
+            {d.applicants.length > 1 && !applicant.relatedToApplicantId && (
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Household</label>
+                <select className={inp} value={householdOf(applicant)}
+                  onChange={e => updateApplicant('household', e.target.value)}>
+                  {HOUSEHOLD_IDS
+                    .filter(id => id === householdOf(applicant)
+                      || id === '1'
+                      || householdsOf(d).some(h => h.id === id)
+                      || id === nextHouseholdId(d))
+                    .map(id => <option key={id} value={id}>Household {id}</option>)}
+                </select>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Separate households are assessed separately &mdash; their own dependants and
+                  their own living expenses.
+                </p>
+              </div>
+            )}
             {/* Only for a status that is about somebody else, and only when
                 there is somebody else on the deal to name. */}
             {needsPartner(applicant.relationshipStatus) && d.applicants.length > 1 && (
