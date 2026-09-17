@@ -149,6 +149,25 @@ export type SaveGuard = {
   seq: number
   // When a copy was last put aside. See lib/deal-history.ts.
   history: HistoryClock
+  // A MERGED RECORD HANDED TO THE FORM THAT THE FORM HAS NOT TAKEN YET.
+  //
+  // 17 Sep 2026, and the robot caught it: 112 characters typed in one window,
+  // 112 on screen, 29 in the database, and the save line saying Saved. It had
+  // saved. The OTHER window unsaved it a fifth of a second later.
+  //
+  // Why this guard did not stop it. When two people's fields are merged, this
+  // file sets guard.db to the merged record the instant it is written and hands
+  // the same record to the form - but the form is React, so its own copy only
+  // changes on the next render. In the gap between those two moments the form
+  // still holds what it held BEFORE the merge, and a save firing in that gap
+  // looked, to every check here, like a screen that was perfectly up to date:
+  // stored and guard.db agreed, so the whole conflict section was skipped and a
+  // pre-merge record went straight over the top of a newer one. No error, no
+  // banner, nothing to see.
+  //
+  // `base` is what the form's value is actually built on until it catches up,
+  // and it is the only honest thing to merge against in the meantime.
+  handed: { base: string; merged: string } | null
 }
 
 // How many times a save will re-read and try again after the database refuses
@@ -158,13 +177,15 @@ export type SaveGuard = {
 const RETRIES = 4
 
 export function newGuard(loadedValue: any): SaveGuard {
-  return { db: snapshot(loadedValue), mine: [], queue: Promise.resolve(), seq: 0, history: newHistoryClock() }
+  return { db: snapshot(loadedValue), mine: [], queue: Promise.resolve(), seq: 0,
+           history: newHistoryClock(), handed: null }
 }
 
 // A guard for a form that has not read the record yet. It will not judge
 // anything until the first successful write or an explicit adopt().
 export function emptyGuard(): SaveGuard {
-  return { db: null, mine: [], queue: Promise.resolve(), seq: 0, history: newHistoryClock() }
+  return { db: null, mine: [], queue: Promise.resolve(), seq: 0,
+           history: newHistoryClock(), handed: null }
 }
 
 // The form has just read the record itself (LO does this) - this is now what we
@@ -264,6 +285,10 @@ async function attempt(req: SaveRequest, mySeq: number, lastResort = false): Pro
   let didOverwrite = false
   let wroteOver = ''
   let overwroteFields = ''
+  // What the screen's value was built on, kept for the handover at the end of
+  // this function. Writing `written` there instead would say the screen is
+  // already up to date with the merge, which is the very thing it is not.
+  let screenBase: string | null = null
 
   const { data: current, error: readError } = await supabase
     .from('deals').select(`${column},row_version,last_saved_name`).eq('id', dealId).single()
@@ -290,18 +315,39 @@ async function attempt(req: SaveRequest, mySeq: number, lastResort = false): Pro
     // honestly compared against.
     const stored = snapshot(through(current?.[column]))
 
+    // HAS THE SCREEN TAKEN THE MERGE WE HANDED IT?
+    //
+    // Until it has, this form's value is built on what came before that merge,
+    // and comparing it against the merged record calls an old value a new edit.
+    // See `handed` on SaveGuard for the fault that taught us this.
+    const caughtUp = !guard.handed || next === guard.handed.merged
+    if (caughtUp) guard.handed = null
+    // What this screen's value is ACTUALLY built on. Normally what we believe
+    // the database holds; while a merge is outstanding, what came before it.
+    const base = caughtUp ? guard.db : (guard.handed as { base: string }).base
+    screenBase = base
+
     // OPENING A DEAL IS NOT EDITING IT. Nothing has moved and we have changed
     // nothing, so there is nothing to write. Every one of these four forms used
     // to save itself a moment after it appeared on screen, which is what made
     // two people merely LOOKING at a deal collide with each other.
-    if (stored === guard.db && next === guard.db) return { kind: 'settled' }
+    if (caughtUp && stored === guard.db && next === guard.db) return { kind: 'settled' }
 
-    if (stored !== guard.db) {
+    // `!caughtUp` is the whole fix: the record can agree with what we believe it
+    // holds and STILL need merging, because the value about to be written is
+    // older than both.
+    if (stored !== guard.db || !caughtUp) {
       // The record moved. Before calling that a conflict, rule out the three
       // ways it moves that cost nobody anything.
 
       // Our own earlier write, arriving back at us.
-      if (guard.mine.includes(stored)) {
+      //
+      // ONLY ONCE THE SCREEN HAS CAUGHT UP. This shortcut says "that is ours,
+      // carry on and write what we have" - and while a merge is outstanding what
+      // we have is older than what we wrote. It is the branch the 112 characters
+      // actually went through: the merged record came back, was recognised as
+      // ours, and the pre-merge value went over the top of it.
+      if (caughtUp && guard.mine.includes(stored)) {
         guard.db = stored
       }
       // The record already says exactly what we were about to write. Somebody
@@ -316,14 +362,19 @@ async function attempt(req: SaveRequest, mySeq: number, lastResort = false): Pro
       // Take their version quietly. This is the case that was locking the Fact
       // Find: two people with a deal merely OPEN were being told they were in
       // conflict before either had touched a key.
-      else if (next === guard.db) {
+      else if (next === base) {
         // `stored` is already the shaped snapshot - see above. The guard must
         // hold what the screen holds, never the raw record.
         guard.db = stored
         // Nothing has been typed here, so there is nothing of ours to write and
         // nothing to refuse. A form that can refresh itself does; one that
         // cannot says so quietly and stays completely editable.
-        if (onAdopt) { onAdopt(current?.[column] ?? null); return { kind: 'settled' } }
+        if (onAdopt) {
+          // Handed over, not yet taken - see `handed` on SaveGuard.
+          guard.handed = { base, merged: stored }
+          onAdopt(current?.[column] ?? null)
+          return { kind: 'settled' }
+        }
         return { kind: 'behind', who: savedByThem }
       }
       // BOTH OF US HAVE TYPED. Not necessarily into the same field, though -
@@ -340,7 +391,7 @@ async function attempt(req: SaveRequest, mySeq: number, lastResort = false): Pro
           didOverwrite = true
           wroteOver = savedByThem
         } else {
-          const merge = merge3(JSON.parse(guard.db), through(current?.[column] ?? null), value)
+          const merge = merge3(JSON.parse(base), through(current?.[column] ?? null), value)
           if (merge.ok) {
             toWrite = merge.merged
             broughtIn = describePaths(merge.fromThem)
@@ -359,6 +410,7 @@ async function attempt(req: SaveRequest, mySeq: number, lastResort = false): Pro
         if (onMerge && snapshot(toWrite) === stored) {
           guard.db = stored
           remember(guard, stored)
+          guard.handed = { base, merged: stored }
           onMerge(toWrite)
           return { kind: 'merged', fields: broughtIn }
         }
@@ -427,6 +479,9 @@ async function attempt(req: SaveRequest, mySeq: number, lastResort = false): Pro
   // Only once the write has actually landed. Putting their fields on screen
   // before knowing they were saved would show somebody work that is not there.
   if (toWrite !== value && onMerge) {
+    // The screen is about to be handed a record it does not hold yet. Until it
+    // does, anything it saves is built on what came before - see `handed`.
+    guard.handed = { base: screenBase ?? next, merged: written }
     onMerge(toWrite)
     return { kind: 'merged', fields: broughtIn }
   }
