@@ -6,9 +6,28 @@ import { rulesChanged } from '@/lib/statement-rules'
 import { buildAudit, auditSummary, type AuditRow } from '@/lib/statement-audit'
 import { reasonsFor, describeAnswer, answerFor, openCount, type Answer } from '@/lib/statement-answers'
 import { TREATMENTS, signatureOf, upsertRule, type TreatAs, type PayerRule } from '@/lib/statement-overrides'
+import { combine, personOf, peopleByAccount, removalCost } from '@/lib/statement-combine'
+import { analyse } from '@/lib/statement-analysis'
 
-// The Statements tab. Everything on screen comes from one stored analysis and
-// one stored ledger, so a card and the transactions behind it can never drift.
+// The Statements tab. Everything on screen comes from ONE analysis over ONE
+// ledger, so a card and the transactions behind it can never drift.
+//
+// EVERY SET OF STATEMENTS, NOT THE NEWEST. 17 Sep 2026, Fabio: "we can only drop
+// 1 set of statements, we need multiple."
+//
+// Nothing was ever lost. Each workbook has always been stored as its own row
+// with its own transactions; this screen asked for the newest one and showed
+// only that, so a second set was invisible rather than missing. It now reads
+// every set on the deal and hands the lot to analyse() as a single ledger - one
+// score, one coverage check, one set of findings, exactly as Fabio asked for on
+// a deal with siblings rather than a couple.
+//
+// WHY THE ANALYSIS IS WORKED OUT HERE RATHER THAN READ FROM A ROW. Each upload
+// carries the analysis of ITSELF, which is the right thing to keep and the wrong
+// thing to show: it describes one workbook. The combined one is computed from
+// the stored transactions every time this loads, so it is always the whole deal
+// under the rules as they are now. Nothing new is stored and nothing is
+// migrated. See lib/statement-combine.ts.
 
 type Txn = {
   id: string; external_id: string; txn_date: string; description: string; merchant: string
@@ -580,7 +599,12 @@ function Ledger({ txns, cards, corrections, onCorrect, correcting }: {
 export default function StatementAnalysis({ deal }: { deal: any }) {
   const supabase = useMemo(() => createSupabaseBrowser(), [])
   const [upload, setUpload] = useState<Upload | null>(null)
+  // Every set on the deal, newest first. `upload` above is the newest of these
+  // and is what the re-analyse and rules-changed banners still speak about.
+  const [uploads, setUploads] = useState<Upload[]>([])
   const [txns, setTxns] = useState<Txn[]>([])
+  // The analysis across all of them, worked out on load.
+  const [combined, setCombined] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -602,13 +626,16 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
     const { data: st } = await supabase.from('settings').select('statement_rules').eq('id', 'singleton').maybeSingle()
     setLiveRules((st as any)?.statement_rules ?? {})
 
+    // EVERY SET. This asked for one - see the note at the top of this file.
     const { data: ups, error: upErr } = await supabase
       .from('deal_statement_uploads').select('*')
-      .eq('deal_id', deal.id).order('uploaded_at', { ascending: false }).limit(1)
+      .eq('deal_id', deal.id).order('uploaded_at', { ascending: false })
     if (upErr) { setError(`Could not load the statement analysis: ${upErr.message}`); setLoading(false); return }
-    const u = (ups || [])[0] as Upload | undefined
+    const list = (ups || []) as Upload[]
+    const u = list[0]
+    setUploads(list)
     setUpload(u || null)
-    if (!u) { setTxns([]); setLoading(false); return }
+    if (!u) { setTxns([]); setCombined(null); setLoading(false); return }
 
     // Read the whole ledger. Supabase caps a request, so it is paged rather than
     // silently truncated - a partial ledger would make the drill-downs wrong.
@@ -616,12 +643,36 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
     for (let from = 0; ; from += 1000) {
       const { data, error: txErr } = await supabase
         .from('deal_statement_transactions').select('*')
-        .eq('upload_id', u.id).order('txn_date', { ascending: true }).range(from, from + 999)
+        .eq('deal_id', deal.id).order('txn_date', { ascending: true }).range(from, from + 999)
       if (txErr) { setError(`Could not load the transactions: ${txErr.message}`); break }
       all.push(...((data || []) as Txn[]))
       if (!data || data.length < 1000) break
     }
     setTxns(all)
+
+    // ONE ANALYSIS, OVER THE LOT. The corrections a person has made on this deal
+    // and the payer rules in Settings are read here too, so what is worked out
+    // now is what the stored analysis would have been if every set had arrived
+    // in one workbook.
+    const [{ data: ovs }, { data: payer }] = await Promise.all([
+      supabase.from('deal_statement_overrides')
+        .select('external_id, signature, treat_as, note, created_by, created_at').eq('deal_id', deal.id),
+      supabase.from('settings').select('statement_payer_rules').eq('id', 'singleton').maybeSingle(),
+    ])
+    try {
+      setCombined(analyse(
+        combine(list as any, all as any),
+        deal.fact_find_data || {},
+        (st as any)?.statement_rules ?? {},
+        { overrides: (ovs || []) as any, payerRules: ((payer as any)?.statement_payer_rules || []) as any },
+      ))
+    } catch (e: any) {
+      // A stored analysis is still better than a blank tab, so the newest one is
+      // left on screen and the failure is said out loud rather than swallowed.
+      setCombined(null)
+      setError(`The combined analysis could not be worked out: ${e?.message || 'unknown error'}. `
+             + `Showing the most recent set on its own.`)
+    }
 
     const { data: ans } = await supabase
       .from('deal_statement_answers').select('*')
@@ -727,20 +778,35 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
 
   useEffect(() => { load() }, [load])
 
+  // AS MANY WORKBOOKS AS THEY LIKE, and dropping one never replaces what is
+  // already on the deal. One at a time rather than all at once: each is parsed,
+  // analysed and has every transaction written, and firing five of those at one
+  // server is how you get four of them half done.
   async function upFiles(files: File[]) {
-    const file = files[0]
-    if (!file) return
+    if (!files.length) return
     setBusy(true); setError('')
+    const failed: string[] = []
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('dealId', deal.id)
-      const res = await fetch('/api/statement-analysis', { method: 'POST', body: fd })
-      const body = await res.json().catch(() => ({}))
-      if (!res.ok) { setError(body.error || `Upload failed (${res.status}).`); return }
+      for (const file of files) {
+        try {
+          const fd = new FormData()
+          fd.append('file', file)
+          fd.append('dealId', deal.id)
+          const res = await fetch('/api/statement-analysis', { method: 'POST', body: fd })
+          const body = await res.json().catch(() => ({}))
+          if (!res.ok) failed.push(`${file.name}: ${body.error || `upload failed (${res.status})`}`)
+        } catch (e: any) {
+          failed.push(`${file.name}: ${e?.message || 'unknown error'}`)
+        }
+      }
+      // Whatever landed, lands. A file that failed is named; the ones that
+      // worked are not thrown away because one of them did not.
       await load()
-    } catch (e: any) {
-      setError(`Upload failed: ${e?.message || 'unknown error'}`)
+      if (failed.length) {
+        setError(failed.length === files.length
+          ? failed.join(' · ')
+          : `${files.length - failed.length} of ${files.length} loaded. ${failed.join(' · ')}`)
+      }
     } finally { setBusy(false) }
   }
 
@@ -761,19 +827,44 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
     } finally { setBusy(false) }
   }
 
-  async function remove() {
-    if (!upload) return
-    if (!confirm('Remove this statement analysis and every transaction stored with it?')) return
+  // WHAT GOES, AND WHAT IT COSTS, BEFORE IT GOES.
+  //
+  // This used to ask "are you sure" and name neither the transactions nor the
+  // hole it would leave in the period being assessed. Both are knowable, so both
+  // are said. See removalCost in lib/statement-combine.ts.
+  async function remove(uploadId?: string) {
+    const id = uploadId || upload?.id
+    if (!id) return
+    const cost = removalCost(uploads as any, txns as any, id)
+    const lines = [
+      `Remove ${cost.person}'s statements?`,
+      '',
+      `${cost.transactions.toLocaleString('en-AU')} transaction${cost.transactions === 1 ? '' : 's'} stored `
+        + `with this workbook will be deleted. This cannot be undone.`,
+    ]
+    if (cost.leavesGap) {
+      lines.push('', 'This set is the only one covering part of the period. Removing it leaves a gap '
+        + 'in what is being assessed.')
+    }
+    if (cost.keptSets > 0) {
+      lines.push('', `The analysis will be run again across the ${cost.keptSets} set`
+        + `${cost.keptSets === 1 ? '' : 's'} that are left.`)
+    }
+    if (!confirm(lines.join('\n'))) return
     setBusy(true); setError('')
     try {
-      const res = await fetch(`/api/statement-analysis?uploadId=${upload.id}&dealId=${deal.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/statement-analysis?uploadId=${id}&dealId=${deal.id}`, { method: 'DELETE' })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) { setError(body.error || `Could not remove it (${res.status}).`); return }
       await load()
     } finally { setBusy(false) }
   }
 
-  const a = upload?.analysis
+  // The whole deal, or - if the combine failed - the newest set on its own, which
+  // the banner above will have said.
+  const a = combined ?? upload?.analysis
+  // Which person each account belongs to, so a finding can name them.
+  const whoseAccount = useMemo(() => peopleByAccount(uploads as any, txns as any), [uploads, txns])
   const correctionMap: Record<string, { label: string; source: string }> = useMemo(() => {
     const m: Record<string, { label: string; source: string }> = {}
     for (const c of (a?.corrections || [])) m[c.externalId] = { label: c.label, source: c.source }
@@ -797,9 +888,9 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
 
       {!upload ? (
         <>
-          <DropZone onFiles={upFiles} busy={busy} multiple={false} accept=".xlsm,.xlsx"
-            title="Drop the CashDeck workbook here"
-            hint="The income verification export (.xlsm or .xlsx). Every transaction is stored against this deal." />
+          <DropZone onFiles={upFiles} busy={busy} accept=".xlsm,.xlsx"
+            title="Drop the CashDeck workbooks here"
+            hint="The income verification exports (.xlsm or .xlsx). As many as you like \u2014 one applicant's bank, then the other's." />
           <p className="text-[12px] text-[#7A7266] mt-3 max-w-[86ch]">
             The analysis reads the statements against this deal&rsquo;s fact find and flags the differences.
             It never changes the fact find.
@@ -807,25 +898,66 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
         </>
       ) : (
         <>
-          <div className="flex items-center gap-3 border border-[#E5DED2] rounded-xl px-3.5 py-2.5 bg-white mb-3 flex-wrap">
-            <span className="w-[25px] h-[31px] rounded bg-[#1E7A4A] text-white text-[7.5px] font-bold flex items-center justify-center flex-none">XLSM</span>
-            <span>
-              <span className="text-[13px] text-[#221F1B] font-[560]">{upload.file_name}</span><br />
-              <span className="text-[11.5px] text-[#7A7266]">
-                {upload.client_name ? `${upload.client_name} · ` : ''}uploaded {new Date(upload.uploaded_at).toLocaleString('en-AU', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                {upload.uploaded_by_email ? ` by ${upload.uploaded_by_email}` : ''}
-                {upload.reanalysed_at ? ` · re-analysed ${new Date(upload.reanalysed_at).toLocaleString('en-AU', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}` : ''}
-              </span>
-            </span>
-            <span className="ml-auto flex gap-2">
-              <button onClick={reanalyse} disabled={busy}
-                className="text-[11.5px] font-semibold text-[#0E8FCB] border border-[#BFE2F5] rounded-lg px-2.5 py-1 bg-[#EAF6FD] hover:bg-[#DCEDF8] disabled:opacity-40">
-                {busy ? 'Working…' : 'Re-analyse'}
-              </button>
-              <button onClick={remove} disabled={busy}
-                className="text-[11.5px] text-[#7A7266] border border-[#E5DED2] rounded-lg px-2.5 py-1 bg-white hover:text-[#221F1B] disabled:opacity-40">
-                Remove
-              </button>
+          {/* ONE ROW PER SET, so a missing second bank is obvious here rather
+              than something a lender tells you about. */}
+          <div className="text-[10px] font-bold tracking-[.08em] uppercase text-[#A29889] mb-2">
+            {uploads.length === 1 ? 'Statements loaded'
+              : `Statements loaded — ${uploads.length} sets, `
+                + `${new Set(uploads.map(u => personOf(u as any))).size} `
+                + `${new Set(uploads.map(u => personOf(u as any))).size === 1 ? 'person' : 'people'}`}
+          </div>
+          {uploads.map(u => {
+            const meta = (u as any).parsed_meta || {}
+            const n = txns.filter(t => (t as any).upload_id === u.id).length
+            return (
+              <div key={u.id} className="flex items-center gap-3 border border-[#E5DED2] rounded-xl px-3.5 py-2.5 bg-white mb-2 flex-wrap">
+                <span className="w-[25px] h-[31px] rounded bg-[#1E7A4A] text-white text-[7.5px] font-bold flex items-center justify-center flex-none">XLSM</span>
+                <span className="min-w-0">
+                  {uploads.length > 1 && (
+                    <span className="inline-block text-[10px] font-bold tracking-[.04em] rounded-full px-2 py-[1px] border border-[#BFE3F5] text-[#0E86B8] bg-[#F2FAFE] mr-1.5">
+                      {personOf(u as any)}
+                    </span>
+                  )}
+                  <span className="text-[13px] text-[#221F1B] font-[560]">{u.file_name}</span><br />
+                  <span className="text-[11.5px] text-[#7A7266]">
+                    {(meta.institutions || []).join(', ')}
+                    {meta.periodFrom ? ` · ${dateAu(meta.periodFrom)} → ${dateAu(meta.periodTo)}` : ''}
+                    {meta.days ? ` · ${meta.days} days` : ''}
+                    {(meta.accounts || []).length ? ` · ${(meta.accounts || []).length} account${(meta.accounts || []).length === 1 ? '' : 's'}` : ''}
+                    {n ? ` · ${n.toLocaleString('en-AU')} transactions` : ''}
+                  </span><br />
+                  <span className="text-[11px] text-[#A29889]">
+                    uploaded {new Date(u.uploaded_at).toLocaleString('en-AU', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                    {u.uploaded_by_email ? ` by ${u.uploaded_by_email}` : ''}
+                  </span>
+                </span>
+                <span className="ml-auto flex gap-2 flex-none">
+                  <button onClick={() => remove(u.id)} disabled={busy}
+                    className="text-[11.5px] text-[#7A7266] border border-[#E5DED2] rounded-lg px-2.5 py-1 bg-white hover:text-[#221F1B] disabled:opacity-40">
+                    Remove
+                  </button>
+                </span>
+              </div>
+            )
+          })}
+
+          {/* Another set, any time. Nothing here is replaced by it. */}
+          <div className="mb-3">
+            <DropZone onFiles={upFiles} busy={busy} accept=".xlsm,.xlsx" compact
+              title="Drop another workbook here, or click to choose"
+              hint="As many as you like. Nothing already loaded is replaced." />
+          </div>
+
+          <div className="flex items-center gap-3 mb-3 flex-wrap">
+            <button onClick={reanalyse} disabled={busy}
+              className="text-[11.5px] font-semibold text-[#0E8FCB] border border-[#BFE2F5] rounded-lg px-2.5 py-1 bg-[#EAF6FD] hover:bg-[#DCEDF8] disabled:opacity-40">
+              {busy ? 'Working…' : 'Re-analyse'}
+            </button>
+            <span className="text-[11.5px] text-[#7A7266]">
+              {uploads.length > 1
+                ? `One analysis across all ${uploads.length} sets.`
+                : 'The analysis reads the statements against this deal\u2019s fact find.'}
+              {upload.reanalysed_at ? ` Last re-run ${new Date(upload.reanalysed_at).toLocaleString('en-AU', { day: '2-digit', month: 'short', hour: 'numeric', minute: '2-digit' })}.` : ''}
             </span>
           </div>
 
