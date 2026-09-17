@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
-import BrokerAssignment from './BrokerAssignment'
 import CurrencyInput from './CurrencyInput'
 import { can } from '@/lib/permissions'
 import { templateLabel } from '@/lib/templates'
@@ -2116,7 +2115,6 @@ Key assumptions: ${checklistText}`
               <div className="w-px h-8 bg-gray-200 ml-auto" />
 
               <div className="flex items-center gap-4">
-                <BrokerAssignment dealId={deal.id} currentBroker={deal.assigned_broker} userRole={userRole} />
                 <div className="w-px h-6 bg-gray-200" />
                 <CreditOfficerAssignment key={assignmentRefreshKey} dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
               </div>

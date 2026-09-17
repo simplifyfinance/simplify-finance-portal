@@ -6,7 +6,6 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { docsStateOf, atTime, assessorMissing, NO_ASSESSOR_MESSAGE } from '@/lib/docs-received'
 import { legalFeeLabel, rowLegalFeeLabel } from '@/lib/lender-fees'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
-import BrokerAssignment from './BrokerAssignment'
 import { can } from '@/lib/permissions'
 import { templateLabel } from '@/lib/templates'
 import { proceedCredit } from '@/lib/deal-status'
@@ -2116,7 +2115,6 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 </div>
                 <div className="w-px h-8 bg-gray-200 ml-auto" />
                 <div className="flex items-center gap-4">
-                  <BrokerAssignment dealId={deal.id} currentBroker={deal.assigned_broker} userRole={userRole} />
                   <div className="w-px h-6 bg-gray-200" />
                   <CreditOfficerAssignment key={assignmentRefreshKey} dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
                 </div>

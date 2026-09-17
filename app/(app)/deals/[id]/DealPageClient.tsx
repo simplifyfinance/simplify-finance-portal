@@ -29,6 +29,7 @@ import { DealAlerts, FileNotes, AlertChips, useDealFile } from '@/components/Dea
 import { isLocked } from '@/lib/deal-lock'
 import { isWithLender } from '@/lib/deal-phase'
 import DocumentsBox from '@/components/DocumentsBox'
+import BrokerAssignment from './BrokerAssignment'
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
   const validStages = ['FactFind', 'Statements', 'BC', 'LO', 'Compliance']
@@ -222,10 +223,10 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           <SaveIndicatorNote status={saveStatus} />
           {/* Client and loan type are not repeated here - the deal name already contains both. */}
           <div className="flex gap-2 items-center flex-wrap">
-            <span className="inline-flex items-baseline gap-1.5 bg-[#FAF7F2] border border-[#E8E1D6] rounded-lg px-2.5 py-1">
-              <span className="text-[9.5px] font-bold tracking-wider uppercase text-[#A29889]">Broker</span>
-              <span className="text-[13px] font-semibold text-[#2E2A26]">{brokerLabel(deal.assigned_broker)}</span>
-            </span>
+            {/* CHANGEABLE, like the credit officer beside it. Until 17 Sep 2026
+                this was a label and the control that does the work was two tabs
+                away, at the bottom of an email preview. */}
+            <BrokerAssignment dealId={dealData.id} currentBroker={dealData.assigned_broker} userRole={userRole} chip />
             <CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
             {templateLabel(dealData.bc_data?.template) && (
               <span className="inline-flex items-baseline gap-1.5 bg-[#F4FCFF] border border-[#CDEBF8] rounded-lg px-2.5 py-1">
