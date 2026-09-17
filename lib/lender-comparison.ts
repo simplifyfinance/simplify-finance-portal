@@ -18,6 +18,7 @@
 import { readMoney, money } from './money'
 import { resolveLenderSplits } from './lo-splits'
 import { isRecommended } from './recommended-option'
+import { hasOffset, offsetRecorded } from './offset'
 
 const txt = (v: any) => String(v ?? '').trim()
 const rate = (v: any) => {
@@ -150,7 +151,8 @@ export function optionsOf(lo: any): Option[] {
         upfrontKnown: UPFRONT.some(k => recorded(l?.[k])),
         ongoing: ONGOING.reduce((t, k) => t + fee(l?.[k]), 0),
         ongoingKnown: ONGOING.some(k => recorded(l?.[k])),
-        offset: !!offsetAnswer && !/^no$/i.test(offsetAnswer),
+        // One rule for the whole portal - see lib/offset.ts.
+        offset: hasOffset(offsetAnswer),
         offsetAnswer,
         approvalText: txt(l?.approvalDays),
         approvalRange: approvalRange(l?.approvalDays),
@@ -235,8 +237,8 @@ export function compareLenders(lo: any): Comparison {
   // --- features -----------------------------------------------------------
   // An unanswered offset question is not a No. Only options with an answer are
   // compared, for the same reason as the fees.
-  const offsetAnswered = options.filter(o => o.offsetAnswer !== '')
-  const offsetUnknown = options.filter(o => o.offsetAnswer === '').map(o => o.name)
+  const offsetAnswered = options.filter(o => offsetRecorded(o.offsetAnswer))
+  const offsetUnknown = options.filter(o => !offsetRecorded(o.offsetAnswer)).map(o => o.name)
   if (offsetUnknown.length) {
     lines.push(`Whether an offset account is available is not recorded for ${offsetUnknown.join(' and ')}.`)
   }

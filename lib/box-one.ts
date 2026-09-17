@@ -39,6 +39,7 @@ import { fullName, currentEmployment, notWorking, selfEmployed } from './fact-fi
 import { annualIncomeOfApplicant } from './income-calculations'
 import { applicantsOf } from './applicants'
 import { recommendedOption } from './recommended-option'
+import { hasOffset, offsetRecorded } from './offset'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -102,6 +103,10 @@ export type Structure = {
   interestOnly: boolean
   principalAndInterest: boolean
   offset: boolean
+  // Somebody has answered the offset question, either way. A blank is not a No -
+  // see lib/offset.ts - and the paragraph below stays silent rather than telling
+  // the credit team a product has no offset when nobody has said so.
+  offsetRecorded: boolean
   // True only when the product records a nil annual fee. The no-offset wording
   // claims a fee saving, and a claim like that has to trace to a field.
   noAnnualFee: boolean
@@ -149,7 +154,11 @@ export function structureOf(deal: any): Structure {
     fixed: saidUpTop ? fixed : splitFixed,
     interestOnly: io || splitIO,
     principalAndInterest: pi || splitPI,
-    offset: txt(rec.offsetAccount).toLowerCase() === 'yes',
+    // NOT an exact match on the word "yes". The library writes "Yes - multiple
+    // offsets" whenever a product carries more than one, and that read as a No
+    // for a fortnight. lib/offset.ts is the only place this is decided now.
+    offset: hasOffset(rec.offsetAccount),
+    offsetRecorded: offsetRecorded(rec.offsetAccount),
     // "$0", "0", "nil", "none" - and an unrecorded fee is NOT a nil fee.
     noAnnualFee: fee === '0' || fee === '0/yr' || fee === 'nil' || fee === 'none',
     ioYears: txt(rec.variableIO?.ioYears || rec.fixedIO?.ioYears),
@@ -228,6 +237,10 @@ export function flexibilityPassage(s: Structure, who: string, v: 1 | 2 | 3): str
 // The fee half only appears when the product records a nil annual fee - Fabio
 // wanted the trade-off stated, and a saving nobody recorded is not a fact.
 function noOffsetTail(s: Structure, who: string, v: 1 | 2 | 3): string {
+  // NOBODY HAS ANSWERED IS NOT A NO. With the offset box blank there is nothing
+  // to say in either direction, so the passage simply ends here rather than
+  // stating an absence no field supports.
+  if (!s.offsetRecorded) return ''
   if (!s.noAnnualFee) {
     return ' ' + [
       ` The product does not include an offset account; on a variable rate the redraw facility does much the same job, since anything paid ahead of the minimum reduces the interest charged straight away and can be taken back out when it is needed.`,

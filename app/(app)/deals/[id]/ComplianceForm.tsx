@@ -53,6 +53,7 @@ import { recommendedOption } from '@/lib/recommended-option'
 import type { SaveStatus } from '@/lib/save-indicator'
 import { useKeepalive } from '@/components/useKeepalive'
 import DealStructure from '@/components/DealStructure'
+import { hasOffset as productHasOffset } from '@/lib/offset'
 
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
 
@@ -489,7 +490,9 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
     const loLenders = lo.lenders || []
     const hasVariable = loLenders.some((l: any) => l.variablePI?.enabled || l.variableIO?.enabled)
     const hasFixed = loLenders.some((l: any) => l.fixedPI?.enabled || l.fixedIO?.enabled)
-    const hasOffset = loLenders.some((l: any) => l.offsetAccount && l.offsetAccount !== 'No')
+    // Same rule as the write-up and the comparison - lib/offset.ts. The old
+    // test here missed a lowercase "no" and anything worded "No offset".
+    const hasOffset = loLenders.some((l: any) => productHasOffset(l.offsetAccount))
     const approvalMentioned = (lo.additionalNotes || '').toLowerCase().includes('turnaround') || (lo.additionalNotes || '').toLowerCase().includes('approval')
 
     const pReqs = defaultProductReqs()
