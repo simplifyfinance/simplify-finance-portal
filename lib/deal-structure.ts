@@ -243,6 +243,11 @@ export function stillNeeded(deal: any): Needed[] {
       out.push({ where: 'split', splitId: s.id, splitLabel: s.label, what: 'what it does — funds the purchase, pays out debt, or releases equity' })
     }
     if (!s.termYears) out.push({ where: 'split', splitId: s.id, splitLabel: s.label, what: 'term' })
+    // 17 Sep 2026. Until today this was never asked, because every split was
+    // born holding "P&I" whether or not anybody meant it. Now that a split loan
+    // starts blank, the blank has to be visible - and the credit notes wait for
+    // it rather than describing a repayment type nobody chose.
+    if (!s.repaymentType) out.push({ where: 'split', splitId: s.id, splitLabel: s.label, what: 'repayment type — P&I or interest only' })
     if (!s.productType) out.push({ where: 'split', splitId: s.id, splitLabel: s.label, what: 'product type' })
   }
   return out

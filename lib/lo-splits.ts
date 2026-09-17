@@ -22,10 +22,69 @@ export type LenderSplit = {
   lvr: string; rate: string; repayment: string; repaymentType: string
 }
 
-export function seedFromGlobal(globals: GlobalSplit[] | undefined | null): LenderSplit[] {
+// WHAT REPAYMENT TYPE A NEW SPLIT STARTS AS.
+//
+// 17 Sep 2026, Dylan Smyth and Megan Isherwood: Interest Only ticked on the
+// product, and the deal structure said P&I. Nobody typed P&I - this function
+// used to stamp it on every split the moment a lender option was created, and
+// ticking a rate module never touched it. So the compliance write-up, which
+// reads the ticks, said Interest Only while the deal structure, the client email
+// and the handover PDF, which read the split, said P&I. One record, one screen,
+// two answers.
+//
+// The product already knows. One rate module ticked means one repayment type and
+// the split can start as that. More than one means a split loan, and which
+// portion is which is not something to guess at - so it starts BLANK and shows
+// on the list of what is still needed. A figure nobody typed does not go on a
+// regulated record; that rule has cost us enough already.
+//
+// The strings are the four the Type dropdown offers, not prose. They have to
+// match or the dropdown shows the first option while holding something else.
+export type RateModuleHolder = {
+  variablePI?: { enabled?: boolean } | null
+  variableIO?: { enabled?: boolean } | null
+  fixedPI?: { enabled?: boolean } | null
+  fixedIO?: { enabled?: boolean } | null
+} | null | undefined
+
+export const SPLIT_TYPES = ['P&I', 'IO', 'Fixed P&I', 'Fixed IO'] as const
+export type SplitType = typeof SPLIT_TYPES[number] | ''
+
+const MODULE_TYPE: [keyof NonNullable<RateModuleHolder>, SplitType][] = [
+  ['variablePI', 'P&I'], ['variableIO', 'IO'],
+  ['fixedPI', 'Fixed P&I'], ['fixedIO', 'Fixed IO'],
+]
+
+// The repayment types this product actually offers, in dropdown order.
+export function typesOffered(lender: RateModuleHolder): SplitType[] {
+  return MODULE_TYPE.filter(([k]) => (lender as any)?.[k]?.enabled === true).map(([, t]) => t)
+}
+
+// What a split should start as: the one type, or nothing at all.
+export function seedType(lender: RateModuleHolder): SplitType {
+  const offered = typesOffered(lender)
+  return offered.length === 1 ? offered[0] : ''
+}
+
+// A split whose type is not one this product offers. Only ever a warning - the
+// portal points, a person decides, exactly as the BC repayment mismatch does.
+// Silent while nothing is ticked and while the split has no type: neither is a
+// disagreement, it is a question nobody has answered yet.
+export function typeContradictsProduct(split: { repaymentType?: string } | null | undefined,
+                                        lender: RateModuleHolder): boolean {
+  const typed = String(split?.repaymentType ?? '').trim()
+  if (!typed) return false
+  const offered = typesOffered(lender)
+  if (offered.length === 0) return false
+  return !offered.some(t => t.toLowerCase() === typed.toLowerCase())
+}
+
+export function seedFromGlobal(globals: GlobalSplit[] | undefined | null,
+                               lender?: RateModuleHolder): LenderSplit[] {
+  const type = seedType(lender)
   return (globals || []).map(s => ({
     id: s.id, label: s.label, amount: s.amount,
-    lvr: '', rate: '', repayment: '', repaymentType: 'P&I',
+    lvr: '', rate: '', repayment: '', repaymentType: type,
   }))
 }
 
@@ -34,12 +93,13 @@ export function seedFromGlobal(globals: GlobalSplit[] | undefined | null): Lende
 // covers the never-filled case, so pressing "Sync from top" is still the way to
 // throw away an override.
 export function resolveLenderSplits(
-  lender: { lenderSplits?: LenderSplit[] | null } | null | undefined,
+  lender: ({ lenderSplits?: LenderSplit[] | null } & RateModuleHolder) | null | undefined,
   globals: GlobalSplit[] | undefined | null,
 ): LenderSplit[] {
   const own = lender?.lenderSplits
   if (own && own.length > 0) return own
-  return seedFromGlobal(globals)
+  // Seeded from THIS lender's ticks, not from a fixed P&I - see seedFromGlobal.
+  return seedFromGlobal(globals, lender as RateModuleHolder)
 }
 
 // --- the totals under each lender ------------------------------------------

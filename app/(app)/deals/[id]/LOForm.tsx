@@ -13,7 +13,7 @@ import { proceedCredit } from '@/lib/deal-status'
 import { emailParagraphs, htmlToPlainText, copyHtmlAndPlain} from '@/lib/rich-text'
 import { loMayWriteAmount, splitsTotal } from '@/lib/deal-phase'
 import { resolveLenderSplits, seedFromGlobal, combineIntoOneLoan,
-         lenderTotal, lenderLvr } from '@/lib/lo-splits'
+         lenderTotal, lenderLvr, typeContradictsProduct, typesOffered } from '@/lib/lo-splits'
 import { emailFreshness, needsAttention, notesAfterScenarioChange } from '@/lib/email-freshness'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved } from '@/lib/field-ownership'
@@ -957,7 +957,11 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
   function addLender() {
     if (d.lenders.length >= 3) return
-    setD({ ...d, lenders: [...d.lenders, { ...defaultLenderOption(), lenderSplits: seedFromGlobal(d.refinanceSplits) }] })
+    // The option is built first so its splits can be seeded from ITS OWN rate
+    // ticks. A brand new option has none, so they start blank - see
+    // seedFromGlobal in lib/lo-splits.ts.
+    const fresh = defaultLenderOption()
+    setD({ ...d, lenders: [...d.lenders, { ...fresh, lenderSplits: seedFromGlobal(d.refinanceSplits, fresh) }] })
   }
 
   function removeLender(i: number) {
@@ -1008,7 +1012,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
   function syncLenderSplits(lenderIdx: number) {
     const updated = [...d.lenders]
-    updated[lenderIdx] = { ...updated[lenderIdx], lenderSplits: seedFromGlobal(d.refinanceSplits) }
+    updated[lenderIdx] = { ...updated[lenderIdx],
+      lenderSplits: seedFromGlobal(d.refinanceSplits, updated[lenderIdx]) }
     setD({ ...d, lenders: updated })
   }
 
@@ -1770,6 +1775,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                             <div>
                               <label className="text-xs text-gray-400 block mb-1">Type</label>
                               <select className={sel} value={split.repaymentType} onChange={e => updateLenderSplit(i, sidx, 'repaymentType', e.target.value)}>
+                                <option value="">— choose —</option>
                                 <option>P&I</option>
                                 <option>IO</option>
                                 <option>Fixed P&I</option>
@@ -1777,6 +1783,14 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                               </select>
                             </div>
                           </div>
+                          {typeContradictsProduct(split, lender) && (
+                            <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                              This split says <strong>{split.repaymentType}</strong>, but this product
+                              only has {typesOffered(lender).join(' and ')} ticked above. Whichever is
+                              right, the compliance wording reads the ticks and the deal structure
+                              reads the split, so they will not agree.
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

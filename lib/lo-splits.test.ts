@@ -33,13 +33,26 @@ describe('a lender with no splits of its own falls back to the deal', () => {
     expect(resolveLenderSplits({ lenderSplits: [] }, null)).toEqual([])
   })
 
+  // 17 Sep 2026. This test's own name said "empty" while it asserted P&I, and
+  // the P&I was the bug: every split was born holding a repayment type nobody
+  // had chosen, which is how Dylan and Megan's deal came to say Interest Only on
+  // the product and P&I on the deal structure. The rule now lives in
+  // lib/lo-splits-type.test.ts; this keeps the fields either side of it honest.
   it('seeds the per-lender fields empty for the broker to fill', () => {
     const [first] = seedFromGlobal(globals)
     expect(first.id).toBe('a')
     expect(first.lvr).toBe('')
     expect(first.rate).toBe('')
     expect(first.repayment).toBe('')
-    expect(first.repaymentType).toBe('P&I')
+    // Nothing ticked on this lender, so nothing to seed. Empty means empty.
+    expect(first.repaymentType).toBe('')
+  })
+
+  it('takes the repayment type from what the product offers', () => {
+    const io = seedFromGlobal(globals, { variableIO: { enabled: true } })
+    expect(io.every(r => r.repaymentType === 'IO')).toBe(true)
+    const pi = seedFromGlobal(globals, { variablePI: { enabled: true } })
+    expect(pi.every(r => r.repaymentType === 'P&I')).toBe(true)
   })
 })
 
