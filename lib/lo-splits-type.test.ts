@@ -69,8 +69,10 @@ describe('what it refuses to guess', () => {
 describe('the rest of the split is untouched', () => {
   it('keeps the label and the amount, and leaves rate and repayment empty', () => {
     const [first] = seedFromGlobal(GLOBALS, lender({ variableIO: on }))
+    // ioYears joined the row on 17 Sep 2026 - the interest only period is a
+    // property of the split, not of the lender.
     expect(first).toEqual({ id: 'a', label: 'Existing loan refinanced', amount: '540000',
-                            lvr: '', rate: '', repayment: '', repaymentType: 'IO' })
+                            lvr: '', rate: '', repayment: '', repaymentType: 'IO', ioYears: '' })
   })
 
   it('a lender that already has its own splits keeps every one of them', () => {

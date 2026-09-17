@@ -20,6 +20,11 @@ export type GlobalSplit = { id: string; label: string; amount: string }
 export type LenderSplit = {
   id: string; label: string; amount: string
   lvr: string; rate: string; repayment: string; repaymentType: string
+  // HOW LONG THE INTEREST ONLY PERIOD RUNS, on this split, with this lender.
+  // It lived on the rate module, which is per lender - so a deal with a home
+  // loan on P&I and an investment split on IO had one box for a question with
+  // two answers. 17 Sep 2026.
+  ioYears?: string
 }
 
 // WHAT REPAYMENT TYPE A NEW SPLIT STARTS AS.
@@ -66,6 +71,13 @@ export function seedType(lender: RateModuleHolder): SplitType {
   return offered.length === 1 ? offered[0] : ''
 }
 
+// The one rate module that is ticked, or nothing. With two ticked there is no
+// single answer to carry onto a split, and a guess is worse than a blank.
+function soleModule(lender: RateModuleHolder): any {
+  const on = MODULE_TYPE.filter(([k]) => (lender as any)?.[k]?.enabled === true)
+  return on.length === 1 ? (lender as any)[on[0][0]] : null
+}
+
 // A split whose type is not one this product offers. Only ever a warning - the
 // portal points, a person decides, exactly as the BC repayment mismatch does.
 // Silent while nothing is ticked and while the split has no type: neither is a
@@ -82,9 +94,14 @@ export function typeContradictsProduct(split: { repaymentType?: string } | null 
 export function seedFromGlobal(globals: GlobalSplit[] | undefined | null,
                                lender?: RateModuleHolder): LenderSplit[] {
   const type = seedType(lender)
+  // The interest only period comes across with the type when there is exactly
+  // one module to read it from. The RATE does not: a module's rate belongs to
+  // the money priced under it, and the repayment figure is for the whole loan -
+  // copying either onto each split would put a figure nobody typed on a row.
+  const io = String(soleModule(lender)?.ioYears ?? '').trim()
   return (globals || []).map(s => ({
     id: s.id, label: s.label, amount: s.amount,
-    lvr: '', rate: '', repayment: '', repaymentType: type,
+    lvr: '', rate: '', repayment: '', repaymentType: type, ioYears: io,
   }))
 }
 

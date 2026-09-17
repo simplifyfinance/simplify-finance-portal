@@ -59,6 +59,10 @@ type LenderSplit = {
   rate: string
   repayment: string
   repaymentType: string
+  // Per split, not per lender - see lib/lo-splits.ts. A home loan on P&I beside
+  // an investment split on interest only is one deal with two answers, and the
+  // rate module had one box for it.
+  ioYears?: string
 }
 
 type LenderProduct = {
@@ -1728,8 +1732,26 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   </div>
                 )}
 
-                {/* Refinance: per-lender loan splits with LVR, rate, repayment */}
-                {isRefinance && (
+                {/* THE LOAN, WITH THIS LENDER. Every scenario, not just a
+                    refinance.
+
+                    17 Sep 2026, Dylan Smyth and Megan Isherwood - an investment
+                    purchase with Interest Only ticked on the product and P&I on
+                    the deal structure. The rows existed on that deal all along:
+                    adding a lender option creates them whatever the scenario. It
+                    was only this box that was hidden, so the rows nobody could
+                    see were the ones driving the deal structure, the client
+                    email, the handover and the compliance wording.
+
+                    Bridging keeps its own structure below - it is one loan with
+                    a peak and an end debt, not a set of splits. */}
+                {!isRefinance && !isBridging && d.refinanceSplits.length === 0 && (
+                  <div className="border-t border-gray-100 pt-4 mb-4 text-xs text-gray-400">
+                    Add a split under <span className="font-medium text-gray-500">Global loan splits</span> above
+                    to set the rate and repayment type for this lender.
+                  </div>
+                )}
+                {!isBridging && (
                   <div className="border-t border-gray-100 pt-4 mb-4">
                     <div className="flex justify-between items-center mb-3">
                       <div className="text-xs font-medium text-gray-400 uppercase tracking-widest">
@@ -1759,7 +1781,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                               property value, not a property of one split - three
                               typed boxes were three chances to disagree about a
                               question with one answer. It is calculated below. */}
-                          <div className="grid grid-cols-4 gap-2">
+                          <div className="grid grid-cols-5 gap-2">
                             <div>
                               <label className="text-xs text-gray-400 block mb-1">Amount</label>
                               <input className={inp} value={split.amount} onChange={e => updateLenderSplit(i, sidx, 'amount', e.target.value)} />
@@ -1782,6 +1804,19 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                                 <option>Fixed IO</option>
                               </select>
                             </div>
+                            {/* Only on an interest only split, and never as a
+                                number nobody chose - blank prints nothing rather
+                                than "interest only over 30 years". */}
+                            {/\bIO\b/i.test(split.repaymentType || '') && (
+                              <div>
+                                <label className="text-xs text-gray-400 block mb-1">IO period (years)</label>
+                                <select className={sel} value={split.ioYears || ''}
+                                  onChange={e => updateLenderSplit(i, sidx, 'ioYears', e.target.value)}>
+                                  <option value="">— select —</option>
+                                  <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                                </select>
+                              </div>
+                            )}
                           </div>
                           {typeContradictsProduct(split, lender) && (
                             <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
