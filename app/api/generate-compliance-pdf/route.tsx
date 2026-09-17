@@ -25,6 +25,8 @@ import { hemStateOf, hemTotals, unansweredNote } from '@/lib/hem'
 // list. They were copies that happened to still agree.
 import { EXPENSE_CATEGORIES, RISK_GROUPS, PRODUCT_GROUPS } from '@/lib/handover-view'
 import { shortDate } from '@/lib/push-answers'
+import { householdsOf } from '@/lib/households'
+import { expensesFor } from '@/lib/household-expenses'
 
 const INK = '#141C24', MUTE = '#7C8894', BODY = '#3D4750'
 const RULE = '#E3E7EA', SOFT = '#F6F8FA', SKY = '#7FD3FF'
@@ -160,8 +162,22 @@ export async function generateCompliancePdfBuffer(dealId: string, supabase: any)
   const applicants: string[] = (c.applicants || []).map((a: any) => String(a?.name || '').trim()).filter(Boolean)
   const risks = c.risks || {}
   const productReqs = c.productReqs || {}
-  const expenses = c.expenses || {}
-  const totals = hemTotals(EXPENSE_CATEGORIES, expenses)
+  // ONE BLOCK PER HOUSEHOLD. 17 Sep 2026.
+  //
+  // Two applicants who are not a couple are two homes, and this is the document
+  // the credit team reads. Printing household one and calling it "the household"
+  // hands over an assessment that is wrong for at least one of them.
+  //
+  // One household - almost every deal - prints exactly what it printed before:
+  // the same heading, the same pill, the same rows, the same totals.
+  const households = householdsOf(deal.fact_find_data)
+  const manyHomes = households.length > 1
+  const allTotals = households
+    .map(h => hemTotals(EXPENSE_CATEGORIES, expensesFor(c, h.id)))
+    .reduce((acc, t) => ({ all: acc.all + t.all, inHem: acc.inHem + t.inHem,
+                           notInHem: acc.notInHem + t.notInHem,
+                           unanswered: acc.unanswered + t.unanswered }),
+            { all: 0, inHem: 0, notInHem: 0, unanswered: 0 })
 
   // Ownership is not a text field - it is built from the tick boxes, the reason
   // and the legal advice answer. It reads as one box like all the others.
@@ -257,7 +273,17 @@ export async function generateCompliancePdfBuffer(dealId: string, supabase: any)
             </View>
           ))}
 
-          <Section title="Living expenses" pill="household monthly" />
+          {households.map(h => {
+          const expenses = expensesFor(c, h.id)
+          const totals = hemTotals(EXPENSE_CATEGORIES, expenses)
+          return (
+          <View key={h.id}>
+          <Section
+            title={manyHomes ? `Living expenses \u2014 Household ${h.id}` : 'Living expenses'}
+            pill={manyHomes
+              ? `${h.people.map(p => p.name).join(', ') || 'nobody recorded'} \u00b7 `
+                + `${h.dependants === '1' ? '1 dependant' : `${h.dependants || '0'} dependants`}`
+              : 'household monthly'} />
           {EXPENSE_CATEGORIES.map(cat => {
             const entry = expenses[cat.key]
             const state = hemStateOf(cat, entry)
@@ -301,6 +327,35 @@ export async function generateCompliancePdfBuffer(dealId: string, supabase: any)
             </View>
           </View>
           {totals.unanswered > 0 ? <Text style={styles.warn}>{unansweredNote(totals.unanswered)}</Text> : null}
+          </View>
+          )})}
+
+          {/* ADDED UP ON ITS OWN, NEVER INSIDE A HOUSEHOLD. An assessor has to be
+              able to see each home and the whole, and not mistake one for the
+              other. */}
+          {manyHomes ? (
+            <View wrap={false}>
+              <Section title="Every household together" pill={`${households.length} households`} />
+              <View style={styles.totals} wrap={false}>
+                <View style={[styles.tot, { backgroundColor: SOFT }]}>
+                  <Text style={[styles.totLabel, { color: INK }]}>TOTAL EXPENSES</Text>
+                  <Text style={[styles.totValue, { color: INK }]}>{money(allTotals.all)}</Text>
+                </View>
+                <View style={[styles.tot, { backgroundColor: '#EFFBF3' }]}>
+                  <Text style={[styles.totLabel, { color: '#15803d' }]}>IN HEM</Text>
+                  <Text style={[styles.totValue, { color: '#15803d' }]}>{money(allTotals.inHem)}</Text>
+                </View>
+                <View style={[styles.tot, { backgroundColor: REDBG, marginRight: 0 }]}>
+                  <Text style={[styles.totLabel, { color: '#dc2626' }]}>NOT IN HEM</Text>
+                  <Text style={[styles.totValue, { color: '#dc2626' }]}>{money(allTotals.notInHem)}</Text>
+                </View>
+              </View>
+              <Text style={styles.warn}>
+                These applicants are not one household. Each set above is assessed on its own; this is
+                the {households.length} added together.
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.foot} fixed>

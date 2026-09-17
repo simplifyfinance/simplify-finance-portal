@@ -13,6 +13,8 @@
 
 import { hemStateOf, type ExpenseCategory } from './hem'
 import { borrowerNotOnTitle, nobodyOnTitle, notOnTitle, type TitleInfo } from './title'
+import { householdsOf } from './households'
+import { expensesFor } from './household-expenses'
 
 export type FindingKind = 'pronoun' | 'placeholder' | 'hem' | 'title' | 'risks' | 'applicants'
 export type Finding = {
@@ -251,13 +253,27 @@ export function preflight(
   }
 
   // --- HEM ------------------------------------------------------------------
-  const open = expenseCategories
-    .filter(c => c.askHem)
-    .filter(c => hemStateOf(c, compliance?.expenses?.[c.key]) === 'unanswered')
-  if (open.length) {
+  //
+  // EVERY HOUSEHOLD, NOT JUST THE FIRST. 17 Sep 2026.
+  //
+  // This read compliance.expenses, which is household one. On a two household
+  // deal the second could have gone to the lender with nothing answered, and the
+  // check that exists to catch exactly that would have said the file was fine. A
+  // safety net with a hole in it is worse than no net, because somebody trusts it.
+  const homes = householdsOf(deal?.fact_find_data)
+  for (const h of homes) {
+    const record = expensesFor(compliance, h.id)
+    const open = expenseCategories
+      .filter(c => c.askHem)
+      .filter(c => hemStateOf(c, record?.[c.key]) === 'unanswered')
+    if (!open.length) continue
+    // Named, so nobody has to go looking for which screen it is on.
+    const whose = homes.length > 1
+      ? ` in Household ${h.id}${h.people.length ? ` (${h.people.map(p => p.name).join(', ')})` : ''}`
+      : ''
     findings.push({
       kind: 'hem', severity: 'warn', box: 'Living expenses',
-      issue: `${open.map(c => c.label).join(' and ')} ${open.length === 1 ? 'has' : 'have'} no HEM answer. `
+      issue: `${open.map(c => c.label).join(' and ')}${whose} ${open.length === 1 ? 'has' : 'have'} no HEM answer. `
            + `${open.length === 1 ? 'It is' : 'Both are'} counted as in HEM on the handover until somebody decides.`,
     })
   }
