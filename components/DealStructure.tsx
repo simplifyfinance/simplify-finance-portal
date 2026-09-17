@@ -8,6 +8,8 @@ import {
   withSplitDetail, PURPOSE_LABEL, FUNDS_LABEL, defaultSecurityAddress,
 } from '@/lib/deal-structure'
 import { fundsToComplete } from '@/lib/funds-to-complete'
+import { SPLIT_TYPES, typesOffered, typeContradictsProduct } from '@/lib/lo-splits'
+import { recommendedOption } from '@/lib/recommended-option'
 
 // THE DEAL, AS ONE BLOCK, IN TWO PLACES.
 //
@@ -44,6 +46,13 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
   const [busy, setBusy] = useState(false)
 
   const splits = useMemo(() => splitsOf(deal), [deal])
+  // The product the deal structure is describing - option one until somebody
+  // picks a recommendation, exactly as splitsOf itself does. Only ever used to
+  // say that the ticks and the answer here disagree; it never changes either.
+  const recOption = useMemo(() => {
+    const lo = deal?.lo_data || {}
+    return recommendedOption(lo) || (lo.lenders || [])[0] || null
+  }, [deal])
   const row = useMemo(() => dealRow(deal), [deal])
   const funds = useMemo(() => fundsToComplete(deal), [deal])
   const needed = useMemo(() => stillNeeded(deal), [deal])
@@ -275,7 +284,36 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                       {s.amount ? money(Number(String(s.amount).replace(/[$,\s]/g, '')) || 0) : '—'}
                     </td>
                     <td className="py-1.5 pr-3 text-[13.5px] font-semibold text-[#221F1B]">{s.rate ? `${s.rate}%` : '—'}</td>
-                    <td className="py-1.5 pr-3 text-[13.5px] text-[#221F1B] whitespace-nowrap">{s.repaymentType || '—'}</td>
+                    {/* ANSWERED HERE, ON EVERY SCENARIO. 17 Sep 2026: this was
+                        read-only text, and on a purchase there was no other
+                        place in the portal to set it - the per-lender splits box
+                        is drawn on refinances only. So a deal could have
+                        Interest Only ticked on the product and print P&I here
+                        with nothing anybody could click.
+
+                        Editing it is not the end state. The repayment type is
+                        recorded in two places at once - here and the rate module
+                        ticks - and while that is true they can disagree. The
+                        real fix is one row per split carrying its own rate and
+                        type, and those ticks going. This is what stops deals
+                        being wrong in the meantime. */}
+                    <td className="py-1.5 pr-3 whitespace-nowrap">
+                      {onSplitChange
+                        ? <>
+                            <select value={s.repaymentType || ''}
+                              onChange={e => setDetail(s.id, { repaymentType: e.target.value })}
+                              className={`${INP} ${!s.repaymentType ? NEED : ''}`}>
+                              <option value="">P&I or interest only?</option>
+                              {SPLIT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                            {typeContradictsProduct({ repaymentType: s.repaymentType }, recOption) && (
+                              <div className="text-[10.5px] text-[#8A6218] mt-0.5 max-w-[150px] leading-tight">
+                                the product has {typesOffered(recOption).join(' and ')} ticked
+                              </div>
+                            )}
+                          </>
+                        : <span className="text-[13.5px] text-[#221F1B]">{s.repaymentType || '—'}</span>}
+                    </td>
                     {/* On the LO this is answered here. It used to say "set on
                         the LO" on the LO itself, which is a signpost pointing at
                         the ground you are standing on. */}

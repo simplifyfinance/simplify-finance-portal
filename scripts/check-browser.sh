@@ -109,12 +109,25 @@ kill $SERVER 2>/dev/null || true
 # A screen a person cannot use is not a warning. Nothing is committed and nothing
 # is pushed.
 if [ $RESULT -ne 0 ]; then
+  # KEEP THE EVIDENCE. 17 Sep 2026.
+  #
+  # Playwright empties test-results when it STARTS, so the screenshot and the
+  # trace from a failure live only until the next run - and the next run is
+  # usually the one somebody does straight away to see whether it happens again.
+  # That is how the Fact Find save fault was investigated with nothing left to
+  # look at. .robot-logs is ours and nothing wipes it.
+  if [ -d test-results ]; then
+    rm -rf .robot-logs/last-failure 2>/dev/null || true
+    cp -R test-results .robot-logs/last-failure 2>/dev/null || true
+  fi
+
   # ship.sh says "NOT SHIPPED" itself when this exits non-zero, so this only
   # has to say WHAT it found.
   echo
   grep -E "^  [0-9]+\) |Error: |Received: |Expected: " .robot-logs/browser-check.log | head -12
   echo
   echo "  Full detail: .robot-logs/browser-check.log"
+  echo "  Screenshots and traces kept: .robot-logs/last-failure"
   echo "  To re-run just the failures without a whole ship:"
   echo "    npm run build > /dev/null && ./scripts/check-browser.sh <spec name>"
   exit 1

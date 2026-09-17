@@ -170,9 +170,16 @@ export function splitsOf(deal: any): StructureSplit[] {
       id,
       label: firstOf(s?.label, ls?.label, bs?.label) || `Split ${i + 1}`,
       amount: txt(amount),
-      // Rate and repayment type are only ever typed on the per-lender copy.
+      // Rate is only ever typed on the per-lender copy.
       rate: firstOf(ls?.rate, s?.rate, bs?.rate),
-      repaymentType: firstOf(ls?.repaymentType, s?.repaymentType, s?.type, bs?.repaymentType, bs?.type),
+      // ANSWERED HERE FIRST. 17 Sep 2026, Dylan Smyth and Megan Isherwood: an
+      // investment PURCHASE, where the per-lender splits box does not exist -
+      // it is drawn on refinances only. So the repayment type came from the BC
+      // split and there was nowhere on the whole deal to change it, while the
+      // product above had Interest Only ticked. Answering it on this panel now
+      // wins over every other copy, on every scenario.
+      repaymentType: firstOf(d?.repaymentType, ls?.repaymentType, s?.repaymentType, s?.type,
+                             bs?.repaymentType, bs?.type),
       purpose: (txt(s?.purpose) as SplitPurpose) || '',
       funds: (txt(s?.funds) as SplitFunds) || '',
       // The BC holds one term for the whole deal; it prefills every split, and a

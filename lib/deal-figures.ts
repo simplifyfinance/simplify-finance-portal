@@ -20,6 +20,7 @@
 import { money, readMoney } from './money'
 import { annualIncomeOfApplicant } from './income-calculations'
 import { resolveLenderSplits } from './lo-splits'
+import { splitsOf } from './deal-structure'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -84,6 +85,16 @@ export function dealFigures(deal: any): Figures {
   // These are the figures the compliance prose actually quotes - box five names
   // the rate, the fees, the offset and the approval time; box four names the
   // product. If one of them moves, the box that named it is out of date.
+  // THE DEAL STRUCTURE'S OWN ANSWER, WHICH THE COMPLIANCE NOTES ARE WRITTEN
+  // FROM. Fabio, 17 Sep 2026, on making the repayment type editable: "my concern
+  // with editable box is that the compliance notes are based on that so if I
+  // change it messes up compliance". This is what stops that: change it and
+  // every note written beforehand says so, by name, with the option to confirm
+  // it still reads right.
+  for (const sp of splitsOf(deal)) {
+    if (txt(sp?.repaymentType)) out[`${txt(sp.label) || 'the split'} repayment type`] = txt(sp.repaymentType)
+  }
+
   Object.assign(out, loRecordFigures(deal?.lo_data))
 
   return out

@@ -194,6 +194,70 @@ test.describe('typing into a deal', () => {
     await expect(box).toBeVisible({ timeout: 20_000 })
     const originalMine = await box.inputValue()
 
+    // THE TRAP, 17 Sep 2026.
+    //
+    // This test failed once with the sentence whole on screen, "Saved" beside
+    // the deal name, and 31 of 112 characters in the database. It passed on the
+    // next run and the trace was gone, because Playwright empties test-results
+    // when it starts. Reading the code could not decide between two very
+    // different faults: the second save never ran, or it ran and was discarded.
+    //
+    // So this records what the save line DID, from before the first keystroke.
+    // A timeline that ends "saving" is the first fault. One that ends "clean"
+    // with the database still short is the second, and the save line is lying.
+    // Neither changes whether this test passes - it only means the next red run
+    // explains itself instead of being another shrug.
+    const browserErrors: string[] = []
+    page.on('console', m => { if (m.type() === 'error') browserErrors.push(m.text().slice(0, 160)) })
+
+    // AND WHAT WAS ACTUALLY SENT, BY BOTH WINDOWS.
+    //
+    // The first trap answered half the question: the save line went clean while
+    // 84 characters were still missing from the database. What it cannot say is
+    // whether a second write went out carrying them and lost, or no second write
+    // ever went out - and the fix is different for each.
+    //
+    // Every write of this deal is a PATCH to the deals table. This reads the
+    // length of the goals box out of each one as it leaves, from BOTH windows,
+    // because the other window writes the whole record too and its copy of this
+    // box is the one it loaded before any of this was typed.
+    const sent: string[] = []
+    const at = () => {
+      const d = new Date()
+      return d.toLocaleTimeString('en-AU', { hour12: false }) + '.' + String(d.getMilliseconds()).padStart(3, '0')
+    }
+    const watchWrites = (target: typeof page, who: string) => {
+      target.on('request', r => {
+        if (!/\/rest\/v1\/deals/.test(r.url())) return
+        if (r.method() !== 'PATCH' && r.method() !== 'POST') return
+        const body = r.postData() || ''
+        let what = 'no fact find in this write'
+        try {
+          const ff = JSON.parse(body)?.fact_find_data
+          if (ff && typeof ff.goals2Years === 'string') what = `goals ${ff.goals2Years.length} chars`
+        } catch { what = `unreadable body, ${body.length} bytes` }
+        sent.push(`${at()} ${who} ${what}`)
+      })
+    }
+    watchWrites(page, 'THIS window ')
+    watchWrites(second, 'other window')
+    await page.evaluate(() => {
+      const w = window as any
+      w.__saveLine = []
+      const read = () => document.querySelector('[data-save]')?.getAttribute('data-save') || '(none)'
+      let last = read()
+      const at = () => new Date().toLocaleTimeString('en-AU', { hour12: false }) +
+                       '.' + String(new Date().getMilliseconds()).padStart(3, '0')
+      w.__saveLine.push(`${at()} ${last}`)
+      // childList as well as attributes: the line is not rendered at all while
+      // there is no status, so it appears and disappears rather than changing.
+      new MutationObserver(() => {
+        const now = read()
+        if (now !== last) { last = now; w.__saveLine.push(`${at()} ${now}`) }
+      }).observe(document.body, { subtree: true, childList: true,
+                                  attributes: true, attributeFilter: ['data-save'] })
+    })
+
     try {
       await box.click()
       await box.press('Meta+a')
@@ -240,6 +304,12 @@ test.describe('typing into a deal', () => {
       console.log('  in the box     : ' + (await box.inputValue()).length + ' characters')
       console.log('  the page says  : ' + stamp)
       console.log('                 : ' + failed)
+      const timeline: string[] = await page.evaluate(() => (window as any).__saveLine || [])
+      console.log('  the save line  : ' + (timeline.join('  ->  ') || '(it never changed)'))
+      console.log('  browser errors : ' + (browserErrors.join(' | ') || 'none'))
+      console.log('  what was sent  :')
+      for (const line of sent) console.log('      ' + line)
+      if (sent.length === 0) console.log('      (nothing was written at all)')
       await page.reload()
       await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
       await page.getByRole('button', { name: /^Fact Find$/ }).click()
