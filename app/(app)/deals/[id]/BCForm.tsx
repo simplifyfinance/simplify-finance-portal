@@ -1411,6 +1411,35 @@ Key assumptions: ${checklistText}`
 
 
 
+      {/* THE DIALOG LIVES AT THE TOP LEVEL, NOT INSIDE A TAB.
+        *
+        * 17 Sep 2026, the same fault on the BC: "we are clicking on client
+        * agreed move to LO, nothing happens."
+        *
+        * The button sits above the tabs and is always on screen. This dialog was
+        * written inside the Preview & share block, so pressing the button from
+        * the form tab set the flag and drew nothing at all - no dialog, no
+        * error, nothing in the console. It worked from Preview and nowhere else.
+        *
+        * The same half-fix was made on 16 Sep, when the button and its green
+        * message were moved up beside the tabs and the dialog was left behind.
+        * Out here it opens from whichever tab somebody is looking at. */}
+      {showMoveToLoPopup && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-[440px] shadow-xl">
+            <div className="text-base font-semibold mb-1 text-[#343333]">Send the next-steps email to the client?</div>
+            <p className="text-sm text-gray-500 mb-5">This moves the deal to LO and emails the client the same next-steps content (including the bank statement link, if entered) they'd see if they'd clicked "ready to proceed" themselves. Only use this if they agreed over a call rather than through the email.</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowMoveToLoPopup(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={handleMoveToLo} disabled={sendingMoveToLo}
+                className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a] disabled:opacity-50">
+                {sendingMoveToLo ? 'Sending...' : 'Send and move to LO'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'form' && (
         <div>
           <div className="bg-white border border-gray-100 rounded-xl p-4 mb-4">
@@ -2093,21 +2122,6 @@ Key assumptions: ${checklistText}`
               </div>
             </div>
           </div>
-          {showMoveToLoPopup && (
-            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-              <div className="bg-white rounded-2xl p-6 w-[440px] shadow-xl">
-                <div className="text-base font-semibold mb-1 text-[#343333]">Send the next-steps email to the client?</div>
-                <p className="text-sm text-gray-500 mb-5">This moves the deal to LO and emails the client the same next-steps content (including the bank statement link, if entered) they'd see if they'd clicked "ready to proceed" themselves. Only use this if they agreed over a call rather than through the email.</p>
-                <div className="flex justify-end gap-2">
-                  <button onClick={() => setShowMoveToLoPopup(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-                  <button onClick={handleMoveToLo} disabled={sendingMoveToLo}
-                    className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a] disabled:opacity-50">
-                    {sendingMoveToLo ? 'Sending...' : 'Send and move to LO'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
           {/* THE EMAIL IS A SAVED COPY, so it can be out of date with the deal
               sitting next to it. Say so here, where somebody is about to send
               it, rather than letting the preview look perfectly normal. */}

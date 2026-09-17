@@ -1444,6 +1444,58 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       )}
 
 
+      {/* THE DIALOG LIVES AT THE TOP LEVEL, NOT INSIDE A TAB.
+        *
+        * 17 Sep 2026, Emma Byrnes and Joshua Byrnes: "we are clicking on client
+        * agreed move to compliance, nothing happens."
+        *
+        * The button sits above the tabs and is always on screen. This dialog was
+        * written inside the Preview & share block, so pressing the button from
+        * the form tab set the flag and drew nothing at all - no dialog, no
+        * error, nothing in the console. It worked from Preview and nowhere else.
+        *
+        * The same half-fix was made on 16 Sep, when the button and its green
+        * message were moved up beside the tabs and the dialog was left behind.
+        * Out here it opens from whichever tab somebody is looking at. */}
+      {showMoveToCompliancePopup && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-[440px] shadow-xl">
+            <div className="text-base font-semibold mb-1 text-[#343333]">Send the next-steps email to the client?</div>
+            <p className="text-sm text-gray-500 mb-4">This moves the deal to Compliance and emails the client the next-steps content.</p>
+
+            <div className="bg-gray-50 rounded-lg p-3 mb-4">
+              <label className="text-xs font-medium text-gray-500 block mb-2">Did the client agree with the recommended lender ({recommendedLabel(d) || 'not yet recommended'})?</label>
+              <div className="flex gap-2">
+                <button onClick={() => setD(prev => ({ ...prev, clientAgreedLender: 'Yes', clientChosenLender: '', clientChosenLenderOther: '', clientChosenLenderReason: '' }))}
+                  className={`px-3 py-1.5 text-xs rounded-lg border ${d.clientAgreedLender === 'Yes' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>Yes</button>
+                <button onClick={() => setD(prev => ({ ...prev, clientAgreedLender: 'No' }))}
+                  className={`px-3 py-1.5 text-xs rounded-lg border ${d.clientAgreedLender === 'No' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>No</button>
+              </div>
+              {d.clientAgreedLender === 'No' && (
+                <div className="mt-3 flex flex-col gap-2">
+                  <select className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg" value={d.clientChosenLender} onChange={e => setD(prev => ({ ...prev, clientChosenLender: e.target.value }))}>
+                    <option value="">Select lender the client chose</option>
+                    {d.lenders.map((l, i) => <option key={i} value={l.lenderName}>{l.lenderName}</option>)}
+                    <option value="__other__">Other (not previously considered)</option>
+                  </select>
+                  {d.clientChosenLender === '__other__' && (
+                    <input className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg" placeholder="Lender name" value={d.clientChosenLenderOther} onChange={e => setD(prev => ({ ...prev, clientChosenLenderOther: e.target.value }))} />
+                  )}
+                  <input className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg" placeholder="Why did they choose differently?" value={d.clientChosenLenderReason} onChange={e => setD(prev => ({ ...prev, clientChosenLenderReason: e.target.value }))} />
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowMoveToCompliancePopup(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={handleMoveToCompliance} disabled={sendingMoveToCompliance} className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a] disabled:opacity-50">
+                {sendingMoveToCompliance ? 'Sending...' : 'Send and move to Compliance'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'form' && (
         <div className="space-y-4">
 
@@ -2067,44 +2119,6 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   <BrokerAssignment dealId={deal.id} currentBroker={deal.assigned_broker} userRole={userRole} />
                   <div className="w-px h-6 bg-gray-200" />
                   <CreditOfficerAssignment key={assignmentRefreshKey} dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
-                </div>
-              </div>
-            </div>
-          )}
-          {showMoveToCompliancePopup && (
-            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-              <div className="bg-white rounded-2xl p-6 w-[440px] shadow-xl">
-                <div className="text-base font-semibold mb-1 text-[#343333]">Send the next-steps email to the client?</div>
-                <p className="text-sm text-gray-500 mb-4">This moves the deal to Compliance and emails the client the next-steps content.</p>
-
-                <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                  <label className="text-xs font-medium text-gray-500 block mb-2">Did the client agree with the recommended lender ({recommendedLabel(d) || 'not yet recommended'})?</label>
-                  <div className="flex gap-2">
-                    <button onClick={() => setD(prev => ({ ...prev, clientAgreedLender: 'Yes', clientChosenLender: '', clientChosenLenderOther: '', clientChosenLenderReason: '' }))}
-                      className={`px-3 py-1.5 text-xs rounded-lg border ${d.clientAgreedLender === 'Yes' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>Yes</button>
-                    <button onClick={() => setD(prev => ({ ...prev, clientAgreedLender: 'No' }))}
-                      className={`px-3 py-1.5 text-xs rounded-lg border ${d.clientAgreedLender === 'No' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>No</button>
-                  </div>
-                  {d.clientAgreedLender === 'No' && (
-                    <div className="mt-3 flex flex-col gap-2">
-                      <select className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg" value={d.clientChosenLender} onChange={e => setD(prev => ({ ...prev, clientChosenLender: e.target.value }))}>
-                        <option value="">Select lender the client chose</option>
-                        {d.lenders.map((l, i) => <option key={i} value={l.lenderName}>{l.lenderName}</option>)}
-                        <option value="__other__">Other (not previously considered)</option>
-                      </select>
-                      {d.clientChosenLender === '__other__' && (
-                        <input className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg" placeholder="Lender name" value={d.clientChosenLenderOther} onChange={e => setD(prev => ({ ...prev, clientChosenLenderOther: e.target.value }))} />
-                      )}
-                      <input className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg" placeholder="Why did they choose differently?" value={d.clientChosenLenderReason} onChange={e => setD(prev => ({ ...prev, clientChosenLenderReason: e.target.value }))} />
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <button onClick={() => setShowMoveToCompliancePopup(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-                  <button onClick={handleMoveToCompliance} disabled={sendingMoveToCompliance} className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a] disabled:opacity-50">
-                    {sendingMoveToCompliance ? 'Sending...' : 'Send and move to Compliance'}
-                  </button>
                 </div>
               </div>
             </div>
