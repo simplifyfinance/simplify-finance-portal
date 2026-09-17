@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase'
 import LoanIds from '@/components/LoanIds'
 import { loanIdStatus } from '@/lib/loan-id'
 import { stepLabel } from '@/lib/settlement'
+import { needsSalestrekker, salestrekkerReminder, SALESTREKKER_TICK, SALESTREKKER_WHY }
+  from '@/lib/salestrekker-reminder'
 
 // A refinance has no contracts of sale - it has loan documents. The buttons in
 // the Settlement panel have always said so; this list says the same thing now
@@ -58,6 +60,9 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
   const [splits, setSplits] = useState<any[]>([])
   const [when, setWhen] = useState(today())
   const [confirming, setConfirming] = useState(false)
+  // ASKED FRESH EVERY TIME. It is about this stage change, not about the deal -
+  // recording a second stage has to ask again. See lib/salestrekker-reminder.ts.
+  const [stUpdated, setStUpdated] = useState(false)
   // Asked for the moment a deal is marked settled - that is when your team rings
   // the bank for the numbers. Skipping is allowed and expected; the panel below
   // keeps asking until they are in.
@@ -295,7 +300,7 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
           )}
 
           <div className="flex items-center gap-3 flex-wrap">
-            <button onClick={() => setConfirming(true)}
+            <button onClick={() => { setStUpdated(false); setConfirming(true) }}
               className="bg-[#2DBEFF] text-white text-[13.5px] font-semibold rounded-lg px-4 py-2.5 hover:bg-[#25AEEC] transition">
               {stage.verb}
             </button>
@@ -347,10 +352,36 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
                 Figures have changed since the previous stage. Both versions are kept &mdash; commission is calculated from what settles.
               </div>
             )}
+            {/* SALESTREKKER DOES NOT KNOW ABOUT THIS YET.
+              *
+              * Nothing is sent when a stage is recorded - no email, nothing. The
+              * two systems agree only for as long as somebody remembers to say
+              * the same thing twice, and this is the moment they are thinking
+              * about it. The tick is a gate rather than a note: somebody has to
+              * look at it and answer it. */}
+            {needsSalestrekker(stage.key) && (() => {
+              const r = salestrekkerReminder(stage.key)!
+              return (
+                <div className="mx-6 mb-3 bg-[#FFF8EC] border border-[#F0DCB4] rounded-lg px-3.5 py-3">
+                  <div className="text-[12.5px] font-semibold text-[#7a4a08] mb-1">
+                    SalesTrekker does not know about this yet
+                  </div>
+                  <div className="text-[12.5px] text-[#92400E] leading-relaxed">
+                    {r.before}<b>{r.status}</b>{r.after}. {SALESTREKKER_WHY}
+                  </div>
+                  <label className="flex items-start gap-2 mt-2.5 text-[12.5px] text-[#7a4a08] cursor-pointer">
+                    <input type="checkbox" className="mt-[3px]" checked={stUpdated}
+                      onChange={e => setStUpdated(e.target.checked)} />
+                    <span>{SALESTREKKER_TICK}</span>
+                  </label>
+                </div>
+              )
+            })()}
             <div className="px-6 py-4 border-t border-[#F1ECE4] flex justify-end gap-2">
               <button onClick={() => setConfirming(false)}
                 className="text-[13px] text-[#6E665C] border border-[#E8E1D6] rounded-lg px-4 py-2">Cancel</button>
-              <button onClick={confirmIt} disabled={saving}
+              <button onClick={confirmIt} disabled={saving || (needsSalestrekker(stage?.key) && !stUpdated)}
+                title={needsSalestrekker(stage?.key) && !stUpdated ? 'Tick that SalesTrekker is updated first' : undefined}
                 className="bg-[#2DBEFF] text-white text-[13px] font-semibold rounded-lg px-4 py-2 disabled:opacity-50">
                 {saving ? 'Saving...' : 'Confirm and record'}
               </button>
