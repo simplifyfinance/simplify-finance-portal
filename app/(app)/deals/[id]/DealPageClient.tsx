@@ -30,6 +30,7 @@ import { isLocked } from '@/lib/deal-lock'
 import { isWithLender } from '@/lib/deal-phase'
 import DocumentsBox from '@/components/DocumentsBox'
 import BrokerAssignment from './BrokerAssignment'
+import TestDealBand from '@/components/TestDealBand'
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
   const validStages = ['FactFind', 'Statements', 'BC', 'LO', 'Compliance']
@@ -188,6 +189,11 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
       <button onClick={() => router.back()} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-5">
         <ArrowLeft size={14} /> Back to deals
       </button>
+
+      {/* Above the header and above every tab, because the thing it is
+          preventing is somebody reading the deal and believing it. */}
+      <TestDealBand deal={dealData} userRole={userRole} me={me}
+        onChanged={(isTest) => setDealData((prev: any) => ({ ...prev, is_test: isTest }))} />
 
       <div className="bg-white border border-gray-100 rounded-xl p-5 mb-4 flex items-start justify-between">
         <div>

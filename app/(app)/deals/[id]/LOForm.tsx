@@ -25,6 +25,7 @@ import { useKeepalive } from '@/components/useKeepalive'
 import { loFigures } from '@/lib/deal-figures'
 import { dealPurpose } from '@/lib/deal-facts'
 import DealStructure from '@/components/DealStructure'
+import { recordsRateData } from '@/lib/test-deal'
 
 // A finished "client agreed" is not something to hide. It used to disappear the
 // instant it was pressed, which made "already done" look exactly like "broken".
@@ -538,6 +539,14 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
   useEffect(() => {
     async function syncRateObservations() {
+      // A TEST DEAL TEACHES THE PORTAL NOTHING ABOUT LENDER PRICING.
+      //
+      // This table is where the portal learns what lenders are actually
+      // charging, and it is read on the cheat sheet as if every row were a real
+      // quote. One of the five test deals in the book on 18 September had
+      // already put a rate in here. See lib/test-deal.ts.
+      if (!recordsRateData(deal)) return
+
       // Same fix as the compliance form: read the deal, not the scenario's name.
       const purpose = dealPurpose(deal).binary === 'Investment' ? 'Investment' : 'Owner Occupied'
       const loanAmountNum = Number((d.loanAmount || '').toString().replace(/,/g, '')) || 0

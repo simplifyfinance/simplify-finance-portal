@@ -2,6 +2,7 @@
 import { brokerLabel, sameBroker } from '@/lib/broker-key'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { realDealsOnly } from '@/lib/test-deal'
 
 type DealRow = {
   assigned_broker: string | null
@@ -52,10 +53,11 @@ export default function WorkloadClient() {
 
     const { data: deals, error: dealsError } = await supabase
       .from('deals')
-      .select('assigned_broker, assigned_credit_officer, status, bc_completed_at, lo_completed_at, compliance_completed_at, credit_assigned_at')
+      .select('is_test, assigned_broker, assigned_credit_officer, status, bc_completed_at, lo_completed_at, compliance_completed_at, credit_assigned_at')
     if (dealsError) { setError(dealsError.message); setLoading(false); return }
 
-    const dealRows = (deals || []) as DealRow[]
+    // Nobody's workload includes a deal somebody made to try something out.
+    const dealRows = realDealsOnly(deals || []) as DealRow[]
 
     const brokers: BrokerStat[] = brokerList.map(b => {
       const myDeals = dealRows.filter(d => sameBroker(d.assigned_broker, b.key))

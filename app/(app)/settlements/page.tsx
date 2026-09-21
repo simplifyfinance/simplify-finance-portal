@@ -3,6 +3,7 @@ import { brokerLabel, sameBroker } from '@/lib/broker-key'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { realDealsOnly } from '@/lib/test-deal'
 import { todayYmd } from '@/lib/periods'
 import LoanIds, { LoanIdChip } from '@/components/LoanIds'
 import { loanIdStatus } from '@/lib/loan-id'
@@ -94,7 +95,8 @@ export default function SettlementsPage() {
       supabase.from('pipeline_targets').select('metric, month, amount, broker_key').eq('metric', 'settled'),
     ])
     if (d.error) { setLoadError(d.error.message); setLoading(false); return }
-    setDeals(d.data || [])
+    // A settlement is money. A test deal is not money.
+    setDeals(realDealsOnly(d.data || []))
     setBrokers((b.data || []).filter((r: any) => r.active !== false)
       .map((r: any) => ({ key: String(r.broker_key), name: r.name })))
     setTargets(t.error ? [] : (t.data || []))

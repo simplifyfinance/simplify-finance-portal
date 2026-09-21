@@ -1,4 +1,5 @@
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { realDealsOnly } from '@/lib/test-deal'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
 
@@ -41,7 +42,11 @@ export default async function Dashboard() {
     .select('*, clients(first_name, last_name)')
     .order('created_at', { ascending: false })
 
-  const { data: deals } = await dealsQuery
+  const { data: rawDeals } = await dealsQuery
+  // TEST DEALS ARE NOT THE BUSINESS. One rule, in lib/test-deal.ts, asked by
+  // every screen that counts - so the dashboard, the workload page and the
+  // settlements list can never disagree about what is in the book.
+  const deals = realDealsOnly(rawDeals as any[])
 
   // Broker names come from the register, never from the key stored on a deal.
   // The key is lower case by design and was being printed straight onto the

@@ -14,11 +14,13 @@ import { phaseOf, derivedPhaseOf, isFinished, isInApplication, PHASE_LABEL } fro
 import DealBoard from '@/components/DealBoard'
 import { useBoardSettings } from '@/lib/use-board-settings'
 import type { Alert } from '@/lib/deal-notes'
+import { realDealsOnly, testDealsOnly } from '@/lib/test-deal'
 type Client = { id: string; first_name: string; last_name: string; email?: string; phone?: string }
 type Deal = {
   id: string; deal_name: string; deal_type: string; stage: string; status: string; assigned_broker: string;
   created_at: string; clients: Client; client_proceeded?: boolean
   bc_completed_at?: string | null; lo_completed_at?: string | null; compliance_completed_at?: string | null
+  is_test?: boolean | null
 }
 export default function DealsPage() {
   const browser = createSupabaseBrowser()
@@ -47,6 +49,12 @@ export default function DealsPage() {
   const [userRole, setUserRole] = useState<string>('')
   const [brokerKey, setBrokerKey] = useState<string | null>(null)
   const [boxFilter, setBoxFilter] = useState<'all' | 'bc' | 'lo' | 'compliance'>('all')
+  // TEST DEALS ARE HIDDEN UNTIL ASKED FOR, AND THEN THEY ARE ALL THAT SHOWS.
+  //
+  // Not a chip on a card mixed in among real deals - somebody scanning the
+  // board reads shape, not labels. Off, the book is the real book. On, it is
+  // the test deals and nothing else, in one place, with a delete on each.
+  const [showTests, setShowTests] = useState(false)
   useEffect(() => {
     browser.auth.getUser().then(({ data: { user } }) => {
       if (!user) { fetchDeals(); return }
@@ -194,6 +202,11 @@ export default function DealsPage() {
   // Alexis_Janes_Refinance_2026 - because an underscore is not a space and a
   // plain includes() cannot see past one. See lib/deal-search.ts.
   const term = search.trim()
+  // Everything below this line works on `book`, never on `deals`, so the list,
+  // the board, the counts and the four boxes can never disagree about whether a
+  // test deal is in the book.
+  const testCount = testDealsOnly(deals).length
+  const book = showTests ? testDealsOnly(deals) : realDealsOnly(deals)
   const matchesSearch = (d: any) => dealMatches(d, term)
   const matchesBox = (d: any) => boxFilter === 'all'
     || (boxFilter === 'bc' && d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at)
@@ -207,7 +220,7 @@ export default function DealsPage() {
   // ask for - and the toggles are at the other end of the page, so the deal
   // simply looked deleted. Fabio, 2 Sep 2026: "lost deals not appreating on
   // search when we search".
-  const filtered = deals.filter(d =>
+  const filtered = book.filter(d =>
     (term || showSettled || phaseOf(d) !== 'settled') &&
     (term || showLost || phaseOf(d) !== 'lost') &&
     matchesBox(d) && matchesSearch(d))
@@ -217,19 +230,19 @@ export default function DealsPage() {
   // look broken. There is no Lost column: a dead deal is not work, and inventing
   // a column for it would put one on every screen every morning. So a search
   // that only matches lost deals says so, and offers the list instead.
-  const boardDeals = deals.filter(d => (showLost || phaseOf(d) !== 'lost') && matchesBox(d) && matchesSearch(d))
+  const boardDeals = book.filter(d => (showLost || phaseOf(d) !== 'lost') && matchesBox(d) && matchesSearch(d))
   const lostMatches = term
-    ? deals.filter(d => phaseOf(d) === 'lost' && matchesBox(d) && matchesSearch(d))
+    ? book.filter(d => phaseOf(d) === 'lost' && matchesBox(d) && matchesSearch(d))
     : []
 
-  const totalAssigned = deals.length
+  const totalAssigned = book.length
   // Only a broker has a list that is just theirs now. Staff see the whole book,
   // so calling it "Your deals" would be a lie.
   const isPersonalViewer = !!brokerKey
   const summaryLabel = isPersonalViewer ? 'Your deals' : 'Total deals'
   // deals is already server-filtered to just this person's deals for brokers/staff-with-officer,
   // and unfiltered (team-wide) for admin or staff without a credit officer record
-  const summaryDeals = deals
+  const summaryDeals = book
   // Stuck first, and oldest first inside each group. The top of the page is the
   // morning's work.
   // The same thresholds the board uses, so the two views can never disagree
@@ -317,10 +330,22 @@ export default function DealsPage() {
           className={`px-3 py-2 text-sm rounded-lg border transition ${showLost ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
           {showLost ? '✓ Showing lost' : 'Show lost'}
         </button>
+        {testCount > 0 && (
+          <button onClick={() => setShowTests(!showTests)}
+            className={`px-3 py-2 text-sm rounded-lg border transition ${showTests ? 'border-[#B45309] text-[#B45309] bg-[#FFF8EC]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+            {showTests ? `\u2713 Test deals (${testCount})` : `Test deals (${testCount})`}
+          </button>
+        )}
         <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-3 py-2 bg-[#2DBEFF] text-white text-sm font-medium rounded-lg hover:opacity-90">
           <Plus size={14} />New deal
         </button>
       </div>
+      {showTests && (
+        <div className="mb-3 border border-[#F0DCB4] bg-[#FFF8EC] rounded-lg px-3.5 py-2.5 text-[12.5px] text-[#92400E]">
+          Showing test deals only. None of these is counted anywhere, none can email a client,
+          and none records a lender rate.
+        </div>
+      )}
       {/* The board has no Lost column, so a search that finds only dead deals
           would otherwise look like it found nothing at all. */}
       {layout === 'board' && lostMatches.length > 0 && (
@@ -456,6 +481,9 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
   // No fallback to a named person. An unassigned deal is visible and fixable;
   // one quietly filed under the wrong broker is neither.
   const [deal, setDeal] = useState({ assigned_broker: brokerKey || '', lead_source: '' })
+  // Off by default, so nothing changes for a normal deal. It sits with the
+  // names where you cannot miss it, not behind a settings screen.
+  const [isTest, setIsTest] = useState(false)
   const [createError, setCreateError] = useState('')
   const [saving, setSaving] = useState(false)
   const { options: brokerList } = useBrokerNames()
@@ -517,6 +545,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
       // A new deal starts at the fact find. See the note on the clone above.
       stage: 'FactFind',
       status: 'in_progress',
+      is_test: isTest,
       fact_find_data
     }]).select('id').single()
     setSaving(false)
@@ -637,6 +666,17 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
             <input type="text" value={deal.lead_source} onChange={e => setDeal({...deal, lead_source: e.target.value})} placeholder="e.g. Referral, Google, Facebook..." className={inp} />
           </div>
         </div>
+
+        <label className={`flex items-start gap-2.5 rounded-lg px-3 py-2.5 mb-4 cursor-pointer border transition ${isTest ? 'border-[#F0DCB4] bg-[#FFF8EC]' : 'border-gray-200 hover:bg-gray-50'}`}>
+          <input type="checkbox" checked={isTest} onChange={e => setIsTest(e.target.checked)} className="mt-0.5" />
+          <span>
+            <span className={`text-sm font-medium ${isTest ? 'text-[#7a4a08]' : 'text-gray-700'}`}>This is a test deal</span>
+            <span className={`block text-xs mt-0.5 leading-relaxed ${isTest ? 'text-[#92400E]' : 'text-gray-400'}`}>
+              It will not be counted anywhere, its client emails come to you instead of the client,
+              and nothing it records reaches your rate data. You can delete it in one click.
+            </span>
+          </span>
+        </label>
 
         {(form.last_name || selectedClient) && (
           <div className="bg-gray-50 rounded-lg px-3 py-2 mb-4 text-xs text-gray-500">

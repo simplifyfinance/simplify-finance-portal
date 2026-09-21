@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { markProceeded, buildNextStepsContent, nextStepsSubject, loadProceed, stageFor } from '@/lib/proceed-flow'
 import { buildNextStepsEmailHtml } from '@/lib/next-steps-email'
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { emailGoesTo, isTestDeal, testSubject } from '@/lib/test-deal'
 
 // WHAT WOULD BE SENT, WITHOUT SENDING IT.
 //
@@ -55,6 +56,10 @@ export async function POST(req: NextRequest) {
   }
 
   let byName: string | null = null
+  // Who is pressing the button. On a real deal this is only used to record who
+  // recorded it. On a TEST deal it is also where the email goes - see below and
+  // lib/test-deal.ts.
+  let byEmail: string | null = null
   try {
     const supabase = await createSupabaseServer()
     const { data: auth } = await supabase.auth.getUser()
@@ -62,6 +67,7 @@ export async function POST(req: NextRequest) {
       const { data: prof } = await supabase.from('user_profiles')
         .select('full_name').eq('id', auth.user.id).maybeSingle()
       byName = (prof as any)?.full_name || auth.user.email || null
+      byEmail = auth.user.email || null
     }
   } catch {
     // Not knowing the name is survivable - it still records that we pressed it.
@@ -75,9 +81,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, alreadyProceeded: true, by: byName })
   }
 
-  const clientEmail = deal.clients?.email
-  if (!clientEmail) {
-    return NextResponse.json({ ok: true, emailSent: false, by: byName, reason: 'No email on file for this client' })
+  // A TEST DEAL NEVER EMAILS THE CLIENT.
+  //
+  // It is not blocked, it is redirected: the email is built exactly as the
+  // client would receive it - real subject, real steps, real link - and it
+  // comes to whoever pressed the button instead. Blocking it would mean you
+  // could never check that an email looks right, which is half of what anybody
+  // tests. Today, a test deal with a real-looking address typed into it sends
+  // that person a genuine Simplify Finance email about a loan they never
+  // applied for, and nothing prevents it.
+  const where = emailGoesTo({
+    deal,
+    clientEmail: deal.clients?.email,
+    testerEmail: byEmail,
+  })
+  if (!where.to) {
+    return NextResponse.json({
+      ok: true, emailSent: false, by: byName,
+      reason: where.redirected
+        ? 'This is a test deal, so the email comes to you rather than the client - and we do not know your address. Nothing was sent.'
+        : 'No email on file for this client',
+    })
   }
 
   const html = buildNextStepsEmailHtml({
@@ -90,12 +114,17 @@ export async function POST(req: NextRequest) {
       headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from: 'Simplify Finance <notifications@simplifyfinance.com.au>',
-        to: clientEmail,
-        subject: nextStepsSubject(stage),
+        to: where.to,
+        subject: where.redirected ? testSubject(nextStepsSubject(stage)) : nextStepsSubject(stage),
         html
       })
     })
-    return NextResponse.json({ ok: true, emailSent: true, by: byName })
+    return NextResponse.json({
+      ok: true, emailSent: true, by: byName,
+      // The screen says where it actually went, so nobody goes looking in the
+      // client's inbox for it.
+      testDeal: isTestDeal(deal), sentToTester: where.redirected, sentTo: where.redirected ? where.to : undefined,
+    })
   } catch (e) {
     return NextResponse.json({ ok: true, emailSent: false, by: byName, reason: 'Email failed to send' })
   }

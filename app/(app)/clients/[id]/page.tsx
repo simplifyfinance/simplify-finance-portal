@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { realDealsOnly } from '@/lib/test-deal'
 import { ArrowLeft } from 'lucide-react'
 import { phaseOf, PHASE_LABEL } from '@/lib/deal-phase'
 // Number('620,000') is NaN, so these three lines printed "$NaN" against every
@@ -35,7 +36,9 @@ export default function ClientProfilePage() {
         if (!merged.some(existing => existing.id === d.id)) merged.push(d)
       }
       merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      setDeals(merged)
+      // A client's own page shows the client's own deals. A test deal attached
+      // to a real client is not one of them.
+      setDeals(realDealsOnly(merged))
       setLoading(false)
     }
     load()
