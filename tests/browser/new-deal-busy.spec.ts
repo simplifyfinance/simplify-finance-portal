@@ -38,20 +38,35 @@ async function openOrCreate(page: Page): Promise<void> {
   await page.goto('/deals')
   await page.getByPlaceholder(/Search by name, client, purpose/i).fill(FIRST)
 
-  // WAIT FOR AN ANSWER, DO NOT GUESS AT ONE.
+  // WHERE THE ROBOT'S OWN DEAL LIVES NOW.
   //
-  // This used to wait a flat 1500ms and then count what was on screen. Any
-  // morning the deals list took longer than that - a cold start, a slow query,
-  // someone else mid-save - the count came back 0, the robot decided its deal
-  // did not exist, and it made another one. Every ship, for weeks. Fabio,
-  // 16 Sep 2026: "delete ALL robo created deal cards they are getting a lot."
+  // 21 Sep 2026: a deal can be marked as a test, and a test deal is hidden from
+  // the deals list until somebody asks for it. The robot ticks that box on its
+  // way in - see below - so from here on its deal is NOT in the normal list.
   //
-  // waitFor gives the list a real chance and only gives up once the deal has
-  // genuinely not appeared, so a slow page costs seconds instead of another
-  // deal card. It can only ever find more than the old code, never fewer.
-  const existing = page.getByText(new RegExp(FIRST, 'i')).first()
-  const found = await existing.waitFor({ state: 'visible', timeout: 20_000 })
+  // A robot that cannot find its own deal makes another one, every single ship.
+  // That is precisely the pile-up this function was written to stop, and it
+  // would have come straight back. So it looks twice: the normal list first,
+  // which is where the deals made before any of this still are, and then behind
+  // the test filter. Either is a find.
+  const lookFor = () => page.getByText(new RegExp(FIRST, 'i')).first()
+
+  let existing = lookFor()
+  let found = await existing.waitFor({ state: 'visible', timeout: 20_000 })
     .then(() => true).catch(() => false)
+
+  if (!found) {
+    // Only drawn when there is at least one test deal, so its absence is normal
+    // and means there is nothing behind it to find.
+    const testFilter = page.getByRole('button', { name: /Test deals \(\d+\)/ })
+    if (await testFilter.count() > 0) {
+      await testFilter.first().click()
+      existing = lookFor()
+      found = await existing.waitFor({ state: 'visible', timeout: 20_000 })
+        .then(() => true).catch(() => false)
+    }
+  }
+
   if (found) {
     await existing.click()
     await page.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
@@ -86,6 +101,15 @@ async function openOrCreate(page: Page): Promise<void> {
       els => els.map(e => (e as HTMLOptionElement).value).filter(Boolean))
     await broker.selectOption(options[0])
   }
+
+
+  // THE ROBOT MARKS ITS OWN.
+  //
+  // A deal left behind by a run that stopped halfway used to sit in the book
+  // looking like a client - there were three of them on 21 September. Ticked
+  // here, a leftover is counted nowhere, cannot email anybody and records no
+  // lender rate, and clearing it is one click on the test filter.
+  await dialog.getByText('This is a test deal').click()
 
   await page.getByRole('button', { name: /^Create deal$/ }).click()
   await page.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
