@@ -69,19 +69,46 @@ test.describe('changing tab', () => {
         const other = tab === 'Fact Find' ? 'Lending options' : 'Fact Find'
         if (await tabButton(page, other).count() > 0) {
           await tabButton(page, other).first().click()
-          await page.waitForTimeout(2500)
+          // WAIT FOR THE SAVE. DO NOT COUNT SECONDS.
+          //
+          // 21 Sep 2026. This waited a flat 2500ms and then looked once. The
+          // portal writes to a database in Singapore, and the LO and Compliance
+          // records are the two big ones - nine paragraphs of regulated text,
+          // every applicant, every risk answer - saved by reading the record,
+          // merging, then writing it whole. On a slow line that round trip runs
+          // past two and a half seconds, the test looked too early, and called a
+          // perfectly good save a lost one.
+          //
+          // It cost four ship attempts in one day, each one seven minutes, and
+          // the portal was fine every time - checked by hand on the real thing.
+          // A test that cries wolf is worse than no test: people start ignoring
+          // the red.
+          //
+          // The save line is the portal's own word for "it is in the database".
+          // typing.spec.ts has waited on it since 16 Sep. This now does too, and
+          // a slow save costs the test time instead of a false alarm.
+          await page.getByText(/Saved \d{1,2}:\d{2}/).first()
+            .waitFor({ timeout: 25_000 }).catch(() => { /* asserted below */ })
         }
 
         // And back.
         await tabButton(page, tab).first().click()
-        await page.waitForTimeout(2500)
         await boxOn(page, tab).waitFor({ timeout: 20_000 })
+        // A RETRY, NOT A SNAPSHOT. The tab re-reads the record when it opens, so
+        // the box can be right a moment after it is drawn. One inputValue() read
+        // catches it mid-flight; this gives it the time it actually needs and
+        // still fails if the screen never catches up - which is the real fault
+        // this test is here to find. Richard Lake, 18 Sep 2026.
+        await expect(boxOn(page, tab), `${tab}: coming back to the tab showed an older version`)
+          .toHaveValue(new RegExp(mark), { timeout: 20_000 })
         const afterReturn = await boxOn(page, tab).inputValue()
 
         // And really in the database, not just still on the screen.
         await open(page)
         await tabButton(page, tab).first().click()
         await boxOn(page, tab).waitFor({ timeout: 20_000 })
+        await expect(boxOn(page, tab), `${tab}: changing tab threw away what was just typed`)
+          .toHaveValue(new RegExp(mark), { timeout: 20_000 })
         const stored = await boxOn(page, tab).inputValue()
 
         console.log('\n' + '='.repeat(70))
@@ -99,7 +126,13 @@ test.describe('changing tab', () => {
             await tabButton(page, tab).first().click()
             await boxOn(page, tab).waitFor({ timeout: 10_000 })
             await boxOn(page, tab).fill(original)
-            await page.waitForTimeout(3000)
+            // The restore is a save like any other. Counting seconds here is
+            // what left a marker from an earlier run sitting in the LO notes box
+            // all day, so every later run started from something it did not
+            // write.
+            await page.getByText(/Saved \d{1,2}:\d{2}/).first()
+              .waitFor({ timeout: 25_000 }).catch(() => {})
+            await page.waitForTimeout(1000)
           }
         } catch { /* reported by the assertions above */ }
       }

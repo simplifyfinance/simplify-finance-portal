@@ -93,7 +93,27 @@ test.describe('Wesley Perrott — the compliance tab that will not open', () => 
     expect(thrown, `The compliance tab threw:\n${thrown.join('\n\n')}`).toHaveLength(0)
     expect(caught, `TabBoundary caught a render error:\n${boundaryText}`).toBe(0)
 
-    // And the thing Melissa is there to do is on the screen.
-    await expect(page.getByRole('button', { name: /Needs & objectives/ })).toBeVisible({ timeout: 15_000 })
+    // AND THE TAB IS ACTUALLY ON SCREEN, not just free of errors.
+    //
+    // 21 Sep 2026. This used to assert on the first sub-tab button of the form,
+    // and it went red on a change that had nothing to do with it. The tab drew
+    // perfectly - no throw, no boundary - but Wesley's file has moved on in real
+    // life since this was written. His compliance pack was sent on 18 September,
+    // so the tab now opens as the record of what was sent, behind a "Show the
+    // write-up" button; and the deal is lodged, so TabLock has the whole thing
+    // in a disabled fieldset and that button cannot be pressed.
+    //
+    // A test pinned to one screen of a REAL client's deal goes red when that
+    // client's deal progresses, which is a false alarm that costs a seven minute
+    // ship. What this test is for is that the tab DRAWS - so it accepts either
+    // face of it. Both of these are rendered by ComplianceForm itself, so either
+    // one is proof the component got through its render.
+    //
+    // Nothing here unlocks anything. This is somebody's real file.
+    const theForm = page.getByRole('button', { name: /Needs & objectives/ })
+    const alreadySent = page.getByRole('button', { name: /Show the write-up/ })
+    await expect(theForm.or(alreadySent).first(),
+      'the compliance tab drew without throwing, but neither the form nor the sent write-up is on screen')
+      .toBeVisible({ timeout: 15_000 })
   })
 })

@@ -48,6 +48,7 @@ import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved } from '@/lib/field-ownership'
 import { useSaveIndicator } from '@/components/useSaveIndicator'
 import { useDraft } from '@/components/useDraft'
+import { merge3 } from '@/lib/deal-merge'
 import DraftBanner from '@/components/DraftBanner'
 import { recommendedOption } from '@/lib/recommended-option'
 import type { SaveStatus } from '@/lib/save-indicator'
@@ -339,9 +340,27 @@ function AIButton({ onClick, loading, label = 'Generate with AI' }: { onClick: (
   )
 }
 
-export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null };
+export default function ComplianceForm({ deal, onSaveStatus, onDataChange, onDealPatched, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null };
   deal: any
   onSaveStatus?: (s: SaveStatus) => void
+  // THE PAGE KEEPS A COPY OF THE DEAL, AND THIS TAB NEVER TOLD IT ANYTHING.
+  //
+  // 18 Sep 2026, Richard Lake. Mellissa filled the whole Compliance tab in, left
+  // the tab and came back to a blank one - blank notes, blank living expenses,
+  // blank risk answers. Kylie could open the same deal and see all of it, which
+  // is the whole story in one sentence: the record was never in any danger, the
+  // SCREEN was rebuilt from the wrong copy.
+  //
+  // The deal page loads the row once and holds it. Tabs are rendered with
+  // `{stage === 'Compliance' && ...}`, so leaving one destroys the form and
+  // coming back builds a new one from that held copy. Fact Find, BC and LO each
+  // hand their saved record back up so the copy stays current - FactFindForm
+  // :490, LOForm :796 and :873, BCForm :976. Compliance was the only one of the
+  // four that did not, so its copy stayed as it was when the deal was opened,
+  // and a rebuilt tab showed a record from before any of the work was done.
+  //
+  // Every record this screen puts up goes through here.
+  onDataChange?: (d: ComplianceData) => void
   // The deal structure block writes compliance_data itself; this lets the page
   // know, so the screen does not sit on a stale copy until a reload.
   onDealPatched?: (patch: any) => void
@@ -603,11 +622,27 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   if (atOpen.current === null) atOpen.current = JSON.stringify(d)
   const liveD = useRef<ComplianceData>(d)
   liveD.current = d
+
+  // EVERY RECORD THIS SCREEN PUTS UP GOES TO THE PAGE TOO. See onDataChange at
+  // the top of this file for the Richard Lake failure this closes.
+  //
+  // Read through a ref, and never re-made. The autosave is a useCallback that
+  // holds on to this, and the effect that debounces the save lists that callback
+  // as a dependency - so a function that changed identity on every render would
+  // clear and restart the 700ms timer on every render, and a form being
+  // re-rendered steadily would never save at all. Worth the extra three lines.
+  const reportUp = useRef(onDataChange)
+  reportUp.current = onDataChange
+  const putOnScreen = useCallback((next: ComplianceData) => {
+    setD(next)
+    reportUp.current?.(next)
+  }, [])
+
   // SOMEBODY ELSE JUST SAVED. Their fields land on this screen without
   // disturbing a single thing this person has typed - see
   // components/useLiveColumn.ts for the rule, and lib/live-deal.ts for why.
   useLiveColumn({ dealId: deal.id, column: 'compliance_data', meId: me?.id, guard,
-                  current: () => d, apply: v => setD(shape(keepOwned(v, liveD.current, ownRef.current))), shape })
+                  current: () => d, apply: v => putOnScreen(shape(keepOwned(v, liveD.current, ownRef.current))), shape })
 
   // ONE LAST WRITE AS THE PAGE GOES. See components/useKeepalive.ts.
   useKeepalive({ dealId: deal.id, column: 'compliance_data', own: ownRef.current, current: () => liveD.current })
@@ -743,14 +778,45 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
   useEffect(() => {
     supabase.from('deals').select('compliance_data').eq('id', deal.id).single().then(({ data }) => {
       if (data?.compliance_data && Object.keys(data.compliance_data).length > 0) {
-        adopt(guard, shape(data.compliance_data))
-        // Somebody has typed, or pressed a button, while that was in flight.
-        // Their work stays; the save guard sorts the two out on the next save.
-        if (JSON.stringify(liveD.current) !== atOpen.current) return
         // shape(), not a spread. A record written by the deal structure block
         // has no applicants, no risks and no expenses in it, and this screen
         // renders all three. Wesley Perrott, 10 Sep 2026.
-        setD(shape(data.compliance_data))
+        const stored = shape(data.compliance_data)
+        adopt(guard, stored)
+
+        // NOTHING HAS HAPPENED HERE YET. Put the record up, as it always did.
+        if (JSON.stringify(liveD.current) === atOpen.current) { putOnScreen(stored); return }
+
+        // SOMETHING HAS. AND GIVING UP HERE IS WHAT COST MELLISSA AN AFTERNOON.
+        //
+        // 21 Sep 2026. This used to return at this point - leave the screen
+        // alone, say nothing - and the reasoning was sound: never write over
+        // what somebody is in the middle of typing.
+        //
+        // It fires far more often than it was meant to. The effect above fills
+        // needsPrimary, needsImmediate and needsLongTerm from the fact find the
+        // instant this form mounts, so `liveD` has already moved before the
+        // round trip comes back, on every single open, with nobody having
+        // touched a key. The repair therefore almost never ran - and least of
+        // all on the screens that needed it, because a tab that opened from a
+        // stale copy is exactly the one somebody is about to type into.
+        //
+        // The robot has it on the record: type on Compliance, change tab, come
+        // back, and the box holds a version from two runs ago. Saved: yes. On
+        // screen: no.
+        //
+        // So it no longer chooses between the two. It MERGES them - the same
+        // three-way merge two people editing one deal already go through. What
+        // was on screen when this form opened is the base, the database is
+        // theirs, what is on screen now is mine. Anything typed here wins;
+        // everything the record holds that this screen never had arrives around
+        // it. See lib/deal-merge.ts.
+        try {
+          const merged = merge3(JSON.parse(atOpen.current as string), stored, liveD.current)
+          // Not ok means the same field was changed in both, which this cannot
+          // settle on its own. Leave the screen alone, exactly as before.
+          if (merged.ok) putOnScreen(shape(merged.merged))
+        } catch { /* a base that will not parse is no base. Leave the screen. */ }
       }
     })
   }, [])
@@ -796,10 +862,10 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
         // Nothing typed here yet and somebody else has saved: take their
         // version rather than telling this person off for looking at a deal.
         // Shaped, so it is exactly what a fresh load would have put on screen.
-        onAdopt: stored => { if (stored) setD(shape(keepOwned(stored, liveD.current, ownRef.current))) },
+        onAdopt: stored => { if (stored) putOnScreen(shape(keepOwned(stored, liveD.current, ownRef.current))) },
         // Their fields, folded onto a screen somebody is typing into. A state
         // update, not a rebuild - nobody loses the sentence they are writing.
-        onMerge: merged => setD(shape(keepOwned(merged, liveD.current, ownRef.current))),
+        onMerge: merged => putOnScreen(shape(keepOwned(merged, liveD.current, ownRef.current))),
       })
       if (out.kind === 'superseded') return
       if (out.kind === 'error') { console.error('Compliance autosave:', out.message); save.failed(out.message, out.technical); return }
@@ -808,6 +874,10 @@ export default function ComplianceForm({ deal, onSaveStatus, onDealPatched, whoE
       save.landed(token, out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote')
       // It is in the database now, so the copy has done its job.
       draft.clear()
+      // AND THE PAGE IS TOLD. Without this the page's copy of compliance_data
+      // stays as it was when the deal was opened, and changing tab and coming
+      // back rebuilds this form from it. See onDataChange at the top.
+      reportUp.current?.(payload)
       settleSaved(ownRef.current, payload, liveD.current)
     })()
   }, [deal.id, me, lenderIdByName, guard, save])
