@@ -51,8 +51,26 @@ describe('a tab that opened from a stale copy', () => {
 
   it('the tab actually does this, rather than returning early', () => {
     expect(form, 'the mount re-read is giving up again instead of merging')
-      .toMatch(/merge3\(JSON\.parse\(atOpen\.current as string\), stored, liveD\.current\)/)
+      .toMatch(/merge3\(JSON\.parse\(base\), stored, liveD\.current\)/)
+    // 21 Sep 2026: this used to pin the exact line
+    // `if (merged.ok) putOnScreen(shape(merged.merged))`, and broke the build
+    // the moment a `return` was added after it - a change that did not alter
+    // what it was guarding at all. A gate that pins punctuation stops the work
+    // instead of protecting it. What matters is that an accepted merge reaches
+    // the screen, so that is what it now asks.
     expect(form, 'the record the re-read found must reach the screen')
-      .toMatch(/if \(merged\.ok\) putOnScreen\(shape\(merged\.merged\)\)/)
+      .toMatch(/merged\.ok[\s\S]{0,40}putOnScreen\(shape\(merged\.merged\)\)/)
+  })
+
+  // WHAT HAPPENS WHEN THE MERGE REFUSES.
+  //
+  // It used to be: nothing, silently, which is the fault this whole file is
+  // about. Now the tab puts the saved work back anyway - keeping every box the
+  // person has typed in - and says it did. See lib/tab-behind.ts.
+  it('a refused merge no longer ends in silence', () => {
+    expect(form, 'a refused merge leaves the screen behind with nothing said')
+      .toContain('tabIsBehind(liveD.current, stored)')
+    expect(form, 'the saved work is not put back after a refused merge')
+      .toContain('keepWhatTheyTyped(JSON.parse(base), stored, liveD.current)')
   })
 })

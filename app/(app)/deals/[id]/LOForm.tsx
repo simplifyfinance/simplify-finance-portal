@@ -26,6 +26,8 @@ import { loFigures } from '@/lib/deal-figures'
 import { dealPurpose } from '@/lib/deal-facts'
 import DealStructure from '@/components/DealStructure'
 import { recordsRateData } from '@/lib/test-deal'
+import { tabIsBehind, keepWhatTheyTyped, type TabBehind } from '@/lib/tab-behind'
+import TabBehindNotice from '@/components/TabBehindNotice'
 
 // A finished "client agreed" is not something to hide. It used to disappear the
 // instant it was pressed, which made "already done" look exactly like "broken".
@@ -509,6 +511,11 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   if (atOpen.current === null) atOpen.current = JSON.stringify(d)
   const liveD = useRef<LOData>(d)
   liveD.current = d
+  // WHEN THIS SCREEN IS BEHIND THE RECORD, IT SAYS SO. Set only by the late
+  // read below, and only when it keeps what is on screen while the record holds
+  // materially more. See lib/tab-behind.ts.
+  const [behind, setBehind] = useState<
+    { what: TabBehind; savedBy: string | null } | null>(null)
   // What the database last agreed with. Anything equal to this is not an edit,
   // so opening the form, or a re-render, never writes.
   const savedRef = useRef<string | null>(null)
@@ -684,9 +691,28 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     //
     // The guard is still told what the record holds either way; only the screen
     // is left alone.
-    supabase.from('deals').select('lo_data').eq('id', deal.id).single().then(({ data }) => {
+    supabase.from('deals').select('lo_data, last_saved_name').eq('id', deal.id).single().then(({ data }) => {
       if (data?.lo_data && Object.keys(data.lo_data).length > 0) {
-        if (touchedRef.current) { adopt(guardRef.current, loShape(data.lo_data)); return }
+        if (touchedRef.current) {
+          const stored = loShape(data.lo_data)
+          adopt(guardRef.current, stored)
+          // THE SCREEN IS BEHIND. PUT IT BACK, KEEPING WHAT THEY TYPED.
+          //
+          // Leaving the screen alone is right when it is a box or two behind -
+          // and tabIsBehind says nothing in that case. When the record holds a
+          // great deal this screen never had, leaving it off is the fault, not
+          // the safety. keepWhatTheyTyped fills only the boxes nobody here has
+          // touched, and putOnScreen additionally keeps whatever is focused or
+          // unsaved, so there are two separate reasons nothing typed can move.
+          const what = tabIsBehind(liveD.current, stored)
+          if (what) {
+            try {
+              putOnScreen(keepWhatTheyTyped(JSON.parse(atOpen.current as string), stored, liveD.current))
+              setBehind({ what, savedBy: (data as any)?.last_saved_name || null })
+            } catch { /* a base that will not parse is no base. Leave the screen. */ }
+          }
+          return
+        }
         putOnScreen(data.lo_data)
       }
     })
@@ -1353,6 +1379,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     // changes tab. See writeNow above for the Aaron Hooper case.
     <div className="space-y-4" onInputCapture={markTouched} onChangeCapture={markTouched}
          onBlurCapture={() => flush()}>
+      <TabBehindNotice behind={behind?.what || null} savedBy={behind?.savedBy}
+        onDismiss={() => setBehind(null)} />
       {draft.offer && (
         <DraftBanner at={draft.offer.at}
           onRestore={() => { setD(loShape(draft.offer!.value)); draft.taken() }}

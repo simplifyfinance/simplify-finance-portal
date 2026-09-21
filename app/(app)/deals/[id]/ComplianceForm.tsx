@@ -49,6 +49,8 @@ import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved 
 import { useSaveIndicator } from '@/components/useSaveIndicator'
 import { useDraft } from '@/components/useDraft'
 import { merge3 } from '@/lib/deal-merge'
+import { tabIsBehind, keepWhatTheyTyped, type TabBehind } from '@/lib/tab-behind'
+import TabBehindNotice from '@/components/TabBehindNotice'
 import DraftBanner from '@/components/DraftBanner'
 import { recommendedOption } from '@/lib/recommended-option'
 import type { SaveStatus } from '@/lib/save-indicator'
@@ -620,6 +622,14 @@ export default function ComplianceForm({ deal, onSaveStatus, onDataChange, onDea
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const atOpen = useRef<string | null>(null)
   if (atOpen.current === null) atOpen.current = JSON.stringify(d)
+
+  // WHEN THIS SCREEN IS BEHIND THE RECORD, IT SAYS SO.
+  //
+  // Set only by the mount re-read below, and only in the one case where it
+  // decides to keep what is on screen while the record holds materially more.
+  // See lib/tab-behind.ts. Null in every other case, which is almost always.
+  const [behind, setBehind] = useState<
+    { what: TabBehind; savedBy: string | null } | null>(null)
   const liveD = useRef<ComplianceData>(d)
   liveD.current = d
 
@@ -776,7 +786,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDataChange, onDea
   // when the screen keeps what is on it, or the next save reads as a collision
   // nobody caused. Only the SCREEN is left alone.
   useEffect(() => {
-    supabase.from('deals').select('compliance_data').eq('id', deal.id).single().then(({ data }) => {
+    supabase.from('deals').select('compliance_data, last_saved_name').eq('id', deal.id).single().then(({ data }) => {
       if (data?.compliance_data && Object.keys(data.compliance_data).length > 0) {
         // shape(), not a spread. A record written by the deal structure block
         // has no applicants, no risks and no expenses in it, and this screen
@@ -811,12 +821,34 @@ export default function ComplianceForm({ deal, onSaveStatus, onDataChange, onDea
         // theirs, what is on screen now is mine. Anything typed here wins;
         // everything the record holds that this screen never had arrives around
         // it. See lib/deal-merge.ts.
+        const base = atOpen.current as string
         try {
-          const merged = merge3(JSON.parse(atOpen.current as string), stored, liveD.current)
+          const merged = merge3(JSON.parse(base), stored, liveD.current)
           // Not ok means the same field was changed in both, which this cannot
           // settle on its own. Leave the screen alone, exactly as before.
-          if (merged.ok) putOnScreen(shape(merged.merged))
+          if (merged.ok) { putOnScreen(shape(merged.merged)); return }
         } catch { /* a base that will not parse is no base. Leave the screen. */ }
+
+        // THE MERGE REFUSED, AND THE SCREEN IS BEHIND. PUT IT BACK ANYWAY.
+        //
+        // merge3 refuses when the same box was changed on both sides, and that
+        // refusal is right when two people are editing at once and neither is
+        // more entitled than the other. It is wrong here: the record holds a
+        // great deal this screen never had, and leaving it off is what turned a
+        // display fault into an hour of believing the work was gone - Richard
+        // Lake, 18 Sep 2026.
+        //
+        // keepWhatTheyTyped settles the few clashing boxes in favour of the
+        // person at the keyboard and fills every box they have not touched, so
+        // nothing anybody typed is at risk. Then the strip says what happened,
+        // because a screen that changes under somebody has to be explained.
+        const what = tabIsBehind(liveD.current, stored)
+        if (what) {
+          try {
+            putOnScreen(shape(keepWhatTheyTyped(JSON.parse(base), stored, liveD.current)))
+            setBehind({ what, savedBy: (data as any)?.last_saved_name || null })
+          } catch { /* a base that will not parse is no base. Leave the screen. */ }
+        }
       }
     })
   }, [])
@@ -1523,6 +1555,8 @@ Use the security address exactly as recorded. On a pre-approval it will already 
     // LEAVING A BOX WRITES IT, rather than waiting 700ms and hoping nobody
     // changes tab in between.
     <div className="space-y-4" onBlurCapture={() => flush()}>
+      <TabBehindNotice behind={behind?.what || null} savedBy={behind?.savedBy}
+        onDismiss={() => setBehind(null)} />
       {draft.offer && (
         <DraftBanner at={draft.offer.at}
           onRestore={() => { setD(shape(draft.offer!.value)); draft.taken() }}
