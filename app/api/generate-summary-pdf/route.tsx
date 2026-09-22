@@ -392,6 +392,7 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
                     ['Repayment', [withFrequency(l.repaymentAmount, l.repaymentFrequency), l.repaymentType].filter(Boolean).join(' · ')],
                     ['Rate type', l.rateType],
                     ['Interest only expires', dateAU(l.interestOnlyExpiryDate)],
+                    ['Fixed rate expires', dateAU(l.fixedRateExpiryDate)],
                     ['Loan term expires', dateAU(l.loanTermExpiryDate)],
                     ['Remaining term', l.remainingLoanTermYears ? `${l.remainingLoanTermYears} years` : ''],
                     ['Status', l.status], ['Owned by', owners(l.ownership, applicants)],

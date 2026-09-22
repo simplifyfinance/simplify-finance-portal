@@ -173,6 +173,12 @@ type PropertyLoan = {
   repaymentType: string
   interestOnlyExpiryDate: string
   rateType: string
+  // WHEN A FIXED RATE ENDS.
+  //
+  // The sharpest trigger in the whole client book: a date that rings the client
+  // for you. The rate type has been recorded since this form was written and the
+  // date it runs out never was, so a fixed loan could be found but never chased.
+  fixedRateExpiryDate: string
   loanTermExpiryDate: string
   remainingLoanTermYears: string
   status: string
@@ -290,6 +296,7 @@ const defaultPropertyLoan = (): PropertyLoan => ({
   id: uid(), lenderName: '', bsb: '', accountNumber: '', mortgageType: 'Owner occupied',
   limitAmount: '', balance: '', interestRate: '', repaymentAmount: '', repaymentFrequency: 'Monthly',
   repaymentType: 'Interest only', interestOnlyExpiryDate: '', rateType: 'Variable',
+  fixedRateExpiryDate: '',
   loanTermExpiryDate: '', remainingLoanTermYears: '30', status: 'Ongoing', ownership: {}
 })
 
@@ -2051,7 +2058,21 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                       <select className={inp} value={loan.rateType} onChange={e => updatePropertyLoan(prop.id, loan.id, 'rateType', e.target.value)}>
                         <option>Variable</option><option>Fixed</option>
                       </select>
-                      <input type="date" className={inp} placeholder="Interest only expiry" value={loan.interestOnlyExpiryDate} onChange={e => updatePropertyLoan(prop.id, loan.id, 'interestOnlyExpiryDate', e.target.value)} />
+                      {/* Only on a fixed loan, because on a variable one there is no
+                          such date and an empty box invites somebody to invent one. */}
+                      {loan.rateType === 'Fixed' && (
+                        <div>
+                          <label className="text-[10px] uppercase tracking-wider text-gray-400 block mb-1">Fixed rate expires</label>
+                          <input type="date" className={inp} value={loan.fixedRateExpiryDate}
+                            onChange={e => updatePropertyLoan(prop.id, loan.id, 'fixedRateExpiryDate', e.target.value)} />
+                        </div>
+                      )}
+                      {/* A date input cannot show a placeholder, so this box has been
+                          on screen unnamed since the form was written. */}
+                      <div>
+                        <label className="text-[10px] uppercase tracking-wider text-gray-400 block mb-1">Interest only expires</label>
+                        <input type="date" className={inp} value={loan.interestOnlyExpiryDate} onChange={e => updatePropertyLoan(prop.id, loan.id, 'interestOnlyExpiryDate', e.target.value)} />
+                      </div>
                       <select className={inp} value={loan.remainingLoanTermYears} onChange={e => updatePropertyLoan(prop.id, loan.id, 'remainingLoanTermYears', e.target.value)}>
                         {Array.from({ length: 40 }, (_, i) => i + 1).map(y => <option key={y} value={y}>{y} year{y > 1 ? 's' : ''}</option>)}
                       </select>
