@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import LoanIds from '@/components/LoanIds'
+import PositionAtSettlement from '@/components/PositionAtSettlement'
 import { loanIdStatus } from '@/lib/loan-id'
 import { stepLabel } from '@/lib/settlement'
 import { needsSalestrekker, salestrekkerReminder, SALESTREKKER_TICK, SALESTREKKER_WHY }
@@ -175,17 +176,24 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
     if (error) { setErr('NOT SAVED - ' + error.message); return }
     if (!rows || rows.length === 0) { setErr('NOT SAVED - the change did not reach the database.'); return }
     setConfirming(false)
-    if (stage.snap === 'settled') setAskLoanIds(true)
+    if (stage.snap === 'settled') { setAskLoanIds(true); setAskPosition(true) }
     const { data } = await supabase.from('deal_stage_snapshots').select('*').eq('deal_id', deal.id)
     const m: any = {}; (data || []).forEach((r: any) => { m[r.stage] = r }); setSnaps(m)
     onUpdated?.(patch)
   }
+
+  // THE ONE MOMENT A CLIENT'S POSITION CAN INCLUDE THE LOAN WE WROTE.
+  // See components/PositionAtSettlement.tsx.
+  const [askPosition, setAskPosition] = useState(false)
 
   const K = 'text-[9.5px] font-bold tracking-wider uppercase text-[#A29889]'
   const IN = 'border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 text-[13px] w-full'
 
   return (
     <div className="bg-white border border-[#E8E1D6] rounded-xl px-5 py-4 mb-4">
+      {askPosition && (
+        <PositionAtSettlement deal={deal} onDone={() => setAskPosition(false)} />
+      )}
       <div className={K + ' mb-3'}>After compliance</div>
 
       <div className="flex flex-col gap-1.5 mb-4">
