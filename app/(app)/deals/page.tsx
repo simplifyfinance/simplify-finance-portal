@@ -528,9 +528,41 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
     const primaryLastNameVal = selectedClient?.last_name || form.last_name
     const primaryEmail = mode === 'existing' ? '' : form.email
     const primaryPhone = mode === 'existing' ? '' : form.phone
-    const applicants = [makeApplicant(primaryFirstName, primaryLastNameVal, primaryEmail, primaryPhone, mode === 'existing' ? clientId : undefined)]
+    // EVERY APPLICANT CARRIES THE ID OF THEIR CLIENT RECORD.
+    //
+    // 21 Sep 2026. This used to hand over the id only when the client already
+    // existed, and nothing at all when the client was new - so a deal started
+    // from a NEW client got an applicant with no link to the client record that
+    // had just been created three lines above, with the id sitting right there
+    // in this function.
+    //
+    // Everything that writes a client's financial position is gated on this one
+    // field: `applicants.filter(a => a.clientId)`. No link, no applicants in
+    // that list, no prompt, no write, silently. So the whole assets-and-
+    // liabilities capture was invisible on every deal that started with a new
+    // client - which is most of them. See docs/client-link-backfill.sql for the
+    // deals already in the book.
+    const applicants = [makeApplicant(primaryFirstName, primaryLastNameVal, primaryEmail, primaryPhone, clientId)]
     if (showSecondApplicant && (form2.first_name || form2.last_name)) {
-      applicants.push(makeApplicant(form2.first_name, form2.last_name, form2.email, form2.phone, form2.client_id || undefined))
+      // A SECOND APPLICANT IS A CLIENT TOO.
+      //
+      // An existing one arrives with a client_id. A new one had no client record
+      // created for them at all, so they could never appear in the book, never
+      // hold a position, and never be found by a search for their own name. One
+      // is created for them here, the same as the first applicant gets.
+      //
+      // If that create fails the deal still goes ahead unlinked - losing the
+      // deal over a second applicant's record would be the worse trade - and the
+      // backfill picks it up later.
+      let secondClientId: string | undefined = form2.client_id || undefined
+      if (!secondClientId) {
+        const { data: second } = await browser.from('clients').insert([{
+          first_name: form2.first_name, last_name: form2.last_name,
+          email: form2.email || null, phone: form2.phone || null,
+        }]).select('id').single()
+        secondClientId = (second as any)?.id || undefined
+      }
+      applicants.push(makeApplicant(form2.first_name, form2.last_name, form2.email, form2.phone, secondClientId))
     }
     const fact_find_data = { applicants, assets: [], properties: [], liabilities: [] }
 
