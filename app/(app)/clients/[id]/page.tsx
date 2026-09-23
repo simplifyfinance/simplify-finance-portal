@@ -5,12 +5,13 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { realDealsOnly } from '@/lib/test-deal'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, AlertTriangle } from 'lucide-react'
 import { phaseOf, PHASE_LABEL } from '@/lib/deal-phase'
 // Number('620,000') is NaN, so these three lines printed "$NaN" against every
 // property value and every liability a client had - the fact find stores money
 // comma-formatted. Same fault the deal summary PDF had. See lib/money.ts.
 import { moneyOrBlank, readMoney} from '@/lib/money'
+import { auDate, heldLine, settledSince, outOfDateLine, sourceLine } from '@/lib/client-position'
 
 export default function ClientProfilePage() {
   const params = useParams()
@@ -56,6 +57,27 @@ export default function ClientProfilePage() {
   // all of them.
   const hasSmsfOpportunity = (client.position_assets || []).some((a: any) => a.assetType === 'Super' && (readMoney(a.value) || 0) >= 250000)
   const hasCarLoan = (client.position_liabilities || []).some((l: any) => l.liabilityType === 'Car loan')
+
+  const properties  = client.position_properties  || []
+  const liabilities = client.position_liabilities || []
+  const assets      = client.position_assets      || []
+  const hasPosition = !!client.position_updated_at
+
+  // WHERE THIS POSITION CAME FROM.
+  //
+  // "Last updated 3 Sep" does not say whether the new loan is in the figures.
+  // "As at the settlement of Chapman - refinance" does. The deal is looked up in
+  // the list already loaded, so a deal that is gone just prints the plain line.
+  const fromDeal = deals.find(d => d.id === client.position_updated_from_deal_id)
+  const from = hasPosition ? sourceLine(client.position_source, fromDeal?.deal_name) : ''
+
+  // A SETTLED DEAL NEWER THAN THE POSITION.
+  //
+  // Somebody pressed "Not now", or the capture failed. Without this the record
+  // looks complete and is quietly missing a loan you wrote.
+  const behind = settledSince(client.position_updated_at, deals)
+
+  const itemNote = (item: any) => heldLine(item?.held)
 
   return (
     <div className="max-w-3xl mx-auto p-6">
@@ -123,52 +145,138 @@ export default function ClientProfilePage() {
         </div>
       )}
 
-      {client.position_updated_at && (
-        <div className="mt-4">
-          <div className="flex justify-between items-center mb-2">
-            <p className="text-sm font-medium text-[#343333]">Financial position</p>
-            <span className="text-xs text-gray-400">Last updated {new Date(client.position_updated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-          </div>
-
-          {(client.position_properties || []).length > 0 && (
-            <div className="bg-white border border-gray-100 border-l-4 border-l-amber-400 rounded-xl p-5 mb-3">
-              <p className="text-xs font-medium text-amber-600 uppercase tracking-wider mb-3">Properties</p>
-              <div className="flex flex-col gap-2">
-                {client.position_properties.map((p: any, i: number) => (
-                  <div key={i} className="bg-gray-50 rounded-lg p-3">
-                    <div className="flex justify-between items-center mb-1">
-                      <p className="text-sm font-medium text-[#343333]">{p.address || 'Address not set'}</p>
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.ownershipType === 'Owner occupied' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}`}>
-                        {p.ownershipType}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500">Value: {moneyOrBlank(p.value, 'Not provided')}</p>
-                    {(p.loans || []).map((loan: any, li: number) => (
-                      <p key={li} className="text-xs text-gray-500">{loan.lenderName || 'Lender not set'} — balance {moneyOrBlank(loan.balance)}{loan.interestRate ? `, ${loan.interestRate}%` : ''}</p>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
+      {/* ------------------------------------------------------------------ */}
+      {/* THE FINANCIAL POSITION                                             */}
+      {/*                                                                    */}
+      {/* Until 23 Sep 2026 this drew nothing at all unless a position had    */}
+      {/* been saved, so a client with none looked the same as a client with  */}
+      {/* one that had failed to write. It now always draws, because "we have */}
+      {/* never recorded this" is itself the answer to the question.          */}
+      {/* ------------------------------------------------------------------ */}
+      <div className="mt-4">
+        <div className="flex justify-between items-baseline mb-2 gap-3 flex-wrap">
+          <p className="text-sm font-medium text-[#343333]">Financial position</p>
+          {hasPosition && (
+            <span className="text-xs text-gray-400">{from} · {auDate(client.position_updated_at)}</span>
           )}
+        </div>
 
-          {(client.position_liabilities || []).length > 0 && (
-            <div className="bg-white border border-gray-100 border-l-4 border-l-red-400 rounded-xl p-5">
-              <p className="text-xs font-medium text-red-600 uppercase tracking-wider mb-3">Liabilities</p>
-              <div className="flex flex-col gap-2">
-                {client.position_liabilities.map((l: any, i: number) => (
-                  <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2">
+        {behind && (
+          <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-3">
+            <AlertTriangle size={15} className="text-amber-600 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800 leading-relaxed">
+              {outOfDateLine(behind, hasPosition)}{' '}
+              <Link href={`/deals/${behind.id}`} className="underline font-medium">Open the deal</Link>
+            </p>
+          </div>
+        )}
+
+        {!hasPosition && !behind && (
+          <div className="bg-white border border-gray-100 rounded-xl p-6 text-center">
+            <p className="text-sm text-gray-500">No position recorded yet.</p>
+            <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
+              A position is recorded when one of this client&rsquo;s deals settles, or when a
+              deal is closed as lost. Nothing has been recorded for them yet.
+            </p>
+          </div>
+        )}
+
+        {hasPosition && properties.length === 0 && liabilities.length === 0 && assets.length === 0 && (
+          <div className="bg-white border border-gray-100 rounded-xl p-6 text-center">
+            <p className="text-sm text-gray-500">This client is recorded as holding nothing.</p>
+            <p className="text-xs text-gray-400 mt-1.5">Recorded {auDate(client.position_updated_at)}.</p>
+          </div>
+        )}
+
+        {properties.length > 0 && (
+          <div className="bg-white border border-gray-100 border-l-4 border-l-amber-400 rounded-xl p-5 mb-3">
+            <p className="text-xs font-medium text-amber-600 uppercase tracking-wider mb-3">Properties</p>
+            <div className="flex flex-col gap-2">
+              {properties.map((p: any, i: number) => (
+                <div key={i} className="bg-gray-50 rounded-lg p-3">
+                  <div className="flex justify-between items-center mb-1 gap-2">
+                    <p className="text-sm font-medium text-[#343333]">{p.address || 'Address not set'}</p>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${p.ownershipType === 'Owner occupied' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}`}>
+                      {p.ownershipType}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500">Value: {moneyOrBlank(p.value, 'Not provided')}</p>
+                  {(p.loans || []).map((loan: any, li: number) => (
+                    <div key={li}>
+                      <p className="text-xs text-gray-500">
+                        {loan.lenderName || 'Lender not set'} — balance {moneyOrBlank(loan.balance)}{loan.interestRate ? `, ${loan.interestRate}%` : ''}
+                      </p>
+                      {/* The only two fields on the whole record that say WHEN to
+                          ring somebody. They are worth their own line. */}
+                      {(loan.fixedRateExpiryDate || loan.interestOnlyExpiryDate) && (
+                        <p className="text-xs text-gray-400 ml-3">
+                          {loan.fixedRateExpiryDate ? `Fixed rate expires ${auDate(loan.fixedRateExpiryDate)}` : ''}
+                          {loan.fixedRateExpiryDate && loan.interestOnlyExpiryDate ? ' · ' : ''}
+                          {loan.interestOnlyExpiryDate ? `Interest only expires ${auDate(loan.interestOnlyExpiryDate)}` : ''}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                  <OwnershipNote note={itemNote(p)} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {liabilities.length > 0 && (
+          <div className="bg-white border border-gray-100 border-l-4 border-l-red-400 rounded-xl p-5 mb-3">
+            <p className="text-xs font-medium text-red-600 uppercase tracking-wider mb-3">Liabilities</p>
+            <div className="flex flex-col gap-2">
+              {liabilities.map((l: any, i: number) => (
+                <div key={i} className="bg-gray-50 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-3">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700 flex-shrink-0">{l.liabilityType}</span>
                     <span className="text-sm text-gray-600 flex-1">
                       {l.liabilityType === 'Credit card' ? `Limit ${moneyOrBlank(l.limitAmount)}` : `Balance ${moneyOrBlank(l.balance)}`}
                     </span>
                   </div>
-                ))}
-              </div>
+                  <OwnershipNote note={itemNote(l)} />
+                </div>
+              ))}
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+
+        {/* ASSETS. Collected since the portal was built, saved on every capture,
+            and until today shown nowhere at all. Savings and super are half of
+            what a review conversation is about. */}
+        {assets.length > 0 && (
+          <div className="bg-white border border-gray-100 border-l-4 border-l-emerald-400 rounded-xl p-5">
+            <p className="text-xs font-medium text-emerald-700 uppercase tracking-wider mb-3">Assets</p>
+            <div className="flex flex-col gap-2">
+              {assets.map((a: any, i: number) => (
+                <div key={i} className="bg-gray-50 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 flex-shrink-0">{a.assetType || 'Asset'}</span>
+                    <span className="text-sm text-gray-600 flex-1">{moneyOrBlank(a.value)}</span>
+                  </div>
+                  {a.description && <p className="text-xs text-gray-400 mt-1">{a.description}</p>}
+                  <OwnershipNote note={itemNote(a)} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
+  )
+}
+
+// WHO OWNS IT, UNDER THE ITEM.
+//
+// A share, or who it is shared with, or the warning that nobody ever said. An
+// item held outright by a sole applicant gets no line, because there is nothing
+// to tell anybody.
+function OwnershipNote({ note }: { note: string | null }) {
+  if (!note) return null
+  const unconfirmed = note.startsWith('Ownership not confirmed')
+  return (
+    <p className={`text-xs mt-1 ${unconfirmed ? 'text-amber-700 font-medium' : 'text-gray-400'}`}>{note}</p>
   )
 }

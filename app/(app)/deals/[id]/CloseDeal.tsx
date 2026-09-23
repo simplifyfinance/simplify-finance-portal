@@ -85,6 +85,7 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
         client_id: applicant.clientId,
         deal_id: deal.id,
         captured_from: 'deal closed',
+        captured_at: new Date().toISOString(),
         properties: next.properties,
         liabilities: next.liabilities,
         assets: next.assets,

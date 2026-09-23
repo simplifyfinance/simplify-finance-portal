@@ -174,3 +174,85 @@ export function sourceLine(source: PositionSource | null | undefined, dealName?:
   if (source === 'deal closed') return `As declared${on}. No loan was written - the deal did not proceed`
   return `As declared on the application${on}`
 }
+
+// ---------------------------------------------------------------------------
+// WHAT THE CLIENT PAGE SAYS ABOUT A POSITION.
+//
+// Everything below is read-only: it turns a saved position into the sentences
+// on the client profile. It lives here rather than in the page so the wording
+// can be tested, and so the page and the capture cannot describe the same thing
+// two different ways.
+// ---------------------------------------------------------------------------
+
+export function auDate(value: string | null | undefined): string {
+  if (!value) return ''
+  const d = new Date(value)
+  if (!Number.isFinite(d.getTime())) return ''
+  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function listNames(names: string[]): string {
+  const clean = (names || []).filter(Boolean)
+  if (clean.length === 0) return ''
+  if (clean.length === 1) return clean[0]
+  return clean.slice(0, -1).join(', ') + ' and ' + clean[clean.length - 1]
+}
+
+// ONE ITEM'S OWNERSHIP, IN WORDS.
+//
+// Null means there is nothing worth saying - a sole applicant who owns the whole
+// thing. A line is only drawn when it carries a fact: a share, somebody else on
+// it, or the warning that nobody ever said.
+export function heldLine(held: Holding | null | undefined): string | null {
+  if (!held) return null
+  if (!held.ownershipConfirmed) {
+    const others = listNames(held.jointWith)
+    return others
+      ? `Ownership not confirmed - held against ${others} as well`
+      : 'Ownership not confirmed'
+  }
+  const bits: string[] = []
+  if (held.share !== null && held.share !== undefined) bits.push(`${held.share}% share`)
+  if (held.jointWith.length) bits.push(`joint with ${listNames(held.jointWith)}`)
+  return bits.length ? bits.join(', ') : null
+}
+
+export type SettledDeal = { id: string; deal_name?: string | null; settled_at?: string | null }
+
+// A POSITION THAT IS OLDER THAN A SETTLED DEAL.
+//
+// This is the one that matters. Somebody pressed "Not now" at settlement, or the
+// capture failed, and the client's record no longer includes a loan you wrote.
+// A date on its own does not tell anybody that; this does.
+//
+// No position at all plus a settled deal is the same fault, so it counts too.
+export function settledSince(
+  positionUpdatedAt: string | null | undefined,
+  deals: SettledDeal[] | null | undefined,
+): SettledDeal | null {
+  const when = (v: string | null | undefined) => {
+    const t = new Date(String(v || '')).getTime()
+    return Number.isFinite(t) ? t : null
+  }
+  const settled = (deals || []).filter(d => d && when(d.settled_at) !== null)
+  if (settled.length === 0) return null
+
+  const mark = when(positionUpdatedAt)
+  // A position with no date, against a settled deal, is behind by definition.
+  const after = mark === null ? settled : settled.filter(d => (when(d.settled_at) as number) > mark)
+  if (after.length === 0) return null
+
+  // The newest one. That is the loan most likely to be missing from the figures.
+  return after.sort((a, b) => (when(b.settled_at) as number) - (when(a.settled_at) as number))[0]
+}
+
+export function outOfDateLine(d: SettledDeal, hasPosition: boolean): string {
+  const name = d.deal_name || 'A deal'
+  const on = auDate(d.settled_at)
+  if (!hasPosition) {
+    return `${name} settled${on ? ` on ${on}` : ''} and nothing has ever been recorded for this client. `
+         + `Open that deal and record the position.`
+  }
+  return `${name} settled${on ? ` on ${on}` : ''}, after this position was recorded. `
+       + `The loan that settled may not be in the figures below.`
+}

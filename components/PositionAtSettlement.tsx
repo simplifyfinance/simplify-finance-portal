@@ -111,6 +111,7 @@ export default function PositionAtSettlement({ deal, onDone }: {
         client_id: applicant.clientId,
         deal_id: deal.id,
         captured_from: 'settlement',
+        captured_at: now,
         properties: next.properties,
         liabilities: next.liabilities,
         assets: next.assets,
