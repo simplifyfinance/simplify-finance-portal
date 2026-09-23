@@ -6,6 +6,7 @@ import {
   positionFor, countIn, wouldEmptyTheClient, emptyRefusal, applicantName,
   type Applicant,
 } from '@/lib/client-position'
+import SaveTheAssessment from '@/components/SaveTheAssessment'
 
 // RECORDING WHAT A CLIENT OWNS, AT THE MOMENT A DEAL SETTLES.
 //
@@ -190,6 +191,10 @@ export default function PositionAtSettlement({ deal, onDone }: {
             </div>
           )
         })}
+
+        {/* The paper, at the same moment as the position. Fabio, 23 Sep 2026:
+            "that comes at the same time lost and settled". */}
+        <SaveTheAssessment deal={deal} when="settled" />
 
         {historyWarning && (
           <div className="bg-[#FFF8EC] border border-[#F0DCB4] text-[#92400E] rounded-lg px-3 py-2.5 text-[12.5px] leading-relaxed mb-3">

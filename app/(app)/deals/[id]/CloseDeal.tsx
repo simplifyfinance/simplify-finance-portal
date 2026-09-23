@@ -6,6 +6,7 @@ import { checkedWrite } from '@/lib/checked-write'
 import {
   positionFor, wouldEmptyTheClient, emptyRefusal, applicantName,
 } from '@/lib/client-position'
+import SaveTheAssessment from '@/components/SaveTheAssessment'
 
 export const CLOSE_REASONS: { value: string; label: string; needsDate?: boolean }[] = [
   { value: 'no_response',           label: 'No response from client' },
@@ -252,6 +253,10 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
                   </span>
                 </label>
               )}
+
+              {/* The paper, at the same moment as the position. Fabio, 23 Sep
+                  2026: "that comes at the same time lost and settled". */}
+              <SaveTheAssessment deal={deal} when="lost" />
 
               {error && <div className="text-[12.5px] text-[#C4553B] font-medium">{error}</div>}
             </div>

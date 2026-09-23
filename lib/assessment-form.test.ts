@@ -6,6 +6,7 @@ import {
   radioLineCount, PAGE, MARGIN, LABEL_COL, CONTENT_W, type Item,
 } from './assessment-form'
 import { assessmentItems, basisOf, maritalOf, previousOf, currentOf, expensesTotal, asNumber } from './assessment-content'
+import { assessmentFileName } from './assessment-download'
 
 // FABIO'S PERSONAL ASSESSMENT FORM, REBUILT AS A FILLABLE PDF.
 //
@@ -246,25 +247,57 @@ describe('the pdf itself', () => {
   })
 })
 
-describe('it is reachable from a deal', () => {
-  const header = () => readFileSync(join(__dirname, '..', 'app', '(app)', 'deals', '[id]', 'DealPageClient.tsx'), 'utf8')
-  const button = () => readFileSync(join(__dirname, '..', 'components', 'AssessmentFormButton.tsx'), 'utf8')
+describe('it is offered at the two moments a deal ends', () => {
+  const read2 = (...p: string[]) => readFileSync(join(__dirname, '..', ...p), 'utf8')
+  const header     = () => read2('app', '(app)', 'deals', '[id]', 'DealPageClient.tsx')
+  const settlement = () => read2('components', 'PositionAtSettlement.tsx')
+  const close      = () => read2('app', '(app)', 'deals', '[id]', 'CloseDeal.tsx')
+  const shared     = () => read2('lib', 'assessment-download.ts')
+  const offer      = () => read2('components', 'SaveTheAssessment.tsx')
 
-  it('sits in the deal header', () => {
-    expect(header()).toContain('<AssessmentFormButton')
+  it('is offered when a deal settles', () => {
+    // Fabio, 23 Sep 2026: "that comes at the same time lost and settled."
+    expect(settlement()).toContain('<SaveTheAssessment')
   })
 
-  it('sends the fact find, the expenses and the notes', () => {
-    const s = button()
+  it('is offered when a deal is closed as lost', () => {
+    expect(close()).toContain('<SaveTheAssessment')
+  })
+
+  it('is NOT on the deal header', () => {
+    // Fabio, 23 Sep 2026: "we don't need on header, no use for it." The form
+    // belongs to the moment a deal ends, not to every day of its life.
+    expect(header()).not.toContain('AssessmentFormButton')
+  })
+
+  it('is built in ONE place, so the file name cannot depend on the button', () => {
+    // Somebody searches their folder for this name six months later.
+    const s = shared()
+    expect(s).toContain('assessmentFileName')
     expect(s).toContain('fact_find_data')
     expect(s).toContain('expensesFor(')
     expect(s).toContain('internal_notes')
+    expect(offer()).not.toContain('fetch(')
+  })
+
+  it('names the file after the deal', () => {
+    expect(assessmentFileName('Hameed Abdul Jabbar Equity 2026'))
+      .toBe('Simplify Finance - Hameed Abdul Jabbar Equity 2026.pdf')
+  })
+
+  it('takes the characters out of a name that a file system will not have', () => {
+    expect(assessmentFileName('Smith / Jones: "refi" 2026')).not.toMatch(/[\/\\:*?"<>|]/)
+  })
+
+  it('is an offer, never automatic', () => {
+    // A file landing in Downloads that nobody asked for is a file nobody files.
+    const s = offer()
+    expect(s).toContain('onClick=')
+    expect(s).not.toMatch(/useEffect\([\s\S]{0,120}downloadAssessment/)
   })
 
   it('says so on screen when it cannot be built', () => {
     // A PDF that silently does not arrive looks like a click that did nothing.
-    const s = button()
-    expect(s).toContain('setErr(')
-    expect(s).toMatch(/\{err &&/)
+    expect(offer()).toContain('setErr(')
   })
 })
