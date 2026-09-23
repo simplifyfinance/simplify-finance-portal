@@ -1,0 +1,203 @@
+// ALLOCATING A CREDIT OFFICER TO A DEAL.
+//
+// 24 Sep 2026. This used to live inside app/api/allocate-credit-officer, and
+// the only other caller - the client pressing "Proceed" on their own landing
+// page - reached it by making an HTTP request FROM THE SERVER TO ITS OWN FRONT
+// DOOR.
+//
+// That was slow on a good day. On 23 Sep it stopped working entirely: the route
+// was given a sign-in check, and a server calling itself carries nobody's
+// login, so the call was refused after a full round trip. The client sat
+// watching a button that was waiting for something that could never succeed,
+// and no credit officer was allocated.
+//
+// So the work lives here, as a function, and both callers call it:
+//   - the API route, after it has checked who is asking
+//   - markProceeded, directly, with no network in the middle
+//
+// It takes whichever supabase client the caller already has. The route passes
+// the signed-in user's; the proceed page passes the admin one, because a client
+// pressing a button on their own page is not signed in to anything.
+
+import { phaseOf, PHASE_LABEL } from '@/lib/deal-phase'
+
+export type AllocationResult = {
+  ok: boolean
+  error?: string
+  status?: number
+  alreadyAssigned?: boolean
+  assignedTo?: string
+  emailSent?: boolean
+  overloadAlertSent?: boolean
+}
+
+export async function allocateCreditOfficer(supabase: any, dealId: string): Promise<AllocationResult> {
+  const { data: deal, error: dealError } = await supabase
+    .from('deals')
+    .select('id, deal_name, assigned_broker, assigned_credit_officer, stage, bc_data, clients(first_name, last_name)')
+    .eq('id', dealId)
+    .single()
+
+  if (dealError || !deal) return { ok: false, error: dealError?.message || 'Deal not found', status: 404 }
+
+  if (deal.assigned_credit_officer) {
+    return { ok: true, alreadyAssigned: true }
+  }
+
+  const brokerSlug = (deal.assigned_broker || '').split(' ')[0].toLowerCase()
+
+  // Find active credit officers covering this broker
+  const { data: links, error: linksError } = await supabase
+    .from('credit_officer_brokers')
+    .select('credit_officer_id, credit_officers!inner(id, name, active, user_id, on_leave_from, on_leave_until)')
+    .ilike('broker_slug', brokerSlug)
+    .eq('credit_officers.active', true)
+
+  if (linksError) return { ok: false, error: linksError.message, status: 500 }
+
+  const today = new Date().toISOString().slice(0, 10)
+  const allEligible = (links || []).map((l: any) => l.credit_officers).filter(Boolean)
+  const candidates = allEligible.filter((o: any) => {
+    if (!o.on_leave_from || !o.on_leave_until) return true
+    return !(today >= o.on_leave_from && today <= o.on_leave_until)
+  })
+  if (candidates.length === 0) {
+    const reason = allEligible.length > 0
+      ? `Every credit officer covering "${brokerSlug}" is currently on leave. Check Settings > Credit Team.`
+      : `No active credit officer covers deals for "${brokerSlug}". Check Settings > Credit Team.`
+    return { ok: false, error: reason, status: 400 }
+  }
+
+  // Company-wide average active workload — the baseline "overloaded" is measured against.
+  // Computed across ALL active credit officers, not just those eligible for this broker,
+  // so it reflects genuine team-wide load rather than a small local group's own average.
+  const { data: allActiveOfficers } = await supabase.from('credit_officers').select('id').eq('active', true)
+  const allOfficerIds = (allActiveOfficers || []).map((o: any) => o.id)
+  const { data: allTeamDeals } = await supabase
+    .from('deals')
+    .select('assigned_credit_officer, compliance_completed_at')
+    .in('assigned_credit_officer', allOfficerIds.length > 0 ? allOfficerIds : [''])
+
+  const companyActiveCounts: Record<string, number> = {}
+  allOfficerIds.forEach((id: string) => { companyActiveCounts[id] = 0 })
+  ;(allTeamDeals || []).forEach((d: any) => {
+    if (!d.compliance_completed_at && companyActiveCounts[d.assigned_credit_officer] !== undefined) {
+      companyActiveCounts[d.assigned_credit_officer] += 1
+    }
+  })
+  const teamAverage = allOfficerIds.length > 0
+    ? Object.values(companyActiveCounts).reduce((a, b) => a + b, 0) / allOfficerIds.length
+    : 0
+  const overloadThreshold = teamAverage * 1.5
+
+  // Active workload + last-assigned time, scoped to the eligible candidates for this broker
+  const candidateIds = candidates.map((c: any) => c.id)
+  const { data: theirDeals, error: workloadError } = await supabase
+    .from('deals')
+    .select('assigned_credit_officer, compliance_completed_at, credit_assigned_at')
+    .in('assigned_credit_officer', candidateIds)
+
+  if (workloadError) return { ok: false, error: workloadError.message, status: 500 }
+
+  const stats: Record<string, { active: number; lastAssigned: string | null }> = {}
+  candidateIds.forEach((id: string) => { stats[id] = { active: 0, lastAssigned: null } })
+  ;(theirDeals || []).forEach((d: any) => {
+    const id = d.assigned_credit_officer
+    if (!stats[id]) return
+    if (!d.compliance_completed_at) stats[id].active += 1
+    if (!stats[id].lastAssigned || (d.credit_assigned_at && d.credit_assigned_at > stats[id].lastAssigned!)) {
+      stats[id].lastAssigned = d.credit_assigned_at
+    }
+  })
+
+  // Round-robin order: whoever was least recently assigned goes first (never-assigned = highest priority)
+  const roundRobinOrder = [...candidates].sort((a: any, b: any) => {
+    const sa = stats[a.id], sb = stats[b.id]
+    if (!sa.lastAssigned && !sb.lastAssigned) return 0
+    if (!sa.lastAssigned) return -1
+    if (!sb.lastAssigned) return 1
+    return sa.lastAssigned < sb.lastAssigned ? -1 : 1
+  })
+
+  // Walk the round-robin order, skipping anyone currently above the overload threshold
+  let chosen = roundRobinOrder.find((c: any) => stats[c.id].active <= overloadThreshold)
+  let allOverloaded = false
+
+  // If literally everyone eligible is above threshold, fall back to whoever has the least active load
+  if (!chosen) {
+    allOverloaded = true
+    chosen = [...candidates].sort((a: any, b: any) => stats[a.id].active - stats[b.id].active)[0]
+  }
+
+  const nowIso = new Date().toISOString()
+  const { error: updateError } = await supabase
+    .from('deals')
+    .update({ assigned_credit_officer: chosen.id, credit_assigned_at: nowIso })
+    .eq('id', dealId)
+
+  if (updateError) return { ok: false, error: updateError.message, status: 500 }
+
+  // Alert Alan specifically when every eligible officer was overloaded and we had to
+  // assign anyway. Assignment always proceeds — this is a heads-up for rebalancing, not a block.
+  let overloadAlertSent = false
+  if (allOverloaded) {
+    try {
+      const { data: alan } = await supabase.from('user_profiles').select('email, full_name').ilike('full_name', '%Alan%').single()
+      if (alan?.email) {
+        const chosenActive = stats[chosen.id].active + 1
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            from: 'Simplify Finance Portal <notifications@simplifyfinance.com.au>',
+            to: alan.email,
+            subject: `Workload alert: everyone covering ${brokerSlug} is above average`,
+            html: `<p>Hi ${alan.full_name?.split(' ')[0] || ''},</p><p>Every credit officer covering ${brokerSlug}'s deals is currently above the team average (${teamAverage.toFixed(1)} active deals). Deal <strong>${deal.deal_name}</strong> was still assigned to <strong>${chosen.name}</strong> (now at ${chosenActive} active) to keep things moving — worth a look at rebalancing coverage.</p><p><a href="https://simplify-finance-portal.vercel.app/credit-team-workload">View team workload</a></p>`
+          })
+        })
+        overloadAlertSent = true
+      }
+    } catch (e) {
+      // Non-fatal — the allocation itself already succeeded
+    }
+  }
+
+  // Notify the credit officer by email, if their portal account is linked
+  let emailSent = false
+  if (chosen.user_id) {
+    const { data: profile } = await supabase.from('user_profiles').select('email, full_name').eq('id', chosen.user_id).single()
+    if (profile?.email) {
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'Simplify Finance Portal <notifications@simplifyfinance.com.au>',
+            to: profile.email,
+            cc: 'info@simplifyfinance.com.au',
+            subject: `New deal assigned: ${deal.deal_name}`,
+            html: `<p>Hi ${profile.full_name?.split(' ')[0] || ''},</p><p>A new deal has been assigned to you.</p>
+              <table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 16px" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Deal</span></td><td style="text-align:right;font-size:13px;font-weight:600;padding:3px 0">${deal.deal_name}</td></tr>
+                <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Client</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${(deal.clients as any)?.first_name || ''} ${(deal.clients as any)?.last_name || ''}</td></tr>
+                <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Stage</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${PHASE_LABEL[phaseOf(deal)]}</td></tr>
+                <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Loan type</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${(deal.bc_data?.template || '').replace(/_/g, ' ') || 'Not specified'}</td></tr>
+                <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Purchase price</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${deal.bc_data?.purchasePrice ? '$' + deal.bc_data.purchasePrice : 'Not specified'}</td></tr>
+                <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Suburb / State</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${deal.bc_data?.suburb || 'Not specified'}</td></tr>
+                <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Broker</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${deal.assigned_broker || ''}</td></tr>
+              </table>
+              <p><a href="https://simplify-finance-portal.vercel.app/deals/${dealId}">Open the deal</a></p>`
+          })
+        })
+        emailSent = true
+      } catch (e) {
+        // Non-fatal — allocation itself succeeded even if the email failed
+      }
+    }
+  }
+
+  return { ok: true, assignedTo: chosen.name, emailSent, overloadAlertSent }
+}

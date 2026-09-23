@@ -1,4 +1,6 @@
+import { after } from 'next/server'
 import { resolveBrokerProfile } from '@/lib/broker-profile'
+import { allocateCreditOfficer } from '@/lib/allocate-officer'
 import { notifyCrisMoveCard } from '@/lib/salestrekker-notify'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
 import { requestDocuments, brokerDocumentLine, type DocRequestResult } from '@/lib/document-request'
@@ -89,6 +91,38 @@ export function hasProceeded(deal: any, stage: ProceedStage): boolean {
 // to tell "already done" from "broken" either.
 export type ProceedBy = { source: 'client' | 'office'; name?: string | null }
 
+
+// THE BROKER'S EMAIL, AFTER THE CLIENT HAS BEEN ANSWERED.
+//
+// It says whether the automatic document request worked, because this is the
+// only place anybody finds out - the client has already been told their
+// documents are coming.
+async function notifyBrokerOfProgress(
+  deal: any, dealId: string, stage: ProceedStage, docs: DocRequestResult | null,
+) {
+  try {
+    const brokerRecord = await resolveBrokerProfile(deal.assigned_broker)
+    if (!brokerRecord?.email) return
+    const nextStageLabel = stage === 'BC' ? 'Lending Options' : 'Compliance'
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'Simplify Finance Portal <notifications@simplifyfinance.com.au>',
+        to: brokerRecord.email,
+        cc: 'info@simplifyfinance.com.au',
+        subject: docs && !docs.ok
+          ? `ACTION NEEDED - documents not requested: ${deal.deal_name}`
+          : `${deal.deal_name} has moved to ${nextStageLabel}`,
+        html: `<p>Hi ${brokerRecord.name?.split(' ')[0] || ''},</p><p><strong>${deal.deal_name}</strong> has progressed to <strong>${nextStageLabel}</strong>.</p>${brokerDocumentLine(docs)}<p><a href="https://simplify-finance-portal.vercel.app/deals/${dealId}">Open the deal</a></p>`
+      })
+    })
+  } catch (e) {
+    // Non-fatal - the stage has already moved, which is the thing that matters.
+    console.error('[proceed] the broker notice did not send', e)
+  }
+}
+
 export async function markProceeded(dealId: string, stage: ProceedStage, by: ProceedBy) {
   // SAME REASON AS loadProceed ABOVE. The client pressing the button has no
   // session, so the update below returned "no rows" - which this function
@@ -114,10 +148,6 @@ export async function markProceeded(dealId: string, stage: ProceedStage, by: Pro
 
   const alreadyProceeded = stage === 'BC' ? !!deal.client_proceeded : !!deal.lo_client_proceeded
 
-  // What the automatic document request did, so the broker's email can say it.
-  // Null means it was never attempted - the LO step, or an already-proceeded deal.
-  let docs: DocRequestResult | null = null
-
   if (!alreadyProceeded) {
     const nowIso = new Date().toISOString()
     if (stage === 'BC') {
@@ -131,16 +161,31 @@ export async function markProceeded(dealId: string, stage: ProceedStage, by: Pro
         return { ok: false as const, error: wErr?.message || 'The deal would not save. Nothing was recorded.' }
       }
 
-      if (!deal.assigned_credit_officer) {
+      // THE CLIENT DOES NOT WAIT FOR ANY OF THIS.
+      //
+      // 24 Sep 2026. Pressing Proceed used to hold the page while three things
+      // happened: a credit officer was allocated, the documents were requested,
+      // and the broker was emailed. None of those are the client's business,
+      // and all three are ours to chase if they fail.
+      //
+      // Worse, the allocation was an HTTP request the server made TO ITS OWN
+      // FRONT DOOR, which carries nobody's login - so after the sign-in check
+      // went on that route the previous night, the client was waiting on a call
+      // that could never succeed. Fabio, 24 Sep: "took a while it worked."
+      //
+      // `after` runs work once the response has gone. The stage has already
+      // moved by this point, which is the only thing the client is waiting to
+      // hear.
+      after(async () => {
         try {
-          await fetch('https://simplify-finance-portal.vercel.app/api/allocate-credit-officer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dealId })
-          })
+          if (!deal.assigned_credit_officer) {
+            const allocation = await allocateCreditOfficer(supabase, dealId)
+            if (!allocation.ok) console.error('[proceed] credit officer not allocated:', allocation.error)
+          }
         } catch (e) {
+          console.error('[proceed] credit officer allocation threw', e)
         }
-      }
+      })
 
       // THE DOCUMENTS GO OUT NOW, NOT WHEN SOMEBODY REMEMBERS.
       //
@@ -163,14 +208,22 @@ export async function markProceeded(dealId: string, stage: ProceedStage, by: Pro
       // NON-FATAL. The stage has already moved and that is the thing the client
       // is waiting on. A failure here is reported in the broker's email rather
       // than thrown back at a client who has done nothing wrong.
-      try {
-        docs = await requestDocuments(createSupabaseAdmin(), {
-          dealId, origin: 'proceed',
-          by: 'The portal, when the client agreed to proceed',
-        })
-      } catch (e: any) {
-        docs = { ok: false, status: 500, sent: 0, error: e?.message || 'The document request did not run.' }
-      }
+      // The document request, and the broker's email that reports on it, both
+      // run after the client has been answered - see the note above. They are
+      // still in the right ORDER, because the broker's email says whether the
+      // request worked.
+      after(async () => {
+        let outcome: DocRequestResult | null = null
+        try {
+          outcome = await requestDocuments(createSupabaseAdmin(), {
+            dealId, origin: 'proceed',
+            by: 'The portal, when the client agreed to proceed',
+          })
+        } catch (e: any) {
+          outcome = { ok: false, status: 500, sent: 0, error: e?.message || 'The document request did not run.' }
+        }
+        await notifyBrokerOfProgress(deal, dealId, stage, outcome)
+      })
     } else {
       const { data: wrote, error: wErr } = await supabase.from('deals').update({
         stage: 'Compliance', last_tab: 'Compliance', lo_client_proceeded: true, lo_proceeded_at: nowIso,
@@ -179,38 +232,17 @@ export async function markProceeded(dealId: string, stage: ProceedStage, by: Pro
       if (wErr || !wrote || wrote.length === 0) {
         return { ok: false as const, error: wErr?.message || 'The deal would not save. Nothing was recorded.' }
       }
-      try {
-        await notifyCrisMoveCard(deal.deal_name, deal.assigned_broker, 'Move this deal card to Compliance (to be actioned)')
-      } catch (e) {
-      }
+      // Ours, not the client's - so after the response, like the BC branch.
+      after(async () => {
+        try {
+          await notifyCrisMoveCard(deal.deal_name, deal.assigned_broker, 'Move this deal card to Compliance (to be actioned)')
+        } catch (e) {
+          console.error('[proceed] the move-card notice did not send', e)
+        }
+        await notifyBrokerOfProgress(deal, dealId, stage, null)
+      })
     }
 
-    // Notify the assigned broker either way — they need to know the client has moved forward
-    try {
-      const brokerRecord = await resolveBrokerProfile(deal.assigned_broker)
-      if (brokerRecord?.email) {
-        const nextStageLabel = stage === 'BC' ? 'Lending Options' : 'Compliance'
-        await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            from: 'Simplify Finance Portal <notifications@simplifyfinance.com.au>',
-            to: brokerRecord.email,
-            cc: 'info@simplifyfinance.com.au',
-            // An internal email, so the file name belongs on it. It shouts when the
-            // document request failed, because this is the only place anybody
-            // finds out - the client has already been told their documents are
-            // coming.
-            subject: docs && !docs.ok
-              ? `ACTION NEEDED - documents not requested: ${deal.deal_name}`
-              : `${deal.deal_name} has moved to ${nextStageLabel}`,
-            html: `<p>Hi ${brokerRecord.name?.split(' ')[0] || ''},</p><p><strong>${deal.deal_name}</strong> has progressed to <strong>${nextStageLabel}</strong>.</p>${brokerDocumentLine(docs)}<p><a href="https://simplify-finance-portal.vercel.app/deals/${dealId}">Open the deal</a></p>`
-          })
-        })
-      }
-    } catch (e) {
-      // Non-fatal — the stage transition itself already succeeded
-    }
   }
 
   return { ok: true as const, deal, alreadyProceeded, wealthDeskLink }

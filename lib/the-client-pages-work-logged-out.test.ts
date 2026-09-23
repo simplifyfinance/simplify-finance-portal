@@ -133,6 +133,83 @@ describe('the client\'s own name, on their own page', () => {
   })
 })
 
+describe('the client is not made to wait for our work', () => {
+  const alloc = () => read('lib', 'allocate-officer.ts')
+  const route = () => read('app', 'api', 'allocate-credit-officer', 'route.ts')
+  const action = () => read('app', 'proceed', '[id]', 'actions.ts')
+  const button = () => read('app', 'proceed', '[id]', 'ProceedButton.tsx')
+
+  it('the server never calls its own front door to allocate an officer', () => {
+    // 23 Sep: a sign-in check went on that route, and a server calling itself
+    // carries nobody's login - so the client waited for a request that could
+    // never succeed, and no credit officer was allocated.
+    expect(flow()).not.toMatch(/fetch\([^)]*api\/allocate-credit-officer/)
+    expect(flow()).toContain('allocateCreditOfficer(')
+  })
+
+  it('the deciding lives in one place, used by both callers', () => {
+    expect(alloc()).toContain('export async function allocateCreditOfficer')
+    expect(route()).toContain('allocateCreditOfficer(supabase, dealId)')
+  })
+
+  it('the route still asks who is calling before allocating', () => {
+    const s = route()
+    expect(s.indexOf('auth.getUser()')).toBeLessThan(s.indexOf('allocateCreditOfficer(supabase'))
+  })
+
+  it('the allocation, the documents and the broker email all run after the answer', () => {
+    // None of the three are the client's business, and all three are ours to
+    // chase if they fail.
+    const s = flow()
+    expect(s).toContain("import { after } from 'next/server'")
+    const marked = s.slice(s.indexOf('export async function markProceeded'))
+    expect((marked.match(/after\(async \(\) =>/g) || []).length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('the deal still moves BEFORE the response, not after it', () => {
+    // The stage moving is the one thing the client is waiting to hear. If that
+    // went into `after` too, the page would confirm something that had not
+    // happened yet.
+    const s = flow()
+    const marked = s.slice(s.indexOf('export async function markProceeded'))
+    expect(marked.indexOf("client_proceeded: true")).toBeLessThan(marked.indexOf('after(async () =>'))
+  })
+})
+
+describe('the button tells the client what is happening', () => {
+  const action = () => read('app', 'proceed', '[id]', 'actions.ts')
+  const button = () => read('app', 'proceed', '[id]', 'ProceedButton.tsx')
+
+  it('the action hands back whether it saved', () => {
+    // It used to throw the answer away, so a failed save looked identical to a
+    // button that did nothing. That is how a month of them went unnoticed.
+    const s = action()
+    expect(s).toContain('ProceedState')
+    // It must LOOK at what markProceeded said. Returning a fixed "fine" is the
+    // same bug wearing a return type.
+    expect(s).toMatch(/if \(!result\.ok\)/)
+    // The window is measured from the check itself - `revalidatePath` also
+    // appears in the import line at the top, which made an earlier version of
+    // this slice run backwards and never fail.
+    const at = s.indexOf('if (!result.ok)')
+    expect(s.slice(at, at + 260)).toMatch(/return \{ ok: false/)
+  })
+
+  it('it says something while it waits', () => {
+    expect(button()).toContain('pending')
+    expect(button()).toMatch(/Just a moment/)
+  })
+
+  it('it cannot be pressed twice', () => {
+    expect(button()).toContain('disabled={pending}')
+  })
+
+  it('it shows a sentence the client can act on when it fails', () => {
+    expect(button()).toContain('state.error')
+    expect(action()).toMatch(/give us a call/)
+  })
+})
+
 describe('both steps, and the screen after the button', () => {
   it('BC and LO both come through the same two functions', () => {
     // There are two landing pages - Borrowing Capacity and Lending Options -

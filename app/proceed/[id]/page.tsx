@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { loadProceed, stageFor, hasProceeded, buildNextStepsContent } from '@/lib/proceed-flow'
 import { confirmProceed } from './actions'
+import ProceedButton from './ProceedButton'
 
 // Opening this page reads the deal and nothing more. Until the client presses
 // the button, no stage moves, no credit officer is allocated and nobody is
@@ -25,10 +26,10 @@ export default async function ProceedPage({ params, searchParams }: { params: Pr
   const clientName = String(deal.clients?.first_name || '').trim() || 'there'
   const { heading, steps } = buildNextStepsContent(stage, wealthDeskLink)
 
-  async function submit() {
-    'use server'
-    await confirmProceed(id, stage)
-  }
+  // Bound to this deal and this step, then handed to the button. The button is
+  // a client component so it can say "just a moment" while it waits and show a
+  // sentence if it fails - see ProceedButton.tsx for why that matters.
+  const submit = confirmProceed.bind(null, id, stage)
 
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', backgroundColor: '#F2E8DB', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
@@ -46,13 +47,7 @@ export default async function ProceedPage({ params, searchParams }: { params: Pr
           </p>
         </div>
 
-        {!done && (
-          <form action={submit} style={{ textAlign: 'center', marginBottom: '26px' }}>
-            <button type="submit" style={{ backgroundColor: '#2DBEFF', color: '#fff', border: 0, padding: '13px 22px', borderRadius: '8px', fontSize: '15px', fontWeight: 700, cursor: 'pointer', width: '100%' }}>
-              Yes, let&rsquo;s proceed
-            </button>
-          </form>
-        )}
+        {!done && <ProceedButton action={submit} />}
 
         <div style={{ position: 'relative' }}>
           <div style={{ position: 'absolute', left: '13px', top: '30px', bottom: '30px', width: '2px', backgroundColor: '#e0e0e0' }} />
