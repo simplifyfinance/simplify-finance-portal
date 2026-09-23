@@ -9,6 +9,7 @@ import { COMMISSION_START, isIssued, stepMonth } from '@/lib/commission-schedule
 import { reconcile, type PortalDeal, type PaidLine } from '@/lib/settlement-match'
 import { downloadCsv, stamp } from '@/lib/csv'
 import RowLimit, { STEPS } from '@/components/RowLimit'
+import { cleanLoanId } from '@/lib/loan-id'
 
 // What the portal says settled, against what SFG actually paid.
 //
@@ -83,6 +84,11 @@ export default function SettlementReconcile({ brokers }: {
         pd.push({
           id: String(deal.id),
           client: deal.client_name || deal.name || '',
+          // One per split, typed in after settlement. Checked before any of the
+          // name matching below, because it is the bank's own number and the
+          // only thing on a deal that is certain to appear on the RCTI.
+          loanIds: (Array.isArray(deal.settled_splits) ? deal.settled_splits : [])
+            .map((sp: any) => cleanLoanId(sp?.loanId)).filter(Boolean),
           brokerKey: bKey,
           lenderId: deal.lender_id ? String(deal.lender_id) : null,
           lender: nameBy.get(String(deal.lender_id)) || '—',

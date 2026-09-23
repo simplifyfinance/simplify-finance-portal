@@ -90,15 +90,20 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
     // An accepted offer after settlement is not. It stays offered right up to the
     // end, because it is the kind of thing that gets recorded late.
     .filter(s => s.key !== 'offer_accepted_at' || !deal.settled_at)
-    // SETTLED IS THE END. NOTHING COMES AFTER IT.
+    // SETTLED IS THE END - BUT A DATE CAN STILL BE MISSING BEHIND IT.
     //
     // 23 Sep 2026, Fabio: "if a deal is settled the what happens next shouldn't
-    // be there". A settled deal was still offering Lodged and Formal approval,
-    // which is not a stage anybody can reach from settlement - it is a door onto
-    // a room that is already behind you, and pressing one would write a lodged
-    // date later than the settlement.
-    .filter(() => !deal.settled_at)
+    // be there". Right: a settled deal offering Lodged and Formal approval reads
+    // as a deal still moving, and it is not.
+    //
+    // Then, an hour later: a stage nobody recorded at the time is still a hole in
+    // the history, and after settlement there was no way at all to fill it. So
+    // the forward-looking prompt goes, and the same buttons live behind "Record a
+    // date we missed" - deliberately quiet, deliberately still there.
+    .filter(s => !deal.settled_at || fillingGaps)
 
+  // Only ever true on a settled deal, and only after somebody asks for it.
+  const [fillingGaps, setFillingGaps] = useState(false)
   const [pickedKey, setPickedKey] = useState('')
   // One choice left is not a choice: go straight into it, the way it always did.
   const stage = available.length === 1
@@ -239,13 +244,28 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
       )}
 
       {available.length === 0 ? (
-        <div className="text-[13px] text-[#6E665C]">Settled. Nothing further to record here.</div>
+        <div className="text-[13px] text-[#6E665C] flex items-center gap-3 flex-wrap">
+          <span>Settled. Nothing further to record here.</span>
+          {/* Quiet on purpose. A settled deal is finished, and this is for the
+              case where somebody forgot to tick a stage on the way through -
+              not an invitation to keep moving it. */}
+          {deal.settled_at && STAGES.some(s => s.mark && !deal[s.key] && s.key !== 'settled_at') && (
+            <button onClick={() => setFillingGaps(true)}
+              className="text-[12.5px] text-[#0E8FCB] underline underline-offset-2 hover:text-[#0A7AAD]">
+              Record a date we missed
+            </button>
+          )}
+        </div>
       ) : !stage ? (
         <div className="border-t border-[#F1ECE4] pt-4">
-          <div className="text-[13px] font-semibold mb-1">What happened next?</div>
+          <div className="text-[13px] font-semibold mb-1">
+            {fillingGaps ? 'Which date was missed?' : 'What happened next?'}
+          </div>
           <div className="text-[12px] text-[#A29889] mb-3">
-            Whichever one it was. A deal can go straight to formal approval &mdash; preapproval is
-            only for a client still looking.
+            {fillingGaps
+              ? 'This deal has already settled. Recording one of these fills a gap in its history; it does not move the deal.'
+              : <>Whichever one it was. A deal can go straight to formal approval &mdash; preapproval is
+                 only for a client still looking.</>}
           </div>
           <div className="flex gap-2 flex-wrap">
             {available.map(s => (

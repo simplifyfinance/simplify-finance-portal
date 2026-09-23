@@ -1,8 +1,14 @@
 // Matching what the portal says settled against what SFG actually paid.
 //
-// There is no shared key. The lender issues the loan reference after
-// settlement, and the portal never sees it, so the only things both sides hold
-// are the client's name, the lender, and roughly when it settled. Names are
+// THERE IS ONE SHARED KEY, WHERE SOMEBODY HAS COLLECTED IT. The lender issues
+// the loan reference after settlement, and your team rings for it and types it
+// onto the deal - see lib/loan-id.ts. Where it is there, it is checked first and
+// it settles the question.
+//
+// This file used to say "the portal never sees it", which was true when it was
+// written and stopped being true when the Loan ID boxes were built. Everything
+// below is the fallback for the deals where nobody has it yet: the client's
+// name, the lender, and roughly when it settled. Names are
 // written differently on each side — "KNIGHT, DAX" on a statement against
 // "Dax Knight" in a deal — so they are compared as a bag of words rather than
 // as strings.
@@ -10,9 +16,19 @@
 // The matching is deliberately generous. A false pair is quiet and wrong; a
 // missed pair shows up as a loud row someone will check.
 
+import { sameLoanId } from './loan-id'
+
 export type PortalDeal = {
   id: string
   client: string
+  // THE LOAN IDS YOUR TEAM RINGS THE BANK FOR.
+  //
+  // One per split, typed in after settlement, and until 23 Sep 2026 read by
+  // nothing at all. Fabio, 1 Sep 2026: "once contracts are issued and loan
+  // settles our team contacts the bank and manually input the Loan ID. That
+  // figure will then match on RCTI to confirm deal has been paid." It was being
+  // collected and then ignored, while this file matched on the client's name.
+  loanIds?: string[]
   brokerKey: string
   lenderId: string | null
   lender: string
@@ -107,6 +123,23 @@ export function reconcile(deals: PortalDeal[], lines: PaidLine[]): Pairing {
     }
 
     let found =
+      // THE LOAN ID FIRST, BECAUSE IT IS THE ONLY CERTAIN ONE.
+      //
+      // Everything below this is inference: names written differently on the two
+      // sides, amounts that happen to agree, a lender recorded oddly. A loan ID
+      // is the bank's own number for the account, printed on the RCTI - if it
+      // matches, the question is answered and no guess should be allowed to
+      // overrule it.
+      //
+      // Every rule under here was written because names do not match. Thilina
+      // Dilan Dissanayake Dissanayake Mudiyanselage is not going to arrive on a
+      // statement the way it is typed on a deal.
+      (() => {
+        const ids = (deal.loanIds || []).filter(Boolean)
+        if (ids.length === 0) return null
+        const hit = anyLender.find(l => ids.some(id => sameLoanId(id, l.loanRef)))
+        return hit ? { line: hit, how: 'loan ID' } : null
+      })() ||
       find(sameLender, 'name and lender') ||
       // The amount is a strong signal on its own when the name is written oddly.
       (() => {
