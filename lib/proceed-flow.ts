@@ -1,4 +1,3 @@
-import { createSupabaseServer } from '@/lib/supabase-server'
 import { resolveBrokerProfile } from '@/lib/broker-profile'
 import { notifyCrisMoveCard } from '@/lib/salestrekker-notify'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
@@ -14,11 +13,39 @@ import type { ProceedStage } from './next-steps-copy'
 // stage, allocated a credit officer and emailed two people, all without anyone
 // having read the message. Nothing here writes; the write happens when a button
 // is pressed.
+//
+// ---------------------------------------------------------------------------
+// THE CLIENT IS NOT SIGNED IN TO ANYTHING. 23 Sep 2026.
+//
+// This read used the VISITOR'S OWN session. A client opening their link from an
+// email has no session, so row level security returned nothing, `loadProceed`
+// returned not-ok, and the page called notFound(). Every client who pressed
+// "Proceed" in a Borrowing Capacity or Lending Options email got a page saying
+// it does not exist.
+//
+// It looked fine every time it was tested, because it was tested from a browser
+// already signed in to the portal - and then the database answers.
+//
+// Measured before this was changed: 22 deals marked as proceeded, 20 of them by
+// the office doing it by hand, ONE by a client, in four weeks. The team had been
+// working around it without knowing why.
+//
+// The fault is mine and it has a date: 14 Sep 2026, when the document request
+// below was given the admin client with a comment saying the client is not
+// signed in - and the read eight lines above it was left alone.
+//
+// THE ADMIN CLIENT, AND A NARROW SELECT. The page is reached by a deal id that
+// only the client has. It must be readable without a login, which is the whole
+// point of a landing page. So it is read with the key that ignores row level
+// security - and in exchange it asks for the FOUR THINGS THE PAGE DRAWS and
+// nothing else. No fact find, no figures, no notes. If this ever needs another
+// column, that is a decision, not a convenience.
+// ---------------------------------------------------------------------------
 export async function loadProceed(dealId: string) {
-  const supabase = await createSupabaseServer()
+  const supabase = createSupabaseAdmin()
   const { data: deal, error } = await supabase
     .from('deals')
-    .select('*, clients(first_name, last_name, email)')
+    .select('id, client_proceeded, lo_client_proceeded, clients(first_name, email)')
     .eq('id', dealId)
     .single()
   if (error || !deal) return { ok: false as const }
@@ -26,7 +53,21 @@ export async function loadProceed(dealId: string) {
   const { data: settings } = await supabase.from('settings')
     .select('wealth_desk_link').eq('id', 'singleton').single()
 
-  return { ok: true as const, deal, wealthDeskLink: settings?.wealth_desk_link || '' }
+  // ONE CLIENT, NOT A LIST OF ONE.
+  //
+  // A joined table comes back as an array when the select names its columns,
+  // and as a single object when the select is `*`. Narrowing the query above
+  // changed the shape under two callers that both read `deal.clients.first_name`
+  // - the page and the email preview. Flattened here, once, so neither has to
+  // know which kind of query produced it.
+  const row = deal as any
+  const client = Array.isArray(row.clients) ? (row.clients[0] ?? null) : (row.clients ?? null)
+
+  return {
+    ok: true as const,
+    deal: { ...row, clients: client },
+    wealthDeskLink: settings?.wealth_desk_link || '',
+  }
 }
 
 // Which step this is. The link carries a hint, but a link can be old or
@@ -49,7 +90,16 @@ export function hasProceeded(deal: any, stage: ProceedStage): boolean {
 export type ProceedBy = { source: 'client' | 'office'; name?: string | null }
 
 export async function markProceeded(dealId: string, stage: ProceedStage, by: ProceedBy) {
-  const supabase = await createSupabaseServer()
+  // SAME REASON AS loadProceed ABOVE. The client pressing the button has no
+  // session, so the update below returned "no rows" - which this function
+  // correctly reported as "the deal would not save", to a client who had done
+  // nothing wrong and could do nothing about it.
+  //
+  // The office path reaches this through send-next-steps-email, which checks
+  // the signed-in user before calling it. The client path reaches it through a
+  // server action on the client's own page, which is a POST, so a link
+  // scanner cannot trigger it. Both doors are accounted for.
+  const supabase = createSupabaseAdmin()
 
   const { data: deal, error } = await supabase
     .from('deals')
