@@ -18,6 +18,14 @@ export async function POST(req: NextRequest) {
     if (!dealId) return NextResponse.json({ ok: false, error: 'Missing dealId' }, { status: 400 })
 
     const supabase = await createSupabaseServer()
+
+    // SIGNED IN, FIRST. 23 Sep 2026: this read the deal as whoever called it,
+    // so with no session the database returned nothing and it stopped at "deal
+    // not found". Safe, but only by side effect - and it sends two emails off
+    // the back of that read. Said out loud, it cannot be lost in a refactor.
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 })
+
     const { data: deal, error } = await supabase.from('deals')
       .select('deal_name, assigned_broker, assigned_credit_officer, docs_received_at, docs_assessor_due_at, docs_assessor_email_id, clients(first_name, last_name)')
       .eq('id', dealId).single()

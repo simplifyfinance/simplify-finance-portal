@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import { createSupabaseServer } from '@/lib/supabase-server'
 import { layout, PAGE, MARGIN, MASTHEAD_H } from '@/lib/assessment-form'
 import { assessmentItems } from '@/lib/assessment-content'
 import { EXPENSE_CATEGORIES } from '@/lib/handover-view'
@@ -28,6 +29,17 @@ const WHITE   = rgb(1, 1, 1)
 
 export async function POST(req: NextRequest) {
   try {
+    // SIGNED IN, FIRST.
+    //
+    // This one is handed the fact find rather than reading it, so it cannot
+    // leak a deal nobody already had. It still asks: a route that renders a
+    // client's financial position onto paper is not something to leave open to
+    // the internet, and one unguarded route makes the rule "most of them ask",
+    // which is not a rule anybody can rely on.
+    const supabase = await createSupabaseServer()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
+
     const { factFind, expenses, dealName, estimatedLoanAmount, notes } = await req.json()
 
     const items = assessmentItems({

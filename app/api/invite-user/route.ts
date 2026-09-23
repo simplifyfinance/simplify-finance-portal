@@ -1,7 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
+import { createSupabaseServer } from '@/lib/supabase-server'
+import { can } from '@/lib/permissions'
 
+// INVITING SOMEBODY INTO THE PORTAL.
+//
+// 23 Sep 2026. THIS ROUTE USED TO ASK NOBODY ANYTHING.
+//
+// It takes a role from whoever calls it and creates the account with the master
+// key, which ignores every row level security policy in the database. The
+// middleware that guards the rest of the site deliberately skips /api, so there
+// was nothing else in the way either. Anyone who knew this address existed could
+// have made themselves an account with role 'admin', is_admin true and
+// sees_all_deals true - every deal, every client, every commission.
+//
+// Checked against the live book on the night it was found: sixteen accounts, all
+// on our own domain, all people we know. The door was open. Nobody walked
+// through it.
+//
+// Two locks now, in this order, and they are not interchangeable:
+//   1. ARE YOU SIGNED IN. Without this the rest is decoration.
+//   2. ARE YOU AN ADMIN. Inviting a colleague is an admin job. A broker or a
+//      credit officer being able to create an admin is the same hole wearing a
+//      login.
+//
+// `delete-user` has done this correctly since it was written. This is the same
+// shape, deliberately - one pattern, so a reader can tell at a glance whether a
+// route is guarded.
 export async function POST(req: NextRequest) {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 })
+
+  const { data: profile } = await supabase.from('user_profiles').select('role').eq('id', user.id).single()
+  if (!can(profile?.role, 'manageTeam')) {
+    return NextResponse.json({ ok: false, error: 'Only admins can invite team members' }, { status: 403 })
+  }
+
   const { email, fullName, role, brokerKey } = await req.json()
 
   if (!email || !fullName || !role) {

@@ -10,6 +10,14 @@ export async function POST(req: NextRequest) {
 
   const supabase = await createSupabaseServer()
 
+  // SIGNED IN, FIRST. 23 Sep 2026: this route sends email and read the deal as
+  // whoever called it, so with no session the database returned nothing and it
+  // stopped at "deal not found". That is a lock made of a side effect. It is
+  // said out loud now, because the next person to change the query should not
+  // be able to remove the lock without noticing.
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 })
+
   const { data: deal, error: dealError } = await supabase
     .from('deals')
     .select('id, deal_name, assigned_broker, assigned_credit_officer')

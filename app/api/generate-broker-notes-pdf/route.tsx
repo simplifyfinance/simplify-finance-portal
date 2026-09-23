@@ -237,6 +237,21 @@ export async function POST(req: NextRequest) {
     const { dealId } = await req.json()
     if (!dealId) return NextResponse.json({ error: 'Missing dealId' }, { status: 400 })
     const supabase = await createSupabaseServer()
+
+    // SIGNED IN, FIRST.
+    //
+    // 23 Sep 2026. This route builds a document containing a client's whole
+    // financial position and hands it back. It was never open - it reads the
+    // deal as whoever called it, so with no session row level security returned
+    // nothing and it stopped at "deal not found".
+    //
+    // But that is a lock made of a side effect. Swap this query to the master
+    // key one day for convenience and the lock disappears with it, silently,
+    // and anyone with a deal id gets a client's finances as a PDF. Said out
+    // loud, it cannot be removed by accident.
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
+
     const result = await generateBrokerNotesPdfBuffer(dealId, supabase)
     if (!result) return NextResponse.json({ error: 'Deal not found' }, { status: 404 })
     return new NextResponse(new Uint8Array(result.buffer), {

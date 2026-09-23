@@ -15,6 +15,12 @@ export async function POST(req: NextRequest) {
     if (!dealId || !trigger) return NextResponse.json({ ok: false, error: 'Missing dealId or trigger' }, { status: 400 })
 
     const supabase = await createSupabaseServer()
+
+    // SIGNED IN, FIRST. 23 Sep 2026: the read below ran as the caller, so a
+    // stranger got nothing - safe by side effect. This route pushes a deal to
+    // SalesTrekker and sends notifications, so it asks explicitly.
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 })
     const { data: deal, error } = await supabase
       .from('deals')
       // push_answers is what the broker was asked on the way out, and

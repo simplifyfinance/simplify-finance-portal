@@ -26,6 +26,14 @@ export async function POST(req: NextRequest) {
     if (!dealId || !target) return NextResponse.json({ ok: false, error: 'Missing dealId or target' }, { status: 400 })
 
     const supabase = await createSupabaseServer()
+
+    // SIGNED IN, FIRST. 23 Sep 2026: safe only because the read below ran as
+    // the caller, so a stranger got nothing back. This route MOVES A DEAL
+    // BACKWARDS through its stages - it should say out loud that it only does
+    // that for somebody the portal knows.
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 })
+
     const { data: deal, error } = await supabase.from('deals')
       .select('*, clients(first_name, last_name)').eq('id', dealId).single()
     if (error || !deal) return NextResponse.json({ ok: false, error: 'Deal not found' }, { status: 404 })
