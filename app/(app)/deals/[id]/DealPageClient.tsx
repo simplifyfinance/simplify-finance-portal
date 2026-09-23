@@ -33,6 +33,7 @@ import DocumentsBox from '@/components/DocumentsBox'
 import BrokerAssignment from './BrokerAssignment'
 import TestDealBand from '@/components/TestDealBand'
 import DealName from '@/components/DealName'
+import AssessmentFormButton from '@/components/AssessmentFormButton'
 import { splitOnCommonStart } from '@/lib/same-clients'
 import { useOtherDeals } from '@/components/useOtherDeals'
 
@@ -319,6 +320,10 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2h5l3 3v9H4z"/><path d="M9 2v3h3"/></svg>
                 Summary
               </a>
+              {/* The Personal Assessment Form - the paper the team saves into
+                  the client's folder at settlement, filled in and still
+                  typeable. See components/AssessmentFormButton.tsx. */}
+              <AssessmentFormButton deal={dealData} />
               <button onClick={cloneThisDeal} disabled={cloning} className="text-xs text-[#6E665C] bg-[#FAF7F2] px-3.5 py-2 hover:bg-[#F4EEE4] transition inline-flex items-center gap-2 disabled:opacity-40">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="9" rx="1.4"/><path d="M11 5V3.4A1.4 1.4 0 0 0 9.6 2H4.4A1.4 1.4 0 0 0 3 3.4v7.2A1.4 1.4 0 0 0 4.4 12H5"/></svg>
                 {cloning ? 'Cloning...' : 'Clone'}
