@@ -16,7 +16,13 @@ export default async function ProceedPage({ params, searchParams }: { params: Pr
   const { deal, wealthDeskLink } = result
   const stage = stageFor(deal, from)
   const done = hasProceeded(deal, stage)
-  const clientName = deal.clients?.first_name || 'there'
+  // TRIMMED, BECAUSE THE NAME COMES FROM A BOX SOMEBODY TYPED IN.
+  //
+  // 23 Sep 2026: a trailing space on a first name printed "Ready to go ahead,
+  // Hameed ?" and "Great news, Hameed !" - the space is invisible in the
+  // database and obvious on the client's screen. Fixed here rather than in the
+  // data, because the next name typed with a space would do it again.
+  const clientName = String(deal.clients?.first_name || '').trim() || 'there'
   const { heading, steps } = buildNextStepsContent(stage, wealthDeskLink)
 
   async function submit() {

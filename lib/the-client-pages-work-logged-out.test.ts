@@ -110,6 +110,29 @@ describe('reading without a login costs as little as possible', () => {
   })
 })
 
+describe('the client\'s own name, on their own page', () => {
+  it('a name typed with a trailing space does not print one', () => {
+    // "Ready to go ahead, Hameed ?" and "Great news, Hameed !" - invisible in
+    // the database, obvious on the client's screen. Trimmed where it is used,
+    // not cleaned up in the data, because the next name typed with a space
+    // would do it again.
+    const page = read('app', 'proceed', '[id]', 'page.tsx')
+    expect(page).toMatch(/String\(deal\.clients\?\.first_name \|\| ''\)\.trim\(\)/)
+  })
+
+  it('falls back to a greeting rather than a blank', () => {
+    const page = read('app', 'proceed', '[id]', 'page.tsx')
+    expect(page).toContain("|| 'there'")
+  })
+
+  it('both greetings use the same trimmed name', () => {
+    // One of the two was fixed once before and the other was not.
+    const page = read('app', 'proceed', '[id]', 'page.tsx')
+    expect(page).toContain('Great news, ${clientName}!')
+    expect(page).toContain('Ready to go ahead, ${clientName}?')
+  })
+})
+
 describe('both steps, and the screen after the button', () => {
   it('BC and LO both come through the same two functions', () => {
     // There are two landing pages - Borrowing Capacity and Lending Options -
