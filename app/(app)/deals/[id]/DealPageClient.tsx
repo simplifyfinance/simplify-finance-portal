@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { brokerLabel } from '@/lib/broker-key'
 import DealPresence from '@/components/DealPresence'
 import DealHistory from '@/components/DealHistory'
@@ -31,6 +32,9 @@ import { isWithLender } from '@/lib/deal-phase'
 import DocumentsBox from '@/components/DocumentsBox'
 import BrokerAssignment from './BrokerAssignment'
 import TestDealBand from '@/components/TestDealBand'
+import DealName from '@/components/DealName'
+import { splitOnCommonStart } from '@/lib/same-clients'
+import { useOtherDeals } from '@/components/useOtherDeals'
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
   const validStages = ['FactFind', 'Statements', 'BC', 'LO', 'Compliance']
@@ -89,6 +93,9 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   // also what signs a save, so the next person to collide with it can be told a
   // name rather than "somebody else" - see docs/deal-last-saved-by.sql.
   const { notes, alerts, reload: reloadFile } = useDealFile(deal.id)
+  // ANOTHER DEAL FOR THE SAME PEOPLE. See components/useOtherDeals.ts - 23 Sep
+  // 2026, two Hameed deals whose names matched for 42 characters.
+  const otherDeals = useOtherDeals(dealData)
   const [me, setMe] = useState<{ id: string | null; name: string }>({ id: null, name: '' })
   // Kept apart from the name: who may look at previous versions is decided by
   // address, not by job title. See canSeeHistory in lib/permissions.ts.
@@ -215,7 +222,8 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           ) : (
             <div className="flex items-center gap-2 mb-1">
               <div className="flex items-center gap-3">
-                <div className="text-lg font-semibold">{dealData.deal_name}</div>
+                <DealName className="text-lg font-semibold" name={dealData.deal_name}
+                  others={otherDeals.map(d => String(d.deal_name || ''))} />
                 <SaveIndicator status={saveStatus} />
                 {/* Next to the autosave line, because that is where somebody
                     looks the moment they wonder what happened to their work.
@@ -235,6 +243,24 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           {/* Only there when a save has actually gone wrong, so it cannot push the
               form around on a normal day. */}
           <SaveIndicatorNote status={saveStatus} />
+          {/* THE OTHER DEAL THESE CLIENTS HAVE, NAMED AND ONE CLICK AWAY.
+              This is the line that would have ended 23 Sep 2026 in ten seconds
+              instead of forty minutes. It shows only the part of the other
+              name that differs, because the rest is the name above it. */}
+          {otherDeals.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap mt-1.5 mb-1">
+              <span className="text-[9.5px] font-bold tracking-wider uppercase text-[#7BB8D2]">Also</span>
+              {otherDeals.map(o => {
+                const label = splitOnCommonStart(String(o.deal_name || ''), [String(dealData.deal_name || '')]).tail
+                return (
+                  <Link key={o.id} href={`/deals/${o.id}`}
+                    className="text-[12.5px] font-semibold text-[#0E5E86] bg-[#F4FAFE] border border-[#CDEBF8] rounded-lg px-2.5 py-1 hover:bg-[#E8F5FD]">
+                    {label} <span className="text-[#7BB8D2]">&rarr;</span>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
           {/* Client and loan type are not repeated here - the deal name already contains both. */}
           <div className="flex gap-2 items-center flex-wrap">
             {/* CHANGEABLE, like the credit officer beside it. Until 17 Sep 2026

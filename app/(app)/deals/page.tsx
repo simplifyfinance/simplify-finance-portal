@@ -1,5 +1,5 @@
 'use client'
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { dealMatches } from '@/lib/deal-search'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { Plus, Search, Briefcase, Trash2, Copy } from 'lucide-react'
@@ -15,12 +15,17 @@ import DealBoard from '@/components/DealBoard'
 import { useBoardSettings } from '@/lib/use-board-settings'
 import type { Alert } from '@/lib/deal-notes'
 import { realDealsOnly, testDealsOnly } from '@/lib/test-deal'
+import DealName from '@/components/DealName'
+import { otherDealsForSameClients } from '@/lib/same-clients'
+
 type Client = { id: string; first_name: string; last_name: string; email?: string; phone?: string }
 type Deal = {
   id: string; deal_name: string; deal_type: string; stage: string; status: string; assigned_broker: string;
   created_at: string; clients: Client; client_proceeded?: boolean
   bc_completed_at?: string | null; lo_completed_at?: string | null; compliance_completed_at?: string | null
   is_test?: boolean | null
+  client_id?: string | null
+  fact_find_data?: any
 }
 export default function DealsPage() {
   const browser = createSupabaseBrowser()
@@ -43,6 +48,16 @@ export default function DealsPage() {
       })
   }, [])
   const [deals, setDeals] = useState<Deal[]>([])
+  // ANOTHER DEAL FOR THE SAME PEOPLE.
+  //
+  // The list already holds every deal this person may see, so this costs a pass
+  // over an array rather than a query. 23 Sep 2026: two Hameed deals sat
+  // together in this list and the wrong one was opened. See lib/same-clients.ts.
+  const twins = useMemo(() => {
+    const out = new Map<string, Deal[]>()
+    for (const d of deals) out.set(d.id, otherDealsForSameClients(d as any, deals as any) as any)
+    return out
+  }, [deals])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
@@ -407,7 +422,15 @@ export default function DealsPage() {
                   {deal.clients?.first_name?.[0]}{deal.clients?.last_name?.[0]}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium">{deal.deal_name}</div>
+                  <div className="text-sm font-medium flex items-center gap-2 min-w-0">
+                    <DealName className="truncate" name={deal.deal_name}
+                      others={(twins.get(deal.id) || []).map(o => String(o.deal_name || ''))} />
+                    {(twins.get(deal.id) || []).length > 0 && (
+                      <span className="text-[10px] font-bold tracking-[.05em] uppercase text-[#B08A3E] bg-[#FFF8E8] border border-[#F2E2BE] rounded px-1.5 py-px flex-shrink-0">
+                        {(twins.get(deal.id) || []).length + 1} deals
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-gray-400 mt-0.5">
                     {deal.clients?.first_name} {deal.clients?.last_name}
                     {deal.deal_type && <> · {deal.deal_type}</>}
