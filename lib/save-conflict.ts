@@ -430,13 +430,36 @@ async function attempt(req: SaveRequest, mySeq: number, lastResort = false): Pro
     }
   }
 
+  // WHOSE SAVE THIS IS, EVEN ON THE FIRST KEYSTROKE.
+  //
+  // 23 Sep 2026. The screen learns who you are through two calls that finish
+  // one after the other - the session, then the profile row that holds your
+  // full name. A save that fires before both land carries no name, so the
+  // record and every version kept from it say nobody did it.
+  //
+  // It is always the FIRST save after a tab opens, which is precisely the one
+  // somebody goes looking for when they want to know who touched a deal. Today
+  // was that day.
+  //
+  // So the name is resolved here instead of trusted from the screen. It costs
+  // one call, only when the screen has not got there yet, and it can never stop
+  // a save: a label is not worth blocking somebody's work over.
+  let by = savedBy
+  if (!by?.name) {
+    try {
+      const { data: who } = await supabase.auth.getUser()
+      const u = who?.user
+      if (u) by = { id: by?.id || u.id || null, name: by?.name || u.email || '' }
+    } catch { /* a save never fails over a name */ }
+  }
+
   // KEEP WHAT WE ARE ABOUT TO REPLACE. Before the write, never after - a copy
   // taken afterwards is a copy of the wrong thing. See lib/deal-history.ts.
   if (!readError) {
     const previous = current?.[column] ?? null
     if (shouldKeep(previous, toWrite, guard.history, Date.now())) {
       guard.history.lastKeptAt = Date.now()
-      await keepVersion(supabase, dealId, column, previous, savedBy)
+      await keepVersion(supabase, dealId, column, previous, by)
     }
   }
 
@@ -444,10 +467,10 @@ async function attempt(req: SaveRequest, mySeq: number, lastResort = false): Pro
   if (seenVersion !== undefined) fields.row_version = seenVersion + 1
   // Sign it. See docs/deal-last-saved-by.sql - this is the whole reason the next
   // person can be told a name instead of "somebody else".
-  if (savedBy?.name) {
-    fields.last_saved_name = savedBy.name
+  if (by?.name) {
+    fields.last_saved_name = by.name
     fields.last_saved_tab = tabLabel
-    if (savedBy.id) fields.last_saved_by = savedBy.id
+    if (by.id) fields.last_saved_by = by.id
   }
 
   let write = supabase.from('deals').update(fields).eq('id', dealId)

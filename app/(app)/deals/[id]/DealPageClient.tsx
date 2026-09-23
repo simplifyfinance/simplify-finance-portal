@@ -98,6 +98,14 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
       const u = data?.user
       if (!u) return
       setMyEmail(u.email || '')
+      // THE ADDRESS FIRST, THE FULL NAME A MOMENT LATER.
+      //
+      // Waiting for the profile row before knowing who this is left a window
+      // where a save was recorded against nobody - see lib/save-conflict.ts.
+      // An email address is a worse label than a name and a far better one
+      // than nothing, so it goes in straight away and is replaced the instant
+      // the real name arrives.
+      setMe({ id: u.id, name: u.email || '' })
       supabase.from('user_profiles').select('full_name').eq('id', u.id).single()
         .then(({ data: p }) => setMe({ id: u.id, name: (p as any)?.full_name || u.email || '' }))
     })
