@@ -39,7 +39,40 @@ export default function PositionAtSettlement({ deal, onDone }: {
   // treated as a failed save - see the note where it is set.
   const [historyWarning, setHistoryWarning] = useState('')
 
-  if (linked.length === 0) return null
+  // NOBODY TO RECORD AGAINST - AND IT SAYS SO.
+  //
+  // 23 Sep 2026. This used to draw nothing at all when no applicant was linked
+  // to a client record, which is the same fault this portal has now had in
+  // three different costumes: deciding not to do something and saying nothing.
+  // Fabio settled a deal on staging, saw no prompt, and had no way of knowing
+  // whether the feature was broken or the deal was.
+  //
+  // It happens on deals made before 22 Sep, when a new client's applicant was
+  // never given the id of the client record created alongside it. The backfill
+  // in docs/client-link-backfill.sql fixes a book; this explains the one deal
+  // in front of you.
+  if (linked.length === 0) {
+    return (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl p-6 w-[480px] shadow-xl">
+          <div className="text-[15.5px] font-semibold mb-1">Nothing to record against</div>
+          <p className="text-[12.5px] text-gray-500 leading-relaxed mb-4">
+            The deal has settled and that is saved. But no applicant on it is linked to a
+            client record, so there is nowhere to write what they own.
+            {all.length > 0 && ' This happens on deals created before 22 September.'}
+            {' '}Nothing is lost &mdash; once the applicant is linked, settle-time figures can be
+            recorded again from this screen.
+          </p>
+          <div className="flex justify-end">
+            <button onClick={onDone}
+              className="px-4 py-2 text-[12.5px] bg-[#343333] text-white rounded-lg font-semibold hover:bg-[#2a2a2a]">
+              Understood
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   async function save() {
     setBusy(true); setErr('')

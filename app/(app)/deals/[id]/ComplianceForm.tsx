@@ -1435,38 +1435,21 @@ Use the security address exactly as recorded. On a pre-approval it will already 
     }
   }
 
-  const [showPositionPrompt, setShowPositionPrompt] = useState(false)
-  const [positionChoices, setPositionChoices] = useState<Record<string, boolean>>({})
-  const linkableApplicants = ((deal.fact_find_data || {}).applicants || []).filter((a: any) => a.clientId)
-
-  async function updateClientPosition(applicant: any) {
-    const ffLive = deal.fact_find_data || {}
-    const ownedProperties = (ffLive.properties || []).filter((p: any) => !!p.ownership?.[applicant.id])
-    const ownedLiabilities = (ffLive.liabilities || []).filter((l: any) => !!l.ownership?.[applicant.id])
-    const ownedAssets = (ffLive.assets || []).filter((a: any) => !!a.ownership?.[applicant.id])
-    return await checkedWrite(supabase.from('clients').update({
-      position_properties: ownedProperties,
-      position_liabilities: ownedLiabilities,
-      position_assets: ownedAssets,
-      position_updated_at: new Date().toISOString(),
-      position_updated_from_deal_id: deal.id
-    }).eq('id', applicant.clientId), `${applicant.firstName || 'That applicant'}'s position`)
-  }
-
-  async function finalizePush() {
-    // The position carried onto the client record is what the next deal for this
-    // person starts from. Failing silently here means the next fact find quietly
-    // begins from stale figures, so compliance is NOT marked complete until it
-    // has actually been written.
-    for (const applicant of linkableApplicants) {
-      if (positionChoices[applicant.id]) {
-        const problem = await updateClientPosition(applicant)
-        if (problem) { alert(problem + ' Compliance has not been marked complete.'); return }
-      }
-    }
-    setShowPositionPrompt(false)
-    markComplianceComplete()
-  }
+  // THE CLIENT'S POSITION IS NOT RECORDED HERE, AND NO LONGER ASKS.
+  //
+  // 23 Sep 2026, Fabio: "this question only comes out in 2 occasions - we mark
+  // the deal as lost, meaning we have all updated financials and for whatever
+  // reason the deal doesn't settle, so assets and liabilities (excluding the new
+  // loan) should be the new position of the client - OR when the deal settles,
+  // meaning assets and liabilities are updated WITH the new loan."
+  //
+  // Compliance is neither. It happens weeks before lodgement, the figures are
+  // still moving, and the loan does not exist yet. A capture here recorded a
+  // half-finished picture and stamped it as current, and because it ran on every
+  // push it was the one most likely to be the newest thing on a client record.
+  //
+  // The two that remain are components/PositionAtSettlement.tsx and the close
+  // panel in CloseDeal.tsx. Both go through lib/client-position.ts.
 
   // Empty boxes first, then what the writing itself says, then what credit needs
   // to be told. Three gates, in the order somebody can actually act on them.
@@ -1508,12 +1491,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
     setPushing(false)
     if (problem) { alert(problem + ' Nothing has been pushed.'); return }
     setShowPushForm(false)
-    if (linkableApplicants.length > 0) {
-      setPositionChoices(Object.fromEntries(linkableApplicants.map((a: any) => [a.id, true])))
-      setShowPositionPrompt(true)
-    } else {
-      markComplianceComplete()
-    }
+    markComplianceComplete()
   }
 
   const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]"
@@ -2442,12 +2420,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
               </button>
               <button onClick={() => {
                 setShowValidation(false)
-                if (linkableApplicants.length > 0) {
-                  setPositionChoices(Object.fromEntries(linkableApplicants.map((a: any) => [a.id, true])))
-                  setShowPositionPrompt(true)
-                } else {
-                  markComplianceComplete()
-                }
+                markComplianceComplete()
               }}
                 className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a]">
                 Proceed anyway
@@ -2499,37 +2472,6 @@ Use the security address exactly as recorded. On a pre-approval it will already 
           onCancel={() => setShowPushForm(false)} />
       )}
 
-      {showPositionPrompt && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-[460px] shadow-xl">
-            <div className="text-base font-semibold mb-1 text-[#343333]">Update client financial position?</div>
-            <p className="text-sm text-gray-500 mb-4">This refreshes each applicant's saved assets, liabilities, and properties based on this deal's Fact Find.</p>
-            <div className="flex flex-col gap-3 mb-5">
-              {linkableApplicants.map((a: any) => (
-                <div key={a.id} className="flex justify-between items-center bg-gray-50 rounded-lg px-4 py-3">
-                  <span className="text-sm font-medium text-[#343333]">{a.firstName} {a.lastName}</span>
-                  <div className="flex gap-2">
-                    <button onClick={() => setPositionChoices(prev => ({ ...prev, [a.id]: true }))}
-                      className={`px-3 py-1 text-xs rounded-lg border ${positionChoices[a.id] ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>
-                      Yes
-                    </button>
-                    <button onClick={() => setPositionChoices(prev => ({ ...prev, [a.id]: false }))}
-                      className={`px-3 py-1 text-xs rounded-lg border ${positionChoices[a.id] === false ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>
-                      No
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-end">
-              <button onClick={finalizePush}
-                className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a]">
-                Continue
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       </>)}
     </div>
   )

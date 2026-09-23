@@ -41,14 +41,20 @@ describe('a new deal links its applicants to their client records', () => {
   })
 })
 
-describe('the two places that write a position still read that field', () => {
-  // If either of these stops gating on clientId the test above stops mattering,
-  // and whoever changed it should find out here rather than in six weeks.
-  const compliance = readFileSync('app/(app)/deals/[id]/ComplianceForm.tsx', 'utf8')
+// WHERE THIS FIELD IS ACTUALLY USED.
+//
+// If either of these stops reading clientId the test above stops mattering, and
+// whoever changed it should find out here rather than in six weeks.
+//
+// 23 Sep 2026: the compliance push used to be one of these and is not any more.
+// A client's position is recorded at settlement, or when a deal is closed, and
+// nowhere else - see lib/settlement-records-the-client.test.ts.
+describe('the two places that write a position read that field', () => {
+  const settlement = readFileSync('components/PositionAtSettlement.tsx', 'utf8')
   const close = readFileSync('app/(app)/deals/[id]/CloseDeal.tsx', 'utf8')
 
-  it('the compliance push reads it', () => {
-    expect(compliance).toMatch(/applicants \|\| \[\]\)\.filter\(\(a: any\) => a\.clientId\)/)
+  it('the settlement prompt reads it', () => {
+    expect(settlement).toMatch(/all\.filter\(a => a\.clientId\)/)
   })
 
   it('the close panel reads it', () => {

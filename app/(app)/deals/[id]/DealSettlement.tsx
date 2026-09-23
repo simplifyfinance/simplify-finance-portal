@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import LoanIds from '@/components/LoanIds'
+import CurrencyInput from './CurrencyInput'
 import PositionAtSettlement from '@/components/PositionAtSettlement'
 import { loanIdStatus } from '@/lib/loan-id'
 import { stepLabel } from '@/lib/settlement'
@@ -89,6 +90,14 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
     // An accepted offer after settlement is not. It stays offered right up to the
     // end, because it is the kind of thing that gets recorded late.
     .filter(s => s.key !== 'offer_accepted_at' || !deal.settled_at)
+    // SETTLED IS THE END. NOTHING COMES AFTER IT.
+    //
+    // 23 Sep 2026, Fabio: "if a deal is settled the what happens next shouldn't
+    // be there". A settled deal was still offering Lodged and Formal approval,
+    // which is not a stage anybody can reach from settlement - it is a door onto
+    // a room that is already behind you, and pressing one would write a lodged
+    // date later than the settlement.
+    .filter(() => !deal.settled_at)
 
   const [pickedKey, setPickedKey] = useState('')
   // One choice left is not a choice: go straight into it, the way it always did.
@@ -274,15 +283,30 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
                   const amtChanged = p && num(s.amount) !== num(p.amount)
                   const typChanged = p && (s.type || '') !== (p.type || '')
                   return (
-                    <div key={i} className="grid grid-cols-[1.4fr_1fr_0.7fr_1fr] gap-2 items-center">
+                    <div key={i} className="grid grid-cols-[1.4fr_1fr_0.7fr_1fr_auto] gap-2 items-center">
                       <input className={IN} value={s.label} onChange={e => setSplit(i, 'label', e.target.value)} placeholder="Label" />
-                      <input className={IN + (amtChanged ? ' bg-[#FFF8EC] border-[#F0DCB4]' : '')} value={s.amount}
-                        onChange={e => setSplit(i, 'amount', e.target.value)} placeholder="Amount" />
+                      {/* A LOAN AMOUNT WITH NO COMMAS IN IT. Every other money box
+                          in the portal groups its thousands; this one did not, so
+                          100000 and 1000000 read the same at a glance - on the box
+                          that decides what gets reported as settled. */}
+                      <CurrencyInput className={IN + (amtChanged ? ' bg-[#FFF8EC] border-[#F0DCB4]' : '')} value={s.amount}
+                        onChange={v => setSplit(i, 'amount', v)} placeholder="Amount" />
                       <input className={IN} value={s.rate} onChange={e => setSplit(i, 'rate', e.target.value)} placeholder="Rate" />
                       <select className={IN + (typChanged ? ' bg-[#FFF8EC] border-[#F0DCB4]' : '')} value={s.type}
                         onChange={e => setSplit(i, 'type', e.target.value)}>
                         {TYPES.map(t => <option key={t}>{t}</option>)}
                       </select>
+                      {/* REMOVABLE UNTIL IT IS RECORDED, AND NOT AFTER.
+                          A split typed by mistake needs a way out. A split that has
+                          been recorded at a stage is what completed, and quietly
+                          deleting one would change what the commission is worked
+                          out from - so once the stage is written it is read only
+                          and this is not drawn at all. */}
+                      <button onClick={() => setSplits(splits.filter((_, j) => j !== i))}
+                        title="Remove this split"
+                        className="text-[#A29889] hover:text-[#B91C1C] text-[15px] leading-none px-1.5">
+                        &times;
+                      </button>
                     </div>
                   )
                 })}

@@ -2,6 +2,10 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { checkedWrite } from '@/lib/checked-write'
+import {
+  positionFor, wouldEmptyTheClient, emptyRefusal, applicantName,
+} from '@/lib/client-position'
 
 export const CLOSE_REASONS: { value: string; label: string; needsDate?: boolean }[] = [
   { value: 'no_response',           label: 'No response from client' },
@@ -48,20 +52,55 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
     setReason(''); setNote(''); setSavePosition(true); setAction(''); setDue(''); setError('')
   }
 
+  // WHAT THEY OWN, WITH NO NEW LOAN ON IT, BECAUSE NO LOAN HAPPENED.
+  //
+  // One of the two moments a client's position is recorded. The other is
+  // settlement, which is the same figures WITH the loan we wrote. Fabio,
+  // 23 Sep 2026. Compliance used to be a third and no longer is - the figures
+  // are still moving there and the loan does not exist.
+  //
+  // Everything below goes through lib/client-position.ts, so this and the
+  // settlement capture cannot drift apart about who owns what.
   async function writePositions() {
     const ff = deal?.fact_find_data || {}
+    const { data: who } = await supabase.auth.getUser()
+
     for (const applicant of linked) {
-      // As declared. No loan is added, because no loan happened.
-      const owned = (list: any[]) => (list || []).filter((x: any) => !!x?.ownership?.[applicant.id])
-      const { data, error: e } = await supabase.from('clients').update({
-        position_properties: owned(ff.properties),
-        position_liabilities: owned(ff.liabilities),
-        position_assets: owned(ff.assets),
+      const next = positionFor(ff, applicant)
+
+      // A fact find where nobody assigned anything produces three empty lists.
+      // Written over a full client record it looks like a fresh, accurate, empty
+      // position with today's date on it - believable, and wrong.
+      const { data: existing } = await supabase.from('clients')
+        .select('position_properties, position_liabilities, position_assets')
+        .eq('id', applicant.clientId).maybeSingle()
+      if (wouldEmptyTheClient(existing as any, next)) {
+        throw new Error(emptyRefusal(applicantName(applicant), existing))
+      }
+
+      // Kept, so "what did they look like before" has an answer. Checked but not
+      // fatal: losing the deal's close over a history copy would be the worse
+      // trade. See components/PositionAtSettlement.tsx for the same reasoning.
+      const historyProblem = await checkedWrite(supabase.from('client_positions').insert({
+        client_id: applicant.clientId,
+        deal_id: deal.id,
+        captured_from: 'deal closed',
+        properties: next.properties,
+        liabilities: next.liabilities,
+        assets: next.assets,
+      }), `The history of ${applicantName(applicant)}'s position`)
+      if (historyProblem) console.error('[close deal]', historyProblem)
+
+      const problem = await checkedWrite(supabase.from('clients').update({
+        position_properties: next.properties,
+        position_liabilities: next.liabilities,
+        position_assets: next.assets,
         position_updated_at: new Date().toISOString(),
         position_updated_from_deal_id: deal.id,
-      }).eq('id', applicant.clientId).select('id')
-      if (e) throw new Error('Saving ' + (applicant.name || 'a client') + "'s position: " + e.message)
-      if (!data || data.length === 0) throw new Error("A client's position did not reach the database.")
+        position_source: 'deal closed',
+        position_updated_by: who?.user?.id || null,
+      }).eq('id', applicant.clientId), `${applicantName(applicant)}'s position`)
+      if (problem) throw new Error(problem)
     }
   }
 

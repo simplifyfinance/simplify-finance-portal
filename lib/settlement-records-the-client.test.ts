@@ -72,6 +72,48 @@ describe('what the save will and will not do', () => {
   })
 })
 
+// TWO MOMENTS. NOT THREE.
+//
+// Fabio, 23 Sep 2026: "this question only comes out in 2 occasions - we mark the
+// deal as lost, meaning we have all updated financials and for whatever reason
+// the deal doesn't settle, so assets and liabilities (excluding the new loan)
+// should be the new position of the client - OR when the deal settles, meaning
+// assets and liabilities are updated WITH the new loan."
+//
+// Compliance was a third, and the wrong one: weeks before lodgement, figures
+// still moving, no loan in existence - and because it ran on every push it was
+// the most likely thing to be the newest record on a client.
+describe('a client position is recorded at exactly two moments', () => {
+  const compliance = readFileSync('app/(app)/deals/[id]/ComplianceForm.tsx', 'utf8')
+  const close = readFileSync('app/(app)/deals/[id]/CloseDeal.tsx', 'utf8')
+
+  it('the compliance push does not ask, and does not write', () => {
+    expect(compliance, 'the compliance push is recording positions again')
+      .not.toContain('showPositionPrompt')
+    expect(compliance, 'compliance writes a client position again')
+      .not.toContain('position_updated_at')
+  })
+
+  it('closing a deal records it, with no loan on it', () => {
+    expect(close).toContain("position_source: 'deal closed'")
+    expect(close).toContain("captured_from: 'deal closed'")
+  })
+
+  it('closing a deal uses the same rule as settlement, not its own copy', () => {
+    expect(close).toContain("from '@/lib/client-position'")
+    expect(close).toContain('positionFor(ff, applicant)')
+    // The old version filtered ownership by hand with !!ownership[id], which
+    // read '0' as ownership and dropped anything nobody had ticked.
+    expect(close, 'the close panel is working out ownership for itself again')
+      .not.toContain('!!x?.ownership?.[applicant.id]')
+  })
+
+  it('closing a deal is checked, and will not empty a client', () => {
+    expect(close).toContain('checkedWrite(')
+    expect(close).toContain('wouldEmptyTheClient(')
+  })
+})
+
 describe('the rule it all rests on', () => {
   it('nought per cent is not ownership', () => {
     // '0' is a truthy string in Javascript, so the old `!!ownership[id]` handed
