@@ -151,9 +151,14 @@ describe('the premium typed in twice', () => {
 describe('everything reads the one answer', () => {
   const read = (f: string) => readFileSync(f, 'utf8')
 
-  it('the handover sheet and the summary PDF print the same rows', () => {
-    for (const f of ['lib/handover-view.ts', 'app/api/generate-summary-pdf/route.tsx']) {
-      expect(read(f), `${f} builds its own LMI rows`).toContain('loanFigureRows(bc, loanAmount')
+  it('the handover sheet and the fact find print the same rows', () => {
+    // 24 Sep 2026: the fact find PDF became a fillable form, and its content
+    // moved out of the route into lib/factfind-form-content.ts.
+    expect(read('lib/handover-view.ts'), 'the handover builds its own LMI rows')
+      .toContain('loanFigureRows(bc, loanAmount')
+    expect(read('lib/factfind-form-content.ts'), 'the fact find builds its own LMI rows')
+      .toContain('loanFigureRows(bc, input.loanAmount')
+    for (const f of ['lib/handover-view.ts', 'lib/factfind-form-content.ts']) {
       expect(read(f).replace(/\/\/[^\n]*/g, ''), `${f} still hand-writes an LMI row`)
         .not.toMatch(/\['LMI', money\(bc\.lmi\)\]/)
     }

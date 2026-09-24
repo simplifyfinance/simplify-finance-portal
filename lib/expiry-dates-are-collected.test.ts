@@ -40,14 +40,19 @@ describe('a loan against a property records when its terms run out', () => {
 })
 
 describe('the documents that print a loan print both dates', () => {
-  for (const [what, file] of [
-    ['the deal summary PDF', 'app/api/generate-summary-pdf/route.tsx'],
-    ['the handover', 'lib/handover-view.ts'],
-  ]) {
-    it(`${what} shows the fixed rate expiry`, () => {
-      const src = readFileSync(file, 'utf8')
-      expect(src, `${what} prints the interest-only date and not the fixed one`)
-        .toContain("['Fixed rate expires', dateAU(l.fixedRateExpiryDate)]")
-    })
-  }
+  it('the handover shows the fixed rate expiry', () => {
+    const src = readFileSync('lib/handover-view.ts', 'utf8')
+    expect(src, 'the handover prints the interest-only date and not the fixed one')
+      .toContain("['Fixed rate expires', dateAU(l.fixedRateExpiryDate)]")
+  })
+
+  // 24 Sep 2026: the fact find PDF became a fillable form and its rows moved to
+  // lib/factfind-form-content.ts. Same two dates, one box each.
+  it('the fact find form shows both expiry dates, each in its own box', () => {
+    const src = readFileSync('lib/factfind-form-content.ts', 'utf8')
+    expect(src).toContain("'fixed rate expires'")
+    expect(src).toContain('fixedRateExpiryDate')
+    expect(src).toContain("'interest only expires'")
+    expect(src).toContain('interestOnlyExpiryDate')
+  })
 })
