@@ -167,7 +167,11 @@ describe('one copy of the arithmetic, in both places that use it', () => {
     const src = await read('../app/api/generate-email/route.ts')
     // Passing d.lmiTreatment handed Option 1's answer to every other column.
     expect(src).not.toContain('lmiLines(opt, d.lmiTreatment')
-    expect((src.match(/lmiLines\(opt, opt\.lmiTreatment/g) || []).length).toBe(3)
+    // The equity release column has no purchase breakdown to fold it into, so
+    // it still prints the premium under its LVR - with its own answer.
+    expect((src.match(/lmiLines\(opt, opt\.lmiTreatment/g) || []).length).toBe(1)
+    // The two purchase columns carry it inside the breakdown instead.
+    expect((src.match(/lmiTreatment: opt\.lmiTreatment/g) || []).length).toBe(2)
   })
 
   it('the email route works the alternative repayment out through the shared function', async () => {

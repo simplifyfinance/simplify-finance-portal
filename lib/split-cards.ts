@@ -24,6 +24,7 @@
 // to inventing its own answer.
 
 import { money, readMoney } from './money'
+import { clientLoan } from './lmi'
 import { estimatedRepayment } from './email-figures'
 import { showsOwnLoanAmount } from './email-amounts'
 import { monthlyRepaymentIO, monthlyRepaymentPI } from './refinance-calculations'
@@ -135,7 +136,9 @@ export function structureLead(total: number): string {
 // one email cannot describe the same things differently - which is exactly what
 // Fabio caught: "split 1 existing loan balance but 2 loan amount, consistency
 // please, both should say existing loan balance."
-export type Pair = { label: string; value: string }
+// `note` marks a sentence rather than a figure - the renderer gives it the
+// full width instead of right-aligning it in the money column.
+export type Pair = { label: string; value: string; note?: boolean }
 
 // "INTEREST ONLY OVER 30 YEARS" WAS TELLING CLIENTS THE WRONG THING.
 //
@@ -181,6 +184,12 @@ export type SplitRowOptions = {
   // own. A one-split refinance therefore reads exactly as it did before this
   // file existed, with no box for anybody to fill in.
   existingFallback?: any
+  // THE LMI, WHERE THE SPLIT IS THE WHOLE LOAN. Passed only on a deal with ONE
+  // real split, because that is the only case where it is certain which loan
+  // the premium is capitalised onto. With two splits nothing on the deal says
+  // which one carries it, and the portal does not guess at a client's lending.
+  // Fabio, 24 Sep 2026. See clientLoan() in lib/lmi.ts.
+  lmiBc?: any
 }
 
 export function splitRows(split: Split | undefined, loanTerm: any, opts?: SplitRowOptions): Pair[] {
@@ -200,7 +209,10 @@ export function splitRows(split: Split | undefined, loanTerm: any, opts?: SplitR
   // editing the split - because hiding it then would leave the client reading
   // their OLD balance as their new loan. See lib/email-amounts.ts.
   if (showsOwnLoanAmount(existing, split.amount) || readMoney(existing) === null) {
-    add(opts?.amountLabel || 'Loan amount', money(split.amount))
+    const loan = opts?.lmiBc ? clientLoan(opts.lmiBc, readMoney(split.amount)) : null
+    add(opts?.amountLabel || 'Loan amount',
+        loan && loan.amount !== null ? money(loan.amount) : money(split.amount))
+    if (loan?.note) out.push({ label: '', value: loan.note, note: true })
   }
 
   add('Indicative rate', txt(split.rate) ? `${txt(split.rate)}% p.a.*` : '')

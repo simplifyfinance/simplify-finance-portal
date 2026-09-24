@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ctas } from '@/lib/email-buttons'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { lmiClientLines } from '@/lib/lmi'
+import { lmiClientLines, lmiIsInTheLoan, clientLoan } from '@/lib/lmi'
 import { repaymentOf, splitRows, cardTitle, structureLead, realSplits } from '@/lib/split-cards'
 import { purchaseRows } from '@/lib/purchase-rows'
 // EVERY DOLLAR FIGURE IN A CLIENT EMAIL GOES THROUGH money().
@@ -145,14 +145,21 @@ function lineIf(l: string, v: string) {
 // THE PURCHASE BLOCK - five lines, one order, every scenario that buys. What it
 // says is decided in lib/purchase-rows.ts; this only turns it into table rows.
 function purchaseBlock(input: Parameters<typeof purchaseRows>[0]): string {
-  return purchaseRows(input).map(r => row(r.label, r.value)).join('')
+  // A NOTE IS A SENTENCE, NOT AN AMOUNT. row() right-aligns its value in the
+  // money column in the same weight as the figures, so "includes LMI of $9,000,
+  // added to the loan" read like a number that had lost its digits. Full width,
+  // italic, the same treatment the construction drawdown note already gets.
+  return purchaseRows(input).map(r => r.note
+    ? `<tr><td colspan="2" style="font-size:11px;color:#7a5c3a;font-style:italic;line-height:1.5;padding:0 0 4px"><span style="color:#7a5c3a;">${r.value}</span></td></tr>`
+    : row(r.label, r.value)).join('')
 }
 
 // The same five lines in a comparison column, which stacks them rather than
 // putting them in a two-column table.
 function purchaseColumn(input: Parameters<typeof purchaseRows>[0]): string {
-  return purchaseRows(input).map(r =>
-    `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">${r.label}: ${r.value}</span></p>`
+  return purchaseRows(input).map(r => r.note
+    ? `<p style="font-size:11px;color:#7a5c3a;font-style:italic;margin:2px 0 4px"><span style="color:#7a5c3a;">${r.value}</span></p>`
+    : `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">${r.label}${r.label ? ': ' : ''}${r.value}</span></p>`
   ).join('')
 }
 
@@ -163,6 +170,9 @@ function splitCards(d: any, templateName: string, opts?: {
   // release - keep those and use this to pick up anything past them. Numbering
   // still counts from the whole list, so the third split is "Split 3".
   from?: number
+  // Set on a template with no purchase breakdown of its own, where the split
+  // card IS the loan line. Ignored unless there is exactly one real split.
+  lmiOnTheSplit?: boolean
 }) {
   const splits = realSplits(d.splits)
   const from = opts?.from || 0
@@ -177,7 +187,11 @@ function splitCards(d: any, templateName: string, opts?: {
         // carries its own or the row is simply not there - a deal-level figure
         // printed on one of two property cards would be wrong on both.
         existingFallback: splits.length === 1 ? opts?.existingFallback : undefined,
-      }).map(r => row(r.label, r.value)).join('')
+        // Same rule, same reason: one split or nothing.
+        lmiBc: opts?.lmiOnTheSplit && splits.length === 1 ? d : undefined,
+      }).map(r => r.note
+        ? `<tr><td colspan="2" style="font-size:11px;color:#7a5c3a;font-style:italic;line-height:1.5;padding:0 0 4px"><span style="color:#7a5c3a;">${r.value}</span></td></tr>`
+        : row(r.label, r.value)).join('')
       + (opts?.after ? opts.after(i, splits.length) : '')))(from + k)).join('')
 }
 
@@ -313,15 +327,20 @@ function lmiLines(opt: any, treatment: any, base: number): string {
   }).join('')
 }
 
-function buildLVRLine(d: any) {
+function buildLVRLine(d: any, lmiAlreadyInTheLoan?: boolean) {
   const pct = Number(d.lvrPercent)
   if (!pct || pct <= 0) {
     return row('LVR', d.lvr || '80%')
   }
   if (pct > 80) {
     if (d.lmiApplicable === 'Applicable' && d.lmi) {
-      // The premium, and whether it is inside the loan above. Unanswered reads
-      // exactly as it did before - see lib/lmi.ts.
+      // WHERE A LOAN FIGURE ABOVE ALREADY ABSORBED THE PREMIUM, this prints the
+      // LVR and stops. It used to add a "Total loan" row underneath a breakdown
+      // that had just shown the base - two loan amounts, four lines apart, and
+      // nothing in between that added up. Fabio, 24 Sep 2026.
+      if (lmiAlreadyInTheLoan) return row('LVR', `${pct}%`)
+      // No purchase breakdown on this template, so the premium has nowhere else
+      // to go and reads here exactly as it always has.
       const base = (d.splits || []).reduce((t: number, sp: any) =>
         t + (parseFloat(String(sp?.amount ?? '').replace(/,/g, '')) || 0), 0)
       const rows = lmiClientLines({ lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment },
@@ -474,8 +493,12 @@ export async function POST(req: NextRequest) {
       securityHead(d) +
       splitCards(d, 'Refinanced Loan', {
         amountLabel: 'New loan amount', showTerm: true, existingFallback: d.existingLoanBal,
+        // One split here means the card IS the loan, so a capitalised premium
+        // goes into the new loan amount and the LVR line below stops repeating
+        // it as a "Total loan" four rows down.
+        lmiOnTheSplit: true,
         // The LVR is a fact about the whole deal, not about a part of it.
-        after: (i) => (i === 0 ? buildLVRLine(d) : ''),
+        after: (i) => (i === 0 ? buildLVRLine(d, lmiIsInTheLoan(d) && realSplits(d.splits).length === 1) : ''),
       }) +
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
@@ -484,7 +507,6 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'oo_purchase' && d.compareOptions) {
     const buildOptionCol = (opt: any, label: string) => {
-      const loanNum = parseFloat((opt.loanAmount || '').replace(/,/g, '')) || 0
       // ONE COPY OF THE ARITHMETIC, shared with the box on the broker's screen.
       // It now adds the LMI premium when this option says it is capitalised.
       const lvrNum = altLvrPurchase(opt).percent
@@ -494,15 +516,14 @@ export async function POST(req: NextRequest) {
       if (opt.carLoanPayoff) actions.push('Car loan closed')
       if (opt.personalLoanPayoff) actions.push('Personal loan closed')
       const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px"><span style="color:#555;">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</span></p>` : ''
-      // EACH OPTION'S OWN ANSWER - see the note on the equity release column.
-      const lmiLine = lvrNum > 80 ? lmiLines(opt, opt.lmiTreatment, loanNum) : ''
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
         ${purchaseColumn({
           price: opt.purchasePrice, duty: opt.stampDuty, dutyLabel: dutyLabel(d),
           loan: opt.loanAmount, contribution: opt.deposit, contributionFrom: d.depositSource,
+          lmiApplicable: opt.lmiApplicable, lmi: opt.lmi, lmiTreatment: opt.lmiTreatment,
         })}
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
         ${lineIf('Est. repayment', altRepayment(opt, d.loanTerm))}
         ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px"><span style="color:#343333;">To achieve this option:</span></p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">&#10003; ${a}</span></p>`).join('') : ''}${nonBankNote}
@@ -536,8 +557,9 @@ export async function POST(req: NextRequest) {
         purchaseBlock({
           price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
           loan: totalLending(d.splits), contribution: d.deposit, contributionFrom: d.depositSource,
+          lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
         }) +
-        buildLVRLine(d)
+        buildLVRLine(d, lmiIsInTheLoan(d))
       ) +
       p13(structureLead(realSplits(d.splits).length)) +
       splitCards(d, 'Owner-occupied loan', { termWithType: true }) +
@@ -548,7 +570,6 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'investment_purchase' && d.compareOptions) {
     const buildOptionColIP = (opt: any, label: string) => {
-      const loanNum = parseFloat((opt.loanAmount || '').replace(/,/g, '')) || 0
       // ONE COPY OF THE ARITHMETIC, shared with the box on the broker's screen.
       // It now adds the LMI premium when this option says it is capitalised.
       const lvrNum = altLvrPurchase(opt).percent
@@ -558,15 +579,14 @@ export async function POST(req: NextRequest) {
       if (opt.carLoanPayoff) actions.push('Car loan closed')
       if (opt.personalLoanPayoff) actions.push('Personal loan closed')
       const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px"><span style="color:#555;">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</span></p>` : ''
-      // EACH OPTION'S OWN ANSWER - see the note on the equity release column.
-      const lmiLine = lvrNum > 80 ? lmiLines(opt, opt.lmiTreatment, loanNum) : ''
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
         ${purchaseColumn({
           price: opt.purchasePrice, duty: opt.stampDuty, dutyLabel: dutyLabel(d),
           loan: opt.loanAmount, contribution: opt.deposit, contributionFrom: d.depositSource,
+          lmiApplicable: opt.lmiApplicable, lmi: opt.lmi, lmiTreatment: opt.lmiTreatment,
         })}
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
         ${lineIf('Est. repayment', altRepayment(opt, d.loanTerm))}
         ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px"><span style="color:#343333;">To achieve this option:</span></p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">&#10003; ${a}</span></p>`).join('') : ''}${nonBankNote}
@@ -599,8 +619,9 @@ export async function POST(req: NextRequest) {
         purchaseBlock({
           price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
           loan: totalLending(d.splits), contribution: d.deposit, contributionFrom: d.depositSource,
+          lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
         }) +
-        buildLVRLine(d)
+        buildLVRLine(d, lmiIsInTheLoan(d))
       ) +
       p13(structureLead(realSplits(d.splits).length)) +
       splitCards(d, 'Investment loan', { termWithType: true }) +
@@ -624,8 +645,9 @@ export async function POST(req: NextRequest) {
           price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
           loan: totalLending(d.splits), contribution: d.deposit,
           contributionFrom: (Number(d.additionalSavings) || 0) > 0 ? 'sale proceeds and savings' : 'sale proceeds',
+          lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
         }) +
-        buildLVRLine(d)
+        buildLVRLine(d, lmiIsInTheLoan(d))
       ) +
       p13(structureLead(realSplits(d.splits).length)) +
       splitCards(d, 'End debt', { termWithType: true }) +
@@ -641,10 +663,18 @@ export async function POST(req: NextRequest) {
     const lvrCols = splits.map((s: any) => {
       const amountNum = parseFloat((s.amount || '').replace(/,/g, '')) || 0
       const lvrNum = priceNum > 0 ? Math.ceil((amountNum / priceNum) * 1000) / 10 : 0
-      const lmiLine = lvrNum > 80 ? lmiLines(s, d.lmiTreatment, amountNum) : ''
+      // ONE LOAN LINE PER COLUMN. Each of these columns is a deposit scenario
+      // with its own LMI figure, and the premium now goes INTO the loan amount
+      // when it is capitalised rather than trailing the LVR underneath it.
+      const col = clientLoan({ ...s, lmiTreatment: s.lmiTreatment || d.lmiTreatment }, amountNum || null)
+      const colNote = col.note
+        ? `<p style="font-size:11px;color:#7a5c3a;font-style:italic;margin:2px 0 4px"><span style="color:#7a5c3a;">${col.note}</span></p>`
+        : ''
+      const lmiLine = lvrNum > 80 && !col.note
+        ? lmiLines(s, s.lmiTreatment || d.lmiTreatment, amountNum) : ''
       return `<td style="width:${Math.floor(100/splits.length)}%;vertical-align:top;padding:0 4px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${s.label}</td></tr></table>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: ${money(s.amount)}</span></p>${s.deposit ? `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit required${PLUS_INCIDENTALS}: ${money(s.deposit)}</span></p>` : ""}
+        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: ${col.amount !== null ? money(col.amount) : money(s.amount)}</span></p>${colNote}${s.deposit ? `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit required${PLUS_INCIDENTALS}: ${money(s.deposit)}</span></p>` : ""}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${s.rate}% p.a.*</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Type: ${s.type}</span></p>
@@ -770,8 +800,9 @@ export async function POST(req: NextRequest) {
         purchaseBlock({
           price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
           loan: totalLending(d.splits), contribution: d.deposit, contributionFrom: d.depositSource,
+          lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
         }) +
-        buildLVRLine(d)
+        buildLVRLine(d, lmiIsInTheLoan(d))
       ) +
       p13(structureLead(realSplits(d.splits).length)) +
       splitCards(d, 'SMSF loan', { termWithType: true }) +
@@ -886,8 +917,9 @@ export async function POST(req: NextRequest) {
         purchaseBlock({
           price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
           loan: totalLending(d.splits), contribution: d.deposit, contributionFrom: d.depositSource,
+          lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
         }) +
-        buildLVRLine(d)
+        buildLVRLine(d, lmiIsInTheLoan(d))
       ) +
       p13(structureLead(realSplits(d.splits).length)) +
       splitCards(d, 'Your loan', { termWithType: true }) +

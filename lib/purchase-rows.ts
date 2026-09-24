@@ -25,6 +25,7 @@
 // it; the box is already the answer.
 
 import { money, readMoney } from './money'
+import { clientLoan, lmiTrailingLines } from './lmi'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -32,7 +33,10 @@ const txt = (v: any) => String(v ?? '').trim()
 // hang off the deposit row.
 export const INCIDENTALS = " (plus solicitor's fees, and incidentals)"
 
-export type PurchaseRow = { label: string; value: string }
+// `note` marks a row that is a SENTENCE rather than a figure. The renderer
+// gives it the full width instead of right-aligning it in the money column,
+// where a sentence reads like an amount that lost its number.
+export type PurchaseRow = { label: string; value: string; note?: boolean }
 
 export type PurchaseInput = {
   price: any
@@ -48,6 +52,13 @@ export type PurchaseInput = {
   // "savings", "sale proceeds and savings", "equity release and personal
   // savings" - whatever the deal actually says.
   contributionFrom?: string
+  // THE LMI, WHERE IT BELONGS. Added 24 Sep 2026. Capitalised, the premium goes
+  // INTO the loan line above and the base figure never reaches the client;
+  // paid at settlement it goes under the contribution, which is what it is -
+  // more money to find on the day. See clientLoan() in lib/lmi.ts.
+  lmiApplicable?: any
+  lmi?: any
+  lmiTreatment?: any
 }
 
 export function purchaseRows(input: PurchaseInput): PurchaseRow[] {
@@ -75,11 +86,18 @@ export function purchaseRows(input: PurchaseInput): PurchaseRow[] {
   // A zero duty is different and stays: on a first home buyer it is the answer.
   const amount = (v: any) => { const n = readMoney(v); return n && n > 0 ? money(n) : '' }
 
-  add('Loan amount', amount(input.loan))
+  // ONE LOAN LINE. Capitalised, this is the base plus the premium and the
+  // sentence under it says so. Every other answer leaves it exactly as typed.
+  const loan = clientLoan(input, readMoney(input.loan))
+  add('Loan amount', amount(loan.amount))
+  if (loan.note && loan.amount) out.push({ label: '', value: loan.note, note: true })
 
   const from = txt(input.contributionFrom)
   add(`Your contribution required${from ? ` (coming from your ${from.toLowerCase()})` : ''}`,
       amount(input.contribution))
+
+  // Paid at settlement, or recorded with nobody yet saying how it is paid.
+  for (const line of lmiTrailingLines(input)) out.push({ label: line.label, value: line.value })
 
   return out
 }

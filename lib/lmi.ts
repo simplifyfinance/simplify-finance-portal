@@ -172,3 +172,70 @@ export function lmiClientLines(bc: any, base: number | null): ClientLine[] {
   // office has not filled a box in.
   return [{ label: 'LMI (estimated)', value: money(amount) }]
 }
+
+
+// --- THE CLIENT ONLY EVER SEES ONE LOAN FIGURE ------------------------------
+//
+// Fabio, 24 Sep 2026, on Ravi Kishore: "I dont want 561,000 than 570 includes
+// lmi it should just say 570,000 includes LMI of 9,000 added to the loan...
+// dont want any template to give me the base loan when we are capitalising LMI
+// ok if paid at settlement."
+//
+// The email used to print BOTH: the base loan in the breakdown, then a "Total
+// loan" line further down with the premium added. Two loan amounts on one page,
+// four lines apart, and the block stopped adding up in between.
+//
+// So when the premium is capitalised there is ONE loan line and it is the one
+// they borrow. The base figure - the number the credit officer types into the
+// lender's system - is an internal working and does not belong in a client
+// email. It is still on the broker's own notes, where it is needed.
+//
+// Every other answer keeps the base loan, because on those the base loan IS
+// what is borrowed.
+
+export type ClientLoan = {
+  // What to print on the loan line.
+  amount: number | null
+  // The one sentence that explains it, or empty. Runs the full width of the
+  // card rather than sitting right-aligned in the money column with no label -
+  // it is a sentence, not an amount.
+  note: string
+}
+
+export function clientLoan(bc: any, base: number | null): ClientLoan {
+  const amount = lmiAmount(bc)
+  if (base === null || amount === null || lmiTreatment(bc) !== 'capitalised') {
+    return { amount: base, note: '' }
+  }
+  return {
+    amount: base + amount,
+    note: `includes LMI of ${money(amount)}, added to the loan`,
+  }
+}
+
+// The lines that belong AFTER the contribution - a premium the client has to
+// find on the day sits with the rest of what they have to find, not up in the
+// lending.
+//
+// Capitalised returns nothing: the loan line above already carried it.
+// Waived returns nothing either: the LVR line has said "(LMI waived)" since
+// before this file existed, and saying it twice is not saying it better.
+export function lmiTrailingLines(bc: any): ClientLine[] {
+  const amount = lmiAmount(bc)
+  if (amount === null) return []
+  const how = lmiTreatment(bc)
+  if (how === 'capitalised') return []
+  if (how === 'settlement') {
+    return [{ label: 'LMI (estimated)', value: `${money(amount)} - payable at settlement` }]
+  }
+  // Unanswered: word for word what went out before. A client is never told the
+  // office has not filled a box in.
+  return [{ label: 'LMI (estimated)', value: money(amount) }]
+}
+
+// Has a loan figure on this email already absorbed the premium? Where it has,
+// the LVR line must print the LVR and stop - otherwise the "Total loan" it used
+// to add reappears underneath the figure that already includes it.
+export function lmiIsInTheLoan(bc: any): boolean {
+  return lmiAmount(bc) !== null && lmiTreatment(bc) === 'capitalised'
+}
