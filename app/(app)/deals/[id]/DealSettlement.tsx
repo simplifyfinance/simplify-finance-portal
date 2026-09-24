@@ -82,6 +82,18 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
   // Fabio, 1 Sep 2026. Anything not yet recorded is offered; nothing is forced
   // and nothing is skipped silently - a deal marked formally approved that was
   // never preapproved simply leaves preapproval blank, which is the truth.
+  // DECLARED BEFORE THE LIST THAT READS IT. 24 Sep 2026.
+  //
+  // This used to sit three lines BELOW the filter below that uses it, and the
+  // page crashed with "Cannot access 'fillingGaps' before initialization" -
+  // but only ever on a deal that was already settled. On every other deal
+  // `!deal.settled_at` is true, so Javascript short-circuits and never looks at
+  // the second half. It shipped on 23 Sep and sat there until the first deal
+  // was marked settled, which was the first time anybody could see it.
+  //
+  // Only ever true on a settled deal, and only after somebody asks for it.
+  const [fillingGaps, setFillingGaps] = useState(false)
+
   const available = STAGES
     .filter(s => s.mark)
     .filter(s => !deal[s.key])
@@ -102,8 +114,6 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
     // date we missed" - deliberately quiet, deliberately still there.
     .filter(s => !deal.settled_at || fillingGaps)
 
-  // Only ever true on a settled deal, and only after somebody asks for it.
-  const [fillingGaps, setFillingGaps] = useState(false)
   const [pickedKey, setPickedKey] = useState('')
   // One choice left is not a choice: go straight into it, the way it always did.
   const stage = available.length === 1
