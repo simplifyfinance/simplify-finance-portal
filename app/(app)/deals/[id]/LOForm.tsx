@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { dayMonthYear, dayMonth, longDate } from '@/lib/same-date-everywhere'
 import { formatAsTyped } from '@/lib/money'
 import { emptyGuard, adopt, saveGuarded } from '@/lib/save-conflict'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -34,7 +35,7 @@ import TabBehindNotice from '@/components/TabBehindNotice'
 function agreedDay(v: any): string {
   if (!v) return ''
   const d = new Date(v)
-  return isNaN(d.getTime()) ? '' : ' ' + d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short' })
+  return isNaN(d.getTime()) ? '' : ' ' + dayMonth(d)
 }
 
 function makeUid() {
@@ -343,7 +344,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
   const docsDay = (iso?: string | null) => {
     if (!iso) return ''
-    return ' \u00b7 ' + new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+    return ' \u00b7 ' + dayMonth(iso, false)
   }
 
   async function markDocsReceived() {

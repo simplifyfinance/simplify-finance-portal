@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { realDealsOnly } from '@/lib/test-deal'
+import { applicantIsClient } from '@/lib/same-clients'
 import { ArrowLeft, AlertTriangle } from 'lucide-react'
 import { phaseOf, PHASE_LABEL } from '@/lib/deal-phase'
 // Number('620,000') is NaN, so these three lines printed "$NaN" against every
@@ -30,7 +31,7 @@ export default function ClientProfilePage() {
       const { data: clientData } = await supabase.from('clients').select('*').eq('id', clientId).single()
       setClient(clientData)
       const { data: primaryDeals } = await supabase.from('deals').select('*').eq('client_id', clientId).order('created_at', { ascending: false })
-      const { data: jointDeals } = await supabase.from('deals').select('*').contains('fact_find_data->applicants', [{ clientId }]).order('created_at', { ascending: false })
+      const { data: jointDeals } = await supabase.from('deals').select('*').contains('fact_find_data->applicants', applicantIsClient(clientId)).order('created_at', { ascending: false })
 
       const merged = [...(primaryDeals || [])]
       for (const d of (jointDeals || [])) {

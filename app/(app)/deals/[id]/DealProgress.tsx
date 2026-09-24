@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { dayMonthYear, dayMonth, longDate } from '@/lib/same-date-everywhere'
 import { dealBeads, barFolds, type Bead } from '@/lib/deal-status'
 import { stepLabel } from '@/lib/settlement'
 
@@ -16,7 +17,7 @@ export { currentStage } from '@/lib/deal-status'
 function fmt(v: any) {
   if (!v) return ''
   const d = new Date(v)
-  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short' })
+  return isNaN(d.getTime()) ? '' : dayMonth(d)
 }
 
 // "Contracts returned" is the wrong words on a refinance - there are no contracts

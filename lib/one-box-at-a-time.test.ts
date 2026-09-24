@@ -62,3 +62,29 @@ describe('the two boxes still exist, and still draw over the page', () => {
     expect(pos).toContain('fixed inset-0')
   })
 })
+
+// THE MOMENT PASSES. THE JOB DOES NOT.
+//
+// 24 Sep 2026. The position question only existed in the seconds after Settle
+// was pressed. Fabio's box closed before he could answer it, and then there was
+// nowhere to go: the client page said "open that deal and record the position"
+// and the deal page had nothing to press. He settled a deal, the client record
+// stayed empty, and the portal had no way out of it.
+describe('a settled deal can always have its position recorded', () => {
+  it('a settled deal offers it, not only the second it settles', () => {
+    expect(code).toContain('deal.settled_at && !askPosition')
+    // Two ways in now: the moment it settles, and any time after.
+    expect((code.match(/setAskPosition\(true\)/g) || []).length).toBe(2)
+  })
+
+  it('the button is on a settled deal and nowhere else', () => {
+    const at = code.indexOf('setAskPosition(true)', code.indexOf('setAskPosition(true)') + 1)
+    expect(code.slice(Math.max(0, at - 900), at)).toContain('deal.settled_at')
+  })
+
+  it('it opens the same box, which is the one carrying the form', () => {
+    expect(code).toContain('<PositionAtSettlement')
+    const pos = readFileSync(new URL('../components/PositionAtSettlement.tsx', import.meta.url), 'utf8')
+    expect(pos).toContain('SaveTheAssessment')
+  })
+})

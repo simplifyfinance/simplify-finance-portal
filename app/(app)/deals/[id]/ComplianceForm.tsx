@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { dayMonthYear, dayMonth, longDate, dayMonthTime } from '@/lib/same-date-everywhere'
 import SectionHeader from '@/components/SectionHeader'
 import { isWithLender, splitsTotal } from '@/lib/deal-phase'
 import { applicantsOf } from '@/lib/applicants'
@@ -271,12 +272,10 @@ const AI_FIELDS = [
 const AI_FIELD_LABEL: Record<string, string> =
   Object.fromEntries(AI_FIELDS.map(f => [f.key, f.label]))
 
-const when = (iso?: string) => {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('en-AU',
-    { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
-}
+// Pinned to the office clock rather than to whichever machine is drawing this,
+// because the server draws it once and the browser draws it again - and they
+// were ten hours apart. See lib/same-date-everywhere.ts.
+const when = (iso?: string) => dayMonthTime(iso)
 
 // One place, four call sites. The confidence and source chips were written out
 // four times, so the freshness flag would have had to be too - and the fourth
@@ -1547,7 +1546,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
               Compliance sent
             </span>
             <span className="text-[13px] text-[#6E665C]">
-              {sentOn ? new Date(sentOn).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
+              {sentOn ? longDate(sentOn) : ''}
               {' '}&middot; both PDFs emailed to the compliance team
             </span>
             <button onClick={() => setShowWriteUp(v => !v)}

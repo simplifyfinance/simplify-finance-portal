@@ -93,3 +93,27 @@ export function otherDealsLine(others: DealLike[]): string {
   if (others.length === 1) return 'These clients have another deal'
   return `These clients have ${others.length} other deals`
 }
+
+
+// FINDING A CLIENT INSIDE fact_find_data->applicants.
+//
+// 24 Sep 2026. Two screens wrote this filter by hand, and both wrote it wrong:
+//
+//     .contains('fact_find_data->applicants', [{ clientId: id }])
+//
+// supabase-js turns an ARRAY into a Postgres array literal - every element put
+// through String() - so the query that actually went out was
+//
+//     fact_find_data->applicants=cs.{[object Object]}
+//
+// Postgres answered 400 every single time. It was written on 23 September and
+// nothing noticed, because both callers swallow their errors on purpose: this
+// only draws a helpful line beside a deal name, and it is not allowed to put an
+// error in front of anybody. So it failed silently for a day, and a joint
+// applicant's other deals simply never appeared.
+//
+// A jsonb column needs the value as JSON TEXT, not as an array. One function
+// now, used by both, with a test that builds the real query and reads the URL.
+export function applicantIsClient(clientId: string): string {
+  return JSON.stringify([{ clientId }])
+}

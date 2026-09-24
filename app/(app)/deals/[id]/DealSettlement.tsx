@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { dayMonthYear, dayMonth, longDate } from '@/lib/same-date-everywhere'
 import { supabase } from '@/lib/supabase'
 import LoanIds from '@/components/LoanIds'
 import CurrencyInput from './CurrencyInput'
@@ -44,7 +45,7 @@ const money = (n: number) => '$' + n.toLocaleString('en-AU')
 const fmtDate = (v: any) => {
   if (!v) return ''
   const d = new Date(v)
-  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })
+  return isNaN(d.getTime()) ? '' : dayMonthYear(d)
 }
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -270,6 +271,36 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
         <div className="border border-[#EBD9BE] bg-[#FDF6EC] rounded-xl px-4 py-3.5 mb-4">
           <div className={K + ' mb-2'} style={{ color: '#946017' }}>{loanIdStatus(deal).label}</div>
           <LoanIds deal={deal} onSaved={splits => onUpdated?.({ settled_splits: splits })} />
+        </div>
+      )}
+
+      {/* THE POSITION, REACHABLE AFTER THE MOMENT HAS PASSED.
+          
+          24 Sep 2026. This question only ever existed in the seconds after
+          somebody pressed Settle. If the box closed - a stray click, a reload,
+          anything - there was no way back to it, and the client page sat there
+          saying "open that deal and record the position" with nothing on the
+          deal to press.
+          
+          Fabio, settling test 4 on staging: "the box quickly disappeared" and
+          then "the data is not going to the client".
+          
+          So it lives here too, on any settled deal, permanently. Pressing it
+          opens the same box. Recording a position twice is not a problem - the
+          second one is a correction, and the history keeps both. */}
+      {deal.settled_at && !askPosition && (
+        <div className="border border-[#E8E1D6] bg-[#FDFCFA] rounded-xl px-4 py-3 mb-4 flex items-center gap-3 flex-wrap">
+          <div className="flex-1 min-w-[220px]">
+            <div className="text-[12.5px] font-semibold text-[#3B3B3B]">The client&rsquo;s position</div>
+            <div className="text-[11.5px] text-gray-500 leading-relaxed mt-0.5">
+              What they own and owe, as it stands now this loan has settled. Also where the
+              Personal Assessment Form is.
+            </div>
+          </div>
+          <button onClick={() => setAskPosition(true)}
+            className="text-[12px] font-semibold rounded-lg px-3 py-1.5 border border-[#DDE2E6] bg-white text-[#2E3439] hover:bg-[#F6F7F9]">
+            Record it
+          </button>
         </div>
       )}
 

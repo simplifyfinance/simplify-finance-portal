@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { dayMonthYear, dayMonth, longDate } from '@/lib/same-date-everywhere'
 import { supabase } from '@/lib/supabase'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
@@ -45,7 +46,7 @@ const BC_DERIVED = ['firstName', 'lastName', 'dependants', 'joint', 'incomeBase'
 function agreedDay(v: any): string {
   if (!v) return ''
   const d = new Date(v)
-  return isNaN(d.getTime()) ? '' : ' ' + d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short' })
+  return isNaN(d.getTime()) ? '' : ' ' + dayMonth(d)
 }
 
 // Number('120,000') is NaN, so every comma-formatted salary annualised to zero
