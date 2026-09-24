@@ -200,7 +200,21 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
     if (error) { setErr('NOT SAVED - ' + error.message); return }
     if (!rows || rows.length === 0) { setErr('NOT SAVED - the change did not reach the database.'); return }
     setConfirming(false)
-    if (stage.snap === 'settled') { setAskLoanIds(true); setAskPosition(true) }
+    // ONE QUESTION AT A TIME.
+    //
+    // These two both draw a full-screen box at z-50, and they were opened in
+    // the same breath. Two boxes at the same depth means the one written LAST
+    // in the file sits on top - so the Loan IDs box covered the position
+    // question completely, and the position question is the one with the
+    // assets, the liabilities and the fact find on it.
+    //
+    // Fabio, 24 Sep 2026, settling a deal on staging: "the pop up box was so
+    // quick I didnt see anyhting and I couldnt select the generate fact find or
+    // tell it to save assets and liabilities".
+    //
+    // So the position is asked first - it is the one with a judgement in it -
+    // and the Loan IDs box opens when that one is answered. See onDone below.
+    if (stage.snap === 'settled') { setAskPosition(true) }
     const { data } = await supabase.from('deal_stage_snapshots').select('*').eq('deal_id', deal.id)
     const m: any = {}; (data || []).forEach((r: any) => { m[r.stage] = r }); setSnaps(m)
     onUpdated?.(patch)
@@ -216,7 +230,13 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
   return (
     <div className="bg-white border border-[#E8E1D6] rounded-xl px-5 py-4 mb-4">
       {askPosition && (
-        <PositionAtSettlement deal={deal} onDone={() => setAskPosition(false)} />
+        <PositionAtSettlement deal={deal} onDone={() => {
+          setAskPosition(false)
+          // Now, and not before - see the note in confirmIt(). Only where there
+          // is actually something left to collect, so a deal whose loan IDs are
+          // already in does not get a box for nothing.
+          if (loanIdStatus(deal).tone !== 'complete') setAskLoanIds(true)
+        }} />
       )}
       <div className={K + ' mb-3'}>After compliance</div>
 
