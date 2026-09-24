@@ -336,25 +336,42 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           columns: the deal's own progress and money on the left, what is on fire
           and what has happened on the right. Before lodgement none of this
           exists and the page is unchanged. */}
-      {isWithLender(dealData) ? (
-        <div className="grid grid-cols-[1.15fr_1fr] gap-3 max-[900px]:grid-cols-1">
-          <div>
-            <DealSettlement deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
-            <DealSettlementPanel deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
-            <DealCommission deal={dealData} />
-          </div>
+      {/* ONE SETTLEMENT PANEL, NOT TWO.
+          
+          24 Sep 2026. This was written twice - once inside the two-column grid
+          for a deal that is with a lender, once on its own for a deal that is
+          not - and a deal CROSSES that line the instant somebody marks it
+          settled. React does not know the two are the same panel. It saw the
+          shape of the page change underneath it, threw the old panel away and
+          built a new one, and everything the old one was holding went with it.
+          
+          What it was holding was the prompt asking about the client's position.
+          It appeared and died in the same breath, every single time, and the
+          client's record stayed empty. Fabio, all day: "the pop up box was so
+          quick I didnt see anyhting", "AND FUCKING AGAIN THE SAME RESULT".
+          
+          So the panel is written once and stays in one place. Only the layout
+          around it changes: the grid class goes on when the deal is with a
+          lender, and the second column appears beside it. React sees the same
+          panel in the same place and leaves it alone - and the prompt stays on
+          screen until somebody answers it.
+          
+          The rule this file now follows: NEVER render the same component in two
+          branches of a condition that a deal can cross. */}
+      <div className={isWithLender(dealData)
+        ? 'grid grid-cols-[1.15fr_1fr] gap-3 max-[900px]:grid-cols-1' : ''}>
+        <div>
+          <DealSettlement deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+          <DealSettlementPanel deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+          <DealCommission deal={dealData} />
+        </div>
+        {isWithLender(dealData) && (
           <div>
             <DealAlerts dealId={dealData.id} me={me} alerts={alerts} onChanged={reloadFile} />
             <FileNotes dealId={dealData.id} me={me} notes={notes} onChanged={reloadFile} />
           </div>
-        </div>
-      ) : (
-        <>
-          <DealSettlement deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
-          <DealSettlementPanel deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
-          <DealCommission deal={dealData} />
-        </>
-      )}
+        )}
+      </div>
 
       {/* Pinned context, above the tabs. This is what is always true about the
           deal - "partner is on a visa, loan in her name only" - so it belongs in

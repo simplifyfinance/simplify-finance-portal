@@ -88,3 +88,38 @@ describe('a settled deal can always have its position recorded', () => {
     expect(pos).toContain('SaveTheAssessment')
   })
 })
+
+// THE REASON IT DIED, WHICH WAS NOT IN THIS FILE AT ALL.
+//
+// 24 Sep 2026, after a day of it. The prompt was fine. What killed it was the
+// page around it: DealSettlement was written TWICE in DealPageClient - once
+// inside the two-column grid for a deal that is with a lender, once on its own
+// for a deal that is not.
+//
+// Marking a deal settled moves it across that line. React saw the shape of the
+// page change, threw the old panel away and built a new one, and everything the
+// old one was holding went with it - including the fact that it was showing a
+// prompt. It appeared and died in the same render, every single time.
+//
+// A component rendered in two branches of a condition a deal can CROSS is a
+// component that will be destroyed the moment the deal crosses it.
+describe('the settlement panel is written once, so it survives settling', () => {
+  const page = readFileSync(new URL('../app/(app)/deals/[id]/DealPageClient.tsx', import.meta.url), 'utf8')
+
+  for (const what of ['DealSettlement', 'DealSettlementPanel', 'DealCommission']) {
+    it(`${what} appears once on the page, not once per branch`, () => {
+      expect((page.match(new RegExp(`<${what}\\s`, 'g')) || []).length).toBe(1)
+    })
+  }
+
+  it('the layout changes around it, not the panel itself', () => {
+    // The grid is a class now, applied or not. Before, it was two different
+    // shapes of page with the panel built separately inside each.
+    expect(page).toContain("isWithLender(dealData)\n        ? 'grid grid-cols-[1.15fr_1fr]")
+    expect(page).not.toMatch(/isWithLender\(dealData\) \? \(\s*<div className="grid/)
+  })
+
+  it('the second column is what comes and goes', () => {
+    expect(page).toContain('{isWithLender(dealData) && (')
+  })
+})
