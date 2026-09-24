@@ -93,3 +93,79 @@ export function annualIncomeOf(inc: any): number {
 export function annualIncomeOfApplicant(applicant: any): number {
   return Math.round((applicant?.income || []).reduce((t: number, inc: any) => t + annualIncomeOf(inc), 0))
 }
+
+
+// --- what the client's email is told about their pay -------------------------
+//
+// Fabio, 24 Sep 2026: "bonus and commisisons section not carriying to html -
+// assuming overtime and overtime essetial too WIRE FOR ALL TEMAPLSTES"
+//
+// The money was never lost. annualIncomeOf above adds bonus, commission,
+// overtime and allowances into the PAYG figure, and always has. What the email
+// never had was the WORDS: a client on $135,000 with a $16,000 bonus read one
+// line saying "PAYG income $151,000 p.a." and had no way to see their bonus had
+// been counted at all - which is exactly the sentence a client rings up about.
+//
+// So a PAYG entry with extras on it now lists them, each annualised, in the
+// order the Fact Find asks for them, with the Fact Find's own words.
+//
+// A PAYG entry with NOTHING but a salary still prints the single line it always
+// printed. Nobody's email changes unless there was something in it to show.
+//
+// This lives here, not in BCForm, because BCForm is the one place every template
+// builds its email from - one function, thirteen templates.
+
+const PAYG_PARTS: [string, string, string][] = [
+  ['Gross salary',            'grossSalary',                'grossSalaryFrequency'],
+  ['Bonus',                   'bonusAmount',                'bonusFrequency'],
+  ['Overtime essential',      'overtimeEssentialAmount',    'overtimeEssentialFrequency'],
+  ['Overtime non-essential',  'overtimeNonEssentialAmount', 'overtimeNonEssentialFrequency'],
+  ['Commission',              'commissionAmount',           'commissionFrequency'],
+  ['Allowance',               'allowanceAmount',            'allowanceFrequency'],
+]
+
+export type IncomeLine = { label: string; amount: number | null }
+
+export function incomeBreakdownFor(applicant: any, applicantLabel: string): IncomeLine[] {
+  const out: IncomeLine[] = []
+
+  for (const inc of (applicant?.income || [])) {
+    const type = inc?.incomeType
+    if (type !== 'PAYG' && type !== 'Self-employed'
+      && type !== 'Other taxable' && type !== 'Other non-taxable') continue
+
+    if (type === 'Self-employed') {
+      out.push({ label: `${applicantLabel} — Self-employed income`, amount: null })
+      continue
+    }
+
+    if (type !== 'PAYG') {
+      out.push({
+        label: `${applicantLabel} — ${inc.otherIncomeType || type}`,
+        amount: Math.round(annualIncomeOf(inc)),
+      })
+      continue
+    }
+
+    // PAYG. Every part that carries a figure gets its own line.
+    const parts = PAYG_PARTS
+      .map(([label, amountKey, freqKey]) => ({
+        label,
+        amount: Math.round(annualise(inc?.[amountKey], inc?.[freqKey])),
+      }))
+      .filter(p => p.amount > 0)
+
+    if (parts.length === 0) {
+      // Zero is still an answer - it is what the entry says. Printed as it
+      // always was, so an empty income entry does not silently disappear.
+      out.push({ label: `${applicantLabel} — PAYG income`, amount: Math.round(annualIncomeOf(inc)) })
+    } else if (parts.length === 1 && parts[0].label === 'Gross salary') {
+      // Salary and nothing else: the line reads exactly as it did before today.
+      out.push({ label: `${applicantLabel} — PAYG income`, amount: parts[0].amount })
+    } else {
+      for (const p of parts) out.push({ label: `${applicantLabel} — ${p.label}`, amount: p.amount })
+    }
+  }
+
+  return out
+}

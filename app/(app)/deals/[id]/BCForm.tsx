@@ -15,6 +15,8 @@ import { dealFigures } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, settleSaved, applyOwned } from '@/lib/field-ownership'
 import { LMI_CAPITALISED, LMI_SETTLEMENT, lmiAmount, looksAlreadyCapitalised } from '@/lib/lmi'
+import { altLvrPurchase, altLvrEquity, altEstimatedRepayment, altNeedsLmi, altLmiUnanswered,
+         loanFromDeposit, depositFromLoan } from '@/lib/alt-scenario'
 import { repaymentMismatch, balancesDisagree } from '@/lib/split-cards'
 import { scenarioChangeCost, keepSplits, splitsAdded, type ChangeCost } from '@/lib/scenario-change'
 import { useDraft } from '@/components/useDraft'
@@ -162,19 +164,9 @@ function buildPropertyLiabilityChecklist(ff: any): string[] {
   return items
 }
 
-function buildIncomeBreakdown(app: any, applicantLabel: string): { label: string; amount: number | null }[] {
-  const incomeList: any[] = app?.income || []
-  return incomeList
-    .filter(inc => inc.incomeType === 'PAYG' || inc.incomeType === 'Self-employed' || inc.incomeType === 'Other taxable' || inc.incomeType === 'Other non-taxable')
-    .map(inc => {
-      if (inc.incomeType === 'Self-employed') {
-        return { label: `${applicantLabel} \u2014 Self-employed income`, amount: null }
-      }
-      const amount = Math.round(annualIncomeOf(inc))
-      const typeLabel = inc.incomeType === 'PAYG' ? 'PAYG income' : (inc.otherIncomeType || inc.incomeType)
-      return { label: `${applicantLabel} \u2014 ${typeLabel}`, amount }
-    })
-}
+// The income breakdown the email prints now lives in lib/income-calculations.ts
+// as incomeBreakdownFor(). It was here, and it added bonus, commission, overtime
+// and allowances into one "PAYG income" figure before the email ever saw them.
 
 const TEMPLATES = [
   { id: 'refinance_equity', label: 'Refinance + equity release' },
@@ -227,6 +219,11 @@ type AltScenario = {
   type: string
   lmiApplicable: string
   lmi: string
+  // Added 24 Sep 2026. `type` has been on this record since it was written and
+  // was hard-set to P&I with no control to change it; `ioYears` and
+  // `lmiTreatment` were never here at all. See lib/alt-scenario.ts.
+  ioYears?: string
+  lmiTreatment?: string
   ccPayoff: boolean
   ccPayoffAmount: string
   hecsPayoff: boolean
@@ -272,7 +269,7 @@ function fieldCls(value: string) {
     : "px-2.5 py-1.5 text-sm border border-amber-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-[#FEFBF5] w-full"
 }
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
-import { annualIncomeOf, annualIncomeOfApplicant } from '@/lib/income-calculations'
+import { annualIncomeOfApplicant, incomeBreakdownFor } from '@/lib/income-calculations'
 import { newGuard, saveGuarded } from '@/lib/save-conflict'
 import { readMoney, formatAsTyped, money, moneyOrBlank } from '@/lib/money'
 
@@ -573,27 +570,36 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   function updateAltScenario(id: string, field: keyof AltScenario, value: any) {
     setAltScenarios(prev => prev.map(a => a.id === id ? { ...a, [field]: value } : a))
   }
+  // THE THREE FIGURES THAT MOVE EACH OTHER, and the fourth that never did.
+  //
+  // Each of these reads the scenario out of `prev` rather than out of the render
+  // it was defined in, so two keystrokes in one tick cannot use a stale row.
+  // The arithmetic itself is in lib/alt-scenario.ts, shared with the email.
+  const altMoney = (n: number) => formatNumber(String(n))
+
   function handleAltPurchasePriceChange(id: string, val: string) {
-    const price = parseFloat(val.replace(/,/g, '')) || 0
-    const scenario = altScenarios.find(a => a.id === id)
-    const dep = parseFloat((scenario?.deposit || '0').replace(/,/g, '')) || 0
-    const sd = parseFloat((scenario?.stampDuty || '0').replace(/,/g, '')) || 0
-    setAltScenarios(prev => prev.map(a => a.id === id ? { ...a, purchasePrice: val, loanAmount: formatNumber(Math.max(0, Math.round(price - (dep - sd))).toString()) } : a))
+    setAltScenarios(prev => prev.map(a => a.id === id
+      ? { ...a, purchasePrice: val, loanAmount: altMoney(loanFromDeposit(val, a.deposit, a.stampDuty)) }
+      : a))
   }
   function handleAltDepositChange(id: string, val: string) {
-    const dep = parseFloat(val.replace(/,/g, '')) || 0
-    const scenario = altScenarios.find(a => a.id === id)
-    const price = parseFloat((scenario?.purchasePrice || '0').replace(/,/g, '')) || 0
-    const sd = parseFloat((scenario?.stampDuty || '0').replace(/,/g, '')) || 0
-    setAltScenarios(prev => prev.map(a => a.id === id ? { ...a, deposit: val, loanAmount: formatNumber(Math.max(0, Math.round(price - (dep - sd))).toString()) } : a))
-
+    setAltScenarios(prev => prev.map(a => a.id === id
+      ? { ...a, deposit: val, loanAmount: altMoney(loanFromDeposit(a.purchasePrice, val, a.stampDuty)) }
+      : a))
   }
   function handleAltStampDutyChange(id: string, val: string) {
-    const sd = parseFloat(val.replace(/,/g, '')) || 0
-    const scenario = altScenarios.find(a => a.id === id)
-    const price = parseFloat((scenario?.purchasePrice || '0').replace(/,/g, '')) || 0
-    const dep = parseFloat((scenario?.deposit || '0').replace(/,/g, '')) || 0
-    setAltScenarios(prev => prev.map(a => a.id === id ? { ...a, stampDuty: val, loanAmount: formatNumber(Math.max(0, Math.round(price - (dep - sd))).toString()) } : a))
+    setAltScenarios(prev => prev.map(a => a.id === id
+      ? { ...a, stampDuty: val, loanAmount: altMoney(loanFromDeposit(a.purchasePrice, a.deposit, val)) }
+      : a))
+  }
+  // THE DIRECTION THE ALTERNATIVE NEVER HAD. Typing a loan amount here used to
+  // recalculate nothing at all, so the deposit beside it kept whatever it had
+  // said before - a wrong figure, printed to the client with confidence. The
+  // main scenario has worked it back out since it was built.
+  function handleAltLoanAmountChange(id: string, val: string) {
+    setAltScenarios(prev => prev.map(a => a.id === id
+      ? { ...a, loanAmount: val, deposit: a.purchasePrice ? altMoney(depositFromLoan(a.purchasePrice, val, a.stampDuty)) : a.deposit }
+      : a))
   }
   const isMultiOption = template === 'oo_lvr_compare'
 
@@ -1341,8 +1347,8 @@ Key assumptions: ${checklistText}`
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ broker: brokerSig, brand, dealId: deal.id, formData: { ...buildBcData(), incomeBreakdown: [
-          ...buildIncomeBreakdown(ffApp, firstName || 'Applicant 1'),
-          ...(joint === 'Yes' ? buildIncomeBreakdown(ffApp2, ffApp2.firstName || 'Applicant 2') : [])
+          ...incomeBreakdownFor(ffApp, firstName || 'Applicant 1'),
+          ...(joint === 'Yes' ? incomeBreakdownFor(ffApp2, ffApp2.firstName || 'Applicant 2') : [])
         ], housingExpense: buildHousingExpenseLine(ffApp), factFindChecklist: buildPropertyLiabilityChecklist(ff), jointFirstName: ffApp2.firstName || '', additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
       })
       if (!res.ok) {
@@ -1934,14 +1940,15 @@ Key assumptions: ${checklistText}`
 
               {["oo_purchase", "investment_purchase", "refinance_equity"].includes(template) && compareOptions && altScenarios.map((alt, idx) => {
                 const isRefiEquityAlt = template === 'refinance_equity'
-                const price = parseFloat(alt.purchasePrice.replace(/,/g, '')) || 0
-                const loanAmt = parseFloat(alt.loanAmount.replace(/,/g, '')) || 0
-                const existingLoanN = parseFloat(existingLoanBal.replace(/,/g, '')) || 0
-                const propertyValueN = parseFloat(propertyValue.replace(/,/g, '')) || 0
-                const equityReleaseN = parseFloat((alt.equityReleaseAmount || '0').replace(/,/g, '')) || 0
-                const altLvr = isRefiEquityAlt
-                  ? (propertyValueN > 0 ? Math.ceil(((existingLoanN + equityReleaseN) / propertyValueN) * 1000) / 10 : 0)
-                  : (price > 0 ? Math.ceil((loanAmt / price) * 1000) / 10 : 0)
+                // ONE COPY OF THE ARITHMETIC. This was worked out here and worked
+                // out again, separately, inside the email route - two figures on
+                // the same deal that could drift apart. See lib/alt-scenario.ts.
+                const lvr = isRefiEquityAlt
+                  ? altLvrEquity(alt, existingLoanBal, propertyValue)
+                  : altLvrPurchase(alt)
+                const altLvr = lvr.percent
+                const altIsIO = /interest only|^io$/i.test(alt.type || '')
+                const altEstimate = altEstimatedRepayment(alt, loanTerm)
                 return (
                 <div key={alt.id} className="bg-white border-2 border-[#2DBEFF]/40 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-3">
@@ -1970,15 +1977,55 @@ Key assumptions: ${checklistText}`
                       </select>
                     </Field>
                     <Field label="Stamp duty"><NumberInput value={alt.stampDuty} onChange={v => handleAltStampDutyChange(alt.id, v)} /></Field>
-                    <Field label="Loan amount"><input className={inputCls} value={alt.loanAmount} onChange={e => updateAltScenario(alt.id, 'loanAmount', e.target.value)} /></Field>
+                    <Field label="Loan amount"><input className={inputCls} value={alt.loanAmount} onChange={e => handleAltLoanAmountChange(alt.id, e.target.value)} /></Field>
                     <Field label="Rate"><input className={inputCls} value={alt.rate} onChange={e => updateAltScenario(alt.id, 'rate', e.target.value)} /></Field>
-                    <Field label="Repayment"><CurrencyInput className={inputCls} value={alt.repayment || ''} onChange={v => updateAltScenario(alt.id, 'repayment', v)} /></Field>
+                    {/* THE BOX THAT WAS NEVER BUILT. `type` has sat on this record
+                        since the alternative was written, hard-set to P&I when the
+                        box is created, and the email works the repayment off it -
+                        so an interest only option printed the P&I figure and said
+                        nothing about it. Same control, same words, same place as a
+                        loan split above. */}
+                    <Field label="Repayment type">
+                      <select className={selectCls} value={alt.type || 'P&I'} onChange={e => updateAltScenario(alt.id, 'type', e.target.value)}>
+                        <option>P&I</option><option>Interest only</option>
+                      </select>
+                    </Field>
+                    {altIsIO && (
+                      <Field label="IO period (years)">
+                        <select className={selectCls} value={alt.ioYears || ''} onChange={e => updateAltScenario(alt.id, 'ioYears', e.target.value)}>
+                          <option value="">— select —</option>
+                          <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                        </select>
+                      </Field>
+                    )}
+                    <Field label="Repayment">
+                      <CurrencyInput className={inputCls} value={alt.repayment || ''} onChange={v => updateAltScenario(alt.id, 'repayment', v)} />
+                      {/* Left empty the email works one out anyway, so the broker
+                          sees it here first rather than in the client's inbox. */}
+                      {!alt.repayment && altEstimate && (
+                        <span className="text-[11px] text-gray-500 leading-snug">
+                          {altEstimate} a month if left blank
+                        </span>
+                      )}
+                    </Field>
                       </>
                     )}
                     <Field label="LVR (calculated)">
-                      <div className={inputCls + " bg-gray-50 text-gray-700"}>{altLvr > 0 ? `${altLvr}%` : '\u2014'}</div>
+                      <div className={inputCls + " bg-gray-50 text-gray-700"}>
+                        {altLvr > 0 ? `${altLvr}%` : '\u2014'}
+                        {lvr.includesLmi && <span className="text-[11px] text-gray-500"> incl. LMI</span>}
+                      </div>
+                      {altLmiUnanswered(alt) && (
+                        <span className="text-[11px] text-gray-500 leading-snug">
+                          {lvr.base}% before LMI. Say how the LMI is paid and this figure follows the answer.
+                        </span>
+                      )}
                     </Field>
-                    {altLvr > 80 && (
+                    {/* GATED ON THE LVR BEFORE THE PREMIUM. Using the figure that
+                        has the premium in it would show the question, which adds
+                        the premium, which shows the question - the answer chasing
+                        its own tail. */}
+                    {altNeedsLmi(lvr) && (
                       <Field label="LMI status">
                         <select className={selectCls} value={alt.lmiApplicable} onChange={e => updateAltScenario(alt.id, 'lmiApplicable', e.target.value)}>
                           <option value="">Select</option>
@@ -1987,9 +2034,22 @@ Key assumptions: ${checklistText}`
                         </select>
                       </Field>
                     )}
-                    {altLvr > 80 && alt.lmiApplicable === 'Applicable' && (
+                    {altNeedsLmi(lvr) && alt.lmiApplicable === 'Applicable' && (
                       <Field label="LMI estimate">
                         <CurrencyInput className={inputCls} value={alt.lmi} onChange={v => updateAltScenario(alt.id, 'lmi', v)} />
+                      </Field>
+                    )}
+                    {/* THE QUESTION THE ALTERNATIVE NEVER ASKED. It used to inherit
+                        whatever Option 1 answered, so a deal where Option 1
+                        capitalises and Option 2 does not stated it wrongly, and
+                        confidently. Same wording as the main scenario above. */}
+                    {altNeedsLmi(lvr) && alt.lmiApplicable === 'Applicable' && (
+                      <Field label="How is the LMI paid?">
+                        <select className={selectCls} value={alt.lmiTreatment || ''} onChange={e => updateAltScenario(alt.id, 'lmiTreatment', e.target.value)}>
+                          <option value="">Select</option>
+                          <option value={LMI_CAPITALISED}>Capitalised onto the loan</option>
+                          <option value={LMI_SETTLEMENT}>Paid at settlement</option>
+                        </select>
                       </Field>
                     )}
                   </div>

@@ -1,3 +1,4 @@
+import { altLvrPurchase, altLvrEquity, altRepayment } from '@/lib/alt-scenario'
 import { NextRequest, NextResponse } from 'next/server'
 import { ctas } from '@/lib/email-buttons'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
@@ -409,16 +410,19 @@ export async function POST(req: NextRequest) {
   if (template === 'refinance_equity' && d.compareOptions) {
     const buildOptionColRE = (opt: any, label: string) => {
       const existingLoanN = parseFloat((d.existingLoanBal || '0').replace(/,/g, '')) || 0
-      const propertyValueN = parseFloat((d.propertyValue || '0').replace(/,/g, '')) || 0
       const equityReleaseN = parseFloat((opt.equityReleaseAmount || '0').replace(/,/g, '')) || 0
-      const lvrNum = propertyValueN > 0 ? Math.ceil(((existingLoanN + equityReleaseN) / propertyValueN) * 1000) / 10 : 0
+      // ONE COPY OF THE ARITHMETIC, shared with the box on the broker's screen.
+      const lvrNum = altLvrEquity(opt, d.existingLoanBal, d.propertyValue).percent
       const actions = []
       if (opt.ccPayoff) actions.push((Number(opt.ccPayoffAmount) || 0) > 0 ? `Reduce credit card by ${money(opt.ccPayoffAmount)}` : 'Credit card closed')
       if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by ${money(opt.hecsPayoffAmount)}` : 'HECS closed')
       if (opt.carLoanPayoff) actions.push('Car loan closed')
       if (opt.personalLoanPayoff) actions.push('Personal loan closed')
       const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px"><span style="color:#555;">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</span></p>` : ''
-      const lmiLine = lvrNum > 80 ? lmiLines(opt, d.lmiTreatment, existingLoanN + equityReleaseN) : ''
+      // EACH OPTION'S OWN ANSWER. This passed d.lmiTreatment - Option 1's answer -
+      // to every alternative column, so a deal where Option 1 capitalises and
+      // Option 2 does not told the client the wrong thing about Option 2.
+      const lmiLine = lvrNum > 80 ? lmiLines(opt, opt.lmiTreatment, existingLoanN + equityReleaseN) : ''
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
         ${lineIf('Existing loan balance', money(d.existingLoanBal))}
@@ -429,7 +433,7 @@ export async function POST(req: NextRequest) {
     }
     const baseOptionRE = {
       equityReleaseAmount: d.equityRelease,
-      lmiApplicable: d.lmiApplicable, lmi: d.lmi,
+      lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
       ccPayoff: false, hecsPayoff: false, carLoanPayoff: false, personalLoanPayoff: false, nonBankLender: false
     }
     const allOptionsRE = [buildOptionColRE(baseOptionRE, `Option 1${d.optionLabel ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + d.optionLabel + '</span>' : ''}`), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionColRE(alt, `Option ${i + 2}${alt.label ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + alt.label + '</span>' : ''}`))]
@@ -480,16 +484,18 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'oo_purchase' && d.compareOptions) {
     const buildOptionCol = (opt: any, label: string) => {
-      const priceNum = parseFloat((opt.purchasePrice || '').replace(/,/g, '')) || 0
       const loanNum = parseFloat((opt.loanAmount || '').replace(/,/g, '')) || 0
-      const lvrNum = priceNum > 0 ? Math.ceil((loanNum / priceNum) * 1000) / 10 : 0
+      // ONE COPY OF THE ARITHMETIC, shared with the box on the broker's screen.
+      // It now adds the LMI premium when this option says it is capitalised.
+      const lvrNum = altLvrPurchase(opt).percent
       const actions = []
       if (opt.ccPayoff) actions.push((Number(opt.ccPayoffAmount) || 0) > 0 ? `Reduce credit card by ${money(opt.ccPayoffAmount)}` : 'Credit card closed')
       if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by ${money(opt.hecsPayoffAmount)}` : 'HECS closed')
       if (opt.carLoanPayoff) actions.push('Car loan closed')
       if (opt.personalLoanPayoff) actions.push('Personal loan closed')
       const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px"><span style="color:#555;">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</span></p>` : ''
-      const lmiLine = lvrNum > 80 ? lmiLines(opt, d.lmiTreatment, loanNum) : ''
+      // EACH OPTION'S OWN ANSWER - see the note on the equity release column.
+      const lmiLine = lvrNum > 80 ? lmiLines(opt, opt.lmiTreatment, loanNum) : ''
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
         ${purchaseColumn({
@@ -498,14 +504,15 @@ export async function POST(req: NextRequest) {
         })}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
-        ${lineIf('Est. repayment', repaymentOf({ ...opt, amount: opt.loanAmount || opt.amount }, d.loanTerm))}
+        ${lineIf('Est. repayment', altRepayment(opt, d.loanTerm))}
         ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px"><span style="color:#343333;">To achieve this option:</span></p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">&#10003; ${a}</span></p>`).join('') : ''}${nonBankNote}
       </td>`
     }
     const baseOption = {
       purchasePrice: d.purchasePrice, deposit: d.deposit, stampDuty: d.stampDuty,
       loanAmount: d.splits?.[0]?.amount, rate: d.splits?.[0]?.rate, repayment: d.splits?.[0]?.repayment,
-      lmiApplicable: d.lmiApplicable, lmi: d.lmi,
+      type: d.splits?.[0]?.type, ioYears: d.splits?.[0]?.ioYears,
+      lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
       ccPayoff: false, hecsPayoff: false, carLoanPayoff: false, personalLoanPayoff: false
     }
     const allOptions = [buildOptionCol(baseOption, `Option 1${d.optionLabel ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + d.optionLabel + '</span>' : ''}`), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionCol(alt, `Option ${i + 2}${alt.label ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + alt.label + '</span>' : ''}`))]
@@ -541,16 +548,18 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'investment_purchase' && d.compareOptions) {
     const buildOptionColIP = (opt: any, label: string) => {
-      const priceNum = parseFloat((opt.purchasePrice || '').replace(/,/g, '')) || 0
       const loanNum = parseFloat((opt.loanAmount || '').replace(/,/g, '')) || 0
-      const lvrNum = priceNum > 0 ? Math.ceil((loanNum / priceNum) * 1000) / 10 : 0
+      // ONE COPY OF THE ARITHMETIC, shared with the box on the broker's screen.
+      // It now adds the LMI premium when this option says it is capitalised.
+      const lvrNum = altLvrPurchase(opt).percent
       const actions = []
       if (opt.ccPayoff) actions.push((Number(opt.ccPayoffAmount) || 0) > 0 ? `Reduce credit card by ${money(opt.ccPayoffAmount)}` : 'Credit card closed')
       if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by ${money(opt.hecsPayoffAmount)}` : 'HECS closed')
       if (opt.carLoanPayoff) actions.push('Car loan closed')
       if (opt.personalLoanPayoff) actions.push('Personal loan closed')
       const nonBankNote = opt.nonBankLender ? `<p style="font-size:11px;color:#555;font-style:italic;margin:8px 0 2px"><span style="color:#555;">This option is based on a non-bank lending solution, which typically allows more flexibility around serviceability.</span></p>` : ''
-      const lmiLine = lvrNum > 80 ? lmiLines(opt, d.lmiTreatment, loanNum) : ''
+      // EACH OPTION'S OWN ANSWER - see the note on the equity release column.
+      const lmiLine = lvrNum > 80 ? lmiLines(opt, opt.lmiTreatment, loanNum) : ''
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
         ${purchaseColumn({
@@ -559,14 +568,15 @@ export async function POST(req: NextRequest) {
         })}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
-        ${lineIf('Est. repayment', repaymentOf({ ...opt, amount: opt.loanAmount || opt.amount }, d.loanTerm))}
+        ${lineIf('Est. repayment', altRepayment(opt, d.loanTerm))}
         ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px"><span style="color:#343333;">To achieve this option:</span></p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">&#10003; ${a}</span></p>`).join('') : ''}${nonBankNote}
       </td>`
     }
     const baseOptionIP = {
       purchasePrice: d.purchasePrice, deposit: d.deposit, stampDuty: d.stampDuty,
       loanAmount: d.splits?.[0]?.amount, rate: d.splits?.[0]?.rate, repayment: d.splits?.[0]?.repayment,
-      lmiApplicable: d.lmiApplicable, lmi: d.lmi,
+      type: d.splits?.[0]?.type, ioYears: d.splits?.[0]?.ioYears,
+      lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
       ccPayoff: false, hecsPayoff: false, carLoanPayoff: false, personalLoanPayoff: false, nonBankLender: false
     }
     const allOptionsIP = [buildOptionColIP(baseOptionIP, `Option 1${d.optionLabel ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + d.optionLabel + '</span>' : ''}`), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionColIP(alt, `Option ${i + 2}${alt.label ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + alt.label + '</span>' : ''}`))]
