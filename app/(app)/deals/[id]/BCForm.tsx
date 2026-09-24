@@ -15,6 +15,7 @@ import { dealFigures } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, settleSaved, applyOwned } from '@/lib/field-ownership'
 import { LMI_CAPITALISED, LMI_SETTLEMENT, lmiAmount, looksAlreadyCapitalised } from '@/lib/lmi'
+import { propertyChecklist } from '@/lib/property-checklist'
 import { altLvrPurchase, altLvrEquity, altEstimatedRepayment, altNeedsLmi, altLmiUnanswered,
          loanFromDeposit, depositFromLoan } from '@/lib/alt-scenario'
 import { repaymentMismatch, balancesDisagree } from '@/lib/split-cards'
@@ -69,101 +70,11 @@ function buildHousingExpenseLine(app: any): string {
   return ''
 }
 
-function getOwnerNamesFromCheckbox(ownership: Record<string, string> | undefined, applicants: any[]): string {
-  if (!ownership) return ''
-  return applicants.filter((a) => ownership[a.id] === 'Yes').map((a) => a.firstName || 'Applicant').join(', ')
-}
-
-function getOwnerNamesFromPercent(ownership: Record<string, string> | undefined, applicants: any[]): string {
-  if (!ownership) return ''
-  return applicants.filter((a) => (Number(ownership[a.id]) || 0) > 0).map((a) => a.firstName || 'Applicant').join(', ')
-}
-
-function freqLabel(freq: string | undefined): string {
-  if (freq === 'Weekly') return 'week'
-  if (freq === 'Fortnightly') return 'fortnight'
-  return 'month'
-}
-
-
-
-function subBlock(lines: string[]): string {
-  if (!lines.length) return ''
-  return `<div style="border-left:2px solid #d8c9a8;margin:4px 0 0 8px;padding-left:10px">` +
-    lines.map(l => `<p style="font-size:12px;color:#666;margin:2px 0">${l}</p>`).join('') +
-    `</div>`
-}
-
-function statusBadge(status: string): string {
-  // Only show a badge for these three explicit "something is changing" statuses.
-  // Everything else (Remain open, blank, or any old/legacy value like "Ongoing") shows nothing.
-  const colors: Record<string, string> = {
-    'To be closed': 'background:#FEF3C7;color:#92400E',
-    'To be refinanced': 'background:#D1FAE5;color:#065F46',
-    'To be consolidated': 'background:#DBEAFE;color:#1E40AF',
-  }
-  if (!colors[status]) return ''
-  return ` <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;${colors[status]}">${status}</span>`
-}
-
-function buildPropertyLiabilityChecklist(ff: any): string[] {
-  const items: string[] = []
-  const applicants = ff.applicants || []
-  const properties = ff.properties || []
-  const liabilities = ff.liabilities || []
-
-  properties.forEach((prop: any) => {
-    const owners = getOwnerNamesFromPercent(prop.ownership, applicants)
-    const isInvestment = prop.ownershipType === 'Investment'
-    const typeParts = [prop.propertySubtype, prop.zoning].filter(Boolean).join(', ')
-    const header = `<strong>${prop.address || 'Property'}</strong>${typeParts ? ' \u2014 ' + typeParts : ''} (${prop.ownershipType || 'Owner occupied'})`
-    const subLines: string[] = []
-    if (isInvestment && money(prop.rentalIncome)) {
-      subLines.push(`Rental income: ${money(prop.rentalIncome)}/week`)
-    }
-    if (owners) {
-      subLines.push(`Owned by: ${owners}`)
-    }
-    ;(prop.loans || []).forEach((loan: any) => {
-      if (!loan.lenderName && !money(loan.balance) && !money(loan.limitAmount)) return
-      // WHAT THE CLIENT IS TOLD THEY OWE.
-      //
-      // This printed `Balance $${fmtMoney(loan.balance)}`, and fmtMoney turned
-      // anything missing - or anything with a comma in it - into the string "0".
-      // Alexis Janes has eight mortgages recorded by LIMIT, with the balance box
-      // left empty, so the email that went to her said "Balance $0" eight times
-      // against half a million dollars of debt apiece.
-      //
-      // A figure that is not recorded is not zero. Say which figure it is, and
-      // if there is neither, say nothing about the money at all.
-      const bal = money(loan.balance)
-      const limit = money(loan.limitAmount)
-      const figure = bal ? `Balance ${bal}` : limit ? `Limit ${limit}` : ''
-      subLines.push(`Linked loan: ${loan.lenderName || 'Lender'}${figure ? ' \u2014 ' + figure : ''}${statusBadge(loan.status)}`)
-    })
-    items.push(header + subBlock(subLines))
-  })
-
-  liabilities.forEach((liab: any) => {
-    const owners = getOwnerNamesFromCheckbox(liab.ownership, applicants)
-    const header = `<strong>${liab.liabilityType}</strong>${statusBadge(liab.status)}`
-    const subLines: string[] = []
-    if (liab.liabilityType === 'Credit card') {
-      subLines.push(`Limit ${moneyOrBlank(liab.limitAmount)}`)
-    } else if (liab.liabilityType === 'HECS') {
-      subLines.push(`Balance ${moneyOrBlank(liab.balance)}`)
-    } else if (liab.liabilityType === 'Health Insurance') {
-      subLines.push(`${moneyOrBlank(liab.repaymentAmount)}/${freqLabel(liab.repaymentFrequency)}`)
-    } else {
-      subLines.push(`Repayment ${moneyOrBlank(liab.repaymentAmount)}/${freqLabel(liab.repaymentFrequency)}, Balance ${moneyOrBlank(liab.balance)}`)
-    }
-    if (owners) subLines.push(`Owned by: ${owners}`)
-    items.push(header + subBlock(subLines))
-  })
-
-  return items
-}
-
+// The properties and liabilities block now lives in lib/property-checklist.ts
+// as propertyChecklist(). It was here, with no test on it, and reached the
+// client carrying two facts out of eleven - and the loan status dropdown it
+// printed had never matched a single one of its own three options.
+//
 // The income breakdown the email prints now lives in lib/income-calculations.ts
 // as incomeBreakdownFor(). It was here, and it added bonus, commission, overtime
 // and allowances into one "PAYG income" figure before the email ever saw them.
@@ -403,7 +314,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // "Based on your numbers" box in the client email builds those lines from the
   // fact find liabilities every time it is generated - Credit card, Car loan,
   // Personal loan, HECS, Health Insurance - correctly formatted and never
-  // frozen. See buildPropertyLiabilityChecklist above, and the note in
+  // frozen. See propertyChecklist in lib/property-checklist.ts, and the note in
   // app/api/generate-email/route.ts saying these were cut from the email for
   // double-counting. The storage outlived them by a few months.
   //
@@ -1349,7 +1260,7 @@ Key assumptions: ${checklistText}`
         body: JSON.stringify({ broker: brokerSig, brand, dealId: deal.id, formData: { ...buildBcData(), incomeBreakdown: [
           ...incomeBreakdownFor(ffApp, firstName || 'Applicant 1'),
           ...(joint === 'Yes' ? incomeBreakdownFor(ffApp2, ffApp2.firstName || 'Applicant 2') : [])
-        ], housingExpense: buildHousingExpenseLine(ffApp), factFindChecklist: buildPropertyLiabilityChecklist(ff), jointFirstName: ffApp2.firstName || '', additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
+        ], housingExpense: buildHousingExpenseLine(ffApp), factFindChecklist: propertyChecklist(ff), jointFirstName: ffApp2.firstName || '', additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
       })
       if (!res.ok) {
         const err = await res.json().catch(() => null)
