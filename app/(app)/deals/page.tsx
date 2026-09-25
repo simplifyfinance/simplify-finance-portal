@@ -1,5 +1,6 @@
 'use client'
 import { Fragment, useEffect, useMemo, useState } from 'react'
+import { seedFromClients, seedSummary } from '@/lib/seed-from-client'
 import { dealMatches } from '@/lib/deal-search'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { Plus, Search, Briefcase, Trash2, Copy } from 'lucide-react'
@@ -515,6 +516,35 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
     browser.from('clients').select('*').order('first_name').then(({ data }) => { if (data) setClients(data) })
   }, [])
 
+  // WHAT THESE PEOPLE ALREADY TOLD US, SAID BEFORE THE DEAL IS MADE.
+  //
+  // The fact find is about to start with their properties, liabilities and
+  // assets on it. That should never be a surprise found later - it is said here,
+  // in words, while there is still a Cancel button. See lib/seed-from-client.ts.
+  const [carrying, setCarrying] = useState('')
+  const clientIdsPicked = [selectedClient?.id, form2.client_id].filter(Boolean).join(',')
+
+  useEffect(() => {
+    const ids = clientIdsPicked ? clientIdsPicked.split(',') : []
+    if (ids.length === 0) { setCarrying(''); return }
+    let alive = true
+    browser.from('clients')
+      .select('id, position_properties, position_liabilities, position_assets')
+      .in('id', ids)
+      .then(({ data }) => {
+        if (!alive) return
+        const byId = new Map((data || []).map((r: any) => [r.id, r]))
+        const stand = ids.map((id, i) => ({ id: `a${i}`, clientId: id }))
+        const seeded = seedFromClients(stand, (clientId) => {
+          const r: any = byId.get(clientId)
+          if (!r) return null
+          return { properties: r.position_properties, liabilities: r.position_liabilities, assets: r.position_assets }
+        }, () => 'preview')
+        setCarrying(seedSummary(seeded))
+      })
+    return () => { alive = false }
+  }, [clientIdsPicked])
+
   const app1First = selectedClient?.first_name || form.first_name || ''
   const app1Last = selectedClient?.last_name || form.last_name || ''
   const app2First = form2.first_name || ''
@@ -587,7 +617,38 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
       }
       applicants.push(makeApplicant(form2.first_name, form2.last_name, form2.email, form2.phone, secondClientId))
     }
-    const fact_find_data = { applicants, assets: [], properties: [], liabilities: [] }
+    // WHAT THESE PEOPLE ALREADY TOLD US.
+    //
+    // 25 Sep 2026. This was three empty lists for everybody, so a client whose
+    // whole position we hold - captured when their last deal settled - was
+    // typed out again from nothing. Fabio: "this is the point of all this".
+    //
+    // Read off the client record, joined up where two applicants hold the same
+    // thing, and put on the new fact find as a starting point. Anybody can edit
+    // it; nothing here is final. See lib/seed-from-client.ts.
+    //
+    // A failure is not allowed to stop a deal being created. The worst case is
+    // the empty fact find this always used to give, which is what it falls back
+    // to - and it says so on screen rather than quietly.
+    let carried = { properties: [] as any[], liabilities: [] as any[], assets: [] as any[] }
+    try {
+      const ids = applicants.map(a => a.clientId).filter(Boolean) as string[]
+      if (ids.length) {
+        const { data: records } = await browser.from('clients')
+          .select('id, position_properties, position_liabilities, position_assets')
+          .in('id', ids)
+        const byId = new Map((records || []).map((r: any) => [r.id, r]))
+        carried = seedFromClients(applicants, (clientId) => {
+          const r: any = byId.get(clientId)
+          if (!r) return null
+          return { properties: r.position_properties, liabilities: r.position_liabilities, assets: r.position_assets }
+        }, makeUid)
+      }
+    } catch {
+      // Falls through with the empty lists.
+    }
+
+    const fact_find_data = { applicants, ...carried }
 
     // Checked. This used to be a bare insert with no error handling and no
     // select, so a database refusal closed the modal and looked like success -
@@ -736,6 +797,13 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
         {(form.last_name || selectedClient) && (
           <div className="bg-gray-50 rounded-lg px-3 py-2 mb-4 text-xs text-gray-500">
             Deal name: <span className="font-medium text-gray-700">{dealName}</span>
+          </div>
+        )}
+
+        {carrying && (
+          <div className="bg-[#F4FBFF] border border-[#CDEBF8] rounded-lg px-3 py-2.5 mb-4 text-xs text-[#0E5E86] leading-relaxed">
+            We already hold <span className="font-semibold">{carrying}</span> for them.
+            The Fact Find will start with it, and you can change anything on it.
           </div>
         )}
 
