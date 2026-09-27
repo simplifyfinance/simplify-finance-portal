@@ -13,7 +13,11 @@ type Lender = { id: string; name: string; active: boolean; legal_fee_label?: str
   // and nothing could match the two. Comma separated, because one bank arrives
   // under more than one code. Fabio, 3 Sep 2026: "I'm okay with adding a short
   // code column for the lender library."
-  statement_codes?: string | null }
+  statement_codes?: string | null
+  // HOW FAR THE LOAN MAY MOVE before this bank wants the pricing redone. Null is
+  // N/A and stays N/A - see docs/lender-reprice-schema.sql for why nothing is
+  // ever assumed here.
+  reprice_over_percent?: number | null }
 type Product = {
   id: string
   lender_id: string
@@ -138,6 +142,20 @@ export default function LenderLibrary() {
     if (problem) { setWriteError(problem); return }
     setWriteError('')
     setLenders(prev => prev.map(l => l.id === id ? { ...l, statement_codes: value || null } : l))
+  }
+
+  // Typed as a percentage, stored as a number. Empty puts it back to N/A, which
+  // is how a rule gets removed when a bank drops it.
+  async function setRepriceOver(id: string, raw: string) {
+    const clean = raw.replace(/[^0-9.]/g, '').trim()
+    const value = clean === '' ? null : Number(clean)
+    if (value !== null && !Number.isFinite(value)) { setWriteError('That is not a number.'); return }
+    const problem = await checkedWrite(
+      supabase.from('lenders').update({ reprice_over_percent: value }).eq('id', id),
+      'The repricing rule')
+    if (problem) { setWriteError(problem); return }
+    setWriteError('')
+    setLenders(prev => prev.map(l => l.id === id ? { ...l, reprice_over_percent: value } : l))
   }
 
   async function setLegalFeeLabel(id: string, label: string) {
@@ -487,6 +505,30 @@ export default function LenderLibrary() {
                         lender.statement_codes ? 'border-gray-200 text-[#343333]' : 'border-[#EBD9BE] text-[#8A6218] placeholder:text-[#B58A2B]'}`} />
                     <span className="text-[11px] text-gray-400">
                       Separate several with commas. Used to tell whether a client&rsquo;s statements already cover this bank.
+                    </span>
+                  </div>
+                  {/* WHEN THE LOAN MOVES. Fabio, 27 Sep 2026: 10% is a St George,
+                      Westpac and Bank of Melbourne rule and nobody else's. Every
+                      other bank sits at N/A until somebody types a figure, and the
+                      deal says so rather than borrowing the common rule. Up or
+                      down, percentage only. See lib/offer-accepted-rules.ts. */}
+                  <div className="flex items-center gap-2 px-5 py-2.5 border-t border-gray-50 flex-wrap"
+                       onClick={e => e.stopPropagation()}>
+                    <span className="text-xs text-gray-500">Wants the pricing redone if the loan moves more than</span>
+                    <input defaultValue={lender.reprice_over_percent ?? ''}
+                      key={`rp${lender.id}${lender.reprice_over_percent ?? ''}`}
+                      onBlur={e => {
+                        const was = lender.reprice_over_percent ?? ''
+                        if (e.target.value.trim() !== String(was)) setRepriceOver(lender.id, e.target.value)
+                      }}
+                      placeholder="N/A"
+                      className={`text-xs border rounded-lg px-2 py-1 bg-white w-[64px] text-right ${
+                        lender.reprice_over_percent === null || lender.reprice_over_percent === undefined
+                          ? 'border-gray-200 text-gray-400 placeholder:text-gray-300'
+                          : 'border-gray-200 text-[#343333]'}`} />
+                    <span className="text-xs text-gray-500">%</span>
+                    <span className="text-[11px] text-gray-400">
+                      Up or down. Leave it blank where there is no rule &mdash; the deal then says to check, rather than assuming.
                     </span>
                   </div>
                   {lps.length === 0 && <p className="text-xs text-gray-400 px-5 py-3">No products yet.</p>}

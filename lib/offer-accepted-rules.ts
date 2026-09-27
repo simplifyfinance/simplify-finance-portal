@@ -185,3 +185,82 @@ export function needsAnzAcknowledgement(lenderName: any, oldLoan: number, newLoa
   if (!rule || !rule.names.includes('anz')) return false
   return newLoan > 0 && oldLoan > 0 && newLoan < oldLoan
 }
+
+// HOW FAR THE LOAN MOVED, AND WHETHER THIS LENDER CARES.
+//
+// Fabio, 27 Sep 2026: "10% is only a St George Westpac and Bank of Melbourne
+// rule... changes always apply up or down just percentage no dollar figure".
+//
+// The threshold is NOT in this file. Every other rule here is something the
+// portal has to understand; this is a number a bank changes its mind about, so
+// it lives on the lender record where Fabio and Katie can type it without
+// waiting for a deploy. See docs/lender-reprice-schema.sql.
+//
+// UP OR DOWN. A loan that drops 12% has moved 12%. The direction is reported
+// because it matters elsewhere - ANZ want a signed acknowledgement for a
+// reduction and nothing at all for an increase - but the threshold does not
+// care which way it went.
+
+export type RepricingCheck = {
+  // How far it moved, as a percentage of what it was. Always positive.
+  movedPercent: number
+  direction: 'up' | 'down'
+  // What the lender allows before the pricing is redone. Null means nobody has
+  // recorded one, which is a real answer and is said out loud.
+  threshold: number | null
+  // Only meaningful when a threshold is recorded. False with no threshold - it
+  // is not "within the rule", there is no rule.
+  over: boolean
+}
+
+// Null when there is nothing to say: no loan, or the loan has not moved.
+export function repricingCheck(oldLoan: any, newLoan: any,
+                               thresholdPercent: any): RepricingCheck | null {
+  const was = Number(String(oldLoan ?? '').replace(/[^0-9.]/g, ''))
+  const now = Number(String(newLoan ?? '').replace(/[^0-9.]/g, ''))
+  if (!Number.isFinite(was) || !Number.isFinite(now) || was <= 0 || now <= 0) return null
+  if (was === now) return null
+
+  // THE COMPARISON IS ON THE EXACT FIGURE, the rounding is for the eye only.
+  // Rounded first, a real movement of 0.0001% became 0.0% and then read as
+  // "not over 0%" on a lender whose rule is that any movement at all needs
+  // repricing. A displayed number and a decision are not the same thing.
+  const exact = (Math.abs(now - was) / was) * 100
+  const movedPercent = Math.round(exact * 10) / 10
+  const threshold = thresholdOf(thresholdPercent)
+  return {
+    movedPercent,
+    direction: now > was ? 'up' : 'down',
+    threshold,
+    over: threshold !== null && exact > threshold,
+  }
+}
+
+// A threshold of zero would mean "any movement at all needs repricing", which is
+// a real rule somebody could type. Only a blank, a null or nonsense is N/A.
+function thresholdOf(v: any): number | null {
+  if (v === null || v === undefined) return null
+  const raw = String(v).trim()
+  if (raw === '') return null
+  // WORDS ARE NOT ZERO. "about ten" stripped down to an empty string, and
+  // Number('') is 0 - which would have quietly meant "any movement at all needs
+  // repricing" on every lender somebody had typed a note into.
+  const digits = raw.replace(/[^0-9.]/g, '')
+  if (!/[0-9]/.test(digits)) return null
+  const n = Number(digits)
+  return Number.isFinite(n) && n >= 0 ? n : null
+}
+
+// The line a person reads, in one place, so the offer-accepted panel and
+// anything else that moves a loan cannot word it differently.
+export function repricingLine(check: RepricingCheck | null, lenderName: any): string {
+  if (!check) return ''
+  const who = String(lenderName ?? '').trim() || 'this lender'
+  const moved = `The loan moves ${check.direction} ${check.movedPercent}%.`
+  if (check.threshold === null) {
+    return `${moved} No repricing rule is recorded for ${who}, so check before you submit.`
+  }
+  return check.over
+    ? `${moved} Over ${who}'s ${check.threshold}% limit — they will want the pricing redone.`
+    : `${moved} Within ${who}'s ${check.threshold}% limit, so the pricing stands.`
+}
