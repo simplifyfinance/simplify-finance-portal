@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { patchDealColumn } from '@/lib/patch-deal-column'
+import { dayMonth } from '@/lib/same-date-everywhere'
 import { documentsFor, documentsDue, groupedDocuments, type DocRound } from '@/lib/document-rules'
 import { rowsFor, tickedCount, toRequest, withTick, withAdded, withoutAdded, withDeferred,
          progressOf, requestRounds, COMMON_EXTRAS, extrasNotAlreadyListed,
@@ -191,7 +192,27 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
     save(cur => withAdded(cur, known?.label || label, known?.forWhat || 'compliance', who, known?.detail), 'add')
   }
 
+  // NOBODY ASKED FOR THESE.
+  //
+  // Fabio, 27 Sep 2026: "now I am depednign on humans loading docs into the
+  // portal". He is not, quite - the list builds itself off the fact find and the
+  // button has always been here. What was missing is the deal SAYING the button
+  // needs pressing.
+  //
+  // The automatic request fires at one moment only, BC to Lending options (see
+  // lib/proceed-flow.ts). A deal that went straight to Lending options skipped
+  // it, so the list sat there ticked and nobody was ever asked - Kathleen Stone
+  // and Sharon Zhou, found by Ellie on 26 Sep.
+  //
+  // It counts what has NEVER been asked, not what is on the list, so a second
+  // round of two does not read as eleven and a client is never asked twice.
+  // Nothing fires on its own; a person presses it.
+  const dealFinished = deal?.status === 'completed' || !!deal?.settled_at
+  const nudge = !dealFinished && pending.length > 0
+  const lastRound = rounds.length ? rounds[rounds.length - 1] : null
+
   return (
+    <>
     <div className="bg-white border border-[#EDE7DD] rounded-xl mb-4 overflow-hidden">
       <button onClick={() => setOpen(o => !o)}
         className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#FDFCFA] transition">
@@ -434,6 +455,34 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
         </div>
       )}
     </div>
+
+    {nudge && (
+      <div className="bg-[#FDF6EC] border border-[#EBD9BE] rounded-xl px-4 py-3 mb-4">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-[13px] font-semibold text-[#7a5a14]">
+            {asked === 0
+              ? `Nobody has asked the client for ${pending.length === 1 ? 'this document' : `these ${pending.length} documents`}.`
+              : `${pending.length} ${pending.length === 1 ? 'document has' : 'documents have'} never been asked for.`}
+          </span>
+          <button onClick={requestThem} disabled={sending}
+            className="px-3 py-1.5 text-xs rounded-lg bg-[#221F1B] text-white font-semibold hover:bg-[#3a3733] disabled:opacity-50">
+            {sending ? 'Sending...' : 'Request them'}
+          </button>
+        </div>
+        {/* A date spelled here rather than asked of the operating system. This
+            line draws on first paint, and Node and Chrome disagree about the
+            short form of September - which tears the whole page up. See
+            lib/same-date-everywhere.ts. */}
+        <p className="m-0 mt-1 text-[11.5px] text-[#9A7B36]">
+          {asked === 0
+            ? 'The list came off the fact find. This sends the same email as the button inside the list.'
+            : `The other ${asked} went out${lastRound ? ` on ${dayMonth(lastRound.at, false)}` : ''}. The client is not asked twice.`}
+        </p>
+        {err && <p className="m-0 mt-1.5 text-[12px] text-[#8E3A34]">{err}</p>}
+        {sentMsg && <p className="m-0 mt-1.5 text-[12px] text-[#15803D]">{sentMsg}</p>}
+      </div>
+    )}
+    </>
   )
 }
 
