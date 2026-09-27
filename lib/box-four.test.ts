@@ -196,18 +196,41 @@ describe('the client’s agreement', () => {
 
   it('states it plainly when they agreed', () => {
     const d = deal()
-    d.compliance_data.clientAgreedLender = 'Yes'
+    d.lo_data.clientAgreedLender = 'Yes'
     expect(boxFour(d).text).toMatch(/agreed with the recommendation and proceeded/)
   })
 
   it('names the lender they chose instead, and their reason', () => {
     const d = deal()
-    d.compliance_data.clientAgreedLender = 'No'
-    d.compliance_data.clientChosenLender = 'CBA'
-    d.compliance_data.clientChosenLenderReason = 'Existing relationship'
+    d.lo_data.clientAgreedLender = 'No'
+    d.lo_data.clientChosenLender = 'CBA'
+    d.lo_data.clientChosenLenderReason = 'Existing relationship'
     const t = boxFour(d).text
     expect(t).toMatch(/did not proceed with the original recommendation and chose CBA/)
     expect(t).toContain('"Existing relationship"')
+  })
+
+  // CHARLES MULLINS 2026. The lending options tab was changed to Bankwest and
+  // the compliance tab kept an answer given months earlier about AMP. This box
+  // read the compliance copy first, so the pack was about to tell the
+  // compliance team the clients had chosen AMP. Nobody had chosen AMP.
+  it('ignores an answer the compliance tab is still holding from before', () => {
+    const d = deal()
+    d.compliance_data.clientAgreedLender = 'No'
+    d.compliance_data.clientChosenLender = 'AMP'
+    const t = boxFour(d).text
+    expect(t).not.toContain('chose AMP')
+    expect(t).toMatch(/NOT RECORDED — the clients' agreement to the recommendation/)
+  })
+
+  it('and the lending options tab overrules it outright', () => {
+    const d = deal()
+    d.compliance_data.clientAgreedLender = 'No'
+    d.compliance_data.clientChosenLender = 'AMP'
+    d.lo_data.clientAgreedLender = 'Yes'
+    const t = boxFour(d).text
+    expect(t).toMatch(/agreed with the recommendation and proceeded/)
+    expect(t).not.toContain('AMP')
   })
 })
 

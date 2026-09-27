@@ -2,6 +2,7 @@ import { money, readMoney } from './money'
 import { compareLenders, type Option } from './lender-comparison'
 import { dealRow } from './deal-structure'
 import { variantOf, andList, type Gap } from './box-one'
+import { clientAgreement } from './client-agreement'
 
 // BOX FIVE — OPTIONS PRESENTED & RECOMMENDATION.
 //
@@ -186,13 +187,15 @@ export function boxFive(deal: any): Box {
   }
 
   // --- what the clients decided ----------------------------------------------
-  const agreed = txt(cd.clientAgreedLender) || txt(lo.clientAgreedLender)
+  // The lending options tab, and only it - see lib/client-agreement.ts and the
+  // Charles Mullins file it was written for.
+  const agreement = clientAgreement(lo)
+  const agreed = agreement.agreed
   if (agreed === 'Yes') {
     parts.push('The clients agreed with the recommendation and proceeded with it.')
   } else if (agreed === 'No') {
-    const chosen = txt(cd.clientChosenLender) === '__other__'
-      ? txt(cd.clientChosenLenderOther) : txt(cd.clientChosenLender)
-    const reason = txt(cd.clientChosenLenderReason)
+    const chosen = agreement.chosen
+    const reason = agreement.reason
     parts.push(chosen
       ? `The clients did not proceed with the recommendation and chose ${chosen}.`
       : `The clients did not proceed with the recommendation. ${shout('NOT RECORDED — which lender they chose instead.')}`)

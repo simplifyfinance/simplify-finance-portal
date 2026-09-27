@@ -34,6 +34,7 @@ import { variantOf, andList, structureOf, flexibilityPassage, type Gap } from '.
 import { retirementPicture } from './box-goals'
 import { CREDIT_QUESTIONS } from './credit-history-facts'
 import { recommendedOption } from './recommended-option'
+import { clientAgreement } from './client-agreement'
 
 const txt = (v: any) => String(v ?? '').trim()
 const shout = (s: string) => `** ${s} **`
@@ -391,11 +392,16 @@ export function boxFour(deal: any): Box {
   assessment.push(...ret.parts)
   gaps.push(...ret.gaps)
 
-  const agreed = txt(cd.clientAgreedLender) || txt(lo.clientAgreedLender)
+  // The lending options tab, and only it. This used to read the compliance
+  // tab's copy first, and on Charles Mullins 2026 that copy was months out of
+  // date - it printed "the clients chose AMP" onto a Bankwest deal, on a
+  // regulated document, with nobody having chosen AMP. See lib/client-agreement.ts.
+  const agreement = clientAgreement(lo)
+  const agreed = agreement.agreed
   if (agreed === 'Yes') assessment.push('The clients agreed with the recommendation and proceeded with it.')
   else if (agreed === 'No') {
-    const chosen = txt(cd.clientChosenLender) === '__other__' ? txt(cd.clientChosenLenderOther) : txt(cd.clientChosenLender)
-    const why = txt(cd.clientChosenLenderReason)
+    const chosen = agreement.chosen
+    const why = agreement.reason
     assessment.push(`The clients did not proceed with the original recommendation and chose ${chosen || 'another lender'}${why ? `, for the following stated reason: "${why}"` : ''}.`)
   } else {
     assessment.push(shout(`NOT RECORDED — the clients' agreement to the recommendation has not been captured.`))

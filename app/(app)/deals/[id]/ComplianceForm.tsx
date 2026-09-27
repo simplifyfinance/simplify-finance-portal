@@ -54,6 +54,7 @@ import { tabIsBehind, keepWhatTheyTyped, type TabBehind } from '@/lib/tab-behind
 import TabBehindNotice from '@/components/TabBehindNotice'
 import DraftBanner from '@/components/DraftBanner'
 import { recommendedOption } from '@/lib/recommended-option'
+import { agreementFields, lenderOnTheDeal } from '@/lib/client-agreement'
 import type { SaveStatus } from '@/lib/save-indicator'
 import { useKeepalive } from '@/components/useKeepalive'
 import DealStructure from '@/components/DealStructure'
@@ -383,7 +384,12 @@ export default function ComplianceForm({ deal, onSaveStatus, onDataChange, onDea
     const rec = recommendedOption(lo) || lo.lenders?.[0] || {}
     const funds = fundsToComplete(from)
     return noteFacts({
-      lender: String(lo.recommendedLender || ''),
+      // THE LENDER THE NOTES ARE ABOUT, not the one that was recommended.
+      // These two differ whenever the client went elsewhere, and the prose was
+      // being written from one while the stamp recorded the other - so the
+      // "written before the lender changed" warning could never fire on the one
+      // case that needs it most. See lib/client-agreement.ts.
+      lender: lenderOnTheDeal(lo),
       loanAmount: money(dealLoanAmount(lo, from?.bc_data || {})),
       purpose: purposeSummary(from),
       fundsToComplete: funds.applies && funds.workable ? (funds.toFind > 0 ? money(funds.toFind) : 'nil') : '',
@@ -673,10 +679,15 @@ export default function ComplianceForm({ deal, onSaveStatus, onDataChange, onDea
         needsPrimary: prev.needsPrimary || ffLive.loanPurpose || '',
         needsImmediate: prev.needsImmediate || ffLive.goals2Years || '',
         needsLongTerm: prev.needsLongTerm || ffLive.goals10Years || '',
-        clientAgreedLender: prev.clientAgreedLender || loLive.clientAgreedLender || '',
-        clientChosenLender: prev.clientChosenLender || loLive.clientChosenLender || '',
-        clientChosenLenderOther: prev.clientChosenLenderOther || loLive.clientChosenLenderOther || '',
-        clientChosenLenderReason: prev.clientChosenLenderReason || loLive.clientChosenLenderReason || '',
+        // WHO THE CLIENT WENT WITH IS NOT THIS TAB'S TO REMEMBER.
+        //
+        // These four used to be `prev.x || loLive.x` - keep my own copy, and
+        // only look at the lending options tab if I have nothing. So once this
+        // tab had an answer it never looked again, and Charles Mullins 2026
+        // went to compliance saying the clients chose AMP on a Bankwest deal.
+        // There is no box on this tab that sets them; the copy is always the
+        // older one. See lib/client-agreement.ts.
+        ...agreementFields(loLive),
       }
     })
   }, [deal.bc_data, deal.fact_find_data, deal.lo_data])
@@ -877,9 +888,15 @@ export default function ComplianceForm({ deal, onSaveStatus, onDataChange, onDea
     // `deals.lender_id` — which the commission maths, the clawback window and
     // the settlement board all read — kept whatever the LO recommended, even
     // when the client went elsewhere.
-    const chosenName = liveD.current.clientAgreedLender === 'No'
-      ? (liveD.current.clientChosenLender === '__other__' ? liveD.current.clientChosenLenderOther : liveD.current.clientChosenLender)
-      : ''
+    // ASSERTED EVERY SAVE, NOT ONLY WHEN THEY WENT ELSEWHERE.
+    //
+    // This used to run only for a 'No'. So a deal that was "no, they chose AMP"
+    // and later became "yes, Bankwest" kept AMP on the row forever - nothing
+    // ever wrote it back - and the row is what the compliance PDF header, the
+    // commission maths, the clawback window and the settlement board all read.
+    // Charles Mullins 2026 was sitting at AMP for exactly this reason and had to
+    // be put right by hand.
+    const chosenName = lenderOnTheDeal(deal.lo_data || {})
     const chosenId = chosenName ? lenderIdByName[String(chosenName).trim().toLowerCase()] : null
 
     ;(async () => {
@@ -1116,13 +1133,9 @@ export default function ComplianceForm({ deal, onSaveStatus, onDataChange, onDea
       lender: recLender.lenderName || '',
       product: recLender.productName || '',
       rate: recLender.variablePI?.rate || recLender.fixedPI?.rate || '',
-      recommendedLender: (() => {
-        if (d.clientAgreedLender === 'No') {
-          const chosen = d.clientChosenLender === '__other__' ? d.clientChosenLenderOther : d.clientChosenLender
-          return chosen || lo.recommendedLender || ''
-        }
-        return lo.recommendedLender || ''
-      })(),
+      // The same answer the stamp records, so the prose and the stamp can never
+      // name two different lenders again.
+      recommendedLender: lenderOnTheDeal(lo),
       originalRecommendedLender: lo.recommendedLender || '',
       clientAgreedLender: d.clientAgreedLender || '',
       clientChosenLenderReason: d.clientChosenLenderReason || '',

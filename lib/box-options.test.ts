@@ -208,21 +208,31 @@ describe('what is kept at the end', () => {
     expect(boxFive(d).text).not.toContain('$20,006')
   })
 
+  // The answer lives on the lending options tab. See lib/client-agreement.ts.
+  const withLo = (over: any) => { const d = deal(); d.lo_data = { ...d.lo_data, ...over }; return d }
+
   it('says when the clients agreed', () => {
-    expect(boxFive(cd({ clientAgreedLender: 'Yes' })).text)
+    expect(boxFive(withLo({ clientAgreedLender: 'Yes' })).text)
       .toContain('The clients agreed with the recommendation and proceeded with it.')
   })
 
   it('says when they chose somebody else, and why', () => {
-    const t = boxFive(cd({ clientAgreedLender: 'No', clientChosenLender: 'NAB',
-                           clientChosenLenderReason: 'They bank with NAB already' })).text
+    const t = boxFive(withLo({ clientAgreedLender: 'No', clientChosenLender: 'NAB',
+                               clientChosenLenderReason: 'They bank with NAB already' })).text
     expect(t).toContain('did not proceed with the recommendation and chose NAB')
     expect(t).toContain('"They bank with NAB already"')
   })
 
   it('shouts when nobody recorded whether they agreed', () => {
-    expect(boxFive(cd({ clientAgreedLender: '' })).text)
+    expect(boxFive(withLo({ clientAgreedLender: '' })).text)
       .toMatch(/NOT RECORDED — whether the clients agreed/)
+  })
+
+  // Charles Mullins 2026 - see box-four.test.ts for the whole of it.
+  it('ignores an answer the compliance tab is still holding from before', () => {
+    const t = boxFive(cd({ clientAgreedLender: 'No', clientChosenLender: 'AMP' })).text
+    expect(t).not.toContain('chose AMP')
+    expect(t).toMatch(/NOT RECORDED — whether the clients agreed/)
   })
 })
 

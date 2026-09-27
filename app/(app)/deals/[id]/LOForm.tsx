@@ -176,10 +176,25 @@ type LOData = {
   emailFigures?: Record<string, string> | null
   refinanceSplits: RefinanceSplit[]
   brokerSig: string
+  // WHAT THE CLIENT DECIDED. The answer to "did they take the recommendation?",
+  // and it lives here and nowhere else - the compliance tab holds a copy that is
+  // rebuilt from this one every time. See lib/client-agreement.ts for the
+  // Charles Mullins pack that went out naming a lender nobody had chosen.
   clientAgreedLender: string
   clientChosenLender: string
   clientChosenLenderOther: string
   clientChosenLenderReason: string
+  // Who recorded it and when. A client changing their mind is a fact about a
+  // regulated file, so the file says who wrote it down.
+  clientDecisionAt?: string
+  clientDecisionBy?: string
+}
+
+// THE BANK'S NAME, for the one question that is about the bank rather than the
+// product. "Did the client agree with Bankwest?" is how somebody would say it;
+// "did the client agree with Bankwest — Simple Home Loan?" is not.
+function decisionLenderName(lo: any): string {
+  return String(lo?.recommendedLender || '').trim() || recommendedLabel(lo)
 }
 
 const defaultRateModule: RateModule = { enabled: false, rate: '', repayment: '', loanTerm: '30', ioYears: '5', fixedYears: '2' }
@@ -483,7 +498,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       clientAgreedLender: '',
       clientChosenLender: '',
       clientChosenLenderOther: '',
-      clientChosenLenderReason: ''
+      clientChosenLenderReason: '',
+      clientDecisionAt: '',
+      clientDecisionBy: ''
     }
   }
 
@@ -1088,6 +1105,12 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     setD({ ...d, lenders: updated })
   }
 
+  // THE CLIENT CHANGED THEIR MIND. Open only while somebody is changing the
+  // answer; the block below shows what was decided the rest of the time.
+  // `decisionWas` is what to put back if they press Cancel.
+  const [decisionOpen, setDecisionOpen] = useState(false)
+  const decisionWas = useRef<Partial<LOData> | null>(null)
+
   const [flagOpen, setFlagOpen] = useState(false)
   const [flagNote, setFlagNote] = useState('')
   const [flagSubmitting, setFlagSubmitting] = useState(false)
@@ -1335,6 +1358,12 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
   async function handleMoveToCompliance() {
     setSendingMoveToCompliance(true); setMoveToComplianceMsg('')
+    // Stamped here as well as in the block below, so an answer given on the way
+    // to compliance carries the same who-and-when as one corrected later.
+    if (d.clientAgreedLender) {
+      setD(prev => ({ ...prev, clientDecisionAt: prev.clientDecisionAt || new Date().toISOString(),
+                               clientDecisionBy: prev.clientDecisionBy || me?.name || '' }))
+    }
     try {
       const res = await fetch('/api/send-next-steps-email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dealId: deal.id, stage: 'LO' }) })
       const data = await res.json()
@@ -2057,6 +2086,98 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             )}
             {flagMsg && (
               <div className={`mt-2 text-xs ${flagMsg.startsWith('NOT SENT') ? 'text-red-600' : 'text-green-600'}`}>{flagMsg}</div>
+            )}
+          </div>
+
+          {/* THE CLIENT'S DECISION, WHERE IT CAN BE CHANGED.
+            *
+            * Fabio, 25 Sep 2026: "how do we avoid this as this happens all the
+            * time customers change their mind a button perhaps??"
+            *
+            * This question was only ever asked inside the box that opens when a
+            * deal is moved to compliance - and that box also emails the client.
+            * So the only way to correct the answer was to email them a second
+            * time, which nobody was ever going to do. The answer sat as first
+            * given, while the deal moved on around it.
+            *
+            * Out here it can be read and changed any day of the week, and
+            * nothing is sent to anybody. The compliance tab follows it, and the
+            * compliance notes go stale on their own the moment it changes,
+            * because they are stamped with the lender they were written about.
+            * See lib/client-agreement.ts. */}
+          <div className="bg-white border border-gray-100 rounded-xl p-5">
+            <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">The client&apos;s decision</div>
+            {decisionOpen || !d.clientAgreedLender ? (
+              <div className={`rounded-lg p-3.5 border ${d.clientAgreedLender ? 'bg-[#FAFBFC] border-gray-100' : 'bg-[#FDF6EC] border-[#EBD9BE]'}`}>
+                <div className={`text-[13px] leading-relaxed ${d.clientAgreedLender ? 'text-gray-500' : 'text-[#8A6218]'}`}>
+                  {!d.clientAgreedLender && <><span className="font-semibold">Not recorded</span> &mdash; </>}
+                  Did the client agree with <span className="font-semibold">{decisionLenderName(d) || 'the recommendation'}</span>?
+                </div>
+                <div className="flex gap-2 mt-2.5">
+                  <button onClick={() => setD(prev => ({ ...prev, clientAgreedLender: 'Yes', clientChosenLender: '', clientChosenLenderOther: '', clientChosenLenderReason: '' }))}
+                    className={`px-3 py-1.5 text-xs rounded-lg border ${d.clientAgreedLender === 'Yes' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5 font-medium' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                    Yes, they went with {decisionLenderName(d) || 'it'}</button>
+                  <button onClick={() => setD(prev => ({ ...prev, clientAgreedLender: 'No' }))}
+                    className={`px-3 py-1.5 text-xs rounded-lg border ${d.clientAgreedLender === 'No' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5 font-medium' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                    No, they chose someone else</button>
+                </div>
+                {d.clientAgreedLender === 'No' && (
+                  <div className="mt-3 flex flex-col gap-2">
+                    <select className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg bg-white" value={d.clientChosenLender}
+                      onChange={e => setD(prev => ({ ...prev, clientChosenLender: e.target.value }))}>
+                      <option value="">Select the lender the client chose</option>
+                      {d.lenders.filter(l => l.lenderName).map((l, i) => <option key={i} value={l.lenderName}>{l.lenderName}</option>)}
+                      <option value="__other__">Other (not previously considered)</option>
+                    </select>
+                    {d.clientChosenLender === '__other__' && (
+                      <input className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg" placeholder="Lender name"
+                        value={d.clientChosenLenderOther} onChange={e => setD(prev => ({ ...prev, clientChosenLenderOther: e.target.value }))} />
+                    )}
+                    <input className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg" placeholder="Why did they choose differently?"
+                      value={d.clientChosenLenderReason} onChange={e => setD(prev => ({ ...prev, clientChosenLenderReason: e.target.value }))} />
+                  </div>
+                )}
+                <div className="flex justify-end gap-2 mt-3">
+                  {decisionOpen && (
+                    // Puts back exactly what was there when the button was
+                    // pressed. Half-changing a compliance answer and walking
+                    // away is worse than not starting.
+                    <button onClick={() => { if (decisionWas.current) setD(prev => ({ ...prev, ...decisionWas.current })); setDecisionOpen(false) }}
+                      className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50">Cancel</button>
+                  )}
+                  <button disabled={!d.clientAgreedLender}
+                    onClick={() => { setD(prev => ({ ...prev, clientDecisionAt: new Date().toISOString(), clientDecisionBy: me?.name || '' })); setDecisionOpen(false) }}
+                    className="px-3 py-1.5 text-xs rounded-lg bg-[#343333] text-white font-medium hover:bg-[#2a2a2a] disabled:opacity-40">Record it</button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start justify-between gap-4 rounded-lg p-3.5 bg-[#FAFBFC] border border-gray-100">
+                <div className="text-[13.5px] leading-relaxed">
+                  {d.clientAgreedLender === 'Yes' ? (
+                    <span><span className="text-[#0F7B4F] font-bold mr-1">&#10003;</span>
+                      The client agreed with <span className="font-semibold">{decisionLenderName(d) || 'the recommendation'}</span></span>
+                  ) : (
+                    <span>The client chose <span className="font-semibold">{d.clientChosenLender === '__other__' ? d.clientChosenLenderOther : d.clientChosenLender || 'another lender'}</span>
+                      {decisionLenderName(d) ? <>, not the recommended {decisionLenderName(d)}</> : null}</span>
+                  )}
+                  {(d.clientChosenLenderReason || d.clientDecisionAt) && (
+                    <div className="text-xs text-gray-400 mt-1">
+                      {d.clientChosenLenderReason && <>&ldquo;{d.clientChosenLenderReason}&rdquo;</>}
+                      {d.clientChosenLenderReason && d.clientDecisionAt && ' · '}
+                      {d.clientDecisionAt && <>recorded {dayMonth(d.clientDecisionAt, false)}{d.clientDecisionBy ? ` by ${d.clientDecisionBy}` : ''}</>}
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => {
+                    decisionWas.current = {
+                      clientAgreedLender: d.clientAgreedLender, clientChosenLender: d.clientChosenLender,
+                      clientChosenLenderOther: d.clientChosenLenderOther, clientChosenLenderReason: d.clientChosenLenderReason,
+                    }
+                    setDecisionOpen(true)
+                  }}
+                  className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 whitespace-nowrap flex-shrink-0">
+                  They changed their mind</button>
+              </div>
             )}
           </div>
 
