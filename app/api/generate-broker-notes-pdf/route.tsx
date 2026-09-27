@@ -16,7 +16,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { renderToBuffer, Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer'
 import React from 'react'
-import { dealRow, splitsOf, purposeSummary, PURPOSE_LABEL } from '@/lib/deal-structure'
+import { dealRow, splitsOf, purposeSummary, repaymentLine, PURPOSE_LABEL } from '@/lib/deal-structure'
 import { fundsToComplete } from '@/lib/funds-to-complete'
 import { relationshipLine } from '@/lib/relationship'
 import { fullName } from '@/lib/fact-find'
@@ -152,7 +152,7 @@ export async function generateBrokerNotesPdfBuffer(dealId: string, supabase: any
                 <Text style={[s.thc, { flex: 1.2 }]}>AMOUNT</Text>
                 <Text style={[s.thc, { flex: .7 }]}>TERM</Text>
                 <Text style={[s.thc, { flex: .7 }]}>RATE</Text>
-                <Text style={[s.thc, { flex: .8 }]}>P&amp;I / IO</Text>
+                <Text style={[s.thc, { flex: 1.25 }]}>P&amp;I / IO</Text>
                 <Text style={[s.thc, { flex: 1.1 }]}>PURPOSE</Text>
                 <Text style={[s.thc, { flex: 1.5 }]}>PRODUCT TYPE</Text>
               </View>
@@ -162,7 +162,9 @@ export async function generateBrokerNotesPdfBuffer(dealId: string, supabase: any
                   <Text style={[s.tdb, { flex: 1.2 }]}>{sp.amount ? money(sp.amount) : '—'}</Text>
                   <Text style={[s.td, { flex: .7 }]}>{sp.termYears ? `${sp.termYears} yrs` : '—'}</Text>
                   <Text style={[s.td, { flex: .7 }]}>{sp.rate ? `${sp.rate}%` : '—'}</Text>
-                  <Text style={[s.td, { flex: .8 }]}>{sp.repaymentType || '—'}</Text>
+                  {/* "IO" on its own told a credit assessor nothing - one year
+                      and ten years printed identically. See repaymentLine. */}
+                  <Text style={[s.td, { flex: 1.25 }]}>{repaymentLine(sp) || '—'}</Text>
                   <Text style={[s.td, { flex: 1.1 }]}>{sp.purpose ? PURPOSE_LABEL[sp.purpose] : '—'}</Text>
                   <Text style={[s.td, { flex: 1.5 }]}>{sp.productType || '—'}</Text>
                 </View>

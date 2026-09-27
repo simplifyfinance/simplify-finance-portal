@@ -102,6 +102,18 @@ export type StructureSplit = {
   // Recorded on the block itself - neither exists per split anywhere else.
   termYears?: string
   productType?: string
+  // HOW LONG THE INTEREST ONLY RUNS.
+  //
+  // Fabio, 27 Sep 2026, looking at the Loughlin-Walsh handover: "The handover
+  // doesnt have any indication of IO term". Two of the three splits said "IO"
+  // and stopped, so the credit assessor could not tell one year from ten.
+  //
+  // The number was already on the deal - it is the interest only years on the
+  // recommended product - it was simply never carried onto a split. Nothing is
+  // ever invented here: a deal with no IO years recorded anywhere leaves this
+  // blank, and the handover prints "term not recorded" rather than a figure
+  // nobody typed.
+  ioYears?: string
 }
 
 // WHO OWNS WHAT, AND WHY IT IS SPLIT THIS WAY.
@@ -187,8 +199,45 @@ export function splitsOf(deal: any): StructureSplit[] {
       termYears: txt(d?.termYears) || txt(s?.termYears) || txt(deal?.bc_data?.loanTerm),
       // The LO holds one product per lender, not per split. Same idea.
       productType: txt(d?.productType) || txt(s?.productType) || recommendedProduct(deal),
+      // Same three-step fall as the term above: this block's own answer, then
+      // whatever the split carries, then the recommended product's IO years.
+      ioYears: txt(d?.ioYears) || txt(s?.ioYears) || txt(ls?.ioYears) || recommendedIoYears(deal),
     }
   })
+}
+
+// "IO" and "Fixed IO" are both interest only. "P&I" and "Fixed P&I" are not.
+export function isInterestOnly(repaymentType: any): boolean {
+  const t = txt(repaymentType).toUpperCase()
+  return t.includes('IO') || t.includes('INTEREST ONLY')
+}
+
+// How a split's repayment type reads on a document: "P&I", or "IO · 5 yrs".
+// An interest only split with no term recorded says so rather than going quiet,
+// because "IO" on its own is the thing a credit assessor cannot act on.
+export function repaymentLine(split: { repaymentType?: string; ioYears?: string } | null | undefined): string {
+  const type = txt(split?.repaymentType)
+  if (!type) return ''
+  if (!isInterestOnly(type)) return type
+  const years = txt(split?.ioYears)
+  return years ? `${type} · ${years} yrs` : `${type} · term not recorded`
+}
+
+// THE RECOMMENDED PRODUCT'S INTEREST ONLY YEARS.
+//
+// A lending option carries four rate modules - variable P&I, variable IO, fixed
+// P&I, fixed IO - and only the IO ones have an interest only period. Read from
+// whichever IO module is actually ticked. Both ticked and disagreeing is left
+// blank on purpose: there is no way to know which one a given split follows,
+// and printing the wrong IO term on a submission is worse than printing none.
+function recommendedIoYears(deal: any): string {
+  const lo = deal?.lo_data || {}
+  const rec = recommendedOption(lo) || (lo.lenders || [])[0]
+  const years = ['variableIO', 'fixedIO']
+    .map(k => (rec?.[k]?.enabled ? txt(rec[k]?.ioYears) : ''))
+    .filter(Boolean)
+  if (years.length === 0) return ''
+  return years.every(y => y === years[0]) ? years[0] : ''
 }
 
 // The recommended lender's own splits, which is where the rate and the P&I/IO
@@ -211,7 +260,7 @@ function recommendedProduct(deal: any): string {
 
 // Writing one split's compliance-side detail, without disturbing the others.
 export function withSplitDetail(complianceData: any, splitId: string,
-                                patch: { termYears?: string; productType?: string }): any {
+                                patch: { termYears?: string; productType?: string; ioYears?: string }): any {
   const cd = complianceData && typeof complianceData === 'object' ? complianceData : {}
   const detail = cd.splitDetail && typeof cd.splitDetail === 'object' ? cd.splitDetail : {}
   return {

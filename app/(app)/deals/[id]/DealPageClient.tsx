@@ -30,6 +30,7 @@ import { DealAlerts, FileNotes, AlertChips, useDealFile } from '@/components/Dea
 import { isLocked } from '@/lib/deal-lock'
 import { isWithLender } from '@/lib/deal-phase'
 import DocumentsBox from '@/components/DocumentsBox'
+import WhoIsDoingTheBc from '@/components/WhoIsDoingTheBc'
 import BrokerAssignment from './BrokerAssignment'
 import TestDealBand from '@/components/TestDealBand'
 import DealName from '@/components/DealName'
@@ -388,6 +389,12 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           them. Fabio, 3 Sep 2026: "It's always the same button. Make it across
           all stages. It's static across next to the deal card information." */}
       <DocumentsBox deal={dealData} me={me}
+        onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+
+      {/* THE FIRST DECISION ON THE DEAL, ON THE DEAL. It used to be three clicks
+          deep - BC, then Preview & share, then the button. See
+          components/WhoIsDoingTheBc.tsx. It answers itself away. */}
+      <WhoIsDoingTheBc deal={dealData}
         onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
 
       <div className="flex gap-2 mb-6">

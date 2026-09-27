@@ -5,7 +5,7 @@ import { patchDealColumn } from '@/lib/patch-deal-column'
 import { templateLabel } from '@/lib/templates'
 import {
   splitsOf, dealRow, stillNeeded, needsFundsRole, purposeSummary,
-  withSplitDetail, PURPOSE_LABEL, FUNDS_LABEL, defaultSecurityAddress,
+  withSplitDetail, isInterestOnly, PURPOSE_LABEL, FUNDS_LABEL, defaultSecurityAddress,
 } from '@/lib/deal-structure'
 import { fundsToComplete } from '@/lib/funds-to-complete'
 import { SPLIT_TYPES, typesOffered, typeContradictsProduct } from '@/lib/lo-splits'
@@ -263,7 +263,7 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                     <th key={h} className={`${K} text-left pb-1.5 pr-3 whitespace-nowrap`}>{h}</th>
                   ))}
                   {askFunds && <th className={`${K} text-left pb-1.5 pr-3 whitespace-nowrap text-[#8A6218]`}>What it does</th>}
-                  {['Term', 'Product type'].map(h => (
+                  {['Term', 'IO years', 'Product type'].map(h => (
                     <th key={h} className={`${K} text-left pb-1.5 pr-3 whitespace-nowrap text-[#8A6218]`}>{h}</th>
                   ))}
                   {/* One per deal, not one per split. Fabio, 3 Sep 2026: "cashback
@@ -359,6 +359,19 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                       <input defaultValue={s.termYears} key={`t${s.id}${s.termYears}`}
                         onBlur={e => { if (e.target.value !== s.termYears) setDetail(s.id, { termYears: e.target.value }) }}
                         placeholder="years" className={`${INP} w-[76px] ${!s.termYears ? NEED : ''}`} />
+                    </td>
+                    {/* HOW LONG THE INTEREST ONLY RUNS. Blank on a P&I split,
+                        because there is nothing to answer. Prefilled from the
+                        recommended product's IO years and changed here when a
+                        split runs differently - see lib/deal-structure.ts and
+                        the Loughlin-Walsh handover that printed "IO" and
+                        stopped. */}
+                    <td className="py-1.5 pr-3">
+                      {isInterestOnly(s.repaymentType)
+                        ? <input defaultValue={s.ioYears} key={`io${s.id}${s.ioYears}`}
+                            onBlur={e => { if (e.target.value !== s.ioYears) setDetail(s.id, { ioYears: e.target.value }) }}
+                            placeholder="years" className={`${INP} w-[76px] ${!s.ioYears ? NEED : ''}`} />
+                        : <span className="text-[13.5px] text-[#C3C8CD]">—</span>}
                     </td>
                     <td className="py-1.5 pr-3">
                       <input defaultValue={s.productType} key={`p${s.id}${s.productType}`}

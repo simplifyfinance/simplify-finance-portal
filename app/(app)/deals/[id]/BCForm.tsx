@@ -664,43 +664,8 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const [emailError, setEmailError] = useState('')
   const [bcCompletedAt, setBcCompletedAt] = useState<string | null>(deal.bc_completed_at || null)
   const [markingComplete, setMarkingComplete] = useState(false)
-  const [sendingToCreditTeam, setSendingToCreditTeam] = useState(false)
-  const [bcSelfAssigned, setBcSelfAssigned] = useState(!!deal.bc_self_assigned)
   const canSendToClient = can(userRole, 'sendClientEmails')
 
-  async function handleBcSelfAssign() {
-    const { data: rows, error } = await supabase.from('deals').update({ bc_self_assigned: true }).eq('id', deal.id).select('id')
-    if (error) {
-      alert('Error saving choice: ' + error.message)
-      return
-    }
-    if (!rows || rows.length === 0) {
-      // Zero rows with no error means the write was refused. Never fail silently.
-      alert('Could not save that choice - nothing was saved. Please tell Fabio.')
-      return
-    }
-    setBcSelfAssigned(true)
-
-    // Tell Ellie to create the SalesTrekker card now. The route claims the send
-    // atomically, so this can never produce a duplicate.
-    try {
-      const res = await fetch('/api/notify-salestrekker', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dealId: deal.id, trigger: 'bc_action' })
-      })
-      if (!res.ok) {
-        console.error('[notify-salestrekker] responded', res.status, await res.text())
-        alert('Saved, but the SalesTrekker notification did not send. Please tell Fabio.')
-      }
-    } catch (err) {
-      console.error('[notify-salestrekker] request failed', err)
-      alert('Saved, but the SalesTrekker notification did not send. Please tell Fabio.')
-    }
-  }
-  const [creditTeamMsg, setCreditTeamMsg] = useState('')
-  const [creditTeamErr, setCreditTeamErr] = useState('')
-  const [assignmentRefreshKey, setAssignmentRefreshKey] = useState(0)
   const [showAllTemplates, setShowAllTemplates] = useState(false)
   // THE SAVE LINE beside the deal name. What it says, and when it is allowed to
   // say it, lives in components/useSaveIndicator.ts - shared, so BC cannot end up
@@ -1068,44 +1033,6 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
       // Non-fatal — completion itself succeeded even if the notification failed
     }
     setMarkingComplete(false)
-  }
-
-  async function sendToCreditTeam() {
-    setSendingToCreditTeam(true)
-    setCreditTeamMsg('')
-    setCreditTeamErr('')
-    try {
-      const res = await fetch('/api/allocate-credit-officer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dealId: deal.id })
-      })
-      const data = await res.json()
-      if (!data.ok) { setCreditTeamErr(data.error || 'Failed to allocate'); setSendingToCreditTeam(false); return }
-      if (data.alreadyAssigned) {
-        setCreditTeamMsg('This deal is already assigned to a credit officer.')
-      } else {
-        setCreditTeamMsg(`Assigned to ${data.assignedTo}${data.emailSent ? ' — notified by email' : ''}`)
-        try {
-          const nres = await fetch('/api/notify-salestrekker', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dealId: deal.id, trigger: 'bc_action' })
-          })
-          if (!nres.ok) {
-            console.error('[notify-salestrekker] responded', nres.status, await nres.text())
-            setCreditTeamErr('Assigned, but the SalesTrekker notification did not send. Tell Fabio.')
-          }
-        } catch (err) {
-          console.error('[notify-salestrekker] request failed', err)
-          setCreditTeamErr('Assigned, but the SalesTrekker notification did not send. Tell Fabio.')
-        }
-      }
-      setAssignmentRefreshKey(k => k + 1)
-    } catch (e: any) {
-      setCreditTeamErr(e.message)
-    }
-    setSendingToCreditTeam(false)
   }
 
   async function handleMoveToLo() {
@@ -2037,35 +1964,26 @@ Key assumptions: ${checklistText}`
         <div>
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              {creditTeamMsg && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">{creditTeamMsg}</span>}
-              {creditTeamErr && <span className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{creditTeamErr}</span>}
               {sendToClientMsg && <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">{sendToClientMsg}</span>}
             </div>
             <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-2">
-                {!deal.assigned_credit_officer && !bcSelfAssigned ? (
-                  <>
-                    <button onClick={handleBcSelfAssign}
-                      className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
-                      I'll do this myself
-                    </button>
-                    <button onClick={sendToCreditTeam} disabled={sendingToCreditTeam}
-                      className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50">
-                      {sendingToCreditTeam ? 'Sending...' : 'Send to credit team'}
-                    </button>
-                  </>
-                ) : deal.assigned_credit_officer ? (
+                {deal.assigned_credit_officer ? (
                   <button onClick={markBCComplete} disabled={markingComplete || !!bcCompletedAt}
                     title="This notifies the broker that BC is ready for their final review and personalisation"
                     className={`px-3 py-1.5 text-sm rounded-lg font-medium disabled:opacity-70 ${bcCompletedAt ? 'bg-green-50 text-green-600 border border-green-200' : 'border border-gray-200 hover:bg-gray-50'}`}>
                     {bcCompletedAt ? '✓ Sent to broker for review' : markingComplete ? 'Marking...' : 'Done — send to broker for review'}
                   </button>
                 ) : null}
-{/* "Client agreed — move to LO" used to live here, inside Preview &
-                    share, so the one action that moves the deal on was two
-                    clicks deep and behind a tab nobody opens unless they are
-                    emailing. Alan, 2 Sep 2026, asked for it on the deal page
-                    itself - it now sits beside the two tab pills above. */}
+{/* TWO THINGS HAVE NOW LEFT THIS BOX, BOTH FOR THE SAME REASON.
+                    "Client agreed — move to LO", 2 Sep 2026, asked for by Alan:
+                    the one action that moves the deal on was two clicks deep
+                    behind a tab nobody opens unless they are emailing. It sits
+                    beside the tab pills above.
+                    "I'll do this myself" and "Send to credit team", 27 Sep 2026,
+                    asked for by Fabio: the FIRST decision on a deal, three
+                    clicks deep. They now sit on the deal page itself, under the
+                    document list - see components/WhoIsDoingTheBc.tsx. */}
               </div>
 
               <div className="w-px h-8 bg-gray-200" />
@@ -2088,7 +2006,7 @@ Key assumptions: ${checklistText}`
 
               <div className="flex items-center gap-4">
                 <div className="w-px h-6 bg-gray-200" />
-                <CreditOfficerAssignment key={assignmentRefreshKey} dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
+                <CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
               </div>
             </div>
           </div>
