@@ -257,13 +257,21 @@ describe('the rule is kept where it can be changed without a deploy', () => {
     expect(sql).toContain('where reprice_over_percent is null')
   })
 
-  it('only the three banks Fabio named are filled in', () => {
-    expect(sql).toContain("name ilike 'st george%'")
-    expect(sql).toContain("name ilike 'bank of melbourne%'")
-    expect(sql).toContain("name ilike 'westpac%'")
-    // BankSA shares the St George rules elsewhere. It was not one of the three.
-    expect(sql.toLowerCase()).not.toContain("name ilike 'bank sa")
-    expect(sql.toLowerCase()).not.toContain("name ilike 'banksa")
+  // Fabio, 28 Sep 2026: CBA, Bankwest, ANZ, St George, Westpac, NAB - then
+  // "bankSA and Bbak of Melbourne also 10%". Eight, and only eight.
+  it('fills in exactly the eight banks Fabio named', () => {
+    for (const bank of ['CBA', 'Bankwest', 'ANZ', 'St George',
+                        'Westpac', 'NAB', 'Bank of Melbourne', 'BankSA']) {
+      expect(sql, `${bank} is missing`).toContain(`'${bank}'`)
+    }
+  })
+
+  // A pattern would catch a "Westpac Equipment Finance" added next year and
+  // hand it a threshold nobody checked. The comments in that file DISCUSS
+  // ilike, so the statements are what is checked, not the prose around them.
+  it('by name, never by pattern', () => {
+    const statements = sql.split('\n').filter(l => !l.trim().startsWith('--')).join('\n')
+    expect(statements).not.toContain('ilike')
   })
 
   it('the lender library has a box for it, showing N/A when empty', () => {

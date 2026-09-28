@@ -20,6 +20,7 @@ import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
 import DealProgress, { currentStage } from './DealProgress'
 import DealSettlement from './DealSettlement'
 import DealSettlementPanel from './DealSettlementPanel'
+import OfferAccepted from '@/components/OfferAccepted'
 import DealCommission from './DealCommission'
 import CloseDeal from './CloseDeal'
 import { templateLabel } from '@/lib/templates'
@@ -363,6 +364,13 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
         ? 'grid grid-cols-[1.15fr_1fr] gap-3 max-[900px]:grid-cols-1' : ''}>
         <div>
           <DealSettlement deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+          {/* Written ONCE, inside the column that is always drawn - the rule
+              above. Marking a deal offer-accepted is exactly the kind of line a
+              deal crosses, and a panel rendered in two branches of one would be
+              destroyed the moment it crossed it. It draws itself away when there
+              is nothing to record. */}
+          <OfferAccepted deal={dealData} me={me}
+            onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
           <DealSettlementPanel deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
           <DealCommission deal={dealData} />
         </div>

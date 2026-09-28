@@ -27,21 +27,30 @@ alter table public.lenders
 comment on column public.lenders.reprice_over_percent is
   'The loan may move by up to this percentage, up or down, before this lender wants the pricing redone. NULL means no rule has been recorded, which the portal says out loud rather than guessing. A percentage only - no lender of ours works on a dollar figure.';
 
--- THE THREE WE HAVE BEEN TOLD ABOUT, and only those three.
+-- THE EIGHT WE HAVE BEEN TOLD ABOUT, and only those eight.
 --
--- `is null` on purpose: this sets a lender that has never been given a figure
+-- Fabio, 28 Sep 2026: "these are all the lenders that if pricing is wihtin 10%
+-- up or down we dont need new pricing" - CBA, Bankwest, ANZ, St George,
+-- Westpac, NAB - and then, asked about the two Westpac-group banks he had not
+-- named: "bankSA and Bbak of Melbourne also 10%".
+--
+-- The first version of this file had three, and a comment explaining that
+-- BankSA was deliberately left out. That was right at the time and is wrong
+-- now. Left as a note rather than quietly rewritten, because the reason a rule
+-- changed is worth as much as the rule.
+--
+-- Named exactly, not by pattern. `ilike 'westpac%'` would also catch a
+-- "Westpac Equipment Finance" added next year, and a threshold applied to a
+-- bank nobody checked is the thing this file exists to avoid.
+--
+-- `is null` on purpose: this fills a lender that has never been given a figure
 -- and leaves alone any that somebody has since typed by hand. Running it again
--- after Fabio changes St George to 15 will not put it back to 10.
---
--- Bank SA is deliberately NOT in here. It shares the St George rules elsewhere
--- in the portal, but Fabio named three banks for this one and BankSA was not
--- among them. It stays N/A until somebody says otherwise.
+-- after Fabio moves St George to 15 will not drag it back to 10.
 update public.lenders
    set reprice_over_percent = 10
  where reprice_over_percent is null
-   and (   name ilike 'st george%'
-        or name ilike 'bank of melbourne%'
-        or name ilike 'westpac%');
+   and name in ('CBA', 'Bankwest', 'ANZ', 'St George',
+                'Westpac', 'NAB', 'Bank of Melbourne', 'BankSA');
 
 -- What that just did, and what is left as N/A. Read this before closing the tab.
 select name,
