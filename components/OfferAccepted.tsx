@@ -5,6 +5,7 @@ import { checkedWrite } from '@/lib/checked-write'
 import { lenderSteps, preapprovalLine, pricingLine, anzTemplateFor,
          stillBlank, loanOnTheDeal, type PanelLine } from '@/lib/offer-accepted-panel'
 import { anzReductionEmail } from '@/lib/offer-accepted-rules'
+import { priceMove, choiceLine, type FundingChoice } from '@/lib/contract-funding'
 import { dayMonthYear } from '@/lib/same-date-everywhere'
 
 // THE OFFER WAS ACCEPTED.
@@ -59,6 +60,10 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
   const [err, setErr] = useState('')
   const [saved, setSaved] = useState('')
   const [copied, setCopied] = useState(false)
+  // A loan amount typed by hand, offered as a third choice beside the two
+  // obvious ones. Not saved until a choice is recorded.
+  const [typedLoan, setTypedLoan] = useState('')
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => { setD(deal) }, [deal])
 
@@ -84,6 +89,26 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
     setTimeout(() => setSaved(''), 2000)
   }
 
+  // THE ANSWER, AND WHO GAVE IT. Three columns at once rather than three saves:
+  // a choice half-written is worse than none, and this is a regulated file.
+  async function recordFunding(c: FundingChoice) {
+    setBusy(true)
+    const patch = {
+      contract_loan_amount: c.loan,
+      contract_funding_choice: c.key,
+      contract_funding_at: new Date().toISOString(),
+      contract_funding_by: me?.name || null,
+    }
+    const problem = await checkedWrite(
+      supabase.from('deals').update(patch).eq('id', d.id), 'That choice')
+    setBusy(false)
+    if (problem) { setErr(problem); return }
+    setErr(''); setSaved('Recorded.')
+    setD((prev: any) => ({ ...prev, ...patch }))
+    onUpdated?.(patch)
+    setTimeout(() => setSaved(''), 2000)
+  }
+
   const onBlurField = (field: string, cast: 'text' | 'money' = 'text') =>
     (e: any) => {
       const raw = e.target.value
@@ -105,6 +130,7 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
   const loanNow = loanOnTheDeal(d)
   const wouldBe = estimate && paid && loanNow ? loanNow + (paid - estimate) : 0
   const pricing = wouldBe > 0 ? pricingLine(lenderName, loanNow, wouldBe, threshold) : null
+  const move = priceMove(d, typedLoan)
   const anz = wouldBe > 0 ? anzTemplateFor(d, loanNow, wouldBe, me?.name) : { needed: false, reference: '', change: '' }
 
   return (
@@ -157,6 +183,17 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
         </div>
       </div>
 
+      {/* THE LENDER'S REFERENCE, for a deal that was lodged before the box at
+          lodgement existed. Filled in there normally - see DealSettlement - but
+          a deal already in flight has nowhere else to catch up, and ANZ will not
+          take the acknowledgement email without it. */}
+      <div className="mt-3 max-w-[360px]">
+        <span className={LAB}>{lenderName || 'Lender'}&rsquo;s reference</span>
+        <input defaultValue={d.lender_reference || ''} key={`lr${d.lender_reference || ''}`}
+          onBlur={onBlurField('lender_reference')}
+          placeholder="recorded when the deal was lodged" className={INP} />
+      </div>
+
       {/* WHAT THIS LENDER WANTS. Written down on 10 September and never shown to
           anybody until now. See lib/offer-accepted-rules.ts. */}
       <div className="mt-4">
@@ -165,6 +202,58 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
         {pricing && <Line line={pricing} />}
         {preapproval && <Line line={preapproval} />}
       </div>
+
+      {/* THE PRICE MOVED. WHERE DOES THE DIFFERENCE COME FROM?
+        *
+        * Fabio, 27 Sep 2026: "Ask before calcualting to ensure custoemr would
+        * like to keep same savings postion or reduce or increase". It is a
+        * conversation with a client, not a sum, so nothing recalculates until
+        * somebody answers it. See lib/contract-funding.ts. */}
+      {move && (
+        <div className="mt-4 bg-[#FDF6EC] border border-[#EBD9BE] rounded-lg px-4 py-3.5">
+          <div className="text-[13.5px] font-bold text-[#6E4C0F]">
+            They paid {money(move.difference)} {move.direction === 'up' ? 'more' : 'less'} than the BC allowed for.
+          </div>
+          <div className="text-[12.5px] text-[#8A6218] mt-0.5 leading-relaxed">
+            {money(move.was)} &rarr; {money(move.now)}. That money comes from somewhere. Which is it?
+          </div>
+
+          {move.choices.map(c => {
+            const picked = d.contract_funding_choice === c.key && num(d.contract_loan_amount) === c.loan
+            return (
+              <button key={c.key} onClick={() => recordFunding(c)} disabled={busy}
+                className={`w-full text-left mt-2 rounded-lg px-3 py-2.5 border transition disabled:opacity-50 ${
+                  picked ? 'bg-white border-[#2DBEFF] ring-1 ring-[#2DBEFF]' : 'bg-white border-[#E7DECC] hover:border-[#D9C9A8]'}`}>
+                <div className="text-[13px] text-[#221F1B] font-medium">{c.title}</div>
+                <div className={`text-[12px] mt-0.5 leading-relaxed ${c.bringsLmiIn ? 'text-[#B91C1C] font-semibold' : 'text-[#5B6672]'}`}>
+                  {choiceLine(c, move.direction)}
+                </div>
+              </button>
+            )
+          })}
+
+          <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+            <span className="text-[11.5px] text-[#9A7B36]">Or type the loan amount:</span>
+            <input value={typedLoan} onChange={e => setTypedLoan(e.target.value)}
+              placeholder="something in between"
+              className="text-[12px] border border-[#E3E6E8] rounded-lg px-2.5 py-1.5 bg-white w-[150px]" />
+          </div>
+
+          <p className="m-0 mt-2.5 text-[11.5px] text-[#9A7B36] leading-relaxed">
+            Nothing changes until you pick one. The borrowing capacity is left exactly as it is &mdash;
+            what you choose is recorded beside it, and the LVR, the LMI and the funds to complete read
+            it from then on.
+          </p>
+
+          {d.contract_funding_choice && (
+            <p className="m-0 mt-2 text-[11.5px] text-[#15803D]">
+              Recorded{d.contract_funding_by ? ` by ${d.contract_funding_by}` : ''}
+              {d.contract_funding_at ? ` on ${dayMonthYear(d.contract_funding_at)}` : ''}.
+              Press another to change it.
+            </p>
+          )}
+        </div>
+      )}
 
       {anz.needed && (
         <div className="mt-4">

@@ -1,3 +1,5 @@
+import { contractPrice, contractLoan } from './contract-figures'
+
 // WHAT THE CLIENT HAS TO FIND.
 //
 // Deliberately, aggressively simple. Fabio, 3 Sep 2026: "it is VERY simple
@@ -121,7 +123,11 @@ export function fundsToComplete(deal: any): FundsToComplete {
     if (has(bc.constructionCost)) lines.push({ label: 'Construction cost', amount: num(bc.constructionCost), kind: 'cost' })
     else missing.push('Construction cost has not been recorded')
   } else {
-    const price = has(bc.purchasePrice) ? num(bc.purchasePrice) : num(bc.newPurchasePrice)
+    // THE CONTRACT WINS OVER THE ESTIMATE. The BC's price is what the clients
+    // could afford; this is what they paid. See lib/contract-figures.ts - the BC
+    // itself is never rewritten, it is simply no longer the newest thing we know.
+    const price = contractPrice(deal)
+      || (has(bc.purchasePrice) ? num(bc.purchasePrice) : num(bc.newPurchasePrice))
     lines.push({ label: 'Purchase price', amount: price, kind: 'cost' })
   }
 
@@ -173,6 +179,10 @@ export function fundsToComplete(deal: any): FundsToComplete {
 
 // The LO's figure when there is one, otherwise the BC's splits added up.
 export function loanAmount(deal: any): number {
+  // Once somebody has answered how a changed price is funded, that answer is the
+  // loan. Not before: recording a price does not decide the lending.
+  const contracted = contractLoan(deal)
+  if (contracted > 0) return contracted
   const lo = deal?.lo_data || {}
   if (has(lo.loanAmount)) return num(lo.loanAmount)
   const splits = deal?.bc_data?.splits || []
@@ -189,8 +199,12 @@ export function securityValue(deal: any): SecurityValue {
   const bc = deal?.bc_data || {}
   const values: number[] = []
 
-  const buying = has(bc.purchasePrice) ? num(bc.purchasePrice)
-    : has(bc.newPurchasePrice) ? num(bc.newPurchasePrice) : 0
+  // The security is worth what was paid for it, once that is known. An LVR
+  // worked out against a price nobody paid is a number people act on, and it
+  // would be wrong in both directions.
+  const buying = contractPrice(deal)
+    || (has(bc.purchasePrice) ? num(bc.purchasePrice)
+      : has(bc.newPurchasePrice) ? num(bc.newPurchasePrice) : 0)
   if (buying > 0) values.push(buying)
 
   for (const p of deal?.fact_find_data?.properties || []) {

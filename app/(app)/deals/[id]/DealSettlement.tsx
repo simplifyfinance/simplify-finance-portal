@@ -60,6 +60,11 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
 
   const [snaps, setSnaps] = useState<any>({})
   const [lender, setLender] = useState('')
+  // THE LENDER'S OWN REFERENCE FOR THIS APPLICATION, asked for at lodgement
+  // because that is when the lender issues it. Not the Loan ID - that is the
+  // account number at the other end, see lib/loan-id.ts and
+  // docs/lender-reference-schema.sql.
+  const [lenderRef, setLenderRef] = useState('')
   const [splits, setSplits] = useState<any[]>([])
   const [when, setWhen] = useState(today())
   const [confirming, setConfirming] = useState(false)
@@ -137,10 +142,11 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
       ? { lender: prior.lender, splits: prior.splits || [] }
       : { lender: chosen || '', splits: (bc.splits || []).filter((s: any) => s && (s.amount || s.label)) }
     setLender(src.lender || '')
+    setLenderRef(deal.lender_reference || '')
     setSplits((src.splits || []).map((s: any) => ({
       label: s.label || '', amount: String(s.amount ?? ''), rate: String(s.rate ?? ''), type: s.type || 'P&I',
     })))
-  }, [stage?.snap, snaps.lodged, snaps.formal])
+  }, [stage?.snap, snaps.lodged, snaps.formal, deal.lender_reference])
 
   if (!deal.compliance_completed_at) return null
 
@@ -175,6 +181,10 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
     // overwritten by anything else.
     if (stage.snap === 'lodged') {
       patch.lender = lender || null
+      // Only ever written, never blanked, by this box. A deal lodged before
+      // this existed can have it filled in from the offer-accepted panel, and
+      // marking it lodged a second time must not wipe what somebody typed there.
+      if (lenderRef.trim()) patch.lender_reference = lenderRef.trim()
       patch.lodged_total = total || null
       patch.lodged_splits = splits
       patch.loan_amount = total || null
@@ -356,6 +366,26 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
                 <label className="flex flex-col gap-1"><span className={K}>Date</span>
                   <input type="date" className={IN} value={when} onChange={e => setWhen(e.target.value)} /></label>
               </div>
+
+              {/* THE LENDER'S REFERENCE. Asked at lodgement because that is when
+                  the lender issues it, and asked on every deal - Fabio, 28 Sep
+                  2026: "for all deals". Anybody ringing a bank to chase a file
+                  needs it, and ANZ want it as the subject line of the
+                  acknowledgement email. It is NOT the Loan ID; that is the
+                  account number at settlement. */}
+              {stage.snap === 'lodged' && (
+                <div className="mb-3 max-w-md">
+                  <label className="flex flex-col gap-1">
+                    <span className={K}>{lender || 'Lender'}&rsquo;s reference for this application</span>
+                    <input className={IN} value={lenderRef} placeholder="the number they gave you"
+                      onChange={e => setLenderRef(e.target.value)} />
+                  </label>
+                  <p className="m-0 mt-1 text-[11px] text-[#A29889]">
+                    Not the Loan ID &mdash; that comes at settlement. This is what the bank calls the
+                    application while it is with them.
+                  </p>
+                </div>
+              )}
 
               <div className={K + ' mb-1.5'}>Splits</div>
               <div className="flex flex-col gap-2 mb-3">
