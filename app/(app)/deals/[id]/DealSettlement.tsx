@@ -143,14 +143,38 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
       : { lender: chosen || '', splits: (bc.splits || []).filter((s: any) => s && (s.amount || s.label)) }
     setLender(src.lender || '')
     setLenderRef(deal.lender_reference || '')
-    setSplits((src.splits || []).map((s: any) => ({
+    let rows = (src.splits || []).map((s: any) => ({
       label: s.label || '', amount: String(s.amount ?? ''), rate: String(s.rate ?? ''), type: s.type || 'P&I',
-    })))
-  }, [stage?.snap, snaps.lodged, snaps.formal, deal.lender_reference])
+    }))
+
+    // FORMAL APPROVAL STARTS FROM THE OFFER, NOT FROM LODGEMENT.
+    //
+    // Fabio, 28 Sep 2026: "deal is lodged for a pre-apporval those figures go in
+    // the deal summary, deal move to offer accepted which will change the
+    // figures (most of the time down)... THAT figures now becomes the true
+    // reflection of formal apporval, settled loan, commissions etc".
+    //
+    // Lodging happens before the property is found, so prefilling formal from
+    // the lodged snapshot put the preapproval figure back on screen and somebody
+    // had to notice and retype it. Nobody was ever going to.
+    //
+    // ONE SPLIT IS FILLED IN. SEVERAL ARE NOT. A contracted total says what is
+    // being borrowed, not how it is carved up, and inventing a split breakdown
+    // would be a figure in no document - see the note in lib/seed-from-client.ts
+    // about shares nobody stated. Where there is more than one split the figures
+    // are left alone and the confirm box names the difference instead.
+    const contracted = num(deal.contract_loan_amount)
+    if (stage.snap === 'formal' && contracted > 0 && rows.length === 1) {
+      rows = [{ ...rows[0], amount: String(contracted) }]
+    }
+    setSplits(rows)
+  }, [stage?.snap, snaps.lodged, snaps.formal, deal.lender_reference, deal.contract_loan_amount])
 
   if (!deal.compliance_completed_at) return null
 
   const total = splits.reduce((a, s) => a + num(s.amount), 0)
+  // What the offer-accepted panel worked out, if anybody has answered it.
+  const contractedLoan = num(deal.contract_loan_amount)
   const priorTotal = prior ? num(prior.total_amount) : 0
   const changed = prior ? (
     lender !== (prior.lender || '') || total !== priorTotal ||
@@ -485,6 +509,16 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
                 <span className="font-semibold text-right">{fmtDate(when)}</span>
               </div>
             </div>
+            {/* THE FIGURE THE OFFER ACTUALLY PRODUCED, where these splits do not
+                add up to it. Never rewritten for them - several splits are a
+                breakdown only a person can do - but never silent either. */}
+            {contractedLoan > 0 && Math.round(total) !== Math.round(contractedLoan) && (
+              <div className="mx-6 mb-3 bg-[#FFF8EC] border border-[#F6E3C0] rounded-lg px-3 py-2.5 text-[11.5px] text-[#8A6320]">
+                The offer accepted panel recorded <b>{money(contractedLoan)}</b>, and these splits
+                total <b>{money(total)}</b>. The offer figure is what commission and the settlement
+                board read &mdash; check which one is right before recording.
+              </div>
+            )}
             {stage.snap === 'lodged' && overrode && (
               <div className="mx-6 mb-3 bg-[#FFF8EC] border border-[#F6E3C0] rounded-lg px-3 py-2.5 text-[11.5px] text-[#8A6320]">
                 Client selected {chosen} over the originally recommended {lo.recommendedLender}. Lodging against the client&apos;s selection.

@@ -251,3 +251,44 @@ describe('the deposit column', () => {
     expect(sql).toContain('add column if not exists contract_deposit')
   })
 })
+
+// FORMAL APPROVAL STARTS FROM THE OFFER, NOT FROM LODGEMENT.
+//
+// Fabio, 28 Sep 2026: "deal is lodged for a pre-apporval those figures go in the
+// deal summary, deal move to offer accepted which will change the figures... THAT
+// figures now becomes the true reflection of formal apporval, settled loan,
+// commissions etc".
+//
+// Prefilling formal from the lodged snapshot put the preapproval figure back on
+// screen and left somebody to notice and retype it.
+describe('marking a deal formally approved', () => {
+  const code = readFileSync(new URL('../app/(app)/deals/[id]/DealSettlement.tsx', import.meta.url), 'utf8')
+    .replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
+
+  it('starts from the contracted loan on a single-split deal', () => {
+    expect(code).toContain("stage.snap === 'formal' && contracted > 0 && rows.length === 1")
+  })
+
+  // A contracted total says what is being borrowed, not how it is carved up.
+  // Inventing a split breakdown would be a figure in no document.
+  it('never invents a breakdown across several splits', () => {
+    const at = code.indexOf("rows.length === 1")
+    expect(code.slice(at, at + 200)).toContain('rows = [{ ...rows[0]')
+    expect(code.slice(at, at + 400)).not.toContain('rows.map')
+  })
+
+  it('but says so when the splits do not add up to the offer figure', () => {
+    expect(code).toContain('Math.round(total) !== Math.round(contractedLoan)')
+    expect(code).toContain('The offer accepted panel recorded')
+  })
+
+  it('and redraws when the offer figure changes', () => {
+    expect(code).toContain('deal.contract_loan_amount])')
+  })
+
+  // Lodging is untouched: it happened before the property was found.
+  it('leaves lodgement alone', () => {
+    const at = code.indexOf("stage.snap === 'formal' && contracted > 0")
+    expect(code.slice(Math.max(0, at - 300), at)).not.toContain("stage.snap === 'lodged'")
+  })
+})
