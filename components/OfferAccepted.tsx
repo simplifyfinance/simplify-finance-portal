@@ -5,7 +5,9 @@ import { checkedWrite } from '@/lib/checked-write'
 import { lenderSteps, preapprovalLine, pricingLine, anzTemplateFor,
          stillBlank, loanOnTheDeal, type PanelLine } from '@/lib/offer-accepted-panel'
 import { anzReductionEmail } from '@/lib/offer-accepted-rules'
-import { priceMove, choiceLine, type FundingChoice } from '@/lib/contract-funding'
+import { reworkFromDeposit, depositAsAssessed, depositToKeepLvr, dutyNow,
+         priceHasMoved, stampDutyNeedsUpdating, type Reworked } from '@/lib/contract-funding'
+import { purchaseRows } from '@/lib/purchase-rows'
 import { dayMonthYear } from '@/lib/same-date-everywhere'
 
 // THE OFFER WAS ACCEPTED.
@@ -38,6 +40,14 @@ const num = (v: any) => {
 }
 
 const INP = 'text-[12.5px] border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white text-[#221F1B] w-full'
+
+// Duty is a state tax. Printing it unlabelled, or labelled NSW for everyone,
+// puts a figure on screen that may belong to a different state - the same rule
+// the client email follows. See dutyLabel in app/api/generate-email/route.ts.
+function dutyLabelFor(bc: any): string {
+  const st = String(bc?.dutyState || '').trim().toUpperCase()
+  return st ? `Stamp duty (${st})` : 'Stamp duty'
+}
 const LAB = 'text-[8.5px] font-bold tracking-[.07em] uppercase text-[#A0A7AE] block mb-1'
 
 function Line({ line }: { line: PanelLine }) {
@@ -62,7 +72,8 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
   const [copied, setCopied] = useState(false)
   // A loan amount typed by hand, offered as a third choice beside the two
   // obvious ones. Not saved until a choice is recorded.
-  const [typedLoan, setTypedLoan] = useState('')
+  // The deposit being considered. Not saved until it is recorded.
+  const [typedDeposit, setTypedDeposit] = useState('')
   const [busy, setBusy] = useState(false)
 
   useEffect(() => { setD(deal) }, [deal])
@@ -91,16 +102,19 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
 
   // THE ANSWER, AND WHO GAVE IT. Three columns at once rather than three saves:
   // a choice half-written is worse than none, and this is a regulated file.
-  async function recordFunding(c: FundingChoice) {
+  async function recordRework(r: Reworked) {
     setBusy(true)
+    // ONE WRITE. The deposit answered, the loan that falls out of it, and who
+    // said so - a rework half-written is worse than none, on a regulated file.
     const patch = {
-      contract_loan_amount: c.loan,
-      contract_funding_choice: c.key,
+      contract_deposit: r.deposit,
+      contract_loan_amount: r.loan,
+      contract_stamp_duty: r.duty,
       contract_funding_at: new Date().toISOString(),
       contract_funding_by: me?.name || null,
     }
     const problem = await checkedWrite(
-      supabase.from('deals').update(patch).eq('id', d.id), 'That choice')
+      supabase.from('deals').update(patch).eq('id', d.id), 'Those figures')
     setBusy(false)
     if (problem) { setErr(problem); return }
     setErr(''); setSaved('Recorded.')
@@ -128,9 +142,29 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
   const estimate = num(d?.bc_data?.purchasePrice) || num(d?.bc_data?.newPurchasePrice)
   const paid = num(d?.contract_price)
   const loanNow = loanOnTheDeal(d)
-  const wouldBe = estimate && paid && loanNow ? loanNow + (paid - estimate) : 0
+  // THE LOAN THE DEAL IS HEADING FOR.
+  //
+  // Once somebody has answered where the difference comes from, that answer IS
+  // the loan and there is nothing to assume. Before they have, the useful thing
+  // to show is what it would be if the loan absorbed the move - which is one of
+  // the two choices, and the one that changes the lending.
+  //
+  // This matters most on a reduction, which Fabio says is nine deals in ten: a
+  // client who takes the saving off the loan has moved it far enough to need new
+  // pricing, while a client who keeps the difference has not moved it at all.
+  // Assuming the first would have told the second they needed repricing they did
+  // not need, and would have offered ANZ an acknowledgement for a reduction that
+  // never happened.
+  const chosenLoan = num(d.contract_loan_amount)
+  const wouldBe = chosenLoan
+    || (estimate && paid && loanNow ? loanNow + (paid - estimate) : 0)
   const pricing = wouldBe > 0 ? pricingLine(lenderName, loanNow, wouldBe, threshold) : null
-  const move = priceMove(d, typedLoan)
+  const moved = priceHasMoved(d)
+  const assessed = depositAsAssessed(d)
+  const keepLvr = depositToKeepLvr(d)
+  // What is on screen, or what was recorded earlier, so reopening a deal shows
+  // the figures rather than an empty question.
+  const rework = reworkFromDeposit(d, num(typedDeposit) || num(d.contract_deposit))
   const anz = wouldBe > 0 ? anzTemplateFor(d, loanNow, wouldBe, me?.name) : { needed: false, reference: '', change: '' }
 
   return (
@@ -203,53 +237,107 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
         {preapproval && <Line line={preapproval} />}
       </div>
 
-      {/* THE PRICE MOVED. WHERE DOES THE DIFFERENCE COME FROM?
+      {/* THE PRICE MOVED. HOW MUCH ARE THE CLIENTS PUTTING IN?
         *
-        * Fabio, 27 Sep 2026: "Ask before calcualting to ensure custoemr would
-        * like to keep same savings postion or reduce or increase". It is a
-        * conversation with a client, not a sum, so nothing recalculates until
-        * somebody answers it. See lib/contract-funding.ts. */}
-      {move && (
+        * Fabio, 28 Sep 2026: "depsoit is the only real question what the
+        * customer would like to do and YES depsoit needs to be enough to cover
+        * duty so purcahse pirce + duty = total cost - deposit = loan amount".
+        *
+        * The first version of this asked which LOAN they wanted and derived the
+        * contribution. Backwards, and contrary to the portal's own rule in
+        * lib/purchase-rows.ts. The deposit is the question. */}
+      {moved && (
         <div className="mt-4 bg-[#FDF6EC] border border-[#EBD9BE] rounded-lg px-4 py-3.5">
           <div className="text-[13.5px] font-bold text-[#6E4C0F]">
-            They paid {money(move.difference)} {move.direction === 'up' ? 'more' : 'less'} than the BC allowed for.
+            How much would the clients like to put in?
           </div>
           <div className="text-[12.5px] text-[#8A6218] mt-0.5 leading-relaxed">
-            {money(move.was)} &rarr; {money(move.now)}. That money comes from somewhere. Which is it?
+            They were going to bring {money(assessed)}. Total cost is now {money(dutyNow(d) + num(d.contract_price))},
+            against {money(num(d.bc_data?.purchasePrice) + num(d.bc_data?.stampDuty))} as assessed.
           </div>
 
-          {move.choices.map(c => {
-            const picked = d.contract_funding_choice === c.key && num(d.contract_loan_amount) === c.loan
-            return (
-              <button key={c.key} onClick={() => recordFunding(c)} disabled={busy}
-                className={`w-full text-left mt-2 rounded-lg px-3 py-2.5 border transition disabled:opacity-50 ${
-                  picked ? 'bg-white border-[#2DBEFF] ring-1 ring-[#2DBEFF]' : 'bg-white border-[#E7DECC] hover:border-[#D9C9A8]'}`}>
-                <div className="text-[13px] text-[#221F1B] font-medium">{c.title}</div>
-                <div className={`text-[12px] mt-0.5 leading-relaxed ${c.bringsLmiIn ? 'text-[#B91C1C] font-semibold' : 'text-[#5B6672]'}`}>
-                  {choiceLine(c, move.direction)}
-                </div>
+          {stampDutyNeedsUpdating(d) && (
+            <div className="mt-2.5 bg-white border border-[#E7DECC] rounded-lg px-3 py-2.5">
+              <div className="text-[12.5px] font-medium text-[#221F1B]">Stamp duty still needs the new figure.</div>
+              <div className="text-[11.5px] text-[#5B6672] mt-0.5 leading-relaxed">
+                The BC has {money(d.bc_data?.stampDuty)}. Duty moves with the price and the portal
+                does not work it out &mdash; type it and everything below follows.
+              </div>
+              <input defaultValue={d.contract_stamp_duty ?? ''} key={`sd${d.contract_stamp_duty ?? ''}`}
+                onBlur={onBlurField('contract_stamp_duty', 'money')}
+                placeholder="duty on the price they paid"
+                className="mt-2 text-[12px] border border-[#E3E6E8] rounded-lg px-2.5 py-1.5 bg-white w-[210px]" />
+            </div>
+          )}
+
+          <button onClick={() => setTypedDeposit(String(assessed))}
+            className={`w-full text-left mt-2 rounded-lg px-3 py-2.5 border bg-white transition ${
+              num(typedDeposit) === assessed ? 'border-[#2DBEFF] ring-1 ring-[#2DBEFF]' : 'border-[#E7DECC] hover:border-[#D9C9A8]'}`}>
+            <div className="text-[13px] font-medium text-[#221F1B]">The same &mdash; {money(assessed)}</div>
+            <div className="text-[12px] text-[#5B6672] mt-0.5">The amount they were already bringing.</div>
+          </button>
+
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <span className="text-[11.5px] text-[#9A7B36]">Or a different amount:</span>
+            <input value={typedDeposit} onChange={e => setTypedDeposit(e.target.value)}
+              placeholder="what they will put in"
+              className="text-[12px] border border-[#E3E6E8] rounded-lg px-2.5 py-1.5 bg-white w-[170px]" />
+          </div>
+
+          {keepLvr > 0 && (
+            <div className="mt-2 text-[11.5px] text-[#0E5E86] bg-[#F4FAFE] border border-[#CDEBF8] rounded-lg px-3 py-2 leading-relaxed">
+              <b>{money(keepLvr)} keeps the LVR where it was.</b> Offered, not chosen.
+              <button onClick={() => setTypedDeposit(String(keepLvr))}
+                className="ml-2 underline hover:no-underline">Use it</button>
+            </div>
+          )}
+
+          {/* THE BREAKDOWN, in the five lines every purchase uses. Fabio, 16 Sep
+              2026 - and total cost is still not a box. See lib/purchase-rows.ts. */}
+          {rework && (
+            <div className="mt-3 bg-white border border-[#E7DECC] rounded-lg px-3.5 py-3">
+              <table className="w-full text-[13px]">
+                <tbody>
+                  {purchaseRows({
+                    price: rework.price, duty: rework.duty,
+                    dutyLabel: dutyLabelFor(d.bc_data), loan: rework.loan,
+                    contribution: rework.deposit, contributionFrom: 'savings',
+                    lmiApplicable: d.bc_data?.lmiApplicable, lmi: d.bc_data?.lmi,
+                    lmiTreatment: d.bc_data?.lmiTreatment,
+                  }).map((r, i) => (
+                    <tr key={i}>
+                      {r.note
+                        ? <td colSpan={2} className="py-1 text-[11.5px] text-[#8A9098] leading-relaxed">{r.value}</td>
+                        : <>
+                            <td className="py-1 text-[#666]">{r.label}</td>
+                            <td className="py-1 text-right tabular-nums font-medium">{r.value}</td>
+                          </>}
+                    </tr>
+                  ))}
+                  <tr><td className="pt-2 text-[#666]">LVR</td>
+                    <td className={`pt-2 text-right tabular-nums font-medium ${rework.bringsLmiIn ? 'text-[#B91C1C]' : ''}`}>
+                      {rework.lvr === null ? 'not known' : `${rework.lvr}%`}
+                      {rework.bringsLmiIn && ' — over 80%, LMI applies'}
+                    </td></tr>
+                </tbody>
+              </table>
+              <button onClick={() => recordRework(rework)} disabled={busy}
+                className="mt-3 px-3 py-1.5 text-xs rounded-lg bg-[#221F1B] text-white font-semibold hover:bg-[#3a3733] disabled:opacity-50">
+                {busy ? 'Recording...' : 'Record these figures'}
               </button>
-            )
-          })}
-
-          <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-            <span className="text-[11.5px] text-[#9A7B36]">Or type the loan amount:</span>
-            <input value={typedLoan} onChange={e => setTypedLoan(e.target.value)}
-              placeholder="something in between"
-              className="text-[12px] border border-[#E3E6E8] rounded-lg px-2.5 py-1.5 bg-white w-[150px]" />
-          </div>
+            </div>
+          )}
 
           <p className="m-0 mt-2.5 text-[11.5px] text-[#9A7B36] leading-relaxed">
-            Nothing changes until you pick one. The borrowing capacity is left exactly as it is &mdash;
-            what you choose is recorded beside it, and the LVR, the LMI and the funds to complete read
-            it from then on.
+            Nothing changes until you record it. The borrowing capacity is left exactly as it is
+            &mdash; these become the deal&rsquo;s figures from here: formal approval, settlement and
+            commission all read them.
           </p>
 
-          {d.contract_funding_choice && (
+          {d.contract_funding_at && (
             <p className="m-0 mt-2 text-[11.5px] text-[#15803D]">
               Recorded{d.contract_funding_by ? ` by ${d.contract_funding_by}` : ''}
-              {d.contract_funding_at ? ` on ${dayMonthYear(d.contract_funding_at)}` : ''}.
-              Press another to change it.
+              {` on ${dayMonthYear(d.contract_funding_at)}`}. Change the deposit to rework it.
             </p>
           )}
         </div>

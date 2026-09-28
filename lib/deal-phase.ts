@@ -267,6 +267,17 @@ export function splitsTotal(splits: any): number | null {
 export function amountOf(deal: any): number | null {
   return num(deal?.settled_total)
     ?? splitsTotal(deal?.settled_splits)
+    // THE OFFER-ACCEPTED FIGURE BEATS THE LODGED ONE.
+    //
+    // Fabio, 28 Sep 2026: "deal is lodged for a pre-apporval those figures go
+    // in the deal summary, deal move to offer accepted which will change the
+    // figures (most of the time down - i.e. lower loan amount) THAT figures
+    // now becomes the true reflection of formal apporval, settled loan,
+    // commissions etc".
+    //
+    // Lodging happens BEFORE the property is found, so lodged_total is the
+    // preapproval figure. Only what actually settled sits above the contract.
+    ?? num(deal?.contract_loan_amount)
     ?? num(deal?.lodged_total)
     ?? splitsTotal(deal?.lodged_splits)
     ?? num(deal?.loan_amount)

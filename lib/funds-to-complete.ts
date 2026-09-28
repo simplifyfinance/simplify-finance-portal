@@ -1,4 +1,4 @@
-import { contractPrice, contractLoan } from './contract-figures'
+import { contractPrice, contractLoan, contractStampDuty } from './contract-figures'
 
 // WHAT THE CLIENT HAS TO FIND.
 //
@@ -133,7 +133,10 @@ export function fundsToComplete(deal: any): FundsToComplete {
 
   // NEVER treated as zero. On a purchase this is tens of thousands of dollars,
   // and a total that quietly leaves it out looks exactly like a correct one.
-  if (has(bc.stampDuty)) lines.push({ label: 'Stamp duty', amount: num(bc.stampDuty), kind: 'cost' })
+  // Duty follows the price that was actually paid, once somebody records it.
+  // See contractStampDuty - the portal never works duty out for itself.
+  const duty = contractStampDuty(deal) || (has(bc.stampDuty) ? num(bc.stampDuty) : 0)
+  if (duty > 0) lines.push({ label: 'Stamp duty', amount: duty, kind: 'cost' })
   else missing.push('Stamp duty has not been recorded')
 
   const loan = purchaseLoan(deal)

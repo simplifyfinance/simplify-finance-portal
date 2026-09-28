@@ -79,7 +79,10 @@ export default function SettlementReconcile({ brokers }: {
         if (!haveStatement.has(`${normKey(bKey)}|${stepMonth(month, 1)}`)) { blind += 1; continue }
 
         const rate = rateBy.get(String(deal.lender_id)) || null
-        const amount = deal.settled_total ?? deal.lodged_total ?? deal.loan_amount ?? null
+        // The offer-accepted figure beats the lodged one - lodging happens
+        // before the property is found.
+        const amount = deal.settled_total ?? deal.contract_loan_amount
+          ?? deal.lodged_total ?? deal.loan_amount ?? null
         const comm = calcCommission({ amount, rate, lvr: lvrOf(deal), settledOn })
         pd.push({
           id: String(deal.id),

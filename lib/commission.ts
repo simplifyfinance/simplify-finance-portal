@@ -135,7 +135,10 @@ export function calcCommission(input: {
 // there is one, otherwise the stated band from the borrowing capacity form.
 export function lvrOf(deal: any): number | null {
   const bc = deal?.bc_data || {}
-  const loan = n(deal?.settled_total) ?? n(deal?.lodged_total) ?? n(deal?.loan_amount) ?? n(bc.loanAmount)
+  // The contract beats the lodged figure - lodging happens before the property
+  // is found. See lib/contract-figures.ts.
+  const loan = n(deal?.settled_total) ?? n(deal?.contract_loan_amount)
+    ?? n(deal?.lodged_total) ?? n(deal?.loan_amount) ?? n(bc.loanAmount)
   const value = n(bc.propertyValue) ?? n(bc.purchasePrice)
   if (loan && value && value > 0) return Math.round((loan / value) * 1000) / 10
   const stated = n(bc.lvrCustom) ?? n(bc.lvr)

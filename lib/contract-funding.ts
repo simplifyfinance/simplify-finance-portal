@@ -1,109 +1,130 @@
-// THE PRICE MOVED. WHERE DOES THE DIFFERENCE COME FROM?
+// THE PRICE MOVED. HOW MUCH ARE THE CLIENTS PUTTING IN?
 //
-// Fabio, 27 Sep 2026, asked what should happen when the contract comes in above
-// the BC: "Ask before calcualting to ensure custoemr would like to keep same
-// savings postion or reduce or increase".
+// Fabio, 28 Sep 2026: "new stmap duty is always typed by the team... depsoit is
+// the only real question what the customer would like to do and YES depsoit
+// needs to be enough to cover duty so purcahse pirce + duty = total cost -
+// deposit = loan amount".
 //
-// That is the whole question, and it is a conversation with a client rather than
-// a sum. The clients either keep their savings where they are and borrow the
-// difference, or they find it themselves and borrow what they always were. Both
-// are normal. Nothing here decides; it works out what each one would mean and
-// waits.
+// THE FIRST VERSION OF THIS FILE HAD IT BACKWARDS. It asked which LOAN they
+// wanted and worked the contribution out from that. That is not how a purchase
+// is reworked and it is not how this portal has ever worked: the deposit is what
+// you ask a client, and the loan is what falls out of it. lib/purchase-rows.ts
+// says so in as many words - "the BC keeps deposit = price - loan + stamp duty
+// in every direction". Rearranged, that is the sum above.
 //
-// THE LVR IS NOT CALCULATED HERE. It is asked of the real one, by handing
-// lvrOf a copy of the deal with the figures it would have. A second
+// DUTY IS NEVER CALCULATED HERE. Fabio, 28 Sep: "we will type duty". State
+// scales, first home concessions, foreign surcharges and thresholds that move in
+// budgets - a figure we worked out would be wrong for somebody, and wrong duty
+// is money a client turns up without on the day.
+//
+// THE LVR IS NOT CALCULATED HERE EITHER. It is asked of the real one, by handing
+// lvrOf a copy of the deal carrying the figures it would have. A second
 // implementation would drift from the first the week somebody changed how
 // security is counted - and this codebase has already been bitten by an LVR that
-// looked right and was 158.8%. See securityValue.
+// looked right and was 158.8%.
 
-import { lvrOf } from './funds-to-complete'
+import { lvrOf, securityValue } from './funds-to-complete'
+import { contractStampDuty } from './contract-figures'
 
 const num = (v: any): number => {
   const n = Number(String(v ?? '').replace(/[^0-9.]/g, ''))
   return Number.isFinite(n) && n > 0 ? n : 0
 }
 
-// Above this, lenders mortgage insurance comes into it. The one number on this
-// screen somebody could walk a client past without noticing.
+// Above this, lenders mortgage insurance comes into it.
 const LMI_AT = 80
 
-export type FundingChoice = {
-  key: 'loan' | 'savings' | 'custom'
-  // What it means, in the words somebody would use to a client.
-  title: string
+export type Reworked = {
+  price: number
+  duty: number
+  // Never a box. Fabio, 16 Sep 2026: "we dont have a box that says total cost,
+  // dont want to add another box just for that, rule is total cost is purchase
+  // price plus stamp duty." Added up here so it cannot disagree with its parts.
+  totalCost: number
+  deposit: number
   loan: number
-  // What the clients put in themselves, which is the other half of the same
-  // decision. Price less loan - the costs around it are funds to complete's job.
-  contribution: number
   lvr: number | null
-  // The LVR crosses 80 on this choice when it did not before. Not "the LVR is
-  // over 80" - a deal that was always over 80 is not news, and a warning that
-  // fires on every deal stops being read.
+  // Crosses 80 when it did not before. A deal already above it learns nothing
+  // from being told, and a warning that fires on everything stops being read.
   bringsLmiIn: boolean
 }
 
-export type PriceMove = {
-  was: number
-  now: number
-  difference: number
-  direction: 'up' | 'down'
-  choices: FundingChoice[]
-  // True when the deal was already over 80 before any of this.
-  lmiAlready: boolean
+// WHAT THE CLIENTS WERE ALREADY GOING TO BRING. The BC keeps this in step with
+// the price, the duty and the loan in every direction, so it is read rather
+// than recomputed wherever it is there.
+export function depositAsAssessed(deal: any): number {
+  const bc = deal?.bc_data || {}
+  const recorded = num(bc.deposit)
+  if (recorded > 0) return recorded
+  const price = num(bc.purchasePrice) || num(bc.newPurchasePrice)
+  const duty = num(bc.stampDuty)
+  const loan = num(deal?.lo_data?.loanAmount)
+    || (bc.splits || []).reduce((s: number, x: any) => s + num(x?.amount), 0)
+  if (price <= 0 || loan <= 0) return 0
+  return Math.max(0, Math.round(price + duty - loan))
 }
 
-// Null when there is nothing to ask: no contract price, no BC price to compare
-// against, no loan to move, or the price has not actually changed.
-export function priceMove(deal: any, customLoan?: any): PriceMove | null {
+// The duty to work with: what the team typed against the contract, falling back
+// to the BC's figure until they have.
+export function dutyNow(deal: any): number {
+  return contractStampDuty(deal) || num(deal?.bc_data?.stampDuty)
+}
+
+// The whole rework, from one number. Null when there is nothing to rework: no
+// contract price, or no deposit answered yet.
+export function reworkFromDeposit(deal: any, depositIn: any): Reworked | null {
+  const price = num(deal?.contract_price)
+  const deposit = num(depositIn)
+  if (price <= 0 || deposit <= 0) return null
+
+  const duty = dutyNow(deal)
+  const totalCost = price + duty
+  // Never negative. A deposit larger than the whole cost means no lending, not
+  // a loan of minus forty thousand.
+  const loan = Math.max(0, Math.round(totalCost - deposit))
+
+  const lvrBefore = lvrOf({ ...deal, contract_price: 0, contract_loan_amount: 0 })
+  const lmiAlready = lvrBefore !== null && lvrBefore > LMI_AT
+  const lvr = lvrOf({ ...deal, contract_price: price, contract_loan_amount: loan })
+
+  return {
+    price, duty, totalCost, deposit, loan, lvr,
+    bringsLmiIn: !lmiAlready && lvr !== null && lvr > LMI_AT,
+  }
+}
+
+// THE DEPOSIT THAT KEEPS THE LVR WHERE IT WAS.
+//
+// Fabio, 28 Sep 2026: "we normally keep the 80% at $760,000 so keep same LVR".
+// Offered as a figure, never chosen for them - it is a question for the client.
+// Worked from the SECURITY rather than the price, so it still holds on a deal
+// with another property in the mix, where LVR was never loan over price.
+export function depositToKeepLvr(deal: any): number {
+  const price = num(deal?.contract_price)
+  if (price <= 0) return 0
+  const lvrBefore = lvrOf({ ...deal, contract_price: 0, contract_loan_amount: 0 })
+  if (lvrBefore === null || lvrBefore <= 0) return 0
+  const total = securityValue({ ...deal, contract_price: price }).total
+  if (total <= 0) return 0
+  const loan = Math.round((lvrBefore / 100) * total)
+  return Math.max(0, Math.round(price + dutyNow(deal) - loan))
+}
+
+// Has the price actually moved? Nothing is asked when it has not.
+export function priceHasMoved(deal: any): boolean {
   const bc = deal?.bc_data || {}
   const was = num(bc.purchasePrice) || num(bc.newPurchasePrice)
   const now = num(deal?.contract_price)
-  // The loan as it stood BEFORE any contracted figure - the thing being moved.
-  const loanBefore = num(deal?.lo_data?.loanAmount)
-    || (deal?.bc_data?.splits || []).reduce((s: number, x: any) => s + num(x?.amount), 0)
-
-  if (was <= 0 || now <= 0 || loanBefore <= 0 || was === now) return null
-
-  const difference = now - was
-  const lvrIf = (loan: number) =>
-    lvrOf({ ...deal, contract_price: now, contract_loan_amount: loan })
-
-  // What it is today, against today's price - the baseline a warning is measured
-  // from.
-  const lvrBefore = lvrOf({ ...deal, contract_price: 0, contract_loan_amount: 0 })
-  const lmiAlready = lvrBefore !== null && lvrBefore > LMI_AT
-
-  const make = (key: FundingChoice['key'], title: string, loan: number): FundingChoice => {
-    const lvr = lvrIf(loan)
-    return {
-      key, title, loan,
-      contribution: Math.max(0, now - loan),
-      lvr,
-      bringsLmiIn: !lmiAlready && lvr !== null && lvr > LMI_AT,
-    }
-  }
-
-  const choices: FundingChoice[] = [
-    make('loan', difference > 0
-      ? 'Their savings stay where they are — the loan covers it'
-      : 'They borrow less — the saving comes off the loan',
-      Math.max(0, loanBefore + difference)),
-    make('savings', difference > 0
-      ? 'They cover it themselves — the loan stays the same'
-      : 'They keep the difference — the loan stays the same',
-      loanBefore),
-  ]
-
-  const typed = num(customLoan)
-  if (typed > 0) choices.push(make('custom', 'The loan amount you have typed', typed))
-
-  return { was, now, difference: Math.abs(difference), direction: difference > 0 ? 'up' : 'down', choices, lmiAlready }
+  return was > 0 && now > 0 && was !== now
 }
 
-// One line a person reads, rather than three numbers they have to compare.
-export function choiceLine(c: FundingChoice, moveDirection: 'up' | 'down'): string {
-  const money = (n: number) => '$' + Math.round(n).toLocaleString('en-AU')
-  const lvr = c.lvr === null ? 'LVR not known' : `LVR ${c.lvr}%`
-  const warn = c.bringsLmiIn ? ' — this takes it over 80% and LMI applies' : ''
-  return `Loan ${money(c.loan)} · they contribute ${money(c.contribution)} · ${lvr}${warn}`
+// THE DUTY IS NOW WRONG AND NOBODY HAS SAID SO.
+//
+// It is typed on the BC against the assessed price. The moment a contract comes
+// in at something else it is stale, and funds to complete would go on charging
+// the client duty on a price they did not pay.
+export function stampDutyNeedsUpdating(deal: any): boolean {
+  if (!priceHasMoved(deal)) return false
+  if (num(deal?.bc_data?.stampDuty) <= 0) return false   // never had one; another gap
+  return contractStampDuty(deal) <= 0
 }

@@ -34,7 +34,10 @@ function dayLabel(iso: string | null) {
   return `${DOW[d.getUTCDay()]} ${d.getUTCDate()}`
 }
 function amountOf(d: any): number | null {
-  return num(d.settled_total) ?? num(d.lodged_total) ?? num(d.loan_amount) ?? null
+  // The offer-accepted figure beats the lodged one; lodging happens before the
+  // property is found. Only what settled sits above it.
+  return num(d.settled_total) ?? num(d.contract_loan_amount)
+    ?? num(d.lodged_total) ?? num(d.loan_amount) ?? null
 }
 
 type Tone = 'ok' | 'warn' | 'stop' | 'flat' | 'cy'

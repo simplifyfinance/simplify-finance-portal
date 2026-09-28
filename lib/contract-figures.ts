@@ -44,6 +44,24 @@ export function contractLoan(deal: any): number {
   return num(deal?.contract_loan_amount)
 }
 
+// STAMP DUTY MOVES WITH THE PRICE, and it is a typed figure rather than a
+// calculated one.
+//
+// Fabio, 28 Sep 2026: "REMEMBER Stamp DUTY is still a figures as we need to
+// input the new amount which show me a gap we didtnt account for". He is right.
+// A deal assessed at $1,000,000 carries about $39,000 of NSW duty; buy at
+// $950,000 and it is about $37,000. Nothing was asking for the new number, so
+// funds to complete would have quietly kept charging the client for duty on a
+// price they did not pay.
+//
+// THE PORTAL DOES NOT WORK IT OUT. Duty is a state-by-state scale with first
+// home concessions, foreign surcharges and thresholds that move in budgets. A
+// figure we calculated would be wrong for somebody, and a wrong number on funds
+// to complete is money a client turns up without. It is asked for.
+export function contractStampDuty(deal: any): number {
+  return num(deal?.contract_stamp_duty)
+}
+
 // Is there a contracted position at all? Used to say on screen which figures are
 // being shown, so nobody has to work out whether a number came from the BC or
 // the contract.
