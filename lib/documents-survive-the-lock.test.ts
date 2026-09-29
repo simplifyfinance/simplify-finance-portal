@@ -122,14 +122,53 @@ describe('what the buttons do, and what they leave alone', () => {
     expect(docs).toContain('dealId: deal.id')
   })
 
-  it('never write to storage or to the deal', () => {
-    // Only a push to SalesTrekker rewrites the filed copies. A download must not
-    // touch them - Fabio asked precisely this: "remember whe I do that it will
-    // delete the ones on fact as it always update them".
-    expect(docs).not.toContain('supabase')
-    expect(docs).not.toMatch(/\.from\(/)
-    expect(docs).not.toContain('storage')
-    expect(docs).not.toContain('upload')
+  // THIS RULE CHANGED THE SAME DAY, AND ON PURPOSE.
+  //
+  // It used to say a download must never touch storage, because a push to
+  // SalesTrekker was the only thing that rewrote the filed copies. Then Fabio:
+  // "because the push to salestrekker is not working cna you ensure that when
+  // we geenrate ff handover and broker notes they overwritte the ones in fact
+  // fin" - and, looking at three months-old copies on the deal, "dont want old
+  // ones in there".
+  //
+  // With the push broken, a deal could show a correct PDF and hold a stale one,
+  // and the stale one is what anybody else opens. So generating now files it
+  // too. What must NOT change is that it replaces rather than piles up.
+  it('replace the filed copy in place, one per kind, never a new one per press', () => {
+    // The path is what makes it a replacement. Natasha Chapman had the same
+    // handover filed nine times when the path carried a timestamp.
+    expect(docs).toContain('`${deal.id}/${kind}.pdf`')
+    expect(docs).toContain('upsert: true')
+    expect(docs).not.toContain('Date.now()')
+  })
+
+  it('only add a row when there is not one already', () => {
+    // A second row pointing at the same file is a list nobody trusts.
+    expect(docs).toContain("eq('file_path', filePath)")
+    expect(docs).toContain('if (!already?.length)')
+  })
+
+  it('never delete anything', () => {
+    // Replacing is not removing. Nothing here may take a document off a deal.
+    expect(docs).not.toMatch(/\.remove\(/)
+    expect(docs).not.toMatch(/\.delete\(/)
+  })
+
+  it('hand you the document before trying to file it', () => {
+    // A failed upload must not cost somebody the PDF they asked for, and a
+    // silent one must not let them believe the stale copy was replaced.
+    const clickAt = docs.indexOf('a.click()')
+    const fileAt = docs.indexOf('await fileIt(')
+    expect(clickAt).toBeGreaterThan(-1)
+    expect(fileAt).toBeGreaterThan(clickAt)
+    expect(docs).toContain('the filed copy was NOT replaced')
+  })
+
+  it('let you open what is on file without unlocking anything', () => {
+    // The deal's own document list lives on the Fact Find tab, which a lodged
+    // deal disables - so on a locked deal those links are dead. These are not.
+    expect(docs).toContain('createSignedUrl')
+    expect(docs).toContain('On file')
   })
 
   it('say why when one fails, rather than just that it did', () => {

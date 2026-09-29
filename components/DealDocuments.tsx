@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
 // THE THREE DOCUMENTS, REACHABLE FROM ANYWHERE ON THE DEAL.
 //
@@ -21,10 +22,24 @@ import { useState } from 'react'
 // or not. Nothing is unlocked to use them and nothing is recorded, because
 // nothing has been changed.
 //
-// NOTHING HERE TOUCHES STORAGE. Each button asks the route to build the PDF
-// from the deal as it stands and hands it to the browser. The copies filed
-// against the deal are only ever rewritten by a push to SalesTrekker, which
-// overwrites them in place - see app/api/notify-salestrekker/route.ts.
+// GENERATING ALSO FILES IT. Fabio, 29 Sep 2026: "because the push to
+// salestrekker is not working cna you ensure that when we geenrate ff handover
+// and broker notes they overwritte the ones in fact fin".
+//
+// Until now the filed copies were only ever rewritten by a push to SalesTrekker.
+// With the push not working, a deal could have a correct PDF on screen and a
+// months-old one on file, and the one on file is what anybody else opens.
+//
+// So each button does both: hands you the PDF and replaces the filed copy.
+// SAME PATH PER KIND, upserted, exactly as the push does - one current copy per
+// deal, not one per press. Fabio, 16 Sep 2026: "I dont need a new one saving
+// every time", after Natasha Chapman ended up with the same handover filed nine
+// times over.
+//
+// FILING IS NEVER ALLOWED TO COST YOU THE DOWNLOAD. The file lands in your
+// browser first; if the upload then fails you are told, and you still have the
+// document. The reverse - a silent upload failure after a clean download - is
+// how somebody believes a stale copy has been replaced.
 
 // EVERY LABEL SAYS PDF, AND THAT IS NOT DECORATION.
 //
@@ -47,11 +62,59 @@ const KINDS = {
 type Kind = keyof typeof KINDS
 
 export default function DealDocuments({ deal }: { deal: any }) {
+  const supabase = createSupabaseBrowser()
   const [busy, setBusy] = useState<Kind | ''>('')
   const [err, setErr] = useState('')
+  const [note, setNote] = useState('')
+  const [filed, setFiled] = useState<{ id: string; file_name: string; file_path: string }[]>([])
+
+  // WHAT IS ON FILE, READABLE FROM ANY TAB AND ON A LOCKED DEAL.
+  //
+  // The deal's document list lives on the Fact Find tab, which a lodged deal
+  // disables wholesale - the same trap the three buttons were in. Rather than
+  // walk into it a third time, the filed copies are listed here too, where
+  // nothing is disabled. The Fact Find list is unchanged and still the place to
+  // upload and tidy.
+  async function loadFiled() {
+    const { data } = await supabase.from('deal_documents')
+      .select('id, file_name, file_path').eq('deal_id', deal.id)
+      .order('created_at', { ascending: false })
+    setFiled((data || []) as any)
+  }
+  useEffect(() => { loadFiled() }, [deal.id])
+
+  // One current copy per kind, replaced in place. The path decides that, not
+  // the name - the name follows the clients and can change.
+  async function fileIt(kind: Kind, blob: Blob, name: string) {
+    const filePath = `${deal.id}/${kind}.pdf`
+    const { error: upErr } = await supabase.storage.from('deal-documents')
+      .upload(filePath, blob, { contentType: 'application/pdf', upsert: true })
+    if (upErr) { setErr(`Downloaded, but the filed copy was NOT replaced — ${upErr.message}`); return }
+
+    // The row only has to exist once; on every press after the first the file
+    // behind it has just been replaced. A second row pointing at the same path
+    // is the pile this avoids.
+    const { data: already } = await supabase.from('deal_documents')
+      .select('id').eq('deal_id', deal.id).eq('file_path', filePath).limit(1)
+    if (!already?.length) {
+      const { error: recErr } = await supabase.from('deal_documents').insert({
+        deal_id: deal.id, file_name: name, file_path: filePath, file_type: 'application/pdf',
+      })
+      // Uploaded but not listed is a file nobody can find. Said out loud.
+      if (recErr) { setErr(`Filed, but it was not added to the list — ${recErr.message}`); return }
+    }
+    setNote(`${KINDS[kind].label} replaced on file.`)
+    loadFiled()
+  }
+
+  async function openFiled(path: string) {
+    const { data, error } = await supabase.storage.from('deal-documents').createSignedUrl(path, 60)
+    if (error) { setErr(`That document could not be opened — ${error.message}`); return }
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+  }
 
   async function download(kind: Kind) {
-    setBusy(kind); setErr('')
+    setBusy(kind); setErr(''); setNote('')
     try {
       const res = await fetch(KINDS[kind].route, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -74,6 +137,8 @@ export default function DealDocuments({ deal }: { deal: any }) {
       a.download = named || `${KINDS[kind].label}.pdf`
       a.click()
       window.URL.revokeObjectURL(url)
+      // You have the document. Now replace the one on file.
+      await fileIt(kind, blob, named || `${KINDS[kind].label}.pdf`)
     } catch (e: any) {
       setErr(`The ${KINDS[kind].label} PDF could not be built — ${e?.message || 'network error'}. Nothing was downloaded.`)
     } finally {
@@ -95,10 +160,27 @@ export default function DealDocuments({ deal }: { deal: any }) {
             {busy === kind ? 'Preparing…' : KINDS[kind].label}
           </button>
         ))}
-        <span className="text-[11px] text-[#C3BDB2]">built fresh from the deal &mdash; nothing on file is changed</span>
+        <span className="text-[11px] text-[#C3BDB2]">built from the deal, and the filed copy is replaced</span>
       </div>
+
+      {note && (
+        <p className="mt-2 text-[12px] text-[#15803D]">{note}</p>
+      )}
       {err && (
         <p className="mt-2 border border-[#E9D2CF] bg-[#FDF3F2] rounded-lg px-3 py-2 text-[12.5px] text-[#8E3A34]">{err}</p>
+      )}
+
+      {filed.length > 0 && (
+        <div className="mt-2 flex items-center gap-2 flex-wrap">
+          <span className="text-[9px] font-bold tracking-[.07em] uppercase text-[#C3BDB2] mr-1">On file</span>
+          {filed.map(f => (
+            <button key={f.id} onClick={() => openFiled(f.file_path)}
+              className="text-[11.5px] text-[#2DBEFF] hover:underline max-w-[240px] truncate"
+              title={f.file_name}>
+              {f.file_name}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   )
