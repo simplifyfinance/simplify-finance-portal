@@ -33,8 +33,7 @@ import { applicantsOf } from './applicants'
 import { variantOf, andList, structureOf, flexibilityPassage, type Gap } from './box-one'
 import { retirementPicture } from './box-goals'
 import { CREDIT_QUESTIONS } from './credit-history-facts'
-import { recommendedOption } from './recommended-option'
-import { clientAgreement } from './client-agreement'
+import { clientAgreement, optionOnTheDeal, optionGap } from './client-agreement'
 
 const txt = (v: any) => String(v ?? '').trim()
 const shout = (s: string) => `** ${s} **`
@@ -320,7 +319,7 @@ export function boxFour(deal: any): Box {
       fixed: /fixed/i.test(txt(x.repaymentType)),
     }))
     if (found.length === 0) {
-      const rec = recommendedOption(lo)
+      const rec = optionOnTheDeal(lo)
       found = ([['variablePI', false], ['variableIO', false], ['fixedPI', true], ['fixedIO', true]] as [string, boolean][])
         .filter(([k]) => rec?.[k]?.enabled && txt(rec[k]?.rate))
         .map(([k, fixed]) => ({ rate: txt(rec![k].rate), fixed }))
@@ -363,7 +362,14 @@ export function boxFour(deal: any): Box {
   if (flex) assessment.push(flex)
 
   // the fees, from the lender's own record
-  const rec = recommendedOption(lo) || (lo.lenders || [])[0] || {}
+  // THE FEES AND THE TURNAROUND BELONG TO THE LENDER THIS DEAL IS WITH.
+  //
+  // 29 Sep 2026. This read the RECOMMENDED option, so on a deal where the
+  // clients went elsewhere the line below would have printed "ubank's stated
+  // turnaround is 5 days" using Macquarie's five days - a real figure, a real
+  // bank, and no relation between them. It says nothing at all now rather than
+  // something wrong. See lib/client-agreement.ts.
+  const rec = optionOnTheDeal(lo) || {}
   const fees: string[] = []
   const fee = (label: string, val: any) => { const t = txt(val); if (t) fees.push(`${label} of ${/^\$/.test(t) ? t.replace(/\/yr$/, '') : '$' + t}`) }
   fee('an application fee', rec.applicationFee)
@@ -396,6 +402,12 @@ export function boxFour(deal: any): Box {
   // tab's copy first, and on Charles Mullins 2026 that copy was months out of
   // date - it printed "the clients chose AMP" onto a Bankwest deal, on a
   // regulated document, with nobody having chosen AMP. See lib/client-agreement.ts.
+  const optGap = optionGap(lo)
+  if (optGap) {
+    assessment.push(shout(`NO LENDING OPTION FOR THE CHOSEN LENDER — the rate, the product and the fees on this file are not recorded against the lender the clients chose.`))
+    gaps.push({ what: optGap, where: 'Lending options → lender options' })
+  }
+
   const agreement = clientAgreement(lo)
   const agreed = agreement.agreed
   if (agreed === 'Yes') assessment.push('The clients agreed with the recommendation and proceeded with it.')

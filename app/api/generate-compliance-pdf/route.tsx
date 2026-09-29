@@ -26,6 +26,7 @@ import { hemStateOf, hemTotals, unansweredNote } from '@/lib/hem'
 import { EXPENSE_CATEGORIES, RISK_GROUPS, PRODUCT_GROUPS } from '@/lib/handover-view'
 import { shortDate } from '@/lib/push-answers'
 import { householdsOf } from '@/lib/households'
+import { lenderOnTheDeal } from '@/lib/client-agreement'
 import { expensesFor } from '@/lib/household-expenses'
 
 const INK = '#141C24', MUTE = '#7C8894', BODY = '#3D4750'
@@ -199,7 +200,9 @@ export async function generateCompliancePdfBuffer(dealId: string, supabase: any)
     // A pre-approval leads, because it explains the TBA further down.
     c.preApproval ? 'Pre-approval — no security yet' : '',
     words(deal.transaction_type),
-    deal.lenders?.name || lo.recommendedLender || '',
+    // The lender this deal is with. `lenders` is asserted on every compliance
+    // save; lo_data is the answer when it has not been saved since the change.
+    deal.lenders?.name || lenderOnTheDeal(lo) || '',
     deal.loan_amount ? money(Number(deal.loan_amount)) : '',
     words(deal.property_use),
   ].filter(Boolean).join('  ·  ')

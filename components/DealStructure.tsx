@@ -132,6 +132,12 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
         <a href={`/deals/${deal.id}?stage=BC`} className="ml-auto text-[12px] text-[#2DBEFF] hover:underline">Open BC tab →</a>
       </div>
 
+      {row.optionGap && (
+        <p className="mb-3 border border-[#EBD9BE] bg-[#FDF6EC] rounded-lg px-3 py-2 text-[12.5px] text-[#8A6218]">
+          <b>{row.optionGap}.</b> Until then the rate, product and term stay blank rather than borrowing another lender&apos;s.
+        </p>
+      )}
+
       {err && (
         <p className="mb-3 border border-[#E9D2CF] bg-[#FDF3F2] rounded-lg px-3 py-2 text-[12.5px] text-[#8E3A34]">{err}</p>
       )}
@@ -139,7 +145,12 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
       {/* --- the deal, across ------------------------------------------- */}
       <div className="flex gap-6 items-start flex-wrap">
         <Field label="Lender">
-          <Value v={row.lender} src="from the LO" />
+          {/* WHO THIS DEAL IS WITH. It used to say "from the LO" underneath,
+              which answers a question nobody asked - the whole strip comes from
+              the LO. On a deal where the clients went elsewhere it now names
+              the recommendation it replaced, so the swap is visible here rather
+              than three clicks away on the Lending options tab. */}
+          <Value v={row.lender} src={row.lenderSource} />
         </Field>
 
         <Field label="Approval">

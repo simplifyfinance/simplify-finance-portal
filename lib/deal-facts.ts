@@ -24,6 +24,7 @@ import { currentAddress, currentEmployment, fullName, notWorking, selfEmployed, 
 import { templateLabel } from './templates'
 import { fundsToComplete, loanAmount, securityValue } from './funds-to-complete'
 import { splitsOf, dealRow, purposeSummary, PURPOSE_LABEL } from './deal-structure'
+import { lenderOnTheDeal, clientAgreement, optionGap } from './client-agreement'
 
 const txt = (v: any) => String(v ?? '').trim()
 const num = (v: any) => {
@@ -349,7 +350,28 @@ export function dealFacts(deal: any): DealFacts {
   } else {
     missing.push(`LVR cannot be worked out — ${sec.why}`)
   }
-  if (txt(lo?.recommendedLender)) loanLines.push(`Recommended lender: ${txt(lo.recommendedLender)}`)
+  // THE LENDER LINE THE NOTES ARE WRITTEN FROM.
+  //
+  // Lucy Ilbery & Andrew Leigh 2026, 29 Sep 2026: the clients went to ubank and
+  // this line said "Recommended lender: Macquarie". It said Macquarie on every
+  // re-run, because re-running hands the model this same sheet - which is why
+  // pressing the button again never changed a word.
+  //
+  // Both facts go over now, and both are labelled. Hiding the swap is not an
+  // option on a regulated file: the pack has to explain why the clients did not
+  // take the recommendation, and it cannot explain what it was never told.
+  const onDeal = lenderOnTheDeal(lo)
+  const rec = txt(lo?.recommendedLender)
+  if (onDeal) loanLines.push(`Lender on this deal: ${onDeal}`)
+  if (rec && rec !== onDeal) {
+    loanLines.push(`Originally recommended: ${rec}`)
+    const why = clientAgreement(lo).reason
+    loanLines.push(why
+      ? `Why the clients chose differently: "${why}"`
+      : `Why the clients chose differently: NOT RECORDED`)
+  }
+  const gap = optionGap(lo)
+  if (gap) missing.push(gap)
   if (loanLines.length) sections.push({ title: 'THE LOAN', lines: loanLines })
 
   // People.

@@ -28,6 +28,7 @@ import { stillToConfirm } from '@/lib/fact-find'
 import { applicantNamesOf } from '@/lib/applicants'
 import { shortDate } from '@/lib/push-answers'
 import { factFindFormItems, words } from '@/lib/factfind-form-content'
+import { lenderOnTheDeal } from '@/lib/client-agreement'
 import { renderFormPdf } from '@/lib/form-pdf'
 
 export const runtime = 'nodejs'
@@ -46,7 +47,9 @@ export async function generateSummaryPdfBuffer(dealId: string, supabase: any): P
 
   const meta = [
     words(deal.transaction_type),
-    deal.lenders?.name || lo.recommendedLender || '',
+    // The lender this deal is with. `lenders` is asserted on every compliance
+    // save; lo_data is the answer when it has not been saved since the change.
+    deal.lenders?.name || lenderOnTheDeal(lo) || '',
     words(deal.property_use),
   ].filter(Boolean).join('  ·  ')
 

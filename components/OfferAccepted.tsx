@@ -8,6 +8,7 @@ import { anzReductionEmail } from '@/lib/offer-accepted-rules'
 import { reworkFromDeposit, depositAsAssessed, depositToKeepLvr, dutyNow,
          priceHasMoved, stampDutyNeedsUpdating, type Reworked } from '@/lib/contract-funding'
 import { purchaseRows } from '@/lib/purchase-rows'
+import { lenderOnTheDeal } from '@/lib/client-agreement'
 import { dayMonthYear } from '@/lib/same-date-everywhere'
 
 // THE OFFER WAS ACCEPTED.
@@ -130,7 +131,7 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
       if (String(value ?? '') !== String(d[field] ?? '')) put(field, value)
     }
 
-  const lenderName = d?.lenders?.name || d?.lo_data?.recommendedLender
+  const lenderName = d?.lenders?.name || lenderOnTheDeal(d?.lo_data || {})
   const blanks = stillBlank(d)
   const preapproval = preapprovalLine(d)
   const steps = lenderSteps(lenderName)

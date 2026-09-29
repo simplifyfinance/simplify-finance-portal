@@ -18,7 +18,7 @@
 // guessed, and the credit notes will not be written until they are answered.
 
 import { fundsToComplete, loanAmount, securityValue, refinancedDebt, fundsApply } from './funds-to-complete'
-import { recommendedOption } from './recommended-option'
+import { lenderOnTheDeal, optionOnTheDeal, optionGap, lenderSourceOnTheDeal } from './client-agreement'
 
 const txt = (v: any) => String(v ?? '').trim()
 const num = (v: any) => {
@@ -153,7 +153,7 @@ export function splitsOf(deal: any): StructureSplit[] {
 
   const globals: any[] = lo.refinanceSplits || []
   const bcSplits: any[] = deal?.bc_data?.splits || []
-  const lenderSplits: any[] = recommendedLenderSplits(deal)
+  const lenderSplits: any[] = optionSplits(deal)
 
   const base = globals.length > 0 ? globals
     : lenderSplits.length > 0 ? lenderSplits
@@ -231,8 +231,7 @@ export function repaymentLine(split: { repaymentType?: string; ioYears?: string 
 // blank on purpose: there is no way to know which one a given split follows,
 // and printing the wrong IO term on a submission is worse than printing none.
 function recommendedIoYears(deal: any): string {
-  const lo = deal?.lo_data || {}
-  const rec = recommendedOption(lo) || (lo.lenders || [])[0]
+  const rec = optionOnTheDeal(deal?.lo_data || {})
   const years = ['variableIO', 'fixedIO']
     .map(k => (rec?.[k]?.enabled ? txt(rec[k]?.ioYears) : ''))
     .filter(Boolean)
@@ -245,17 +244,13 @@ function recommendedIoYears(deal: any): string {
 // LO's own splits box does, because option one is usually the recommendation and
 // often the only one filled in. It never reaches past that: option two's rate
 // under option one's name would be a wrong number, not a missing one.
-function recommendedLenderSplits(deal: any): any[] {
-  const lo = deal?.lo_data || {}
-  const list = lo.lenders || []
-  const rec = recommendedOption(lo) || list[0]
+function optionSplits(deal: any): any[] {
+  const rec = optionOnTheDeal(deal?.lo_data || {})
   return (rec?.lenderSplits || []).length > 0 ? rec.lenderSplits : []
 }
 
 function recommendedProduct(deal: any): string {
-  const lo = deal?.lo_data || {}
-  const rec = recommendedOption(lo) || (lo.lenders || [])[0]
-  return txt(rec?.productName)
+  return txt(optionOnTheDeal(deal?.lo_data || {})?.productName)
 }
 
 // Writing one split's compliance-side detail, without disturbing the others.
@@ -343,6 +338,13 @@ export function defaultSecurityAddress(deal: any, preApproval: boolean): string 
 
 export type DealRow = {
   lender: string
+  // WHERE THAT NAME CAME FROM. The strip used to print "from the LO" under it,
+  // which answers a question nobody was asking. What matters is whether you are
+  // looking at the recommendation or at the client's decision, so it says which.
+  lenderSource: string
+  // Why the rate, product and term are blank on a deal whose clients went
+  // elsewhere. Empty when there is nothing wrong. See lib/client-agreement.ts.
+  optionGap: string
   preApproval: boolean
   securityAddress: string
   propertyValue: number
@@ -368,7 +370,11 @@ export function dealRow(deal: any): DealRow {
     .reduce((t, s) => t + num(s.amount), 0)
 
   return {
-    lender: txt(lo.recommendedLender),
+    // WHO THIS DEAL IS WITH, not who was recommended. The client's decision
+    // is the answer wherever one was given. See lib/client-agreement.ts.
+    lender: lenderOnTheDeal(lo),
+    lenderSource: lenderSourceOnTheDeal(lo),
+    optionGap: optionGap(lo),
     preApproval: !!cd.preApproval,
     // Whatever was typed, else the TBA fill on a pre-approval.
     securityAddress: txt(cd.securityAddress) || defaultSecurityAddress(deal, !!cd.preApproval),

@@ -11,6 +11,7 @@
 
 import { ruleFor, preapprovalAge, repricingCheck, repricingLine,
          needsAnzAcknowledgement, type LenderRule } from './offer-accepted-rules'
+import { lenderOnTheDeal } from './client-agreement'
 import { dayMonthYear } from './same-date-everywhere'
 
 const txt = (v: any) => String(v ?? '').trim()
@@ -47,8 +48,15 @@ export function lenderSteps(lenderName: any, rule: LenderRule | null = null): Pa
 // Ninety days for every lender we have been told about. An offer accepted late
 // in that window is a deal whose approval can lapse before it settles, and
 // nothing has ever counted it.
+// WHICH LENDER'S RULES APPLY. The one the deal is with - a client who moved
+// from Macquarie to St George is on St George's 10% repricing rule, and reading
+// the recommendation here would have applied Macquarie's (none) instead.
+function lenderOnDeal(deal: any): string {
+  return String(deal?.lenders?.name || '').trim() || lenderOnTheDeal(deal?.lo_data || {})
+}
+
 export function preapprovalLine(deal: any, now = new Date()): PanelLine | null {
-  const rule = ruleFor(deal?.lenders?.name || deal?.lo_data?.recommendedLender)
+  const rule = ruleFor(lenderOnDeal(deal))
   const age = preapprovalAge(deal?.preapproval_at, rule, now)
   if (!age || !rule) return null
 
@@ -94,7 +102,7 @@ export function anzTemplateFor(deal: any, oldLoan: any, newLoan: any,
   reference: string
   change: string
 } {
-  const lender = deal?.lenders?.name || deal?.lo_data?.recommendedLender
+  const lender = lenderOnDeal(deal)
   const was = num(oldLoan), now = num(newLoan)
   if (!needsAnzAcknowledgement(lender, was, now)) {
     return { needed: false, reference: '', change: '' }

@@ -33,6 +33,8 @@
 // naming the wrong lender on a regulated document is the worse outcome - see
 // lib/notes-freshness.ts for the same argument about the prose.
 
+import { recommendedOption } from './recommended-option'
+
 const txt = (v: any) => String(v ?? '').trim()
 
 export type Agreement = {
@@ -109,4 +111,69 @@ export function lenderOnTheDeal(lo: any): string {
   const a = clientAgreement(lo)
   if (a.agreed === 'No' && a.chosen) return a.chosen
   return txt(lo?.recommendedLender)
+}
+
+// THE OPTION THE DEAL IS ACTUALLY ON.
+//
+// Lucy Ilbery & Andrew Leigh 2026, 29 Sep 2026. The client's decision was
+// recorded correctly - No, they chose ubank - and the deal's lender was right in
+// the database. The deal structure strip still said Macquarie, and the notes
+// still said Macquarie however many times they were re-run.
+//
+// Fabio: "we have a situation where we recommend Macqaurie, then issue
+// complaince...customer change their mind or we had to pivot lenders we click
+// the buttoin to change the clients decision this SHOULD AUTOMATICALLY CHNAGE
+// the deal structure than a flag on complaince to say data is behind".
+//
+// He is right, and `lenderOnTheDeal` above already answers "who is this deal
+// with". The half that was missing is everything hanging off the lender: the
+// RATE, the PRODUCT, the interest only years, the turnaround. Those are typed on
+// a lending option, and every reader was taking them from the RECOMMENDED
+// option - so swapping the name alone would have printed ubank over Macquarie's
+// 6.04% and Macquarie's Package.
+//
+// A wrong figure under a right name is worse than a wrong name. A wrong name is
+// noticed; this is not.
+//
+// SO THERE IS NO FALLBACK. When the clients went elsewhere this returns THEIR
+// lender's option or nothing at all. It never reaches back to the recommended
+// one, because the recommended one describes a loan nobody is taking.
+export function optionOnTheDeal(lo: any): any | null {
+  const a = clientAgreement(lo)
+  if (a.agreed !== 'No' || !a.chosen) return recommendedOption(lo) || (lo?.lenders || [])[0] || null
+  const want = a.chosen.toLowerCase()
+  const hit = (Array.isArray(lo?.lenders) ? lo.lenders : [])
+    .filter((l: any) => txt(l?.lenderName).toLowerCase() === want)
+  // Two options for the same bank and nothing saying which - the same answer
+  // lib/recommended-option.ts gives: we do not know, never a guess.
+  return hit.length === 1 ? hit[0] : null
+}
+
+// WHY THE RATE AND THE PRODUCT ARE BLANK, in words a person can act on.
+//
+// Empty when there is nothing wrong. Otherwise a sentence the strip prints
+// under the lender and the compliance pack shouts, because a blank nobody
+// explains is a blank everybody lives with.
+export function optionGap(lo: any): string {
+  const a = clientAgreement(lo)
+  if (a.agreed !== 'No' || !a.chosen) return ''
+  if (optionOnTheDeal(lo)) return ''
+  const count = (Array.isArray(lo?.lenders) ? lo.lenders : [])
+    .filter((l: any) => txt(l?.lenderName).toLowerCase() === a.chosen.toLowerCase()).length
+  return count > 1
+    ? `Two lending options are both ${a.chosen} — pick which one on the Lending options tab`
+    : `No lending option recorded for ${a.chosen} — add it on the Lending options tab so the rate, product and term come off a real option`
+}
+
+// WHERE THE NAME ON THE STRIP CAME FROM.
+//
+// The deal structure printed "from the LO" under the lender, which answers a
+// question nobody was asking - everything on that strip comes from the LO. What
+// a person needs to know is whether they are looking at the recommendation or
+// at what the clients decided, so it says which, and names the one it replaced.
+export function lenderSourceOnTheDeal(lo: any): string {
+  const a = clientAgreement(lo)
+  if (a.agreed !== 'No' || !a.chosen) return 'from the LO'
+  const rec = txt(lo?.recommendedLender)
+  return rec ? `the client's choice, over ${rec}` : `the client's choice`
 }

@@ -20,6 +20,7 @@
 import { money, readMoney } from './money'
 import { annualIncomeOfApplicant } from './income-calculations'
 import { resolveLenderSplits } from './lo-splits'
+import { lenderOnTheDeal } from './client-agreement'
 import { splitsOf } from './deal-structure'
 
 const txt = (v: any) => String(v ?? '').trim()
@@ -212,8 +213,20 @@ export function loFigures(lo: any): Figures {
   if (t(lo?.deposit)) out['the deposit'] = money(lo.deposit)
   if (t(lo?.stampDuty)) out['the stamp duty'] = money(lo.stampDuty)
   if (t(lo?.existingLoan)) out['the existing loan balance'] = money(lo.existingLoan)
-  // Changing which lender is recommended rewrites the point of the email.
-  out['the recommended lender'] = t(lo?.recommendedLender) || 'not chosen yet'
+  // Changing which lender is recommended rewrites the point of the email - and
+  // so does the clients going somewhere else.
+  //
+  // ONE FIELD, NOT TWO. A second field naming the deal's lender read identically
+  // to this one on every deal where nobody had gone elsewhere, so every ordinary
+  // change of recommendation raised the same warning twice. And a field that
+  // only exists sometimes disappears when the clients change their mind back,
+  // which figureChanges reports as "is no longer on the fact find".
+  //
+  // The LO email is what PRESENTS the recommendation, so it is written before
+  // the clients answer. The two can only diverge after the email has been sent -
+  // which is precisely when its figures have gone stale and somebody should be
+  // told. So this holds the lender the deal is with, and says so when it moves.
+  out['the recommended lender'] = lenderOnTheDeal(lo) || 'not chosen yet'
 
   const RATES: [string, string][] = [
     ['variablePI', 'variable P&I'], ['variableIO', 'variable interest only'],
