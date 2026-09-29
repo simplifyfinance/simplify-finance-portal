@@ -8,6 +8,7 @@ import { anzReductionEmail } from '@/lib/offer-accepted-rules'
 import { reworkFromDeposit, depositAsAssessed, depositToKeepLvr, dutyNow,
          priceHasMoved, stampDutyNeedsUpdating, type Reworked } from '@/lib/contract-funding'
 import { purchaseRows } from '@/lib/purchase-rows'
+import { otherSideGaps } from '@/lib/other-side'
 import { lenderOnTheDeal } from '@/lib/client-agreement'
 import { dayMonthYear } from '@/lib/same-date-everywhere'
 
@@ -227,6 +228,66 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
         <input defaultValue={d.lender_reference || ''} key={`lr${d.lender_reference || ''}`}
           onBlur={onBlurField('lender_reference')}
           placeholder="recorded when the deal was lodged" className={INP} />
+      </div>
+
+      {/* WHO ELSE IS ON THIS PURCHASE.
+          
+          Fabio, 29 Sep 2026: "we should have a spot do solictors details so they
+          also recieve apporval??? when it is a purchase" - then "add buers agent
+          as well".
+          
+          A draft of the formal approval email said we had let the solicitor
+          know. Nothing in the portal could have: there was nowhere to record one
+          at all. His answer is better than the sentence - copy them in, and it
+          is true because they are reading it. See lib/other-side.ts.
+          
+          NEITHER IS COMPULSORY. A blank buyers agent is a fact, not a gap. What
+          IS shown is a name with no address, because that is somebody we think
+          we can reach and cannot. */}
+      <div className="mt-4">
+        <span className={LAB}>Who else is on this purchase</span>
+        <p className="m-0 mb-2 text-[10.5px] text-[#A0A7AE]">
+          Copied in on the formal approval. Leave either blank if there is not one.
+        </p>
+        <div className="grid grid-cols-3 gap-3 max-[720px]:grid-cols-1">
+          <div>
+            <span className={LAB}>Solicitor / conveyancer</span>
+            <input defaultValue={d.solicitor_name || ''} key={`sn${d.solicitor_name || ''}`}
+              onBlur={onBlurField('solicitor_name')} placeholder="name and firm" className={INP} />
+          </div>
+          <div>
+            <span className={LAB}>Their email</span>
+            <input defaultValue={d.solicitor_email || ''} key={`se${d.solicitor_email || ''}`}
+              onBlur={onBlurField('solicitor_email')} placeholder="so they get the approval" className={INP} />
+          </div>
+          <div>
+            <span className={LAB}>Their phone</span>
+            <input defaultValue={d.solicitor_phone || ''} key={`sp${d.solicitor_phone || ''}`}
+              onBlur={onBlurField('solicitor_phone')} placeholder="optional" className={INP} />
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3 mt-3 max-[720px]:grid-cols-1">
+          <div>
+            <span className={LAB}>Buyers agent</span>
+            <input defaultValue={d.buyers_agent_name || ''} key={`bn${d.buyers_agent_name || ''}`}
+              onBlur={onBlurField('buyers_agent_name')} placeholder="name and agency" className={INP} />
+          </div>
+          <div>
+            <span className={LAB}>Their email</span>
+            <input defaultValue={d.buyers_agent_email || ''} key={`be${d.buyers_agent_email || ''}`}
+              onBlur={onBlurField('buyers_agent_email')} placeholder="so they get the approval" className={INP} />
+          </div>
+          <div>
+            <span className={LAB}>Their phone</span>
+            <input defaultValue={d.buyers_agent_phone || ''} key={`bp${d.buyers_agent_phone || ''}`}
+              onBlur={onBlurField('buyers_agent_phone')} placeholder="optional" className={INP} />
+          </div>
+        </div>
+        {/* A name we cannot reach. Said here, months before anybody presses send
+            on an email that would have quietly left them off. */}
+        {otherSideGaps(d).map((g, i) => (
+          <p key={i} className="m-0 mt-2 text-[11.5px] text-[#8A6218]">{g}.</p>
+        ))}
       </div>
 
       {/* WHAT THIS LENDER WANTS. Written down on 10 September and never shown to
