@@ -39,6 +39,7 @@ const SUBNAV: Record<string, { key: string; label: string; adminOnly?: boolean; 
   ],
   '/lenders': [
     { key: 'lenders', label: 'Products & policy' },
+    { key: 'rules', label: 'What we have learned' },
   ],
   '/commissions': [
     { key: 'revenue',    label: 'Revenue' },
