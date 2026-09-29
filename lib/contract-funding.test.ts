@@ -9,6 +9,7 @@
 // loan amount". The deposit is the question; the loan falls out of it.
 
 import { describe, it, expect } from 'vitest'
+import { dutyLabelFor } from './purchase-rows'
 import { readFileSync } from 'fs'
 import { reworkFromDeposit, depositAsAssessed, depositToKeepLvr,
          dutyNow, priceHasMoved, stampDutyNeedsUpdating } from './contract-funding'
@@ -224,7 +225,15 @@ describe('the panel', () => {
 
   it('labels duty by state, as the client email does', () => {
     expect(code).toContain('dutyLabelFor(d.bc_data)')
-    expect(code).toContain('dutyState')
+    // 29 Sep 2026: the label itself moved into lib/purchase-rows.ts, beside the
+    // rows it labels, so the milestone emails could use the same one instead of
+    // writing a third copy. The panel still asks for it; the rule is asserted
+    // where it now lives rather than by grepping this file for a field name.
+    const rows = readFileSync('lib/purchase-rows.ts', 'utf8')
+    expect(rows).toContain('export function dutyLabelFor')
+    expect(rows).toContain('dutyState')
+    expect(dutyLabelFor({ dutyState: 'vic' })).toBe('Stamp duty (VIC)')
+    expect(dutyLabelFor({})).toBe('Stamp duty')
   })
 
   // A rework half-written is worse than none, on a regulated file.

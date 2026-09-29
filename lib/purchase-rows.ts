@@ -109,3 +109,16 @@ export function totalPurchaseCost(price: any, duty: any): number | null {
   if (p === null || p <= 0) return null
   return p + (readMoney(duty) || 0)
 }
+
+// DUTY IS A STATE TAX, AND THE LABEL SAYS WHICH STATE.
+//
+// Printing it unlabelled, or labelled NSW for everyone, puts a figure on screen
+// that may belong to a different state. This lived as a private copy inside
+// components/OfferAccepted.tsx and a second one inside the client email route;
+// it sits here now, beside the rows it labels, so the third copy never gets
+// written. (The email route's own copy predates this and should move onto it
+// the next time that file is opened.)
+export function dutyLabelFor(bc: any): string {
+  const st = String(bc?.dutyState || '').trim().toUpperCase()
+  return st ? `Stamp duty (${st})` : 'Stamp duty'
+}

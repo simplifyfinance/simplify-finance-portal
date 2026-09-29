@@ -7,7 +7,7 @@ import { lenderSteps, preapprovalLine, pricingLine, anzTemplateFor,
 import { anzReductionEmail } from '@/lib/offer-accepted-rules'
 import { reworkFromDeposit, depositAsAssessed, depositToKeepLvr, dutyNow,
          priceHasMoved, stampDutyNeedsUpdating, type Reworked } from '@/lib/contract-funding'
-import { purchaseRows } from '@/lib/purchase-rows'
+import { purchaseRows, dutyLabelFor } from '@/lib/purchase-rows'
 import { otherSideGaps } from '@/lib/other-side'
 import { lenderOnTheDeal } from '@/lib/client-agreement'
 import { dayMonthYear } from '@/lib/same-date-everywhere'
@@ -43,13 +43,6 @@ const num = (v: any) => {
 
 const INP = 'text-[12.5px] border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white text-[#221F1B] w-full'
 
-// Duty is a state tax. Printing it unlabelled, or labelled NSW for everyone,
-// puts a figure on screen that may belong to a different state - the same rule
-// the client email follows. See dutyLabel in app/api/generate-email/route.ts.
-function dutyLabelFor(bc: any): string {
-  const st = String(bc?.dutyState || '').trim().toUpperCase()
-  return st ? `Stamp duty (${st})` : 'Stamp duty'
-}
 const LAB = 'text-[8.5px] font-bold tracking-[.07em] uppercase text-[#A0A7AE] block mb-1'
 
 function Line({ line }: { line: PanelLine }) {
