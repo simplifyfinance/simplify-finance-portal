@@ -9,7 +9,7 @@ import {
 } from '@/lib/deal-structure'
 import { fundsToComplete } from '@/lib/funds-to-complete'
 import { SPLIT_TYPES, typesOffered, typeContradictsProduct } from '@/lib/lo-splits'
-import { recommendedOption } from '@/lib/recommended-option'
+import { optionOnTheDeal } from '@/lib/client-agreement'
 
 // THE DEAL, AS ONE BLOCK, IN TWO PLACES.
 //
@@ -49,10 +49,7 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
   // The product the deal structure is describing - option one until somebody
   // picks a recommendation, exactly as splitsOf itself does. Only ever used to
   // say that the ticks and the answer here disagree; it never changes either.
-  const recOption = useMemo(() => {
-    const lo = deal?.lo_data || {}
-    return recommendedOption(lo) || (lo.lenders || [])[0] || null
-  }, [deal])
+  const recOption = useMemo(() => optionOnTheDeal(deal?.lo_data || {}), [deal])
   const row = useMemo(() => dealRow(deal), [deal])
   const funds = useMemo(() => fundsToComplete(deal), [deal])
   const needed = useMemo(() => stillNeeded(deal), [deal])

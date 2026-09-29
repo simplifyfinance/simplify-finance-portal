@@ -200,14 +200,29 @@ describe('the client’s agreement', () => {
     expect(boxFour(d).text).toMatch(/agreed with the recommendation and proceeded/)
   })
 
-  it('names the lender they chose instead, and their reason', () => {
+  it('names the lender they chose instead, the one it replaced, and their reason', () => {
+    // 29 Sep 2026, Fabio: "Always change sentec to say we reocmmended whne
+    // client changes their mind". The recommendation sentence above now names
+    // the lender the deal is on, so this one names the original - otherwise a
+    // reader is left working out what "the original recommendation" was.
     const d = deal()
     d.lo_data.clientAgreedLender = 'No'
     d.lo_data.clientChosenLender = 'CBA'
     d.lo_data.clientChosenLenderReason = 'Existing relationship'
     const t = boxFour(d).text
-    expect(t).toMatch(/did not proceed with the original recommendation and chose CBA/)
+    expect(t).toMatch(/did not proceed with the original recommendation of .+ and chose CBA/)
     expect(t).toContain('"Existing relationship"')
+  })
+
+  it('recommends the lender the deal is actually on, not the one they turned down', () => {
+    // A client signs this. Telling them we recommended a bank they are not
+    // borrowing from contradicts every other line on the page.
+    const d = deal()
+    d.lo_data.clientAgreedLender = 'No'
+    d.lo_data.clientChosenLender = 'CBA'
+    const t = boxFour(d).text
+    expect(t).toMatch(/CBA was recommended after comparing them against/)
+    expect(t).not.toMatch(new RegExp(`${d.lo_data.recommendedLender} was recommended after comparing`))
   })
 
   // CHARLES MULLINS 2026. The lending options tab was changed to Bankwest and

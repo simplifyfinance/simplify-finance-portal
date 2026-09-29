@@ -177,3 +177,17 @@ export function lenderSourceOnTheDeal(lo: any): string {
   const rec = txt(lo?.recommendedLender)
   return rec ? `the client's choice, over ${rec}` : `the client's choice`
 }
+
+// "ubank — Neat Home Loan", for a heading. The same shape as recommendedLabel in
+// lib/recommended-option.ts, asked of the deal rather than the recommendation.
+//
+// 29 Sep 2026: added after the third separate ship to chase one consumer of this
+// answer at a time. Every place that prints a lender to a client or to the
+// compliance team now calls one of the three functions above, and the guard in
+// lib/lender-on-the-deal.test.ts fails the build if a new one asks the
+// recommendation instead.
+export function labelOnTheDeal(lo: any): string {
+  const name = lenderOnTheDeal(lo)
+  const product = txt(optionOnTheDeal(lo)?.productName)
+  return name && product ? `${name} \u2014 ${product}` : (name || product)
+}

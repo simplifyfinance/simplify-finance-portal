@@ -21,7 +21,8 @@ import { notWorking, selfEmployed, currentEmployment, fullName,
 import { parseBlocks, hasContent, NEEDS_BOXES, COMMENT_BOXES, type Block, type Box } from './handover'
 import { titleSummary } from './title'
 import { loanFigureRows } from './lmi'
-import { isRecommended, recommendedFirst, recommendedOption, recommendedLabel } from './recommended-option'
+import { isRecommended, recommendedFirst, recommendedOption } from './recommended-option'
+import { labelOnTheDeal } from './client-agreement'
 import { hemStateOf, hemTotals, unansweredNote, type ExpenseCategory } from './hem'
 import { rowLegalFeeLabel } from './lender-fees'
 import { householdsOf } from './households'
@@ -547,8 +548,10 @@ export function factFindSections(deal: any): ViewSection[] {
   const loCards: ViewCard[] = []
   // See the same line in the LO email route: the note stays, the star does not
   // get handed to both products.
-  if (lo.recommendationNote && (recommendedOption(lo) || lo.recommendedLender)) {
-    loCards.push({ key: 'lo:note', title: `Our recommendation — ${recommendedLabel(lo)}`,
+  // Named for the deal's own lender, not the recommendation it replaced. See
+  // lib/client-agreement.ts.
+  if (lo.recommendationNote && labelOnTheDeal(lo)) {
+    loCards.push({ key: 'lo:note', title: `Our recommendation — ${labelOnTheDeal(lo)}`,
       tag: 'Recommended', tone: 'warn', copyable: true, blocks: parseBlocks(lo.recommendationNote) })
   }
   sorted.forEach((l: any, i: number) => {

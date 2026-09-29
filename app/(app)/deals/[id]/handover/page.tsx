@@ -21,6 +21,7 @@ import { patchDealColumn } from '@/lib/patch-deal-column'
 import { allSections, copyableCards, copyTextOf, outstanding,
          type ViewSection, type ViewCard, type Accent } from '@/lib/handover-view'
 import { applicantNamesOf } from '@/lib/applicants'
+import { lenderOnTheDeal } from '@/lib/client-agreement'
 import { money, readMoney } from '@/lib/money'
 
 type Shade = { edge: string; tint: string; ink: string }
@@ -139,7 +140,9 @@ export default function HandoverPage() {
   const meta = [
     c.preApproval ? 'Pre-approval — no security yet' : '',
     words(deal.transaction_type),
-    deal.lenders?.name || (deal.lo_data || {}).recommendedLender || '',
+    // The lender this deal is with. The two PDFs were fixed this morning and
+    // this page was not - it is the same header, built separately.
+    deal.lenders?.name || lenderOnTheDeal(deal.lo_data || {}) || '',
     loanAmount !== null ? money(loanAmount) : '',
     words(deal.property_use),
   ].filter(Boolean).join('  ·  ')

@@ -153,6 +153,34 @@ describe('the closing line', () => {
     }
   })
 
+  it('names the lender the deal is on, not the one the clients turned down', () => {
+    // Fabio, 29 Sep 2026: "dont make them sign a complaicne doc saying...
+    // Macquarie was recommended... Always change sentec to say we reocmmended
+    // whne client changes their mind".
+    //
+    // A client signs this page. Telling them in it that we recommended a bank
+    // they are not borrowing from contradicts every other line on it. The
+    // history is kept in box four, which names the original and quotes their
+    // reason for leaving it.
+    const d = chapman()
+    d.lo_data.clientAgreedLender = 'No'
+    d.lo_data.clientChosenLender = 'CBA'
+    for (const v of [1, 2, 3] as const) {
+      const t = lendersLine(d, v).text
+      expect(t).toMatch(/CBA was recommended|recommending CBA|CBA was the recommendation/)
+      expect(t).not.toMatch(/ING was recommended|recommending ING|ING was the recommendation/)
+      // And the one they turned down is still on the page, in the list it was
+      // compared against. Nothing is hidden.
+      expect(t).toContain('ING')
+    }
+  })
+
+  it('still names the recommendation when the clients agreed with it', () => {
+    const d = chapman()
+    d.lo_data.clientAgreedLender = 'Yes'
+    expect(lendersLine(d, 1).text).toMatch(/ING was recommended/)
+  })
+
   it('reads naturally with three lenders', () => {
     const d = chapman()
     d.lo_data.lenders.push(lender({ lenderName: 'NAB', productName: 'Choice' }))

@@ -166,6 +166,39 @@ describe('the rule, so it cannot come back', () => {
     expect(offenders).toEqual([])
   })
 
+  // THE SAME MISTAKE, ONE LEVEL DOWN.
+  //
+  // 29 Sep 2026, an hour after the first fix shipped. The deal structure said
+  // ubank and the handover said "Macquarie's Offset Home Loan has been
+  // recommended, on a variable rate of 6.03%" - because structureOf was reading
+  // recommendedOption. The name was right and everything hanging off it was
+  // wrong, which is harder to spot than a wrong name.
+  //
+  // recommendedOption answers "which option did we recommend". Where a file
+  // means "which option is this deal on", it must ask optionOnTheDeal.
+  const OPTION_ALLOWED = new Set([
+    'client-agreement.ts',    // where optionOnTheDeal is built from it
+    'recommended-option.ts',  // the question itself
+    'handover-view.ts',       // "Our recommendation - X", a heading about the past
+  ])
+
+  it('no library reads recommendedOption to answer "which option is this deal on"', () => {
+    const offenders = readdirSync('lib')
+      .filter(f => f.endsWith('.ts') && !f.endsWith('.test.ts') && !OPTION_ALLOWED.has(f))
+      .filter(f => {
+        const src = readFileSync(`lib/${f}`, 'utf8')
+          .split('\n').filter(l => !l.trim().startsWith('//')).join('\n')
+        return /recommendedOption\s*\(/.test(src)
+      })
+    expect(offenders).toEqual([])
+  })
+
+  it('the handover reads the option the deal is on', () => {
+    // box-one's structureOf feeds every sentence in box four's assessment: the
+    // serviceability calculator, the product, the rate, the fees, the turnaround.
+    expect(readFileSync('lib/box-one.ts', 'utf8')).toContain('optionOnTheDeal')
+  })
+
   it('lenderOnTheDeal is what the strip and the facts both call', () => {
     for (const f of ['deal-structure.ts', 'deal-facts.ts', 'offer-accepted-panel.ts']) {
       expect(readFileSync(`lib/${f}`, 'utf8')).toContain('lenderOnTheDeal')

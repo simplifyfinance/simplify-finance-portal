@@ -12,11 +12,33 @@ cd "$(dirname "$0")/.."
 python3 - <<'PY'
 import re, io, glob, sys
 
+# A COMMENT EXPLAINING A RULE IS NOT A BREACH OF IT.
+#
+# 29 Sep 2026. lib/milestone-email-parts.ts opens with a note saying Word does
+# not understand rgba() - and this check read the word in the note and refused
+# the ship. The same thing happened to a SQL guard a week earlier, where a
+# comment discussing `ilike` tripped a rule about using it.
+#
+# Whole-line // comments are blanked before scanning. Blanked rather than
+# removed, so the line numbers in any message that follows still point at the
+# right line. Only lines that BEGIN with // go, so a `//` inside a URL or a
+# string is left exactly where it is and anything real is still caught.
+COMMENT = re.compile(r'^[ \t]*//.*$', re.M)
+def code_only(src):
+    return COMMENT.sub(lambda m: '', src)
+
 TAG = re.compile(r'<(td|table|div|a|p|span)\b[^>]*>', re.I)
+# A TEST FILE NEVER RENDERS IN OUTLOOK.
+#
+# 29 Sep 2026: lib/email-gate-reads-code.test.ts exists to prove this very check
+# still bites, so it holds deliberately broken HTML as fixtures - and the check
+# read its own test's fixtures as breaches and refused the ship. Tests are not
+# email; they are excluded.
 files = sorted(set(glob.glob('app/api/**/*.ts', recursive=True) + glob.glob('lib/*.ts')))
+files = [f for f in files if not f.endswith('.test.ts')]
 issues = []
 for f in files:
-    s = io.open(f, encoding='utf-8').read()
+    s = code_only(io.open(f, encoding='utf-8').read())
     if '<td' not in s and '<table' not in s and '<div' not in s:
         continue
     for m in TAG.finditer(s):

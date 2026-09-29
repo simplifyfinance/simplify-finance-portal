@@ -18,6 +18,7 @@ import { money, withFrequency, readMoney } from './money'
 import { notWorking, selfEmployed, fullName, annualIncome, dateAU } from './fact-find'
 import { loanFigureRows } from './lmi'
 import { rowLegalFeeLabel } from './lender-fees'
+import { lenderOnTheDeal } from './client-agreement'
 import { isRecommended, recommendedFirst } from './recommended-option'
 
 const txt = (v: any) => String(v ?? '').trim()
@@ -366,8 +367,13 @@ export function factFindFormItems(input: FactFindFormInput): Item[] {
   // -- 9. LENDING OPTIONS ----------------------------------------------------
   const lenders = (lo.lenders || []).filter((l: any) => txt(l.lenderName))
   const sorted = recommendedFirst(lo, lenders)
-  if (txt(lo.recommendedLender) && txt(lo.recommendationNote)) {
-    items.push(band(`Our recommendation - ${txt(lo.recommendedLender)}`))
+  // THE LENDER THE FILE IS PROCEEDING WITH. Fabio, 29 Sep 2026: "Always change
+  // sentec to say we reocmmended whne client changes their mind". A client signs
+  // this sheet, and naming a bank they are not borrowing from contradicts every
+  // figure on it.
+  const onTheDeal = lenderOnTheDeal(lo)
+  if (onTheDeal && txt(lo.recommendationNote)) {
+    items.push(band(`Our recommendation - ${onTheDeal}`))
     items.push(askRow('lo.note', '', 1, [txt(lo.recommendationNote)], 58))
   }
   const rateOf = (m: any) => m?.enabled

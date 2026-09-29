@@ -38,7 +38,7 @@ import { splitsOf, dealRow } from './deal-structure'
 import { fullName, currentEmployment, notWorking, selfEmployed } from './fact-find'
 import { annualIncomeOfApplicant } from './income-calculations'
 import { applicantsOf } from './applicants'
-import { recommendedOption } from './recommended-option'
+import { optionOnTheDeal, lenderOnTheDeal } from './client-agreement'
 import { hasOffset, offsetRecorded } from './offset'
 
 const txt = (v: any) => String(v ?? '').trim()
@@ -120,7 +120,20 @@ const on = (mod: any) => !!mod?.enabled
 
 export function structureOf(deal: any): Structure {
   const lo = deal?.lo_data || {}
-  const rec = recommendedOption(lo) || (lo.lenders || [])[0] || {}
+  // THE OPTION THIS DEAL IS ON, not the one that was recommended.
+  //
+  // Lucy Ilbery & Andrew Leigh 2026, 29 Sep. The clients went from Macquarie to
+  // ubank and the handover still read "Serviceability has been assessed using
+  // Macquarie's own calculator", "Macquarie's Offset Home Loan has been
+  // recommended, on a variable rate of 6.03%" and "Macquarie's stated
+  // turnaround is 1-2 business days" - a whole assessment of a loan nobody was
+  // taking, on a regulated document.
+  //
+  // The morning's fix put the right NAME on the deal. This is the other half:
+  // everything hanging off the name - the product, the rate, the fees, the
+  // turnaround - was still coming off the recommendation. See
+  // lib/client-agreement.ts.
+  const rec = optionOnTheDeal(lo) || {}
   const variable = on(rec.variablePI) || on(rec.variableIO)
   const fixed = on(rec.fixedPI) || on(rec.fixedIO)
   const io = on(rec.variableIO) || on(rec.fixedIO)
@@ -263,7 +276,23 @@ export function lendersLine(deal: any, v: 1 | 2 | 3): { text: string; gap?: Gap 
   const lo = deal?.lo_data || {}
   const names: string[] = [...new Set<string>((lo.lenders || [])
     .map((l: any) => txt(l?.lenderName)).filter(Boolean))]
-  const rec = txt(lo.recommendedLender) || names[0] || ''
+  // THE LENDER THIS FILE RECOMMENDS, WHICH IS THE ONE IT IS PROCEEDING WITH.
+  //
+  // Fabio, 29 Sep 2026: "dont make them sign a complaicne doc saying... Macquarie
+  // was recommended... Always change sentec to say we reocmmended whne client
+  // changes their mind".
+  //
+  // He is right, and it is his licence. A client signs this document. Telling
+  // them in it that we recommended a bank they are not borrowing from is not a
+  // record of history, it is a sentence that contradicts every other line on the
+  // page - and the page already carries the history properly, in box four, where
+  // it says the clients did not proceed with the original recommendation, names
+  // the lender they chose, and quotes their reason.
+  //
+  // So the recommendation sentence names the lender on the deal, and the
+  // originally recommended one moves into the list it was compared against,
+  // where it belongs. Nothing is hidden and nothing is invented.
+  const rec = lenderOnTheDeal(lo) || names[0] || ''
   // THE BROKER'S OWN REASON, AS ITS OWN SENTENCE.
   //
   // It is written as whole sentences on the LO tab, so joining it onto a clause

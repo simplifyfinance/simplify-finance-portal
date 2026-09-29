@@ -33,7 +33,7 @@ import { applicantsOf } from './applicants'
 import { variantOf, andList, structureOf, flexibilityPassage, type Gap } from './box-one'
 import { retirementPicture } from './box-goals'
 import { CREDIT_QUESTIONS } from './credit-history-facts'
-import { clientAgreement, optionOnTheDeal, optionGap } from './client-agreement'
+import { clientAgreement, optionOnTheDeal, optionGap, lenderOnTheDeal } from './client-agreement'
 
 const txt = (v: any) => String(v ?? '').trim()
 const shout = (s: string) => `** ${s} **`
@@ -386,9 +386,20 @@ export function boxFour(deal: any): Box {
 
   if (txt(rec.approvalDays)) assessment.push(`${s.lender || 'The lender'}'s stated turnaround is ${txt(rec.approvalDays)}.`)
 
+  // THE LENDER THIS FILE RECOMMENDS IS THE ONE IT IS PROCEEDING WITH.
+  //
+  // Fabio, 29 Sep 2026: "Always change sentec to say we reocmmended whne client
+  // changes their mind". The client signs this. A sentence telling them we
+  // recommended a bank they are not borrowing from contradicts every other line
+  // on the page - and the history is not lost, it is two sentences below, where
+  // it names the original recommendation and quotes their reason for leaving it.
+  //
+  // The same change is made in lib/box-one.ts, which writes this sentence for
+  // box one. Both read lenderOnTheDeal.
   const names: string[] = [...new Set<string>((lo.lenders || []).map((l: any) => txt(l?.lenderName)).filter(Boolean))]
-  const others = names.filter(n => n !== txt(lo.recommendedLender))
-  if (others.length) assessment.push(`${txt(lo.recommendedLender)} was recommended after comparing them against ${andList(others)}.`)
+  const onTheDeal = lenderOnTheDeal(lo)
+  const others = names.filter(n => n !== onTheDeal)
+  if (others.length) assessment.push(`${onTheDeal} was recommended after comparing them against ${andList(others)}.`)
   else {
     assessment.push(shout(`ONLY ONE LENDER RECORDED — the recommendation has not been compared against any alternative.`))
     gaps.push({ what: 'Only one lender option recorded', where: 'Lending options → lender options' })
@@ -414,7 +425,14 @@ export function boxFour(deal: any): Box {
   else if (agreed === 'No') {
     const chosen = agreement.chosen
     const why = agreement.reason
-    assessment.push(`The clients did not proceed with the original recommendation and chose ${chosen || 'another lender'}${why ? `, for the following stated reason: "${why}"` : ''}.`)
+    // NAMED, so the two sentences do not read as contradicting each other.
+    // Above, this file says the deal's lender was recommended; here it says
+    // which lender that replaced and why. Without the name, a reader is left to
+    // work out what "the original recommendation" was from a list.
+    const original = txt(lo.recommendedLender)
+    assessment.push(
+      `The clients did not proceed with the original recommendation${original ? ` of ${original}` : ''} ` +
+      `and chose ${chosen || 'another lender'}${why ? `, for the following stated reason: "${why}"` : ''}.`)
   } else {
     assessment.push(shout(`NOT RECORDED — the clients' agreement to the recommendation has not been captured.`))
     gaps.push({ what: "The clients' agreement to the recommendation", where: 'Lending options → client agreement' })

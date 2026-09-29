@@ -53,8 +53,7 @@ import { merge3 } from '@/lib/deal-merge'
 import { tabIsBehind, keepWhatTheyTyped, type TabBehind } from '@/lib/tab-behind'
 import TabBehindNotice from '@/components/TabBehindNotice'
 import DraftBanner from '@/components/DraftBanner'
-import { recommendedOption } from '@/lib/recommended-option'
-import { agreementFields, lenderOnTheDeal } from '@/lib/client-agreement'
+import { agreementFields, lenderOnTheDeal, optionOnTheDeal } from '@/lib/client-agreement'
 import type { SaveStatus } from '@/lib/save-indicator'
 import { useKeepalive } from '@/components/useKeepalive'
 import DealStructure from '@/components/DealStructure'
@@ -379,9 +378,11 @@ export default function ComplianceForm({ deal, onSaveStatus, onDataChange, onDea
   const factsOf = (from: any): NoteFacts => {
     const lo = from?.lo_data || {}
     const row = dealRow(from)
-    // The chosen OPTION. Matching on the bank's name alone took whichever of
-    // two same-bank products came first. See lib/recommended-option.ts.
-    const rec = recommendedOption(lo) || lo.lenders?.[0] || {}
+    // The OPTION THIS DEAL IS ON. Matching on the bank's name alone took
+    // whichever of two same-bank products came first; reading the RECOMMENDED
+    // option stamped the notes with a product nobody was taking once the
+    // clients went elsewhere. See lib/client-agreement.ts.
+    const rec = optionOnTheDeal(lo) || {}
     const funds = fundsToComplete(from)
     return noteFacts({
       // THE LENDER THE NOTES ARE ABOUT, not the one that was recommended.
@@ -1111,7 +1112,9 @@ export default function ComplianceForm({ deal, onSaveStatus, onDataChange, onDea
   async function generateField(field: string) {
     if (COMPOSERS[field]) { await compose(field); return }
     setGenerating(prev => ({ ...prev, [field]: true }))
-    const recLender = recommendedOption(lo) || lo.lenders?.[0] || {}
+    // The option the deal is on, so the model is not handed a product from
+    // the lender the clients turned down.
+    const recLender = optionOnTheDeal(lo) || {}
     // The model is told plainly how many people this loan is for. It used to be
     // handed one joined-up string and wrote about "her" on a couple's file.
     const context = {
@@ -1217,7 +1220,7 @@ HOW TO USE THAT
 - Where it is NOT — every line under "WHERE THE RECOMMENDATION IS NOT THE CHEAPEST OR BEST" — address that line directly. Name the cheaper lender, name the difference, and say what the client gets in return that justifies it. If nothing in the facts justifies it, say plainly that the recommendation is not the cheapest on that measure and the reason is not recorded. Do not invent a reason.
 - Compare only on what is listed above. If a rate, a fee or a feature is not there for a lender, it is not recorded — do not assume it is nil, and do not assume it is worse.
 
-Broker's own recommendation note: ${context.recommendationNote || 'not recorded'}. ${context.clientAgreedLender === 'No' ? `The client did not proceed with the original recommendation and instead selected ${context.recommendedLender}, for the following stated reason: "${context.clientChosenLenderReason || 'not recorded'}". Explain both why the original lender was recommended AND why the client's final choice is understood and documented, referencing their stated reason.` : `The client agreed with and proceeded with the recommended lender.`}`,
+Broker's own recommendation note: ${context.recommendationNote || 'not recorded'}. ${context.clientAgreedLender === 'No' ? `The client did not proceed with the original recommendation of ${context.originalRecommendedLender || 'a lender not recorded'} and instead selected ${context.recommendedLender}, for the following stated reason: "${context.clientChosenLenderReason || 'not recorded'}". Explain both why ${context.originalRecommendedLender || 'the original lender'} was recommended AND why the client's final choice is understood and documented, referencing their stated reason. The file now proceeds on ${context.recommendedLender}, so write about it as the lender being recommended.` : `The client agreed with and proceeded with the recommended lender.`}`,
 
       borrowingPowerComment: `CRM FIELD: Borrowing power comments
 
