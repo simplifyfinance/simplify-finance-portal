@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { dayMonthYear, dayMonth, longDate, dayMonthTime } from '@/lib/same-date-everywhere'
 import SectionHeader from '@/components/SectionHeader'
 import { isWithLender, splitsTotal } from '@/lib/deal-phase'
+import { isLocked } from '@/lib/deal-lock'
 import { applicantsOf } from '@/lib/applicants'
 import { PreflightPanel, PushForm } from '@/components/PushDialogs'
 import { preflight, type Finding } from '@/lib/preflight'
@@ -1521,6 +1522,28 @@ Use the security address exactly as recorded. On a pre-approval it will already 
   // Folded, not removed. The write-up is a regulated document and it does get
   // corrected after the fact, so it stays one click away and stays editable.
   const past = isWithLender(deal)
+  // The same condition the deal page locks the tab on. Named here so the two
+  // lines below say what they mean rather than repeating isWithLender.
+  const locked = isLocked(deal)
+  // THE TOGGLE HAS BEEN DEAD SINCE THE LOCK SHIPPED.
+  //
+  // 29 Sep 2026, Fabio: "but why when I unlock that tab I cant get in the
+  // notes".
+  //
+  // The write-up collapses once compliance has been sent, so a finished form
+  // does not fill the page. "Show the write-up" opens it again - and that button
+  // lives inside this form, which a lodged deal wraps in a disabled fieldset.
+  //
+  // `past` and locked are the SAME CONDITION - both are isWithLender(deal) - so
+  // the button has never been pressable on any deal that was ever collapsed.
+  // Collapsed, with no way to open it, on every lodged file.
+  //
+  // Same mistake as the three PDFs half an hour earlier: the lock is there to
+  // stop somebody TYPING into a submitted file, and reading got caught in the
+  // net. Reading a write-up changes nothing.
+  //
+  // So a lodged deal shows it, and the dead button is not drawn. Somebody who
+  // unlocks the tab to correct something gets the toggle back with it.
   const [showWriteUp, setShowWriteUp] = useState(!past)
   const sentOn = deal.compliance_sent_at || deal.compliance_completed_at || complianceCompletedAt
 
@@ -1565,10 +1588,15 @@ Use the security address exactly as recorded. On a pre-approval it will already 
               {sentOn ? longDate(sentOn) : ''}
               {' '}&middot; both PDFs emailed to the compliance team
             </span>
-            <button onClick={() => setShowWriteUp(v => !v)}
-              className="ml-auto text-[12.5px] text-[#2DBEFF] hover:underline">
-              {showWriteUp ? 'Hide the write-up' : 'Show the write-up'}
-            </button>
+            {/* Not drawn while the tab is locked: a disabled fieldset would
+                make it a button that says "Show the write-up" and does nothing.
+                The write-up itself is shown instead. */}
+            {!locked && (
+              <button onClick={() => setShowWriteUp(v => !v)}
+                className="ml-auto text-[12.5px] text-[#2DBEFF] hover:underline">
+                {showWriteUp ? 'Hide the write-up' : 'Show the write-up'}
+              </button>
+            )}
           </div>
           <p className="text-[11.5px] text-[#A29889] mt-2 mb-0">
             This deal is lodged. The write-up is kept here and can still be corrected, but nothing
@@ -1578,7 +1606,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
         </div>
       )}
 
-      {(!past || showWriteUp) && (<>
+      {(!past || showWriteUp || locked) && (<>
       {/* Stage tabs */}
       <div className="flex bg-white border border-gray-100 rounded-xl p-1 gap-1">
         {stages.map(s => (

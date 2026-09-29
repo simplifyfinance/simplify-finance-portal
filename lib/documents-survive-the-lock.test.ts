@@ -1,0 +1,139 @@
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'fs'
+import { isLocked } from './deal-lock'
+
+// READING A LODGED DEAL CHANGES NOTHING.
+//
+// 29 Sep 2026, Fabio: "its msrled as lodged but i cant open pdf".
+//
+// He could not. The three download buttons lived inside the Compliance tab, and
+// TabLock wraps a locked tab in `<fieldset disabled>` - which disables every
+// button underneath it, those included. A disabled fieldset cannot be escaped
+// by nesting: there is no way to re-enable a control inside one.
+//
+// So a lodged deal had no reachable PDFs, and lodgement is exactly when they
+// get filed. The only way through was to unlock the tab, which writes a note on
+// the file saying somebody unlocked it - a record of an edit that never
+// happened.
+//
+// lib/deal-lock.ts has always said what the lock is for: "Reading them changes
+// nothing and always did... The risk was never navigation, it was that they
+// stayed LIVE FORMS." The documents were caught in the net by accident.
+
+const page = readFileSync('app/(app)/deals/[id]/DealPageClient.tsx', 'utf8')
+const docs = readFileSync('components/DealDocuments.tsx', 'utf8')
+const lock = readFileSync('components/TabLock.tsx', 'utf8')
+
+describe('the documents are outside the lock', () => {
+  it('the lock really does disable everything under it', () => {
+    // If this stops being true the rest of this file is arguing with nothing.
+    expect(lock).toContain('<fieldset disabled')
+  })
+
+  it('a lodged deal is locked', () => {
+    expect(isLocked({ lodged_at: '2026-09-24T00:00:00Z' })).toBe(true)
+    expect(isLocked({})).toBe(false)
+  })
+
+  it('the documents are rendered before the tabs, not inside them', () => {
+    const at = page.indexOf('<DealDocuments')
+    const tabs = page.indexOf('{tabs.map(')
+    const tabLock = page.indexOf('<TabLock')
+    expect(at, 'DealDocuments is not on the deal page').toBeGreaterThan(-1)
+    expect(at).toBeLessThan(tabs)
+    expect(at).toBeLessThan(tabLock)
+  })
+
+  it('they do not depend on the stage, the lock or the unlock', () => {
+    // The window looks BEHIND the tag as well as ahead of it. The first version
+    // of this test only looked ahead, so wrapping the whole thing in
+    // `{stage === 'Compliance' && ...}` - the exact bug being fixed - slid
+    // straight past it. A guard that cannot catch the thing it was written for
+    // is worse than none, because it reads as cover.
+    const at = page.indexOf('<DealDocuments')
+    const around = page.slice(Math.max(0, at - 160), at + 220)
+    expect(around).not.toContain('stage ===')
+    expect(around).not.toContain('unlockedTab')
+    expect(around).not.toContain('isLocked')
+  })
+})
+
+// THE SECOND DOOR, FOUND THE SAME AFTERNOON.
+//
+// Fabio, once the PDFs were out: "but why when I unlock that tab I cant get in
+// the notes".
+//
+// The write-up collapses after compliance is sent, and "Show the write-up" is a
+// button inside the same disabled fieldset. `past` - the thing that collapses
+// it - and locked are the SAME condition, so on every lodged deal the write-up
+// was collapsed with no way to open it.
+describe('the write-up can be read on a lodged deal', () => {
+  const form = readFileSync('app/(app)/deals/[id]/ComplianceForm.tsx', 'utf8')
+
+  it('is shown when the tab is locked, not hidden behind a dead button', () => {
+    expect(form).toContain('showWriteUp || locked')
+  })
+
+  it('does not draw a toggle that cannot be pressed', () => {
+    expect(form).toContain('{!locked && (')
+  })
+
+  it('locks on the same condition the deal page does', () => {
+    // If these two ever drift, the write-up hides itself again on a deal whose
+    // tab is still live - or draws a dead button on one that is not.
+    expect(form).toContain('const locked = isLocked(deal)')
+    expect(readFileSync('app/(app)/deals/[id]/DealPageClient.tsx', 'utf8'))
+      .toContain('isLocked(dealData)')
+  })
+})
+
+// NO TWO CLICKABLE THINGS ON THE DEAL PAGE SHARE A NAME.
+//
+// 29 Sep 2026. The documents shipped labelled "Fact Find", "Handover" and
+// "Broker Notes", directly above a tab row whose first tab is "Fact Find". Six
+// browser specs failed with "resolved to 2 elements" - the robot could no
+// longer tell which one to click, and neither could a person.
+describe('the documents do not collide with the tabs', () => {
+  const tabLabels = [...page.matchAll(/label: '([^']+)' \}/g)].map(m => m[1])
+
+  it('found the tab labels, so the test below is testing something', () => {
+    expect(tabLabels).toContain('Fact Find')
+    expect(tabLabels.length).toBeGreaterThanOrEqual(5)
+  })
+
+  it('no document button is named the same as a tab', () => {
+    const docLabels = [...docs.matchAll(/label: '([^']+)'/g)].map(m => m[1])
+    expect(docLabels.length).toBe(3)
+    const clash = docLabels.filter(l => tabLabels.includes(l))
+    expect(clash, 'a button and a tab with the same name is a trap for anybody clicking').toEqual([])
+  })
+
+  it('and each one says what it hands you', () => {
+    for (const m of docs.matchAll(/label: '([^']+)'/g)) expect(m[1]).toMatch(/PDF$/)
+  })
+})
+
+describe('what the buttons do, and what they leave alone', () => {
+  it('build all three straight from the deal', () => {
+    for (const route of ['/api/generate-summary-pdf', '/api/generate-compliance-pdf',
+                         '/api/generate-broker-notes-pdf']) {
+      expect(docs).toContain(route)
+    }
+    expect(docs).toContain('dealId: deal.id')
+  })
+
+  it('never write to storage or to the deal', () => {
+    // Only a push to SalesTrekker rewrites the filed copies. A download must not
+    // touch them - Fabio asked precisely this: "remember whe I do that it will
+    // delete the ones on fact as it always update them".
+    expect(docs).not.toContain('supabase')
+    expect(docs).not.toMatch(/\.from\(/)
+    expect(docs).not.toContain('storage')
+    expect(docs).not.toContain('upload')
+  })
+
+  it('say why when one fails, rather than just that it did', () => {
+    expect(docs).toContain('Nothing was downloaded.')
+    expect(docs).toContain('res.text()')
+  })
+})

@@ -33,6 +33,7 @@ import { isWithLender } from '@/lib/deal-phase'
 import DocumentsBox from '@/components/DocumentsBox'
 import WhoIsDoingTheBc from '@/components/WhoIsDoingTheBc'
 import Outstanding from '@/components/Outstanding'
+import DealDocuments from '@/components/DealDocuments'
 import BrokerAssignment from './BrokerAssignment'
 import TestDealBand from '@/components/TestDealBand'
 import DealName from '@/components/DealName'
@@ -412,6 +413,14 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           worth chasing. See components/Outstanding.tsx. */}
       <Outstanding deal={dealData} me={me}
         onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+
+      {/* THE THREE PDFS, ABOVE THE TABS AND OUTSIDE THE LOCK.
+          
+          They used to live inside the Compliance tab, which a lodged deal
+          disables wholesale - so the documents became unreachable exactly when
+          they are wanted. Reading a deal changes nothing; see
+          components/DealDocuments.tsx. */}
+      <DealDocuments deal={dealData} />
 
       <div className="flex gap-2 mb-6">
         {tabs.map(({ key, label }) => (
