@@ -32,6 +32,7 @@ import { isLocked } from '@/lib/deal-lock'
 import { isWithLender } from '@/lib/deal-phase'
 import DocumentsBox from '@/components/DocumentsBox'
 import WhoIsDoingTheBc from '@/components/WhoIsDoingTheBc'
+import Outstanding from '@/components/Outstanding'
 import BrokerAssignment from './BrokerAssignment'
 import TestDealBand from '@/components/TestDealBand'
 import DealName from '@/components/DealName'
@@ -403,6 +404,13 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           deep - BC, then Preview & share, then the button. See
           components/WhoIsDoingTheBc.tsx. It answers itself away. */}
       <WhoIsDoingTheBc deal={dealData}
+        onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+
+      {/* THE LENDER CAME BACK WITH CONDITIONS. Same idea as the strip above: it
+          does not exist before lodgement, it does not exist once the
+          pre-approval lands, and in between it is the one thing on the deal
+          worth chasing. See components/Outstanding.tsx. */}
+      <Outstanding deal={dealData} me={me}
         onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
 
       <div className="flex gap-2 mb-6">

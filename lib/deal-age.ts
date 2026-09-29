@@ -26,6 +26,11 @@ export const DEFAULT_THRESHOLDS: Partial<Record<Phase, { long: number; nudge: nu
   compliance:      { long: 5,  nudge: 8 },
   compliance_sent: { long: 3,  nudge: 5 },
   lodged:          { long: 3,  nudge: 5 },
+  // CONDITIONS GO STALE FAST. Unlike Lodged, where the wait is a lender picking
+  // a file up, everything here is a thing somebody can ring about. Five days of
+  // silence on a payslip is a deal going backwards, and ten is one nobody has
+  // touched. Fabio can change both in Settings like every other column.
+  outstanding:     { long: 5,  nudge: 10 },
   preapproved:     { long: 20, nudge: 30 },
   // An accepted offer has a settlement date attached to it, so this is the one
   // stage on the board where sitting still has a deadline behind it. Formal

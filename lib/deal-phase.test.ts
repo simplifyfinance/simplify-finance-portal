@@ -112,9 +112,23 @@ describe('which column a deal is in', () => {
   })
 
   it('has every phase in the order the board draws them', () => {
-    expect(PHASE_ORDER).toHaveLength(13)
+    expect(PHASE_ORDER).toHaveLength(14)
     expect(PHASE_ORDER.indexOf('compliance_sent')).toBeLessThan(PHASE_ORDER.indexOf('lodged'))
     expect(PHASE_ORDER.indexOf('preapproved')).toBeLessThan(PHASE_ORDER.indexOf('formal'))
+  })
+
+  // THE ORDER ITSELF, SPELLED OUT. A length and two comparisons let a stage be
+  // inserted in the wrong place and still pass - which is exactly the mistake
+  // Fabio had to correct twice: "look at the sequence a deal goes from lodge to
+  // preapporved to offer accepted", and then "it doesn't replace pre-approval.
+  // So let's be very careful. So it goes lodged, outstanding, and then
+  // pre-approval." Written out, it cannot be got wrong quietly.
+  it('runs lodged, outstanding, preapproved - Outstanding does not replace anything', () => {
+    const tracked = PHASE_ORDER.slice(PHASE_ORDER.indexOf('lodged'), PHASE_ORDER.indexOf('lost'))
+    expect(tracked).toEqual([
+      'lodged', 'outstanding', 'preapproved', 'offer_accepted', 'formal',
+      'contracts_returned', 'settlement_booked', 'settled',
+    ])
   })
 })
 

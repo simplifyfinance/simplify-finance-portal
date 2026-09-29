@@ -15,7 +15,7 @@
 
 export type Phase =
   | 'fact_find' | 'bc' | 'lo' | 'compliance' | 'compliance_sent'
-  | 'lodged' | 'preapproved' | 'offer_accepted' | 'formal'
+  | 'lodged' | 'outstanding' | 'preapproved' | 'offer_accepted' | 'formal'
   | 'contracts_returned' | 'settlement_booked' | 'settled' | 'lost'
 
 // In order, and named for what HAS happened — not for what is being waited on.
@@ -71,6 +71,22 @@ const MILESTONES: { phase: Phase; done: (d: any) => boolean; at: (d: any) => str
                               at:   d => d?.compliance_sent_at || null },
   { phase: 'lodged',          done: d => !!d?.lodged_at,
                               at:   d => d?.lodged_at || null },
+  // THE LENDER SAID YES, SUBJECT TO.
+  //
+  // Fabio, 29 Sep 2026: "call the stage outstanding because it will sit on
+  // outstanding under a conditional approval... it goes lodged, outstanding,
+  // and then pre-approval". It does NOT replace the pre-approval - he was
+  // explicit about that - it is the wait in between.
+  //
+  // Until now a conditionally approved deal sat in Lodged looking exactly like
+  // one nobody had heard a word about, which is the opposite situation: one is
+  // waiting on a lender to pick the file up, the other is waiting on a client
+  // to send two payslips, and only the second can be chased.
+  //
+  // A deal approved outright skips this the way plenty of deals skip
+  // Preapproved. The stage only exists on deals that reached it.
+  { phase: 'outstanding',     done: d => !!d?.outstanding_at,
+                              at:   d => d?.outstanding_at || null },
   // A column, not a tick. Fabio, 1 Sep 2026: "we need to see those deals at all
   // times so we can either chase all clients, do marketing campaign etc" - a
   // preapproved client still house hunting is a live opportunity, not a milestone
@@ -102,7 +118,7 @@ const MILESTONES: { phase: Phase; done: (d: any) => boolean; at: (d: any) => str
 
 export const PHASE_ORDER: Phase[] = [
   'fact_find', 'bc', 'lo', 'compliance', 'compliance_sent',
-  'lodged', 'preapproved', 'offer_accepted', 'formal',
+  'lodged', 'outstanding', 'preapproved', 'offer_accepted', 'formal',
   'contracts_returned', 'settlement_booked', 'settled', 'lost',
 ]
 
@@ -123,6 +139,7 @@ export const PHASE_LABEL: Record<Phase, string> = {
   compliance: 'Compliance',
   compliance_sent: 'Compliance sent',
   lodged: 'Lodged',
+  outstanding: 'Outstanding',
   preapproved: 'Preapproved',
   offer_accepted: 'Offer accepted',
   formal: 'Formal approval',
@@ -344,6 +361,11 @@ export const PHASE_FIELDS: Partial<Record<Phase, string[]>> = {
   compliance:         ['lo_client_proceeded', 'lo_proceeded_at'],
   compliance_sent:    ['compliance_sent_at'],
   lodged:             ['lodged_at'],
+  // The DATE only. The list of what the lender asked for is left exactly where
+  // it is - "I dont want anyhtuing to be wiped out no data to be lost" - so a
+  // deal moved back and marked outstanding again still knows what was asked and
+  // what has already come in.
+  outstanding:        ['outstanding_at'],
   preapproved:        ['preapproval_at'],
   offer_accepted:     ['offer_accepted_at'],
   formal:             ['formal_approval_at'],
@@ -358,6 +380,7 @@ export const PHASE_UNDO_LABEL: Partial<Record<Phase, string>> = {
   compliance:         'The client agreed to proceed after the lending options',
   compliance_sent:    'Compliance was sent to the credit team',
   lodged:             'The loan was lodged',
+  outstanding:        'The lender came back with conditions',
   preapproved:        'The loan was pre-approved',
   offer_accepted:     'The offer was accepted',
   formal:             'The loan was formally approved',

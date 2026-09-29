@@ -27,7 +27,7 @@ import { type Phase } from './deal-phase'
 // does nothing.
 export const AGED_PHASES: Phase[] = [
   'fact_find', 'bc', 'lo', 'compliance', 'compliance_sent',
-  'lodged', 'preapproved', 'offer_accepted', 'formal',
+  'lodged', 'outstanding', 'preapproved', 'offer_accepted', 'formal',
   'contracts_returned', 'settlement_booked',
 ]
 
@@ -216,6 +216,7 @@ export const WAITING_ON: Partial<Record<Phase, string>> = {
   compliance:      'Us, to write it up.',
   compliance_sent: 'Support, to move the SalesTrekker card. Should be quick.',
   lodged:          'The lender, to acknowledge the file.',
+  outstanding:     'Whoever the conditions are on - usually the client, for documents. This one can be chased.',
   preapproved:     'The client, to find a property. Months, not days.',
   offer_accepted:  'The lender, to turn an accepted offer into a formal approval.',
   formal:          'Governed by the settlement date, not by sitting still.',
