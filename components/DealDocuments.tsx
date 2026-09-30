@@ -77,6 +77,18 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
   const [note, setNote] = useState('')
   const [filed, setFiled] = useState<{ id: string; file_name: string; file_path: string }[]>([])
 
+  // THE FILED COPY OF ONE KIND, or nothing.
+  //
+  // 30 Sep 2026. The three buttons always REBUILT, so when a build failed you
+  // got nothing - while a perfectly good copy sat on the line underneath, one
+  // click away. Fabio: "I want the ability to doownload FF Handover and Broker
+  // notes after the fact PERIOD".
+  //
+  // Downloading must never depend on a build succeeding. So the button hands
+  // you what is on file, and rebuilding is its own deliberate press.
+  const copyOf = (kind: Kind) =>
+    filed.find(f => f.file_path === `${deal.id}/${kind}.pdf`) || null
+
   // Whether the filed copies still match the deal, and what moved if not.
   const behind = behindLine(deal)
   const current = documentsAreCurrent(deal)
@@ -195,6 +207,14 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
     }
   }
 
+  // What the button does. Open the filed copy where there is one; build only
+  // when there has never been one.
+  async function press(kind: Kind) {
+    const already = copyOf(kind)
+    if (already) { openFiled(already.file_path); return }
+    await download(kind)
+  }
+
   async function download(kind: Kind) {
     setBusy(kind); setErr(''); setNote('')
     try {
@@ -206,7 +226,11 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
         // Said out loud, with the reason where there is one. An alert that says
         // "could not generate" and nothing else leaves somebody guessing.
         const why = await res.text().catch(() => '')
-        setErr(`The ${KINDS[kind].label} PDF could not be built${why ? ` — ${why.slice(0, 160)}` : ''}. Nothing was downloaded.`)
+        // SAY THE COPY ON FILE IS STILL THERE. Without that line somebody
+        // assumes they have nothing and goes looking - which on 30 Sep meant
+        // unlocking a lodged deal to chase a problem that was not the lock.
+        setErr(`The ${KINDS[kind].label} could not be rebuilt${why ? ` — ${why.slice(0, 160)}` : ''}.`
+          + (copyOf(kind) ? ' The copy on file is untouched — the button above still downloads it.' : ''))
         return
       }
       const blob = await res.blob()
@@ -222,7 +246,8 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
       // You have the document. Now replace the one on file.
       await fileIt(kind, blob, named || `${KINDS[kind].label}.pdf`)
     } catch (e: any) {
-      setErr(`The ${KINDS[kind].label} PDF could not be built — ${e?.message || 'network error'}. Nothing was downloaded.`)
+      setErr(`The ${KINDS[kind].label} could not be rebuilt — ${e?.message || 'network error'}.`
+        + (copyOf(kind) ? ' The copy on file is untouched — the button above still downloads it.' : ''))
     } finally {
       setBusy('')
     }
@@ -233,23 +258,25 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[9px] font-bold tracking-[.07em] uppercase text-[#A29889] mr-1">Documents</span>
         {(Object.keys(KINDS) as Kind[]).map(kind => (
-          <button key={kind} onClick={() => download(kind)} disabled={!!busy}
+          <button key={kind} onClick={() => press(kind)} disabled={!!busy}
+            title={copyOf(kind) ? 'Downloads the copy on file' : 'Never built — this makes it'}
             className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-lg px-3 py-1.5 text-[12px] font-medium hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition inline-flex items-center gap-1.5 disabled:opacity-40">
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor"
                  strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M8 2v8M4.5 7l3.5 3.5L11.5 7M3 13h10" />
             </svg>
-            {busy === kind ? 'Preparing…' : KINDS[kind].label}
+            {busy === kind ? 'Preparing…' : copyOf(kind) ? KINDS[kind].label : `Build ${KINDS[kind].label}`}
           </button>
         ))}
-        {behind ? (
-          <button onClick={rebuildAll} disabled={!!busy}
-            className="bg-[#221F1B] text-white rounded-lg px-3 py-1.5 text-[12px] font-semibold disabled:opacity-40">
-            {busy === 'all' ? 'Rebuilding…' : 'Rebuild and file all three'}
-          </button>
-        ) : (
-          <span className="text-[11px] text-[#C3BDB2]">built from the deal, and the filed copy is replaced</span>
-        )}
+        {/* REBUILDING IS ITS OWN PRESS, always available - not only when the
+            documents have fallen behind. Dark while something has moved,
+            quiet the rest of the time. */}
+        <button onClick={rebuildAll} disabled={!!busy}
+          className={behind
+            ? 'bg-[#221F1B] text-white rounded-lg px-3 py-1.5 text-[12px] font-semibold disabled:opacity-40'
+            : 'bg-white border border-[#E8E1D6] text-[#A29889] rounded-lg px-3 py-1.5 text-[12px] hover:text-[#6E665C] disabled:opacity-40'}>
+          {busy === 'all' ? 'Rebuilding…' : 'Rebuild all three'}
+        </button>
       </div>
 
       {/* WHY THEY ARE BEHIND, not just that they are. "Out of date" makes

@@ -13,6 +13,13 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { layout, PAGE, MARGIN, type Item } from './assessment-form'
 import { SIMPLIFY_LOGO_PNG, LOGO_WIDTH, LOGO_HEIGHT } from './brand-logo'
+// EVERY STRING THAT REACHES THE PAGE GOES THROUGH THIS.
+//
+// Helvetica is WinAnsi encoded and pdf-lib THROWS on anything it cannot encode -
+// so one character pasted into a notes field killed the whole Fact Find PDF on
+// 30 Sep 2026. Guarding here rather than in a content file, because there are
+// several content files and any of them would otherwise be free to break it.
+import { pdfSafe } from './pdf-text'
 
 const INK     = rgb(0.13, 0.13, 0.13)
 const BAND    = rgb(0.16, 0.16, 0.16)
@@ -52,7 +59,7 @@ export async function renderFormPdf(items: Item[], opts: FormPdfOptions): Promis
       page.drawRectangle({ x: f.x, y: f.y, width: f.w, height: f.h, color: colour })
     }
     for (const t of spec.texts) {
-      page.drawText(t.text, {
+      page.drawText(pdfSafe(t.text), {
         x: t.x, y: t.y, size: t.size,
         font: t.bold ? bold : t.italic ? ital : reg,
         color: t.white ? WHITE : t.bold ? INK : QUIET,
@@ -60,7 +67,7 @@ export async function renderFormPdf(items: Item[], opts: FormPdfOptions): Promis
     }
     for (const f of spec.fields) {
       const box = form.createTextField(f.name)
-      box.setText(f.value)
+      box.setText(pdfSafe(f.value))
       if (f.multiline) box.enableMultiline()
       box.addToPage(page, {
         x: f.x, y: f.y, width: f.w, height: f.h,
@@ -87,15 +94,15 @@ export async function renderFormPdf(items: Item[], opts: FormPdfOptions): Promis
       if (r.chosen) { try { group.select(r.option) } catch { /* leave it blank */ } }
     }
 
-    page.drawText(`${opts.footer} - Page ${i + 1} of ${pages.length}`,
+    page.drawText(pdfSafe(`${opts.footer} - Page ${i + 1} of ${pages.length}`),
       { x: MARGIN.left, y: 24, size: 6.5, font: reg, color: QUIET })
   })
 
   const one = drawn[0]
-  one.drawText(opts.title, { x: MARGIN.left, y: PAGE.h - 34, size: 15, font: bold, color: INK })
+  one.drawText(pdfSafe(opts.title), { x: MARGIN.left, y: PAGE.h - 34, size: 15, font: bold, color: INK })
   let y = PAGE.h - 48
   for (const line of (opts.subtitles || []).slice(0, 2)) {
-    one.drawText(line, { x: MARGIN.left, y, size: 7.4, font: ital, color: QUIET })
+    one.drawText(pdfSafe(line), { x: MARGIN.left, y, size: 7.4, font: ital, color: QUIET })
     y -= 9
   }
   const lw = 108, lh = lw * LOGO_HEIGHT / LOGO_WIDTH

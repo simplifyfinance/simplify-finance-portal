@@ -717,6 +717,16 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
   }
 
   const [uploadingDoc, setUploadingDoc] = useState(false)
+  // HOW MANY ARE UP THERE. A pointer that says "4 documents" is worth reading;
+  // one that says "documents are listed at the top" gets skipped.
+  const [docCount, setDocCount] = useState(0)
+  useEffect(() => {
+    let alive = true
+    createSupabaseBrowser()
+      .from('deal_documents').select('id', { count: 'exact', head: true }).eq('deal_id', deal.id)
+      .then(({ count }: any) => { if (alive) setDocCount(count || 0) })
+    return () => { alive = false }
+  }, [deal.id, uploadingDoc])
 
   // Several at a time, one after another so a failure names the file that failed.
   async function uploadDocuments(files: File[]) {
@@ -1146,8 +1156,20 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               
               Adding one is still done here, because adding is an edit and edits
               belong inside the lock. See components/DealDocuments.tsx. */}
-          <p className="text-xs text-gray-300">
-            Everything attached to this deal is listed at the top of the page, under Documents.
+          {/* READABLE. This said the same thing in text-gray-300, which on white
+              is very nearly nothing - so on 30 Sep somebody went looking for the
+              list, did not see the line pointing at it, and unlocked a lodged
+              deal to find the documents. A pointer nobody can read is not a
+              pointer. */}
+          <p className="text-xs text-[#5B6672]">
+            {docCount > 0
+              ? `${docCount} document${docCount === 1 ? '' : 's'} on this deal — `
+              : 'Documents on this deal are listed '}
+            <button type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="text-[#2DBEFF] font-semibold hover:underline">
+              see them at the top of the page &uarr;
+            </button>
           </p>
         </div>
 

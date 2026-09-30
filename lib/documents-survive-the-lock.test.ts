@@ -201,7 +201,11 @@ describe('what the buttons do, and what they leave alone', () => {
   })
 
   it('say why when one fails, rather than just that it did', () => {
-    expect(docs).toContain('Nothing was downloaded.')
+    // "Nothing was downloaded" went on 30 Sep 2026. It was true of the build
+    // and false of the situation - there was a perfectly good copy on file the
+    // whole time, and that sentence is what sent somebody to unlock a lodged
+    // deal. The reason still gets said; what is said about the outcome changed.
+    expect(docs).toContain('could not be rebuilt')
     expect(docs).toContain('res.text()')
   })
 })
@@ -245,7 +249,10 @@ describe('the deal has one document list', () => {
   })
 
   it('and says where they went', () => {
-    expect(factFind).toContain('listed at the top of the page')
+    // The wording changed on 30 Sep 2026 - it used to be a near-white line
+    // nobody could read. What this test is for, that the tab still points at
+    // the one list, is unchanged.
+    expect(factFind).toContain('see them at the top of the page')
   })
 })
 
@@ -310,5 +317,52 @@ describe('the documents say when they are behind the deal', () => {
     // that never saw the edit.
     const fn = docs.slice(docs.indexOf('async function rebuildAll'))
     expect(fn.indexOf('const stamp = builtFrom(deal)')).toBeLessThan(fn.indexOf('await buildAndFile'))
+  })
+})
+
+// DOWNLOADING MUST NEVER DEPEND ON A BUILD SUCCEEDING.
+//
+// 30 Sep 2026, fourth go at this. The three buttons always REBUILT. So when the
+// Fact Find build threw on a pasted character, Fabio got nothing - while a good
+// copy sat on the line directly underneath, one click away. He unlocked a lodged
+// deal chasing a problem that was never the lock.
+//
+// "I want the ability to doownload FF Handover and Broker notes after the fact
+// PERIOD."
+describe('the button hands you the copy on file', () => {
+  const strip = readFileSync('components/DealDocuments.tsx', 'utf8')
+
+  it('presses through to the filed copy, not to a build', () => {
+    expect(strip).toContain('const copyOf =')
+    expect(strip).toContain('if (already) { openFiled(already.file_path); return }')
+  })
+
+  it('only builds where there has never been a copy', () => {
+    expect(strip).toContain('`Build ${KINDS[kind].label}`')
+  })
+
+  it('rebuilding is a press of its own, not something a download does', () => {
+    expect(strip).toContain('Rebuild all three')
+  })
+
+  // THE MESSAGE IS WHAT SENT HIM TO THE LOCK. "Nothing was downloaded" reads as
+  // "you have nothing"; the copy on file was fine the whole time.
+  it('and a failed rebuild says the filed copy is untouched', () => {
+    expect(strip).toContain('The copy on file is untouched')
+    expect(strip).not.toContain('Nothing was downloaded')
+  })
+})
+
+describe('the fact find tab points somewhere you can read', () => {
+  const ff = readFileSync('app/(app)/deals/[id]/FactFindForm.tsx', 'utf8')
+
+  it('no longer whispers it in near-white', () => {
+    const i = ff.indexOf('see them at the top of the page')
+    expect(i, 'the pointer to the document list is gone').toBeGreaterThan(-1)
+    expect(ff.slice(i - 400, i)).not.toContain('text-gray-300')
+  })
+
+  it('and says how many are up there', () => {
+    expect(ff).toContain('docCount')
   })
 })
