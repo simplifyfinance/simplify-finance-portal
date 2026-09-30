@@ -36,7 +36,7 @@ export default function TabLock({ locked, tab, dealId, role, me, onUnlocked, chi
   async function unlock() {
     if (!reasonIsEnough(reason)) { setMsg('Say why in a few words - it goes on the file.'); return }
     setBusy(true); setMsg('')
-    const { data, error } = await addSystemNote(dealId, unlockNote(tab, reason), me)
+    const { data, error } = await addSystemNote(dealId, unlockNote(reason), me)
     setBusy(false)
     if (error || !data?.length) {
       // The record is the whole point of the unlock. If it cannot be written,
@@ -62,7 +62,7 @@ export default function TabLock({ locked, tab, dealId, role, me, onUnlocked, chi
         {mayUnlock ? (
           <button onClick={() => { setOpen(true); setMsg('') }}
             className="ml-auto text-[11.5px] text-[#6E665C] border border-[#E8E1D6] bg-white rounded-lg px-2.5 py-1 hover:bg-[#FAF7F2]">
-            Unlock to edit
+            Unlock the deal
           </button>
         ) : (
           <span className="ml-auto text-[11.5px] text-[#A29889]">
@@ -76,7 +76,7 @@ export default function TabLock({ locked, tab, dealId, role, me, onUnlocked, chi
              onClick={() => setOpen(false)}>
           <div className="bg-white border border-[#E8E1D6] rounded-2xl px-6 py-5 max-w-[460px] w-full mt-24 shadow-xl"
                onClick={e => e.stopPropagation()}>
-            <p className="text-[14px] font-[640] text-[#221F1B] m-0 mb-1">Unlock the {TAB_LABEL[tab] || tab}</p>
+            <p className="text-[14px] font-[640] text-[#221F1B] m-0 mb-1">Unlock this deal</p>
             <p className="text-[12px] text-[#7A7266] m-0 leading-[1.5]">
               This deal is already with the lender. Say why it needs changing &mdash; it goes on the
               file with your name against it.
@@ -93,7 +93,7 @@ export default function TabLock({ locked, tab, dealId, role, me, onUnlocked, chi
             </div>
             {msg && <p className="text-[12px] text-[#C4553B] m-0 mt-2.5">{msg}</p>}
             <p className="text-[11px] text-[#A29889] m-0 mt-3 leading-[1.45]">
-              Unlocks this tab only, and re-locks when you leave the deal.
+              Unlocks every tab on this deal, and re-locks when you leave it.
             </p>
           </div>
         </div>

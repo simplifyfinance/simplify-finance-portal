@@ -31,13 +31,25 @@ export const TAB_LABEL: Record<string, string> = {
   Compliance: 'Compliance',
 }
 
-// The line that goes on the file when somebody unlocks a tab. Not friction for
-// its own sake: "who changed the fact find after we lodged, and why" becomes a
-// question with an answer.
-export function unlockNote(tab: string, reason: string): string {
-  const label = TAB_LABEL[tab] || tab
+// THE LINE THAT GOES ON THE FILE WHEN SOMEBODY UNLOCKS A DEAL.
+//
+// Not friction for its own sake: "who changed this after we lodged, and why"
+// becomes a question with an answer.
+//
+// ONE UNLOCK, NOT ONE PER TAB. Fabio, 30 Sep 2026: "you are lovking individual
+// tabs if i need to reqword a deal card I want one button unlock and it allows
+// me to evrythign on all tabs".
+//
+// He is right. Reworking a deal card is never one tab - a lender change touches
+// the lending options and the compliance write-up, and a corrected income
+// touches the fact find and the borrowing capacity. Per-tab unlocking meant
+// three unlocks and three notes for one piece of work, which is three lines on
+// the file describing one decision.
+//
+// The note no longer names a tab, because the unlock no longer is one.
+export function unlockNote(reason: string): string {
   const why = String(reason || '').trim()
-  return `${label} unlocked and edited.${why ? ' ' + why : ''}`
+  return `Deal unlocked and edited.${why ? ' ' + why : ''}`
 }
 
 // An unlock has to say why. A blank reason is the same as no record at all.

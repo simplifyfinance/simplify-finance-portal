@@ -124,7 +124,11 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
 
   // Unlocking is per tab and per visit: leaving the deal, or moving to another
   // tab, locks it again. Nothing is stored, so nothing can be left unlocked.
-  const [unlockedTab, setUnlockedTab] = useState('')
+  // ONE UNLOCK FOR THE WHOLE DEAL, not one per tab. Fabio, 30 Sep 2026:
+  // "i need to reqword a deal card I want one button unlock and it allows me to
+  // evrythign on all tabs". Reworking a card is never one tab's worth of work.
+  // See lib/deal-lock.ts.
+  const [dealUnlocked, setDealUnlocked] = useState(false)
 
   // The milestone columns the progress bar is built from - and NOTHING else.
   //
@@ -171,7 +175,12 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
 
   function changeStage(newStage: string) {
     setStage(newStage)
-    setUnlockedTab('')
+    // THE UNLOCK SURVIVES A TAB CHANGE, because it is the DEAL that is unlocked.
+    //
+    // This used to clear it, which is the behaviour Fabio ran into: unlock the
+    // compliance tab, go to lending options to change the lender, come back and
+    // it is locked again. Reworking a deal card crosses tabs by definition.
+    // It still re-locks when you leave the deal.
     // The last tab is no longer remembered. A deal opens on the Fact Find every
     // time - see the note in page.tsx - so writing this down had nothing left
     // reading it, and a column that is written but never read is how a record
@@ -431,9 +440,9 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
         ))}
       </div>
 
-      <TabLock locked={isLocked(dealData) && unlockedTab !== stage} tab={stage} dealId={dealData.id}
+      <TabLock locked={isLocked(dealData) && !dealUnlocked} tab={stage} dealId={dealData.id}
         role={userRole} me={me}
-        onUnlocked={() => { setUnlockedTab(stage); reloadFile() }}>
+        onUnlocked={() => { setDealUnlocked(true); reloadFile() }}>
         <TabBoundary tab={stage}>
           {stage === 'FactFind' && <FactFindForm whoElseHere={whoElseHere} me={me} deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
           {stage === 'Statements' && <StatementAnalysis deal={dealData} />}

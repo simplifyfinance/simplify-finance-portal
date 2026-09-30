@@ -176,3 +176,38 @@ describe('what the buttons do, and what they leave alone', () => {
     expect(docs).toContain('res.text()')
   })
 })
+
+// ONE UNLOCK FOR THE DEAL, NOT ONE PER TAB.
+//
+// Fabio, 30 Sep 2026: "you are lovking individual tabs if i need to reqword a
+// deal card I want one button unlock and it allows me to evrythign on all tabs".
+//
+// Reworking a card is never one tab's worth of work: a lender change touches the
+// lending options and the compliance write-up, a corrected income touches the
+// fact find and the borrowing capacity. Worse, changing tab CLEARED the unlock -
+// so unlocking compliance, going to lending options and coming back left it
+// locked again.
+describe('unlocking a deal unlocks all of it', () => {
+  const dealPage = readFileSync('app/(app)/deals/[id]/DealPageClient.tsx', 'utf8')
+
+  it('is one flag for the deal, not one tab remembered', () => {
+    expect(dealPage).toContain('dealUnlocked')
+    expect(dealPage).not.toContain('unlockedTab')
+  })
+
+  it('the lock asks only whether the deal is unlocked', () => {
+    expect(dealPage).toContain('locked={isLocked(dealData) && !dealUnlocked}')
+  })
+
+  it('changing tab does not re-lock it', () => {
+    // The exact behaviour Fabio ran into.
+    const fn = dealPage.slice(dealPage.indexOf('function changeStage'),
+                              dealPage.indexOf('function changeStage') + 700)
+    expect(fn).not.toContain('setDealUnlocked')
+  })
+
+  it('and the file note stops naming a tab', () => {
+    expect(readFileSync('lib/deal-lock.ts', 'utf8')).toContain('Deal unlocked and edited.')
+    expect(readFileSync('components/TabLock.tsx', 'utf8')).toContain('unlockNote(reason)')
+  })
+})

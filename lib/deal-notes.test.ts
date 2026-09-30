@@ -34,10 +34,16 @@ describe('the lock', () => {
     expect(reasonIsEnough('   ')).toBe(false)
     expect(reasonIsEnough('typo')).toBe(true)
   })
-  it('the note names the tab and carries the reason', () => {
-    expect(unlockNote('FactFind', 'Employer entity was wrong.'))
-      .toBe('Fact Find unlocked and edited. Employer entity was wrong.')
-    expect(unlockNote('LO', '')).toBe('Lending options unlocked and edited.')
+  // 30 Sep 2026. The note used to name a tab, because the unlock was per tab.
+  // Fabio: "i need to reqword a deal card I want one button unlock and it allows
+  // me to evrythign on all tabs" - so one unlock, and one line on the file.
+  // Three notes describing one piece of work was a record that read as three
+  // decisions.
+  it('the note carries the reason, and does not name a tab the unlock no longer is', () => {
+    expect(unlockNote('Employer entity was wrong.'))
+      .toBe('Deal unlocked and edited. Employer entity was wrong.')
+    expect(unlockNote('')).toBe('Deal unlocked and edited.')
+    expect(unlockNote('  ')).toBe('Deal unlocked and edited.')
   })
 })
 
