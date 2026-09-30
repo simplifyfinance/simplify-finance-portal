@@ -4,6 +4,7 @@ import { dayMonthYear, dayMonth, longDate, dayMonthTime } from '@/lib/same-date-
 import SectionHeader from '@/components/SectionHeader'
 import { isWithLender, splitsTotal } from '@/lib/deal-phase'
 import { isLocked } from '@/lib/deal-lock'
+import { boxesToRebuild, rebuiltLine } from '@/lib/keeping-up'
 import { applicantsOf } from '@/lib/applicants'
 import { PreflightPanel, PushForm } from '@/components/PushDialogs'
 import { preflight, type Finding } from '@/lib/preflight'
@@ -26,7 +27,7 @@ const dealLoanAmount = (lo: any, bc: any): string => {
 import { checkedWrite } from '@/lib/checked-write'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { dealFacts, factsBlock, dealPurpose } from '@/lib/deal-facts'
-import { noteFacts, noteFreshness, reviewNotes, type NoteFacts, type NoteStamp,
+import { noteFacts, noteFreshness, reviewNotes, fingerprint, type NoteFacts, type NoteStamp,
          type NoteFreshness } from '@/lib/notes-freshness'
 import { purposeSummary, dealRow } from '@/lib/deal-structure'
 import { fundsToComplete } from '@/lib/funds-to-complete'
@@ -1104,7 +1105,14 @@ export default function ComplianceForm({ deal, onSaveStatus, onDataChange, onDea
             ? 'Composed from the deal - fact find, BC and lending options'
             : 'Composed from the deal. Not recorded: ' + r.gaps.map(g => g.what).join('; '))
             + (fromRecord ? '' : ' (read from this screen - the saved record could not be reached)'),
-          at: new Date().toISOString(), facts } } }))
+          at: new Date().toISOString(), facts,
+          // A FINGERPRINT OF THE WORDS, not just of the facts they came from.
+          //
+          // The stamp has always recorded what a note was written FROM. It never
+          // recorded what it SAID, so nothing could tell an untouched box from
+          // one somebody had reworded - and that is the only thing that makes
+          // rebuilding one safe. See lib/keeping-up.ts.
+          textHash: fingerprint(r.text) } } }))
     } finally {
       setGenerating(prev => ({ ...prev, [field]: false }))
     }
@@ -1346,8 +1354,49 @@ Use the security address exactly as recorded. On a pre-approval it will already 
     () => reviewNotes(AI_FIELDS.map(f => ({ field: f.key, text: (d as any)[f.key] })), d.aiMeta, nowFacts),
     [d, nowFacts])
 
+  // The same condition the deal page locks the tab on. Declared here rather
+  // than down in the render block because the rebuild effect below reads it,
+  // and a value used before its declaration is a build error rather than a
+  // subtle one - which is the good kind.
+  const locked = isLocked(deal)
+
   const freshnessOf = (key: string): NoteFreshness =>
     noteFreshness((d as any)[key], d.aiMeta?.[key], nowFacts)
+
+  // THE COMPOSED BOXES KEEP THEMSELVES UP WITH THE DEAL.
+  //
+  // Fabio, 30 Sep 2026, on having to re-run the notes by hand after every lender
+  // change: "I want to be automatic".
+  //
+  // It runs once, when the tab opens, and only over boxes that are BOTH stale
+  // and provably untouched since they were composed - lib/keeping-up.ts decides
+  // which, and nothing here second-guesses it. A composed box is boxOne or
+  // boxFour over the deal: same deal in, same words out, so rebuilding one
+  // cannot invent anything or lose anything.
+  //
+  // NEVER ON A LOCKED DEAL. The lock exists to stop a submitted file being
+  // edited, and this is an edit however defensible. On a lodged deal the
+  // staleness warning shows instead, which is what it is for.
+  //
+  // It does not save by itself either - the rebuilt text sits in the form and
+  // goes with the next save, the way anything else typed here would.
+  const [rebuilt, setRebuilt] = useState<string[]>([])
+  const didRebuild = useRef(false)
+  useEffect(() => {
+    if (didRebuild.current || locked) return
+    const fields = AI_FIELDS.map(f => ({ field: f.key, text: (d as any)[f.key] }))
+    const todo = boxesToRebuild(fields, d.aiMeta, k => freshnessOf(k).state === 'stale')
+      .filter(k => !!COMPOSERS[k])
+    if (todo.length === 0) return
+    didRebuild.current = true
+    ;(async () => {
+      for (const field of todo) await compose(field)
+      setRebuilt(todo)
+    })()
+    // Once per mount. A dependency list that re-ran this would fight the person
+    // typing into the box it had just rewritten.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locked])
 
   // "They still read right". Re-stamps a stale note against the deal as it is
   // now WITHOUT touching a word of the text, so a note somebody has already
@@ -1522,9 +1571,6 @@ Use the security address exactly as recorded. On a pre-approval it will already 
   // Folded, not removed. The write-up is a regulated document and it does get
   // corrected after the fact, so it stays one click away and stays editable.
   const past = isWithLender(deal)
-  // The same condition the deal page locks the tab on. Named here so the two
-  // lines below say what they mean rather than repeating isWithLender.
-  const locked = isLocked(deal)
   // THE TOGGLE HAS BEEN DEAD SINCE THE LOCK SHIPPED.
   //
   // 29 Sep 2026, Fabio: "but why when I unlock that tab I cant get in the
@@ -1573,6 +1619,15 @@ Use the security address exactly as recorded. On a pre-approval it will already 
     <div className="space-y-4" onBlurCapture={() => flush()}>
       <TabBehindNotice behind={behind?.what || null} savedBy={behind?.savedBy}
         onDismiss={() => setBehind(null)} />
+
+      {/* A DOCUMENT THAT REWROTE PART OF ITSELF SHOULD SAY SO, even when it was
+          entitled to. Silence here would be the portal editing a regulated file
+          without mentioning it. */}
+      {rebuilt.length > 0 && (
+        <p className="border border-[#BBE7CF] bg-[#F4FBF7] rounded-lg px-3 py-2 text-[12.5px] text-[#0F7B4F] m-0">
+          {rebuiltLine(rebuilt, AI_FIELD_LABEL)}
+        </p>
+      )}
       {draft.offer && (
         <DraftBanner at={draft.offer.at}
           onRestore={() => { setD(shape(draft.offer!.value)); draft.taken() }}

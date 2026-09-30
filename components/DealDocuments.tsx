@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { builtFrom, behindLine, documentsAreCurrent } from '@/lib/keeping-up'
 
 // THE THREE DOCUMENTS, REACHABLE FROM ANYWHERE ON THE DEAL.
 //
@@ -61,12 +62,20 @@ const KINDS = {
 
 type Kind = keyof typeof KINDS
 
-export default function DealDocuments({ deal }: { deal: any }) {
+export default function DealDocuments({ deal, me, onUpdated }: {
+  deal: any
+  me?: { id: string | null; name: string }
+  onUpdated?: (patch: any) => void
+}) {
   const supabase = createSupabaseBrowser()
-  const [busy, setBusy] = useState<Kind | ''>('')
+  const [busy, setBusy] = useState<Kind | '' | 'all'>('')
   const [err, setErr] = useState('')
   const [note, setNote] = useState('')
   const [filed, setFiled] = useState<{ id: string; file_name: string; file_path: string }[]>([])
+
+  // Whether the filed copies still match the deal, and what moved if not.
+  const behind = behindLine(deal)
+  const current = documentsAreCurrent(deal)
 
   // WHAT IS ON FILE, READABLE FROM ANY TAB AND ON A LOCKED DEAL.
   //
@@ -85,11 +94,11 @@ export default function DealDocuments({ deal }: { deal: any }) {
 
   // One current copy per kind, replaced in place. The path decides that, not
   // the name - the name follows the clients and can change.
-  async function fileIt(kind: Kind, blob: Blob, name: string) {
+  async function fileIt(kind: Kind, blob: Blob, name: string): Promise<boolean> {
     const filePath = `${deal.id}/${kind}.pdf`
     const { error: upErr } = await supabase.storage.from('deal-documents')
       .upload(filePath, blob, { contentType: 'application/pdf', upsert: true })
-    if (upErr) { setErr(`Downloaded, but the filed copy was NOT replaced — ${upErr.message}`); return }
+    if (upErr) { setErr(`Downloaded, but the filed copy was NOT replaced — ${upErr.message}`); return false }
 
     // The row only has to exist once; on every press after the first the file
     // behind it has just been replaced. A second row pointing at the same path
@@ -101,16 +110,71 @@ export default function DealDocuments({ deal }: { deal: any }) {
         deal_id: deal.id, file_name: name, file_path: filePath, file_type: 'application/pdf',
       })
       // Uploaded but not listed is a file nobody can find. Said out loud.
-      if (recErr) { setErr(`Filed, but it was not added to the list — ${recErr.message}`); return }
+      if (recErr) { setErr(`Filed, but it was not added to the list — ${recErr.message}`); return false }
     }
     setNote(`${KINDS[kind].label} replaced on file.`)
     loadFiled()
+    return true
   }
 
   async function openFiled(path: string) {
     const { data, error } = await supabase.storage.from('deal-documents').createSignedUrl(path, 60)
     if (error) { setErr(`That document could not be opened — ${error.message}`); return }
     if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+  }
+
+  // ALL THREE, IN ONE PRESS. Fabio, 30 Sep 2026: "I want to be automatic and
+  // save on documents tab". The filed copies fall behind together - a lender
+  // change moves all three - so they are brought back together, and the deal is
+  // stamped once with what they were built from.
+  async function rebuildAll() {
+    setBusy('all'); setErr(''); setNote('')
+    const stamp = builtFrom(deal)
+    for (const kind of Object.keys(KINDS) as Kind[]) {
+      const ok = await buildAndFile(kind)
+      // One failing document must not leave the deal stamped as current. Said
+      // out loud by buildAndFile, and the stamp is simply not written.
+      if (!ok) { setBusy(''); return }
+    }
+    const patch = {
+      documents_built_from: stamp,
+      documents_built_at: new Date().toISOString(),
+      documents_built_by: me?.name || '',
+    }
+    const { data: rows, error } = await supabase.from('deals')
+      .update(patch).eq('id', deal.id).select('id')
+    if (error || !rows?.length) {
+      setErr(error ? `All three were filed, but the deal was not stamped: ${error.message}`
+                   : 'All three were filed, but the deal was not stamped. Please tell Fabio.')
+    } else {
+      onUpdated?.(patch)
+      setNote('All three rebuilt and filed.')
+    }
+    setBusy('')
+  }
+
+  // BUILD ONE AND REPLACE THE FILED COPY, without handing it to the browser.
+  // What "Rebuild and file all three" uses - nobody wants three downloads when
+  // they asked for the deal to be brought up to date. Returns whether it worked,
+  // so one failure stops the run rather than stamping the deal as current.
+  async function buildAndFile(kind: Kind): Promise<boolean> {
+    try {
+      const res = await fetch(KINDS[kind].route, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId: deal.id }),
+      })
+      if (!res.ok) {
+        const why = await res.text().catch(() => '')
+        setErr(`The ${KINDS[kind].label} could not be built${why ? ` — ${why.slice(0, 160)}` : ''}. Nothing on file was changed.`)
+        return false
+      }
+      const blob = await res.blob()
+      const named = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')?.[1]
+      return await fileIt(kind, blob, named || `${KINDS[kind].label}.pdf`)
+    } catch (e: any) {
+      setErr(`The ${KINDS[kind].label} could not be built — ${e?.message || 'network error'}. Nothing on file was changed.`)
+      return false
+    }
   }
 
   async function download(kind: Kind) {
@@ -160,8 +224,27 @@ export default function DealDocuments({ deal }: { deal: any }) {
             {busy === kind ? 'Preparing…' : KINDS[kind].label}
           </button>
         ))}
-        <span className="text-[11px] text-[#C3BDB2]">built from the deal, and the filed copy is replaced</span>
+        {behind ? (
+          <button onClick={rebuildAll} disabled={!!busy}
+            className="bg-[#221F1B] text-white rounded-lg px-3 py-1.5 text-[12px] font-semibold disabled:opacity-40">
+            {busy === 'all' ? 'Rebuilding…' : 'Rebuild and file all three'}
+          </button>
+        ) : (
+          <span className="text-[11px] text-[#C3BDB2]">built from the deal, and the filed copy is replaced</span>
+        )}
       </div>
+
+      {/* WHY THEY ARE BEHIND, not just that they are. "Out of date" makes
+          somebody open all three to find out what moved; naming it means they
+          already know. See lib/keeping-up.ts. */}
+      {behind && (
+        <p className="mt-2 text-[12px] text-[#8A6218]">{behind}</p>
+      )}
+      {!behind && current && (
+        <p className="mt-2 text-[12px] text-[#0F7B4F]">
+          On file and up to date{deal.documents_built_by ? ` — rebuilt by ${deal.documents_built_by}` : ''}.
+        </p>
+      )}
 
       {note && (
         <p className="mt-2 text-[12px] text-[#15803D]">{note}</p>

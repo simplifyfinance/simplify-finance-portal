@@ -157,8 +157,13 @@ describe('what the buttons do, and what they leave alone', () => {
   it('hand you the document before trying to file it', () => {
     // A failed upload must not cost somebody the PDF they asked for, and a
     // silent one must not let them believe the stale copy was replaced.
-    const clickAt = docs.indexOf('a.click()')
-    const fileAt = docs.indexOf('await fileIt(')
+    //
+    // Scoped to download(). There is a second caller of fileIt now - the
+    // rebuild-all path, which deliberately does NOT download - and searching the
+    // whole file found that one first.
+    const fn = docs.slice(docs.indexOf('async function download('))
+    const clickAt = fn.indexOf('a.click()')
+    const fileAt = fn.indexOf('await fileIt(')
     expect(clickAt).toBeGreaterThan(-1)
     expect(fileAt).toBeGreaterThan(clickAt)
     expect(docs).toContain('the filed copy was NOT replaced')
@@ -209,5 +214,44 @@ describe('unlocking a deal unlocks all of it', () => {
   it('and the file note stops naming a tab', () => {
     expect(readFileSync('lib/deal-lock.ts', 'utf8')).toContain('Deal unlocked and edited.')
     expect(readFileSync('components/TabLock.tsx', 'utf8')).toContain('unlockNote(reason)')
+  })
+})
+
+// KEEPING THE FILED DOCUMENTS UP WITH THE DEAL.
+//
+// Fabio, 30 Sep 2026: "I want to be automatic and save on documents tab".
+describe('the documents say when they are behind the deal', () => {
+  it('name what moved, rather than just saying out of date', () => {
+    // "Out of date" makes somebody open all three to find out what changed.
+    expect(docs).toContain('behindLine(deal)')
+    expect(docs).toContain('{behind}')
+  })
+
+  it('offer one press for all three, not three presses', () => {
+    expect(docs).toContain('Rebuild and file all three')
+    expect(docs).toContain('async function rebuildAll')
+  })
+
+  it('stop at the first failure rather than stamping the deal as current', () => {
+    // A half-rebuilt set stamped as current is worse than one that is plainly
+    // behind, because nothing says so afterwards.
+    const fn = docs.slice(docs.indexOf('async function rebuildAll'))
+    expect(fn).toContain('if (!ok) { setBusy(\'\'); return }')
+    expect(fn.indexOf('documents_built_from')).toBeGreaterThan(fn.indexOf('if (!ok)'))
+  })
+
+  it('record what they were built from, and who by', () => {
+    for (const f of ['documents_built_from', 'documents_built_at', 'documents_built_by']) {
+      expect(docs).toContain(f)
+    }
+    expect(docs).toContain('builtFrom(deal)')
+  })
+
+  it('take the stamp BEFORE rebuilding, not after', () => {
+    // Otherwise a box edited while the three are being built would be counted
+    // as already filed, and the deal would read as current while holding a PDF
+    // that never saw the edit.
+    const fn = docs.slice(docs.indexOf('async function rebuildAll'))
+    expect(fn.indexOf('const stamp = builtFrom(deal)')).toBeLessThan(fn.indexOf('await buildAndFile'))
   })
 })

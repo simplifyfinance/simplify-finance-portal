@@ -79,7 +79,12 @@ describe('what Compliance composes from', () => {
     // staleness check is measuring against something the box was never written
     // from. See lib/notes-freshness.ts.
     expect(src()).toMatch(/const facts = factsOf\(from\)/)
-    expect(src()).toMatch(/at: new Date\(\)\.toISOString\(\), facts \} \} \}\)\)/)
+    expect(src()).toMatch(/at: new Date\(\)\.toISOString\(\), facts,/)
+    // 30 Sep 2026: the stamp also carries a fingerprint of the WORDS. The facts
+    // say what a box was written from; the fingerprint says whether anybody has
+    // reworded it since, which is the only thing that makes rebuilding one
+    // safe. See lib/keeping-up.ts.
+    expect(src()).toMatch(/textHash: fingerprint\(r\.text\)/)
   })
 
   it('still writes the box when the record cannot be reached, and says so', () => {

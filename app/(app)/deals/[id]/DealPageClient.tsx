@@ -429,7 +429,8 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           disables wholesale - so the documents became unreachable exactly when
           they are wanted. Reading a deal changes nothing; see
           components/DealDocuments.tsx. */}
-      <DealDocuments deal={dealData} />
+      <DealDocuments deal={dealData} me={me}
+        onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
 
       <div className="flex gap-2 mb-6">
         {tabs.map(({ key, label }) => (
