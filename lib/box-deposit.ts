@@ -1,6 +1,7 @@
 import { money, readMoney } from './money'
 import { dutyStateOf } from './duty-state'
-import { fundsToComplete, refinancedDebt } from './funds-to-complete'
+import { fundsToComplete, refinancedDebt, isConstruction } from './funds-to-complete'
+import { dutyApplies } from './construction'
 import { dealRow, splitsOf, isMixed } from './deal-structure'
 import { applicantsOf } from './applicants'
 import { variantOf, andList, type Gap } from './box-one'
@@ -185,6 +186,11 @@ export function completionLine(deal: any): { parts: string[]; gaps: Gap[] } {
     parts.push(state
       ? `Stamp duty of ${money(duty)} has been allowed for in ${state}.`
       : `Stamp duty of ${money(duty)} has been allowed for.`)
+  } else if (isConstruction(deal) && !dutyApplies(bc)) {
+    // NOT A GAP. A build on land the clients already own has no duty, and
+    // shouting NOT RECORDED in red forever about a figure that does not exist
+    // teaches everybody to ignore the red. See lib/construction.ts.
+    parts.push('There is no stamp duty on this loan \u2014 the clients already own the land.')
   } else {
     parts.push(shout('NOT RECORDED — stamp duty on this purchase.'))
     gaps.push({ what: 'Stamp duty', where: 'Borrowing capacity' })

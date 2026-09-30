@@ -1,4 +1,5 @@
 import { contractPrice, contractLoan, contractStampDuty } from './contract-figures'
+import { isLandPurchase, landLoanPayout, dutyApplies } from './construction'
 
 // WHAT THE CLIENT HAS TO FIND.
 //
@@ -118,8 +119,16 @@ export function fundsToComplete(deal: any): FundsToComplete {
   const missing: string[] = []
 
   if (isConstruction(deal)) {
-    if (has(bc.landValue)) lines.push({ label: 'Land value', amount: num(bc.landValue), kind: 'cost' })
-    else missing.push('Land value has not been recorded')
+    // LAND ALREADY OWNED IS NOT A COST. It is the security, and it was being
+    // counted as money to find - see lib/construction.ts. A payout on an
+    // existing land loan IS a cost, because the facility has to fund it.
+    if (isLandPurchase(bc)) {
+      if (has(bc.landValue)) lines.push({ label: 'Land value', amount: num(bc.landValue), kind: 'cost' })
+      else missing.push('Land value has not been recorded')
+    } else {
+      const payout = landLoanPayout(bc)
+      if (payout > 0) lines.push({ label: 'Existing land loan paid out', amount: payout, kind: 'cost' })
+    }
     if (has(bc.constructionCost)) lines.push({ label: 'Construction cost', amount: num(bc.constructionCost), kind: 'cost' })
     else missing.push('Construction cost has not been recorded')
   } else {
@@ -137,7 +146,10 @@ export function fundsToComplete(deal: any): FundsToComplete {
   // See contractStampDuty - the portal never works duty out for itself.
   const duty = contractStampDuty(deal) || (has(bc.stampDuty) ? num(bc.stampDuty) : 0)
   if (duty > 0) lines.push({ label: 'Stamp duty', amount: duty, kind: 'cost' })
-  else missing.push('Stamp duty has not been recorded')
+  // A BUILD ON LAND SOMEBODY ALREADY OWNS HAS NO DUTY, and "not recorded" is a
+  // different claim from "none". This deal was permanently reported incomplete
+  // over a figure that does not exist.
+  else if (!isConstruction(deal) || dutyApplies(bc)) missing.push('Stamp duty has not been recorded')
 
   const loan = purchaseLoan(deal)
   if (loan === null) {

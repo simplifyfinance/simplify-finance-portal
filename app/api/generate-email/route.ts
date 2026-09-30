@@ -25,7 +25,7 @@ import { emailParagraphs } from '@/lib/rich-text'
 import { showsOwnLoanAmount } from '@/lib/email-amounts'
 import { PLEDGE_PROS, PLEDGE_CONS, PLEDGE_LOAN_1, PLEDGE_LOAN_2, guarantorPhrase } from '@/lib/family-pledge-copy'
 import { totalCost, totalLending, fundsToContribute, repaymentDuringConstruction,
-         num, DRAWDOWN_NOTE } from '@/lib/construction'
+         isLandPurchase, landEquity, landLoanPayout, num, DRAWDOWN_NOTE } from '@/lib/construction'
 
 
 const DEFAULT_BRAND = {
@@ -838,20 +838,59 @@ export async function POST(req: NextRequest) {
         `${money(num(sp.amount))} &nbsp;\u00b7&nbsp; ${sp.rate || ''}% &nbsp;\u00b7&nbsp; ${sp.type || 'P&I'}`,
       )).join('')
 
+    // HOW THE LAND IS HELD CHANGES WHAT THIS EMAIL SAYS.
+    //
+    // Fabio, 30 Sep 2026: a client who already owned their land was told to
+    // contribute $900,000 they did not need to find - the land was added in as
+    // if it had to be bought. See lib/construction.ts.
+    const buyingLand = isLandPurchase(d)
+    const equity = landEquity(d)
+    const payout = landLoanPayout(d)
+
+    const opening = buyingLand
+      ? `When looking at your numbers, your total lending is sitting at around <strong>${amt(lending > 0 ? fmtNum(lending) : '', '[amount]')}</strong>.`
+      : payout > 0
+        ? `You already own the land, and your existing land loan is refinanced into the construction facility — so the funding required covers <strong>the build and that payout</strong>.`
+        : `You already own the land, so the only funding required is <strong>the build itself</strong>.`
+
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`When looking at your numbers, your total lending is sitting at around <strong>${amt(lending > 0 ? fmtNum(lending) : '', '[amount]')}</strong>.`) +
+      p(opening) +
       card('Your Loan Structure',
-        row('Land value', money(d.landValue)) +
+        // WHAT HAS TO BE FUNDED, AND NOTHING ELSE IN THIS BLOCK.
+        //
+        // A client reads straight down the money column, so a figure that is not
+        // part of the sum cannot sit inside it. The first version had land the
+        // clients already owned in here, and an owned-land email read
+        // $900,000 + $600,000 = $600,000. Right arithmetic, unreadable page.
+        //
+        // The land and its duty sit together, then the build. Fabio, 30 Sep 2026:
+        // "Land value / Stamp duty (NSW) than Construction cost".
+        (buyingLand ? row('Land value', money(d.landValue)) : '') +
+        (buyingLand ? row(dutyLabel(d), money(d.stampDuty)) : '') +
         row('Construction cost', money(d.constructionCost)) +
-        row(dutyLabel(d), money(d.stampDuty)) +
-        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Total cost</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">${money(cost)}</span></td></tr>` +
+        (payout > 0 ? row('Existing land loan paid out', money(payout)) : '') +
+        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">${buyingLand ? 'Total cost' : 'Total to fund'}</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">${money(cost)}</span></td></tr>` +
+        // WHAT THE SECURITY IS WORTH, below the total and clearly not part of it.
+        (!buyingLand ? row('Land you already own', money(d.landValue)) : '') +
         row('"As if complete" valuation', money(d.asIfCompleteValue)) +
         splitLines +
         row('Total lending', money(lending)) +
         // Not "deposit". It is cash found across the land settlement and the
         // build, not a deposit on a purchase. Fabio, 2 Sep 2026.
-        row(`Funds you need to contribute${PLUS_INCIDENTALS}`, money(contribute)) +
+        (contribute > 0
+          ? row(`Funds you need to contribute${PLUS_INCIDENTALS}`, money(contribute))
+          // "Nil" rather than "$0". And the parenthesis comes off the label,
+          // because "(plus solicitor's fees and incidentals): Nil" reads as if
+          // there is nothing to pay at all - so it is said underneath instead.
+          : row('Funds you need to contribute', 'Nil') +
+            `<tr><td colspan="2" style="font-size:11px;color:#7a5c3a;font-style:italic;line-height:1.5;padding:2px 0 0"><span style="color:#7a5c3a;">You will still have your solicitor&rsquo;s fees and incidentals to cover.</span></td></tr>`) +
         buildLVRLine(d) +
+        // WHY THE LVR IS WHAT IT IS on a deal with no deposit in it. Their land
+        // equity is the answer, and without it 35% on a page with no deposit
+        // anywhere on it reads as a mistake.
+        (equity > 0
+          ? `<tr><td colspan="2" style="font-size:11px;color:#7a5c3a;font-style:italic;line-height:1.5;padding:4px 0 0"><span style="color:#7a5c3a;">Your ${money(equity)} of equity in the land takes the place of a deposit.</span></td></tr>`
+          : '') +
         // Left out entirely when nobody has typed a repayment, rather than
         // mailing a client "$0 / month".
         (duringConstruction > 0
