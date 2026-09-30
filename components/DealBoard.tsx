@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { phaseOf, phaseSince, amountOf, PHASE_LABEL, PHASE_ORDER, moveBack, placedByHand, PHASE_UNDO_LABEL, PHASE_UNDO_WARNING, type Phase } from '@/lib/deal-phase'
 import { stageAge, ageGroupOf } from '@/lib/deal-age'
@@ -12,6 +12,7 @@ import type { Alert } from '@/lib/deal-notes'
 import DealPeek from '@/components/DealPeek'
 import { brokerKey as keyOf } from '@/lib/broker-key'
 import { bcLanes, sentOn } from '@/lib/bc-lanes'
+import { paneHeight, dragScrollBy } from '@/lib/board-pane'
 
 // The whole book, in columns.
 //
@@ -95,6 +96,34 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
   const { folds, toggle } = useColumnFolds()
   const [dragging, setDragging] = useState<string>('')
   const [over, setOver] = useState<Phase | ''>('')
+
+  // HOW TALL THE BOARD IS, MEASURED RATHER THAN GUESSED.
+  //
+  // What sits above the board changes - the filter row wraps on a narrower
+  // window, a message appears - so a hardcoded offset would be wrong the moment
+  // anything moved. This reads where the board actually starts and gives it the
+  // rest of the screen. Null on a narrow window, which puts every part of this
+  // back to what the board has always done. See lib/board-pane.ts.
+  const railRef = useRef<HTMLDivElement | null>(null)
+  const [paneH, setPaneH] = useState<number | null>(null)
+
+  useEffect(() => {
+    const measure = () => {
+      const el = railRef.current
+      if (!el) return
+      setPaneH(paneHeight({
+        windowWidth: window.innerWidth,
+        windowHeight: window.innerHeight,
+        boardTop: el.getBoundingClientRect().top + window.scrollY,
+      }))
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    // The filter row wrapping, or a message appearing, moves the board down.
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
+    if (ro && railRef.current?.parentElement) ro.observe(railRef.current.parentElement)
+    return () => { window.removeEventListener('resize', measure); ro?.disconnect() }
+  }, [])
   const [msg, setMsg] = useState('')
   // Which card is being looked at, and which column it sits in — so the arrow
   // keys can walk along that column without closing.
@@ -263,8 +292,31 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
           {msg} <button onClick={() => setMsg('')} className="underline text-[#946017] ml-1">Dismiss</button>
         </div>
       )}
-      <div className="overflow-x-auto pb-2">
-        <div className="flex gap-2.5" style={{ minWidth: openCount * OPEN_W + shutCount * SHUT_W + (columns.length - 1) * GAP }}>
+      {/* THE PANE. See lib/board-pane.ts. On a laptop the board is exactly as
+          tall as what is left of the screen, each column scrolls its own cards,
+          and the sideways bar is always at the foot of it. On a narrow screen
+          paneH is null and every one of these falls back to what the board has
+          always done. */}
+      <div ref={railRef}
+        onWheel={e => {
+          // A trackpad has always been able to swipe sideways. A mouse never
+          // could, and most of the office uses a mouse.
+          if (!e.shiftKey || !railRef.current) return
+          e.preventDefault()
+          railRef.current.scrollLeft += e.deltaY || e.deltaX
+        }}
+        onDragOver={e => {
+          // You cannot drop a card into a column you cannot see. Dragging near
+          // either end brings the next one along.
+          if (!railRef.current || paneH === null) return
+          const r = railRef.current.getBoundingClientRect()
+          const by = dragScrollBy({ pointerX: e.clientX, paneLeft: r.left, paneRight: r.right })
+          if (by) railRef.current.scrollLeft += by
+        }}
+        style={paneH === null ? undefined : { height: paneH }}
+        className={`overflow-x-auto pb-2 ${paneH === null ? '' : 'overflow-y-hidden'}`}>
+        <div className={`flex gap-2.5 ${paneH === null ? 'items-start' : 'items-stretch h-full'}`}
+          style={{ minWidth: openCount * OPEN_W + shutCount * SHUT_W + (columns.length - 1) * GAP }}>
           {columns.map(p => {
             const cards = byColumn[p] || []
             const total = cards.reduce((t, d) => t + (amountOf(d) || 0), 0)
@@ -311,6 +363,7 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                 onDragLeave={() => setOver(o => o === p ? '' : o)}
                 onDrop={() => onDrop(p)}
                 className={`flex-1 min-w-[248px] rounded-xl border p-2.5 transition ${
+                  paneH === null ? '' : 'flex flex-col min-h-0'} ${
                   over === p ? 'border-[#0E8FCB] bg-[#EAF6FD]'
                   : 'border-[#EFEAE0] bg-[#FCFAF6]'}`}>
                 <div className="flex items-baseline gap-1.5 mb-2 px-0.5">
@@ -349,6 +402,12 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                 <div className="text-[11px] text-[#7A7266] mb-2 px-0.5 tabular-nums">
                   {total > 0 ? money(total) : '—'}
                 </div>
+
+                {/* EVERYTHING ABOVE THIS LINE STAYS PUT while the cards scroll
+                    under it. "How many and how much" is the question a board is
+                    asked from across the room, and an answer that scrolls away
+                    is no answer. */}
+                <div className={paneH === null ? '' : 'flex-1 min-h-0 overflow-y-auto pr-0.5 -mr-0.5'}>
 
                 {/* THE BC COLUMN IS TWO LANES. See lib/bc-lanes.ts - what is
                     still being written, and what is sitting with a client. Every
@@ -517,6 +576,7 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                 {cards.length === 0 && (
                   <p className="text-[11px] text-[#C3BDB2] text-center py-4 m-0">—</p>
                 )}
+                </div>
               </div>
             )
           })}
