@@ -15,6 +15,10 @@ export type Brand = {
   logoUrl: string
   footerAddress: string
   acl: string
+  // The address under a sign-off on a client email. A second brand has its own
+  // website, so this is stored beside the rest of it rather than typed into the
+  // email builders - where it would have been Simplify Finance's for everybody.
+  web: string
 }
 
 export const DEFAULT_BRAND: Brand = {
@@ -25,6 +29,7 @@ export const DEFAULT_BRAND: Brand = {
   logoUrl: 'https://simplify-finance-portal.vercel.app/logo-charcoal-tagline.png',
   footerAddress: 'St Leonards, Sydney',
   acl: '387025',
+  web: 'simplifyfinance.com.au',
 }
 
 export function normaliseBrand(raw: any): Brand {
@@ -37,6 +42,8 @@ export function normaliseBrand(raw: any): Brand {
     logoUrl: String(raw?.logoUrl || (raw?.id && raw.id !== DEFAULT_BRAND.id ? '' : DEFAULT_BRAND.logoUrl)),
     footerAddress: String(raw?.footerAddress || DEFAULT_BRAND.footerAddress),
     acl: String(raw?.acl || DEFAULT_BRAND.acl),
+    // Like the logo: a brand of its own does not borrow another brand's website.
+    web: String(raw?.web || (raw?.id && raw.id !== DEFAULT_BRAND.id ? '' : DEFAULT_BRAND.web)),
   }
 }
 

@@ -34,6 +34,7 @@ import DocumentsBox from '@/components/DocumentsBox'
 import WhoIsDoingTheBc from '@/components/WhoIsDoingTheBc'
 import Outstanding from '@/components/Outstanding'
 import DealDocuments from '@/components/DealDocuments'
+import MilestoneEmails from '@/components/MilestoneEmails'
 import BrokerAssignment from './BrokerAssignment'
 import TestDealBand from '@/components/TestDealBand'
 import DealName from '@/components/DealName'
@@ -433,6 +434,14 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           they are wanted. Reading a deal changes nothing; see
           components/DealDocuments.tsx. */}
       <DealDocuments deal={dealData} me={me} version={documentsVersion}
+        onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+
+      {/* THE CLIENT EMAILS, BESIDE THE DOCUMENTS AND FOR THE SAME REASON.
+          Telling a client their loan is approved happens when the bank says so,
+          not when a particular tab is open - and a formally approved deal is
+          usually lodged, which is precisely when a tab is locked. Above the
+          tabs, outside the lock. See components/MilestoneEmails.tsx. */}
+      <MilestoneEmails deal={dealData} me={me}
         onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
 
       <div className="flex gap-2 mb-6">

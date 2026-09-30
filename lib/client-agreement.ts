@@ -191,3 +191,22 @@ export function labelOnTheDeal(lo: any): string {
   const product = txt(optionOnTheDeal(lo)?.productName)
   return name && product ? `${name} \u2014 ${product}` : (name || product)
 }
+
+// // THE SPLITS OF THE OPTION THIS DEAL IS ON.
+//
+// This lived as a private function in lib/deal-structure.ts called optionSplits,
+// which meant the milestone emails would have had to write a second copy of it
+// to print a rate and a repayment type - and a second copy is how the rate under
+// ubank's name came from Macquarie's option in the first place.
+//
+// So it moves here, beside optionOnTheDeal, where every other answer to "which
+// lender is this deal actually with" already lives. deal-structure now calls
+// this one. Same rule, same answer, one home.
+//
+// It never reaches past the chosen option. Option two's rate under option one's
+// name is a WRONG number, not a missing one, and a missing one is survivable.
+export function splitsOnTheDeal(lo: any): any[] {
+  const option = optionOnTheDeal(lo)
+  const splits = option?.lenderSplits
+  return Array.isArray(splits) && splits.length > 0 ? splits : []
+}

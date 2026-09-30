@@ -217,3 +217,48 @@ export function ruleWrite(lenderId: any, key: string, value: any, by: string,
   if (!q.options.some(o => o.value === v)) return null
   return { lender_id: id, key: q.key, value: v, set_by: txt(by) }
 }
+
+// --- how an answer reads in a client email ----------------------------------
+
+// // HOW AN ANSWER READS IN A CLIENT EMAIL.
+//
+// The catalogue above stores 'email', 'post', 'online' - short values, right for
+// a table and wrong for a sentence. The formal approval email needs "by express
+// post", and until now the only place those words existed was a fixture in a
+// test file, which is the same as not existing.
+//
+// They live HERE, beside the options they belong to, so adding an option and
+// forgetting its wording is one edit away from being noticed rather than two
+// files away. The test below is the thing that notices.
+
+const CONTRACTS_BY: Record<string, string> = {
+  email: 'by email',
+  post: 'by express post',
+  online: 'through your online banking',
+}
+
+const INSURANCE_FOR: Record<string, string> = {
+  property_value: 'at least the property value',
+  loan_amount: 'at least the loan amount',
+  // The lender states a figure on its own approval letter. We do not know it
+  // here and will not invent one, so the sentence points at the letter that
+  // does - which is attached to this very email.
+  figure: 'at least the amount stated on the approval letter attached',
+}
+
+// Empty where the lender has not been asked. An empty phrase is what stops the
+// block being ticked at all, so no email ever says "issued  by Bankwest".
+export function contractsByPhrase(rules: Record<string, LenderRule>): string {
+  return CONTRACTS_BY[answerTo(rules, 'contracts_issued_by')] || ''
+}
+
+export function insuranceForPhrase(rules: Record<string, LenderRule>): string {
+  return INSURANCE_FOR[answerTo(rules, 'insurance_minimum')] || ''
+}
+
+// Exported for the guard test only: every option in the catalogue must have
+// words. See lib/rule-phrases.test.ts.
+export const PHRASE_TABLES: Record<string, Record<string, string>> = {
+  contracts_issued_by: CONTRACTS_BY,
+  insurance_minimum: INSURANCE_FOR,
+}

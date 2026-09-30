@@ -18,7 +18,8 @@
 // guessed, and the credit notes will not be written until they are answered.
 
 import { fundsToComplete, loanAmount, securityValue, refinancedDebt, fundsApply } from './funds-to-complete'
-import { lenderOnTheDeal, optionOnTheDeal, optionGap, lenderSourceOnTheDeal } from './client-agreement'
+import { lenderOnTheDeal, optionOnTheDeal, optionGap, lenderSourceOnTheDeal,
+         splitsOnTheDeal } from './client-agreement'
 
 const txt = (v: any) => String(v ?? '').trim()
 const num = (v: any) => {
@@ -245,8 +246,7 @@ function recommendedIoYears(deal: any): string {
 // often the only one filled in. It never reaches past that: option two's rate
 // under option one's name would be a wrong number, not a missing one.
 function optionSplits(deal: any): any[] {
-  const rec = optionOnTheDeal(deal?.lo_data || {})
-  return (rec?.lenderSplits || []).length > 0 ? rec.lenderSplits : []
+  return splitsOnTheDeal(deal?.lo_data || {})
 }
 
 function recommendedProduct(deal: any): string {

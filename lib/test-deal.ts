@@ -98,3 +98,42 @@ export function testFlagNote(nowATest: boolean): string {
 
 export const TEST_DEAL_SUMMARY =
   'not counted anywhere · cannot email a client · records no lender rate'
+
+// // emailGoesTo answers for ONE address and one recipient. A milestone email has
+// two applicants on the "to" line and up to three people on the copy line, and
+// the copy line is the dangerous half: a test deal that copied in a real
+// solicitor would put a fictional approval in a real law firm's inbox.
+//
+// So this is the same rule as emailGoesTo, extended to say what happens to the
+// copy line as well - and what happens to it is that it is emptied. A redirected
+// email is for the person testing, and nobody else is a party to it.
+
+export function emailsGoTo(opts: {
+  deal: DealLike
+  clientEmails: string[] | null | undefined
+  copyTo: string[] | null | undefined
+  testerEmail: string | null | undefined
+}): { to: string[]; cc: string[]; redirected: boolean; insteadOf: string[]; copyDropped: string[] } {
+  const clean = (list: any): string[] =>
+    [...new Set((Array.isArray(list) ? list : []).map(a => String(a || '').trim()).filter(Boolean))]
+
+  const to = clean(opts.clientEmails)
+  const cc = clean(opts.copyTo)
+
+  if (!isTestDeal(opts.deal)) {
+    // Nobody is on both lines. An address on the copy line that is also a
+    // recipient gets the email twice and looks like a mistake, because it is.
+    return { to, cc: cc.filter(a => !to.includes(a)), redirected: false, insteadOf: [], copyDropped: [] }
+  }
+
+  const tester = String(opts.testerEmail || '').trim()
+  return {
+    to: tester ? [tester] : [],
+    cc: [],
+    redirected: true,
+    insteadOf: to,
+    // Said out loud on the send screen, so it is clear the solicitor was left
+    // off on purpose rather than lost.
+    copyDropped: cc,
+  }
+}
