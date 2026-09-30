@@ -129,8 +129,14 @@ export function formalApprovalBlocks(deal: any,
   out.push(fromLender('contracts_issued_by', 'How the loan contracts will be issued',
     rules, lender, () => true))
 
-  out.push(fromLender('insurance_minimum',
-    `Building insurance, with ${lender}'s interest noted`, rules, lender, () => true))
+  // ON ONLY WHEN WE KNOW WHAT TO CALL THEM. fromLender already leaves a block
+  // off where the lender has not been answered, and that is exactly the
+  // behaviour wanted here: no recorded name, no insurance line. Fabio, 30 Sep
+  // 2026: "Leave it out. and flag do not guess". A certificate naming the wrong
+  // entity is rejected and settlement waits; a missing line gets noticed.
+  out.push(fromLender('insurance_interested_party',
+    `Building insurance, noting ${lender}'s exact interested-party name`,
+    rules, lender, a => !!a))
 
   out.push({
     key: 'other_side', label: 'Solicitor and buyers agent copied in',
@@ -253,10 +259,6 @@ export function preapprovalBlocks(deal: any,
     on: isSmsf(deal), by: 'deal',
     why: isSmsf(deal) ? 'On — an SMSF purchase' : 'Off — not an SMSF purchase',
   })
-
-  out.push(fromLender('docusign_certificate',
-    'A DocuSign certificate is needed on a digitally signed contract',
-    rules, lender, a => a === 'yes'))
 
   // Fabio's own line. It only means anything once the portal knows how many
   // times this lender extends, which is why that became a lender question.

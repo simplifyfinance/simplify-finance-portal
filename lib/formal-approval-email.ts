@@ -27,6 +27,8 @@ import {
 import { type Block, on } from './milestone-blocks'
 import { type PurchaseRow } from './purchase-rows'
 
+const txt = (v: any) => String(v ?? '').trim()
+
 const DISCLAIMER =
   'This email and any attachments are confidential and intended only for the named recipient. ' +
   'The information above is general in nature and does not take account of anyone else&rsquo;s ' +
@@ -44,8 +46,13 @@ export type FormalApprovalContext = {
   // How this lender issues contracts, already resolved to a phrase:
   // "by email", "by express post", "through your online banking".
   contractsBy: string
-  // "at least the property value", "at least the loan amount", or the figure.
-  insuranceFor: string
+  // THE EXACT NAME this lender wants on the certificate of currency, learned
+  // once and never guessed - see insuredPartyName in lib/lender-rules.ts. Empty
+  // means the insurance line does not appear at all.
+  insuredParty: string
+  // How much, off this deal's approval letter. Optional and never remembered:
+  // it is different on every deal. Empty and the sentence simply does not say.
+  insuranceAmount?: string
   // WA, TAS or NT, where the mortgage document line applies.
   securityState: string
   // Whoever is genuinely on the copy line. Empty where nobody is - the email
@@ -91,10 +98,16 @@ export function buildFormalApprovalEmail(ctx: FormalApprovalContext): {
 
   // WHAT THEY HAVE TO DO. Theirs, and each one a thing a person can go and do.
   const theirs: string[] = []
-  if (on(b, 'insurance_minimum')) {
-    theirs.push(`<b>Building insurance</b> on the property, with ${lender} noted as having a ` +
-      `financial interest, for ${ctx.insuranceFor}. Please send us a copy of the certificate of ` +
-      `currency once you have it.`)
+  // THE NAME IS THE BANK'S OWN WORDING, and the amount is optional - typed off
+  // the approval letter for this deal, or left out. 30 Sep 2026.
+  //
+  // The block is only on when the name is recorded, so this never prints a
+  // sentence with a hole where an entity should be. See lib/milestone-send.ts.
+  if (on(b, 'insurance_interested_party') && ctx.insuredParty) {
+    const amount = txt(ctx.insuranceAmount)
+    theirs.push(`<b>Building insurance</b> on the property, noting <b>${ctx.insuredParty}</b> as an ` +
+      `interested party${amount ? `, for at least ${amount}` : ''}. Please send us a copy of the ` +
+      `certificate of currency once you have it.`)
   }
   if (on(b, 'original_mortgage')) {
     theirs.push(`Sign and return the <b>original mortgage document</b>. As your property is in ` +

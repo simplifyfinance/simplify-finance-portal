@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   RULES, ruleQuestion, optionLabel, rulesOf, answerTo, isAnswered,
-  rememberedLine, notRecordedLine, unanswered, ruleWrite,
+  rememberedLine, notRecordedLine, unanswered, ruleWrite, isTyped,
 } from './lender-rules'
 
 const BANKWEST = 'b1a2c3d4-0000-0000-0000-000000000001'
@@ -37,7 +37,7 @@ describe('no answer means ask, never assume', () => {
 
   it('lists everything still to ask, once rather than five times', () => {
     expect(unanswered(rulesOf(rows)).map(q => q.key))
-      .toEqual(['postcode_restrictions', 'docusign_certificate', 'insurance_minimum'])
+      .toEqual(['postcode_restrictions', 'insurance_interested_party'])
     expect(unanswered(rulesOf(rows), ['contracts_issued_by'])).toEqual([])
   })
 })
@@ -55,8 +55,8 @@ describe('what has been answered', () => {
   })
 
   it('counts one deal without an s', () => {
-    expect(rememberedLine(rulesOf([{ key: 'docusign_certificate', value: 'yes', set_by: 'Katie', used: 1 }]),
-      'docusign_certificate', 'Pepper')).toBe('Remembered for Pepper · set by Katie · used on 1 deal')
+    expect(rememberedLine(rulesOf([{ key: 'postcode_restrictions', value: 'yes', set_by: 'Katie', used: 1 }]),
+      'postcode_restrictions', 'Pepper')).toBe('Remembered for Pepper · set by Katie · used on 1 deal')
   })
 
   it('drops a retired question rather than letting it steer an email', () => {
@@ -65,7 +65,7 @@ describe('what has been answered', () => {
   })
 
   it('an empty answer is not an answer', () => {
-    expect(isAnswered(rulesOf([{ key: 'docusign_certificate', value: '   ' }]), 'docusign_certificate'))
+    expect(isAnswered(rulesOf([{ key: 'postcode_restrictions', value: '   ' }]), 'postcode_restrictions'))
       .toBe(false)
   })
 
@@ -109,6 +109,14 @@ describe('the catalogue itself', () => {
 
   it('every question has at least two answers, and every answer a label', () => {
     for (const q of RULES) {
+      // A TYPED QUESTION HAS NO OPTIONS, and must not pretend to. What a bank
+      // wants to be called on an insurance policy is not a list.
+      if (q.kind === 'text') {
+        expect(q.options).toEqual([])
+        expect(q.ask.endsWith('?')).toBe(true)
+        expect(q.short.length).toBeGreaterThan(0)
+        continue
+      }
       expect(q.options.length).toBeGreaterThan(1)
       expect(q.ask.endsWith('?')).toBe(true)
       expect(q.short.length).toBeGreaterThan(0)
@@ -121,12 +129,33 @@ describe('the catalogue itself', () => {
     }
   })
 
-  it('covers the five things the templates need', () => {
+  it('covers the four things the templates need', () => {
     expect(RULES.map(r => r.key).sort()).toEqual([
-      'contracts_issued_by', 'docusign_certificate', 'insurance_minimum',
+      'contracts_issued_by', 'insurance_interested_party',
       'postcode_restrictions', 'preapproval_extensions',
     ])
+    // Twice and more-than-twice were cut on 30 Sep 2026.
     expect(ruleQuestion('preapproval_extensions')!.options.map(o => o.value))
-      .toEqual(['none', 'once', 'twice', 'more'])
+      .toEqual(['none', 'once'])
+  })
+
+  // THE TYPED ONE, WHICH IS A DIFFERENT KIND OF QUESTION.
+  it('takes whatever is typed for the insurance name, and caps it', () => {
+    const w = ruleWrite('lender-1', 'insurance_interested_party',
+      'Bankwest, a division of Commonwealth Bank of Australia', 'Katie', 'lender')
+    expect(w?.value).toBe('Bankwest, a division of Commonwealth Bank of Australia')
+    // A pasted paragraph is not a company name.
+    expect(ruleWrite('lender-1', 'insurance_interested_party', 'x'.repeat(400), 'Katie', 'lender')!.value)
+      .toHaveLength(160)
+    // Still nothing for an empty one, and still nothing for this deal only.
+    expect(ruleWrite('lender-1', 'insurance_interested_party', '   ', 'Katie', 'lender')).toBeNull()
+    expect(ruleWrite('lender-1', 'insurance_interested_party', 'ANZ', 'Katie', 'deal')).toBeNull()
+  })
+
+  it('reads a typed answer back as itself, with nothing invented', () => {
+    expect(isTyped('insurance_interested_party')).toBe(true)
+    expect(isTyped('contracts_issued_by')).toBe(false)
+    expect(optionLabel('insurance_interested_party', 'Macquarie Bank Limited'))
+      .toBe('Macquarie Bank Limited')
   })
 })

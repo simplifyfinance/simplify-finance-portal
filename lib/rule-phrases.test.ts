@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { RULES, PHRASE_TABLES, contractsByPhrase, insuranceForPhrase,
+import { RULES, PHRASE_TABLES, contractsByPhrase, insuredPartyName,
          type LenderRule } from '@/lib/lender-rules'
 
 const rule = (key: string, value: string): Record<string, LenderRule> => ({
@@ -29,12 +29,20 @@ describe('a rule answer in the words a client reads', () => {
 
   it('reads the answer, not the value', () => {
     expect(contractsByPhrase(rule('contracts_issued_by', 'post'))).toBe('by express post')
-    expect(insuranceForPhrase(rule('insurance_minimum', 'loan_amount'))).toBe('at least the loan amount')
   })
 
   it('says nothing at all for a lender nobody has answered for', () => {
     expect(contractsByPhrase({})).toBe('')
-    expect(insuranceForPhrase({})).toBe('')
+    expect(insuredPartyName({})).toBe('')
+  })
+
+  // THE TYPED ONE IS NOT PHRASED AT ALL. It is the bank's own wording, and
+  // anything this file did to it would be this file deciding what a bank is
+  // called. 30 Sep 2026, Fabio: "lenders are very specific for the name".
+  it('hands back the insurance name exactly as it was typed', () => {
+    const name = 'Bankwest, a division of Commonwealth Bank of Australia'
+    expect(insuredPartyName(rule('insurance_interested_party', name))).toBe(name)
+    expect(PHRASE_TABLES.insurance_interested_party).toBeUndefined()
   })
 
   it('says nothing for an answer that is not one of the options', () => {

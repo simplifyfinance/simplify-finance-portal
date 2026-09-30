@@ -118,6 +118,7 @@ export async function GET(req: NextRequest) {
     overrides,
     extra: txt(req.nextUrl.searchParams.get('extra')),
     expiry: txt(req.nextUrl.searchParams.get('expiry')),
+    insuranceAmount: txt(req.nextUrl.searchParams.get('insuranceAmount')),
   })
   if (!built) return NextResponse.json({ error: 'Unknown template.' }, { status: 400 })
 
@@ -193,6 +194,7 @@ export async function POST(req: NextRequest) {
     overrides,
     extra: txt(form.get('extra')),
     expiry: txt(form.get('expiry')),
+    insuranceAmount: txt(form.get('insuranceAmount')),
   })
   if (!built) return NextResponse.json({ error: 'Unknown template.' }, { status: 400 })
 

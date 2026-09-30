@@ -32,6 +32,15 @@ export type RuleQuestion = {
   key: string
   // Asked of a person, in the words they would use.
   ask: string
+  // A CHOICE OR A TYPED ANSWER.
+  //
+  // Every question started as a choice, and one of them cannot be. Fabio, 30 Sep
+  // 2026, on what a bank wants to be called on an insurance policy: "lenders are
+  // very specific for the name in the isnruance". No list of options could hold
+  // "Bankwest, a division of Commonwealth Bank of Australia" for every lender on
+  // the panel, and a list that nearly holds it is worse than a box.
+  kind?: 'choice' | 'text'
+  // Empty for a typed question.
   options: RuleOption[]
   // A note under the question when it is first asked. Empty where the question
   // speaks for itself.
@@ -65,37 +74,38 @@ export const RULES: RuleQuestion[] = [
     hint: 'A yes puts the postcode note in the pre-approval email.',
   },
   {
-    key: 'docusign_certificate',
-    ask: 'Does this lender want the DocuSign certificate on a digitally signed contract?',
-    short: 'DocuSign',
-    options: [
-      { value: 'yes', label: 'Yes' },
-      { value: 'no', label: 'No' },
-    ],
-  },
-  {
     // Fabio named this one himself. His own template already says a fee applies
     // "beyond the second pre-approval", so how many times a lender will extend
     // is a fact the email has always depended on and nobody had written down.
     key: 'preapproval_extensions',
     ask: 'How many times will this lender extend a pre-approval?',
     short: 'Extensions',
+    // Twice and more-than-twice were cut on 30 Sep 2026. Fabio: "Please remove
+    // twice or more than twice". The $800 line still reads off this - 'once'
+    // turns it on, 'none' turns it off - so nothing downstream changes.
     options: [
       { value: 'none', label: 'Not at all — a new application is needed' },
       { value: 'once', label: 'Once' },
-      { value: 'twice', label: 'Twice' },
-      { value: 'more', label: 'More than twice' },
     ],
   },
   {
-    key: 'insurance_minimum',
-    ask: 'What does this lender want building insurance cover to be at least?',
-    short: 'Insurance for',
-    options: [
-      { value: 'property_value', label: 'The property value' },
-      { value: 'loan_amount', label: 'The loan amount' },
-      { value: 'figure', label: 'A figure they state on the approval' },
-    ],
+    // THE ONE THAT CANNOT BE A DROPDOWN.
+    //
+    // Replaced the "what should cover be at least" question on 30 Sep 2026. How
+    // much to insure for is a figure off that bank's own approval letter and
+    // differs deal to deal, so it is typed on the send screen. WHO has to be
+    // named on the policy is the opposite: identical on every deal with that
+    // bank, forever, and every bank words it differently.
+    //
+    // Get it wrong and the insurer issues a certificate the bank rejects, and
+    // settlement waits on a re-issue. Which is why nothing here ever guesses it
+    // - see insuredPartyName below.
+    key: 'insurance_interested_party',
+    kind: 'text',
+    ask: 'What name does this lender want noted as the interested party on the insurance policy?',
+    short: 'Noted on insurance as',
+    hint: 'Their exact wording, as it has to appear on the certificate of currency.',
+    options: [],
   },
 ]
 
@@ -103,7 +113,14 @@ export function ruleQuestion(key: string): RuleQuestion | null {
   return RULES.find(r => r.key === txt(key)) || null
 }
 
+export function isTyped(key: string): boolean {
+  return ruleQuestion(key)?.kind === 'text'
+}
+
+// What a person reads back. A typed answer IS its own label - there is nothing
+// to look it up in, and nothing should be invented for it.
 export function optionLabel(key: string, value: any): string {
+  if (isTyped(key)) return txt(value)
   const q = ruleQuestion(key)
   return q?.options.find(o => o.value === txt(value))?.label || ''
 }
@@ -212,6 +229,11 @@ export function ruleWrite(lenderId: any, key: string, value: any, by: string,
   const q = ruleQuestion(key)
   const v = txt(value)
   if (!id || !q || !v) return null
+  // A TYPED ANSWER IS WHATEVER THEY TYPED. Capped, because this goes into a
+  // client email and a pasted paragraph is not a company name.
+  if (q.kind === 'text') {
+    return { lender_id: id, key: q.key, value: v.slice(0, 160), set_by: txt(by) }
+  }
   // An answer outside the list is a bug upstream, not a new option. Writing it
   // would put a value in the table that nothing can read back.
   if (!q.options.some(o => o.value === v)) return null
@@ -237,28 +259,29 @@ const CONTRACTS_BY: Record<string, string> = {
   online: 'through your online banking',
 }
 
-const INSURANCE_FOR: Record<string, string> = {
-  property_value: 'at least the property value',
-  loan_amount: 'at least the loan amount',
-  // The lender states a figure on its own approval letter. We do not know it
-  // here and will not invent one, so the sentence points at the letter that
-  // does - which is attached to this very email.
-  figure: 'at least the amount stated on the approval letter attached',
-}
-
 // Empty where the lender has not been asked. An empty phrase is what stops the
 // block being ticked at all, so no email ever says "issued  by Bankwest".
 export function contractsByPhrase(rules: Record<string, LenderRule>): string {
   return CONTRACTS_BY[answerTo(rules, 'contracts_issued_by')] || ''
 }
 
-export function insuranceForPhrase(rules: Record<string, LenderRule>): string {
-  return INSURANCE_FOR[answerTo(rules, 'insurance_minimum')] || ''
+// THE NAME ON THE POLICY, OR NOTHING AT ALL.
+//
+// Fabio, 30 Sep 2026, asked which way to go when a lender has not been answered
+// yet: fall back to the bank's plain name, or leave the whole insurance line
+// out. His answer: "Leave it out. and flag do not guess".
+//
+// He is right, and it is the same rule as everywhere else in this area. A
+// certificate naming "Bankwest" where Bankwest wanted its full legal wording is
+// rejected, and settlement waits on a re-issue - a wrong name looks correct and
+// a missing line does not. So this returns empty, the block comes off, and the
+// send screen says so in words. See lib/milestone-send.ts.
+export function insuredPartyName(rules: Record<string, LenderRule>): string {
+  return answerTo(rules, 'insurance_interested_party')
 }
 
 // Exported for the guard test only: every option in the catalogue must have
 // words. See lib/rule-phrases.test.ts.
 export const PHRASE_TABLES: Record<string, Record<string, string>> = {
   contracts_issued_by: CONTRACTS_BY,
-  insurance_minimum: INSURANCE_FOR,
 }

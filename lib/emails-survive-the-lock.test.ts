@@ -72,7 +72,8 @@ describe('the browser posts the deal, never the email', () => {
   })
 
   it('posts nothing but the deal, the choices and the letter', () => {
-    const allowed = ['dealId', 'template', 'overrides', 'extra', 'expiry', 'brandId', 'file']
+    const allowed = ['dealId', 'template', 'overrides', 'extra', 'expiry',
+                     'insuranceAmount', 'brandId', 'file']
     const extra = posted.filter(k => !allowed.includes(k))
     expect(extra, 'anything else on this form is something a browser could put in a client email')
       .toEqual([])

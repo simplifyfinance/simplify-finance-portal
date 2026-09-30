@@ -151,7 +151,7 @@ describe('a lender nobody has answered for', () => {
 
   it('turns the block OFF rather than guessing either way', () => {
     expect(on(blocks, 'postcode_restrictions')).toBe(false)
-    expect(on(blocks, 'docusign_certificate')).toBe(false)
+    expect(on(blocks, 'preapproval_extensions')).toBe(false)
   })
 
   it('says which question is unanswered', () => {
@@ -163,7 +163,9 @@ describe('a lender nobody has answered for', () => {
 
   it('collects them so the send screen says it once', () => {
     const waiting = waitingOnLender(blocks)
-    expect(waiting).toHaveLength(3)
+    // Two since 30 Sep 2026, when the DocuSign question came out - the
+    // pre-approval already asks for the signed and dated contract of sale.
+    expect(waiting).toHaveLength(2)
     expect(waiting.every(w => w.startsWith('Not recorded'))).toBe(true)
   })
 

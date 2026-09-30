@@ -96,6 +96,7 @@ function SendScreen({ deal, templateId, onClose, onSent }: {
   const [overrides, setOverrides] = useState<Record<string, boolean>>({})
   const [extra, setExtra] = useState('')
   const [expiry, setExpiry] = useState('')
+  const [insuranceAmount, setInsuranceAmount] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -109,7 +110,7 @@ function SendScreen({ deal, templateId, onClose, onSent }: {
     setErr('')
     const qs = new URLSearchParams({
       dealId: deal.id, template: templateId,
-      overrides: JSON.stringify(overrides), extra, expiry,
+      overrides: JSON.stringify(overrides), extra, expiry, insuranceAmount,
     })
     try {
       const res = await fetch(`/api/send-milestone-email?${qs.toString()}`)
@@ -119,7 +120,7 @@ function SendScreen({ deal, templateId, onClose, onSent }: {
     } catch (e: any) {
       setErr(`The preview could not be built — ${e?.message || 'network error'}.`)
     }
-  }, [deal.id, templateId, overrides, extra, expiry])
+  }, [deal.id, templateId, overrides, extra, expiry, insuranceAmount])
 
   // Redrawn as you tick. Typing is debounced so the free text box does not
   // rebuild the email on every keystroke.
@@ -138,6 +139,7 @@ function SendScreen({ deal, templateId, onClose, onSent }: {
       body.set('overrides', JSON.stringify(overrides))
       body.set('extra', extra)
       body.set('expiry', expiry)
+      body.set('insuranceAmount', insuranceAmount)
       body.append('file', file)
       const res = await fetch('/api/send-milestone-email', { method: 'POST', body })
       const json = await res.json()
@@ -232,6 +234,22 @@ function SendScreen({ deal, templateId, onClose, onSent }: {
                 </div>
               </div>
             ))}
+
+            {/* HOW MUCH, OFF THIS DEAL'S APPROVAL LETTER. Typed here and never
+                remembered, because it is a different figure every time. WHO has
+                to be named on the policy is the opposite - remembered per
+                lender, and without it the block above is off entirely. */}
+            {blocks.some(b => b.key === 'insurance_interested_party' && isOn(b)) && (
+              <>
+                <Shout className="mt-5">Insure for at least</Shout>
+                <input value={insuranceAmount} onChange={e => setInsuranceAmount(e.target.value)}
+                  placeholder="Leave blank and the email names no figure"
+                  className="w-full border border-[#E3E6E8] rounded-lg px-2.5 py-1.5 text-[12.5px]" />
+                <p className="mt-1 text-[11px] text-[#A29889]">
+                  Off the lender&rsquo;s own approval letter. Never remembered.
+                </p>
+              </>
+            )}
 
             <Shout className="mt-5">Anything else</Shout>
             <textarea value={extra} onChange={e => setExtra(e.target.value)} rows={2}

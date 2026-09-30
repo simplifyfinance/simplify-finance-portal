@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import {
-  RULES, rulesOf, answerTo, optionLabel, rememberedLine, type LenderRule,
+  RULES, rulesOf, answerTo, optionLabel, rememberedLine, isTyped, type LenderRule,
 } from '@/lib/lender-rules'
 import { dayMonth } from '@/lib/same-date-everywhere'
 
@@ -79,6 +79,8 @@ export default function LenderRules() {
 
   if (loading) return <p className="text-[13px] text-[#A29889]">Loading what the portal has learned…</p>
 
+
+
   return (
     <div>
       <p className="text-[12.5px] text-[#6E665C] mb-4 max-w-[86ch]">
@@ -114,6 +116,15 @@ export default function LenderRules() {
                   const v = answerTo(mine, q.key)
                   return (
                     <td key={q.key} className="py-2 pr-3 border-b border-[#EEF0F2] align-top">
+                      {/* A TYPED ANSWER GETS A BOX, NOT A DROPDOWN. No list of
+                          options could hold what each bank wants to be called on
+                          an insurance certificate. Saved when you leave the box
+                          or press Enter - never on every keystroke, which would
+                          write a row per letter typed. */}
+                      {isTyped(q.key) ? (
+                        <TypedCell value={v} lender={l.name} ask={q.ask}
+                          onSave={next => { if (next !== v) setAnswer(l.id, q.key, next) }} />
+                      ) : (
                       <select value={v} onChange={e => setAnswer(l.id, q.key, e.target.value)}
                         aria-label={`${l.name} — ${q.ask}`}
                         className={`text-[12px] border rounded-md px-1.5 py-1 bg-white max-w-[170px] ${
@@ -121,6 +132,7 @@ export default function LenderRules() {
                         <option value="">not recorded</option>
                         {q.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </select>
+                      )}
                       {v && mine[q.key]?.setBy && (
                         <div className="text-[10px] text-[#C3BDB2] mt-[3px] leading-tight">
                           {mine[q.key].setBy}
@@ -147,5 +159,38 @@ export default function LenderRules() {
         deal without changing the rule, do it on the send screen — it asks which you mean.
       </p>
     </div>
+  )
+}
+
+// ONE CELL YOU TYPE INTO.
+//
+// Kept apart from the table so it can hold a draft of its own. A cell bound
+// straight to the saved value would write a row every time somebody pressed a
+// key, and 52 writes to record "Bankwest, a division of Commonwealth Bank of
+// Australia" is 51 more than anybody wants in an audit trail.
+function TypedCell({ value, lender, ask, onSave }: {
+  value: string
+  lender: string
+  ask: string
+  onSave: (next: string) => void
+}) {
+  const [draft, setDraft] = useState(value)
+  // Somebody else changing it elsewhere still wins while this box is untouched.
+  useEffect(() => { setDraft(value) }, [value])
+
+  return (
+    <input
+      value={draft}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={() => onSave(draft.trim())}
+      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+      aria-label={`${lender} — ${ask}`}
+      placeholder="not recorded"
+      title={draft || ask}
+      className={`text-[12px] border rounded-md px-1.5 py-1 bg-white w-[230px] ${
+        draft.trim()
+          ? 'border-[#BBE7CF] text-[#0F7B4F] font-semibold'
+          : 'border-[#EBD9BE] text-[#8A6218] placeholder:text-[#8A6218]'}`}
+    />
   )
 }

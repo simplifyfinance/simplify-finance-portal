@@ -21,7 +21,7 @@ import { templateById, type TemplateId, type MilestoneTemplate } from './milesto
 import { formalApprovalBlocks, preapprovalBlocks, withOverrides, on,
          securityState, waitingOnLender, type Block, type Overrides } from './milestone-blocks'
 import { milestoneRows, loanDetails, missingFigures } from './milestone-figures'
-import { contractsByPhrase, insuranceForPhrase, type LenderRule } from './lender-rules'
+import { contractsByPhrase, insuredPartyName, type LenderRule } from './lender-rules'
 import { buildFormalApprovalEmail } from './formal-approval-email'
 import { buildPreapprovalEmail } from './preapproval-email'
 import { lenderOnTheDeal, optionOnTheDeal, splitsOnTheDeal } from './client-agreement'
@@ -58,6 +58,11 @@ export type AssembleInput = {
   // The extension's new expiry, as typed. The plain pre-approval works its own
   // out and ignores this.
   expiry?: string
+  // HOW MUCH THE BUILDING HAS TO BE INSURED FOR, off this deal's approval
+  // letter. Typed per deal and never remembered - it is a different figure every
+  // time. Empty is normal: the sentence then names who has to be on the policy
+  // without saying for how much.
+  insuranceAmount?: string
   now?: Date
 }
 
@@ -119,13 +124,14 @@ export function blocksFor(deal: any, templateId: TemplateId,
 // which is worse than the line being absent. So the phrase itself is the last
 // word on whether the block is on - after the lender rule, after the override,
 // after everything.
-function silenceTheHoles(blocks: Block[], phrases: { contractsBy: string; insuranceFor: string }): Block[] {
+function silenceTheHoles(blocks: Block[], phrases: { contractsBy: string; insuredParty: string }): Block[] {
   return blocks.map(b => {
     if (b.key === 'contracts_issued_by' && b.on && !phrases.contractsBy) {
       return { ...b, on: false, why: 'Off — we have not recorded how this lender issues contracts' }
     }
-    if (b.key === 'insurance_minimum' && b.on && !phrases.insuranceFor) {
-      return { ...b, on: false, why: 'Off — we have not recorded what this lender wants insured' }
+    if (b.key === 'insurance_interested_party' && b.on && !phrases.insuredParty) {
+      return { ...b, on: false,
+        why: 'Off — we have not recorded the exact name this lender wants on the policy' }
     }
     return b
   })
@@ -143,7 +149,11 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
 
   const phrases = {
     contractsBy: contractsByPhrase(rules),
-    insuranceFor: insuranceForPhrase(rules),
+    // NEVER A FALLBACK TO THE BANK'S PLAIN NAME. Fabio, 30 Sep 2026: "Leave it
+    // out. and flag do not guess." An insurance certificate naming the wrong
+    // entity is rejected by the lender and settlement waits on a re-issue, so an
+    // unanswered lender loses the line entirely and the send screen says why.
+    insuredParty: insuredPartyName(rules),
   }
 
   const blocks = silenceTheHoles(
@@ -157,6 +167,17 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
     problems.push(`The money block is left out — ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} not on the deal.`)
   }
   for (const line of waitingOnLender(blocks)) problems.push(line)
+
+  // SAID IN WORDS, NOT LEFT AS AN ABSENCE. A missing condition on a formal
+  // approval is the one thing on this screen somebody must not scroll past, and
+  // "not recorded" on its own does not tell anybody what it costs.
+  if (template.id === 'formal_approval' && !phrases.insuredParty) {
+    problems.push(
+      `DO NOT GUESS THIS. The building insurance line is left out because nobody has recorded the ` +
+      `exact name ${lenderOnTheDeal(lo) || 'this lender'} wants noted on the policy. A certificate ` +
+      `naming the wrong entity is rejected and settlement waits on a re-issue. Answer it on the ` +
+      `Lenders page and it is remembered for every deal after this one.`)
+  }
 
   const rows = missing.length ? [] : milestoneRows(deal)
   const clientNames = clientFirstNames(deal)
@@ -186,7 +207,8 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
       details: loanDetails(deal, optionOnTheDeal(lo), splitsOnTheDeal(lo)),
       blocks,
       contractsBy: phrases.contractsBy,
-      insuranceFor: phrases.insuranceFor,
+      insuredParty: phrases.insuredParty,
+      insuranceAmount: txt(input.insuranceAmount),
       securityState: securityState(deal),
       toldTheOtherSide: theOtherSide.length ? toldTheOtherSide(deal) : '',
       senderName: input.sender.name,

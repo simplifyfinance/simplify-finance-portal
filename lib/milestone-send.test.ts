@@ -6,16 +6,18 @@
 // figures, who is on the copy line.
 
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'fs'
 import { assembleMilestoneEmail, preapprovalExpiry, longDate, SETTLEMENTS_EMAIL } from './milestone-send'
 import { rulesOf } from './lender-rules'
 import { emailsGoTo } from './test-deal'
 
+const INSURED_AS = 'Bankwest, a division of Commonwealth Bank of Australia'
+
 const ANSWERED = rulesOf([
   { key: 'contracts_issued_by', value: 'post', set_by: 'Katie', used: 12 },
-  { key: 'insurance_minimum', value: 'property_value', set_by: 'Katie', used: 9 },
+  { key: 'insurance_interested_party', value: INSURED_AS, set_by: 'Katie', used: 9 },
   { key: 'postcode_restrictions', value: 'no', set_by: 'Katie', used: 4 },
-  { key: 'docusign_certificate', value: 'yes', set_by: 'Katie', used: 4 },
-  { key: 'preapproval_extensions', value: 'twice', set_by: 'Fabio', used: 2 },
+  { key: 'preapproval_extensions', value: 'once', set_by: 'Fabio', used: 2 },
 ])
 
 const SENDER = { name: 'Belle Harrison', email: 'belle@simplifyfinance.com.au', phone: '0429 228 148' }
@@ -92,14 +94,13 @@ describe('a lender nobody has answered for', () => {
     // would print "will be issued  by Bankwest" into a client's inbox.
     const retired = rulesOf([
       { key: 'contracts_issued_by', value: 'courier', set_by: 'x', used: 1 },
-      { key: 'insurance_minimum', value: 'whatever_they_ask_for', set_by: 'x', used: 1 },
     ])
     for (const rules of [{}, retired]) {
       const out = build(DEAL, { rules })
       expect(out.html).not.toContain('will be issued  by')
-      expect(out.html).not.toContain('financial interest, for .')
       expect(out.blocks.find(b => b.key === 'contracts_issued_by')!.on).toBe(false)
-      expect(out.blocks.find(b => b.key === 'insurance_minimum')!.on).toBe(false)
+      expect(out.blocks.find(b => b.key === 'insurance_interested_party')!.on).toBe(false)
+      expect(out.html).not.toContain('Building insurance')
     }
   })
 
@@ -118,6 +119,77 @@ describe('a lender nobody has answered for', () => {
   it('prints the words, not the stored value, when it has been answered', () => {
     expect(build(DEAL).html).toContain('by express post')
     expect(build(DEAL).html).not.toContain('>post<')
+  })
+})
+
+// 30 SEP 2026. Fabio, asked whether an unanswered lender should fall back to the
+// bank's plain name or lose the line: "Leave it out. and flag do not guess".
+//
+// An insurance certificate naming the wrong entity is rejected by the lender and
+// settlement waits on a re-issue. A wrong name looks right; a missing line does
+// not. So the line goes, and the screen says so in capitals.
+describe('the name on the insurance policy is never guessed', () => {
+  it('uses the bank\u2019s own wording, word for word', () => {
+    expect(build(DEAL).html).toContain(INSURED_AS)
+  })
+
+  it('never falls back to the plain lender name', () => {
+    const out = build(DEAL, { rules: {} })
+    expect(out.html).not.toContain('Building insurance')
+    expect(out.html).not.toContain('interested party')
+  })
+
+  it('says out loud why the line is missing, and what it would cost', () => {
+    const problems = build(DEAL, { rules: {} }).problems.join(' ')
+    expect(problems).toContain('DO NOT GUESS')
+    expect(problems).toContain('Bankwest')
+    expect(problems).toContain('settlement waits')
+  })
+
+  it('and says nothing of the sort once it has been answered', () => {
+    expect(build(DEAL).problems.join(' ')).not.toContain('DO NOT GUESS')
+  })
+
+  // THE RULE ITSELF, WHERE SOMEBODY WOULD BREAK IT.
+  //
+  // Three separate things currently stop a guessed name reaching a client:
+  // fromLender refuses an unanswered question outright, silenceTheHoles turns
+  // the block off if the name is empty anyway, and the line is only written when
+  // the name is there. That layering is why no single change to the blocks makes
+  // a test fail - which is good for clients and bad for tests.
+  //
+  // So this states the rule at the one line where a well-meant "|| lender name"
+  // would undo all three at once.
+  it('reads the name with no fallback of any kind', () => {
+    const src = readFileSync('lib/milestone-send.ts', 'utf8')
+    const line = src.split('\n').find(l => l.includes('insuredParty: insuredPartyName('))
+    expect(line, 'insuredParty is no longer read from the lender rules at all').toBeTruthy()
+    expect(line!, 'an || or ?? here is a guessed insurance name going to a client')
+      .not.toMatch(/\|\||\?\?/)
+  })
+})
+
+describe('how much to insure for', () => {
+  it('is typed per deal, and printed when it is', () => {
+    expect(build(DEAL, { insuranceAmount: '$1,180,000' }).html)
+      .toContain('as an interested party, for at least $1,180,000')
+  })
+
+  // Left blank is a normal answer, not a gap: the lender's own letter states it
+  // and that letter is attached to this very email.
+  it('leaves the figure out entirely when nothing is typed', () => {
+    const html = build(DEAL).html
+    expect(html).toContain('as an interested party. Please send us a copy')
+    expect(html).not.toContain('for at least')
+  })
+
+  // A FIGURE NO OTHER LINE ON THIS DEAL CARRIES, so a pass here means the
+  // insurance line printed it and not the money table.
+  it('is never remembered against the lender', () => {
+    const once = build(DEAL, { insuranceAmount: '$1,180,000' })
+    const again = build(DEAL)
+    expect(once.html).toContain('$1,180,000')
+    expect(again.html).not.toContain('$1,180,000')
   })
 })
 

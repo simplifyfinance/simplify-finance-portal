@@ -84,10 +84,6 @@ export function buildPreapprovalEmail(ctx: PreapprovalContext): {
     needs.push('Please check and confirm with your accountant or financial planner the entity name ' +
       'required on the contract.')
   }
-  if (on(b, 'docusign_certificate')) {
-    needs.push('If the contract is signed digitally, the lender will need the DocuSign certificate ' +
-      'confirming verification of the exchange.')
-  }
   const extra = String(ctx.extra || '').trim()
   if (extra) needs.push(extra)
 
