@@ -13,6 +13,7 @@ import DealPeek from '@/components/DealPeek'
 import { brokerKey as keyOf } from '@/lib/broker-key'
 import { bcLanes, sentOn } from '@/lib/bc-lanes'
 import { paneHeight, dragScrollBy } from '@/lib/board-pane'
+import { columnCountLabel } from '@/lib/board-filters'
 
 // The whole book, in columns.
 //
@@ -59,8 +60,15 @@ const AGE_STYLE: Record<string, string> = {
   long:  'text-[#946017] bg-[#FDF6EC] border-[#EBD9BE]',
 }
 
-export default function DealBoard({ deals, nameFor, colours, thresholds, alerts, onDelete, onMoveBack, showLost }: {
+export default function DealBoard({ deals, allDeals, nameFor, colours, thresholds, alerts, onDelete, onMoveBack, showLost }: {
   deals: any[]
+  // EVERY DEAL THIS BOARD WOULD SHOW WITH NOTHING FILTERED.
+  //
+  // A column says "3" when nothing is filtered and "3/6" when something is, so
+  // a filtered count is never mistaken for the whole truth. That needs both
+  // numbers, and only the page knows the second one. Absent means nothing is
+  // filtered, which is what every other caller of this board means.
+  allDeals?: any[]
   // A LOST COLUMN, ONLY WHEN ASKED FOR.
   //
   // There was no Lost column and the "Show lost" button sat above a board that
@@ -154,6 +162,29 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
     }
     return m
   }, [deals, showLost])
+
+  // HOW MANY THIS COLUMN WOULD HOLD WITH NOTHING FILTERED.
+  //
+  // Null when nothing is filtered, which is how the header knows to print one
+  // number rather than two. A folded column's count reads off the same answer,
+  // because a fold that hides a count is how deals get lost and that was the
+  // whole reason this board was built.
+  const totalByColumn = useMemo(() => {
+    if (!allDeals || allDeals.length === deals.length) return null
+    const m: Record<string, number> = {}
+    for (const d of allDeals) {
+      const p = phaseOf(d)
+      if (p === 'lost' && !showLost) continue
+      m[p] = (m[p] || 0) + 1
+    }
+    return m
+  }, [allDeals, deals, showLost])
+
+  // "3/6" while a filter is on, "3" when nothing is. The wording itself lives
+  // in lib/board-filters.ts, so the column, the folded strip and the bar cannot
+  // disagree about how a filtered count reads.
+  const countLabel = (p: Phase | 'lost', n: number) =>
+    columnCountLabel(n, totalByColumn ? (totalByColumn[p] || 0) : null)
 
   function onDrop(target: Phase) {
     setOver('')
@@ -343,7 +374,7 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                     : hot > 0 ? 'border-[#EFD3CB] bg-[#FBEDE9]'
                     : 'border-[#E5DED2] bg-[#FCFAF6] hover:border-[#D6CCBC]'}`}>
                   <span className={`text-[11px] font-bold tabular-nums ${hot > 0 ? 'text-[#AD4227]' : 'text-[#575046]'}`}>
-                    {cards.length}
+                    {countLabel(p, cards.length)}
                   </span>
                   <span className="text-[9.5px] font-bold tracking-[.06em] uppercase text-[#A29889] whitespace-nowrap"
                         style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
@@ -385,8 +416,13 @@ export default function DealBoard({ deals, nameFor, colours, thresholds, alerts,
                       {hot} need{hot === 1 ? 's' : ''} a nudge
                     </span>
                   )}
-                  <span className="ml-auto text-[11px] font-bold text-[#575046] bg-white border border-[#E5DED2] rounded-full px-1.5">
-                    {cards.length}
+                  {/* BOTH NUMBERS WHILE A FILTER IS ON, and dimmed with it - a
+                      column reading 3 must never be mistaken for the whole
+                      truth. See lib/board-filters.ts. */}
+                  <span title={totalByColumn ? `${cards.length} of ${totalByColumn[p] || 0} while a filter is on` : ''}
+                    className={`ml-auto text-[11px] font-bold bg-white border border-[#E5DED2] rounded-full px-1.5 ${
+                      totalByColumn ? 'text-[#A29889]' : 'text-[#575046]'}`}>
+                    {countLabel(p, cards.length)}
                   </span>
                   <button type="button" title={`Fold ${PHASE_LABEL[p]} away`}
                     onClick={e => { e.stopPropagation(); toggle(p) }}

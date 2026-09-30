@@ -13,6 +13,9 @@ import { ageGroupOf, stageAge, GROUP_ORDER, GROUP_STYLE } from '@/lib/deal-age'
 import { useBrokerNames } from '@/lib/broker-names'
 import { phaseOf, derivedPhaseOf, isFinished, isInApplication, PHASE_LABEL } from '@/lib/deal-phase'
 import DealBoard from '@/components/DealBoard'
+import BoardFilters, { BoardFilterBar } from '@/components/BoardFilters'
+import { useBoardFilters } from '@/lib/use-board-filters'
+import { applyFilters } from '@/lib/board-filters'
 import { useBoardSettings } from '@/lib/use-board-settings'
 import type { Alert } from '@/lib/deal-notes'
 import { realDealsOnly, testDealsOnly } from '@/lib/test-deal'
@@ -210,6 +213,9 @@ export default function DealsPage() {
   // "where is everything and what is stuck", and a list of twenty-one rows does
   // not answer that. The List toggle is still there for searching.
   const [layout, setLayout] = useState<'list' | 'board'>('board')
+  // Remembered against this person's login, like their folded columns. See
+  // lib/use-board-filters.ts and the bar that stops it ever being silent.
+  const boardFilters = useBoardFilters()
   const [showSettled, setShowSettled] = useState(false)
   const [showLost, setShowLost] = useState(false)
   // The two filters were written out twice, once for the list and once for the
@@ -247,6 +253,12 @@ export default function DealsPage() {
   // a column for it would put one on every screen every morning. So a search
   // that only matches lost deals says so, and offers the list instead.
   const boardDeals = book.filter(d => (showLost || phaseOf(d) !== 'lost') && matchesBox(d) && matchesSearch(d))
+
+  // THE FILTERS, APPLIED LAST. Everything above decides what belongs on a board
+  // at all; this decides what this person wants to look at today. Kept apart so
+  // the bar can say "14 of 41" against the board somebody would otherwise have
+  // seen, rather than against the whole book including lost deals.
+  const boardShown = applyFilters(boardDeals, boardFilters.filters, look.thresholds)
   const lostMatches = term
     ? book.filter(d => phaseOf(d) === 'lost' && matchesBox(d) && matchesSearch(d))
     : []
@@ -346,6 +358,18 @@ export default function DealsPage() {
           className={`px-3 py-2 text-sm rounded-lg border transition ${showLost ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
           {showLost ? '✓ Showing lost' : 'Show lost'}
         </button>
+        {/* ONE BUTTON. Fabio, 30 Sep 2026: "dont want all filters sitting open
+            can we do drop drown selection?" - so broker, credit officer, lender
+            and needs-attention all live behind this. Board only: the list has
+            its own columns and sorting, and two ways to narrow one screen is one
+            too many. */}
+        {layout === 'board' && (
+          <BoardFilters deals={boardDeals} filters={boardFilters.filters}
+            thresholds={look.thresholds} nameFor={nameFor}
+            colours={{ broker: look.broker }}
+            onToggle={boardFilters.toggle} onToggleNudge={boardFilters.toggleNudge}
+            onClear={boardFilters.clear} />
+        )}
         {testCount > 0 && (
           <button onClick={() => setShowTests(!showTests)}
             className={`px-3 py-2 text-sm rounded-lg border transition ${showTests ? 'border-[#B45309] text-[#B45309] bg-[#FFF8EC]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
@@ -388,9 +412,20 @@ export default function DealsPage() {
       {loading ? (
         <div className="text-sm text-gray-400 text-center py-12">Loading deals...</div>
       ) : layout === 'board' ? (
-        <DealBoard deals={boardDeals} showLost={showLost} nameFor={nameFor} onDelete={askDelete} onMoveBack={moveDealBack}
-          colours={{ type: look.type, use: look.use, broker: look.broker }}
-          thresholds={look.thresholds} alerts={alerts} />
+        <>
+          {/* ACROSS THE TOP OF THE BOARD, not beside the button. A filter is a
+              way to hide deals and this board exists because nine of them once
+              sat hidden - so what is on is said where it cannot be missed, and
+              dropped without opening anything. */}
+          <BoardFilterBar filters={boardFilters.filters}
+            shown={boardShown.length} total={boardDeals.length} nameFor={nameFor}
+            onToggle={boardFilters.toggle} onToggleNudge={boardFilters.toggleNudge}
+            onClear={boardFilters.clear} />
+          <DealBoard deals={boardShown} allDeals={boardDeals} showLost={showLost} nameFor={nameFor}
+            onDelete={askDelete} onMoveBack={moveDealBack}
+            colours={{ type: look.type, use: look.use, broker: look.broker }}
+            thresholds={look.thresholds} alerts={alerts} />
+        </>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
           <Briefcase size={32} className="text-gray-300 mx-auto mb-3" />
