@@ -32,6 +32,7 @@ export default function RateNoticeSettings() {
   const [err, setErr] = useState('')
   const [saved, setSaved] = useState('')
   const [nextDate, setNextDate] = useState('')
+  const [meName, setMeName] = useState('')
 
   useEffect(() => {
     let alive = true
@@ -43,6 +44,13 @@ export default function RateNoticeSettings() {
       setNotice(readNotice(s?.rate_notice))
       setLenders((l || []) as LenderLike[])
       setLoading(false)
+      // Everybody can set a date; the name is what makes a wrong one askable.
+      supabase.auth.getUser().then(({ data: u }) => {
+        const id = u?.user?.id
+        if (!id) return
+        supabase.from('user_profiles').select('full_name, email').eq('id', id).maybeSingle()
+          .then(({ data: pr }: any) => setMeName(pr?.full_name || pr?.email || ''))
+      })
     })
     return () => { alive = false }
   }, [])
@@ -55,6 +63,29 @@ export default function RateNoticeSettings() {
     if (problem) { setErr(problem); return }
     setNotice(next)
     setSaved('Saved.')
+  }
+
+  // THE APPLIED DATE, SET FROM THIS PAGE. Same two fields the Lenders page
+  // writes - which decision it answers, and the day it starts - so it cannot
+  // matter which screen somebody used. See lib/rate-notice.ts.
+  async function setApplied(l: LenderLike, raw: string) {
+    const value = raw.trim() || null
+    setErr(''); setSaved('')
+    const problem = await checkedWrite(
+      supabase.from('lenders').update({
+        rate_notice_for: value ? notice.decisionDate : null,
+        rate_notice_from: value,
+        rate_notice_by: value ? (meName || null) : null,
+        rate_notice_at: value ? new Date().toISOString() : null,
+      }).eq('id', l.id as string),
+      'That date')
+    if (problem) { setErr(problem); return }
+    setLenders(prev => prev.map(x => x.id === l.id ? {
+      ...x,
+      rate_notice_for: value ? notice.decisionDate : null,
+      rate_notice_from: value,
+      rate_notice_by: value ? meName : null,
+    } : x))
   }
 
   if (loading) return <p className="text-[13px] text-[#A29889]">Loading&hellip;</p>
@@ -104,9 +135,12 @@ export default function RateNoticeSettings() {
         </span>
         {notice.on
           ? (waiting.length
-              ? `On — ${waiting.length} lender${waiting.length === 1 ? '' : 's'} still carrying it` +
-                (silent.length ? `, ${silent.length} with no date yet` : '')
-              : 'On')
+              // Two numbers only when they differ. "40 still carrying it, 40
+              // with no date yet" is one fact said twice.
+              ? silent.length === waiting.length
+                ? `On — ${waiting.length} lender${waiting.length === 1 ? '' : 's'}, none with an applied date yet`
+                : `On — ${waiting.length} still carrying it, ${silent.length} with no date yet`
+              : 'On — every lender has applied it')
           : 'Off — no notice on any email'}
       </button>
       {!notice.on && (!notice.text.trim() || !notice.decisionDate) && (
@@ -139,8 +173,13 @@ export default function RateNoticeSettings() {
               // The review date follows the decision unless somebody has moved
               // it themselves. Three weeks - Fabio, 30 Sep 2026: "3 weeks is
               // perfect, like the reminder".
-              const keep = notice.reviewBy && notice.reviewBy !== defaultReviewBy(notice.decisionDate)
-              set({ decisionDate: d, reviewBy: keep ? notice.reviewBy : defaultReviewBy(d) })
+              // Moved unless somebody has deliberately put it somewhere else.
+              // A remind date on or before the decision itself is not a choice
+              // anybody made - it is the default failing to land.
+              const chosen = notice.reviewBy
+                && notice.reviewBy !== defaultReviewBy(notice.decisionDate)
+                && notice.reviewBy > d
+              set({ decisionDate: d, reviewBy: chosen ? notice.reviewBy : defaultReviewBy(d) })
             }}
             onBlur={() => save(notice)}
             className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-[12.5px]" />
@@ -151,14 +190,16 @@ export default function RateNoticeSettings() {
         </div>
         <div>
           <label className="block text-[9.5px] font-bold tracking-[.07em] uppercase text-[#A29889] mb-1.5">
-            Review by
+            Remind me after
           </label>
           <input type="date" value={notice.reviewBy}
             onChange={e => set({ reviewBy: e.target.value })} onBlur={() => save(notice)}
             className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-[12.5px]" />
           <p className="mt-1 text-[11px] text-gray-400 max-w-[260px]">
-            {REVIEW_DAYS} days by default. After this the dashboard asks you about it every day.
-            It never switches itself off &mdash; a disclaimer that vanishes quietly is its own problem.
+            {REVIEW_DAYS}{' '}days after the decision, by default. Nothing happens on this date
+            &mdash; it is only when the dashboard starts asking about the banks that still have not
+            given you a date. The notice never switches itself off: a disclaimer that vanishes
+            quietly is its own problem.
           </p>
         </div>
       </div>
@@ -166,33 +207,68 @@ export default function RateNoticeSettings() {
       {notice.on && (
         <>
           <label className="block text-[9.5px] font-bold tracking-[.07em] uppercase text-[#A29889] mb-2 mt-6">
-            Where it stands
+            Applied from
           </label>
+          <p className="text-[11.5px] text-[#A29889] mb-2 max-w-[520px]">
+            The day each bank&rsquo;s change takes effect, as they announce it. Blank means they have
+            not told us, and their clients keep being warned until they do.
+          </p>
           <div className="border border-gray-100 rounded-lg overflow-hidden">
-            {lenders.filter(l => String(l.name || '').trim()).map(l => {
+            {/* NO DATE FIRST. Forty banks and the three you can act on are the
+                ones nobody has heard from - so they are at the top rather than
+                alphabetically buried among the ones already handled. */}
+            {[...lenders]
+              .filter(l => String(l.name || '').trim())
+              .sort((a, b) => {
+                const av = announcedFrom(a, notice) ? 1 : 0
+                const bv = announcedFrom(b, notice) ? 1 : 0
+                if (av !== bv) return av - bv
+                return String(a.name).localeCompare(String(b.name))
+              })
+              .map((l, i, all) => {
               const from = announcedFrom(l, notice)
               const live = hasTakenEffect(l, notice)
+              // The line between "still to hear from" and "handled". Drawn once,
+              // at the first bank that has a date.
+              const firstWithDate = !!from && (i === 0 || !announcedFrom(all[i - 1], notice))
               return (
-                <div key={l.id || l.name}
-                  className="flex items-center gap-2 px-3 py-2 border-b border-gray-50 last:border-b-0 text-[12.5px]">
-                  <span className="font-semibold text-[#221F1B] w-[150px] truncate">{l.name}</span>
-                  <span className={`text-[11.5px] font-semibold ${
-                    live ? 'text-[#0F7B4F]' : from ? 'text-[#0E8FCB]' : 'text-[#8A6218]'}`}>
-                    {live ? `In force since ${niceDate(from)} — no notice`
-                      : from ? `Notice until ${niceDate(from)}, then it stops by itself`
+                <div key={l.id || l.name}>
+                {firstWithDate && (
+                  <div className="px-3 py-1.5 bg-[#FBFAF8] border-b border-[#F0EFEC] text-[9.5px] font-bold tracking-[.06em] uppercase text-[#C3BDB2]">
+                    Dates recorded
+                  </div>
+                )}
+                <div
+                  className={`flex items-center gap-3 px-3 py-2 border-b border-gray-50 last:border-b-0 text-[12.5px] ${
+                    from ? '' : 'bg-[#FFFDF9]'}`}>
+                  <span className="font-semibold text-[#221F1B] w-[150px] shrink-0 truncate">{l.name}</span>
+                  {/* TYPED HERE, not four clicks away on another tab. */}
+                  <input type="date" defaultValue={from}
+                    key={`${l.id}-${notice.decisionDate}-${from}`}
+                    onBlur={e => { if (e.target.value !== from) setApplied(l, e.target.value) }}
+                    aria-label={`${l.name} applies the change on`}
+                    className={`text-[12px] border rounded-md px-1.5 py-1 bg-white shrink-0 ${
+                      from ? 'border-gray-200 text-[#343333]' : 'border-[#EBD9BE] text-[#8A6218]'}`} />
+                  <span className={`text-[11.5px] ${
+                    live ? 'text-[#0F7B4F] font-semibold'
+                      : from ? 'text-[#0E8FCB]' : 'text-[#8A6218] font-semibold'}`}>
+                    {live ? 'Applied — no notice on their emails'
+                      : from ? 'Notice until then, and it stops by itself'
                       : 'No date yet — notice runs with no end'}
                   </span>
                   {l.rate_notice_by && (
-                    <span className="text-[11px] text-[#C3BDB2] ml-auto">{l.rate_notice_by}</span>
+                    <span className="text-[11px] text-[#C3BDB2] ml-auto shrink-0">{l.rate_notice_by}</span>
                   )}
+                </div>
                 </div>
               )
             })}
           </div>
           <p className="mt-2 text-[11px] text-gray-400">
-            Each bank&rsquo;s date goes in on the <b>Lenders</b> page when they announce it &mdash;
-            anybody can, and their name goes on it. The notice comes off that bank&rsquo;s emails on
-            the day, with nobody having to be at their desk for it.
+            Type the date a bank tells you their change applies from. The notice comes off their
+            emails on that day by itself, with nobody having to be at their desk for it. Anybody can
+            set one &mdash; their name goes beside it. The same box is on each lender over in
+            <b> Products &amp; policy</b>, for when you are already in there updating their rates.
           </p>
         </>
       )}

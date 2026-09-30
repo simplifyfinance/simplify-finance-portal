@@ -743,8 +743,24 @@ export async function POST(req: NextRequest) {
           price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
           loan: '', contribution: d.deposit, contributionFrom: d.depositSource,
         }) +
-        row('Bridging loan (peak debt)', money(d.splits?.[0]?.amount)) +
-        row('End debt', money(d.splits?.[1]?.amount))
+        // THE ROW GETS ITS REAL NAME BACK. This is the bridging loan; it was
+        // labelled "peak debt", which is a different and much larger figure -
+        // the bridge and the end debt together plus the capitalised interest.
+        // Fabio, 30 Sep 2026: $935,000 printed where $1,562,984 belonged.
+        row('Bridging loan', money(d.splits?.[0]?.amount)) +
+        row('End debt', money(d.splits?.[1]?.amount)) +
+        // TYPED BY THE TEAM. Blank means no row - better than "Peak debt —" on
+        // a client email.
+        //
+        // AND THE SENTENCE IS NOT DECORATION. A client reads the column top to
+        // bottom: 935 and 527 do not come to 1,563, so without a line saying
+        // where the difference comes from, the biggest figure on the page reads
+        // as a mistake. Same lesson as the land a client already owns sitting in
+        // a column it was not part of.
+        ((readMoney(d.peakDebt) || 0) > 0
+          ? row('Peak debt', money(d.peakDebt)) +
+            `<tr><td colspan="2" style="font-size:11px;color:#7a5c3a;font-style:italic;line-height:1.5;padding:4px 0 0"><span style="color:#7a5c3a;">Your peak debt is the bridging loan and end debt combined, plus the interest capitalised over the bridging period.</span></td></tr>`
+          : '')
       ) +
       card('Loan 1 - Bridging Loan',
         row('Loan amount', money(d.splits?.[0]?.amount)) +

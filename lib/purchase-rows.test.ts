@@ -124,12 +124,19 @@ describe('every purchase in the client email uses it', () => {
     expect(block + column, 'a purchase card is not using the shared block').toBeGreaterThanOrEqual(10)
   })
 
-  it('the bridge does not print its peak debt twice', () => {
-    // The first version handed the peak debt in as `loan`, so it appeared as
-    // "Loan amount" and again as "Bridging loan (peak debt)" two rows below.
+  it('the bridge does not print its bridging loan twice', () => {
+    // The first version handed the bridging amount in as `loan`, so it appeared
+    // as "Loan amount" and again two rows below under its own name.
+    //
+    // THE LABEL CHANGED ON 30 SEP 2026 and this test changed with it. It used to
+    // assert "Bridging loan (peak debt)" - which was the bug: that row is the
+    // bridging loan, and the peak debt is a different, larger figure typed by
+    // the team. See lib/peak-debt.test.ts. The thing this test is actually for -
+    // one number, one name, once - is unchanged.
     const bridge = src.slice(src.indexOf("card('New Purchase Details'"), src.indexOf("card('Loan 1"))
     expect(bridge).toContain("loan: ''")
-    expect(bridge).toContain("row('Bridging loan (peak debt)'")
+    expect(bridge).toContain("row('Bridging loan',")
+    expect(bridge).not.toContain('(peak debt)')
   })
 
   it('nothing adds a price and a duty together by hand any more', () => {

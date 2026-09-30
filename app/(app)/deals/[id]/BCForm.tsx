@@ -469,6 +469,11 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const [fhog, setFhog] = useState(s.fhog || '')
   const [guarantorName, setGuarantorName] = useState(s.guarantorName || '')
   const [bridgingPeriod, setBridgingPeriod] = useState(s.bridgingPeriod || '')
+  // TYPED, NEVER WORKED OUT. Fabio, 30 Sep 2026: "I want just a box labeleld
+  // Peak Debt where the team adds the figures (system dont check)". Same rule
+  // as the construction repayments - the person writing the deal knows the real
+  // figure, and a calculated one is a guess wearing a decimal point.
+  const [peakDebt, setPeakDebt] = useState(s.peakDebt || '')
   // Defaults to a purchase, which is what every construction deal written
   // before today was. See lib/construction.ts.
   const [landFunding, setLandFunding] = useState(s.landFunding || 'purchase')
@@ -783,7 +788,8 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     newPurchaseLoanTerm: setNewPurchaseLoanTerm, salePrice: setSalePriceRaw, agentFees: setAgentFeesRaw,
     additionalSavings: setAdditionalSavingsRaw, equityRelease: setEquityRelease,
     depositSource: setDepositSource, lmi: setLmi, fhog: setFhog, guarantorName: setGuarantorName,
-    bridgingPeriod: setBridgingPeriod, constructionCost: setConstructionCostRaw,
+    bridgingPeriod: setBridgingPeriod, peakDebt: setPeakDebt,
+    constructionCost: setConstructionCostRaw,
     landValue: setLandValueRaw, landFunding: setLandFunding, landLoanBalance: setLandLoanBalance,
     asIfCompleteValue: setAsIfCompleteValue,
     compareOptions: setCompareOptions, optionLabel: setOptionLabel, altScenarios: setAltScenarios,
@@ -923,13 +929,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // pending stays in pendingSave and is written by the effect above when the
     // form actually leaves.
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
   }
 
   // Does the saved email still match the scenario the deal is on? Read in three
@@ -1569,6 +1575,21 @@ Key assumptions: ${checklistText}`
                 </Field>
               )}
               {template === 'bridging' && <Field label="Bridging period (months)"><input className={inputCls} value={bridgingPeriod} onChange={e => setBridgingPeriod(e.target.value)} placeholder="e.g. 6" /></Field>}
+              {/* PEAK DEBT IS ITS OWN FIGURE, and it was never on this form.
+                  The email printed the BRIDGING LOAN and labelled it the peak
+                  debt - two different numbers, and every bridging email sent so
+                  far understated it by whatever the capitalised interest came
+                  to. Fabio, 30 Sep 2026. Typed here, nothing calculated and
+                  nothing checked; blank leaves the row off the email. */}
+              {template === 'bridging' && (
+                <Field label="Peak debt">
+                  <NumberInput value={peakDebt} onChange={setPeakDebt} />
+                  <div className="text-[11px] text-gray-500 mt-1">
+                    The bridging loan and end debt combined, plus the interest capitalised over the
+                    bridging period. Leave it blank and the email simply does not show the line.
+                  </div>
+                </Field>
+              )}
               {/* HOW THE LAND IS BEING FUNDED, and everything below follows.
                   Fabio, 30 Sep 2026, on a client who already owned theirs: the
                   email told them to contribute $900,000 they did not need to
