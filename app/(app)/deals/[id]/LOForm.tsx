@@ -1,4 +1,5 @@
 'use client'
+import { dutyStateOf } from '@/lib/duty-state'
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { dayMonthYear, dayMonth, longDate } from '@/lib/same-date-everywhere'
 import { formatAsTyped } from '@/lib/money'
@@ -474,7 +475,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       purchasePrice: bc.purchasePrice || '',
       deposit: bc.deposit || '',
       stampDuty: bc.stampDuty || '',
-      dutyState: bc.dutyState || '',
+      dutyState: dutyStateOf(bc),
       brandId: bc.brand || '',
       existingLoan: bc.existingLoanBal || '',
       propertyValue: bc.propertyValue || bc.purchasePrice || '',
@@ -649,7 +650,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       purchasePrice: bc.purchasePrice || '',
       deposit: bc.deposit || '',
       stampDuty: bc.stampDuty || '',
-      dutyState: bc.dutyState || '',
+      dutyState: dutyStateOf(bc),
       brandId: bc.brand || '',
       existingLoan: bc.existingLoanBal || '',
       propertyValue: bc.propertyValue || bc.purchasePrice || '',

@@ -1,4 +1,5 @@
 // THE NOTES THAT GO TO THE BANK.
+import { purchaseSuburbOf } from './duty-state'
 //
 // Every other box on the Compliance tab is between the broker, the client and
 // our own compliance team. This one is not: it is copied into the lender's
@@ -118,7 +119,7 @@ function theDeal(deal: any, missing: string[]): NotesParagraph | null {
   const total = loanAmount(deal)
   const purpose = purposeSummary(deal)
   const { verb } = transaction(deal)
-  const where = txt(deal?.bc_data?.suburb) || txt(deal?.bc_data?.newPurchaseSuburb)
+  const where = txt(deal?.bc_data?.suburb) || purchaseSuburbOf(deal?.bc_data)
 
   if (apps.length === 0) missing.push('No applicant is recorded on the fact find')
   if (total <= 0) missing.push('No loan amount is recorded')

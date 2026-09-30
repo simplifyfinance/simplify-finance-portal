@@ -11,6 +11,9 @@ type UserProfile = {
   full_name: string
   role: string
   broker_key: string | null
+  // Printed under their name on client emails they send from the portal. Empty
+  // is fine - lib/milestone-email-parts.ts leaves the line out.
+  phone?: string | null
   active: boolean
   is_admin?: boolean | null
   sees_finance?: boolean | null
@@ -53,6 +56,7 @@ export default function TeamSection() {
   const [emailErr, setEmailErr] = useState('')
   const [accessId, setAccessId] = useState<string | null>(null)
   const [keyInput, setKeyInput] = useState('')
+  const [phoneInput, setPhoneInput] = useState('')
   const [accessMsg, setAccessMsg] = useState('')
   const [inviteKey, setInviteKey] = useState('')
 
@@ -93,6 +97,16 @@ export default function TeamSection() {
     if (error) { setAccessMsg('NOT SAVED - ' + error.message); return false }
     if (!data || data.length === 0) { setAccessMsg('NOT SAVED - the database refused the change.'); return false }
     return true
+  }
+
+  // THE NUMBER A CLIENT RINGS. Not the same as credit_officers.phone, which is
+  // the number a BANK'S ASSESSOR rings - different person, different audience,
+  // so a different column rather than one number doing two jobs.
+  async function savePhone(user: UserProfile) {
+    const value = phoneInput.trim()
+    if (!(await writeProfile(user.id, { phone: value || null }))) return
+    setUsers(users.map(u => u.id === user.id ? { ...u, phone: value || null } : u))
+    setAccessMsg(value ? 'Saved.' : 'Saved - their emails will sign off without a mobile.')
   }
 
   async function changeEmail() {
@@ -329,6 +343,7 @@ export default function TeamSection() {
                     const opening = accessId !== user.id
                     setAccessId(opening ? user.id : null)
                     setKeyInput(user.broker_key || '')
+                    setPhoneInput(user.phone || '')
                     setAccessMsg('')
                   }}
                   className={`text-xs px-3 py-1 rounded-lg border transition ${accessId === user.id ? 'border-[#343333] bg-[#343333] text-white' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
@@ -357,6 +372,22 @@ export default function TeamSection() {
                       What their deals are stamped with. It must match the deals they already have, so change it
                       only if those deals change with it. Empty means they are not a broker: no card on the
                       Pipeline, no column on Targets.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block mb-1">Mobile</label>
+                    <div className="flex gap-2 items-center">
+                      <input className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm w-[150px] focus:outline-none focus:border-[#2DBEFF]"
+                        value={phoneInput} onChange={e => setPhoneInput(e.target.value)}
+                        placeholder="0429 228 148" />
+                      <button onClick={() => savePhone(user)}
+                        className="text-xs font-medium text-white bg-[#343333] px-3 py-1.5 rounded-lg hover:bg-[#2a2a2a]">Save</button>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-1.5 max-w-[420px]">
+                      Printed under their name on client emails they send from the portal. Empty is fine
+                      &mdash; the sign-off simply has no mobile line. This is the number a CLIENT rings,
+                      not the one a bank&rsquo;s assessor does.
                     </p>
                   </div>
 

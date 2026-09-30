@@ -1,4 +1,5 @@
 // THE DEAL, AS ONE BLOCK, IN TWO PLACES.
+import { purchaseSuburbOf } from './duty-state'
 //
 // Replaces the "FROM BC" strip on the Lending options tab and the "DEAL SUMMARY"
 // strip on Compliance. One component, one record - edit the approval type on the
@@ -330,7 +331,9 @@ export function canGenerateNotes(deal: any): boolean {
 // I tick pre-approval)".
 export function defaultSecurityAddress(deal: any, preApproval: boolean): string {
   if (!preApproval) return ''
-  const suburb = txt(deal?.bc_data?.suburb) || txt(deal?.bc_data?.newPurchaseSuburb)
+  // purchaseSuburbOf, not the raw field: a suburb box holding "NSW" was never a
+  // suburb, and "TBA - NSW" is not an address. See lib/duty-state.ts.
+  const suburb = txt(deal?.bc_data?.suburb) || purchaseSuburbOf(deal?.bc_data)
   return suburb ? `TBA — ${suburb}` : 'TBA'
 }
 

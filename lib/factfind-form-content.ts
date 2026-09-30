@@ -1,4 +1,5 @@
 // THE FACT FIND, ON FABIO'S FORM.
+import { dutyStateOf } from './duty-state'
 //
 // 24 Sep 2026. The Compliance tab's Fact Find button gave a coloured reading
 // document. Fabio: "i want the same style coming out of the fact find button on
@@ -341,7 +342,7 @@ export function factFindFormItems(input: FactFindFormInput): Item[] {
   const oneAmount = (name: string, label: string, amount: any) => row(name, label, [{ amount }])
   items.push(...section('Borrowing capacity', null, [
     one('bc.tpl',   'Scenario',      words(bc.template)),
-    one('bc.state', 'State',         txt(bc.dutyState)),
+    one('bc.state', 'State',         dutyStateOf(bc)),
     one('bc.sub',   'Suburb',        txt(bc.suburb)),
     one('bc.ptype', 'Property type', txt(bc.propertyType)),
     one('bc.term',  'Loan term',     txt(bc.loanTerm) ? `${txt(bc.loanTerm)} years` : ''),

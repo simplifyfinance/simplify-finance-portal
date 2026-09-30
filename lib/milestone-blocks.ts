@@ -1,4 +1,5 @@
 // WHICH LINES BELONG IN THIS PARTICULAR EMAIL.
+import { dutyStateOf } from './duty-state'
 //
 // Fabio's own templates carry the instructions in capitals: *** AMEND ***,
 // "DELETE WHAT IS NOT APPLICABLE", "DELETE IF NOT APPLICABLE". Somebody reads
@@ -81,8 +82,11 @@ export function securityState(deal: any): string {
   const addr = txt(deal?.compliance_data?.securityAddress)
   const found = addr.toUpperCase().match(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/)
   if (found) return found[1]
-  const bc = txt(deal?.bc_data?.dutyState).toUpperCase()
-  if (/^(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)$/.test(bc)) return bc
+  // Through lib/duty-state.ts, so a deal whose state went into the mislabelled
+  // suburb box still gets its original mortgage line. WA, TAS and NT is not a
+  // nicety - it is a document the client has to post rather than scan.
+  const bc = dutyStateOf(deal?.bc_data)
+  if (bc) return bc
   const sub = txt(deal?.bc_data?.suburb).toUpperCase().match(/\b(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)\b/)
   return sub ? sub[1] : ''
 }

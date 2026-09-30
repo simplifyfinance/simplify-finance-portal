@@ -1,4 +1,5 @@
 // WHAT IS ON THE HANDOVER, AS DATA.
+import { dutyStateOf } from './duty-state'
 //
 // The handover and the fact find existed only as PDFs, and a PDF is a bad place
 // to copy from: text extraction inserts hard line breaks mid-sentence, splits
@@ -511,7 +512,7 @@ export function factFindSections(deal: any): ViewSection[] {
     }))})
 
   const scenario: ViewRow[] = kv([
-    ['Template', words(bc.template)], ['State', bc.dutyState], ['Suburb', bc.suburb],
+    ['Template', words(bc.template)], ['State', dutyStateOf(bc)], ['Suburb', bc.suburb],
     ['Property type', bc.propertyType], ['Loan term', bc.loanTerm ? `${bc.loanTerm} years` : ''],
   ])
   scenario.push(sub('Figures'))

@@ -1,4 +1,5 @@
 import { money, readMoney } from './money'
+import { dutyStateOf } from './duty-state'
 import { dealRow } from './deal-structure'
 import { variantOf, andList, type Gap } from './box-one'
 
@@ -117,7 +118,7 @@ function describe(s: Security): string {
 // records against a purchase.
 function stateOf(deal: any): string {
   const bc = deal?.bc_data || {}
-  return txt(bc.dutyState) || txt(bc.suburb) || ''
+  return dutyStateOf(bc) || txt(bc.suburb) || ''
 }
 
 // FUTURE USE IS ONLY WORTH A SENTENCE WHEN IT IS A CHANGE.

@@ -1,4 +1,5 @@
 import { altLvrPurchase, altLvrEquity, altRepayment } from '@/lib/alt-scenario'
+import { dutyLabel as sharedDutyLabel } from '@/lib/duty-state'
 import { NextRequest, NextResponse } from 'next/server'
 import { ctas } from '@/lib/email-buttons'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
@@ -67,8 +68,7 @@ function shell(body: string, b: { name: string; title: string; crn: string; cale
 // Duty is a state tax. Printing it unlabelled, or labelled NSW for everyone,
 // puts a figure on a client-facing email that may belong to a different state.
 function dutyLabel(d: any): string {
-  const st = String(d?.dutyState || '').trim().toUpperCase()
-  return st ? `Stamp duty (${st})` : 'Stamp duty'
+  return sharedDutyLabel(d)
 }
 
 function brokerBox(personalisation: string, firstName?: string, jointFirstName?: string, joint?: string) {

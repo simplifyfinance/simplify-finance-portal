@@ -1,4 +1,5 @@
 import { money, readMoney } from './money'
+import { dutyStateOf } from './duty-state'
 import { fundsToComplete, refinancedDebt } from './funds-to-complete'
 import { dealRow, splitsOf, isMixed } from './deal-structure'
 import { applicantsOf } from './applicants'
@@ -179,7 +180,7 @@ export function completionLine(deal: any): { parts: string[]; gaps: Gap[] } {
   const f = fundsToComplete(deal)
 
   const duty = num(bc.stampDuty) || num(bc.newPurchaseStampDuty)
-  const state = txt(bc.dutyState)
+  const state = dutyStateOf(bc)
   if (duty > 0) {
     parts.push(state
       ? `Stamp duty of ${money(duty)} has been allowed for in ${state}.`

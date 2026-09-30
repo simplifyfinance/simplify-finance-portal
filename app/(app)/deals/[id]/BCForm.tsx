@@ -1,4 +1,5 @@
 'use client'
+import { dutyStateOf } from '@/lib/duty-state'
 import { useState, useEffect, useRef } from 'react'
 import { dayMonthYear, dayMonth, longDate } from '@/lib/same-date-everywhere'
 import { supabase } from '@/lib/supabase'
@@ -334,7 +335,12 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // Duty is a state tax and the rates differ, so the email has to say which one
   // it is. It was printed as NSW for everybody, which was wrong the moment a
   // client bought anywhere else.
-  const [dutyState, setDutyState] = useState(s.dutyState || '')
+  // THROUGH dutyStateOf, SO AN OLD DEAL HEALS ITSELF. Deals written while the
+  // New purchase box was labelled "State" have their state sitting in the suburb
+  // field. Reading it through lib/duty-state.ts means the dropdown opens on the
+  // right answer instead of blank, and the next save puts it where it belongs.
+  // Nothing is rewritten behind anybody's back - somebody has to save the deal.
+  const [dutyState, setDutyState] = useState(dutyStateOf(s))
   const [existingLoanBal, setExistingLoanBal] = useState(s.existingLoanBal || '')
 
   // WHERE $1279283.98 CAME FROM.
@@ -1722,7 +1728,21 @@ Key assumptions: ${checklistText}`
                 <div className="bg-white border-2 border-[#2DBEFF]/40 rounded-xl p-4">
                   <div className="text-xs font-medium text-[#2DBEFF] uppercase tracking-wider mb-3">New purchase</div>
                   <div className="grid grid-cols-2 gap-2">
-                    <Field label="State"><input className={inputCls} value={newPurchaseSuburb} onChange={e => setNewPurchaseSuburb(e.target.value)} /></Field>
+                    {/* THE BOX THAT WAS LYING. This said "State" and wrote into
+                        newPurchaseSuburb - the SUBURB - so anybody typing NSW into
+                        it filled the suburb with "NSW" and left dutyState, which
+                        every stamp duty label in the portal reads, empty. The
+                        client email then said "Stamp duty" with no state on it.
+                        Fabio, 30 Sep 2026: "refinance and purchase template the
+                        State is not coming accross?"
+                        Two fields now, each writing where its name says. */}
+                    <Field label="State">
+                      <select className={selectCls} value={dutyState} onChange={e => setDutyState(e.target.value)}>
+                        <option value="">Select</option>
+                        {STATES.map(x => <option key={x} value={x}>{x}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Suburb"><input className={inputCls} value={newPurchaseSuburb} onChange={e => setNewPurchaseSuburb(e.target.value)} /></Field>
                     <Field label="Property type"><select className={selectCls} value={newPurchasePropertyType} onChange={e => setNewPurchasePropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>
                     <Field label="Purchase price"><NumberInput value={newPurchasePrice} onChange={handleNewPurchasePriceChange} /></Field>
                     <Field label="Deposit/Equity"><NumberInput value={newPurchaseDeposit} onChange={handleNewPurchaseDepositChange} /></Field>

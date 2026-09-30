@@ -1,4 +1,5 @@
 // ONE PURCHASE BREAKDOWN, ON EVERY SCENARIO THAT BUYS SOMETHING.
+import { dutyLabel } from './duty-state'
 //
 // Fabio, 16 Sep 2026: "I dont like how all our purchases are broken down,
 // customers are confused. I want ALL purchases to be Purchase Price / Stamp Duty
@@ -118,7 +119,8 @@ export function totalPurchaseCost(price: any, duty: any): number | null {
 // it sits here now, beside the rows it labels, so the third copy never gets
 // written. (The email route's own copy predates this and should move onto it
 // the next time that file is opened.)
+// One label, in one place. See lib/duty-state.ts for why this stopped reading
+// bc.dutyState for itself.
 export function dutyLabelFor(bc: any): string {
-  const st = String(bc?.dutyState || '').trim().toUpperCase()
-  return st ? `Stamp duty (${st})` : 'Stamp duty'
+  return dutyLabel(bc)
 }
