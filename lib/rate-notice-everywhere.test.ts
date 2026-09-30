@@ -81,10 +81,12 @@ describe('the notice reaches every client email that quotes a rate', () => {
 })
 
 describe('the screens that run it', () => {
-  it('there is somewhere to write it', () => {
-    const settings = readFileSync('app/(app)/settings/SettingsClient.tsx', 'utf8')
-    expect(settings).toContain('RateNoticeSettings')
-    expect(settings).toContain("key: 'rate-notice'")
+  // UNDER THE LENDER LIBRARY, not Settings - most of the team cannot see
+  // Settings, and recording a bank's date is a team job. 30 Sep 2026.
+  it('there is somewhere to write it, where the team can reach it', () => {
+    const lenders = readFileSync('app/(app)/lenders/LendersClient.tsx', 'utf8')
+    expect(lenders).toContain('RateNoticeSettings')
+    expect(lenders).toContain("pane === 'rate-notice'")
   })
 
   it('there is somewhere to record when each bank\u2019s change starts', () => {

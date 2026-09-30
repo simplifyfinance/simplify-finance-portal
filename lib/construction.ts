@@ -23,9 +23,72 @@ export function num(v: any): number {
   return parseFloat(String(v ?? '').replace(/[^0-9.\-]/g, '')) || 0
 }
 
-// Land, the build contract, and the duty on the land. What the project costs.
-export function totalCost(d: { landValue?: any; constructionCost?: any; stampDuty?: any }): number {
-  return num(d.landValue) + num(d.constructionCost) + num(d.stampDuty)
+// HOW THE LAND IS BEING FUNDED, which is the fact this file used to assume.
+//
+// Fabio, 30 Sep 2026: "we have one exmaple where customer alreayd owns the land
+// outright so there are no land loan compenent and stamp duty".
+//
+// LAND VALUE WAS DOING TWO JOBS. What the project costs, and what the security
+// is worth. On a land purchase it is honestly both. On land somebody already
+// owns it is only the second - it is equity, not a cost - and nothing on the
+// deal said which, so the arithmetic could not tell them apart.
+//
+// What that produced: a client who owns their land outright, and needs to
+// contribute nothing, was told to find $900,000. Their whole equity came out the
+// far end as a bill, because the total added the land in as if it had to be
+// bought and the contribution is that total less the lending.
+//
+// THE DEFAULT IS 'purchase', deliberately. Every construction deal written
+// before today has no answer recorded, and every one of them was a land
+// purchase - so they keep behaving exactly as they did, to the dollar. See the
+// $440,000 guard in lib/construction.test.ts.
+export type LandFunding = 'purchase' | 'owned' | 'owned_with_loan'
+
+export const LAND_FUNDING: { value: LandFunding; label: string }[] = [
+  { value: 'purchase',        label: 'Being purchased' },
+  { value: 'owned',           label: 'Already owned outright' },
+  { value: 'owned_with_loan', label: 'Already owned, with a loan on it' },
+]
+
+export function landFundingOf(d: any): LandFunding {
+  const v = String(d?.landFunding ?? '').trim()
+  return v === 'owned' || v === 'owned_with_loan' ? v : 'purchase'
+}
+
+export function isLandPurchase(d: any): boolean {
+  return landFundingOf(d) === 'purchase'
+}
+
+// NO PURCHASE, NO DUTY. Not "duty we have not recorded yet" - duty that does not
+// exist. The difference matters: the compliance pack shouts in red about the
+// first and must say nothing at all about the second.
+export function dutyApplies(d: any): boolean {
+  return isLandPurchase(d)
+}
+
+// The balance being paid out of an existing land loan. Only a thing on
+// owned_with_loan, and only ever a cost - the facility has to fund it.
+export function landLoanPayout(d: any): number {
+  return landFundingOf(d) === 'owned_with_loan' ? num(d?.landLoanBalance) : 0
+}
+
+// WHAT THE CLIENT IS PUTTING IN THAT IS NOT CASH. The land they already hold,
+// less anything owed on it. Zero on a purchase, where the land is not theirs
+// yet. Worth printing: it is what explains an LVR of 35% on a deal with no
+// deposit in it.
+export function landEquity(d: any): number {
+  if (isLandPurchase(d)) return 0
+  return Math.max(0, num(d?.landValue) - landLoanPayout(d))
+}
+
+// WHAT THE PROJECT COSTS - money that has to be found from somewhere.
+//
+// The build always. The land and its duty only where the land is being bought.
+// An existing land loan only where it is being paid out.
+export function totalCost(d: any): number {
+  const build = num(d?.constructionCost)
+  if (isLandPurchase(d)) return num(d?.landValue) + build + num(d?.stampDuty)
+  return build + landLoanPayout(d)
 }
 
 // Every split, not the first one. This is the whole bug.

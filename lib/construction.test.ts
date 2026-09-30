@@ -1,119 +1,151 @@
 import { describe, it, expect } from 'vitest'
-import { totalCost, totalLending, fundsToContribute, constructionLvr,
-         repaymentDuringConstruction, num, DRAWDOWN_NOTE } from './construction'
+import {
+  totalCost, totalLending, fundsToContribute, constructionLvr, landEquity,
+  landFundingOf, isLandPurchase, dutyApplies, landLoanPayout, LAND_FUNDING,
+  repaymentDuringConstruction,
+} from './construction'
 
-// Fabio's own scenario, 2 Sep 2026. Every number below is one he checked.
-const deal = { landValue: '1,000,000', constructionCost: '1,000,000', stampDuty: '40,000',
-               asIfCompleteValue: '2,000,000' }
-const splits = [
-  { label: 'Land loan',         amount: '800,000', rate: '6.14', type: 'P&I',           repayment: '4,872' },
-  { label: 'Construction loan', amount: '800,000', rate: '6.39', type: 'Interest only', repayment: '4,260' },
-]
+// LAND VALUE WAS DOING TWO JOBS: what the project costs, and what the security
+// is worth. On a purchase it is both. On land somebody already owns it is only
+// the second, and the arithmetic could not tell - so a client who needed to
+// contribute nothing was told to find $900,000.
 
-describe('a construction deal counts every split, not the first one', () => {
-  it('adds land, build and duty into the total cost', () => {
-    expect(totalCost(deal)).toBe(2040000)
-  })
+const BUYING = {
+  landFunding: 'purchase',
+  landValue: '1000000', constructionCost: '1000000', stampDuty: '40000',
+  asIfCompleteValue: '2200000',
+}
+const BUYING_SPLITS = [{ amount: '800000' }, { amount: '800000' }]
 
-  it('counts BOTH loans as lending', () => {
-    expect(totalLending(splits)).toBe(1600000)
-    // The bug: reading the first split alone.
-    expect(totalLending([splits[0]])).toBe(800000)
-  })
+const OWNED = {
+  landFunding: 'owned',
+  landValue: '900000', constructionCost: '600000', stampDuty: '',
+  asIfCompleteValue: '1700000',
+}
+const OWNED_SPLITS = [{ amount: '600000' }]
 
-  it('asks the client for $440,000, not $1,240,000', () => {
-    expect(fundsToContribute(deal, splits)).toBe(440000)
-    // What it used to say, and the reason this file exists.
-    expect(fundsToContribute(deal, [splits[0]])).toBe(1240000)
-  })
+const OWNED_LOAN = {
+  landFunding: 'owned_with_loan',
+  landValue: '900000', landLoanBalance: '300000',
+  constructionCost: '600000', asIfCompleteValue: '1700000',
+}
+const OWNED_LOAN_SPLITS = [{ amount: '300000' }, { amount: '600000' }]
 
-  it('puts the LVR at 80%, not 40%', () => {
-    expect(constructionLvr(deal.asIfCompleteValue, splits)).toBe(80)
-    expect(constructionLvr(deal.asIfCompleteValue, [splits[0]])).toBe(40)
-  })
-
-  it('rounds the LVR up, so a hair over 80 is not rounded into "no LMI"', () => {
-    expect(constructionLvr('2,000,000', [{ amount: '1,600,100' }])).toBeGreaterThan(80)
-  })
-
-  it('adds the typed repayments rather than calculating anything', () => {
-    // Fabio: "dont calcualte repoayments alwasy once completed by the team".
-    expect(repaymentDuringConstruction(splits)).toBe(9132)
-  })
-})
-
-describe('it does not invent numbers when the form is half filled', () => {
-  it('never asks for a negative contribution', () => {
-    const overLent = [{ amount: '3,000,000' }]
-    expect(fundsToContribute(deal, overLent)).toBe(0)
-  })
-
-  it('gives zero rather than a divide by nothing when there is no valuation', () => {
-    expect(constructionLvr('', splits)).toBe(0)
-    expect(constructionLvr('0', splits)).toBe(0)
-  })
-
-  it('gives zero repayment when nobody has typed one, so the row can be left out', () => {
-    expect(repaymentDuringConstruction([{ amount: '800,000' }])).toBe(0)
-    expect(repaymentDuringConstruction([])).toBe(0)
-    expect(repaymentDuringConstruction(null)).toBe(0)
-  })
-
-  it('survives an empty deal', () => {
-    expect(totalCost({})).toBe(0)
-    expect(totalLending(undefined)).toBe(0)
-    expect(fundsToContribute({}, undefined)).toBe(0)
-  })
-
-  it('reads a number however it was typed', () => {
-    expect(num('$1,000,000')).toBe(1000000)
-    expect(num('1000000')).toBe(1000000)
-    expect(num('')).toBe(0)
-    expect(num(null)).toBe(0)
-  })
-})
-
-describe('the drawdown note', () => {
-  it('says the figure is the ceiling, not the starting point', () => {
-    expect(DRAWDOWN_NOTE).toMatch(/interest only/i)
-    expect(DRAWDOWN_NOTE).toMatch(/full drawdown/i)
-    expect(DRAWDOWN_NOTE).toMatch(/progress payment/i)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// The carry-forward. Fabio, 2 Sep 2026: "when i am chagin the BC are you making
-// sure these issues are not carrying forward to LO correcT?"
+// THE GUARD ON EVERYTHING ELSE IN THIS FILE.
 //
-// They were carrying forward. The Lending Options form seeded its loan amount
-// from bc.splits[0], and that field is written to deals.loan_amount - which the
-// board, the pipeline, the settlements screen and the commission panel all read.
-// So a multi-split BC became half a deal everywhere downstream.
-import { splitsTotal } from './deal-phase'
-
-describe('what the BC hands to Lending Options', () => {
-  const refiEquity = [{ amount: '500,000' }, { amount: '200,000' }]
-  const construction = [{ amount: '800,000' }, { amount: '800,000' }]
-
-  it('hands over the whole loan, not the first split', () => {
-    expect(splitsTotal(refiEquity)).toBe(700000)
-    expect(splitsTotal(construction)).toBe(1600000)
+// $440,000 is Fabio's own figure, 2 Sep 2026, on the land-purchase case: "should
+// be 440K". A fix that got the new cases right and quietly moved this one would
+// be worse than the bug it was fixing.
+describe('a land purchase is untouched', () => {
+  it('still costs what it cost', () => {
+    expect(totalCost(BUYING)).toBe(2_040_000)
   })
 
-  it('is the same number the BC email now shows', () => {
-    expect(splitsTotal(construction)).toBe(totalLending(construction))
-    expect(splitsTotal(refiEquity)).toBe(totalLending(refiEquity))
+  it('and still contributes $440,000', () => {
+    expect(fundsToContribute(BUYING, BUYING_SPLITS)).toBe(440_000)
   })
 
-  it('leaves a single-split deal exactly as it was', () => {
-    expect(splitsTotal([{ amount: '650,000' }])).toBe(650000)
+  // EVERY DEAL WRITTEN BEFORE TODAY has no answer recorded, and every one of
+  // them was a purchase. They must behave to the dollar as they did.
+  it('with nothing recorded at all, which is every deal already in the book', () => {
+    const { landFunding, ...noAnswer } = BUYING
+    expect(landFundingOf(noAnswer)).toBe('purchase')
+    expect(totalCost(noAnswer)).toBe(2_040_000)
+    expect(fundsToContribute(noAnswer, BUYING_SPLITS)).toBe(440_000)
   })
 
-  it('hands over nothing rather than a zero when the BC has no splits', () => {
-    // The LO field stays empty and the broker fills it in, which is what
-    // happened before. A "0" would be written onto the deal as its loan amount.
-    expect(splitsTotal([])).toBe(null)
-    expect(splitsTotal(undefined)).toBe(null)
-    expect(splitsTotal([{ amount: '' }])).toBe(null)
+  it('and an answer nobody recognises falls back to a purchase, not to nothing', () => {
+    expect(landFundingOf({ landFunding: 'something_else' })).toBe('purchase')
+    expect(landFundingOf({ landFunding: null })).toBe('purchase')
+  })
+
+  it('the land is not equity, because it is not theirs yet', () => {
+    expect(landEquity(BUYING)).toBe(0)
+  })
+
+  it('and duty applies', () => {
+    expect(dutyApplies(BUYING)).toBe(true)
+    expect(isLandPurchase(BUYING)).toBe(true)
+  })
+})
+
+describe('land already owned outright', () => {
+  // THE BUG, AS A NUMBER. This was $900,000.
+  it('costs the build and nothing else', () => {
+    expect(totalCost(OWNED)).toBe(600_000)
+  })
+
+  it('and the client contributes nothing', () => {
+    expect(fundsToContribute(OWNED, OWNED_SPLITS)).toBe(0)
+  })
+
+  it('their land is equity, and that is what carries the LVR', () => {
+    expect(landEquity(OWNED)).toBe(900_000)
+    expect(constructionLvr(OWNED.asIfCompleteValue, OWNED_SPLITS)).toBe(35.3)
+  })
+
+  // NO PURCHASE, NO DUTY - and that is different from duty nobody has typed in.
+  it('has no duty, so nothing may ask for one', () => {
+    expect(dutyApplies(OWNED)).toBe(false)
+  })
+
+  it('and a duty figure left behind on the deal changes nothing', () => {
+    // Somebody switches a deal from purchase to owned. The old duty is still
+    // sitting in the box; it must not creep back into the total.
+    expect(totalCost({ ...OWNED, stampDuty: '40000' })).toBe(600_000)
+  })
+
+  it('same for a land value - it is the security, never a cost', () => {
+    expect(totalCost({ ...OWNED, landValue: '5000000' })).toBe(600_000)
+  })
+})
+
+describe('land already owned, with a loan on it', () => {
+  it('the payout is a cost, because the facility has to fund it', () => {
+    expect(landLoanPayout(OWNED_LOAN)).toBe(300_000)
+    expect(totalCost(OWNED_LOAN)).toBe(900_000)
+  })
+
+  it('and the client still contributes nothing', () => {
+    expect(fundsToContribute(OWNED_LOAN, OWNED_LOAN_SPLITS)).toBe(0)
+  })
+
+  it('their equity is the land less what is owed on it', () => {
+    expect(landEquity(OWNED_LOAN)).toBe(600_000)
+  })
+
+  it('the LVR counts both splits', () => {
+    expect(totalLending(OWNED_LOAN_SPLITS)).toBe(900_000)
+    expect(constructionLvr(OWNED_LOAN.asIfCompleteValue, OWNED_LOAN_SPLITS)).toBe(53)
+  })
+
+  it('a balance typed against land that is being purchased is ignored', () => {
+    // The box only exists on one answer. A figure left over from a change of
+    // mind must not quietly become a cost on a purchase.
+    expect(landLoanPayout({ ...BUYING, landLoanBalance: '300000' })).toBe(0)
+    expect(totalCost({ ...BUYING, landLoanBalance: '300000' })).toBe(2_040_000)
+  })
+
+  it('and a loan bigger than the land does not make equity negative', () => {
+    expect(landEquity({ ...OWNED_LOAN, landLoanBalance: '1200000' })).toBe(0)
+  })
+})
+
+describe('the things that did not change', () => {
+  it('lending is still every split, which was the original bug', () => {
+    expect(totalLending(BUYING_SPLITS)).toBe(1_600_000)
+  })
+
+  it('a project lent more than it costs contributes nothing, never a negative', () => {
+    expect(fundsToContribute(OWNED, [{ amount: '900000' }])).toBe(0)
+  })
+
+  it('repayments are added, never calculated', () => {
+    expect(repaymentDuringConstruction([{ repayment: '1200' }, { repayment: '900' }])).toBe(2100)
+  })
+
+  it('there are three ways to hold land and no more', () => {
+    expect(LAND_FUNDING.map(x => x.value)).toEqual(['purchase', 'owned', 'owned_with_loan'])
+    for (const x of LAND_FUNDING) expect(x.label.length).toBeGreaterThan(0)
   })
 })

@@ -1,4 +1,5 @@
 'use client'
+import { SETTINGS_PANES } from '@/lib/settings-panes'
 import { useState, useEffect } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import PipelineTargets from '@/components/PipelineTargets'
@@ -9,7 +10,6 @@ import CommissionLibrary from '@/components/CommissionLibrary'
 import AiExpenses from '@/components/AiExpenses'
 import { checkedWrite, checkedWriteAllowingNone } from '@/lib/checked-write'
 import DealBoardSettings from '@/components/DealBoardSettings'
-import RateNoticeSettings from '@/components/RateNoticeSettings'
 import { DEFAULT_DOCS_DELAY_MINUTES, MIN_DOCS_DELAY_MINUTES, MAX_DOCS_DELAY_MINUTES } from '@/lib/docs-received'
 
 const supabase = createSupabaseBrowser()
@@ -384,20 +384,9 @@ export default function SettingsPage() {
 
   // Which pane is showing. Driven by the URL hash so the sidebar can steer it and a
   // link to a particular setting can be shared.
-  const PANES: { key: string; label: string; blurb: string }[] = [
-    { key: 'brands', label: 'Brands', blurb: 'Trading names used on deals and client emails.' },
-    { key: 'brokers', label: 'Broker profiles', blurb: 'Everything about one broker: their details for documents, the key that links them to their deals, and their targets.' },
-    { key: 'board', label: 'Deal board', blurb: 'The colour of each label on a card, and how long a column may sit before it goes amber and then red.' },
-    { key: 'rate-notice', label: 'Rate notice', blurb: 'The line that goes on every client email quoting a rate after an RBA decision, until each bank passes it on.' },
-    { key: 'targets', label: 'Business targets', blurb: 'Monthly lodged and settled targets for the business as a whole. A broker’s own targets live on their profile.' },
-    { key: 'commissions', label: 'Commission library', blurb: 'What each lender pays, on what basis, and what they claw back.' },
-    { key: 'ai', label: 'AI expenses', blurb: 'What the portal spends on Anthropic, by month, person and feature.' },
-    { key: 'people', label: 'Credit team', blurb: 'Who covers which broker.' },
-    { key: 'notifications', label: 'Notifications', blurb: 'Who is emailed as deals move through the pipeline.' },
-    { key: 'compliance', label: 'Compliance AI', blurb: 'Style notes and flags fed into every Compliance generation.' },
-    { key: 'connections', label: 'Connections', blurb: 'Bank statement collection and other outside services.' },
-    { key: 'statements', label: 'Statement analysis', blurb: 'What the statement analysis looks for, and when it raises a flag.' },
-  ]
+  // ONE LIST, in lib/settings-panes.ts. The sidebar reads the same one - it
+  // used to keep a copy, and the copy quietly fell three pages behind.
+  const PANES = SETTINGS_PANES
   const [pane, setPane] = useState('brands')
   useEffect(() => {
     const read = () => {
@@ -455,12 +444,6 @@ export default function SettingsPage() {
       )}
       {pane === 'brokers' && <BrokerProfiles brands={brands} />}
       {pane === 'board' && <DealBoardSettings value={dealBoard} onChange={setDealBoard} />}
-      {pane === 'rate-notice' && (
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Rate notice</h2>
-        <RateNoticeSettings />
-      </div>
-      )}
       {pane === 'statements' && (
         <>
           <StatementRulesPane value={statementRules} onChange={setStatementRules} />

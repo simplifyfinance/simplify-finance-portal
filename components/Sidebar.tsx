@@ -1,4 +1,6 @@
 'use client'
+import { SETTINGS_PANES } from '@/lib/settings-panes'
+import { LENDER_PANES } from '@/lib/lender-panes'
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3, Percent, TrendingUp, CalendarCheck, Mail } from "lucide-react"
@@ -37,10 +39,8 @@ const SUBNAV: Record<string, { key: string; label: string; adminOnly?: boolean; 
     { key: 'report', label: 'Report' },
     { key: 'actuals', label: 'Monthly actuals', adminOnly: true },
   ],
-  '/lenders': [
-    { key: 'lenders', label: 'Products & policy' },
-    { key: 'rules', label: 'What we have learned' },
-  ],
+  // From lib/lender-panes.ts, never a copy - see the note on '/settings' below.
+  '/lenders': LENDER_PANES.map(p => ({ key: p.key, label: p.label })),
   '/commissions': [
     { key: 'revenue',    label: 'Revenue' },
     { key: 'months',     label: 'By month' },
@@ -50,17 +50,14 @@ const SUBNAV: Record<string, { key: string; label: string; adminOnly?: boolean; 
     { key: 'reconcile',  label: 'Settlements vs paid' },
     { key: 'statements', label: 'Statements loaded' },
   ],
-  '/settings': [
-    { key: 'brands', label: 'Brands' },
-    { key: 'brokers', label: 'Broker profiles' },
-    { key: 'targets', label: 'Targets', adminOnly: true },
-    { key: 'commissions', label: 'Commission library', financeOnly: true },
-    { key: 'ai', label: 'AI expenses', financeOnly: true },
-    { key: 'people', label: 'Credit team' },
-    { key: 'notifications', label: 'Notifications' },
-    { key: 'compliance', label: 'Compliance AI' },
-    { key: 'connections', label: 'Connections' },
-  ],
+  // FROM lib/settings-panes.ts, NEVER A COPY. This list was hardcoded and had
+  // fallen three pages behind - Deal board, Rate notice and Statement analysis
+  // all existed and none of them were in the menu. 30 Sep 2026.
+  '/settings': SETTINGS_PANES.map(p => ({
+    key: p.key, label: p.label,
+    ...(p.adminOnly ? { adminOnly: true } : {}),
+    ...(p.financeOnly ? { financeOnly: true } : {}),
+  })),
 }
 
 export default function Sidebar() {

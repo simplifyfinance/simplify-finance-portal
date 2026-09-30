@@ -10,7 +10,7 @@ import { can } from '@/lib/permissions'
 import { templateLabel } from '@/lib/templates'
 import { proceedCredit } from '@/lib/deal-status'
 import { emailParagraphs, htmlToPlainText, copyHtmlAndPlain} from '@/lib/rich-text'
-import { totalCost, fundsToContribute, constructionLvr } from '@/lib/construction'
+import { totalCost, fundsToContribute, constructionLvr, LAND_FUNDING } from '@/lib/construction'
 import { emailFreshness, needsAttention, notesAfterScenarioChange } from '@/lib/email-freshness'
 import { missingForEmail, missingSentence } from '@/lib/bc-ready'
 import { dealFigures } from '@/lib/deal-figures'
@@ -469,6 +469,10 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const [fhog, setFhog] = useState(s.fhog || '')
   const [guarantorName, setGuarantorName] = useState(s.guarantorName || '')
   const [bridgingPeriod, setBridgingPeriod] = useState(s.bridgingPeriod || '')
+  // Defaults to a purchase, which is what every construction deal written
+  // before today was. See lib/construction.ts.
+  const [landFunding, setLandFunding] = useState(s.landFunding || 'purchase')
+  const [landLoanBalance, setLandLoanBalance] = useState(s.landLoanBalance || '')
   const [constructionCost, setConstructionCostRaw] = useState(s.constructionCost || '')
   function setConstructionCost(val: string) { setConstructionCostRaw(val); recomputeAsIfComplete(landValue, val) }
   const [landValue, setLandValueRaw] = useState(s.landValue || '')
@@ -780,7 +784,8 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     additionalSavings: setAdditionalSavingsRaw, equityRelease: setEquityRelease,
     depositSource: setDepositSource, lmi: setLmi, fhog: setFhog, guarantorName: setGuarantorName,
     bridgingPeriod: setBridgingPeriod, constructionCost: setConstructionCostRaw,
-    landValue: setLandValueRaw, asIfCompleteValue: setAsIfCompleteValue,
+    landValue: setLandValueRaw, landFunding: setLandFunding, landLoanBalance: setLandLoanBalance,
+    asIfCompleteValue: setAsIfCompleteValue,
     compareOptions: setCompareOptions, optionLabel: setOptionLabel, altScenarios: setAltScenarios,
     brand: setBrand,
   }
@@ -918,13 +923,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // pending stays in pendingSave and is written by the effect above when the
     // form actually leaves.
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
   }
 
   // Does the saved email still match the scenario the deal is on? Read in three
@@ -1454,8 +1459,14 @@ Key assumptions: ${checklistText}`
                   </select>
                 </Field>
               )}
-                  {!["refinance_equity", "refinance_only", "investment_equity"].includes(template) && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={handleStampDutyChange} /></Field>}
-                  {!["refinance_equity", "refinance_only", "investment_equity"].includes(template) && (
+                  {/* NO PURCHASE, NO DUTY. A build on land somebody already
+                      owns has none, so the box is not there to be left blank and
+                      then reported as missing. lib/construction.ts. */}
+                  {!["refinance_equity", "refinance_only", "investment_equity"].includes(template)
+                    && !(template === 'construction' && landFunding !== 'purchase')
+                    && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={handleStampDutyChange} /></Field>}
+                  {!["refinance_equity", "refinance_only", "investment_equity"].includes(template)
+                    && !(template === 'construction' && landFunding !== 'purchase') && (
                     <Field label="State">
                       <select className={selectCls} value={dutyState} onChange={e => setDutyState(e.target.value)}>
                         <option value="">Select</option>
@@ -1558,13 +1569,35 @@ Key assumptions: ${checklistText}`
                 </Field>
               )}
               {template === 'bridging' && <Field label="Bridging period (months)"><input className={inputCls} value={bridgingPeriod} onChange={e => setBridgingPeriod(e.target.value)} placeholder="e.g. 6" /></Field>}
-              {template === 'construction' && <Field label="Land value"><NumberInput value={landValue} onChange={setLandValue} /></Field>}
+              {/* HOW THE LAND IS BEING FUNDED, and everything below follows.
+                  Fabio, 30 Sep 2026, on a client who already owned theirs: the
+                  email told them to contribute $900,000 they did not need to
+                  find. Land value was being used both as the security and as a
+                  cost. See lib/construction.ts. */}
+              {template === 'construction' && (
+                <Field label="The land">
+                  <select className={selectCls} value={landFunding}
+                    onChange={e => setLandFunding(e.target.value)}>
+                    {LAND_FUNDING.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </Field>
+              )}
+              {template === 'construction' && (
+                <Field label={landFunding === 'purchase' ? 'Land value' : 'Land value (current)'}>
+                  <NumberInput value={landValue} onChange={setLandValue} />
+                </Field>
+              )}
+              {template === 'construction' && landFunding === 'owned_with_loan' && (
+                <Field label="Existing land loan being paid out">
+                  <NumberInput value={landLoanBalance} onChange={setLandLoanBalance} />
+                </Field>
+              )}
               {template === 'construction' && <Field label="Construction cost"><NumberInput value={constructionCost} onChange={setConstructionCost} /></Field>}
               {template === 'construction' && (
                 <Field label="Total cost (calculated)">
                   <div className={inputCls + " bg-gray-50 text-gray-700"}>
                     {(() => {
-                      const total = totalCost({ landValue, constructionCost, stampDuty })
+                      const total = totalCost({ landFunding, landValue, landLoanBalance, constructionCost, stampDuty })
                       return total > 0 ? `$${formatNumber(String(total))}` : '\u2014'
                     })()}
                   </div>
