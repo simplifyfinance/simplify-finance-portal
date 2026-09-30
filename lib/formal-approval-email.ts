@@ -22,7 +22,7 @@
 import { emailShell } from './email-shell'
 import { type Brand, DEFAULT_BRAND } from './brand'
 import {
-  p, hero, heading, moneyTable, detailTable, markedList, signature, plain, strip,
+  p, hero, heading, moneyTable, detailTable, markedList, noteBox, signature, plain, strip,
 } from './milestone-email-parts'
 import { type Block, on } from './milestone-blocks'
 import { type PurchaseRow } from './purchase-rows'
@@ -53,6 +53,9 @@ export type FormalApprovalContext = {
   // How much, off this deal's approval letter. Optional and never remembered:
   // it is different on every deal. Empty and the sentence simply does not say.
   insuranceAmount?: string
+  // THE RBA NOTICE, or empty. Already decided by lib/rate-notice.ts against the
+  // lender this deal is with - this file only knows where it goes on the page.
+  rateNotice?: string
   // WA, TAS or NT, where the mortgage document line applies.
   securityState: string
   // Whoever is genuinely on the copy line. Empty where nobody is - the email
@@ -140,6 +143,9 @@ export function buildFormalApprovalEmail(ctx: FormalApprovalContext): {
       'and the only steps remaining are signing your loan contracts and booking settlement.') +
     (ctx.rows.length ? heading('Your loan') + moneyTable(ctx.rows) : '') +
     (ctx.details.length ? heading('The details') + detailTable(ctx.details) : '') +
+    // DIRECTLY UNDER THE RATE, because it is about the rate. A disclaimer at the
+    // foot of an email is a disclaimer nobody reads.
+    (txt(ctx.rateNotice) ? noteBox(txt(ctx.rateNotice)) : '') +
     heading('What happens next') + markedList(ours, 'number') +
     (theirs.length ? heading('What we need from you') + markedList(theirs, 'tick') : '') +
     p('If anything above does not look right, or you have a question about any of it, reply to this ' +

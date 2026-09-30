@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite, checkedWriteAllowingNone } from '@/lib/checked-write'
 import { legalFeeLabel, confirmedFeeLabel, DEFAULT_LEGAL_FEE_LABEL, feeText } from '@/lib/lender-fees'
+import { readNotice, announcedFrom, hasTakenEffect, niceDate, NO_NOTICE } from '@/lib/rate-notice'
 
 // legal_fee_label: what THIS bank calls the fee charged at settlement. Most say
 // "Settlement fee"; Bankwest says "Legal fee". Blank means Legal fee, which is
@@ -17,7 +18,11 @@ type Lender = { id: string; name: string; active: boolean; legal_fee_label?: str
   // HOW FAR THE LOAN MAY MOVE before this bank wants the pricing redone. Null is
   // N/A and stays N/A - see docs/lender-reprice-schema.sql for why nothing is
   // ever assumed here.
-  reprice_over_percent?: number | null }
+  reprice_over_percent?: number | null
+  rate_notice_for?: string | null
+  rate_notice_from?: string | null
+  rate_notice_by?: string | null
+  rate_notice_at?: string | null }
 type Product = {
   id: string
   lender_id: string
@@ -76,6 +81,10 @@ const emptyProduct = {
 export default function LenderLibrary() {
   const supabase = createSupabaseBrowser()
   const [lenders, setLenders] = useState<Lender[]>([])
+  // The running RBA notice, if there is one, and who is ticking lenders off
+  // against it. Nothing is drawn for either when no notice is on.
+  const [notice, setNotice] = useState(NO_NOTICE)
+  const [meName, setMeName] = useState('')
   const [products, setProducts] = useState<Product[]>([])
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
@@ -109,11 +118,26 @@ export default function LenderLibrary() {
 
   useEffect(() => { fetchAll() }, [])
 
+  // WHOSE NAME GOES ON A TICK. Everybody can tick one, so the name is the only
+  // thing that makes a wrong one askable afterwards.
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      const id = data?.user?.id
+      if (!id) return
+      supabase.from('user_profiles').select('full_name, email').eq('id', id).maybeSingle()
+        .then(({ data: p }: any) => setMeName(p?.full_name || p?.email || ''))
+    })
+  }, [])
+
   async function fetchAll() {
-    const [{ data: lData }, { data: pData }] = await Promise.all([
+    const [{ data: lData }, { data: pData }, { data: sData }] = await Promise.all([
       supabase.from('lenders').select('*').order('name'),
       supabase.from('lender_products').select('*').order('product_name'),
+      // A settings table without the column yet comes back empty and nothing is
+      // drawn - the same way the rest of this page degrades.
+      supabase.from('settings').select('rate_notice').eq('id', 'singleton').maybeSingle(),
     ])
+    setNotice(readNotice((sData as any)?.rate_notice))
     if (lData) setLenders(lData)
     if (pData) setProducts(pData)
     setLoading(false)
@@ -146,6 +170,40 @@ export default function LenderLibrary() {
 
   // Typed as a percentage, stored as a number. Empty puts it back to N/A, which
   // is how a rule gets removed when a bank drops it.
+  // WHEN THIS BANK'S CHANGE TAKES EFFECT.
+  //
+  // A date, not a tick. Fabio, 30 Sep 2026: "rate will increase on the 21st of
+  // October I need the disclaiumer to go out on all Macquaire emails until the
+  // 21st of October AFTER THAT date the disclaimer disapear". The bank names the
+  // day when it announces, weeks ahead - so it is recorded once and the notice
+  // ends itself. Nobody has to be at their desk on the morning for a client
+  // email to be right.
+  //
+  // Everybody can set one. Fabio: "anyone can do this as it is a team effort".
+  // The name goes on it, because somebody has to be askable when a date is wrong.
+  async function setEffectiveFrom(id: string, raw: string) {
+    const value = raw.trim() || null
+    const problem = await checkedWrite(
+      supabase.from('lenders').update({
+        // Stamped with the decision it answers, so the next RBA decision clears
+        // every one of these by itself - see lib/rate-notice.ts.
+        rate_notice_for: value ? notice.decisionDate : null,
+        rate_notice_from: value,
+        rate_notice_by: value ? (meName || null) : null,
+        rate_notice_at: value ? new Date().toISOString() : null,
+      }).eq('id', id),
+      'That date')
+    if (problem) { setWriteError(problem); return }
+    setWriteError('')
+    setLenders(prev => prev.map(l => l.id === id ? {
+      ...l,
+      rate_notice_for: value ? notice.decisionDate : null,
+      rate_notice_from: value,
+      rate_notice_by: value ? meName : null,
+      rate_notice_at: value ? new Date().toISOString() : null,
+    } : l))
+  }
+
   async function setRepriceOver(id: string, raw: string) {
     const clean = raw.replace(/[^0-9.]/g, '').trim()
     const value = clean === '' ? null : Number(clean)
@@ -531,6 +589,36 @@ export default function LenderLibrary() {
                       Up or down. Leave it blank where there is no rule &mdash; the deal then says to check, rather than assuming.
                     </span>
                   </div>
+                  {/* WHEN DOES THIS BANK'S CHANGE START.
+                      Only while a notice is running - the rest of the year there
+                      is nothing to ask and the row is not there. The notice runs
+                      on this lender's client emails up to this date and stops on
+                      it, by itself. See lib/rate-notice.ts. */}
+                  {notice.on && (
+                    <div className="flex items-center gap-2 px-5 py-2.5 border-t border-gray-50 flex-wrap"
+                         onClick={e => e.stopPropagation()}>
+                      <span className="text-xs text-gray-500">
+                        Their change from the {niceDate(notice.decisionDate)} decision takes effect on
+                      </span>
+                      <input type="date"
+                        defaultValue={announcedFrom(lender, notice)}
+                        key={`rn${lender.id}${announcedFrom(lender, notice)}`}
+                        onBlur={e => {
+                          if (e.target.value !== announcedFrom(lender, notice)) setEffectiveFrom(lender.id, e.target.value)
+                        }}
+                        className={`text-xs border rounded-lg px-2 py-1 bg-white ${
+                          announcedFrom(lender, notice)
+                            ? 'border-gray-200 text-[#343333]'
+                            : 'border-[#EBD9BE] text-[#8A6218]'}`} />
+                      <span className="text-[11px] text-gray-400">
+                        {!announcedFrom(lender, notice)
+                          ? 'Not announced yet \u2014 their client emails carry the notice until a date is here.'
+                          : hasTakenEffect(lender, notice)
+                            ? `In force \u2014 the notice is off their emails${lender.rate_notice_by ? `, date set by ${lender.rate_notice_by}` : ''}.`
+                            : `Their emails carry the notice until then, and stop on their own${lender.rate_notice_by ? ` \u2014 set by ${lender.rate_notice_by}` : ''}.`}
+                      </span>
+                    </div>
+                  )}
                   {lps.length === 0 && <p className="text-xs text-gray-400 px-5 py-3">No products yet.</p>}
                   {lps.map(product => {
                     const fees = [

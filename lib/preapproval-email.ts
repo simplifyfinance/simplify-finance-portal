@@ -51,6 +51,8 @@ export type PreapprovalContext = {
   senderPhone: string
   senderWeb: string
   extra?: string
+  // THE RBA NOTICE, or empty. See lib/rate-notice.ts.
+  rateNotice?: string
 }
 
 export function buildPreapprovalEmail(ctx: PreapprovalContext): {
@@ -99,6 +101,8 @@ export function buildPreapprovalEmail(ctx: PreapprovalContext): {
           'date. If a property is not found during this period, a new application will be required.')
       : '') +
     (ctx.rows.length ? heading(moneyHeading) + moneyTable(ctx.rows) : '') +
+    // Under the figures, before anything else, because it is about them.
+    (String(ctx.rateNotice ?? '').trim() ? noteBox(String(ctx.rateNotice).trim()) : '') +
     (on(b, 'strata')
       ? noteBox('Please note that purchasing a strata title property — a unit or townhouse — can ' +
           'affect borrowing capacity. Please tell us if you are considering one and we will factor ' +

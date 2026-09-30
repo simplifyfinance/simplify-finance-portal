@@ -1,6 +1,7 @@
 import { altLvrPurchase, altLvrEquity, altRepayment } from '@/lib/alt-scenario'
 import { dutyLabel as sharedDutyLabel } from '@/lib/duty-state'
 import { NextRequest, NextResponse } from 'next/server'
+import { rateNoticeLines } from '@/lib/rate-notice-server'
 import { ctas } from '@/lib/email-buttons'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
@@ -422,7 +423,14 @@ export async function POST(req: NextRequest) {
   const template = d.template || 'oo_purchase'
   const personalisation = d.brokerNotes || ''
   const checkItems = [...buildChecklist(d), ...(d.factFindChecklist || []), ...(d.checklist || [])]
-  const notes = d.additionalNotes || []
+  // THE RBA NOTICE GOES IN FRONT OF EVERY OTHER NOTE, on all nine shapes this
+  // email takes - one change here rather than nine at the boxes, so a shape
+  // added later cannot quietly miss it.
+  //
+  // A BORROWING CAPACITY NAMES NO LENDER, so there is no per-bank half of it
+  // here: nobody has passed anything on, and the notice stands as written
+  // whenever it is on. See lib/rate-notice.ts.
+  const notes = [...await rateNoticeLines([]), ...(d.additionalNotes || [])]
 
   let body = ''
 

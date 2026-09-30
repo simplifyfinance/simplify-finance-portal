@@ -5,6 +5,7 @@ import { resolveBrand } from '@/lib/brand'
 import { menuFor, templateById, withSent, type TemplateId, type SentEmail } from '@/lib/milestone-emails'
 import { assembleMilestoneEmail, SETTLEMENTS_EMAIL } from '@/lib/milestone-send'
 import { rulesOf } from '@/lib/lender-rules'
+import { readNotice, noticeFor } from '@/lib/rate-notice'
 import { lenderIdFrom } from '@/lib/lender-id'
 import { lenderOnTheDeal } from '@/lib/client-agreement'
 import { emailsGoTo, isTestDeal, testSubject } from '@/lib/test-deal'
@@ -43,21 +44,48 @@ async function loadDeal(supabase: any, dealId: string) {
 // The answers recorded for whichever lender THIS DEAL is with - the clients'
 // own choice where they made one, never the original recommendation. Same
 // question, same function, as everywhere else since 29 Sep.
-async function loadRules(deal: any) {
+// THE LENDER'S ANSWERS, AND THE LENDER'S OWN ROW.
+//
+// Both come from the same lookup, so they are fetched together rather than
+// twice. The row is what the RBA notice is decided against - whether THIS bank
+// has passed the increase on - see lib/rate-notice.ts.
+async function loadLender(deal: any) {
   const name = lenderOnTheDeal(deal?.lo_data || {})
-  if (!name) return {}
+  const nothing = { rules: {}, row: null as any }
+  if (!name) return nothing
   try {
     const admin = createSupabaseAdmin()
-    const { data: lenders } = await admin.from('lenders').select('id, name, aliases')
+    const { data: lenders } = await admin.from('lenders')
+      .select('id, name, aliases, rate_notice_for')
     const id = lenderIdFrom(lenders as any, name)
-    if (!id) return {}
+    if (!id) return nothing
+    const row = (lenders || []).find((l: any) => l.id === id) || null
     const { data: rows } = await admin.from('lender_rules').select('key, value, set_by, set_at, used').eq('lender_id', id)
-    return rulesOf(rows)
+    return { rules: rulesOf(rows), row }
   } catch {
     // A rules table we cannot read leaves every lender block off with its reason
     // showing. An email short a condition is a problem; an email with a
     // GUESSED condition is a worse one.
-    return {}
+    //
+    // The notice goes the other way on purpose: an unknown lender has NOT passed
+    // the increase on as far as we know, so the warning stays. Warning somebody
+    // needlessly is survivable; quoting a rate that has moved is not.
+    return nothing
+  }
+}
+
+// THE NOTICE FOR THIS DEAL, OR NOTHING. Read here because a route is the only
+// part of this that can reach settings; lib/rate-notice.ts decides, this only
+// fetches.
+async function loadRateNotice(lenderRow: any): Promise<string> {
+  try {
+    const admin = createSupabaseAdmin()
+    const { data } = await admin.from('settings').select('rate_notice').eq('id', 'singleton').maybeSingle()
+    return noticeFor(lenderRow, readNotice((data as any)?.rate_notice))
+  } catch {
+    // Settings unreachable means no notice rather than a guessed one. It is a
+    // sentence about a decision we cannot see, so we do not write it.
+    return ''
   }
 }
 
@@ -110,9 +138,11 @@ export async function GET(req: NextRequest) {
   let overrides: Record<string, boolean> = {}
   try { overrides = JSON.parse(txt(req.nextUrl.searchParams.get('overrides')) || '{}') } catch { /* none */ }
 
+  const lender = await loadLender(deal)
   const built = assembleMilestoneEmail({
     deal, templateId,
-    rules: await loadRules(deal),
+    rules: lender.rules,
+    rateNotice: await loadRateNotice(lender.row),
     brand: await resolveBrand(txt(req.nextUrl.searchParams.get('brandId'))),
     sender: { name: sender.name, email: sender.email, phone: sender.phone },
     overrides,
@@ -186,9 +216,11 @@ export async function POST(req: NextRequest) {
   let overrides: Record<string, boolean> = {}
   try { overrides = JSON.parse(txt(form.get('overrides')) || '{}') } catch { /* ticked nothing */ }
 
+  const lender = await loadLender(deal)
   const built = assembleMilestoneEmail({
     deal, templateId: template.id,
-    rules: await loadRules(deal),
+    rules: lender.rules,
+    rateNotice: await loadRateNotice(lender.row),
     brand: await resolveBrand(txt(form.get('brandId'))),
     sender: { name: sender.name, email: sender.email, phone: sender.phone },
     overrides,
@@ -293,6 +325,8 @@ export async function POST(req: NextRequest) {
     to: where.to,
     cc: where.cc,
     attached: attachments.length > 0,
+    // What this particular email told them about the rate.
+    rateNotice: !!built.rateNotice,
   }
   let recorded = false
   try {

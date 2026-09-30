@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ctas } from '@/lib/email-buttons'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { type Brand, resolveBrand, brandLegal } from '@/lib/brand'
+import { rateNoticeLines } from '@/lib/rate-notice-server'
 import { isRecommended, recommendedLabel, recommendedOption, recommendedFirst } from '@/lib/recommended-option'
 // EVERY DOLLAR FIGURE IN A CLIENT EMAIL GOES THROUGH money().
 //
@@ -318,7 +319,15 @@ export async function POST(req: NextRequest) {
   body += buildLenderTable(sortedLenders, isBridging, d, d.refinanceSplits, d.propertyValue)
 
   body += p('Please let us know which lender you would like to proceed with and if you have any questions regarding the numbers above.')
-  body += notesBox(d.importantNotesList || ['Any rates or fees quoted are subject to change', 'This email does not constitute as a formal approval'])
+  // THE RBA NOTICE, FIRST IN THE BOX THE CLIENT ALREADY READS FOR CAVEATS.
+  //
+  // This email puts several banks on one page and they will not all move on the
+  // same day, so it names which options it applies to where only some are still
+  // to pass it on. Empty where the notice is off, or where every bank quoted has
+  // already moved. See lib/rate-notice.ts.
+  const rbaLines = await rateNoticeLines((sortedLenders || []).map((l: any) => l?.lenderName))
+  body += notesBox([...rbaLines,
+    ...(d.importantNotesList || ['Any rates or fees quoted are subject to change', 'This email does not constitute as a formal approval'])])
   body += sig(b)
 
   const brand = await resolveBrand(d.brandId)

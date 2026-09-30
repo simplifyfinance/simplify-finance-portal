@@ -54,6 +54,11 @@ export type SentEmail = {
   // Whether the bank's letter went with it. Kept because "we told them" and
   // "we told them and sent the approval" are different claims.
   attached: boolean
+  // WHETHER THIS ONE CARRIED THE RBA NOTICE. An email sent on the 2nd said the
+  // rate did not include the increase; one sent on the 25th did not, because by
+  // then the bank had passed it on. In six months that is a question with an
+  // answer rather than a guess. See lib/rate-notice.ts.
+  rateNotice?: boolean
 }
 
 export function emailsSent(deal: any): SentEmail[] {
@@ -68,6 +73,7 @@ export function emailsSent(deal: any): SentEmail[] {
       to: Array.isArray(x.to) ? x.to.map(txt).filter(Boolean) : [],
       cc: Array.isArray(x.cc) ? x.cc.map(txt).filter(Boolean) : [],
       attached: !!x.attached,
+      rateNotice: x.rateNotice === true,
     }))
 }
 

@@ -63,6 +63,11 @@ export type AssembleInput = {
   // time. Empty is normal: the sentence then names who has to be on the policy
   // without saying for how much.
   insuranceAmount?: string
+  // THE RBA NOTICE FOR THIS DEAL'S LENDER, already decided - empty where the
+  // notice is off or that bank has passed the increase on. Resolved by the
+  // route, which is the only part of this that can read settings. See
+  // lib/rate-notice.ts.
+  rateNotice?: string
   now?: Date
 }
 
@@ -78,6 +83,8 @@ export type Assembled = {
   // a missing solicitor email is a thing to go and fix, and the email is still
   // correct without it.
   problems: string[]
+  // Whether the RBA notice went on this one, so the deal can record it.
+  rateNotice: boolean
 }
 
 // "24 December 2026", the way a person says a date rather than the way a
@@ -216,6 +223,7 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
       senderPhone: input.sender.phone,
       senderWeb: brandWeb(brand),
       extra: txt(input.extra),
+      rateNotice: txt(input.rateNotice),
     })
   } else {
     const isExtension = template.id === 'preapproval_extension'
@@ -241,6 +249,7 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
       senderPhone: input.sender.phone,
       senderWeb: brandWeb(brand),
       extra: txt(input.extra),
+      rateNotice: txt(input.rateNotice),
     })
   }
 
@@ -254,6 +263,7 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
     cc: [...new Set(cc)].filter(a => a && !to.includes(a)),
     blocks,
     problems,
+    rateNotice: !!txt(input.rateNotice),
   }
 }
 
