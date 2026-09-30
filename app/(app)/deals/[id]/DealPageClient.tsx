@@ -129,6 +129,9 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   // evrythign on all tabs". Reworking a card is never one tab's worth of work.
   // See lib/deal-lock.ts.
   const [dealUnlocked, setDealUnlocked] = useState(false)
+  // Bumped when a document is added on the Fact Find tab, so the list above the
+  // tabs picks it up. The list moved out of that form - see DealDocuments.
+  const [documentsVersion, setDocumentsVersion] = useState(0)
 
   // The milestone columns the progress bar is built from - and NOTHING else.
   //
@@ -429,7 +432,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           disables wholesale - so the documents became unreachable exactly when
           they are wanted. Reading a deal changes nothing; see
           components/DealDocuments.tsx. */}
-      <DealDocuments deal={dealData} me={me}
+      <DealDocuments deal={dealData} me={me} version={documentsVersion}
         onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
 
       <div className="flex gap-2 mb-6">
@@ -445,7 +448,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
         role={userRole} me={me}
         onUnlocked={() => { setDealUnlocked(true); reloadFile() }}>
         <TabBoundary tab={stage}>
-          {stage === 'FactFind' && <FactFindForm whoElseHere={whoElseHere} me={me} deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
+          {stage === 'FactFind' && <FactFindForm whoElseHere={whoElseHere} me={me} deal={dealData} onDocumentsChanged={() => setDocumentsVersion(v => v + 1)} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, fact_find_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} onSaveStatus={setSaveStatus} />}
           {stage === 'Statements' && <StatementAnalysis deal={dealData} />}
           {stage === 'BC' && <BCForm whoElseHere={whoElseHere} me={me} deal={dealData} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, bc_data: data }))} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} />}
           {stage === 'LO' && <LOForm whoElseHere={whoElseHere} me={me} deal={dealData} onStageChange={changeStage} userRole={userRole} onSaveStatus={setSaveStatus} onDataChange={(data) => setDealData((prev: any) => ({ ...prev, lo_data: data }))} onDealFieldChange={(field, value) => setDealData((prev: any) => ({ ...prev, [field]: value }))} />}

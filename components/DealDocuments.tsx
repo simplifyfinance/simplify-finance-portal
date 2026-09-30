@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { builtFrom, behindLine, documentsAreCurrent } from '@/lib/keeping-up'
+import { isLocked } from '@/lib/deal-lock'
 
 // THE THREE DOCUMENTS, REACHABLE FROM ANYWHERE ON THE DEAL.
 //
@@ -62,9 +63,12 @@ const KINDS = {
 
 type Kind = keyof typeof KINDS
 
-export default function DealDocuments({ deal, me, onUpdated }: {
+export default function DealDocuments({ deal, me, version, onUpdated }: {
   deal: any
   me?: { id: string | null; name: string }
+  // Bumped by the Fact Find tab when somebody adds a document there. The list
+  // moved off that tab on 30 Sep 2026 - see the note in FactFindForm.
+  version?: number
   onUpdated?: (patch: any) => void
 }) {
   const supabase = createSupabaseBrowser()
@@ -90,7 +94,7 @@ export default function DealDocuments({ deal, me, onUpdated }: {
       .order('created_at', { ascending: false })
     setFiled((data || []) as any)
   }
-  useEffect(() => { loadFiled() }, [deal.id])
+  useEffect(() => { loadFiled() }, [deal.id, version])
 
   // One current copy per kind, replaced in place. The path decides that, not
   // the name - the name follows the clients and can change.
@@ -115,6 +119,20 @@ export default function DealDocuments({ deal, me, onUpdated }: {
     setNote(`${KINDS[kind].label} replaced on file.`)
     loadFiled()
     return true
+  }
+
+  // REMOVING ONE IS AN EDIT, so it obeys the lock - unlike opening, which is
+  // reading and never does. This is the whole distinction that went wrong four
+  // times yesterday, made explicit in one component.
+  async function removeFiled(id: string, path: string) {
+    if (!confirm('Remove this document from the deal? This cannot be undone.')) return
+    setErr(''); setNote('')
+    const { error: rmErr } = await supabase.storage.from('deal-documents').remove([path])
+    if (rmErr) { setErr(`That document was not removed — ${rmErr.message}`); return }
+    const { error } = await supabase.from('deal_documents').delete().eq('id', id)
+    if (error) { setErr(`The file went but the list was not updated — ${error.message}`); return }
+    setNote('Document removed.')
+    loadFiled()
   }
 
   async function openFiled(path: string) {
@@ -257,11 +275,20 @@ export default function DealDocuments({ deal, me, onUpdated }: {
         <div className="mt-2 flex items-center gap-2 flex-wrap">
           <span className="text-[9px] font-bold tracking-[.07em] uppercase text-[#C3BDB2] mr-1">On file</span>
           {filed.map(f => (
-            <button key={f.id} onClick={() => openFiled(f.file_path)}
-              className="text-[11.5px] text-[#2DBEFF] hover:underline max-w-[240px] truncate"
-              title={f.file_name}>
-              {f.file_name}
-            </button>
+            <span key={f.id} className="inline-flex items-center gap-1 max-w-[280px]">
+              <button onClick={() => openFiled(f.file_path)}
+                className="text-[11.5px] text-[#2DBEFF] hover:underline truncate"
+                title={f.file_name}>
+                {f.file_name}
+              </button>
+              {/* Only when the deal is open to edits. Opening is reading and is
+                  always allowed; removing is not. */}
+              {!isLocked(deal) && (
+                <button onClick={() => removeFiled(f.id, f.file_path)}
+                  aria-label={`Remove ${f.file_name}`}
+                  className="text-[11px] text-[#D6D1C7] hover:text-[#8E3A34]">&times;</button>
+              )}
+            </span>
           ))}
         </div>
       )}

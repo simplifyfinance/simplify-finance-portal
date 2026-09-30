@@ -360,7 +360,7 @@ function OwnershipCheckboxes({ applicants, ownership, onChange, label = 'Respons
   )
 }
 
-export default function FactFindForm({ deal, onDataChange, onDealFieldChange, onSaveStatus, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null }; deal: any; onDataChange?: (d: FactFindData) => void; onDealFieldChange?: (field: string, value: string) => void; onSaveStatus?: (s: SaveStatus) => void }) {
+export default function FactFindForm({ deal, onDataChange, onDealFieldChange, onSaveStatus, onDocumentsChanged, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null }; deal: any; onDataChange?: (d: FactFindData) => void; onDealFieldChange?: (field: string, value: string) => void; onSaveStatus?: (s: SaveStatus) => void; onDocumentsChanged?: () => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `fact_find_${deal.id}`
   const bc = deal.bc_data || {}
@@ -716,14 +716,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     onDealFieldChange?.(field, value)
   }
 
-  const [documents, setDocuments] = useState<any[]>([])
   const [uploadingDoc, setUploadingDoc] = useState(false)
-
-  useEffect(() => {
-    supabase.from('deal_documents').select('*').eq('deal_id', deal.id).order('created_at', { ascending: false }).then(({ data }) => {
-      if (data) setDocuments(data)
-    })
-  }, [])
 
   // Several at a time, one after another so a failure names the file that failed.
   async function uploadDocuments(files: File[]) {
@@ -750,27 +743,10 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     if (insertError) {
       alert('Error saving document record: ' + insertError.message)
     } else if (inserted) {
-      setDocuments(prev => [inserted, ...prev])
+      // The list is above the tabs now, so it is told rather than updated.
+      onDocumentsChanged?.()
     }
     setUploadingDoc(false)
-  }
-
-  async function downloadDocument(filePath: string) {
-    const { data, error } = await supabase.storage.from('deal-documents').createSignedUrl(filePath, 60)
-    if (error) { alert('Error generating download link: ' + error.message); return }
-    if (data?.signedUrl) window.open(data.signedUrl, '_blank')
-  }
-
-  async function deleteDocument(id: string, filePath: string) {
-    if (!confirm('Delete this document? This cannot be undone.')) return
-    await supabase.storage.from('deal-documents').remove([filePath])
-    const problem = await checkedWrite(
-      supabase.from('deal_documents').delete().eq('id', id), 'That document')
-    // The file itself is already gone from storage. Leaving the row on screen
-    // when the row is still in the database is the honest thing to show.
-    if (problem) { save.failed(problem); return }
-    save.recovered()
-    setDocuments(prev => prev.filter(doc => doc.id !== id))
   }
 
   const [showAddApplicantModal, setShowAddApplicantModal] = useState(false)
@@ -1158,20 +1134,21 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               hint="as many at once as you like"
               onFiles={files => uploadDocuments(files)} />
           </div>
-          {documents.length === 0 ? (
-            <p className="text-xs text-gray-300">No documents yet.</p>
-          ) : (
-            <div className="flex flex-col gap-1">
-              {documents.map(doc => (
-                <div key={doc.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-2.5 py-1.5">
-                  <button onClick={() => downloadDocument(doc.file_path)} className="text-xs text-[#343333] hover:text-[#2DBEFF] truncate text-left flex-1">
-                    {doc.file_name}
-                  </button>
-                  <button onClick={() => deleteDocument(doc.id, doc.file_path)} className="text-xs text-gray-300 hover:text-red-400 ml-2 flex-shrink-0">✕</button>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* THE LIST LIVES ON THE DEAL NOW, above the tabs.
+              
+              Fabio, 30 Sep 2026, choosing between two lists and one: "B".
+              
+              It was here and it was dead on every lodged deal - this tab is
+              wrapped in a disabled fieldset once a deal is with the lender, and
+              a disabled fieldset cannot have exceptions. Rather than keep a
+              second copy working around that, there is one list, outside the
+              lock, where opening a document always works.
+              
+              Adding one is still done here, because adding is an edit and edits
+              belong inside the lock. See components/DealDocuments.tsx. */}
+          <p className="text-xs text-gray-300">
+            Everything attached to this deal is listed at the top of the page, under Documents.
+          </p>
         </div>
 
         <div className="mt-4 pt-4 border-t border-gray-100">

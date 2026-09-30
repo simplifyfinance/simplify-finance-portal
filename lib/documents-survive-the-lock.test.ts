@@ -148,10 +148,34 @@ describe('what the buttons do, and what they leave alone', () => {
     expect(docs).toContain('if (!already?.length)')
   })
 
-  it('never delete anything', () => {
-    // Replacing is not removing. Nothing here may take a document off a deal.
-    expect(docs).not.toMatch(/\.remove\(/)
-    expect(docs).not.toMatch(/\.delete\(/)
+  // 30 Sep 2026: this used to read "never delete anything", which was true when
+  // the component only generated PDFs. The deal's document list moved here that
+  // afternoon and removing one came with it. The rule is not "never delete" - it
+  // is that GENERATING never deletes, and that removing is a deliberate act
+  // which obeys the lock.
+  it('generating never deletes anything', () => {
+    // Replacing a filed copy is an upsert. Building a document must never take
+    // one off the deal as a side effect.
+    const build = docs.slice(docs.indexOf('async function buildAndFile'), docs.indexOf('async function download('))
+    const file = docs.slice(docs.indexOf('async function fileIt'), docs.indexOf('async function removeFiled'))
+    for (const fn of [build, file]) {
+      expect(fn).not.toMatch(/\.remove\(/)
+      expect(fn).not.toMatch(/\.delete\(/)
+    }
+  })
+
+  it('removing one asks first, and only when the deal is open to edits', () => {
+    const fn = docs.slice(docs.indexOf('async function removeFiled'), docs.indexOf('async function openFiled'))
+    expect(fn).toContain('confirm(')
+    // Opening is reading and is always allowed. Removing is not.
+    expect(docs).toContain('{!isLocked(deal) && (')
+    expect(docs).toContain('onClick={() => removeFiled(')
+  })
+
+  it('opening one is never gated on the lock', () => {
+    const at = docs.indexOf('onClick={() => openFiled(')
+    const around = docs.slice(Math.max(0, at - 200), at)
+    expect(around).not.toContain('isLocked')
   })
 
   it('hand you the document before trying to file it', () => {
@@ -192,6 +216,39 @@ describe('what the buttons do, and what they leave alone', () => {
 // fact find and the borrowing capacity. Worse, changing tab CLEARED the unlock -
 // so unlocking compliance, going to lending options and coming back left it
 // locked again.
+// ONE LIST, NOT TWO.
+//
+// Fabio, 30 Sep 2026, asked whether he wanted the Fact Find list fixed or
+// removed: "B" - removed. Two lists of the same documents can disagree, and the
+// one on that tab was dead on every lodged deal anyway.
+describe('the deal has one document list', () => {
+  const factFind = readFileSync('app/(app)/deals/[id]/FactFindForm.tsx', 'utf8')
+
+  it('the Fact Find tab no longer lists or opens them', () => {
+    expect(factFind).not.toContain('documents.map')
+    expect(factFind).not.toContain('downloadDocument')
+    expect(factFind).not.toContain('deleteDocument')
+  })
+
+  it('but still adds them, because adding is an edit and belongs inside the lock', () => {
+    expect(factFind).toContain('uploadDocuments')
+    expect(factFind).toContain('Drop documents here')
+  })
+
+  it('and tells the list above the tabs when it has', () => {
+    // Otherwise somebody uploads a file and the only list on the page does not
+    // show it until a reload.
+    expect(factFind).toContain('onDocumentsChanged?.()')
+    expect(readFileSync('app/(app)/deals/[id]/DealPageClient.tsx', 'utf8'))
+      .toContain('setDocumentsVersion(v => v + 1)')
+    expect(docs).toContain('[deal.id, version]')
+  })
+
+  it('and says where they went', () => {
+    expect(factFind).toContain('listed at the top of the page')
+  })
+})
+
 describe('unlocking a deal unlocks all of it', () => {
   const dealPage = readFileSync('app/(app)/deals/[id]/DealPageClient.tsx', 'utf8')
 
