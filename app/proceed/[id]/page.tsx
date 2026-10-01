@@ -1,15 +1,16 @@
 import { notFound } from 'next/navigation'
 import { loadProceed, stageFor, hasProceeded, buildNextStepsContent } from '@/lib/proceed-flow'
 import { confirmProceed } from './actions'
+import { optionFromLink } from '@/lib/bc-scenarios'
 import ProceedButton from './ProceedButton'
 
 // Opening this page reads the deal and nothing more. Until the client presses
 // the button, no stage moves, no credit officer is allocated and nobody is
 // emailed — which is what used to happen every time a mail scanner followed the
 // link on its way to the inbox.
-export default async function ProceedPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ from?: string }> }) {
+export default async function ProceedPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ from?: string; opt?: string }> }) {
   const { id } = await params
-  const { from } = await searchParams
+  const { from, opt } = await searchParams
 
   const result = await loadProceed(id)
   if (!result.ok) return notFound()
@@ -29,7 +30,13 @@ export default async function ProceedPage({ params, searchParams }: { params: Pr
   // Bound to this deal and this step, then handed to the button. The button is
   // a client component so it can say "just a moment" while it waits and show a
   // sentence if it fails - see ProceedButton.tsx for why that matters.
-  const submit = confirmProceed.bind(null, id, stage)
+  // WHICH OF THE TWO THEY PRESSED, OFF A URL ANYBODY CAN EDIT.
+  //
+  // Checked into 1, 2 or nothing before it is used for anything. It is never
+  // printed as text - only ever as the word "Option" and a digit we chose - so
+  // there is nothing here to put somebody else's words on this page.
+  const option = optionFromLink(opt)
+  const submit = confirmProceed.bind(null, id, stage, option)
 
   return (
     <div style={{ fontFamily: 'Arial, sans-serif', backgroundColor: '#F2E8DB', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
@@ -45,6 +52,15 @@ export default async function ProceedPage({ params, searchParams }: { params: Pr
               ? "We're moving your application forward. Here's exactly what happens next."
               : "Here is what happens once you confirm. Nothing moves until you press the button below."}
           </p>
+          {/* WHICH ONE THEY PRESSED, SAID BACK TO THEM. A client who chose
+              between two options wants to see that the right one was heard.
+              The word "Option" and a digit, both ours - never the label off
+              the link, which is text somebody else could have written. */}
+          {option && (
+            <p style={{ fontSize: '13px', fontWeight: 700, color: '#0F7B4F', margin: '12px 0 0' }}>
+              Option {option}
+            </p>
+          )}
         </div>
 
         {!done && <ProceedButton action={submit} />}

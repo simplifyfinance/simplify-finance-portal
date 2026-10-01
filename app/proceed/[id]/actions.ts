@@ -16,10 +16,13 @@ import { markProceeded } from '@/lib/proceed-flow'
 export type ProceedState = { ok: boolean; error?: string }
 
 export async function confirmProceed(
-  dealId: string, stage: 'BC' | 'LO', _prev: ProceedState, _form: FormData,
+  dealId: string, stage: 'BC' | 'LO', option: 1 | 2 | null, _prev: ProceedState, _form: FormData,
 ): Promise<ProceedState> {
   try {
-    const result = await markProceeded(dealId, stage, { source: 'client' })
+    // The option is bound on the server when the page is built, from a value
+    // already checked into 1, 2 or nothing. Nothing the browser posts decides
+    // it - a form field would be one more thing a person could edit.
+    const result = await markProceeded(dealId, stage, { source: 'client' }, option)
     if (!result.ok) {
       console.error('[proceed] the client pressed it and it did not save:', result.error)
       return { ok: false, error: 'That did not save. Please give us a call and we will sort it out.' }

@@ -8,8 +8,11 @@ import CreditOfficerAssignment from './CreditOfficerAssignment'
 import CurrencyInput from './CurrencyInput'
 import { can } from '@/lib/permissions'
 import { templateLabel } from '@/lib/templates'
+import { auDate } from '@/lib/client-position'
 import { PURPOSES, isDebtRecycling, limitCheck } from '@/lib/debt-recycling'
 import { isComplexRefinance, groupsOf } from '@/lib/complex-refinance'
+import { tabsOf, canAdd, canSwap, swapTo, addScenario, removeParked, renameLive,
+         labelOf, scenarioCount, downstreamStarted, parkedOf } from '@/lib/bc-scenarios'
 import { proceedCredit } from '@/lib/deal-status'
 import { emailParagraphs, htmlToPlainText, copyHtmlAndPlain} from '@/lib/rich-text'
 import { totalCost, fundsToContribute, constructionLvr, LAND_FUNDING } from '@/lib/construction'
@@ -871,6 +874,32 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // inside the 700ms the autosave waits used to take the sentence with it.
   useKeepalive({ dealId: deal.id, column: 'bc_data', own: ownRef.current, current: () => buildBcData() })
 
+  // SWITCHING SCENARIO IS THREE COLUMNS IN ONE WRITE, AND THEN A RELOAD.
+  //
+  // The form autosaves bc_data continuously. A swap that left this component
+  // holding the old scenario in memory would have the next autosave write it
+  // straight back over the one just brought out - so the page is reloaded and
+  // every box re-seeds from the database. A swap is a deliberate, rare act;
+  // paying a reload for certainty is the right trade.
+  //
+  // What gets parked is what is ON SCREEN, not deal.bc_data, which is only as
+  // fresh as the last save that landed.
+  const [scenarioBusy, setScenarioBusy] = useState(false)
+  const [scenarioError, setScenarioError] = useState('')
+
+  async function writeScenarios(patch: any) {
+    setScenarioBusy(true); setScenarioError('')
+    const { data, error } = await supabase.from('deals').update(patch).eq('id', deal.id).select('id')
+    if (error || !data?.length) {
+      setScenarioBusy(false)
+      setScenarioError(error?.message || 'That did not save. Nothing was changed.')
+      return
+    }
+    window.location.reload()
+  }
+
+  const liveDeal = () => ({ ...deal, bc_data: buildBcData() })
+
   const [showMoveToLoPopup, setShowMoveToLoPopup] = useState(false)
   const [sendingMoveToLo, setSendingMoveToLo] = useState(false)
   const [moveToLoMsg, setMoveToLoMsg] = useState('')
@@ -1257,6 +1286,11 @@ Key assumptions: ${checklistText}`
           // The values behind the property cards. The BC holds no value per
           // property and must not invent one - these come from the fact find.
           ffProperties: (ff.properties || []).map((pr: any) => ({ address: pr?.address || '', value: pr?.value || '' })),
+          // BOTH SCENARIOS, WHEN THERE ARE TWO. The email builder puts them side
+          // by side; with one, nothing changes and it builds exactly the email
+          // it builds today. See lib/bc-scenarios.ts.
+          scenarioLabel: labelOf(buildBcData()),
+          secondScenario: parkedOf(deal)[0]?.bc || null,
           additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
       })
       if (!res.ok) {
@@ -1355,6 +1389,74 @@ Key assumptions: ${checklistText}`
 
       {activeTab === 'form' && (
         <div>
+          {/* TWO SCENARIOS ON ONE DEAL, instead of cloning the deal.
+              The tab you are on IS the scenario everything downstream is built
+              from - which is only safe while nothing downstream exists, and that
+              is exactly why the swap disappears once it does. See
+              lib/bc-scenarios.ts. */}
+          {(scenarioCount(deal) > 1 || canAdd(deal)) && (
+            <div className="bg-white border border-gray-100 rounded-xl p-4 mb-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                {tabsOf(liveDeal()).map(t => (
+                  <button key={t.label + t.parkedIndex} disabled={scenarioBusy || (!t.live && !canSwap(deal))}
+                    onClick={() => { if (t.live) return
+                      const w = swapTo(liveDeal(), t.parkedIndex); if (w) writeScenarios(w) }}
+                    title={!t.live && !canSwap(deal)
+                      ? 'Lending options have been started on the other scenario. Clone the deal to change it.'
+                      : ''}
+                    className={t.live
+                      ? 'inline-flex items-center gap-2 bg-[#F4FBF7] border border-[#BBE7CF] text-[#0F7B4F] rounded-lg px-3 py-1.5 text-[12.5px] font-semibold'
+                      : canSwap(deal)
+                        ? 'bg-white border border-gray-200 text-gray-600 rounded-lg px-3 py-1.5 text-[12.5px] hover:border-[#2DBEFF] hover:text-[#2DBEFF] transition'
+                        : 'bg-[#FCFCFB] border border-dashed border-gray-200 text-[#C3BDB2] rounded-lg px-3 py-1.5 text-[12.5px] cursor-default'}>
+                    {t.live && <span className="w-[7px] h-[7px] rounded-full bg-[#12A150] inline-block" />}
+                    {t.label}
+                  </button>
+                ))}
+                {canAdd(deal) && (
+                  <button disabled={scenarioBusy}
+                    onClick={() => { const w = addScenario(liveDeal(), 'Second scenario'); if (w) writeScenarios(w) }}
+                    className="text-xs text-[#2DBEFF] hover:underline px-1">+ Add scenario</button>
+                )}
+                {scenarioCount(deal) > 1 && (
+                  <div className="ml-auto flex items-center gap-3">
+                    <button disabled={scenarioBusy}
+                      onClick={() => { const name = window.prompt('Call this scenario', labelOf(buildBcData()))
+                        if (name && name.trim()) writeScenarios(renameLive(liveDeal(), name.trim())) }}
+                      className="text-[11.5px] text-gray-400 hover:text-[#2E2A26]">Rename</button>
+                    {canSwap(deal) && (
+                      <button disabled={scenarioBusy}
+                        onClick={() => { const other = tabsOf(deal).find(t => !t.live)
+                          if (!other) return
+                          if (!window.confirm(`Remove "${other.label}"? Everything typed into it goes with it.`)) return
+                          const w = removeParked(liveDeal(), other.parkedIndex); if (w) writeScenarios(w) }}
+                        className="text-[11.5px] text-gray-400 hover:text-red-500">Remove the other</button>
+                    )}
+                  </div>
+                )}
+              </div>
+              {scenarioCount(deal) > 1 && (
+                <div className="text-[11.5px] text-[#0F7B4F] mt-2.5">
+                  {downstreamStarted(deal)
+                    ? <span className="text-[#8A6218]">Lending options have been started on this scenario, so it is the one going ahead. To change it now, clone the deal.</span>
+                    : <>This is the scenario going ahead &mdash; lending options and compliance are built from it.</>}
+                </div>
+              )}
+              {/* WHAT THE CLIENT SAID. Recorded when they pressed one of the two
+                  buttons in the email - a preference, not a switch. Somebody
+                  here still chooses. See markProceeded in lib/proceed-flow.ts. */}
+              {(deal.client_chose_scenario === 1 || deal.client_chose_scenario === 2) && (
+                <div className="text-[11.5px] text-[#0F7B4F] mt-2 font-semibold">
+                  The client pressed Option {deal.client_chose_scenario}
+                  {deal.client_chose_scenario_at ? ` on ${auDate(deal.client_chose_scenario_at)}` : ''}
+                  {' \u2014 '}
+                  {tabsOf(deal)[deal.client_chose_scenario - 1]?.label || ''}
+                </div>
+              )}
+              {scenarioError && <div className="text-[11.5px] text-red-600 mt-2">{scenarioError}</div>}
+            </div>
+          )}
+
           <div className="bg-white border border-gray-100 rounded-xl p-4 mb-4">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">BC template</div>
             {deal.bc_completed_at && !showAllTemplates ? (

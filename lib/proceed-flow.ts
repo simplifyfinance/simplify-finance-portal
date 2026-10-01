@@ -123,7 +123,22 @@ async function notifyBrokerOfProgress(
   }
 }
 
-export async function markProceeded(dealId: string, stage: ProceedStage, by: ProceedBy) {
+// WHICH OF THE TWO THEY PRESSED.
+//
+// Fabio, 1 Oct 2026, wanted both scenarios in one email - and the moment there
+// are two, "I am ready to proceed" no longer says what they are proceeding with.
+//
+// IT RECORDS A PREFERENCE. IT DOES NOT SWITCH THE SCENARIO. The click arrives
+// from a link in an email, so the value is whatever somebody put in the URL, and
+// swapping a deal's whole borrowing capacity on the strength of that is not a
+// thing this portal will do. It writes a number and a timestamp; a human still
+// presses "go ahead with this one" on the BC.
+//
+// Checked into 1, 2 or nothing before it is allowed anywhere near the database
+// - see optionFromLink in lib/bc-scenarios.ts.
+export async function markProceeded(
+  dealId: string, stage: ProceedStage, by: ProceedBy, option?: 1 | 2 | null,
+) {
   // SAME REASON AS loadProceed ABOVE. The client pressing the button has no
   // session, so the update below returned "no rows" - which this function
   // correctly reported as "the deal would not save", to a client who had done
@@ -151,9 +166,16 @@ export async function markProceeded(dealId: string, stage: ProceedStage, by: Pro
   if (!alreadyProceeded) {
     const nowIso = new Date().toISOString()
     if (stage === 'BC') {
+      // Only ever set, never cleared by a press that did not carry one - an
+      // older email with a single button must not wipe what a client already
+      // told us.
+      const chose = (option === 1 || option === 2)
+        ? { client_chose_scenario: option, client_chose_scenario_at: nowIso }
+        : {}
       const { data: wrote, error: wErr } = await supabase.from('deals').update({
         stage: 'LO', last_tab: 'LO', client_proceeded: true, proceeded_at: nowIso,
         proceeded_source: by.source, proceeded_by: by.source === 'office' ? (by.name || null) : null,
+        ...chose,
       }).eq('id', dealId).select('id')
       // RLS refuses a write by returning no rows and no error. Saying the client
       // agreed when nothing was stored would be the worst kind of quiet failure.

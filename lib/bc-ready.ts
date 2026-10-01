@@ -74,6 +74,7 @@ const LABEL: Record<string, { label: string; where: string }> = {
   totalLimit:        { label: 'Total limit after restructure', where: 'Scenario details' },
   splitPurposes:     { label: 'Purpose',                   where: 'Loan splits - every split needs one' },
   splitProperties:   { label: 'Property',                  where: 'Loan splits - every split needs one' },
+  ioYears:           { label: 'IO period (years)',         where: 'Loan splits - on every interest only split' },
   splitAmount:       { label: 'Amount',                    where: 'Loan splits, split 1' },
   splitRate:         { label: 'Rate',                      where: 'Loan splits, split 1' },
   split2Amount:      { label: 'Amount',                    where: 'Loan splits, split 2' },
@@ -95,10 +96,31 @@ function valueOf(key: string, d: any): any {
 
 export function missingForEmail(template: string, d: any): MissingBox[] {
   const wanted = NEEDS[txt(template)] || NEEDS.custom
-  return wanted
+  const missing = wanted
     .filter(k => empty(valueOf(k, d)))
     .map(k => LABEL[k])
     .filter(Boolean)
+
+  // THE ONE THAT APPLIES TO EVERY SCENARIO.
+  //
+  // Fabio, 1 Oct 2026: "ensure we are including IO perios 1-5 years as we tehnd
+  // to forget." An interest only split with no period printed "Interest only"
+  // and stopped, which a client reads as thirty years of it. It is not a box
+  // one template wants and another does not - any scenario can carry an
+  // interest only split - so it is checked for all of them rather than added to
+  // fourteen lists, which is how the next scenario would miss it.
+  if (ioYearsMissing(d)) missing.push(LABEL.ioYears)
+
+  return missing
+}
+
+const IO = /interest only|^io$/i
+
+export function ioYearsMissing(d: any): boolean {
+  const splits = Array.isArray(d?.splits) ? d.splits : []
+  return splits.some((s: any) =>
+    // An empty row the form is always carrying is not a split.
+    !empty(s?.amount) && IO.test(txt(s?.type)) && empty(s?.ioYears))
 }
 
 // "Suburb, Existing loan balance and Amount (split 1)"

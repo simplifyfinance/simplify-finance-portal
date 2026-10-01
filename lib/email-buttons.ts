@@ -71,3 +71,38 @@ export function ctas(calendly: string, proceedUrl?: string) {
 
   return lead + button + call
 }
+
+// TWO OPTIONS, TWO BUTTONS.
+//
+// Fabio, 1 Oct 2026: both scenarios in one email. The moment there are two, "I
+// am ready to proceed" stops being an instruction and becomes a coin toss - and
+// that button moves the deal to lending options, allocates a credit officer,
+// requests the documents and emails two people.
+//
+// So the client says WHICH, by pressing one of two. Every Outlook rule the
+// single button learned the hard way applies here unchanged: the colour on the
+// cell, the text colour on the anchor, never on the paragraph.
+//
+// The second is a quieter grey. Two identical buttons side by side is the
+// mistake the single button was built out of in September - neither of them
+// reads as the action. These are stacked and distinguishable, and each one says
+// what it is for rather than "Option 2".
+export function ctasTwo(calendly: string, options: { url: string; label: string }[]) {
+  const live = options.filter(o => String(o?.url || '').trim() && String(o?.label || '').trim())
+  if (live.length < 2) return ctas(calendly, live[0]?.url)
+
+  const lead = `<p style="font-size:13px;font-weight:600;margin:0 0 10px;line-height:1.5">`
+    + `<span style="color:#343333;">Which one would you like to go ahead with? Press it below and we will get started.</span></p>`
+
+  const button = (o: { url: string; label: string }, colour: string, ink: string) =>
+    `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px"><tr>
+      <td bgcolor="${colour}" align="center" style="background:${colour};border-radius:6px;padding:12px 18px">
+        <a href="${o.url}" style="color:${ink};font-size:14px;font-weight:700;text-decoration:none;display:inline-block">${o.label} &nbsp;&rarr;</a>
+      </td></tr></table>`
+
+  return lead
+    + button(live[0], '#2DBEFF', '#343333')
+    + button(live[1], '#E8E1D6', '#343333')
+    + `<p style="font-size:12px;margin:0 0 20px;line-height:1.5">`
+      + `<a href="${calendly}" style="color:#343333;text-decoration:underline">Not sure yet? Book a call with us</a></p>`
+}

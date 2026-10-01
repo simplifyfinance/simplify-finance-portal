@@ -2,11 +2,13 @@ import { altLvrPurchase, altLvrEquity, altRepayment } from '@/lib/alt-scenario'
 import { dutyLabel as sharedDutyLabel } from '@/lib/duty-state'
 import { NextRequest, NextResponse } from 'next/server'
 import { rateNoticeLines } from '@/lib/rate-notice-server'
-import { ctas } from '@/lib/email-buttons'
+import { ctas, ctasTwo } from '@/lib/email-buttons'
+import { labelOf as scenarioLabel } from '@/lib/bc-scenarios'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { lmiClientLines, lmiIsInTheLoan, clientLoan } from '@/lib/lmi'
-import { repaymentOf, splitRows, cardTitle, structureLead, realSplits } from '@/lib/split-cards'
+import { repaymentOf, splitRows, cardTitle, structureLead, realSplits,
+         repaymentTypeLine } from '@/lib/split-cards'
 import { purchaseRows } from '@/lib/purchase-rows'
 // EVERY DOLLAR FIGURE IN A CLIENT EMAIL GOES THROUGH money().
 //
@@ -453,7 +455,111 @@ export async function POST(req: NextRequest) {
 
   let body = ''
 
-  if (template === 'refinance_equity' && d.compareOptions) {
+  // --- TWO SCENARIOS IN ONE EMAIL -------------------------------------------
+  //
+  // Fabio, 1 Oct 2026: "the main question is how we communicate with clients I
+  // would prefer both scenarios one email".
+  //
+  // BUILT FROM THE SHARED ROWS, NOT FROM FIFTEEN TEMPLATES' PROSE. Each
+  // template below writes its own sentences, its own headline and its own
+  // closing line, and running two of those into one email would read as two
+  // emails stapled together - twice the preamble, twice the sign-off. So an
+  // option here is its figures: the purchase block where something is being
+  // bought, and one card per split, both from the same files every other
+  // scenario uses. The figures cannot disagree with the single-scenario email
+  // because they are the same rows.
+  //
+  // AT A GLANCE FIRST. Three rows, which is the question a client is actually
+  // asking: what do I borrow, what do I pay, what do I have to find.
+  if (d.secondScenario && typeof d.secondScenario === 'object') {
+    const asOption = (bc: any, label: string, n: number) => {
+      const buys = readMoney(bc?.purchasePrice)
+      return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0 12px"><tr>
+          <td style="border-top:2px solid #343333;padding:12px 0 0">
+            <p style="font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;margin:0"><span style="color:#A29889;">Option ${n}</span></p>
+            <p style="font-size:15px;font-weight:700;margin:2px 0 0"><span style="color:#2E2A26;">${label}</span></p>
+          </td></tr></table>` +
+        (buys && buys > 0
+          ? card('The Purchase',
+              purchaseBlock({
+                price: bc.purchasePrice, duty: bc.stampDuty, dutyLabel: dutyLabel(bc),
+                loan: totalLending(bc.splits), contribution: bc.deposit, contributionFrom: bc.depositSource,
+                lmiApplicable: bc.lmiApplicable, lmi: bc.lmi, lmiTreatment: bc.lmiTreatment,
+              }) + buildLVRLine(bc, lmiIsInTheLoan(bc)))
+          : securityHead(bc) + (money(bc.existingLoanBal)
+              ? card('Today', existingLoanRow(bc) + rowIf('Property value', money(bc.propertyValue)))
+              : '')) +
+        splitCards(bc, 'Your loan', { termWithType: true })
+    }
+
+    // The money in the glance comes from the same two files the cards do, so a
+    // figure there can never contradict the figure three rows down.
+    const glanceOf = (bc: any) => {
+      const splits = realSplits(bc?.splits)
+      const loan = totalLending(bc?.splits)
+      const repay = splits.reduce((sum: number, sp: any) =>
+        sum + (readMoney(repaymentOf(sp, bc?.loanTerm)) || 0), 0)
+      const every = splits.length > 0 &&
+        splits.every((sp: any) => readMoney(repaymentOf(sp, bc?.loanTerm)))
+      const buys = readMoney(bc?.purchasePrice)
+      // THE SAME NUMBER THE CARD PRINTS, NOT A SECOND ONE WORKED OUT HERE.
+      //
+      // The first version added the deposit and the duty together and put
+      // $227,800 in the glance against the card's $190,000 three rows below -
+      // two answers to "what do I have to find", in one email, to a client.
+      // The deposit box is already price minus loan plus duty, kept that way in
+      // every direction by the BC; lib/purchase-rows.ts says so and prints it
+      // unchanged. So does this.
+      const find = readMoney(bc?.deposit) || 0
+      return [
+        ['Loan', money(loan)],
+        // A total across splits where one has no repayment would be a smaller
+        // number presented as the whole of it. Plausible, and therefore worse
+        // than absent.
+        ['Repayment', every && repay > 0 ? `${money(repay)}/mo` : ''],
+        ['You contribute', buys && buys > 0 ? (find > 0 ? money(find) : '') : 'Nothing'],
+      ].filter(([, v]) => v)
+    }
+
+    const col = (bc: any, label: string, n: number, edge: boolean) =>
+      `<td width="50%" bgcolor="#ffffff" style="background:#ffffff;padding:13px 14px;vertical-align:top${edge ? ';border-left:1px solid #EFE7DA' : ''}">
+        <p style="font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;margin:0 0 3px"><span style="color:#A29889;">Option ${n}</span></p>
+        <p style="font-size:13px;font-weight:700;margin:0 0 9px;line-height:1.35"><span style="color:#2E2A26;">${label}</span></p>
+        ${glanceOf(bc).map(([k, v]) =>
+          `<p style="font-size:12px;margin:3px 0"><span style="color:#777;">${k}</span> <span style="color:#343333;font-weight:600;">${v}</span></p>`).join('')}
+      </td>`
+
+    const one = d
+    const two = d.secondScenario
+    // ONE RULE FOR WHAT A SCENARIO IS CALLED - its own name, or the scenario it
+    // is. Decided in lib/bc-scenarios.ts so the email, the BC tabs and the deal
+    // card cannot call the same thing three things.
+    const label1 = scenarioLabel(one)
+    const label2 = scenarioLabel(two)
+    const link = (n: number) => dealId
+      ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC&opt=${n}`
+      : ''
+
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
+      p('There are two options open to you, and both work. Here they are side by side, then in detail underneath.') +
+      `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:18px"><tr>
+        <td bgcolor="#F2E8DB" style="background:#F2E8DB;padding:9px 14px;border-radius:8px 8px 0 0">
+          <p style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin:0"><span style="color:#7a5c3a;">At a glance</span></p>
+        </td></tr>
+        <tr><td style="padding:0"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+          ${col(one, label1, 1, false)}${col(two, label2, 2, true)}
+        </tr></table></td></tr></table>` +
+      asOption(one, label1, 1) +
+      asOption(two, label2, 2) +
+      check(checkItems) +
+      ctasTwo(b.calendly, [
+        { url: link(1), label: `Go ahead with ${label1}` },
+        { url: link(2), label: `Go ahead with ${label2}` },
+      ]) +
+      p('Have a look through both and tell us which suits you — we are happy to talk either one through.') +
+       notesBox(notes) + sig(b)
+
+  } else if (template === 'refinance_equity' && d.compareOptions) {
     const buildOptionColRE = (opt: any, label: string) => {
       const existingLoanN = parseFloat((d.existingLoanBal || '0').replace(/,/g, '')) || 0
       const equityReleaseN = parseFloat((opt.equityReleaseAmount || '0').replace(/,/g, '')) || 0
@@ -1015,7 +1121,13 @@ export async function POST(req: NextRequest) {
     const splitLines = recSplits.map((sp: any, i: number) => {
       const detail = [
         txt(sp?.rate) ? `${txt(sp.rate)}% p.a.*` : '',
-        txt(sp?.type) || '',
+        // THE INTEREST ONLY PERIOD, NOT JUST THE WORDS. Both scenarios built on
+        // 1 Oct 2026 printed the bare type, so an interest only split said
+        // "Interest only" and never for how long - which reads as thirty years
+        // of it. Fabio, same day: "ensure we are including IO perios 1-5 years
+        // as we tehnd to forget." One shared line decides it everywhere; see
+        // repaymentTypeLine in lib/split-cards.ts.
+        repaymentTypeLine(sp, d.loanTerm) || '',
         repaymentOf(sp, d.loanTerm) ? `${repaymentOf(sp, d.loanTerm)} per month` : '',
       ].filter(Boolean).join(' \u00b7 ')
       const under = [purposeLine(sp), detail].filter(Boolean).join(' \u00b7 ')
@@ -1104,7 +1216,13 @@ export async function POST(req: NextRequest) {
         g.splits.map((sp: any) => {
           const detail = [
             txt(sp?.rate) ? `${txt(sp.rate)}% p.a.*` : '',
-            txt(sp?.type) || '',
+            // THE INTEREST ONLY PERIOD, NOT JUST THE WORDS. Both scenarios built on
+            // 1 Oct 2026 printed the bare type, so an interest only split said
+            // "Interest only" and never for how long - which reads as thirty years
+            // of it. Fabio, same day: "ensure we are including IO perios 1-5 years
+            // as we tehnd to forget." One shared line decides it everywhere; see
+            // repaymentTypeLine in lib/split-cards.ts.
+            repaymentTypeLine(sp, d.loanTerm) || '',
             repaymentOf(sp, d.loanTerm) ? `${repaymentOf(sp, d.loanTerm)} per month` : '',
           ].filter(Boolean).join(' \u00b7 ')
           const under = [originalPurposeLine(sp), detail].filter(Boolean).join(' \u00b7 ')
