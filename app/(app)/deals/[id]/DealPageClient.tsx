@@ -35,6 +35,7 @@ import WhoIsDoingTheBc from '@/components/WhoIsDoingTheBc'
 import Outstanding from '@/components/Outstanding'
 import DealDocuments from '@/components/DealDocuments'
 import MilestoneEmails from '@/components/MilestoneEmails'
+import AnzAssessmentEmail from '@/components/AnzAssessmentEmail'
 import BrokerAssignment from './BrokerAssignment'
 import TestDealBand from '@/components/TestDealBand'
 import DealName from '@/components/DealName'
@@ -443,6 +444,11 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           tabs, outside the lock. See components/MilestoneEmails.tsx. */}
       <MilestoneEmails deal={dealData} me={me}
         onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+
+      {/* AND THE ONE EMAIL THAT IS NOT OURS TO SEND. ANZ deals only: it opens
+          Outlook addressed to their assessment team with the reference in the
+          subject. See components/AnzAssessmentEmail.tsx. */}
+      <AnzAssessmentEmail deal={dealData} />
 
       <div className="flex gap-2 mb-6">
         {tabs.map(({ key, label }) => (

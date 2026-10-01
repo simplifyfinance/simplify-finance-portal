@@ -400,7 +400,13 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
               {stage.snap === 'lodged' && (
                 <div className="mb-3 max-w-md">
                   <label className="flex flex-col gap-1">
-                    <span className={K}>{lender || 'Lender'}&rsquo;s reference for this application</span>
+                    {/* THE APPLICATION ID. Stored as lender_reference and labelled
+                        "reference for this application", which is the same
+                        thing said in words nobody here uses - so the team could
+                        not find the box they had been asked to fill in. Fabio,
+                        1 Oct 2026. The column keeps its name; renaming that
+                        would mean migrating live data to fix a word. */}
+                    <span className={K}>{lender || 'Lender'} Application ID</span>
                     <input className={IN} value={lenderRef} placeholder="the number they gave you"
                       onChange={e => setLenderRef(e.target.value)} />
                   </label>
