@@ -8,6 +8,7 @@ import CreditOfficerAssignment from './CreditOfficerAssignment'
 import CurrencyInput from './CurrencyInput'
 import { can } from '@/lib/permissions'
 import { templateLabel } from '@/lib/templates'
+import { PURPOSES, isDebtRecycling, limitCheck } from '@/lib/debt-recycling'
 import { proceedCredit } from '@/lib/deal-status'
 import { emailParagraphs, htmlToPlainText, copyHtmlAndPlain} from '@/lib/rich-text'
 import { totalCost, fundsToContribute, constructionLvr, LAND_FUNDING } from '@/lib/construction'
@@ -94,6 +95,7 @@ const TEMPLATES = [
   { id: 'family_pledge', label: 'Family pledge' },
   { id: 'smsf', label: 'SMSF purchase' },
   { id: 'construction', label: 'Construction loan' },
+  { id: 'debt_recycling', label: 'Debt recycling' },
   { id: 'custom', label: 'Custom (all fields)' },
 ]
 
@@ -110,6 +112,10 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
   family_pledge: { splits: [{ label: 'Main loan', amount: '', rate: '6.14', type: 'P&I' }, { label: 'Guarantee portion', amount: '', rate: '6.14', type: 'P&I' }] },
   smsf: { splits: [{ label: 'SMSF loan', amount: '', rate: '7.20', type: 'P&I' }] },
   construction: { splits: [{ label: 'Land loan', amount: '', rate: '6.14', type: 'P&I' }, { label: 'Construction loan', amount: '', rate: '6.39', type: 'Interest only' }] },
+  debt_recycling: { splits: [
+    { label: 'Home', amount: '', rate: '6.14', type: 'P&I', purpose: 'owner_occupied' },
+    { label: 'Investment', amount: '', rate: '6.39', type: 'Interest only', purpose: 'investment' },
+  ] },
 }
 
 // existingBalance: what is owed on THIS property today. Fabio, 16 Sep 2026, on a
@@ -117,7 +123,10 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
 // deal's own Existing loan balance in Scenario details is untouched and every
 // other screen still reads that one - this is optional, per split, and only that
 // split's card in the client email uses it. See lib/split-cards.ts.
-type Split = { label: string; amount: string; rate: string; type: string; ioYears?: string; existingBalance?: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string; interestCapitalised?: string }
+// purpose / fundsUsedFor: debt recycling only. What this split's money was
+// used for - the one thing that scenario's email says about a split beyond
+// its figures. See lib/debt-recycling.ts.
+type Split = { label: string; amount: string; rate: string; type: string; ioYears?: string; existingBalance?: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string; interestCapitalised?: string; purpose?: string; fundsUsedFor?: string }
 
 type AltScenario = {
   label?: string
@@ -172,6 +181,14 @@ const TEMPLATE_NOTES: Record<string, string[]> = {
     'Please note, lenders will require you to obtain independent financial and legal advice at your own cost as you will be a guarantor on the application.',
   ],
   construction: ['Construction cost estimates are indicative only and subject to builder contracts and council approvals.'],
+  // THE TAX LINE IS NOT OPTIONAL ON THIS ONE. Simplify Finance holds a credit
+  // licence, not a tax agent registration - see lib/debt-recycling.ts.
+  // The accountant line is NOT here. It is written into the structure card in
+  // the email itself, under the figures it is about, because this is editable
+  // text a broker can delete and that one is not ours to lose.
+  debt_recycling: [
+    'Keeping each split to a single purpose is what allows the purpose of the borrowing to stay clear over time. Redrawing from a split, or paying one down and using it again for something else, changes what that split was used for.',
+  ],
   custom: [],
 }
 
@@ -200,7 +217,7 @@ const formatNumber = formatAsTyped
 const BUYING_TEMPLATES = ['oo_purchase', 'oo_lvr_compare', 'investment_purchase', 'fhb',
   'investment_equity', 'buy_sell', 'bridging', 'smsf', 'family_pledge', 'construction']
 
-const REFINANCING_TEMPLATES = ['refinance_equity', 'refinance_only', 'investment_equity', 'buy_sell', 'bridging']
+const REFINANCING_TEMPLATES = ['refinance_equity', 'refinance_only', 'investment_equity', 'buy_sell', 'bridging', 'debt_recycling']
 
 
 const STATES = ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'] as const
@@ -474,6 +491,15 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // as the construction repayments - the person writing the deal knows the real
   // figure, and a calculated one is a guess wearing a decimal point.
   const [peakDebt, setPeakDebt] = useState(s.peakDebt || '')
+  // THE CONTAINER THE WHOLE DEBT RECYCLING EMAIL IS DRAWN AROUND. Typed, never
+  // worked out: on a restructure the limit is a fact the lender sets, and the
+  // splits inside it are what the broker is deciding. See lib/debt-recycling.ts.
+  const [totalLimit, setTotalLimit] = useState(s.totalLimit || '')
+  // WHICH SPLIT THE OFFSET IS ATTACHED TO. Not a detail: against an investment
+  // split it reduces interest on borrowing the client may be claiming, against
+  // the owner-occupied one it reduces interest on the portion with no investment
+  // purpose behind it. Held as that split's label - see offsetSplitLabel().
+  const [offsetSplit, setOffsetSplit] = useState(s.offsetSplit || '')
   // Defaults to a purchase, which is what every construction deal written
   // before today was. See lib/construction.ts.
   const [landFunding, setLandFunding] = useState(s.landFunding || 'purchase')
@@ -788,7 +814,8 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     newPurchaseLoanTerm: setNewPurchaseLoanTerm, salePrice: setSalePriceRaw, agentFees: setAgentFeesRaw,
     additionalSavings: setAdditionalSavingsRaw, equityRelease: setEquityRelease,
     depositSource: setDepositSource, lmi: setLmi, fhog: setFhog, guarantorName: setGuarantorName,
-    bridgingPeriod: setBridgingPeriod, peakDebt: setPeakDebt,
+    bridgingPeriod: setBridgingPeriod, peakDebt: setPeakDebt, totalLimit: setTotalLimit,
+    offsetSplit: setOffsetSplit,
     constructionCost: setConstructionCostRaw,
     landValue: setLandValueRaw, landFunding: setLandFunding, landLoanBalance: setLandLoanBalance,
     asIfCompleteValue: setAsIfCompleteValue,
@@ -929,13 +956,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // pending stays in pendingSave and is written by the effect above when the
     // form actually leaves.
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplit, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplit, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
   }
 
   // Does the saved email still match the scenario the deal is on? Read in three
@@ -1481,6 +1508,24 @@ Key assumptions: ${checklistText}`
                     </Field>
                   )}
               {REFINANCING_TEMPLATES.includes(template) && <Field label="Existing loan balance"><NumberInput value={existingLoanBal} onChange={handleExistingLoanBalChange} /></Field>}
+              {isDebtRecycling(template) && (
+                <Field label="Total limit after restructure">
+                  <NumberInput value={totalLimit} onChange={setTotalLimit} />
+                  <span className="text-[11px] text-gray-500 leading-snug">
+                    The facility the splits sit inside. Usually the same as the existing balance &mdash; the point of the email is that the total has not moved.
+                  </span>
+                </Field>
+              )}
+              {isDebtRecycling(template) && (
+                <Field label="Offset account sits against">
+                  <select className={selectCls} value={offsetSplit} onChange={e => setOffsetSplit(e.target.value)}>
+                    <option value="">&mdash; no offset &mdash;</option>
+                    {splits.filter(x => (x.label || '').trim()).map((x, i) => (
+                      <option key={i} value={x.label}>{x.label}</option>
+                    ))}
+                  </select>
+                </Field>
+              )}
               {template === "buy_sell" && <Field label="Expected sale price"><NumberInput value={salePrice} onChange={setSalePrice} /></Field>}
               {template === "buy_sell" && <Field label="Agent fees / selling costs"><NumberInput value={agentFees} onChange={setAgentFees} /></Field>}
               {template === "buy_sell" && (
@@ -1703,6 +1748,28 @@ Key assumptions: ${checklistText}`
                             </span>
                           )}
                         </Field>
+                        {/* WHAT THIS SPLIT'S MONEY WAS USED FOR.
+                            The only thing the debt recycling email says about a
+                            split beyond its figures, and the only thing we are
+                            licensed to say: a purpose is a fact about the loan,
+                            a deductibility is tax advice. Left blank, the email
+                            prints no purpose line at all rather than guessing
+                            one. See lib/debt-recycling.ts. */}
+                        {isDebtRecycling(template) && (
+                          <>
+                            <Field label="Purpose">
+                              <select className={selectCls} value={s.purpose || ''} onChange={e => updateSplit(i, 'purpose', e.target.value)}>
+                                <option value="">&mdash; select &mdash;</option>
+                                {PURPOSES.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}
+                              </select>
+                            </Field>
+                            <Field label="What the funds were used for">
+                              <input className={inputCls} value={s.fundsUsedFor || ''}
+                                placeholder="e.g. purchase 12 Example Road"
+                                onChange={e => updateSplit(i, 'fundsUsedFor', e.target.value)} />
+                            </Field>
+                          </>
+                        )}
                         {isRefinanceLinked && (
                           <Field label="Existing balance on this property">
                             <CurrencyInput className={inputCls} value={s.existingBalance || ""} onChange={v => updateSplit(i, 'existingBalance', v)} />
@@ -1774,6 +1841,20 @@ Key assumptions: ${checklistText}`
                     </div>
                     )
                   })}
+                  {/* THE SPLITS AGAINST THE LIMIT. Warn loudly, never block -
+                      the same rule as the peak debt box and the balances line
+                      above. A send refused at 6pm is the worse failure. */}
+                  {isDebtRecycling(template) && (() => {
+                    const c = limitCheck(buildBcData())
+                    if (!c.words) return null
+                    return (
+                      <div className={c.matches
+                        ? 'text-xs text-[#0F7B4F] bg-[#F4FBF7] border border-[#BBE7CF] rounded-lg px-3 py-2 leading-snug'
+                        : 'text-xs text-amber-800 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2 leading-snug'}>
+                        {c.matches ? '' : '\u26a0 '}{c.words}
+                      </div>
+                    )
+                  })()}
                   <button onClick={addSplit} className="text-xs text-[#2DBEFF] hover:underline text-left">{isMultiOption ? "+ Add option" : "+ Add split"}</button>
                 </div>
               </div>

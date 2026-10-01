@@ -18,6 +18,8 @@
 // a purchase price, so a blank purchase price is not missing - it is irrelevant,
 // and a warning that lists irrelevant things is one nobody reads twice.
 
+import { everySplitHasAPurpose } from './debt-recycling'
+
 const txt = (v: any) => String(v ?? '').trim()
 const empty = (v: any) => txt(v) === '' || txt(v) === '0'
 
@@ -38,6 +40,11 @@ const NEEDS: Record<string, string[]> = {
   family_pledge:       ['suburb', 'purchasePrice', 'deposit', 'guarantorName', 'splitAmount', 'splitRate'],
   smsf:                ['suburb', 'purchasePrice', 'deposit', 'splitAmount', 'splitRate'],
   construction:        ['suburb', 'landValue', 'constructionCost', 'asIfCompleteValue', 'splitAmount', 'splitRate'],
+  // The limit is the container the whole email is drawn around, and a split
+  // with no purpose on it is the one thing this scenario must never guess at -
+  // so both are boxes the email wanted and did not get. See lib/debt-recycling.ts.
+  debt_recycling:      ['suburb', 'existingLoanBal', 'propertyValue', 'totalLimit',
+                        'splitAmount', 'splitRate', 'splitPurposes'],
   custom:              ['splitAmount', 'splitRate'],
 }
 
@@ -58,6 +65,8 @@ const LABEL: Record<string, { label: string; where: string }> = {
   constructionCost:  { label: 'Construction cost',         where: 'Scenario details' },
   asIfCompleteValue: { label: 'As if complete value',      where: 'Scenario details' },
   guarantorName:     { label: 'Guarantor name',            where: 'Scenario details' },
+  totalLimit:        { label: 'Total limit after restructure', where: 'Scenario details' },
+  splitPurposes:     { label: 'Purpose',                   where: 'Loan splits - every split needs one' },
   splitAmount:       { label: 'Amount',                    where: 'Loan splits, split 1' },
   splitRate:         { label: 'Rate',                      where: 'Loan splits, split 1' },
   split2Amount:      { label: 'Amount',                    where: 'Loan splits, split 2' },
@@ -65,6 +74,10 @@ const LABEL: Record<string, { label: string; where: string }> = {
 }
 
 function valueOf(key: string, d: any): any {
+  // NOT A BOX, A CONDITION. Every split with money in it has to carry a purpose
+  // before the email can say anything about purpose at all - so this answers
+  // "are they all set" in the only shape this file understands, filled or empty.
+  if (key === 'splitPurposes') return everySplitHasAPurpose(d) ? 'set' : ''
   if (key === 'splitAmount')  return d?.splits?.[0]?.amount
   if (key === 'splitRate')    return d?.splits?.[0]?.rate
   if (key === 'split2Amount') return d?.splits?.[1]?.amount

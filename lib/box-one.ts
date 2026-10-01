@@ -32,6 +32,7 @@
 //    file never rewords it underneath the team. Fabio, 10 Sep: "take a variation
 //    for the deal itself... we don't vary or deviate to that."
 
+import { isDebtRecycling, complianceLines, everySplitHasAPurpose } from './debt-recycling'
 import { money, readMoney } from './money'
 import { fundsToComplete, loanAmount, lvrOf } from './funds-to-complete'
 import { splitsOf, dealRow } from './deal-structure'
@@ -191,7 +192,15 @@ export function structureOf(deal: any): Structure {
 export function flexibilityPassage(s: Structure, who: string, v: 1 | 2 | 3): string {
   const pi = s.principalAndInterest && !s.interestOnly
   const fixedYrs = s.fixedYears ? `${s.fixedYears} years` : 'the fixed period'
-  const ioYrs = s.ioYears ? `${s.ioYears} years` : 'the interest only period'
+  // THE WHOLE PHRASE, NOT JUST THE NUMBER.
+  //
+  // This was `${s.ioYears} years` falling back to 'the interest only period',
+  // and the three wordings below each put their own words in front of it - so
+  // on any deal where the interest only period is not recorded, the compliance
+  // write-up read "For the first the interest only period the repayments cover
+  // interest only". Found 1 Oct 2026 while reading a debt recycling file back.
+  // The phrase is built once, whole, and reads in all three.
+  const ioYrs = s.ioYears ? `the first ${s.ioYears} years` : 'an initial period'
 
   // Fixed and variable together.
   if (s.fixed && s.variable) {
@@ -214,8 +223,8 @@ export function flexibilityPassage(s: Structure, who: string, v: 1 | 2 | 3): str
   // Variable, interest only.
   if (s.variable && s.interestOnly) {
     const base = [
-      `Interest only repayments for the first ${ioYrs} keep the commitment as low as possible while ${who} settle in, with the balance untouched during that period and the repayment stepping up once it ends. The variable rate means they are free to pay more than the minimum at any point if they would rather start reducing the balance sooner, and to draw that money back out if circumstances change.`,
-      `For the first ${ioYrs} the repayments cover interest only, which holds the monthly commitment down — the balance does not reduce in that time, and the repayment increases when the period ends. Because the rate is variable ${who} can pay above the minimum whenever they choose and redraw those extra payments if they need them.`,
+      `Interest only repayments for ${ioYrs} keep the commitment as low as possible while ${who} settle in, with the balance untouched during that period and the repayment stepping up once it ends. The variable rate means they are free to pay more than the minimum at any point if they would rather start reducing the balance sooner, and to draw that money back out if circumstances change.`,
+      `For ${ioYrs} the repayments cover interest only, which holds the monthly commitment down — the balance does not reduce in that time, and the repayment increases when the period ends. Because the rate is variable ${who} can pay above the minimum whenever they choose and redraw those extra payments if they need them.`,
       `The loan runs interest only for ${ioYrs}, keeping the required repayment at its lowest while it does, on the understanding that the balance stays where it is and the repayment rises afterwards. The variable rate leaves ${who} free to pay more than the minimum at any time, and free to take it back through redraw if things change.`,
     ][v - 1]
     if (!s.offset) return base + noOffsetTail(s, who, v)
@@ -362,6 +371,17 @@ export function boxOne(deal: any): BoxOne {
   // that says first home buyer. Otherwise never mention anything even if they
   // don't have property." Owning nothing is not evidence of anything.
   if (txt(bc.template) === 'fhb') p1 += ` ${who} are first home buyers.`
+
+  // DEBT RECYCLING. Same rule as first home buyer above: the scenario says so or
+  // it is not mentioned. The sentences, and the figures in them, come from
+  // lib/debt-recycling.ts so the write-up and the client email cannot disagree.
+  if (isDebtRecycling(bc.template)) {
+    p1 += ' ' + complianceLines(bc).join(' ')
+    if (!everySplitHasAPurpose(bc)) {
+      gaps.push({ what: 'A loan split has no purpose recorded, so the file cannot state what the borrowing was used for',
+                  where: 'BC → Loan splits → Purpose' })
+    }
+  }
 
   const purpose = txt(ff.loanPurpose)
   if (purpose) {

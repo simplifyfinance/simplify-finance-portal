@@ -106,6 +106,9 @@ function transaction(deal: any): { verb: string; isPurchase: boolean; isConstruc
   if (t === 'refinance_only') return { verb: 'refinance', isPurchase: false, isConstruction: false }
   if (t === 'refinance_equity') return { verb: 'refinance and release equity against', isPurchase: false, isConstruction: false }
   if (t === 'bridging') return { verb: 'purchase', isPurchase: true, isConstruction: false }
+  // A restructure buys nothing. Left to fall through, the purchase price test
+  // below decided it from whatever happened to be in the box.
+  if (t === 'debt_recycling') return { verb: 'restructure the existing lending against', isPurchase: false, isConstruction: false }
   if (PURCHASE_TEMPLATES.includes(t)) return { verb: 'purchase', isPurchase: true, isConstruction: false }
   return { verb: '', isPurchase: has(deal?.bc_data?.purchasePrice), isConstruction: false }
 }

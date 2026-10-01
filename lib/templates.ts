@@ -15,6 +15,7 @@ export const TEMPLATE_LABELS: Record<string, string> = {
   family_pledge:       'Family pledge',
   smsf:                'SMSF purchase',
   construction:        'Construction loan',
+  debt_recycling:      'Debt recycling',
   custom:              'Custom (all fields)',
 }
 

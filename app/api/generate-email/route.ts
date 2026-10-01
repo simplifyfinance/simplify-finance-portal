@@ -26,6 +26,9 @@ import { showsOwnLoanAmount } from '@/lib/email-amounts'
 import { PLEDGE_PROS, PLEDGE_CONS, PLEDGE_LOAN_1, PLEDGE_LOAN_2, guarantorPhrase } from '@/lib/family-pledge-copy'
 import { totalCost, totalLending, fundsToContribute, repaymentDuringConstruction,
          isLandPurchase, landEquity, landLoanPayout, num, DRAWDOWN_NOTE } from '@/lib/construction'
+import { totalLimit as recycledLimit, purposeLine, byPurpose, everySplitHasAPurpose,
+         whySplitThisWay, openingLine, ACCOUNTANT_NOTE, splitsTotal, limitCheck,
+         undrawnNote, STRUCTURE_NOTE } from '@/lib/debt-recycling'
 
 
 const DEFAULT_BRAND = {
@@ -126,6 +129,19 @@ function loanAmountRow(headline: any, splitAmount: any, label = 'Loan amount'): 
 // the row goes with it. See lib/email-figures.ts.
 function rowIf(l: string, v: string) {
   return v ? row(l, v) : ''
+}
+
+const txt = (v: any) => String(v ?? '').trim()
+
+// A SENTENCE INSIDE A CARD, NOT AN AMOUNT. row() right-aligns its value in the
+// money column in the same weight as the figures, so a caveat written through it
+// reads like a number that has lost its digits. This is the shape the drawdown
+// note and the peak debt line already use: full width, italic, its own colour
+// carried on a span because Word drops one left on the cell.
+function note(t: string) {
+  return t
+    ? `<tr><td colspan="2" style="font-size:11px;color:#7a5c3a;font-style:italic;line-height:1.5;padding:4px 0 0"><span style="color:#7a5c3a;">${t}</span></td></tr>`
+    : ''
 }
 
 // The same rule for the option columns and split blocks, which are lines rather
@@ -971,6 +987,94 @@ export async function POST(req: NextRequest) {
       check(checkItems) +
       p('Please let us know your thoughts and if you have any questions regarding the numbers above.') +
       p('The next step is to collect your documentation so we can look at specific lenders and interest rates.') +
+       notesBox(notes) + sig(b)
+
+  } else if (template === 'debt_recycling') {
+    // DEBT RECYCLING - ONE LIMIT, SPLIT BY PURPOSE.
+    //
+    // Fabio, 1 Oct 2026: on the refinance templates "the original limit and then
+    // within that limit ... is really hard to understand". The splits are a flat
+    // list there and nothing says they live inside one facility, so a client
+    // reading three figures thinks the loan has tripled.
+    //
+    // So the limit is a row at the TOP of one card, every split is a row inside
+    // that same card, and the repayments total at the bottom of it. The money
+    // column survives being read top to bottom, which is the thing construction
+    // and bridging both had to be fixed for. The arithmetic and the wording live
+    // in lib/debt-recycling.ts; nothing is decided here.
+    const recSplits = realSplits(d.splits)
+    const limit = recycledLimit(d)
+    const purposes = byPurpose(d)
+
+    // The split rows: the figure on the right, and what that money was used for
+    // underneath it. A split nobody has given a purpose prints its figures and
+    // no purpose line - never a guessed one.
+    const splitLines = recSplits.map((sp: any, i: number) => {
+      const detail = [
+        txt(sp?.rate) ? `${txt(sp.rate)}% p.a.*` : '',
+        txt(sp?.type) || '',
+        repaymentOf(sp, d.loanTerm) ? `${repaymentOf(sp, d.loanTerm)} per month` : '',
+      ].filter(Boolean).join(' \u00b7 ')
+      const under = [purposeLine(sp), detail].filter(Boolean).join(' \u00b7 ')
+      return row(`${i + 1}. ${txt(sp?.label) || 'Split ' + (i + 1)}`, money(sp?.amount)) +
+        (under ? note(under) : '')
+    }).join('')
+
+    // THE TOTAL REPAYMENT, ONLY WHEN EVERY SPLIT HAS ONE. A total across four
+    // splits where one had no repayment would be a smaller number presented as
+    // the whole of it, which is the worst kind of wrong figure: plausible.
+    const everyRepayment = recSplits.length > 0 &&
+      recSplits.every((sp: any) => readMoney(repaymentOf(sp, d.loanTerm)))
+    const repaymentTotal = everyRepayment
+      ? recSplits.reduce((sum: number, sp: any) => sum + (readMoney(repaymentOf(sp, d.loanTerm)) || 0), 0)
+      : 0
+
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
+      p(openingLine(d)) +
+      securityHead(d) +
+      // Today, from the two boxes we actually hold. No rate and no repayment,
+      // because the BC has no boxes for what they are paying now - and a figure
+      // we do not have is a row that is not there.
+      (money(d.existingLoanBal) || money(d.propertyValue)
+        ? card('Today', existingLoanRow(d) + rowIf('Property value', money(d.propertyValue)))
+        : '') +
+      card(limit > 0 ? `Proposed structure \u2014 total limit ${money(limit)}` : 'Proposed structure',
+        (limit > 0 ? row('Total limit', money(limit)) : '') +
+        splitLines +
+        // THE ROWS ABOVE HAVE TO ADD TO SOMETHING ON THE PAGE. Where the splits
+        // fill the limit, the limit at the top IS their total and saying it
+        // twice is noise. Where they do not, their own total is stated, and the
+        // difference is explained when the limit is the larger of the two.
+        (limitCheck(d).matches ? '' : row('Total of these splits', money(splitsTotal(d)))) +
+        (repaymentTotal > 0 ? row('Total monthly repayment', money(repaymentTotal)) : '') +
+        note(undrawnNote(d)) +
+        note(STRUCTURE_NOTE)) +
+      // THE DEDUCTIBLE PORTION, AND NOTHING BESIDE IT.
+      //
+      // Fabio, 1 Oct 2026, looking at the two boxes: "drop Private Purpose box
+      // only leave investment" - the splits above already say Owner-occupied on
+      // their own line, so the second figure was the same fact twice.
+      //
+      // Printed only when every split carries a purpose. One unlabelled split
+      // and this figure is smaller than the truth, which is the worst kind of
+      // wrong number on an email about tax: plausible, and planned around.
+      //
+      // The note is not optional here and is not separately decided - it is the
+      // same ACCOUNTANT_NOTE the structure card carries, so the disclaimer
+      // cannot be lost from one place and kept in the other.
+      (everySplitHasAPurpose(d) && purposes.investment > 0
+        ? card('Deductible portion',
+            row('Borrowing used for investment purposes', money(purposes.investment)) +
+            note(ACCOUNTANT_NOTE))
+        : '') +
+      // NOTHING TO SAY, NO CARD. An empty one headed "Why it is structured this
+      // way" is a question rather than an answer.
+      (whySplitThisWay(d).length
+        ? card('Why it is structured this way', whySplitThisWay(d).map(l => note(l)).join(''))
+        : '') +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      check(checkItems) +
+      p('The next step is confirming this structure with your accountant, and then we will take it to the right lender for you.') +
        notesBox(notes) + sig(b)
 
   } else if (template === 'custom') {
