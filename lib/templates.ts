@@ -16,6 +16,7 @@ export const TEMPLATE_LABELS: Record<string, string> = {
   smsf:                'SMSF purchase',
   construction:        'Construction loan',
   debt_recycling:      'Debt recycling',
+  complex_refinance:   'Complex refinance',
   custom:              'Custom (all fields)',
 }
 

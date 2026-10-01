@@ -3,7 +3,7 @@ import {
   isDebtRecycling, purposeOf, purposeLabel, purposeLine, fundsUsedFor,
   splitsTotal, totalLimit, limitCheck, byPurpose, everySplitHasAPurpose,
   whySplitThisWay, openingLine, ACCOUNTANT_NOTE, complianceLines, undrawnNote,
-  offsetSplitLabel,
+  offsetSplitLabels,
 } from './debt-recycling'
 
 // THE WORKED EXAMPLE Fabio was shown on 1 Oct 2026 and said "love it" to.
@@ -208,28 +208,55 @@ describe('what goes on the compliance file', () => {
   })
 })
 
-describe('where the offset sits', () => {
-  const withOffset = { ...bc, offsetSplit: 'Home' }
+describe('where the offsets sit', () => {
+  const one = { ...bc, offsetSplits: ['Home'] }
+  const two = { ...bc, offsetSplits: ['Home', 'Share portfolio'] }
 
-  it('is named on the file and in the email once somebody has chosen', () => {
-    expect(offsetSplitLabel(withOffset)).toBe('Home')
-    expect(whySplitThisWay(withOffset).join(' '))
-      .toContain('Your offset account sits against the Home split')
-    expect(complianceLines(withOffset).join(' '))
-      .toContain('An offset account has been placed against the Home split only.')
+  it('names the one, in the singular', () => {
+    expect(offsetSplitLabels(one)).toEqual(['Home'])
+    expect(whySplitThisWay(one).join(' '))
+      .toContain('Your offset account sits against Home,')
+    expect(complianceLines(one).join(' '))
+      .toContain('An offset account has been placed against Home only.')
   })
 
-  it('and nothing is said while nobody has', () => {
-    expect(offsetSplitLabel(bc)).toBe('')
+  // "the Home and Equity split splits" is what appending the word produced on a
+  // complex refinance, because a label may contain it already.
+  it('and names them all, in the plural, with no noun bolted on', () => {
+    expect(whySplitThisWay(two).join(' '))
+      .toContain('Your offset accounts sit against Home and Share portfolio,')
+    expect(complianceLines(two).join(' '))
+      .toContain('Offset accounts have been placed against Home and Share portfolio.')
+  })
+
+  // Named in the order the splits are in, because the email lists them beside
+  // figures that are already in that order.
+  it('in the order the splits are in, not the order they were ticked', () => {
+    expect(offsetSplitLabels({ ...bc, offsetSplits: ['Share portfolio', 'Home'] }))
+      .toEqual(['Home', 'Share portfolio'])
+  })
+
+  it('ignores a name ticked twice', () => {
+    expect(offsetSplitLabels({ ...bc, offsetSplits: ['Home', 'Home'] })).toEqual(['Home'])
+  })
+
+  // The single value shipped on the morning of 1 Oct 2026. A deal saved in the
+  // hour before this change has to keep saying the same thing.
+  it('still reads the single value that shipped before it', () => {
+    expect(offsetSplitLabels({ ...bc, offsetSplit: 'Home' })).toEqual(['Home'])
+  })
+
+  it('and nothing is said while nobody has ticked anything', () => {
+    expect(offsetSplitLabels(bc)).toEqual([])
     expect(whySplitThisWay(bc).join(' ').toLowerCase()).not.toContain('offset')
     expect(complianceLines(bc).join(' ').toLowerCase()).not.toContain('offset')
   })
 
   // A SPLIT THAT NO LONGER ANSWERS TO THE NAME. Renamed or removed, the stored
   // label would otherwise have the email naming an account that is not there.
-  it('goes quiet when the split it named is gone', () => {
-    const renamed = { ...withOffset, splits: bc.splits.map(s => ({ ...s, label: s.label + ' loan' })) }
-    expect(offsetSplitLabel(renamed)).toBe('')
+  it('goes quiet when a split it named is gone', () => {
+    const renamed = { ...two, splits: bc.splits.map(x => ({ ...x, label: x.label + ' loan' })) }
+    expect(offsetSplitLabels(renamed)).toEqual([])
     expect(complianceLines(renamed).join(' ').toLowerCase()).not.toContain('offset')
   })
 })

@@ -26,6 +26,7 @@
 // Fabio, 1 Oct 2026, having been shown that distinction: "love it build".
 
 import { money, readMoney } from './money'
+import { andList } from './and-list'
 
 const txt = (v: any) => String(v ?? '').trim()
 // readMoney gives null for anything it cannot read. Nothing downstream wants a
@@ -169,10 +170,23 @@ export function everySplitHasAPurpose(bc: any): boolean {
 // STORED AS THE SPLIT'S LABEL, and only returned while a split still answers to
 // it. Rename or remove that split and this goes quiet rather than naming an
 // account that is not there.
-export function offsetSplitLabel(bc: any): string {
-  const wanted = txt(bc?.offsetSplit)
-  if (!wanted) return ''
-  return realOnes(bc?.splits).some(s => txt(s?.label) === wanted) ? wanted : ''
+// A LIST, NOT A CHOICE. Fabio, 1 Oct 2026: "ensure we can add offset account to
+// multiple splits ... want multiple offsets in debt recylcing as well". A client
+// with four splits can hold offsets against three of them, and a box that only
+// takes one would have the email naming the wrong number of accounts.
+//
+// Reads the list, and still reads the single value that shipped this morning, so
+// a deal saved in the hour between the two says the same thing afterwards.
+export function offsetSplitLabels(bc: any): string[] {
+  const raw = Array.isArray(bc?.offsetSplits) ? bc.offsetSplits : [bc?.offsetSplit]
+  const live = realOnes(bc?.splits).map(s => txt(s?.label))
+  const out: string[] = []
+  for (const v of raw.map(txt)) {
+    if (v && live.includes(v) && !out.includes(v)) out.push(v)
+  }
+  // Named in the order the splits are in, not the order they were ticked - the
+  // email lists them beside figures that are already in that order.
+  return live.filter(l => out.includes(l))
 }
 
 // --- the words ---------------------------------------------------------------
@@ -196,6 +210,23 @@ export const STRUCTURE_NOTE =
 export const ACCOUNTANT_NOTE =
   'Whether the investment portion is deductible depends on your own circumstances \u2014 please ' +
   'confirm it with your accountant before we proceed. This is not tax advice.'
+
+// THE OFFSET SENTENCE, IN ONE PLACE. Both scenarios that ask where the offsets
+// sit print it - one wording, one plural rule, one place to change it.
+export function offsetLine(bc: any): string {
+  const offsets = offsetSplitLabels(bc)
+  if (offsets.length === 0) return ''
+  // NAMED, WITH NO NOUN AFTER THEM. "the Home and Equity split splits" is what
+  // appending the word produced on 1 Oct 2026, because a label is free to
+  // contain it already. The labels are names; they do not need telling what
+  // they are.
+  if (offsets.length === 1) {
+    return `Your offset account sits against ${offsets[0]}, where the savings held in it ` +
+           'do the most good.'
+  }
+  return `Your offset accounts sit against ${andList(offsets)}, where the savings held ` +
+         'in them do the most good.'
+}
 
 // Why it is split this way, in the client's words rather than ours. Only the
 // lines that are true of THIS structure are printed.
@@ -223,11 +254,8 @@ export function whySplitThisWay(bc: any): string[] {
     lines.push('The investment splits are interest only, so each balance stays at the figure the ' +
                'funds were drawn for.')
   }
-  const offset = offsetSplitLabel(bc)
-  if (offset) {
-    lines.push(`Your offset account sits against the ${offset} split, where the savings held in it ` +
-               'do the most good.')
-  }
+  const offset = offsetLine(bc)
+  if (offset) lines.push(offset)
   return lines
 }
 
@@ -281,9 +309,11 @@ export function complianceLines(bc: any): string[] {
     if (bits.length) lines.push(bits.join(' and ') + '.')
   }
 
-  const offset = offsetSplitLabel(bc)
-  if (offset) {
-    lines.push(`An offset account has been placed against the ${offset} split only.`)
+  const offsets = offsetSplitLabels(bc)
+  if (offsets.length === 1) {
+    lines.push(`An offset account has been placed against ${offsets[0]} only.`)
+  } else if (offsets.length > 1) {
+    lines.push(`Offset accounts have been placed against ${andList(offsets)}.`)
   }
 
   // THE SENTENCE THAT PROTECTS THE LICENCE. Stated on the file whether or not

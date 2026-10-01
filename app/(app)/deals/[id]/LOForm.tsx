@@ -1,5 +1,6 @@
 'use client'
 import { isDebtRecycling } from '@/lib/debt-recycling'
+import { isComplexRefinance } from '@/lib/complex-refinance'
 import { dutyStateOf } from '@/lib/duty-state'
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { dayMonthYear, dayMonth, longDate } from '@/lib/same-date-everywhere'
@@ -465,7 +466,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     // Debt recycling is a refinance in everything the LO cares about - an
     // existing loan moving, no purchase - so it starts on the refinance
     // template. startsWith('refinance') alone sent it to lo_purchase.
-    const initialTemplate = bc.template?.startsWith('refinance') || isDebtRecycling(bc.template) ? 'lo_refinance' : bc.template === 'bridging' ? 'lo_bridging' : 'lo_purchase'
+    const initialTemplate = bc.template?.startsWith('refinance') || isDebtRecycling(bc.template) || isComplexRefinance(bc.template) ? 'lo_refinance' : bc.template === 'bridging' ? 'lo_bridging' : 'lo_purchase'
     return {
       template: initialTemplate,
       bcTemplate: bc.template || '',
@@ -485,7 +486,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       propertyValue: bc.propertyValue || bc.purchasePrice || '',
       brokerPersonalisation: '',
       documentsRequired: [],
-      criteriaUsed: bc.template?.startsWith('refinance') || isDebtRecycling(bc.template) ? ['Competitive interest rate', 'Good turnaround times', 'Ability to have an offset account'] :
+      criteriaUsed: bc.template?.startsWith('refinance') || isDebtRecycling(bc.template) || isComplexRefinance(bc.template) ? ['Competitive interest rate', 'Good turnaround times', 'Ability to have an offset account'] :
         bc.template === 'bridging' ? ['Competitive interest rate', 'Good turnaround times', 'Flexible with bridging finance'] :
         ['Competitive interest rate', 'Good turnaround times', 'Ability to have an offset account', 'Fully assessed pre-approval applications'],
       additionalNotes: '',
@@ -637,7 +638,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   }, [])
 
   useEffect(() => {
-    const newTemplate = bc.template?.startsWith('refinance') || isDebtRecycling(bc.template) ? 'lo_refinance' : bc.template === 'bridging' ? 'lo_bridging' : 'lo_purchase'
+    const newTemplate = bc.template?.startsWith('refinance') || isDebtRecycling(bc.template) || isComplexRefinance(bc.template) ? 'lo_refinance' : bc.template === 'bridging' ? 'lo_bridging' : 'lo_purchase'
     // setDRaw: the BC's figures being copied across is the form arranging itself,
     // not somebody typing.
     setDRaw(prev => ({

@@ -33,6 +33,7 @@
 //    for the deal itself... we don't vary or deviate to that."
 
 import { isDebtRecycling, complianceLines, everySplitHasAPurpose } from './debt-recycling'
+import { andList } from './and-list'
 import { money, readMoney } from './money'
 import { fundsToComplete, loanAmount, lvrOf } from './funds-to-complete'
 import { splitsOf, dealRow } from './deal-structure'
@@ -72,12 +73,10 @@ export function variantOf(dealId: any): 1 | 2 | 3 {
 }
 
 // Natural English for a list of names or lenders: "A", "A and B", "A, B and C".
-export function andList(items: string[]): string {
-  const xs = items.filter(Boolean)
-  if (xs.length === 0) return ''
-  if (xs.length === 1) return xs[0]
-  return `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`
-}
+// Moved to lib/and-list.ts so the offset sentence can use it without a
+// circular import. Still exported from here, so the eight files that import it
+// from box-one are untouched.
+export { andList }
 
 // Loan terms read better as words in prose than as a numeral.
 const TERM_WORDS: Record<string, string> = {

@@ -109,6 +109,7 @@ function transaction(deal: any): { verb: string; isPurchase: boolean; isConstruc
   // A restructure buys nothing. Left to fall through, the purchase price test
   // below decided it from whatever happened to be in the box.
   if (t === 'debt_recycling') return { verb: 'restructure the existing lending against', isPurchase: false, isConstruction: false }
+  if (t === 'complex_refinance') return { verb: 'refinance the existing lending against', isPurchase: false, isConstruction: false }
   if (PURCHASE_TEMPLATES.includes(t)) return { verb: 'purchase', isPurchase: true, isConstruction: false }
   return { verb: '', isPurchase: has(deal?.bc_data?.purchasePrice), isConstruction: false }
 }

@@ -29,6 +29,9 @@ import { totalCost, totalLending, fundsToContribute, repaymentDuringConstruction
 import { totalLimit as recycledLimit, purposeLine, byPurpose, everySplitHasAPurpose,
          whySplitThisWay, openingLine, ACCOUNTANT_NOTE, splitsTotal, limitCheck,
          undrawnNote, STRUCTURE_NOTE } from '@/lib/debt-recycling'
+import { groupsOf, undrawnNoteFor, originalPurposeLine, aboutThisStructure,
+         openingLine as refinanceOpening,
+         ACCOUNTANT_NOTE as REFINANCE_ACCOUNTANT_NOTE } from '@/lib/complex-refinance'
 
 
 const DEFAULT_BRAND = {
@@ -1075,6 +1078,53 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is confirming this structure with your accountant, and then we will take it to the right lender for you.') +
+       notesBox(notes) + sig(b)
+
+  } else if (template === 'complex_refinance') {
+    // COMPLEX REFINANCE - ONE CARD PER PROPERTY.
+    //
+    // Fabio, 1 Oct 2026: several properties, each already carrying more than one
+    // split, and the structure has to survive the move because every split
+    // reflects what that money was originally used for.
+    //
+    // The ordinary refinance templates hold one property, so four splits across
+    // three houses came out as a flat list of four and nothing said which loan
+    // sat against which house. Here each property is its own card: the limit
+    // approved against it, its splits, what is drawn, and what is not.
+    //
+    // NO GRAND TOTAL. Fabio looked at one and said it was "too confusing" - a
+    // client who has just read three clean property cards does not need a fourth
+    // number belonging to none of them. Each card totals itself and stops.
+    //
+    // The grouping, the arithmetic and the wording are in
+    // lib/complex-refinance.ts. Nothing is decided here.
+    const propertyCards = groupsOf(d).map(g =>
+      card(g.heading + (g.value ? ` \u2014 valued at ${g.value}` : ''),
+        (g.limit > 0 ? row('Limit against this property', money(g.limit)) : '') +
+        g.splits.map((sp: any) => {
+          const detail = [
+            txt(sp?.rate) ? `${txt(sp.rate)}% p.a.*` : '',
+            txt(sp?.type) || '',
+            repaymentOf(sp, d.loanTerm) ? `${repaymentOf(sp, d.loanTerm)} per month` : '',
+          ].filter(Boolean).join(' \u00b7 ')
+          const under = [originalPurposeLine(sp), detail].filter(Boolean).join(' \u00b7 ')
+          return row(txt(sp?.label) || 'Split', money(sp?.amount)) + (under ? note(under) : '')
+        }).join('') +
+        // THE LAST CARD IS NOT A PROPERTY. Splits nobody has assigned collect
+        // under "Other lending", and "Drawn against this property" on that one
+        // was calling it something it is not.
+        row(g.property ? 'Drawn against this property' : 'Drawn', money(g.drawn)) +
+        note(undrawnNoteFor(g)))).join('')
+
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
+      p(refinanceOpening(d)) +
+      propertyCards +
+      card('About this structure',
+        aboutThisStructure(d).map((l: string) => note(l)).join('') +
+        note(REFINANCE_ACCOUNTANT_NOTE)) +
+      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      check(checkItems) +
+      p('The next step is finding the right lender for a structure like this one \u2014 and that is exactly what we will do for you.') +
        notesBox(notes) + sig(b)
 
   } else if (template === 'custom') {

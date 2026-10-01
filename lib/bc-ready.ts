@@ -19,6 +19,7 @@
 // and a warning that lists irrelevant things is one nobody reads twice.
 
 import { everySplitHasAPurpose } from './debt-recycling'
+import { everySplitHasAProperty } from './complex-refinance'
 
 const txt = (v: any) => String(v ?? '').trim()
 const empty = (v: any) => txt(v) === '' || txt(v) === '0'
@@ -45,6 +46,11 @@ const NEEDS: Record<string, string[]> = {
   // so both are boxes the email wanted and did not get. See lib/debt-recycling.ts.
   debt_recycling:      ['suburb', 'existingLoanBal', 'propertyValue', 'totalLimit',
                         'splitAmount', 'splitRate', 'splitPurposes'],
+  // The whole email is grouped by property, so a split with no property on it
+  // lands in a card headed "Other lending" - visible, but not what anybody
+  // meant. Named here so it is caught on the Preview screen first.
+  complex_refinance:   ['existingLoanBal', 'splitAmount', 'splitRate',
+                        'splitPurposes', 'splitProperties'],
   custom:              ['splitAmount', 'splitRate'],
 }
 
@@ -67,6 +73,7 @@ const LABEL: Record<string, { label: string; where: string }> = {
   guarantorName:     { label: 'Guarantor name',            where: 'Scenario details' },
   totalLimit:        { label: 'Total limit after restructure', where: 'Scenario details' },
   splitPurposes:     { label: 'Purpose',                   where: 'Loan splits - every split needs one' },
+  splitProperties:   { label: 'Property',                  where: 'Loan splits - every split needs one' },
   splitAmount:       { label: 'Amount',                    where: 'Loan splits, split 1' },
   splitRate:         { label: 'Rate',                      where: 'Loan splits, split 1' },
   split2Amount:      { label: 'Amount',                    where: 'Loan splits, split 2' },
@@ -78,6 +85,7 @@ function valueOf(key: string, d: any): any {
   // before the email can say anything about purpose at all - so this answers
   // "are they all set" in the only shape this file understands, filled or empty.
   if (key === 'splitPurposes') return everySplitHasAPurpose(d) ? 'set' : ''
+  if (key === 'splitProperties') return everySplitHasAProperty(d) ? 'set' : ''
   if (key === 'splitAmount')  return d?.splits?.[0]?.amount
   if (key === 'splitRate')    return d?.splits?.[0]?.rate
   if (key === 'split2Amount') return d?.splits?.[1]?.amount
