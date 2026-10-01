@@ -86,7 +86,14 @@ function MenuButton({ item, onOpen }: { item: MenuItem; onOpen: () => void }) {
 
 // --- the send screen -------------------------------------------------------
 
-function SendScreen({ deal, templateId, onClose, onSent }: {
+// EXPORTED, so the Templates page opens THIS screen rather than growing its own.
+//
+// Fabio asked for the milestone emails on the Templates page as well as on the
+// deal, and the tempting shortcut is a second screen over there. It would drift:
+// the one on the deal would get the next fix and the other would keep the bug,
+// which is the mistake this codebase has paid for more than once. One screen,
+// two doors into it.
+export function SendScreen({ deal, templateId, onClose, onSent }: {
   deal: any
   templateId: TemplateId
   onClose: () => void

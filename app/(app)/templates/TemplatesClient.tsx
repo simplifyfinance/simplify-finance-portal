@@ -1,4 +1,17 @@
 'use client'
+import MilestoneFromTemplates from '@/components/MilestoneFromTemplates'
+import { TEMPLATES as MILESTONE_TEMPLATES, type TemplateId } from '@/lib/milestone-emails'
+
+// THE SAME THREE, FROM THE SAME LIST lib/milestone-emails.ts holds - so this
+// page cannot offer one the deal does not, or miss one it gains.
+const MILESTONE_BLURB: Record<TemplateId, string> = {
+  preapproval: 'Confirms the pre-approval and what the client needs once an offer is accepted.',
+  preapproval_extension: 'A new expiry on a pre-approval that has already been sent.',
+  formal_approval: 'The lender\u2019s full approval, with settlements copied in.',
+}
+const MILESTONES = MILESTONE_TEMPLATES.map(t => ({
+  id: t.id, name: t.name, blurb: MILESTONE_BLURB[t.id],
+}))
 import { useEffect, useState } from 'react'
 import { TONE } from '@/lib/tone'
 import RefinanceTemplateForm from './RefinanceTemplateForm'
@@ -71,6 +84,10 @@ type Id = typeof TEMPLATES[number]['id']
 
 export default function TemplatesClient() {
   const [chosen, setChosen] = useState<Id | null>(null)
+  // WHICH MILESTONE EMAIL SOMEBODY HAS PICKED, before they have picked a deal.
+  // These are built FROM a deal, so the deal is the first question rather than
+  // a field halfway down a form. See components/MilestoneFromTemplates.tsx.
+  const [milestone, setMilestone] = useState<TemplateId | null>(null)
   const [archived, setArchived] = useState<string[]>([])
   const [busy, setBusy] = useState('')
 
@@ -153,6 +170,31 @@ export default function TemplatesClient() {
 
   return (
     <div>
+      {/* THE THREE THAT COME OFF A DEAL.
+          
+          Fabio asked for these on the Templates page as well as on the deal
+          card, and they are their own group because they behave differently:
+          every figure comes off a deal, so picking one asks which deal first.
+          The other templates are things somebody types. */}
+      <div className="text-[11px] font-bold tracking-[.08em] uppercase mb-2.5"
+           style={{ color: TONE.label }}>From a deal</div>
+      <div className="grid grid-cols-3 gap-3 max-[820px]:grid-cols-1 mb-6">
+        {MILESTONES.map(t => (
+          <button key={t.id} onClick={() => setMilestone(t.id)}
+            className="border rounded-xl px-4 py-4 text-left bg-white hover:border-[#BBE7CF] transition"
+            style={{ borderColor: TONE.line }}>
+            <span className="inline-block text-[10px] font-bold tracking-[.05em] uppercase rounded-full px-2 py-[2px] border mb-2"
+                  style={{ borderColor: '#BBE7CF', color: '#0F7B4F', background: '#F4FBF7' }}>
+              From a deal
+            </span>
+            <div className="text-[14.5px] font-[620] mb-1" style={{ color: TONE.ink }}>{t.name}</div>
+            <div className="text-[12.5px] leading-[1.55]" style={{ color: TONE.body }}>{t.blurb}</div>
+          </button>
+        ))}
+      </div>
+
+      <div className="text-[11px] font-bold tracking-[.08em] uppercase mb-2.5"
+           style={{ color: TONE.label }}>What you type</div>
       <div className="grid grid-cols-2 gap-3 max-[820px]:grid-cols-1">
         {live.map(t => card(t, false))}
       </div>
@@ -166,6 +208,10 @@ export default function TemplatesClient() {
             {away.map(t => card(t, true))}
           </div>
         </>
+      )}
+
+      {milestone && (
+        <MilestoneFromTemplates templateId={milestone} onClose={() => setMilestone(null)} />
       )}
     </div>
   )
