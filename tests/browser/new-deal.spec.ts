@@ -40,7 +40,18 @@ async function openOrCreate(page: Page): Promise<void> {
   // would have come straight back. So it looks twice: the normal list first,
   // which is where the deals made before any of this still are, and then behind
   // the test filter. Either is a find.
-  const lookFor = () => page.getByText(new RegExp(`${ROBOT_FIRST}`, 'i')).first()
+  // ZZROBOT MUST NOT MATCH ZZROBOTTWO.
+  //
+  // 1 Oct 2026. new-deal-busy.spec.ts calls its client ZZROBOTTWO and its second
+  // applicant ZZROBOTPARTNER. Both of those CONTAIN this spec's name, so a plain
+  // substring match could pick up the other robot's deal - and did, the first
+  // time the two ran at the same time: this test typed its goals into the busy
+  // robot's deal and then failed to find them in its own.
+  //
+  // It was always a coin toss. Running one at a time only meant the coin had
+  // been landing the right way up. Anchored, it cannot land the other way:
+  // ZZROBOT followed by another letter is somebody else.
+  const lookFor = () => page.getByText(new RegExp(`${ROBOT_FIRST}(?![A-Z])`, 'i')).first()
 
   let existing = lookFor()
   let found = await existing.waitFor({ state: 'visible', timeout: 20_000 })

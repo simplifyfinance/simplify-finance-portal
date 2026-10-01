@@ -23,9 +23,24 @@ import { test, expect, type Page } from '@playwright/test'
 // IT USES ITS OWN DEAL and does not tidy up after itself, because the portal
 // cannot delete. One deal, reused every run.
 
-const FIRST = 'ZZROBOTTWO'
+// NAMES THAT CANNOT BE MISTAKEN FOR THE OTHER ROBOT'S.
+//
+// 1 Oct 2026. These were ZZROBOTTWO and ZZROBOTPARTNER, and new-deal.spec.ts
+// looks for a client called ZZROBOT. Both of the old names CONTAIN it, so that
+// spec's substring search could find this robot's deal - and when the two ran at
+// the same time it did: it typed its goals into this deal and then failed to
+// find them in its own.
+//
+// It was a coin toss from the day the second robot was written. Running them one
+// at a time only meant it kept landing the right way up. The search over there
+// is anchored now as well, but two robots sharing the start of a name is a trap
+// waiting for the third one, so these no longer do.
+//
+// The old ZZROBOTTWO deal stays where it is - the portal does not delete - and
+// this makes itself a new one on the first run. One extra test deal, once.
+const FIRST = 'ZZBUSY'
 const LAST = 'Testdeal'
-const SECOND_FIRST = 'ZZROBOTPARTNER'
+const SECOND_FIRST = 'ZZBUSYPARTNER'
 const PURPOSE = 'Purpose typed first, before any of the other work.'
 const GOALS_2 = 'Two year goals typed first, before any of the other work.'
 const GOALS_10 = 'Ten year goals typed first, before any of the other work.'

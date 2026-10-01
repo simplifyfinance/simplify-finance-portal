@@ -90,8 +90,64 @@ if [ "$#" -gt 0 ]; then
   exit $RESULT
 fi
 
-PORTAL_TEST_URL="http://localhost:$PORT" npx playwright test $HEADED_FLAG > .robot-logs/browser-check.log 2>&1
-RESULT=$?
+# TWO PASSES: WHAT CAN RUN AT ONCE, THEN WHAT CANNOT.
+#
+# 1 Oct 2026. Six ships in a day, ten minutes of this each, an hour of Fabio
+# waiting. The log says where it goes: tab-switch is 197 seconds of the 600, and
+# the four specs that build their own deals are another 110.
+#
+# WHY IT WAS workers: 1. Twelve of the sixteen specs type into the SAME deal -
+# PORTAL_TEST_DEAL_ID - and several of them are about what happens when two
+# windows are open on one record. Run those at the same time and they are no
+# longer testing the portal, they are testing each other.
+#
+# TWO GROUPS THAT GENUINELY DO NOT COLLIDE:
+#
+#   tab-switch   its four tests are one test over four tabs, and each tab is a
+#                DIFFERENT COLUMN - lo_data, bc_data, compliance_data,
+#                fact_find_data. Four concurrent writes to four columns of one
+#                row is four independent updates.
+#   own-data     new-deal, new-deal-busy, wesley, settings make their own deals
+#                or touch none at all.
+#
+# EVERYTHING ELSE STAYS SERIAL, and - this is the part that matters - the serial
+# list is worked out by SUBTRACTION. A spec added tomorrow is not in the fast
+# list, so it lands in the safe one without anybody remembering to put it there.
+# The alternative, naming the serial specs, means a new spec silently never runs.
+#
+# SERIAL=1 ./scripts/check-browser.sh  runs the old way, one worker, everything.
+# If this is ever blamed for a flake, that command settles it in one run.
+# 1 Oct 2026, FIRST RUN: new-deal and new-deal-busy were in here and collided -
+# not over the deal, over the NAME. One looks for ZZROBOT, the other creates
+# ZZROBOTTWO, and a substring match found the wrong deal. The name is anchored
+# now and that is a real fault fixed either way, but these two are back on the
+# serial side until a run proves them. The ten minutes this cost is the reason
+# the rule below is "earn your way into this list", not "look safe enough".
+FAST_SPECS="tests/browser/tab-switch.spec.ts \
+            tests/browser/wesley.spec.ts \
+            tests/browser/settings.spec.ts"
+
+REST_SPECS=""
+for spec in tests/browser/*.spec.ts; do
+  case " $FAST_SPECS " in *" $spec "*) ;; *) REST_SPECS="$REST_SPECS $spec" ;; esac
+done
+
+if [ -n "${SERIAL:-}" ]; then
+  PORTAL_TEST_URL="http://localhost:$PORT" npx playwright test $HEADED_FLAG > .robot-logs/browser-check.log 2>&1
+  RESULT=$?
+else
+  PORTAL_TEST_URL="http://localhost:$PORT" npx playwright test $FAST_SPECS \
+    --workers=4 --fully-parallel $HEADED_FLAG > .robot-logs/browser-check.log 2>&1
+  RESULT=$?
+  # The second pass appends, so one log still holds the whole run - which is what
+  # the failure report below reads and what anybody looking afterwards expects.
+  PORTAL_TEST_URL="http://localhost:$PORT" npx playwright test $REST_SPECS \
+    --workers=1 $HEADED_FLAG >> .robot-logs/browser-check.log 2>&1
+  SECOND=$?
+  # Either pass failing fails the ship. The first one's result is not allowed to
+  # be forgotten because the second one passed.
+  if [ $RESULT -eq 0 ]; then RESULT=$SECOND; fi
+fi
 
 kill $SERVER 2>/dev/null || true
 
@@ -121,6 +177,14 @@ if [ $RESULT -ne 0 ]; then
     cp -R test-results .robot-logs/last-failure 2>/dev/null || true
   fi
 
+  # AND KEEP THE LOG ITSELF, UNDER A NAME NOTHING OVERWRITES.
+  #
+  # 1 Oct 2026. A run failed in the morning; the next run wrote straight over
+  # browser-check.log and the only record of what broke was gone before anybody
+  # read it. The live log keeps its name so every instruction about it still
+  # works - this is a dated copy beside it, and nothing ever deletes one.
+  cp .robot-logs/browser-check.log ".robot-logs/failed-$(date +%Y%m%d-%H%M%S).log" 2>/dev/null || true
+
   # ship.sh says "NOT SHIPPED" itself when this exits non-zero, so this only
   # has to say WHAT it found.
   echo
@@ -133,5 +197,8 @@ if [ $RESULT -ne 0 ]; then
   exit 1
 fi
 
-echo "  $(grep -oE '[0-9]+ passed' .robot-logs/browser-check.log | tail -1) in a real browser."
+# BOTH PASSES COUNTED. `tail -1` reported only the second group's number, which
+# on a green run read as 40 tests when 45 had gone through.
+PASSED=$(grep -oE '[0-9]+ passed' .robot-logs/browser-check.log | grep -oE '[0-9]+' | awk '{n+=$1} END {print n}')
+echo "  ${PASSED:-?} passed in a real browser."
 exit 0
