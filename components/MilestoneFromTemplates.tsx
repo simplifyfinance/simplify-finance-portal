@@ -28,6 +28,7 @@ export default function MilestoneFromTemplates({ templateId, onClose }: {
 }) {
   const [deals, setDeals] = useState<Row[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [term, setTerm] = useState('')
   const [picked, setPicked] = useState<Row | null>(null)
   const name = TEMPLATES.find(t => t.id === templateId)?.name || 'Email'
@@ -36,9 +37,18 @@ export default function MilestoneFromTemplates({ templateId, onClose }: {
     let alive = true
     createSupabaseBrowser()
       .from('deals').select('*, clients(first_name, last_name, email)')
-      .order('updated_at', { ascending: false }).limit(300)
-      .then(({ data }: any) => {
+      // created_at, not updated_at. Deals have no updated_at column, so the
+      // first version of this returned an error and no rows - and because the
+      // error was thrown away, every search said "No deal matches that" as if
+      // the typing were at fault. Every other deals query in the portal orders
+      // by created_at; this one is no different.
+      .order('created_at', { ascending: false }).limit(300)
+      .then(({ data, error }: any) => {
         if (!alive) return
+        // A FAILED LOAD AND AN EMPTY SEARCH MUST NEVER LOOK THE SAME. One is a
+        // broken screen, the other is a word that matches nothing, and the only
+        // thing that tells them apart is the error - so it is kept and shown.
+        if (error) setLoadError(error.message || 'the deals could not be loaded')
         // A test deal is not the business - lib/test-deal.ts.
         setDeals(realDealsOnly(data as any[]) as Row[])
         setLoading(false)
@@ -87,7 +97,13 @@ export default function MilestoneFromTemplates({ templateId, onClose }: {
 
           {loading && <p className="mt-3 text-[12.5px] text-[#A29889]">Loading deals…</p>}
 
-          {!loading && rows.length === 0 && (
+          {!loading && loadError && (
+            <p className="mt-3 text-[12.5px] text-[#8E3A34] bg-[#FDF3F2] border border-[#E9D2CF] rounded-lg px-3 py-2.5 leading-[1.5]">
+              The deals could not be loaded — {loadError}. Nothing is wrong with what you typed.
+            </p>
+          )}
+
+          {!loading && !loadError && rows.length === 0 && (
             <p className="mt-3 text-[12.5px] text-[#A29889]">No deal matches that.</p>
           )}
 
