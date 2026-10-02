@@ -120,6 +120,39 @@ export const BODY  = '#4D4841'  // anything you actually read
 export const MUTED = '#6F6A62'  // labels and captions, 4.6 to 1 on the page
 export const FAINT = '#A79F93'  // decoration only, never a word that matters
 
+// --------------------------------------------------------- the grey it wears
+//
+// 2 Oct 2026. THE PORTAL HAD TWO GREYS AND DID NOT KNOW IT.
+//
+// Counted before writing this: 465 places asked Tailwind for a grey - 254 of
+// them text-gray-400, 211 text-gray-500 - across 38 files. Tailwind's greys are
+// COOL. Our page, our lines and our ink are WARM. A cool grey caption on a warm
+// off-white page does not read as neutral, it reads as dirty, and that is the
+// single biggest reason the portal never quite looked like the brand.
+//
+// The obvious fix was to edit 465 places. That is 38 files by hand, and a
+// hundred chances to mistype a colour. So instead the NAMES are redefined:
+// Tailwind reads --color-gray-400 out of app/globals.css, and in this portal
+// that is warm. All 465 become right at once, and the next person who reaches
+// for text-gray-500 out of habit gets the right colour rather than a dirty one.
+//
+// SPELT THE AMERICAN WAY ON PURPOSE. Everything else here is "colour". These
+// are "gray" because they have to match the class names Tailwind generates, and
+// a ramp named grey-400 would quietly produce nothing at all.
+//
+// Where a step already has a name above it IS that name, not the same hex typed
+// a second time. Only 300 and 700 are new, because nothing else needed them.
+
+export const GRAY_50  = '#FAF7F2'   // a panel a shade off the page
+export const GRAY_100 = LINE_SOFT
+export const GRAY_200 = LINE
+export const GRAY_300 = '#D3CCBF'   // a harder edge than LINE; new
+export const GRAY_400 = FAINT
+export const GRAY_500 = MUTED
+export const GRAY_600 = BODY
+export const GRAY_700 = '#332F29'   // between body and ink; new
+export const GRAY_800 = INK
+
 // --------------------------------------------------------------- dark mode
 //
 // NOT AN INVERSION. Every value here was chosen against the surface it sits on.
@@ -171,6 +204,20 @@ export const DARK = {
   waitingBg:   '#282140', waitingEdge: '#45366E',
   doneBg:      '#123328', doneEdge:    '#215C4B',
   infoBg:      '#123143', infoEdge:    '#20556E',
+
+  // THE RAMP TURNS OVER. In light, gray-50 is nearly white and gray-800 is
+  // nearly black; in dark it is the other way up, because a caption is a
+  // caption whichever theme it is in. The steps that match a surface above are
+  // checked against it by lib/colours.test.ts rather than trusted to match.
+  gray50:  '#24282E',  // = panel
+  gray100: '#30353C',  // = lineSoft
+  gray200: '#383E46',  // = line
+  gray300: '#4A515A',
+  gray400: '#737E89',  // = faint
+  gray500: '#9AA4AE',  // = muted
+  gray600: '#C2CAD2',  // = body
+  gray700: '#D5DCE3',
+  gray800: '#E9EDF1',  // = ink
 
   cardChase:       '#33241F', cardChaseEdge:   '#60352C',
   cardWaiting:     '#28213B', cardWaitingEdge: '#44356E',

@@ -3,7 +3,7 @@ import { readFileSync, existsSync, readdirSync, statSync } from 'fs'
 import { join } from 'path'
 import {
   CHOICES, DEFAULT_CHOICE, THEME_ATTRIBUTE, THEME_BOOT, THEME_KEY,
-  isChoice, resolveTheme, type ThemeChoice,
+  isChoice, isPublicPath, PUBLIC_PREFIXES, resolveTheme, type ThemeChoice,
 } from './theme'
 
 // THE RULE IS WRITTEN TWICE, SO SOMETHING HAS TO PROVE THEY AGREE.
@@ -18,7 +18,12 @@ import {
 
 // Runs the real boot string in a tiny fake browser and reports what it wrote
 // onto <html>. Nothing is mocked except the browser itself.
-function runBoot(opts: { stored: string | null; osDark: boolean; storageThrows?: boolean }): string | undefined {
+function runBoot(opts: {
+  stored: string | null
+  osDark: boolean
+  storageThrows?: boolean
+  pathname?: string
+}): string | undefined {
   const written: Record<string, string> = {}
   const localStorage = {
     getItem() {
@@ -27,13 +32,14 @@ function runBoot(opts: { stored: string | null; osDark: boolean; storageThrows?:
     },
   }
   const win = { matchMedia: () => ({ matches: opts.osDark }) }
+  const loc = { pathname: opts.pathname ?? '/deals' }
   const doc = {
     documentElement: {
       setAttribute(name: string, value: string) { written[name] = value },
     },
   }
   // eslint-disable-next-line no-new-func
-  new Function('localStorage', 'window', 'document', THEME_BOOT)(localStorage, win, doc)
+  new Function('localStorage', 'window', 'document', 'location', THEME_BOOT)(localStorage, win, doc, loc)
   return written[THEME_ATTRIBUTE]
 }
 
@@ -106,7 +112,69 @@ describe('the script that runs before the page paints says the same thing', () =
   })
 
   it('is small enough to belong in the head', () => {
-    expect(THEME_BOOT.length).toBeLessThan(500)
+    expect(THEME_BOOT.length).toBeLessThan(900)
+  })
+})
+
+describe('a client never gets the team\'s theme', () => {
+  // A borrower opening a Proceed link has chosen nothing here, so the only
+  // preference there is to find is their own Mac's - and a dark page behind a
+  // white Simplify Finance card is how a stranger's first impression goes
+  // wrong. These pages are light, whatever anybody's Mac says.
+  const CLIENT_PAGES = [
+    '/proceed/abc-123', '/ready/some-token', '/opportunity/some-token',
+    '/proceed', '/ready', '/opportunity',
+  ]
+
+  it.each(CLIENT_PAGES)('%s stays light on a dark Mac', path => {
+    expect(runBoot({ stored: null, osDark: true, pathname: path })).toBe('light')
+  })
+
+  it.each(CLIENT_PAGES)('%s stays light even if this browser chose dark', path => {
+    expect(runBoot({ stored: 'dark', osDark: true, pathname: path })).toBe('light')
+  })
+
+  it('and the portal is unaffected by any of that', () => {
+    expect(runBoot({ stored: 'dark', osDark: false, pathname: '/deals' })).toBe('dark')
+    expect(runBoot({ stored: null, osDark: true, pathname: '/login' })).toBe('dark')
+  })
+
+  it('does not catch a portal page that merely starts with the same letters', () => {
+    // /proceedings would be a portal page, not a client one.
+    expect(isPublicPath('/proceedings')).toBe(false)
+    expect(isPublicPath('/readymade')).toBe(false)
+    expect(isPublicPath('/proceed/9')).toBe(true)
+  })
+
+  // THE GATE. A new page a client can open must be added to PUBLIC_PREFIXES, or
+  // it inherits the team's dark mode and nobody notices until a borrower says
+  // the page looked broken.
+  it('every page outside the login that a client can reach is on the list', () => {
+    const walk = (dir: string, out: string[] = []): string[] => {
+      for (const name of readdirSync(dir)) {
+        const p = join(dir, name)
+        if (statSync(p).isDirectory()) walk(p, out)
+        else if (name === 'page.tsx') out.push(p)
+      }
+      return out
+    }
+    // Everything under app/ that is not behind the login, not the login itself,
+    // not the root redirect, and not the password reset (which is reached from
+    // an email by a team member, so it follows their choice).
+    const NOT_CLIENT_FACING = new Set([
+      join('app', 'page.tsx'),
+      join('app', 'login', 'page.tsx'),
+      join('app', 'reset-password', 'page.tsx'),
+    ])
+    const outside = walk('app')
+      .filter(f => !f.includes('(app)'))
+      .filter(f => !NOT_CLIENT_FACING.has(f))
+
+    // app/proceed/[id]/page.tsx -> /proceed
+    const missed = outside.filter(f => !isPublicPath('/' + f.split(/[\\/]/)[1]))
+    expect(missed, 'a client can open these and they are not in PUBLIC_PREFIXES').toEqual([])
+    // And the list is not just empty-passing.
+    expect(outside.length).toBeGreaterThanOrEqual(3)
   })
 })
 

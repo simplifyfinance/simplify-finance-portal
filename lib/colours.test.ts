@@ -82,7 +82,12 @@ describe('the two files agree, colour by colour', () => {
 
 describe('the dark half agrees with itself too', () => {
   // brandInk -> brand-ink,  cardChaseEdge -> card-chase-edge
-  const toCss = (k: string) => k.replace(/([A-Z])/g, '-$1').toLowerCase()
+  // brandInk -> brand-ink, cardChaseEdge -> card-chase-edge, gray50 -> gray-50.
+  // The digit rule is not decoration: without it gray50 would look for
+  // --color-gray50, which Tailwind has never heard of, and this test would pass
+  // by comparing nothing against nothing.
+  const toCss = (k: string) =>
+    k.replace(/([A-Z])/g, '-$1').replace(/([a-z])(\d)/g, '$1-$2').toLowerCase()
   const tsDark: Record<string, string> = Object.fromEntries(
     Object.entries(C.DARK).map(([k, v]) => [toCss(k), String(v).toUpperCase()])
   )
@@ -125,6 +130,73 @@ describe('the dark half agrees with itself too', () => {
   it('lifts the blue for words rather than inventing a second blue', () => {
     expect(C.DARK.brandInk).toBe(C.BRAND_LIFT)
     expect(C.DARK.info).toBe(C.BRAND_LIFT)
+  })
+
+  // The dark ramp is written out as hexes rather than as references, because a
+  // key cannot point at another key inside the same object. So the steps that
+  // are meant to match a surface are checked here instead of trusted.
+  it('ties the dark grey ramp to the dark surfaces it is meant to match', () => {
+    expect(C.DARK.gray50).toBe(C.DARK.panel)
+    expect(C.DARK.gray100).toBe(C.DARK.lineSoft)
+    expect(C.DARK.gray200).toBe(C.DARK.line)
+    expect(C.DARK.gray400).toBe(C.DARK.faint)
+    expect(C.DARK.gray500).toBe(C.DARK.muted)
+    expect(C.DARK.gray600).toBe(C.DARK.body)
+    expect(C.DARK.gray800).toBe(C.DARK.ink)
+  })
+})
+
+describe('the grey the portal wears', () => {
+  // 465 places ask Tailwind for a grey. These names decide what they get, so
+  // the thing that matters is that they are OURS and not Tailwind's.
+  const RAMP = ['50', '100', '200', '300', '400', '500', '600', '700', '800'] as const
+
+  it('replaces every step Tailwind would otherwise supply', () => {
+    for (const step of RAMP) {
+      expect(cssColours[`gray-${step}`], `--color-gray-${step} is missing`).toBeTruthy()
+    }
+  })
+
+  it('reuses the names it already has instead of a second copy of the same hex', () => {
+    expect(C.GRAY_100).toBe(C.LINE_SOFT)
+    expect(C.GRAY_200).toBe(C.LINE)
+    expect(C.GRAY_400).toBe(C.FAINT)
+    expect(C.GRAY_500).toBe(C.MUTED)
+    expect(C.GRAY_600).toBe(C.BODY)
+    expect(C.GRAY_800).toBe(C.INK)
+  })
+
+  it('gets darker every step, with no two the same', () => {
+    const lum = (hex: string) =>
+      parseInt(hex.slice(1, 3), 16) + parseInt(hex.slice(3, 5), 16) + parseInt(hex.slice(5, 7), 16)
+    const light = RAMP.map(s => cssColours[`gray-${s}`])
+    for (let i = 1; i < light.length; i++) {
+      expect(lum(light[i]), `gray-${RAMP[i]} is not darker than gray-${RAMP[i - 1]}`)
+        .toBeLessThan(lum(light[i - 1]))
+    }
+  })
+
+  // THE WHOLE POINT. Tailwind's greys are cool - more blue than red. Ours are
+  // warm. If a step ever comes back cool, the portal goes back to looking
+  // faintly dirty and nobody will be able to say why.
+  it('is warm at every step, which is the entire reason it exists', () => {
+    const cold: string[] = []
+    for (const step of RAMP) {
+      const hex = cssColours[`gray-${step}`]
+      const r = parseInt(hex.slice(1, 3), 16)
+      const b = parseInt(hex.slice(5, 7), 16)
+      if (b >= r) cold.push(`gray-${step} (${hex}) has as much blue as red`)
+    }
+    expect(cold, cold.join('\n')).toEqual([])
+  })
+
+  it('and the page itself is no longer the cool grey it used to be', () => {
+    // Comments stripped first - the old value is NAMED in a comment, on
+    // purpose, so a reader knows what changed and why. Naming it is fine;
+    // declaring it is not.
+    const declarations = css.replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(declarations).not.toContain('#F5F5F3')
+    expect(declarations).toMatch(/body\s*\{[^}]*background-color:\s*var\(--color-page\)/)
   })
 })
 

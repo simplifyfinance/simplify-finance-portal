@@ -24,6 +24,28 @@ export const DEFAULT_CHOICE: ThemeChoice = 'auto'
  *  stylesheet has to be told an answer rather than a question. */
 export const THEME_ATTRIBUTE = 'data-theme'
 
+// ------------------------------------------------- who the theme is NOT for
+//
+// 2 Oct 2026, added when the page background started reading the palette.
+//
+// THESE PAGES BELONG TO CLIENTS, NOT TO THE TEAM. A borrower opening a Proceed
+// link has never chosen anything in this portal, so the only preference the
+// script below could find is their own Mac's - and half the country's Macs are
+// on dark. That would have put a dark page behind a white Simplify Finance card
+// for a stranger, on the one screen where the company is being judged by
+// somebody who has never seen it before.
+//
+// They are Simplify Finance, light, always. ONE is internal - Fabio, 30 Sep:
+// "one is internal only" - and so is the theme switch.
+//
+// lib/theme.test.ts walks app/ and fails the ship if a new public page appears
+// that is not on this list, so the next one cannot be forgotten.
+export const PUBLIC_PREFIXES = ['/ready', '/proceed', '/opportunity'] as const
+
+export function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))
+}
+
 export function isChoice(v: unknown): v is ThemeChoice {
   return typeof v === 'string' && (CHOICES as readonly string[]).includes(v)
 }
@@ -99,7 +121,10 @@ export function chooseTheme(choice: ThemeChoice): Theme {
 // against the same cases as resolveTheme and fails the ship if they disagree.
 export const THEME_BOOT =
   `(function(){try{` +
-  `var c=localStorage.getItem(${JSON.stringify(THEME_KEY)});` +
+  `var p=location.pathname,c='light',pub=${JSON.stringify(PUBLIC_PREFIXES)};` +
+  `for(var i=0;i<pub.length;i++){if(p===pub[i]||p.indexOf(pub[i]+'/')===0){` +
+  `document.documentElement.setAttribute(${JSON.stringify(THEME_ATTRIBUTE)},'light');return;}}` +
+  `c=localStorage.getItem(${JSON.stringify(THEME_KEY)});` +
   `if(c!=='light'&&c!=='dark'){` +
   `c=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}` +
   `document.documentElement.setAttribute(${JSON.stringify(THEME_ATTRIBUTE)},c);` +

@@ -13,9 +13,22 @@ import { THEME_BOOT } from "@/lib/theme";
 // an email: ready, opportunity, proceed. They have never heard of ONE and never
 // should - Fabio, 30 Sep 2026: "one is internal only". So the default here is
 // the company, and ONE is added inside app/(app), behind the login.
+// THE ICON IS NAMED, NOT GUESSED. 2 Oct 2026.
+//
+// It used to be app/favicon.ico and app/(app)/icon.png, and Next.js was left to
+// work out from where the files sat which route got which. It did not: every
+// tab showed the Simplify Finance mark, including the internal ones that should
+// show the blue "o". Fabio, after a hard reload: "i am in a mac did command r
+// and still".
+//
+// The file-convention version LOOKED right in the repository and was wrong on
+// screen, which is the worst kind of wrong. Both icons are now stated outright,
+// here and in app/(app)/layout.tsx, and a child's icons replace the parent's.
+// Nothing is inferred from a folder name.
 export const metadata: Metadata = {
   title: "Simplify Finance",
   description: "Simplify Finance",
+  icons: { icon: [{ url: "/favicon.ico", sizes: "any" }] },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

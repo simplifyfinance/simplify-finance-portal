@@ -56,6 +56,22 @@
   --color-body: #4D4841;
   --color-muted: #6F6A62;
   --color-faint: #A79F93;
+
+  /* TAILWIND'S OWN GREYS, REPLACED WITH OURS.
+     465 places across 38 files ask for text-gray-400 and the like. Tailwind's
+     greys are COOL, this page is WARM, and a cool caption on a warm page reads
+     as dirty rather than neutral. Redefining the names puts all 465 right at
+     once instead of editing them by hand and mistyping some of them.
+     See "the grey it wears" in lib/colours.ts for the whole reasoning. */
+  --color-gray-50: #FAF7F2;
+  --color-gray-100: #F1ECE4;
+  --color-gray-200: #E8E2D8;
+  --color-gray-300: #D3CCBF;
+  --color-gray-400: #A79F93;
+  --color-gray-500: #6F6A62;
+  --color-gray-600: #4D4841;
+  --color-gray-700: #332F29;
+  --color-gray-800: #17140F;
 }
 
 /* THE SAME NAMES, THE OTHER WAY UP.
@@ -101,6 +117,18 @@
   --color-info-bg: #123143;
   --color-info-edge: #20556E;
 
+  /* The ramp turns over: nearly-white at 50 becomes nearly-black, and the
+     other way at 800. A caption is still a caption. */
+  --color-gray-50: #24282E;
+  --color-gray-100: #30353C;
+  --color-gray-200: #383E46;
+  --color-gray-300: #4A515A;
+  --color-gray-400: #737E89;
+  --color-gray-500: #9AA4AE;
+  --color-gray-600: #C2CAD2;
+  --color-gray-700: #D5DCE3;
+  --color-gray-800: #E9EDF1;
+
   --color-card-chase: #33241F;
   --color-card-chase-edge: #60352C;
   --color-card-waiting: #28213B;
@@ -109,8 +137,13 @@
   --color-card-done-edge: #245B49;
 }
 
+/* THE PAGE ITSELF. Was #F5F5F3 - a cool grey, chosen before the brand was -
+   and it sat under warm lines and warm ink, which is what made the whole thing
+   look faintly grubby. It now reads the palette, so it follows the theme like
+   everything else rather than being the one surface that cannot. */
 body {
-  background-color: #F5F5F3;
+  background-color: var(--color-page);
+  color: var(--color-body);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 

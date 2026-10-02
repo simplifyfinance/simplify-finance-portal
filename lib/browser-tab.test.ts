@@ -115,9 +115,20 @@ describe('everything behind the login is ONE', () => {
   })
 })
 
+// THE ICON, AND THE TEST THAT PASSED WHILE IT WAS BROKEN.
+//
+// 2 Oct 2026. The first version of this checked that two icon files existed in
+// the right folders, and they did, and every single tab still showed the
+// Simplify Finance mark - including deals, which is meant to show the blue "o".
+// Fabio, after reloading: "i am in a mac did command r and still".
+//
+// The files were right. What was wrong was the assumption that Next.js would
+// work out from a folder name which route got which. So a test that only looks
+// at where files SIT can never catch this. These look at what each layout
+// SAYS, which is the thing the browser actually acts on.
 describe("the tab icon is ours", () => {
   it('the root icon exists and is a real multi-size icon', () => {
-    const ico = readFileSync('app/favicon.ico')
+    const ico = readFileSync('public/favicon.ico')
     // ICO header: bytes 4-5 are how many images are inside. A single-size icon
     // looks soft in the places a browser asks for a bigger one.
     expect(ico.readUInt16LE(4)).toBeGreaterThanOrEqual(2)
@@ -125,8 +136,35 @@ describe("the tab icon is ours", () => {
   })
 
   it('and the internal portal has its own, so the two audiences differ', () => {
-    const png = readFileSync('app/(app)/icon.png')
+    const png = readFileSync('public/one-o.png')
     expect(png.subarray(1, 4).toString()).toBe('PNG')
     expect(png.length).toBeGreaterThan(2000)
+  })
+
+  it('the client-facing root says, outright, that it wears the company mark', () => {
+    const src = readFileSync('app/layout.tsx', 'utf8')
+    expect(src).toMatch(/icons:\s*\{[^}]*favicon\.ico/)
+    expect(src).not.toContain('one-o.png')
+  })
+
+  it('and everything behind the login says, outright, that it wears the "o"', () => {
+    const src = readFileSync(join('app', '(app)', 'layout.tsx'), 'utf8')
+    expect(src).toMatch(/icons:\s*\{[^}]*one-o\.png/)
+  })
+
+  // THE ONE THAT WOULD HAVE CAUGHT IT. While an icon file sits inside app/,
+  // Next.js adds its own link alongside the ones above and the browser is left
+  // to choose between two - which is how both tabs ended up with the same mark.
+  it('and no icon is left in app/ for Next.js to guess about', () => {
+    const strays: string[] = []
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const p = join(dir, name)
+        if (statSync(p).isDirectory()) { walk(p); continue }
+        if (/^(icon|favicon|apple-icon)\b/.test(name)) strays.push(p)
+      }
+    }
+    walk('app')
+    expect(strays, 'these are picked up by the file convention and fight the metadata above').toEqual([])
   })
 })
