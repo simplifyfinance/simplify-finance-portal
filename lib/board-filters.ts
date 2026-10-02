@@ -197,3 +197,62 @@ export function readFilters(raw: any): BoardFilters {
     nudge: raw.nudge === true,
   }
 }
+
+// --- what the board is SHOWING, as opposed to filtering to --------------------
+//
+// 2 Oct 2026. Settled, Lost and Test deals used to be three buttons sitting in
+// the toolbar. They are now inside the Filters panel, which is what the approved
+// mock-up shows - but moving a control out of sight is exactly how a filter gets
+// left on by accident, and this board exists because nine deals once sat hidden.
+//
+// So they are counted on the button like everything else, and they come back out
+// as chips on the bar. A thing that is on is always said out loud somewhere you
+// cannot miss it. That rule does not get relaxed because the toolbar got tidier.
+//
+// These are NOT filters in the sense above: two of them show MORE than the board
+// would otherwise show, which is why they live in their own shape rather than
+// being bolted into BoardFilters.
+
+export type ViewKey = 'settled' | 'lost' | 'tests'
+export const VIEW_KEYS: ViewKey[] = ['settled', 'lost', 'tests']
+
+export type BoardView = { settled: boolean; lost: boolean; tests: boolean }
+export const NO_VIEW: BoardView = { settled: false, lost: false, tests: false }
+
+// Written as what is TRUE while it is on, because that is what a chip has to
+// say. "Show settled" is a button; "Showing settled" is a state.
+export const VIEW_LABEL: Record<ViewKey, string> = {
+  settled: 'Showing settled',
+  lost: 'Showing lost',
+  tests: 'Test deals only',
+}
+
+export function countView(v: BoardView): number {
+  return VIEW_KEYS.filter(k => v[k]).length
+}
+
+export function anyView(v: BoardView): boolean {
+  return countView(v) > 0
+}
+
+export function viewChips(v: BoardView): { which: ViewKey; label: string }[] {
+  return VIEW_KEYS.filter(k => v[k]).map(k => ({ which: k, label: VIEW_LABEL[k] }))
+}
+
+// EVERYTHING THE BUTTON HAS TO ACCOUNT FOR. One number on one button, so the
+// toolbar can never be quiet about something that is changing what is on screen.
+export function countOn(f: BoardFilters, v: BoardView): number {
+  return countFilters(f) + countView(v)
+}
+
+// Remembered like the filters are, and checked the same way on the way back in -
+// anything that is not a true stays false, because the safe direction is always
+// the board people expect to see.
+export function readView(raw: any): BoardView {
+  if (!raw || typeof raw !== 'object') return NO_VIEW
+  return {
+    settled: raw.settled === true,
+    lost: raw.lost === true,
+    tests: raw.tests === true,
+  }
+}

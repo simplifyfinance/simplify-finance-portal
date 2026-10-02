@@ -15,7 +15,11 @@ import { phaseOf, derivedPhaseOf, isFinished, isInApplication, PHASE_LABEL } fro
 import DealBoard from '@/components/DealBoard'
 import BoardFilters, { BoardFilterBar } from '@/components/BoardFilters'
 import { useBoardFilters } from '@/lib/use-board-filters'
-import { applyFilters } from '@/lib/board-filters'
+import { applyFilters, type BoardView, type ViewKey } from '@/lib/board-filters'
+import {
+  TILE_KEYS, TILE_LABEL, closedLine, matchesTile, readyStageFor, reviewSplit,
+  tileCounts, type TileKey,
+} from '@/lib/board-tiles'
 import { useBoardSettings } from '@/lib/use-board-settings'
 import type { Alert } from '@/lib/deal-notes'
 import { realDealsOnly, testDealsOnly } from '@/lib/test-deal'
@@ -67,7 +71,11 @@ export default function DealsPage() {
   const [showModal, setShowModal] = useState(false)
   const [userRole, setUserRole] = useState<string>('')
   const [brokerKey, setBrokerKey] = useState<string | null>(null)
-  const [boxFilter, setBoxFilter] = useState<'all' | 'bc' | 'lo' | 'compliance'>('all')
+  // WHICH TILE IS PRESSED. 'all' is not a filter, it is the absence of one.
+  // Was 'all' | 'bc' | 'lo' | 'compliance'; the two review tiles became one and
+  // "In application" became "Waiting on someone". See lib/board-tiles.ts, which
+  // holds every one of those rules so the tile and the cards cannot disagree.
+  const [tile, setTile] = useState<TileKey>('all')
   // TEST DEALS ARE HIDDEN UNTIL ASKED FOR, AND THEN THEY ARE ALL THAT SHOWS.
   //
   // Not a chip on a card mixed in among real deals - somebody scanning the
@@ -218,6 +226,26 @@ export default function DealsPage() {
   const boardFilters = useBoardFilters()
   const [showSettled, setShowSettled] = useState(false)
   const [showLost, setShowLost] = useState(false)
+
+  // THE THREE THAT LEFT THE TOOLBAR, GATHERED INTO ONE SHAPE.
+  //
+  // They stay three separate pieces of state because a dozen things downstream
+  // read them by name; this is only how they are handed to the panel and the
+  // bar, so both can count and name them without knowing where they live.
+  const view: BoardView = { settled: showSettled, lost: showLost, tests: showTests }
+  const toggleView = (which: ViewKey) => {
+    if (which === 'settled') setShowSettled(v => !v)
+    else if (which === 'lost') setShowLost(v => !v)
+    else setShowTests(v => !v)
+  }
+  // "Clear all" has to clear ALL of it, or the button says nothing is on while
+  // the board is still showing only test deals.
+  const clearEverything = () => {
+    boardFilters.clear()
+    setShowSettled(false)
+    setShowLost(false)
+    setShowTests(false)
+  }
   // The two filters were written out twice, once for the list and once for the
   // board, so a change to one silently did not reach the other.
   // Searching "Alexis" found three deals and "Janes" found none, on deals called
@@ -230,10 +258,10 @@ export default function DealsPage() {
   const testCount = testDealsOnly(deals).length
   const book = showTests ? testDealsOnly(deals) : realDealsOnly(deals)
   const matchesSearch = (d: any) => dealMatches(d, term)
-  const matchesBox = (d: any) => boxFilter === 'all'
-    || (boxFilter === 'bc' && d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at)
-    || (boxFilter === 'lo' && d.lo_completed_at && !d.compliance_completed_at)
-    || (boxFilter === 'compliance' && isInApplication(d))
+  // THE SAME FUNCTION THE TILE COUNTED WITH. Asked once, in lib/board-tiles.ts,
+  // so pressing a tile can never open a screen that disagrees with the number
+  // printed on it - which is exactly what the old "Compliance completed" box did.
+  const matchesBox = (d: any) => tile === 'all' || matchesTile(d, tile, look.thresholds)
 
   // A SEARCH OVERRIDES THE TOGGLES.
   //
@@ -286,53 +314,82 @@ export default function DealsPage() {
   // counted compliance-completed deals while the list excluded them, so a
   // headline of nine opened nothing.
   const live = summaryDeals.filter(d => !isFinished(d))
-  const bcReady = live.filter(d => d.bc_completed_at && !d.lo_completed_at && !d.compliance_completed_at).length
-  const loReady = live.filter(d => d.lo_completed_at && !d.compliance_completed_at).length
-  const inApplication = live.filter(isInApplication).length
   const activeForStaff = live.length
-  function readyStageFor(deal: Deal): 'BC' | 'LO' | null {
-    if (deal.lo_completed_at && !deal.compliance_completed_at) return 'LO'
-    if (deal.bc_completed_at && !deal.lo_completed_at && !deal.compliance_completed_at) return 'BC'
-    return null
+
+  // ALL FOUR NUMBERS, WORKED OUT IN ONE PLACE. Not four sums written here
+  // where nothing can test them - see lib/board-tiles.ts and its tests, which
+  // prove the chase count is exactly the deals the board paints red.
+  const counts = tileCounts(summaryDeals, look.thresholds)
+
+  // The number each tile shows, and the quiet line underneath it.
+  const TILE_COUNT: Record<TileKey, number> = {
+    chase: counts.chase, review: counts.review, waiting: counts.waiting, all: counts.all,
+  }
+  const TILE_NOTE: Record<TileKey, string> = {
+    chase: '', review: reviewSplit(counts), waiting: '',
+    all: closedLine(summaryDeals.length, live.length),
+  }
+  // The tint each one wears. Grey for the total, because a total is not a state.
+  const TILE_SKIN: Record<TileKey, string> = {
+    chase:   'bg-card-chase border-card-chase-edge',
+    review:  'bg-info-bg border-info-edge',
+    waiting: 'bg-card-waiting border-card-waiting-edge',
+    all:     'bg-card border-line',
+  }
+  const TILE_DOT: Record<TileKey, string> = {
+    chase: 'bg-chase', review: 'bg-info', waiting: 'bg-waiting', all: 'bg-faint',
+  }
+  const TILE_INK: Record<TileKey, string> = {
+    chase: 'text-chase', review: 'text-info', waiting: 'text-waiting', all: 'text-ink',
   }
   return (
     <div className="p-6">
+      {/* FOUR QUESTIONS, FOUR PRESSES. What is on fire, what is waiting for me,
+          what is out of my hands, and how much is there altogether.
+
+          AND THEY TEACH THE COLOURS WITHOUT A WORD OF EXPLANATION. Somebody new
+          reads "Needs you today" beside a red square, then sees red cards on the
+          board, and has learnt what red means without anybody telling them.
+
+          Pressing the one already on turns it off, so a tile can never leave
+          somebody on a filtered board wondering where the deals went. */}
       {!loading && (
         <div className="grid grid-cols-4 gap-3 mb-4">
-          <button onClick={() => setBoxFilter('all')}
-            className={`text-left bg-white border rounded-xl p-4 transition ${boxFilter === 'all' ? 'border-[#2DBEFF] ring-1 ring-[#2DBEFF]' : 'border-gray-100 hover:border-gray-200'}`}>
-            <div className="text-xs text-gray-400 mb-1">{summaryLabel}</div>
-            <div className="text-2xl font-semibold text-[#343333]">{live.length}</div>
-            <div className="text-[11px] text-gray-400 mt-0.5">
-              {summaryDeals.length - live.length > 0 ? `${summaryDeals.length - live.length} settled or lost` : 'none closed'}
-            </div>
-          </button>
-          <button onClick={() => setBoxFilter('bc')}
-            className={`text-left bg-amber-50 border rounded-xl p-4 transition ${boxFilter === 'bc' ? 'border-amber-500 ring-1 ring-amber-500' : 'border-amber-200 hover:border-amber-300'}`}>
-            <div className="text-xs text-amber-600 mb-1">BC ready for review</div>
-            <div className="text-2xl font-semibold text-amber-700">{bcReady}</div>
-          </button>
-          <button onClick={() => setBoxFilter('lo')}
-            className={`text-left bg-amber-50 border rounded-xl p-4 transition ${boxFilter === 'lo' ? 'border-amber-500 ring-1 ring-amber-500' : 'border-amber-200 hover:border-amber-300'}`}>
-            <div className="text-xs text-amber-600 mb-1">LO ready for review</div>
-            <div className="text-2xl font-semibold text-amber-700">{loReady}</div>
-          </button>
-          <button onClick={() => setBoxFilter('compliance')}
-            className={`text-left bg-green-50 border rounded-xl p-4 transition ${boxFilter === 'compliance' ? 'border-green-500 ring-1 ring-green-500' : 'border-green-200 hover:border-green-300'}`}>
-            <div className="text-xs text-green-600 mb-1">In application</div>
-            <div className="text-2xl font-semibold text-green-700">{inApplication}</div>
-          </button>
+          {TILE_KEYS.map(k => {
+            const on = tile === k
+            return (
+              <button key={k} onClick={() => setTile(on ? 'all' : k)}
+                aria-pressed={on}
+                className={`text-left border rounded-xl px-3.5 py-3 transition flex items-center gap-2.5 ${TILE_SKIN[k]} ${
+                  on ? 'ring-2 ring-brand ring-inset' : 'hover:brightness-[.985]'}`}>
+                <span className={`w-2.5 h-2.5 rounded-[3px] flex-none ${TILE_DOT[k]}`} />
+                <span className="min-w-0">
+                  <span className="block text-[11px] text-muted truncate">
+                    {k === 'all' ? summaryLabel : TILE_LABEL[k]}
+                  </span>
+                  <span className={`block text-[21px] font-semibold leading-[1.15] tracking-[-.02em] ${TILE_INK[k]}`}>
+                    {TILE_COUNT[k]}
+                  </span>
+                </span>
+                {TILE_NOTE[k] && (
+                  <span className="ml-auto text-[10px] text-faint whitespace-nowrap self-center">
+                    {TILE_NOTE[k]}
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
       )}
       {userRole === 'staff' && (
         <div className="flex gap-3 mb-4">
           <div className="flex-1 bg-white border border-gray-100 rounded-xl p-4">
             <div className="text-xs text-gray-400 mb-1">Deals assigned to you</div>
-            <div className="text-2xl font-semibold text-[#343333]">{totalAssigned}</div>
+            <div className="text-2xl font-semibold text-ink">{totalAssigned}</div>
           </div>
           <div className="flex-1 bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <div className="text-xs text-[#2DBEFF] mb-1">Active (not yet complete)</div>
-            <div className="text-2xl font-semibold text-[#2DBEFF]">{activeForStaff}</div>
+            <div className="text-xs text-brand mb-1">Active (not yet complete)</div>
+            <div className="text-2xl font-semibold text-brand">{activeForStaff}</div>
           </div>
         </div>
       )}
@@ -340,7 +397,7 @@ export default function DealsPage() {
         <div className="flex gap-0.5 border border-gray-200 rounded-lg overflow-hidden bg-white flex-none">
           {([['list', 'List'], ['board', 'Board']] as const).map(([k, label]) => (
             <button key={k} onClick={() => setLayout(k)}
-              className={`text-sm px-3 py-2 ${layout === k ? 'bg-[#2DBEFF] text-white font-medium' : 'text-gray-500 hover:bg-gray-50'}`}>
+              className={`text-sm px-3 py-2 ${layout === k ? 'bg-brand text-white font-medium' : 'text-gray-500 hover:bg-gray-50'}`}>
               {label}
             </button>
           ))}
@@ -348,40 +405,39 @@ export default function DealsPage() {
         <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input type="text" placeholder="Search by name, client, purpose..." value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-[#2DBEFF]" />
+            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-brand" />
         </div>
-        <button onClick={() => setShowSettled(!showSettled)}
-          className={`px-3 py-2 text-sm rounded-lg border transition ${showSettled ? 'border-[#25794C] text-[#25794C] bg-[#F1F7F3]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
-          {showSettled ? '✓ Showing settled' : 'Show settled'}
-        </button>
-        <button onClick={() => setShowLost(!showLost)}
-          className={`px-3 py-2 text-sm rounded-lg border transition ${showLost ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
-          {showLost ? '✓ Showing lost' : 'Show lost'}
-        </button>
         {/* ONE BUTTON. Fabio, 30 Sep 2026: "dont want all filters sitting open
             can we do drop drown selection?" - so broker, credit officer, lender
-            and needs-attention all live behind this. Board only: the list has
+            and needs-attention all live behind this.
+
+            AND SINCE 2 OCT, SO DO SETTLED, LOST AND TEST DEALS. They were three
+            more buttons in this row, which made the row the busiest thing on the
+            page. They are counted on the button and named on the bar across the
+            top of the board, so moving them out of sight has not made any of
+            them quiet - see lib/board-filters.ts.
+
+            The broker, officer and lender filters are the BOARD'S - the list has
             its own columns and sorting, and two ways to narrow one screen is one
-            too many. */}
-        {layout === 'board' && (
+            too many. But settled, lost and test deals belong to both, so the
+            list gets the same button carrying only those three and saying
+            "Showing" rather than "Filters". */}
+        {(
           <BoardFilters deals={boardDeals} filters={boardFilters.filters}
             thresholds={look.thresholds} nameFor={nameFor}
             colours={{ broker: look.broker }}
             onToggle={boardFilters.toggle} onToggleNudge={boardFilters.toggleNudge}
-            onClear={boardFilters.clear} />
+            onClear={clearEverything}
+            view={view} onToggleView={toggleView} testCount={testCount}
+            scope={layout === 'board' ? 'board' : 'list'} />
         )}
-        {testCount > 0 && (
-          <button onClick={() => setShowTests(!showTests)}
-            className={`px-3 py-2 text-sm rounded-lg border transition ${showTests ? 'border-[#B45309] text-[#B45309] bg-[#FFF8EC]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
-            {showTests ? `\u2713 Test deals (${testCount})` : `Test deals (${testCount})`}
-          </button>
-        )}
-        <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-3 py-2 bg-[#2DBEFF] text-white text-sm font-medium rounded-lg hover:opacity-90">
+        <button onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 px-3 py-2 bg-brand text-on-brand text-sm font-semibold rounded-lg hover:brightness-[1.04]">
           <Plus size={14} />New deal
         </button>
       </div>
       {showTests && (
-        <div className="mb-3 border border-[#F0DCB4] bg-[#FFF8EC] rounded-lg px-3.5 py-2.5 text-[12.5px] text-[#92400E]">
+        <div className="mb-3 border border-waiting-edge bg-waiting-bg rounded-lg px-3.5 py-2.5 text-[12.5px] text-waiting">
           Showing test deals only. None of these is counted anywhere, none can email a client,
           and none records a lender rate.
         </div>
@@ -389,13 +445,13 @@ export default function DealsPage() {
       {/* The board has no Lost column, so a search that finds only dead deals
           would otherwise look like it found nothing at all. */}
       {layout === 'board' && lostMatches.length > 0 && (
-        <div className="mb-3 border border-[#E1E5E9] bg-[#F4F6F8] rounded-lg px-3.5 py-2.5 text-[12.5px] text-[#5B646D] flex items-center gap-2.5 flex-wrap">
+        <div className="mb-3 border border-line bg-gray-50 rounded-lg px-3.5 py-2.5 text-[12.5px] text-muted flex items-center gap-2.5 flex-wrap">
           <span>
             {lostMatches.length} lost {lostMatches.length === 1 ? 'deal matches' : 'deals match'}
             {' '}&ldquo;{search.trim()}&rdquo;. The board has no column for a lost deal.
           </span>
           <button onClick={() => { setLayout('list'); setShowLost(true) }}
-            className="ml-auto text-[12.5px] font-semibold text-[#0E8FCB] border border-[#BFE0F2] bg-white rounded-md px-2.5 py-1 hover:bg-[#EAF6FD]">
+            className="ml-auto text-[12.5px] font-semibold text-brand-ink border border-info-edge bg-white rounded-md px-2.5 py-1 hover:bg-info-bg">
             See {lostMatches.length === 1 ? 'it' : 'them'} in the list
           </button>
         </div>
@@ -420,7 +476,8 @@ export default function DealsPage() {
           <BoardFilterBar filters={boardFilters.filters}
             shown={boardShown.length} total={boardDeals.length} nameFor={nameFor}
             onToggle={boardFilters.toggle} onToggleNudge={boardFilters.toggleNudge}
-            onClear={boardFilters.clear} />
+            onClear={clearEverything}
+            view={view} onToggleView={toggleView} />
           <DealBoard deals={boardShown} allDeals={boardDeals} showLost={showLost} nameFor={nameFor}
             onDelete={askDelete} onMoveBack={moveDealBack}
             colours={{ type: look.type, use: look.use, broker: look.broker }}
@@ -446,15 +503,15 @@ export default function DealsPage() {
                 <span className={`text-[11px] font-bold tracking-[.08em] uppercase ${GROUP_STYLE[grp].text}`}>
                   {GROUP_STYLE[grp].label}
                 </span>
-                <span className="text-[11px] text-[#A29889]">
+                <span className="text-[11px] text-faint">
                   {grouped.filter(d => ageGroupOf(d) === grp).length}
                 </span>
-                <span className="flex-1 h-px bg-[#EDE7DD]" />
+                <span className="flex-1 h-px bg-line" />
               </div>
             )}
             <div className="flex items-center gap-2">
-              <Link href={readyStage ? `/deals/${deal.id}?stage=${readyStage}` : `/deals/${deal.id}`} className={`flex-1 bg-white border rounded-xl px-4 py-3 flex items-center gap-4 transition-all ${readyStage ? 'border-amber-300 hover:border-amber-400' : 'border-gray-100 hover:border-[#2DBEFF]'}`}>
-                <div className="w-9 h-9 rounded-full bg-[#2DBEFF]/10 text-[#2DBEFF] flex items-center justify-center text-xs font-semibold flex-shrink-0">
+              <Link href={readyStage ? `/deals/${deal.id}?stage=${readyStage}` : `/deals/${deal.id}`} className={`flex-1 bg-white border rounded-xl px-4 py-3 flex items-center gap-4 transition-all ${readyStage ? 'border-amber-300 hover:border-amber-400' : 'border-gray-100 hover:border-brand'}`}>
+                <div className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center text-xs font-semibold flex-shrink-0">
                   {deal.clients?.first_name?.[0]}{deal.clients?.last_name?.[0]}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -462,7 +519,7 @@ export default function DealsPage() {
                     <DealName className="truncate" name={deal.deal_name}
                       others={(twins.get(deal.id) || []).map(o => String(o.deal_name || ''))} />
                     {(twins.get(deal.id) || []).length > 0 && (
-                      <span className="text-[10px] font-bold tracking-[.05em] uppercase text-[#B08A3E] bg-[#FFF8E8] border border-[#F2E2BE] rounded px-1.5 py-px flex-shrink-0">
+                      <span className="text-[10px] font-bold tracking-[.05em] uppercase text-muted bg-gray-50 border border-line rounded px-1.5 py-px flex-shrink-0">
                         {(twins.get(deal.id) || []).length + 1} deals
                       </span>
                     )}
@@ -491,12 +548,12 @@ export default function DealsPage() {
                     client clicked proceed, so it lied on most deals. It says which
                     phase the deal is actually in now. */}
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${
-                  isFinished(deal) ? 'bg-gray-100 text-gray-500' : 'bg-[#2DBEFF]/10 text-[#2DBEFF]'}`}>
+                  isFinished(deal) ? 'bg-gray-100 text-gray-500' : 'bg-brand/10 text-brand'}`}>
                   {PHASE_LABEL[phaseOf(deal)]}
                 </span>
               </Link>
               <button onClick={e => cloneDeal(e, deal)}
-                className="w-8 h-8 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-300 hover:text-[#2DBEFF] hover:border-blue-200 hover:bg-blue-50 flex-shrink-0 transition">
+                className="w-8 h-8 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-300 hover:text-brand hover:border-blue-200 hover:bg-blue-50 flex-shrink-0 transition">
                 <Copy size={13} />
               </button>
               <button onClick={e => askDelete(e, deal)}
@@ -709,8 +766,8 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
   const [app2Mode, setApp2Mode] = useState<'new' | 'existing'>('new')
   const [app2Search, setApp2Search] = useState('')
   const filteredClientsApp2 = clients.filter(c => `${c.first_name} ${c.last_name}`.toLowerCase().includes(app2Search.toLowerCase()))
-  const inp = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF]"
-  const sel = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF]"
+  const inp = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-brand"
+  const sel = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-brand"
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -719,8 +776,8 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
         <div className="text-xs text-gray-400 mb-5">Deal name format: First Last &amp; First Last Year</div>
 
         <div className="flex gap-2 mb-5">
-          <button onClick={() => { setMode('new'); setSelectedClient(null) }} className={`flex-1 py-2 rounded-lg text-sm font-medium border ${mode==='new' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>New client</button>
-          <button onClick={() => setMode('existing')} className={`flex-1 py-2 rounded-lg text-sm font-medium border ${mode==='existing' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>Existing client</button>
+          <button onClick={() => { setMode('new'); setSelectedClient(null) }} className={`flex-1 py-2 rounded-lg text-sm font-medium border ${mode==='new' ? 'border-brand text-brand bg-brand/5' : 'border-gray-200 text-gray-500'}`}>New client</button>
+          <button onClick={() => setMode('existing')} className={`flex-1 py-2 rounded-lg text-sm font-medium border ${mode==='existing' ? 'border-brand text-brand bg-brand/5' : 'border-gray-200 text-gray-500'}`}>Existing client</button>
         </div>
 
         {mode === 'existing' ? (
@@ -730,7 +787,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
             <div className="max-h-40 overflow-y-auto flex flex-col gap-1">
               {filteredClients.map(c => (
                 <div key={c.id} onClick={() => setSelectedClient(c)}
-                  className={`px-3 py-2 rounded-lg text-sm cursor-pointer ${selectedClient?.id === c.id ? 'bg-[#2DBEFF]/10 text-[#2DBEFF] font-medium' : 'hover:bg-gray-50'}`}>
+                  className={`px-3 py-2 rounded-lg text-sm cursor-pointer ${selectedClient?.id === c.id ? 'bg-brand/10 text-brand font-medium' : 'hover:bg-gray-50'}`}>
                   {c.first_name} {c.last_name}
                 </div>
               ))}
@@ -754,7 +811,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
         {(mode === 'existing' ? !!selectedClient : true) && (
           !showSecondApplicant ? (
             <button onClick={() => setShowSecondApplicant(true)}
-              className="text-sm text-[#2DBEFF] border border-dashed border-[#2DBEFF] rounded-lg px-4 py-1.5 hover:bg-blue-50 transition w-full mb-4">
+              className="text-sm text-brand border border-dashed border-brand rounded-lg px-4 py-1.5 hover:bg-blue-50 transition w-full mb-4">
               + Add second applicant
             </button>
           ) : (
@@ -765,8 +822,8 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
                   className="text-xs text-gray-400 hover:text-red-400">Remove</button>
               </div>
               <div className="flex gap-2 mb-3">
-                <button onClick={() => setApp2Mode('new')} className={`flex-1 py-1.5 rounded-lg text-xs font-medium border ${app2Mode==='new' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>New person</button>
-                <button onClick={() => setApp2Mode('existing')} className={`flex-1 py-1.5 rounded-lg text-xs font-medium border ${app2Mode==='existing' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>Existing client</button>
+                <button onClick={() => setApp2Mode('new')} className={`flex-1 py-1.5 rounded-lg text-xs font-medium border ${app2Mode==='new' ? 'border-brand text-brand bg-brand/5' : 'border-gray-200 text-gray-500'}`}>New person</button>
+                <button onClick={() => setApp2Mode('existing')} className={`flex-1 py-1.5 rounded-lg text-xs font-medium border ${app2Mode==='existing' ? 'border-brand text-brand bg-brand/5' : 'border-gray-200 text-gray-500'}`}>Existing client</button>
               </div>
               {app2Mode === 'existing' ? (
                 <div>
@@ -775,7 +832,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
                   <div className="max-h-32 overflow-y-auto flex flex-col gap-1">
                     {filteredClientsApp2.map(c => (
                       <div key={c.id} onClick={() => setForm2({ first_name: c.first_name, last_name: c.last_name, email: c.email || '', phone: c.phone || '', client_id: c.id })}
-                        className={`px-3 py-2 rounded-lg text-sm cursor-pointer ${form2.first_name === c.first_name && form2.last_name === c.last_name ? 'bg-[#2DBEFF]/10 text-[#2DBEFF] font-medium' : 'hover:bg-gray-50'}`}>
+                        className={`px-3 py-2 rounded-lg text-sm cursor-pointer ${form2.first_name === c.first_name && form2.last_name === c.last_name ? 'bg-brand/10 text-brand font-medium' : 'hover:bg-gray-50'}`}>
                         {c.first_name} {c.last_name}
                       </div>
                     ))}
@@ -818,11 +875,11 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
           </div>
         </div>
 
-        <label className={`flex items-start gap-2.5 rounded-lg px-3 py-2.5 mb-4 cursor-pointer border transition ${isTest ? 'border-[#F0DCB4] bg-[#FFF8EC]' : 'border-gray-200 hover:bg-gray-50'}`}>
+        <label className={`flex items-start gap-2.5 rounded-lg px-3 py-2.5 mb-4 cursor-pointer border transition ${isTest ? 'border-waiting-edge bg-waiting-bg' : 'border-gray-200 hover:bg-gray-50'}`}>
           <input type="checkbox" checked={isTest} onChange={e => setIsTest(e.target.checked)} className="mt-0.5" />
           <span>
-            <span className={`text-sm font-medium ${isTest ? 'text-[#7a4a08]' : 'text-gray-700'}`}>This is a test deal</span>
-            <span className={`block text-xs mt-0.5 leading-relaxed ${isTest ? 'text-[#92400E]' : 'text-gray-400'}`}>
+            <span className={`text-sm font-medium ${isTest ? 'text-waiting' : 'text-gray-700'}`}>This is a test deal</span>
+            <span className={`block text-xs mt-0.5 leading-relaxed ${isTest ? 'text-waiting' : 'text-gray-400'}`}>
               It will not be counted anywhere, its client emails come to you instead of the client,
               and nothing it records reaches your rate data. You can delete it in one click.
             </span>
@@ -836,7 +893,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
         )}
 
         {carrying && (
-          <div className="bg-[#F4FBFF] border border-[#CDEBF8] rounded-lg px-3 py-2.5 mb-4 text-xs text-[#0E5E86] leading-relaxed">
+          <div className="bg-info-bg border border-info-edge rounded-lg px-3 py-2.5 mb-4 text-xs text-brand-ink leading-relaxed">
             We already hold <span className="font-semibold">{carrying}</span> for them.
             The Fact Find will start with it, and you can change anything on it.
           </div>
@@ -849,7 +906,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
           <button onClick={handleCreate} disabled={saving || (!selectedClient && !form.first_name) || !deal.assigned_broker}
-            className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-40">
+            className="px-4 py-2 text-sm bg-brand text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-40">
             {saving ? 'Creating...' : 'Create deal'}
           </button>
         </div>

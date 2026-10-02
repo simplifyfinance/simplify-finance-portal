@@ -6,6 +6,9 @@ import {
   columnCountLabel,
   type BoardFilters,
 } from './board-filters'
+// The whole module as well, for the view helpers added on 2 Oct - a namespace
+// rather than twelve more names at the top of the file.
+import * as BF from './board-filters'
 
 // A FILTER IS A WAY TO HIDE DEALS.
 //
@@ -237,5 +240,54 @@ describe('the screens say it out loud', () => {
 
   it('the filters are applied with the same function the tests use', () => {
     expect(page).toContain('applyFilters(')
+  })
+})
+
+// --- the three that moved into the panel -------------------------------------
+//
+// 2 Oct 2026. Settled, Lost and Test deals left the toolbar for the Filters
+// panel. The rule at the top of lib/board-filters.ts does not change because the
+// toolbar got tidier: a thing that is on is said out loud, counted on the button
+// and named on the bar.
+
+describe('settled, lost and test deals are counted like everything else', () => {
+  const V = (o: Partial<BF.BoardView> = {}): BF.BoardView => ({ ...BF.NO_VIEW, ...o })
+
+  it('starts with all three off', () => {
+    expect(BF.NO_VIEW).toEqual({ settled: false, lost: false, tests: false })
+    expect(BF.countView(BF.NO_VIEW)).toBe(0)
+    expect(BF.anyView(BF.NO_VIEW)).toBe(false)
+  })
+
+  it('counts each one that is on', () => {
+    expect(BF.countView(V({ settled: true }))).toBe(1)
+    expect(BF.countView(V({ settled: true, lost: true }))).toBe(2)
+    expect(BF.countView(V({ settled: true, lost: true, tests: true }))).toBe(3)
+  })
+
+  // THE WHOLE POINT OF MOVING THEM. One number on one button, covering both the
+  // filters and these, so the toolbar cannot be quiet about something that is
+  // changing what is on screen.
+  it('and the button shows them added to the filters, not instead of', () => {
+    const f = { ...BF.NO_FILTERS, broker: ['kylie'], nudge: true }
+    expect(BF.countFilters(f)).toBe(2)
+    expect(BF.countOn(f, BF.NO_VIEW)).toBe(2)
+    expect(BF.countOn(f, V({ tests: true }))).toBe(3)
+    expect(BF.countOn(BF.NO_FILTERS, V({ settled: true, lost: true }))).toBe(2)
+  })
+
+  it('names what is on, in the words that describe the state rather than the button', () => {
+    expect(BF.viewChips(V({ settled: true, tests: true }))).toEqual([
+      { which: 'settled', label: 'Showing settled' },
+      { which: 'tests', label: 'Test deals only' },
+    ])
+    expect(BF.viewChips(BF.NO_VIEW)).toEqual([])
+  })
+
+  it('and comes back from a profile as something real, whatever was stored', () => {
+    expect(BF.readView(null)).toEqual(BF.NO_VIEW)
+    expect(BF.readView('nonsense')).toEqual(BF.NO_VIEW)
+    expect(BF.readView({ settled: 'yes', lost: 1, tests: true }))
+      .toEqual({ settled: false, lost: false, tests: true })
   })
 })
