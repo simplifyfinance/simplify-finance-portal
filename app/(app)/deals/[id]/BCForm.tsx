@@ -2279,8 +2279,13 @@ Key assumptions: ${checklistText}`
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">"Based on your numbers" checklist</div>
                 <div className="flex flex-col gap-2 mb-2">
                   {checklist.map((item, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm">
-                      <span className="text-gray-500">✓</span>
+                    <div key={i} className="flex items-center gap-2.5 text-sm">
+                      {/* The tick carries the done colour, on the done wash, so
+                          a glance down the list reads as a list of things that
+                          are settled rather than a column of grey marks. Both
+                          values come from globals.css and have a dark pair, so
+                          this follows the theme without a second thought. */}
+                      <span className="w-[17px] h-[17px] flex-none rounded-full bg-done-bg text-done text-[10px] font-bold inline-flex items-center justify-center">✓</span>
                       <span className="flex-1">{item}</span>
                       <button onClick={() => setChecklist(c => c.filter((_,idx) => idx !== i))} className="text-xs text-gray-300 hover:text-red-400">✕</button>
                     </div>
@@ -2299,9 +2304,13 @@ Key assumptions: ${checklistText}`
               )}
 
               <div className="flex justify-end gap-2">
+                {/* THE SAME SHAPE AS "Client agreed - move to LO", because it
+                    is the same kind of thing: the button that moves the work on.
+                    It was the bright blue with a sparkle on it, which read as
+                    decoration next to a row of real controls. */}
                 <button onClick={generateEmail} disabled={generating}
-                  className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-50">
-                  {generating ? 'Generating...' : '✨ Generate email'}
+                  className="px-4 py-2 text-sm bg-[#141C24] border border-[#141C24] text-white rounded-lg font-semibold hover:bg-[#28323c] transition disabled:opacity-50">
+                  {generating ? 'Generating...' : 'Generate email'}
                 </button>
               </div>
             </div>
