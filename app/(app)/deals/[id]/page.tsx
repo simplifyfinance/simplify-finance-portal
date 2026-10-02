@@ -17,7 +17,13 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params
   const supabase = await createSupabaseServer()
   const { data } = await supabase.from('deals').select('deal_name').eq('id', id).single()
-  return { title: data?.deal_name ? `${data.deal_name} — Simplify Finance` : 'Simplify Finance Portal' }
+  // The deal name alone. The group's template adds " · ONE", so there is one
+  // place that decides how a tab is punctuated rather than twenty.
+  //
+  // THE MOST USEFUL TAB IN THE PORTAL. On an afternoon with five deals open
+  // this is the only thing that tells them apart, and a browser cuts the title
+  // from the right - so the client's name goes first and survives.
+  return { title: data?.deal_name || 'Deal' }
 }
 
 export default async function DealPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ stage?: string }> }) {

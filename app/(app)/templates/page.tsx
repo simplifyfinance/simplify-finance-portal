@@ -1,5 +1,7 @@
 import TemplatesClient from './TemplatesClient'
 
+export const metadata = { title: 'Templates' }
+
 /**
  * Templates.
  *

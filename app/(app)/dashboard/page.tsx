@@ -3,6 +3,8 @@ import { realDealsOnly } from '@/lib/test-deal'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
 
+export const metadata = { title: 'Dashboard' }
+
 export default async function Dashboard() {
   const supabase = await createSupabaseServer()
 

@@ -1,5 +1,7 @@
 import TeamSection from '@/components/TeamSection'
 
+export const metadata = { title: 'Team' }
+
 export default function TeamPage() {
   return (
     <div className="p-8 max-w-3xl mx-auto">

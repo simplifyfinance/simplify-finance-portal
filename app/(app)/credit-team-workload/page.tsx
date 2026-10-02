@@ -2,6 +2,8 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import WorkloadClient from './WorkloadClient'
 
+export const metadata = { title: 'Team workload' }
+
 export default async function CreditTeamWorkloadPage() {
   const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
