@@ -32,6 +32,39 @@ export const FORM_FILES = [
   'components/DealStructure.tsx',
 ]
 
+// AND EVERYTHING ROUND THE OUTSIDE OF THE TABS.
+//
+// 2 Oct 2026, the same afternoon. The five forms were locked, and Fabio then
+// spent an hour catching things I had dropped from the page AROUND them - the
+// stage bar, the prompt line, the Client emails menu, the Next action box, the
+// cards in the rail. A lock on the forms says nothing about any of it.
+//
+// These are the files that draw the deal page outside the tab body. Same
+// treatment, same direction: adding is free, removing has to be done on purpose
+// in a diff.
+export const PAGE_FILES = [
+  'app/(app)/deals/[id]/DealPageClient.tsx',
+  'app/(app)/deals/[id]/DealProgress.tsx',
+  'app/(app)/deals/[id]/DealSettlement.tsx',
+  'app/(app)/deals/[id]/DealSettlementPanel.tsx',
+  'app/(app)/deals/[id]/DealCommission.tsx',
+  'app/(app)/deals/[id]/CloseDeal.tsx',
+  'app/(app)/deals/[id]/BrokerAssignment.tsx',
+  'app/(app)/deals/[id]/CreditOfficerAssignment.tsx',
+  'components/DealFile.tsx',
+  'components/InternalNotesStrip.tsx',
+  'components/DocumentsBox.tsx',
+  'components/WhoIsDoingTheBc.tsx',
+  'components/Outstanding.tsx',
+  'components/DealDocuments.tsx',
+  'components/MilestoneEmails.tsx',
+  'components/AnzAssessmentEmail.tsx',
+  'components/OfferAccepted.tsx',
+  'components/TabLock.tsx',
+  'components/TestDealBand.tsx',
+  'components/DealHistory.tsx',
+]
+
 // A label, a placeholder, an option in a dropdown, a button, and the headings
 // that sit above a group of fields. Between them that is everything on the
 // screen that is a word rather than a value.
@@ -40,7 +73,15 @@ const PATTERNS: RegExp[] = [
   /placeholder="([^"]{2,70})"/g,
   /<option[^>]*>\s*([^<>{}][^<>]{1,70}?)\s*</g,
   /<button[^>]*>\s*([A-Z][^<>{}]{2,60}?)\s*</g,
-  />\s*([A-Z][A-Za-z][^<>{}]{3,70}?)\s*<\/(?:div|span|p|h[1-6]|legend)>/g,
+  />\s*([A-Z][A-Za-z][^<>{}]{3,70}?)\s*<\/(?:div|span|p|h[1-6]|legend|a|button|label|b|em|strong|td|th|li)>/g,
+  // A LINK IS A BUTTON WITH A DIFFERENT TAG. "Email the assessment team" and
+  // "OneDrive" are anchors, and the page-chrome snapshot came back with ZERO
+  // words for AnzAssessmentEmail.tsx until this line existed. A file that reads
+  // as empty is the extractor being blind, not the file being quiet - which is
+  // why "every file says something" is a test below.
+  /<a[^>]*>\s*(?:<svg[\s\S]*?<\/svg>)?\s*([A-Z][^<>{}]{2,60}?)\s*</g,
+  // And a heading that is only text, with the tag on the line above it.
+  /\n\s{2,}([A-Z][A-Za-z][^<>{}\n]{3,60}?)\s*\n\s*<\//g,
   // AND THE ONES WRITTEN AS A CHOICE RATHER THAN AS TEXT.
   //
   // {addr.isCurrent ? 'Current address' : `Previous address #${i}`}

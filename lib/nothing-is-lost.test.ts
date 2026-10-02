@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync } from 'fs'
-import { FORM_FILES, countWords, readFormWords, wordsIn, type FormWords } from './what-the-forms-say'
+import { FORM_FILES, PAGE_FILES, countWords, readFormWords, wordsIn, type FormWords } from './what-the-forms-say'
 
 // NOTHING IS LOST.
 //
@@ -106,5 +106,70 @@ describe('the things Fabio checked by hand, by name', () => {
   ]
   it.each(MUST_BE_THERE)('%s', (label) => {
     expect(factFind.has(label), `"${label}" is no longer on the Fact Find`).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// AND THE PAGE AROUND THE TABS.
+//
+// The five forms were locked first. Fabio then spent an hour finding things I
+// had dropped from the page OUTSIDE them - the stage bar, the prompt line, the
+// Client emails menu, the Next action box, the cards in the rail. The forms
+// test said nothing, because none of that is in a form.
+//
+// Same lock, same direction, different list of files.
+const PAGE_SNAPSHOT = 'lib/nothing-is-lost.page.json'
+const lockedPage: FormWords = JSON.parse(readFileSync(PAGE_SNAPSHOT, 'utf8'))
+const pageNow = readFormWords(PAGE_FILES)
+
+describe('every word on the deal page outside the tabs is still there', () => {
+  it('the snapshot covers every file that draws the page', () => {
+    expect(existsSync(PAGE_SNAPSHOT)).toBe(true)
+    expect(Object.keys(lockedPage).sort()).toEqual([...PAGE_FILES].sort())
+  })
+
+  // A FILE THAT READS AS EMPTY IS THE EXTRACTOR BEING BLIND.
+  //
+  // AnzAssessmentEmail.tsx came back with zero words on the first run, because
+  // its button is an <a> and nothing was looking at anchors. A snapshot of
+  // nothing passes forever while the thing it guards rots.
+  it.each(PAGE_FILES)('%s says something', (f) => {
+    expect((pageNow[f] || []).length, `nothing was found in ${f} - the extractor has gone blind`)
+      .toBeGreaterThan(0)
+  })
+
+  for (const file of PAGE_FILES) {
+    it(file.split('/').pop()!, () => {
+      const have = new Set(pageNow[file] || [])
+      const gone = (lockedPage[file] || []).filter(w => !have.has(w))
+      expect(gone, gone.length
+        ? `${gone.length} thing${gone.length === 1 ? '' : 's'} a person could read on ${file} ${gone.length === 1 ? 'is' : 'are'} no longer there:\n  ` + gone.join('\n  ')
+        : '').toEqual([])
+    })
+  }
+
+  it('and the page as a whole has not shrunk', () => {
+    expect(countWords(pageNow)).toBeGreaterThanOrEqual(countWords(lockedPage))
+  })
+})
+
+describe('the things Fabio caught by hand on the page, by name', () => {
+  // Each of these is something a mock-up of mine dropped and he found.
+  const all = new Set(Object.values(pageNow).flat())
+  const MUST_BE_THERE = [
+    'Back to deals',
+    'Make it a real deal',
+    'Internal notes',
+    'Email the assessment team',
+    'Rebuild all three',
+    'Request them',
+    'Who is doing the borrowing capacity?',
+    'Unlock the deal',
+    'Close this deal',
+    'Record these figures',
+    'Mark as settled',
+  ]
+  it.each(MUST_BE_THERE)('%s', (label) => {
+    expect(all.has(label), `"${label}" is no longer anywhere on the deal page`).toBe(true)
   })
 })
