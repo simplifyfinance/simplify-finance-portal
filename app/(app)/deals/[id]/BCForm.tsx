@@ -1515,46 +1515,18 @@ Key assumptions: ${checklistText}`
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-4">
-              <div className="bg-white border border-gray-100 rounded-xl p-4">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Notes</div>
-                <div className="flex flex-col gap-2">
-                  <Field label="Broker summary notes (included in email)">
-                    <textarea spellCheck="true" className={`${brokerNotes ? "border-green-200 bg-white" : "border-amber-200 bg-[#FFFBF0]"} px-2.5 py-1.5 text-sm rounded-lg focus:outline-none focus:border-[#2DBEFF] w-full min-h-16 resize-y border`} value={brokerNotes}
-                      onFocus={() => focusField(ownRef.current, 'brokerNotes')}
-                      onBlur={() => blurField(ownRef.current, 'brokerNotes')}
-                      onChange={e => { markDirty(ownRef.current, 'brokerNotes'); setBrokerNotes(e.target.value) }} placeholder="✏ Add your personalised opening message — this goes directly into the client email..." />
-                  </Field>
-                  <Field label="Important things to note (included in email, one per line — pre-filled per template)">
-                    <textarea spellCheck="true" className={`${inputCls} min-h-40 resize-y`} value={templateNotes}
-                      onFocus={() => focusField(ownRef.current, 'templateNotes')}
-                      onBlur={() => blurField(ownRef.current, 'templateNotes')}
-                      onChange={e => { markDirty(ownRef.current, 'templateNotes'); setTemplateNotes(e.target.value) }} placeholder="One note per line..." />
-                  </Field>
-                  {/* The internal notes box that used to sit here saved to
-                      bc_data.internalNotes - a different field from the one on
-                      Fact Find, with the same label. The deal's notes are now one
-                      field, in the strip above the tabs. */}
-                  <Field label="Broker signature">
-                    <select className={selectCls} value={brokerSig} onChange={e => setBrokerSig(e.target.value)}>
-                      {brokersList.map((b: any, i: number) => (
-                        <option key={i} value={b.name}>{b.name}</option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label="Brand">
-                    <select className={selectCls} value={brand} onChange={e => setBrand(e.target.value)}>
-                      {availableBrands.map((br: any) => (
-                        <option key={br.id} value={br.id}>{br.name}</option>
-                      ))}
-                    </select>
-                  </Field>
-                </div>
-              </div>
-            </div>
+          {/* ONE COLUMN, NOT TWO.
 
-            <div className="flex flex-col gap-4">
+              The form was a two-column grid: a Notes card on the left and
+              everything else on the right. On a complex refinance with four
+              splits the right column ran for pages while the left sat empty
+              under the Notes card, and each split had half the width it needed
+              - a property address wrapped over three lines.
+
+              One column gives the splits their width back, and the page now
+              runs in the order the work is done: the numbers, then the words
+              that go to the client. Fabio, 3 Oct 2026. */}
+          <div className="flex flex-col gap-4">
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Scenario details</div>
                 <div className="grid grid-cols-2 gap-2">
@@ -2275,6 +2247,16 @@ Key assumptions: ${checklistText}`
                 </button>
               )}
 
+              {/* THE EMAIL HALF, UNDER ONE LINE AND IN ONE CARD.
+                  Everything above this is the deal. Everything below it is what
+                  the client reads. The checklist and the notes were two cards
+                  saying the same kind of thing, so they are one. */}
+              <div className="flex items-center gap-3 mt-2">
+                <span className="h-px flex-1 bg-line" />
+                <span className="text-[9.5px] font-bold tracking-[0.11em] uppercase text-gray-400">What goes in the email</span>
+                <span className="h-px flex-1 bg-line" />
+              </div>
+
               <div className="bg-white border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">"Based on your numbers" checklist</div>
                 <div className="flex flex-col gap-2 mb-2">
@@ -2297,6 +2279,40 @@ Key assumptions: ${checklistText}`
                   <button onClick={() => { if (newCheck) { setChecklist(c => [...c, newCheck]); setNewCheck('') }}}
                     className="px-3 py-1.5 text-sm bg-gray-100 rounded-lg hover:bg-gray-200">Add</button>
                 </div>
+
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mt-5 pt-4 border-t border-gray-100 mb-3">Notes</div>
+                <div className="flex flex-col gap-2">
+                  <Field label="Broker summary notes (included in email)">
+                    <textarea spellCheck="true" className={`${brokerNotes ? "border-green-200 bg-white" : "border-amber-200 bg-[#FFFBF0]"} px-2.5 py-1.5 text-sm rounded-lg focus:outline-none focus:border-[#2DBEFF] w-full min-h-16 resize-y border`} value={brokerNotes}
+                      onFocus={() => focusField(ownRef.current, 'brokerNotes')}
+                      onBlur={() => blurField(ownRef.current, 'brokerNotes')}
+                      onChange={e => { markDirty(ownRef.current, 'brokerNotes'); setBrokerNotes(e.target.value) }} placeholder="✏ Add your personalised opening message — this goes directly into the client email..." />
+                  </Field>
+                  <Field label="Important things to note (included in email, one per line — pre-filled per template)">
+                    <textarea spellCheck="true" className={`${inputCls} min-h-40 resize-y`} value={templateNotes}
+                      onFocus={() => focusField(ownRef.current, 'templateNotes')}
+                      onBlur={() => blurField(ownRef.current, 'templateNotes')}
+                      onChange={e => { markDirty(ownRef.current, 'templateNotes'); setTemplateNotes(e.target.value) }} placeholder="One note per line..." />
+                  </Field>
+                  {/* The internal notes box that used to sit here saved to
+                      bc_data.internalNotes - a different field from the one on
+                      Fact Find, with the same label. The deal's notes are now one
+                      field, in the strip above the tabs. */}
+                  <Field label="Broker signature">
+                    <select className={selectCls} value={brokerSig} onChange={e => setBrokerSig(e.target.value)}>
+                      {brokersList.map((b: any, i: number) => (
+                        <option key={i} value={b.name}>{b.name}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Brand">
+                    <select className={selectCls} value={brand} onChange={e => setBrand(e.target.value)}>
+                      {availableBrands.map((br: any) => (
+                        <option key={br.id} value={br.id}>{br.name}</option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
               </div>
 
               {emailError && (
@@ -2313,7 +2329,6 @@ Key assumptions: ${checklistText}`
                   {generating ? 'Generating...' : 'Generate email'}
                 </button>
               </div>
-            </div>
           </div>
         </div>
       )}
