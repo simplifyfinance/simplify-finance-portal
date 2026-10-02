@@ -7,6 +7,9 @@ import { chipsFor, brokerColour, chipStyle, dealTitle } from '@/lib/deal-labels'
 import { CREDIT_GREY, type ThresholdMap } from '@/lib/board-settings'
 import { useColumnFolds } from '@/lib/use-column-folds'
 import { isUrgentNow, urgentChipLabel } from '@/lib/push-answers'
+// THE CARD WEARS THE COLOUR OF THE TILE THAT COUNTS IT. Both read these two
+// functions, so a red tile of six can only ever sit above six red cards.
+import { needsChasing, waitingOnSomeone } from '@/lib/board-tiles'
 import { AlertChips } from '@/components/DealFile'
 import type { Alert } from '@/lib/deal-notes'
 import DealPeek from '@/components/DealPeek'
@@ -56,8 +59,8 @@ const brokerNameOf = (d: any, nameFor: (k: string) => string) => {
 }
 
 const AGE_STYLE: Record<string, string> = {
-  nudge: 'text-[#AD4227] bg-[#FBEDE9] border-[#EFD3CB]',
-  long:  'text-[#946017] bg-[#FDF6EC] border-[#EBD9BE]',
+  nudge: 'text-chase bg-chase-bg border-chase-edge',
+  long:  'text-waiting bg-waiting-bg border-waiting-edge',
 }
 
 export default function DealBoard({ deals, allDeals, nameFor, colours, thresholds, alerts, onDelete, onMoveBack, showLost }: {
@@ -261,14 +264,14 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
              onClick={e => { if (e.target === e.currentTarget && !undoBusy) setUndoing(null) }}>
           <div className="bg-white rounded-2xl w-[560px] max-w-full shadow-2xl mt-16 overflow-hidden">
             <div className="px-6 pt-5">
-              <h2 className="text-[17px] font-bold text-[#141C24] m-0 mb-1.5">
+              <h2 className="text-[17px] font-bold text-ink m-0 mb-1.5">
                 Move this deal back to {PHASE_LABEL[undoing.target]}?
               </h2>
-              <p className="text-[13px] text-[#7C8894] m-0">{undoing.deal.deal_name}</p>
+              <p className="text-[13px] text-muted m-0">{undoing.deal.deal_name}</p>
             </div>
             <div className="px-6 pt-4">
-              <div className="border border-[#EBD9BE] bg-[#FDF6E7] rounded-[10px] px-4 py-3.5 text-[13px] text-[#8A6218]">
-                <b className="text-[#141C24]">The deal will stop saying:</b>
+              <div className="border border-waiting-edge bg-waiting-bg rounded-[10px] px-4 py-3.5 text-[13px] text-waiting">
+                <b className="text-ink">The deal will stop saying:</b>
                 <ul className="m-0 mt-2 pl-4">
                   {undoing.clearing.map(p2 => (
                     <li key={p2} className="mb-0.5">{PHASE_UNDO_LABEL[p2] || PHASE_LABEL[p2]}</li>
@@ -281,8 +284,8 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
               </div>
 
               {undoing.clearing.some(p2 => PHASE_UNDO_WARNING[p2]) && (
-                <div className="mt-2.5 border border-[#E9D2CF] bg-[#FDF3F2] rounded-[10px] px-4 py-3.5 text-[13px] text-[#8E3A34]">
-                  <b className="text-[#141C24]">Watch out:</b>
+                <div className="mt-2.5 border border-chase-edge bg-chase-bg rounded-[10px] px-4 py-3.5 text-[13px] text-chase">
+                  <b className="text-ink">Watch out:</b>
                   <ul className="m-0 mt-1.5 pl-4">
                     {undoing.clearing.filter(p2 => PHASE_UNDO_WARNING[p2]).map(p2 => (
                       <li key={p2} className="mb-0.5">{PHASE_UNDO_WARNING[p2]}</li>
@@ -291,7 +294,7 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                 </div>
               )}
 
-              <p className="mt-2.5 mb-0 text-[12.5px] text-[#7C8894]">
+              <p className="mt-2.5 mb-0 text-[12.5px] text-muted">
                 Everything else stays: the fact find, the write-up, the documents and the notes are
                 untouched. You can record {undoing.clearing.length === 1 ? 'it' : 'them'} again whenever
                 you like.
@@ -307,11 +310,11 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                   if (problem) { setMsg(problem); setUndoing(null); return }
                   setUndoing(null)
                 }}
-                className="rounded-lg px-4 py-2 text-[13px] font-semibold border bg-[#141C24] border-[#141C24] text-white disabled:opacity-40">
+                className="rounded-lg px-4 py-2 text-[13px] font-semibold border bg-ink border-ink text-white disabled:opacity-40">
                 {undoBusy ? 'Moving…' : `Move it back to ${PHASE_LABEL[undoing.target]}`}
               </button>
               <button disabled={undoBusy} onClick={() => setUndoing(null)}
-                className="rounded-lg px-4 py-2 text-[13px] border bg-white border-[#D7DCE1] text-[#3E4C59]">
+                className="rounded-lg px-4 py-2 text-[13px] border bg-white border-line text-body">
                 Leave it where it is
               </button>
             </div>
@@ -319,8 +322,8 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
         </div>
       )}
       {msg && (
-        <div className="mb-3 text-[12.5px] rounded-lg border border-[#EBD9BE] bg-[#FDF6EC] text-[#575046] px-3 py-2">
-          {msg} <button onClick={() => setMsg('')} className="underline text-[#946017] ml-1">Dismiss</button>
+        <div className="mb-3 text-[12.5px] rounded-lg border border-waiting-edge bg-waiting-bg text-body px-3 py-2">
+          {msg} <button onClick={() => setMsg('')} className="underline text-waiting ml-1">Dismiss</button>
         </div>
       )}
       {/* THE PANE. See lib/board-pane.ts. On a laptop the board is exactly as
@@ -370,17 +373,17 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                   onClick={() => toggle(p)}
                   style={{ width: SHUT_W }}
                   className={`flex-none rounded-xl border border-dashed flex flex-col items-center gap-2 py-2.5 cursor-pointer transition ${
-                    over === p ? 'border-[#0E8FCB] bg-[#EAF6FD]'
-                    : hot > 0 ? 'border-[#EFD3CB] bg-[#FBEDE9]'
-                    : 'border-[#E5DED2] bg-[#FCFAF6] hover:border-[#D6CCBC]'}`}>
-                  <span className={`text-[11px] font-bold tabular-nums ${hot > 0 ? 'text-[#AD4227]' : 'text-[#575046]'}`}>
+                    over === p ? 'border-brand-ink bg-info-bg'
+                    : hot > 0 ? 'border-chase-edge bg-chase-bg'
+                    : 'border-card-line bg-gray-50 hover:border-gray-300'}`}>
+                  <span className={`text-[11px] font-bold tabular-nums ${hot > 0 ? 'text-chase' : 'text-body'}`}>
                     {countLabel(p, cards.length)}
                   </span>
-                  <span className="text-[9.5px] font-bold tracking-[.06em] uppercase text-[#A29889] whitespace-nowrap"
+                  <span className="text-[9.5px] font-bold tracking-[.06em] uppercase text-faint whitespace-nowrap"
                         style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
                     {PHASE_LABEL[p]}
                   </span>
-                  <svg className="mt-auto text-[#C3BDB2]" width="11" height="11" viewBox="0 0 24 24" fill="none"
+                  <svg className="mt-auto text-faint" width="11" height="11" viewBox="0 0 24 24" fill="none"
                        stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9 6l6 6-6 6" />
                   </svg>
@@ -395,10 +398,10 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                 onDrop={() => onDrop(p)}
                 className={`flex-1 min-w-[248px] rounded-xl border p-2.5 transition ${
                   paneH === null ? '' : 'flex flex-col min-h-0'} ${
-                  over === p ? 'border-[#0E8FCB] bg-[#EAF6FD]'
-                  : 'border-[#EFEAE0] bg-[#FCFAF6]'}`}>
+                  over === p ? 'border-brand-ink bg-info-bg'
+                  : 'border-line-soft bg-gray-50'}`}>
                 <div className="flex items-baseline gap-1.5 mb-2 px-0.5">
-                  <span className="text-[10.5px] font-bold tracking-[.06em] uppercase text-[#7A7266]">
+                  <span className="text-[10.5px] font-bold tracking-[.06em] uppercase text-muted">
                     {PHASE_LABEL[p]}
                   </span>
                   {/* HOW MANY, NOT THE WHOLE COLUMN.
@@ -411,22 +414,22 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                       Nothing about WHICH deals are overdue changes - same
                       thresholds, same settings. */}
                   {hot > 0 && (
-                    <span title={`${hot} deal${hot === 1 ? '' : 's'} in ${PHASE_LABEL[p]} past your nudge setting`}
-                      className="text-[9.5px] font-bold tracking-[.04em] uppercase rounded-full px-[7px] py-[1px] text-[#AD4227] bg-[#FBEDE9] border border-[#EFD3CB] whitespace-nowrap">
-                      {hot} need{hot === 1 ? 's' : ''} a nudge
+                    <span title={`${hot} deal${hot === 1 ? '' : 's'} in ${PHASE_LABEL[p]} past your chase setting`}
+                      className="text-[9.5px] font-bold tracking-[.04em] uppercase rounded-full px-[7px] py-[1px] text-chase bg-chase-bg border border-chase-edge whitespace-nowrap">
+                      {hot} to chase
                     </span>
                   )}
                   {/* BOTH NUMBERS WHILE A FILTER IS ON, and dimmed with it - a
                       column reading 3 must never be mistaken for the whole
                       truth. See lib/board-filters.ts. */}
                   <span title={totalByColumn ? `${cards.length} of ${totalByColumn[p] || 0} while a filter is on` : ''}
-                    className={`ml-auto text-[11px] font-bold bg-white border border-[#E5DED2] rounded-full px-1.5 ${
-                      totalByColumn ? 'text-[#A29889]' : 'text-[#575046]'}`}>
+                    className={`ml-auto text-[11px] font-bold bg-white border border-card-line rounded-full px-1.5 ${
+                      totalByColumn ? 'text-faint' : 'text-body'}`}>
                     {countLabel(p, cards.length)}
                   </span>
                   <button type="button" title={`Fold ${PHASE_LABEL[p]} away`}
                     onClick={e => { e.stopPropagation(); toggle(p) }}
-                    className="text-[#C3BDB2] hover:text-[#575046] leading-none -mb-[1px]">
+                    className="text-faint hover:text-body leading-none -mb-[1px]">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                          strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M15 6l-6 6 6 6" />
@@ -435,7 +438,7 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                 </div>
                 {/* The column's own money. "How much is sitting here" is the
                     question a board is asked from across the room. */}
-                <div className="text-[11px] text-[#7A7266] mb-2 px-0.5 tabular-nums">
+                <div className="text-[11px] text-muted mb-2 px-0.5 tabular-nums">
                   {total > 0 ? money(total) : '—'}
                 </div>
 
@@ -466,6 +469,22 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                     ? new Date(settleOn).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
                     : age.label
                   const urgent = isUrgentNow(d)
+                  // A CARD WEARING A STATE WEARS IT ALL THE WAY ROUND, LIGHTLY.
+                  //
+                  // Not a stripe down one side, which reads as damage rather
+                  // than a state. One and a half steps off white: far enough to
+                  // see across the office, close enough that the client's name
+                  // still reads at 17 to 1 on the tint.
+                  //
+                  // Red beats purple on purpose. A deal sitting with a lender
+                  // that has ALSO gone past its threshold is a deal to chase -
+                  // "not ours right now" stops being an excuse at that point.
+                  const chasing = needsChasing(d, thresholds)
+                  const waiting = !chasing && waitingOnSomeone(d)
+                  const washed = chasing || waiting
+                  const wash = chasing ? 'bg-card-chase border-card-chase-edge'
+                    : waiting ? 'bg-card-waiting border-card-waiting-edge'
+                    : 'bg-card border-card-line hover:border-gray-300'
                   const people = [
                     { name: brokerNameOf(d, nameFor), colour: brokerColour(bKey, colours?.broker) },
                     ...(d.credit_officers?.name ? [{ name: d.credit_officers.name, colour: CREDIT_GREY }] : []),
@@ -475,17 +494,14 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                       onDragStart={() => setDragging(d.id)}
                       onDragEnd={() => { setDragging(''); setOver('') }}
                       onClick={() => router.push(`/deals/${d.id}`)}
-                      className={`group relative overflow-hidden bg-white border rounded-[10px] px-2.5 pt-2.5 pb-2.5 mb-2 last:mb-0 cursor-pointer transition hover:border-[#D6CCBC] ${
-                        dragging === d.id ? 'opacity-40 border-[#0E8FCB]'
-                        : urgent ? 'border-[#E9C9BE] ring-2 ring-[#FBEDE9]'
-                        // The column no longer shouts, so the card does - quietly,
-                        // and only the ones that have actually sat too long.
-                        : needsNudge ? 'border-[#EFD3CB]' : 'border-[#E5DED2]'}`}>
+                      className={`group relative overflow-hidden border rounded-[10px] px-2.5 pt-2.5 pb-2.5 mb-2 last:mb-0 cursor-pointer transition ${wash} ${
+                        dragging === d.id ? 'opacity-40 border-brand-ink'
+                        : urgent ? 'ring-2 ring-chase-bg' : ''}`}>
 
                       {placedByHand(d) && (
                         <div className="mb-1.5 mr-[50px] min-w-0">
                           <span title="Somebody moved this card here. It returns to where the deal actually is as soon as it moves on."
-                            className="block max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border w-fit text-[#5B646D] bg-[#F1F4F7] border-[#DDE1E5]">
+                            className="block max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border w-fit text-muted bg-gray-50 border-line">
                             Placed by hand
                           </span>
                         </div>
@@ -493,7 +509,7 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                       {urgent && (
                         <div className="mb-1.5 mr-[50px] min-w-0">
                           <span title={urgentChipLabel(d)}
-                            className="block max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border w-fit text-[#AD4227] bg-[#FBEDE9] border-[#EFD3CB]">
+                            className="block max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border w-fit text-chase bg-chase-bg border-chase-edge">
                             {urgentChipLabel(d)}
                           </span>
                         </div>
@@ -502,7 +518,7 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                       {onDelete && (
                         <button title="Delete this deal"
                           onClick={e => onDelete(e, d)}
-                          className="absolute top-[7px] right-[30px] w-[22px] h-[22px] rounded-md border border-[#E5DED2] bg-white text-[#B0A79B] flex items-center justify-center opacity-0 group-hover:opacity-100 transition hover:border-[#D9534F] hover:text-[#D9534F] hover:bg-[#FDF0EF]">
+                          className="absolute top-[7px] right-[30px] w-[22px] h-[22px] rounded-md border border-card-line bg-white text-faint flex items-center justify-center opacity-0 group-hover:opacity-100 transition hover:border-chase hover:text-chase hover:bg-chase-bg">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                             <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
                           </svg>
@@ -512,7 +528,7 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                       {/* A look before committing to opening it. */}
                       <button title="Quick look"
                         onClick={e => { e.stopPropagation(); setPeeking({ id: d.id, phase: p }) }}
-                        className="absolute top-[7px] right-2 w-[22px] h-[22px] rounded-md border border-[#E5DED2] bg-white text-[#7A7266] flex items-center justify-center hover:border-[#0E8FCB] hover:text-[#0E8FCB] hover:bg-[#EAF6FD]">
+                        className="absolute top-[7px] right-2 w-[22px] h-[22px] rounded-md border border-card-line bg-white text-muted flex items-center justify-center hover:border-brand-ink hover:text-brand-ink hover:bg-info-bg">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <circle cx="7" cy="15" r="4" /><circle cx="17" cy="15" r="4" />
                           <path d="M11 15h2M6 11V5h3v6M15 11V5h3v6" />
@@ -521,10 +537,10 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
 
                       {/* One line, ellipsis, full name on hover — the same shape a
                           long client name gets anywhere else. */}
-                      <p className="text-[12.5px] font-[640] text-[#221F1B] m-0 mr-[50px] truncate" title={d.deal_name}>
+                      <p className="text-[12.5px] font-[640] text-ink m-0 mr-[50px] truncate" title={d.deal_name}>
                         {dealTitle(d.deal_name)}
                       </p>
-                      <p className="text-[9.5px] font-bold tracking-[.07em] uppercase text-[#A29889] m-0 mb-[7px] truncate"
+                      <p className="text-[9.5px] font-bold tracking-[.07em] uppercase text-faint m-0 mb-[7px] truncate"
                          title={`Home loan${lender ? ` · ${lender}` : ''}${sentLabel ? ` · ${sentLabel}` : ''}`}>
                         Home loan{lender ? ` · ${lender}` : ''}{sentLabel ? ` · ${sentLabel}` : ''}
                       </p>
@@ -532,9 +548,9 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                       {/* The money is the biggest thing on a card about a loan book. */}
                       <div className="flex items-center gap-1.5 mb-1.5">
                         {amt !== null
-                          ? <span className="text-[14px] font-[680] text-[#221F1B] tabular-nums tracking-[-.01em]">{money(amt)}</span>
-                          : <span className="text-[11.5px] text-[#C3BDB2]">No amount recorded</span>}
-                        <span className="ml-auto text-[11px] text-[#7A7266] tabular-nums">{when}</span>
+                          ? <span className="text-[14px] font-[680] text-ink tabular-nums tracking-[-.01em]">{money(amt)}</span>
+                          : <span className="text-[11.5px] text-faint">No amount recorded</span>}
+                        <span className="ml-auto text-[11px] text-muted tabular-nums">{when}</span>
                       </div>
 
                       {/* Loudest thing on the card, above the labels - somebody
@@ -549,12 +565,12 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                         {chipsFor(d, colours).map(c => (
                           <span key={c.id} title={c.label}
                                 className="max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border"
-                                style={chipStyle(c.colour)}>{c.label}</span>
+                                style={chipStyle(c.colour, washed)}>{c.label}</span>
                         ))}
                         {age.days !== null && (
                           <span className={`max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border ${
-                            AGE_STYLE[grp] || 'text-[#A29889] bg-[#FCFAF6] border-[#EFEAE0]'}`}>
-                            {needsNudge ? `${age.label} \u00b7 nudge` : age.label}
+                            AGE_STYLE[grp] || 'text-faint bg-gray-50 border-line-soft'}`}>
+                            {needsNudge ? `${age.label} \u00b7 to chase` : age.label}
                           </span>
                         )}
                         <span className="ml-auto flex">
@@ -584,12 +600,12 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                   // ring is urgent - and spending them on "this one has been
                   // sent" would leave nothing to say the rest with.
                   return bcLanes(cards).map(lane => lane.key === 'sent' ? (
-                    <div key={lane.key} className="bg-[#E7F2FA] border border-[#D2E6F4] rounded-[10px] p-2 mb-2 mt-2.5">
+                    <div key={lane.key} className="bg-info-bg border border-info-edge rounded-[10px] p-2 mb-2 mt-2.5">
                       <div className="flex items-center gap-1.5 mx-0.5 mb-2">
-                        <span className="text-[9px] font-extrabold tracking-[.07em] uppercase text-[#0E6FA0] whitespace-nowrap">
+                        <span className="text-[9px] font-extrabold tracking-[.07em] uppercase text-info whitespace-nowrap">
                           {lane.label}
                         </span>
-                        <span className="ml-auto bg-white border border-[#D2E6F4] rounded-full px-1.5 text-[9px] font-bold text-[#0E6FA0] leading-[15px]">
+                        <span className="ml-auto bg-white border border-info-edge rounded-full px-1.5 text-[9px] font-bold text-info leading-[15px]">
                           {lane.items.length}
                         </span>
                       </div>
@@ -598,11 +614,11 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                   ) : (
                     <div key={lane.key}>
                       <div className="flex items-center gap-1.5 mx-1 mb-1.5">
-                        <span className="h-px flex-1 bg-[#E0D8CA]" />
-                        <span className="text-[9px] font-extrabold tracking-[.07em] uppercase text-[#A29889] whitespace-nowrap">
+                        <span className="h-px flex-1 bg-line" />
+                        <span className="text-[9px] font-extrabold tracking-[.07em] uppercase text-faint whitespace-nowrap">
                           {lane.label} &middot; {lane.items.length}
                         </span>
-                        <span className="h-px flex-1 bg-[#E0D8CA]" />
+                        <span className="h-px flex-1 bg-line" />
                       </div>
                       {lane.items.map(renderCard)}
                     </div>
@@ -610,7 +626,7 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                 })()}
 
                 {cards.length === 0 && (
-                  <p className="text-[11px] text-[#C3BDB2] text-center py-4 m-0">—</p>
+                  <p className="text-[11px] text-faint text-center py-4 m-0">—</p>
                 )}
                 </div>
               </div>

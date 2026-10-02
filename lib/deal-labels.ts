@@ -134,8 +134,18 @@ export function brokerColour(key: string, overrides?: Record<string, string>): s
 
 // A chip needs three colours from one: the text, a wash behind it, and a border.
 // Derived so Settings only ever has to store one value per label.
-export function chipStyle(colour: string): { color: string; background: string; borderColor: string } {
-  return { color: colour, background: colour + '14', borderColor: colour + '38' }
+export function chipStyle(colour: string, onWash = false): { color: string; background: string; borderColor: string } {
+  // A CHIP INSIDE A WASHED CARD GOES WHITE, OR IT VANISHES INTO THE CARD.
+  //
+  // The 8% tint behind a chip is calculated to sit on white. Laid over a card
+  // that is itself a tint, the two mix into a muddy band and the chip stops
+  // reading as a separate thing. On a washed card it takes the card colour
+  // instead - a name rather than a hex, so dark mode gets it for free.
+  return {
+    color: colour,
+    background: onWash ? 'var(--color-card)' : colour + '14',
+    borderColor: colour + '38',
+  }
 }
 
 // THE DEAL NAME. NOT A VERSION OF IT.

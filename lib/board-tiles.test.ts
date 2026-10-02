@@ -4,6 +4,8 @@ import {
   needsChasing, readyForReview, readyStageFor, reviewSplit, tileCounts,
 } from './board-tiles'
 import { ageGroupOf } from './deal-age'
+import { readFileSync } from 'fs'
+import { chipStyle } from './deal-labels'
 import { phaseOf } from './deal-phase'
 import { isUrgentNow } from './push-answers'
 import { needsAttention } from './board-filters'
@@ -208,5 +210,83 @@ describe('the line under the total says what is not in it', () => {
   it('names the closed ones rather than losing them', () => {
     expect(closedLine(71, 50)).toBe('21 settled or lost')
     expect(closedLine(50, 50)).toBe('none closed')
+  })
+})
+
+// --- and the card, which is the whole point ----------------------------------
+//
+// The rules above are only worth having if the board actually asks them. These
+// read components/DealBoard.tsx, because a rule the card re-implements its own
+// way is exactly how a tile of six ends up over five red cards.
+
+describe('the card wears the colour of the tile that counts it', () => {
+  const board = readFileSync('components/DealBoard.tsx', 'utf8')
+
+  it('asks these functions rather than working it out again', () => {
+    expect(board).toContain("from '@/lib/board-tiles'")
+    expect(board).toContain('needsChasing(d, thresholds)')
+    expect(board).toContain('waitingOnSomeone(d)')
+  })
+
+  // A deal sitting with a lender that has ALSO gone past its threshold is a deal
+  // to chase. If purple won, the only cards that could ever be red would be the
+  // ones on our own desk - and the whole right-hand side of the board would go
+  // quiet exactly when it should not.
+  it('lets red beat purple, so a late deal cannot hide behind "not ours"', () => {
+    expect(board).toContain('const waiting = !chasing && waitingOnSomeone(d)')
+  })
+
+  it('tints the whole card, never a stripe down one side', () => {
+    expect(board).toContain('bg-card-chase border-card-chase-edge')
+    expect(board).toContain('bg-card-waiting border-card-waiting-edge')
+    // A stripe is what damage looks like. If one of these ever appears on a
+    // card, somebody has gone back to the thing Fabio rejected on sight.
+    expect(board).not.toMatch(/border-l-[24] /)
+  })
+
+  it('and spells no colour out by hand any more', () => {
+    expect(board.replace(/\/\/.*$/gm, '')).not.toMatch(/#[0-9a-fA-F]{6}/)
+  })
+})
+
+describe('the word is "chase", everywhere a person can read it', () => {
+  const screens = ['components/DealBoard.tsx', 'app/(app)/deals/page.tsx']
+
+  it('says what it means on the card and in the column head', () => {
+    const board = readFileSync('components/DealBoard.tsx', 'utf8')
+    expect(board).toContain('to chase')
+    expect(board).not.toContain('a nudge')
+    expect(board).not.toContain('\\u00b7 nudge')
+  })
+
+  // "nudge" survives as the NAME of a threshold in the data and in the filter
+  // that has always been called "needs attention" - renaming those is a separate
+  // job with a migration in it. What must not survive is the word reaching a
+  // screen, where it has to match what the tiles and the chips say.
+  it('and nothing on these two screens shows the old word to anybody', () => {
+    const showing: string[] = []
+    for (const f of screens) {
+      const src = readFileSync(f, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+      // Anything inside a JSX text run or a quoted label.
+      for (const m of src.matchAll(/>[^<>{}]*\bnudge\b[^<>{}]*</gi)) showing.push(`${f}: ${m[0].trim()}`)
+      for (const m of src.matchAll(/(['"`])[^'"`\n]*\bneeds? a nudge\b[^'"`\n]*\1/gi)) showing.push(`${f}: ${m[0]}`)
+    }
+    expect(showing, showing.join('\n')).toEqual([])
+  })
+})
+
+describe('a chip on a washed card does not sink into it', () => {
+  it('takes the card colour rather than its own tint', () => {
+    expect(chipStyle('#107EA8', true).background).toBe('var(--color-card)')
+    expect(chipStyle('#107EA8', false).background).toBe('#107EA814')
+    // The lettering and the edge are the chip's own either way, or it stops
+    // being a chip and becomes a word.
+    expect(chipStyle('#107EA8', true).color).toBe('#107EA8')
+    expect(chipStyle('#107EA8', true).borderColor).toBe('#107EA838')
+  })
+
+  it('and the board actually passes that flag', () => {
+    expect(readFileSync('components/DealBoard.tsx', 'utf8')).toContain('chipStyle(c.colour, washed)')
   })
 })

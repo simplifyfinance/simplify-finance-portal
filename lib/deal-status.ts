@@ -57,11 +57,17 @@ export function getWaitingOnLabel(
   return { text: next.label(officer), color: next.color }
 }
 
+// THE LAST AMBER IN THE PORTAL, 2 Oct 2026.
+//
+// "warning" was amber, which measured 1.2 out of 100 from the chase red under
+// red-green colourblindness - another way of writing "identical". It is now the
+// blue the rest of the portal uses for work in hand, because that is what it
+// actually means here: somebody on this side still has to do something.
 export const WAITING_ON_STYLES: Record<string, string> = {
-  warning: 'bg-amber-100 text-amber-700',
-  accent: 'bg-[#2DBEFF]/10 text-[#2DBEFF]',
-  pro: 'bg-purple-100 text-purple-700',
-  success: 'bg-green-100 text-green-700',
+  warning: 'bg-info-bg text-info border border-info-edge',
+  accent: 'bg-brand/10 text-brand-ink border border-info-edge',
+  pro: 'bg-waiting-bg text-waiting border border-waiting-edge',
+  success: 'bg-done-bg text-done border border-done-edge',
 }
 
 // ---------------------------------------------------------------------------
