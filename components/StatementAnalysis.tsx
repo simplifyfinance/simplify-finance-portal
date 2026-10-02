@@ -890,7 +890,7 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
         <>
           <DropZone onFiles={upFiles} busy={busy} accept=".xlsm,.xlsx"
             title="Drop the CashDeck workbooks here"
-            hint="The income verification exports (.xlsm or .xlsx). As many as you like \u2014 one applicant's bank, then the other's." />
+            hint="The income verification exports (.xlsm or .xlsx). As many as you like — one applicant's bank, then the other's." />
           <p className="text-[12px] text-[#7A7266] mt-3 max-w-[86ch]">
             The analysis reads the statements against this deal&rsquo;s fact find and flags the differences.
             It never changes the fact find.
