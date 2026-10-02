@@ -1,5 +1,53 @@
 @import "tailwindcss";
 
+/* EVERY COLOUR IN THE PORTAL, ONCE - THE TAILWIND HALF.
+   The other half is lib/colours.ts, with these exact values. Two files is one
+   too many, so lib/colours.test.ts reads both and fails the ship if they ever
+   disagree. See that file for why each colour is what it is.
+   Adding these changes nothing on screen: they are names waiting to be used. */
+@theme {
+  --color-brand: #4FBBEA;
+  --color-brand-ink: #107EA8;
+  --color-brand-lift: #6FD3FF;
+  --color-on-brand: #0F1115;
+  --color-sidebar: #0F1115;
+
+  --color-chase: #A3302A;
+  --color-chase-bg: #FDF3F2;
+  --color-chase-edge: #EBD1CE;
+
+  --color-waiting: #5B3A9E;
+  --color-waiting-bg: #F4F1FC;
+  --color-waiting-edge: #DACFF1;
+
+  --color-done: #117A45;
+  --color-done-bg: #EFFAF4;
+  --color-done-edge: #BFE6D2;
+
+  --color-info: #107EA8;
+  --color-info-bg: #EAF7FE;
+  --color-info-edge: #BFE4F7;
+
+  --color-card-chase: #FDF4F3;
+  --color-card-chase-edge: #EEC9C5;
+  --color-card-waiting: #F7F4FD;
+  --color-card-waiting-edge: #D7CCF0;
+  --color-card-done: #F2FBF6;
+  --color-card-done-edge: #C6E7D5;
+
+  --color-page: #F7F4EF;
+  --color-panel: #FFFFFF;
+  --color-card: #FFFFFF;
+  --color-line: #E8E2D8;
+  --color-line-soft: #F1ECE4;
+  --color-card-line: #EBE5DB;
+
+  --color-ink: #17140F;
+  --color-body: #4D4841;
+  --color-muted: #6F6A62;
+  --color-faint: #A79F93;
+}
+
 body {
   background-color: #F5F5F3;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
