@@ -63,6 +63,14 @@ export const PAGE_FILES = [
   'components/TabLock.tsx',
   'components/TestDealBand.tsx',
   'components/DealHistory.tsx',
+  // The left column of the Fact Find, and the two panels that open out of the
+  // deal. Added 3 Oct 2026: the statement questions surface here for a broker
+  // who never opens the Statements tab, and nothing was guarding their names.
+  'components/InternalNotes.tsx',
+  'components/StatementQueries.tsx',
+  'components/DropZone.tsx',
+  'components/SaveTheAssessment.tsx',
+  'components/PositionAtSettlement.tsx',
 ]
 
 // A label, a placeholder, an option in a dropdown, a button, and the headings

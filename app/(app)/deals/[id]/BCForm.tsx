@@ -1847,10 +1847,19 @@ Key assumptions: ${checklistText}`
                     const optAmountNum = parseFloat((s.amount || '0').replace(/,/g, '')) || 0
                     const optLvrPercent = priceNum > 0 ? Math.ceil((optAmountNum / priceNum) * 1000) / 10 : 0
                     return (
-                    <div key={i} className="bg-gray-50 rounded-lg p-3">
-                      <div className="flex justify-between items-center mb-2">
+                    // A SPLIT IS A CARD WITH A HEADER, NOT A GREY RECTANGLE.
+                    //
+                    // 3 Oct 2026. Four splits on a complex refinance, each one
+                    // a grey box on a grey page, ran together into one wall.
+                    // Fabio: "on complex scenarios multiple splits they are all
+                    // blending". The fix is not colour - the header strip here
+                    // is the same one the rail cards already wear, so a split
+                    // reads as its own thing without introducing anything new.
+                    <div key={i} className="bg-card border border-card-line rounded-xl p-3">
+                      <div className="-mx-3 -mt-3 mb-3 px-3.5 py-2.5 bg-gray-50 border-b border-card-line rounded-t-xl flex items-center gap-2.5">
+                        <span className="w-[18px] h-[18px] flex-none rounded-full bg-card border border-card-line text-[10px] font-bold text-gray-500 inline-flex items-center justify-center">{i + 1}</span>
                         <span className="text-xs font-medium text-[#2DBEFF]">{isMultiOption ? `Option ${i + 1}` : `Split ${i + 1}`}</span>
-                        {splits.length > 1 && <button onClick={() => removeSplit(i)} className="text-xs text-gray-400 hover:text-red-500">Remove</button>}
+                        {splits.length > 1 && <button onClick={() => removeSplit(i)} className="ml-auto text-xs text-gray-400 hover:text-red-500">Remove</button>}
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         {template === "oo_lvr_compare" ? (

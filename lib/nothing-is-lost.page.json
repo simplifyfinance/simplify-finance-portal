@@ -315,5 +315,45 @@
   "Looking…",
   "Put this back",
   "Putting it back…"
+ ],
+ "components/InternalNotes.tsx": [
+  "Internal notes",
+  "Jot notes while on the phone with the client...",
+  "M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z",
+  "Not saved",
+  "Not saved. Copy the text somewhere safe and try again.",
+  "Saved",
+  "Saving…",
+  "The same notes on every tab of this deal — not client facing"
+ ],
+ "components/StatementQueries.tsx": [
+  "Cash deposits",
+  "Commitments not declared",
+  "Gap in the pay run",
+  "Income not declared",
+  "Income stability",
+  "Salary against the fact find",
+  "Statement coverage"
+ ],
+ "components/DropZone.tsx": [
+  "Drop them here",
+  "M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"
+ ],
+ "components/SaveTheAssessment.tsx": [
+  "Download again",
+  "Personal Assessment Form",
+  "Saved to your downloads. File it in the client&rsquo;s folder.",
+  "The position as declared, on the form, for the client’s folder. Every box is still typeable.",
+  "The position as it stands at settlement, on the form, for the client’s folder. Every box is still typeable."
+ ],
+ "components/PositionAtSettlement.tsx": [
+  "It is",
+  "Leave it",
+  "Not now",
+  "Nothing to record against",
+  "Replace",
+  "They are",
+  "Understood",
+  "Update the client record?"
  ]
 }

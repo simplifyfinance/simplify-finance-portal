@@ -168,6 +168,14 @@ describe('the things Fabio caught by hand on the page, by name', () => {
     'Close this deal',
     'Record these figures',
     'Mark as settled',
+    // The left column, added 3 Oct 2026. These are the statement questions a
+    // broker reads on the Fact Find without ever opening the Statements tab.
+    'Salary against the fact find',
+    'Commitments not declared',
+    'Gap in the pay run',
+    'Statement coverage',
+    'Drop them here',
+    'The same notes on every tab of this deal — not client facing',
   ]
   it.each(MUST_BE_THERE)('%s', (label) => {
     expect(all.has(label), `"${label}" is no longer anywhere on the deal page`).toBe(true)
