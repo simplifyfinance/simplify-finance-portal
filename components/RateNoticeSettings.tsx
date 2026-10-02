@@ -24,6 +24,39 @@ const SUGGESTED =
   'Please note, the rates quoted above do not factor in the recent RBA rate change. ' +
   'Lenders will announce in the coming days when this will be passed on to their customers.'
 
+// ONE DEFINITION, RENDERED IN TWO PLACES. Beside the toggle and under the
+// lender list, because both ends of this panel can cause one of these and a
+// message you have to go looking for is a message nobody reads.
+function Status({ err, saved, note, notice }: {
+  err: string; saved: string; note: string; notice: RateNotice
+}) {
+  if (err) return (
+    <p className="mb-3 rounded-lg border border-[#E9D2CF] bg-[#FDF3F2] px-3 py-2 text-[12.5px] text-[#8E3A34]">
+      {err}
+      {/* THE LIKELIEST REASON, SAID OUT LOUD. Only admins may write settings,
+          and "the database refused the change" does not tell a credit officer
+          that it is about who they are rather than what they typed. */}
+      {err.includes('refused the change') && (
+        <span className="block mt-1 text-[11.5px]">
+          Changing this is admin only. Ask an administrator to turn it on, and everything else on this
+          page — the applied dates against each lender — still works for you.
+        </span>
+      )}
+    </p>
+  )
+  if (note) return (
+    <p className="mb-3 rounded-lg border border-[#F0DCB4] bg-[#FFF8EC] px-3 py-2 text-[12.5px] text-[#92400E]">
+      {note}
+    </p>
+  )
+  if (saved) return (
+    <p className="mb-3 text-[12px] text-[#15803D]">
+      {saved}{notice.decisionDate ? ` The notice is about the ${niceDate(notice.decisionDate)} decision.` : ''}
+    </p>
+  )
+  return null
+}
+
 export default function RateNoticeSettings() {
   const supabase = createSupabaseBrowser()
   const [notice, setNotice] = useState<RateNotice>(NO_NOTICE)
@@ -32,6 +65,8 @@ export default function RateNoticeSettings() {
   const [err, setErr] = useState('')
   const [saved, setSaved] = useState('')
   const [nextDate, setNextDate] = useState('')
+  // Said straight after the click that caused it. See <Status/> below.
+  const [note, setNote] = useState('')
   const [meName, setMeName] = useState('')
 
   useEffect(() => {
@@ -56,7 +91,7 @@ export default function RateNoticeSettings() {
   }, [])
 
   async function save(next: RateNotice) {
-    setErr(''); setSaved('')
+    setErr(''); setSaved(''); setNote('')
     const problem = await checkedWrite(
       supabase.from('settings').update({ rate_notice: next }).eq('id', 'singleton'),
       'The rate notice')
@@ -70,7 +105,7 @@ export default function RateNoticeSettings() {
   // matter which screen somebody used. See lib/rate-notice.ts.
   async function setApplied(l: LenderLike, raw: string) {
     const value = raw.trim() || null
-    setErr(''); setSaved('')
+    setErr(''); setSaved(''); setNote('')
     const problem = await checkedWrite(
       supabase.from('lenders').update({
         rate_notice_for: value ? notice.decisionDate : null,
@@ -123,10 +158,32 @@ export default function RateNoticeSettings() {
         </p>
       )}
 
+      {/* WHAT HAPPENED, WHERE IT HAPPENED.
+          2 Oct 2026. The team reported they "cannot flip the toggle". Nothing
+          was broken: only an admin may write settings, so their click was
+          refused - and the message saying so rendered at the BOTTOM of this
+          panel, below all forty-odd lenders. Several screens away from the
+          thing they had just pressed, which is the same as not saying it. */}
+      <Status err={err} saved={saved} note={note} notice={notice} />
+
       <label className="block text-[9.5px] font-bold tracking-[.07em] uppercase text-[#A29889] mb-1.5">
         Turn it on
       </label>
-      <button type="button" onClick={() => save({ ...notice, on: !notice.on })}
+      <button type="button" onClick={() => {
+          // TURNING IT ON WITH NO WORDS LOOKS LIKE A BROKEN SWITCH.
+          //
+          // lib/rate-notice.ts refuses to report `on` without text - rightly,
+          // since a blank notice on a client email is worse than none. But the
+          // write SUCCEEDS, so there is no error; the toggle simply springs
+          // back on the next read and nothing says why.
+          if (!notice.on && !notice.text.trim()) {
+            setErr(''); setSaved('')
+            setNote('Nothing to say yet, so it would not stay on. Put the wording in first — ' +
+                    'the grey text below is only a suggestion, it is not saved.')
+            return
+          }
+          save({ ...notice, on: !notice.on })
+        }}
         className={`inline-flex items-center gap-2.5 rounded-lg border px-3 py-2 text-[12.5px] font-semibold transition ${
           notice.on ? 'border-[#BBE7CF] bg-[#F4FBF7] text-[#0F7B4F]'
                     : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}`}>
@@ -143,11 +200,34 @@ export default function RateNoticeSettings() {
               : 'On — every lender has applied it')
           : 'Off — no notice on any email'}
       </button>
+      {/* SAY WHICH ONE IS MISSING. The old line said "it needs words and a
+          decision date" whichever was absent. On 2 Oct the date was set and the
+          words were not, and the box below LOOKED full - the placeholder is a
+          finished sentence in grey. Everybody read the line, looked at words
+          they could see, and concluded the toggle was broken. */}
       {!notice.on && (!notice.text.trim() || !notice.decisionDate) && (
-        <p className="mt-1.5 text-[11px] text-[#8A6218]">
-          It needs words and a decision date before it can go on. Without a date there is no way to
-          tick a lender off it.
-        </p>
+        <div className="mt-1.5 text-[11px] text-[#8A6218]">
+          {!notice.text.trim() && (
+            <p className="m-0">
+              <strong>No wording saved yet.</strong> The grey text in the box below is a suggestion,
+              not something that has been saved — it will not go on any email.
+            </p>
+          )}
+          {!notice.decisionDate && (
+            <p className="m-0 mt-1">
+              <strong>No decision date yet.</strong> Without one there is no way to tick a lender off it.
+            </p>
+          )}
+        </div>
+      )}
+      {/* ONE PRESS INSTEAD OF RETYPING IT. The suggestion was always there and
+          was always only a suggestion; this makes it a real saved value, which
+          is what everybody assumed it already was. */}
+      {!notice.text.trim() && (
+        <button type="button" onClick={() => save({ ...notice, text: SUGGESTED })}
+          className="mt-2 rounded-lg border border-[#C7E9F9] bg-[#EAF7FE] px-3 py-1.5 text-[12px] font-semibold text-[#0B7FB0]">
+          Use the suggested wording
+        </button>
       )}
 
       <label className="block text-[9.5px] font-bold tracking-[.07em] uppercase text-[#A29889] mb-1.5 mt-5">
@@ -297,8 +377,9 @@ export default function RateNoticeSettings() {
             'for the last one stops applying by itself \u2014 there is nothing to clear.'}
       </p>
 
-      {err && <p className="mt-3 rounded-lg border border-[#E9D2CF] bg-[#FDF3F2] px-3 py-2 text-[12.5px] text-[#8E3A34]">{err}</p>}
-      {saved && !err && <p className="mt-3 text-[12px] text-[#15803D]">{saved}{notice.decisionDate ? ` The notice is about the ${niceDate(notice.decisionDate)} decision.` : ''}</p>}
+      {/* The same message again, for somebody down here among the lenders
+          rather than up at the toggle. */}
+      <div className="mt-3"><Status err={err} saved={saved} note={note} notice={notice} /></div>
     </div>
   )
 }
