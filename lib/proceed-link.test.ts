@@ -17,7 +17,9 @@ import { ctas } from './email-buttons'
 // reach the deal.
 
 const CAL = 'https://calendly.com/simplify/chat'
-const PROCEED = 'https://simplify-finance-portal.vercel.app/proceed/deal-1?from=BC'
+// Deliberately not the real address. This proves the button uses WHATEVER link
+// it is handed, which is the thing under test.
+const PROCEED = 'https://portal.example/proceed/deal-1?from=BC'
 
 describe('with a proceed link', () => {
   const html = ctas(CAL, PROCEED)

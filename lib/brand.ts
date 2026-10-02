@@ -1,4 +1,5 @@
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
+import { siteUrl } from './site-url'
 
 // The trading name a client-facing email goes out under.
 //
@@ -26,7 +27,7 @@ export const DEFAULT_BRAND: Brand = {
   name: 'Simplify Finance',
   headerColor: '#343333',
   accentColor: '#2DBEFF',
-  logoUrl: 'https://simplify-finance-portal.vercel.app/logo-charcoal-tagline.png',
+  logoUrl: `${siteUrl()}/logo-charcoal-tagline.png`,
   footerAddress: 'St Leonards, Sydney',
   acl: '387025',
   web: 'simplifyfinance.com.au',

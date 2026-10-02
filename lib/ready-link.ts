@@ -58,9 +58,11 @@ export function verifyPayload<T>(token: string): T | null {
 export const signReady = (p: ReadyPayload): string => signPayload(p)
 export const verifyReady = (token: string): ReadyPayload | null => verifyPayload<ReadyPayload>(token)
 
-export function siteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL || 'https://simplify-finance-portal.vercel.app'
-}
+// The address moved to lib/site-url.ts, which imports nothing - this file
+// imports node's crypto, and the login screen needs the address in the browser.
+// Re-exported so everything that already asks this file keeps working.
+import { siteUrl } from './site-url'
+export { siteUrl }
 
 export function readyUrl(token: string): string {
   return `${siteUrl()}/ready/${token}`

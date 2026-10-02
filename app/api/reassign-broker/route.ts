@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { resolveBrokerProfile } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { can } from '@/lib/permissions'
+import { siteUrl } from '@/lib/site-url'
 
 export async function POST(req: NextRequest) {
   const { dealId, brokerName } = await req.json()
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
           to: brokerRecord.email,
           cc: 'info@simplifyfinance.com.au',
           subject: `Deal reassigned to you: ${deal.deal_name}`,
-          html: `<p>Hi ${brokerRecord.name?.split(' ')[0] || ''},</p><p><strong>${deal.deal_name}</strong> (${(deal.clients as any)?.first_name || ''} ${(deal.clients as any)?.last_name || ''}) has been reassigned to you.</p><p><a href="https://simplify-finance-portal.vercel.app/deals/${dealId}">Open the deal</a></p>`
+          html: `<p>Hi ${brokerRecord.name?.split(' ')[0] || ''},</p><p><strong>${deal.deal_name}</strong> (${(deal.clients as any)?.first_name || ''} ${(deal.clients as any)?.last_name || ''}) has been reassigned to you.</p><p><a href="${siteUrl()}/deals/${dealId}">Open the deal</a></p>`
         })
       })
       emailSent = true

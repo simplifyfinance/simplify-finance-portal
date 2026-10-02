@@ -34,12 +34,13 @@ import { totalLimit as recycledLimit, purposeLine, byPurpose, everySplitHasAPurp
 import { groupsOf, undrawnNoteFor, originalPurposeLine, aboutThisStructure,
          openingLine as refinanceOpening,
          ACCOUNTANT_NOTE as REFINANCE_ACCOUNTANT_NOTE } from '@/lib/complex-refinance'
+import { siteUrl } from '@/lib/site-url'
 
 
 const DEFAULT_BRAND = {
   name: 'Simplify Finance',
   headerColor: '#343333',
-  logoUrl: 'https://simplify-finance-portal.vercel.app/logo-charcoal-tagline.png',
+  logoUrl: `${siteUrl()}/logo-charcoal-tagline.png`,
   footerAddress: 'St Leonards, Sydney',
   acl: '387025',
 }
@@ -537,7 +538,7 @@ export async function POST(req: NextRequest) {
     const label1 = scenarioLabel(one)
     const label2 = scenarioLabel(two)
     const link = (n: number) => dealId
-      ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC&opt=${n}`
+      ? `${siteUrl()}/proceed/${dealId}?from=BC&opt=${n}`
       : ''
 
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -596,7 +597,7 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px"><span style="color:#7a5c3a;">Equity Release Options</span></p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptionsRE.join('')}</tr></table>
       </td></tr></table>` +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation \u2014 and that is exactly what we will do for you.') +
        notesBox(notes) + sig(b)
@@ -614,7 +615,7 @@ export async function POST(req: NextRequest) {
       // Those two cards are written by hand because each has a headline figure of
       // its own. A third split had nowhere to go and was dropped in silence.
       splitCards(d, 'Additional lending', { from: 2, amountLabel: 'New loan amount', showTerm: true }) +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
        notesBox(notes) + sig(b)
@@ -633,7 +634,7 @@ export async function POST(req: NextRequest) {
         // The LVR is a fact about the whole deal, not about a part of it.
         after: (i) => (i === 0 ? buildLVRLine(d, lmiIsInTheLoan(d) && realSplits(d.splits).length === 1) : ''),
       }) +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
        notesBox(notes) + sig(b)
@@ -676,7 +677,7 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px"><span style="color:#7a5c3a;">Purchase Options</span></p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptions.join('')}</tr></table>
       </td></tr></table>` +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
        notesBox(notes) + sig(b)
@@ -696,7 +697,7 @@ export async function POST(req: NextRequest) {
       ) +
       p13(structureLead(realSplits(d.splits).length)) +
       splitCards(d, 'Owner-occupied loan', { termWithType: true }) +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
        notesBox(notes) + sig(b)
@@ -739,7 +740,7 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px"><span style="color:#7a5c3a;">Purchase Options</span></p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptionsIP.join('')}</tr></table>
       </td></tr></table>` +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right structure for your investment \u2014 and that is exactly what we will do for you.') +
        notesBox(notes) + sig(b)
@@ -758,7 +759,7 @@ export async function POST(req: NextRequest) {
       ) +
       p13(structureLead(realSplits(d.splits).length)) +
       splitCards(d, 'Investment loan', { termWithType: true }) +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right structure for your investment — and that is exactly what we will do for you.') +
        notesBox(notes) + sig(b)
@@ -784,7 +785,7 @@ export async function POST(req: NextRequest) {
       ) +
       p13(structureLead(realSplits(d.splits).length)) +
       splitCards(d, 'End debt', { termWithType: true }) +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('Now it is about finding the right lender, the right rate, and making sure the timing between your sale and purchase lines up perfectly. That is exactly what we are here for.') +
       
@@ -819,7 +820,7 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px"><span style="color:#7a5c3a;">Deposit Options</span></p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${lvrCols}</tr></table>
       </td></tr></table>` +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
        notesBox(notes) + sig(b)
@@ -848,7 +849,7 @@ export async function POST(req: NextRequest) {
       ) +
       p13(structureLead(realSplits(d.splits).length)) +
       splitCards(d, 'Owner-occupied loan', { termWithType: true }) +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
        notesBox(notes) + sig(b)
@@ -904,7 +905,7 @@ export async function POST(req: NextRequest) {
       // its interest, the other does not. A third split is an ordinary loan and
       // prints as one, rather than vanishing.
       splitCards(d, 'Additional lending', { from: 2, termWithType: true }) +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right structure for your bridging scenario — and that is exactly what we will do for you.') +
       
@@ -938,7 +939,7 @@ export async function POST(req: NextRequest) {
       pledgeList('Pros of doing a family guarantee', PLEDGE_PROS, '#16a34a', '#F0FDF4', '#15803d', '&#10003;') +
       pledgeList('Cons of doing a family guarantee', PLEDGE_CONS, '#D97706', '#FFFBEB', '#92400E', '&bull;') +
       check(checkItems) +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       p('Please let us know your thoughts and if you have any questions regarding the numbers.') +
       notesBox(notes) + sig(b)
 
@@ -955,7 +956,7 @@ export async function POST(req: NextRequest) {
       ) +
       p13(structureLead(realSplits(d.splits).length)) +
       splitCards(d, 'SMSF loan', { termWithType: true }) +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right SMSF structure for your investment — and that is exactly what we will do for you.') +
       
@@ -1039,7 +1040,7 @@ export async function POST(req: NextRequest) {
             `<tr><td colspan="2" style="font-size:11px;color:#7a5c3a;font-style:italic;line-height:1.5;padding:8px 0 0"><span style="color:#7a5c3a;">${DRAWDOWN_NOTE}</span></td></tr>`
           : '')
       ) +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender and construction loan structure for your project \u2014 and we will guide you through every step of that process.') +
       notesBox(notes) + sig(b)
@@ -1092,7 +1093,7 @@ export async function POST(req: NextRequest) {
       // Three columns are written by hand because each sits against a different
       // security. A fourth split belongs to neither and used to disappear.
       splitCards(d, 'Additional lending', { from: 3, termWithType: true }) +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('Please let us know your thoughts and if you have any questions regarding the numbers above.') +
       p('The next step is to collect your documentation so we can look at specific lenders and interest rates.') +
@@ -1187,7 +1188,7 @@ export async function POST(req: NextRequest) {
       (whySplitThisWay(d).length
         ? card('Why it is structured this way', whySplitThisWay(d).map(l => note(l)).join(''))
         : '') +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is confirming this structure with your accountant, and then we will take it to the right lender for you.') +
        notesBox(notes) + sig(b)
@@ -1240,7 +1241,7 @@ export async function POST(req: NextRequest) {
       card('About this structure',
         aboutThisStructure(d).map((l: string) => note(l)).join('') +
         note(REFINANCE_ACCOUNTANT_NOTE)) +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender for a structure like this one \u2014 and that is exactly what we will do for you.') +
        notesBox(notes) + sig(b)
@@ -1258,13 +1259,13 @@ export async function POST(req: NextRequest) {
       ) +
       p13(structureLead(realSplits(d.splits).length)) +
       splitCards(d, 'Your loan', { termWithType: true }) +
-      ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
        notesBox(notes) + sig(b)
 
   } else {
-    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) + p('Email template coming soon.') + ctas(b.calendly, dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=BC` : undefined) + sig(b)
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) + p('Email template coming soon.') + ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) + sig(b)
   }
 
   const html = shell(body, b, brandObj)

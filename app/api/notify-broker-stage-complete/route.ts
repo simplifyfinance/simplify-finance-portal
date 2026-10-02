@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resolveBrokerProfile } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
+import { siteUrl } from '@/lib/site-url'
 
 const STAGE_LABELS: Record<string, string> = { BC: 'Borrowing Capacity', LO: 'Lending Options' }
 
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
         to: brokerRecord.email,
         cc: 'info@simplifyfinance.com.au',
         subject: `${stageLabel} ready for your review: ${deal.deal_name}`,
-        html: `<p>Hi ${brokerRecord.name?.split(' ')[0] || ''},</p><p>The credit team has completed the <strong>${stageLabel}</strong> stage for <strong>${deal.deal_name}</strong>. It's ready for you to add your personalisation and send to the client.</p><p><a href="https://simplify-finance-portal.vercel.app/deals/${dealId}">Open the deal</a></p>`
+        html: `<p>Hi ${brokerRecord.name?.split(' ')[0] || ''},</p><p>The credit team has completed the <strong>${stageLabel}</strong> stage for <strong>${deal.deal_name}</strong>. It's ready for you to add your personalisation and send to the client.</p><p><a href="${siteUrl()}/deals/${dealId}">Open the deal</a></p>`
       })
     })
     return NextResponse.json({ ok: true, emailSent: true })

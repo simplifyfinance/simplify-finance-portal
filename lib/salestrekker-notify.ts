@@ -102,7 +102,7 @@ export async function notifyEllieCreateCard(params: {
   recipientName?: string | null
 }) {
   const { dealId, dealName, clientName, brokerName, leadSource, dealType, incomeType, internalNotes, creditOfficerName, alreadyBcActioned, recipientEmail, recipientName } = params
-  const dealLink = `https://simplify-finance-portal.vercel.app/deals/${dealId}`
+  const dealLink = `${siteUrl()}/deals/${dealId}`
 
   // Built to read like the compliance push email, because the same people read
   // both and two different-looking emails from one system is one system that

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { can } from '@/lib/permissions'
+import { siteUrl } from '@/lib/site-url'
 
 async function notifyOfficer(supabase: any, userId: string | null, subject: string, message: string, dealName: string, dealId: string, clientName: string, brokerName: string) {
   if (!userId) return
@@ -24,7 +25,7 @@ async function notifyOfficer(supabase: any, userId: string | null, subject: stri
             <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Client</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${clientName}</td></tr>
             <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Broker</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${brokerName}</td></tr>
           </table>
-          <p><a href="https://simplify-finance-portal.vercel.app/deals/${dealId}">Open the deal</a></p>`
+          <p><a href="${siteUrl()}/deals/${dealId}">Open the deal</a></p>`
       })
     })
   } catch (e) {
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
   // If this was the deal's first-ever credit officer assignment, also fire the SalesTrekker card-creation trigger
   if (isFirstAssignment) {
     try {
-      await fetch('https://simplify-finance-portal.vercel.app/api/notify-salestrekker', {
+      await fetch(`${siteUrl()}/api/notify-salestrekker`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dealId, trigger: 'bc_action' })

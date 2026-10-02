@@ -11,6 +11,7 @@
 
 import { emailShell } from './email-shell';
 import { type Brand, DEFAULT_BRAND } from './brand';
+import { siteUrl } from './site-url';
 import {
   calculateRefinance,
   formatCurrency,
@@ -51,7 +52,7 @@ const SMALL_INK = '#8a8a84';
 const NOTE_BG = '#F7F5F1';     // the tax note, formerly on the charcoal
 const SAND = '#F2E8DB';
 const LOGO_URL =
-  'https://simplify-finance-portal.vercel.app/logo-charcoal-tagline.png';
+  `${siteUrl()}/logo-charcoal-tagline.png`;
 const FONT =
   "-apple-system, 'Segoe UI', Arial, Helvetica, sans-serif";
 

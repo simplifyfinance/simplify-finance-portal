@@ -4,6 +4,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { safeNextPath } from '@/lib/safe-next-path'
+import { siteUrl } from '@/lib/site-url'
 
 // STUCK ON "SIGNING IN...".
 //
@@ -95,7 +96,7 @@ function LoginForm() {
     setLoading(true)
     setError('')
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://simplify-finance-portal.vercel.app/reset-password'
+      redirectTo: `${siteUrl()}/reset-password`
     })
     setLoading(false)
     if (error) {

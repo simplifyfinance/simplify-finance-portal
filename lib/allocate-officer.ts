@@ -20,6 +20,7 @@
 // pressing a button on their own page is not signed in to anything.
 
 import { phaseOf, PHASE_LABEL } from '@/lib/deal-phase'
+import { siteUrl } from './site-url'
 
 export type AllocationResult = {
   ok: boolean
@@ -152,7 +153,7 @@ export async function allocateCreditOfficer(supabase: any, dealId: string): Prom
             from: 'Simplify Finance Portal <notifications@simplifyfinance.com.au>',
             to: alan.email,
             subject: `Workload alert: everyone covering ${brokerSlug} is above average`,
-            html: `<p>Hi ${alan.full_name?.split(' ')[0] || ''},</p><p>Every credit officer covering ${brokerSlug}'s deals is currently above the team average (${teamAverage.toFixed(1)} active deals). Deal <strong>${deal.deal_name}</strong> was still assigned to <strong>${chosen.name}</strong> (now at ${chosenActive} active) to keep things moving — worth a look at rebalancing coverage.</p><p><a href="https://simplify-finance-portal.vercel.app/credit-team-workload">View team workload</a></p>`
+            html: `<p>Hi ${alan.full_name?.split(' ')[0] || ''},</p><p>Every credit officer covering ${brokerSlug}'s deals is currently above the team average (${teamAverage.toFixed(1)} active deals). Deal <strong>${deal.deal_name}</strong> was still assigned to <strong>${chosen.name}</strong> (now at ${chosenActive} active) to keep things moving — worth a look at rebalancing coverage.</p><p><a href="${siteUrl()}/credit-team-workload">View team workload</a></p>`
           })
         })
         overloadAlertSent = true
@@ -189,7 +190,7 @@ export async function allocateCreditOfficer(supabase: any, dealId: string): Prom
                 <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Suburb / State</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${deal.bc_data?.suburb || 'Not specified'}</td></tr>
                 <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Broker</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${deal.assigned_broker || ''}</td></tr>
               </table>
-              <p><a href="https://simplify-finance-portal.vercel.app/deals/${dealId}">Open the deal</a></p>`
+              <p><a href="${siteUrl()}/deals/${dealId}">Open the deal</a></p>`
           })
         })
         emailSent = true

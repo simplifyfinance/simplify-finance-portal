@@ -6,6 +6,7 @@ import { createSupabaseAdmin } from '@/lib/supabase-admin'
 import { requestDocuments, brokerDocumentLine, type DocRequestResult } from '@/lib/document-request'
 
 import type { ProceedStage } from './next-steps-copy'
+import { siteUrl } from './site-url'
 
 // Reading the deal, without touching it.
 //
@@ -114,7 +115,7 @@ async function notifyBrokerOfProgress(
         subject: docs && !docs.ok
           ? `ACTION NEEDED - documents not requested: ${deal.deal_name}`
           : `${deal.deal_name} has moved to ${nextStageLabel}`,
-        html: `<p>Hi ${brokerRecord.name?.split(' ')[0] || ''},</p><p><strong>${deal.deal_name}</strong> has progressed to <strong>${nextStageLabel}</strong>.</p>${brokerDocumentLine(docs)}<p><a href="https://simplify-finance-portal.vercel.app/deals/${dealId}">Open the deal</a></p>`
+        html: `<p>Hi ${brokerRecord.name?.split(' ')[0] || ''},</p><p><strong>${deal.deal_name}</strong> has progressed to <strong>${nextStageLabel}</strong>.</p>${brokerDocumentLine(docs)}<p><a href="${siteUrl()}/deals/${dealId}">Open the deal</a></p>`
       })
     })
   } catch (e) {

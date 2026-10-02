@@ -20,6 +20,7 @@ import { emailParagraphs } from '@/lib/rich-text'
 import { resolveLenderSplits, lenderTotal, lenderLvr, equityReleaseAmount } from '@/lib/lo-splits'
 import { showsOwnLoanAmount } from '@/lib/email-amounts'
 import { rowLegalFeeLabel, feeText} from '@/lib/lender-fees'
+import { siteUrl } from '@/lib/site-url'
 
 
 // Was hardcoded to Simplify Finance, licence number included, so a second
@@ -226,7 +227,7 @@ export async function POST(req: NextRequest) {
     email: resolved.email || '',
   }
   const isBridging = d.template === 'lo_bridging'
-  const proceedUrl = dealId ? `https://simplify-finance-portal.vercel.app/proceed/${dealId}?from=LO` : undefined
+  const proceedUrl = dealId ? `${siteUrl()}/proceed/${dealId}?from=LO` : undefined
 
 
   // The broker's own opening already says what the client is doing and why, in
