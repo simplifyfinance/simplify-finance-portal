@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { snapshot, newGuard, emptyGuard, adopt, saveGuarded, overwroteMessage, behindMessage } from './save-conflict'
+import { readFileSync } from 'fs'
+import { snapshot, newGuard, emptyGuard, adopt, adoptLive, saveGuarded, overwroteMessage, behindMessage } from './save-conflict'
 
 // A deals table with one row, standing in for Postgres. Records every write so
 // a test can assert that nothing was written, which is half the point of the
@@ -355,5 +356,116 @@ describe('keeping what a save replaces', () => {
     const out = await save(supabase, guard, { dependants: '2' })
     expect(out.kind).toBe('error')
     expect(state.value).toEqual(full)
+  })
+})
+
+// ============================================================================
+// THE 84 CHARACTERS.
+//
+// 2 Oct 2026. The browser check caught the Fact Find losing most of a sentence
+// and saying "Saved". The instrumentation added on 17 Sep printed the timeline:
+//
+//   16:41:54.752  this window   goals 112 chars    <- the whole sentence lands
+//   16:41:54.968  other window  goals  28 chars    <- 216ms later, over the top
+//   after reload: 28 characters
+//
+// The other window never touched that box. It took the 112 live, showed it, and
+// moved its idea of the database to match. A save it had ALREADY built - still
+// carrying its older copy - then went out behind it, found the record exactly
+// where it expected, decided nothing needed merging, and wrote the lot.
+//
+// THIS IS THE TEST THAT SHOULD HAVE EXISTED IN SEPTEMBER. The browser test that
+// found it fails about one run in ten, which is why it was instrumented twice
+// and fixed neither time. This one fails every time.
+// ============================================================================
+describe('a version that arrives on its own is still a merge', () => {
+  const sentence = 'Richard and Letitia want to be in the new place before the school '
+                 + 'year starts, and to keep the offset topped up.'
+
+  it('an older save in flight does not go over the top of it', async () => {
+    // Both windows loaded the same deal. The other window is Kylie's.
+    const loaded = { goals2Years: 'Richard and Letitia want to ', goals10Years: '' }
+    const { supabase, state } = fakeDb(loaded)
+    const kylie = newGuard(loaded)
+
+    // Kylie starts typing in her OWN box. This is the payload - built now,
+    // written in a moment. Her copy of goals2Years is the one she loaded.
+    const herSave = { goals2Years: loaded.goals2Years, goals10Years: 'robot 0' }
+
+    // Meanwhile the other window finishes the sentence and it lands.
+    state.value = { goals2Years: sentence, goals10Years: '' }
+    state.version++
+
+    // Kylie's window sees it arrive, shows it, and takes it.
+    adoptLive(kylie, state.value)
+
+    // ...and now her save, built before any of that, goes out.
+    await save(supabase, kylie, herSave, undefined, () => {})
+
+    expect(state.value.goals2Years,
+      'the sentence was overwritten by a window that never touched that box')
+      .toBe(sentence)
+    // And her own typing is not lost either - that is the point of merging
+    // rather than simply refusing her.
+    expect(state.value.goals10Years).toBe('robot 0')
+  })
+
+  // The same thing plain adopt() does, to show the difference is real and this
+  // test is about the fix rather than about the fake database.
+  it('and plain adopt leaves exactly the hole this was about', async () => {
+    const loaded = { goals2Years: 'Richard and Letitia want to ', goals10Years: '' }
+    const { supabase, state } = fakeDb(loaded)
+    const kylie = newGuard(loaded)
+    const herSave = { goals2Years: loaded.goals2Years, goals10Years: 'robot 0' }
+
+    state.value = { goals2Years: sentence, goals10Years: '' }
+    state.version++
+    adopt(kylie, state.value)          // the old behaviour
+
+    await save(supabase, kylie, herSave, undefined, () => {})
+    expect(state.value.goals2Years,
+      'if this now holds the sentence, adopt and adoptLive no longer differ and ' +
+      'the test above proves nothing')
+      .toBe(loaded.goals2Years)
+  })
+
+  it('and when the screen HAS caught up, nothing is merged for the sake of it', async () => {
+    const loaded = { goals2Years: 'Richard and Letitia want to ', goals10Years: '' }
+    const { supabase, state } = fakeDb(loaded)
+    const kylie = newGuard(loaded)
+
+    state.value = { goals2Years: sentence, goals10Years: '' }
+    state.version++
+    adoptLive(kylie, state.value)
+
+    // Her screen took it, and her next save carries it.
+    const caughtUp = { goals2Years: sentence, goals10Years: 'robot 0' }
+    await save(supabase, kylie, caughtUp, undefined, () => {})
+
+    expect(state.value.goals2Years).toBe(sentence)
+    expect(state.value.goals10Years).toBe('robot 0')
+  })
+
+  // AND THE WIRING, because the behaviour above is worth nothing if the live
+  // path stops calling it. Taking adoptLive back out compiles cleanly and broke
+  // no test at all until this one existed - which is how a guard quietly stops
+  // guarding. Found by breaking it on purpose, 2 Oct 2026.
+  it('and the live path actually calls it', () => {
+    const src = readFileSync('components/useLiveColumn.ts', 'utf8')
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1 ')
+    expect(code, 'the live update is back on plain adopt - see the 84 characters above')
+      .toContain('adoptLive(')
+    expect(code.match(/\badopt\(/g) || [],
+      'something in the live path still uses plain adopt').toEqual([])
+  })
+
+  it('and a live update that changes nothing leaves no mark to trip over', async () => {
+    const loaded = { goals2Years: 'unchanged', goals10Years: '' }
+    const { supabase, state } = fakeDb(loaded)
+    const guard = newGuard(loaded)
+    adoptLive(guard, loaded)
+    // Nothing typed, record unmoved: still the quiet case, still writes nothing.
+    expect(await save(supabase, guard, loaded)).toEqual({ kind: 'settled' })
+    expect(state.writes).toHaveLength(0)
   })
 })

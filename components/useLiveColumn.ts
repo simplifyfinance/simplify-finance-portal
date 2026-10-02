@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { foldIn, isMine, LIVE_EDITING, type DealColumn } from '@/lib/live-deal'
-import { adopt, type SaveGuard } from '@/lib/save-conflict'
+import { adoptLive, type SaveGuard } from '@/lib/save-conflict'
 
 // SOMEBODY ELSE JUST SAVED.
 //
@@ -114,7 +114,12 @@ export function useLiveColumn({ dealId, column, meId, guard, current, apply, sha
       // is also what stops a save going straight back out: with nothing of our
       // own on top, the next autosave finds the database already agrees and
       // writes nothing. See saveGuarded.
-      adopt(g, theirs)
+      //
+      // adoptLive, NOT adopt. A save built before this arrived is still on its
+      // way out carrying the older copy, and plain adopt() would leave it
+      // looking perfectly up to date - which is how 84 characters of somebody
+      // else's sentence got written over on 2 Oct. See lib/save-conflict.ts.
+      adoptLive(g, theirs)
     }
 
     const channel = supabase

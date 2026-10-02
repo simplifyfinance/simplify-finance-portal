@@ -194,6 +194,39 @@ export function adopt(guard: SaveGuard, storedValue: any): void {
   guard.db = snapshot(storedValue)
 }
 
+// THE SAME, FOR A VERSION THAT ARRIVED ON ITS OWN.
+//
+// 2 Oct 2026. The Fact Find lost 84 characters of a sentence and said "Saved".
+// The timeline the browser check captured:
+//
+//   16:41:54.752  this window   goals 112 chars    <- the whole sentence lands
+//   16:41:54.968  other window  goals  28 chars    <- 216ms later, over the top
+//   after reload: 28 characters
+//
+// The other window had not touched that box. It took the 112 live, put it on
+// screen, and moved guard.db to match - and then a save it had ALREADY built,
+// carrying its older copy, went out behind it.
+//
+// By then `stored === guard.db`, so attempt() concluded the record had not
+// moved, skipped the merge entirely, and wrote the older payload whole.
+//
+// `handed` is exactly the mark that stops this, and the save path has set it
+// since September - "handed over, not yet taken". The live path moved guard.db
+// and never set it. One door guarded, the other open, same fault behind both.
+//
+// CONSERVATIVE ON PURPOSE. If the screen has in fact caught up, the worst this
+// costs is a three-way merge that finds nothing to do. The other way round
+// costs somebody their paragraph.
+export function adoptLive(guard: SaveGuard, storedValue: any): void {
+  const base = guard.db
+  const merged = snapshot(storedValue)
+  guard.db = merged
+  // Nothing has been loaded yet, so no save can be in flight built on an older
+  // base - and attempt() skips the whole comparison while db is null anyway.
+  if (base === null || base === merged) return
+  guard.handed = { base, merged }
+}
+
 // Bounded on purpose. We only ever need to recognise the handful of writes that
 // could still be in flight or have just landed; keeping every save this form has
 // ever made would grow without limit on a deal somebody works in all afternoon.
