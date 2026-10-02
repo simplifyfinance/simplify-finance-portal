@@ -193,6 +193,28 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
   if (!to.length) problems.push('No email address on file for the clients — there is nobody to send this to.')
 
   const cc: string[] = []
+
+  // WHOEVER SENT IT GETS A COPY. EVERY TIME, EVERY TEMPLATE.
+  //
+  // 2 Oct 2026. Fabio: "pre-approvals are going out but I need to ensure we are
+  // ccing the sender as we have no way to see if the email is out."
+  //
+  // He was right. These go out through Resend, not through anybody's mail
+  // program, so a sent milestone email appeared in NOBODY's inbox and in no
+  // Sent items. The deal recorded it - but the only place that record showed on
+  // screen was inside the send screen for the same template, as a line meant to
+  // stop a second send rather than to answer "did it go".
+  //
+  // The morning this was written, David Boyton's pre-approval had gone out eight
+  // minutes earlier and the only way to prove it was a SQL query against the
+  // live database. Kylie sent it and had no copy.
+  //
+  // NOT A PER-TEMPLATE FLAG. copySettlements is one, and it is exactly the kind
+  // of thing that gets forgotten on the next template somebody adds. The sender
+  // is copied on all of them, with no way to turn it off.
+  if (input.sender.email.trim()) cc.push(input.sender.email.trim())
+
+  // And formal approval still copies settlements, as it always has.
   if (template.copySettlements) cc.push(SETTLEMENTS_EMAIL)
 
   let built: { subject: string; html: string; plainText: string }

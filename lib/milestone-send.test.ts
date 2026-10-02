@@ -8,6 +8,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { assembleMilestoneEmail, preapprovalExpiry, longDate, SETTLEMENTS_EMAIL } from './milestone-send'
+import { TEMPLATES as MILESTONE_TEMPLATES } from './milestone-emails'
 import { rulesOf } from './lender-rules'
 import { emailsGoTo } from './test-deal'
 
@@ -217,7 +218,9 @@ describe('who is on the copy line', () => {
   it('never claims we told somebody who is not on the email', () => {
     const noEmail = { ...DEAL, solicitor_email: 'rebecca at tohlegal', buyers_agent_email: '' }
     const out = build(noEmail)
-    expect(out.cc).toEqual([SETTLEMENTS_EMAIL])
+    // Still exact, so this still proves nobody else crept onto the copy line.
+    // The sender is on every one of these now - see "whoever sent it" below.
+    expect(out.cc).toEqual([SENDER.email, SETTLEMENTS_EMAIL])
     expect(out.html).not.toContain('have copied')
     expect(out.problems.join(' ')).toContain('not be copied in')
   })
@@ -226,6 +229,57 @@ describe('who is on the copy line', () => {
     const out = build(DEAL, { overrides: { other_side: false } })
     expect(out.cc).not.toContain('rebecca@tohlegal.com.au')
     expect(out.html).not.toContain('have copied')
+  })
+
+  // WHOEVER SENT IT GETS A COPY, OR NOBODY CAN SEE THAT IT WENT.
+  //
+  // 2 Oct 2026. These send through Resend, so a sent milestone email landed in
+  // nobody's inbox and in no Sent items. David Boyton's pre-approval went out at
+  // 11:17 and the only way to prove it had gone was a query against the live
+  // database. Kylie sent it and had no copy of it.
+  it('copies whoever sent it, on every template', () => {
+    for (const id of ['preapproval', 'preapproval_extension', 'formal_approval'] as const) {
+      const out = assembleMilestoneEmail({
+        deal: DEAL, templateId: id, rules: ANSWERED, sender: SENDER })!
+      expect(out.cc, `${id} did not copy the sender`).toContain(SENDER.email)
+    }
+  })
+
+  // NOT A PER-TEMPLATE FLAG. copySettlements is one of those and it is exactly
+  // what gets forgotten on the next template somebody adds. This reads the
+  // template list itself, so a new template is covered the day it appears.
+  it('and on any template added later, without anybody remembering', () => {
+    const missed: string[] = []
+    for (const t of MILESTONE_TEMPLATES) {
+      const out = assembleMilestoneEmail({
+        deal: DEAL, templateId: t.id, rules: ANSWERED, sender: SENDER })
+      if (!out) continue
+      if (!out.cc.includes(SENDER.email)) missed.push(t.id)
+    }
+    expect(missed, `these do not copy the sender: ${missed.join(', ')}`).toEqual([])
+  })
+
+  it('but never twice, and never when the sender is also the client', () => {
+    const senderIsTheClient = { ...DEAL,
+      fact_find_data: { ...DEAL.fact_find_data,
+        applicants: [{ firstName: 'Belle', lastName: 'Harrison', emailPersonal: SENDER.email }] },
+      clients: { first_name: 'Belle', last_name: 'Harrison', email: SENDER.email } }
+    const out = assembleMilestoneEmail({
+      deal: senderIsTheClient, templateId: 'preapproval', rules: ANSWERED, sender: SENDER })!
+    expect(out.to).toContain(SENDER.email)
+    expect(out.cc).not.toContain(SENDER.email)
+  })
+
+  // A TEST DEAL COPIES NOBODY, INCLUDING THE SENDER - the redirect already
+  // sends it to them, and a second copy would say the rule had been forgotten.
+  it('and a test deal still copies nobody at all', () => {
+    const out = assembleMilestoneEmail({
+      deal: DEAL, templateId: 'preapproval', rules: ANSWERED, sender: SENDER })!
+    const where = emailsGoTo({
+      deal: { ...DEAL, is_test: true }, clientEmails: out.to, copyTo: out.cc,
+      testerEmail: SENDER.email })
+    expect(where.cc).toEqual([])
+    expect(where.copyDropped).toContain(SENDER.email)
   })
 
   it('puts nobody on the copy line twice, and nobody on both lines', () => {
