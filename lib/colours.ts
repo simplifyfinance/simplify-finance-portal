@@ -8,9 +8,10 @@
 // That is the same fault as every bug we fixed in September - one fact with
 // more than one home, free to drift apart. So this is the home.
 //
-// NOTHING LOOKS DIFFERENT TODAY. This file exists; the portal does not read it
-// yet. The migration is the next ship, one screen at a time, and this file is
-// what it migrates to.
+// THE MIGRATION HAS STARTED. 2 Oct 2026: the left-hand column and the login
+// screen are the first two screens to read from here. Everything else still has
+// its colours typed into it by hand and is still to come, one ship at a time -
+// the off-white surfaces, then the blue, then the washed cards.
 //
 // THE TAILWIND NAMES LIVE IN app/globals.css, under @theme, with these exact
 // values. Two files is one too many - so lib/colours.test.ts reads both and
@@ -100,6 +101,18 @@ export const LINE      = '#E8E2D8'
 export const LINE_SOFT = '#F1ECE4'
 export const CARD_LINE = '#EBE5DB'
 
+// A BOX YOU TYPE INTO IS NOT A BOX YOU READ.
+//
+// On light it is the same white as the card, so FIELD looks like a duplicate of
+// CARD and nearly was not given a name. It earns one in dark, where the field
+// has to be DARKER than the card it sits in or it reads as a button. One name,
+// two values; the alternative is a screen full of exceptions.
+//
+// The edge is harder than LINE for the same reason - at LINE the fields on the
+// login card stopped looking like fields and the form read as a paragraph.
+export const FIELD      = '#FFFFFF'
+export const FIELD_LINE = '#DCD5C9'
+
 // ------------------------------------------------------------------ the ink
 
 export const INK   = '#17140F'  // headings, names, money
@@ -109,14 +122,26 @@ export const FAINT = '#A79F93'  // decoration only, never a word that matters
 
 // --------------------------------------------------------------- dark mode
 //
-// NOT AN INVERSION, AND NOT WIRED UP YET. Dark mode is its own ship; these are
-// here so that ship is a second list of values rather than a month of hunting.
+// NOT AN INVERSION. Every value here was chosen against the surface it sits on.
 //
-// Two things were measured rather than guessed. The sidebar stays #0F1115, so
+// EVERY KEY IS THE NAME OF A COLOUR ABOVE, in camelCase - page, brandInk,
+// cardChaseEdge. That is not tidiness: lib/colours.test.ts turns each key into
+// the CSS name and checks it against the dark block in app/globals.css, both
+// directions. A key that is not the name of a light colour fails the ship.
+//
+// WHAT IS DELIBERATELY ABSENT. sidebar, brand and onBrand are not here, because
+// they do not change. The left-hand column is the same near-black in both
+// themes - it is the one fixed thing on screen - and the brand blue is a FILL,
+// which works on either. Only the blue used for WORDS has to move, and that is
+// brandInk.
+//
+// Three things were measured rather than guessed. The sidebar stays #0F1115, so
 // the dark page had to be lifted away from it - at #15181B the two were 1.06 to
-// 1 apart and the sidebar had no visible edge at all. And the obvious pastel
-// green and red come out nearly identical to a colourblind reader on a dark
-// panel, so the green is nudged towards mint until they separate.
+// 1 apart and the sidebar had no visible edge at all. The obvious pastel green
+// and red come out nearly identical to a colourblind reader on a dark panel, so
+// the green is nudged towards mint until they separate. And a field has to be
+// DARKER than the card it sits on - on dark, an input lighter than its card
+// reads as a button.
 
 export const DARK = {
   page:      '#1C2025',
@@ -125,13 +150,19 @@ export const DARK = {
   line:      '#383E46',
   lineSoft:  '#30353C',
   cardLine:  '#3A4049',
+  field:     '#1A1E23',
+  fieldLine: '#3C434C',
 
   ink:   '#E9EDF1',
   body:  '#C2CAD2',
   muted: '#9AA4AE',
   faint: '#737E89',
 
-  brand:   '#6FD3FF',
+  // The same blue, lifted - not a different blue. Written as the constant so
+  // there is one value, not two that happen to match today.
+  brandInk: BRAND_LIFT,
+  info:     BRAND_LIFT,
+
   chase:   '#FF8E7F',
   waiting: '#B49BF0',
   done:    '#6EE7B7',

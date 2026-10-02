@@ -1,10 +1,18 @@
 @import "tailwindcss";
 
+/* dark: FOLLOWS THE SWITCH, NOT THE MAC.
+   Out of the box Tailwind's dark: variant watches the operating system, which
+   would ignore a person who has chosen light on a dark Mac. Pointed at the
+   attribute instead, dark: and the colour variables above move together and
+   there is one source of truth for which theme is on: <html data-theme>. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /* EVERY COLOUR IN THE PORTAL, ONCE - THE TAILWIND HALF.
    The other half is lib/colours.ts, with these exact values. Two files is one
    too many, so lib/colours.test.ts reads both and fails the ship if they ever
    disagree. See that file for why each colour is what it is.
-   Adding these changes nothing on screen: they are names waiting to be used. */
+   The left-hand column and the login screen read these names. The rest of the
+   portal still has its colours typed in by hand and is still to come. */
 @theme {
   --color-brand: #4FBBEA;
   --color-brand-ink: #107EA8;
@@ -41,11 +49,64 @@
   --color-line: #E8E2D8;
   --color-line-soft: #F1ECE4;
   --color-card-line: #EBE5DB;
+  --color-field: #FFFFFF;
+  --color-field-line: #DCD5C9;
 
   --color-ink: #17140F;
   --color-body: #4D4841;
   --color-muted: #6F6A62;
   --color-faint: #A79F93;
+}
+
+/* THE SAME NAMES, THE OTHER WAY UP.
+   Every value here is DARK in lib/colours.ts, and lib/colours.test.ts checks
+   this block against it in both directions - a name in one and not the other
+   fails the ship, exactly as the light half already does.
+   NOT AN INVERSION. Each one was chosen against the surface it sits on.
+   WHAT IS NOT HERE IS THE POINT. --color-sidebar, --color-brand and
+   --color-on-brand do not appear, because they do not change: the left-hand
+   column is the one fixed thing on screen, and the brand blue is a fill that
+   works on either. Only the blue used for WORDS moves, and that is
+   --color-brand-ink.
+   The attribute is written on <html> before the page paints - see lib/theme.ts
+   - so there is no flash of the wrong theme on the way in. */
+:root[data-theme="dark"] {
+  --color-page: #1C2025;
+  --color-panel: #24282E;
+  --color-card: #2A2F36;
+  --color-line: #383E46;
+  --color-line-soft: #30353C;
+  --color-card-line: #3A4049;
+  --color-field: #1A1E23;
+  --color-field-line: #3C434C;
+
+  --color-ink: #E9EDF1;
+  --color-body: #C2CAD2;
+  --color-muted: #9AA4AE;
+  --color-faint: #737E89;
+
+  --color-brand-ink: #6FD3FF;
+  --color-info: #6FD3FF;
+
+  --color-chase: #FF8E7F;
+  --color-waiting: #B49BF0;
+  --color-done: #6EE7B7;
+
+  --color-chase-bg: #3F2320;
+  --color-chase-edge: #65362E;
+  --color-waiting-bg: #282140;
+  --color-waiting-edge: #45366E;
+  --color-done-bg: #123328;
+  --color-done-edge: #215C4B;
+  --color-info-bg: #123143;
+  --color-info-edge: #20556E;
+
+  --color-card-chase: #33241F;
+  --color-card-chase-edge: #60352C;
+  --color-card-waiting: #28213B;
+  --color-card-waiting-edge: #44356E;
+  --color-card-done: #1A2B25;
+  --color-card-done-edge: #245B49;
 }
 
 body {

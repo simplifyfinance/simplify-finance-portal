@@ -7,6 +7,7 @@ import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOu
 import { useEffect, useState } from "react"
 import { createSupabaseBrowser } from "@/lib/supabase-browser"
 import { can, roleLabel as formatRoleLabel } from '@/lib/permissions'
+import OneMark, { MARK_WIDTH } from '@/components/OneMark'
 
 const nav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -132,12 +133,14 @@ export default function Sidebar() {
   const roleLabel = formatRoleLabel(profile?.role)
 
   return (
-    <aside style={{ background: '#343333' }} className="w-56 min-w-56 flex flex-col text-white h-screen">
-      <div className="px-4 py-4 border-b border-white/10 flex justify-center">
-        <img src="/logo-charcoal.png" alt="Simplify Finance" className="h-16 w-auto" />
-      </div>
-      <div className="px-4 py-2 border-b border-white/10">
-        <div className="text-white/40 text-xs">Credit & Compliance Portal</div>
+    <aside className="w-56 min-w-56 flex flex-col text-white h-screen bg-sidebar">
+      {/* THE LEFT COLUMN IS THE ONE FIXED THING ON SCREEN. It is this near-black
+          in both themes - it anchors the page whichever way the rest goes, and
+          in dark mode it stops the whole screen being one flat grey. The mark
+          was drawn against this exact value, so the two move together or not at
+          all. 2 Oct 2026, replacing #343333. */}
+      <div className="px-4 pt-[18px] pb-4 border-b border-white/[0.09]">
+        <OneMark width={MARK_WIDTH.sidebar} tone="dark" className="block" />
       </div>
 
       <nav className="flex-1 px-2 py-3">
@@ -147,7 +150,7 @@ export default function Sidebar() {
           .map(item => {
           const Icon = item.icon
           const linkClass = `flex items-center gap-2.5 px-3 py-2 rounded-md text-sm mb-0.5 transition-colors ${
-            path.startsWith(item.href) ? 'text-[#2DBEFF] bg-[#2DBEFF]/10' : 'text-white/60 hover:text-white hover:bg-white/5'
+            path.startsWith(item.href) ? 'text-brand bg-brand/12' : 'text-white/60 hover:text-white hover:bg-white/5'
           }`
           if ((item as any).newTab) {
             return (
@@ -193,7 +196,7 @@ export default function Sidebar() {
                   <Link href={item.href}
                     onClick={() => { if (!hasSubs) history.replaceState(null, '', item.href); setHash('') }}
                     className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm mb-0.5 transition-colors ${
-                      path.startsWith(item.href) ? 'text-[#2DBEFF] bg-[#2DBEFF]/10' : 'text-white/60 hover:text-white hover:bg-white/5'
+                      path.startsWith(item.href) ? 'text-brand bg-brand/12' : 'text-white/60 hover:text-white hover:bg-white/5'
                     }`}>
                     <Icon size={15} />
                     {item.label}
@@ -218,7 +221,10 @@ export default function Sidebar() {
 
       <div className="px-3 py-4 border-t border-white/10">
         <div className="flex items-center gap-2 mb-3">
-          <div style={{ background: '#2DBEFF' }} className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold">{initials}</div>
+          {/* Near-black letters on the brand blue, not white. White on this blue
+              reads at 2.2 to 1 - the initials were there but nobody could see
+              them. The blue is a fill, never small text on top of nothing. */}
+          <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-brand text-on-brand">{initials}</div>
           <div>
             <div className="text-xs text-white/70">{profile?.full_name || '...'}</div>
             <div className="text-xs text-white/30">{roleLabel}</div>

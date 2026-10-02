@@ -14,11 +14,30 @@ import * as C from './colours'
 
 const css = readFileSync('app/globals.css', 'utf8')
 
-// --color-brand-ink: #107EA8;  ->  { 'brand-ink': '#107EA8' }
-const cssColours: Record<string, string> = {}
-for (const m of css.matchAll(/--color-([a-z0-9-]+)\s*:\s*(#[0-9A-Fa-f]{6})\s*;/g)) {
-  cssColours[m[1]] = m[2].toUpperCase()
+// THE FILE NOW HOLDS TWO SETS OF THE SAME NAMES - the light ones in @theme and
+// the dark ones in the [data-theme="dark"] block. Reading the whole file at once
+// let the second set silently overwrite the first, which made the pairing test
+// pass while comparing light values against dark ones. So each block is cut out
+// by name and read on its own.
+function section(opener: string): string {
+  const i = css.indexOf(opener)
+  if (i < 0) throw new Error(`globals.css no longer contains "${opener}"`)
+  const end = css.indexOf('\n}', i)
+  if (end < 0) throw new Error(`"${opener}" in globals.css is never closed`)
+  return css.slice(i, end)
 }
+
+// --color-brand-ink: #107EA8;  ->  { 'brand-ink': '#107EA8' }
+function coloursIn(block: string): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const m of block.matchAll(/--color-([a-z0-9-]+)\s*:\s*(#[0-9A-Fa-f]{6})\s*;/g)) {
+    out[m[1]] = m[2].toUpperCase()
+  }
+  return out
+}
+
+const cssColours = coloursIn(section('@theme {'))
+const cssDark = coloursIn(section(':root[data-theme="dark"] {'))
 
 // BRAND_INK -> brand-ink
 const toCssName = (k: string) => k.toLowerCase().replace(/_/g, '-')
@@ -61,6 +80,54 @@ describe('the two files agree, colour by colour', () => {
   })
 })
 
+describe('the dark half agrees with itself too', () => {
+  // brandInk -> brand-ink,  cardChaseEdge -> card-chase-edge
+  const toCss = (k: string) => k.replace(/([A-Z])/g, '-$1').toLowerCase()
+  const tsDark: Record<string, string> = Object.fromEntries(
+    Object.entries(C.DARK).map(([k, v]) => [toCss(k), String(v).toUpperCase()])
+  )
+
+  it('every dark value in colours.ts is in globals.css with the same value', () => {
+    const wrong: string[] = []
+    for (const [name, v] of Object.entries(tsDark)) {
+      if (!(name in cssDark)) { wrong.push(`DARK.${name} is in colours.ts but --color-${name} is not in the dark block`); continue }
+      if (cssDark[name] !== v) wrong.push(`DARK.${name} is ${v} in colours.ts but --color-${name} is ${cssDark[name]}`)
+    }
+    expect(wrong, wrong.join('\n')).toEqual([])
+  })
+
+  it('and nothing is in the dark block that colours.ts has never heard of', () => {
+    const stray = Object.keys(cssDark).filter(n => !(n in tsDark))
+    expect(stray, `in the dark block only: ${stray.join(', ')}`).toEqual([])
+  })
+
+  // A dark name that is not also a light name is a colour that appears out of
+  // nowhere when somebody presses the switch.
+  it('every dark name is the name of a colour that exists in light', () => {
+    const orphans = Object.keys(tsDark).filter(n => !(n in cssColours))
+    expect(orphans, `dark-only names: ${orphans.join(', ')}`).toEqual([])
+  })
+
+  // The three that must NOT move. The left-hand column is the one fixed thing
+  // on screen; the brand blue is a fill and works on either surface.
+  it('leaves the sidebar and the brand fill alone', () => {
+    for (const fixed of ['sidebar', 'brand', 'on-brand']) {
+      expect(fixed in tsDark, `${fixed} must not change between themes`).toBe(false)
+      expect(fixed in cssDark, `--color-${fixed} must not be in the dark block`).toBe(false)
+    }
+  })
+
+  it('keeps a field darker than the card it sits in, which is the whole reason it has a name', () => {
+    const lum = (hex: string) => parseInt(hex.slice(1, 3), 16) + parseInt(hex.slice(3, 5), 16) + parseInt(hex.slice(5, 7), 16)
+    expect(lum(C.DARK.field)).toBeLessThan(lum(C.DARK.card))
+  })
+
+  it('lifts the blue for words rather than inventing a second blue', () => {
+    expect(C.DARK.brandInk).toBe(C.BRAND_LIFT)
+    expect(C.DARK.info).toBe(C.BRAND_LIFT)
+  })
+})
+
 describe('the few values that are not a matter of taste', () => {
   // These were measured, not chosen, and a careless edit to any of them
   // reintroduces a fault we have already fixed once.
@@ -97,13 +164,36 @@ describe('the few values that are not a matter of taste', () => {
   })
 })
 
-describe('nothing is wired up yet', () => {
-  // Ship one is the invisible one. If this file ever starts being imported by
-  // a screen, that is a later ship and this test is the reminder that it was
-  // meant to be deliberate.
-  it('says so on the tin', () => {
+describe('what is actually wired up', () => {
+  // This started life as "nothing is wired up yet". It is now the running
+  // record of which screens have been migrated, so that the palette cannot
+  // quietly claim to be the only home of every colour while the screens it
+  // names are still spelling them out by hand.
+  const MIGRATED = ['components/Sidebar.tsx', 'app/login/page.tsx']
+
+  const code = (src: string) =>
+    src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+
+  it('the migrated screens use the names instead of spelling colours out', () => {
+    const spelling: string[] = []
+    for (const f of MIGRATED) {
+      for (const m of code(readFileSync(f, 'utf8')).matchAll(/#[0-9A-Fa-f]{6}/g)) {
+        spelling.push(`${f}: ${m[0]}`)
+      }
+    }
+    expect(spelling, `these should be a palette name, not a hex:\n${spelling.join('\n')}`).toEqual([])
+  })
+
+  it('and the old blue is gone from them for good', () => {
+    for (const f of MIGRATED) {
+      expect(readFileSync(f, 'utf8'), `${f} still has the retired blue in it`)
+        .not.toContain(C.RETIRED[0])
+    }
+  })
+
+  it('colours.ts says the migration has started, so the note cannot go stale', () => {
     const src = readFileSync('lib/colours.ts', 'utf8')
-    expect(src).toContain('NOTHING LOOKS DIFFERENT TODAY')
+    expect(src).toContain('THE MIGRATION HAS STARTED')
   })
 })
 
