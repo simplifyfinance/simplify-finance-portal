@@ -207,11 +207,18 @@ const TEMPLATE_NOTES: Record<string, string[]> = {
   custom: [],
 }
 
+// NO AMBER. lib/colours.ts: four status colours, each meaning one thing, and
+// amber is deliberately absent - it measured 1.2 out of 100 from the chase red
+// to a red-green colourblind reader, which is another way of writing
+// "identical". It was doing two jobs here. "Not filled in yet" is now an empty
+// dashed box, because empty already says unfinished. "Needs your attention"
+// wears the chase wash, the same as a card that needs you on the board.
+// Fabio, 3 Oct 2026: "I dont like the amber ... didnt we stop that??"
 const inputCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
 function fieldCls(value: string) {
   return value && value.trim() && value !== '0'
     ? "px-2.5 py-1.5 text-sm border border-green-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
-    : "px-2.5 py-1.5 text-sm border border-amber-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-[#FEFBF5] w-full"
+    : "px-2.5 py-1.5 text-sm border border-dashed border-field-line rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-page w-full"
 }
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
 import { annualIncomeOfApplicant, incomeBreakdownFor } from '@/lib/income-calculations'
@@ -260,7 +267,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function NumberInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   const cls = value && value.trim() && value !== '0'
     ? "pl-5 pr-2.5 py-1.5 text-sm border border-green-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
-    : "pl-5 pr-2.5 py-1.5 text-sm border border-amber-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-[#FEFBF5] w-full"
+    : "pl-5 pr-2.5 py-1.5 text-sm border border-dashed border-field-line rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-page w-full"
   return (
     <div className="relative">
       <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
@@ -1537,7 +1544,7 @@ Key assumptions: ${checklistText}`
                       document. */}
                   {BUYING_TEMPLATES.includes(template) && (
                     <Field label="House or strata?">
-                      <select className={selectCls + (purchasePropertySubtype ? '' : ' border-amber-300 bg-[#FFFBF0]')}
+                      <select className={selectCls + (purchasePropertySubtype ? '' : ' border-dashed border-field-line bg-page')}
                               value={purchasePropertySubtype}
                               onChange={e => setPurchasePropertySubtype(e.target.value)}>
                         <option value="">Not recorded</option>
@@ -1688,7 +1695,7 @@ Key assumptions: ${checklistText}`
                         <option value={LMI_SETTLEMENT}>Paid at settlement</option>
                       </select>
                       {lmiDoubleCounted && (
-                        <span className="text-[11px] text-amber-800 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1.5 leading-snug">
+                        <span className="text-[11px] text-chase bg-chase-bg border border-chase-edge rounded-lg px-2 py-1.5 leading-snug">
                           &#9888; Check the split is the BASE loan. Taking the {fmtMoney(lmiPremium || 0)} back off
                           it lands exactly on a figure already recorded on this deal, which is what typing the
                           capitalised amount in looks like.
@@ -1807,7 +1814,7 @@ Key assumptions: ${checklistText}`
                   const off = balancesDisagree(splits, existingLoanBal)
                   if (!off) return null
                   return (
-                    <div className="mb-3 text-xs text-amber-800 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2 leading-snug">
+                    <div className="mb-3 text-xs text-chase bg-chase-bg border border-chase-edge rounded-lg px-3 py-2 leading-snug">
                       &#9888; The balances on the splits add up to {fmtMoney(off.parts)}, but Scenario details says {fmtMoney(off.deal)}. One of the two needs another look.
                     </div>
                   )
@@ -1942,7 +1949,7 @@ Key assumptions: ${checklistText}`
                               const m = repaymentMismatch(s, loanTerm)
                               if (!m) return null
                               return (
-                                <span className="text-[11px] text-amber-800 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1.5 leading-snug">
+                                <span className="text-[11px] text-chase bg-chase-bg border border-chase-edge rounded-lg px-2 py-1.5 leading-snug">
                                   &#9888; {fmtMoney(m.typed)} is the {m.looksLike} repayment for this split, but the type says {m.thisLabel} ({fmtMoney(m.thisType)}). Check which is right &mdash; the email sends what is typed here.
                                 </span>
                               )
@@ -2016,7 +2023,7 @@ Key assumptions: ${checklistText}`
                     return (
                       <div className={c.matches
                         ? 'text-xs text-[#0F7B4F] bg-[#F4FBF7] border border-[#BBE7CF] rounded-lg px-3 py-2 leading-snug'
-                        : 'text-xs text-amber-800 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2 leading-snug'}>
+                        : 'text-xs text-chase bg-chase-bg border border-chase-edge rounded-lg px-3 py-2 leading-snug'}>
                         {c.matches ? '' : '\u26a0 '}{c.words}
                       </div>
                     )
@@ -2283,7 +2290,7 @@ Key assumptions: ${checklistText}`
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mt-5 pt-4 border-t border-gray-100 mb-3">Notes</div>
                 <div className="flex flex-col gap-2">
                   <Field label="Broker summary notes (included in email)">
-                    <textarea spellCheck="true" className={`${brokerNotes ? "border-green-200 bg-white" : "border-amber-200 bg-[#FFFBF0]"} px-2.5 py-1.5 text-sm rounded-lg focus:outline-none focus:border-[#2DBEFF] w-full min-h-16 resize-y border`} value={brokerNotes}
+                    <textarea spellCheck="true" className={`${brokerNotes ? "border-green-200 bg-white" : "border-dashed border-field-line bg-page"} px-2.5 py-1.5 text-sm rounded-lg focus:outline-none focus:border-[#2DBEFF] w-full min-h-16 resize-y border`} value={brokerNotes}
                       onFocus={() => focusField(ownRef.current, 'brokerNotes')}
                       onBlur={() => blurField(ownRef.current, 'brokerNotes')}
                       onChange={e => { markDirty(ownRef.current, 'brokerNotes'); setBrokerNotes(e.target.value) }} placeholder="✏ Add your personalised opening message — this goes directly into the client email..." />

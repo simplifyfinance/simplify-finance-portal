@@ -1714,7 +1714,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 <option key={i} value={b.name}>{b.name} — Simplify Finance</option>
               ))}
             </select>
-            <textarea spellCheck="true" className={`${d.brokerPersonalisation ? "border-green-200 bg-white" : "border-amber-200 bg-[#FFFBF0]"} w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-[80px] resize-y border`} value={d.brokerPersonalisation}
+            <textarea spellCheck="true" className={`${d.brokerPersonalisation ? "border-green-200 bg-white" : "border-dashed border-field-line bg-page"} w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-[80px] resize-y border`} value={d.brokerPersonalisation}
               onFocus={() => focusField(ownRef.current, 'brokerPersonalisation')}
               onBlur={() => blurField(ownRef.current, 'brokerPersonalisation')}
               onChange={e => { markDirty(ownRef.current, 'brokerPersonalisation'); setD({ ...d, brokerPersonalisation: e.target.value }) }} placeholder="✏ Add your personalised opening message..." />
@@ -1742,22 +1742,22 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
               choice was saved as a bank name. Loud rather than guessed: the
               wrong guess prints a real rate against the wrong product. */}
           {recommendationIsAmbiguous(d) && (
-            <div className="flex items-center gap-3 bg-amber-50 border-2 border-amber-400 rounded-xl px-4 py-3">
-              <span className="text-amber-500 text-base">⚠</span>
+            <div className="flex items-center gap-3 bg-chase-bg border-2 border-chase-edge rounded-xl px-4 py-3">
+              <span className="text-chase text-base">⚠</span>
               <div>
-                <div className="text-xs font-semibold text-amber-800">Two options are both {d.recommendedLender} — please pick which one</div>
-                <div className="text-xs text-amber-700">This deal was recommended before the portal recorded the product as well as the bank. Until one is chosen, the client email and the compliance wording treat it as not yet recommended.</div>
+                <div className="text-xs font-semibold text-chase">Two options are both {d.recommendedLender} — please pick which one</div>
+                <div className="text-xs text-chase">This deal was recommended before the portal recorded the product as well as the bank. Until one is chosen, the client email and the compliance wording treat it as not yet recommended.</div>
               </div>
             </div>
           )}
 
           {/* Recommendation warning */}
           {!recommendedOption(d) && !recommendationIsAmbiguous(d) && d.lenders.some(l => l.lenderName) && (
-            <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-              <span className="text-amber-500 text-base">⚠</span>
+            <div className="flex items-center gap-3 bg-chase-bg border border-chase-edge rounded-xl px-4 py-3">
+              <span className="text-chase text-base">⚠</span>
               <div>
-                <div className="text-xs font-medium text-amber-800">No recommended option set</div>
-                <div className="text-xs text-amber-600">Click "Set as recommended" on your preferred option.</div>
+                <div className="text-xs font-medium text-chase">No recommended option set</div>
+                <div className="text-xs text-chase">Click "Set as recommended" on your preferred option.</div>
               </div>
             </div>
           )}
@@ -1768,7 +1768,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             const isEmpty = !lender.lenderId
             const lenderSplits = resolveLenderSplits(lender, d.refinanceSplits)
             return (
-              <div key={i} className={`rounded-xl p-5 border transition-all ${isRec ? 'border-[#2DBEFF] bg-blue-50/30' : isEmpty ? 'border-dashed border-amber-200 bg-amber-50/20' : 'bg-white border-gray-100'}`}>
+              <div key={i} className={`rounded-xl p-5 border transition-all ${isRec ? 'border-[#2DBEFF] bg-blue-50/30' : isEmpty ? 'border-dashed border-card-line bg-page' : 'bg-white border-gray-100'}`}>
                 <div className="flex justify-between items-center mb-4">
                   <div className="flex items-center gap-2">
                     <div className="text-xs font-medium text-gray-400 uppercase tracking-widest">Option {i + 1}</div>
@@ -1889,7 +1889,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                       </div>
                     </div>
                     {lenderSplits.length === 0 && (
-                      <div className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-3">
+                      <div className="text-xs text-chase bg-chase-bg border border-chase-edge rounded-lg px-3 py-2 mb-3">
                         No splits loaded — click "Sync from top" to pre-fill from the global splits above, or add splits there first.
                       </div>
                     )}
@@ -1943,7 +1943,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                             )}
                           </div>
                           {typeContradictsProduct(split, lender) && (
-                            <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                            <div className="mt-2 text-xs text-chase bg-chase-bg border border-chase-edge rounded-lg px-2.5 py-1.5">
                               This split says <strong>{split.repaymentType}</strong>, but this product
                               only has {typesOffered(lender).join(' and ')} ticked above. Whichever is
                               right, the compliance wording reads the ticks and the deal structure
@@ -2023,11 +2023,11 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           )}
 
           {/* Recommendation */}
-          <div className={`rounded-xl p-5 border-2 transition-all ${recommendedOption(d) && d.recommendationNote ? "bg-white border-green-200" : "bg-[#FFF8E6] border-amber-400"}`}>
+          <div className={`rounded-xl p-5 border-2 transition-all ${recommendedOption(d) && d.recommendationNote ? "bg-white border-green-200" : "bg-white border-chase-edge"}`}>
             <div className="flex items-center justify-between mb-4">
               <div className="text-xs font-medium text-gray-400 uppercase tracking-widest">Recommendation</div>
               {recommendedOption(d) && !d.recommendationNote && (
-                <span className="text-xs text-amber-700 bg-amber-100 border border-amber-300 rounded-lg px-2.5 py-1">⚠ Add why this product is in the client&#39;s best interests</span>
+                <span className="text-xs text-chase bg-chase-bg border border-chase-edge rounded-lg px-2.5 py-1">⚠ Add why this product is in the client&#39;s best interests</span>
               )}
             </div>
             <div className="grid grid-cols-2 gap-3 mb-3">
@@ -2069,20 +2069,20 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
               {generatingRec ? 'Generating...' : '✦ AI draft recommendation'}
             </button>
             <button onClick={() => { setFlagOpen(v => !v); setFlagNote('') }}
-              className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
+              className="mt-2 ml-2 text-xs text-gray-400 hover:text-chase underline">Flag an issue</button>
             {loStyleNotes.length > 0 && (
               <span className="ml-2 text-[11px] text-gray-400">
                 {loStyleNotes.length} style note{loStyleNotes.length === 1 ? '' : 's'} applied
               </span>
             )}
             {flagOpen && (
-              <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <div className="mt-2 bg-chase-bg border border-chase-edge rounded-lg p-3">
                 <textarea spellCheck="true" className={inp + ' min-h-[60px] resize-y bg-white'} autoFocus
                   placeholder="What was wrong with this recommendation?"
                   value={flagNote} onChange={e => setFlagNote(e.target.value)} />
                 <div className="flex gap-2 mt-2">
                   <button onClick={submitFlag} disabled={flagSubmitting || !flagNote.trim()}
-                    className="text-xs bg-amber-500 text-white rounded-lg px-3 py-1.5 hover:bg-amber-600 disabled:opacity-40">
+                    className="text-xs bg-chase text-white rounded-lg px-3 py-1.5 hover:opacity-90 disabled:opacity-40">
                     {flagSubmitting ? 'Submitting...' : 'Submit flag'}
                   </button>
                   <button onClick={() => { setFlagOpen(false); setFlagNote('') }}
