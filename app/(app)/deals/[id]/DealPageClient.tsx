@@ -331,6 +331,15 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
             Open BC
           </button>
 
+          {/* THE CLIENT EMAILS, IN THE HEADER - one-inside-the-deal-v4.html.
+              They were a full width band above the tabs. Telling a client their
+              loan is approved happens when the bank says so, not when a
+              particular tab is open, and a formally approved deal is usually
+              lodged - which is exactly when a tab is locked. So it stays out
+              here, outside the lock, just smaller. */}
+          <MilestoneEmails deal={dealData} me={me}
+            onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+
           <button onClick={() => setEditingName(true)}
             className="text-xs text-muted bg-page border border-line rounded-[10px] px-3.5 py-2
               hover:bg-line-soft hover:text-ink transition">Edit</button>
@@ -425,14 +434,6 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           disables wholesale - so the documents became unreachable exactly when
           they are wanted. Reading a deal changes nothing; see
           components/DealDocuments.tsx. */}
-
-      {/* THE CLIENT EMAILS, BESIDE THE DOCUMENTS AND FOR THE SAME REASON.
-          Telling a client their loan is approved happens when the bank says so,
-          not when a particular tab is open - and a formally approved deal is
-          usually lodged, which is precisely when a tab is locked. Above the
-          tabs, outside the lock. See components/MilestoneEmails.tsx. */}
-      <MilestoneEmails deal={dealData} me={me}
-        onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
 
       {/* AND THE ONE EMAIL THAT IS NOT OURS TO SEND. ANZ deals only: it opens
           Outlook addressed to their assessment team with the reference in the

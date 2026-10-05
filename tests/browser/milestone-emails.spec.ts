@@ -23,8 +23,13 @@ test.describe('the client emails', () => {
     await page.goto(`/deals/${DEAL}`)
     await page.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
 
-    const strip = page.locator('text=Client emails').first()
+    // THE EMAILS LIVE BEHIND ONE WORD IN THE HEADER NOW, not in a band across
+    // the top - one-inside-the-deal-v4.html. So this opens the menu before
+    // looking for them, rather than reading them off the page.
+    const strip = page.getByRole('button', { name: /Client emails/ }).first()
     await expect(strip).toBeVisible({ timeout: 15_000 })
+    await strip.click()
+    await page.getByText('Send to the client').waitFor({ timeout: 10_000 })
 
     const body = await page.locator('body').innerText()
 

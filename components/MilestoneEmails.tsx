@@ -4,7 +4,12 @@ import { menuFor, lastSent, type MenuItem, type TemplateId } from '@/lib/milesto
 
 // THE CLIENT EMAILS A DEAL CAN SEND.
 //
-// ABOVE THE TABS, OUTSIDE THE LOCK, like the documents beside it. Telling a
+// IN THE HEADER, BEHIND ONE WORD, AND OUTSIDE THE LOCK.
+// one-inside-the-deal-v4.html: an envelope in the header opening "Send to the
+// client". It was a full width row of buttons above the tabs - the widest
+// thing on the page, saying nothing on most days.
+//
+// OUTSIDE THE LOCK, like the documents beside it. Telling a
 // client their loan is approved is not a stage of the deal - it happens when the
 // bank says so, whatever tab anybody is looking at, and a lodged deal is exactly
 // when a formal approval goes out. The same mistake the PDFs made is not made
@@ -41,16 +46,59 @@ export default function MilestoneEmails({ deal, onUpdated }: {
   onUpdated?: (patch: any) => void
 }) {
   const [open, setOpen] = useState<TemplateId | null>(null)
+  const [listOpen, setListOpen] = useState(false)
+  const box = useRef<HTMLDivElement | null>(null)
   const menu = menuFor(deal)
 
+  // The menu shuts on a click anywhere else and on Escape. A menu you cannot
+  // get out of without picking something is worse than no menu.
+  useEffect(() => {
+    if (!listOpen) return
+    const away = (e: MouseEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setListOpen(false)
+    }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setListOpen(false) }
+    document.addEventListener('mousedown', away)
+    document.addEventListener('keydown', esc)
+    return () => {
+      document.removeEventListener('mousedown', away)
+      document.removeEventListener('keydown', esc)
+    }
+  }, [listOpen])
+
+  // One of them can actually go right now. The dot says so without opening it.
+  const anyReady = menu.some(m => m.state === 'ready')
+
   return (
-    <div className="mb-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-[9px] font-bold tracking-[.07em] uppercase text-faint mr-1">Client emails</span>
-        {menu.map(item => (
-          <MenuButton key={item.id} item={item} onOpen={() => setOpen(item.id)} />
-        ))}
-      </div>
+    <div ref={box} className="relative">
+      <button onClick={() => setListOpen(o => !o)} aria-expanded={listOpen} aria-haspopup="menu"
+        className="text-xs text-muted bg-page border border-line rounded-[10px] px-3.5 py-2
+          hover:bg-line-soft hover:text-ink transition inline-flex items-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 5L2 7" />
+        </svg>
+        <span className="whitespace-nowrap">Client emails</span>
+        {anyReady && <span aria-hidden className="w-[6px] h-[6px] rounded-full bg-info" />}
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+             strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d={listOpen ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'} />
+        </svg>
+      </button>
+
+      {listOpen && (
+        <div role="menu"
+          className="absolute right-0 top-[calc(100%+6px)] z-30 min-w-[340px] max-w-[420px]
+            bg-card border border-card-line rounded-xl shadow-lg p-1.5">
+          <div className="text-[9px] font-bold tracking-[.07em] uppercase text-faint px-2.5 py-1.5">
+            Send to the client
+          </div>
+          {menu.map(item => (
+            <MenuButton key={item.id} item={item}
+              onOpen={() => { setListOpen(false); setOpen(item.id) }} />
+          ))}
+        </div>
+      )}
 
       {open && (
         <SendScreen deal={deal} templateId={open} onClose={() => setOpen(null)}
@@ -64,8 +112,7 @@ function MenuButton({ item, onOpen }: { item: MenuItem; onOpen: () => void }) {
   // Not yet is a statement, not a button. It says what the deal is waiting for.
   if (item.state === 'not_yet') {
     return (
-      <span className="border border-dashed border-line text-faint rounded-lg px-3 py-1.5 text-[12px]"
-            title={item.note}>
+      <span className="block w-full px-2.5 py-2 text-[12px] text-faint" title={item.note}>
         {item.name} <span className="text-[11px]">— {item.note}</span>
       </span>
     )
@@ -73,9 +120,9 @@ function MenuButton({ item, onOpen }: { item: MenuItem; onOpen: () => void }) {
   const ready = item.state === 'ready'
   return (
     <button onClick={onOpen}
-      className={ready
-        ? 'bg-ink text-page rounded-lg px-3 py-1.5 text-[12px] font-semibold'
-        : 'bg-page border border-line text-muted rounded-lg px-3 py-1.5 text-[12px] font-medium hover:bg-line-soft hover:text-ink transition'}>
+      className={`w-full text-left rounded-lg px-2.5 py-2 text-[12px] transition ${ready
+        ? 'font-semibold text-ink bg-info-bg hover:opacity-90'
+        : 'font-medium text-muted hover:bg-page hover:text-ink'}`}>
       {item.name}
       <span className={`ml-1.5 text-[11px] font-normal ${ready ? 'text-white/60' : 'text-faint'}`}>
         {item.note}
