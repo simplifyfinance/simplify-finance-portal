@@ -43,10 +43,10 @@ function amountOf(d: any): number | null {
 type Tone = 'ok' | 'warn' | 'stop' | 'flat' | 'cy'
 function Chip({ tone, children }: { tone: Tone; children: React.ReactNode }) {
   const c = {
-    ok: 'bg-[#F1F7F3] border-[#CFE6D5] text-[#25794C]',
-    warn: 'bg-[#FDF6E7] border-[#EFE0BC] text-[#9A7B2E]',
-    stop: 'bg-[#FBEDE9] border-[#EFCFC5] text-[#C4553B]',
-    flat: 'bg-[#FAF7F2] border-[#E8E1D6] text-[#6E665C]',
+    ok: 'bg-done-bg border-done-edge text-done',
+    warn: 'bg-info-bg border-info-edge text-info',
+    stop: 'bg-chase-bg border-[#EFCFC5] text-[#C4553B]',
+    flat: 'bg-page border-line text-muted',
     cy:   'bg-[#EAF7FE] border-[#BFE6F9] text-[#0E8FCB]',
   }[tone]
   return <span className={`inline-block text-[10px] font-bold uppercase tracking-[.04em] border rounded-full px-2 py-[2px] mr-1.5 whitespace-nowrap ${c}`}>{children}</span>
@@ -60,7 +60,7 @@ const GRID = 'grid grid-cols-[78px_1.6fr_1fr_1.05fr_96px_1.5fr_24px] gap-2.5 ite
 function F({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-[10px] font-bold uppercase tracking-[.08em] text-[#A29889] mb-1">{label}</div>
+      <div className="text-[10px] font-bold uppercase tracking-[.08em] text-faint mb-1">{label}</div>
       {children}
     </div>
   )
@@ -215,11 +215,11 @@ export default function SettlementsPage() {
     setMsg(`${d.deal_name} moved to ${monthLabel(addMonths(monthOf(date) || month, 1))}.`)
   }
 
-  if (loading) return <div className="max-w-6xl mx-auto p-6 text-sm text-[#A29889]">Loading settlements…</div>
+  if (loading) return <div className="max-w-6xl mx-auto p-6 text-sm text-faint">Loading settlements…</div>
   if (allowed === false) return (
     <div className="max-w-6xl mx-auto p-6">
-      <p className="text-lg font-medium text-[#2E2A26] mb-2">Settlements</p>
-      <p className="text-sm text-[#6E665C]">You don&rsquo;t have access to settlements. An admin can grant it in Settings, Team, Access.</p>
+      <p className="text-lg font-medium text-ink mb-2">Settlements</p>
+      <p className="text-sm text-muted">You don&rsquo;t have access to settlements. An admin can grant it in Settings, Team, Access.</p>
     </div>
   )
 
@@ -235,18 +235,18 @@ export default function SettlementsPage() {
     return (
       <div className="border-b border-[#F6F2EA] last:border-0">
         <button onClick={() => startEdit(d)} className={`w-full text-left ${GRID} px-4 py-2.5 text-[13px] hover:bg-[#FCFAF6] transition`}>
-          <span className="tabular-nums text-[#6E665C]">
-            {d.confirmed_settlement_date ? <b className="text-[#2E2A26]">{dayLabel(date)}</b> : dayLabel(date)}
+          <span className="tabular-nums text-muted">
+            {d.confirmed_settlement_date ? <b className="text-ink">{dayLabel(date)}</b> : dayLabel(date)}
           </span>
           <span className="min-w-0">
-            <span className="font-medium text-[#2E2A26] block truncate">{d.deal_name || '(unnamed)'}</span>
-            <span className="text-[11px] text-[#A29889]">{brokerLabel(d.assigned_broker)}</span>
+            <span className="font-medium text-ink block truncate">{d.deal_name || '(unnamed)'}</span>
+            <span className="text-[11px] text-faint">{brokerLabel(d.assigned_broker)}</span>
           </span>
           <span className="min-w-0">
-            <span className="text-[#6E665C] block truncate">{d.lodged_lender || d.lender || '—'}</span>
-            {d.lender_ref && <span className="text-[11px] text-[#A29889] block truncate">{d.lender_ref}</span>}
+            <span className="text-muted block truncate">{d.lodged_lender || d.lender || '—'}</span>
+            {d.lender_ref && <span className="text-[11px] text-faint block truncate">{d.lender_ref}</span>}
           </span>
-          <span className="text-[#6E665C] truncate">{purposeLabel(d)}</span>
+          <span className="text-muted truncate">{purposeLabel(d)}</span>
           <span className="text-right tabular-nums font-medium">{compact(amountOf(d))}</span>
           <span className="min-w-0">
             {d.settlement_state === 'confirmed' && <Chip tone="ok">Ready to settle</Chip>}
@@ -306,7 +306,7 @@ export default function SettlementsPage() {
               )}
               {isPurchase(d) && (
                 <F label="Funds to complete">
-                  <label className="flex items-center gap-2 text-[12.5px] text-[#2E2A26] py-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] text-ink py-1.5">
                     <input type="checkbox" checked={!!draft.funds_to_complete_checked}
                       onChange={e => setDraft({ ...draft, funds_to_complete_checked: e.target.checked })} />
                     Checked with the solicitor
@@ -332,8 +332,8 @@ export default function SettlementsPage() {
             </div>
 
             {d.settled_at && loanIdStatus(d).tone !== 'complete' && (
-              <div className="border border-[#EBD9BE] bg-[#FDF6EC] rounded-xl px-4 py-3.5 mt-3">
-                <div className="text-[10px] font-bold uppercase tracking-[.08em] text-[#946017] mb-2">
+              <div className="border border-chase-edge bg-chase-bg rounded-xl px-4 py-3.5 mt-3">
+                <div className="text-[10px] font-bold uppercase tracking-[.08em] text-chase mb-2">
                   {loanIdStatus(d).label}
                 </div>
                 <LoanIds deal={d} onSaved={() => load()} />
@@ -342,31 +342,31 @@ export default function SettlementsPage() {
 
             {!d.settled_at && (
               <div className="flex gap-2 items-center flex-wrap mt-3">
-                <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#A29889] mr-1">Step</span>
+                <span className="text-[10px] font-bold uppercase tracking-[.08em] text-faint mr-1">Step</span>
                 {STEPS.map(s => {
                   const on = stepIsOn(d, s)
                   return (
                     <button key={s} onClick={() => setStep(d, s, !on)} disabled={busy}
                       className={`text-[12px] rounded-lg px-3 py-1.5 border transition ${on
-                        ? 'bg-[#343333] border-[#343333] text-white font-semibold'
-                        : 'bg-white border-[#E8E1D6] text-[#6E665C] hover:bg-[#FAF7F2]'}`}>
+                        ? 'bg-ink border-ink text-white font-semibold'
+                        : 'bg-card border-line text-muted hover:bg-page'}`}>
                       {stepLabel(s, d.transaction_type)}
                     </button>
                   )
                 })}
-                <span className="text-[11px] text-[#A29889]">optional · a deal can skip either</span>
+                <span className="text-[11px] text-faint">optional · a deal can skip either</span>
               </div>
             )}
 
             <div className="flex gap-2 items-center flex-wrap mt-3">
               <button onClick={() => save(d)} disabled={busy}
-                className="bg-[#343333] text-white rounded-lg px-4 py-2 text-[12.5px] font-semibold hover:bg-[#2a2a2a] transition disabled:opacity-40">
+                className="bg-ink text-page rounded-lg px-4 py-2 text-[12.5px] font-semibold hover:opacity-90 transition disabled:opacity-40">
                 {busy ? 'Saving…' : 'Save'}
               </button>
-              <button onClick={() => setOpen(null)} className="text-[12px] text-[#A29889] hover:text-[#2E2A26]">Cancel</button>
+              <button onClick={() => setOpen(null)} className="text-[12px] text-faint hover:text-ink">Cancel</button>
               {!d.settled_at && (
                 <button onClick={() => pushToNextMonth(d)} disabled={busy}
-                  className="text-[12px] text-[#A29889] hover:text-[#C4553B]">No chance this month → push</button>
+                  className="text-[12px] text-faint hover:text-[#C4553B]">No chance this month → push</button>
               )}
               <Link href={`/deals/${d.id}`} className="text-[12px] text-[#0E8FCB] hover:underline ml-auto">Open the deal ›</Link>
             </div>
@@ -376,21 +376,21 @@ export default function SettlementsPage() {
     )
   }
 
-  const inp = 'w-full text-[12.5px] border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:border-[#2DBEFF]'
+  const inp = 'w-full text-[12.5px] border border-line rounded-lg px-2.5 py-1.5 bg-card focus:outline-none focus:border-[#2DBEFF]'
   function Group({ title, sub, rows }: { title: string; sub: string; rows: any[] }) {
     return (
       <>
         <div className="flex items-baseline gap-3 mt-6 mb-2 flex-wrap">
-          <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#A29889]">{title}</span>
+          <span className="text-[11px] font-bold uppercase tracking-[.08em] text-faint">{title}</span>
           <span className="text-[11.5px] text-[#C9C1B4]">{sub}</span>
         </div>
-        <div className="bg-white border border-[#EDE7DD] rounded-xl overflow-hidden">
-          <div className={`${GRID} px-4 py-2 text-[10px] font-semibold tracking-[.085em] uppercase text-[#A29889] border-b border-[#F6F2EA]`}>
+        <div className="bg-card border border-[#EDE7DD] rounded-xl overflow-hidden">
+          <div className={`${GRID} px-4 py-2 text-[10px] font-semibold tracking-[.085em] uppercase text-faint border-b border-[#F6F2EA]`}>
             <span>Settles</span><span>Deal</span><span>Lender</span><span>Purpose</span>
             <span className="text-right">Amount</span><span>State</span><span />
           </div>
           {rows.length === 0
-            ? <div className="px-4 py-6 text-center text-[13px] text-[#A29889]">Nothing here for {monthLabel(month)}.</div>
+            ? <div className="px-4 py-6 text-center text-[13px] text-faint">Nothing here for {monthLabel(month)}.</div>
             : rows.map(d => <Fragment key={d.id}>{Row({ d })}</Fragment>)}
         </div>
       </>
@@ -402,16 +402,16 @@ export default function SettlementsPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <p className="text-lg font-medium text-[#343333] mb-1">Settlements</p>
-      <p className="text-[12.5px] text-[#A29889] mb-4 max-w-[86ch]">
+      <p className="text-lg font-medium text-ink mb-1">Settlements</p>
+      <p className="text-[12.5px] text-faint mb-4 max-w-[86ch]">
         Every deal expected to settle, grouped by how far along it is. The grouping comes from the deal itself,
         so nobody moves rows between blocks.
       </p>
 
-      <div className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-xl p-3 flex items-center gap-3 flex-wrap mb-4">
-        <button onClick={() => setMonth(addMonths(month, -1))} className="w-[26px] h-[26px] rounded-lg border border-[#E8E1D6] bg-white text-[#6E665C]">‹</button>
+      <div className="bg-page border border-line rounded-xl p-3 flex items-center gap-3 flex-wrap mb-4">
+        <button onClick={() => setMonth(addMonths(month, -1))} className="w-[26px] h-[26px] rounded-lg border border-line bg-card text-muted">‹</button>
         <span className="text-[13.5px] font-semibold min-w-[126px] text-center">{monthLabel(month)}</span>
-        <button onClick={() => setMonth(addMonths(month, 1))} className="w-[26px] h-[26px] rounded-lg border border-[#E8E1D6] bg-white text-[#6E665C]">›</button>
+        <button onClick={() => setMonth(addMonths(month, 1))} className="w-[26px] h-[26px] rounded-lg border border-line bg-card text-muted">›</button>
         <span className="w-px h-5 bg-[#E8E1D6]" />
         <div className="flex gap-1.5 flex-wrap">
           <button onClick={() => setScope('')} className={pill(scope === '')}>All brokers</button>
@@ -421,7 +421,7 @@ export default function SettlementsPage() {
         </div>
         <span className="ml-auto flex gap-2">
           <button onClick={() => setView(view === 'board' ? 'attention' : 'board')}
-            className="bg-white border border-[#E8E1D6] rounded-lg px-3 py-1.5 text-[12.5px] text-[#6E665C] hover:bg-[#F4EEE4]">
+            className="bg-card border border-line rounded-lg px-3 py-1.5 text-[12.5px] text-muted hover:bg-line-soft">
             {view === 'board' ? 'Needs attention' : 'Back to the month'}
           </button>
         </span>
@@ -429,22 +429,22 @@ export default function SettlementsPage() {
 
       {msg && (
         <div className={`rounded-xl px-4 py-2.5 mb-3 text-[12.5px] border ${msg.startsWith('NOT SAVED')
-          ? 'bg-red-50 border-red-200 text-red-700 font-medium' : 'bg-white border-[#EDE7DD] text-[#6E665C]'}`}>{msg}</div>
+          ? 'bg-red-50 border-red-200 text-red-700 font-medium' : 'bg-card border-[#EDE7DD] text-muted'}`}>{msg}</div>
       )}
       {loadError && <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm mb-3">{loadError}</div>}
 
       {view === 'attention' ? (
         <>
           <div className="flex items-baseline gap-3 mb-2 flex-wrap">
-            <span className="text-[11px] font-bold uppercase tracking-[.08em] text-[#A29889]">Needs attention</span>
+            <span className="text-[11px] font-bold uppercase tracking-[.08em] text-faint">Needs attention</span>
             <span className="text-[11.5px] text-[#C9C1B4]">
               no update in {ATTENTION.staleBusinessDays} business days, within {ATTENTION.closeBusinessDays} of settling,
               or a purchase whose funds to complete are unchecked
             </span>
           </div>
-          <div className="bg-white border border-[#EDE7DD] rounded-xl overflow-hidden">
+          <div className="bg-card border border-[#EDE7DD] rounded-xl overflow-hidden">
             {attention.length === 0
-              ? <div className="px-4 py-8 text-center text-[13px] text-[#A29889]">Nothing needs chasing. </div>
+              ? <div className="px-4 py-8 text-center text-[13px] text-faint">Nothing needs chasing. </div>
               : attention
                   .sort((x, y) => String(settlementDate(x.d) || '9999').localeCompare(String(settlementDate(y.d) || '9999')))
                   .map(({ d }) => <Fragment key={d.id}>{Row({ d })}</Fragment>)}
@@ -476,25 +476,25 @@ export default function SettlementsPage() {
 
 function pill(on: boolean) {
   return `rounded-full px-3 py-1.5 text-[12.5px] font-medium border transition-colors ${on
-    ? 'bg-[#343333] border-[#343333] text-white font-semibold'
-    : 'border-[#E8E1D6] bg-white text-[#6E665C] hover:bg-[#FAF7F2] hover:text-[#2E2A26]'}`
+    ? 'bg-ink border-ink text-white font-semibold'
+    : 'border-line bg-card text-muted hover:bg-page hover:text-ink'}`
 }
 
 function Tile({ label, value, sub, tone, meter, onClick }:
   { label: string; value: string; sub?: string; tone?: 'up' | 'down'; meter?: number | null; onClick?: () => void }) {
   const inner = (
     <>
-      <div className="text-[10px] font-bold tracking-[.09em] uppercase text-[#A29889] mb-1.5">{label}</div>
-      <div className="text-2xl font-semibold text-[#343333] tracking-tight">{value}</div>
-      {sub && <div className={`text-[11.5px] mt-0.5 ${tone === 'up' ? 'text-[#2E9E63]' : tone === 'down' ? 'text-[#C4553B]' : 'text-[#A29889]'}`}>{sub}</div>}
+      <div className="text-[10px] font-bold tracking-[.09em] uppercase text-faint mb-1.5">{label}</div>
+      <div className="text-2xl font-semibold text-ink tracking-tight">{value}</div>
+      {sub && <div className={`text-[11.5px] mt-0.5 ${tone === 'up' ? 'text-[#2E9E63]' : tone === 'down' ? 'text-[#C4553B]' : 'text-faint'}`}>{sub}</div>}
       {meter !== null && meter !== undefined && (
-        <div className="h-[5px] bg-[#F4EEE4] rounded-full mt-2 overflow-hidden">
+        <div className="h-[5px] bg-line-soft rounded-full mt-2 overflow-hidden">
           <div className={`h-full rounded-full ${meter >= 100 ? 'bg-[#2E9E63]' : 'bg-[#8C8375]'}`} style={{ width: Math.min(100, meter) + '%' }} />
         </div>
       )}
     </>
   )
-  const cls = 'bg-white border border-[#EDE7DD] rounded-xl p-4 text-left'
+  const cls = 'bg-card border border-[#EDE7DD] rounded-xl p-4 text-left'
   return onClick
     ? <button onClick={onClick} className={cls + ' hover:border-[#C9C0B1] transition'}>{inner}</button>
     : <div className={cls}>{inner}</div>

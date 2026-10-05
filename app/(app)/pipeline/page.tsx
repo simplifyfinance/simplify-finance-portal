@@ -491,7 +491,7 @@ export default function PipelinePage() {
     setKind(k); setPeriodKey(list[offset]?.key || ''); setPickOpen(false)
   }
 
-  const sandBtn = 'bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-lg px-3.5 py-2 text-[12.5px] font-medium hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition inline-flex items-center gap-1.5 disabled:opacity-40'
+  const sandBtn = 'bg-page border border-line text-muted rounded-lg px-3.5 py-2 text-[12.5px] font-medium hover:bg-line-soft hover:text-ink transition inline-flex items-center gap-1.5 disabled:opacity-40'
   const kinds: { k: PeriodKind; label: string }[] = [
     { k: 'week', label: 'Week' }, { k: 'month', label: 'Month' },
     { k: 'quarter', label: 'Quarter' }, { k: 'fy', label: 'Financial year' },
@@ -514,14 +514,14 @@ export default function PipelinePage() {
     while (m < 1) { m += 12; y -= 1 }
     return `${y}-${String(m).padStart(2, '0')}`
   }
-  const dateInput = 'text-[12.5px] border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]'
+  const dateInput = 'text-[12.5px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]'
 
   // Every hook above has already run, so switching the whole view here is safe.
   if (view === 'actuals') return <MonthlyActuals />
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <p className="text-lg font-medium text-[#343333] mb-4">Pipeline</p>
+      <p className="text-lg font-medium text-ink mb-4">Pipeline</p>
 
       {!loading && !loadError && (
         <PipelineSnapshot hist={hist} dealRows={dealRows} targets={targets} brokers={brokers} brokerHist={bhist}
@@ -529,11 +529,11 @@ export default function PipelinePage() {
       )}
 
       {/* toolbar */}
-      <div className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-xl p-3 flex items-center gap-3 flex-wrap mb-4">
+      <div className="bg-page border border-line rounded-xl p-3 flex items-center gap-3 flex-wrap mb-4">
         <div className="flex gap-1 bg-[#F1EDE6] rounded-lg p-[3px]">
           {(['lodged', 'settled'] as const).map(v => (
             <button key={v} onClick={() => setMetric(v)}
-              className={`px-4 py-1.5 text-[13px] rounded-md font-medium transition ${metric === v ? 'bg-white text-[#2E2A26] shadow-sm' : 'text-[#6E665C]'}`}>
+              className={`px-4 py-1.5 text-[13px] rounded-md font-medium transition ${metric === v ? 'bg-card text-ink shadow-sm' : 'text-muted'}`}>
               {v === 'lodged' ? 'Lodgements' : 'Settlements'}
             </button>
           ))}
@@ -543,12 +543,12 @@ export default function PipelinePage() {
 
         <div className="flex gap-1.5 flex-wrap">
           <button onClick={() => setScope('')}
-            className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium border transition-colors ${scope === '' ? 'bg-[#343333] border-[#343333] text-white font-semibold' : 'border-[#E8E1D6] bg-white text-[#6E665C] hover:bg-[#FAF7F2] hover:text-[#2E2A26]'}`}>
+            className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium border transition-colors ${scope === '' ? 'bg-ink border-ink text-white font-semibold' : 'border-line bg-card text-muted hover:bg-page hover:text-ink'}`}>
             Business
           </button>
           {brokers.map(b => (
             <button key={b.key} onClick={() => setScope(b.key)}
-              className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium border transition-colors ${scope === b.key ? 'bg-[#343333] border-[#343333] text-white font-semibold' : 'border-[#E8E1D6] bg-white text-[#6E665C] hover:bg-[#FAF7F2] hover:text-[#2E2A26]'}`}>
+              className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium border transition-colors ${scope === b.key ? 'bg-ink border-ink text-white font-semibold' : 'border-line bg-card text-muted hover:bg-page hover:text-ink'}`}>
               {b.name}
             </button>
           ))}
@@ -559,7 +559,7 @@ export default function PipelinePage() {
         <div className="flex gap-3.5">
           {kinds.map(({ k, label }) => (
             <button key={k} onClick={() => pickKind(k)}
-              className={`text-[12.5px] font-medium pb-1 border-b-2 transition ${kind === k ? 'text-[#2E2A26] border-[#343333]' : 'text-[#A29889] border-transparent hover:text-[#6E665C]'}`}>
+              className={`text-[12.5px] font-medium pb-1 border-b-2 transition ${kind === k ? 'text-ink border-ink' : 'text-faint border-transparent hover:text-muted'}`}>
               {label}
             </button>
           ))}
@@ -569,30 +569,30 @@ export default function PipelinePage() {
 
         <div className="relative" ref={pickRef}>
           <button onClick={() => setPickOpen(o => !o)}
-            className="bg-white border border-[#E8E1D6] rounded-lg px-3 py-1.5 flex items-center gap-2.5 hover:border-[#C9C0B1] transition text-left">
+            className="bg-card border border-line rounded-lg px-3 py-1.5 flex items-center gap-2.5 hover:border-[#C9C0B1] transition text-left">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#A29889" strokeWidth="1.5" strokeLinecap="round"><rect x="2.2" y="3.2" width="11.6" height="10.6" rx="2"/><path d="M2.2 6.4h11.6M5.4 2v2.4M10.6 2v2.4"/></svg>
             <span>
-              <span className="block text-[13px] font-semibold text-[#2E2A26] leading-tight">{period?.label || 'Pick two dates'}</span>
-              <span className="block text-[10.5px] text-[#A29889]">{period?.range || 'from and to'}</span>
+              <span className="block text-[13px] font-semibold text-ink leading-tight">{period?.label || 'Pick two dates'}</span>
+              <span className="block text-[10.5px] text-faint">{period?.range || 'from and to'}</span>
             </span>
             <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#A29889" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={pickOpen ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'}/></svg>
           </button>
 
           {pickOpen && (
-            <div className="absolute top-[calc(100%+8px)] left-0 z-20 w-[300px] bg-white border border-[#E8E1D6] rounded-xl shadow-[0_10px_30px_rgba(46,42,38,.13)] p-3">
+            <div className="absolute top-[calc(100%+8px)] left-0 z-20 w-[300px] bg-card border border-line rounded-xl shadow-[0_10px_30px_rgba(46,42,38,.13)] p-3">
               {kind === 'custom' && (
                 <div className="grid gap-2 mb-1">
                   <label className="block">
-                    <span className="block text-[10px] font-semibold uppercase tracking-[.08em] text-[#A29889] mb-1">From month</span>
+                    <span className="block text-[10px] font-semibold uppercase tracking-[.08em] text-faint mb-1">From month</span>
                     <input type="month" value={fromM} max={toM || undefined}
                       onChange={e => setFromM(e.target.value)} className={dateInput} />
                   </label>
                   <label className="block">
-                    <span className="block text-[10px] font-semibold uppercase tracking-[.08em] text-[#A29889] mb-1">To month</span>
+                    <span className="block text-[10px] font-semibold uppercase tracking-[.08em] text-faint mb-1">To month</span>
                     <input type="month" value={toM} min={fromM || undefined}
                       onChange={e => setToM(e.target.value)} className={dateInput} />
                   </label>
-                  <span className="text-[11px] text-[#A29889]">
+                  <span className="text-[11px] text-faint">
                     Whole months only. Every figure held before the portal went live is a monthly total, so a
                     half month cannot be reported honestly.
                   </span>
@@ -604,11 +604,11 @@ export default function PipelinePage() {
 
               {kind !== 'fy' && kind !== 'week' && kind !== 'custom' && (
                 <div className="flex items-center justify-between mb-2.5">
-                  <button onClick={() => setPickYear(y => y - 1)} className="w-[26px] h-[26px] rounded-lg border border-[#E8E1D6] flex items-center justify-center text-[#6E665C] hover:bg-[#FAF7F2]">
+                  <button onClick={() => setPickYear(y => y - 1)} className="w-[26px] h-[26px] rounded-lg border border-line flex items-center justify-center text-muted hover:bg-page">
                     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5"/></svg>
                   </button>
                   <span className="text-[13px] font-semibold">{kind === 'quarter' ? `FY${String(pickYear).slice(2)}` : pickYear}</span>
-                  <button onClick={() => setPickYear(y => y + 1)} className="w-[26px] h-[26px] rounded-lg border border-[#E8E1D6] flex items-center justify-center text-[#6E665C] hover:bg-[#FAF7F2]">
+                  <button onClick={() => setPickYear(y => y + 1)} className="w-[26px] h-[26px] rounded-lg border border-line flex items-center justify-center text-muted hover:bg-page">
                     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3l5 5-5 5"/></svg>
                   </button>
                 </div>
@@ -620,7 +620,7 @@ export default function PipelinePage() {
                   const exists = periods.some(p => p.key === key)
                   return (
                     <button key={mn} disabled={!exists} onClick={() => choose(key)}
-                      className={`py-2 rounded-lg text-[12.5px] font-medium transition ${period?.key === key ? 'bg-[#343333] text-white font-semibold' : exists ? 'text-[#6E665C] hover:bg-[#F4EEE4]' : 'text-[#D3CCC0] cursor-not-allowed'}`}>
+                      className={`py-2 rounded-lg text-[12.5px] font-medium transition ${period?.key === key ? 'bg-ink text-page font-semibold' : exists ? 'text-muted hover:bg-line-soft' : 'text-[#D3CCC0] cursor-not-allowed'}`}>
                       {mn}
                     </button>
                   )
@@ -630,39 +630,39 @@ export default function PipelinePage() {
                   const exists = periods.some(p => p.key === key)
                   return (
                     <button key={q} disabled={!exists} onClick={() => choose(key)}
-                      className={`py-2 rounded-lg text-[12.5px] font-medium transition ${period?.key === key ? 'bg-[#343333] text-white font-semibold' : exists ? 'text-[#6E665C] hover:bg-[#F4EEE4]' : 'text-[#D3CCC0] cursor-not-allowed'}`}>
+                      className={`py-2 rounded-lg text-[12.5px] font-medium transition ${period?.key === key ? 'bg-ink text-page font-semibold' : exists ? 'text-muted hover:bg-line-soft' : 'text-[#D3CCC0] cursor-not-allowed'}`}>
                       Q{q}
                     </button>
                   )
                 })}
                 {kind === 'fy' && periods.map(p => (
                   <button key={p.key} onClick={() => choose(p.key)}
-                    className={`py-2 rounded-lg text-[12.5px] font-medium transition ${period?.key === p.key ? 'bg-[#343333] text-white font-semibold' : 'text-[#6E665C] hover:bg-[#F4EEE4]'}`}>
+                    className={`py-2 rounded-lg text-[12.5px] font-medium transition ${period?.key === p.key ? 'bg-ink text-page font-semibold' : 'text-muted hover:bg-line-soft'}`}>
                     {p.label}
                   </button>
                 ))}
                 {kind === 'week' && periods.slice(0, 12).map(p => (
                   <button key={p.key} onClick={() => choose(p.key)}
-                    className={`py-2 px-2 rounded-lg text-[12px] font-medium transition text-left ${period?.key === p.key ? 'bg-[#343333] text-white font-semibold' : 'text-[#6E665C] hover:bg-[#F4EEE4]'}`}>
+                    className={`py-2 px-2 rounded-lg text-[12px] font-medium transition text-left ${period?.key === p.key ? 'bg-ink text-page font-semibold' : 'text-muted hover:bg-line-soft'}`}>
                     {p.label}
                   </button>
                 ))}
               </div>
 
               <div className="flex gap-1.5 flex-wrap border-t border-[#EDE7DD] mt-3 pt-2.5">
-                <button onClick={() => quick('month', 0)} className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-full px-2.5 py-1 text-[11.5px] text-[#6E665C] hover:bg-[#F4EEE4]">This month</button>
-                <button onClick={() => quick('month', 1)} className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-full px-2.5 py-1 text-[11.5px] text-[#6E665C] hover:bg-[#F4EEE4]">Last month</button>
-                <button onClick={() => quick('quarter', 0)} className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-full px-2.5 py-1 text-[11.5px] text-[#6E665C] hover:bg-[#F4EEE4]">This quarter</button>
-                <button onClick={() => quick('fy', 0)} className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-full px-2.5 py-1 text-[11.5px] text-[#6E665C] hover:bg-[#F4EEE4]">This FY</button>
-                <button onClick={() => quick('fy', 1)} className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-full px-2.5 py-1 text-[11.5px] text-[#6E665C] hover:bg-[#F4EEE4]">Last FY</button>
+                <button onClick={() => quick('month', 0)} className="bg-page border border-line rounded-full px-2.5 py-1 text-[11.5px] text-muted hover:bg-line-soft">This month</button>
+                <button onClick={() => quick('month', 1)} className="bg-page border border-line rounded-full px-2.5 py-1 text-[11.5px] text-muted hover:bg-line-soft">Last month</button>
+                <button onClick={() => quick('quarter', 0)} className="bg-page border border-line rounded-full px-2.5 py-1 text-[11.5px] text-muted hover:bg-line-soft">This quarter</button>
+                <button onClick={() => quick('fy', 0)} className="bg-page border border-line rounded-full px-2.5 py-1 text-[11.5px] text-muted hover:bg-line-soft">This FY</button>
+                <button onClick={() => quick('fy', 1)} className="bg-page border border-line rounded-full px-2.5 py-1 text-[11.5px] text-muted hover:bg-line-soft">Last FY</button>
                 <button onClick={() => setSpan(monthsBack(2), todayYmd().slice(0, 7))}
-                  className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-full px-2.5 py-1 text-[11.5px] text-[#6E665C] hover:bg-[#F4EEE4]">Last 3 months</button>
+                  className="bg-page border border-line rounded-full px-2.5 py-1 text-[11.5px] text-muted hover:bg-line-soft">Last 3 months</button>
                 <button onClick={() => setSpan(monthsBack(5), todayYmd().slice(0, 7))}
-                  className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-full px-2.5 py-1 text-[11.5px] text-[#6E665C] hover:bg-[#F4EEE4]">Last 6 months</button>
+                  className="bg-page border border-line rounded-full px-2.5 py-1 text-[11.5px] text-muted hover:bg-line-soft">Last 6 months</button>
                 <button onClick={() => setSpan(monthsBack(11), todayYmd().slice(0, 7))}
-                  className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-full px-2.5 py-1 text-[11.5px] text-[#6E665C] hover:bg-[#F4EEE4]">Last 12 months</button>
+                  className="bg-page border border-line rounded-full px-2.5 py-1 text-[11.5px] text-muted hover:bg-line-soft">Last 12 months</button>
                 <button onClick={() => { const t = todayYmd(); setSpan(`${fyEndYear(t) - 1}-07`, t.slice(0, 7)) }}
-                  className="bg-[#FAF7F2] border border-[#E8E1D6] rounded-full px-2.5 py-1 text-[11.5px] text-[#6E665C] hover:bg-[#F4EEE4]">FY to date</button>
+                  className="bg-page border border-line rounded-full px-2.5 py-1 text-[11.5px] text-muted hover:bg-line-soft">FY to date</button>
               </div>
             </div>
           )}
@@ -684,10 +684,10 @@ export default function PipelinePage() {
         <>
           {/* comparison */}
           {custom && period && (
-            <div className="bg-white border border-gray-100 rounded-xl overflow-hidden mb-4">
+            <div className="bg-card border border-gray-100 rounded-xl overflow-hidden mb-4">
               <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
-                <span className="text-[13px] font-semibold text-[#2E2A26]">{period.range}</span>
-                <span className="text-[11.5px] text-[#A29889]">
+                <span className="text-[13px] font-semibold text-ink">{period.range}</span>
+                <span className="text-[11.5px] text-faint">
                   {scope ? (brokers.find(b => b.key === scope)?.name || scope) : 'whole business'}
                 </span>
               </div>
@@ -714,19 +714,19 @@ export default function PipelinePage() {
 
 
           {!scope && kind !== 'week' && !custom && current.amount > 0 && (
-            <div className="bg-white border border-gray-100 rounded-xl overflow-hidden mb-4">
+            <div className="bg-card border border-gray-100 rounded-xl overflow-hidden mb-4">
               <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
-                <span className="text-[13px] font-semibold text-[#2E2A26]">
+                <span className="text-[13px] font-semibold text-ink">
                   How {period?.label} compares
-                  {inProgress && <span className="text-[#A29889] font-normal"> · still in progress{shape?.clipped ? `, compared on the first ${shape.n} month${shape.n === 1 ? '' : 's'} of each year` : ''}</span>}
+                  {inProgress && <span className="text-faint font-normal"> · still in progress{shape?.clipped ? `, compared on the first ${shape.n} month${shape.n === 1 ? '' : 's'} of each year` : ''}</span>}
                 </span>
                 {record?.isBest ? (
-                  <span className="inline-flex items-center gap-1.5 bg-[#F3F9F4] border border-[#CFE6D5] text-[#25794C] rounded-full px-2.5 py-1 text-[11.5px] font-semibold">
+                  <span className="inline-flex items-center gap-1.5 bg-[#F3F9F4] border border-done-edge text-done rounded-full px-2.5 py-1 text-[11.5px] font-semibold">
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2l1.8 3.9 4.2.5-3.1 2.9.8 4.2L8 11.6 4.3 13.5l.8-4.2L2 6.4l4.2-.5z"/></svg>
                     {shape?.clipped ? 'Best start on record' : 'Best on record'}
                   </span>
                 ) : record?.rank && record.rank <= 5 ? (
-                  <span className="inline-flex items-center gap-1.5 bg-[#FBF4E3] border border-[#EFE0BC] text-[#9A7B2E] rounded-full px-2.5 py-1 text-[11.5px] font-semibold">
+                  <span className="inline-flex items-center gap-1.5 bg-info-bg border border-info-edge text-info rounded-full px-2.5 py-1 text-[11.5px] font-semibold">
                     {record.rank === 2 ? '2nd' : record.rank === 3 ? '3rd' : record.rank + 'th'} best on record
                   </span>
                 ) : null}
@@ -759,11 +759,11 @@ export default function PipelinePage() {
           )}
 
           {scope && kind !== 'week' && current.amount > 0 && (
-            <div className="bg-white border border-gray-100 rounded-xl overflow-hidden mb-4">
+            <div className="bg-card border border-gray-100 rounded-xl overflow-hidden mb-4">
               <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
-                <span className="text-[13px] font-semibold text-[#2E2A26]">
+                <span className="text-[13px] font-semibold text-ink">
                   {brokers.find(b => b.key === scope)?.name || scope} · {period?.label}
-                  {inProgress && <span className="text-[#A29889] font-normal"> · still in progress</span>}
+                  {inProgress && <span className="text-faint font-normal"> · still in progress</span>}
                 </span>
               </div>
               <div className="grid grid-cols-3">
@@ -814,35 +814,35 @@ export default function PipelinePage() {
           {!scope && fyChart && <FyProgressChart {...fyChart} metric={metric} />}
 
           {scope && (
-            <div className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-xl px-4 py-2.5 text-[12.5px] mb-4">
+            <div className="bg-page border border-line text-muted rounded-xl px-4 py-2.5 text-[12.5px] mb-4">
               {brokers.find(b => b.key === scope)?.name || scope} is measured against target and against the
               business. There is no year-on-year here - the ten years of history is a business total, not a split by broker.
             </div>
           )}
 
           {!scope && current.sources.has('spreadsheet') && (
-            <div className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-xl px-4 py-2.5 text-[12.5px] mb-4">
+            <div className="bg-page border border-line text-muted rounded-xl px-4 py-2.5 text-[12.5px] mb-4">
               These figures come from the business spreadsheet, not from deals recorded in the portal.
               Deal-by-deal detail below starts once the team marks lodgements and settlements here.
             </div>
           )}
 
           {byBroker.length > 1 && (
-            <div className="bg-white border border-gray-100 rounded-xl overflow-hidden mb-4">
+            <div className="bg-card border border-gray-100 rounded-xl overflow-hidden mb-4">
               <div className="grid grid-cols-[2fr_1fr_1fr] px-4 py-2 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-gray-100">
                 <span>Broker</span><span>Deals</span><span>Volume</span>
               </div>
               {byBroker.map(([broker, v]) => (
                 <div key={broker} className="grid grid-cols-[2fr_1fr_1fr] px-4 py-2.5 text-sm border-b border-gray-50 last:border-0">
-                  <span className="text-[#343333]">{brokerLabel(broker)}</span>
+                  <span className="text-ink">{brokerLabel(broker)}</span>
                   <span className="text-gray-600">{v.count}</span>
-                  <span className="font-medium text-[#343333]">{fmt(v.amount)}</span>
+                  <span className="font-medium text-ink">{fmt(v.amount)}</span>
                 </div>
               ))}
             </div>
           )}
 
-          <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+          <div className="bg-card border border-gray-100 rounded-xl overflow-hidden">
             <div className="grid grid-cols-[2.2fr_1fr_1.2fr_.8fr_1fr_.6fr_1.1fr] px-4 py-2 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-gray-100">
               <span>Deal</span><span>Broker</span><span>Lender</span>
               <span>{metric === 'settled' ? 'Settled' : 'Lodged'}</span><span>Amount</span><span>Splits</span><span>Status</span>
@@ -856,11 +856,11 @@ export default function PipelinePage() {
             ) : rows.map(r => (
               <Link key={r.id} href={`/deals/${r.id}`}
                 className="grid grid-cols-[2.2fr_1fr_1.2fr_.8fr_1fr_.6fr_1.1fr] px-4 py-3 text-sm border-b border-gray-50 last:border-0 hover:bg-gray-50 transition">
-                <span className="text-[#343333] truncate pr-3">{r.name}</span>
+                <span className="text-ink truncate pr-3">{r.name}</span>
                 <span className="text-gray-600 truncate pr-3">{r.broker}</span>
                 <span className="text-gray-600 truncate pr-3">{r.lender}</span>
                 <span className="text-gray-600">{dmy(r.date)}</span>
-                <span className={`font-medium ${r.amount === null ? 'text-amber-600' : 'text-[#343333]'}`}>
+                <span className={`font-medium ${r.amount === null ? 'text-chase' : 'text-ink'}`}>
                   {r.amount === null ? 'not recorded' : fmt(r.amount)}
                 </span>
                 <span className="text-gray-500">{r.splits || '-'}</span>
@@ -877,11 +877,11 @@ export default function PipelinePage() {
 function Tile({ label, value, sub, subTone, sub2, sub2Tone }:
   { label: string; value: string; sub?: string; subTone?: 'up' | 'down'; sub2?: string; sub2Tone?: 'up' | 'down' }) {
   return (
-    <div className="bg-white border border-gray-100 rounded-xl p-4">
-      <div className="text-[10px] font-semibold tracking-[.09em] uppercase text-[#A29889] mb-1.5">{label}</div>
-      <div className="text-2xl font-semibold text-[#343333] tracking-tight">{value}</div>
-      {sub && <div className={`text-[11.5px] mt-0.5 ${subTone === 'up' ? 'text-[#2E9E63]' : subTone === 'down' ? 'text-[#C4553B]' : 'text-[#A29889]'}`}>{sub}</div>}
-      {sub2 && <div className={`text-[11.5px] mt-0.5 ${sub2Tone === 'up' ? 'text-[#2E9E63]' : sub2Tone === 'down' ? 'text-[#C4553B]' : 'text-[#A29889]'}`}>{sub2}</div>}
+    <div className="bg-card border border-gray-100 rounded-xl p-4">
+      <div className="text-[10px] font-semibold tracking-[.09em] uppercase text-faint mb-1.5">{label}</div>
+      <div className="text-2xl font-semibold text-ink tracking-tight">{value}</div>
+      {sub && <div className={`text-[11.5px] mt-0.5 ${subTone === 'up' ? 'text-[#2E9E63]' : subTone === 'down' ? 'text-[#C4553B]' : 'text-faint'}`}>{sub}</div>}
+      {sub2 && <div className={`text-[11.5px] mt-0.5 ${sub2Tone === 'up' ? 'text-[#2E9E63]' : sub2Tone === 'down' ? 'text-[#C4553B]' : 'text-faint'}`}>{sub2}</div>}
     </div>
   )
 }
@@ -890,11 +890,11 @@ function Cmp({ label, value, base, tone, meter, meterFull }:
   { label: string; value: string; base: string; tone: 'up' | 'down' | 'flat'; meter?: number | null; meterFull?: boolean }) {
   return (
     <div className="px-4 py-3.5 border-r border-gray-100 last:border-r-0">
-      <div className="text-[10px] font-semibold tracking-[.085em] uppercase text-[#A29889]">{label}</div>
-      <div className={`text-[19px] font-semibold tracking-tight mt-1.5 ${tone === 'up' ? 'text-[#2E9E63]' : tone === 'down' ? 'text-[#C4553B]' : 'text-[#2E2A26]'}`}>{value}</div>
-      <div className="text-[11.5px] text-[#A29889] mt-0.5">{base}</div>
+      <div className="text-[10px] font-semibold tracking-[.085em] uppercase text-faint">{label}</div>
+      <div className={`text-[19px] font-semibold tracking-tight mt-1.5 ${tone === 'up' ? 'text-[#2E9E63]' : tone === 'down' ? 'text-[#C4553B]' : 'text-ink'}`}>{value}</div>
+      <div className="text-[11.5px] text-faint mt-0.5">{base}</div>
       {meter !== null && meter !== undefined && (
-        <div className="h-[5px] bg-[#F4EEE4] rounded-full mt-2 overflow-hidden">
+        <div className="h-[5px] bg-line-soft rounded-full mt-2 overflow-hidden">
           <div className={`h-full rounded-full ${meterFull ? 'bg-[#2E9E63]' : 'bg-[#8C8375]'}`} style={{ width: meter + '%' }} />
         </div>
       )}

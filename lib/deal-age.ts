@@ -97,7 +97,7 @@ export const GROUP_ORDER: AgeGroup[] = ['nudge', 'long', 'moving', 'in_applicati
 
 export const GROUP_STYLE: Record<AgeGroup, { label: string; text: string; chip: string }> = {
   nudge:          { label: 'Needs a nudge',  text: 'text-[#C4553B]', chip: 'bg-[#FBEDE9] text-[#C4553B]' },
-  long:           { label: 'Running long',   text: 'text-[#946017]', chip: 'bg-[#FDF6E7] text-[#9A7B2E]' },
+  long:           { label: 'Running long',   text: 'text-chase', chip: 'bg-chase-bg text-chase' },
   moving:         { label: 'Moving',         text: 'text-[#A29889]', chip: 'bg-[#FAF7F2] text-[#6E665C]' },
   in_application: { label: 'In application', text: 'text-[#0E8FCB]', chip: 'bg-[#EAF6FD] text-[#0E6FA0]' },
   settled:        { label: 'Settled',        text: 'text-[#25794C]', chip: 'bg-[#F1F7F3] text-[#25794C]' },

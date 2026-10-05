@@ -139,7 +139,7 @@ export default function WorkloadClient() {
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold text-[#343333] mb-1">Team workload</h1>
+      <h1 className="text-2xl font-bold text-ink mb-1">Team workload</h1>
       <p className="text-sm text-gray-500 mb-8">Deal distribution and turnaround across brokers and the credit team.</p>
 
       {error && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600 mb-4">{error}</div>}
@@ -148,13 +148,13 @@ export default function WorkloadClient() {
       {!loading && (
         <>
           <div className="grid grid-cols-2 gap-6 mb-8">
-            <div className="bg-white border border-gray-100 rounded-xl p-5">
+            <div className="bg-card border border-gray-100 rounded-xl p-5">
               <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Deals per broker</div>
               <div className="flex flex-col gap-3">
                 {brokerStats.map(b => (
                   <div key={b.key}>
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
-                      <span className="font-medium text-[#343333]">{b.name}</span>
+                      <span className="font-medium text-ink">{b.name}</span>
                       <span>{b.total}</span>
                     </div>
                     <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -166,7 +166,7 @@ export default function WorkloadClient() {
               </div>
             </div>
 
-            <div className="bg-white border border-gray-100 rounded-xl p-5">
+            <div className="bg-card border border-gray-100 rounded-xl p-5">
               <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Overall stage distribution</div>
               <div className="flex items-center gap-6">
                 <div style={{
@@ -193,13 +193,13 @@ export default function WorkloadClient() {
             </div>
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-xl p-5 mb-8">
+          <div className="bg-card border border-gray-100 rounded-xl p-5 mb-8">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Deals per credit officer (active vs completed)</div>
             <div className="flex flex-col gap-3">
               {officerStats.map(o => (
                 <div key={o.id}>
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span className="font-medium text-[#343333]">{o.name}</span>
+                    <span className="font-medium text-ink">{o.name}</span>
                     <span>{o.total} total</span>
                   </div>
                   <div className="h-3 bg-gray-100 rounded-full overflow-hidden flex">
@@ -218,24 +218,24 @@ export default function WorkloadClient() {
 
           <div className="flex flex-col gap-4">
             {officerStats.map(o => (
-              <div key={o.id} className="border border-gray-200 rounded-xl p-5 bg-white">
-                <div className="font-medium text-[#343333] mb-3">{o.name}</div>
+              <div key={o.id} className="border border-gray-200 rounded-xl p-5 bg-card">
+                <div className="font-medium text-ink mb-3">{o.name}</div>
                 <div className="grid grid-cols-4 gap-3">
                   <div className="bg-gray-50 rounded-lg p-3">
                     <div className="text-xs text-gray-500 mb-1">Total</div>
-                    <div className="text-xl font-semibold text-[#343333]">{o.total}</div>
+                    <div className="text-xl font-semibold text-ink">{o.total}</div>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3">
                     <div className="text-xs text-gray-500 mb-1">Active</div>
-                    <div className="text-xl font-semibold text-amber-500">{o.active}</div>
+                    <div className="text-xl font-semibold text-info">{o.active}</div>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3">
                     <div className="text-xs text-gray-500 mb-1">Avg. BC</div>
-                    <div className="text-xl font-semibold text-[#343333]">{o.avgBcDays === null ? '—' : `${o.avgBcDays.toFixed(1)}d`}</div>
+                    <div className="text-xl font-semibold text-ink">{o.avgBcDays === null ? '—' : `${o.avgBcDays.toFixed(1)}d`}</div>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3">
                     <div className="text-xs text-gray-500 mb-1">Avg. LO + Compliance</div>
-                    <div className="text-xl font-semibold text-[#343333]">{o.avgLoComplianceDays === null ? '—' : `${o.avgLoComplianceDays.toFixed(1)}d`}</div>
+                    <div className="text-xl font-semibold text-ink">{o.avgLoComplianceDays === null ? '—' : `${o.avgLoComplianceDays.toFixed(1)}d`}</div>
                   </div>
                 </div>
               </div>

@@ -143,8 +143,8 @@ export default function PipelineSnapshot({ hist, dealRows, targets, brokers, bro
              monthLodged, monthSettled }
   }), [brokers, dealRows, brokerHist, targetOf, L.keys, S.keys, thisMonth])
 
-  const card = 'bg-white border border-[#EDE7DD] rounded-2xl'
-  const kk = 'text-[10px] font-bold tracking-[.09em] uppercase text-[#A29889]'
+  const card = 'bg-card border border-[#EDE7DD] rounded-2xl'
+  const kk = 'text-[10px] font-bold tracking-[.09em] uppercase text-faint'
 
   function Head({ label, h }: { label: string; h: ReturnType<typeof head> }) {
     const hit = h.target > 0 ? h.now / h.target * 100 : null
@@ -153,30 +153,30 @@ export default function PipelineSnapshot({ hist, dealRows, targets, brokers, bro
     return (
       <div className={card + ' p-5'}>
         <div className={kk}>{label}</div>
-        <div className="text-[33px] font-semibold tracking-[-.025em] text-[#2E2A26] leading-[1.1] mt-1">{compact(h.now || null)}</div>
-        <div className="text-[12.5px] text-[#A29889]">
+        <div className="text-[33px] font-semibold tracking-[-.025em] text-ink leading-[1.1] mt-1">{compact(h.now || null)}</div>
+        <div className="text-[12.5px] text-faint">
           {h.target > 0
-            ? <>of {compact(h.target)} targeted for the months recorded · <b className="text-[#2E2A26]">{Math.round(hit as number)}%</b></>
+            ? <>of {compact(h.target)} targeted for the months recorded · <b className="text-ink">{Math.round(hit as number)}%</b></>
             : 'no target set for the months recorded'}
         </div>
-        <div className="h-[8px] bg-[#F4EEE4] rounded-full my-3 overflow-hidden">
+        <div className="h-[8px] bg-line-soft rounded-full my-3 overflow-hidden">
           <div className={`h-full rounded-full ${good ? 'bg-[#2E9E63]' : 'bg-[#C4553B]'}`}
                style={{ width: Math.min(100, hit ?? 0) + '%' }} />
         </div>
         <div className="flex justify-between gap-2 flex-wrap text-[12px]">
-          <span className={diff === null ? 'text-[#A29889]' : good ? 'text-[#2E9E63] font-semibold' : 'text-[#C4553B] font-semibold'}>
+          <span className={diff === null ? 'text-faint' : good ? 'text-[#2E9E63] font-semibold' : 'text-[#C4553B] font-semibold'}>
             {diff === null ? '—' : `${compact(Math.abs(diff))} ${good ? 'ahead' : 'behind'}`}
           </span>
-          <span className="text-[#A29889]">
+          <span className="text-faint">
             {h.fullYear > 0 ? `${compact(h.fullYear)} for the full year · ${Math.round(h.now / h.fullYear * 100)}% of it done` : ''}
           </span>
         </div>
         <div className="flex justify-between gap-2 flex-wrap text-[12px] mt-1">
-          <span className={h.comparable === 0 ? 'text-[#A29889]'
+          <span className={h.comparable === 0 ? 'text-faint'
             : h.now >= h.then ? 'text-[#2E9E63] font-semibold' : 'text-[#C4553B] font-semibold'}>
             {h.comparable === 0 ? 'no comparable months held' : `${signed((h.now - h.then) / h.then * 100)} on the same point last year`}
           </span>
-          <span className="text-[#A29889]">{h.keys.length} of 12 months recorded</span>
+          <span className="text-faint">{h.keys.length} of 12 months recorded</span>
         </div>
       </div>
     )
@@ -187,12 +187,12 @@ export default function PipelineSnapshot({ hist, dealRows, targets, brokers, bro
     return (
       <div className={card + ' px-4 py-3.5'}>
         <div className={kk + ' mb-1'}>{label}</div>
-        <div className="text-[21px] font-semibold tracking-[-.02em] text-[#2E2A26]">{compact(value)}</div>
+        <div className="text-[21px] font-semibold tracking-[-.02em] text-ink">{compact(value)}</div>
         <div className="text-[11.5px] mt-0.5">
           {value === null
-            ? <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-[#FDF6E7] border border-[#EFE0BC] text-[#9A7B2E] rounded-full px-2 py-[2px]">Not recorded</span>
+            ? <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-chase-bg border border-chase-edge text-chase rounded-full px-2 py-[2px]">Not recorded</span>
             : hit === null
-              ? <span className="text-[#A29889]">no target</span>
+              ? <span className="text-faint">no target</span>
               : <span className={hit >= 100 ? 'text-[#2E9E63] font-semibold' : 'text-[#C4553B] font-semibold'}>
                   {Math.round(hit)}% <span className="text-[#C9C1B4] font-normal">of {compact(target)}</span>
                 </span>}
@@ -204,10 +204,10 @@ export default function PipelineSnapshot({ hist, dealRows, targets, brokers, bro
   return (
     <div className="mb-6">
       <div className="flex items-baseline justify-between gap-3 flex-wrap mb-2.5">
-        <span className="text-[13px] font-semibold text-[#2E2A26]">
+        <span className="text-[13px] font-semibold text-ink">
           The business · FY{String(fy).slice(2)} so far
         </span>
-        <span className="text-[11.5px] text-[#A29889]">
+        <span className="text-[11.5px] text-faint">
           measured against the target for the months recorded, never the whole year
         </span>
       </div>
@@ -218,41 +218,41 @@ export default function PipelineSnapshot({ hist, dealRows, targets, brokers, bro
       </div>
 
       {!L.month && (
-        <div className="flex items-start gap-3 bg-[#FDF6E7] border border-[#EFE0BC] rounded-xl px-4 py-3 mt-3">
-          <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#946017" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
-          <span className="text-[12.5px] text-[#7A5F17]">
-            <strong className="text-[#5E4A11]">Nothing is recorded for this month yet.</strong>{' '}
+        <div className="flex items-start gap-3 bg-chase-bg border border-chase-edge rounded-xl px-4 py-3 mt-3">
+          <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
+          <span className="text-[12.5px] text-chase">
+            <strong className="text-chase">Nothing is recorded for this month yet.</strong>{' '}
             It is left out of every figure above rather than counted as a zero. Enter it in Monthly actuals and
             the page moves.
           </span>
         </div>
       )}
 
-      <div className="text-[13px] font-semibold text-[#2E2A26] mt-5 mb-2.5">This month</div>
+      <div className="text-[13px] font-semibold text-ink mt-5 mb-2.5">This month</div>
       <div className="grid grid-cols-4 gap-3 max-[900px]:grid-cols-2">
         <MonthCell label="Lodged" value={L.month ? L.month.amount : null} target={L.monthTarget} />
         <MonthCell label="Settled" value={S.month ? S.month.amount : null} target={S.monthTarget} />
         <div className={card + ' px-4 py-3.5'}>
           <div className={kk + ' mb-1'}>Lodged target</div>
-          <div className="text-[21px] font-semibold tracking-[-.02em] text-[#2E2A26]">{compact(L.monthTarget)}</div>
-          <div className="text-[11.5px] text-[#A29889] mt-0.5">for the whole month</div>
+          <div className="text-[21px] font-semibold tracking-[-.02em] text-ink">{compact(L.monthTarget)}</div>
+          <div className="text-[11.5px] text-faint mt-0.5">for the whole month</div>
         </div>
         <div className={card + ' px-4 py-3.5'}>
           <div className={kk + ' mb-1'}>Settled target</div>
-          <div className="text-[21px] font-semibold tracking-[-.02em] text-[#2E2A26]">{compact(S.monthTarget)}</div>
-          <div className="text-[11.5px] text-[#A29889] mt-0.5">for the whole month</div>
+          <div className="text-[21px] font-semibold tracking-[-.02em] text-ink">{compact(S.monthTarget)}</div>
+          <div className="text-[11.5px] text-faint mt-0.5">for the whole month</div>
         </div>
       </div>
 
       {cards.length > 0 && (
         <>
           <div className="flex items-baseline justify-between gap-3 flex-wrap mt-5 mb-2.5">
-            <span className="text-[13px] font-semibold text-[#2E2A26]">Brokers · against their own target</span>
-            <span className="text-[11.5px] text-[#A29889]">click a broker to filter everything below</span>
+            <span className="text-[13px] font-semibold text-ink">Brokers · against their own target</span>
+            <span className="text-[11.5px] text-faint">click a broker to filter everything below</span>
           </div>
 
           {L.sheet && (
-            <div className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-xl px-4 py-2.5 text-[12.5px] mb-3">
+            <div className="bg-page border border-line text-muted rounded-xl px-4 py-2.5 text-[12.5px] mb-3">
               The business figure for these months came from the spreadsheet, which has no broker split, so share
               of the business is left out. A broker&rsquo;s own figures come from what is typed on their profile in
               Settings, or from deals marked through the portal where nothing is typed.
@@ -268,19 +268,19 @@ export default function PipelineSnapshot({ hist, dealRows, targets, brokers, bro
                   <div>
                     <div className={kk + ' mb-1'}>{label}</div>
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-[19px] font-semibold tracking-[-.02em] text-[#2E2A26]">{compact(value || null)}</span>
-                      <span className={`text-[12px] font-semibold ${hit === null ? 'text-[#A29889]' : good ? 'text-[#2E9E63]' : 'text-[#C4553B]'}`}>
+                      <span className="text-[19px] font-semibold tracking-[-.02em] text-ink">{compact(value || null)}</span>
+                      <span className={`text-[12px] font-semibold ${hit === null ? 'text-faint' : good ? 'text-[#2E9E63]' : 'text-[#C4553B]'}`}>
                         {hit === null ? 'no target' : Math.round(hit) + '%'}
                       </span>
                     </div>
-                    <div className="h-[5px] bg-[#F4EEE4] rounded-full my-2 overflow-hidden">
+                    <div className="h-[5px] bg-line-soft rounded-full my-2 overflow-hidden">
                       <div className={`h-full rounded-full ${good ? 'bg-[#2E9E63]' : 'bg-[#C4553B]'}`}
                            style={{ width: Math.min(100, hit ?? 0) + '%' }} />
                     </div>
-                    <div className="text-[11.5px] text-[#A29889]">
+                    <div className="text-[11.5px] text-faint">
                       {target > 0 ? `of ${compact(target)} to date` : 'no target set'}
                     </div>
-                    <div className="text-[11.5px] text-[#A29889]">
+                    <div className="text-[11.5px] text-faint">
                       {deals} deal{deals === 1 ? '' : 's'} · {month ? compact(month) : 'nothing'} this month
                     </div>
                   </div>
@@ -290,12 +290,12 @@ export default function PipelineSnapshot({ hist, dealRows, targets, brokers, bro
                 <button key={b.key} type="button" onClick={() => onPickBroker && onPickBroker(b.key)}
                   className={card + ' p-4 text-left hover:border-[#C9C0B1] transition'}>
                   <div className="flex items-center gap-2.5 mb-3.5">
-                    <span className="w-[30px] h-[30px] rounded-[9px] bg-[#343333] text-white text-[12px] font-bold flex items-center justify-center shrink-0">
+                    <span className="w-[30px] h-[30px] rounded-[9px] bg-ink text-page text-[12px] font-bold flex items-center justify-center shrink-0">
                       {initials(b.name)}
                     </span>
                     <span>
-                      <span className="block text-[13.5px] font-semibold text-[#2E2A26] leading-tight">{b.name}</span>
-                      <span className="block text-[11px] text-[#A29889]">FY{String(fy).slice(2)} so far</span>
+                      <span className="block text-[13.5px] font-semibold text-ink leading-tight">{b.name}</span>
+                      <span className="block text-[11px] text-faint">FY{String(fy).slice(2)} so far</span>
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -304,7 +304,7 @@ export default function PipelineSnapshot({ hist, dealRows, targets, brokers, bro
                   </div>
                   {!L.sheet && L.now > 0 && (
                     <div className="flex justify-between text-[12px] pt-2.5 mt-2.5 border-t border-[#F6F2EA]">
-                      <span className="text-[#A29889]">Share of the business</span>
+                      <span className="text-faint">Share of the business</span>
                       <span className="font-semibold tabular-nums">{Math.round(b.lodged / L.now * 100)}%</span>
                     </div>
                   )}

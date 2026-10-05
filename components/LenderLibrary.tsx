@@ -114,7 +114,7 @@ export default function LenderLibrary() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const inp = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]'
-  const sel = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] bg-white'
+  const sel = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] bg-card'
 
   useEffect(() => { fetchAll() }, [])
 
@@ -482,7 +482,7 @@ export default function LenderLibrary() {
           <button onClick={openImport} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
             ✦ Import via AI
           </button>
-          <button onClick={() => { setShowAddLender(true); setNewLenderName('') }} className="text-sm text-[#343333] border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
+          <button onClick={() => { setShowAddLender(true); setNewLenderName('') }} className="text-sm text-ink border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
             + Add lender
           </button>
         </div>
@@ -495,10 +495,10 @@ export default function LenderLibrary() {
 
       {showAddLender && (
         <div className="border border-gray-200 rounded-xl p-4 mb-4 bg-gray-50">
-          <p className="text-sm font-medium text-[#343333] mb-3">New lender</p>
+          <p className="text-sm font-medium text-ink mb-3">New lender</p>
           <div className="flex gap-2">
             <input className={inp + ' flex-1'} placeholder="Lender name e.g. Westpac" value={newLenderName} onChange={e => setNewLenderName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addLender()} autoFocus />
-            <button onClick={addLender} disabled={savingLender || !newLenderName.trim()} className="bg-[#343333] text-white text-sm px-4 py-2 rounded-lg disabled:opacity-40">{savingLender ? 'Saving...' : 'Save'}</button>
+            <button onClick={addLender} disabled={savingLender || !newLenderName.trim()} className="bg-ink text-page text-sm px-4 py-2 rounded-lg disabled:opacity-40">{savingLender ? 'Saving...' : 'Save'}</button>
             <button onClick={() => setShowAddLender(false)} className="text-sm text-gray-400 hover:text-gray-600 px-2">Cancel</button>
           </div>
         </div>
@@ -509,16 +509,16 @@ export default function LenderLibrary() {
           const lps = lenderProducts(lender.id)
           const isOpen = expanded.has(lender.id)
           return (
-            <div key={lender.id} className={`border border-gray-200 rounded-xl bg-white overflow-hidden ${!lender.active ? 'opacity-50' : ''}`}>
+            <div key={lender.id} className={`border border-gray-200 rounded-xl bg-card overflow-hidden ${!lender.active ? 'opacity-50' : ''}`}>
               <div className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50 transition" onClick={() => toggleExpand(lender.id)}>
                 <div className="flex items-center gap-3">
                   <span className={`text-gray-400 text-xs transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}>▶</span>
                   <div>
-                    <p className="text-sm font-medium text-[#343333]">{lender.name}</p>
+                    <p className="text-sm font-medium text-ink">{lender.name}</p>
                     <p className="text-xs text-gray-400">
                       {lps.length} product{lps.length !== 1 ? 's' : ''}
                       {' · '}{legalFeeLabel(lender)}
-                      {!confirmedFeeLabel(lender) && <span className="text-[#B58A2B]"> (not checked)</span>}
+                      {!confirmedFeeLabel(lender) && <span className="text-chase"> (not checked)</span>}
                     </p>
                   </div>
                 </div>
@@ -543,8 +543,8 @@ export default function LenderLibrary() {
                         I confirmed the wording. So what's the point of that?" */}
                     <select value={lender.legal_fee_label || ''}
                       onChange={e => setLegalFeeLabel(lender.id, e.target.value)}
-                      className={`text-xs border rounded-lg px-2 py-1 bg-white ${
-                        confirmedFeeLabel(lender) ? 'border-gray-200 text-[#343333]' : 'border-[#EBD9BE] text-[#8A6218]'}`}>
+                      className={`text-xs border rounded-lg px-2 py-1 bg-card ${
+                        confirmedFeeLabel(lender) ? 'border-gray-200 text-ink' : 'border-dashed border-field-line text-muted'}`}>
                       <option value="">Not checked — uses {DEFAULT_LEGAL_FEE_LABEL}</option>
                       <option value="Settlement fee">Settlement fee</option>
                       <option value="Legal fee">Legal fee</option>
@@ -559,8 +559,8 @@ export default function LenderLibrary() {
                     <input defaultValue={lender.statement_codes || ''}
                       onBlur={e => { if (e.target.value !== (lender.statement_codes || '')) setStatementCodes(lender.id, e.target.value) }}
                       placeholder="CBA, CommBank"
-                      className={`text-xs border rounded-lg px-2 py-1 bg-white w-[200px] ${
-                        lender.statement_codes ? 'border-gray-200 text-[#343333]' : 'border-[#EBD9BE] text-[#8A6218] placeholder:text-[#B58A2B]'}`} />
+                      className={`text-xs border rounded-lg px-2 py-1 bg-card w-[200px] ${
+                        lender.statement_codes ? 'border-gray-200 text-ink' : 'border-dashed border-field-line text-muted placeholder:text-muted'}`} />
                     <span className="text-[11px] text-gray-400">
                       Separate several with commas. Used to tell whether a client&rsquo;s statements already cover this bank.
                     </span>
@@ -580,10 +580,10 @@ export default function LenderLibrary() {
                         if (e.target.value.trim() !== String(was)) setRepriceOver(lender.id, e.target.value)
                       }}
                       placeholder="N/A"
-                      className={`text-xs border rounded-lg px-2 py-1 bg-white w-[64px] text-right ${
+                      className={`text-xs border rounded-lg px-2 py-1 bg-card w-[64px] text-right ${
                         lender.reprice_over_percent === null || lender.reprice_over_percent === undefined
                           ? 'border-gray-200 text-gray-400 placeholder:text-gray-300'
-                          : 'border-gray-200 text-[#343333]'}`} />
+                          : 'border-gray-200 text-ink'}`} />
                     <span className="text-xs text-gray-500">%</span>
                     <span className="text-[11px] text-gray-400">
                       Up or down. Leave it blank where there is no rule &mdash; the deal then says to check, rather than assuming.
@@ -606,10 +606,10 @@ export default function LenderLibrary() {
                         onBlur={e => {
                           if (e.target.value !== announcedFrom(lender, notice)) setEffectiveFrom(lender.id, e.target.value)
                         }}
-                        className={`text-xs border rounded-lg px-2 py-1 bg-white ${
+                        className={`text-xs border rounded-lg px-2 py-1 bg-card ${
                           announcedFrom(lender, notice)
-                            ? 'border-gray-200 text-[#343333]'
-                            : 'border-[#EBD9BE] text-[#8A6218]'}`} />
+                            ? 'border-gray-200 text-ink'
+                            : 'border-dashed border-field-line text-muted'}`} />
                       <span className="text-[11px] text-gray-400">
                         {!announcedFrom(lender, notice)
                           ? 'Not announced yet \u2014 their client emails carry the notice until a date is here.'
@@ -631,7 +631,7 @@ export default function LenderLibrary() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-sm text-[#343333]">{product.product_name}</p>
+                              <p className="text-sm text-ink">{product.product_name}</p>
                               {product.is_draft ? <span className="text-xs bg-gray-100 text-gray-500 border border-gray-200 px-1.5 py-0.5 rounded-full">Draft</span> : <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">Live</span>}
                             </div>
                             <p className="text-xs text-gray-400 mt-0.5">
@@ -667,9 +667,9 @@ export default function LenderLibrary() {
       {/* Confirm Delete Modal */}
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-xs p-5">
-            <p className="font-semibold text-[#343333] mb-1">Delete {confirmDelete.type === 'lender' ? 'lender' : 'product'}?</p>
-            <p className="text-sm text-gray-500 mb-4"><span className="font-medium text-[#343333]">{confirmDelete.name}</span>{confirmDelete.type === 'lender' ? ' and all its products will be permanently deleted.' : ' will be permanently deleted.'}</p>
+          <div className="bg-card rounded-xl shadow-xl w-full max-w-xs p-5">
+            <p className="font-semibold text-ink mb-1">Delete {confirmDelete.type === 'lender' ? 'lender' : 'product'}?</p>
+            <p className="text-sm text-gray-500 mb-4"><span className="font-medium text-ink">{confirmDelete.name}</span>{confirmDelete.type === 'lender' ? ' and all its products will be permanently deleted.' : ' will be permanently deleted.'}</p>
             {/* THE REASON IT REFUSED, WHERE THE PERSON PRESSING THE BUTTON CAN SEE IT.
                 A failed delete sets writeError and returns without closing this
                 modal - correct, the thing is not deleted - but the banner that
@@ -691,10 +691,10 @@ export default function LenderLibrary() {
       {/* AI Import Modal */}
       {importModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+          <div className="bg-card rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
             <div className="flex justify-between items-center mb-4">
               <div>
-                <p className="font-semibold text-[#343333]">{importStep === 'input' ? '✦ Import via AI' : 'Review extracted products'}</p>
+                <p className="font-semibold text-ink">{importStep === 'input' ? '✦ Import via AI' : 'Review extracted products'}</p>
                 <p className="text-xs text-gray-400">{importStep === 'input' ? 'Upload a PDF or paste a URL to extract lender products' : 'Select which products to save — all start as draft'}</p>
               </div>
               <button onClick={() => setImportModal(false)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
@@ -703,15 +703,15 @@ export default function LenderLibrary() {
             {importStep === 'input' && (
               <>
                 <div className="flex border border-gray-200 rounded-lg overflow-hidden mb-4">
-                  <button onClick={() => setImportTab('pdf')} className={`flex-1 py-2 text-sm transition ${importTab === 'pdf' ? 'bg-[#343333] text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>Upload PDF</button>
-                  <button onClick={() => setImportTab('url')} className={`flex-1 py-2 text-sm transition ${importTab === 'url' ? 'bg-[#343333] text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>Paste URL</button>
+                  <button onClick={() => setImportTab('pdf')} className={`flex-1 py-2 text-sm transition ${importTab === 'pdf' ? 'bg-ink text-page' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>Upload PDF</button>
+                  <button onClick={() => setImportTab('url')} className={`flex-1 py-2 text-sm transition ${importTab === 'url' ? 'bg-ink text-page' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>Paste URL</button>
                 </div>
                 {importTab === 'pdf' && (
                   <div onClick={() => fileRef.current?.click()} className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center cursor-pointer hover:border-[#2DBEFF] hover:bg-blue-50/20 transition mb-4">
                     <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={e => setImportFile(e.target.files?.[0] || null)} />
                     {importFile ? (
                       <div>
-                        <p className="text-sm font-medium text-[#343333]">{importFile.name}</p>
+                        <p className="text-sm font-medium text-ink">{importFile.name}</p>
                         <p className="text-xs text-gray-400 mt-1">{(importFile.size / 1024).toFixed(0)} KB · Click to change</p>
                       </div>
                     ) : (
@@ -746,14 +746,14 @@ export default function LenderLibrary() {
                     <option value="">— Create new lender from document —</option>
                     {lenders.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                   </select>
-                  <p className="text-xs text-gray-400 mt-1">AI detected: <span className="font-medium text-[#343333]">{extractedProducts[0]?.lender_name || 'Unknown'}</span> · Change if incorrect</p>
+                  <p className="text-xs text-gray-400 mt-1">AI detected: <span className="font-medium text-ink">{extractedProducts[0]?.lender_name || 'Unknown'}</span> · Change if incorrect</p>
                 </div>
                 <div className="space-y-2 mb-4">
                   {extractedProducts.map((p, i) => (
                     <div key={i} onClick={() => setExtractedProducts(prev => prev.map((x, j) => j === i ? { ...x, selected: !x.selected } : x))}
                       className={`border rounded-xl p-3 cursor-pointer transition ${p.selected ? 'border-[#2DBEFF] bg-blue-50/20' : 'border-gray-200 opacity-50'}`}>
                       <div className="flex items-center justify-between mb-1">
-                        <p className="text-sm font-medium text-[#343333]">{p.product_name}</p>
+                        <p className="text-sm font-medium text-ink">{p.product_name}</p>
                         <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${p.selected ? 'bg-[#2DBEFF] border-[#2DBEFF]' : 'border-gray-300'}`}>
                           {p.selected && <span className="text-white text-xs">✓</span>}
                         </span>
@@ -774,7 +774,7 @@ export default function LenderLibrary() {
                 {extractError && <p className="text-sm text-red-500 mb-3">{extractError}</p>}
                 <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
                   <button onClick={() => setImportStep('input')} className="text-sm text-gray-400 hover:text-gray-600 px-3">Back</button>
-                  <button onClick={saveImport} disabled={savingImport || !extractedProducts.some(p => p.selected)} className="bg-[#343333] text-white text-sm px-5 py-2 rounded-lg hover:bg-[#2a2a2a] disabled:opacity-40">
+                  <button onClick={saveImport} disabled={savingImport || !extractedProducts.some(p => p.selected)} className="bg-ink text-page text-sm px-5 py-2 rounded-lg hover:opacity-90 disabled:opacity-40">
                     {savingImport ? 'Saving...' : `Save ${extractedProducts.filter(p => p.selected).length} product${extractedProducts.filter(p => p.selected).length !== 1 ? 's' : ''}`}
                   </button>
                 </div>
@@ -787,10 +787,10 @@ export default function LenderLibrary() {
       {/* Add/Edit Product Modal */}
       {productModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+          <div className="bg-card rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
             <div className="flex justify-between items-center mb-4">
               <div>
-                <p className="font-semibold text-[#343333]">{editProductId ? 'Edit product' : 'Add product'}</p>
+                <p className="font-semibold text-ink">{editProductId ? 'Edit product' : 'Add product'}</p>
                 <p className="text-xs text-gray-400">{productModal.lenderName}</p>
               </div>
               <button onClick={() => setProductModal(null)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
@@ -878,7 +878,7 @@ export default function LenderLibrary() {
             </div>
             <div className="flex justify-end gap-2 mt-5 pt-4 border-t border-gray-100">
               <button onClick={() => { setProductModal(null); setEditProductId(null) }} className="text-sm text-gray-400 hover:text-gray-600 px-3">Cancel</button>
-              <button onClick={saveProduct} disabled={savingProduct || !productForm.product_name.trim()} className="bg-[#343333] text-white text-sm px-5 py-2 rounded-lg hover:bg-[#2a2a2a] disabled:opacity-40">
+              <button onClick={saveProduct} disabled={savingProduct || !productForm.product_name.trim()} className="bg-ink text-page text-sm px-5 py-2 rounded-lg hover:opacity-90 disabled:opacity-40">
                 {savingProduct ? 'Saving...' : editProductId ? 'Update product' : 'Save product'}
               </button>
             </div>

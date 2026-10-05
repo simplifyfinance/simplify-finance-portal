@@ -69,7 +69,7 @@ export default function DealCommission({ deal }: { deal: any }) {
       ) : !c.ok ? (
         <div className="px-4 py-4">
           <div className="bg-chase-bg border border-chase-edge rounded-lg px-3 py-2.5 text-[12.5px] text-chase">
-            <strong className="text-[#5E4A11]">No commission figure.</strong>{' '}
+            <strong className="text-chase">No commission figure.</strong>{' '}
             {c.reason}{!deal.lender_id ? ' — no lender recorded on this deal yet.' : '.'}
           </div>
           <p className="text-[11.5px] text-faint mt-2">

@@ -49,7 +49,7 @@ export default function TestDealBand({ deal, userRole, me, onChanged }: {
           TEST DEAL
         </span>
         <div className="min-w-[240px] flex-1">
-          <div className="text-[13px] font-semibold text-[#7a4a08]">
+          <div className="text-[13px] font-semibold text-chase">
             This is not a client. Nothing here reaches the business.
           </div>
           <div className="text-[12px] text-chase mt-0.5 leading-relaxed">

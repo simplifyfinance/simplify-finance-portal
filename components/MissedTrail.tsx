@@ -399,7 +399,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
     setCopied(false)
   }
 
-  const card = 'bg-white border rounded-xl'
+  const card = 'bg-card border rounded-xl'
   const cardS = { borderColor: TONE.line }
   const th = 'px-3 py-2 text-[9.5px] font-semibold uppercase tracking-[.09em] whitespace-nowrap border-b'
   const td = 'px-3 py-[9px] text-[13px] text-right tabular-nums whitespace-nowrap border-b'
@@ -419,7 +419,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
           ))}
         </div>
         <select value={who} onChange={e => { setWho(e.target.value); setPicked(new Set()) }}
-          className="border rounded-lg px-2.5 py-[5px] text-[12.5px] bg-white"
+          className="border rounded-lg px-2.5 py-[5px] text-[12.5px] bg-card"
           style={{ borderColor: TONE.line, color: TONE.ink }}>
           <option value="all">Whole business</option>
           {brokers.map(b => <option key={b.key} value={b.key}>{b.name}</option>)}
@@ -479,22 +479,22 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
             {chosen.length} selected
           </span>
           <button onClick={() => mark('paid')} disabled={saving}
-            className="rounded-lg px-3 py-[5px] text-[12px] font-medium border bg-white disabled:opacity-40"
+            className="rounded-lg px-3 py-[5px] text-[12px] font-medium border bg-card disabled:opacity-40"
             style={{ borderColor: '#CFE6D5', color: TONE.pos }}>They paid it</button>
           <button onClick={() => mark('not_owed')} disabled={saving}
-            className="rounded-lg px-3 py-[5px] text-[12px] font-medium border bg-white disabled:opacity-40"
+            className="rounded-lg px-3 py-[5px] text-[12px] font-medium border bg-card disabled:opacity-40"
             style={{ borderColor: TONE.line, color: TONE.body }}>Not owed</button>
           <button onClick={() => mark('queried')} disabled={saving}
-            className="rounded-lg px-3 py-[5px] text-[12px] font-medium border bg-white disabled:opacity-40"
+            className="rounded-lg px-3 py-[5px] text-[12px] font-medium border bg-card disabled:opacity-40"
             style={{ borderColor: TONE.line, color: TONE.body }}>Queried, waiting</button>
           {/* The trail is still owed - the borrower is behind. Marked against the
               loan so the next gap on the same loan says so before you chase it. */}
           <button onClick={() => mark('arrears')} disabled={saving}
             className="rounded-lg px-3 py-[5px] text-[12px] font-medium border disabled:opacity-40"
-            style={{ borderColor: '#EBD9BE', background: '#FDF6EC', color: TONE.warn }}>In arrears</button>
+            style={{ borderColor: 'var(--color-info-edge)', background: 'var(--color-info-bg)', color: TONE.warn }}>In arrears</button>
           {view !== 'open' && (
             <button onClick={unmark} disabled={saving}
-              className="rounded-lg px-3 py-[5px] text-[12px] border bg-white disabled:opacity-40 ml-auto"
+              className="rounded-lg px-3 py-[5px] text-[12px] border bg-card disabled:opacity-40 ml-auto"
               style={{ borderColor: TONE.line, color: TONE.label }}>Put back on the list</button>
           )}
           <span className="text-[11.5px]" style={{ color: TONE.label }}>
@@ -551,7 +551,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
                     return (
                       <span className="ml-2 text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[1px] border align-middle"
                             style={late
-                              ? { borderColor: '#EBD9BE', color: TONE.warn, background: '#FDF6EC' }
+                              ? { borderColor: 'var(--color-info-edge)', color: TONE.warn, background: 'var(--color-info-bg)' }
                               : { borderColor: TONE.line, color: TONE.label, background: '#fff' }}
                             title={d > 0
                               ? `Queried ${age} ago${late ? ' and still no answer, so it is back on the list' : ''}.`
@@ -569,7 +569,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
                     const m = monthsSince(at)
                     return (
                       <span className="ml-2 text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[1px] border align-middle"
-                            style={{ borderColor: '#EBD9BE', color: TONE.warn, background: '#FDF6EC' }}
+                            style={{ borderColor: 'var(--color-info-edge)', color: TONE.warn, background: 'var(--color-info-bg)' }}
                             title={`Marked in arrears on ${new Date(at).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}. Worth checking whether that is still the reason.`}>
                         Was in arrears{m > 0 ? ` · ${m} month${m === 1 ? '' : 's'} ago` : ''}
                       </span>
@@ -621,7 +621,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
         <div className="flex items-center gap-2 flex-wrap">
           <RowLimit shown={shown.length} total={rows.length} limit={limit} onChange={setLimit} />
           <button onClick={exportCsv} disabled={!rows.length}
-                  className="text-[11.5px] border rounded-md px-2.5 py-[3px] bg-white disabled:opacity-40 mr-3"
+                  className="text-[11.5px] border rounded-md px-2.5 py-[3px] bg-card disabled:opacity-40 mr-3"
                   style={{ borderColor: TONE.line, color: TONE.label }}>
             Export {rows.length} to Excel
           </button>
@@ -641,7 +641,7 @@ export default function MissedTrail({ brokers }: { brokers: { key: string; name:
       {draft && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
              style={{ background: 'rgba(34,31,27,.42)' }} onClick={() => setDraft(null)}>
-          <div className="bg-white rounded-xl border w-full max-w-[760px] max-h-[86vh] flex flex-col"
+          <div className="bg-card rounded-xl border w-full max-w-[760px] max-h-[86vh] flex flex-col"
                style={{ borderColor: TONE.line }} onClick={e => e.stopPropagation()}>
             <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: TONE.hair }}>
               <span className="text-[14px] font-semibold" style={{ color: TONE.ink }}>Draft — not sent</span>

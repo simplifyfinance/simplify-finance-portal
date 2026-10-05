@@ -62,7 +62,7 @@ const actionColor: Record<ActionType, string> = {
   proceeded_to_compliance: 'bg-green-100 text-green-700',
   bc_to_lo: 'bg-blue-100 text-blue-700',
   lo_to_compliance: 'bg-purple-100 text-purple-700',
-  awaiting_lodgement: 'bg-amber-100 text-amber-700',
+  awaiting_lodgement: 'bg-waiting-bg text-waiting',
 }
 
 export default function DashboardClient({ deals, fullName, brokerKey, creditOfficerId, allowToggle, defaultView, brokerNames = {} }: Props) {
@@ -168,7 +168,7 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
       <RateNoticeNag />
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-[#343333]">
+          <h1 className="text-xl font-semibold text-ink">
             Welcome back, {fullName?.split(' ')[0] || 'there'}
           </h1>
           <p className="text-sm text-gray-400 mt-0.5">
@@ -181,14 +181,14 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
             <button
               onClick={() => setView('mine')}
               className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
-                view === 'mine' ? 'bg-white text-[#343333] shadow-sm' : 'text-gray-500'
+                view === 'mine' ? 'bg-card text-ink shadow-sm' : 'text-gray-500'
               }`}>
               My deals
             </button>
             <button
               onClick={() => setView('team')}
               className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
-                view === 'team' ? 'bg-white text-[#343333] shadow-sm' : 'text-gray-500'
+                view === 'team' ? 'bg-card text-ink shadow-sm' : 'text-gray-500'
               }`}>
               Team deals
             </button>
@@ -209,8 +209,8 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
           <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(brokerSummary.length, 4)}, minmax(0, 1fr))` }}>
             {brokerSummary.map(([broker, counts]) => (
               <div key={broker} className="bg-gray-50 rounded-lg p-3">
-                <div className="text-xs font-medium text-[#343333] mb-1">{labelFor(broker)}</div>
-                <div className="text-xl font-medium text-[#343333] mb-2">{counts.total}</div>
+                <div className="text-xs font-medium text-ink mb-1">{labelFor(broker)}</div>
+                <div className="text-xl font-medium text-ink mb-2">{counts.total}</div>
                 <div className="flex h-1.5 rounded-sm overflow-hidden">
                   {counts.BC > 0 && <div className="bg-blue-500" style={{ width: `${(counts.BC / counts.total) * 100}%` }} />}
                   {counts.LO > 0 && <div className="bg-purple-500" style={{ width: `${(counts.LO / counts.total) * 100}%` }} />}
@@ -223,7 +223,7 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
       )}
 
       {/* Needs your action */}
-      <div className="bg-white border border-gray-100 rounded-xl overflow-hidden mb-6">
+      <div className="bg-card border border-gray-100 rounded-xl overflow-hidden mb-6">
         <div className="px-4 py-3 border-b border-gray-100">
           <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">Needs your action</div>
         </div>
@@ -237,7 +237,7 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
               <Link key={`${deal.id}-${type}`} href={`/deals/${deal.id}`}
                 className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition">
                 <div>
-                  <div className="text-sm font-medium text-[#343333]">{deal.deal_name}</div>
+                  <div className="text-sm font-medium text-ink">{deal.deal_name}</div>
                   <div className="text-xs text-gray-400">
                     {deal.clients?.first_name} {deal.clients?.last_name}
                   </div>
@@ -253,20 +253,20 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
 
       {/* Pipeline funnel */}
       <div className="grid grid-cols-5 gap-4 mb-6">
-        <div className="bg-white border border-gray-100 rounded-xl p-4">
+        <div className="bg-card border border-gray-100 rounded-xl p-4">
           <div className="text-xs text-gray-400 mb-1">Live deals</div>
-          <div className="text-2xl font-semibold text-[#343333]">{liveTotal}</div>
+          <div className="text-2xl font-semibold text-ink">{liveTotal}</div>
         </div>
         {(['BC', 'LO', 'Compliance', 'In application'] as const).map(stage => (
-          <div key={stage} className="bg-white border border-gray-100 rounded-xl p-4">
+          <div key={stage} className="bg-card border border-gray-100 rounded-xl p-4">
             <div className="text-xs text-gray-400 mb-1">{stage === 'In application' ? stage : stage + ' stage'}</div>
-            <div className="text-2xl font-semibold text-[#343333]">{stageCounts[stage] || 0}</div>
+            <div className="text-2xl font-semibold text-ink">{stageCounts[stage] || 0}</div>
           </div>
         ))}
       </div>
 
       {/* Recent deals */}
-      <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+      <div className="bg-card border border-gray-100 rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">Recent deals</div>
           <Link href="/deals" className="text-xs text-[#2DBEFF] hover:underline">View all</Link>
@@ -284,7 +284,7 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
                   {initials || '?'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-[#343333] truncate">{deal.deal_name}</div>
+                  <div className="text-sm font-medium text-ink truncate">{deal.deal_name}</div>
                   <div className="text-xs text-gray-400 flex items-center gap-2">
                     <span>{deal.clients?.first_name} {deal.clients?.last_name}</span>
                     {deal.assigned_broker && (

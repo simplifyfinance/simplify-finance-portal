@@ -140,7 +140,7 @@ export default function ClawbackWatch({ brokers }: { brokers: { key: string; nam
 
   if (!ready) return null
   if (rows.length === 0) return (
-    <div className="border rounded-xl bg-white px-4 py-6 text-[13px]"
+    <div className="border rounded-xl bg-card px-4 py-6 text-[13px]"
          style={{ borderColor: TONE.line, color: TONE.label }}>
       No settled loan is inside a clawback window right now. This reads the upfronts on the
       commission statements, so if it looks empty and should not, the statements for those
@@ -148,7 +148,7 @@ export default function ClawbackWatch({ brokers }: { brokers: { key: string; nam
     </div>
   )
 
-  const card = 'bg-white border rounded-xl'
+  const card = 'bg-card border rounded-xl'
   const cardS = { borderColor: TONE.line }
   const th = 'px-3 py-2 text-[9.5px] font-semibold uppercase tracking-[.09em] whitespace-nowrap border-b'
   const td = 'px-3 py-[9px] text-[13px] text-right tabular-nums whitespace-nowrap border-b'
@@ -160,7 +160,7 @@ export default function ClawbackWatch({ brokers }: { brokers: { key: string; nam
           Inside the clawback window
         </h2>
         <select value={who} onChange={e => setWho(e.target.value)}
-          className="border rounded-lg px-2.5 py-[5px] text-[12.5px] bg-white"
+          className="border rounded-lg px-2.5 py-[5px] text-[12.5px] bg-card"
           style={{ borderColor: TONE.line, color: TONE.ink }}>
           <option value="all">Whole business</option>
           {brokers.map(b => <option key={b.key} value={b.key}>{b.name}</option>)}
@@ -188,7 +188,7 @@ export default function ClawbackWatch({ brokers }: { brokers: { key: string; nam
       </div>
 
       <div className="rounded-xl border px-4 py-3 mb-2.5 text-[12.5px] leading-[1.65]"
-           style={{ borderColor: '#EBD9BE', background: '#FDF6EC', color: TONE.body }}>
+           style={{ borderColor: 'var(--color-info-edge)', background: 'var(--color-info-bg)', color: TONE.body }}>
         <b style={{ color: TONE.ink }}>Read these as the worst case, not a forecast.</b> The figure is the
         upfront that was actually paid on the statement, counted in full for as long as the loan sits inside
         its window. Most lenders take all of it back in the first year and only part of it in the second, so
@@ -294,7 +294,7 @@ export default function ClawbackWatch({ brokers }: { brokers: { key: string; nam
         <div className="flex items-center gap-2 flex-wrap">
           <RowLimit shown={shown.length} total={mine.length} limit={limit} onChange={setLimit} />
           <button onClick={exportCsv} disabled={!mine.length}
-                  className="text-[11.5px] border rounded-md px-2.5 py-[3px] bg-white disabled:opacity-40 mr-3"
+                  className="text-[11.5px] border rounded-md px-2.5 py-[3px] bg-card disabled:opacity-40 mr-3"
                   style={{ borderColor: TONE.line, color: TONE.label }}>
             Export {mine.length} to Excel
           </button>
