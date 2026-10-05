@@ -41,16 +41,16 @@ const num = (v: any) => {
   return Number.isFinite(n) && n > 0 ? n : 0
 }
 
-const INP = 'text-[12.5px] border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white text-[#221F1B] w-full'
+const INP = 'text-[12.5px] border border-gray-200 rounded-lg px-2.5 py-1.5 bg-card text-ink w-full'
 
 const LAB = 'text-[8.5px] font-bold tracking-[.07em] uppercase text-[#A0A7AE] block mb-1'
 
 function Line({ line }: { line: PanelLine }) {
   const tone =
-    line.kind === 'watch'   ? 'bg-[#FDF6EC] border-[#EBD9BE] text-[#8A6218]' :
-    line.kind === 'unknown' ? 'bg-[#F7F8F9] border-[#E3E6E8] text-[#5B6672]' :
-    line.kind === 'clock'   ? 'bg-[#F4FAFE] border-[#CDEBF8] text-[#0E5E86]' :
-                              'bg-[#F6FDF8] border-[#BBF7D0] text-[#166534]'
+    line.kind === 'watch'   ? 'bg-chase-bg border-chase-edge text-chase' :
+    line.kind === 'unknown' ? 'bg-[#F7F8F9] border-[#E3E6E8] text-muted' :
+    line.kind === 'clock'   ? 'bg-info-bg border-info-edge text-info' :
+                              'bg-done-bg border-[#BBF7D0] text-[#166534]'
   return <p className={`m-0 mt-1.5 text-[12.5px] leading-relaxed border rounded-lg px-3 py-2 ${tone}`}>{line.text}</p>
 }
 
@@ -163,14 +163,14 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
   const anz = wouldBe > 0 ? anzTemplateFor(d, loanNow, wouldBe, me?.name) : { needed: false, reference: '', change: '' }
 
   return (
-    <div className="bg-white border border-[#EDE7DD] rounded-xl px-5 py-4 mb-4">
+    <div className="bg-card border border-[#EDE7DD] rounded-xl px-5 py-4 mb-4">
       <div className="flex items-baseline gap-2.5 flex-wrap mb-3">
-        <span className="text-[9.5px] font-bold tracking-[.07em] uppercase text-[#A29889]">Offer accepted</span>
-        <span className="text-[12.5px] text-[#A29889]">{dayMonthYear(d.offer_accepted_at)}</span>
+        <span className="text-[9.5px] font-bold tracking-[.07em] uppercase text-faint">Offer accepted</span>
+        <span className="text-[12.5px] text-faint">{dayMonthYear(d.offer_accepted_at)}</span>
         {blanks.length > 0 && (
-          <span className="text-[11.5px] text-[#8A6218]">Still to record: {blanks.join(', ')}</span>
+          <span className="text-[11.5px] text-chase">Still to record: {blanks.join(', ')}</span>
         )}
-        {saved && <span className="ml-auto text-[11.5px] text-[#15803D]">{saved}</span>}
+        {saved && <span className="ml-auto text-[11.5px] text-done">{saved}</span>}
       </div>
 
       <div className="grid grid-cols-2 gap-3 max-[720px]:grid-cols-1">
@@ -279,7 +279,7 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
         {/* A name we cannot reach. Said here, months before anybody presses send
             on an email that would have quietly left them off. */}
         {otherSideGaps(d).map((g, i) => (
-          <p key={i} className="m-0 mt-2 text-[11.5px] text-[#8A6218]">{g}.</p>
+          <p key={i} className="m-0 mt-2 text-[11.5px] text-chase">{g}.</p>
         ))}
       </div>
 
@@ -302,45 +302,45 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
         * contribution. Backwards, and contrary to the portal's own rule in
         * lib/purchase-rows.ts. The deposit is the question. */}
       {moved && (
-        <div className="mt-4 bg-[#FDF6EC] border border-[#EBD9BE] rounded-lg px-4 py-3.5">
+        <div className="mt-4 bg-chase-bg border border-chase-edge rounded-lg px-4 py-3.5">
           <div className="text-[13.5px] font-bold text-[#6E4C0F]">
             How much would the clients like to put in?
           </div>
-          <div className="text-[12.5px] text-[#8A6218] mt-0.5 leading-relaxed">
+          <div className="text-[12.5px] text-chase mt-0.5 leading-relaxed">
             They were going to bring {money(assessed)}. Total cost is now {money(dutyNow(d) + num(d.contract_price))},
             against {money(num(d.bc_data?.purchasePrice) + num(d.bc_data?.stampDuty))} as assessed.
           </div>
 
           {stampDutyNeedsUpdating(d) && (
-            <div className="mt-2.5 bg-white border border-[#E7DECC] rounded-lg px-3 py-2.5">
-              <div className="text-[12.5px] font-medium text-[#221F1B]">Stamp duty still needs the new figure.</div>
-              <div className="text-[11.5px] text-[#5B6672] mt-0.5 leading-relaxed">
+            <div className="mt-2.5 bg-card border border-[#E7DECC] rounded-lg px-3 py-2.5">
+              <div className="text-[12.5px] font-medium text-ink">Stamp duty still needs the new figure.</div>
+              <div className="text-[11.5px] text-muted mt-0.5 leading-relaxed">
                 The BC has {money(d.bc_data?.stampDuty)}. Duty moves with the price and the portal
                 does not work it out &mdash; type it and everything below follows.
               </div>
               <input defaultValue={d.contract_stamp_duty ?? ''} key={`sd${d.contract_stamp_duty ?? ''}`}
                 onBlur={onBlurField('contract_stamp_duty', 'money')}
                 placeholder="duty on the price they paid"
-                className="mt-2 text-[12px] border border-[#E3E6E8] rounded-lg px-2.5 py-1.5 bg-white w-[210px]" />
+                className="mt-2 text-[12px] border border-[#E3E6E8] rounded-lg px-2.5 py-1.5 bg-card w-[210px]" />
             </div>
           )}
 
           <button onClick={() => setTypedDeposit(String(assessed))}
-            className={`w-full text-left mt-2 rounded-lg px-3 py-2.5 border bg-white transition ${
+            className={`w-full text-left mt-2 rounded-lg px-3 py-2.5 border bg-card transition ${
               num(typedDeposit) === assessed ? 'border-[#2DBEFF] ring-1 ring-[#2DBEFF]' : 'border-[#E7DECC] hover:border-[#D9C9A8]'}`}>
-            <div className="text-[13px] font-medium text-[#221F1B]">The same &mdash; {money(assessed)}</div>
-            <div className="text-[12px] text-[#5B6672] mt-0.5">The amount they were already bringing.</div>
+            <div className="text-[13px] font-medium text-ink">The same &mdash; {money(assessed)}</div>
+            <div className="text-[12px] text-muted mt-0.5">The amount they were already bringing.</div>
           </button>
 
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span className="text-[11.5px] text-[#9A7B36]">Or a different amount:</span>
+            <span className="text-[11.5px] text-muted">Or a different amount:</span>
             <input value={typedDeposit} onChange={e => setTypedDeposit(e.target.value)}
               placeholder="what they will put in"
-              className="text-[12px] border border-[#E3E6E8] rounded-lg px-2.5 py-1.5 bg-white w-[170px]" />
+              className="text-[12px] border border-[#E3E6E8] rounded-lg px-2.5 py-1.5 bg-card w-[170px]" />
           </div>
 
           {keepLvr > 0 && (
-            <div className="mt-2 text-[11.5px] text-[#0E5E86] bg-[#F4FAFE] border border-[#CDEBF8] rounded-lg px-3 py-2 leading-relaxed">
+            <div className="mt-2 text-[11.5px] text-info bg-info-bg border border-info-edge rounded-lg px-3 py-2 leading-relaxed">
               <b>{money(keepLvr)} keeps the LVR where it was.</b> Offered, not chosen.
               <button onClick={() => setTypedDeposit(String(keepLvr))}
                 className="ml-2 underline hover:no-underline">Use it</button>
@@ -350,7 +350,7 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
           {/* THE BREAKDOWN, in the five lines every purchase uses. Fabio, 16 Sep
               2026 - and total cost is still not a box. See lib/purchase-rows.ts. */}
           {rework && (
-            <div className="mt-3 bg-white border border-[#E7DECC] rounded-lg px-3.5 py-3">
+            <div className="mt-3 bg-card border border-[#E7DECC] rounded-lg px-3.5 py-3">
               <table className="w-full text-[13px]">
                 <tbody>
                   {purchaseRows({
@@ -377,20 +377,20 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
                 </tbody>
               </table>
               <button onClick={() => recordRework(rework)} disabled={busy}
-                className="mt-3 px-3 py-1.5 text-xs rounded-lg bg-[#221F1B] text-white font-semibold hover:bg-[#3a3733] disabled:opacity-50">
+                className="mt-3 px-3 py-1.5 text-xs rounded-lg bg-ink text-page font-semibold hover:opacity-90 disabled:opacity-50">
                 {busy ? 'Recording...' : 'Record these figures'}
               </button>
             </div>
           )}
 
-          <p className="m-0 mt-2.5 text-[11.5px] text-[#9A7B36] leading-relaxed">
+          <p className="m-0 mt-2.5 text-[11.5px] text-muted leading-relaxed">
             Nothing changes until you record it. The borrowing capacity is left exactly as it is
             &mdash; these become the deal&rsquo;s figures from here: formal approval, settlement and
             commission all read them.
           </p>
 
           {d.contract_funding_at && (
-            <p className="m-0 mt-2 text-[11.5px] text-[#15803D]">
+            <p className="m-0 mt-2 text-[11.5px] text-done">
               Recorded{d.contract_funding_by ? ` by ${d.contract_funding_by}` : ''}
               {` on ${dayMonthYear(d.contract_funding_at)}`}. Change the deposit to rework it.
             </p>
@@ -401,7 +401,7 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
       {anz.needed && (
         <div className="mt-4">
           <span className={LAB}>ANZ also need this from you, because the loan comes down</span>
-          <pre className="m-0 mt-1 whitespace-pre-wrap text-[11.5px] leading-relaxed bg-[#FBFCFD]
+          <pre className="m-0 mt-1 whitespace-pre-wrap text-[11.5px] leading-relaxed bg-page
                           border border-[#E3E6E8] rounded-lg px-3 py-2.5 text-[#3C4450]">
 {anzReductionEmail({ applicationReference: anz.reference, change: anz.change,
                      conversationDate: dayMonthYear(new Date()), brokerName: me?.name || '' })}
@@ -423,7 +423,7 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
         </div>
       )}
 
-      {err && <p className="m-0 mt-3 text-[12px] text-[#8E3A34]">{err}</p>}
+      {err && <p className="m-0 mt-3 text-[12px] text-chase">{err}</p>}
     </div>
   )
 }

@@ -210,7 +210,7 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
                       <input type="radio" name="close-reason" value={r.value}
                         checked={reason === r.value} onChange={() => setReason(r.value)} className="accent-[#0E8FCB]" />
                       <span className="text-[13px] text-[#2E2A26]">{r.label}</span>
-                      {r.needsDate && <span className="ml-auto text-[10px] font-bold uppercase tracking-[.05em] text-[#9A7B2E] bg-[#FDF6E7] border border-[#EFE0BC] rounded-full px-2 py-[2px]">Comes back</span>}
+                      {r.needsDate && <span className="ml-auto text-[10px] font-bold uppercase tracking-[.05em] text-waiting bg-waiting-bg border border-waiting-edge rounded-full px-2 py-[2px]">Comes back</span>}
                     </label>
                   ))}
                 </div>

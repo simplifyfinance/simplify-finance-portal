@@ -122,7 +122,7 @@ export const PRODUCT_GROUPS: Group[] = [
 
 // --- the model ---------------------------------------------------------------
 
-export type Accent = 'ink' | 'blue' | 'teal' | 'violet' | 'green' | 'slate' | 'navy' | 'amber' | 'red'
+export type Accent = 'ink' | 'blue' | 'teal' | 'violet' | 'green' | 'slate' | 'navy' | 'red'
 export type Tone = 'plain' | 'warn' | 'good'
 
 export type ViewRow =
@@ -574,7 +574,7 @@ export function factFindSections(deal: any): ViewSection[] {
       ]),
     })
   })
-  if (loCards.length) out.push({ key: 'lo', title: 'Compare products', accent: 'amber',
+  if (loCards.length) out.push({ key: 'lo', title: 'Compare products', accent: 'violet',
     pill: `${loLenders.length} lenders compared`, cards: loCards })
 
   // A section with nothing in it is noise on a screen somebody is working down.

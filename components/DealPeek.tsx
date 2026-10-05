@@ -22,11 +22,11 @@ function Section({ s }: { s: PeekSection }) {
   if (!s.fields.length) return null
   return (
     <div className="mb-4 last:mb-0">
-      <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-[#7A7266] m-0 mb-2">{s.title}</p>
+      <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-muted m-0 mb-2">{s.title}</p>
       {s.fields.map((f, i) => (
         <div key={f.key + i} className="flex gap-2.5 mb-1.5 text-[12.5px] leading-[1.45]">
-          <span className="text-[#7A7266] w-[92px] flex-none">{f.key}</span>
-          <span className={f.muted ? 'text-[#A29889]' : 'text-[#221F1B] font-[520]'}>{f.value}</span>
+          <span className="text-muted w-[92px] flex-none">{f.key}</span>
+          <span className={f.muted ? 'text-faint' : 'text-ink font-[520]'}>{f.value}</span>
         </div>
       ))}
     </div>
@@ -63,12 +63,12 @@ export default function DealPeek({ deal, lenderName, brokerName, creditName, col
 
   return (
     <div onClick={onClose}
-      className="fixed inset-0 z-50 bg-[#221F1B]/40 flex items-start justify-center p-6 overflow-auto">
+      className="fixed inset-0 z-50 bg-ink/40 flex items-start justify-center p-6 overflow-auto">
       <div onClick={e => e.stopPropagation()}
-        className="bg-white rounded-[13px] w-full max-w-[660px] mt-[6vh] overflow-hidden shadow-[0_14px_40px_rgba(34,31,27,.22)]">
+        className="bg-card rounded-[13px] w-full max-w-[660px] mt-[6vh] overflow-hidden shadow-[0_14px_40px_rgba(34,31,27,.22)]">
 
-        <div className="px-[18px] pt-4 pb-3 border-b border-[#EFEAE0]">
-          <h3 className="text-[16.5px] font-[640] tracking-[-.01em] m-0 mb-1.5 text-[#221F1B]">{p.title}</h3>
+        <div className="px-[18px] pt-4 pb-3 border-b border-line">
+          <h3 className="text-[16.5px] font-[640] tracking-[-.01em] m-0 mb-1.5 text-ink">{p.title}</h3>
           <div className="flex gap-1.5 flex-wrap items-center">
             {p.chips.map(c => (
               <span key={c.id} className="text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border"
@@ -76,12 +76,12 @@ export default function DealPeek({ deal, lenderName, brokerName, creditName, col
             ))}
             <span className="text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border"
                   style={chipStyle('#0E8FCB')}>{p.phaseLabel}</span>
-            <span className="text-[11px] text-[#A29889]">{peekAge(deal)}</span>
+            <span className="text-[11px] text-faint">{peekAge(deal)}</span>
           </div>
         </div>
 
         {waiting && (
-          <div className="px-[18px] py-2.5 text-[12.5px] bg-[#FDF6EC] border-b border-[#EBD9BE] text-[#946017]">
+          <div className="px-[18px] py-2.5 text-[12.5px] bg-chase-bg border-b border-chase-edge text-chase">
             {waiting.text}
           </div>
         )}
@@ -91,7 +91,7 @@ export default function DealPeek({ deal, lenderName, brokerName, creditName, col
             <Section s={p.loan} />
             <Section s={p.security} />
           </div>
-          <div className="px-[18px] py-3.5 border-l border-[#EFEAE0]">
+          <div className="px-[18px] py-3.5 border-l border-line">
             <Section s={p.who} />
             <Section s={p.dates} />
           </div>
@@ -101,17 +101,17 @@ export default function DealPeek({ deal, lenderName, brokerName, creditName, col
             answer "is anything on fire here" before you commit to opening it. */}
         {byUrgency(alerts).length > 0 && (
           <div className="px-[18px] pb-3">
-            <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-[#946017] m-0 mb-2">Important notes</p>
+            <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-chase m-0 mb-2">Important notes</p>
             {byUrgency(alerts).slice(0, 3).map(a => {
               const red = toneOf(a) === 'red'
               return (
                 <div key={a.id}
                   className={`flex gap-2 items-start rounded-lg px-2.5 py-2 mb-1.5 last:mb-0 border ${
-                    red ? 'border-[#EFD3CB] bg-[#FBECEC]' : 'border-[#EBD9BE] bg-[#FDF6EC]'}`}>
-                  <span className={`w-[6px] h-[6px] rounded-full shrink-0 mt-[6px] ${red ? 'bg-[#AD4227]' : 'bg-[#946017]'}`} />
+                    red ? 'border-chase-edge bg-chase-bg' : 'border-chase-edge bg-chase-bg'}`}>
+                  <span className={`w-[6px] h-[6px] rounded-full shrink-0 mt-[6px] ${red ? 'bg-chase' : 'bg-waiting'}`} />
                   <span className="min-w-0">
-                    <span className="block text-[12px] text-[#221F1B] font-[600]">{a.title}</span>
-                    <span className="block text-[10.5px] text-[#7A7266]">
+                    <span className="block text-[12px] text-ink font-[600]">{a.title}</span>
+                    <span className="block text-[10.5px] text-muted">
                       {a.owner_name || 'nobody yet'}{a.due_on ? ` · ${dueLabel(a.due_on)}` : ''}
                     </span>
                   </span>
@@ -122,13 +122,13 @@ export default function DealPeek({ deal, lenderName, brokerName, creditName, col
         )}
 
         <div className="px-[18px] pb-3">
-          <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-[#7A7266] m-0 mb-2">Internal notes</p>
+          <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-muted m-0 mb-2">Internal notes</p>
           {p.notes ? (
-            <div className="text-[12px] leading-[1.55] text-[#575046] bg-[#FCFAF6] border border-[#EFEAE0] rounded-lg px-2.5 py-2 max-h-[96px] overflow-auto whitespace-pre-line">
+            <div className="text-[12px] leading-[1.55] text-[#575046] bg-[#FCFAF6] border border-line rounded-lg px-2.5 py-2 max-h-[96px] overflow-auto whitespace-pre-line">
               {p.notes}
             </div>
           ) : (
-            <p className="text-[12px] text-[#A29889] m-0">Nothing written yet.</p>
+            <p className="text-[12px] text-faint m-0">Nothing written yet.</p>
           )}
         </div>
 
@@ -136,17 +136,17 @@ export default function DealPeek({ deal, lenderName, brokerName, creditName, col
             is this up to" as well as "what is it". */}
         {newestFirst(notes).length > 0 && (
           <div className="px-[18px] pb-4">
-            <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-[#7A7266] m-0 mb-2">
+            <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-muted m-0 mb-2">
               File notes
-              {notes.length > 3 && <span className="font-normal normal-case tracking-normal text-[#A29889]"> · {notes.length} in total</span>}
+              {notes.length > 3 && <span className="font-normal normal-case tracking-normal text-faint"> · {notes.length} in total</span>}
             </p>
-            <div className="border-l-2 border-[#EFEAE0] pl-2.5 ml-[2px]">
+            <div className="border-l-2 border-line pl-2.5 ml-[2px]">
               {newestFirst(notes).slice(0, 3).map(n => (
                 <div key={n.id} className="mb-2 last:mb-0">
-                  <p className="text-[10px] text-[#A29889] m-0">
+                  <p className="text-[10px] text-faint m-0">
                     {whenLabel(n.created_at)} · {n.kind === 'system' ? 'recorded automatically' : (n.author_name || 'unknown')}
                   </p>
-                  <p className={`text-[12px] m-0 leading-[1.45] ${n.kind === 'system' ? 'text-[#7A7266] italic' : 'text-[#575046]'}`}>
+                  <p className={`text-[12px] m-0 leading-[1.45] ${n.kind === 'system' ? 'text-muted italic' : 'text-[#575046]'}`}>
                     {n.body}
                   </p>
                 </div>
@@ -155,14 +155,14 @@ export default function DealPeek({ deal, lenderName, brokerName, creditName, col
           </div>
         )}
 
-        <div className="flex gap-2 items-center px-[18px] py-3 border-t border-[#EFEAE0] bg-[#FCFAF6]">
+        <div className="flex gap-2 items-center px-[18px] py-3 border-t border-line bg-[#FCFAF6]">
           <button onClick={() => router.push(`/deals/${deal.id}`)}
             className="text-[12.5px] rounded-lg px-3 py-1.5 bg-[#0E8FCB] text-white font-semibold">Open deal</button>
           <button onClick={() => router.push(`/deals/${deal.id}?stage=Statements`)}
-            className="text-[12.5px] rounded-lg px-3 py-1.5 border border-[#E5DED2] bg-white text-[#221F1B]">Open Statements</button>
+            className="text-[12.5px] rounded-lg px-3 py-1.5 border border-[#E5DED2] bg-card text-ink">Open Statements</button>
           <button onClick={onClose}
-            className="text-[12.5px] rounded-lg px-3 py-1.5 border border-[#E5DED2] bg-white text-[#221F1B]">Close</button>
-          {onStep && <span className="ml-auto text-[11.5px] text-[#A29889]">← → to step through the column</span>}
+            className="text-[12.5px] rounded-lg px-3 py-1.5 border border-[#E5DED2] bg-card text-ink">Close</button>
+          {onStep && <span className="ml-auto text-[11.5px] text-faint">← → to step through the column</span>}
         </div>
       </div>
     </div>

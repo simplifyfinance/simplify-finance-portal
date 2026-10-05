@@ -256,11 +256,11 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
   return (
     <div className="mb-4">
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-[9px] font-bold tracking-[.07em] uppercase text-[#A29889] mr-1">Documents</span>
+        <span className="text-[9px] font-bold tracking-[.07em] uppercase text-faint mr-1">Documents</span>
         {(Object.keys(KINDS) as Kind[]).map(kind => (
           <button key={kind} onClick={() => press(kind)} disabled={!!busy}
             title={copyOf(kind) ? 'Downloads the copy on file' : 'Never built — this makes it'}
-            className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-lg px-3 py-1.5 text-[12px] font-medium hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition inline-flex items-center gap-1.5 disabled:opacity-40">
+            className="bg-page border border-line text-muted rounded-lg px-3 py-1.5 text-[12px] font-medium hover:bg-line-soft hover:text-ink transition inline-flex items-center gap-1.5 disabled:opacity-40">
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor"
                  strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M8 2v8M4.5 7l3.5 3.5L11.5 7M3 13h10" />
@@ -273,8 +273,8 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
             quiet the rest of the time. */}
         <button onClick={rebuildAll} disabled={!!busy}
           className={behind
-            ? 'bg-[#221F1B] text-white rounded-lg px-3 py-1.5 text-[12px] font-semibold disabled:opacity-40'
-            : 'bg-white border border-[#E8E1D6] text-[#A29889] rounded-lg px-3 py-1.5 text-[12px] hover:text-[#6E665C] disabled:opacity-40'}>
+            ? 'bg-ink text-page rounded-lg px-3 py-1.5 text-[12px] font-semibold disabled:opacity-40'
+            : 'bg-card border border-line text-faint rounded-lg px-3 py-1.5 text-[12px] hover:text-muted disabled:opacity-40'}>
           {busy === 'all' ? 'Rebuilding…' : 'Rebuild all three'}
         </button>
       </div>
@@ -283,24 +283,24 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
           somebody open all three to find out what moved; naming it means they
           already know. See lib/keeping-up.ts. */}
       {behind && (
-        <p className="mt-2 text-[12px] text-[#8A6218]">{behind}</p>
+        <p className="mt-2 text-[12px] text-chase">{behind}</p>
       )}
       {!behind && current && (
-        <p className="mt-2 text-[12px] text-[#0F7B4F]">
+        <p className="mt-2 text-[12px] text-done">
           On file and up to date{deal.documents_built_by ? ` — rebuilt by ${deal.documents_built_by}` : ''}.
         </p>
       )}
 
       {note && (
-        <p className="mt-2 text-[12px] text-[#15803D]">{note}</p>
+        <p className="mt-2 text-[12px] text-done">{note}</p>
       )}
       {err && (
-        <p className="mt-2 border border-[#E9D2CF] bg-[#FDF3F2] rounded-lg px-3 py-2 text-[12.5px] text-[#8E3A34]">{err}</p>
+        <p className="mt-2 border border-chase-edge bg-chase-bg rounded-lg px-3 py-2 text-[12.5px] text-chase">{err}</p>
       )}
 
       {filed.length > 0 && (
         <div className="mt-2 flex items-center gap-2 flex-wrap">
-          <span className="text-[9px] font-bold tracking-[.07em] uppercase text-[#C3BDB2] mr-1">On file</span>
+          <span className="text-[9px] font-bold tracking-[.07em] uppercase text-faint mr-1">On file</span>
           {filed.map(f => (
             <span key={f.id} className="inline-flex items-center gap-1 max-w-[280px]">
               <button onClick={() => openFiled(f.file_path)}
@@ -313,7 +313,7 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
               {!isLocked(deal) && (
                 <button onClick={() => removeFiled(f.id, f.file_path)}
                   aria-label={`Remove ${f.file_name}`}
-                  className="text-[11px] text-[#D6D1C7] hover:text-[#8E3A34]">&times;</button>
+                  className="text-[11px] text-[#D6D1C7] hover:text-chase">&times;</button>
               )}
             </span>
           ))}

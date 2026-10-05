@@ -43,7 +43,7 @@ export default function TestDealBand({ deal, userRole, me, onChanged }: {
   }
 
   return (
-    <div className="mb-4 rounded-xl border border-[#F0DCB4] bg-[#FFF8EC] px-4 py-3">
+    <div className="mb-4 rounded-xl border border-chase-edge bg-chase-bg px-4 py-3">
       <div className="flex items-start gap-3 flex-wrap">
         <span className="flex-none mt-0.5 text-[10.5px] font-bold tracking-[0.09em] text-white bg-[#C6952F] rounded px-2 py-1">
           TEST DEAL
@@ -52,7 +52,7 @@ export default function TestDealBand({ deal, userRole, me, onChanged }: {
           <div className="text-[13px] font-semibold text-[#7a4a08]">
             This is not a client. Nothing here reaches the business.
           </div>
-          <div className="text-[12px] text-[#92400E] mt-0.5 leading-relaxed">
+          <div className="text-[12px] text-chase mt-0.5 leading-relaxed">
             {TEST_DEAL_SUMMARY}. Everything else works exactly as it does on a real deal,
             and a client email built here is sent to whoever presses send.
           </div>
@@ -60,7 +60,7 @@ export default function TestDealBand({ deal, userRole, me, onChanged }: {
         </div>
         {canChangeTestFlag(userRole) && (
           <button onClick={makeItReal} disabled={busy}
-            className="flex-none text-[12px] font-semibold text-[#7a5a12] border border-[#E4D9BE] bg-white rounded-md px-3 py-1.5 hover:bg-[#FFFDF8] disabled:opacity-40">
+            className="flex-none text-[12px] font-semibold text-chase border border-chase-edge bg-card rounded-md px-3 py-1.5 hover:bg-chase-bg disabled:opacity-40">
             {busy ? 'Changing...' : 'Make it a real deal'}
           </button>
         )}

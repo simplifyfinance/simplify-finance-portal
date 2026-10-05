@@ -90,16 +90,16 @@ export default function DealSummaryPage() {
   return (
     <div className="max-w-3xl mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <p className="text-lg font-medium text-[#343333]">Deal summary — {deal.deal_name}</p>
+        <p className="text-lg font-medium text-ink">Deal summary — {deal.deal_name}</p>
         <span className="text-xs text-gray-400">Live data, always current</span>
       </div>
 
-      <div className="bg-white border border-gray-100 border-l-4 border-l-purple-400 rounded-xl p-5 mb-4">
+      <div className="bg-card border border-gray-100 border-l-4 border-l-purple-400 rounded-xl p-5 mb-4">
         <p className="text-xs font-medium text-purple-600 uppercase tracking-wider mb-3">Applicants</p>
         <div className={`grid gap-5`} style={{ gridTemplateColumns: `repeat(${Math.min(applicants.length, 2) || 1}, minmax(0,1fr))` }}>
           {applicants.map((a: any) => (
             <div key={a.id}>
-              <p className="text-sm font-medium text-[#343333] mb-2">{a.firstName} {a.lastName}</p>
+              <p className="text-sm font-medium text-ink mb-2">{a.firstName} {a.lastName}</p>
               <table className="w-full text-sm">
                 <tbody>
                   {getApplicantIncomeLines(a).map((line, i) => (
@@ -116,8 +116,8 @@ export default function DealSummaryPage() {
       </div>
 
       {(ff.properties || []).length > 0 && (
-        <div className="bg-white border border-gray-100 border-l-4 border-l-amber-400 rounded-xl p-5 mb-4">
-          <p className="text-xs font-medium text-amber-600 uppercase tracking-wider mb-3">Properties</p>
+        <div className="bg-card border border-gray-100 border-l-4 border-l-info rounded-xl p-5 mb-4">
+          <p className="text-xs font-medium text-info uppercase tracking-wider mb-3">Properties</p>
           <div className="flex flex-col gap-2">
             {ff.properties.map((p: any) => {
               const isOwnerOcc = p.ownershipType === 'Owner occupied'
@@ -131,8 +131,8 @@ export default function DealSummaryPage() {
               return (
                 <div key={p.id} className="bg-gray-50 rounded-lg p-3">
                   <div className="flex justify-between items-center mb-2">
-                    <p className="text-sm font-medium text-[#343333]">{p.address || 'Address not set'}</p>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isOwnerOcc ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}`}>
+                    <p className="text-sm font-medium text-ink">{p.address || 'Address not set'}</p>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isOwnerOcc ? 'bg-info-bg text-info' : 'bg-ink text-page'}`}>
                       {p.ownershipType}
                     </span>
                   </div>
@@ -154,7 +154,7 @@ export default function DealSummaryPage() {
       )}
 
       {(ff.liabilities || []).length > 0 && (
-        <div className="bg-white border border-gray-100 border-l-4 border-l-red-400 rounded-xl p-5">
+        <div className="bg-card border border-gray-100 border-l-4 border-l-red-400 rounded-xl p-5">
           <p className="text-xs font-medium text-red-600 uppercase tracking-wider mb-3">Liabilities</p>
           <div className="flex flex-col gap-2">
             {ff.liabilities.map((l: any) => {
@@ -187,7 +187,7 @@ export default function DealSummaryPage() {
       )}
 
       {Object.keys(bc).length > 0 && (
-        <div className="bg-white border border-gray-100 border-l-4 border-l-[#2DBEFF] rounded-xl p-5 mb-4">
+        <div className="bg-card border border-gray-100 border-l-4 border-l-[#2DBEFF] rounded-xl p-5 mb-4">
           <p className="text-xs font-medium text-[#2DBEFF] uppercase tracking-wider mb-3">BC — borrowing capacity</p>
           <table className="w-full text-sm">
             <tbody>
@@ -202,7 +202,7 @@ export default function DealSummaryPage() {
       )}
 
       {(lo.lenders || []).length > 0 && (
-        <div className="bg-white border border-gray-100 border-l-4 border-l-green-500 rounded-xl p-5">
+        <div className="bg-card border border-gray-100 border-l-4 border-l-green-500 rounded-xl p-5">
           <p className="text-xs font-medium text-green-600 uppercase tracking-wider mb-3">LO — lending options</p>
           <table className="w-full text-sm mb-3">
             <tbody>
@@ -221,7 +221,7 @@ export default function DealSummaryPage() {
             <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
               <span className="text-sm">Recommended: <b className="font-medium">{lo.recommendedLender}</b></span>
               {lo.clientAgreedLender && (
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${lo.clientAgreedLender === 'Yes' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${lo.clientAgreedLender === 'Yes' ? 'bg-done-bg text-done' : 'bg-waiting-bg text-waiting'}`}>
                   {lo.clientAgreedLender === 'Yes' ? 'Client agreed' : `Client chose: ${lo.clientChosenLender === '__other__' ? lo.clientChosenLenderOther : lo.clientChosenLender}`}
                 </span>
               )}

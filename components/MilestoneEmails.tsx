@@ -46,7 +46,7 @@ export default function MilestoneEmails({ deal, onUpdated }: {
   return (
     <div className="mb-4">
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-[9px] font-bold tracking-[.07em] uppercase text-[#A29889] mr-1">Client emails</span>
+        <span className="text-[9px] font-bold tracking-[.07em] uppercase text-faint mr-1">Client emails</span>
         {menu.map(item => (
           <MenuButton key={item.id} item={item} onOpen={() => setOpen(item.id)} />
         ))}
@@ -64,7 +64,7 @@ function MenuButton({ item, onOpen }: { item: MenuItem; onOpen: () => void }) {
   // Not yet is a statement, not a button. It says what the deal is waiting for.
   if (item.state === 'not_yet') {
     return (
-      <span className="border border-dashed border-[#E8E1D6] text-[#C3BDB2] rounded-lg px-3 py-1.5 text-[12px]"
+      <span className="border border-dashed border-line text-faint rounded-lg px-3 py-1.5 text-[12px]"
             title={item.note}>
         {item.name} <span className="text-[11px]">— {item.note}</span>
       </span>
@@ -74,10 +74,10 @@ function MenuButton({ item, onOpen }: { item: MenuItem; onOpen: () => void }) {
   return (
     <button onClick={onOpen}
       className={ready
-        ? 'bg-[#221F1B] text-white rounded-lg px-3 py-1.5 text-[12px] font-semibold'
-        : 'bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-lg px-3 py-1.5 text-[12px] font-medium hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition'}>
+        ? 'bg-ink text-page rounded-lg px-3 py-1.5 text-[12px] font-semibold'
+        : 'bg-page border border-line text-muted rounded-lg px-3 py-1.5 text-[12px] font-medium hover:bg-line-soft hover:text-ink transition'}>
       {item.name}
-      <span className={`ml-1.5 text-[11px] font-normal ${ready ? 'text-white/60' : 'text-[#A29889]'}`}>
+      <span className={`ml-1.5 text-[11px] font-normal ${ready ? 'text-white/60' : 'text-faint'}`}>
         {item.note}
       </span>
     </button>
@@ -173,14 +173,14 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
   return (
     <div className="fixed inset-0 z-50 bg-black/30 flex items-start justify-center p-4 overflow-auto"
          onClick={onClose}>
-      <div className="bg-white rounded-xl border border-[#E3E6E8] shadow-lg w-full max-w-[1000px] mt-6"
+      <div className="bg-card rounded-xl border border-[#E3E6E8] shadow-lg w-full max-w-[1000px] mt-6"
            onClick={e => e.stopPropagation()}>
 
         <div className="border-b border-[#EEF0F2] bg-[#FAFAF8] px-5 py-3 flex items-baseline gap-2 flex-wrap rounded-t-xl">
           <b className="text-[14px]">{titleOf(templateId)}</b>
-          <span className="text-[11.5px] text-[#A29889]">{deal.deal_name || ''}</span>
+          <span className="text-[11.5px] text-faint">{deal.deal_name || ''}</span>
           {already && (
-            <span className="text-[11.5px] text-[#8A6218] ml-auto">
+            <span className="text-[11.5px] text-chase ml-auto">
               Already sent {new Date(already.at).toLocaleDateString('en-AU')}{already.by ? ` by ${already.by}` : ''} — this would be another one.
             </span>
           )}
@@ -194,13 +194,13 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
               {(preview?.to || []).map(a => (
                 <span key={a} className="bg-[#F2F4F5] rounded px-1.5 py-0.5 text-[11.5px] text-[#3F4650]">{a}</span>
               ))}
-              {!preview?.to?.length && <span className="text-[11.5px] text-[#C3BDB2]">nobody on file</span>}
+              {!preview?.to?.length && <span className="text-[11.5px] text-faint">nobody on file</span>}
             </div>
             {!!preview?.cc?.length && (
-              <p className="mt-1.5 text-[11px] text-[#A29889]">Copied: {preview.cc.join(', ')}</p>
+              <p className="mt-1.5 text-[11px] text-faint">Copied: {preview.cc.join(', ')}</p>
             )}
             {preview?.redirected && (
-              <p className="mt-1.5 text-[11px] text-[#8A6218]">
+              <p className="mt-1.5 text-[11px] text-chase">
                 This is a test deal, so it comes to you instead of the clients
                 {preview.copyDropped.length ? `, and ${preview.copyDropped.join(', ')} are left off` : ''}.
               </p>
@@ -211,8 +211,8 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
               onChange={e => setFile(e.target.files?.[0] || null)} />
             <button onClick={() => fileRef.current?.click()}
               className={file
-                ? 'w-full text-left border border-[#BBE7CF] bg-[#F4FBF7] text-[#0F7B4F] rounded-lg px-3 py-2.5 text-[12px]'
-                : 'w-full border border-dashed border-[#D8DDE2] text-[#A29889] rounded-lg px-3 py-3 text-[12px]'}>
+                ? 'w-full text-left border border-done-edge bg-done-bg text-done rounded-lg px-3 py-2.5 text-[12px]'
+                : 'w-full border border-dashed border-[#D8DDE2] text-faint rounded-lg px-3 py-3 text-[12px]'}>
               {file ? `${file.name} — ${Math.round(file.size / 1024)} KB` : 'Attach the approval letter (required)'}
             </button>
 
@@ -230,14 +230,14 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
                 <button onClick={() => setOverrides(o => ({ ...o, [b.key]: !isOn(b) }))}
                   aria-label={`${isOn(b) ? 'Turn off' : 'Turn on'} ${b.label}`}
                   className={`shrink-0 w-4 h-4 mt-0.5 rounded border-[1.5px] flex items-center justify-center text-[10px] font-bold ${
-                    isOn(b) ? 'bg-[#0F7B4F] border-[#0F7B4F] text-white' : 'bg-white border-[#CBD2D8] text-transparent'}`}>
+                    isOn(b) ? 'bg-[#0F7B4F] border-[#0F7B4F] text-white' : 'bg-card border-[#CBD2D8] text-transparent'}`}>
                   &#10003;
                 </button>
                 <div>
                   <div className="text-[12.5px] leading-[1.45]">{b.label}</div>
                   <div className={`text-[10.5px] mt-0.5 leading-[1.45] ${
-                    b.why.startsWith('Not recorded') ? 'text-[#8A6218]'
-                      : isOn(b) ? 'text-[#0F7B4F]' : 'text-[#C3BDB2]'}`}>{b.why}</div>
+                    b.why.startsWith('Not recorded') ? 'text-chase'
+                      : isOn(b) ? 'text-done' : 'text-faint'}`}>{b.why}</div>
                 </div>
               </div>
             ))}
@@ -252,7 +252,7 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
                 <input value={insuranceAmount} onChange={e => setInsuranceAmount(e.target.value)}
                   placeholder="Leave blank and the email names no figure"
                   className="w-full border border-[#E3E6E8] rounded-lg px-2.5 py-1.5 text-[12.5px]" />
-                <p className="mt-1 text-[11px] text-[#A29889]">
+                <p className="mt-1 text-[11px] text-faint">
                   Off the lender&rsquo;s own approval letter. Never remembered.
                 </p>
               </>
@@ -265,12 +265,12 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
           </div>
 
           {/* --- what they will get ------------------------------------- */}
-          <div className="flex-1 min-w-[310px] basis-[380px] p-4 bg-[#FCFCFB]">
+          <div className="flex-1 min-w-[310px] basis-[380px] p-4 bg-panel">
             <Shout>What they will get</Shout>
-            <p className="text-[12px] text-[#221F1B] font-semibold mb-2">{preview?.subject || ' '}</p>
+            <p className="text-[12px] text-ink font-semibold mb-2">{preview?.subject || ' '}</p>
             <iframe title="The email" sandbox="" srcDoc={preview?.html || ''}
-              className="w-full h-[460px] border border-[#EEF0F2] rounded-lg bg-white" />
-            <p className="mt-2 text-[11px] text-[#A29889]">
+              className="w-full h-[460px] border border-[#EEF0F2] rounded-lg bg-card" />
+            <p className="mt-2 text-[11px] text-faint">
               Every figure comes off the deal. Nothing on this screen can be typed over a number.
             </p>
           </div>
@@ -279,32 +279,32 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
         {/* --- what is worth knowing before pressing it ----------------- */}
         {!!preview?.problems?.length && (
           <div className="px-5 pb-1">
-            <ul className="text-[12px] text-[#8A6218] list-disc pl-4 space-y-1">
+            <ul className="text-[12px] text-chase list-disc pl-4 space-y-1">
               {preview.problems.map((p, i) => <li key={i}>{p}</li>)}
             </ul>
           </div>
         )}
         {err && (
           <div className="px-5 pt-2">
-            <p className="border border-[#E9D2CF] bg-[#FDF3F2] rounded-lg px-3 py-2 text-[12.5px] text-[#8E3A34]">{err}</p>
+            <p className="border border-chase-edge bg-chase-bg rounded-lg px-3 py-2 text-[12.5px] text-chase">{err}</p>
           </div>
         )}
         {done && (
           <div className="px-5 pt-2">
-            <p className="border border-[#EBD9BE] bg-[#FDF6EC] rounded-lg px-3 py-2 text-[12.5px] text-[#8A6218]">{done}</p>
+            <p className="border border-chase-edge bg-chase-bg rounded-lg px-3 py-2 text-[12.5px] text-chase">{done}</p>
           </div>
         )}
 
         <div className="border-t border-[#EEF0F2] bg-[#FAFAF8] px-5 py-3 flex gap-2 items-center flex-wrap rounded-b-xl">
           <button onClick={send} disabled={busy || !file || !preview?.to?.length}
-            className="bg-[#221F1B] text-white rounded-lg px-4 py-2 text-[12.5px] font-semibold disabled:opacity-40">
+            className="bg-ink text-page rounded-lg px-4 py-2 text-[12.5px] font-semibold disabled:opacity-40">
             {busy ? 'Sending…' : 'Send'}
           </button>
           <button onClick={onClose}
-            className="border border-[#E3E6E8] text-[#5B6672] bg-white rounded-lg px-4 py-2 text-[12.5px] font-semibold">
+            className="border border-[#E3E6E8] text-muted bg-card rounded-lg px-4 py-2 text-[12.5px] font-semibold">
             Close
           </button>
-          <span className="ml-auto text-[11px] text-[#A29889]">Recorded on the deal when it goes</span>
+          <span className="ml-auto text-[11px] text-faint">Recorded on the deal when it goes</span>
         </div>
       </div>
     </div>
@@ -312,7 +312,7 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
 }
 
 function Shout({ children, className = '' }: { children: any; className?: string }) {
-  return <p className={`text-[9px] font-bold tracking-[.07em] uppercase text-[#A29889] mb-2 ${className}`}>{children}</p>
+  return <p className={`text-[9px] font-bold tracking-[.07em] uppercase text-faint mb-2 ${className}`}>{children}</p>
 }
 
 function titleOf(id: TemplateId): string {

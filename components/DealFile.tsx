@@ -15,10 +15,10 @@ import {
 
 const supabase = createSupabaseBrowser()
 
-const PANEL = 'border border-[#E5DED2] rounded-xl bg-white overflow-hidden mb-3'
-const HEAD = 'px-3 py-2 bg-[#FCFAF6] border-b border-[#EFEAE0] text-[9.5px] font-bold tracking-[.08em] uppercase text-[#7A7266] flex items-center gap-2'
+const PANEL = 'border border-[#E5DED2] rounded-xl bg-card overflow-hidden mb-3'
+const HEAD = 'px-3 py-2 bg-[#FCFAF6] border-b border-line text-[9.5px] font-bold tracking-[.08em] uppercase text-muted flex items-center gap-2'
 const BODY = 'px-3 py-3'
-const INPUT = 'w-full border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-[#2DBEFF]'
+const INPUT = 'w-full border border-line rounded-lg px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-[#2DBEFF]'
 
 // ---------------------------------------------------------------- chips ----
 // The whole argument for an alert: somebody who was not going to open the deal
@@ -35,13 +35,13 @@ export function AlertChips({ alerts, max = 3 }: { alerts: Alert[]; max?: number 
         <span key={a.id} title={a.title}
           className={`max-w-full truncate text-[9.5px] font-bold tracking-[.04em] uppercase rounded-[5px] px-1.5 py-[2px] border ${
             toneOf(a) === 'red'
-              ? 'text-[#AD4227] bg-[#FBECEC] border-[#EFD3CB]'
-              : 'text-[#946017] bg-[#FDF6EC] border-[#EBD9BE]'}`}>
+              ? 'text-chase bg-[#FBECEC] border-chase-edge'
+              : 'text-waiting bg-waiting-bg border-waiting-edge'}`}>
           ⚠ {chipLabel(a)}
         </span>
       ))}
       {rest > 0 && (
-        <span className="max-w-full truncate text-[9.5px] font-bold tracking-[.04em] uppercase rounded-[5px] px-1.5 py-[2px] border text-[#7A7266] bg-[#FCFAF6] border-[#EFEAE0]">
+        <span className="max-w-full truncate text-[9.5px] font-bold tracking-[.04em] uppercase rounded-[5px] px-1.5 py-[2px] border text-muted bg-[#FCFAF6] border-line">
           +{rest}
         </span>
       )}
@@ -92,11 +92,11 @@ export function DealAlerts({ dealId, me, alerts, onChanged }: {
     <div className={PANEL}>
       <div className={HEAD}>
         <span>⚠ Important notes</span>
-        {open.length > 0 && <span className="ml-auto text-[#946017] font-bold">{open.length}</span>}
+        {open.length > 0 && <span className="ml-auto text-waiting font-bold">{open.length}</span>}
       </div>
       <div className={BODY}>
         {open.length === 0 && !adding && (
-          <p className="text-[12px] text-[#A29889] m-0 mb-2">Nothing flagged.</p>
+          <p className="text-[12px] text-faint m-0 mb-2">Nothing flagged.</p>
         )}
 
         {open.map(a => {
@@ -104,16 +104,16 @@ export function DealAlerts({ dealId, me, alerts, onChanged }: {
           return (
             <div key={a.id}
               className={`flex gap-2 items-start rounded-lg px-2.5 py-2 mb-1.5 border ${
-                red ? 'border-[#EFD3CB] bg-[#FBECEC]' : 'border-[#EBD9BE] bg-[#FDF6EC]'}`}>
-              <span className={`w-[6px] h-[6px] rounded-full shrink-0 mt-[6px] ${red ? 'bg-[#AD4227]' : 'bg-[#946017]'}`} />
+                red ? 'border-chase-edge bg-chase-bg' : 'border-waiting-edge bg-waiting-bg'}`}>
+              <span className={`w-[6px] h-[6px] rounded-full shrink-0 mt-[6px] ${red ? 'bg-chase' : 'bg-waiting'}`} />
               <div className="min-w-0">
-                <p className="text-[12.5px] text-[#221F1B] font-[600] m-0">{a.title}</p>
-                <p className="text-[10.5px] text-[#7A7266] m-0 mt-[2px]">
+                <p className="text-[12.5px] text-ink font-[600] m-0">{a.title}</p>
+                <p className="text-[10.5px] text-muted m-0 mt-[2px]">
                   {a.owner_name || 'nobody yet'}{a.due_on ? ` · ${dueLabel(a.due_on)}` : ''}
                 </p>
               </div>
               <button onClick={() => resolve(a)}
-                className="ml-auto shrink-0 text-[10.5px] font-semibold text-[#0E8FCB] border border-[#BFE2F5] bg-white rounded-md px-2 py-[2px] hover:bg-[#EAF6FD]">
+                className="ml-auto shrink-0 text-[10.5px] font-semibold text-[#0E8FCB] border border-[#BFE2F5] bg-card rounded-md px-2 py-[2px] hover:bg-info-bg">
                 Resolve
               </button>
             </div>
@@ -121,7 +121,7 @@ export function DealAlerts({ dealId, me, alerts, onChanged }: {
         })}
 
         {adding ? (
-          <div className="border border-[#E8E1D6] rounded-lg p-2.5 mt-1">
+          <div className="border border-line rounded-lg p-2.5 mt-1">
             <input className={INPUT + ' mb-1.5'} value={title} autoFocus
               onChange={e => setTitle(e.target.value)} placeholder="What does everyone need to know?" />
             <div className="grid grid-cols-2 gap-1.5 mb-2">
@@ -130,16 +130,16 @@ export function DealAlerts({ dealId, me, alerts, onChanged }: {
             </div>
             <div className="flex gap-1.5 items-center">
               <button onClick={add} disabled={busy || !title.trim()}
-                className="text-[11.5px] font-semibold bg-[#343333] text-white rounded-lg px-3 py-1.5 disabled:opacity-40">
+                className="text-[11.5px] font-semibold bg-ink text-page rounded-lg px-3 py-1.5 disabled:opacity-40">
                 {busy ? 'Saving…' : 'Add'}
               </button>
-              <button onClick={() => { setAdding(false); setMsg('') }} className="text-[11.5px] text-[#A29889]">Cancel</button>
-              <span className="text-[11px] text-[#A29889]">No date is fine &mdash; it stays amber rather than counting down.</span>
+              <button onClick={() => { setAdding(false); setMsg('') }} className="text-[11.5px] text-faint">Cancel</button>
+              <span className="text-[11px] text-faint">No date is fine &mdash; it stays amber rather than counting down.</span>
             </div>
           </div>
         ) : (
           <button onClick={() => setAdding(true)}
-            className="text-[11.5px] text-[#6E665C] border border-[#E8E1D6] rounded-lg px-2.5 py-1 hover:bg-[#FAF7F2]">
+            className="text-[11.5px] text-muted border border-line rounded-lg px-2.5 py-1 hover:bg-page">
             + Add
           </button>
         )}
@@ -178,19 +178,19 @@ export function FileNotes({ dealId, me, notes, onChanged }: {
     <div className={PANEL}>
       <div className={HEAD}><span>🕐 File notes</span></div>
       <div className={BODY}>
-        {list.length === 0 && <p className="text-[12px] text-[#A29889] m-0 mb-2">Nothing recorded yet.</p>}
+        {list.length === 0 && <p className="text-[12px] text-faint m-0 mb-2">Nothing recorded yet.</p>}
 
         {list.length > 0 && (
-          <div className="border-l-2 border-[#EFEAE0] pl-3 ml-[2px]">
+          <div className="border-l-2 border-line pl-3 ml-[2px]">
             {list.map(n => (
               <div key={n.id} className="relative mb-2.5 last:mb-0">
-                <span className="absolute -left-[17px] top-[5px] w-[6px] h-[6px] rounded-full bg-white border-2 border-[#E5DED2]" />
-                <p className="text-[10px] text-[#A29889] m-0">
+                <span className="absolute -left-[17px] top-[5px] w-[6px] h-[6px] rounded-full bg-card border-2 border-[#E5DED2]" />
+                <p className="text-[10px] text-faint m-0">
                   {whenLabel(n.created_at)}
                   {' · '}
                   {n.kind === 'system' ? 'recorded automatically' : (n.author_name || 'unknown')}
                 </p>
-                <p className={`text-[12px] m-0 leading-[1.45] ${n.kind === 'system' ? 'text-[#7A7266] italic' : 'text-[#575046]'}`}>
+                <p className={`text-[12px] m-0 leading-[1.45] ${n.kind === 'system' ? 'text-muted italic' : 'text-[#575046]'}`}>
                   {n.body}
                 </p>
               </div>
@@ -202,10 +202,10 @@ export function FileNotes({ dealId, me, notes, onChanged }: {
           className={INPUT + ' mt-2.5 resize-y'} placeholder="Add a note…" />
         <div className="flex gap-2 items-center mt-1.5">
           <button onClick={add} disabled={busy || !body.trim()}
-            className="text-[11.5px] font-semibold bg-[#343333] text-white rounded-lg px-3 py-1.5 disabled:opacity-40">
+            className="text-[11.5px] font-semibold bg-ink text-page rounded-lg px-3 py-1.5 disabled:opacity-40">
             {busy ? 'Saving…' : 'Add note'}
           </button>
-          <span className={`text-[11px] ${msg ? 'text-[#C4553B]' : 'text-[#A29889]'}`}>
+          <span className={`text-[11px] ${msg ? 'text-[#C4553B]' : 'text-faint'}`}>
             {msg || 'Nothing here is ever overwritten.'}
           </span>
         </div>

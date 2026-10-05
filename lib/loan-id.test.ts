@@ -106,11 +106,11 @@ describe('when it starts asking', () => {
     expect(s.tone).toBe('quiet')
   })
 
-  it('goes amber on day 15, leaving a fortnight to chase the bank', () => {
+  it('starts chasing on day 15, leaving a fortnight to chase the bank', () => {
     const s = loanIdStatus(settled(), AT('2026-08-16'))
     expect(s.days).toBe(15)
     expect(QUIET_DAYS).toBe(15)
-    expect(s.tone).toBe('amber')
+    expect(s.tone).toBe('chase')
     expect(s.label).toContain('RCTI is due')
   })
 
@@ -131,7 +131,7 @@ describe('when it starts asking', () => {
     expect(loanIdStatus(deal, AT('2026-12-01')).tone).toBe('complete')
   })
 
-  it('a deal settled long ago with nothing entered is amber, not silent', () => {
-    expect(loanIdStatus(settled(), AT('2027-01-01')).tone).toBe('amber')
+  it('a deal settled long ago with nothing entered is a chase, not silent', () => {
+    expect(loanIdStatus(settled(), AT('2027-01-01')).tone).toBe('chase')
   })
 })

@@ -259,11 +259,11 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
   // See components/PositionAtSettlement.tsx.
   const [askPosition, setAskPosition] = useState(false)
 
-  const K = 'text-[9.5px] font-bold tracking-wider uppercase text-[#A29889]'
-  const IN = 'border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 text-[13px] w-full'
+  const K = 'text-[9.5px] font-bold tracking-wider uppercase text-faint'
+  const IN = 'border border-line rounded-lg px-2.5 py-1.5 text-[13px] w-full'
 
   return (
-    <div className="bg-white border border-[#E8E1D6] rounded-xl px-5 py-4 mb-4">
+    <div className="bg-card border border-line rounded-xl px-5 py-4 mb-4">
       {askPosition && (
         <PositionAtSettlement deal={deal} onDone={() => {
           setAskPosition(false)
@@ -282,15 +282,15 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
             <div key={s.key} className="flex items-center gap-2.5 text-[13px] flex-wrap">
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#12A150" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.4 L6.2 11.4 L13 4.6"/></svg>
               <span className="font-semibold">{labelOf(s.key, s.label, deal)}</span>
-              <span className="text-[#A29889]">{fmtDate(deal[s.key])}</span>
+              <span className="text-faint">{fmtDate(deal[s.key])}</span>
               {sn && (
                 /* num(null) is 0, and money(0) is "$0" - so a stage recorded with
                    no amount used to claim the loan lodged for nothing. */
-                <span className="text-[#6E665C] tabular-nums">
+                <span className="text-muted tabular-nums">
                   {sn.lender}{sn.lender ? ' \u00b7 ' : ''}
                   {num(sn.total_amount) > 0
                     ? money(num(sn.total_amount))
-                    : <i className="text-[#946017] not-italic">amount not recorded</i>}
+                    : <i className="text-chase not-italic">amount not recorded</i>}
                 </span>
               )}
             </div>
@@ -302,8 +302,8 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
           They stay on screen until every split has one - a deal cannot be
           matched to the RCTI without them. */}
       {deal.settled_at && loanIdStatus(deal).tone !== 'complete' && !askLoanIds && (
-        <div className="border border-[#EBD9BE] bg-[#FDF6EC] rounded-xl px-4 py-3.5 mb-4">
-          <div className={K + ' mb-2'} style={{ color: '#946017' }}>{loanIdStatus(deal).label}</div>
+        <div className="border border-chase-edge bg-chase-bg rounded-xl px-4 py-3.5 mb-4">
+          <div className={K + ' mb-2'} style={{ color: 'var(--color-chase)' }}>{loanIdStatus(deal).label}</div>
           <LoanIds deal={deal} onSaved={splits => onUpdated?.({ settled_splits: splits })} />
         </div>
       )}
@@ -323,7 +323,7 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
           opens the same box. Recording a position twice is not a problem - the
           second one is a correction, and the history keeps both. */}
       {deal.settled_at && !askPosition && (
-        <div className="border border-[#E8E1D6] bg-[#FDFCFA] rounded-xl px-4 py-3 mb-4 flex items-center gap-3 flex-wrap">
+        <div className="border border-line bg-[#FDFCFA] rounded-xl px-4 py-3 mb-4 flex items-center gap-3 flex-wrap">
           <div className="flex-1 min-w-[220px]">
             <div className="text-[12.5px] font-semibold text-[#3B3B3B]">The client&rsquo;s position</div>
             <div className="text-[11.5px] text-gray-500 leading-relaxed mt-0.5">
@@ -332,14 +332,14 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
             </div>
           </div>
           <button onClick={() => setAskPosition(true)}
-            className="text-[12px] font-semibold rounded-lg px-3 py-1.5 border border-[#DDE2E6] bg-white text-[#2E3439] hover:bg-[#F6F7F9]">
+            className="text-[12px] font-semibold rounded-lg px-3 py-1.5 border border-[#DDE2E6] bg-card text-ink hover:bg-[#F6F7F9]">
             Record it
           </button>
         </div>
       )}
 
       {available.length === 0 ? (
-        <div className="text-[13px] text-[#6E665C] flex items-center gap-3 flex-wrap">
+        <div className="text-[13px] text-muted flex items-center gap-3 flex-wrap">
           <span>Settled. Nothing further to record here.</span>
           {/* Quiet on purpose. A settled deal is finished, and this is for the
               case where somebody forgot to tick a stage on the way through -
@@ -356,7 +356,7 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
           <div className="text-[13px] font-semibold mb-1">
             {fillingGaps ? 'Which date was missed?' : 'What happened next?'}
           </div>
-          <div className="text-[12px] text-[#A29889] mb-3">
+          <div className="text-[12px] text-faint mb-3">
             {fillingGaps
               ? 'This deal has already settled. Recording one of these fills a gap in its history; it does not move the deal.'
               : <>Whichever one it was. A deal can go straight to formal approval &mdash; preapproval is
@@ -365,7 +365,7 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
           <div className="flex gap-2 flex-wrap">
             {available.map(s => (
               <button key={s.key} onClick={() => setPickedKey(s.key)}
-                className="text-[13px] border border-[#E8E1D6] bg-white text-[#2E2A26] rounded-lg px-4 py-2 hover:bg-[#FAF7F2] hover:border-[#D6CCBC] transition">
+                className="text-[13px] border border-line bg-card text-ink rounded-lg px-4 py-2 hover:bg-page hover:border-[#D6CCBC] transition">
                 {s.label}
               </button>
             ))}
@@ -379,7 +379,7 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
               <button onClick={() => { setPickedKey(''); setConfirming(false); setErr('') }}
                 className="font-normal text-[12px] text-[#2DBEFF] hover:underline">change</button>
             )}
-            {prior && <span className="font-normal text-[#A29889]"> &mdash; checked against {stage.snap === 'settled' && snaps.formal ? 'formal approval' : 'lodgement'}</span>}
+            {prior && <span className="font-normal text-faint"> &mdash; checked against {stage.snap === 'settled' && snaps.formal ? 'formal approval' : 'lodgement'}</span>}
           </div>
 
           {stage.snap && (
@@ -410,7 +410,7 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
                     <input className={IN} value={lenderRef} placeholder="the number they gave you"
                       onChange={e => setLenderRef(e.target.value)} />
                   </label>
-                  <p className="m-0 mt-1 text-[11px] text-[#A29889]">
+                  <p className="m-0 mt-1 text-[11px] text-faint">
                     Not the Loan ID &mdash; that comes at settlement. This is what the bank calls the
                     application while it is with them.
                   </p>
@@ -430,10 +430,10 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
                           in the portal groups its thousands; this one did not, so
                           100000 and 1000000 read the same at a glance - on the box
                           that decides what gets reported as settled. */}
-                      <CurrencyInput className={IN + (amtChanged ? ' bg-[#FFF8EC] border-[#F0DCB4]' : '')} value={s.amount}
+                      <CurrencyInput className={IN + (amtChanged ? ' bg-chase-bg border-chase-edge' : '')} value={s.amount}
                         onChange={v => setSplit(i, 'amount', v)} placeholder="Amount" />
                       <input className={IN} value={s.rate} onChange={e => setSplit(i, 'rate', e.target.value)} placeholder="Rate" />
-                      <select className={IN + (typChanged ? ' bg-[#FFF8EC] border-[#F0DCB4]' : '')} value={s.type}
+                      <select className={IN + (typChanged ? ' bg-chase-bg border-chase-edge' : '')} value={s.type}
                         onChange={e => setSplit(i, 'type', e.target.value)}>
                         {TYPES.map(t => <option key={t}>{t}</option>)}
                       </select>
@@ -445,7 +445,7 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
                           and this is not drawn at all. */}
                       <button onClick={() => setSplits(splits.filter((_, j) => j !== i))}
                         title="Remove this split"
-                        className="text-[#A29889] hover:text-[#B91C1C] text-[15px] leading-none px-1.5">
+                        className="text-faint hover:text-[#B91C1C] text-[15px] leading-none px-1.5">
                         &times;
                       </button>
                     </div>
@@ -459,7 +459,7 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
                 <span className={K}>Total</span>
                 <span className="font-bold tabular-nums">{money(total)}</span>
                 {prior && total !== priorTotal && (
-                  <span className={'tabular-nums font-semibold ' + (total > priorTotal ? 'text-[#12A150]' : 'text-[#B04A4A]')}>
+                  <span className={'tabular-nums font-semibold ' + (total > priorTotal ? 'text-done' : 'text-chase')}>
                     {total > priorTotal ? '+' : '\u2212'}{money(Math.abs(total - priorTotal))} vs {money(priorTotal)}
                   </span>
                 )}
@@ -477,7 +477,7 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
               className="bg-[#2DBEFF] text-white text-[13.5px] font-semibold rounded-lg px-4 py-2.5 hover:bg-[#25AEEC] transition">
               {stage.verb}
             </button>
-            <span className="text-[11.5px] text-[#A29889]">Opens a confirmation before anything is recorded.</span>
+            <span className="text-[11.5px] text-faint">Opens a confirmation before anything is recorded.</span>
           </div>
           {err && <div className="text-[12.5px] font-semibold text-red-600 mt-3">{err}</div>}
         </div>
@@ -485,20 +485,20 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
 
       {confirming && stage && (
         <div className="fixed inset-0 bg-black/25 flex items-center justify-center z-50 p-4" onClick={() => setConfirming(false)}>
-          <div className="bg-white rounded-2xl w-[540px] max-w-full shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="bg-card rounded-2xl w-[540px] max-w-full shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="px-6 pt-5 pb-3 border-b border-[#F1ECE4]">
               <div className="text-[16.5px] font-bold">Confirm {stage.label.toLowerCase()}</div>
-              <div className="text-[12.5px] text-[#A29889] mt-0.5">
+              <div className="text-[12.5px] text-faint mt-0.5">
                 {prior && changed ? 'Some figures differ from the previous stage. Check before recording.'
                   : 'Check these details before the deal moves on.'}
               </div>
             </div>
             <div className="px-6 py-4 text-[13px]">
               <div className="flex justify-between gap-4 mb-2">
-                <span className="text-[#A29889]">Deal</span><span className="font-semibold text-right">{deal.deal_name}</span>
+                <span className="text-faint">Deal</span><span className="font-semibold text-right">{deal.deal_name}</span>
               </div>
               {stage.snap && <>
-                <div className="grid grid-cols-[1.3fr_1fr_1fr] gap-2 py-1.5 border-b border-[#F1ECE4] text-[11.5px] text-[#A29889]">
+                <div className="grid grid-cols-[1.3fr_1fr_1fr] gap-2 py-1.5 border-b border-[#F1ECE4] text-[11.5px] text-faint">
                   <span>Field</span><span>{prior ? 'Previous' : ''}</span><span>Now</span>
                 </div>
                 <Cmp k="Lender" was={prior?.lender} now={lender} />
@@ -511,7 +511,7 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
                 <Cmp k="Total" was={prior ? money(priorTotal) : ''} now={money(total)} bold />
               </>}
               <div className="flex justify-between gap-4 mt-2">
-                <span className="text-[#A29889]">{stage.label} on</span>
+                <span className="text-faint">{stage.label} on</span>
                 <span className="font-semibold text-right">{fmtDate(when)}</span>
               </div>
             </div>
@@ -519,19 +519,19 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
                 add up to it. Never rewritten for them - several splits are a
                 breakdown only a person can do - but never silent either. */}
             {contractedLoan > 0 && Math.round(total) !== Math.round(contractedLoan) && (
-              <div className="mx-6 mb-3 bg-[#FFF8EC] border border-[#F6E3C0] rounded-lg px-3 py-2.5 text-[11.5px] text-[#8A6320]">
+              <div className="mx-6 mb-3 bg-chase-bg border border-chase-edge rounded-lg px-3 py-2.5 text-[11.5px] text-chase">
                 The offer accepted panel recorded <b>{money(contractedLoan)}</b>, and these splits
                 total <b>{money(total)}</b>. The offer figure is what commission and the settlement
                 board read &mdash; check which one is right before recording.
               </div>
             )}
             {stage.snap === 'lodged' && overrode && (
-              <div className="mx-6 mb-3 bg-[#FFF8EC] border border-[#F6E3C0] rounded-lg px-3 py-2.5 text-[11.5px] text-[#8A6320]">
+              <div className="mx-6 mb-3 bg-chase-bg border border-chase-edge rounded-lg px-3 py-2.5 text-[11.5px] text-chase">
                 Client selected {chosen} over the originally recommended {lo.recommendedLender}. Lodging against the client&apos;s selection.
               </div>
             )}
             {prior && changed && (
-              <div className="mx-6 mb-3 bg-[#FFF8EC] border border-[#F6E3C0] rounded-lg px-3 py-2.5 text-[11.5px] text-[#8A6320]">
+              <div className="mx-6 mb-3 bg-chase-bg border border-chase-edge rounded-lg px-3 py-2.5 text-[11.5px] text-chase">
                 Figures have changed since the previous stage. Both versions are kept &mdash; commission is calculated from what settles.
               </div>
             )}
@@ -545,14 +545,14 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
             {needsSalestrekker(stage.key) && (() => {
               const r = salestrekkerReminder(stage.key)!
               return (
-                <div className="mx-6 mb-3 bg-[#FFF8EC] border border-[#F0DCB4] rounded-lg px-3.5 py-3">
-                  <div className="text-[12.5px] font-semibold text-[#7a4a08] mb-1">
+                <div className="mx-6 mb-3 bg-chase-bg border border-chase-edge rounded-lg px-3.5 py-3">
+                  <div className="text-[12.5px] font-semibold text-chase mb-1">
                     SalesTrekker does not know about this yet
                   </div>
-                  <div className="text-[12.5px] text-[#92400E] leading-relaxed">
+                  <div className="text-[12.5px] text-chase leading-relaxed">
                     {r.before}<b>{r.status}</b>{r.after}. {SALESTREKKER_WHY}
                   </div>
-                  <label className="flex items-start gap-2 mt-2.5 text-[12.5px] text-[#7a4a08] cursor-pointer">
+                  <label className="flex items-start gap-2 mt-2.5 text-[12.5px] text-chase cursor-pointer">
                     <input type="checkbox" className="mt-[3px]" checked={stUpdated}
                       onChange={e => setStUpdated(e.target.checked)} />
                     <span>{SALESTREKKER_TICK}</span>
@@ -562,7 +562,7 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
             })()}
             <div className="px-6 py-4 border-t border-[#F1ECE4] flex justify-end gap-2">
               <button onClick={() => setConfirming(false)}
-                className="text-[13px] text-[#6E665C] border border-[#E8E1D6] rounded-lg px-4 py-2">Cancel</button>
+                className="text-[13px] text-muted border border-line rounded-lg px-4 py-2">Cancel</button>
               <button onClick={confirmIt} disabled={saving || (needsSalestrekker(stage?.key) && !stUpdated)}
                 title={needsSalestrekker(stage?.key) && !stUpdated ? 'Tick that SalesTrekker is updated first' : undefined}
                 className="bg-[#2DBEFF] text-white text-[13px] font-semibold rounded-lg px-4 py-2 disabled:opacity-50">
@@ -576,13 +576,13 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
       {askLoanIds && (
         <div className="fixed inset-0 bg-black/30 flex items-start justify-center z-50 p-6 overflow-y-auto"
              onClick={() => setAskLoanIds(false)}>
-          <div className="bg-white border border-[#E8E1D6] rounded-2xl px-6 py-5 max-w-[640px] w-full mt-16 shadow-xl"
+          <div className="bg-card border border-line rounded-2xl px-6 py-5 max-w-[640px] w-full mt-16 shadow-xl"
                onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-2.5 mb-1">
               <svg width="19" height="19" viewBox="0 0 16 16" fill="none" stroke="#12A150" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.4 L6.2 11.4 L13 4.6"/></svg>
-              <span className="text-[15px] font-semibold text-[#221F1B]">Settled &mdash; {fmtDate(deal.settled_at || when)}</span>
+              <span className="text-[15px] font-semibold text-ink">Settled &mdash; {fmtDate(deal.settled_at || when)}</span>
             </div>
-            <p className="text-[12.5px] text-[#A29889] m-0 mb-4">Last thing.</p>
+            <p className="text-[12.5px] text-faint m-0 mb-4">Last thing.</p>
             <LoanIds deal={deal}
               onSaved={splits => { onUpdated?.({ settled_splits: splits }); setAskLoanIds(false) }}
               onSkip={() => setAskLoanIds(false)} />
@@ -597,9 +597,9 @@ function Cmp({ k, was, now, bold }: { k: string; was?: any; now: any; bold?: boo
   const diff = was && String(was) !== String(now)
   return (
     <div className="grid grid-cols-[1.3fr_1fr_1fr] gap-2 py-1.5 border-b border-[#F1ECE4] last:border-0">
-      <span className="text-[#A29889] text-[12px]">{k}</span>
-      <span className="text-[#A29889] tabular-nums">{was || ''}</span>
-      <span className={(bold ? 'font-bold ' : 'font-semibold ') + 'tabular-nums ' + (diff ? 'text-[#8A6320]' : '')}>{now}</span>
+      <span className="text-faint text-[12px]">{k}</span>
+      <span className="text-faint tabular-nums">{was || ''}</span>
+      <span className={(bold ? 'font-bold ' : 'font-semibold ') + 'tabular-nums ' + (diff ? 'text-chase' : '')}>{now}</span>
     </div>
   )
 }

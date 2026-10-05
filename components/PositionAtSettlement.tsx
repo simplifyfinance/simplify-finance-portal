@@ -55,7 +55,7 @@ export default function PositionAtSettlement({ deal, onDone }: {
   if (linked.length === 0) {
     return (
       <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl p-6 w-[480px] shadow-xl">
+        <div className="bg-card rounded-2xl p-6 w-[480px] shadow-xl">
           <div className="text-[15.5px] font-semibold mb-1">Nothing to record against</div>
           <p className="text-[12.5px] text-gray-500 leading-relaxed mb-4">
             The deal has settled and that is saved. But no applicant on it is linked to a
@@ -66,7 +66,7 @@ export default function PositionAtSettlement({ deal, onDone }: {
           </p>
           <div className="flex justify-end">
             <button onClick={onDone}
-              className="px-4 py-2 text-[12.5px] bg-[#343333] text-white rounded-lg font-semibold hover:bg-[#2a2a2a]">
+              className="px-4 py-2 text-[12.5px] bg-ink text-page rounded-lg font-semibold hover:opacity-90">
               Understood
             </button>
           </div>
@@ -141,7 +141,7 @@ export default function PositionAtSettlement({ deal, onDone }: {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl p-6 w-[540px] max-h-[88vh] overflow-y-auto shadow-xl">
+      <div className="bg-card rounded-2xl p-6 w-[540px] max-h-[88vh] overflow-y-auto shadow-xl">
         <div className="text-[15.5px] font-semibold mb-1">Update the client record?</div>
         <p className="text-[12.5px] text-gray-500 leading-relaxed mb-4">
           This deal has settled. Replacing a client&rsquo;s position writes what this Fact Find
@@ -176,12 +176,12 @@ export default function PositionAtSettlement({ deal, onDone }: {
                   {next.assets.length} asset{next.assets.length === 1 ? '' : 's'}
                 </b>
                 {countIn(next) === 0 && (
-                  <span className="block mt-1 text-[#B45309]">
+                  <span className="block mt-1 text-chase">
                     Nothing on this Fact Find is recorded as theirs. Saving this would leave their record empty.
                   </span>
                 )}
                 {next.unconfirmed > 0 && (
-                  <span className="block mt-1 text-[#B45309]">
+                  <span className="block mt-1 text-chase">
                     {next.unconfirmed} {next.unconfirmed === 1 ? 'item has' : 'items have'} nobody
                     recorded as the owner. {next.unconfirmed === 1 ? 'It is' : 'They are'} going on
                     both records, marked as needing confirming, rather than being dropped.
@@ -197,7 +197,7 @@ export default function PositionAtSettlement({ deal, onDone }: {
         <SaveTheAssessment deal={deal} when="settled" />
 
         {historyWarning && (
-          <div className="bg-[#FFF8EC] border border-[#F0DCB4] text-[#92400E] rounded-lg px-3 py-2.5 text-[12.5px] leading-relaxed mb-3">
+          <div className="bg-chase-bg border border-chase-edge text-chase rounded-lg px-3 py-2.5 text-[12.5px] leading-relaxed mb-3">
             {historyWarning}
           </div>
         )}
@@ -216,7 +216,7 @@ export default function PositionAtSettlement({ deal, onDone }: {
             Not now
           </button>
           <button onClick={save} disabled={busy}
-            className="px-4 py-2 text-[12.5px] bg-[#343333] text-white rounded-lg font-semibold hover:bg-[#2a2a2a] disabled:opacity-40">
+            className="px-4 py-2 text-[12.5px] bg-ink text-page rounded-lg font-semibold hover:opacity-90 disabled:opacity-40">
             {busy ? 'Saving...' : 'Save'}
           </button>
         </div>

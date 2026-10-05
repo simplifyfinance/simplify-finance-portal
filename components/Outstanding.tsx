@@ -27,7 +27,7 @@ import { dayMonth } from '@/lib/same-date-everywhere'
 
 const CHIP: Record<WaitingOn, string> = {
   client: 'text-[#1D4ED8] bg-[#EFF6FF] border-[#BFDBFE]',
-  lender: 'text-[#8A6218] bg-[#FDF6EC] border-[#EBD9BE]',
+  lender: 'text-waiting bg-waiting-bg border-waiting-edge',
   us:     'text-[#166534] bg-[#ECFDF5] border-[#BBF7D0]',
 }
 
@@ -88,22 +88,22 @@ export default function Outstanding({ deal, me, onUpdated }: {
 
   return (
     <div className={`mb-6 rounded-xl border px-4 py-3.5 ${
-      tone === 'late' ? 'border-[#E9D2CF] bg-[#FDF3F2]'
-      : tone === 'warn' ? 'border-[#EBD9BE] bg-[#FDF6EC]'
-      : 'border-[#E8E1D6] bg-white'}`}>
+      tone === 'late' ? 'border-chase-edge bg-chase-bg'
+      : tone === 'warn' ? 'border-chase-edge bg-chase-bg'
+      : 'border-line bg-card'}`}>
 
       <div className="flex items-baseline gap-2 flex-wrap mb-1">
-        <span className="text-[10px] font-bold tracking-[.07em] uppercase text-[#A29889]">
+        <span className="text-[10px] font-bold tracking-[.07em] uppercase text-faint">
           {here ? 'Outstanding' : 'Has the lender come back with conditions?'}
         </span>
         {here && deal.outstanding_at && (
-          <span className="text-[11px] text-[#A29889]">
+          <span className="text-[11px] text-faint">
             conditionally approved {dayMonth(deal.outstanding_at)}
           </span>
         )}
         {waitDays !== null && (
           <span className={`text-[11px] font-semibold ${
-            tone === 'late' ? 'text-[#8E3A34]' : tone === 'warn' ? 'text-[#8A6218]' : 'text-[#A29889]'}`}>
+            tone === 'late' ? 'text-chase' : tone === 'warn' ? 'text-chase' : 'text-faint'}`}>
             oldest {waitDays} day{waitDays === 1 ? '' : 's'}
           </span>
         )}
@@ -114,7 +114,7 @@ export default function Outstanding({ deal, me, onUpdated }: {
       )}
 
       {!here && !open && (
-        <p className="text-[12.5px] text-[#7A7266]">
+        <p className="text-[12.5px] text-muted">
           Record what they asked for and this deal moves to Outstanding, so it stops looking like one
           nobody has heard from.{' '}
           <button onClick={() => setOpen(true)}
@@ -131,11 +131,11 @@ export default function Outstanding({ deal, me, onUpdated }: {
                 <button disabled={busy} onClick={() => tick(i.id, !got)}
                   aria-label={got ? 'Mark as not received' : 'Mark as received'}
                   className={`mt-[3px] w-[17px] h-[17px] rounded-[4px] border-[1.5px] flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                    got ? 'bg-[#0F7B4F] border-[#0F7B4F] text-white' : 'bg-white border-[#CBD2D8]'}`}>
+                    got ? 'bg-[#0F7B4F] border-[#0F7B4F] text-white' : 'bg-card border-[#CBD2D8]'}`}>
                   {got ? '✓' : ''}
                 </button>
                 <div className="flex-1 min-w-0">
-                  <div className={`text-[13px] leading-snug ${got ? 'text-[#A29889] line-through' : 'text-[#221F1B]'}`}>
+                  <div className={`text-[13px] leading-snug ${got ? 'text-faint line-through' : 'text-ink'}`}>
                     {i.what}
                     {!got && (
                       <span className={`ml-1.5 align-[1px] inline-block text-[9px] font-bold tracking-[.04em] uppercase border rounded px-1.5 py-[1px] ${CHIP[i.waitingOn]}`}>
@@ -143,14 +143,14 @@ export default function Outstanding({ deal, me, onUpdated }: {
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] text-[#A29889] mt-[2px]">
+                  <div className="text-[11px] text-faint mt-[2px]">
                     {got
                       ? `Received ${dayMonth(i.receivedAt!)}${i.receivedBy ? ` by ${i.receivedBy}` : ''}`
                       : `Asked ${dayMonth(i.askedAt)}`}
                   </div>
                 </div>
                 <button disabled={busy} onClick={() => save({ outstanding_items: withoutItem(deal, i.id) })}
-                  className="text-[11px] text-[#C3BDB2] hover:text-[#8E3A34] shrink-0">remove</button>
+                  className="text-[11px] text-faint hover:text-chase shrink-0">remove</button>
               </div>
             )
           })}
@@ -164,17 +164,17 @@ export default function Outstanding({ deal, me, onUpdated }: {
             placeholder="What did the lender ask for?"
             className="flex-1 min-w-[220px] text-[13px] border border-[#E3E6E8] rounded-lg px-3 py-1.5" />
           <select value={who} onChange={e => setWho(e.target.value as WaitingOn)}
-            className="text-[12.5px] border border-[#E3E6E8] rounded-lg px-2 py-1.5 bg-white">
+            className="text-[12.5px] border border-[#E3E6E8] rounded-lg px-2 py-1.5 bg-card">
             <option value="client">Waiting on the client</option>
             <option value="lender">Waiting on the lender</option>
             <option value="us">Waiting on us</option>
           </select>
           <button disabled={busy || !what.trim()} onClick={addItem}
-            className="text-[12px] font-semibold bg-[#221F1B] text-white rounded-lg px-3 py-1.5 disabled:opacity-40">
+            className="text-[12px] font-semibold bg-ink text-page rounded-lg px-3 py-1.5 disabled:opacity-40">
             Add
           </button>
           <button onClick={() => { setOpen(false); setWhat('') }}
-            className="text-[12px] text-[#A29889]">Cancel</button>
+            className="text-[12px] text-faint">Cancel</button>
         </div>
       ) : here && (
         <button onClick={() => setOpen(true)}
@@ -195,14 +195,14 @@ export default function Outstanding({ deal, me, onUpdated }: {
             className="text-[12px] font-semibold bg-[#0F7B4F] text-white rounded-lg px-3 py-1.5 mr-2 disabled:opacity-40">
             Yes — move to Preapproved
           </button>
-          <span className="text-[12px] text-[#A29889]">
+          <span className="text-[12px] text-faint">
             Not yet? Leave it. The deal stays here, waiting on the lender.
           </span>
         </div>
       )}
 
       {err && (
-        <p className="mt-2.5 border border-[#E9D2CF] bg-[#FDF3F2] rounded-lg px-3 py-2 text-[12.5px] text-[#8E3A34]">{err}</p>
+        <p className="mt-2.5 border border-chase-edge bg-chase-bg rounded-lg px-3 py-2 text-[12.5px] text-chase">{err}</p>
       )}
     </div>
   )

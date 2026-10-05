@@ -34,7 +34,7 @@ export function SaveIndicator({ status }: { status?: SaveStatus }) {
 
   const skin = line.tone === 'bad'
     ? 'bg-red-100 text-red-700'
-    : 'bg-amber-100 text-amber-800'
+    : 'bg-chase-bg text-chase'
 
   return (
     <span data-save={status.stage} className={`inline-flex items-center gap-1.5 text-xs font-semibold rounded-full px-2.5 py-0.5 whitespace-nowrap ${skin}`}>

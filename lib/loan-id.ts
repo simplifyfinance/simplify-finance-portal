@@ -96,7 +96,7 @@ export function applyLoanIds(deal: any, values: string[]): any[] {
 // instead of finding out about it with a week to go.
 export const QUIET_DAYS = 15
 
-export type LoanIdTone = 'not_settled' | 'complete' | 'quiet' | 'amber'
+export type LoanIdTone = 'not_settled' | 'complete' | 'quiet' | 'chase'
 
 export type LoanIdStatus = {
   tone: LoanIdTone
@@ -129,13 +129,13 @@ export function loanIdStatus(deal: any, now: Date = new Date()): LoanIdStatus {
     return { tone: 'complete', rows, missing, total: rows.length, days, label: 'Loan ID recorded' }
   }
   const part = rows.length > 1 ? `${missing} of ${rows.length} Loan IDs` : 'Loan ID'
-  const tone: LoanIdTone = (days ?? 0) >= QUIET_DAYS ? 'amber' : 'quiet'
+  const tone: LoanIdTone = (days ?? 0) >= QUIET_DAYS ? 'chase' : 'quiet'
   return {
     tone,
     rows,
     missing,
     total: rows.length,
     days,
-    label: tone === 'amber' ? `${part} needed - RCTI is due` : `${part} needed`,
+    label: tone === 'chase' ? `${part} needed - RCTI is due` : `${part} needed`,
   }
 }

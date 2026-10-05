@@ -103,7 +103,7 @@ export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; on
           <span className={`text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[2px] border ${
             attention.level === 'stale'
               ? 'bg-[#FBEDE9] border-[#EFCFC5] text-[#C4553B]'
-              : 'bg-[#FDF6E7] border-[#EFE0BC] text-[#9A7B2E]'}`}>
+              : 'bg-waiting-bg border-waiting-edge text-waiting'}`}>
             {attention.why}
           </span>
         )}

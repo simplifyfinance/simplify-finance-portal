@@ -88,21 +88,21 @@ export default function WhoIsDoingTheBc({ deal, onUpdated }: {
   }
 
   return (
-    <div className="bg-[#FFF8E6] border border-[#F0DCB4] rounded-xl px-4 py-3 mb-4">
+    <div className="bg-chase-bg border border-chase-edge rounded-xl px-4 py-3 mb-4">
       <div className="flex items-center gap-2.5 flex-wrap">
-        <span className="text-[13px] font-semibold text-[#7a5a14]">Who is doing the borrowing capacity?</span>
+        <span className="text-[13px] font-semibold text-chase">Who is doing the borrowing capacity?</span>
         <button onClick={takeItMyself} disabled={sending}
-          className="px-3 py-1.5 text-xs rounded-lg border border-[#E3E6E8] bg-white text-[#4A5158] hover:bg-gray-50 disabled:opacity-50">
+          className="px-3 py-1.5 text-xs rounded-lg border border-[#E3E6E8] bg-card text-[#4A5158] hover:bg-gray-50 disabled:opacity-50">
           I&apos;ll do this myself
         </button>
         <button onClick={sendToCreditTeam} disabled={sending}
-          className="px-3 py-1.5 text-xs rounded-lg bg-[#221F1B] text-white font-semibold hover:bg-[#3a3733] disabled:opacity-50">
+          className="px-3 py-1.5 text-xs rounded-lg bg-ink text-page font-semibold hover:opacity-90 disabled:opacity-50">
           {sending ? 'Sending...' : 'Send to credit team'}
         </button>
-        <span className="text-[11.5px] text-[#9A7B36]">Nobody is on it yet.</span>
+        <span className="text-[11.5px] text-chase">Nobody is on it yet.</span>
       </div>
-      {msg && <p className="m-0 mt-2 text-[12px] text-[#15803D]">{msg}</p>}
-      {err && <p className="m-0 mt-2 text-[12px] text-[#8E3A34]">{err}</p>}
+      {msg && <p className="m-0 mt-2 text-[12px] text-done">{msg}</p>}
+      {err && <p className="m-0 mt-2 text-[12px] text-chase">{err}</p>}
     </div>
   )
 }
