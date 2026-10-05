@@ -26,6 +26,12 @@ export type Piece = {
   proof: { file: string; contains: string } | null
 }
 
+// WHERE THE MOCKS LIVE, NOW THAT THEY LIVE SOMEWHERE SAFE.
+// Until 5 Oct 2026 these were in Claude outputs/, which .gitignore ignores -
+// one laptop, no copy, nothing pointing at them. They are in the repo now and
+// the test below fails if one goes missing.
+export const MOCKS = 'docs/approved-looks'
+
 const V4 = 'one-inside-the-deal-v4.html'
 const PAGE = 'app/(app)/deals/[id]/DealPageClient.tsx'
 const RAIL = 'components/DealRail.tsx'

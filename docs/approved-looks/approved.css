@@ -1,0 +1,123 @@
+/* v4 styles its form boxes as .fsec; the approved BC body uses .fs. */
+.fs{border:1px solid var(--cardline);border-radius:10px;padding:12px 13px;margin-bottom:9px;background:var(--panel)}
+.fs .fh{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:10px}
+.fs label{display:block;font-size:11px;font-weight:500;color:var(--muted);margin-bottom:10px}
+.fs .f{margin-top:4px;border:1px solid var(--fieldline);background:var(--field);border-radius:8px;
+ padding:7px 10px;font-size:12.5px;color:var(--ink);min-height:32px;overflow:hidden;text-overflow:ellipsis}
+.fs .f.sel{position:relative;padding-right:26px}
+.fs .f.sel:after{content:"";position:absolute;right:11px;top:13px;width:7px;height:7px;
+ border-right:1.4px solid var(--faint);border-bottom:1.4px solid var(--faint);transform:rotate(45deg) translateY(-2px)}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 12px}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0 12px}
+.g2c{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
+.limwrap .f{border:1px solid var(--fieldline);background:var(--field);border-radius:8px;padding:6px 10px;
+ font-size:12.5px;color:var(--ink)}
+.limwrap .f.money.done{border-color:#BBF7D0}
+:root[data-theme="dark"] .limwrap .f.money.done{border-color:#2F6B47}
+.fs.splt > .fh.band{background:#F5F1E9!important;border-bottom:1px solid var(--cardline);
+ padding:9px 13px!important;margin:0!important}
+:root[data-theme="dark"] .fs.splt > .fh.band{background:#1E232A!important}
+.navrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 10px}
+.subnav2{display:inline-flex;gap:2px;background:var(--track);border-radius:10px;padding:3px}
+.subnav2 span{font-size:12px;font-weight:600;color:var(--muted);padding:6px 14px;border-radius:7px;position:relative}
+.subnav2 span.on{background:var(--panel);color:var(--blue);box-shadow:0 1px 2px rgba(23,20,15,.07)}
+.dot2{position:absolute;top:4px;right:5px;width:5px;height:5px;border-radius:50%;background:#C79A2E}
+.moveto{margin-left:auto;font-size:12px;font-weight:600;color:#fff;background:#141C24;border-radius:9px;padding:8px 14px}
+.scen{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.sp2{font-size:12px;font-weight:600;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:6px 13px}
+.sp2.live{background:#F2FAF5;border-color:#BBE7CF;color:#0F7B4F}
+.sp2.live i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#117A45;margin-right:7px}
+.sp2.add{border-style:dashed;color:var(--blue)}
+.sright{margin-left:auto;display:flex;gap:12px}
+.slink{font-size:11.5px;color:var(--faint)}
+.scennote{font-size:11.5px;color:#0F7B4F;margin:7px 0 0}
+:root[data-theme="dark"] .moveto{background:#E9EDF1;border-color:#E9EDF1;color:#15191E}
+:root[data-theme="dark"] .sp2.live{background:#13301F;border-color:#245C3B;color:#6EE7B7}
+:root[data-theme="dark"] .fs .ta{background:#20252B}
+
+
+
+/* THE BLEND. The panel was white and every section card was white on top of it,
+   with a #F1ECE4 border - invisible. The rail works because white cards sit on
+   the off-white page. Same relationship here: the panel interior is the page,
+   the cards are white. */
+.pnl{background:var(--page)}
+.pnlh,.navrow,.scen,.scennote{background:var(--panel)}
+.pnlh{margin:0 -14px;padding-left:14px;padding-right:14px;border-bottom:1px solid var(--line2)}
+.navrow,.scen,.scennote{margin-left:-14px;margin-right:-14px;padding-left:14px;padding-right:14px}
+.scennote{padding-bottom:12px;border-bottom:1px solid var(--line2);margin-bottom:14px}
+.fs{background:var(--panel);border-color:var(--cardline)}
+.limwrap{background:var(--panel);border-style:solid;border-color:var(--cardline)}
+:root[data-theme="dark"] .fs,:root[data-theme="dark"] .limwrap{background:#272C33;border-color:#454E58}
+:root[data-theme="dark"] .pnl{background:#1A1E23}
+:root[data-theme="dark"] .pnlh,:root[data-theme="dark"] .navrow,
+:root[data-theme="dark"] .scen,:root[data-theme="dark"] .scennote{background:var(--panel)}
+:root[data-theme="dark"] .fs .ta{background:#20252B;color:var(--ink)}
+
+/* the limits belong to the splits that make them, not to a card of their own */
+.limwrap{border:1px dashed var(--line);border-radius:10px;padding:11px 13px;margin:0 0 14px;background:transparent}
+.fh.sub{margin-bottom:8px}
+/* one quiet line instead of three card edges */
+.divide{display:flex;align-items:center;gap:11px;margin:20px 0 12px}
+.divide:before,.divide:after{content:"";height:1px;background:var(--line);flex:1}
+.divide span{font-size:9.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--faint)}
+.fh.sub2{margin:20px 0 10px;padding-top:14px;border-top:1px solid var(--line2)}
+
+/* dark: the band goes DARKER than the card, not lighter - lighter is what blended */
+:root[data-theme="dark"] .fs.splt{border-color:#515B66}
+:root[data-theme="dark"] .fs.splt .fh.band{background:#1E232A;border-bottom-color:#515B66;color:var(--ink)}
+:root[data-theme="dark"] .sn2{background:#2A2F36;border-color:#5B6670;color:#AEB8C2}
+:root[data-theme="dark"] .fs{border-color:#454E58}
+/* and the money shading needs its own dark pair - the cream is a white box in dark */
+:root[data-theme="dark"] .fs .f.money.done{border-color:#2F6B47}
+:root[data-theme="dark"] .fs .f.money.todo{background:#2E2820;border-color:#6B5A33}
+:root[data-theme="dark"] .tc.on{background:#4FBBEA;border-color:#4FBBEA;color:#0F1115}
+
+.tpl{display:flex;flex-wrap:wrap;gap:6px}
+.tc{font-size:12px;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:5px 11px;color:var(--muted)}
+.tc.on{background:#2DBEFF;border-color:#2DBEFF;color:#fff;font-weight:600}
+/* the splits: the same filled strip the rail cards use, so they stop blending */
+.fs.splt{padding:0;overflow:hidden;border-color:var(--cardline)}
+.fs.splt .fh.band{display:flex;align-items:center;gap:9px;background:var(--strip);
+ border-bottom:1px solid var(--cardline);padding:9px 13px;margin:0;color:var(--body)}
+.sn2{width:18px;height:18px;border-radius:50%;background:var(--panel);border:1px solid var(--cardline);
+ color:var(--muted);font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;
+ letter-spacing:0}
+.fs.splt .sb{padding:13px}
+.fs.splt .fh.band .rm{margin-left:auto;float:none}
+.fs .ta{margin-top:4px;border:1px solid var(--fieldline,#DCD5C9);background:var(--field,#fff);border-radius:8px;
+ padding:9px 10px;font-size:12.5px;color:var(--ink);min-height:56px;line-height:1.6}
+.fs label{display:block;font-size:10.5px;color:var(--muted);margin-bottom:10px}
+/* the only shading the form has - BCForm.tsx NumberInput() */
+.fs .f.money.done{border-color:#BBF7D0}
+.fs .f.money.todo{background:#FEFBF5;border-color:#FDE68A}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:9px 12px}
+.g2c{display:grid;grid-template-columns:1fr 1fr;gap:9px 12px;margin-top:4px}
+.fh .rm{float:right;font-size:10px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--faint)}
+.offs{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:4px}
+.offl{font-size:10.5px;color:var(--muted);margin-right:3px}
+.ob2{font-size:11.5px;border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:4px 10px;color:var(--muted)}
+.ob2.on{border-color:var(--blueedge);background:var(--bluebg);color:var(--blue);font-weight:600}
+.addrow{margin:-4px 0 10px}
+.addl3{color:var(--blue);font-size:11.5px;font-weight:650}
+.lim{display:flex;align-items:center;gap:11px;padding:6px 0;border-top:1px solid var(--line2)}
+.lim:first-of-type{border-top:0}
+.lp{font-size:12px;color:var(--ink);min-width:230px}
+.ld{font-size:11px;color:var(--faint)}
+.lf{width:130px;margin-left:auto;padding:5px 9px!important;min-height:0!important}
+.lu{font-size:11px;color:var(--muted);min-width:120px;text-align:right}
+.ck3{display:flex;align-items:center;gap:9px;font-size:12.3px;color:var(--body);padding:5px 0;border-top:1px solid var(--line2)}
+.ck3:first-of-type{border-top:0}
+/* B - the tick gets a pale green disc behind it */
+.tick{width:17px;height:17px;border-radius:50%;background:#EDF8F2;color:#117A45;flex:0 0 17px;
+ font-size:9.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+:root[data-theme="dark"] .tick{background:#123328;color:#6EE7B7}
+.rx{margin-left:auto;color:var(--faint)}
+.addrow2{display:flex;gap:8px;align-items:center;margin-top:9px}
+.addin{flex:1;color:var(--faint)!important}
+.addbtn{font-size:11.5px;color:var(--muted);border:1px solid var(--line);border-radius:7px;padding:5px 12px}
+.genrow{display:flex;justify-content:flex-end;margin-top:4px}
+/* the same shape as "Client agreed - move to LO", because it is the same kind of thing */
+.gen{font-size:12.5px;font-weight:600;color:#fff;background:#141C24;border:1px solid #141C24;
+ border-radius:9px;padding:8px 18px;letter-spacing:.01em}
+:root[data-theme="dark"] .gen{background:#E9EDF1;border-color:#E9EDF1;color:#15191E}

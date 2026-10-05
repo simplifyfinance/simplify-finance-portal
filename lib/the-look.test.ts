@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync } from 'fs'
-import { THE_LOOK, built, outstanding } from './the-look'
+import { THE_LOOK, built, outstanding, MOCKS } from './the-look'
 
 // EVERY CLAIM IN lib/the-look.ts HAS TO BE TRUE.
 //
@@ -108,5 +108,29 @@ describe('the rail stays open on a locked deal', () => {
     expect(src, 'the PDF box returns nothing when the deal is locked')
       .not.toMatch(/if \(\s*isLocked\([^)]*\)\s*\)\s*return/)
     expect(src).toMatch(/\{!isLocked\(deal\) && \(/)
+  })
+})
+
+// THE MOCKS THEMSELVES CANNOT GO MISSING.
+//
+// Every mock named in the list has to be a real file in docs/approved-looks.
+// Delete one and the ship stops - which is the whole point, because for weeks
+// they lived in an ignored folder with no copy anywhere.
+describe('every approved mock is still in the repo', () => {
+  const named = [...new Set(THE_LOOK.map(p => p.mock))]
+
+  it('there is at least one', () => {
+    expect(named.length).toBeGreaterThan(0)
+  })
+
+  for (const m of named) {
+    it(`${m} is still there`, () => {
+      expect(existsSync(`${MOCKS}/${m}`),
+        `${m} is named in the look list but is not in ${MOCKS} - it is the spec, it cannot be deleted`).toBe(true)
+    })
+  }
+
+  it('and the folder says what each one settles', () => {
+    expect(existsSync(`${MOCKS}/README.md`)).toBe(true)
   })
 })

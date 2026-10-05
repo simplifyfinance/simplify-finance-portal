@@ -1,0 +1,857 @@
+<!doctype html><html lang="en" data-theme="light"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Inside the deal &mdash; v4</title>
+<style>
+:root[data-theme="light"]{--page:#F7F4EF;--panel:#FFFFFF;--card:#FFFFFF;--line:#E8E2D8;--line2:#F1ECE4;
+ --cardline:#DFD8CC;--field:#FFFFFF;--fieldline:#DCD5C9;--ink:#17140F;--body:#4D4841;--muted:#6F6A62;--faint:#A79F93;
+ --brand:#4FBBEA;--blue:#107EA8;--bluebg:#EAF7FE;--blueedge:#BFE4F7;--green:#117A45;--greenbg:#EFFAF4;--greenedge:#BFE6D2;
+ --purple:#5B3A9E;--purplebg:#F4F1FC;--purpleedge:#DACFF1;--red:#A3302A;--redbg:#FDF3F2;--rededge:#EBD1CE;
+ --greenpale:#8CC9A8;--greenmid:#4FA377;--cardred:#FDF4F3;--cardrededge:#EEC9C5;--onbrand:#0F1115;--rail:#FBF9F5;--track:#F1ECE4}
+:root[data-theme="dark"]{--page:#1C2025;--panel:#24282E;--card:#2A2F36;--line:#383E46;--line2:#30353C;
+ --cardline:#3A4049;--field:#1A1E23;--fieldline:#3C434C;--ink:#E9EDF1;--body:#C2CAD2;--muted:#9AA4AE;--faint:#737E89;
+ --brand:#4FBBEA;--blue:#6FD3FF;--bluebg:#123143;--blueedge:#20556E;--green:#6EE7B7;--greenbg:#123328;--greenedge:#215C4B;
+ --purple:#B49BF0;--purplebg:#282140;--purpleedge:#45366E;--red:#FF8E7F;--redbg:#3F2320;--rededge:#65362E;
+ --greenpale:#2C6A51;--greenmid:#49A97F;--cardred:#33241F;--cardrededge:#60352C;--onbrand:#0F1115;--rail:#21252B;--track:#30353C}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--body);padding-bottom:60px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
+.wrap{max-width:1200px;margin:0 auto;padding:0 18px}
+.bar{position:sticky;top:0;z-index:70;background:var(--panel);border-bottom:1px solid var(--line);padding:9px 0;margin-bottom:18px}
+.bar .in{max-width:1200px;margin:0 auto;padding:0 18px;display:flex;gap:13px;align-items:center;flex-wrap:wrap}
+.seg{display:inline-flex;background:var(--page);border:1px solid var(--line);border-radius:9px;padding:2px}
+.seg button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:11.5px;font-weight:600;padding:5px 12px;border-radius:7px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink)}
+.seglbl{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-right:-8px}
+.note{font-size:11.5px;color:var(--faint);margin:0}
+h1{font-size:22px;margin:16px 0 6px;color:var(--ink)}
+.lede{font-size:13px;line-height:1.65;margin:0 0 14px;max-width:94ch}.lede b{color:var(--ink)}
+h2{font-size:15px;margin:32px 0 6px;padding-top:20px;border-top:2px solid var(--line);color:var(--ink)}
+h2 .n{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:4px}
+.cap{font-size:12.5px;line-height:1.65;margin:0 0 12px;max-width:96ch}.cap b{color:var(--ink)}
+.key{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px 16px;margin-top:12px;font-size:12.5px;line-height:1.7;max-width:96ch}
+.key b{color:var(--ink)}.key p{margin:0 0 10px}.key p:last-child{margin:0}
+table.t{border-collapse:collapse;width:100%;font-size:12px;margin-top:10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+table.t th{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);font-weight:700}
+table.t td{padding:8px 11px;border-bottom:1px solid var(--line2);vertical-align:top;line-height:1.55}
+table.t tr:last-child td{border-bottom:0} table.t td b{color:var(--ink)}
+.tag{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:5px;padding:2px 7px;border:1px solid;white-space:nowrap}
+.tag.keep{color:var(--green);background:var(--greenbg);border-color:var(--greenedge)}
+.tag.rail{color:var(--blue);background:var(--bluebg);border-color:var(--blueedge)}
+.tag.more{color:var(--muted);background:var(--track);border-color:var(--line)}
+.tag.fold{color:var(--purple);background:var(--purplebg);border-color:var(--purpleedge)}
+
+.fullbleed{margin:14px calc(50% - 50vw) 0;padding:0 18px}
+.app{display:flex;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--page);max-width:1640px;margin:0 auto}
+.side{width:204px;min-width:204px;background:#0F1115;display:flex;flex-direction:column;color:#fff}
+.side .bh{padding:17px 14px 14px;border-bottom:1px solid rgba(255,255,255,.09)}
+.side nav{flex:1;padding:11px 8px}
+.side .sec{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.28);padding:0 8px;margin:0 0 7px}
+.side a{display:flex;align-items:center;gap:10px;padding:7px 11px;border-radius:7px;font-size:12px;color:rgba(255,255,255,.6);text-decoration:none;margin-bottom:2px}
+.side a.on{color:#4FBBEA;background:rgba(79,187,234,.12)}
+.main{flex:1;min-width:0;background:var(--page);padding:14px 16px}
+
+.crumb{font-size:11.5px;color:var(--muted);margin-bottom:9px}
+.crumb b{color:var(--ink);font-weight:600}
+.topline{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:3px}
+.h1{font-size:21px;font-weight:650;color:var(--ink);letter-spacing:-.01em}
+.stagepill{font-size:11px;font-weight:650;color:var(--blue);background:var(--bluebg);border:1px solid var(--blueedge);border-radius:8px;padding:3px 10px}
+.saved{font-size:10.5px;font-weight:700;color:var(--green);background:var(--greenbg);border:1px solid var(--greenedge);border-radius:6px;padding:2px 7px}
+.who i{display:inline-flex;width:19px;height:19px;border-radius:50%;color:#fff;font-size:8px;font-weight:700;align-items:center;justify-content:center;font-style:normal;border:1.5px solid var(--page);margin-left:-5px}
+.who i:first-child{margin-left:0}
+.acts{margin-left:auto;display:flex;gap:7px;align-items:center}
+.ab{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--body);background:var(--card);border:1px solid var(--line);border-radius:9px;padding:6px 11px}
+.ab.out{color:var(--blue);border-color:var(--blueedge);background:var(--bluebg);font-weight:600}
+.ab.dark{background:var(--ink);border-color:var(--ink);color:var(--page);font-weight:600}
+/* BROKER AND CREDIT OFFICER ARE CONTROLS, NOT LABELS.
+   Both carry a Reassign, exactly as they do today. An earlier version of this
+   mock drew them as plain text on this line, which is the fault the component's
+   own comment was written about on 17 Sep: "a control nobody can find is a
+   control nobody has." Reassign shows only to somebody who may reassign. */
+.subline{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px}
+.who2{display:inline-flex;align-items:baseline;gap:7px;font-size:12px;color:var(--ink);
+ background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:4px 10px}
+.who2 em{font-style:normal;font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.who2 b{font-weight:600}
+.who2 .re{font-size:11px;font-weight:650;color:var(--blue)}
+.subline b{color:var(--ink);font-weight:600}
+.subline .dot{color:var(--faint);margin:0 7px}
+
+.prompt{display:flex;align-items:center;gap:10px;background:var(--purplebg);border:1px solid var(--purpleedge);
+  border-radius:10px;padding:9px 13px;margin-bottom:10px;font-size:12.5px;color:var(--purple);flex-wrap:wrap}
+.prompt b{color:var(--purple)}
+.prompt .pb{font-size:11.5px;font-weight:600;color:var(--purple);background:var(--panel);border:1px solid var(--purpleedge);border-radius:7px;padding:4px 10px}
+.prompt .sep{width:1px;height:16px;background:var(--purpleedge)}
+
+.railbox{background:var(--panel);border:1px solid var(--cardline);border-radius:11px;padding:12px 14px;margin-bottom:10px}
+/* THE BEAD RAIL, EXACTLY AS IT IS TODAY. 18px bead, 2px connector, the white
+   tick, the 4px halo on the live one. Fabio: "the tick box currently looks
+   nicer" - he is right, so the geometry is copied rather than redrawn. The only
+   change is the two colours: the green becomes the portal's done green and the
+   blue becomes the brand blue, so the bar stops being the last place with its
+   own private palette. The WORDS on the live step take brand-ink, because the
+   brand blue on white reads at 2.2 to 1 and this is the one label people look
+   for. */
+.stg{display:flex;padding:16px 14px 12px}
+.st{position:relative;flex:1;text-align:center;min-width:0}
+.st .ln{position:absolute;top:8px;right:50%;width:100%;height:2px;background:var(--line);z-index:1}
+.st .d{position:relative;z-index:2;width:18px;height:18px;border-radius:50%;margin:0 auto;
+  display:flex;align-items:center;justify-content:center;background:var(--panel);border:2px solid var(--line)}
+/* NUMBER 5: THE RUN DEEPENS AS IT GOES. The earliest stages are pale and the
+   most recent are full green, so the length of what is done reads as progress
+   at a glance without anybody printing a percentage. The live bead keeps its
+   blue ring and its halo - that part is unchanged and is the bit Fabio liked. */
+.st.done .d,.st.done .ln{background:var(--greenpale);border-color:var(--greenpale)}
+.st.done:nth-child(n+3) .d,.st.done:nth-child(n+3) .ln{background:var(--greenmid);border-color:var(--greenmid)}
+.st.done:nth-child(n+5) .d,.st.done:nth-child(n+5) .ln{background:var(--green);border-color:var(--green)}
+.st.now .ln{background:var(--green)}
+.st.now .d{background:var(--panel);border:2px solid var(--brand);box-shadow:0 0 0 4px rgba(79,187,234,.18)}
+.st .l{display:block;font-size:11px;line-height:1.25;margin-top:9px;padding:0 4px;color:var(--faint);font-weight:500}
+.st.done .l{color:var(--body);font-weight:500} .st.now .l{color:var(--blue);font-weight:700}
+.st .sub2{display:block;font-size:10.5px;margin-top:2px;min-height:14px;color:var(--faint)}
+.st.now .sub2{color:var(--blue);font-style:italic}
+
+.tiles{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin-bottom:10px}
+.tile{background:var(--panel);border:1px solid var(--cardline);border-radius:11px;padding:10px 12px}
+.tile .k{font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.tile .v{font-size:17px;font-weight:650;color:var(--ink);letter-spacing:-.01em}
+.tile.money .v{color:var(--green)}
+.tile.chase{background:var(--cardred);border-color:var(--cardrededge)}
+.tile.chase .k{color:var(--red)} .tile.chase .v{color:var(--red);font-size:14px}
+.tile.chase .s{font-size:10px;color:var(--red);opacity:.75;margin-top:2px}
+
+.boxes{display:grid;grid-template-columns:repeat(5,1fr) 1.45fr;gap:9px;margin-bottom:10px}
+.bx{background:var(--panel);border:1px solid var(--cardline);border-radius:11px;padding:11px 12px}
+.bx.on{border-color:var(--brand);background:var(--bluebg);box-shadow:inset 0 0 0 1px var(--brand)}
+.bx .ico{width:28px;height:28px;border-radius:8px;background:var(--track);color:var(--muted);display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.bx.on .ico{background:var(--panel);color:var(--blue)}
+.bx .n{font-size:12.5px;font-weight:650;color:var(--ink);line-height:1.25}
+.bx .s{font-size:11px;color:var(--faint);margin-top:3px}
+.bx .s.done{color:var(--green);font-weight:600}
+.bx .s.work{color:var(--blue);font-weight:600}
+.next{background:var(--panel);border:1px solid var(--cardline);border-radius:11px;padding:11px 13px}
+.next .k{display:flex;align-items:center;gap:6px;font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
+.next .v{font-size:13.5px;font-weight:650;color:var(--ink);line-height:1.35}
+.next .s{font-size:11.5px;color:var(--muted);margin-top:4px}
+
+.body2{display:grid;grid-template-columns:1fr 340px;gap:10px;align-items:start}
+.pnl{background:var(--panel);border:1px solid var(--cardline);border-radius:11px;padding:0 14px 14px}
+.pnlh{display:flex;align-items:center;gap:9px;padding:11px 0 10px;border-bottom:1px solid var(--line2)}
+.pnlh .pi{color:var(--muted)}
+.pt{font-size:13.5px;font-weight:650;color:var(--ink)}
+.pnlh .sv{margin-left:auto;font-size:10.5px;color:var(--green);font-weight:650}
+
+/* THE ONE SUB-NAVIGATION */
+.subnav{display:inline-flex;gap:2px;background:var(--track);border-radius:10px;padding:3px;margin:12px 0 14px;flex-wrap:wrap}
+.subnav span{font-size:12px;font-weight:600;color:var(--muted);padding:6px 12px;border-radius:7px;white-space:nowrap}
+/* THE SECTION YOU ARE ON IS BLUE. A white chip on a grey track said "selected"
+   only by being slightly lighter than its neighbours, which is the same
+   not-quite-saying-it that made the rail blend. Blue says it.
+   The tint rather than the fill, on purpose: the deal tab above is already a
+   filled brand-blue box, and two filled blue things stacked would argue about
+   which one you had chosen. */
+/* A WHITE CHIP WITH BLUE LETTERING - the one Fabio pointed at. The tint I
+   tried first put a second blue box under a blue box, and the eye could not
+   tell which of the two it had actually chosen. White lifts the chip off the
+   track; the blue says it is the one you are on. */
+.subnav span.on{background:var(--panel);color:var(--blue);font-weight:700;
+ box-shadow:0 1px 2px rgba(23,20,15,.08)}
+.subnav span .flag{color:var(--red);margin-left:5px}
+
+
+.fsec{border:1px solid var(--line2);border-radius:10px;padding:13px 14px;margin-bottom:10px}
+.fh{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:11px}
+.fh2{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:16px 0 9px}
+.fsec label{display:block;font-size:11px;font-weight:500;color:var(--muted);margin-bottom:10px}
+.fsec label.w{width:100%}
+.fsec label.half{max-width:230px}
+.g4f{display:grid;grid-template-columns:repeat(4,1fr);gap:0 12px}
+.g2f{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.fsec .f{margin-top:4px;border:1px solid var(--fieldline);background:var(--field);border-radius:8px;
+ padding:7px 10px;font-size:12.5px;color:var(--ink);min-height:32px}
+.fsec .f.em{color:var(--faint)}
+.fsec .f.sel{position:relative;padding-right:26px}
+.fsec .f.sel:after{content:"";position:absolute;right:11px;top:12px;width:7px;height:7px;
+ border-right:1.4px solid var(--faint);border-bottom:1.4px solid var(--faint);transform:rotate(45deg) translateY(-2px)}
+.fsec .ta{margin-top:4px;border:1px solid var(--fieldline);background:var(--field);border-radius:8px;
+ padding:9px 10px;font-size:12.5px;color:var(--ink);min-height:54px}
+.addr{border:1px solid var(--line2);border-radius:9px;padding:11px 12px}
+.arow{display:grid;grid-template-columns:1fr 230px;gap:10px;margin-top:4px}
+.arow .f{margin-top:0}
+.addbtn{display:inline-block;font-size:12px;font-weight:600;color:var(--blue);border:1px solid var(--blueedge);
+ background:var(--bluebg);border-radius:8px;padding:7px 13px;margin-top:4px}
+.unlock{display:flex;justify-content:flex-end;padding-top:4px}
+.ub{font-size:12px;color:var(--body);border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 13px}
+.inv{column-count:4;column-gap:18px;font-size:11px;line-height:1.75;color:var(--muted);
+ background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px;margin-top:10px;
+ max-height:340px;overflow:auto}
+.inv b{display:block;column-span:all;font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+ color:var(--ink);margin:10px 0 6px;padding-top:9px;border-top:1px solid var(--line2)}
+.inv b:first-child{margin-top:0;padding-top:0;border-top:0}
+.inv span{display:block;break-inside:avoid}
+.applines{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.appl{font-size:12.5px;font-weight:600;padding:7px 15px;border-radius:9px;border:1px solid var(--line);color:var(--muted);background:var(--card)}
+.appl.on{border-color:var(--brand);color:var(--blue);background:var(--bluebg)}
+.appl.add{border-style:dashed;color:var(--body);font-weight:500}
+.dep{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--body);border:1px solid var(--line);
+ background:var(--card);border-radius:9px;padding:6px 12px}
+.dep b{color:var(--ink)} .dep .sp{font-size:6px;line-height:.9;color:var(--faint)}
+.struct{border:1px solid var(--line2);border-radius:10px;padding:12px}
+.structh{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.structh .t{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.structh .p{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--blue);background:var(--bluebg);border:1px solid var(--blueedge);border-radius:5px;padding:2px 7px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:11px 14px}
+.g4 .k{font-size:11px;color:var(--muted)}
+.g4 .v{font-size:13px;font-weight:600;color:var(--ink);margin-top:2px}
+.g4 .v.em{font-weight:400;color:var(--faint);font-style:italic}
+.more{font-size:11.5px;color:var(--faint);margin-top:12px}
+
+/* THE RAIL CARD, OPTION E. The header is a filled band with a border under it
+   and the label in the body ink at 11px bold - not 9px in the faintest grey on
+   the palette, which is a colour the palette itself describes as "decoration
+   only, never a word that matters".
+
+   This is not a new pattern. components/DealFile.tsx already draws Important
+   and File notes exactly this way; all that has changed is that the label has
+   its weight back and every card on the rail does it the same. */
+.rc{background:var(--panel);border:1px solid var(--cardline);border-radius:11px;margin-bottom:10px;overflow:hidden}
+.rc > .h{background:var(--strip);border-bottom:1px solid var(--cardline);margin:0;
+ padding:9px 13px;font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--body)}
+.rc > .h svg{color:var(--muted)}
+/* THE ALERT IS WASHED ALL THE WAY ROUND, and it is the only card on the rail
+   that is. It follows the deal cards rather than its neighbours: a thing with a
+   state wears it everywhere, lightly, and a thing without one wears a header
+   band and nothing else. The label stays grey - the card is already red, and a
+   red label on a red card is the muddy block we just took out. */
+.rc.chase2{background:var(--cardred);border-color:var(--cardrededge)}
+.rc.chase2 > .h{background:transparent;border-bottom:0;padding-bottom:2px;color:var(--muted)}
+.rc.chase2 > .h svg{color:var(--faint)}
+.rc > .h + *{margin-top:11px}
+.rc > *:not(.h){margin-left:13px;margin-right:13px}
+.rc > *:last-child{margin-bottom:12px}
+.rc .h{display:flex;align-items:center;gap:8px;text-transform:uppercase}
+.rc .h .e{margin-left:auto;font-size:11px;font-weight:650;color:var(--blue);text-transform:none;letter-spacing:0}
+.rc p{font-size:12px;line-height:1.5;margin:0 0 7px;color:var(--body)}
+/* INTERNAL NOTES IS THE BIGGEST THING ON THE RAIL, deliberately. Today it is a
+   single collapsed line above the form; it is the one piece of context that is
+   true on every tab and it is the first thing somebody picking up a deal reads. */
+
+.rc.notes p{font-size:12.5px;line-height:1.6;margin:0 0 10px}
+/* RED HEADER, WHITE BODY. It was red on red - a tinted band on a tinted card -
+   which read as one muddy block rather than a card with a loud header. The
+   colour belongs to the heading; the words under it are words. */
+
+.tl{border-left:2px solid var(--line2);padding-left:13px;margin-left:3px}
+.tle{position:relative;margin-bottom:11px}.tle:last-child{margin-bottom:0}
+.tld{position:absolute;left:-18px;top:5px;width:7px;height:7px;border-radius:50%;background:var(--panel);border:2px solid var(--line)}
+.tlw{font-size:10px;color:var(--faint);margin:0 0 1px}
+.tlb{font-size:12px;line-height:1.45;color:var(--body);margin:0}
+.tlb.sys{color:var(--muted);font-style:italic}
+.f2{margin-top:10px;border:1px solid var(--fieldline);background:var(--field);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--faint)}
+.rc.chase2 p.red{color:var(--red);font-weight:500}
+.rc .meta{font-size:10.5px;color:var(--faint);margin-top:8px;padding-top:7px;border-top:1px solid var(--line2)}
+.rc .link{font-size:11.5px;font-weight:600;color:var(--blue);margin-top:7px;display:block}
+.rrow{display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 0;color:var(--body)}
+.rrow .n2{margin-left:auto;font-size:10.5px;color:var(--faint)}
+.rrow .go{margin-left:auto;font-size:11px;font-weight:600;color:var(--blue)}
+
+
+
+
+
+
+
+
+
+
+
+.rbtn{display:block;text-align:center;font-size:11.5px;font-weight:600;color:var(--blue);background:var(--bluebg);border:1px solid var(--blueedge);border-radius:8px;padding:6px;margin-top:8px}
+.menu{position:relative}
+.drop{position:absolute;right:0;top:calc(100% + 6px);width:290px;background:var(--panel);border:1px solid var(--line);
+ border-radius:11px;box-shadow:0 12px 34px rgba(20,25,30,.17);padding:6px;z-index:30}
+.drop .dh{font-size:8.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);padding:7px 9px 6px}
+.drop .di{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:8px;font-size:12.5px;color:var(--ink)}
+.drop .di .st2{margin-left:auto;font-size:10.5px;color:var(--faint)}
+.drop .di.ready .st2{color:var(--green);font-weight:650}
+.drop .di.off{color:var(--faint)}
+/* v4 styles its form boxes as .fsec; the approved BC body uses .fs. */
+.fs{border:1px solid var(--cardline);border-radius:10px;padding:12px 13px;margin-bottom:9px;background:var(--panel)}
+.fs .fh{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:10px}
+.fs label{display:block;font-size:11px;font-weight:500;color:var(--muted);margin-bottom:10px}
+.fs .f{margin-top:4px;border:1px solid var(--fieldline);background:var(--field);border-radius:8px;
+ padding:7px 10px;font-size:12.5px;color:var(--ink);min-height:32px;overflow:hidden;text-overflow:ellipsis}
+.fs .f.sel{position:relative;padding-right:26px}
+.fs .f.sel:after{content:"";position:absolute;right:11px;top:13px;width:7px;height:7px;
+ border-right:1.4px solid var(--faint);border-bottom:1.4px solid var(--faint);transform:rotate(45deg) translateY(-2px)}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 12px}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0 12px}
+.g2c{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
+.limwrap .f{border:1px solid var(--fieldline);background:var(--field);border-radius:8px;padding:6px 10px;
+ font-size:12.5px;color:var(--ink)}
+.limwrap .f.money.done{border-color:#BBF7D0}
+:root[data-theme="dark"] .limwrap .f.money.done{border-color:#2F6B47}
+.fs.splt > .fh.band{background:#F5F1E9!important;border-bottom:1px solid var(--cardline);
+ padding:9px 13px!important;margin:0!important}
+:root[data-theme="dark"] .fs.splt > .fh.band{background:#1E232A!important}
+.navrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 10px}
+.subnav2{display:inline-flex;gap:2px;background:var(--track);border-radius:10px;padding:3px}
+.subnav2 span{font-size:12px;font-weight:600;color:var(--muted);padding:6px 14px;border-radius:7px;position:relative}
+.subnav2 span.on{background:var(--panel);color:var(--blue);box-shadow:0 1px 2px rgba(23,20,15,.07)}
+.dot2{position:absolute;top:4px;right:5px;width:5px;height:5px;border-radius:50%;background:#C79A2E}
+.moveto{margin-left:auto;font-size:12px;font-weight:600;color:#fff;background:#141C24;border-radius:9px;padding:8px 14px}
+.scen{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.sp2{font-size:12px;font-weight:600;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:6px 13px}
+.sp2.live{background:#F2FAF5;border-color:#BBE7CF;color:#0F7B4F}
+.sp2.live i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#117A45;margin-right:7px}
+.sp2.add{border-style:dashed;color:var(--blue)}
+.sright{margin-left:auto;display:flex;gap:12px}
+.slink{font-size:11.5px;color:var(--faint)}
+.scennote{font-size:11.5px;color:#0F7B4F;margin:7px 0 0}
+:root[data-theme="dark"] .moveto{background:#E9EDF1;border-color:#E9EDF1;color:#15191E}
+:root[data-theme="dark"] .sp2.live{background:#13301F;border-color:#245C3B;color:#6EE7B7}
+:root[data-theme="dark"] .fs .ta{background:#20252B}
+
+
+
+/* THE BLEND. The panel was white and every section card was white on top of it,
+   with a #F1ECE4 border - invisible. The rail works because white cards sit on
+   the off-white page. Same relationship here: the panel interior is the page,
+   the cards are white. */
+.pnl{background:var(--page)}
+.pnlh,.navrow,.scen,.scennote{background:var(--panel)}
+.pnlh{margin:0 -14px;padding-left:14px;padding-right:14px;border-bottom:1px solid var(--line2)}
+.navrow,.scen,.scennote{margin-left:-14px;margin-right:-14px;padding-left:14px;padding-right:14px}
+.scennote{padding-bottom:12px;border-bottom:1px solid var(--line2);margin-bottom:14px}
+.fs{background:var(--panel);border-color:var(--cardline)}
+.limwrap{background:var(--panel);border-style:solid;border-color:var(--cardline)}
+:root[data-theme="dark"] .fs,:root[data-theme="dark"] .limwrap{background:#272C33;border-color:#454E58}
+:root[data-theme="dark"] .pnl{background:#1A1E23}
+:root[data-theme="dark"] .pnlh,:root[data-theme="dark"] .navrow,
+:root[data-theme="dark"] .scen,:root[data-theme="dark"] .scennote{background:var(--panel)}
+:root[data-theme="dark"] .fs .ta{background:#20252B;color:var(--ink)}
+
+/* the limits belong to the splits that make them, not to a card of their own */
+.limwrap{border:1px dashed var(--line);border-radius:10px;padding:11px 13px;margin:0 0 14px;background:transparent}
+.fh.sub{margin-bottom:8px}
+/* one quiet line instead of three card edges */
+.divide{display:flex;align-items:center;gap:11px;margin:20px 0 12px}
+.divide:before,.divide:after{content:"";height:1px;background:var(--line);flex:1}
+.divide span{font-size:9.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--faint)}
+.fh.sub2{margin:20px 0 10px;padding-top:14px;border-top:1px solid var(--line2)}
+
+/* dark: the band goes DARKER than the card, not lighter - lighter is what blended */
+:root[data-theme="dark"] .fs.splt{border-color:#515B66}
+:root[data-theme="dark"] .fs.splt .fh.band{background:#1E232A;border-bottom-color:#515B66;color:var(--ink)}
+:root[data-theme="dark"] .sn2{background:#2A2F36;border-color:#5B6670;color:#AEB8C2}
+:root[data-theme="dark"] .fs{border-color:#454E58}
+/* and the money shading needs its own dark pair - the cream is a white box in dark */
+:root[data-theme="dark"] .fs .f.money.done{border-color:#2F6B47}
+:root[data-theme="dark"] .fs .f.money.todo{background:#2E2820;border-color:#6B5A33}
+:root[data-theme="dark"] .tc.on{background:#4FBBEA;border-color:#4FBBEA;color:#0F1115}
+
+.tpl{display:flex;flex-wrap:wrap;gap:6px}
+.tc{font-size:12px;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:5px 11px;color:var(--muted)}
+.tc.on{background:#2DBEFF;border-color:#2DBEFF;color:#fff;font-weight:600}
+/* the splits: the same filled strip the rail cards use, so they stop blending */
+.fs.splt{padding:0;overflow:hidden;border-color:var(--cardline)}
+.fs.splt .fh.band{display:flex;align-items:center;gap:9px;background:var(--strip);
+ border-bottom:1px solid var(--cardline);padding:9px 13px;margin:0;color:var(--body)}
+.sn2{width:18px;height:18px;border-radius:50%;background:var(--panel);border:1px solid var(--cardline);
+ color:var(--muted);font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;
+ letter-spacing:0}
+.fs.splt .sb{padding:13px}
+.fs.splt .fh.band .rm{margin-left:auto;float:none}
+.fs .ta{margin-top:4px;border:1px solid var(--fieldline,#DCD5C9);background:var(--field,#fff);border-radius:8px;
+ padding:9px 10px;font-size:12.5px;color:var(--ink);min-height:56px;line-height:1.6}
+.fs label{display:block;font-size:10.5px;color:var(--muted);margin-bottom:10px}
+/* the only shading the form has - BCForm.tsx NumberInput() */
+.fs .f.money.done{border-color:#BBF7D0}
+.fs .f.money.todo{background:#FEFBF5;border-color:#FDE68A}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:9px 12px}
+.g2c{display:grid;grid-template-columns:1fr 1fr;gap:9px 12px;margin-top:4px}
+.fh .rm{float:right;font-size:10px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--faint)}
+.offs{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:4px}
+.offl{font-size:10.5px;color:var(--muted);margin-right:3px}
+.ob2{font-size:11.5px;border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:4px 10px;color:var(--muted)}
+.ob2.on{border-color:var(--blueedge);background:var(--bluebg);color:var(--blue);font-weight:600}
+.addrow{margin:-4px 0 10px}
+.addl3{color:var(--blue);font-size:11.5px;font-weight:650}
+.lim{display:flex;align-items:center;gap:11px;padding:6px 0;border-top:1px solid var(--line2)}
+.lim:first-of-type{border-top:0}
+.lp{font-size:12px;color:var(--ink);min-width:230px}
+.ld{font-size:11px;color:var(--faint)}
+.lf{width:130px;margin-left:auto;padding:5px 9px!important;min-height:0!important}
+.lu{font-size:11px;color:#8A6218;min-width:120px;text-align:right}
+.ck3{display:flex;align-items:center;gap:9px;font-size:12.3px;color:var(--body);padding:5px 0;border-top:1px solid var(--line2)}
+.ck3:first-of-type{border-top:0}
+/* B - the tick gets a pale green disc behind it */
+.tick{width:17px;height:17px;border-radius:50%;background:#EDF8F2;color:#117A45;flex:0 0 17px;
+ font-size:9.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+:root[data-theme="dark"] .tick{background:#123328;color:#6EE7B7}
+.rx{margin-left:auto;color:var(--faint)}
+.addrow2{display:flex;gap:8px;align-items:center;margin-top:9px}
+.addin{flex:1;color:var(--faint)!important}
+.addbtn{font-size:11.5px;color:var(--muted);border:1px solid var(--line);border-radius:7px;padding:5px 12px}
+.genrow{display:flex;justify-content:flex-end;margin-top:4px}
+/* the same shape as "Client agreed - move to LO", because it is the same kind of thing */
+.gen{font-size:12.5px;font-weight:600;color:#fff;background:#141C24;border:1px solid #141C24;
+ border-radius:9px;padding:8px 18px;letter-spacing:.01em}
+:root[data-theme="dark"] .gen{background:#E9EDF1;border-color:#E9EDF1;color:#15191E}
+
+.optbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0 0 12px}
+.ol{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+.ob{font:inherit;font-size:11px;font-weight:600;color:var(--muted);background:var(--panel);
+ border:1px solid var(--line);border-radius:8px;padding:4px 10px;cursor:pointer}
+.ob.on{border-color:var(--blueedge);background:var(--bluebg);color:var(--blue)}
+.on2{font-size:10.5px;color:var(--faint);margin-left:4px}
+.lay{display:none}
+.after{font-size:11.5px;color:var(--faint);margin:14px 0 0}
+.pill.green{font-size:12px;font-weight:600;background:#F1FAF4;border:1px solid #BFE3CC;color:#15803D;border-radius:9px;padding:7px 13px}
+.navrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 10px}
+.subnav2{display:inline-flex;gap:2px;background:var(--track);border-radius:10px;padding:3px}
+.subnav2 span{font-size:12px;font-weight:600;color:var(--muted);padding:6px 14px;border-radius:7px}
+.subnav2 span.on{background:var(--panel);color:var(--blue);box-shadow:0 1px 2px rgba(23,20,15,.07)}
+.moveto{margin-left:auto;font-size:12px;font-weight:600;color:#fff;background:#141C24;border-radius:9px;padding:8px 14px}
+.ds .dsh{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:11px}
+.dschip{font-size:11.5px;font-weight:600;color:var(--blue);background:var(--bluebg);border:1px solid var(--blueedge);border-radius:7px;padding:3px 9px}
+.dspurp{font-size:11.5px;color:var(--muted)}
+/* the count chip is grey now, not amber */
+.dsneed.grey{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);
+ background:var(--page);border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+.dsopen{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--blue)}
+.dsrow{display:flex;gap:18px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid var(--line2)}
+.dsi{min-width:120px}.dsi.wide{flex:1;min-width:260px}
+.dsl{display:block;font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin-bottom:3px}
+.dsv{font-size:14px;font-weight:650;color:var(--ink)}
+.dsc{display:block;font-size:10.5px;color:var(--faint)}
+.ds .f{margin-top:0;border:1px solid var(--fieldline);background:var(--field);border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--ink);display:inline-block}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg span{font-size:11.5px;padding:5px 11px;color:var(--muted)}
+.seg span.on{background:#221F1B;color:#fff;font-weight:600}
+.dssub,.foldrow{display:flex;align-items:center;gap:10px;margin:12px 0 7px}
+.dsnote{font-size:11px;color:var(--faint)}
+.dsadd{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--blue);border:1px dashed var(--line);border-radius:7px;padding:4px 10px}
+.foldline{font-size:12.5px;color:var(--muted)}
+.foldline b{color:var(--ink)}
+.dst{width:100%;border-collapse:collapse;font-size:11.5px}
+.dst th{text-align:left;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);padding:0 7px 6px 0;border-bottom:1px solid var(--line2)}
+.dst td{padding:5px 7px 5px 0;border-bottom:1px solid var(--line2);vertical-align:middle;color:var(--body)}
+.dst .sl{display:block;font-size:10.5px;color:var(--faint)}
+.dst .dash{color:var(--faint)}
+.f.mini{min-height:0!important;padding:4px 8px!important;font-size:11.5px!important;margin:0!important;display:block}
+.f.sel.mini{position:relative;padding-right:22px!important}
+.f.sel.mini:after{content:"";position:absolute;right:8px;top:9px;width:6px;height:6px;
+ border-right:1.3px solid var(--faint);border-bottom:1.3px solid var(--faint);transform:rotate(45deg)}
+/* NOT AMBER. An empty box that still needs an answer reads as unfinished by
+   being empty and dashed, not by being coloured. */
+.f.need{border-style:dashed;border-color:var(--fieldline);background:var(--page)}
+/* B - two lines */
+.brow{padding:9px 0;border-top:1px solid var(--line2)}
+.brow:first-of-type{border-top:0}
+.btop{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.bn{font-size:11.5px;font-weight:700;color:var(--ink);min-width:52px}
+.blabel{font-size:12.5px;color:var(--ink);min-width:140px}
+.bamt{font-size:12.5px;font-weight:650;color:var(--ink);min-width:86px;text-align:right}
+.brate{font-size:12px;color:var(--muted);min-width:52px}
+.bpur,.btype{font-size:11px;color:var(--muted);background:var(--page);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
+.bbot{display:flex;gap:16px;font-size:11px;color:var(--faint);margin-top:4px;padding-left:62px}
+.bbot .miss{color:var(--muted);border-bottom:1px dashed var(--fieldline)}
+.dstot{display:flex;gap:16px;font-size:11.5px;color:var(--muted);padding:10px 0 0;border-top:1px solid var(--line2);margin-top:4px}
+.dstot b{color:var(--ink)}
+/* the one amber thing left */
+.dswarn{margin-top:11px;border:1px solid #EBD9BE;background:#FDF6E7;border-radius:9px;padding:10px 12px;font-size:12px;color:#8A6218}
+.dswarn b{color:#6B4B12}.dswarn p{margin:5px 0 7px}
+.dswarn ul{margin:0;padding-left:16px}.dswarn li{padding:1px 0}
+:root[data-theme="dark"] .dswarn{background:#2E2820;border-color:#6B5A33;color:#E0C58A}
+:root[data-theme="dark"] .dswarn b{color:#F0DFB8}
+:root[data-theme="dark"] .f.need{background:#1E232A;border-color:#454E58}
+:root[data-theme="dark"] .bpur,:root[data-theme="dark"] .btype{background:#1E232A;border-color:#454E58}
+:root[data-theme="dark"] .seg span.on{background:#E9EDF1;color:#15191E}
+:root[data-theme="dark"] .pill.green{background:#13301F;border-color:#245C3B;color:#6EE7B7}
+:root[data-theme="dark"] .moveto{background:#E9EDF1;color:#15191E}
+</style></head><body>
+<div class="bar"><div class="in">
+ <span class="seglbl">Theme</span>
+ <div class="seg" id="segTheme"><button data-t="light" aria-pressed="true">Light</button><button data-t="dark" aria-pressed="false">Dark</button></div>
+ <p class="note">Inside the deal, v4. Nothing is built. Nothing ships until you say so.</p>
+</div></div>
+
+<div class="wrap">
+<h1>Inside the deal</h1>
+<p class="lede">This is deal card v3 with the ONE colours on it. <b>Nothing is removed and nothing changes
+what it does</b> &mdash; four strips move into a rail, two prompts become one line, and the four different
+sub-navigations become one. Every piece on the page today is accounted for in the table underneath.</p>
+</div>
+
+<div class="fullbleed"><div class="app">
+ <div class="side"><div class="bh"><svg xmlns="http://www.w3.org/2000/svg" width="154" height="72.892" viewBox="0 0 678.54 321.17">
+<image href="data:image/png;base64,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" x="0" y="30.78" width="600" height="196"/>
+<image href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAYYAAABKCAYAAAC/3fOeAAAuFklEQVR4nO2debxdRZXvv+vem4QpCCKEQYkokyiKA6jY2G23iK8Fn7OCPPE5tCgfnJAHIiCgSGM7PZztZ7czIIrthKJGEUGfqA0OjJEZQiCBkIGQ5A6r/1i17q6z7x5qn7NP7tDn9/mcz7l3n72raletWqtqTSUMMOegqgIMASoiE12WMQQIMCEi2mLbhqraVPf7AAPUQVUXAo8CNgD3ich4uC690LLPq6i8LYHPAIcBE9icGw63j0fXrgYOb3Me9RsjqvrvwF7YS4xEvyn2kncBR4vIhl47doD+IhCuBMbqxDsEbA0sBp4ePrsC87ExHwUeAm4FrgR+D6yJmbOqDtOCgFDVYREZV9X9gROAPUM7xzE6O1dErvX7eqlrgJkJ5yGqujPwVWAhNv4jhIVI+H8YuBN4k4isLuM9geYJZb4VeD2wCNgRWA+sUNUlwDtEZKJbHhY9N66qTwHOBJ6I0XAdFgI7ACtnDQ9V1Ye1GmOqumO4V6a7vQMUIzDvyb9V9Tmq+kNVvV5V760Z4xgrVPVaVb0klBGXO9Rr+1T1+EBTRdigqq/tta4BZi58XFX1qQm0uF5Vtwv3F/IeVR1S1Xmq+h81Zf1UVReG+xvxMb9fVeer6mdUdWNU7kTFZzx8P6yqu8fvP+OhqsvCRB0N32PR/+OqukpNug8EwwyEqko02UZU9ThVvS6MXR5F4+zXRguemVATLKepbZtd6DSdWMOhnS+PyvX64jZouPYCf679HhtgOqGdgiGmwfHosyl8X6+qI+H+KTSn2WLjRYF2NoWy8sx5U/j9/LgNie2V8NlaVX+Rm0tFcyw/f1RNMDymad3TCs1WkxMlL7VGB4JhRiImMlV9k6remBtDJ9782NYRszPsGEtV9bmhLmlCC5oxg8tDWaNaDL++JP9+A8wNaMbMD8zxmRjOcG9V1QXhfsmV4wx7W1W9oYRm8zS9XlUXheeTaEtthzGkqj8KZW0qaXNZvaqzcMeQ2siBQJhh0GCkVdseXwj8K7A3pqN1+8AwNsZNxs8N18OYncl1vnsCP1HVjwEjQadbW66avWBCVf8GOJiptqwYI6HO56nqU8Nzs2IiDdAYKeM6VHGf6+ofDexTdy9GV1sCL0qt32kXOBx4ITAGzKN6PsVzxg3QGj6zBimDMxAKMwyRUNgNuAx4FZ1eECnjmkKssZCYABYA7wJ+pOb5kbKL9N+fEcqq8zjy3x+be36A/34YJm38UxwVnN73Tak40PWEqj4S8zzyuVVV/gSdc2Yk/L1l+MwalK3c8pDoe1ZJvrkGzQxh2wI/AA7APIvm1T1KJ+FKdH08ulY2EYfCvWPAPwAXAEcAoqopHksrasp3+D1rau4bYO7CaSRlkbOeNL7kdPXXxDYMBQ+6RwO7hfLLaNd/E2A1cDPmZbclttNeWPHszITW2xjWhpXprNGPzWVoZoy7KNJ5VqFM71pmPEuxSXid7wltKTUSaybIdlXV1TXlu/FxqZqxr5EtY4CZD81sDM8KY15EC37tXq3Ymarp/ofVPI5Uy21XTlcPqOojysoraednQ3uq7BeqxiffoMGGEZWzQINn1ayCqt5XMkD+/zodCIYZgYhYTwtjUyUU3CvDcbeqfklVD1PVJ6rq3qq6r5oR8HRV/Yuacc5RNhG8bPduem7ctpp2nx2e36idniM+8XxivzHcn7qjHWCWQJsJhvvUdsZ1XklP02zBUeSV5O6l3wr3V/IxzRYzj1LVh2raOa7moPO0fNvq6pnR0DTB8Ohw7+x90VkO7Vx5P6DZKqgIsVD4mqrur2GlVFH+iKrurqrvVVvZa0X5qpng+IkGz42qtoeJMk9VL6goU1X1tPDMwFV1DkKbCYYVWrPC18zj7RVavZj5iao+QhPiGKIy99JssVLUTv/tonD//HzZOlt3vVovGB7SgWCYdqgxblHVT+SIsmhS+Yr+f+XKGA6fodxnJHffrqp6fiivarL5b4d6+RXtl+jvd6vqnWoxMg+G79+q6mH5eweYW9BmguF+rQlwy5X5bFX9naqujGhrqZord2k8REF5Lhj2i9pSxB89eO0pYR7NncWMpgmG2RWcMQcREesSLdd5+tZ2VFWPDPePaNoqSWLiDv9fEsotEw6joc4Tva66OqK/t1HVRaq6s4Y4mfg9B5ib0GaC4QFV3T7cn7TKD38/yulKVbeIrictOKK59qSCNjniWAu/f+4saHQgGGY8IsJ7oppqL28/cDgDPyHcP7/L+nzy7qqq91TU55Pjz2qMvnbbHO4pXFmVXR9g7kCbCYZVmigYwj2F/EkbRutH8+3JBW3K0/7N2mA3MluQGscwZ154lsLH6RgsId44xWPi910WiLurRHTBTW9ERJYB3w11jZH5gvtHQh1PAg4KLquVNCUiGsqX/GeQOG+AHNy1Ou3mkCSviK66TFwnJX/H8PihOQXPaNgTcpIy/lvBmEGvdQwAwC6U+2s7o14LLPNJ0kNdGp7/GvAWyuMkfJW/W/hOqnOm0ERZH7XVvn6X3xZK5vBkG/vQ3hQ6abwobbmdqYGicw5NA9wmoVnO/3xwU2FHaY+pm1OYXL8mW13dm3GSV00UFwx3Ast7rshW9UMicoWqfgE4kiz609/Xv0fIAtIq+6KmLwXQ1P7slibCbqp2JRlotvGZFg3Kd8aT/M4VZTWm0SZzuOLefiPVLtDTHM0LxvB/impTw/1D4XtKRoGqdOG9tLlbpPRVimCY4n5FdlhFnPN/HrBd+GwJbAJWAqtFZGN8WAbZmQHJSOkkf+EWV3tDIrK5J0IVUlYwCzBGPdpCfRq24m9R1TPIIkwnor+HsfG8G/ujVB2k9bnok/s5oawp9wU67WD0QT/suyHPMzXmKi8vgwSajeglf5bFPLL0DuPAqIiM5e7r+oCi1L6I72fqHBaMdrYKn3nAw9hZHesL5jub4UCl5B1DCuMvu6fgN3/PMb+loh0Lu1GBThM/Sy6v6Y5hSETGsMMqFgAvBY7FDn5ZADwifBwPAg+q6hrgl8DZInKvtTF9BxEIMf44wXRcE5FVie+TBCd8NSNuXKdEH0RkbZv1VqBqIrrQWAwsVtVbwv9dE1U8NiJyT7flxOUFRrwF2bh5PplhbEFxp4iM1jG7UNY2GN3Fk3aMjMFvCPTawXhVdV/gPVj+poXYoUVEz21U1Yew9AkfEJG/EGi2iAnkBYeq7g28D3gy4G3sEAyh/LuADwG/jnZojZlt6IstojqmMDGn0egdxtVcQY/Ccm0twuxXW2KCYQQ7Ae0h4CFVfQD4JvD/RGR1rqxpR3h/z8WVt4VpVTtD/+2Cjc0GsjxHrwq3TDB19+B17aqqXwQ+DqzDFmRj4TMKjIvIQwXtnUd2WJa30/+mrs3dIFog+UIo5mMu/CZEZJOo6grsGLy8VPT/NwJPAG4PeusR4P0YQT2uYdseAP4MHCci14ZGlk4GJ7ywWn0d1tnzyRiJf5xhXw28HMtX0rWkjer9e+AjGPOI63OmphgBvV5EftiviRIMwWOq+iXMAD1GsVD3k69eLiIXq+o8EWlj5zDJ/CgWNJWr6ag/DwM+iTEgH8c4H84WwH8Ch2IMacoYRmW9BPgc1g/eFz65JrAd63rgjcAVgXafCZwLPDPUlYINwF+As0Tk+9GuY3IXEgmEvwU+is2XrRLLV+CGUP4FTWgo6ouTsQXaENav8Tz209G+AJwe+mE7bA6/GrNbNcFy4FfAe0Xk5nx/NGjzs4FfU7waj+1le4nIvUULBe/7wNSvwASwr/LdKDwWyrpcRP4pN17elr8D/iPU68/Po3ORW/tqGK04/Y1jNDgBLBGRo6P2boOdlLgtJjxiuo0FxR0YP1sHPfEz79/5wPcwvj2526dTE6HAw6gFg6iWu6uOquoTQgWPVwtEcngOdI/CLSpjXKfmSl+rlp7BoxrL3Mw82nd3zdxq6/DkqjITO9KDyS6qrmoSz+i1zrr2hO9PhvrqcsLcprYqnnyXfrSri/Yfn9CXt2hJDv4uylJVPSjcf2yu3/KHwxR98vEbH9MQE6KR262q7qgWEBinKCkqf0Kryz81fscG/frvCf1wQbj3EDXf+7id+TlcdBJZ0Rw+2cdJ02ME4mA01Wp31TWanZ9QmCspfO+b8P43VvTfq0ueST13oSoIVFX1r1Gdw2pz8vOJZZ8d91s30KzP35r4LsekMLJhbCu5O7AEOIhsu+4r91jFEyNW93h+/3Fse30McKWq7h6k6JQXD1u8YRG5A7g4XB5lqmR1ST9BO+ma3Wi4G9mqIy/RvR3/LCK/1yx3ez/gK4Ufhb/Lxs3HYDHwM7UzDcZCP3paiukM0V9Pds50frvv7rB3ichGtdVV1QppDdk45MsaD98rgD+o6tHAZzEa9Hpiui37xDQ7gaUcvzD8NhJWm3thK9/XYKvMiYry8+pPp3lfYX5AVc8Mu8MmeaJWVfSrX7tbVfcDLsHmiF/P74Kl4FM2h89R28U6g26yMEr1SkrBCJ3zM/743N1U8JzT10o6adA/qfV7v5TR4cPxzUG9eTpT+UpRu1+lPbhya5Y+fAR4OxmdlNV3q4h8uWogJfr+FnAVxnB8a9rN6tgt/U6wTwR+EYTDeIlUdLfL04F7yVxsi4h4CPigqm4dPdcIkXR9KaaDhux948nj177bb0Yb+kZE5BLgGqrPNZDw227A5WqryV3dmBq+XVBMRkVvRmFRxnz84yqeum1zVTm+Rd4RU9N8MSqzqYt2XN4m4BXAOcEOsjO2Nd+TjNEWLZDq4HQ1Bpyuqm8PwiF1lVg2H4TsYJljsTm8DUYfdQfOVNXlc3gMW+B9M9SvfaCjlPLqBHysriyCxwVNsR82bGfZJxbyfvjUKkxt6irpokWJkB1E1K1GwlVw24WyYrte0aLlIlUdSq3oQMw4VWSEKZKUdZPaCXYM03f9VFV3cQNc7q00vNx9wG1kjC8Pb9f+wOP8uaS3y71PePZtZCvAPNwr5wbguuhaP+H9spRMJ1l1r2JM4PXAn1T1KlU9RS1dwLwgIMaCF40LC8+l1C8hUdVmr3MYkvSpqW3ck8y4POkeWvCpg4RyxoETVfXHwOXYwS/jTGW03ZQ/HMr6F7VsnW2eYLcVZtsp2nGW6bjr2uveby8j20nVpl+ZJlS1qdBg3bD8Mj7YUU7EzzYBJ5LxkqL2TmALpbN76FN/7kSMHxQFx/rOcQNwnohMpBKdd9xQwbUyKRkfMVmGEUw47A1cotmB81NUUuHal2vK863bE8L/jSaVdp6M9jSyDptya/h+n4iswby1ujIMdYHvkL4N9+3sDphwPxu4CbhWVa9U1XPV8sFsA7Yzkcj3XttPHZwiPLuOramo08fG+6OIXv23Ojg9HAbsxdTFktNgvnz/rQo+b+YDb5CESPJcm6pQpB6J21rk9Ve3AAETiKOYkfRzQeXRF1tbBXpVS21J584wfv8UOHMv27nmg0O9T6/FdqG+kCtr87Mx1WUjLYiroNS8kI7OlVnUnuuBFaoqqQMYb4+dwPzaBmxbdG/4rCJ72SEy4iuDrzoOAI4Pevr8rsGZ1eewXYMfNZmHD8ipqroV5pLXRNL6aucU4JFUS1fFPKz8Wl8RuTNegKWpSIlViLf9rsfeHmNoBwP/B/gTcIOq/klVv6GqB+cExaQHRwsrQWeMVeVMGstbWnk6nfrk9VX5WuB+zFNuXfRb6s4vPkoVsj52ZvBwKH9lqAs6ddFlcH35K1T1cUGlVDdPU+OR4jkct3U9cDdwCza/7sHmsQuMuja7cHiTqh5boRYuQls7w/qKyulqLUYHazBvuIcxb8zUur2PPNZjDOOBG8L3srjesDt3ddIPQxll/Ewx76jHRNdS4fc+BuNnZVoUCe1+twv2ppI9loxXY0c87oNtp/cOn33D52XY6tSJL2UynK6qi4pUSsG4q8Afo7bk4QO0P7C4C3WSC6ADw/9Fz7qgO09ElvbZ6JyHE9QbgRvJ1HF18AmeFxLuyrcb1mdHAlcC16vqH9W8oB7tK49I3dTtZE3dMaQwlSZtcAauWNzAvtiucp/weQLwHCzWpsp+E8MNtpDR9hBwKfCsUIeXvy+28DmfTuZcBBdii4DXRuVWoYmh2ufwEPAT4BCyvtg71+ZDgN8ltNnbqMA7wgq1bnXb6yq/57LcoCsivyajg32A/cL3O8OtZfTgttK35J7fJ/f/EaGeuP/cxfsMsqN18/3rtLAV8MGEdyzDGZhKqkht5XNjFfCbyWtqOc9V612zPJvgClV9oSZ4Tahl3DxJVTck1OEuXx8Pzw7nynKj8MFqJzKVHRHpJzgdV1RORVu9/L8L7S07pMavH9yk/LagmYvenqp6U2iLp7/uBmXuiI7VakLiWA2qvrgdiW12t8DXRGNU1q83a8gKq9Xuqm+K3r0KXu4fNLgV17T1lIo2FiE+ge6tCeW/TjtPGSuCj+f/jd+5oi/+rWFfLFfVl9e1NZQ9pKqvTWizatZnZ2lwbigoz+fZc3JtihEfErZLuL+IFnwuHJDwzjdE9ycJHLVzFuL2FJV7Z0pZBWX77mU7tSyyZX0xWY82O1PCy99SLX152Xv4mJ0T7h/2AlIEg/+2XFX394o1O/Qln9Gw49AKVT0ovHzVeb9+fYOG/Pz5Dohe9oZcp8Xwa/ep6g7epoSOdIL9dni+aJLFRLZdatltQzMC30lVL4va55O3V5QJittU9WQ1NV0ToesE/aqonWV9e5uW25rist4c7q9ihl7P1ZodEVlGs8Oa0cCnEspW7TyS9GU+Nhq5BWvnnIgF5CatXtyoqi6Jx7ugL7y9X0lor9d1p6ruUdPWuE98zr20ps1xu68oa7c2Fwy7VtCCz4On1ry3quqNWiEYNBujIc289Z6Za09RuberMV/vy/whWKXG+Kgv3pfrv3xfTKgdu7t3FT2UlH24lp/2GB+tsFNcdsqqz/WLm4AXisifNYRUuw7avVqiz4S7WKp5wFyFubWluFkuwHTgRe3zTna9XNHW1rdkOwK7NTDgebv2Kak7xoki8iCb1+g8CY/7CJ5ah2LRvGvpTLsQG12bIu+37o4Ei4FzgL+o6j+EMW6ixkhpT6ordKr6YAx4j4isCbRYRrNxHqBzMNuAv38ZXE9/rlik+Xyn/ZI5MRbuuQD4MJkNLg+n4UNUdd8w3lV90sT4fKyI3FrT1nyfzBOR72CqrSq1sNtonqqqhyS0e3MitrFM/TEbowksLYT7+1P1XEDHcwWfsv7y618hs10WtXsCM5CfkdgeyGIXzqTcuO087wbgfjWV8QSkM8whLM/RNYFIRlMYYujsUbWUDt/DjKZu/CuCl3liIKh8Hd7J78cMZGUT15niGaFzKtuq2UruOCy2osizwgXMJsy+Erd3syMyRo+KyMmYTvgDmAHN9d9OVG4X6aa9sceKB8LsgXmRvUzSgrE0911WD2TCrVeMYW3+pIgsCTRYaax3w5tYQsB/JROyRfD0I1cDZ4U+SEk/4szyV+H/ojno9c7DbBNl9znq+t/b+m2x1C3zgrtkLaI5PE9ELgL+mep+cZ34mzXLyNoGerVX9At1MRKliLyM7sNSZEBxv/r7HaxZGo/Sd9YsfchCqhe6gvGz4/PeZHUvFPu3fjo0JsXYmYe/yDGYhb5Mgnl7XgAsyq843JovIusw7wkoN0ILluRvccLKxQXOkVXvENr8cRG5Szev0bkQTlihT5aJyOmYgHgVFgj3MJ3BMk5MHuXYVFh4cIwzrYtU9ZWSHoyVUlfqREtlBn+qmkRFCPfX6Y79XX7mTDZx9+ieXn/EcnqVzQXHtgllVvW9L2jWAGdq9wc4ORO7kGyxUIRJT5jQH3WLwDaQuntsKkBSFzK92BmHRGQjWVRyGQN3Lchjc/UXlhm+30b5wV5e1/3Ab6NrHQWUwW+8UETup0vViXsHiWVlvIVsJTvl1vA9D3OvKiwuEOi/UH6Sma9oFPM2oeS+OHZhD2y3UKZ6cuZ6YUm7pgW+BY4ExD1hZfd0TEg8H9uqLiMkpiNT1/hkiXcVKYh3at+I1Ep1EySl/Njbpwp1k9zLuDnQXzLdhvs3Jt6+vIngiRY3y7FIZKj2gko5nrVqx+Bz5KdiiSulmwVNWFEKllDwYsp3Dd7vB2iIuK9ZlNXtBJow8+nYwfvCq1v4WFyHCe8iVV3snXROwm5hXM1O947o+Sm3hu/PYkJ/OObtVQPmDHICY8K9whn65ysaC5kk26Xovkgn+h3g1qiNU+oLnw+p6g6Uu8+53eIkLGy8SNj4BPglcF2Y2DMi3bAjJyCGg27zDhFZIiLHkLnhHYjpHa/HfLdH6dxVQJqQ8JXuCHCeWuyD1jDJ1B1Dr6oBp91VdB+ZnhJzAfBgF4slnwtrUu5NuMcZU9W9d2uWIbdbON1/qeIeFxjbAf/oz/VQZwqmU5XU045Bsnxwa4CPhctlWhCAvwWGIzVU2X37kcUuFKnFh7H4lU8F+u2os27AXAe1LiqwW7i65kJsm17G0P3a/lEbOqCZt8QPKtrljGs3qo3QHrtwQFl9ZELmrLDtm05CrIQbDTXzshgOhLcuCIrfi8gZ2DnN7s9/BHAZxkghExJ1zNST0u0HHBFWonVqjTqkGs1TBNAajPi7QZ3K1Ot/uPKusoc7J2PV+7a1Cr67m91+Dv78feG7jH/4Du0JJb/HZc129KpKgqwvvojRXZHt1Ofjo4AXh2tF/a9h534u5QGbfu1XwGotSFiZIsknT25qCR51Woenh+9C43J4kfdhh53UGaGPLvgtdul6PiYYihib72DuIdNXT6ttIQWRl8V4TlAMBUPshIisEJGbReQHIvI8bFfxTOD7ZAb4unf1re8xCX2TpINPqDMV82gW/JVvRwrc4NwNo0t5z5R7UnThtySUk9qWZZhArPJQEsyTpp+Q3HfdvW3aGBxdG58dkQ00NkIXjbsvbt9bNNcir6JtscwG3r6iMjYA7ypTK6YKhviIu15RV4YP3mPD95SGR3ra9cDNZfeRqSXeqVkG17xqSoETMDfZssFQ7GCSlUyTi2qviN3xgrFYcrsKCYLiKhF5MfAU0iKBXSgfBriLYtkKKnXHkMIMU7xUuhEM3samgqFfaKt83zm1QbvLCWkeaspLsY/UYcbuzgN6FgwBIpaO+2TK7Zx+bXdgfuCDUvD7SzGhXJbSR7CF7o2h4inzLTWOoecVnDPTBobAfOKpKUWGTvk41UZoDWXtHK55kMtQEBS7YHr3Mj9iV6v8Lvw/64RCESQXc+JE5ruKYKg8FPgZ5f72Dt+Z7enFd9GkmCH3qkpypBqyq9pTh2689JogpfyUtvZMt9GCbBTbqdeV2+1urSmmU3jEO5Fe2uE89hqy3F1F6qRxYCfMiwkyfiaYHXU+luutrD1e5ierFnGpk6ZtZpi6cixFZIT+LrZrqLJZKPC20HletxudT8Oyj5YZnRXLf7PUPZgS2j4rEe8qNDsW9HiMUOvcKgXzm65CquqkrT6Oj/1sihQVGvS2ok9hJG3tGNpO3ZKyo+rVEaFN9LJYqUIrO4ZI6K4GLgiXqzw335qLaZCw6N4es6vG9zp88buW7IySrlVJrQxgbsuTMkgb6u6NjNBX+KWC21yddAx2ToPr89zofFBNPQJ8IjDJaYnidE+j6DNS8Gl14ksWmHgDWarvOmaQes5x1fi3uWPoZdKm0n2/Fwpt7Rh8bHpaXUcLox3aKK+uuj6W3RaE9vnCBzF36aLFmPfJjtjOwa/59bdjCfPKYhfADghaV2R0dqS8UFs6NGBSQKSsJG6K6i+DG6FPxo5xLOtI3zXsEa6NBAl9IOZRU+XStRELGYdpMjq7p1H0GSv49MV9NozXj70pNbfX6ZQ3l40hvqdb5pI61r3QRIqdJGVcNfdd9NtOBb81gi/u1M5qL1uVxujKYyuHNoVDPwRNm2XGXl/LqVYnbYNlgADbLXjswpsr2uUq4RODgC9te8o2e4hM31/lhZCKYdKMUr+vuyHafq1Q1RuwNMEe/h/DGf+pqno52WR+N2akGWNqX7g30jkicptv2xLa3TrCgD8DI4b5WJsXYOMyL/y/HDticbxsFdAF3PZwORYc5yeAVcWgVKFNr6TUILhY/9ukX1Lv7bdKJIXmUvpr5/pbauF9uBvlAagOJXN/nq1IHdtWhEMU07BBLcv0J0ra4PUdHnb1vqt8PKZKKlroOj9bgZ3B4tcKkSIY5hdU0g2cqBaREWlRhzpTTz0Ex43QH8FOOiqLWgYLDnm8iFwfnnlyuF7mASDYmb7TgmjQT8DyINVhGfDLPgixldgkrxMMqdHCVWgjjqHJPVXtaPO+btFWrMOipqlBCuBzbUcym15ZCgfBoqTLMBtsDNMB75dvYjzNc73lVfGKCefHAn9Vy9X1YbKUNUWLY4DPiMjGOh5RF6o+gQmGJ0XXuoU/ewK28h1janneAaOYZPNr5YVmh218D3O/KjNCu+76qeH/t2MBOEUJ87zD/j92ulmKP38/4O/+O6xPRuk8Jco/G0L7XtuyK62Pz2IssKZKKEB9MFnKAqOtlBjQG/PxZ+vq6ZcqyeF90ashd9sGHoFlcAPnoyrqdRXsg8CScG1GZQloGb2oK6cW1hnT8LNwOU9jzpu3xBKFDmM2n78Pv1dGOkfXSpGSRA/gA6HyrogqcqUS4CUJdW8kLQjOMZzThZdtvwQ4QVW3Bv4n1QZnAd4vIg+TTYjNCvc4EJFLMYORq/SGyTxuRjBjE8AbNTtEvg1j9FAg0hdRbtCKsa7iN6Jnq/oyNSVGqmDodtxmivdZrwLQ5+3fBNfsRucGT1YQPPpUdSFwekXbvN+uEpHlVQbORMyUlf7mnP8SFrwnU7xwhaxfXhDufSZZLFaZ0flSEVmV4l1ZJxjcmLsfsLPUZyktgydoej229Sl7WW/sH4CVDdxDXa9+BuWR0F7f07A8QR4ZWBXp/IcZEOnsQs8jV8sI1AniTZJ+BkUdPJLywLr7wnedMG/TkyiVYVQZZttAL/2cGotRhzo34nFgVyy9clm8Th1GAgM6DFPBls1hb8u92m7a7V7RzfinqjTbFl7Ob24hS6yX50Herzuo6texZHjenhjOCx4ii32oRUquJMVWi18JQkGaCIfA3MdUdQsiK3rVI5h7aJn+cmoj09Nxe/mPwaRrVRveJT1klG0RGur3NBVlfefnZh+rqi8J7qZ1QYLFFWYHLI2qnVHxylB2mU1qCFNz1SWsS2WEbQmGXtJrbE7DY1EZXn8b6cx9gfeK4MjQaEcZbF2jaqc3fopyoQCZIPp+jeqqLTtSKnpVo1WhVcEQGaHXAl8Ol8vaPgQchQn+orb4gvEWseMCJGWxnequOo7prz4UVg0axRAUIjCXkbDLWID5wi+m2GIOmR5MyQ7CaTKp3TD2BYq3U5P31ZTrqowZEeks2YE85wNXUh2F7IL8a6p6aJjMUjdWMDle4gwjPPsS4Dyq1TvuEXFRMOpXnVORamNoonuvQi95vlLHvd87hhQHkbp54jayvYDPerR7gzk8pqqPww7aWkT5KtkFxtUiclFgQjPFvtBPwdCPcr3M88j6tayeqtgf53enhf+T6DWVqD2L5kmqeh6WpyNOo9ARaBUIQgNBbYutdl9I9UrDvVEuw1IEN4oyjiKhv4rFQFQZjMva4B18IXD7DIp09ijtS6h2u/QJuzXwfVX935D1DeDn/JaNlx/nKGGncDGd7p5lELJMtym++VW/talK2hyCoQ3PpzobQR1S2uonJx6jqt9T1cW5OTxcMYcPwAyhe1A9h9054beBXtuwc80UG8NmhWRptZcBf6V63pctplzrcj/wo+haLZqsdtwN6nhM9/5CVd3KiScOtArEtpWqvhPzmT2UYheqGM7U3hNcNLsxkPkKaMqJRInwNnzMGWTTNvQDUX98FPOUqjoe1QloAfBvwB9V9Si1oCTCarFovIZUdXtVPR5zFf4U9ULBx/RPmCCqy6mUqkpqy/jsXlz9RC87hrYC+VKFmKdhPgKjizNVddsogDJPE9ur6nuxneoeFGcfdjgTuhc4K1ybKbsF6C7VyrRqC2DydLf3dvm8t/9CEdnUxBGg9jzkHJwhPRGTQHeo6p3YCn0Z5jWzGAu0WITp8qGaoCALMLsUuEa7PwhHA0GfAhxOdlBFyuRywr4O8DiHmbBbcEhYvX0Cy6VS1afx6mJ/4OvYSWP3AXdjBvq1mO1oR+xQpEeGv3cMz7k6rqzvfGsuwKkisq5CjRTvBmrfs6LOojLL2uZuz93mGmrCbLvF5hYMkKkiH4F5F71ZVZdhtrlbQ5seCzwOy+LpEdN1Nj8/7vWrInKf1sfSTDfTnQ1w+vg5aQGmMVw1vwo4tWnFqYIhZhLD0f+7h89zKp6DmrQWoR2rsTNKu4Z7TYnIMlW9jvJI6Cq8Q0TWJhD2ZoXrhEXkQlV9AfAGjOmVGZideHwMdg6fJxffPomUMQPr1xHgJBH5fmJ/pYxDmwFuHufRDera0MQ4XIa20os3XcC4LU+xRcEuZOef5OGqoyp6GMPo8FLgfcFO1UYUfJvop42hL3AjNOaZ9DXgLdQvsh1+31IRWZ1qdHbUZcyM74tXof7/BFODrcbIvEHqCMoFzCbsBLBbyFwku4UboT9BcRBdEdwgvgG4NmrbTIO7C78ZuAibjKPUxwX4ONeNl1I/Zkq2w/u4iHy4gRBNNaS2JRhG6Z9gcHSTvdXb3muGUkdqW2OadlfSMrpwe1udas9p4SbgSBHZRJbDrI02t/X+k21q4GU4E4SJeyV+iHojdAz3DvPdQiOVZ2ol15G5SsbENcTUYKsR0lwO4xPCXiMiv6rxaElCZIS+GFga1VHXFgU+IiL3aO5g7JmCyP1PgSOB88l2DHVMxhlB1XjVTULvpxHgoyLy7sTVocNXOkV969faTKI31gUzaIpedgybWzD4fI/vL6OLFFuPC4VVwKvFgqfq5k6TuJK6+puU1c3uP3WR0jdERui7saM4U1Tcsb3n59G1ZFQJBr++HstB9MromdTUyGXl+rmm64DDReQ7wS2uFdVNZIS+NKqzCj4JPA/6jBMKjmjSTYjIUVh+lFEyBtXL2OThTMTHxVUQx4nIe1woNGC6KUx0E2mr/BSGuSnhnjI0FXbdICW3VErfVt3jY/dV4HU0262UwXcYI1iw6PNE5JqG6tde3yvfHqimiX4Jhs2xq3C33+OwuVG3oPffvhGpoBu10Stwtz5frcUr003A1iLyHSyQYhUZIx2nvmP8dy9bMIK6EXiuiPxYOzMEtgFnVqcCt1N+JjRkO6ErgJtnkItqKSLXUxGRkzC7wXfJ7Cmu9hujczzrEI+V90vsdrgEOEhEPuMOAg0JbgGd9BZ/vM6tyVJ8VGEenXTlz8ef7UIMTf48kNS2UlG2q1s8U3A3HmwL6Zxr+fdR7PzeOlTRq4/PfcGV+21kY+pjkTqH/V7fYZwPHCgif+zCJhfTWVH+L1cDp6pAvLx8P8Zld0MHZfQau0L31Xsx2jXchB1KVrVrcPXfA9i5DlTcW4ohbAL4NtL1yxJ9DwPu6nQ+loRuCdkqNfYiKdJTSlSe+9SeCDxdRK4OBNXq8YjufikiD5FleKyLxj1VRDbQ50FuCx53EPrvRhF5CZkHkofR+5hWjZGPE3SOlTOOVRgDeJqIPF9E/rMHlZ+3y2ku/rj6YhwYSZjAD4SyPPuvt3kYExr+vWUXzACyXYv3Yb69/g4bCp+uhjPhkfAO85g6T+aH/+sSE8blVWF+GLfPAs/DXJJ9fsf0Edsb8nTh994EHCUiR4nIQ106avjBVz7usSrLz+qeoD7/FmRHYca07v3otNANj9kYtS9uZ/y/0M65E3UYks4zocto2uflHcAaj0dpWtkIpqveDsuGGDOKDRhxbhCR+z0IRkRuB56vqntiDP7F2Mpna4q31eOYa+RS4GzgShFZCUyeu9y00YkYUlUwQQTleu0hbPItDddm9G4hj7BVHMKMVNcDR6vqIszd8HVYYOG2WCbGLalWfazHxn0lplb7FrBcRFbA5GpLmo5ZJPgvxPK/LKST0TgUuNbprYigo7I+D1yFTfxYMDiz2QL4g4g82GRyRO/2c2wR9EgyBjMfEwhbYW6cd2LxG9JwceM09hbMScJ1ws5wnLmtJ5xLUlN+0m4w0MoCEblMLdni0zEf+UOw/tqK4hX6WsxdcgkW33KN2JkBEtqWTA/RgmIp8AKMFrxv/XyRYYxWrw6ur4UOKdG1v2KekVtgzNxpyz/bYCvtpm28HeubhWT94guFkVDubWLJAnt1mqmDl/0LbCy2oVhA+G7ig5FXU2Me200QWYeqRVW3wSbPDsBTsBTdW2NS/DeY4foBEbkveqapbroxvJ2qeilGgEVuq27r+KCInD7TXFSbIhIQGl1bgBH2VtgCYA8svmQLbPw3Yj7st2Ar+oeA1TEjCuXSZ8IfoCE0S1fxeeCfKD5wyq99SkSOV8vbP5GbwztgjGZb7BCencIzD2IMdSVGE+uiZ2b1XJltiPjZfljKoPjwNIcvMFYAu0lIidPVjiEw6dgVdUqbYiLyvyNmsQ4TAneQ5TgqezkXCH0lqKgTH4Od6ew7gzz83b/Xz/ZsLkRjM6mbFYucdCPnHWSnN1XCGQi58e8VWp+8Lam++B1LIOQYYFMEGi9akU3e0gstJ7xD6mq8kYdPpLP2Ff/9ZDvrP5dWkvVHK3M4ooXSIMrUetqiqwblept7ooGGbRkBPo3trooWuk4H5weh0LXw7toTKMeEyiJbJ41qkuXh2RzwWIYzsVVy1dGdNwFLZ2Ckc9cIK4Rx6DC2xd/5iRgbH929s1W7T9S2Vmggfsd+od87pBbfobHrp0SZT3NzOP67gy7a7o82+UG/eMtM2BVFC91FmGoLyg/jWY3xPb/WFboJzulATGDMHMY6EfRrzwr/l2VzBThFLDKwbc+oGYFoGzljXXAH6Bk9xX3k5vAAMw8+du8gc9DI7xY80vlWYFWvNo9eEoDNSPjWT1VfD+xDeTZI71hXf80UoTbAAE3RRrDYADMQgcGPq+p2WAJTKD/RTYGzpYWDuuacYCAzar+T+vTaXwduayPieoABphEpgmEuzvX/DvBxeyXmQOIhADFcLb6KLP19T/xsThGLR/ip6mFYBtiyhFOuR/30QCAMMAcwUAPNQbjdU+3UvdPC5aKdn4//xcGNuOdTJ+eUYIjwLrIAmTxcut7MzEyvPcAATTFQJc1NOINfjLkRF8UtuNpoNXBSaxW3VdB0I9LFbYHFUkB1MNfxIvIg03+m8wAD9IoB/c5NeIDaR8mSgRapkQT4i4g80FZKnzkjGMiOvzwdk65FujiXrhuxE6wGu4UB5gIGO4Y5hojB7wQcFi6XGZ1HgZNzbsc9YS4JBjc6H1F1DzaJzhWRZQx2CwPMDQwWN3MPzuBPIctoXWZ0Xgn8JvCyVmhhTgiGyEX1f2AuqmVGZ4/c/Lo/ulkaOMAA/cVgxzCHEKnFtwfeSHmWWR/372JG6tbOkZkTggEmg3TeTZaOOQ+PYPwxcMtsSK89wACJGCxw5hacL/8jlkywSi2+EgvSbTVIcdYLBs/Qqqq7Ykn8yoI7XP92ZohwHqygBpgrSEnbMFgEzQJELqoLgDPC5SJe5Ubne8ROzms1u+usFwxknfYxYEeKLfcuLB4E7hoYnQeYY1ibcE/KaXEDTD88G+rjwwfKF7oTZHmRWuXlc0EwOMpOKvP/VwCHishdZJ0/wACzGU7DP8HSpZcFcwLcsFlaNECv8PHaN/xdtBv0ND8/F5Fv9+Ncm/8CyR/rAOws+IsAAAAASUVORK5CYII=" x="191.712" y="243.7" width="408.288" height="77.47"/>
+<circle cx="644.19" cy="34.35" r="34.35" fill="#4FBBEA"/></svg></div>
+  <nav><div class="sec">Main</div><a href="#" class=""><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</a><a href="#" class="on"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Deals</a><a href="#" class=""><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>Pipeline</a><a href="#" class=""><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Clients</a><a href="#" class=""><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>Lender library</a><a href="#" class=""><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg>Templates</a></nav>
+ </div>
+ <div class="main">
+
+  <div class="crumb">Deals <span style="opacity:.5">/</span> <b>Construction loan</b></div>
+
+  <div class="topline">
+   <span class="h1">Fenwick &amp; Rawlins 2026</span>
+   <span class="stagepill">BC with broker</span>
+   <span class="saved">Saved 2:14 pm</span>
+   <span class="who"><i style="background:#107EA8">FD</i><i style="background:#5B3A9E">RC</i></span>
+   <span class="acts">
+    <span class="ab out"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg> Open BC</span>
+    <span class="menu"><span class="ab dark"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg> Client emails &#9662;</span>
+     <span class="drop">
+      <div class="dh">Send to the client</div>
+      <div class="di ready"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg> Pre-approval <span class="st2">ready</span></div>
+      <div class="di off"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg> Pre-approval extension <span class="st2">not sent yet</span></div>
+      <div class="di off"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg> Formal approval <span class="st2">not approved yet</span></div>
+      <div class="di"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg> Borrowing capacity <span class="st2">sent 18 Sep</span></div>
+     </span>
+    </span>
+    <span class="ab">Edit</span><span class="ab">More &#9662;</span>
+   </span>
+  </div>
+  <div class="subline"><span class="who2"><em>Broker</em> <b>Robin Clarke</b> <span class="re">Reassign</span></span><span class="who2"><em>Credit officer</em> <b>Dana Okafor</b> <span class="re">Reassign</span></span><span class="who2"><em>Scenario</em> <b>Construction loan</b></span></div>
+
+  <div class="prompt">
+   <b>Two things nobody has started.</b>
+   <span>Nobody has asked the client for 18 documents.</span><span class="pb">Request them</span>
+   <span class="sep"></span>
+   <span>Who is doing the borrowing capacity?</span><span class="pb">I'll do it</span><span class="pb">Send to credit team</span>
+  </div>
+
+  <div class="railbox stg" style="padding:14px 14px 10px">
+   <div class="st done"><span class="d"><svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.4 L4.8 8.7 L9.5 3.6"/></svg></span><span class="l">Fact Find</span><span class="sub2">07 Sep</span></div><div class="st done"><span class="ln"></span><span class="d"><svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.4 L4.8 8.7 L9.5 3.6"/></svg></span><span class="l">BC</span><span class="sub2">08 Sep</span></div><div class="st done"><span class="ln"></span><span class="d"><svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.4 L4.8 8.7 L9.5 3.6"/></svg></span><span class="l">Lending options</span><span class="sub2">12 Sep</span></div><div class="st done"><span class="ln"></span><span class="d"><svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.4 L4.8 8.7 L9.5 3.6"/></svg></span><span class="l">Compliance</span><span class="sub2">18 Sep</span></div><div class="st done"><span class="ln"></span><span class="d"><svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.4 L4.8 8.7 L9.5 3.6"/></svg></span><span class="l">Lodged</span><span class="sub2">17 Sep</span></div><div class="st done"><span class="ln"></span><span class="d"><svg viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.4 L4.8 8.7 L9.5 3.6"/></svg></span><span class="l">Preapproved</span><span class="sub2">24 Sep</span></div><div class="st now"><span class="ln"></span><span class="d"></span><span class="l">Offer accepted</span><span class="sub2">with lender</span></div><div class="st "><span class="ln"></span><span class="d"></span><span class="l">Formal</span><span class="sub2"></span></div><div class="st "><span class="ln"></span><span class="d"></span><span class="l">Settled</span><span class="sub2"></span></div>
+  </div>
+
+  <div class="boxes">
+   <div class="bx"><div class="ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div><div class="n">Fact Find</div><div class="s done">Complete</div></div><div class="bx "><div class="ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div><div class="n">Statements</div><div class="s ">Not started</div></div><div class="bx "><div class="ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h8"/></svg></div><div class="n">Borrowing capacity</div><div class="s work">4 to complete</div></div><div class="bx on"><div class="ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div><div class="n">Lending options</div><div class="s ">Not started</div></div><div class="bx "><div class="ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></div><div class="n">Compliance</div><div class="s ">Not started</div></div>
+   <div class="next"><div class="k"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Next action</div>
+    <div class="v">Broker to review &amp; send the BC</div><div class="s">Waiting since 16 Sep</div></div>
+  </div>
+
+  <div class="body2">
+   <div class="pnl">
+    <div class="pnlh"><span class="pi"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h8"/></svg></span><span class="pt">Lending options</span><span class="sv">Saved 2:14 pm</span></div>
+    <div class="navrow">
+   <div class="subnav2"><span class="on">LO Form</span><span>Email Preview</span></div>
+   <span class="pill green">&#10003; Docs received &middot; 2 Oct</span>
+   <span class="moveto">Client agreed &mdash; move to Compliance</span>
+  </div>
+<div class="optbar"><span class="ol">Deal structure</span>
+ <button class="ob on" data-x="A">A &mdash; the table</button>
+ <button class="ob" data-x="B">B &mdash; two lines per split</button>
+ <button class="ob" data-x="C">C &mdash; folded</button>
+ <span class="on2">Amber now appears once, in the warning. Nowhere else.</span></div>
+<div class="lay" id="A"><div class="fs ds">
+ <div class="dsh"><span class="fh" style="margin:0">Deal structure</span>
+  <span class="dschip">Complex refinance</span>
+  <span class="dspurp">Owner occupied &amp; investment</span>
+  <span class="dsneed grey">2 to complete</span>
+  <span class="dsopen">Open BC tab &rarr;</span></div>
+ 
+ <div class="dsrow">
+  <div class="dsi"><span class="dsl">Lender</span><span class="dsv">Westpac</span><span class="dsc">from the lending options</span></div>
+  <div class="dsi"><span class="dsl">Approval</span><span class="seg"><span class="on">Formal</span><span>Pre-approval</span></span></div>
+  <div class="dsi wide"><span class="dsl">Security address</span><span class="f">14 Rosslyn Street, Hawthorn VIC</span></div>
+  <div class="dsi"><span class="dsl">Property value</span><span class="dsv">$2,220,000</span><span class="dsc">2 securities</span></div>
+  <div class="dsi"><span class="dsl">LVR</span><span class="dsv">48.6%</span><span class="dsc">$1,078,000 lending</span></div>
+ </div>
+ <div class="dssub"><span class="fh sub">Loan splits</span>
+  <span class="dsnote">amount and rate come from the lender options below</span>
+  <span class="dsadd">+ Add split</span></div>
+ <table class="dst">
+  <thead><tr><th>Split</th><th>Amount</th><th>Rate</th><th>P&amp;I / IO</th><th>Purpose</th><th>Term</th><th>IO years</th><th>Product type</th><th>Promotion / cashback</th></tr></thead>
+  <tbody>
+   <tr><td><b>Split 1</b><span class="sl">Home loan</span></td><td>$462,000</td><td>6.14%</td><td><span class="f sel mini">P&amp;I</span></td><td><span class="f sel mini">Owner occupied</span></td><td><span class="f mini">30</span></td><td class="dash">&mdash;</td><td><span class="f mini">Flexi First</span></td><td rowspan="4"><span class="f mini">none</span></td></tr>
+   <tr><td><b>Split 2</b><span class="sl">Investment loan</span></td><td>$438,000</td><td>6.39%</td><td><span class="f sel mini">IO</span></td><td><span class="f sel mini">Investment</span></td><td><span class="f mini">30</span></td><td><span class="f mini">2</span></td><td><span class="f mini need"></span></td></tr>
+   <tr><td><b>Split 3</b><span class="sl">Equity access</span></td><td>$178,000</td><td>6.39%</td><td><span class="f sel mini">IO</span></td><td><span class="f sel mini">Investment</span></td><td><span class="f mini">30</span></td><td><span class="f mini">2</span></td><td><span class="f mini">Flexi First</span></td></tr>
+   <tr><td><b>Split 4</b><span class="sl">Renovation</span></td><td class="dash">&mdash;</td><td class="dash">&mdash;</td><td><span class="f sel mini need"></span></td><td><span class="f sel mini">Owner occupied</span></td><td><span class="f mini">30</span></td><td class="dash">&mdash;</td><td><span class="f mini">Flexi First</span></td></tr>
+  </tbody>
+ </table>
+ <div class="dstot"><span>Total lending <b>$1,078,000</b></span><span>Owner occupied <b>$462,000</b></span><span>Investment <b>$616,000</b></span></div>
+ <div class="dswarn"><b>2 things are needed before the credit notes can be written</b>
+  <p>Left blank, the notes would either say nothing useful about that money or start guessing.</p>
+  <ul><li><b>Renovation</b> &mdash; <i>repayment type &mdash; P&amp;I or interest only</i></li>
+      <li><b>Investment loan</b> &mdash; <i>product type</i></li></ul></div>
+</div></div><div class="lay" id="B"><div class="fs ds">
+ <div class="dsh"><span class="fh" style="margin:0">Deal structure</span>
+  <span class="dschip">Complex refinance</span>
+  <span class="dspurp">Owner occupied &amp; investment</span>
+  <span class="dsneed grey">2 to complete</span>
+  <span class="dsopen">Open BC tab &rarr;</span></div>
+ 
+ <div class="dsrow">
+  <div class="dsi"><span class="dsl">Lender</span><span class="dsv">Westpac</span><span class="dsc">from the lending options</span></div>
+  <div class="dsi"><span class="dsl">Approval</span><span class="seg"><span class="on">Formal</span><span>Pre-approval</span></span></div>
+  <div class="dsi wide"><span class="dsl">Security address</span><span class="f">14 Rosslyn Street, Hawthorn VIC</span></div>
+  <div class="dsi"><span class="dsl">Property value</span><span class="dsv">$2,220,000</span><span class="dsc">2 securities</span></div>
+  <div class="dsi"><span class="dsl">LVR</span><span class="dsv">48.6%</span><span class="dsc">$1,078,000 lending</span></div>
+ </div>
+ <div class="dssub"><span class="fh sub">Loan splits</span>
+  <span class="dsnote">amount and rate come from the lender options below</span>
+  <span class="dsadd">+ Add split</span></div>
+ 
+ <div class="brow">
+  <div class="btop"><span class="bn">Split 1</span><span class="blabel">Home loan</span>
+   <span class="bamt">$462,000</span><span class="brate">6.14%</span>
+   <span class="bpur">Owner occupied</span><span class="btype">P&amp;I</span></div>
+  <div class="bbot"><span>Term 30</span><span>IO &mdash;</span>
+   <span class="">Flexi First</span></div>
+ </div>
+ 
+ <div class="brow needs">
+  <div class="btop"><span class="bn">Split 2</span><span class="blabel">Investment loan</span>
+   <span class="bamt">$438,000</span><span class="brate">6.39%</span>
+   <span class="bpur">Investment</span><span class="btype">IO</span></div>
+  <div class="bbot"><span>Term 30</span><span>IO 2</span>
+   <span class="miss">product type not set</span></div>
+ </div>
+ 
+ <div class="brow">
+  <div class="btop"><span class="bn">Split 3</span><span class="blabel">Equity access</span>
+   <span class="bamt">$178,000</span><span class="brate">6.39%</span>
+   <span class="bpur">Investment</span><span class="btype">IO</span></div>
+  <div class="bbot"><span>Term 30</span><span>IO 2</span>
+   <span class="">Flexi First</span></div>
+ </div>
+ 
+ <div class="brow needs">
+  <div class="btop"><span class="bn">Split 4</span><span class="blabel">Renovation</span>
+   <span class="bamt">&mdash;</span><span class="brate">&mdash;</span>
+   <span class="bpur">Owner occupied</span><span class="btype">not set</span></div>
+  <div class="bbot"><span>Term 30</span><span>IO &mdash;</span>
+   <span class="">Flexi First</span></div>
+ </div>
+ <div class="dstot"><span>Total lending <b>$1,078,000</b></span><span>Owner occupied <b>$462,000</b></span><span>Investment <b>$616,000</b></span></div>
+ <div class="dswarn"><b>2 things are needed before the credit notes can be written</b>
+  <p>Left blank, the notes would either say nothing useful about that money or start guessing.</p>
+  <ul><li><b>Renovation</b> &mdash; <i>repayment type &mdash; P&amp;I or interest only</i></li>
+      <li><b>Investment loan</b> &mdash; <i>product type</i></li></ul></div>
+</div></div><div class="lay" id="C"><div class="fs ds">
+ <div class="dsh"><span class="fh" style="margin:0">Deal structure</span>
+  <span class="dschip">Complex refinance</span>
+  <span class="dspurp">Owner occupied &amp; investment</span>
+  <span class="dsneed grey">2 to complete</span>
+  <span class="dsopen">Open BC tab &rarr;</span></div>
+ 
+ <div class="dsrow">
+  <div class="dsi"><span class="dsl">Lender</span><span class="dsv">Westpac</span><span class="dsc">from the lending options</span></div>
+  <div class="dsi"><span class="dsl">Approval</span><span class="seg"><span class="on">Formal</span><span>Pre-approval</span></span></div>
+  <div class="dsi wide"><span class="dsl">Security address</span><span class="f">14 Rosslyn Street, Hawthorn VIC</span></div>
+  <div class="dsi"><span class="dsl">Property value</span><span class="dsv">$2,220,000</span><span class="dsc">2 securities</span></div>
+  <div class="dsi"><span class="dsl">LVR</span><span class="dsv">48.6%</span><span class="dsc">$1,078,000 lending</span></div>
+ </div>
+ <div class="foldrow">
+  <span class="fh sub" style="margin:0">Loan splits</span>
+  <span class="foldline"><b>4 splits</b> &middot; $1,078,000 &middot; <b>2 need an answer</b></span>
+  <span class="dsadd">Show</span>
+ </div>
+ <div class="dswarn"><b>2 things are needed before the credit notes can be written</b>
+  <p>Left blank, the notes would either say nothing useful about that money or start guessing.</p>
+  <ul><li><b>Renovation</b> &mdash; <i>repayment type &mdash; P&amp;I or interest only</i></li>
+      <li><b>Investment loan</b> &mdash; <i>product type</i></li></ul></div>
+</div></div>
+<p class="after">Below this the page is unchanged: Scenario, Documents required, Research criteria, Lender options, Recommendation with the client&rsquo;s decision inside it, then the email half.</p>
+   </div>
+
+   <div>
+    <div class="rc chase2"><div class="h"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg> Important <span class="e">Add</span></div>
+     <p class="red">Valuation ordered 6 days ago, nothing back.</p>
+    </div>
+    <div class="rc"><div class="h"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12l-4 4H4z"/><path d="M16 20v-4h4"/></svg> Internal notes <span class="e">Edit</span></div>
+     <p>Purchase land for $583K in NSW. Not due to register until mid next year. Has paid 5% deposit
+      already. Build 5&ndash;6 units, approximate build price $500K. All high level right now, not going to
+      happen until mid 2027.</p>
+     <p>Robin to confirm the lender's construction policy before we go further. Fixed price contract still
+      outstanding.</p>
+     <div class="meta">Last edited by Fabio De Castro, 16 Sep, 10:42 am</div>
+    </div>
+    <div class="rc"><div class="h"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg> Documents <span class="e">Show</span></div>
+     <div class="rrow">To request<span class="n2">18</span></div>
+     <div class="rrow">Received<span class="n2">0</span></div>
+     <div class="rrow">To check<span class="n2">1</span></div>
+     <span class="rbtn">Request from client</span>
+    </div>
+    <div class="rc"><div class="h"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg> Build a PDF</div>
+     <div class="rrow">Fact Find<span class="go">Build</span></div>
+     <div class="rrow">Handover<span class="go">Build</span></div>
+     <div class="rrow">Broker notes<span class="go">Build</span></div>
+     <span class="rbtn">Rebuild all three</span>
+    </div>
+    <div class="rc"><div class="h"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg> SalesTrekker &amp; links</div>
+     <div class="rrow">OneDrive<span class="go">Open</span></div>
+     <div class="rrow">SalesTrekker<span class="go">Open</span></div>
+     <div class="rrow">Summary page<span class="go">Open</span></div>
+    </div>
+    <div class="rc"><div class="h"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> File notes</div>
+     <div class="tl">
+      <div class="tle"><span class="tld"></span>
+       <p class="tlw">17 Sep &middot; Dana Okafor</p>
+       <p class="tlb">Lender confirmed progress draws are fine on a 5-unit build.</p></div>
+      <div class="tle"><span class="tld"></span>
+       <p class="tlw">17 Sep &middot; recorded automatically</p>
+       <p class="tlb sys">Deal unlocked and edited.</p></div>
+      <div class="tle"><span class="tld"></span>
+       <p class="tlw">16 Sep &middot; Fabio De Castro</p>
+       <p class="tlb">Rang the client about the fixed price contract.</p></div>
+     </div>
+     <div class="f2">Add a file note</div>
+    </div>
+   </div>
+  </div>
+ </div>
+</div></div>
+
+<div class="wrap">
+
+<h2><span class="n">The thing you asked me to prove</span>Every component on the page, and where it goes</h2>
+<p class="cap">Not a summary &mdash; <b>this is the full list of what the deal page renders</b>, read out of
+the code rather than from memory. Forty entries. If something you use is missing from this table, it is
+missing from the plan and I want to know before anything is built.</p>
+<p class="cap"><b>Nothing is deleted and no behaviour changes.</b> The documents, the PDFs and the client
+emails stay outside the tab lock exactly as they are now, so a lodged deal still reaches all of them.</p>
+
+<table class="t">
+ <tr><th style="width:250px">What the page renders today</th><th style="width:96px">Where it goes</th><th>Note</th></tr>
+ <tr><td><b>ArrowLeft &mdash; Back to deals</b></td><td><span class="tag keep">Stays</span></td><td>Now a breadcrumb that also names the scenario.</td></tr>
+ <tr><td><b>TestDealBand</b></td><td><span class="tag keep">Stays</span></td><td>Above everything, exactly as now. It is preventing somebody believing a fake deal.</td></tr>
+ <tr><td><b>DealName</b></td><td><span class="tag keep">Stays</span></td><td>Including the disambiguation when two deals share a name.</td></tr>
+ <tr><td><b>SaveIndicator</b></td><td><span class="tag keep">Stays</span></td><td>Beside the name. This is the one thing the portal has had the most trouble with and it does not move.</td></tr>
+ <tr><td><b>SaveIndicatorNote</b></td><td><span class="tag keep">Stays</span></td><td>Only when a save has gone wrong, same as now.</td></tr>
+ <tr><td><b>DealPresence &mdash; who else is here</b></td><td><span class="tag keep">Stays</span></td><td>The fixed-height row of circles. It cannot push the form around.</td></tr>
+ <tr><td><b>DealHistory &mdash; two named people</b></td><td><span class="tag more">More menu</span></td><td>Same permission check, one click deeper.</td></tr>
+ <tr><td><b>ALSO &mdash; the client's other deal</b></td><td><span class="tag keep">Sub-line</span></td><td>Beside Broker and Credit, where it reads as a fact rather than a chip.</td></tr>
+ <tr><td><b>BrokerAssignment</b></td><td><span class="tag keep">Sub-line</span></td><td>Still changeable, same control.</td></tr>
+ <tr><td><b>CreditOfficerAssignment</b></td><td><span class="tag keep">Sub-line</span></td><td>Still changeable, same control.</td></tr>
+ <tr><td><b>Scenario chip</b></td><td><span class="tag keep">Sub-line</span></td><td></td></tr>
+ <tr><td><b>Waiting on &hellip;</b></td><td><span class="tag keep">Next action</span></td><td>Same text, same source. Beside the five boxes, where the decision is.</td></tr>
+ <tr><td><b>AlertChips</b></td><td><span class="tag keep">Stays</span></td><td>Red, in the header, untouched. The one thing that should shout.</td></tr>
+ <tr><td><b>OneDrive / SalesTrekker links</b></td><td><span class="tag rail">To the rail</span></td><td>They are links out of the portal.</td></tr>
+ <tr><td><b>Summary / Clone</b></td><td><span class="tag more">More menu</span></td><td></td></tr>
+ <tr><td><b>CloseDeal</b></td><td><span class="tag more">More menu</span></td><td>Close and reopen, same dialog.</td></tr>
+ <tr><td><b>DealProgress</b></td><td><span class="tag keep">Stays</span></td><td><b>The bead rail is copied exactly</b> &mdash; 18px bead, 2px connector, the white tick, the 4px halo, the dates, the &ldquo;with lender&rdquo; line, and the fold on a lodged deal. Only the green and the blue move onto the palette.</td></tr>
+ <tr><td><b>DealSettlement</b></td><td><span class="tag keep">Stays</span></td><td>Untouched, same deals, same place.</td></tr>
+ <tr><td><b>OfferAccepted</b></td><td><span class="tag keep">Stays</span></td><td>Untouched. Written once, never in two branches &mdash; the rule that file now follows.</td></tr>
+ <tr><td><b>DealSettlementPanel</b></td><td><span class="tag keep">Stays</span></td><td>Untouched, including the position prompt.</td></tr>
+ <tr><td><b>DealCommission</b></td><td><span class="tag keep">Stays</span></td><td></td></tr>
+ <tr><td><b>DealAlerts &mdash; Important</b></td><td><span class="tag rail">To the rail</span></td><td><b>Still only on a deal that is with a lender.</b> It does not start appearing on deals that have never had it &mdash; that would be a change, not a rearrangement.</td></tr>
+ <tr><td><b>FileNotes</b></td><td><span class="tag rail">To the rail</span></td><td>The full timeline &mdash; date, who, what, system entries in italics &mdash; and the box to add one. Not a summary. <b>Still only on a deal that is with a lender</b>, as now. Kept separate from the internal notes box, because the portal deliberately distinguishes the three: running context, what happened and when, and what needs doing.</td></tr>
+ <tr><td><b>InternalNotesStrip</b></td><td><span class="tag rail">To the rail</span></td><td><b>Bigger, as you asked &mdash; and still the same free text box.</b> One field, one save, one conflict check, Edit in the same place. It is open on the rail instead of collapsed to one line above the form. <b>It does NOT become dated entries</b> &mdash; that was a suggestion of mine from 1 Oct that I wrongly drew here as if it already existed, and it is not part of these ships.</td></tr>
+ <tr><td><b>DocumentsBox</b></td><td><span class="tag rail">To the rail</span></td><td>To request, received and to check &mdash; all three counts, plus the button.</td></tr>
+ <tr><td><b>WhoIsDoingTheBc</b></td><td><span class="tag fold">One line</span></td><td>Folded with the one below. Same two buttons.</td></tr>
+ <tr><td><b>Outstanding</b></td><td><span class="tag keep">Stays</span></td><td>Appears on the same deals as now, in the same place.</td></tr>
+ <tr><td><b>&ldquo;Nobody has asked for these documents&rdquo;</b></td><td><span class="tag fold">One line</span></td><td>Folded with the one above. Same button.</td></tr>
+ <tr><td><b>DealDocuments &mdash; the three PDFs</b></td><td><span class="tag rail">To the rail</span></td><td>Fact Find, Handover, Broker notes, Rebuild all three. <b>Still outside the tab lock</b>, so a lodged deal still reaches them.</td></tr>
+ <tr><td><b>MilestoneEmails</b></td><td><span class="tag fold">Dropdown</span></td><td>At the top, each one saying its own state. Same permissions, still outside the lock.</td></tr>
+ <tr><td><b>AnzAssessmentEmail</b></td><td><span class="tag fold">Dropdown</span></td><td>In the same menu, ANZ deals only, same behaviour.</td></tr>
+ <tr><td><b>The five tabs</b></td><td><span class="tag keep">Stays</span></td><td>Already boxes. They gain an icon and a status line.</td></tr>
+ <tr><td><b>TabLock</b></td><td><span class="tag keep">Stays</span></td><td>Unchanged. The rail sits outside it, exactly as the strips do now.</td></tr>
+ <tr><td><b>TabBoundary</b></td><td><span class="tag keep">Stays</span></td><td>Untouched.</td></tr>
+ <tr><td><b>FactFindForm</b></td><td><span class="tag keep">Stays</span></td><td>Not one field moves. Only its section bar changes style.</td></tr>
+ <tr><td><b>StatementAnalysis</b></td><td><span class="tag keep">Stays</span></td><td>Untouched.</td></tr>
+ <tr><td><b>BCForm</b></td><td><span class="tag keep">Stays</span></td><td>Not one field moves. Its Form / Preview pills change style.</td></tr>
+ <tr><td><b>LOForm</b></td><td><span class="tag keep">Stays</span></td><td>Not one field moves. Its Form / Preview bar changes style.</td></tr>
+ <tr><td><b>ComplianceForm</b></td><td><span class="tag keep">Stays</span></td><td>Not one field moves, all nine sections intact. Its section bar changes style.</td></tr>
+ <tr><td><b>DealStructure</b></td><td><span class="tag keep">Stays</span></td><td>Untouched. Same block, same two tabs, same fields. It is already the one home for the loan, the LVR, the land value, the construction cost and the funds to complete.</td></tr>
+</table>
+
+<h2><span class="n">Checked, not remembered</span>What each tab's sections actually are</h2>
+<p class="cap">An earlier version of this mock put <b>Compliance's</b> five sections under <b>Fact Find</b>.
+Fabio caught it. So here is the real list, read out of each form file &mdash; <b>every tab keeps its own
+sections, in its own order, with its own count.</b> The only thing that changes is that all five stop being
+drawn four different ways.</p>
+<table class="t">
+ <tr><th style="width:150px">Tab</th><th style="width:320px">Its sections, today and after</th><th>How it is drawn today</th></tr>
+ <tr><td><b>Fact Find</b></td><td>Personal &amp; address &middot; Employment &middot; Income &middot; Other assets &middot; Properties &middot; Liabilities</td><td>A wide bar that wraps onto two lines, with Liabilities stranded in the middle of the second row. Plus the applicant pills and Dependants, which stay exactly where they are.</td></tr>
+ <tr><td><b>Statements</b></td><td>&mdash;</td><td>No sections. It is a report and it needs none.</td></tr>
+ <tr><td><b>Borrowing capacity</b></td><td>BC form &middot; Preview &amp; share</td><td>Rounded pills with a blue outline on the active one. Plus the scenario pills above them, which keep their own row.</td></tr>
+ <tr><td><b>Lending options</b></td><td>LO Form &middot; Email Preview</td><td>Solid black on the active one, inside a white box.</td></tr>
+ <tr><td><b>Compliance</b></td><td>Needs &amp; objectives &middot; Risks &middot; Product requirements &middot; Broker comments &middot; Living expenses</td><td>A wide bar, solid black on the active one.</td></tr>
+</table>
+<div class="key">
+ <p><b>Nothing in that middle column changes.</b> Not a name, not an order, not a count. Fact Find keeps six,
+ Compliance keeps five, BC and Lending options keep two each, Statements keeps none.</p>
+ <p><b>What changes is only the third column.</b> Four styles become the one grey pill-bar. The Fact Find bar
+ stops wrapping, which is why Liabilities is currently stranded on a second row by itself.</p>
+</div>
+
+<h2><span class="n">Your other question</span>Which column changes, and which does not</h2>
+<table class="t">
+ <tr><th style="width:170px">Column</th><th style="width:120px">Changes?</th><th>What is in it</th></tr>
+ <tr><td><b>Far left &mdash; the portal sidebar</b></td><td><span class="tag keep">Never</span></td>
+     <td>Dashboard, Deals, Pipeline and the rest. Identical on every page of the portal, not just this one. Untouched by any of this.</td></tr>
+ <tr><td><b>Middle &mdash; the work</b></td><td><span class="tag fold">Every time</span></td>
+     <td><b>This is the only part that changes.</b> Pick a different tab and the whole panel changes &mdash; Fact Find's fields, then BC's, then Compliance's. Pick a different section inside the tab and the content under the pill-bar changes. This is where your team does the typing.</td></tr>
+ <tr><td><b>Right &mdash; the rail</b></td><td><span class="tag keep">Never</span></td>
+     <td><b>The same on all five tabs.</b> Internal notes, the document counts, the three PDF builders, the links out. That is exactly why they can move there: they already sit ABOVE the tabs today precisely because they are not tab-specific. "The same notes on every tab of this deal" is what the portal already says about them.</td></tr>
+</table>
+<div class="key">
+ <p><b>And that is the whole reason the rail is safe.</b> Nothing is being made tab-specific that was not, and
+ nothing that was tab-specific is being pulled out of its tab. The four strips move sideways, not inwards.</p>
+</div>
+
+<h2><span class="n">What I proposed and took back out</span>The six numbers across the top</h2>
+<p class="cap">An earlier version of this had a row of tiles &mdash; loan, funds to complete, land value,
+construction, LVR, documents. <b>They are gone, and they were wrong for a reason worth writing down.</b></p>
+<div class="key">
+ <p><b>Every one of those figures is already in Deal Structure</b>, which the portal already has and which
+ already holds more than the tiles did: lender, security address, approval type, property value, LVR, land
+ value, construction cost, stamp duty, loan, and every split with its term and product. It works out funds
+ to complete itself.</p>
+ <p><b>And it has a rule a tile could never have.</b> From the top of that file: <i>"read-only wherever the
+ value exists somewhere else &mdash; the only editable fields are the ones the portal has never recorded
+ anywhere."</i> A tile can only ever be a copy of a number that lives somewhere else, which is the fault
+ this portal has spent a month removing.</p>
+ <p><b>Documents was the worst of them.</b> It already appears in the prompt line with a button on it, and
+ again in the rail with all three counts. A tile would have been a third home for one fact.</p>
+ <p><b>Deal Structure itself is untouched by any of this.</b> Same block, same place, same fields, same
+ behaviour. Nothing in these four ships goes near it.</p>
+</div>
+
+<h2><span class="n">Instead of asking you to trust a drawing</span>A test that makes losing a field impossible</h2>
+<p class="cap">A mock-up of a form with 221 fields in it will always be missing something, and checking it by
+eye is asking you to do a machine's job. So before any rearranging happens, <b>every word a person can read
+on the five forms is locked</b> &mdash; read out of the code, not typed from memory.</p>
+<div class="key">
+ <p><b>831 words, across six files.</b> Labels, placeholders, every option in every dropdown, every button,
+ every section heading. <b>Any ship that drops one fails and names it.</b> Adding is free and silent;
+ removing has to be done by hand in a snapshot file, where it shows up in the diff and in the ship output.</p>
+ <p><b>It has already been broken on purpose twice and caught both times</b> &mdash; once by shortening
+ &ldquo;Rent amount&rdquo; to &ldquo;Rent&rdquo;, once by renaming the &ldquo;Purpose and goals&rdquo;
+ heading. It reported exactly what went missing, from which form.</p>
+ <p><b>And the extractor itself is tested</b>, because a snapshot passes beautifully when the thing doing
+ the reading has quietly stopped reading. Three labels you named by hand were invisible to the first version
+ &mdash; they live inside a JSX expression rather than between two tags &mdash; and one pattern was so
+ greedy it swallowed the quote that ended the string, hiding the very label it was meant to find.</p>
+</div>
+<div class="inv"><b>Fact Find &mdash; 221</b><span>20%</span><span>2021/22</span><span>2022/23</span><span>2023/24</span><span>2024/25</span><span>50%</span><span>AI will extract the client details</span><span>Account number</span><span>Add applicant</span><span>Add backs</span><span>Address history</span><span>Address not found</span><span>Allowance</span><span>Annual income</span><span>Annually</span><span>Applicant 1</span><span>Applicant estimate</span><span>Apply to Fact Find</span><span>Assessable income (calculated)</span><span>Assessment method</span><span>Attached documents</span><span>Average of the Last Two Years</span><span>BSB</span><span>Balance</span><span>Bank account</span><span>Board amount</span><span>Boarding</span><span>Bonus</span><span>Business (from Employment tab)</span><span>Business profitable?</span><span>Car loan</span><span>Casual</span><span>Centrelink FTB</span><span>Client&#x27;s own stated long-term plans...</span><span>Client&#x27;s own stated short-term plans...</span><span>Commercial</span><span>Commission</span><span>Compliance box 1 cannot be written without this</span><span>Compliance box 2 cannot be written without this</span><span>Compliance box 3 cannot be written without this</span><span>Copy address from Applicant 1</span><span>Credit card</span><span>Credit limit</span><span>Current address</span><span>Current balance</span><span>Current employer</span><span>Custom %</span><span>Date of birth</span><span>Deal links</span><span>Dependants</span><span>Depreciation</span><span>Description</span><span>Director&#x27;s salary</span><span>Documents on this deal are listed</span><span>Dr</span><span>Drop documents here</span><span>Drop the fact find PDF here</span><span>Email</span><span>Employer / business name</span><span>Employer address</span><span>Employer type</span><span>End date</span><span>Enter the financial year figures below. Until then this income counts as nothing on the BC, the client email and the compliance notes.</span><span>Error extracting PDF:</span><span>Error saving document record:</span><span>Extraction failed:</span><span>Fact Find</span><span>Fact find autosave:</span><span>Fact finds, screenshots, rate sheets.</span><span>Failed to read file</span><span>Female</span><span>Financial year 1</span><span>Financial year 2</span><span>First name</span><span>Fixed</span><span>Fixed rate expires</span><span>Fortnightly</span><span>Frequency</span><span>Full time</span><span>Fully detached house</span><span>Fund Name</span><span>Gender</span><span>Goals — 2 to 10 years</span><span>Goals — next 2 years</span><span>Gross salary</span><span>HECS</span><span>Health Insurance</span><span>Holding — company or fund</span><span>House</span><span>Household</span><span>Household {id}</span><span>Housing expense (optional)</span><span>Income calculation method</span><span>Income type</span><span>Interest on business loans</span><span>Interest only</span><span>Interest only expires</span><span>Interest rate %</span><span>Investment</span><span>Land</span><span>Last 2 financial years</span><span>Last name</span><span>Latest Year Because Lower Than Previous Year</span><span>Latest year not lower</span><span>Lender not found</span><span>Limit</span><span>Linked employer</span><span>Linked loans</span><span>Living with family</span><span>M17 20v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 4-4h1m5-8a4 4 0 1 1-8 0 4 4 0 0 1 8 0zm6 4a4 4 0 1 0-8 0</span><span>Male</span><span>Middle name</span><span>Miss</span><span>Monthly</span><span>Move-in date</span><span>Mr</span><span>Mrs</span><span>Ms</span><span>Net profit</span><span>New loan</span><span>No</span><span>No income figures recorded yet</span><span>Not working</span><span>Not working since</span><span>Occupation</span><span>One year in isolation</span><span>One-off expenses</span><span>OneDrive folder</span><span>Ongoing</span><span>Or select an existing customer</span><span>Other</span><span>Other add backs</span><span>Other assets</span><span>Other non-taxable</span><span>Other non-taxable income</span><span>Other taxable</span><span>Other taxable income</span><span>Overtime essential</span><span>Overtime non-essential</span><span>Owned by</span><span>Owner</span><span>Owner occupied</span><span>PAYG</span><span>PAYG income</span><span>Part time</span><span>Paste OneDrive folder URL...</span><span>Paste SalesTrekker deal URL...</span><span>Personal details</span><span>Personal loan</span><span>Phone mobile</span><span>Preferred name</span><span>Previous Year Plus Growth Percentage</span><span>Previous name</span><span>Primary</span><span>Principal and interest</span><span>Private</span><span>Prof</span><span>Property type</span><span>Public</span><span>Purpose and goals</span><span>Purpose of loan / primary reason for finance</span><span>Recorded on both of them, so you do not have to answer it twice.</span><span>Refinance</span><span>Relationship of applicants</span><span>Relationship status</span><span>Remain open</span><span>Rent amount</span><span>Rental income (weekly)</span><span>Renting</span><span>Repayment</span><span>Residency status</span><span>Residential</span><span>Residential status</span><span>Responsible for this liability</span><span>Review extracted data</span><span>Running costs (monthly)</span><span>Rural</span><span>Salary</span><span>Salary amount</span><span>SalesTrekker BCC code</span><span>SalesTrekker card</span><span>Search clients...</span><span>Secondary</span><span>Select</span><span>Self-employed</span><span>Self-employed income</span><span>Start date</span><span>Strata costs (quarterly)</span><span>Structure — sole trader or company?</span><span>Superannuation</span><span>That link</span><span>The address</span><span>The addresses</span><span>The deal name</span><span>They live together</span><span>This applicant</span><span>Title</span><span>To be closed</span><span>To be consolidated</span><span>To be paid out</span><span>To be refinanced</span><span>To be sold</span><span>Townhouse</span><span>Unit</span><span>Unnamed employer</span><span>Upload failed:</span><span>Value</span><span>Variable</span><span>Weekly</span><span>What the client told you they want this loan for...</span><span>Where is the deposit coming from?</span><span>Will become investment</span><span>Will become investment after settlement</span><span>Will become owner occupied</span><span>Will become owner occupied after settlement</span><span>Yes</span><span>e.g. deal-12345@salestrekker.com</span><span>{addr.residentialStatus === &#x27;Renting&#x27; &amp;&amp; &#x27;Rent amount&#x27;}</span><span>{applicant.relationshipStatus} to</span><span>{uploadingDoc ? &#x27;Uploading...&#x27; : &#x27;+ Add&#x27;}</span><span>— select —</span><b>Borrowing capacity &mdash; 180</b><span>&amp;mdash; select &amp;mdash;</span><span>80%</span><span>90%</span><span>95%</span><span>AI generated</span><span>Add item...</span><span>Additional contribution (optional)</span><span>Already moved to LO</span><span>Applicant 1</span><span>Applicant 2</span><span>As if complete</span><span>BC autosave:</span><span>BC form</span><span>BC template</span><span>BC — Borrowing capacity</span><span>Based on your numbers</span><span>Bridging loan</span><span>Bridging loan interest is capitalised during the bridging period and will increase the total loan balance.</span><span>Bridging period (months)</span><span>Broker personalisation</span><span>Broker signature</span><span>Broker summary notes</span><span>Broker summary notes (included in email)</span><span>Call this scenario</span><span>Capitalised onto the loan</span><span>Car loan</span><span>Client agreed — move to LO</span><span>Close car loan</span><span>Close personal loan</span><span>Combination of savings &amp;amp; equity</span><span>Combination of savings &amp;amp; gift</span><span>Complex refinance</span><span>Confirmation of your rollover amount to your SMSF is required.</span><span>Construction cost</span><span>Construction cost estimates are indicative only and subject to builder contracts and council approvals.</span><span>Construction loan</span><span>Contribution required (from own savings)</span><span>Copy without opening Outlook</span><span>Could not copy the email — nothing was sent.</span><span>Could not copy the email.</span><span>Credit card</span><span>Custom (all fields)</span><span>Custom LVR</span><span>Custom LVR %</span><span>Debt recycling</span><span>Deposit required</span><span>Deposit source</span><span>Done — send to broker for review</span><span>Email copied — but the SalesTrekker notification did not send. Tell Fabio.</span><span>Email copied — paste (Cmd+V) into the body in Outlook</span><span>End Debt</span><span>End loan</span><span>Equity</span><span>Equity access</span><span>Equity release + purchase</span><span>Equity release amount</span><span>Error marking BC complete:</span><span>Estimated interest capitalised</span><span>Existing balance on this property</span><span>Existing land loan being paid out</span><span>Existing loan balance</span><span>Existing loan refinanced</span><span>Expected sale price</span><span>Family guarantee arrangements are subject to lender eligibility criteria and guarantor assessment.</span><span>Family pledge</span><span>Fill in the BC form and click &quot;Generate email&quot;</span><span>First home buyer</span><span>Funds to contribute (calculated)</span><span>Generate email</span><span>Gift</span><span>Guarantee portion</span><span>Heads up: figures have changed since this email was written.</span><span>Heads up: this email was written for a different scenario.</span><span>Hi [Client First Name],</span><span>Home loan</span><span>House or strata?</span><span>How is the LMI paid?</span><span>IO period (years)</span><span>Important things to note (included in email, one per line — pre-filled per template)</span><span>Interest only</span><span>Interest only over 30 years</span><span>Investment</span><span>Investment loan</span><span>Investment purchase</span><span>Keeping each split to a single purpose is what allows the purpose of the borrowing to stay clear over time. Redrawing from a split, or paying one down and using it again for something else, changes what that split was used for.</span><span>LMI applicable</span><span>LMI estimate</span><span>LMI status</span><span>LMI waived</span><span>LVR %</span><span>LVR (calculated)</span><span>Land loan</span><span>Land value</span><span>Land value (current)</span><span>Lending options have been started on the other scenario. Clone the deal to change it.</span><span>Limit approved against each property</span><span>Loan Options — Multiple Deposits</span><span>Loan amount</span><span>Loan splits</span><span>Loan term (years)</span><span>M3 8.4 L6.2 11.4 L13 4.6</span><span>Main loan</span><span>Moved to LO — client emailed</span><span>Moved to LO — no email on file for client</span><span>Name a split first.</span><span>Net proceeds (calculated)</span><span>New purchase</span><span>No email generated yet</span><span>No email returned. Try again.</span><span>Non-bank lender</span><span>Not recorded</span><span>Notes</span><span>OO purchase</span><span>OO purchase — LVR comparison</span><span>Offset accounts sit against</span><span>One box on the BC is empty</span><span>One note per line...</span><span>Option 1 description (appears in the client email)</span><span>Original purpose of funds</span><span>Other</span><span>Other — type it</span><span>Out of date — the figures have changed</span><span>Owner-occupied</span><span>Owner-occupied loan</span><span>P&amp;I</span><span>PAYG income</span><span>Paid at settlement</span><span>Peak debt</span><span>Please advise if you did NOT receive financial advice when setting up your SMSF.</span><span>Please note, lenders will require you to obtain independent financial and legal advice at your own cost as you will be a guarantor on the application.</span><span>Property type</span><span>Property value</span><span>Purchase price</span><span>Reduce HECS by</span><span>Reduce credit card limit by</span><span>Refinance + equity release</span><span>Refinance only</span><span>Refinanced loan</span><span>Regenerate email</span><span>Repayment type</span><span>SMSF loan</span><span>SMSF purchase</span><span>Savings</span><span>Scenario details</span><span>Second scenario</span><span>Select</span><span>Select guarantor</span><span>Select source</span><span>Send and move to LO</span><span>Send the next-steps email to the client?</span><span>Send to client</span><span>Send to credit team</span><span>Simplify Finance</span><span>Stamp duty</span><span>Stamp duty exceeds the deposit</span><span>That did not save. Nothing was changed.</span><span>The broker personalisation block could not be found in the generated email.</span><span>The existing split structure has been kept as it is. Combining splits, or redrawing from one for a different purpose, changes what that split was used for.</span><span>The figures used for the proposed sale are only estimated amounts. If you were to sell the property for less we would need to re-work your numbers.</span><span>The land</span><span>The saved email is out of date</span><span>These are only estimates — if the valuation on your current property comes in lower than the expected sale price, we will need to re-work your numbers.</span><span>This is your estimated borrowing capacity as of today and it can change by the time you are ready to apply.</span><span>This notifies the broker that BC is ready for their final review and personalisation</span><span>To achieve this option</span><span>To be refinanced</span><span>Total cost (calculated)</span><span>Total limit after restructure</span><span>What the funds were used for</span><span>Which property is this against?</span><span>Would be replaced</span><span>Your Borrowing Capacity</span><span>Your contribution required</span><span>e.g. 6</span><span>e.g. 85%</span><span>e.g. John and Mary Smith</span><span>e.g. Purchasing a new property</span><span>e.g. Purchasing an existing property</span><span>e.g. purchase 12 Example Road</span><span>— select —</span><b>Lending options &mdash; 148</b><span>1-2 business days</span><span>10+ business days</span><span>3-5 business days</span><span>5-7 business days</span><span>7-10 business days</span><span>Ability to have an offset account</span><span>Add custom criteria and press Enter</span><span>Additional notes</span><span>Allocate a credit assessor first</span><span>Already assigned.</span><span>Already moved to Compliance</span><span>Amount</span><span>Annual fee</span><span>Any rates or fees quoted are subject to change</span><span>Application fee</span><span>Approval days</span><span>Bankwest — Simple</span><span>Based on your situation, I would recommend proceeding with...</span><span>Bridging loan amount</span><span>Bridging structure</span><span>Broker personalisation</span><span>Broker signature</span><span>Cannot access before initialization</span><span>Click &quot;Set as recommended&quot; on your preferred option.</span><span>Client agreed</span><span>Competitive interest rate</span><span>Copy failed.</span><span>Could not copy the email — nothing was sent.</span><span>Could not generate the email.</span><span>Did the client agree with Bankwest?</span><span>Did the client agree with the recommended lender (</span><span>Discharge fee</span><span>Doc processing fee</span><span>Docs received</span><span>Documents required</span><span>Done — send to broker for review</span><span>Early repayment fee</span><span>Email Preview</span><span>Email template</span><span>Equity release</span><span>Error generating recommendation:</span><span>Establishment fee</span><span>Estimated interest</span><span>First name</span><span>Fixed IO</span><span>Fixed P&amp;I</span><span>Fixed for (years)</span><span>Flag sent. It will appear in Settings → Compliance AI.</span><span>Flexible loan term policy</span><span>Flexible with bridging finance</span><span>Flexible with last 12 months bonus income</span><span>From BC</span><span>From the lender library:</span><span>Fully assessed pre-approval applications</span><span>Generate LO email</span><span>Generate the email first to see a preview</span><span>Generating email...</span><span>Global loan splits</span><span>Global loan splits — define the deal structure</span><span>Good turnaround times</span><span>Heads up: this email was written for a different scenario.</span><span>Hi [Client First Name],</span><span>IO</span><span>IO period (years)</span><span>Important things to note (included in email, one per line)</span><span>Joint applicant first name</span><span>Joint applicant last name</span><span>LO Bridging</span><span>LO Email Preview</span><span>LO Form</span><span>LO Purchase</span><span>LO Refinance</span><span>LO autosave:</span><span>LO recommendation paragraph</span><span>LVR (calculated)</span><span>LVR 0%</span><span>Label</span><span>Last name</span><span>Lender name</span><span>Lending options</span><span>Loan amount</span><span>Loan term (months)</span><span>Loan term (years)</span><span>Loan to be refinanced</span><span>Merge this lender</span><span>Monthly fee</span><span>Monthly repayment</span><span>Moved to Compliance — client emailed</span><span>Moved to Compliance — no email on file</span><span>NOT SENT —</span><span>No email was returned. Try again.</span><span>No recommended option set</span><span>Not recorded</span><span>Nothing was changed.</span><span>Nothing was marked and no email was sent.</span><span>Offset account</span><span>One note per line...</span><span>Other (not previously considered)</span><span>Owner Occupied</span><span>P&amp;I</span><span>Purchase price</span><span>Rate % p.a.</span><span>Rate lock fee</span><span>Rate modules — tick to include</span><span>Recommendation</span><span>Recommendation paragraph</span><span>Recommended lender</span><span>Regenerate email</span><span>Remove this split from this lender only</span><span>Repayment</span><span>Research criteria</span><span>Scenario</span><span>Select</span><span>Select lender the client chose</span><span>Select recommended lender</span><span>Select the lender the client chose</span><span>Send and move to Compliance</span><span>Send the next-steps email to the client?</span><span>Send to client</span><span>Set as recommended</span><span>Special note (optional)</span><span>Stamp duty</span><span>Stamp duty exceeds the deposit</span><span>Submit flag</span><span>Sync from top</span><span>The broker personalisation block could not be found in the generated email.</span><span>The client&amp;apos;s decision</span><span>The email was copied, but the deal was not marked as sent — nothing was saved. Do not close this tab.</span><span>The filing team</span><span>This email does not constitute as a formal approval</span><span>Type</span><span>Valuation fee</span><span>Variable IO</span><span>Waiting on: Broker to review and send</span><span>What was wrong with this recommendation?</span><span>Why did they choose differently?</span><span>Write from the deal</span><span>Yes — multiple offsets</span><span>e.g. $12,000</span><span>e.g. 800,000</span><span>e.g. Debt recycling wording, rate reduction requested...</span><span>e.g. Latest payslips — add and press Enter</span><span>e.g. Rate increases after 3 months</span><span>— choose —</span><span>— select lender —</span><span>— select product —</span><span>— select —</span><span>✏ Add your personalised opening message...</span><b>Compliance &mdash; 151</b><span>AI generated</span><span>AI pre-filled from LO</span><span>Adequate insurance for loan repayments if unable to work?</span><span>Adverse changes to financial situation?</span><span>All the time</span><span>Already pushed to SalesTrekker.</span><span>Any circumstances that may impact financial commitments?</span><span>Any other requirements not already stated...</span><span>Application submission notes</span><span>Beneficial changes to financial situation?</span><span>Borrowing power</span><span>Branch access</span><span>Broker Notes</span><span>Broker comments</span><span>Broker comments — Borrowing power not filled</span><span>Broker comments — Credit history not filled</span><span>Broker comments — Security not filled</span><span>Broker notes for the credit team</span><span>Click Generate with AI or type manually...</span><span>Click Generate...</span><span>Click Write from the deal, or type it yourself...</span><span>Client agreement (captured when moving from LO to Compliance)</span><span>Co-applicants income</span><span>Comment</span><span>Compliance autosave:</span><span>Compliance complete - the compliance team has been notified that this deal is ready to be issued.</span><span>Compliance is marked complete, but the notification email FAILED to send</span><span>Compliance is marked complete, but the notification email FAILED to send (</span><span>Compliance sent</span><span>Compose again</span><span>Compose from the file</span><span>Composed from the deal - fact find, BC and lending options</span><span>Composed from the deal. Not recorded:</span><span>Concern about interest rate movements</span><span>Concern about job security</span><span>Concern about property value fluctuations</span><span>Could not generate the</span><span>Credit history</span><span>Do not describe how the self-employed income was assessed, do not restate the assessment method, the financial</span><span>Do not want</span><span>Do you have a will?</span><span>Downsizing home</span><span>Error marking compliance complete:</span><span>Error submitting flag:</span><span>Ever declared bankrupt?</span><span>Every household</span><span>Exit strategy</span><span>Fact Find</span><span>Fact Find PDF</span><span>Financial security</span><span>Financial situation</span><span>Fixed and variable rate</span><span>Fixed rate</span><span>Generate all fields</span><span>Generate with AI</span><span>Goes to the lender</span><span>Handover PDF</span><span>Hide the write-up</span><span>Home loan</span><span>How often do you go to a branch?</span><span>In HEM</span><span>Income from other investments</span><span>Independent legal advice</span><span>Interest in advance</span><span>Interest only</span><span>It still says</span><span>Just leave those questions because they</span><span>Kylie Searle and TestFabioKylie Test are borrowing...</span><span>Least important</span><span>Leaves every word as it is and brings the stamp up to date</span><span>Level of financial experience</span><span>Line of credit</span><span>Living expenses</span><span>Loan approved quickly</span><span>Longer term</span><span>Longer term — 2 to 10 years</span><span>Lowest overall loan cost</span><span>M11 13v1H2V4h1</span><span>M3 8h10M9 4l4 4-4 4</span><span>M4 6h16M4 12h16M4 18h10</span><span>M8 2v8M4.5 7l3.5 3.5L11.5 7M3 13h10</span><span>M9 3v4M9 17v4M3 9h4M17 9h4M9 9l6 6M15 9l-6 6</span><span>Maintain commitments if partner unable to earn?</span><span>Marks compliance complete and emails both PDFs to the compliance team.</span><span>Monthly amount</span><span>Most important</span><span>NOT SAVED - compliance was not marked complete and the notification was not sent. Do not close this tab.</span><span>No offset</span><span>Not answered</span><span>Not answered yet</span><span>Not important</span><span>Not in HEM</span><span>Offset account</span><span>One note was</span><span>Optional note...</span><span>Other requirements</span><span>Outside HEM</span><span>Owner occupied</span><span>Press Compose, or type your own...</span><span>Primary reasons for seeking credit</span><span>Principal and interest</span><span>Problems meeting fixed commitments including mobile payments?</span><span>Product requirements</span><span>Product type</span><span>Push to SalesTrekker</span><span>Rate type</span><span>Recorded nowhere — these must be filled in before this file is submitted</span><span>Recurring income from superannuation</span><span>Repayment method</span><span>Repayment of loan prior to retirement</span><span>Repayment type</span><span>Requirements type</span><span>Retirement age</span><span>Sale of assets</span><span>Security (property)</span><span>Security comments</span><span>Share</span><span>Show the write-up</span><span>Simultaneously applied to other credit providers?</span><span>Somewhat important</span><span>Specific loan features</span><span>Submit flag</span><span>Superannuation lump sum following retirement</span><span>TBA or enter address...</span><span>TestFabioKylie Test is borrowing...</span><span>The client agreed with and proceeded with the recommended lender.</span><span>The push answers</span><span>These notes cannot be composed yet</span><span>They all still read right</span><span>They still read right</span><span>They still say</span><span>This is a pre-approval — no security identified yet</span><span>This one still reads right</span><span>This page couldn</span><span>Total expenses</span><span>Total living expenses (in HEM)</span><span>Total living expenses (not in HEM)</span><span>Totals (monthly)</span><span>Unsatisfied judgements in court?</span><span>Variable rate</span><span>What is important to you</span><span>What&#x27;s wrong with this field?</span><span>Who will be on the title?</span><span>Why are they on the loan, and what benefit do they get from it?</span><span>Write all three from the deal</span><span>Write from the deal</span><span>Write in the plural -</span><span>Yes discharged</span><span>e.g. 65</span><span>{label}</span><span>— select —</span><b>Statements &mdash; 115</b><span>Agent-managed rent arrives net: management fees, letting fees, water and repairs come out before the disbursement, so this sits below the lease rent by design.</span><span>All accounts</span><span>All categories</span><span>All transactions</span><span>As many as you like. Nothing already loaded is replaced.</span><span>Between the client’s own accounts</span><span>Bonus or overtime</span><span>By category</span><span>Cash in and cash out above the threshold, because both raise a question — one about where money is going, the other about where it came from.</span><span>CashDeck called it</span><span>Change this</span><span>Changes how other people’s statements are read — removable in Settings.</span><span>Closing balance across the accounts, month by month.</span><span>Combined balance</span><span>Commitments against the fact find</span><span>Conduct is read before income. One overdrawn day is usually forgivable; a pattern of dipping under before payday says the household is running on empty whatever the income figure says.</span><span>Count this as…</span><span>Coverage complete</span><span>Coverage partial</span><span>Credits carrying the client’s own name</span><span>Declared as part of gross but not paid inside this window</span><span>Declared gross rent</span><span>Declared on the fact find</span><span>Deducted before the credit lands, so the credits look smaller than the salary</span><span>Deposit with nothing behind it</span><span>Detected by provider name, then grouped so you can see which services are in use rather than one lump sum.</span><span>Drop another workbook here, or click to choose</span><span>Drop the CashDeck workbooks here</span><span>Every cash deposit has a withdrawal of similar size behind it.</span><span>Every credit matched to an employer, grouped by payer. Only money arriving on a regular cycle is counted — an irregular pattern is not safe to annualise.</span><span>Every day of the period walked, with the closing balance on each account.</span><span>Every repeating debit that looks like credit. Living expenses are excluded — this is credit only.</span><span>Every transaction on the day the balance bottomed out.</span><span>Everything credited that is not salary or rent, grouped by payer. Only money that repeats is counted as income.</span><span>Extra super, a novated lease or a packaged car never appears in the account</span><span>File verification score</span><span>Financial year</span><span>Financial years covered</span><span>Genuine savings is not the balance — it is the part that has stayed put. The test takes the lowest the combined balance reached.</span><span>Government payments, grouped by benefit rather than lumped together.</span><span>Gross salary</span><span>Gross salary (solved)</span><span>Grossed up from the credits</span><span>Held across every account today</span><span>Income tax</span><span>Income — other sources</span><span>Income — rental and stability</span><span>Income — salary</span><span>Interest earned</span><span>It assumes a resident with no HELP debt, no salary sacrifice and no other deduction taken before the money lands. Any of those means the real gross is HIGHER than this — the gross-up can only understate, never overstate. It is never written to the fact find.</span><span>It is not a figure to type into a servicing calculator. Family payments generally need a current Centrelink income statement and are often only counted while the children are under a set age; child support needs its own evidence. Treat this as a prompt to go and get it.</span><span>Line on the statement</span><span>Loading statements…</span><span>Low income tax offset</span><span>Matching to the fact find is by lender name, not by amount, so a loan debiting more than declared still counts as declared. A single debit to a lender is a one-off payment until it happens twice, and is listed rather than counted.</span><span>Medicare levy</span><span>Money in</span><span>Money out</span><span>Month end</span><span>Most lenders read the trend and the share of income rather than the total. Rising month on month, or above roughly five per cent of credits, is where it starts costing the deal.</span><span>Net in hand</span><span>No transactions behind this figure</span><span>No transactions to show.</span><span>Not counted</span><span>Not declared</span><span>Not found</span><span>Nothing disagrees and every credit is accounted for.</span><span>Nothing is changed automatically. The fact find still says what it said. This card exists so the file carries the question and your answer to it before an assessor asks the same thing.</span><span>Nothing outstanding</span><span>One credit in the period says nothing about a year, so single credits are listed separately and never multiplied up. Money between the client’s own accounts, credits carrying their own name, and refunds or rebates are all set aside rather than counted — each is shown here so you can disagree.</span><span>Part of the pay is split somewhere we were not given</span><span>Per month</span><span>Per year</span><span>Period analysed</span><span>Re-analyse now</span><span>Re-run servicing before the conversation rather than after — and net it against any income found above, which may more than cover it. Buy now pay later is the most common miss, because clients very often do not think of it as credit at all.</span><span>Read it as an indication, not a decision. Lenders define genuine savings differently: some accept rent paid instead, some count shares or term deposits, some want a percentage of purchase price.</span><span>Read the benefit type, not just the amount. Family Tax Benefit is widely accepted and often shaded; child support usually needs the assessment or court order; JobSeeker and most allowances are not accepted at all.</span><span>Reason:</span><span>Received in the account, annualised</span><span>Recurring credit obligations debiting the accounts that do not appear on the fact find.</span><span>Recurring income being credited that is not on the fact find. Unlike an undisclosed liability, this one is usually in the client’s favour.</span><span>Rent going out, matched to an agent and checked against the day of the month.</span><span>Rental credits, grouped by who paid them.</span><span>Repaid within a fortnight</span><span>Returned items with the fee that came with them. A fee and its item on the same day are one event.</span><span>Salary sacrifice</span><span>Savings and housing</span><span>Search description…</span><span>Search line, category or figure…</span><span>Showing the most recent set on its own.</span><span>Stability is what carries a casual or contract client and what sinks one. The test is whether pay arrives on a predictable cycle, from the same payer, in a steady amount.</span><span>Statements loaded</span><span>That correction would not save. Nothing was changed.</span><span>That would not save. Nothing was recorded — try again.</span><span>The correction was saved on this file, but the</span><span>The declared figure is current, the statements are historical</span><span>The declared figure is gross rent. The credits are what survives the agent, so a gap is expected.</span><span>The declared figure needs correcting</span><span>The direction matters more than the amount. Accumulation per month is the client’s demonstrated surplus — if the proposed repayment sits well above it, raise that before an assessor does.</span><span>The fact find is wrong</span><span>The monthly figure is the total over the period scaled to a month, not the size of one pay. If the period does not hold a whole number of cycles the two differ slightly, and the total is the honest one.</span><span>The provider list is a setting, not something buried in code. New names get added as they turn up.</span><span>These are the liabilities on the fact find, not what the accounts show.</span><span>This is a figure the client gave us, not something found in the statements, so there are no transactions behind it.</span><span>This set is the only one covering part of the period. Removing it leaves a gap</span><span>Up to about a quarter is fees. Past that, or a month with no disbursement at all, or an amount that changes every month, points at vacancy or arrears instead.</span><span>Usable for servicing</span><span>Verifying it against a payslip is the next step. Anything attached lives on the Documents tab.</span><span>Wagering debits, with the share of total credits they represent.</span><span>We counted it as</span><span>What did the client say?</span><span>What gross salary would leave these credits in the bank after tax. The calculation steps up through the resident rate scale until the net matches.</span><span>What it looks like</span><span>Where the analysis found recurring income and this reads nil, this is the field to go back and complete.</span><b>Deal structure &mdash; 16</b><span>Deal structure</span><span>Existing loan</span><span>Filled from the BC suburb because this is a pre-approval</span><span>Funds to complete</span><span>IO years</span><span>Loan splits</span><span>One thing is</span><span>Owner occupied or investment?</span><span>P&amp;I or interest only?</span><span>Product type</span><span>Property value</span><span>Security address</span><span>What does this money do?</span><span>none</span><span>product</span><span>years</span></div>
+
+<h2><span class="n">And the order</span>Four ships, smallest risk first</h2>
+<table class="t">
+ <tr><th style="width:36px">#</th><th style="width:250px">Ship</th><th>Why there</th></tr>
+ <tr><td><b>1</b></td><td><b>One sub-navigation style</b></td><td>Styling only. Touches no behaviour at all, and changes the feel more than the other three put together.</td></tr>
+ <tr><td><b>2</b></td><td><b>Icons and a status line on the five boxes</b></td><td>They are already boxes. This adds a picture and a word the portal already works out.</td></tr>
+ <tr><td><b>3</b></td><td><b>Four strips into the rail</b></td><td>The one that moves things. Same components, same buttons, new column &mdash; so it is the one to look at carefully.</td></tr>
+ <tr><td><b>4</b></td><td><b>The header, the prompt line and the tiles</b></td><td>Last, because it is the most visible and the easiest to change your mind about.</td></tr>
+</table>
+
+<p class="note" style="margin-top:20px">Mock-up. Invented names and figures. Nothing built, nothing shipped.</p>
+</div>
+<script>
+var r=document.documentElement;
+document.getElementById('segTheme').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;
+ r.setAttribute('data-theme',b.getAttribute('data-t'));
+ Array.prototype.forEach.call(this.querySelectorAll('button'),function(x){x.setAttribute('aria-pressed',x.getAttribute('data-t')===b.getAttribute('data-t')?'true':'false')});});
+</script><script>
+(function(){
+ function show(id){document.querySelectorAll('.lay').forEach(function(l){l.style.display='none'});
+  document.getElementById(id).style.display='block'}
+ show('A');
+ document.querySelectorAll('.ob').forEach(function(b){
+  b.addEventListener('click',function(){
+   document.querySelectorAll('.ob').forEach(function(x){x.classList.remove('on')});
+   b.classList.add('on'); show(b.dataset.x);
+  });
+ });
+})();
+</script></body></html>
