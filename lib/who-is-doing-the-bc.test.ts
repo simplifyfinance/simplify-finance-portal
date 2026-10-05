@@ -22,7 +22,7 @@ describe('it is on the deal page now', () => {
     expect((page.match(/<WhoIsDoingTheBc\s/g) || []).length).toBe(1)
     const at = page.indexOf('<WhoIsDoingTheBc')
     expect(page.slice(0, at)).toContain('<DocumentsBox')
-    expect(page.slice(at)).toContain('{tabs.map(')
+    expect(page.slice(at)).toContain('<DealTabCards')
   })
 
   it('and it tells the page when it has been answered', () => {

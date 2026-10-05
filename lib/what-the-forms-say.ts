@@ -43,6 +43,7 @@ export const FORM_FILES = [
 // treatment, same direction: adding is free, removing has to be done on purpose
 // in a diff.
 export const PAGE_FILES = [
+  'components/DealTabCards.tsx',
   'app/(app)/deals/[id]/DealPageClient.tsx',
   'app/(app)/deals/[id]/DealProgress.tsx',
   'app/(app)/deals/[id]/DealSettlement.tsx',

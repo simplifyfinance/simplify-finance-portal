@@ -37,7 +37,7 @@ describe('the documents are outside the lock', () => {
 
   it('the documents are rendered before the tabs, not inside them', () => {
     const at = page.indexOf('<DealDocuments')
-    const tabs = page.indexOf('{tabs.map(')
+    const tabs = page.indexOf('<DealTabCards')
     const tabLock = page.indexOf('<TabLock')
     expect(at, 'DealDocuments is not on the deal page').toBeGreaterThan(-1)
     expect(at).toBeLessThan(tabs)
@@ -94,7 +94,10 @@ describe('the write-up can be read on a lodged deal', () => {
 // browser specs failed with "resolved to 2 elements" - the robot could no
 // longer tell which one to click, and neither could a person.
 describe('the documents do not collide with the tabs', () => {
-  const tabLabels = [...page.matchAll(/label: '([^']+)' \}/g)].map(m => m[1])
+  // The five tab names moved into components/DealTabCards.tsx when the tab
+  // row became cards - 5 Oct 2026. Same list, read from its new home.
+  const tabCards = readFileSync('components/DealTabCards.tsx', 'utf8')
+  const tabLabels = [...tabCards.matchAll(/label: '([^']+)' \}/g)].map(m => m[1])
 
   it('found the tab labels, so the test below is testing something', () => {
     expect(tabLabels).toContain('Fact Find')

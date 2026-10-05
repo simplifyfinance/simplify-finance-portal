@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { brokerLabel } from '@/lib/broker-key'
 import DealPresence from '@/components/DealPresence'
+import DealTabCards, { DEAL_TABS } from '@/components/DealTabCards'
 import DealHistory from '@/components/DealHistory'
 import { SaveIndicator, SaveIndicatorNote } from '@/components/SaveIndicator'
 import type { SaveStatus } from '@/lib/save-indicator'
@@ -193,13 +194,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
     refreshMilestones()
   }
 
-  const tabs = [
-    { key: 'FactFind', label: 'Fact Find' },
-    { key: 'Statements', label: 'Statements' },
-    { key: 'BC', label: 'BC — Borrowing capacity' },
-    { key: 'LO', label: 'Lending options' },
-    { key: 'Compliance', label: 'Compliance' },
-  ]
+  const tabs = DEAL_TABS
 
   return (
     // WHEN IS THIS PAGE ACTUALLY ALIVE?
@@ -450,14 +445,10 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           subject. See components/AnzAssessmentEmail.tsx. */}
       <AnzAssessmentEmail deal={dealData} />
 
-      <div className="flex gap-2 mb-6">
-        {tabs.map(({ key, label }) => (
-          <button key={key} onClick={() => changeStage(key)}
-            className={`flex-1 text-center py-2.5 px-3 rounded-lg text-sm font-medium border transition-colors ${stage === key ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-400 bg-card hover:bg-gray-50'}`}>
-            {label}
-          </button>
-        ))}
-      </div>
+      {/* THE FIVE TABS, AS CARDS - one-inside-the-deal-v4.html.
+          See components/DealTabCards.tsx. The row of pill buttons this
+          replaces said nothing but its own name. */}
+      <DealTabCards deal={dealData} stage={stage} onPick={changeStage} />
 
       <TabLock locked={isLocked(dealData) && !dealUnlocked} tab={stage} dealId={dealData.id}
         role={userRole} me={me}

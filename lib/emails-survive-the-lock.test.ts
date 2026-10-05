@@ -48,7 +48,10 @@ describe('the emails are outside the lock', () => {
 describe('the buttons do not collide with the tabs', () => {
   // The same trap the PDFs fell into: two controls with one name, a centimetre
   // apart, and neither a robot nor a person can say which was meant.
-  const tabLabels = [...page.matchAll(/label: '([^']+)' \}/g)].map(m => m[1])
+  // The five tab names moved into components/DealTabCards.tsx when the tab
+  // row became cards - 5 Oct 2026. Same list, read from its new home.
+  const tabCards = readFileSync('components/DealTabCards.tsx', 'utf8')
+  const tabLabels = [...tabCards.matchAll(/label: '([^']+)' \}/g)].map(m => m[1])
 
   it('found the tab labels, so the test below is testing something', () => {
     expect(tabLabels).toContain('Fact Find')
