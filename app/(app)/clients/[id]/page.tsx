@@ -92,7 +92,7 @@ export default function ClientProfilePage() {
           {initials || '?'}
         </div>
         <div>
-          <p className="text-lg font-semibold text-[#343333]">{client.first_name} {client.last_name}</p>
+          <p className="text-lg font-semibold text-ink">{client.first_name} {client.last_name}</p>
           <p className="text-sm text-gray-400">{client.email}{client.phone ? ` · ${client.phone}` : ''}</p>
           {(hasSmsfOpportunity || hasCarLoan) && (
             <div className="flex gap-2 mt-2">
@@ -108,14 +108,14 @@ export default function ClientProfilePage() {
       </div>
 
       {activeDeals.length > 0 && (
-        <div className="bg-white border border-gray-100 rounded-xl p-5 mb-4">
+        <div className="bg-card border border-gray-100 rounded-xl p-5 mb-4">
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Active deal{activeDeals.length > 1 ? 's' : ''}</p>
           <div className="flex flex-col gap-2">
             {activeDeals.map(d => (
               <Link key={d.id} href={`/deals/${d.id}`}
                 className="bg-gray-50 rounded-lg px-4 py-3 flex justify-between items-center hover:bg-gray-100 transition">
                 <div>
-                  <p className="text-sm font-medium text-[#343333]">{d.deal_name}</p>
+                  <p className="text-sm font-medium text-ink">{d.deal_name}</p>
                   <p className="text-xs text-gray-400 mt-0.5">{d.deal_type} · Broker: {brokerLabel(d.assigned_broker)}</p>
                 </div>
                 <span className="text-xs font-medium bg-[#2DBEFF]/10 text-[#2DBEFF] px-2.5 py-1 rounded-full">{PHASE_LABEL[phaseOf(d)]} →</span>
@@ -126,7 +126,7 @@ export default function ClientProfilePage() {
       )}
 
       {closedDeals.length > 0 && (
-        <div className="bg-white border border-gray-100 rounded-xl p-5">
+        <div className="bg-card border border-gray-100 rounded-xl p-5">
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Closed deals ({closedDeals.length})</p>
           <div className="flex flex-col gap-1">
             {closedDeals.map(d => (
@@ -141,7 +141,7 @@ export default function ClientProfilePage() {
       )}
 
       {deals.length === 0 && (
-        <div className="bg-white border border-gray-100 rounded-xl p-8 text-center text-sm text-gray-400">
+        <div className="bg-card border border-gray-100 rounded-xl p-8 text-center text-sm text-gray-400">
           No deals for this client yet.
         </div>
       )}
@@ -156,16 +156,16 @@ export default function ClientProfilePage() {
       {/* ------------------------------------------------------------------ */}
       <div className="mt-4">
         <div className="flex justify-between items-baseline mb-2 gap-3 flex-wrap">
-          <p className="text-sm font-medium text-[#343333]">Financial position</p>
+          <p className="text-sm font-medium text-ink">Financial position</p>
           {hasPosition && (
             <span className="text-xs text-gray-400">{from} · {auDate(client.position_updated_at)}</span>
           )}
         </div>
 
         {behind && (
-          <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-3">
-            <AlertTriangle size={15} className="text-amber-600 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-800 leading-relaxed">
+          <div className="flex items-start gap-2.5 bg-chase-bg border border-chase-edge rounded-xl px-4 py-3 mb-3">
+            <AlertTriangle size={15} className="text-chase flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-chase leading-relaxed">
               {outOfDateLine(behind, hasPosition)}{' '}
               <Link href={`/deals/${behind.id}`} className="underline font-medium">Open the deal</Link>
             </p>
@@ -173,7 +173,7 @@ export default function ClientProfilePage() {
         )}
 
         {!hasPosition && !behind && (
-          <div className="bg-white border border-gray-100 rounded-xl p-6 text-center">
+          <div className="bg-card border border-gray-100 rounded-xl p-6 text-center">
             <p className="text-sm text-gray-500">No position recorded yet.</p>
             <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
               A position is recorded when one of this client&rsquo;s deals settles, or when a
@@ -183,21 +183,21 @@ export default function ClientProfilePage() {
         )}
 
         {hasPosition && properties.length === 0 && liabilities.length === 0 && assets.length === 0 && (
-          <div className="bg-white border border-gray-100 rounded-xl p-6 text-center">
+          <div className="bg-card border border-gray-100 rounded-xl p-6 text-center">
             <p className="text-sm text-gray-500">This client is recorded as holding nothing.</p>
             <p className="text-xs text-gray-400 mt-1.5">Recorded {auDate(client.position_updated_at)}.</p>
           </div>
         )}
 
         {properties.length > 0 && (
-          <div className="bg-white border border-gray-100 border-l-4 border-l-amber-400 rounded-xl p-5 mb-3">
-            <p className="text-xs font-medium text-amber-600 uppercase tracking-wider mb-3">Properties</p>
+          <div className="bg-card border border-gray-100 border-l-4 border-l-info rounded-xl p-5 mb-3">
+            <p className="text-xs font-medium text-info uppercase tracking-wider mb-3">Properties</p>
             <div className="flex flex-col gap-2">
               {properties.map((p: any, i: number) => (
                 <div key={i} className="bg-gray-50 rounded-lg p-3">
                   <div className="flex justify-between items-center mb-1 gap-2">
-                    <p className="text-sm font-medium text-[#343333]">{p.address || 'Address not set'}</p>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${p.ownershipType === 'Owner occupied' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'}`}>
+                    <p className="text-sm font-medium text-ink">{p.address || 'Address not set'}</p>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${p.ownershipType === 'Owner occupied' ? 'bg-info-bg text-info' : 'bg-ink text-page'}`}>
                       {p.ownershipType}
                     </span>
                   </div>
@@ -226,7 +226,7 @@ export default function ClientProfilePage() {
         )}
 
         {liabilities.length > 0 && (
-          <div className="bg-white border border-gray-100 border-l-4 border-l-red-400 rounded-xl p-5 mb-3">
+          <div className="bg-card border border-gray-100 border-l-4 border-l-red-400 rounded-xl p-5 mb-3">
             <p className="text-xs font-medium text-red-600 uppercase tracking-wider mb-3">Liabilities</p>
             <div className="flex flex-col gap-2">
               {liabilities.map((l: any, i: number) => (
@@ -248,7 +248,7 @@ export default function ClientProfilePage() {
             and until today shown nowhere at all. Savings and super are half of
             what a review conversation is about. */}
         {assets.length > 0 && (
-          <div className="bg-white border border-gray-100 border-l-4 border-l-emerald-400 rounded-xl p-5">
+          <div className="bg-card border border-gray-100 border-l-4 border-l-emerald-400 rounded-xl p-5">
             <p className="text-xs font-medium text-emerald-700 uppercase tracking-wider mb-3">Assets</p>
             <div className="flex flex-col gap-2">
               {assets.map((a: any, i: number) => (
@@ -278,6 +278,6 @@ function OwnershipNote({ note }: { note: string | null }) {
   if (!note) return null
   const unconfirmed = note.startsWith('Ownership not confirmed')
   return (
-    <p className={`text-xs mt-1 ${unconfirmed ? 'text-amber-700 font-medium' : 'text-gray-400'}`}>{note}</p>
+    <p className={`text-xs mt-1 ${unconfirmed ? 'text-chase font-medium' : 'text-gray-400'}`}>{note}</p>
   )
 }

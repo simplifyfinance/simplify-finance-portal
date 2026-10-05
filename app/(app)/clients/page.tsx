@@ -62,7 +62,7 @@ export default function ClientsPage() {
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-[#343333] mb-1">Clients</h1>
+        <h1 className="text-2xl font-bold text-ink mb-1">Clients</h1>
         <p className="text-sm text-gray-500">All clients across your deals.</p>
       </div>
 
@@ -81,7 +81,7 @@ export default function ClientsPage() {
       ) : filtered.length === 0 ? (
         <p className="text-sm text-gray-400">No clients found.</p>
       ) : (
-        <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+        <div className="bg-card border border-gray-100 rounded-xl overflow-hidden">
           {filtered.map((client, i) => {
             const initials = `${client.first_name?.[0] || ''}${client.last_name?.[0] || ''}`.toUpperCase()
             return (
@@ -93,7 +93,7 @@ export default function ClientsPage() {
                     {initials || '?'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#343333]">{client.first_name} {client.last_name}</p>
+                    <p className="text-sm font-medium text-ink">{client.first_name} {client.last_name}</p>
                     <p className="text-xs text-gray-400">
                       {client.email}{client.phone ? ` · ${client.phone}` : ''}
                     </p>
@@ -113,7 +113,7 @@ export default function ClientsPage() {
                   )}
                 </div>
                 <button onClick={() => deleteClient(client.id, `${client.first_name} ${client.last_name}`)}
-                  className="w-8 h-8 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-300 hover:text-red-400 hover:border-red-200 hover:bg-red-50 flex-shrink-0 transition">
+                  className="w-8 h-8 rounded-full border border-gray-200 bg-card flex items-center justify-center text-gray-300 hover:text-red-400 hover:border-red-200 hover:bg-red-50 flex-shrink-0 transition">
                   <Trash2 size={13} />
                 </button>
               </div>

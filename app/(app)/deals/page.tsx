@@ -383,7 +383,7 @@ export default function DealsPage() {
       )}
       {userRole === 'staff' && (
         <div className="flex gap-3 mb-4">
-          <div className="flex-1 bg-white border border-gray-100 rounded-xl p-4">
+          <div className="flex-1 bg-card border border-gray-100 rounded-xl p-4">
             <div className="text-xs text-gray-400 mb-1">Deals assigned to you</div>
             <div className="text-2xl font-semibold text-ink">{totalAssigned}</div>
           </div>
@@ -394,7 +394,7 @@ export default function DealsPage() {
         </div>
       )}
       <div className="flex items-center gap-3 mb-6">
-        <div className="flex gap-0.5 border border-gray-200 rounded-lg overflow-hidden bg-white flex-none">
+        <div className="flex gap-0.5 border border-gray-200 rounded-lg overflow-hidden bg-card flex-none">
           {([['list', 'List'], ['board', 'Board']] as const).map(([k, label]) => (
             <button key={k} onClick={() => setLayout(k)}
               className={`text-sm px-3 py-2 ${layout === k ? 'bg-brand text-white font-medium' : 'text-gray-500 hover:bg-gray-50'}`}>
@@ -405,7 +405,7 @@ export default function DealsPage() {
         <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input type="text" placeholder="Search by name, client, purpose..." value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-brand" />
+            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-card focus:outline-none focus:border-brand" />
         </div>
         {/* ONE BUTTON. Fabio, 30 Sep 2026: "dont want all filters sitting open
             can we do drop drown selection?" - so broker, credit officer, lender
@@ -451,7 +451,7 @@ export default function DealsPage() {
             {' '}&ldquo;{search.trim()}&rdquo;. The board has no column for a lost deal.
           </span>
           <button onClick={() => { setLayout('list'); setShowLost(true) }}
-            className="ml-auto text-[12.5px] font-semibold text-brand-ink border border-info-edge bg-white rounded-md px-2.5 py-1 hover:bg-info-bg">
+            className="ml-auto text-[12.5px] font-semibold text-brand-ink border border-info-edge bg-card rounded-md px-2.5 py-1 hover:bg-info-bg">
             See {lostMatches.length === 1 ? 'it' : 'them'} in the list
           </button>
         </div>
@@ -510,7 +510,7 @@ export default function DealsPage() {
               </div>
             )}
             <div className="flex items-center gap-2">
-              <Link href={readyStage ? `/deals/${deal.id}?stage=${readyStage}` : `/deals/${deal.id}`} className={`flex-1 bg-white border rounded-xl px-4 py-3 flex items-center gap-4 transition-all ${readyStage ? 'border-amber-300 hover:border-amber-400' : 'border-gray-100 hover:border-brand'}`}>
+              <Link href={readyStage ? `/deals/${deal.id}?stage=${readyStage}` : `/deals/${deal.id}`} className={`flex-1 bg-card border rounded-xl px-4 py-3 flex items-center gap-4 transition-all ${readyStage ? 'border-waiting-edge hover:border-waiting' : 'border-gray-100 hover:border-brand'}`}>
                 <div className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center text-xs font-semibold flex-shrink-0">
                   {deal.clients?.first_name?.[0]}{deal.clients?.last_name?.[0]}
                 </div>
@@ -538,7 +538,7 @@ export default function DealsPage() {
                   ) : null
                 })()}
                 {readyStage && (
-                  <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-amber-100 text-amber-700">{readyStage} ready for review</span>
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-waiting-bg text-waiting border border-waiting-edge">{readyStage} ready for review</span>
                 )}
                 {grp !== 'settled' && grp !== 'lost' && age.days !== null && (
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-md whitespace-nowrap ${GROUP_STYLE[grp].chip}`}
@@ -553,11 +553,11 @@ export default function DealsPage() {
                 </span>
               </Link>
               <button onClick={e => cloneDeal(e, deal)}
-                className="w-8 h-8 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-300 hover:text-brand hover:border-blue-200 hover:bg-blue-50 flex-shrink-0 transition">
+                className="w-8 h-8 rounded-full border border-gray-200 bg-card flex items-center justify-center text-gray-300 hover:text-brand hover:border-blue-200 hover:bg-blue-50 flex-shrink-0 transition">
                 <Copy size={13} />
               </button>
               <button onClick={e => askDelete(e, deal)}
-                className="w-8 h-8 rounded-full border border-gray-200 bg-white flex items-center justify-center text-gray-300 hover:text-red-400 hover:border-red-200 hover:bg-red-50 flex-shrink-0 transition">
+                className="w-8 h-8 rounded-full border border-gray-200 bg-card flex items-center justify-center text-gray-300 hover:text-red-400 hover:border-red-200 hover:bg-red-50 flex-shrink-0 transition">
                 <Trash2 size={13} />
               </button>
             </div>
@@ -771,7 +771,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-6 w-[520px] max-h-[90vh] overflow-y-auto shadow-xl">
+      <div className="bg-card rounded-2xl p-6 w-[520px] max-h-[90vh] overflow-y-auto shadow-xl">
         <div className="text-base font-semibold mb-1">New deal</div>
         <div className="text-xs text-gray-400 mb-5">Deal name format: First Last &amp; First Last Year</div>
 
