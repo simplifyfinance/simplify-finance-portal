@@ -27,6 +27,11 @@ type Props = {
    *  CSS - the mark's artwork has two tones and has to be given the right one. */
   onChange?: (theme: Theme) => void
   className?: string
+  /** Where it is standing. The sidebar is near-black in BOTH themes, so the
+   *  page's own card-and-line colours would draw a white box on it. Stated
+   *  rather than guessed from the theme, because the sidebar does not change
+   *  when the theme does. */
+  tone?: 'page' | 'sidebar'
 }
 
 const OPTIONS: { choice: ThemeChoice; label: string; title: string }[] = [
@@ -35,7 +40,7 @@ const OPTIONS: { choice: ThemeChoice; label: string; title: string }[] = [
   { choice: 'auto',  label: 'Auto',  title: 'Match my computer' },
 ]
 
-export default function ThemeSwitch({ onChange, className }: Props) {
+export default function ThemeSwitch({ onChange, className, tone = 'page' }: Props) {
   const [choice, setChoice] = useState<ThemeChoice | null>(null)
 
   useEffect(() => {
@@ -69,7 +74,9 @@ export default function ThemeSwitch({ onChange, className }: Props) {
     <div
       role="group"
       aria-label="Appearance"
-      className={`inline-flex items-center gap-[2px] rounded-[9px] border border-line bg-card p-[2px] ${className || ''}`}
+      className={`inline-flex items-center gap-[2px] rounded-[9px] border p-[2px] ${
+        tone === 'sidebar' ? 'border-white/10 bg-white/5' : 'border-line bg-card'
+      } ${className || ''}`}
     >
       {OPTIONS.map(o => {
         const on = choice === o.choice
@@ -81,7 +88,9 @@ export default function ThemeSwitch({ onChange, className }: Props) {
             aria-pressed={on}
             title={o.title}
             className={`flex items-center gap-1 rounded-[7px] px-2 py-1 text-[11px] font-semibold transition-colors ${
-              on ? 'bg-brand/15 text-brand-ink' : 'text-muted hover:text-body'
+              on
+                ? (tone === 'sidebar' ? 'bg-brand/20 text-brand' : 'bg-brand/15 text-brand-ink')
+                : (tone === 'sidebar' ? 'text-white/45 hover:text-white/80' : 'text-muted hover:text-body')
             }`}
           >
             {o.choice === 'light' && <Sun size={12} aria-hidden />}
