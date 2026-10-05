@@ -66,20 +66,16 @@ export default function MilestoneEmails({ deal, onUpdated }: {
     }
   }, [listOpen])
 
-  // One of them can actually go right now. The dot says so without opening it.
-  const anyReady = menu.some(m => m.state === 'ready')
-
   return (
     <div ref={box} className="relative">
       <button onClick={() => setListOpen(o => !o)} aria-expanded={listOpen} aria-haspopup="menu"
-        className="text-xs text-muted bg-page border border-line rounded-[10px] px-3.5 py-2
-          hover:bg-line-soft hover:text-ink transition inline-flex items-center gap-2">
+        className="text-xs font-semibold text-page bg-ink border border-ink rounded-[10px] px-3.5 py-2
+          hover:opacity-90 transition inline-flex items-center gap-2">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
           <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 5L2 7" />
         </svg>
         <span className="whitespace-nowrap">Client emails</span>
-        {anyReady && <span aria-hidden className="w-[6px] h-[6px] rounded-full bg-info" />}
         <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor"
              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d={listOpen ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'} />

@@ -63,6 +63,16 @@ import { hasOffset as productHasOffset } from '@/lib/offset'
 import { householdsOf, isOneHousehold, type HouseholdId } from '@/lib/households'
 import { expensesFor, writeExpenses } from '@/lib/household-expenses'
 
+// THE FIVE SECTIONS OF COMPLIANCE, NAMED ONCE.
+// The index down the side and the page itself walk the same list, so a section
+// cannot appear in one and not the other.
+export const SECTIONS = [
+  { key: 'needs' }, { key: 'risks' }, { key: 'product' },
+  { key: 'comments' }, { key: 'expenses' },
+] as const
+export type SectionKey = typeof SECTIONS[number]['key']
+
+
 type Applicant = { name: string; type: 'applicant' | 'guarantor' | 'company' | 'smsf' }
 
 type RiskData = {
@@ -1013,33 +1023,48 @@ export default function ComplianceForm({ deal, onSaveStatus, onDataChange, onDea
     return !!r && RISK_KEYS.some(k => String(r[k] || '').trim())
   }
 
-  function validateBeforePush(): string[] {
-    const errors: string[] = []
-    if (!d.needsPrimary) errors.push('Needs & objectives — Primary reasons not filled')
-    if (!d.needsImmediate) errors.push('Needs & objectives — Immediate needs not filled')
-    if (!d.needsLongTerm) errors.push('Needs & objectives — Long term needs not filled')
+  // WHAT IS MISSING, AND WHERE.
+  //
+  // 6 Oct 2026. This returned a flat list of sentences, which was all the
+  // refusal screen needed. The index down the side needs the same answer
+  // counted per section - so the rule says which section it belongs to, once,
+  // and both read it. A second copy of these rules is how an index ends up
+  // claiming a section is finished while the button refuses to let it through.
+  type Miss = { section: SectionKey; message: string }
+
+  function missingBeforePush(): Miss[] {
+    const errors: Miss[] = []
+    const push = (section: SectionKey, message: string) => errors.push({ section, message })
+    if (!d.needsPrimary) push('needs', 'Needs & objectives — Primary reasons not filled')
+    if (!d.needsImmediate) push('needs', 'Needs & objectives — Immediate needs not filled')
+    if (!d.needsLongTerm) push('needs', 'Needs & objectives — Long term needs not filled')
     d.applicants.forEach(a => {
       const r = d.risks[a.name]
       if (!r || !RISK_KEYS.some(k => String((r as any)[k] || '').trim())) {
-        errors.push(`${a.name} — no risk questions answered at all. Every applicant is asked, not one of them.`)
+        push('risks', `${a.name} — no risk questions answered at all. Every applicant is asked, not one of them.`)
         return
       }
-      if (!r.adverseChanges) errors.push(`${a.name} — Adverse changes not answered`)
-      if (!r.beneficialChanges) errors.push(`${a.name} — Beneficial changes not answered`)
-      if (!r.retirementAge) errors.push(`${a.name} — Retirement age not filled`)
-      if (!r.problemsMeetingCommitments) errors.push(`${a.name} — Credit history: problems meeting commitments not answered`)
-      if (!r.officerInLiquidation) errors.push(`${a.name} — Credit history: officer in liquidation not answered`)
-      if (!r.unsatisfiedJudgements) errors.push(`${a.name} — Credit history: unsatisfied judgements not answered`)
-      if (!r.simultaneousApplications) errors.push(`${a.name} — Credit history: simultaneous applications not answered`)
-      if (!r.declaredBankrupt) errors.push(`${a.name} — Credit history: declared bankrupt not answered`)
+      if (!r.adverseChanges) push('risks', `${a.name} — Adverse changes not answered`)
+      if (!r.beneficialChanges) push('risks', `${a.name} — Beneficial changes not answered`)
+      if (!r.retirementAge) push('risks', `${a.name} — Retirement age not filled`)
+      if (!r.problemsMeetingCommitments) push('risks', `${a.name} — Credit history: problems meeting commitments not answered`)
+      if (!r.officerInLiquidation) push('risks', `${a.name} — Credit history: officer in liquidation not answered`)
+      if (!r.unsatisfiedJudgements) push('risks', `${a.name} — Credit history: unsatisfied judgements not answered`)
+      if (!r.simultaneousApplications) push('risks', `${a.name} — Credit history: simultaneous applications not answered`)
+      if (!r.declaredBankrupt) push('risks', `${a.name} — Credit history: declared bankrupt not answered`)
     })
-    if (!d.analysisComment) errors.push('Broker comments — Analysis & assessment not filled')
-    if (!d.optionsComment) errors.push('Broker comments — Options & recommendation not filled')
-    if (!d.borrowingPowerComment) errors.push('Broker comments — Borrowing power not filled')
-    if (!d.depositComment) errors.push('Broker comments — Deposit/equity not filled')
-    if (!d.creditHistoryComment) errors.push('Broker comments — Credit history not filled')
-    if (!d.securityComment) errors.push('Broker comments — Security not filled')
+    if (!d.analysisComment) push('comments', 'Broker comments — Analysis & assessment not filled')
+    if (!d.optionsComment) push('comments', 'Broker comments — Options & recommendation not filled')
+    if (!d.borrowingPowerComment) push('comments', 'Broker comments — Borrowing power not filled')
+    if (!d.depositComment) push('comments', 'Broker comments — Deposit/equity not filled')
+    if (!d.creditHistoryComment) push('comments', 'Broker comments — Credit history not filled')
+    if (!d.securityComment) push('comments', 'Broker comments — Security not filled')
     return errors
+  }
+
+  /** The old shape, for the screen that refuses the push. Same list, same order. */
+  function validateBeforePush(): string[] {
+    return missingBeforePush().map(m => m.message)
   }
 
   // BOX ONE IS COMPOSED, NOT GENERATED.
@@ -1593,8 +1618,32 @@ Use the security address exactly as recorded. On a pre-approval it will already 
   const [showWriteUp, setShowWriteUp] = useState(!past)
   const sentOn = deal.compliance_sent_at || deal.compliance_completed_at || complianceCompletedAt
 
-  const stages = ['needs', 'risks', 'product', 'comments', 'expenses'] as const
+  const stages = SECTIONS.map(x => x.key)
   const stageLabels = { needs: 'Needs & objectives', risks: 'Risks', product: 'Product requirements', comments: 'Broker comments', expenses: 'Living expenses' }
+
+  // WHAT EACH SECTION IS STILL MISSING.
+  //
+  // Counted from missingBeforePush() - the same rules that refuse the push -
+  // plus the living expenses that nobody has answered, which hemTotals already
+  // works out for the household strip above the list. Nothing is counted twice
+  // and nothing is counted here that is not counted there.
+  //
+  // PRODUCT REQUIREMENTS HAS NO NUMBER, and that is deliberate. There is no
+  // rule that says a product requirement must be filled in, so a tick would be
+  // claiming something nobody checks. An honest blank beats a green tick that
+  // means "we never looked".
+  const sectionState = useMemo(() => {
+    const misses = missingBeforePush()
+    const count = (k: SectionKey) => misses.filter(m => m.section === k).length
+    const unanswered = hemTotals(EXPENSE_CATEGORIES, shownExpenses as any).unanswered
+    return SECTIONS.map(sec => ({
+      key: sec.key,
+      label: stageLabels[sec.key],
+      missing: sec.key === 'product' ? null
+             : sec.key === 'expenses' ? unanswered
+             : count(sec.key),
+    }))
+  }, [d, shownExpenses])
 
   // AN EMPTY APPLICANT LIST IS FINE HERE, AND IS LEFT ALONE.
   //
@@ -1662,15 +1711,13 @@ Use the security address exactly as recorded. On a pre-approval it will already 
       )}
 
       {(!past || showWriteUp || locked) && (<>
-      {/* Stage tabs */}
-      <div className="flex bg-card border border-gray-100 rounded-xl p-1 gap-1">
-        {stages.map(s => (
-          <button key={s} onClick={() => setStage(s)}
-            className={`flex-1 py-2 rounded-lg text-xs font-medium transition ${stage === s ? 'bg-ink text-page' : 'text-gray-400 hover:text-gray-600'}`}>
-            {stageLabels[s]}
-          </button>
-        ))}
-      </div>
+      {/* ONE PAGE, WITH AN INDEX DOWN THE SIDE.
+          docs/approved-looks/one-compliance.html, option C, which Fabio chose
+          on 6 Oct 2026. These were five tabs filling the width, and the only
+          way to find an empty box was to open all five - or to press Compliance
+          complete and read the list it refuses you with. The number beside each
+          section IS that list, counted, shown before you press anything. */}
+      <ComplianceIndex sections={sectionState} current={stage} onGo={setStage} />
 
       {/* THE DEAL, AS ONE BLOCK. Replaces the four-field "pre-filled from BC
           & LO" strip that used to sit here, and it is the same component the
@@ -1799,7 +1846,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
       )}
 
       {/* STAGE: Needs & Objectives */}
-      {stage === 'needs' && (
+      <section id="sec-needs" className="scroll-mt-4">
         <div className="space-y-4">
           <div className="bg-card border border-gray-100 rounded-xl p-5">
             <div className="flex items-center justify-between mb-2">
@@ -1848,10 +1895,10 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             </div>
           </div>
         </div>
-      )}
+      </section>
 
       {/* STAGE: Risks */}
-      {stage === 'risks' && (
+      <section id="sec-risks" className="scroll-mt-4">
         <div className="space-y-4">
           {/* Applicant tabs */}
           <div className="flex gap-2 items-center flex-wrap">
@@ -1965,10 +2012,10 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             </div>
           </div>
         </div>
-      )}
+      </section>
 
       {/* STAGE: Product Requirements */}
-      {stage === 'product' && (
+      <section id="sec-product" className="scroll-mt-4">
         <div className="bg-card border border-gray-100 rounded-xl p-5 space-y-4">
           <SectionHeader title="Product requirements" badge="AI pre-filled from LO" />
 
@@ -2041,10 +2088,10 @@ Use the security address exactly as recorded. On a pre-approval it will already 
               placeholder="Any other requirements not already stated..." />
           </div>
         </div>
-      )}
+      </section>
 
       {/* STAGE: Broker Comments */}
-      {stage === 'comments' && (
+      <section id="sec-comments" className="scroll-mt-4">
         <div className="space-y-4">
           <div className="bg-card border border-gray-100 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
@@ -2301,10 +2348,10 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             </span>
           </div>
         </div>
-      )}
+      </section>
 
       {/* STAGE: Living Expenses */}
-      {stage === 'expenses' && (
+      <section id="sec-expenses" className="scroll-mt-4">
         <div className="space-y-4">
           <div className="bg-card border border-gray-100 rounded-xl p-5">
             <SectionHeader title="Living expenses" badge="household monthly" />
@@ -2498,7 +2545,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             )
           })()}
         </div>
-      )}
+      </section>
 
       {/* Validation Modal */}
       {showValidation && (
@@ -2572,5 +2619,70 @@ Use the security address exactly as recorded. On a pre-approval it will already 
 
       </>)}
     </div>
+  )
+}
+
+// THE INDEX DOWN THE SIDE OF COMPLIANCE.
+//
+// one-compliance.html, option C. It is a list of the five sections with what
+// each one is still missing beside it, and it stays put while the page scrolls.
+//
+// A NUMBER IS RED, A FINISHED SECTION IS A GREEN TICK, AND A SECTION NOBODY
+// CHECKS IS BLANK. See sectionState for why product requirements is blank
+// rather than ticked.
+function ComplianceIndex({ sections, current, onGo }: {
+  sections: { key: SectionKey; label: string; missing: number | null }[]
+  current: SectionKey
+  onGo: (k: SectionKey) => void
+}) {
+  // Following the scroll, so the index says where you are rather than where you
+  // last clicked. If the browser has no observer it simply never updates, which
+  // is the behaviour before this existed.
+  useEffect(() => {
+    let obs: IntersectionObserver | null = null
+    try {
+      obs = new IntersectionObserver(entries => {
+        const seen = entries.filter(e => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0]
+        const id = seen?.target?.id?.replace('sec-', '')
+        if (id) onGo(id as SectionKey)
+      }, { rootMargin: '-80px 0px -70% 0px' })
+      for (const s of sections) {
+        const el = document.getElementById('sec-' + s.key)
+        if (el) obs.observe(el)
+      }
+    } catch { obs = null }
+    return () => { try { obs?.disconnect() } catch { /* gone already */ } }
+  }, [sections.length])
+
+  const go = (k: SectionKey) => {
+    onGo(k)
+    try { document.getElementById('sec-' + k)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+    catch { /* an old browser just does not move */ }
+  }
+
+  return (
+    <nav aria-label="Compliance sections"
+      className="sticky top-2 z-10 bg-card border border-card-line rounded-xl p-1.5 mb-3
+        flex gap-1 overflow-x-auto">
+      {sections.map(s => {
+        const on = s.key === current
+        return (
+          <button key={s.key} onClick={() => go(s.key)} aria-current={on ? 'true' : undefined}
+            className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2
+              text-xs font-medium transition ${on ? 'bg-info-bg text-info font-semibold' : 'text-muted hover:text-ink hover:bg-page'}`}>
+            {s.label}
+            {s.missing === null ? null : s.missing > 0 ? (
+              <span className="text-[9.5px] font-bold rounded-full px-1.5 py-[1px]
+                bg-chase-bg text-chase border border-chase-edge">{s.missing}</span>
+            ) : (
+              <span aria-label="nothing missing"
+                className="text-[9.5px] font-bold rounded-full px-1.5 py-[1px]
+                bg-done-bg text-done border border-done-edge">&#10003;</span>
+            )}
+          </button>
+        )
+      })}
+    </nav>
   )
 }

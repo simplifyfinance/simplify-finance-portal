@@ -113,6 +113,24 @@ export const THE_LOOK: Piece[] = [
   // STATEMENTS - mocked and approved, nothing built but the colours.
   { mock: 'st-page.html', piece: 'Statements: the approved layout', proof: null },
 
+  // Compliance, the last tab that had never been drawn. Fabio chose option C
+  // on 6 Oct 2026: one page, index down the side, no tabs.
+  { mock: 'one-compliance.html', piece: 'Compliance: one page with an index down the side',
+    proof: { file: 'app/(app)/deals/[id]/ComplianceForm.tsx', contains: 'ONE PAGE, WITH AN INDEX DOWN THE SIDE' } },
+  { mock: 'one-compliance.html', piece: 'Compliance: the index says what each section is still missing',
+    proof: { file: 'app/(app)/deals/[id]/ComplianceForm.tsx', contains: 'WHAT EACH SECTION IS STILL MISSING' } },
+
+  // THE BOARD. Three decisions from 2 Oct 2026 that were never on this list -
+  // which is exactly how "colour all the way round" sat unbuilt for four days
+  // while the list said everything was accounted for. A mock in the repo that
+  // nothing counts is a mock nobody is answerable for.
+  { mock: 'board-filters-one-button.html', piece: 'Board: the filters live behind one button',
+    proof: { file: 'components/BoardFilters.tsx', contains: 'one button' } },
+  { mock: 'one-deals-board.html', piece: 'Board: four tiles that agree with the cards under them',
+    proof: { file: 'app/(app)/deals/page.tsx', contains: 'TILE_SKIN' } },
+  { mock: 'one-card-marking.html', piece: 'Board: a card is coloured all the way round, not outlined',
+    proof: { file: 'lib/board-tiles.ts', contains: 'WHAT COLOUR THE CARD ITSELF WEARS' } },
+
   // 6 Oct 2026. Not part of the branding work - it came out of the dark mode
   // afternoon, where the fix was already live and the tab was not.
   { mock: 'one-new-version.html', piece: 'A newer version is deployed: the line in the sidebar',

@@ -18,7 +18,7 @@ import { useBoardFilters } from '@/lib/use-board-filters'
 import { applyFilters, type BoardView, type ViewKey } from '@/lib/board-filters'
 import {
   TILE_KEYS, TILE_LABEL, closedLine, matchesTile, readyStageFor, reviewSplit,
-  tileCounts, type TileKey,
+  tileCounts, cardTone, type TileKey,
 } from '@/lib/board-tiles'
 import { useBoardSettings } from '@/lib/use-board-settings'
 import type { Alert } from '@/lib/deal-notes'
@@ -329,6 +329,16 @@ export default function DealsPage() {
     chase: '', review: reviewSplit(counts), waiting: '',
     all: closedLine(summaryDeals.length, live.length),
   }
+  // AND THE SAME TINT ON THE CARD ITSELF - one-card-marking.html, the option
+  // Fabio marked SHIP THIS: "the stripe is gone, colour all the way round".
+  // These are the tile skins below with a hover on them, deliberately, so a
+  // card and the tile that counts it are never two different colours.
+  const CARD_SKIN: Record<'chase' | 'review' | 'waiting' | 'none', string> = {
+    chase:   'bg-card-chase border-card-chase-edge hover:border-chase',
+    review:  'bg-info-bg border-info-edge hover:border-info',
+    waiting: 'bg-card-waiting border-card-waiting-edge hover:border-waiting',
+    none:    'bg-card border-gray-100 hover:border-brand',
+  }
   // The tint each one wears. Grey for the total, because a total is not a state.
   const TILE_SKIN: Record<TileKey, string> = {
     chase:   'bg-card-chase border-card-chase-edge',
@@ -510,7 +520,7 @@ export default function DealsPage() {
               </div>
             )}
             <div className="flex items-center gap-2">
-              <Link href={readyStage ? `/deals/${deal.id}?stage=${readyStage}` : `/deals/${deal.id}`} className={`flex-1 bg-card border rounded-xl px-4 py-3 flex items-center gap-4 transition-all ${readyStage ? 'border-waiting-edge hover:border-waiting' : 'border-gray-100 hover:border-brand'}`}>
+              <Link href={readyStage ? `/deals/${deal.id}?stage=${readyStage}` : `/deals/${deal.id}`} className={`flex-1 border rounded-xl px-4 py-3 flex items-center gap-4 transition-all ${CARD_SKIN[cardTone(deal, look.thresholds) || 'none']}`}>
                 <div className="w-9 h-9 rounded-full bg-brand/10 text-brand flex items-center justify-center text-xs font-semibold flex-shrink-0">
                   {deal.clients?.first_name?.[0]}{deal.clients?.last_name?.[0]}
                 </div>

@@ -101,6 +101,28 @@ export function matchesTile(deal: any, key: TileKey, thresholds?: ThresholdMap):
   return waitingOnSomeone(deal)
 }
 
+// WHAT COLOUR THE CARD ITSELF WEARS.
+//
+// 6 Oct 2026, docs/approved-looks/one-card-marking.html - "the stripe is gone,
+// colour all the way round". The card is marked with the tone of the tile that
+// counts it, which is why this lives here beside the counting rather than in
+// the page: a card and the tile above it cannot disagree if they are the same
+// three questions.
+//
+// ONE DEAL CAN BE TWO THINGS AT ONCE - behind on a stage AND waiting on a
+// valuation. The order is the order of the tiles, and the order you would want
+// to be told: what is late first, then what is sitting with you, then what is
+// sitting with somebody else.
+export type CardTone = 'chase' | 'review' | 'waiting' | null
+
+export function cardTone(deal: any, thresholds?: ThresholdMap): CardTone {
+  if (!isLive(deal)) return null
+  if (needsChasing(deal, thresholds)) return 'chase'
+  if (readyForReview(deal)) return 'review'
+  if (waitingOnSomeone(deal)) return 'waiting'
+  return null
+}
+
 export type TileCounts = {
   chase: number
   review: number
