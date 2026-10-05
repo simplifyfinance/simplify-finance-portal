@@ -234,11 +234,11 @@ function Toggle({ value, onChange, options, colors }: { value: string; onChange:
         if (isActive) {
           if (color === 'green') cls += 'bg-green-50 text-green-700 border-green-300'
           else if (color === 'red') cls += 'bg-red-50 text-red-600 border-red-300'
-          else if (color === 'amber') cls += 'bg-amber-50 text-amber-700 border-amber-300'
+          else if (color === 'info') cls += 'bg-info-bg text-info border-info-edge'
           else if (color === 'blue') cls += 'bg-blue-50 text-[#2DBEFF] border-blue-300'
-          else cls += 'bg-[#343333] text-white border-[#343333]'
+          else cls += 'bg-ink text-page border-ink'
         } else {
-          cls += 'bg-white text-gray-400 border-gray-200 hover:border-gray-300'
+          cls += 'bg-card text-gray-400 border-gray-200 hover:border-gray-300'
         }
         return <button key={opt} onClick={() => onChange(opt)} className={cls}>{opt}</button>
       })}
@@ -301,19 +301,19 @@ function NoteMeta({ meta, freshness, onAccept }: { meta?: NoteStamp; freshness: 
         <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
           conf.toLowerCase().includes('high') ? 'bg-green-50 text-green-600' :
           conf.toLowerCase().includes('low') ? 'bg-red-50 text-red-600' :
-          'bg-amber-50 text-amber-600'
+          'bg-info-bg text-info'
         }`}>{conf} confidence</span>
       )}
       {meta?.source && <span className="text-[10px] text-gray-400">Source: {meta.source}</span>}
       {stale && (
-        <span className="text-[10px] font-medium text-[#8A6218] bg-[#FDF6EC] border border-[#EBD9BE] rounded px-1.5 py-0.5">
+        <span className="text-[10px] font-medium text-chase bg-chase-bg border border-chase-edge rounded px-1.5 py-0.5">
           written before {freshness.changes[0]}
         </span>
       )}
       {stale && onAccept && (
         <button onClick={onAccept}
           title="Leaves every word as it is and brings the stamp up to date"
-          className="text-[10px] font-medium text-[#7A5F17] bg-white border border-[#EBD9BE] rounded px-1.5 py-0.5 hover:bg-[#FBF5EA] transition">
+          className="text-[10px] font-medium text-chase bg-card border border-chase-edge rounded px-1.5 py-0.5 hover:bg-chase-bg transition">
           This one still reads right
         </button>
       )}
@@ -1624,7 +1624,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
           entitled to. Silence here would be the portal editing a regulated file
           without mentioning it. */}
       {rebuilt.length > 0 && (
-        <p className="border border-[#BBE7CF] bg-[#F4FBF7] rounded-lg px-3 py-2 text-[12.5px] text-[#0F7B4F] m-0">
+        <p className="border border-done-edge bg-done-bg rounded-lg px-3 py-2 text-[12.5px] text-done m-0">
           {rebuiltLine(rebuilt, AI_FIELD_LABEL)}
         </p>
       )}
@@ -1634,12 +1634,12 @@ Use the security address exactly as recorded. On a pre-approval it will already 
           onDiscard={draft.dismiss} />
       )}
       {past && (
-        <div className="bg-white border border-[#CFE6D5] rounded-xl px-4 py-3.5">
+        <div className="bg-card border border-done-edge rounded-xl px-4 py-3.5">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="text-[10px] font-bold uppercase tracking-[.06em] bg-[#F1F7F3] border border-[#CFE6D5] text-[#25794C] rounded-full px-2.5 py-[3px]">
+            <span className="text-[10px] font-bold uppercase tracking-[.06em] bg-done-bg border border-done-edge text-done rounded-full px-2.5 py-[3px]">
               Compliance sent
             </span>
-            <span className="text-[13px] text-[#6E665C]">
+            <span className="text-[13px] text-muted">
               {sentOn ? longDate(sentOn) : ''}
               {' '}&middot; both PDFs emailed to the compliance team
             </span>
@@ -1653,7 +1653,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
               </button>
             )}
           </div>
-          <p className="text-[11.5px] text-[#A29889] mt-2 mb-0">
+          <p className="text-[11.5px] text-faint mt-2 mb-0">
             This deal is lodged. The write-up is kept here and can still be corrected, but nothing
             on this tab moves the deal along any more &mdash; it is tracked in After compliance and
             Settlement above.
@@ -1663,10 +1663,10 @@ Use the security address exactly as recorded. On a pre-approval it will already 
 
       {(!past || showWriteUp || locked) && (<>
       {/* Stage tabs */}
-      <div className="flex bg-white border border-gray-100 rounded-xl p-1 gap-1">
+      <div className="flex bg-card border border-gray-100 rounded-xl p-1 gap-1">
         {stages.map(s => (
           <button key={s} onClick={() => setStage(s)}
-            className={`flex-1 py-2 rounded-lg text-xs font-medium transition ${stage === s ? 'bg-[#343333] text-white' : 'text-gray-400 hover:text-gray-600'}`}>
+            className={`flex-1 py-2 rounded-lg text-xs font-medium transition ${stage === s ? 'bg-ink text-page' : 'text-gray-400 hover:text-gray-600'}`}>
             {stageLabels[s]}
           </button>
         ))}
@@ -1680,16 +1680,16 @@ Use the security address exactly as recorded. On a pre-approval it will already 
       <DealStructure deal={deal} onUpdated={onDealPatched} />
 
       {/* Compliance actions */}
-      <div className="bg-white border border-gray-100 rounded-xl p-4">
+      <div className="bg-card border border-gray-100 rounded-xl p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             {past ? (
               /* The deal is already with the lender. Pressing this would re-email
                  both PDFs to the compliance team for something that went weeks
                  ago, so it is not a button any more. */
-              <div className="text-[13px] text-[#6E665C]">
-                <span className="font-semibold text-[#2E2A26]">Already pushed to SalesTrekker.</span>
-                <div className="text-[11.5px] text-[#A29889] mt-1 max-w-[52ch]">
+              <div className="text-[13px] text-muted">
+                <span className="font-semibold text-ink">Already pushed to SalesTrekker.</span>
+                <div className="text-[11.5px] text-faint mt-1 max-w-[52ch]">
                   This deal is lodged. If the write-up genuinely has to go again, send it from the
                   PDFs rather than pushing the deal a second time.
                 </div>
@@ -1697,11 +1697,11 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             ) : (
               <>
                 <button onClick={handlePushToSalesTrekker}
-                  className="bg-[#343333] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-[#2a2a2a] transition inline-flex items-center gap-2">
+                  className="bg-ink text-page px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition inline-flex items-center gap-2">
                   Push to SalesTrekker
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
                 </button>
-                <div className="text-[11.5px] text-[#A29889] mt-2.5 max-w-[46ch]">Marks compliance complete and emails both PDFs to the compliance team.</div>
+                <div className="text-[11.5px] text-faint mt-2.5 max-w-[46ch]">Marks compliance complete and emails both PDFs to the compliance team.</div>
                 {complianceCompletedAt && <div className="text-[11.5px] text-green-600 mt-1">✓ Compliance completed</div>}
               </>
             )}
@@ -1710,22 +1710,22 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             {/* The PDFs are the record. This is what people type from - copying
                 out of a PDF loses the bold and breaks words across lines. */}
             <a href={`/deals/${deal.id}/handover`}
-              className="bg-[#141C24] border border-[#141C24] text-white rounded-lg px-3.5 py-2 text-[12.5px] font-semibold hover:bg-[#28323c] transition inline-flex items-center gap-1.5">
+              className="bg-ink border border-ink text-white rounded-lg px-3.5 py-2 text-[12.5px] font-semibold hover:bg-ink/90 transition inline-flex items-center gap-1.5">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="9" height="11" rx="1.5"/><path d="M11 13v1H2V4h1"/></svg>
               Open to copy
             </a>
             <button onClick={() => downloadPdf('summary')} disabled={!!downloading}
-              className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-lg px-3.5 py-2 text-[12.5px] font-medium hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition inline-flex items-center gap-1.5 disabled:opacity-40">
+              className="bg-page border border-line text-muted rounded-lg px-3.5 py-2 text-[12.5px] font-medium hover:bg-line-soft hover:text-ink transition inline-flex items-center gap-1.5 disabled:opacity-40">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v8M4.5 7l3.5 3.5L11.5 7M3 13h10"/></svg>
               {downloading === 'summary' ? 'Preparing...' : 'Fact Find PDF'}
             </button>
             <button onClick={() => downloadPdf('compliance')} disabled={!!downloading}
-              className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-lg px-3.5 py-2 text-[12.5px] font-medium hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition inline-flex items-center gap-1.5 disabled:opacity-40">
+              className="bg-page border border-line text-muted rounded-lg px-3.5 py-2 text-[12.5px] font-medium hover:bg-line-soft hover:text-ink transition inline-flex items-center gap-1.5 disabled:opacity-40">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v8M4.5 7l3.5 3.5L11.5 7M3 13h10"/></svg>
               {downloading === 'compliance' ? 'Preparing...' : 'Handover PDF'}
             </button>
             <button onClick={() => downloadPdf('broker_notes')} disabled={!!downloading}
-              className="bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-lg px-3.5 py-2 text-[12.5px] font-medium hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition inline-flex items-center gap-1.5 disabled:opacity-40">
+              className="bg-page border border-line text-muted rounded-lg px-3.5 py-2 text-[12.5px] font-medium hover:bg-line-soft hover:text-ink transition inline-flex items-center gap-1.5 disabled:opacity-40">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v8M4.5 7l3.5 3.5L11.5 7M3 13h10"/></svg>
               {downloading === 'broker_notes' ? 'Preparing...' : 'Broker Notes'}
             </button>
@@ -1739,22 +1739,22 @@ Use the security address exactly as recorded. On a pre-approval it will already 
           inside one, because the nine notes are spread across two stages and a
           warning you can navigate away from is not a warning. */}
       {notesReview.staleFields.length > 0 && (
-        <div className="border border-[#EBD9BE] bg-[#FDF6EC] rounded-xl px-4 py-3.5 mb-4">
+        <div className="border border-chase-edge bg-chase-bg rounded-xl px-4 py-3.5 mb-4">
           <div className="flex items-start gap-4 flex-wrap">
             <div className="flex-1 min-w-[300px]">
-              <h4 className="m-0 mb-1 text-[13.5px] font-semibold text-[#221F1B]">
+              <h4 className="m-0 mb-1 text-[13.5px] font-semibold text-ink">
                 ⚠ {notesReview.staleFields.length === 1
                   ? 'One note was'
                   : `${notesReview.staleFields.length} notes were`} written before the deal changed
               </h4>
-              <p className="m-0 text-[12.5px] text-[#8A6218]">
+              <p className="m-0 text-[12.5px] text-chase">
                 {notesReview.staleFields.length === 1 ? 'It still says' : 'They still say'} what
                 {notesReview.staleFields.length === 1 ? ' it said' : ' they said'} at the time. Nothing has been
                 rewritten — that is yours to decide. Each note below has its own
-                <b className="text-[#221F1B]"> This one still reads right</b> button, for when you have fixed a figure
+                <b className="text-ink"> This one still reads right</b> button, for when you have fixed a figure
                 yourself and only that note needs clearing.
               </p>
-              <ul className="mt-1.5 mb-0 pl-5 text-[12.5px] text-[#8A6218]">
+              <ul className="mt-1.5 mb-0 pl-5 text-[12.5px] text-chase">
                 {notesReview.changes.map((c, i) => {
                   // Where that figure is written down, so nobody has to redo
                   // nine notes to fix one.
@@ -1763,8 +1763,8 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                     <li key={i} className="mb-1">
                       {c}
                       {where.length > 0 && (
-                        <span className="block text-[12px] text-[#A08A5B]">
-                          That figure appears in: <b className="text-[#7A5F17]">{where.join(', ')}</b>
+                        <span className="block text-[12px] text-muted">
+                          That figure appears in: <b className="text-chase">{where.join(', ')}</b>
                         </span>
                       )}
                     </li>
@@ -1772,25 +1772,25 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                 })}
               </ul>
               {figureChangeDetail.some(f => f.mentionedIn.length > 0) && (
-                <p className="m-0 mt-1.5 text-[12px] text-[#A08A5B]">
+                <p className="m-0 mt-1.5 text-[12px] text-muted">
                   Only where the figure itself is written down — a note can be about something without quoting it.
                 </p>
               )}
-              <p className="m-0 mt-1.5 text-[12px] text-[#8A6218]">
-                {notesReview.writtenAt && <>Oldest written <b className="text-[#221F1B]">{when(notesReview.writtenAt)}</b> · </>}
+              <p className="m-0 mt-1.5 text-[12px] text-chase">
+                {notesReview.writtenAt && <>Oldest written <b className="text-ink">{when(notesReview.writtenAt)}</b> · </>}
                 {notesReview.staleFields.map(f => AI_FIELD_LABEL[f] || f).join(', ')}
               </p>
             </div>
             <div className="flex gap-2 flex-shrink-0">
               <button onClick={regenerateStale} disabled={Object.values(generating).some(Boolean)}
-                className="bg-[#221F1B] text-white rounded-lg px-3 py-1.5 text-[12.5px] hover:bg-[#3a3733] transition disabled:opacity-40 whitespace-nowrap">
+                className="bg-ink text-page rounded-lg px-3 py-1.5 text-[12.5px] hover:opacity-90 transition disabled:opacity-40 whitespace-nowrap">
                 {Object.values(generating).some(Boolean) ? 'Rewriting…' : `Rewrite ${notesReview.staleFields.length === 1 ? 'it' : `those ${notesReview.staleFields.length}`}`}
               </button>
               {/* Re-stamps them against the deal as it is now, without touching a
                   word - for notes somebody has already corrected by hand. There
                   is the same button on each individual note, for clearing one. */}
               <button onClick={acceptNotesAsTheyAre}
-                className="bg-white border border-[#EBD9BE] text-[#7A5F17] rounded-lg px-3 py-1.5 text-[12.5px] hover:bg-[#FBF5EA] transition whitespace-nowrap">
+                className="bg-card border border-chase-edge text-chase rounded-lg px-3 py-1.5 text-[12.5px] hover:bg-chase-bg transition whitespace-nowrap">
                 They all still read right
               </button>
             </div>
@@ -1801,7 +1801,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
       {/* STAGE: Needs & Objectives */}
       {stage === 'needs' && (
         <div className="space-y-4">
-          <div className="bg-white border border-gray-100 rounded-xl p-5">
+          <div className="bg-card border border-gray-100 rounded-xl p-5">
             <div className="flex items-center justify-between mb-2">
               <SectionHeader title="Needs & objectives" />
               <AIButton onClick={generateNeeds} loading={['needsPrimary', 'needsImmediate', 'needsLongTerm'].some(f => generating[f])} label="Write all three from the deal" />
@@ -1820,12 +1820,12 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                   placeholder="Click Write from the deal, or type it yourself..." />
                 <AIButton onClick={() => generateField(key)} loading={generating[key]}
                   label={COMPOSERS[key] ? 'Write from the deal' : undefined} />
-                <button onClick={() => { setFlaggingField(flaggingField === key ? null : key); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
+                <button onClick={() => { setFlaggingField(flaggingField === key ? null : key); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-chase underline">Flag an issue</button>
                 {flaggingField === key && (
-                  <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <textarea spellCheck="true" className={inp + ' min-h-[60px] resize-y bg-white'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
+                  <div className="mt-2 bg-chase-bg border border-chase-edge rounded-lg p-3">
+                    <textarea spellCheck="true" className={inp + ' min-h-[60px] resize-y bg-card'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
                     <div className="flex gap-2 mt-2">
-                      <button onClick={() => submitFlag(key, label)} disabled={flagSubmitting || !flagNote.trim()} className="text-xs bg-amber-500 text-white rounded-lg px-3 py-1.5 hover:bg-amber-600 disabled:opacity-40">{flagSubmitting ? 'Submitting...' : 'Submit flag'}</button>
+                      <button onClick={() => submitFlag(key, label)} disabled={flagSubmitting || !flagNote.trim()} className="text-xs bg-chase text-page rounded-lg px-3 py-1.5 hover:opacity-90 disabled:opacity-40">{flagSubmitting ? 'Submitting...' : 'Submit flag'}</button>
                       <button onClick={() => { setFlaggingField(null); setFlagNote('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
                     </div>
                   </div>
@@ -1862,7 +1862,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                   className={`px-4 py-2 rounded-lg text-sm font-medium border transition flex items-center gap-2 ${
                     activeApplicant === i ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5'
                     : started ? 'border-gray-200 text-gray-400'
-                    : 'border-[#EFD3CB] text-[#AD4227] bg-[#FBEDE9]'}`}>
+                    : 'border-chase-edge text-chase bg-chase-bg'}`}>
                   {a.name}
                   {!started && <span className="text-[10px] font-bold uppercase tracking-[.05em]">not started</span>}
                 </button>
@@ -1872,14 +1872,14 @@ Use the security address exactly as recorded. On a pre-approval it will already 
           {/* These questions are asked of every applicant, never one of them.
               On a joint deal the second tab is the one that gets forgotten. */}
           {d.applicants.length > 1 && d.applicants.some(a => !riskStarted(a.name)) && (
-            <div className="text-[12.5px] rounded-lg border border-[#EFD3CB] bg-[#FBEDE9] text-[#8A3A2A] px-3 py-2">
+            <div className="text-[12.5px] rounded-lg border border-chase-edge bg-chase-bg text-chase px-3 py-2">
               These questions are asked of <b>every</b> applicant.
               {' '}{d.applicants.filter(a => !riskStarted(a.name)).map(a => a.name).join(' and ')}
               {' '}{d.applicants.filter(a => !riskStarted(a.name)).length === 1 ? 'has' : 'have'} not been started.
             </div>
           )}
 
-          <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-4">
+          <div className="bg-card border border-gray-100 rounded-xl p-5 space-y-4">
             <SectionHeader title={`Risks — ${currentApplicant?.name}`} />
 
             <div>
@@ -1932,7 +1932,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
               ].map(({ key, label }) => (
                 <ToggleRow key={key} label={label} value={(currentRisk as any)[key]}
                   onChange={v => updateRisk(currentApplicant.name, key as keyof RiskData, v)}
-                  options={['Low', 'Medium', 'High']} colors={['green', 'amber', 'red']} />
+                  options={['Low', 'Medium', 'High']} colors={['green', 'info', 'red']} />
               ))}
               {[
                 { key: 'emergencyFund', label: 'Emergency fund / liquid asset or insurance for loss of income?' },
@@ -1948,7 +1948,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             </div>
 
             <div>
-              <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-2">Credit history <span className="normal-case text-[10px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded font-medium ml-1">⚠ Team must answer — from the client's declarations</span></div>
+              <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-2">Credit history <span className="normal-case text-[10px] bg-chase-bg text-chase px-1.5 py-0.5 rounded font-medium ml-1">⚠ Team must answer — from the client's declarations</span></div>
               {[
                 { key: 'problemsMeetingCommitments', label: 'Problems meeting fixed commitments including mobile payments?' },
                 { key: 'officerInLiquidation', label: 'Officer/shareholder of company where liquidator appointed?' },
@@ -1961,7 +1961,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
               ))}
               <ToggleRow label="Ever declared bankrupt?" value={currentRisk.declaredBankrupt}
                 onChange={v => updateRisk(currentApplicant.name, 'declaredBankrupt', v)}
-                options={['Yes', 'No', 'Yes discharged']} colors={['red', 'green', 'amber']} required />
+                options={['Yes', 'No', 'Yes discharged']} colors={['red', 'green', 'info']} required />
             </div>
           </div>
         </div>
@@ -1969,7 +1969,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
 
       {/* STAGE: Product Requirements */}
       {stage === 'product' && (
-        <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-4">
+        <div className="bg-card border border-gray-100 rounded-xl p-5 space-y-4">
           <SectionHeader title="Product requirements" badge="AI pre-filled from LO" />
 
           <div>
@@ -2046,7 +2046,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
       {/* STAGE: Broker Comments */}
       {stage === 'comments' && (
         <div className="space-y-4">
-          <div className="bg-white border border-gray-100 rounded-xl p-5">
+          <div className="bg-card border border-gray-100 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <SectionHeader title="Broker comments" badge="AI generated" />
               <AIButton onClick={generateAll} loading={Object.values(generating).some(Boolean)} label="Generate all fields" />
@@ -2055,7 +2055,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             <div className="bg-gray-50 border border-gray-100 rounded-lg p-4 mb-4">
               <label className="text-xs font-medium text-gray-500 block mb-2">Client agreement (captured when moving from LO to Compliance)</label>
               {d.clientAgreedLender ? (
-                <div className="text-sm text-[#343333]">
+                <div className="text-sm text-ink">
                   {d.clientAgreedLender === 'Yes' ? (
                     <span>✓ Client agreed with the recommended lender ({lo.recommendedLender || 'not yet recommended'})</span>
                   ) : (
@@ -2084,12 +2084,12 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                   placeholder="Click Generate with AI or type manually..." />
                 <AIButton onClick={() => generateField(key)} loading={generating[key]}
                   label={COMPOSERS[key] ? 'Write from the deal' : undefined} />
-                <button onClick={() => { setFlaggingField(flaggingField === key ? null : key); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
+                <button onClick={() => { setFlaggingField(flaggingField === key ? null : key); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-chase underline">Flag an issue</button>
                 {flaggingField === key && (
-                  <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <textarea spellCheck="true" className={inp + ' min-h-[60px] resize-y bg-white'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
+                  <div className="mt-2 bg-chase-bg border border-chase-edge rounded-lg p-3">
+                    <textarea spellCheck="true" className={inp + ' min-h-[60px] resize-y bg-card'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
                     <div className="flex gap-2 mt-2">
-                      <button onClick={() => submitFlag(key, label)} disabled={flagSubmitting || !flagNote.trim()} className="text-xs bg-amber-500 text-white rounded-lg px-3 py-1.5 hover:bg-amber-600 disabled:opacity-40">{flagSubmitting ? 'Submitting...' : 'Submit flag'}</button>
+                      <button onClick={() => submitFlag(key, label)} disabled={flagSubmitting || !flagNote.trim()} className="text-xs bg-chase text-page rounded-lg px-3 py-1.5 hover:opacity-90 disabled:opacity-40">{flagSubmitting ? 'Submitting...' : 'Submit flag'}</button>
                       <button onClick={() => { setFlaggingField(null); setFlagNote('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
                     </div>
                   </div>
@@ -2105,7 +2105,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
               ].map(({ key, label, warning }) => (
                 <div key={key} className="mb-4">
                   <label className="text-xs font-medium text-gray-500 block mb-1">
-                    {label} {warning && <span className="text-[10px] text-amber-500">{warning}</span>}
+                    {label} {warning && <span className="text-[10px] text-chase">{warning}</span>}
                   </label>
                   <textarea spellCheck="true" aria-label={label} className={inp + ' min-h-[100px] resize-y'} value={(d as any)[key]}
                     onFocus={() => focusField(ownRef.current, key)}
@@ -2114,12 +2114,12 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                     placeholder="Click Generate..." />
                   <AIButton onClick={() => generateField(key)} loading={generating[key]}
                     label={COMPOSERS[key] ? 'Write from the deal' : undefined} />
-                <button onClick={() => { setFlaggingField(flaggingField === key ? null : key); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
+                <button onClick={() => { setFlaggingField(flaggingField === key ? null : key); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-chase underline">Flag an issue</button>
                 {flaggingField === key && (
-                  <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <textarea spellCheck="true" className={inp + ' min-h-[60px] resize-y bg-white'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
+                  <div className="mt-2 bg-chase-bg border border-chase-edge rounded-lg p-3">
+                    <textarea spellCheck="true" className={inp + ' min-h-[60px] resize-y bg-card'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
                     <div className="flex gap-2 mt-2">
-                      <button onClick={() => submitFlag(key, label)} disabled={flagSubmitting || !flagNote.trim()} className="text-xs bg-amber-500 text-white rounded-lg px-3 py-1.5 hover:bg-amber-600 disabled:opacity-40">{flagSubmitting ? 'Submitting...' : 'Submit flag'}</button>
+                      <button onClick={() => submitFlag(key, label)} disabled={flagSubmitting || !flagNote.trim()} className="text-xs bg-chase text-page rounded-lg px-3 py-1.5 hover:opacity-90 disabled:opacity-40">{flagSubmitting ? 'Submitting...' : 'Submit flag'}</button>
                       <button onClick={() => { setFlaggingField(null); setFlagNote('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
                     </div>
                   </div>
@@ -2132,11 +2132,11 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             {/* A pre-approval has no security yet, so the box below says TBA and
                 that is correct. Marked here so nothing downstream treats it as
                 an unfinished form. */}
-            <label className="flex items-start gap-3 mb-4 border border-gray-100 rounded-lg px-3.5 py-3 cursor-pointer hover:bg-[#FBFCFD]">
+            <label className="flex items-start gap-3 mb-4 border border-gray-100 rounded-lg px-3.5 py-3 cursor-pointer hover:bg-page">
               <input type="checkbox" className="mt-0.5" checked={!!d.preApproval}
                 onChange={e => setD(prev => ({ ...prev, preApproval: e.target.checked }))} />
               <span>
-                <span className="block text-[13px] font-medium text-[#343333]">This is a pre-approval — no security identified yet</span>
+                <span className="block text-[13px] font-medium text-ink">This is a pre-approval — no security identified yet</span>
                 <span className="block text-[11.5px] text-gray-400 mt-0.5">
                   &ldquo;TBA&rdquo; in the Security box stops being flagged, and the handover says the property is still to be found.
                 </span>
@@ -2165,9 +2165,9 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                   <label className="text-xs font-medium text-gray-500 block mb-1">Who will be on the title?</label>
                   {holders.map(h => (
                     <div key={h.name}
-                      className={`flex items-center gap-3 px-3 py-2 border rounded-lg mb-1.5 ${h.onTitle ? 'border-gray-100 bg-white' : 'border-gray-100 bg-[#FBFCFD]'}`}>
+                      className={`flex items-center gap-3 px-3 py-2 border rounded-lg mb-1.5 ${h.onTitle ? 'border-gray-100 bg-card' : 'border-gray-100 bg-page'}`}>
                       <input type="checkbox" checked={h.onTitle} onChange={e => setHolder(h.name, { onTitle: e.target.checked })} />
-                      <span className={`text-[13px] text-[#343333] ${h.onTitle ? 'font-medium' : ''}`}>{h.name}</span>
+                      <span className={`text-[13px] text-ink ${h.onTitle ? 'font-medium' : ''}`}>{h.name}</span>
                       <span className="ml-auto flex items-center gap-2">
                         <span className="text-[11px] text-gray-400">Share</span>
                         <input className="border border-gray-200 rounded-lg px-2 py-1 text-[13px] w-[74px]"
@@ -2177,29 +2177,29 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                   ))}
 
                   {mismatch && (
-                    <div className={`mt-2 border rounded-lg px-3.5 py-3 ${needReason ? 'border-[#F5C2C2] bg-[#FDF0EF]' : 'border-[#EBD9BE] bg-[#FDF6EC]'}`}>
-                      <div className={`text-[12.5px] font-semibold mb-1.5 ${needReason ? 'text-[#8A3A3A]' : 'text-[#8A6218]'}`}>
+                    <div className={`mt-2 border rounded-lg px-3.5 py-3 ${needReason ? 'border-chase-edge bg-chase-bg' : 'border-chase-edge bg-chase-bg'}`}>
+                      <div className={`text-[12.5px] font-semibold mb-1.5 ${needReason ? 'text-chase' : 'text-chase'}`}>
                         {holders.filter(h => !h.onTitle).map(h => h.name).join(' and ')}
                         {holders.filter(h => !h.onTitle).length === 1 ? ' is ' : ' are '}
                         borrowing but will not be on title.
                       </div>
                       <label className="text-[11px] text-gray-500 block mb-1">Why are they on the loan, and what benefit do they get from it?</label>
-                      <textarea spellCheck="true" className={inp + ' min-h-[64px] resize-y bg-white'}
+                      <textarea spellCheck="true" className={inp + ' min-h-[64px] resize-y bg-card'}
                         value={info.reason || ''} onChange={e => setTitle({ reason: e.target.value })}
                         placeholder="e.g. spouse, will live in the property as their principal place of residence…" />
                       <div className="flex items-center gap-2.5 mt-2 flex-wrap">
                         <span className="text-[11px] text-gray-500">Independent legal advice</span>
-                        <span className="inline-flex rounded-lg border border-gray-200 overflow-hidden bg-white">
+                        <span className="inline-flex rounded-lg border border-gray-200 overflow-hidden bg-card">
                           {(['not_required', 'arranged', 'not_yet'] as LegalAdvice[]).map((v, i) => (
                             <button key={v} type="button" onClick={() => setTitle({ legalAdvice: v })}
                               className={`text-[11.5px] px-2.5 py-1 ${i ? 'border-l border-gray-200' : ''} ${
-                                info.legalAdvice === v ? 'bg-[#343333] text-white font-semibold' : 'text-[#8a9099]'}`}>
+                                info.legalAdvice === v ? 'bg-ink text-page font-semibold' : 'text-muted'}`}>
                               {LEGAL_ADVICE_LABEL[v]}
                             </button>
                           ))}
                         </span>
                       </div>
-                      <div className="text-[11px] text-[#a08a5e] mt-2 italic">
+                      <div className="text-[11px] text-muted mt-2 italic">
                         This only appears when the borrowers and the owners are not the same people. Match them and it goes away.
                       </div>
                     </div>
@@ -2224,12 +2224,12 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                     derived. */}
                 <AIButton onClick={() => generateField('securityComment')} loading={generating['securityComment']}
                   label={COMPOSERS['securityComment'] ? 'Write from the deal' : undefined} />
-                <button onClick={() => { setFlaggingField(flaggingField === 'securityComment' ? null : 'securityComment'); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-amber-500 underline">Flag an issue</button>
+                <button onClick={() => { setFlaggingField(flaggingField === 'securityComment' ? null : 'securityComment'); setFlagNote('') }} className="mt-2 ml-2 text-xs text-gray-400 hover:text-chase underline">Flag an issue</button>
                 {flaggingField === 'securityComment' && (
-                  <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <textarea spellCheck="true" className={inp + ' min-h-[60px] resize-y bg-white'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
+                  <div className="mt-2 bg-chase-bg border border-chase-edge rounded-lg p-3">
+                    <textarea spellCheck="true" className={inp + ' min-h-[60px] resize-y bg-card'} placeholder="What's wrong with this field?" value={flagNote} onChange={e => setFlagNote(e.target.value)} autoFocus />
                     <div className="flex gap-2 mt-2">
-                      <button onClick={() => submitFlag('securityComment', 'Security (property)')} disabled={flagSubmitting || !flagNote.trim()} className="text-xs bg-amber-500 text-white rounded-lg px-3 py-1.5 hover:bg-amber-600 disabled:opacity-40">{flagSubmitting ? 'Submitting...' : 'Submit flag'}</button>
+                      <button onClick={() => submitFlag('securityComment', 'Security (property)')} disabled={flagSubmitting || !flagNote.trim()} className="text-xs bg-chase text-page rounded-lg px-3 py-1.5 hover:opacity-90 disabled:opacity-40">{flagSubmitting ? 'Submitting...' : 'Submit flag'}</button>
                       <button onClick={() => { setFlaggingField(null); setFlagNote('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
                     </div>
                   </div>
@@ -2247,17 +2247,17 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                     no model writes. Fabio, 3 Sep 2026: "let's just make sure it
                     really screams out that they have to complete this section.
                     This is not done by AI." */}
-                <div className="border-2 border-[#2DBEFF] bg-[#F4FCFF] rounded-lg px-3.5 py-3 mb-2">
+                <div className="border-2 border-[#2DBEFF] bg-info-bg rounded-lg px-3.5 py-3 mb-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <label className="text-[13px] font-bold text-[#2E2A26]">Application submission notes</label>
-                    <span className="text-[10.5px] font-extrabold tracking-[.06em] uppercase text-[#08252F] bg-[#2DBEFF] rounded px-2 py-[3px]">
+                    <label className="text-[13px] font-bold text-ink">Application submission notes</label>
+                    <span className="text-[10.5px] font-extrabold tracking-[.06em] uppercase text-on-brand bg-[#2DBEFF] rounded px-2 py-[3px]">
                       Goes to the lender
                     </span>
                   </div>
-                  <p className="m-0 mt-1.5 text-[12px] leading-[1.55] text-[#0B5E8A]">
-                    <b className="text-[#08252F]">This is the only box on this tab the bank reads.</b>{' '}
+                  <p className="m-0 mt-1.5 text-[12px] leading-[1.55] text-info">
+                    <b className="text-ink">This is the only box on this tab the bank reads.</b>{' '}
                     It is not written by AI — every sentence is copied from the deal.
-                    <b className="text-[#08252F]"> Press Compose below</b>, read what it writes, and fix anything
+                    <b className="text-ink"> Press Compose below</b>, read what it writes, and fix anything
                     that is not right before you push.
                   </p>
                 </div>
@@ -2278,14 +2278,14 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                   /* Refuse and name what is missing, rather than leaving
                      [employer name] in something bound for a bank portal.
                      Fabio, 3 Sep 2026: "refuse, and name what is missing." */
-                  <div className="mt-2 border border-[#EBD9BE] bg-[#FDF6EC] rounded-lg px-3.5 py-3">
-                    <p className="m-0 text-[12.5px] font-semibold text-[#221F1B]">
+                  <div className="mt-2 border border-chase-edge bg-chase-bg rounded-lg px-3.5 py-3">
+                    <p className="m-0 text-[12.5px] font-semibold text-ink">
                       These notes cannot be composed yet
                     </p>
-                    <p className="m-0 mt-0.5 text-[11.5px] text-[#8A6218]">
+                    <p className="m-0 mt-0.5 text-[11.5px] text-chase">
                       They go to the lender, so nothing is written until every figure in them is a recorded fact.
                     </p>
-                    <ul className="mt-1.5 mb-0 pl-5 text-[12px] text-[#8A6218]">
+                    <ul className="mt-1.5 mb-0 pl-5 text-[12px] text-chase">
                       {notes.missing.map((m, i) => <li key={i} className="mb-0.5">{m}</li>)}
                     </ul>
                   </div>
@@ -2306,7 +2306,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
       {/* STAGE: Living Expenses */}
       {stage === 'expenses' && (
         <div className="space-y-4">
-          <div className="bg-white border border-gray-100 rounded-xl p-5">
+          <div className="bg-card border border-gray-100 rounded-xl p-5">
             <SectionHeader title="Living expenses" badge="household monthly" />
             {/* ONE TAB PER HOUSEHOLD, and none at all when there is one.
               *
@@ -2324,8 +2324,8 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                   return (
                     <button key={h.id} onClick={() => setHousehold(h.id)}
                       className={`border rounded-lg px-3 py-1.5 flex items-center gap-2 transition ${
-                        on ? 'border-[#141C24] bg-[#141C24]' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
-                      <span className={`text-[12.5px] font-semibold ${on ? 'text-white' : 'text-[#3A434C]'}`}>
+                        on ? 'border-ink bg-ink' : 'border-gray-200 bg-card hover:bg-gray-50'}`}>
+                      <span className={`text-[12.5px] font-semibold ${on ? 'text-white' : 'text-body'}`}>
                         Household {h.id}
                       </span>
                       <span className={`text-[11px] max-w-[150px] truncate ${on ? 'text-[#B9C1C9]' : 'text-gray-400'}`}
@@ -2334,8 +2334,8 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                         {Number(h.dependants) > 0 ? ` \u00b7 ${h.dependants} dep` : ''}
                       </span>
                       <span className={`text-[10px] font-bold rounded-full px-2 py-[1px] border ${
-                        open > 0 ? 'bg-[#FDF0EF] text-[#B04A4A] border-[#F5C2C2]'
-                                 : 'bg-[#EFF9F2] text-[#15803D] border-[#BFE3CC]'}`}>
+                        open > 0 ? 'bg-chase-bg text-chase border-chase-edge'
+                                 : 'bg-done-bg text-done border-done-edge'}`}>
                         {open > 0 ? `${open} to answer` : 'done'}
                       </span>
                     </button>
@@ -2347,7 +2347,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             <div className="flex items-center gap-4 mb-3 text-xs text-gray-500">
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />In HEM</span>
               <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" />Not in HEM</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full border-2 border-[#DC5B5B] bg-white inline-block" />Not answered yet</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full border-2 border-chase bg-card inline-block" />Not answered yet</span>
             </div>
             <div className="flex flex-col gap-2">
               {EXPENSE_CATEGORIES.map(cat => {
@@ -2356,25 +2356,25 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                 const open = hem === 'unanswered'
                 return (
                   <div key={cat.key} className={`border rounded-lg p-3 ${
-                    open ? 'border-[#F5C2C2] bg-[#FDF0EF]' : 'border-gray-100'}`}>
+                    open ? 'border-chase-edge bg-chase-bg' : 'border-gray-100'}`}>
                     <div className="flex items-center gap-2 mb-2">
                       <span className={`w-2.5 h-2.5 rounded-full inline-block flex-shrink-0 ${
-                        open ? 'border-2 border-[#DC5B5B] bg-white'
+                        open ? 'border-2 border-chase bg-card'
                         : hem === 'in' ? 'bg-green-500' : 'bg-red-400'}`} />
-                      <span className="text-sm font-medium text-[#343333]">{cat.label}</span>
-                      {open && <span className="text-[11px] font-semibold text-[#B04A4A]">needs an answer</span>}
+                      <span className="text-sm font-medium text-ink">{cat.label}</span>
+                      {open && <span className="text-[11px] font-semibold text-chase">needs an answer</span>}
                       {/* Only the two rows lenders disagree about. Everything else
                           is settled and shows nothing, so the toggles that ARE
                           here mean something. */}
                       {cat.askHem && (
-                        <span className="ml-auto inline-flex rounded-lg border border-gray-200 overflow-hidden bg-white">
+                        <span className="ml-auto inline-flex rounded-lg border border-gray-200 overflow-hidden bg-card">
                           {([['', 'Not answered'], ['in', 'In HEM'], ['out', 'Outside HEM']] as const).map(([value, label], vi) => (
                             <button key={label} type="button"
                               onClick={() => setExpenseHem(cat.key, value as HemAnswer | '')}
                               className={`text-[11.5px] px-2.5 py-1 transition ${vi ? 'border-l border-gray-200' : ''} ${
                                 (value === '' ? open : entry.hem === value)
-                                  ? 'bg-[#343333] text-white font-semibold'
-                                  : 'text-[#8a9099] hover:bg-gray-50'}`}>
+                                  ? 'bg-ink text-page font-semibold'
+                                  : 'text-muted hover:bg-gray-50'}`}>
                               {label}
                             </button>
                           ))}
@@ -2409,12 +2409,12 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             const { all: totalAll, inHem: totalHem, notInHem: totalNotHem, unanswered } =
               hemTotals(EXPENSE_CATEGORIES, shownExpenses as any)
             return (
-              <div className="bg-white border border-gray-100 rounded-xl p-5">
+              <div className="bg-card border border-gray-100 rounded-xl p-5">
                 <SectionHeader title={oneHousehold ? 'Totals (monthly)' : `Household ${household} totals (monthly)`} />
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-gray-50 rounded-lg p-3">
                     <div className="text-xs text-gray-500 mb-1">Total expenses</div>
-                    <div className="text-xl font-semibold text-[#343333]">${totalAll.toLocaleString('en-AU')}</div>
+                    <div className="text-xl font-semibold text-ink">${totalAll.toLocaleString('en-AU')}</div>
                   </div>
                   <div className="bg-green-50 rounded-lg p-3">
                     <div className="text-xs text-green-600 mb-1">Total living expenses (in HEM)</div>
@@ -2426,7 +2426,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                   </div>
                 </div>
                 {unanswered > 0 && (
-                  <div className="mt-3 rounded-lg border border-[#F5C2C2] bg-[#FDF0EF] px-3 py-2 text-[12.5px] text-[#8A3A3A]">
+                  <div className="mt-3 rounded-lg border border-chase-edge bg-chase-bg px-3 py-2 text-[12.5px] text-chase">
                     {unansweredNote(unanswered)}
                   </div>
                 )}
@@ -2456,8 +2456,8 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                         {households.map(h => {
                           const t = hemTotals(EXPENSE_CATEGORIES, expensesFor(d, h.id) as any)
                           return (
-                            <tr key={h.id} className="border-t border-[#F6F8F9]">
-                              <td className="py-1.5 pr-3 text-[#2E3439]">Household {h.id}</td>
+                            <tr key={h.id} className="border-t border-line-soft">
+                              <td className="py-1.5 pr-3 text-ink">Household {h.id}</td>
                               <td className="py-1.5 pr-3 text-gray-500 max-w-[200px] truncate"
                                   title={h.people.map(p => p.name).join(', ')}>
                                 {h.people.map(p => p.name).join(', ') || 'nobody'}
@@ -2465,7 +2465,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                               <td className="py-1.5 pr-3 text-right">${t.all.toLocaleString('en-AU')}</td>
                               <td className="py-1.5 pr-3 text-right text-green-700">${t.inHem.toLocaleString('en-AU')}</td>
                               <td className="py-1.5 pr-3 text-right text-red-600">${t.notInHem.toLocaleString('en-AU')}</td>
-                              <td className={`py-1.5 text-right ${t.unanswered > 0 ? 'text-[#B04A4A] font-semibold' : 'text-gray-300'}`}>
+                              <td className={`py-1.5 text-right ${t.unanswered > 0 ? 'text-chase font-semibold' : 'text-gray-300'}`}>
                                 {t.unanswered > 0 ? t.unanswered : '\u2014'}
                               </td>
                             </tr>
@@ -2478,13 +2478,13 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                                      notInHem: acc.notInHem + t.notInHem, unanswered: acc.unanswered + t.unanswered }
                           }, { all: 0, inHem: 0, notInHem: 0, unanswered: 0 })
                           return (
-                            <tr className="border-t border-gray-200 font-semibold text-[#1F2328]">
+                            <tr className="border-t border-gray-200 font-semibold text-ink">
                               <td className="py-1.5 pr-3">All {households.length}</td>
                               <td className="py-1.5 pr-3 text-gray-500 font-normal">the whole application</td>
                               <td className="py-1.5 pr-3 text-right">${sum.all.toLocaleString('en-AU')}</td>
                               <td className="py-1.5 pr-3 text-right text-green-700">${sum.inHem.toLocaleString('en-AU')}</td>
                               <td className="py-1.5 pr-3 text-right text-red-600">${sum.notInHem.toLocaleString('en-AU')}</td>
-                              <td className={`py-1.5 text-right ${sum.unanswered > 0 ? 'text-[#B04A4A]' : 'text-gray-300'}`}>
+                              <td className={`py-1.5 text-right ${sum.unanswered > 0 ? 'text-chase' : 'text-gray-300'}`}>
                                 {sum.unanswered > 0 ? sum.unanswered : '\u2014'}
                               </td>
                             </tr>
@@ -2503,8 +2503,8 @@ Use the security address exactly as recorded. On a pre-approval it will already 
       {/* Validation Modal */}
       {showValidation && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-[500px] shadow-xl max-h-[80vh] overflow-y-auto">
-            <div className="text-base font-semibold mb-1 text-[#343333]">⚠ Fields require attention</div>
+          <div className="bg-card rounded-2xl p-6 w-[500px] shadow-xl max-h-[80vh] overflow-y-auto">
+            <div className="text-base font-semibold mb-1 text-ink">⚠ Fields require attention</div>
             <p className="text-sm text-gray-500 mb-4">The following fields are empty. Please complete them before pushing to SalesTrekker, or confirm to proceed anyway.</p>
             <div className="space-y-2 mb-5">
               {validationErrors.map((err, i) => (
@@ -2520,7 +2520,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                 setShowValidation(false)
                 markComplianceComplete()
               }}
-                className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a]">
+                className="px-4 py-2 text-sm bg-ink text-page rounded-lg font-medium hover:opacity-90">
                 Proceed anyway
               </button>
             </div>
