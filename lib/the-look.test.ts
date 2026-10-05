@@ -134,3 +134,23 @@ describe('every approved mock is still in the repo', () => {
     expect(existsSync(`${MOCKS}/README.md`)).toBe(true)
   })
 })
+
+// THE DEAL PAGE DOES NOT GAIN NEW STATE THAT LANDS WHILE SOMEBODY IS TYPING.
+//
+// 5 Oct 2026. The credit officer's name was handed up to the page, so a
+// setState landed a moment after the deal loaded and re-rendered the form under
+// whoever was typing. The robot caught it: "it survived on screen but never
+// reached the database". The page says this hazard out loud in its own comments
+// and I added one anyway.
+//
+// This counts the page's own useState calls. It is allowed to go down. Going up
+// means something new is being held here, and the question to answer before
+// changing this number is whether it can land while somebody is typing.
+describe('the deal page holds no more state than it did', () => {
+  it('and anything new has to justify itself', () => {
+    const page = readFileSync('app/(app)/deals/[id]/DealPageClient.tsx', 'utf8')
+    const held = (page.match(/useState[<(]/g) || []).length
+    expect(held, 'the deal page is holding more state than it was - can it land mid-keystroke?')
+      .toBeLessThanOrEqual(12)
+  })
+})

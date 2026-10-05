@@ -244,3 +244,22 @@ describe('one place decides the theme', () => {
     expect(found, 'these read the stored choice themselves - go through lib/theme.ts').toEqual([])
   })
 })
+
+// THE SWITCH ALWAYS CHANGES THE THEME, WHETHER ANYBODY IS LISTENING OR NOT.
+//
+// 5 Oct 2026. `onChange?.(chooseTheme(next))` looks fine and is not: optional
+// chaining skips the arguments too, so with no onChange the theme was never
+// applied. Dark mode was dead on both screens that have the switch, for weeks.
+describe('picking a theme applies it', () => {
+  const src = readFileSync('components/ThemeSwitch.tsx', 'utf8')
+
+  it('never hides the change inside an optional call', () => {
+    expect(src, 'chooseTheme is inside onChange?.() - it will not run when nobody is listening')
+      .not.toMatch(/onChange\?\.\(\s*chooseTheme/)
+  })
+
+  it('changes the theme on its own line, then tells anybody who asked', () => {
+    expect(src).toMatch(/const theme = chooseTheme\(next\)/)
+    expect(src).toMatch(/onChange\?\.\(theme\)/)
+  })
+})

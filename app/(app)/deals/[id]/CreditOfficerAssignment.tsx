@@ -3,12 +3,7 @@ import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { can } from '@/lib/permissions'
 
-export default function CreditOfficerAssignment({ dealId, brokerName, userRole, onName }: {
-  dealId: string; brokerName: string; userRole?: string
-  /** Told the officer's name whenever it changes, so the page can say "Katie
-   *  Amos to complete BC" rather than "Credit officer to complete BC". */
-  onName?: (name: string) => void
-}) {
+export default function CreditOfficerAssignment({ dealId, brokerName, userRole }: { dealId: string; brokerName: string; userRole?: string }) {
   const supabase = createSupabaseBrowser()
   // Was hard-coded to admin, so opening up reassignDeals would have changed
   // nothing on screen - the API would have allowed it and the button would
@@ -31,7 +26,7 @@ export default function CreditOfficerAssignment({ dealId, brokerName, userRole, 
     if (deal?.assigned_credit_officer) {
       setAssignedId(deal.assigned_credit_officer)
       const { data: officer } = await supabase.from('credit_officers').select('name').eq('id', deal.assigned_credit_officer).single()
-      if (officer) { setAssignedName(officer.name); onName?.(officer.name) }
+      if (officer) setAssignedName(officer.name)
     }
 
     const brokerSlug = (brokerName || '').split(' ')[0].toLowerCase()
@@ -58,7 +53,7 @@ export default function CreditOfficerAssignment({ dealId, brokerName, userRole, 
       const data = await res.json()
       if (!data.ok) { setErr(data.error || 'Failed to reassign'); setReassigning(false); return }
       setAssignedId(picked)
-      setAssignedName(data.assignedTo); onName?.(data.assignedTo)
+      setAssignedName(data.assignedTo)
       setMsg('Reassigned')
       setShowPicker(false)
       setPicked('')

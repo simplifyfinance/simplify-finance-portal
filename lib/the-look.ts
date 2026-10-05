@@ -41,9 +41,14 @@ const DOCS = 'components/DocumentsBox.tsx'
 
 export const THE_LOOK: Piece[] = [
   // ---- the deal page, top to bottom as the mock draws it -------------------
-  { mock: V4, piece: 'Breadcrumb: Deals / the scenario name', proof: null },
-  { mock: V4, piece: 'Deal name row with its chips and buttons', proof: null },
-  { mock: V4, piece: 'Open BC button in the header', proof: null },
+  { mock: V4, piece: 'Breadcrumb: Deals / the scenario name',
+    proof: { file: PAGE, contains: "aria-label=\"Back to deals\"" } },
+  { mock: V4, piece: 'Deal name row with its chips and buttons',
+    proof: { file: PAGE, contains: '<DealMore>' } },
+  { mock: V4, piece: 'SalesTrekker and links, in the rail',
+    proof: { file: PAGE, contains: '<DealLinks' } },
+  { mock: V4, piece: 'Open BC button in the header',
+    proof: { file: PAGE, contains: 'Open BC' } },
   { mock: V4, piece: 'Client emails menu in the header', proof: null },
   { mock: V4, piece: 'Broker and credit officer line under the name',
     proof: { file: PAGE, contains: '<BrokerAssignment' } },

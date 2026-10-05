@@ -4,6 +4,8 @@ import { brokerLabel } from '@/lib/broker-key'
 import DealPresence from '@/components/DealPresence'
 import DealTabCards, { DEAL_TABS } from '@/components/DealTabCards'
 import DealRail, { RailCard, RailNotes } from '@/components/DealRail'
+import DealLinks from '@/components/DealLinks'
+import DealMore from '@/components/DealMore'
 import DealHistory from '@/components/DealHistory'
 import { SaveIndicator, SaveIndicatorNote } from '@/components/SaveIndicator'
 import type { SaveStatus } from '@/lib/save-indicator'
@@ -174,11 +176,6 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   // know who??" One name, passed down from the one place that has it.
   const [whoElseHere, setWhoElseHere] = useState('')
 
-  // THE CREDIT OFFICER'S NAME, FROM THE BOX THAT ALREADY LOOKS IT UP.
-  // The deal carries an id, not a name. Rather than a second lookup, the
-  // assignment box hands up the one it already made - so the Next action box
-  // names the same person the deals board names.
-  const [officerName, setOfficerName] = useState('')
 
   // The incoming-save subscription used to live here, in page state. It does
   // not any more: setting state on this page re-renders the header, the
@@ -221,9 +218,21 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
     // for the page to be real rather than racing it - and so the next person to
     // chase a "the button did nothing" report can see the race is a known one.
     <div className="p-6" data-ready={pageReady ? '1' : undefined}>
-      <button onClick={() => router.back()} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-5">
-        <ArrowLeft size={14} /> Back to deals
-      </button>
+      {/* DEALS / THE SCENARIO - one-inside-the-deal-v4.html. It was a button
+          reading "Back to deals" on a line of its own; this goes to the same
+          place and also says which scenario of this deal you are looking at. */}
+      <nav aria-label="Back to deals" className="flex items-center gap-1.5 text-sm mb-4">
+        <button onClick={() => router.back()}
+          className="inline-flex items-center gap-1.5 text-muted hover:text-ink transition">
+          <ArrowLeft size={13} /> Deals
+        </button>
+        {templateLabel(dealData.bc_data?.template) && (
+          <>
+            <span className="text-faint">/</span>
+            <span className="font-semibold text-ink">{templateLabel(dealData.bc_data?.template)}</span>
+          </>
+        )}
+      </nav>
 
       {/* Above the header and above every tab, because the thing it is
           preventing is somebody reading the deal and believing it. */}
@@ -257,7 +266,6 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
                     that. It locks nothing and warns about nothing. */}
                 <DealPresence dealId={dealData.id} tab={tabs.find(t => t.key === stage)?.label || stage} onSameTab={setWhoElseHere} />
               </div>
-              <button onClick={() => setEditingName(true)} className="text-xs text-[#2DBEFF] hover:underline">✎ Edit</button>
             </div>
           )}
           {/* Only there when a save has actually gone wrong, so it cannot push the
@@ -287,7 +295,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
                 this was a label and the control that does the work was two tabs
                 away, at the bottom of an email preview. */}
             <BrokerAssignment dealId={dealData.id} currentBroker={dealData.assigned_broker} userRole={userRole} chip />
-            <CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} onName={setOfficerName} />
+            <CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
             {templateLabel(dealData.bc_data?.template) && (
               <span className="inline-flex items-baseline gap-1.5 bg-info-bg border border-info-edge rounded-lg px-2.5 py-1">
                 <span className="text-[9.5px] font-bold tracking-wider uppercase text-brand-ink/70">Scenario</span>
@@ -309,43 +317,36 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
             <AlertChips alerts={alerts} />
           </div>
         </div>
-        <div className="flex items-center gap-3 flex-shrink-0">
-          {(dealData.onedrive_link || dealData.salestrekker_link) && (
-            <div className="flex items-center gap-2">
-              <span className="text-[9.5px] font-bold tracking-wider uppercase text-faint">Open</span>
-              <div className="inline-flex border border-line rounded-[10px] overflow-hidden">
-                {dealData.onedrive_link && (
-                  <a href={dealData.onedrive_link} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-muted bg-page px-3.5 py-2 hover:bg-line-soft transition inline-flex items-center gap-2 border-r border-line">
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12V5.5A1.5 1.5 0 0 1 3.5 4h3l1.5 2h4.5A1.5 1.5 0 0 1 14 7.5V12a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12z"/></svg>
-                    OneDrive
-                  </a>
-                )}
-                {dealData.salestrekker_link && (
-                  <a href={dealData.salestrekker_link} target="_blank" rel="noopener noreferrer"
-                    className="text-xs font-semibold text-white bg-[#2DBEFF] px-3.5 py-2 hover:bg-[#25AEEC] transition inline-flex items-center gap-2">
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h4v4"/><path d="M13 3 7.5 8.5"/><path d="M12 10v3H3V4h3"/></svg>
-                    SalesTrekker
-                  </a>
-                )}
-              </div>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <span className="text-[9.5px] font-bold tracking-wider uppercase text-faint">Deal</span>
-            <div className="inline-flex border border-line rounded-[10px] overflow-hidden">
-              <a href={`/deals/${deal.id}/summary`} target="_blank" rel="noopener noreferrer"
-                className="text-xs text-muted bg-page px-3.5 py-2 hover:bg-line-soft transition inline-flex items-center gap-2 border-r border-line">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2h5l3 3v9H4z"/><path d="M9 2v3h3"/></svg>
-                Summary
-              </a>
-              <button onClick={cloneThisDeal} disabled={cloning} className="text-xs text-muted bg-page px-3.5 py-2 hover:bg-line-soft transition inline-flex items-center gap-2 disabled:opacity-40">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* OPEN BC, where the mock puts it: the thing you reach for most, on
+              the row rather than two clicks in. It is the same stage change the
+              tab cards make. */}
+          <button onClick={() => changeStage('BC')}
+            className="text-xs font-semibold text-info bg-info-bg border border-info-edge rounded-[10px] px-3.5 py-2
+              hover:opacity-90 transition inline-flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="4" y="2" width="16" height="20" rx="2" /><path d="M8 6h8M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01M8 18h8" />
+            </svg>
+            Open BC
+          </button>
+
+          <button onClick={() => setEditingName(true)}
+            className="text-xs text-muted bg-page border border-line rounded-[10px] px-3.5 py-2
+              hover:bg-line-soft hover:text-ink transition">Edit</button>
+
+          {/* EVERYTHING ELSE BEHIND ONE WORD. Fabio, 5 Oct 2026: "more is the
+              right move we need to simplify the view so dont want them
+              visible." OneDrive, SalesTrekker and Summary moved to the rail -
+              see components/DealLinks.tsx - and these two live here. Same
+              clone, same close. */}
+          <DealMore>
+            <button onClick={cloneThisDeal} disabled={cloning} className="text-xs text-muted rounded-lg px-2.5 py-2 hover:bg-page transition inline-flex items-center gap-2 text-left disabled:opacity-40">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="9" rx="1.4"/><path d="M11 5V3.4A1.4 1.4 0 0 0 9.6 2H4.4A1.4 1.4 0 0 0 3 3.4v7.2A1.4 1.4 0 0 0 4.4 12H5"/></svg>
                 {cloning ? 'Cloning...' : 'Clone'}
               </button>
-              <CloseDeal deal={dealData} onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
-            </div>
-          </div>
+            <CloseDeal deal={dealData} onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+          </DealMore>
         </div>
       </div>
 
@@ -441,7 +442,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
       {/* THE FIVE TABS, AS CARDS - one-inside-the-deal-v4.html.
           See components/DealTabCards.tsx. The row of pill buttons this
           replaces said nothing but its own name. */}
-      <DealTabCards deal={dealData} stage={stage} onPick={changeStage} creditOfficerName={officerName} />
+      <DealTabCards deal={dealData} stage={stage} onPick={changeStage} />
 
       {/* THE FORM, AND THE RAIL BESIDE IT - one-inside-the-deal-v4.html.
           Everything in the rail used to be stacked full width above the form,
@@ -472,6 +473,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
             onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
           <DealDocuments deal={dealData} me={me} version={documentsVersion}
             onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+          <DealLinks deal={dealData} />
           <FileNotes dealId={dealData.id} me={me} notes={notes} onChanged={reloadFile} />
         </DealRail>}
       </div>

@@ -1,5 +1,7 @@
 'use client'
 import { FileText, LineChart, Calculator, Home, ShieldCheck } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { dealBeads, getWaitingOnLabel } from '@/lib/deal-status'
 import { stageSince, stageAge } from '@/lib/deal-age'
 
@@ -37,14 +39,30 @@ export const DEAL_TABS = [
   { key: 'Compliance', label: 'Compliance' },
 ]
 
-export default function DealTabCards({ deal, stage, onPick, creditOfficerName }: {
+export default function DealTabCards({ deal, stage, onPick }: {
   deal: any
   stage: string
   onPick: (key: string) => void
-  /** So "with credit" can name them, exactly as the deals board does. */
-  creditOfficerName?: string | null
 }) {
   const beads = dealBeads(deal)
+
+  // THE OFFICER'S NAME, ASKED FOR HERE RATHER THAN HANDED DOWN.
+  //
+  // The deal carries an id. The name used to be handed up to the page by the
+  // Reassign box, and that setState landed a moment after the deal loaded -
+  // re-rendering the form somebody was typing into. The robot caught a note
+  // that "survived on screen but never reached the database". Nothing above
+  // this component moves now; the box that wants the name goes and gets it.
+  const [officer, setOfficer] = useState('')
+  const officerId = deal?.assigned_credit_officer || ''
+  useEffect(() => {
+    if (!officerId) { setOfficer(''); return }
+    let alive = true
+    const supabase = createSupabaseBrowser()
+    supabase.from('credit_officers').select('name').eq('id', officerId).maybeSingle()
+      .then(({ data }) => { if (alive && data?.name) setOfficer(data.name) })
+    return () => { alive = false }
+  }, [officerId])
   const tabs = DEAL_TABS
 
   return (
@@ -87,7 +105,7 @@ export default function DealTabCards({ deal, stage, onPick, creditOfficerName }:
           the board and this box can never say three different things. It draws
           itself away when there is nothing to say. */}
       {(() => {
-        const waiting = getWaitingOnLabel(deal, creditOfficerName)
+        const waiting = getWaitingOnLabel(deal, officer)
         if (!waiting) return null
         const since = stageSince(deal)
         const age = stageAge(deal)

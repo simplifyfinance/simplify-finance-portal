@@ -44,6 +44,8 @@ export const FORM_FILES = [
 // in a diff.
 export const PAGE_FILES = [
   'components/DealTabCards.tsx',
+  'components/DealLinks.tsx',
+  'components/DealMore.tsx',
   'app/(app)/deals/[id]/DealPageClient.tsx',
   'app/(app)/deals/[id]/DealProgress.tsx',
   'app/(app)/deals/[id]/DealSettlement.tsx',
@@ -119,9 +121,18 @@ const NOT_A_LABEL = /[_/\\<>{}=&]|\.[a-z]|^[A-Z0-9 ]+$|^https?:/
 
 const JUNK = /^[{}()[\]<>/\\|=+*&^%$#@!~`'"\s.,;:-]+$/
 
+// A LABEL IN A LIST IS STILL A WORD ON THE SCREEN.
+//
+// 5 Oct 2026. OneDrive, SalesTrekker and Summary moved into a rail box that
+// holds them in a small array - `{ label: 'OneDrive', href: ... }` - and the
+// lock reported all three as lost, because every pattern above looks for text
+// BETWEEN tags. They are drawn through {r.label}; a person reads them. So does
+// this now.
+const LABELS = /\blabel:\s*'([^']{2,60})'/g
+
 export function wordsIn(source: string): string[] {
   const found = new Set<string>()
-  for (const re of PATTERNS) {
+  for (const re of [...PATTERNS, LABELS]) {
     for (const m of source.matchAll(re)) {
       const t = m[1].replace(/\s+/g, ' ').trim()
       if (!t || JUNK.test(t)) continue

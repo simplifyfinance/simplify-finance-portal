@@ -66,8 +66,24 @@ export default function ThemeSwitch({ onChange, className, tone = 'page' }: Prop
   }, [])
 
   function pick(next: ThemeChoice) {
+    // THE THEME IS CHANGED FIRST, AND TELLING ANYBODY COMES SECOND.
+    //
+    // 5 Oct 2026, and this is why dark mode never worked. It used to read:
+    //
+    //     onChange   ?.   ( chooseTheme(next) )      <- spaced out on purpose,
+    //                                                      so the test below
+    //                                                      does not match this
+    //                                                      comment
+    //
+    // `a?.(b())` does not call b() when a is undefined - optional chaining
+    // skips the whole call, arguments and all. Neither the sign-in screen nor
+    // the sidebar passes onChange, so chooseTheme was NEVER CALLED on either.
+    // The button lit up, because setChoice runs on the line above, and nothing
+    // else on the page moved. Fabio spent an afternoon on it: "the button is
+    // there but when I click nothing happnes".
     setChoice(next)
-    onChange?.(chooseTheme(next))
+    const theme = chooseTheme(next)
+    onChange?.(theme)
   }
 
   return (
