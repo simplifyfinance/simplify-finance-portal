@@ -110,6 +110,11 @@ export const THE_LOOK: Piece[] = [
 
   // STATEMENTS - mocked and approved, nothing built but the colours.
   { mock: 'st-page.html', piece: 'Statements: the approved layout', proof: null },
+
+  // 6 Oct 2026. Not part of the branding work - it came out of the dark mode
+  // afternoon, where the fix was already live and the tab was not.
+  { mock: 'one-new-version.html', piece: 'A newer version is deployed: the line in the sidebar',
+    proof: { file: 'components/NewVersion.tsx', contains: 'NEW VERSION READY' } },
 ]
 
 export const built = (p: Piece) => p.proof !== null

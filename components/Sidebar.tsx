@@ -9,6 +9,7 @@ import { createSupabaseBrowser } from "@/lib/supabase-browser"
 import { can, roleLabel as formatRoleLabel } from '@/lib/permissions'
 import OneMark, { MARK_WIDTH } from '@/components/OneMark'
 import ThemeSwitch from '@/components/ThemeSwitch'
+import NewVersion from '@/components/NewVersion'
 
 const nav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -236,6 +237,12 @@ export default function Sidebar() {
             change the theme was to sign out and change it on the way back in.
             The sidebar is near-black in BOTH themes, so it wears the sidebar
             tone rather than the page's own card-and-line colours. */}
+        {/* A NEWER VERSION IS DEPLOYED AND THIS TAB IS NOT IT.
+            Sits above the theme switch, under the person's name - the place
+            Fabio picked out of three in docs/approved-looks/one-new-version.html.
+            It draws nothing at all until there is something to say. */}
+        <NewVersion />
+
         <ThemeSwitch tone="sidebar" className="w-full justify-between mb-3" />
 
         <button onClick={handleLogout}
