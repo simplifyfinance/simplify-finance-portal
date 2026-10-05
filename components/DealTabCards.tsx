@@ -60,7 +60,14 @@ export default function DealTabCards({ deal, stage, onPick }: {
         } else if (bead) { line = 'Not started' }
 
         return (
-          <button key={key} onClick={() => onPick(key)}
+          // THE CARD IS STILL CALLED BY ITS TAB NAME.
+          //
+          // 5 Oct 2026. Turning the tab row into cards put a status line inside
+          // the button, so the button's name became "Compliance Not started" and
+          // six browser specs that click /^Compliance$/ sat waiting until they
+          // timed out. The name is stated here; the line underneath is still
+          // read by anybody looking at the screen.
+          <button key={key} onClick={() => onPick(key)} aria-label={label}
             className={`text-left bg-card border rounded-[11px] px-3 py-[11px] transition-colors ${
               on ? 'border-brand bg-info-bg shadow-[inset_0_0_0_1px_var(--color-brand)]' : 'border-card-line hover:border-brand'}`}>
             <span className="w-7 h-7 rounded-lg bg-gray-100 text-muted flex items-center justify-center mb-2">
