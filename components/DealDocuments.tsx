@@ -254,27 +254,34 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
   }
 
   return (
-    <div className="mb-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-[9px] font-bold tracking-[.07em] uppercase text-faint mr-1">Documents</span>
+    <div className="bg-card border border-card-line rounded-xl mb-3 px-3.5 py-3">
+      {/* A ROW PER DOCUMENT, THE WORD ON THE RIGHT - one-inside-the-deal-v4.html.
+          Three wide buttons stacked in a 330px rail made a staircase; Fabio,
+          5 Oct 2026, with the mock beside it: "needs to look like this see
+          nice boxes". Same three presses, same rebuild. */}
+      <div className="flex items-center gap-2 mb-2.5">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="text-faint">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
+        </svg>
+        <span className="text-[9.5px] font-bold tracking-[.09em] uppercase text-faint">Build a PDF</span>
+      </div>
+      <div>
         {(Object.keys(KINDS) as Kind[]).map(kind => (
-          <button key={kind} onClick={() => press(kind)} disabled={!!busy}
-            title={copyOf(kind) ? 'Downloads the copy on file' : 'Never built — this makes it'}
-            className="bg-page border border-line text-muted rounded-lg px-3 py-1.5 text-[12px] font-medium hover:bg-line-soft hover:text-ink transition inline-flex items-center gap-1.5 disabled:opacity-40">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-                 strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M8 2v8M4.5 7l3.5 3.5L11.5 7M3 13h10" />
-            </svg>
-            {busy === kind ? 'Preparing…' : copyOf(kind) ? KINDS[kind].label : `Build ${KINDS[kind].label}`}
-          </button>
+          <div key={kind} className="flex items-baseline gap-2 py-[3px]">
+            <span className="text-[12.5px] text-body">{KINDS[kind].label}</span>
+            <button onClick={() => press(kind)} disabled={!!busy}
+              title={copyOf(kind) ? 'Downloads the copy on file' : 'Never built — this makes it'}
+              className="ml-auto text-[11.5px] font-[650] text-info disabled:opacity-40">
+              {busy === kind ? 'Preparing…' : copyOf(kind) ? 'Open' : 'Build'}
+            </button>
+          </div>
         ))}
         {/* REBUILDING IS ITS OWN PRESS, always available - not only when the
-            documents have fallen behind. Dark while something has moved,
-            quiet the rest of the time. */}
+            documents have fallen behind. */}
         <button onClick={rebuildAll} disabled={!!busy}
-          className={behind
-            ? 'bg-ink text-page rounded-lg px-3 py-1.5 text-[12px] font-semibold disabled:opacity-40'
-            : 'bg-card border border-line text-faint rounded-lg px-3 py-1.5 text-[12px] hover:text-muted disabled:opacity-40'}>
+          className={`w-full mt-2.5 rounded-lg px-3 py-2 text-[12.5px] font-semibold disabled:opacity-40 ${
+            behind ? 'bg-ink text-page' : 'bg-info-bg text-info border border-info-edge hover:opacity-90'}`}>
           {busy === 'all' ? 'Rebuilding…' : 'Rebuild all three'}
         </button>
       </div>
@@ -299,10 +306,10 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
       )}
 
       {filed.length > 0 && (
-        <div className="mt-2 flex items-center gap-2 flex-wrap">
-          <span className="text-[9px] font-bold tracking-[.07em] uppercase text-faint mr-1">On file</span>
+        <div className="mt-2.5 pt-2.5 border-t border-line-soft flex flex-col gap-1.5">
+          <span className="text-[9.5px] font-bold tracking-[.09em] uppercase text-faint">On file</span>
           {filed.map(f => (
-            <span key={f.id} className="inline-flex items-center gap-1 max-w-[280px]">
+            <span key={f.id} className="inline-flex items-center gap-1 min-w-0">
               <button onClick={() => openFiled(f.file_path)}
                 className="text-[11.5px] text-[#2DBEFF] hover:underline truncate"
                 title={f.file_name}>

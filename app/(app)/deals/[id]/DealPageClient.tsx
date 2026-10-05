@@ -174,6 +174,12 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   // know who??" One name, passed down from the one place that has it.
   const [whoElseHere, setWhoElseHere] = useState('')
 
+  // THE CREDIT OFFICER'S NAME, FROM THE BOX THAT ALREADY LOOKS IT UP.
+  // The deal carries an id, not a name. Rather than a second lookup, the
+  // assignment box hands up the one it already made - so the Next action box
+  // names the same person the deals board names.
+  const [officerName, setOfficerName] = useState('')
+
   // The incoming-save subscription used to live here, in page state. It does
   // not any more: setting state on this page re-renders the header, the
   // pipeline, the documents strip and the form somebody is typing into, and a
@@ -281,7 +287,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
                 this was a label and the control that does the work was two tabs
                 away, at the bottom of an email preview. */}
             <BrokerAssignment dealId={dealData.id} currentBroker={dealData.assigned_broker} userRole={userRole} chip />
-            <CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
+            <CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} onName={setOfficerName} />
             {templateLabel(dealData.bc_data?.template) && (
               <span className="inline-flex items-baseline gap-1.5 bg-info-bg border border-info-edge rounded-lg px-2.5 py-1">
                 <span className="text-[9.5px] font-bold tracking-wider uppercase text-brand-ink/70">Scenario</span>
@@ -435,7 +441,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
       {/* THE FIVE TABS, AS CARDS - one-inside-the-deal-v4.html.
           See components/DealTabCards.tsx. The row of pill buttons this
           replaces said nothing but its own name. */}
-      <DealTabCards deal={dealData} stage={stage} onPick={changeStage} />
+      <DealTabCards deal={dealData} stage={stage} onPick={changeStage} creditOfficerName={officerName} />
 
       {/* THE FORM, AND THE RAIL BESIDE IT - one-inside-the-deal-v4.html.
           Everything in the rail used to be stacked full width above the form,

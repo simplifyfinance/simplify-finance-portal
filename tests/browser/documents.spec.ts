@@ -25,7 +25,10 @@ test.describe('the documents box', () => {
     await page.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
 
     // The box is collapsed until somebody opens it.
-    const header = page.getByRole('button', { name: /Documents/ }).first()
+    // 5 Oct 2026: the header is no longer one big button with the word
+    // Documents in it - the box is three counts in the rail with a small
+    // Show beside them, and that button says what it shows.
+    const header = page.getByRole('button', { name: /documents/i }).first()
     await header.click()
     await page.waitForTimeout(800)
 

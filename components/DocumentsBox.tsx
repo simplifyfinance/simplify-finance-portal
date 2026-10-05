@@ -214,23 +214,50 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
   return (
     <>
     <div className="bg-card border border-[var(--color-line)] rounded-xl mb-4 overflow-hidden">
-      <button onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--color-page)] transition">
-        <span className="text-[9.5px] font-bold tracking-[.07em] uppercase text-faint">Documents</span>
-        <span className="text-[13px] text-ink font-semibold">
-          {pending.length > 0 ? `${pending.length} to request` : asked > 0 ? `${asked} requested` : `${ticked} to request`}
-        </span>
-        <span className="text-[12px] text-faint">
-          of {nowRows.length} on the list{covered.size > 0 ? ` · ${covered.size} covered by statements` : ''}
-        </span>
-        {gaps.length > 0 && (
-          <span className="text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border
-                           text-info bg-info-bg border-info-edge">
-            {gaps.length} to check
-          </span>
-        )}
-        <span className="ml-auto text-[11px] text-faint">{open ? 'Hide' : 'Show'}</span>
-      </button>
+      {/* THREE COUNTS, NOT ONE SENTENCE - one-inside-the-deal-v4.html.
+          The numbers are the same three this box already worked out; they were
+          printed as a line of prose across the top of a full-width box, which
+          does not fit beside a form. Show still opens the same list. */}
+      <div className="px-3.5 pt-3">
+        <div className="flex items-center gap-2">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="text-faint">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
+          </svg>
+          <span className="text-[9.5px] font-bold tracking-[.09em] uppercase text-faint">Documents</span>
+          <button onClick={() => setOpen(o => !o)}
+            aria-label={open ? 'Hide documents' : 'Show documents'}
+            className="ml-auto text-[11px] font-[650] text-info">{open ? 'Hide' : 'Show'}</button>
+        </div>
+        <dl className="mt-2.5 mb-0">
+          <div className="flex items-baseline gap-2 py-[3px]">
+            <dt className="text-[12.5px] text-body">To request</dt>
+            <dd className="ml-auto text-[13px] font-semibold text-ink m-0">
+              {pending.length > 0 ? pending.length : asked > 0 ? 0 : ticked}
+            </dd>
+          </div>
+          <div className="flex items-baseline gap-2 py-[3px]">
+            <dt className="text-[12.5px] text-body">Received</dt>
+            <dd className="ml-auto text-[13px] font-semibold text-ink m-0">{ticked}</dd>
+          </div>
+          <div className="flex items-baseline gap-2 py-[3px]">
+            <dt className="text-[12.5px] text-body">To check</dt>
+            <dd className={`ml-auto text-[13px] font-semibold m-0 ${gaps.length > 0 ? 'text-info' : 'text-ink'}`}>
+              {gaps.length}
+            </dd>
+          </div>
+        </dl>
+        {/* THE SAME PRESS AS THE ONE INSIDE THE LIST, where the mock puts it -
+            a bar under the counts rather than a sentence beside them. */}
+        <button onClick={requestThem} disabled={sending || pending.length === 0}
+          className="w-full mt-2.5 rounded-lg px-3 py-2 text-[12.5px] font-semibold
+            bg-info-bg text-info border border-info-edge hover:opacity-90 disabled:opacity-40">
+          {sending ? 'Sending…' : 'Request from client'}
+        </button>
+        <p className="text-[11px] text-faint mt-2 mb-0">
+          {nowRows.length} on the list{covered.size > 0 ? ` · ${covered.size} covered by statements` : ''}
+        </p>
+      </div>
 
       {open && (
         <div className="border-t border-[var(--color-line-soft)]">

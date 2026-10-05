@@ -346,7 +346,10 @@ describe('the button hands you the copy on file', () => {
   })
 
   it('only builds where there has never been a copy', () => {
-    expect(strip).toContain('`Build ${KINDS[kind].label}`')
+    // 5 Oct 2026: the box is a row per document with the word on the right -
+    // the document's name is the row, so the button is just the verb. The rule
+    // is the same one: Build only when there is no copy, otherwise Open it.
+    expect(strip).toContain("copyOf(kind) ? 'Open' : 'Build'")
   })
 
   it('rebuilding is a press of its own, not something a download does', () => {

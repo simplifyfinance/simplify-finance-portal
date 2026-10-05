@@ -1,6 +1,7 @@
 'use client'
 import { FileText, LineChart, Calculator, Home, ShieldCheck } from 'lucide-react'
-import { dealBeads } from '@/lib/deal-status'
+import { dealBeads, getWaitingOnLabel } from '@/lib/deal-status'
+import { stageSince, stageAge } from '@/lib/deal-age'
 
 // THE FIVE TABS, AS CARDS.
 //
@@ -36,16 +37,18 @@ export const DEAL_TABS = [
   { key: 'Compliance', label: 'Compliance' },
 ]
 
-export default function DealTabCards({ deal, stage, onPick }: {
+export default function DealTabCards({ deal, stage, onPick, creditOfficerName }: {
   deal: any
   stage: string
   onPick: (key: string) => void
+  /** So "with credit" can name them, exactly as the deals board does. */
+  creditOfficerName?: string | null
 }) {
   const beads = dealBeads(deal)
   const tabs = DEAL_TABS
 
   return (
-    <div className="grid grid-cols-[repeat(5,minmax(0,1fr))] gap-2.5 mb-2.5 max-[900px]:grid-cols-2">
+    <div className="grid grid-cols-[repeat(5,minmax(0,1fr))_minmax(0,1.45fr)] gap-2.5 mb-2.5 max-[1100px]:grid-cols-3 max-[700px]:grid-cols-2">
       {tabs.map(({ key, label }) => {
         const Icon = ICON[key]
         const bead = BEAD[key] ? beads.find(b => b.key === BEAD[key]) : undefined
@@ -78,6 +81,30 @@ export default function DealTabCards({ deal, stage, onPick }: {
           </button>
         )
       })}
+
+      {/* NEXT ACTION. The sentence is the one the deals board already shows for
+          this deal, and the date is the one it already ages it by - so a card,
+          the board and this box can never say three different things. It draws
+          itself away when there is nothing to say. */}
+      {(() => {
+        const waiting = getWaitingOnLabel(deal, creditOfficerName)
+        if (!waiting) return null
+        const since = stageSince(deal)
+        const age = stageAge(deal)
+        return (
+          <div className="text-left bg-card border border-card-line rounded-[11px] px-3 py-[11px]">
+            <span className="block text-[9.5px] font-bold tracking-[.09em] uppercase text-faint mb-1.5">
+              Next action
+            </span>
+            <span className="block text-[12.5px] font-[650] text-ink leading-[1.3]">{waiting.text}</span>
+            {since && age.days !== null && (
+              <span className="block text-[11px] text-faint mt-[3px]">
+                Waiting {age.label === 'today' ? 'since today' : age.label}
+              </span>
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }

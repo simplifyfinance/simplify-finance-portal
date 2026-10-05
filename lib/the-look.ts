@@ -29,6 +29,9 @@ export type Piece = {
 const V4 = 'one-inside-the-deal-v4.html'
 const PAGE = 'app/(app)/deals/[id]/DealPageClient.tsx'
 const RAIL = 'components/DealRail.tsx'
+const CARDS = 'components/DealTabCards.tsx'
+const BC = 'app/(app)/deals/[id]/BCForm.tsx'
+const DOCS = 'components/DocumentsBox.tsx'
 
 export const THE_LOOK: Piece[] = [
   // ---- the deal page, top to bottom as the mock draws it -------------------
@@ -45,7 +48,8 @@ export const THE_LOOK: Piece[] = [
     proof: { file: PAGE, contains: '<DealProgress' } },
   { mock: V4, piece: 'The five tabs as cards with an icon and a status line',
     proof: { file: PAGE, contains: '<DealTabCards' } },
-  { mock: V4, piece: 'Next action box beside the tab cards', proof: null },
+  { mock: V4, piece: 'Next action box beside the tab cards',
+    proof: { file: CARDS, contains: 'Next action' } },
   { mock: V4, piece: 'Two columns: the form, and the rail beside it',
     proof: { file: PAGE, contains: '<DealRail>' } },
   // The proof is that it is INSIDE the rail, not merely imported somewhere -
@@ -62,7 +66,35 @@ export const THE_LOOK: Piece[] = [
     proof: { file: PAGE, contains: '<DealDocuments' } },
   { mock: V4, piece: 'File notes, in the rail',
     proof: { file: PAGE, contains: '<FileNotes' } },
-  { mock: V4, piece: 'Documents counts: to request, received, to check', proof: null },
+  { mock: V4, piece: 'Documents counts: to request, received, to check',
+    proof: { file: DOCS, contains: '>To check</dt>' } },
+
+  // ---- what we agreed INSIDE the tabs ------------------------------------
+  //
+  // 5 Oct 2026. The list above is the FRAME of the deal page. Fabio asked
+  // whether Fact Find, Statements, BC and Lending options were done "as per all
+  // our discussions and mock ups" - and nothing in the repo could answer,
+  // because the things we agreed inside each tab were in a scratch file and
+  // were never counted. That is the same hole as before, one level down.
+
+  // BC - the four small ships, all done.
+  { mock: 'one-bc-tab.html', piece: 'BC: a split is a card with a grey header band',
+    proof: { file: BC, contains: 'rounded-t-xl flex items-center gap-2.5' } },
+  { mock: 'one-bc-tab.html', piece: 'BC: the checklist ticks are green discs',
+    proof: { file: BC, contains: 'bg-done-bg text-done' } },
+  { mock: 'one-bc-tab.html', piece: 'BC: Generate email looks like a button',
+    proof: { file: BC, contains: "'Generating...' : 'Generate email'" } },
+  { mock: 'one-bc-tab.html', piece: 'BC: one column, with the client words under one line',
+    proof: { file: BC, contains: 'What goes in the email' } },
+
+  // LENDING OPTIONS - the four Fabio picked, none of them built.
+  { mock: 'lo.html', piece: 'LO: deal structure density B - two lines per split, not a table', proof: null },
+  { mock: 'lo.html', piece: 'LO: research criteria and important notes above the lender options', proof: null },
+  { mock: 'lo.html', piece: "LO: the client's decision inside the recommendation card", proof: null },
+  { mock: 'lo.html', piece: 'LO: rate modules as chips at the top with panels below', proof: null },
+
+  // STATEMENTS - mocked and approved, nothing built but the colours.
+  { mock: 'st-page.html', piece: 'Statements: the approved layout', proof: null },
 ]
 
 export const built = (p: Piece) => p.proof !== null
