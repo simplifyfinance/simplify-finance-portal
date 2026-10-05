@@ -275,6 +275,16 @@ function LibraryField({ label, value, onChange }: { label: string; value: string
   )
 }
 
+// THE FOUR RATE MODULES, NAMED ONCE.
+// The chips and the panels below them walk the same list, so a module cannot
+// appear in one and not the other.
+const MODULES = [
+  { key: 'variablePI', label: 'Variable P&I', showIO: false, showFixed: false },
+  { key: 'variableIO', label: 'Variable IO', showIO: true,  showFixed: false },
+  { key: 'fixedPI',    label: 'Fixed P&I',   showIO: false, showFixed: true  },
+  { key: 'fixedIO',    label: 'Fixed IO',    showIO: true,  showFixed: true  },
+] as const
+
 export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, onDataChange, onDealFieldChange, whoElseHere, me }: { whoElseHere?: string; me?: { id?: string | null; name?: string | null }; deal: any; onStageChange?: (stage: string) => void; userRole?: string; onSaveStatus?: (s: SaveStatus) => void; onDataChange?: (d: any) => void; onDealFieldChange?: (field: string, value: any) => void }) {
   const supabase = createSupabaseBrowser()
   const saveKey = `lo_${deal.id}`
@@ -2023,28 +2033,42 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                       <Field label="Doc processing fee"><NumberInput value={lender.docProcessingFee} onChange={v => updateLender(i, 'docProcessingFee', v)} /></Field>
                     </div>
                   ) : (
-                    <div className="border-t border-gray-100 pt-4 space-y-4">
-                      <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-2">Rate modules — tick to include</div>
-                      {([
-                        { key: 'variablePI', label: 'Variable P&I', showIO: false, showFixed: false },
-                        { key: 'variableIO', label: 'Variable IO', showIO: true, showFixed: false },
-                        { key: 'fixedPI', label: 'Fixed P&I', showIO: false, showFixed: true },
-                        { key: 'fixedIO', label: 'Fixed IO', showIO: true, showFixed: true },
-                      ] as const).map(({ key, label, showIO, showFixed }) => (
-                        <div key={key} className="border border-gray-100 rounded-lg p-3">
-                          <label className="flex items-center gap-2 text-sm font-medium text-ink cursor-pointer mb-2">
-                            <input type="checkbox" checked={lender[key].enabled} onChange={e => updateRateModule(i, key, 'enabled', e.target.checked)} />
+                    <div className="border-t border-gray-100 pt-4">
+                      {/* RATE MODULES AS CHIPS, WITH A PANEL PER TICKED ONE.
+                          docs/approved-looks/mods.html, layout 3 - the one Fabio
+                          picked. Four stacked boxes, three of them usually empty,
+                          pushed everything below them off the screen. The ticks
+                          now sit on one line and only a module that is ON opens a
+                          panel. EVERY BOX IS THE ONE THAT WAS THERE. */}
+                      <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-2">
+                        Rate modules <span className="normal-case tracking-normal text-gray-400">&mdash; tick the ones this product offers</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {MODULES.map(({ key, label }) => (
+                          <label key={key} title={label}
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] cursor-pointer transition-colors ${
+                              lender[key].enabled
+                                ? 'border-info bg-info-bg text-info font-semibold'
+                                : 'border-line bg-card text-muted hover:text-body'}`}>
+                            <input type="checkbox" className="sr-only" aria-label={label} checked={lender[key].enabled} onChange={e => updateRateModule(i, key, 'enabled', e.target.checked)} />
+                            <span aria-hidden className={`w-3.5 h-3.5 rounded-[4px] border flex items-center justify-center text-[9px] leading-none ${
+                              lender[key].enabled ? 'border-info bg-info text-page' : 'border-field-line'}`}>
+                              {lender[key].enabled ? '\u2713' : ''}
+                            </span>
                             {label}
                           </label>
-                          {lender[key].enabled && (
-                            <div className="grid grid-cols-3 gap-2 mt-2">
-                              <Field label="Rate % p.a."><input className={inp} value={lender[key].rate} onChange={e => updateRateModule(i, key, 'rate', e.target.value)} /></Field>
-                              <Field label="Monthly repayment"><NumberInput value={lender[key].repayment} onChange={v => updateRateModule(i, key, 'repayment', v)} /></Field>
-                              <Field label="Loan term (years)"><input className={inp} value={lender[key].loanTerm} onChange={e => updateRateModule(i, key, 'loanTerm', e.target.value)} /></Field>
-                              {showIO && <Field label="IO period (years)"><select className={sel} value={lender[key].ioYears} onChange={e => updateRateModule(i, key, 'ioYears', e.target.value)}><option value="">— select —</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></Field>}
-                              {showFixed && <Field label="Fixed for (years)"><select className={sel} value={lender[key].fixedYears} onChange={e => updateRateModule(i, key, 'fixedYears', e.target.value)}><option value="">— select —</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></Field>}
-                            </div>
-                          )}
+                        ))}
+                      </div>
+                      {MODULES.filter(m => lender[m.key].enabled).map(({ key, label, showIO, showFixed }) => (
+                        <div key={key} className="border border-gray-100 rounded-lg p-3 mb-2 last:mb-0">
+                          <div className="text-[12.5px] font-semibold text-ink mb-2">{label}</div>
+                          <div className="grid grid-cols-4 gap-2">
+                            <Field label="Rate % p.a."><input className={inp} value={lender[key].rate} onChange={e => updateRateModule(i, key, 'rate', e.target.value)} /></Field>
+                            <Field label="Monthly repayment"><NumberInput value={lender[key].repayment} onChange={v => updateRateModule(i, key, 'repayment', v)} /></Field>
+                            <Field label="Loan term (years)"><input className={inp} value={lender[key].loanTerm} onChange={e => updateRateModule(i, key, 'loanTerm', e.target.value)} /></Field>
+                            {showIO && <Field label="IO period (years)"><select className={sel} value={lender[key].ioYears} onChange={e => updateRateModule(i, key, 'ioYears', e.target.value)}><option value="">— select —</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></Field>}
+                            {showFixed && <Field label="Fixed for (years)"><select className={sel} value={lender[key].fixedYears} onChange={e => updateRateModule(i, key, 'fixedYears', e.target.value)}><option value="">— select —</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></Field>}
+                          </div>
                         </div>
                       ))}
                     </div>

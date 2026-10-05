@@ -105,7 +105,8 @@ export const THE_LOOK: Piece[] = [
     proof: { file: 'app/(app)/deals/[id]/LOForm.tsx', contains: 'WHAT WAS DECIDED BEFORE ANY LENDER WAS LOOKED AT' } },
   { mock: 'lo.html', piece: "LO: the client's decision inside the recommendation card",
     proof: { file: 'app/(app)/deals/[id]/LOForm.tsx', contains: 'AT THE FOOT OF THE RECOMMENDATION IT IS ABOUT' } },
-  { mock: 'lo.html', piece: 'LO: rate modules as chips at the top with panels below', proof: null },
+  { mock: 'lo.html', piece: 'LO: rate modules as chips at the top with panels below',
+    proof: { file: 'app/(app)/deals/[id]/LOForm.tsx', contains: 'RATE MODULES AS CHIPS' } },
 
   // STATEMENTS - mocked and approved, nothing built but the colours.
   { mock: 'st-page.html', piece: 'Statements: the approved layout', proof: null },
