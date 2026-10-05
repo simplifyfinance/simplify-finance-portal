@@ -74,6 +74,9 @@ describe('the column is a control, not a label', () => {
   })
 
   it('still prints plain text where the panel is read only', () => {
-    expect(src).toMatch(/: <span className="text-\[13\.5px\] text-\[#221F1B\]">\{s\.repaymentType \|\| '—'\}<\/span>/)
+    // The ink colour is a token now, not a hex, so that it turns over in dark -
+    // 5 Oct 2026. What this is guarding is the read-only BRANCH, not the shade,
+    // so it pins the shape and lets the colour be named.
+    expect(src).toMatch(/: <span className="text-\[13\.5px\] text-ink">\{s\.repaymentType \|\| '—'\}<\/span>/)
   })
 })

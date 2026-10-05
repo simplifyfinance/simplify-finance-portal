@@ -27,9 +27,9 @@ import { optionOnTheDeal } from '@/lib/client-agreement'
 
 const money = (n: number) => '$' + Math.round(n).toLocaleString('en-AU')
 
-const K = 'text-[9.5px] font-semibold tracking-[.09em] uppercase text-[#A29889]'
-const INP = 'border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 text-[13px] text-[#221F1B] bg-white focus:outline-none focus:border-[#2DBEFF]'
-const NEED = 'border-[#D9A441] bg-[#FFFDF8]'
+const K = 'text-[9.5px] font-semibold tracking-[.09em] uppercase text-faint'
+const INP = 'border border-line rounded-lg px-2.5 py-1.5 text-[13px] text-ink bg-card focus:outline-none focus:border-[#2DBEFF]'
+const NEED = 'border-dashed border-field-line bg-page'
 
 export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSplit }: {
   deal: any
@@ -112,17 +112,17 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
   }
 
   return (
-    <div className="bg-white border border-[#F0F0F0] rounded-xl px-[18px] py-[15px] mb-4">
+    <div className="bg-card border border-card-line rounded-xl px-[18px] py-[15px] mb-4">
       <div className="flex items-center gap-2.5 flex-wrap mb-3.5">
         <span className={K}>Deal structure</span>
         {templateLabel(deal?.bc_data?.template) && (
-          <span className="text-[11.5px] font-semibold text-[#0E86B8] bg-[#F4FCFF] border border-[#CDEBF8] rounded-md px-2.5 py-[3px]">
+          <span className="text-[11.5px] font-semibold text-info bg-info-bg border border-info-edge rounded-md px-2.5 py-[3px]">
             {templateLabel(deal.bc_data.template)}
           </span>
         )}
-        {purpose && <span className="text-[12px] text-[#7A7266]">{purpose}</span>}
+        {purpose && <span className="text-[12px] text-muted">{purpose}</span>}
         {needed.length > 0 && (
-          <span className="text-[11px] font-semibold text-[#8A6218] bg-[#FDF6EC] border border-[#EBD9BE] rounded-md px-2 py-[2px]">
+          <span className="text-[11px] font-semibold text-chase bg-chase-bg border border-chase-edge rounded-md px-2 py-[2px]">
             {needed.length} to complete
           </span>
         )}
@@ -130,13 +130,13 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
       </div>
 
       {row.optionGap && (
-        <p className="mb-3 border border-[#EBD9BE] bg-[#FDF6EC] rounded-lg px-3 py-2 text-[12.5px] text-[#8A6218]">
+        <p className="mb-3 border border-chase-edge bg-chase-bg rounded-lg px-3 py-2 text-[12.5px] text-chase">
           <b>{row.optionGap}.</b> Until then the rate, product and term stay blank rather than borrowing another lender&apos;s.
         </p>
       )}
 
       {err && (
-        <p className="mb-3 border border-[#E9D2CF] bg-[#FDF3F2] rounded-lg px-3 py-2 text-[12.5px] text-[#8E3A34]">{err}</p>
+        <p className="mb-3 border border-chase-edge bg-chase-bg rounded-lg px-3 py-2 text-[12.5px] text-chase">{err}</p>
       )}
 
       {/* --- the deal, across ------------------------------------------- */}
@@ -151,11 +151,11 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
         </Field>
 
         <Field label="Approval">
-          <div className="inline-flex border border-[#E8E1D6] rounded-lg overflow-hidden">
+          <div className="inline-flex border border-line rounded-lg overflow-hidden">
             {[['Formal', false], ['Pre-approval', true]].map(([label, pre]) => (
               <button key={String(label)} disabled={busy} onClick={() => setApproval(pre as boolean)}
                 className={`px-3 py-1.5 text-[12.5px] transition ${row.preApproval === pre
-                  ? 'bg-[#221F1B] text-white font-semibold' : 'bg-white text-[#7A7266] hover:bg-[#FAF9F7]'}`}>
+                  ? 'bg-ink text-white font-semibold' : 'bg-card text-muted hover:bg-page'}`}>
                 {label}
               </button>
             ))}
@@ -168,7 +168,7 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
             placeholder={row.preApproval ? 'TBA' : 'Street, suburb, state'}
             className={`${INP} w-full`} />
           {row.preApproval && row.securityAddress.startsWith('TBA') && (
-            <p className="text-[11px] text-[#0E86B8] mt-1 mb-0">Filled from the BC suburb because this is a pre-approval</p>
+            <p className="text-[11px] text-info mt-1 mb-0">Filled from the BC suburb because this is a pre-approval</p>
           )}
         </Field>
 
@@ -184,7 +184,7 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
         <Field label="LVR">
           {row.lvr !== null
             ? <Value v={`${row.lvr}%`} src={`${money(row.totalLending)} lending`} />
-            : <span className="text-[12.5px] font-semibold text-[#B58A2B]">not known</span>}
+            : <span className="text-[12.5px] font-semibold text-muted">not known</span>}
         </Field>
 
         {/* Cashback lives beside Product type in the splits table below, where
@@ -199,22 +199,22 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
 
       {/* --- funds to complete ------------------------------------------ */}
       {funds.applies && (
-        <div className="mt-3.5 bg-[#FBFAF8] border border-[#EFEAE0] rounded-[10px] px-3.5 py-2.5 flex items-center flex-wrap">
+        <div className="mt-3.5 bg-page border border-line rounded-[10px] px-3.5 py-2.5 flex items-center flex-wrap">
           {funds.lines.map((l, i) => (
-            <div key={l.label} className={`px-4 ${i === 0 ? 'pl-0' : 'border-l border-[#EDE8DF]'}`}>
+            <div key={l.label} className={`px-4 ${i === 0 ? 'pl-0' : 'border-l border-line'}`}>
               <div className={K}>{l.label}</div>
               {/* Green is what says "this comes off". Fabio, 3 Sep 2026: "just
                   green number no minus dont like it". */}
-              <div className={`text-[14.5px] font-bold whitespace-nowrap ${l.kind === 'source' ? 'text-[#1E7A4A]' : 'text-[#221F1B]'}`}>
+              <div className={`text-[14.5px] font-bold whitespace-nowrap ${l.kind === 'source' ? 'text-done' : 'text-ink'}`}>
                 {money(l.amount)}
               </div>
             </div>
           ))}
           {funds.capitalised.map(c => (
-            <div key={c.label} className="px-4 border-l border-[#EDE8DF]">
+            <div key={c.label} className="px-4 border-l border-line">
               <div className={K}>{c.label}</div>
-              <div className="text-[13px] font-semibold text-[#7A7266] whitespace-nowrap">{money(c.amount)}</div>
-              <div className="text-[10.5px] text-[#A29889]">capitalised</div>
+              <div className="text-[13px] font-semibold text-muted whitespace-nowrap">{money(c.amount)}</div>
+              <div className="text-[10.5px] text-faint">capitalised</div>
             </div>
           ))}
           {/* THE DEPOSIT IS THE ANSWER, NOT A DEDUCTION. Fabio, 3 Sep 2026:
@@ -223,13 +223,13 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
               agreeing to the dollar on Chapman - instead of being subtracted
               and driving a $3,841,500 answer down to nil. */}
           {funds.workable && (
-            <div className="ml-auto pl-5 border-l border-[#E0D8CB]">
-              <div className={`${K} text-[#7A7266]`}>Funds to complete</div>
-              <div className="text-[17px] font-bold text-[#1E7A4A] whitespace-nowrap">
+            <div className="ml-auto pl-5 border-l border-line">
+              <div className={`${K} text-muted`}>Funds to complete</div>
+              <div className="text-[17px] font-bold text-done whitespace-nowrap">
                 {funds.toFind > 0 ? money(funds.toFind) : 'nil'}
               </div>
               {funds.deposit !== null && (
-                <div className={`text-[10.5px] whitespace-nowrap ${funds.depositAgrees ? 'text-[#A29889]' : 'text-[#8A6218] font-semibold'}`}>
+                <div className={`text-[10.5px] whitespace-nowrap ${funds.depositAgrees ? 'text-faint' : 'text-chase font-semibold'}`}>
                   {funds.depositAgrees
                     ? 'matches the deposit on the BC'
                     : `BC deposit ${money(funds.deposit)} — out by ${money(Math.abs(funds.deposit - funds.toFind))}`}
@@ -238,7 +238,7 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
             </div>
           )}
           {funds.missing.length > 0 && (
-            <div className="w-full mt-2 pt-2 border-t border-[#EFEAE0] text-[11.5px] text-[#8A6218]">
+            <div className="w-full mt-2 pt-2 border-t border-line text-[11.5px] text-chase">
               {funds.missing.join(' · ')}
             </div>
           )}
@@ -248,17 +248,17 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
       {/* --- the splits, one row each ------------------------------------ */}
       {splits.length > 0 && (
         <>
-          <div className="h-px bg-[#F2F2F2] my-3.5" />
+          <div className="h-px bg-line-soft my-3.5" />
           <div className="flex items-baseline gap-2.5 mb-2 flex-wrap">
             <span className={K}>Loan splits</span>
-            <span className="text-[12px] text-[#A29889]">
+            <span className="text-[12px] text-faint">
               {onSplitChange
                 ? 'amount and rate come from the lender options below'
                 : 'amount, rate, repayment and purpose come from the Lending options tab'}
             </span>
             {onAddSplit && (
               <button onClick={onAddSplit}
-                className="ml-auto text-[12px] text-[#2DBEFF] border border-dashed border-[#2DBEFF] rounded-lg px-2.5 py-[3px] hover:bg-[#F4FCFF] transition">
+                className="ml-auto text-[12px] text-[#2DBEFF] border border-dashed border-[#2DBEFF] rounded-lg px-2.5 py-[3px] hover:bg-info-bg transition">
                 + Add split
               </button>
             )}
@@ -270,9 +270,9 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                   {['Split', 'Amount', 'Rate', 'P&I / IO', 'Purpose'].map(h => (
                     <th key={h} className={`${K} text-left pb-1.5 pr-3 whitespace-nowrap`}>{h}</th>
                   ))}
-                  {askFunds && <th className={`${K} text-left pb-1.5 pr-3 whitespace-nowrap text-[#8A6218]`}>What it does</th>}
+                  {askFunds && <th className={`${K} text-left pb-1.5 pr-3 whitespace-nowrap text-info`}>What it does</th>}
                   {['Term', 'IO years', 'Product type'].map(h => (
-                    <th key={h} className={`${K} text-left pb-1.5 pr-3 whitespace-nowrap text-[#8A6218]`}>{h}</th>
+                    <th key={h} className={`${K} text-left pb-1.5 pr-3 whitespace-nowrap text-info`}>{h}</th>
                   ))}
                   {/* One per deal, not one per split. Fabio, 3 Sep 2026: "cashback
                       dont do one per split you only get one cashback or not" -
@@ -283,15 +283,15 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
               </thead>
               <tbody>
                 {splits.map((s, i) => (
-                  <tr key={s.id} className={i > 0 ? 'border-t border-[#F5F2ED]' : ''}>
+                  <tr key={s.id} className={i > 0 ? 'border-t border-line-soft' : ''}>
                     <td className="py-1.5 pr-3">
-                      <div className="text-[12.5px] font-bold text-[#221F1B] whitespace-nowrap">Split {i + 1}</div>
-                      <div className="text-[10.5px] text-[#A29889] whitespace-nowrap">{s.label}</div>
+                      <div className="text-[12.5px] font-bold text-ink whitespace-nowrap">Split {i + 1}</div>
+                      <div className="text-[10.5px] text-faint whitespace-nowrap">{s.label}</div>
                     </td>
-                    <td className="py-1.5 pr-3 text-[15px] font-bold text-[#221F1B] whitespace-nowrap">
+                    <td className="py-1.5 pr-3 text-[15px] font-bold text-ink whitespace-nowrap">
                       {s.amount ? money(Number(String(s.amount).replace(/[$,\s]/g, '')) || 0) : '—'}
                     </td>
-                    <td className="py-1.5 pr-3 text-[13.5px] font-semibold text-[#221F1B]">{s.rate ? `${s.rate}%` : '—'}</td>
+                    <td className="py-1.5 pr-3 text-[13.5px] font-semibold text-ink">{s.rate ? `${s.rate}%` : '—'}</td>
                     {/* ANSWERED HERE, ON EVERY SCENARIO. 17 Sep 2026: this was
                         read-only text, and on a purchase there was no other
                         place in the portal to set it - the per-lender splits box
@@ -315,12 +315,12 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                               {SPLIT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                             </select>
                             {typeContradictsProduct({ repaymentType: s.repaymentType }, recOption) && (
-                              <div className="text-[10.5px] text-[#8A6218] mt-0.5 max-w-[150px] leading-tight">
+                              <div className="text-[10.5px] text-chase mt-0.5 max-w-[150px] leading-tight">
                                 the product has {typesOffered(recOption).join(' and ')} ticked
                               </div>
                             )}
                           </>
-                        : <span className="text-[13.5px] text-[#221F1B]">{s.repaymentType || '—'}</span>}
+                        : <span className="text-[13.5px] text-ink">{s.repaymentType || '—'}</span>}
                     </td>
                     {/* On the LO this is answered here. It used to say "set on
                         the LO" on the LO itself, which is a signpost pointing at
@@ -335,12 +335,12 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                             <option value="INV">{PURPOSE_LABEL.INV}</option>
                           </select>
                         : s.purpose
-                        ? <span className={`text-[9.5px] font-bold tracking-[.05em] rounded px-2 py-[2px] text-white ${
-                            s.purpose === 'INV' ? 'bg-[#946017]' : 'bg-[#0E86B8]'}`}>
+                        ? <span className={`text-[9.5px] font-bold tracking-[.05em] rounded px-2 py-[2px] ${
+                            s.purpose === 'INV' ? 'bg-ink text-page' : 'bg-info text-page'}`}>
                             {PURPOSE_LABEL[s.purpose]}
                           </span>
                         : <a href={`/deals/${deal.id}?stage=LO`}
-                            className="text-[11.5px] text-[#8A6218] bg-[#FDF6EC] border border-[#D9A441] rounded px-2 py-[3px] hover:underline">
+                            className="text-[11.5px] text-chase bg-chase-bg border border-chase-edge rounded px-2 py-[3px] hover:underline">
                             set on the LO ↗
                           </a>}
                     </td>
@@ -356,9 +356,9 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                               ))}
                             </select>
                           : s.funds
-                          ? <span className="text-[12px] text-[#221F1B]">{FUNDS_LABEL[s.funds]}</span>
+                          ? <span className="text-[12px] text-ink">{FUNDS_LABEL[s.funds]}</span>
                           : <a href={`/deals/${deal.id}?stage=LO`}
-                              className="text-[11.5px] text-[#8A6218] bg-[#FDF6EC] border border-[#D9A441] rounded px-2 py-[3px] hover:underline">
+                              className="text-[11.5px] text-chase bg-chase-bg border border-chase-edge rounded px-2 py-[3px] hover:underline">
                               set on the LO ↗
                             </a>}
                       </td>
@@ -379,7 +379,7 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                         ? <input defaultValue={s.ioYears} key={`io${s.id}${s.ioYears}`}
                             onBlur={e => { if (e.target.value !== s.ioYears) setDetail(s.id, { ioYears: e.target.value }) }}
                             placeholder="years" className={`${INP} w-[76px] ${!s.ioYears ? NEED : ''}`} />
-                        : <span className="text-[13.5px] text-[#C3C8CD]">—</span>}
+                        : <span className="text-[13.5px] text-faint">—</span>}
                     </td>
                     <td className="py-1.5 pr-3">
                       <input defaultValue={s.productType} key={`p${s.id}${s.productType}`}
@@ -398,12 +398,12 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
           </div>
 
           {row.ooTotal > 0 && row.invTotal > 0 && (
-            <div className="mt-2.5 pt-2.5 border-t border-[#F2F2F2] flex gap-6 flex-wrap text-[12.5px] text-[#7A7266]">
-              <span>Total lending <b className="text-[15px] text-[#221F1B]">{money(row.totalLending)}</b></span>
-              <span>Owner occupied <b className="text-[15px] text-[#221F1B]">{money(row.ooTotal)}</b></span>
-              <span>Investment <b className="text-[15px] text-[#221F1B]">{money(row.invTotal)}</b></span>
+            <div className="mt-2.5 pt-2.5 border-t border-card-line flex gap-6 flex-wrap text-[12.5px] text-muted">
+              <span>Total lending <b className="text-[15px] text-ink">{money(row.totalLending)}</b></span>
+              <span>Owner occupied <b className="text-[15px] text-ink">{money(row.ooTotal)}</b></span>
+              <span>Investment <b className="text-[15px] text-ink">{money(row.invTotal)}</b></span>
               {row.unsetTotal > 0 && (
-                <span className="text-[#8A6218]">No purpose set <b className="text-[15px]">{money(row.unsetTotal)}</b></span>
+                <span className="text-chase">No purpose set <b className="text-[15px]">{money(row.unsetTotal)}</b></span>
               )}
             </div>
           )}
@@ -414,17 +414,17 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
           notes that wait. Fabio, 3 Sep 2026: "dont lock but warning sign saying
           we need that information to generate compliance". */}
       {needed.length > 0 && (
-        <div className="mt-3 border border-[#EBD9BE] bg-[#FDF6EC] rounded-[10px] px-4 py-3">
-          <h4 className="m-0 mb-1 text-[13.5px] text-[#221F1B] font-semibold">
+        <div className="mt-3 border border-chase-edge bg-chase-bg rounded-[10px] px-4 py-3">
+          <h4 className="m-0 mb-1 text-[13.5px] text-ink font-semibold">
             ⚠ {needed.length === 1 ? 'One thing is' : `${needed.length} things are`} needed before the credit notes can be written
           </h4>
-          <p className="m-0 text-[12.5px] text-[#8A6218]">
+          <p className="m-0 text-[12.5px] text-chase">
             Left blank, the notes would either say nothing useful about that money or start guessing.
           </p>
-          <ul className="mt-2 mb-0 pl-5 text-[12.5px] text-[#8A6218]">
+          <ul className="mt-2 mb-0 pl-5 text-[12.5px] text-chase">
             {needed.slice(0, 6).map((n, i) => (
               <li key={i} className="mb-0.5">
-                <b className="text-[#221F1B]">{n.splitLabel}</b> — {n.what}
+                <b className="text-ink">{n.splitLabel}</b> — {n.what}
               </li>
             ))}
             {needed.length > 6 && <li>and {needed.length - 6} more</li>}
@@ -445,11 +445,11 @@ function Field({ label, children, grow }: { label: string; children: React.React
 }
 
 function Value({ v, src }: { v: string; src?: string }) {
-  if (!v) return <span className="text-[12.5px] text-[#C3BDB2] italic">not recorded</span>
+  if (!v) return <span className="text-[12.5px] text-faint italic">not recorded</span>
   return (
-    <div className="text-[15px] font-bold text-[#221F1B] leading-tight">
+    <div className="text-[15px] font-bold text-ink leading-tight">
       {v}
-      {src && <span className="block text-[10.5px] font-normal text-[#C3BDB2]">{src}</span>}
+      {src && <span className="block text-[10.5px] font-normal text-faint">{src}</span>}
     </div>
   )
 }

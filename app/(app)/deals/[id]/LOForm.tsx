@@ -1423,9 +1423,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           onDiscard={draft.dismiss} />
       )}
       <div className="flex gap-2 items-center flex-wrap">
-        <div className="flex gap-2 bg-white border border-gray-100 rounded-xl p-1">
+        <div className="flex gap-2 bg-card border border-gray-100 rounded-xl p-1">
           {(['form', 'preview'] as const).map(t => (
-            <button key={t} onClick={() => setActiveTab(t)} className={`px-6 py-2 rounded-lg text-sm font-medium transition ${activeTab === t ? 'bg-[#343333] text-white' : 'text-gray-400 hover:text-gray-600'}`}>
+            <button key={t} onClick={() => setActiveTab(t)} className={`px-6 py-2 rounded-lg text-sm font-medium transition ${activeTab === t ? 'bg-ink text-white' : 'text-gray-400 hover:text-gray-600'}`}>
               {t === 'form' ? 'LO Form' : 'Email Preview'}
             </button>
           ))}
@@ -1440,18 +1440,18 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             // Nothing is sent and nothing is marked. The deal needs an assessor
             // before there is anybody for the second email to go to.
             <span title={NO_ASSESSOR_MESSAGE}
-              className="px-3.5 py-2 text-sm rounded-lg border border-[#EFE2C8] bg-[#FDF6E7] text-[#8A6218]">
+              className="px-3.5 py-2 text-sm rounded-lg border border-chase-edge bg-chase-bg text-chase">
               Allocate a credit assessor first
             </span>
           ) : (
             <button onClick={markDocsReceived} disabled={docsBusy}
-              className="px-3.5 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50">
+              className="px-3.5 py-2 text-sm border border-gray-200 rounded-lg bg-card hover:bg-gray-50 disabled:opacity-50">
               {docsBusy ? 'Marking…' : 'Docs received'}
             </button>
           )
         )}
         {docs.kind === 'waiting' && (
-          <span className="px-3.5 py-2 text-sm rounded-lg font-medium bg-[#EAF6FD] text-[#0B5E8A] border border-[#CBE7F8]">
+          <span className="px-3.5 py-2 text-sm rounded-lg font-medium bg-info-bg text-info border border-info-edge">
             Docs received{docsDay(docs.receivedAt)}
           </span>
         )}
@@ -1471,7 +1471,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           </>
         ) : (
           <button onClick={() => setShowMoveToCompliancePopup(true)}
-            className="px-3.5 py-2 text-sm rounded-lg font-semibold border border-[#141C24] bg-[#141C24] text-white hover:bg-[#28323c] transition">
+            className="px-3.5 py-2 text-sm rounded-lg font-semibold border border-ink bg-ink text-page hover:bg-ink/90 transition">
             Client agreed — move to Compliance
           </button>
         )}
@@ -1479,33 +1479,33 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
       {/* What has happened and what is about to, in words. */}
       {docs.kind === 'waiting' && (
-        <div className="border border-[#CBE7F8] bg-[#F5FBFE] rounded-xl px-4 py-3 text-[13px] text-[#0B5E8A] leading-relaxed">
-          <b className="text-[#141C24]">{docsFiler || 'The filing team'} has been emailed now</b> to rename
+        <div className="border border-info-edge bg-info-bg rounded-xl px-4 py-3 text-[13px] text-info leading-relaxed">
+          <b className="text-ink">{docsFiler || 'The filing team'} has been emailed now</b> to rename
           the documents and file them.{' '}
-          <b className="text-[#141C24]">The credit assessor will be emailed at {atTime(docs.dueAt)}</b> to say
+          <b className="text-ink">The credit assessor will be emailed at {atTime(docs.dueAt)}</b> to say
           the documents are ready and the lending options can be completed.
           <button onClick={cancelDocsReceived} disabled={docsBusy}
-            className="ml-2 align-baseline text-[12.5px] text-[#3E4C59] border border-[#D7DCE1] bg-white rounded-md px-2.5 py-1 disabled:opacity-50">
+            className="ml-2 align-baseline text-[12.5px] text-body border border-line bg-card rounded-md px-2.5 py-1 disabled:opacity-50">
             Cancel the {atTime(docs.dueAt)} email
           </button>
         </div>
       )}
       {docs.kind === 'done' && (
-        <div className="border border-[#BFE3CC] bg-[#F6FDF8] rounded-xl px-4 py-3 text-[13px] text-[#15803D] leading-relaxed">
-          <b className="text-[#0F5C33]">{docsFiler || 'The filing team'} was emailed at {atTime(new Date(docs.receivedAt))}</b> to
+        <div className="border border-done-edge bg-done-bg rounded-xl px-4 py-3 text-[13px] text-done leading-relaxed">
+          <b className="text-done">{docsFiler || 'The filing team'} was emailed at {atTime(new Date(docs.receivedAt))}</b> to
           rename and file the documents.{' '}
-          <b className="text-[#0F5C33]">The credit assessor was emailed at {atTime(docs.dueAt)}</b> to
+          <b className="text-done">The credit assessor was emailed at {atTime(docs.dueAt)}</b> to
           say they are ready.
         </div>
       )}
       {docs.kind === 'sending' && (
-        <div className="border border-[#CBE7F8] bg-[#F5FBFE] rounded-xl px-4 py-3 text-[13px] text-[#0B5E8A] leading-relaxed">
-          <b className="text-[#141C24]">{docsFiler || 'The filing team'} has been emailed</b> and the
+        <div className="border border-info-edge bg-info-bg rounded-xl px-4 py-3 text-[13px] text-info leading-relaxed">
+          <b className="text-ink">{docsFiler || 'The filing team'} has been emailed</b> and the
           credit assessor's email is being scheduled now. This line will name the time in a moment.
         </div>
       )}
       {docs.kind === 'unscheduled' && (
-        <div className="border border-[#E5B7B2] bg-[#FDF0EF] rounded-xl px-4 py-3 text-[13px] text-[#B23A34] leading-relaxed">
+        <div className="border border-chase-edge bg-chase-bg rounded-xl px-4 py-3 text-[13px] text-chase leading-relaxed">
           <b>{docsFiler || 'The filing team'} was emailed, but the credit assessor was not.</b> The
           delayed email could not be queued, so nobody is going to be told the documents are ready —
           tell the assessor yourself.
@@ -1531,8 +1531,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         * Out here it opens from whichever tab somebody is looking at. */}
       {showMoveToCompliancePopup && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-[440px] shadow-xl">
-            <div className="text-base font-semibold mb-1 text-[#343333]">Send the next-steps email to the client?</div>
+          <div className="bg-card rounded-2xl p-6 w-[440px] shadow-xl">
+            <div className="text-base font-semibold mb-1 text-ink">Send the next-steps email to the client?</div>
             <p className="text-sm text-gray-500 mb-4">This moves the deal to Compliance and emails the client the next-steps content.</p>
 
             <div className="bg-gray-50 rounded-lg p-3 mb-4">
@@ -1560,7 +1560,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowMoveToCompliancePopup(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleMoveToCompliance} disabled={sendingMoveToCompliance} className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a] disabled:opacity-50">
+              <button onClick={handleMoveToCompliance} disabled={sendingMoveToCompliance} className="px-4 py-2 text-sm bg-ink text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-50">
                 {sendingMoveToCompliance ? 'Sending...' : 'Send and move to Compliance'}
               </button>
             </div>
@@ -1586,7 +1586,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             onAddSplit={addRefinanceSplit} />
 
           {/* Scenario */}
-          <div className="bg-white border border-gray-100 rounded-xl p-5">
+          <div className="bg-card border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Scenario</div>
             <div className="grid grid-cols-2 gap-3 mb-4">
               <Field label="First name"><input className={inp} value={d.firstName} onChange={e => setD({ ...d, firstName: e.target.value })} /></Field>
@@ -1628,8 +1628,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 </Field>
                 <Field label="Stamp duty"><NumberInput value={d.stampDuty} onChange={handleLoStampDutyChange} /></Field>
                 {depositGap && (
-                  <div className="col-span-2 rounded-lg border px-3 py-2.5 text-[12px] leading-[1.6]"
-                       style={{ borderColor: '#EBD9BE', background: '#FDF6EC', color: '#7A5F17' }}>
+                  <div className="col-span-2 rounded-lg border px-3 py-2.5 text-[12px] leading-[1.6] bg-chase-bg border-chase-edge text-chase">
                     <b>These three numbers do not agree.</b>{' '}
                     {depositGap.looksLikeOldRule
                       ? <>The deposit looks like it was worked out before stamp duty was included, so it is short
@@ -1638,8 +1637,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                           by ${formatNumber(String(Math.abs(depositGap.gap)))}. </>}
                     Setting the deposit to <b>${depositGap.suggestedDeposit}</b> makes them line up.
                     <button onClick={() => handleLoDepositChange(depositGap.suggestedDeposit)}
-                            className="ml-2 rounded-md border px-2 py-[2px] bg-white"
-                            style={{ borderColor: '#EBD9BE', color: '#7A5F17' }}>
+                            className="ml-2 rounded-md border px-2 py-[2px] bg-card border-chase-edge text-chase">
                       Use ${depositGap.suggestedDeposit}
                     </button>
                   </div>
@@ -1706,7 +1704,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           </div>
 
           {/* Broker personalisation */}
-          <div className="bg-white border border-gray-100 rounded-xl p-5">
+          <div className="bg-card border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Broker personalisation</div>
             <label className="text-xs text-gray-500 block mb-1">Broker signature</label>
             <select className="w-full rounded-lg px-3 py-2 text-sm border border-gray-200 focus:outline-none focus:border-[#2DBEFF] mb-3" value={d.brokerSig} onChange={e => setD({ ...d, brokerSig: e.target.value })}>
@@ -1714,14 +1712,14 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 <option key={i} value={b.name}>{b.name} — Simplify Finance</option>
               ))}
             </select>
-            <textarea spellCheck="true" className={`${d.brokerPersonalisation ? "border-green-200 bg-white" : "border-dashed border-field-line bg-page"} w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-[80px] resize-y border`} value={d.brokerPersonalisation}
+            <textarea spellCheck="true" className={`${d.brokerPersonalisation ? "border-green-200 bg-card" : "border-dashed border-field-line bg-page"} w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-[80px] resize-y border`} value={d.brokerPersonalisation}
               onFocus={() => focusField(ownRef.current, 'brokerPersonalisation')}
               onBlur={() => blurField(ownRef.current, 'brokerPersonalisation')}
               onChange={e => { markDirty(ownRef.current, 'brokerPersonalisation'); setD({ ...d, brokerPersonalisation: e.target.value }) }} placeholder="✏ Add your personalised opening message..." />
           </div>
 
           {/* Documents required */}
-          <div className="bg-white border border-gray-100 rounded-xl p-5">
+          <div className="bg-card border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Documents required</div>
             <div className="space-y-2 mb-3">
               {d.documentsRequired.map((doc, i) => (
@@ -1733,7 +1731,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             </div>
             <div className="flex gap-2">
               <input className={inp} value={newDoc} onChange={e => setNewDoc(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && newDoc.trim()) { setD({ ...d, documentsRequired: [...d.documentsRequired, newDoc.trim()] }); setNewDoc('') } }} placeholder="e.g. Latest payslips — add and press Enter" />
-              <button onClick={() => { if (newDoc.trim()) { setD({ ...d, documentsRequired: [...d.documentsRequired, newDoc.trim()] }); setNewDoc('') } }} className="bg-[#343333] text-white text-sm px-4 rounded-lg">Add</button>
+              <button onClick={() => { if (newDoc.trim()) { setD({ ...d, documentsRequired: [...d.documentsRequired, newDoc.trim()] }); setNewDoc('') } }} className="bg-ink text-white text-sm px-4 rounded-lg">Add</button>
             </div>
           </div>
 
@@ -1768,7 +1766,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             const isEmpty = !lender.lenderId
             const lenderSplits = resolveLenderSplits(lender, d.refinanceSplits)
             return (
-              <div key={i} className={`rounded-xl p-5 border transition-all ${isRec ? 'border-[#2DBEFF] bg-blue-50/30' : isEmpty ? 'border-dashed border-card-line bg-page' : 'bg-white border-gray-100'}`}>
+              <div key={i} className={`rounded-xl p-5 border transition-all ${isRec ? 'border-[#2DBEFF] bg-blue-50/30' : isEmpty ? 'border-dashed border-card-line bg-page' : 'bg-card border-gray-100'}`}>
                 <div className="flex justify-between items-center mb-4">
                   <div className="flex items-center gap-2">
                     <div className="text-xs font-medium text-gray-400 uppercase tracking-widest">Option {i + 1}</div>
@@ -1843,9 +1841,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   * and a machine cannot tell those apart. So it is shown here,
                   * and one press puts it in the special note, which does go. */}
                 {String(lender.libraryNotes || '').trim() && (
-                  <div className="flex items-start gap-2 -mt-1 mb-3 text-[12px] text-[#6E665C]">
-                    <span className="text-[#A29889] flex-none">From the lender library:</span>
-                    <span className="flex-1 text-[#2E2A26]">{lender.libraryNotes}</span>
+                  <div className="flex items-start gap-2 -mt-1 mb-3 text-[12px] text-muted">
+                    <span className="text-faint flex-none">From the lender library:</span>
+                    <span className="flex-1 text-ink">{lender.libraryNotes}</span>
                     {!String(lender.specialNote || '').trim() && (
                       <button type="button"
                         onClick={() => updateLender(i, 'specialNote', String(lender.libraryNotes || '').trim())}
@@ -1959,12 +1957,12 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                       const tot = lenderTotal(lenderSplits)
                       const lvr = lenderLvr(lenderSplits, d.propertyValue)
                       return (
-                        <div className="mt-3 text-[12.5px] bg-[#F2F8FB] border border-[#D9ECF6] rounded-lg px-3 py-2 text-[#2C3E46]">
+                        <div className="mt-3 text-[12.5px] bg-info-bg border border-info-edge rounded-lg px-3 py-2 text-ink">
                           <strong>Total lending ${tot.toLocaleString('en-AU')}</strong>
                           {lvr > 0
                             ? <> &middot; LVR <strong>{lvr}%</strong>
-                                <span className="text-[#7B8B93]"> &mdash; against the ${Number(String(d.propertyValue).replace(/[^0-9.]/g, '') || 0).toLocaleString('en-AU')} property value. Calculated, not typed.</span></>
-                            : <span className="text-[#8A6218]"> &mdash; no property value on this deal yet, so there is no LVR to show.</span>}
+                                <span className="text-muted"> &mdash; against the ${Number(String(d.propertyValue).replace(/[^0-9.]/g, '') || 0).toLocaleString('en-AU')} property value. Calculated, not typed.</span></>
+                            : <span className="text-chase"> &mdash; no property value on this deal yet, so there is no LVR to show.</span>}
                         </div>
                       )
                     })()}
@@ -1994,7 +1992,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                         { key: 'fixedIO', label: 'Fixed IO', showIO: true, showFixed: true },
                       ] as const).map(({ key, label, showIO, showFixed }) => (
                         <div key={key} className="border border-gray-100 rounded-lg p-3">
-                          <label className="flex items-center gap-2 text-sm font-medium text-[#343333] cursor-pointer mb-2">
+                          <label className="flex items-center gap-2 text-sm font-medium text-ink cursor-pointer mb-2">
                             <input type="checkbox" checked={lender[key].enabled} onChange={e => updateRateModule(i, key, 'enabled', e.target.checked)} />
                             {label}
                           </label>
@@ -2023,7 +2021,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           )}
 
           {/* Recommendation */}
-          <div className={`rounded-xl p-5 border-2 transition-all ${recommendedOption(d) && d.recommendationNote ? "bg-white border-green-200" : "bg-white border-chase-edge"}`}>
+          <div className={`rounded-xl p-5 border-2 transition-all ${recommendedOption(d) && d.recommendationNote ? "bg-card border-green-200" : "bg-card border-chase-edge"}`}>
             <div className="flex items-center justify-between mb-4">
               <div className="text-xs font-medium text-gray-400 uppercase tracking-widest">Recommendation</div>
               {recommendedOption(d) && !d.recommendationNote && (
@@ -2077,7 +2075,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             )}
             {flagOpen && (
               <div className="mt-2 bg-chase-bg border border-chase-edge rounded-lg p-3">
-                <textarea spellCheck="true" className={inp + ' min-h-[60px] resize-y bg-white'} autoFocus
+                <textarea spellCheck="true" className={inp + ' min-h-[60px] resize-y bg-card'} autoFocus
                   placeholder="What was wrong with this recommendation?"
                   value={flagNote} onChange={e => setFlagNote(e.target.value)} />
                 <div className="flex gap-2 mt-2">
@@ -2111,11 +2109,11 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             * compliance notes go stale on their own the moment it changes,
             * because they are stamped with the lender they were written about.
             * See lib/client-agreement.ts. */}
-          <div className="bg-white border border-gray-100 rounded-xl p-5">
+          <div className="bg-card border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">The client&apos;s decision</div>
             {decisionOpen || !d.clientAgreedLender ? (
-              <div className={`rounded-lg p-3.5 border ${d.clientAgreedLender ? 'bg-[#FAFBFC] border-gray-100' : 'bg-[#FDF6EC] border-[#EBD9BE]'}`}>
-                <div className={`text-[13px] leading-relaxed ${d.clientAgreedLender ? 'text-gray-500' : 'text-[#8A6218]'}`}>
+              <div className={`rounded-lg p-3.5 border ${d.clientAgreedLender ? 'bg-page border-gray-100' : 'bg-chase-bg border-chase-edge'}`}>
+                <div className={`text-[13px] leading-relaxed ${d.clientAgreedLender ? 'text-gray-500' : 'text-chase'}`}>
                   {!d.clientAgreedLender && <><span className="font-semibold">Not recorded</span> &mdash; </>}
                   Did the client agree with <span className="font-semibold">{decisionLenderName(d) || 'the recommendation'}</span>?
                 </div>
@@ -2129,7 +2127,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 </div>
                 {d.clientAgreedLender === 'No' && (
                   <div className="mt-3 flex flex-col gap-2">
-                    <select className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg bg-white" value={d.clientChosenLender}
+                    <select className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg bg-card" value={d.clientChosenLender}
                       onChange={e => setD(prev => ({ ...prev, clientChosenLender: e.target.value }))}>
                       <option value="">Select the lender the client chose</option>
                       {d.lenders.filter(l => l.lenderName).map((l, i) => <option key={i} value={l.lenderName}>{l.lenderName}</option>)}
@@ -2153,14 +2151,14 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   )}
                   <button disabled={!d.clientAgreedLender}
                     onClick={() => { setD(prev => ({ ...prev, clientDecisionAt: new Date().toISOString(), clientDecisionBy: me?.name || '' })); setDecisionOpen(false) }}
-                    className="px-3 py-1.5 text-xs rounded-lg bg-[#343333] text-white font-medium hover:bg-[#2a2a2a] disabled:opacity-40">Record it</button>
+                    className="px-3 py-1.5 text-xs rounded-lg bg-ink text-white font-medium hover:opacity-90 disabled:opacity-40">Record it</button>
                 </div>
               </div>
             ) : (
-              <div className="flex items-start justify-between gap-4 rounded-lg p-3.5 bg-[#FAFBFC] border border-gray-100">
+              <div className="flex items-start justify-between gap-4 rounded-lg p-3.5 bg-page border border-gray-100">
                 <div className="text-[13.5px] leading-relaxed">
                   {d.clientAgreedLender === 'Yes' ? (
-                    <span><span className="text-[#0F7B4F] font-bold mr-1">&#10003;</span>
+                    <span><span className="text-done font-bold mr-1">&#10003;</span>
                       The client agreed with <span className="font-semibold">{decisionLenderName(d) || 'the recommendation'}</span></span>
                   ) : (
                     <span>The client chose <span className="font-semibold">{d.clientChosenLender === '__other__' ? d.clientChosenLenderOther : d.clientChosenLender || 'another lender'}</span>
@@ -2188,7 +2186,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           </div>
 
           {/* Research criteria */}
-          <div className="bg-white border border-gray-100 rounded-xl p-5">
+          <div className="bg-card border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Research criteria</div>
             <div className="space-y-2 mb-3">
               {CRITERIA_OPTIONS.map(c => (
@@ -2207,12 +2205,12 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             </div>
             <div className="flex gap-2">
               <input className={inp} value={newCriteria} onChange={e => setNewCriteria(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && newCriteria.trim()) { setD({ ...d, criteriaUsed: [...d.criteriaUsed, newCriteria.trim()] }); setNewCriteria('') } }} placeholder="Add custom criteria and press Enter" />
-              <button onClick={() => { if (newCriteria.trim()) { setD({ ...d, criteriaUsed: [...d.criteriaUsed, newCriteria.trim()] }); setNewCriteria('') } }} className="bg-[#343333] text-white text-sm px-4 rounded-lg">Add</button>
+              <button onClick={() => { if (newCriteria.trim()) { setD({ ...d, criteriaUsed: [...d.criteriaUsed, newCriteria.trim()] }); setNewCriteria('') } }} className="bg-ink text-white text-sm px-4 rounded-lg">Add</button>
             </div>
           </div>
 
           {/* Important notes */}
-          <div className="bg-white border border-gray-100 rounded-xl p-5">
+          <div className="bg-card border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Important things to note (included in email, one per line)</div>
             <textarea spellCheck="true" className={inp + ' min-h-40 resize-y'} value={d.importantNotes || ''}
               onFocus={() => focusField(ownRef.current, 'importantNotes')}
@@ -2221,7 +2219,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           </div>
 
           {/* Additional notes */}
-          <div className="bg-white border border-gray-100 rounded-xl p-5">
+          <div className="bg-card border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Additional notes</div>
             <textarea spellCheck="true" className={inp + ' min-h-[80px] resize-y'} value={d.additionalNotes}
               onFocus={() => focusField(ownRef.current, 'additionalNotes')}
@@ -2252,7 +2250,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 {moveToComplianceMsg && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">{moveToComplianceMsg}</span>}
                 {sendError && <span className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{sendError}</span>}
               </div>
-              <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
+              <div className="bg-card border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
                   {deal.assigned_credit_officer && (
                     <button onClick={markLOComplete} disabled={markingLoComplete || !!loCompletedAt} className={`px-3 py-1.5 text-sm rounded-lg font-medium disabled:opacity-70 ${loCompletedAt ? 'bg-green-50 text-green-600 border border-green-200' : 'border border-gray-200 hover:bg-gray-50'}`}>
@@ -2287,10 +2285,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             </div>
           )}
           {freshness.state === 'figures-moved' && (
-            <div className="mb-3 border border-[#EBD9BE] bg-[#FDF6E7] rounded-xl px-4 py-3.5 flex items-start gap-3">
+            <div className="mb-3 border border-chase-edge bg-chase-bg rounded-xl px-4 py-3.5 flex items-start gap-3">
               <span className="text-[15px] leading-none mt-[2px]">⚠</span>
-              <div className="text-[13px] text-[#8A6218] flex-1">
-                <b className="text-[#141C24]">
+              <div className="text-[13px] text-chase flex-1">
+                <b className="text-ink">
                   {freshness.changes.length === 1 ? 'A figure has changed' : `${freshness.changes.length} figures have changed`} since this email was written.
                 </b>
                 <div className="mt-1.5">
@@ -2305,27 +2303,27 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 </div>
               </div>
               <button onClick={generateEmail} disabled={generating}
-                className="flex-none px-3 py-1.5 text-[12.5px] font-semibold rounded-lg bg-[#141C24] text-white disabled:opacity-50">
+                className="flex-none px-3 py-1.5 text-[12.5px] font-semibold rounded-lg bg-ink text-page disabled:opacity-50">
                 {generating ? 'Regenerating…' : 'Regenerate email'}
               </button>
             </div>
           )}
           {freshness.state === 'stale' && (
-            <div className="mb-3 border border-[#EBD9BE] bg-[#FDF6E7] rounded-xl px-4 py-3.5 flex items-start gap-3">
+            <div className="mb-3 border border-chase-edge bg-chase-bg rounded-xl px-4 py-3.5 flex items-start gap-3">
               <span className="text-[15px] leading-none mt-[2px]">⚠</span>
-              <div className="text-[13px] text-[#8A6218] flex-1">
-                <b className="text-[#141C24]">This email was written for {loTemplateLabel(freshness.wasFor)}.</b>
-                {' '}The deal is now on <b className="text-[#141C24]">{loTemplateLabel(freshness.nowOn)}</b>, so every
+              <div className="text-[13px] text-chase flex-1">
+                <b className="text-ink">This email was written for {loTemplateLabel(freshness.wasFor)}.</b>
+                {' '}The deal is now on <b className="text-ink">{loTemplateLabel(freshness.nowOn)}</b>, so every
                 card and note below is for a different deal. Regenerate before you send it — nothing is blocked, but
                 this one is worth a look.
               </div>
               <button onClick={generateEmail} disabled={generating}
-                className="flex-none px-3 py-1.5 text-[12.5px] font-semibold rounded-lg bg-[#141C24] text-white disabled:opacity-50">
+                className="flex-none px-3 py-1.5 text-[12.5px] font-semibold rounded-lg bg-ink text-page disabled:opacity-50">
                 {generating ? 'Regenerating…' : 'Regenerate email'}
               </button>
             </div>
           )}
-          <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+          <div className="bg-card border border-gray-100 rounded-xl overflow-hidden">
             {emailHtml ? (
               <iframe srcDoc={emailHtml} className="w-full h-[800px] border-0" title="LO Email Preview" />
             ) : (
