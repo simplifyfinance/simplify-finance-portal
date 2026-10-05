@@ -570,7 +570,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     }
   }, [flush])
 
-  const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]"
+  const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-field focus:outline-none focus:border-[#2DBEFF]"
   const applicant = d.applicants?.[activeApplicant]
 
   // WHICH ROW WAS TOUCHED. Every edit inside a list says so, and nothing
@@ -946,8 +946,8 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
         * "They live together" is a real answer, not a dismissal: it is recorded,
         * and it does not ask again on this deal. */}
       {suggestSecondHousehold(d) && canAddHousehold(d) && (
-        <div className="w-full mt-3 rounded-xl border border-[#BFE3F5] bg-[#F2FAFE] px-4 py-3 text-[12.5px] text-[#0E5E82] leading-relaxed">
-          <b className="text-[#0B4A68]">
+        <div className="w-full mt-3 rounded-xl border border-info-edge bg-info-bg px-4 py-3 text-[12.5px] text-info leading-relaxed">
+          <b className="text-info">
             {d.applicants.map((a: any) => a.firstName || 'This applicant').join(' and ')} are both
             recorded as Single.
           </b>{' '}
@@ -963,12 +963,12 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                   applicants: prev.applicants.map((a: any, i: number) =>
                     i === last ? { ...a, household: id } : a) }))
               }}
-              className="text-[11.5px] font-semibold border border-[#0E86B8] text-[#0E86B8] bg-white rounded-lg px-3 py-1.5">
+              className="text-[11.5px] font-semibold border border-info text-info bg-card rounded-lg px-3 py-1.5">
               Put {d.applicants?.[d.applicants.length - 1]?.firstName || 'them'} in Household{' '}
               {nextHouseholdId(d)}
             </button>
             <button onClick={() => setD(prev => ({ ...prev, householdsDismissed: 'yes' }))}
-              className="text-[11.5px] border border-[#D7DCE1] text-[#5B646D] bg-white rounded-lg px-3 py-1.5">
+              className="text-[11.5px] border border-line text-muted bg-card rounded-lg px-3 py-1.5">
               They live together
             </button>
           </div>
@@ -977,7 +977,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
 
       {showAddApplicantModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowAddApplicantModal(false)}>
-          <div className="bg-white rounded-2xl p-6 w-[420px] max-h-[80vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-card rounded-2xl p-6 w-[420px] max-h-[80vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="text-base font-semibold mb-4">Add applicant</div>
             <button onClick={addApplicant} className="w-full text-left px-4 py-3 rounded-lg border border-dashed border-[#2DBEFF] text-[#2DBEFF] hover:bg-blue-50 transition mb-4 text-sm font-medium">
               + New applicant
@@ -991,7 +991,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                 .map(c => (
                   <div key={c.id} onClick={() => addExistingApplicant(c)}
                     className="px-3 py-2 rounded-lg text-sm cursor-pointer hover:bg-gray-50">
-                    <p className="font-medium text-[#343333]">{c.first_name} {c.last_name}</p>
+                    <p className="font-medium text-ink">{c.first_name} {c.last_name}</p>
                     {c.email && <p className="text-xs text-gray-400">{c.email}</p>}
                   </div>
                 ))}
@@ -1010,7 +1010,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
         * kept as the sum, so nothing downstream can quote a number the
         * households disagree with. See lib/households.ts. */}
       {isOneHousehold(d) ? (
-        <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-1.5 ml-1">
+        <div className="flex items-center gap-2 bg-card border border-gray-300 rounded-lg px-3 py-1.5 ml-1">
           <svg className="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M17 20v-2a4 4 0 0 0-3-3.87M9 20H4v-2a4 4 0 0 1 4-4h1m5-8a4 4 0 1 1-8 0 4 4 0 0 1 8 0zm6 4a4 4 0 1 0-8 0" />
           </svg>
@@ -1020,8 +1020,8 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       ) : (
         <div className="flex items-center gap-2 flex-wrap ml-1">
           {householdsOf(d).map(h => (
-            <div key={h.id} className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-1.5">
-              <span className="text-[10px] font-bold tracking-[.05em] uppercase text-[#0E86B8] whitespace-nowrap">
+            <div key={h.id} className="flex items-center gap-2 bg-card border border-gray-300 rounded-lg px-3 py-1.5">
+              <span className="text-[10px] font-bold tracking-[.05em] uppercase text-info whitespace-nowrap">
                 Household {h.id}
               </span>
               <span className="text-xs text-gray-400 whitespace-nowrap max-w-[150px] truncate"
@@ -1063,14 +1063,14 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
 
         {showExtractReview && extractedData && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowExtractReview(false)}>
-          <div className="bg-white rounded-2xl p-6 w-[480px] max-h-[80vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-card rounded-2xl p-6 w-[480px] max-h-[80vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="text-base font-semibold mb-1">Review extracted data</div>
             <p className="text-xs text-gray-400 mb-4">Check this looks right before applying — you can fine-tune any field afterwards in the normal form.</p>
 
             {extractedData.applicants?.map((a: any, i: number) => (
               <div key={i} className="bg-gray-50 rounded-lg p-3 mb-3">
                 <p className="text-xs font-semibold text-gray-600 mb-1">Applicant {i + 1}</p>
-                <p className="text-sm text-[#343333]">{a.firstName} {a.lastName}{a.dob ? ` · DOB ${a.dob}` : ''}</p>
+                <p className="text-sm text-ink">{a.firstName} {a.lastName}{a.dob ? ` · DOB ${a.dob}` : ''}</p>
                 {(a.phoneMobile || a.emailPersonal) && <p className="text-xs text-gray-400">{a.phoneMobile}{a.phoneMobile && a.emailPersonal ? ' · ' : ''}{a.emailPersonal}</p>}
                 {a.employment?.[0]?.employerName && <p className="text-xs text-gray-500 mt-1">{a.employment[0].occupation} at {a.employment[0].employerName}</p>}
                 {a.income?.[0]?.grossSalary && <p className="text-xs text-gray-500">Income: ${a.income[0].grossSalary} {a.income[0].grossSalaryFrequency}</p>}
@@ -1161,7 +1161,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               list, did not see the line pointing at it, and unlocked a lodged
               deal to find the documents. A pointer nobody can read is not a
               pointer. */}
-          <p className="text-xs text-[#5B6672]">
+          <p className="text-xs text-muted">
             {docCount > 0
               ? `${docCount} document${docCount === 1 ? '' : 's'} on this deal — `
               : 'Documents on this deal are listed '}
@@ -1194,10 +1194,10 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       </div>
 
       <div className="space-y-4">
-      <div className="flex bg-white border border-gray-100 rounded-xl p-1 gap-1 flex-wrap">
+      <div className="flex bg-card border border-gray-100 rounded-xl p-1 gap-1 flex-wrap">
         {stages.map(s => (
           <button key={s} onClick={() => setStage(s)}
-            className={`flex-1 min-w-[110px] py-2 rounded-lg text-xs font-medium transition ${stage === s ? 'bg-[#343333] text-white' : 'text-gray-400 hover:text-gray-600'}`}>
+            className={`flex-1 min-w-[110px] py-2 rounded-lg text-xs font-medium transition ${stage === s ? 'bg-ink text-page' : 'text-gray-400 hover:text-gray-600'}`}>
             {stageLabels[s]}
           </button>
         ))}
@@ -1206,7 +1206,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       {(stage === 'personal' || stage === 'employment' || stage === 'income') && applicantTabs}
 
       {stage === 'personal' && (
-        <div className="bg-white border border-gray-100 rounded-xl p-4">
+        <div className="bg-card border border-gray-100 rounded-xl p-4">
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Purpose and goals</div>
           {[d.loanPurpose, d.goals2Years, d.goals10Years].filter(x => !String(x || '').trim()).length > 0 && (
             <div className="mb-3 flex gap-2 items-start bg-red-50 border border-red-200 border-l-[3px] border-l-red-600 rounded-lg px-3 py-2">
@@ -1223,7 +1223,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                 {optionsFor(d.depositSource, DEPOSIT_SOURCES).map(x => <option key={x}>{x}</option>)}
               </select>
               {d.depositSource === 'Gift' && (
-                <p className="text-[11.5px] text-[#8A6218] mt-1 mb-0">A gift letter will be needed on file.</p>
+                <p className="text-[11.5px] text-info mt-1 mb-0">A gift letter will be needed on file.</p>
               )}
             </div>
             <div>
@@ -1255,7 +1255,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       )}
 
       {stage === 'personal' && applicant && (
-        <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-4">
+        <div className="bg-card border border-gray-100 rounded-xl p-5 space-y-4">
           <SectionHeader title="Personal details" />
           <div className="grid grid-cols-4 gap-3">
             <div>
@@ -1398,42 +1398,42 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
             }
 
             if (copiedCount > 0) return (
-              <div className="border border-[#BFE3CC] bg-[#EFF9F2] rounded-lg px-3.5 py-2.5 mb-3 flex items-center gap-2.5 flex-wrap">
-                <span className="text-[13px] text-[#15803D]">
-                  <b className="text-[#0F5C33]">Copied {copiedCount} {copiedCount === 1 ? 'address' : 'addresses'} from {who}.</b>
+              <div className="border border-done-edge bg-done-bg rounded-lg px-3.5 py-2.5 mb-3 flex items-center gap-2.5 flex-wrap">
+                <span className="text-[13px] text-done">
+                  <b className="text-done">Copied {copiedCount} {copiedCount === 1 ? 'address' : 'addresses'} from {who}.</b>
                   {' '}Edit anything below that is different for {applicant.firstName || 'this applicant'}.
                 </span>
                 <button
                   onClick={() => { updateApplicant('addresses', undoAddresses); setCopiedCount(0) }}
-                  className="ml-auto text-[12.5px] text-[#3E4C59] border border-[#D7DCE1] bg-white rounded-md px-2.5 py-1">
+                  className="ml-auto text-[12.5px] text-body border border-line bg-card rounded-md px-2.5 py-1">
                   Undo
                 </button>
               </div>
             )
 
             if (plan.kind === 'nothing') return (
-              <div className="border border-[#E1E5E9] bg-[#F4F6F8] rounded-lg px-3.5 py-2.5 mb-3 text-[12.5px] text-[#5B646D]">
+              <div className="border border-line bg-page rounded-lg px-3.5 py-2.5 mb-3 text-[12.5px] text-muted">
                 Nothing to copy yet — {who} has no addresses recorded either. Fill in {who}&rsquo;s first
                 if they live together.
               </div>
             )
 
             if (plan.kind === 'replace' && confirmCopy) return (
-              <div className="border border-[#EBD9BE] bg-[#FDF6E7] rounded-lg px-3.5 py-3 mb-3 text-[13px] text-[#8A6218]">
-                <b className="text-[#141C24]">
+              <div className="border border-chase-edge bg-chase-bg rounded-lg px-3.5 py-3 mb-3 text-[13px] text-chase">
+                <b className="text-ink">
                   {applicant.firstName || 'This applicant'} already has {plan.removing.length}
                   {' '}{plan.removing.length === 1 ? 'address' : 'addresses'} recorded.
                 </b><br />
                 Copying {who}&rsquo;s {plan.count} will replace {plan.removing.length === 1 ? 'it' : 'them'}.
                 {' '}{plan.removing.length === 1 ? 'The address' : 'The addresses'} currently here —{' '}
-                <b className="text-[#141C24]">{plan.removing.join(', ')}</b> — will be removed.
+                <b className="text-ink">{plan.removing.join(', ')}</b> — will be removed.
                 <div className="flex gap-2 flex-wrap mt-2.5">
                   <button onClick={doCopy}
-                    className="bg-[#B23A34] border border-[#B23A34] text-white rounded-lg px-3 py-1.5 text-[12.5px] font-semibold">
+                    className="bg-chase border border-chase text-page rounded-lg px-3 py-1.5 text-[12.5px] font-semibold">
                     Replace {plan.removing.length === 1 ? 'it' : 'them'} with {who}&rsquo;s
                   </button>
                   <button onClick={() => setConfirmCopy(false)}
-                    className="bg-white border border-[#D7DCE1] text-[#3E4C59] rounded-lg px-3 py-1.5 text-[12.5px]">
+                    className="bg-card border border-line text-body rounded-lg px-3 py-1.5 text-[12.5px]">
                     Keep what is here
                   </button>
                 </div>
@@ -1441,9 +1441,9 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
             )
 
             return (
-              <div className="border border-[#CBE7F8] bg-[#EAF6FD] rounded-lg px-3.5 py-3 mb-3">
-                <div className="text-[13px] text-[#0B5E8A] mb-2.5">
-                  <b className="text-[#141C24]">
+              <div className="border border-info-edge bg-info-bg rounded-lg px-3.5 py-3 mb-3">
+                <div className="text-[13px] text-info mb-2.5">
+                  <b className="text-ink">
                     Does {applicant.firstName || 'this applicant'} live at the same addresses as {who}?
                   </b><br />
                   {who} has {plan.count} {plan.count === 1 ? 'address' : 'addresses'} recorded{span}.
@@ -1452,10 +1452,10 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                 </div>
                 <div className="flex gap-2 items-center flex-wrap">
                   <button onClick={() => (plan.kind === 'replace' ? setConfirmCopy(true) : doCopy())}
-                    className="bg-[#141C24] border border-[#141C24] text-white rounded-lg px-3 py-1.5 text-[12.5px] font-semibold hover:bg-[#28323c]">
+                    className="bg-ink border border-ink text-white rounded-lg px-3 py-1.5 text-[12.5px] font-semibold hover:bg-ink/90">
                     Copy {plan.count} {plan.count === 1 ? 'address' : 'addresses'} from {who}
                   </button>
-                  <span className="text-[11.5px] text-[#7C8894]">or fill them in below</span>
+                  <span className="text-[11.5px] text-faint">or fill them in below</span>
                 </div>
               </div>
             )
@@ -1521,7 +1521,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       )}
 
       {stage === 'employment' && applicant && (
-        <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-3">
+        <div className="bg-card border border-gray-100 rounded-xl p-5 space-y-3">
           <SectionHeader title={`Employment — ${applicant.firstName || 'applicant'}`} />
           {applicant.employment.map((emp, i) => (
             <div key={emp.id} className="border border-gray-100 rounded-lg p-4 mb-2">
@@ -1652,7 +1652,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       )}
 
       {stage === 'income' && applicant && (
-        <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-3">
+        <div className="bg-card border border-gray-100 rounded-xl p-5 space-y-3">
           <SectionHeader title={`Income — ${applicant.firstName || 'applicant'}`} />
           {applicant.income.map(inc => (
             <div key={inc.id} className="border border-gray-100 rounded-lg p-4 mb-2">
@@ -1933,7 +1933,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               + Add income source
             </button>
             {addIncomeMenuOpen && (
-              <div className="absolute z-10 mt-1 bg-white border border-gray-100 rounded-lg shadow-md w-56 overflow-hidden">
+              <div className="absolute z-10 mt-1 bg-card border border-gray-100 rounded-lg shadow-md w-56 overflow-hidden">
                 <button onClick={() => addIncome('PAYG')} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 border-b border-gray-50">PAYG income</button>
                 <button onClick={() => addIncome('Self-employed')} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 border-b border-gray-50">Self-employed income</button>
                 <button onClick={() => addIncome('Other taxable')} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50 border-b border-gray-50">Other taxable income</button>
@@ -1945,7 +1945,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       )}
 
       {stage === 'assets' && (
-        <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-3">
+        <div className="bg-card border border-gray-100 rounded-xl p-5 space-y-3">
           <SectionHeader title="Other assets" />
           {d.assets.map(asset => (
             <div key={asset.id} className="border border-gray-100 rounded-lg p-4 mb-2">
@@ -1983,7 +1983,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       )}
 
       {stage === 'properties' && (
-        <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-3">
+        <div className="bg-card border border-gray-100 rounded-xl p-5 space-y-3">
           <SectionHeader title="Properties" />
           {d.properties.map(prop => (
             <div key={prop.id} className="border border-gray-100 rounded-lg p-4 mb-3">
@@ -2031,10 +2031,10 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               </div>
               <OwnershipSplit applicants={d.applicants} ownership={prop.ownership} onChange={v => updateProperty(prop.id, 'ownership', v)} />
 
-              <div className="mt-4 bg-[#F2E8DB]/40 rounded-lg p-3">
+              <div className="mt-4 bg-line-soft rounded-lg p-3">
                 <div className="text-xs font-medium text-gray-500 mb-2">Linked loans</div>
                 {prop.loans.map(loan => (
-                  <div key={loan.id} className="border border-gray-100 bg-white rounded-lg p-3 mb-2">
+                  <div key={loan.id} className="border border-gray-100 bg-card rounded-lg p-3 mb-2">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-xs font-medium text-gray-500">{loan.lenderName || 'New loan'}</span>
                       <button onClick={() => removePropertyLoan(prop.id, loan.id)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
@@ -2095,7 +2095,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       )}
 
       {stage === 'liabilities' && (
-        <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-3">
+        <div className="bg-card border border-gray-100 rounded-xl p-5 space-y-3">
           <SectionHeader title="Liabilities" badge="excludes property-linked loans" />
           {d.liabilities.map(liab => (
             <div key={liab.id} className="border border-gray-100 rounded-lg p-4 mb-2">
