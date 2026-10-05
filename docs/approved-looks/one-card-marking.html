@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-surface="paper">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ONE — colour all round, on a full board</title>
+<style>
+  :root[data-theme="light"]{
+    --ink:#0F1317; --body:#49525B; --muted:#68727C; --faint:#A2ACB6;
+    --blue:#0B7FB0; --bluebg:#EAF7FE; --blueedge:#BFE4F7;
+    --green:#117A45; --greenbg:#EFFAF4; --greenedge:#BFE6D2;
+    --purple:#5B3A9E; --purplebg:#F4F1FC; --purpleedge:#DACFF1;
+    --red:#A3302A; --redbg:#FDF3F2; --rededge:#EBD1CE;
+    --card-red:#FDF4F3; --card-red-edge:#EEC9C5;
+    --card-purple:#F7F4FD; --card-purple-edge:#D7CCF0;
+    --card-green:#F2FBF6; --card-green-edge:#C6E7D5;
+    --brandbar:#343333; --brandtext:#FFFFFF; --branddim:rgba(255,255,255,.62);
+    --shadow-card:0 1px 2px rgba(16,24,32,.06);
+    --scrollthumb:#CBD3DA;
+  }
+  :root[data-theme="light"][data-surface="white"]{--page:#FFFFFF;--panel:#FFFFFF;--card:#FFFFFF;
+    --line:#E3E8ED;--line2:#EDF1F4;--cardline:#E3E8ED;--shadow-card:0 1px 3px rgba(16,24,32,.09)}
+  :root[data-theme="light"][data-surface="paper"]{--page:#F4F6F8;--panel:#FFFFFF;--card:#FFFFFF;
+    --line:#E3E8ED;--line2:#EDF1F4;--cardline:#E6EAEF}
+  :root[data-theme="light"][data-surface="light-slate"]{--page:#E9EDF1;--panel:#F8FAFB;--card:#FFFFFF;
+    --line:#D8DFE6;--line2:#E6EBEF;--cardline:#E0E6EC}
+  :root[data-theme="light"][data-surface="slate"]{--page:#DBE1E7;--panel:#EFF2F5;--card:#FFFFFF;
+    --line:#C9D2DA;--line2:#DDE3E9;--cardline:#D6DEE5;--shadow-card:0 1px 3px rgba(16,24,32,.10)}
+
+  :root[data-theme="dark"]{
+    --page:#15181B; --panel:#1E2125; --card:#23272C;
+    --line:#32373D; --line2:#2A2F34; --cardline:#343A41;
+    --ink:#E9EDF1; --body:#C2CAD2; --muted:#9AA4AE; --faint:#6F7A85;
+    --blue:#6FD3FF; --bluebg:#102C3A; --blueedge:#1E4D64;
+    --green:#6EE7B7; --greenbg:#0F2E24; --greenedge:#1E5544;
+    --purple:#B49BF0; --purplebg:#241C3C; --purpleedge:#3F3168;
+    --red:#FF8E7F; --redbg:#3A1E1A; --rededge:#5F3129;
+    --card-red:#33241F; --card-red-edge:#60352C;
+    --card-purple:#28213B; --card-purple-edge:#44356E;
+    --card-green:#1A2B25; --card-green-edge:#245B49;
+    --brandbar:#101214; --brandtext:#F2F5F7; --branddim:rgba(242,245,247,.58);
+    --shadow-card:none; --scrollthumb:#3C434B;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);padding:0 0 70px;
+       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+       transition:background .18s ease,color .18s ease}
+  .wrap{max-width:1300px;margin:0 auto;padding:0 16px}
+  .bar{position:sticky;top:0;z-index:60;background:var(--panel);border-bottom:1px solid var(--line);
+       padding:9px 0;margin-bottom:18px}
+  .bar .in{max-width:1300px;margin:0 auto;padding:0 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .seg{display:inline-flex;background:var(--page);border:1px solid var(--line);border-radius:9px;padding:2px}
+  .seg button{appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-size:11.5px;
+              font-weight:600;padding:5px 11px;border-radius:7px;cursor:pointer;white-space:nowrap}
+  .seg button[aria-pressed="true"]{background:var(--card);color:var(--ink);box-shadow:var(--shadow-card)}
+  :root[data-theme="dark"] .seg button[aria-pressed="true"]{background:#333941;color:#fff}
+  .seglbl{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-right:-8px}
+  .note{font-size:11.5px;color:var(--faint);margin:0}
+
+  h1{font-size:22px;margin:16px 0 5px}
+  .lede{font-size:13px;color:var(--body);line-height:1.6;margin:0 0 16px;max-width:92ch}
+  .lede b{color:var(--ink)}
+  h2{font-size:15px;margin:30px 0 4px;padding-top:20px;border-top:2px solid var(--line)}
+  h2 .n{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);
+        display:block;margin-bottom:4px}
+  .cap{font-size:12.5px;color:var(--body);line-height:1.6;margin:0 0 14px;max-width:94ch}
+  .cap b{color:var(--ink)}
+  .key{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px 16px;margin-top:12px;
+       font-size:12.5px;color:var(--body);line-height:1.65;max-width:94ch}
+  .key b{color:var(--ink)}
+  .key p{margin:0 0 10px}.key p:last-child{margin:0}
+  .q{background:var(--panel);border:1px solid var(--purpleedge);border-left:3px solid var(--purple);
+     border-radius:10px;padding:12px 14px;margin-top:12px;font-size:12.5px;color:var(--body);line-height:1.6;max-width:94ch}
+  .q b{color:var(--purple)}
+
+  .opts{display:flex;gap:12px;flex-wrap:wrap;align-items:stretch}
+  .opt{flex:1;min-width:252px;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+       overflow:hidden;display:flex;flex-direction:column}
+  .opt.win{border:2px solid var(--purple)}
+  .opt .oh{padding:10px 12px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:7px}
+  .opt .oh .nm{font-size:12.5px;font-weight:700;color:var(--ink)}
+  .opt .oh .tag{margin-left:auto;font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+                border-radius:5px;padding:2px 7px;border:1px solid}
+  .tag.pick{color:var(--purple);background:var(--purplebg);border-color:var(--purpleedge)}
+  .tag.no{color:var(--red);background:var(--redbg);border-color:var(--rededge)}
+  .opt .stage{padding:12px;flex:1}
+  .opt .why{padding:10px 12px;border-top:1px solid var(--line2);font-size:11.5px;color:var(--body);line-height:1.55}
+  .opt .why b{color:var(--ink)}
+
+  /* ---------- board, geometry copied from today ---------- */
+  .boardbox{background:var(--page);border:1px solid var(--line);border-radius:14px;padding:12px}
+  .brandbar{display:flex;align-items:center;gap:9px;background:var(--brandbar);border-radius:11px;
+            padding:9px 13px;margin-bottom:11px}
+  .brandbar .w{font-size:18px;font-weight:800;letter-spacing:-.055em;color:var(--brandtext);line-height:1}
+  .brandbar .dot{width:6px;height:6px;border-radius:50%;background:#2DBEFF;margin:0 0 8px 2px}
+  .brandbar .sub{font-size:10.5px;color:var(--branddim);margin-left:3px}
+  .brandbar .pg{margin-left:auto;font-size:11px;color:var(--brandtext);font-weight:600;opacity:.9}
+  .brandbar .mini{display:inline-flex;background:rgba(255,255,255,.1);border-radius:7px;padding:2px;margin-left:10px}
+  .brandbar .mini span{font-size:10px;font-weight:600;color:var(--branddim);padding:3px 8px;border-radius:5px;cursor:pointer}
+  .brandbar .mini span.on{background:rgba(255,255,255,.16);color:var(--brandtext)}
+  .filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:11px}
+  .f{font-size:11px;font-weight:600;border-radius:8px;padding:5px 10px;border:1px solid var(--line);
+     background:var(--card);color:var(--body)}
+  .f.on{background:var(--bluebg);border-color:var(--blueedge);color:var(--blue)}
+  .f.quiet{color:var(--muted);margin-left:auto}
+
+  .pane{overflow-x:auto;overflow-y:hidden;padding-bottom:8px}
+  .cols{display:flex;gap:10px;align-items:stretch;height:100%}
+  .pane.tall{height:620px}
+  .col{flex:none;width:248px;border-radius:12px;padding:10px;border:1px solid var(--line);
+       background:var(--panel);display:flex;flex-direction:column;min-height:0}
+  .colh{display:flex;align-items:baseline;gap:5px;margin-bottom:6px;flex:none}
+  .colh .nm{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--body)}
+  .colh .cnt{margin-left:auto;font-size:10px;font-weight:700;border-radius:999px;padding:1px 7px;
+             background:var(--card);border:1px solid var(--line);color:var(--body)}
+  .colmoney{font-size:10.5px;margin-bottom:8px;color:var(--muted);font-weight:600;flex:none}
+  .scroller{flex:1;min-height:0;overflow-y:auto;padding-right:3px;margin-right:-3px}
+  .scroller::-webkit-scrollbar,.pane::-webkit-scrollbar{width:8px;height:9px}
+  .scroller::-webkit-scrollbar-thumb,.pane::-webkit-scrollbar-thumb{background:var(--scrollthumb);border-radius:999px}
+  .scroller::-webkit-scrollbar-track,.pane::-webkit-scrollbar-track{background:transparent}
+
+  .dcard{background:var(--card);border:1px solid var(--cardline);border-radius:10px;padding:9px;
+         margin-bottom:8px;box-shadow:var(--shadow-card)}
+  .dcard:last-child{margin-bottom:0}
+  .dcard .tt{font-size:11.5px;font-weight:650;margin:0 0 1px;color:var(--ink);
+             white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dcard .sub{font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin:0 0 6px;
+              color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dcard .mr{display:flex;align-items:center;gap:5px;margin-bottom:6px}
+  .dcard .mr .amt{font-size:13.5px;font-weight:680;letter-spacing:-.01em;color:var(--ink)}
+  .dcard .mr .wh{margin-left:auto;font-size:10.5px;color:var(--muted);white-space:nowrap}
+  .dcard .mr .wh.hot{color:var(--red);font-weight:700}
+  .dcard .cr{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+
+  .dcard.spine{border-color:var(--rededge);box-shadow:inset 3px 0 0 var(--red),var(--shadow-card)}
+  .dcard.outline{border-color:var(--card-red-edge);border-width:1.5px}
+  .dcard.wash{background:var(--card-red);border-color:var(--card-red-edge)}
+  .dcard.wash-purple{background:var(--card-purple);border-color:var(--card-purple-edge)}
+  .dcard.wash-green{background:var(--card-green);border-color:var(--card-green-edge)}
+
+  .chip{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+        border-radius:5px;padding:3px 7px;border:1px solid;max-width:100%;overflow:hidden;text-overflow:ellipsis;
+        white-space:nowrap}
+  .c-blue{color:var(--blue);background:var(--bluebg);border-color:var(--blueedge)}
+  .c-green{color:var(--green);background:var(--greenbg);border-color:var(--greenedge)}
+  .c-purple{color:var(--purple);background:var(--purplebg);border-color:var(--purpleedge)}
+  .c-red{color:var(--red);background:var(--redbg);border-color:var(--rededge)}
+  .c-grey{color:var(--muted);background:var(--page);border-color:var(--line)}
+  .wash .c-red,.wash-purple .c-purple,.wash-green .c-green{background:var(--card)}
+
+  .av{width:18px;height:18px;border-radius:50%;font-size:8px;font-weight:700;color:#fff;display:flex;
+      align-items:center;justify-content:center;border:1.5px solid var(--card);margin-left:-4px}
+  .av:first-child{margin-left:0}
+  .people{margin-left:auto;display:flex}
+  .wash .av{border-color:var(--card-red)}
+  .wash-purple .av{border-color:var(--card-purple)}
+  .wash-green .av{border-color:var(--card-green)}
+
+  .lane{border-radius:10px;padding:7px;margin-bottom:8px;background:var(--purplebg);border:1px solid var(--purpleedge)}
+  .lanehd{display:flex;align-items:center;gap:5px;margin:0 2px 6px}
+  .lanehd .lt{font-size:8.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--purple)}
+  .lanehd .lc{margin-left:auto;background:var(--card);border:1px solid var(--purpleedge);border-radius:999px;
+              padding:0 6px;font-size:9px;font-weight:700;color:var(--purple)}
+  .rule{display:flex;align-items:center;gap:5px;margin:0 3px 6px}
+  .rule span.l{height:1px;flex:1;background:var(--line)}
+  .rule span.t{font-size:8.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+
+  .shut{width:38px;min-width:38px;border-radius:12px;border:1px dashed var(--line);background:var(--panel);
+        display:flex;flex-direction:column;align-items:center;gap:7px;padding:9px 0;flex:none}
+  .shut .n{font-size:10px;font-weight:700;color:var(--body)}
+  .shut .v{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+           white-space:nowrap;writing-mode:vertical-rl;transform:rotate(180deg)}
+  .shut.purple{border-color:var(--purpleedge);background:var(--purplebg)}
+  .shut.purple .n,.shut.purple .v{color:var(--purple)}
+  .shut.green{border-color:var(--greenedge);background:var(--greenbg)}
+  .shut.green .n,.shut.green .v{color:var(--green)}
+</style>
+</head>
+<body>
+
+<div class="bar"><div class="in">
+  <span class="seglbl">Surface</span>
+  <div class="seg" id="segSurface">
+    <button data-s="white" aria-pressed="false">White</button>
+    <button data-s="paper" aria-pressed="true">Paper</button>
+    <button data-s="light-slate" aria-pressed="false">Light slate</button>
+    <button data-s="slate" aria-pressed="false">Slate</button>
+  </div>
+  <span class="seglbl">Theme</span>
+  <div class="seg" id="segTheme">
+    <button data-t="light" aria-pressed="true">Light</button>
+    <button data-t="dark" aria-pressed="false">Dark</button>
+    <button data-t="auto" aria-pressed="false">Auto</button>
+  </div>
+  <p class="note">Live. The board below scrolls sideways and each column scrolls its own cards.</p>
+</div></div>
+
+<div class="wrap">
+
+<h1>The stripe is gone. Colour all the way round.</h1>
+<p class="lede">You are right, and it is a better rule than the one I drew. <b>If a card has a status, the
+whole card wears it, lightly.</b> Below: the three ways it could have been done, then a <b>full board</b> &mdash;
+seventy deals, twelve columns, two folded &mdash; so you can see what it looks like busy rather than on three
+tidy cards.</p>
+
+<h2><span class="n">First</span>Three ways to mark a card</h2>
+<div class="opts">
+
+  <div class="opt">
+    <div class="oh"><span class="nm">A stripe down the side</span><span class="tag no">Out</span></div>
+    <div class="stage">
+      <div style="border-radius:12px;padding:10px;border:1px solid var(--line);background:var(--panel)">
+        <div class="colh"><span class="nm">BC</span><span class="cnt">9</span></div>
+        <div class="dcard spine">
+          <p class="tt">Hameed &amp; Sadiq</p><p class="sub">Home loan</p>
+          <div class="mr"><span class="amt">$760k</span><span class="wh hot">63 days</span></div>
+          <div class="cr"><span class="chip c-red">Chase today</span>
+            <span class="people"><span class="av" style="background:#2E6BE6">FD</span><span class="av" style="background:#7C8894">EM</span></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="why"><b>What is wrong with it.</b> It reads as damage rather than a status &mdash; a bit of the
+    card torn off. And it is a shape nothing else in the portal uses, so it has to be learned on its own.</div>
+  </div>
+
+  <div class="opt">
+    <div class="oh"><span class="nm">A coloured outline only</span><span class="tag no">Too quiet</span></div>
+    <div class="stage">
+      <div style="border-radius:12px;padding:10px;border:1px solid var(--line);background:var(--panel)">
+        <div class="colh"><span class="nm">BC</span><span class="cnt">9</span></div>
+        <div class="dcard outline">
+          <p class="tt">Hameed &amp; Sadiq</p><p class="sub">Home loan</p>
+          <div class="mr"><span class="amt">$760k</span><span class="wh hot">63 days</span></div>
+          <div class="cr"><span class="chip c-red">Chase today</span>
+            <span class="people"><span class="av" style="background:#2E6BE6">FD</span><span class="av" style="background:#7C8894">EM</span></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="why"><b>Tidy, but it disappears.</b> One hairline at the edge of a white card is almost
+    nothing from two feet away, and the board is read from across the room.</div>
+  </div>
+
+  <div class="opt win">
+    <div class="oh"><span class="nm">The whole card, lightly</span><span class="tag pick">Ship this</span></div>
+    <div class="stage">
+      <div style="border-radius:12px;padding:10px;border:1px solid var(--line);background:var(--panel)">
+        <div class="colh"><span class="nm">BC</span><span class="cnt">9</span></div>
+        <div class="dcard wash">
+          <p class="tt">Hameed &amp; Sadiq</p><p class="sub">Home loan</p>
+          <div class="mr"><span class="amt">$760k</span><span class="wh hot">63 days</span></div>
+          <div class="cr"><span class="chip c-red">Chase today</span>
+            <span class="people"><span class="av" style="background:#2E6BE6">FD</span><span class="av" style="background:#7C8894">EM</span></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="why"><b>Reads instantly and reads calmly.</b> Colour all round, border included, at a strength
+    you could look at all day. One rule rather than a special case.</div>
+  </div>
+</div>
+
+<div class="key">
+  <p><b>One knock-on, and it is handled.</b> The chip inside a washed card was the same colour as the card,
+  so it vanished. On a washed card the chip goes <b>white with a coloured outline</b> instead. Look at
+  "Chase today" in the third tile &mdash; a white pill on a pink card, where in the first two it is a pink pill
+  on a white card. One rule, not a special case per colour.</p>
+  <p><b>How light is light.</b> Measured, not eyeballed: the client's name sits at 17&times; contrast on the
+  pink and 17&times; on plain white. No difference at all to read, and the avatars get a ring the colour of
+  the card they sit on so they still cut out cleanly.</p>
+</div>
+
+<h2><span class="n">Then</span>A full board &mdash; 70 deals, 12 columns</h2>
+<p class="cap">This is the real test, and the reason to look at it busy. <b>Scroll it sideways.</b>
+<b>Scroll inside any column.</b> Two columns are folded to narrow strips. Everything here is drawn at
+today's exact measurements &mdash; 248px columns, 10px gaps, 12px corners, 38px strips &mdash; and
+<b>nothing about how it works has changed.</b></p>
+
+<div class="boardbox">
+  <div class="brandbar"><span class="w">one</span><span class="dot"></span>
+    <span class="sub">by Simplify</span><span class="pg">Deal board</span>
+    <span class="mini" id="brandSeg"><span data-t="light" class="on">Light</span><span data-t="dark">Dark</span><span data-t="auto">Auto</span></span></div>
+  <div class="filters">
+    <span class="f on">All brokers</span><span class="f">All types</span><span class="f">Show lost</span>
+    <span class="f quiet">70 deals &middot; $50.4m</span>
+  </div>
+  <div class="pane tall" id="pane">
+    <div class="cols">
+<div class="col"><div class="colh"><span class="nm">Fact Find</span><span class="chip c-red" style="margin:0">2 to chase</span><span class="cnt">6</span></div><div class="colmoney">$5.3m</div><div class="scroller"><div class="dcard"><p class="tt">Fenwick</p><p class="sub">Home loan</p><div class="mr"><span class="amt">$1.4m</span><span class="wh">11 days</span></div><div class="cr"><span class="chip c-blue">Construction</span><span class="people"><span class="av" style="background:#2E6BE6">FD</span></span></div></div><div class="dcard wash"><p class="tt">Rawlins</p><p class="sub">Home loan</p><div class="mr"><span class="amt">$680k</span><span class="wh hot">52 days</span></div><div class="cr"><span class="chip c-red">Chase today</span><span class="people"><span class="av" style="background:#2E6BE6">FD</span></span></div></div><div class="dcard"><p class="tt">Tremaine</p><p class="sub">Home loan</p><div class="mr"><span class="amt">$790k</span><span class="wh">8 days</span></div><div class="cr"><span class="chip c-blue">Purchase</span><span class="people"><span class="av" style="background:#2E6BE6">FD</span></span></div></div><div class="dcard"><p class="tt">Ilic</p><p class="sub">Home loan</p><div class="mr"><span class="amt">$540k</span><span class="wh">4 days</span></div><div class="cr"><span class="chip c-blue">Purchase</span><span class="people"><span class="av" style="background:#2E6BE6">FD</span></span></div></div><div class="dcard wash"><p class="tt">Osei</p><p class="sub">Home loan</p><div class="mr"><span class="amt">$1.2m</span><span class="wh hot">52 days</span></div><div class="cr"><span class="chip c-red">Chase today</span><span class="people"><span class="av" style="background:#2E6BE6">TN</span></span></div></div><div class="dcard"><p class="tt">Castellano</p><p class="sub">Home loan</p><div class="mr"><span class="amt">$680k</span><span class="wh">14 days</span></div><div class="cr"><span class="chip c-blue">Refinance</span><span class="people"><span class="av" style="background:#117A45">KA</span><span class="av" style="background:#9A3F8C">JB</span></span></div></div></div></div>
+<div class="col"><div class="colh"><span class="nm">BC</span><span class="chip c-red" style="margin:0">2 to chase</span><span class="cnt">9</span></div><div class="colmoney">$7.2m</div><div class="scroller"><div class="rule"><span class="l"></span><span class="t">Being written &middot; 6</span><span class="l"></span></div><div class="dcard wash"><p class="tt">Larkin</p><p class="sub">Home loan &middot; Bankwest</p><div class="mr"><span class="amt">$940k</span><span class="wh hot">63 days</span></div><div class="cr"><span class="chip c-red">Chase today</span><span class="people"><span class="av" style="background:#2E6BE6">FD</span></span></div></div><div class="dcard wash"><p class="tt">Brackett</p><p class="sub">Home loan &middot; Pepper</p><div class="mr"><span class="amt">$760k</span><span class="wh hot">63 days</span></div><div class="cr"><span class="chip c-red">Chase today</span><span class="people"><span class="av" style="background:#117A45">KA</span></span></div></div><div class="dcard"><p class="tt">Vance</p><p class="sub">Home loan &middot; Pepper</p><div class="mr"><span class="amt">$615k</span><span class="wh">11 days</span></div><div class="cr"><span class="chip c-blue">Purchase</span><span class="people"><span class="av" style="background:#117A45">KA</span></span></div></div><div class="dcard"><p class="tt">Pemberton</p><p class="sub">Home loan &middot; Westpac</p><div class="mr"><span class="amt">$680k</span><span class="wh">14 days</span></div><div class="cr"><span class="chip c-blue">Purchase</span><span class="people"><span class="av" style="background:#7C8894">EM</span><span class="av" style="background:#2E6BE6">TN</span></span></div></div><div class="dcard"><p class="tt">Holloway</p><p class="sub">Home loan &middot; ubank</p><div class="mr"><span class="amt">$940k</span><span class="wh">2 days</span></div><div class="cr"><span class="chip c-blue">Purchase</span><span class="people"><span class="av" style="background:#B26A1A">LS</span></span></div></div><div class="dcard"><p class="tt">Ferraro</p><p class="sub">Home loan &middot; Pepper</p><div class="mr"><span class="amt">$720k</span><span class="wh">1 day</span></div><div class="cr"><span class="chip c-blue">Investment</span><span class="people"><span class="av" style="background:#B26A1A">LS</span></span></div></div><div class="lane"><div class="lanehd"><span class="lt">With the client &middot; 3</span><span class="lc">3</span></div><div class="dcard"><p class="tt">Marchetti</p><p class="sub">Home loan &middot; Pepper</p><div class="mr"><span class="amt">$1.2m</span><span class="wh">3 days</span></div><div class="cr"><span class="chip c-blue">Construction</span><span class="people"><span class="av" style="background:#117A45">KA</span><span class="av" style="background:#9A3F8C">JB</span></span></div></div><div class="dcard"><p class="tt">Teixeira</p><p class="sub">Home loan &middot; ANZ</p><div class="mr"><span class="amt">$615k</span><span class="wh">33 days</span></div><div class="cr"><span class="chip c-blue">Investment</span><span class="chip c-grey">33 days</span><span class="people"><span class="av" style="background:#B26A1A">LS</span></span></div></div><div class="dcard"><p class="tt">Montoya</p><p class="sub">Home loan &middot; CBA</p><div class="mr"><span class="amt">$720k</span><span class="wh">41 days</span></div><div class="cr"><span class="chip c-blue">Refinance</span><span class="chip c-grey">41 days</span><span class="people"><span class="av" style="background:#2E6BE6">TN</span><span class="av" style="background:#B26A1A">LS</span></span></div></div></div></div></div>
+<div class="col"><div class="colh"><span class="nm">Lending options</span><span class="chip c-red" style="margin:0">1 to chase</span><span class="cnt">7</span></div><div class="colmoney">$4.5m</div><div class="scroller"><div class="dcard wash"><p class="tt">Halloran</p><p class="sub">Home loan &middot; Bankwest</p><div class="mr"><span class="amt">$680k</span><span class="wh">33 days</span></div><div class="cr"><span class="chip c-red">Answer needed</span><span class="people"><span class="av" style="background:#2E6BE6">FD</span><span class="av" style="background:#9A3F8C">JB</span></span></div></div><div class="dcard"><p class="tt">Garrity</p><p class="sub">Home loan &middot; ubank</p><div class="mr"><span class="amt">$420k</span><span class="wh">2 days</span></div><div class="cr"><span class="chip c-blue">Purchase</span><span class="people"><span class="av" style="background:#7C8894">EM</span><span class="av" style="background:#117A45">KA</span></span></div></div><div class="dcard"><p class="tt">Nolan & Reyes</p><p class="sub">Home loan &middot; Bankwest</p><div class="mr"><span class="amt">$940k</span><span class="wh">6 days</span></div><div class="cr"><span class="chip c-blue">Construction</span><span class="people"><span class="av" style="background:#B26A1A">LS</span></span></div></div><div class="dcard"><p class="tt">Whitfield</p><p class="sub">Home loan &middot; ubank</p><div class="mr"><span class="amt">$615k</span><span class="wh">41 days</span></div><div class="cr"><span class="chip c-blue">Refinance</span><span class="chip c-grey">41 days</span><span class="people"><span class="av" style="background:#9A3F8C">JB</span></span></div></div><div class="dcard"><p class="tt">Sutcliffe</p><p class="sub">Home loan &middot; CBA</p><div class="mr"><span class="amt">$465k</span><span class="wh">6 days</span></div><div class="cr"><span class="chip c-blue">Refinance</span><span class="people"><span class="av" style="background:#2E6BE6">FD</span><span class="av" style="background:#2E6BE6">TN</span></span></div></div><div class="dcard"><p class="tt">Bhandari</p><p class="sub">Home loan &middot; ING</p><div class="mr"><span class="amt">$760k</span><span class="wh">11 days</span></div><div class="cr"><span class="chip c-blue">Refinance</span><span class="people"><span class="av" style="background:#2E6BE6">FD</span></span></div></div><div class="dcard"><p class="tt">Odhiambo</p><p class="sub">Home loan &middot; NAB</p><div class="mr"><span class="amt">$615k</span><span class="wh">6 days</span></div><div class="cr"><span class="chip c-blue">Refinance</span><span class="people"><span class="av" style="background:#7C8894">EM</span></span></div></div></div></div>
+<div class="col"><div class="colh"><span class="nm">Compliance</span><span class="cnt">5</span></div><div class="colmoney">$3.7m</div><div class="scroller"><div class="dcard"><p class="tt">Delaney</p><p class="sub">Home loan &middot; NAB</p><div class="mr"><span class="amt">$540k</span><span class="wh">14 days</span></div><div class="cr"><span class="chip c-blue">Refinance</span><span class="people"><span class="av" style="background:#2E6BE6">FD</span><span class="av" style="background:#2E6BE6">TN</span></span></div></div><div class="dcard"><p class="tt">Marchetti</p><p class="sub">Home loan &middot; Westpac</p><div class="mr"><span class="amt">$1.4m</span><span class="wh">8 days</span></div><div class="cr"><span class="chip c-blue">Purchase</span><span class="people"><span class="av" style="background:#B26A1A">LS</span></span></div></div><div class="dcard"><p class="tt">Okonjo</p><p class="sub">Home loan &middot; ubank</p><div class="mr"><span class="amt">$465k</span><span class="wh">14 days</span></div><div class="cr"><span class="chip c-blue">Investment</span><span class="people"><span class="av" style="background:#117A45">KA</span></span></div></div><div class="dcard"><p class="tt">Sandoval</p><p class="sub">Home loan &middot; ING</p><div class="mr"><span class="amt">$465k</span><span class="wh">2 days</span></div><div class="cr"><span class="chip c-blue">Investment</span><span class="people"><span class="av" style="background:#2E6BE6">FD</span><span class="av" style="background:#117A45">KA</span></span></div></div><div class="dcard"><p class="tt">Nakamura</p><p class="sub">Home loan &middot; ubank</p><div class="mr"><span class="amt">$850k</span><span class="wh">8 days</span></div><div class="cr"><span class="chip c-blue">Construction</span><span class="people"><span class="av" style="background:#9A3F8C">JB</span></span></div></div></div></div>
+<div class="col"><div class="colh"><span class="nm">Compliance sent</span><span class="cnt">4</span></div><div class="colmoney">$3.1m</div><div class="scroller"><div class="dcard wash-purple"><p class="tt">Ashworth</p><p class="sub">Home loan &middot; Pepper</p><div class="mr"><span class="amt">$380k</span><span class="wh">63 days</span></div><div class="cr"><span class="chip c-purple">Assessment lodged</span><span class="people"><span class="av" style="background:#2E6BE6">TN</span><span class="av" style="background:#9A3F8C">JB</span></span></div></div><div class="dcard wash-purple"><p class="tt">Baptiste</p><p class="sub">Home loan &middot; Pepper</p><div class="mr"><span class="amt">$940k</span><span class="wh">26 days</span></div><div class="cr"><span class="chip c-purple">Sent 3 days ago</span><span class="people"><span class="av" style="background:#2E6BE6">FD</span></span></div></div><div class="dcard"><p class="tt">Reed & Hale</p><p class="sub">Home loan &middot; Bankwest</p><div class="mr"><span class="amt">$510k</span><span class="wh">6 days</span></div><div class="cr"><span class="chip c-blue">Investment</span><span class="people"><span class="av" style="background:#2E6BE6">TN</span></span></div></div><div class="dcard wash-purple"><p class="tt">Kirby</p><p class="sub">Home loan &middot; St.George</p><div class="mr"><span class="amt">$1.2m</span><span class="wh">14 days</span></div><div class="cr"><span class="chip c-purple">Assessment lodged</span><span class="people"><span class="av" style="background:#B26A1A">LS</span><span class="av" style="background:#2E6BE6">FD</span></span></div></div></div></div>
+<div class="col"><div class="colh"><span class="nm">Lodged</span><span class="cnt">11</span></div><div class="colmoney">$8.8m</div><div class="scroller"><div class="dcard wash-purple"><p class="tt">Lindqvist</p><p class="sub">Home loan &middot; ING</p><div class="mr"><span class="amt">$790k</span><span class="wh">26 days</span></div><div class="cr"><span class="chip c-purple">Sent 3 days ago</span><span class="people"><span class="av" style="background:#2E6BE6">TN</span></span></div></div><div class="dcard wash-purple"><p class="tt">Verhoeven</p><p class="sub">Home loan &middot; ING</p><div class="mr"><span class="amt">$510k</span><span class="wh">14 days</span></div><div class="cr"><span class="chip c-purple">Waiting on valuation</span><span class="people"><span class="av" style="background:#7C8894">EM</span></span></div></div><div class="dcard"><p class="tt">Rahimi</p><p class="sub">Home loan &middot; Pepper</p><div class="mr"><span class="amt">$790k</span><span class="wh">3 days</span></div><div class="cr"><span class="chip c-blue">Refinance</span><span class="people"><span class="av" style="background:#117A45">KA</span><span class="av" style="background:#7C8894">EM</span></span></div></div><div class="dcard wash-purple"><p class="tt">Beaumont</p><p class="sub">Home loan &middot; NAB</p><div class="mr"><span class="amt">$1.2m</span><span class="wh">14 days</span></div><div class="cr"><span class="chip c-purple">With the lender</span><span class="people"><span class="av" style="background:#7C8894">EM</span><span class="av" style="background:#117A45">KA</span></span></div></div><div class="dcard wash-purple"><p class="tt">Cardoso</p><p class="sub">Home loan &middot; CBA</p><div class="mr"><span class="amt">$1.1m</span><span class="wh">52 days</span></div><div class="cr"><span class="chip c-purple">With the lender</span><span class="people"><span class="av" style="background:#B26A1A">LS</span></span></div></div><div class="dcard"><p class="tt">Hallstrom</p><p class="sub">Home loan &middot; ANZ</p><div class="mr"><span class="amt">$850k</span><span class="wh">4 days</span></div><div class="cr"><span class="chip c-blue">Refinance</span><span class="people"><span class="av" style="background:#7C8894">EM</span></span></div></div><div class="dcard wash-purple"><p class="tt">Nakamura</p><p class="sub">Home loan &middot; Westpac</p><div class="mr"><span class="amt">$420k</span><span class="wh">41 days</span></div><div class="cr"><span class="chip c-purple">Sent 3 days ago</span><span class="people"><span class="av" style="background:#9A3F8C">JB</span></span></div></div><div class="dcard wash-purple"><p class="tt">Yilmaz</p><p class="sub">Home loan &middot; Bankwest</p><div class="mr"><span class="amt">$1.4m</span><span class="wh">6 days</span></div><div class="cr"><span class="chip c-purple">With the lender</span><span class="people"><span class="av" style="background:#B26A1A">LS</span><span class="av" style="background:#9A3F8C">JB</span></span></div></div><div class="dcard"><p class="tt">Okafor</p><p class="sub">Home loan &middot; Pepper</p><div class="mr"><span class="amt">$850k</span><span class="wh">41 days</span></div><div class="cr"><span class="chip c-blue">Construction</span><span class="chip c-grey">41 days</span><span class="people"><span class="av" style="background:#2E6BE6">FD</span></span></div></div><div class="dcard wash-purple"><p class="tt">Falconer</p><p class="sub">Home loan &middot; Macquarie</p><div class="mr"><span class="amt">$420k</span><span class="wh">6 days</span></div><div class="cr"><span class="chip c-purple">Waiting on valuation</span><span class="people"><span class="av" style="background:#7C8894">EM</span><span class="av" style="background:#2E6BE6">TN</span></span></div></div><div class="dcard wash-purple"><p class="tt">Santoso</p><p class="sub">Home loan &middot; Bankwest</p><div class="mr"><span class="amt">$380k</span><span class="wh">33 days</span></div><div class="cr"><span class="chip c-purple">With the lender</span><span class="people"><span class="av" style="background:#2E6BE6">FD</span></span></div></div></div></div>
+<div class="col"><div class="colh"><span class="nm">Preapproved</span><span class="chip c-red" style="margin:0">1 to chase</span><span class="cnt">8</span></div><div class="colmoney">$5.7m</div><div class="scroller"><div class="dcard wash-purple"><p class="tt">Kirilenko</p><p class="sub">Home loan &middot; Macquarie</p><div class="mr"><span class="amt">$760k</span><span class="wh">4 days</span></div><div class="cr"><span class="chip c-purple">With the lender</span><span class="people"><span class="av" style="background:#2E6BE6">FD</span></span></div></div><div class="dcard wash-purple"><p class="tt">Dlamini</p><p class="sub">Home loan &middot; CBA</p><div class="mr"><span class="amt">$890k</span><span class="wh">2 days</span></div><div class="cr"><span class="chip c-purple">With the lender</span><span class="people"><span class="av" style="background:#117A45">KA</span></span></div></div><div class="dcard wash"><p class="tt">Whitfield</p><p class="sub">Home loan &middot; ING</p><div class="mr"><span class="amt">$380k</span><span class="wh hot">52 days</span></div><div class="cr"><span class="chip c-red">Chase today</span><span class="people"><span class="av" style="background:#117A45">KA</span></span></div></div><div class="dcard wash-purple"><p class="tt">Belperio</p><p class="sub">Home loan &middot; St.George</p><div class="mr"><span class="amt">$760k</span><span class="wh">52 days</span></div><div class="cr"><span class="chip c-purple">With the client</span><span class="people"><span class="av" style="background:#2E6BE6">TN</span></span></div></div><div class="dcard wash-purple"><p class="tt">Camilleri</p><p class="sub">Home loan &middot; Bankwest</p><div class="mr"><span class="amt">$720k</span><span class="wh">2 days</span></div><div class="cr"><span class="chip c-purple">Assessment lodged</span><span class="people"><span class="av" style="background:#9A3F8C">JB</span></span></div></div><div class="dcard"><p class="tt">Nguyen & Tran</p><p class="sub">Home loan &middot; Macquarie</p><div class="mr"><span class="amt">$680k</span><span class="wh">33 days</span></div><div class="cr"><span class="chip c-blue">Construction</span><span class="chip c-grey">33 days</span><span class="people"><span class="av" style="background:#B26A1A">LS</span><span class="av" style="background:#2E6BE6">TN</span></span></div></div><div class="dcard wash-purple"><p class="tt">Olszewski</p><p class="sub">Home loan &middot; CBA</p><div class="mr"><span class="amt">$850k</span><span class="wh">14 days</span></div><div class="cr"><span class="chip c-purple">With the client</span><span class="people"><span class="av" style="background:#2E6BE6">TN</span><span class="av" style="background:#2E6BE6">FD</span></span></div></div><div class="dcard wash-purple"><p class="tt">Brennan</p><p class="sub">Home loan &middot; ubank</p><div class="mr"><span class="amt">$680k</span><span class="wh">4 days</span></div><div class="cr"><span class="chip c-purple">Assessment lodged</span><span class="people"><span class="av" style="background:#7C8894">EM</span><span class="av" style="background:#2E6BE6">TN</span></span></div></div></div></div>
+<div class="shut purple"><span class="n">3</span><span class="v">Offer accepted</span></div>
+<div class="col"><div class="colh"><span class="nm">Formal approval</span><span class="chip c-red" style="margin:0">1 to chase</span><span class="cnt">6</span></div><div class="colmoney">$5.2m</div><div class="scroller"><div class="dcard wash-purple"><p class="tt">Pereira</p><p class="sub">Home loan &middot; ubank</p><div class="mr"><span class="amt">$380k</span><span class="wh">8 days</span></div><div class="cr"><span class="chip c-purple">Waiting on valuation</span><span class="people"><span class="av" style="background:#7C8894">EM</span></span></div></div><div class="dcard wash-purple"><p class="tt">Baptiste</p><p class="sub">Home loan &middot; ING</p><div class="mr"><span class="amt">$1.1m</span><span class="wh">52 days</span></div><div class="cr"><span class="chip c-purple">With the client</span><span class="people"><span class="av" style="background:#2E6BE6">FD</span></span></div></div><div class="dcard wash"><p class="tt">Sorensen</p><p class="sub">Home loan &middot; Macquarie</p><div class="mr"><span class="amt">$1.1m</span><span class="wh hot">52 days</span></div><div class="cr"><span class="chip c-red">Chase today</span><span class="people"><span class="av" style="background:#7C8894">EM</span><span class="av" style="background:#117A45">KA</span></span></div></div><div class="dcard wash-purple"><p class="tt">Dimitriou</p><p class="sub">Home loan &middot; St.George</p><div class="mr"><span class="amt">$1.4m</span><span class="wh">3 days</span></div><div class="cr"><span class="chip c-purple">Waiting on valuation</span><span class="people"><span class="av" style="background:#B26A1A">LS</span></span></div></div><div class="dcard wash-purple"><p class="tt">O'Donnell</p><p class="sub">Home loan &middot; ING</p><div class="mr"><span class="amt">$465k</span><span class="wh">52 days</span></div><div class="cr"><span class="chip c-purple">With the lender</span><span class="people"><span class="av" style="background:#B26A1A">LS</span><span class="av" style="background:#117A45">KA</span></span></div></div><div class="dcard"><p class="tt">Harrington</p><p class="sub">Home loan &middot; Bankwest</p><div class="mr"><span class="amt">$760k</span><span class="wh">6 days</span></div><div class="cr"><span class="chip c-blue">Refinance</span><span class="people"><span class="av" style="background:#117A45">KA</span></span></div></div></div></div>
+<div class="shut "><span class="n">4</span><span class="v">Contracts returned</span></div>
+<div class="col"><div class="colh"><span class="nm">Settlement booked</span><span class="cnt">5</span></div><div class="colmoney">$3.4m</div><div class="scroller"><div class="dcard wash-purple"><p class="tt">Hussain</p><p class="sub">Home loan &middot; CBA</p><div class="mr"><span class="amt">$760k</span><span class="wh">26 days</span></div><div class="cr"><span class="chip c-purple">Assessment lodged</span><span class="people"><span class="av" style="background:#2E6BE6">FD</span><span class="av" style="background:#B26A1A">LS</span></span></div></div><div class="dcard wash-purple"><p class="tt">Hameed & Sadiq</p><p class="sub">Home loan &middot; Macquarie</p><div class="mr"><span class="amt">$380k</span><span class="wh">26 days</span></div><div class="cr"><span class="chip c-purple">Assessment lodged</span><span class="people"><span class="av" style="background:#9A3F8C">JB</span><span class="av" style="background:#B26A1A">LS</span></span></div></div><div class="dcard"><p class="tt">Kaur & Singh</p><p class="sub">Home loan &middot; ubank</p><div class="mr"><span class="amt">$510k</span><span class="wh">14 days</span></div><div class="cr"><span class="chip c-blue">Refinance</span><span class="people"><span class="av" style="background:#B26A1A">LS</span></span></div></div><div class="dcard wash-purple"><p class="tt">Steadman</p><p class="sub">Home loan &middot; Westpac</p><div class="mr"><span class="amt">$1.2m</span><span class="wh">11 days</span></div><div class="cr"><span class="chip c-purple">Assessment lodged</span><span class="people"><span class="av" style="background:#9A3F8C">JB</span></span></div></div><div class="dcard wash-purple"><p class="tt">Lindgren</p><p class="sub">Home loan &middot; ING</p><div class="mr"><span class="amt">$540k</span><span class="wh">8 days</span></div><div class="cr"><span class="chip c-purple">Assessment lodged</span><span class="people"><span class="av" style="background:#117A45">KA</span></span></div></div></div></div>
+<div class="col"><div class="colh"><span class="nm">Settled</span><span class="cnt">9</span></div><div class="colmoney">$7.7m</div><div class="scroller"><div class="dcard wash-green"><p class="tt">Escobar</p><p class="sub">Home loan &middot; Macquarie</p><div class="mr"><span class="amt">$1.1m</span><span class="wh"></span></div><div class="cr"><span class="chip c-green">Settled</span><span class="people"><span class="av" style="background:#2E6BE6">TN</span></span></div></div><div class="dcard wash-green"><p class="tt">Novak</p><p class="sub">Home loan &middot; CBA</p><div class="mr"><span class="amt">$380k</span><span class="wh"></span></div><div class="cr"><span class="chip c-green">Settled</span><span class="people"><span class="av" style="background:#2E6BE6">FD</span></span></div></div><div class="dcard wash-green"><p class="tt">Dao & Luu</p><p class="sub">Home loan &middot; NAB</p><div class="mr"><span class="amt">$790k</span><span class="wh"></span></div><div class="cr"><span class="chip c-green">Settled</span><span class="people"><span class="av" style="background:#9A3F8C">JB</span><span class="av" style="background:#2E6BE6">FD</span></span></div></div><div class="dcard wash-green"><p class="tt">Thompson & Reid</p><p class="sub">Home loan &middot; Pepper</p><div class="mr"><span class="amt">$1.4m</span><span class="wh"></span></div><div class="cr"><span class="chip c-green">Settled</span><span class="people"><span class="av" style="background:#B26A1A">LS</span><span class="av" style="background:#7C8894">EM</span></span></div></div><div class="dcard wash-green"><p class="tt">Weatherly</p><p class="sub">Home loan &middot; St.George</p><div class="mr"><span class="amt">$680k</span><span class="wh"></span></div><div class="cr"><span class="chip c-green">Settled</span><span class="people"><span class="av" style="background:#9A3F8C">JB</span></span></div></div><div class="dcard wash-green"><p class="tt">Tupou</p><p class="sub">Home loan &middot; St.George</p><div class="mr"><span class="amt">$1.1m</span><span class="wh"></span></div><div class="cr"><span class="chip c-green">Settled</span><span class="people"><span class="av" style="background:#117A45">KA</span><span class="av" style="background:#B26A1A">LS</span></span></div></div><div class="dcard wash-green"><p class="tt">Kowalski</p><p class="sub">Home loan &middot; CBA</p><div class="mr"><span class="amt">$680k</span><span class="wh"></span></div><div class="cr"><span class="chip c-green">Settled</span><span class="people"><span class="av" style="background:#2E6BE6">TN</span></span></div></div><div class="dcard wash-green"><p class="tt">Achev</p><p class="sub">Home loan &middot; NAB</p><div class="mr"><span class="amt">$890k</span><span class="wh"></span></div><div class="cr"><span class="chip c-green">Settled</span><span class="people"><span class="av" style="background:#117A45">KA</span></span></div></div><div class="dcard wash-green"><p class="tt">Krishnan</p><p class="sub">Home loan &middot; ANZ</p><div class="mr"><span class="amt">$680k</span><span class="wh"></span></div><div class="cr"><span class="chip c-green">Settled</span><span class="people"><span class="av" style="background:#2E6BE6">TN</span></span></div></div></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="key">
+  <p><b>What you should be able to do with your eyes, not your head.</b> Count the pink. On seventy deals
+  there are a handful, and they are the only thing in the whole book that is actually late. Everything
+  purple is out of our hands &mdash; sitting with a lender or a client &mdash; so the morning question
+  "what is actually mine today" has a visual answer for the first time.</p>
+  <p><b>Most of the board is still plain white</b>, which is the whole reason the colours work. If half the
+  cards were tinted it would be wallpaper.</p>
+  <p><b>Settled is almost entirely green</b>, which is the one column where that is a pleasure rather than
+  information.</p>
+</div>
+
+<h2><span class="n">And to be clear</span>Nothing about how it works changes</h2>
+<div class="key">
+  <p>This is a repaint. Every behaviour on that board is the behaviour you already have:</p>
+  <p><b>The sideways scroll</b> &mdash; the pane is the height of what is left of the screen, the bar sits at
+  the foot of it where it is always reachable, and shift with a mouse wheel moves it sideways. Unchanged.</p>
+  <p><b>Each column scrolls its own cards</b> while its name, count and total stay pinned. Unchanged &mdash;
+  that is Robin's fix from 30 September and I am not touching it.</p>
+  <p><b>Dragging a card</b> does exactly what the button on the deal does, and dragging near either edge
+  pulls the next column into view. Unchanged.</p>
+  <p><b>Folding a column</b> leaves the count on the strip, because a fold that hides its count is a way to
+  lose deals. Unchanged.</p>
+  <p><b>The two lanes in BC</b>, the filters, the counts reading "3 of 6" while a filter is on, the delete
+  under the hover, the quick-look button, the move-back warning. All unchanged.</p>
+  <p><b>What actually changes in the code</b> is 37 hand-typed colours becoming about ten named ones, plus
+  one new rule that says which cards get a wash. No layout, no data, no drag, no scroll.</p>
+</div>
+
+<div class="q">
+  <b>One answer left and I can start.</b> Which surface &mdash; White, Paper, Light slate or Slate? Switch
+  between them at the top with the full board on screen; that is the fairest test of the four.
+  <br><br>
+  Then the first ship is the invisible one: the colours become names, nothing changes on screen, and a test
+  proves nothing changed. The look goes on in the ship after that, and comes off again in one command if it
+  is wrong in daylight.
+</div>
+
+<p class="note" style="margin-top:20px">Mock-up only. No code has changed. Every name and figure on that
+board is invented.</p>
+
+</div>
+
+<script>
+  var root=document.documentElement,
+      media=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null,
+      choice='light';
+  function apply(){root.setAttribute('data-theme',choice==='auto'?(media&&media.matches?'dark':'light'):choice)}
+  function press(c,a,v){Array.prototype.forEach.call(c.querySelectorAll('button'),function(b){
+    b.setAttribute('aria-pressed',b.getAttribute(a)===v?'true':'false')})}
+  function markBrand(v){Array.prototype.forEach.call(document.querySelectorAll('#brandSeg span'),function(s){
+    s.className=s.getAttribute('data-t')===v?'on':''})}
+
+  document.getElementById('segSurface').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    root.setAttribute('data-surface',b.getAttribute('data-s')); press(this,'data-s',b.getAttribute('data-s'));
+  });
+  document.getElementById('segTheme').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    choice=b.getAttribute('data-t'); press(this,'data-t',choice); markBrand(choice); apply();
+  });
+  var bs=document.getElementById('brandSeg');
+  if(bs) bs.addEventListener('click',function(e){
+    var s=e.target.closest('span[data-t]'); if(!s) return;
+    choice=s.getAttribute('data-t'); markBrand(choice);
+    press(document.getElementById('segTheme'),'data-t',choice); apply();
+  });
+
+  // Shift + wheel scrolls the pane sideways, exactly as the real board does.
+  var pane=document.getElementById('pane');
+  if(pane) pane.addEventListener('wheel',function(e){
+    if(!e.shiftKey) return; e.preventDefault(); pane.scrollLeft += (e.deltaY || e.deltaX);
+  },{passive:false});
+
+  if(media&&media.addEventListener)media.addEventListener('change',function(){if(choice==='auto')apply()});
+  markBrand('light'); apply();
+</script>
+</body>
+</html>

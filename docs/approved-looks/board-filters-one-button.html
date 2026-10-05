@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Board filters — one button</title>
+<style>
+  :root{
+    --ink:#221F1B; --body:#575046; --muted:#A29889; --faint:#C3BDB2;
+    --rule:#EFEAE0; --sand:#FCFAF6; --edge:#E5DED2;
+    --blue:#0E8FCB; --bluebg:#EAF6FD; --blueedge:#BEDFF3;
+    --hot:#AD4227; --hotbg:#FBEDE9; --hotedge:#EFD3CB;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#F6F7F9;color:#1F2328;padding:26px 16px 70px;
+       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 5px}
+  .lede{font-size:13px;color:#5B6672;line-height:1.6;margin:0 0 16px;max-width:82ch}
+  .lede b{color:#1F2328}
+  h2{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:#98A1AB;
+     margin:30px 0 7px;border-top:1px solid #EEF0F2;padding-top:14px}
+  .try{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+       color:#0F7B4F;background:#F4FBF7;border:1px solid #BBE7CF;border-radius:5px;padding:3px 8px;margin-bottom:12px}
+
+  .board{background:#fff;border:1px solid #E3E6E8;border-radius:12px;box-shadow:0 1px 3px rgba(20,25,30,.05)}
+
+  /* the one row — exactly what is there today, plus one button */
+  .row0{border-bottom:1px solid #F2F4F5;padding:10px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .fake{border:1px solid #E3E6E8;border-radius:8px;padding:6px 11px;font-size:12.5px;color:#8A8A84;background:#fff;
+        opacity:.62}
+  .fake.search{flex:1;min-width:190px;color:#C3BDB2}
+  .fake.go{background:#2DBEFF;border-color:#2DBEFF;color:#fff;font-weight:600;opacity:.62}
+
+  .drop{position:relative}
+  .fbtn{border:1px solid var(--edge);background:#fff;border-radius:8px;padding:6px 11px;font-size:12.5px;
+        color:var(--body);cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+        font-weight:500}
+  .fbtn:hover{border-color:#D6CCBC}
+  .fbtn.on{border-color:var(--blue);background:var(--bluebg);color:#0A5E88;font-weight:600}
+  .fbtn .cnt{background:var(--blue);color:#fff;border-radius:20px;font-size:10px;font-weight:700;
+             padding:0 6px;line-height:15px}
+  .fbtn .car{color:var(--faint);font-size:9px}
+
+  /* the one panel */
+  .panel{position:absolute;top:calc(100% + 6px);left:0;z-index:30;background:#fff;border:1px solid var(--edge);
+         border-radius:11px;box-shadow:0 10px 30px rgba(20,25,30,.16);width:280px;display:none;overflow:hidden}
+  .panel.open{display:block}
+  .pbody{max-height:370px;overflow-y:auto;padding:5px}
+  .pbody::-webkit-scrollbar{width:8px}
+  .pbody::-webkit-scrollbar-thumb{background:#E0D8CA;border-radius:4px}
+
+  .sec{border-top:1px solid #F4F1EB}
+  .sec:first-child{border-top:none}
+  .shead{display:flex;align-items:center;gap:6px;padding:8px 9px 6px;cursor:pointer;user-select:none}
+  .sname{font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+  .spick{font-size:10.5px;color:var(--blue);font-weight:600}
+  .scar{margin-left:auto;color:var(--faint);font-size:9px;transition:transform .12s}
+  .sec.shut .scar{transform:rotate(-90deg)}
+  .sec.shut .sbody{display:none}
+  .sbody{padding:0 4px 6px}
+
+  .opt{display:flex;align-items:center;gap:8px;padding:5px 7px;border-radius:7px;font-size:12.5px;
+       color:var(--body);cursor:pointer}
+  .opt:hover{background:#FAF8F4}
+  .box{width:15px;height:15px;border-radius:4px;border:1.5px solid #CBD2D8;background:#fff;flex:none;
+       display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:700}
+  .opt.sel .box{background:var(--blue);border-color:var(--blue)}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .onum{margin-left:auto;font-size:10.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+  .opt.empty{opacity:.4}
+
+  /* needs attention rides at the top, because it is a yes/no not a list */
+  .toggle{display:flex;align-items:center;gap:8px;padding:9px;margin:4px;border-radius:8px;cursor:pointer;
+          border:1px solid var(--edge);font-size:12.5px;color:var(--body)}
+  .toggle:hover{border-color:#D6CCBC}
+  .toggle.on{border-color:var(--hotedge);background:var(--hotbg);color:var(--hot);font-weight:600}
+  .toggle .onum{color:var(--faint)}
+  .toggle.on .onum{color:var(--hot)}
+
+  .pfoot{border-top:1px solid #F4F1EB;padding:7px 9px;display:flex;align-items:center;gap:8px;background:#FCFAF6}
+  .pfoot .n{font-size:11.5px;color:var(--muted)}
+  .lnk{margin-left:auto;border:none;background:none;font-size:12px;color:var(--blue);font-weight:600;
+       cursor:pointer;padding:2px 4px}
+  .lnk:hover{text-decoration:underline}
+  .lnk[disabled]{color:var(--faint);cursor:default;text-decoration:none}
+
+  /* the honesty bar */
+  .bar{display:none;border-bottom:1px solid var(--blueedge);background:var(--bluebg);padding:8px 14px;
+       font-size:12.5px;color:#0A5E88;align-items:center;gap:8px;flex-wrap:wrap}
+  .bar.show{display:flex}
+  .bar b{color:#084B6E}
+  .chip{background:#fff;border:1px solid var(--blueedge);border-radius:20px;padding:1px 6px 1px 8px;
+        font-size:11.5px;color:#0A5E88;display:inline-flex;align-items:center;gap:5px}
+  .chip .x{color:#7FAFC9;cursor:pointer;font-size:13px;line-height:1}
+  .chip .x:hover{color:#084B6E}
+  .clear{margin-left:auto;border:1px solid var(--blueedge);background:#fff;border-radius:7px;padding:4px 10px;
+         font-size:12px;color:#0A5E88;font-weight:600;cursor:pointer}
+
+  /* the board */
+  .rail{overflow-x:auto;overflow-y:hidden;padding:12px;height:380px}
+  .rowb{display:flex;gap:10px;align-items:stretch;height:100%;width:max-content}
+  .col{flex:none;width:238px;border-radius:11px;border:1px solid var(--rule);background:var(--sand);
+       padding:10px;display:flex;flex-direction:column;min-height:0}
+  .chead{display:flex;align-items:baseline;gap:6px;margin-bottom:3px;padding:0 2px;flex:none}
+  .cname{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#7A7266}
+  .cnum{margin-left:auto;font-size:10.5px;font-weight:700;color:var(--body);background:#fff;
+        border:1px solid var(--edge);border-radius:20px;padding:0 6px;font-variant-numeric:tabular-nums}
+  .cnum.dim{color:var(--faint)}
+  .cmoney{font-size:10.5px;color:#7A7266;margin:0 2px 8px;font-variant-numeric:tabular-nums;flex:none}
+  .cards{flex:1;min-height:0;overflow-y:auto;padding-right:3px}
+  .cards::-webkit-scrollbar{width:7px}
+  .cards::-webkit-scrollbar-thumb{background:#E0D8CA;border-radius:4px}
+  .rail::-webkit-scrollbar{height:10px}
+  .rail::-webkit-scrollbar-thumb{background:#D6CCBC;border-radius:5px}
+  .rail::-webkit-scrollbar-track{background:#F6F4EF;border-radius:5px}
+  .card{background:#fff;border:1px solid var(--edge);border-radius:10px;padding:9px;margin-bottom:8px}
+  .card.warm{border-color:var(--hotedge)}
+  .cn{font-size:12px;font-weight:600;color:var(--ink);line-height:1.3;margin-bottom:4px}
+  .cm{font-size:10.5px;color:var(--muted);line-height:1.4}
+  .cbot{display:flex;align-items:center;gap:5px;margin-top:6px}
+  .pill{font-size:9.5px;color:var(--body);background:#F4F1EB;border-radius:4px;padding:1px 5px}
+  .pill.nudge{color:var(--hot);background:var(--hotbg)}
+  .who{margin-left:auto;display:flex}
+  .av{width:18px;height:18px;border-radius:50%;font-size:8px;font-weight:700;color:#fff;
+      display:flex;align-items:center;justify-content:center;border:1.5px solid #fff;margin-left:-5px}
+  .av:first-child{margin-left:0}
+  .none{font-size:11px;color:var(--faint);text-align:center;padding:14px 0;margin:0}
+
+  .key{background:#fff;border:1px solid #EEF0F2;border-radius:11px;padding:14px 16px;margin-top:8px;
+       font-size:12.5px;color:#5B6672;line-height:1.65}
+  .key b{color:#1F2328}
+  .key p{margin:0 0 10px}.key p:last-child{margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>One button, everything behind it</h1>
+<p class="lede">The row goes back to what it is today plus <b>one</b> control. Everything lives in the
+panel, each group folds away, and when a filter is on it comes back out as a chip on the bar so you
+can drop it without opening anything.</p>
+<div class="try">Try it &mdash; press Filters, pick a broker, then close the panel</div>
+
+<div class="board">
+  <div class="row0">
+    <span class="fake search">Search by name, client, purpose&hellip;</span>
+    <span class="fake">Show settled</span>
+    <span class="fake">Show lost</span>
+    <div class="drop">
+      <button class="fbtn" id="fbtn" onclick="togglePanel(event)">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 5h18M6 12h12M10 19h4"/></svg>
+        Filters <span class="car">&#9662;</span>
+      </button>
+      <div class="panel" id="panel">
+        <div class="pbody" id="pbody"></div>
+        <div class="pfoot"><span class="n" id="pfootN"></span>
+          <button class="lnk" id="pclear" onclick="clearAll(event)">Clear all</button></div>
+      </div>
+    </div>
+    <span class="fake go">+ New deal</span>
+  </div>
+
+  <div class="bar" id="bar">
+    <b id="barCount"></b>
+    <span id="barChips" style="display:flex;gap:5px;flex-wrap:wrap"></span>
+    <button class="clear" onclick="clearAll(event)">Clear all</button>
+  </div>
+
+  <div class="rail"><div class="rowb" id="board"></div></div>
+</div>
+
+<h2>What changed from the last one</h2>
+<div class="key">
+  <p><b>One button instead of four.</b> The row is what you already have plus Filters. Nothing sits
+  open taking space, and the button carries a number when anything is on.</p>
+  <p><b>Each group folds.</b> Broker, Credit officer and Lender each collapse, and the panel opens
+  with everything folded except whatever you last used. Nine brokers and thirty lenders still fit.</p>
+  <p><b>What is on comes out as chips on the bar.</b> So you can see and drop a filter without
+  opening the panel at all &mdash; and the &ldquo;showing 14 of 41&rdquo; is still there, still
+  unmissable.</p>
+  <p><b>An option that would empty the board is greyed</b> rather than hidden, with its zero showing.
+  Hiding it makes a lender look like it has no deals at all; greying it says &ldquo;not with what you
+  have already picked&rdquo;.</p>
+</div>
+
+</div>
+
+<script>
+const BROKERS = [
+  { key:'kylie', name:'Robin Searle',  c:'#3B5BA5' },
+  { key:'fabio', name:'Fabio De Castro', c:'#B25A33' },
+  { key:'mark',  name:'Mark Gallo',    c:'#1E7A4A' },
+  { key:'cris',  name:'Cris Po',       c:'#5B4B8A' },
+]
+const OFFICERS = ['Ellie', 'Katie Amos', 'Win', 'Ria']
+const LENDERS  = ['Bankwest', 'ANZ', 'ubank', 'Macquarie', 'Pepper', 'CBA']
+const COLUMNS = ['Fact Find','BC','Lending options','Compliance','Compliance sent','Lodged',
+                 'Preapproved','Offer accepted','Formal approval','Settled']
+const NAMES = ['Mitchell','Wickwar','Ilbery & Leigh','Chapman','Byrnes','Mullins','Nguyen','Okafor',
+               'Petrides','Salib','Tran','Whitfield','Baptiste','Kaur','Romano','Ferreira','Dimitriou',
+               'Achterberg','Pereira','Sandhu','Volkov','Marchetti']
+
+const DEALS = []
+let seed = 7
+const rnd = n => (seed = (seed * 1103515245 + 12345) % 2147483648) % n
+COLUMNS.forEach((col, ci) => {
+  const n = [6,5,4,6,3,5,4,3,3,2][ci]
+  for (let k = 0; k < n; k++) {
+    DEALS.push({
+      col, name: NAMES[DEALS.length % NAMES.length] + ' 2026',
+      broker: BROKERS[rnd(BROKERS.length)], officer: OFFICERS[rnd(OFFICERS.length)],
+      lender: LENDERS[rnd(LENDERS.length)],
+      amount: 380000 + rnd(9) * 90000, days: rnd(22), nudge: rnd(10) < 3,
+    })
+  }
+})
+
+const F = { broker:new Set(), officer:new Set(), lender:new Set(), nudge:false }
+const SHUT = { broker:false, officer:true, lender:true }   // opens on the one you use most
+let panelOpen = false
+
+const money = n => '$' + n.toLocaleString('en-AU')
+const initials = s => s.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()
+const activeCount = () => F.broker.size + F.officer.size + F.lender.size + (F.nudge ? 1 : 0)
+
+const passes = (d, skip) =>
+  (skip === 'broker'  || !F.broker.size  || F.broker.has(d.broker.key)) &&
+  (skip === 'officer' || !F.officer.size || F.officer.has(d.officer)) &&
+  (skip === 'lender'  || !F.lender.size  || F.lender.has(d.lender)) &&
+  (skip === 'nudge'   || !F.nudge        || d.nudge)
+
+const LABEL = { broker:'Broker', officer:'Credit officer', lender:'Lender' }
+const rowsFor = w => w === 'broker'
+  ? BROKERS.map(b => ({ v:b.key, label:b.name, dot:b.c }))
+  : w === 'officer' ? OFFICERS.map(o => ({ v:o, label:o, dot:'#8A8A84' }))
+  : LENDERS.map(l => ({ v:l, label:l, dot:null }))
+const matches = (d, w, v) => w === 'broker' ? d.broker.key === v : w === 'officer' ? d.officer === v : d.lender === v
+
+function section(w) {
+  const picked = F[w].size
+  const opts = rowsFor(w).map(r => {
+    const n = DEALS.filter(d => passes(d, w) && matches(d, w, r.v)).length
+    const sel = F[w].has(r.v)
+    return `<div class="opt ${sel ? 'sel' : ''} ${n === 0 && !sel ? 'empty' : ''}" onclick="pick(event,'${w}','${r.v}')">
+      <span class="box">&#10003;</span>
+      ${r.dot ? `<span class="dot" style="background:${r.dot}"></span>` : ''}
+      <span>${r.label}</span><span class="onum">${n}</span></div>`
+  }).join('')
+  return `<div class="sec ${SHUT[w] ? 'shut' : ''}">
+    <div class="shead" onclick="fold(event,'${w}')">
+      <span class="sname">${LABEL[w]}</span>
+      ${picked ? `<span class="spick">${picked}</span>` : ''}
+      <span class="scar">&#9662;</span>
+    </div>
+    <div class="sbody">${opts}</div>
+  </div>`
+}
+
+function draw() {
+  const shown = DEALS.filter(d => passes(d))
+  const n = activeCount()
+
+  const btn = document.getElementById('fbtn')
+  btn.className = 'fbtn' + (n ? ' on' : '')
+  btn.querySelector('.car').previousSibling.textContent = ' Filters '
+  btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18M6 12h12M10 19h4"/></svg>
+    Filters ${n ? `<span class="cnt">${n}</span>` : ''} <span class="car">&#9662;</span>`
+
+  const nudgeN = DEALS.filter(d => passes(d, 'nudge') && d.nudge).length
+  document.getElementById('pbody').innerHTML =
+    `<div class="toggle ${F.nudge ? 'on' : ''}" onclick="toggleNudge(event)">
+       <span class="box" style="${F.nudge ? 'background:#AD4227;border-color:#AD4227' : ''}">&#10003;</span>
+       <span>Needs attention</span><span class="onum">${nudgeN}</span>
+     </div>` + section('broker') + section('officer') + section('lender')
+
+  document.getElementById('pfootN').textContent = `${shown.length} of ${DEALS.length} deals`
+  document.getElementById('pclear').disabled = !n
+  document.getElementById('panel').classList.toggle('open', panelOpen)
+
+  const bar = document.getElementById('bar')
+  bar.classList.toggle('show', !!n)
+  if (n) {
+    document.getElementById('barCount').textContent = `Showing ${shown.length} of ${DEALS.length} deals`
+    const chips = []
+    if (F.nudge) chips.push(`<span class="chip">Needs attention <span class="x" onclick="toggleNudge(event)">&times;</span></span>`)
+    for (const w of ['broker','officer','lender']) {
+      for (const v of F[w]) {
+        const label = w === 'broker' ? BROKERS.find(b => b.key === v).name.split(' ')[0] : v
+        chips.push(`<span class="chip">${label} <span class="x" onclick="pick(event,'${w}','${v}')">&times;</span></span>`)
+      }
+    }
+    document.getElementById('barChips').innerHTML = chips.join('')
+  }
+
+  document.getElementById('board').innerHTML = COLUMNS.map(col => {
+    const all = DEALS.filter(d => d.col === col)
+    const cards = shown.filter(d => d.col === col)
+    const total = cards.reduce((t, d) => t + d.amount, 0)
+    return `<div class="col">
+      <div class="chead"><span class="cname">${col}</span>
+        <span class="cnum ${n ? 'dim' : ''}">${n ? `${cards.length}/${all.length}` : all.length}</span></div>
+      <div class="cmoney">${total ? money(total) : '—'}</div>
+      <div class="cards">${cards.length ? cards.map(d => `
+        <div class="card ${d.nudge ? 'warm' : ''}">
+          <div class="cn">${d.name}</div>
+          <div class="cm">${d.lender} &middot; ${money(d.amount)}</div>
+          <div class="cbot">
+            <span class="pill ${d.nudge ? 'nudge' : ''}">${d.nudge ? d.days + ' days' : 'on track'}</span>
+            <span class="who">
+              <span class="av" style="background:${d.broker.c}" title="${d.broker.name}">${initials(d.broker.name)}</span>
+              <span class="av" style="background:#8A8A84" title="${d.officer}">${initials(d.officer)}</span>
+            </span>
+          </div>
+        </div>`).join('') : '<p class="none">&mdash;</p>'}</div>
+    </div>`
+  }).join('')
+}
+
+function togglePanel(e){ e.stopPropagation(); panelOpen = !panelOpen; draw() }
+function fold(e, w){ e.stopPropagation(); SHUT[w] = !SHUT[w]; draw() }
+function pick(e, w, v){ e.stopPropagation(); F[w].has(v) ? F[w].delete(v) : F[w].add(v); draw() }
+function toggleNudge(e){ e.stopPropagation(); F.nudge = !F.nudge; draw() }
+function clearAll(e){ e.stopPropagation(); F.broker.clear(); F.officer.clear(); F.lender.clear(); F.nudge = false; draw() }
+document.addEventListener('click', () => { if (panelOpen) { panelOpen = false; draw() } })
+document.getElementById('panel').addEventListener('click', e => e.stopPropagation())
+draw()
+</script>
+</body>
+</html>

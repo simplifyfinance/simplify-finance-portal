@@ -99,7 +99,8 @@ export const THE_LOOK: Piece[] = [
     proof: { file: BC, contains: 'What goes in the email' } },
 
   // LENDING OPTIONS - the four Fabio picked, none of them built.
-  { mock: 'lo.html', piece: 'LO: deal structure density B - two lines per split, not a table', proof: null },
+  { mock: 'lo.html', piece: 'LO: deal structure density B - two lines per split, not a table',
+    proof: { file: 'components/DealStructure.tsx', contains: 'TWO LINES PER SPLIT' } },
   { mock: 'lo.html', piece: 'LO: research criteria and important notes above the lender options', proof: null },
   { mock: 'lo.html', piece: "LO: the client's decision inside the recommendation card", proof: null },
   { mock: 'lo.html', piece: 'LO: rate modules as chips at the top with panels below', proof: null },

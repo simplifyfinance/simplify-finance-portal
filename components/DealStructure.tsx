@@ -263,70 +263,25 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
               </button>
             )}
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse min-w-[760px]">
-              <thead>
-                <tr>
-                  {['Split', 'Amount', 'Rate', 'P&I / IO', 'Purpose'].map(h => (
-                    <th key={h} className={`${K} text-left pb-1.5 pr-3 whitespace-nowrap`}>{h}</th>
-                  ))}
-                  {askFunds && <th className={`${K} text-left pb-1.5 pr-3 whitespace-nowrap text-info`}>What it does</th>}
-                  {['Term', 'IO years', 'Product type'].map(h => (
-                    <th key={h} className={`${K} text-left pb-1.5 pr-3 whitespace-nowrap text-info`}>{h}</th>
-                  ))}
-                  {/* One per deal, not one per split. Fabio, 3 Sep 2026: "cashback
-                      dont do one per split you only get one cashback or not" -
-                      so it is one box spanning every row, sitting where he asked
-                      for it: "just push cashback next to product type". */}
-                  <th className={`${K} text-left pb-1.5 whitespace-nowrap`}>Promotion / cashback</th>
-                </tr>
-              </thead>
-              <tbody>
-                {splits.map((s, i) => (
-                  <tr key={s.id} className={i > 0 ? 'border-t border-line-soft' : ''}>
-                    <td className="py-1.5 pr-3">
-                      <div className="text-[12.5px] font-bold text-ink whitespace-nowrap">Split {i + 1}</div>
-                      <div className="text-[10.5px] text-faint whitespace-nowrap">{s.label}</div>
-                    </td>
-                    <td className="py-1.5 pr-3 text-[15px] font-bold text-ink whitespace-nowrap">
-                      {s.amount ? money(Number(String(s.amount).replace(/[$,\s]/g, '')) || 0) : '—'}
-                    </td>
-                    <td className="py-1.5 pr-3 text-[13.5px] font-semibold text-ink">{s.rate ? `${s.rate}%` : '—'}</td>
-                    {/* ANSWERED HERE, ON EVERY SCENARIO. 17 Sep 2026: this was
-                        read-only text, and on a purchase there was no other
-                        place in the portal to set it - the per-lender splits box
-                        is drawn on refinances only. So a deal could have
-                        Interest Only ticked on the product and print P&I here
-                        with nothing anybody could click.
-
-                        Editing it is not the end state. The repayment type is
-                        recorded in two places at once - here and the rate module
-                        ticks - and while that is true they can disagree. The
-                        real fix is one row per split carrying its own rate and
-                        type, and those ticks going. This is what stops deals
-                        being wrong in the meantime. */}
-                    <td className="py-1.5 pr-3 whitespace-nowrap">
-                      {onSplitChange
-                        ? <>
-                            <select value={s.repaymentType || ''}
-                              onChange={e => setDetail(s.id, { repaymentType: e.target.value })}
-                              className={`${INP} ${!s.repaymentType ? NEED : ''}`}>
-                              <option value="">P&I or interest only?</option>
-                              {SPLIT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                            </select>
-                            {typeContradictsProduct({ repaymentType: s.repaymentType }, recOption) && (
-                              <div className="text-[10.5px] text-chase mt-0.5 max-w-[150px] leading-tight">
-                                the product has {typesOffered(recOption).join(' and ')} ticked
-                              </div>
-                            )}
-                          </>
-                        : <span className="text-[13.5px] text-ink">{s.repaymentType || '—'}</span>}
-                    </td>
-                    {/* On the LO this is answered here. It used to say "set on
-                        the LO" on the LO itself, which is a signpost pointing at
-                        the ground you are standing on. */}
-                    <td className="py-1.5 pr-3 whitespace-nowrap">
-                      {onSplitChange
+          {/* TWO LINES PER SPLIT - docs/approved-looks/ds.html, density B.
+              Fabio chose B on 3 Oct 2026 and confirmed it on the 5th: "this is
+              perfect". The money reads first, the detail sits quieter under it.
+              The nine column table this replaces needed 760px and could not
+              live beside a form. EVERY CONTROL HERE IS THE ONE THAT WAS IN THE
+              TABLE - lifted out, not retyped. */}
+          <div className="border-t border-line-soft">
+            {splits.map((s, i) => (
+              <div key={s.id} className={`py-2.5 ${i > 0 ? 'border-t border-line-soft' : ''}`}>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="text-[12.5px] font-bold text-ink whitespace-nowrap">Split {i + 1}</span>
+                  <span className="text-[12px] text-muted whitespace-nowrap">{s.label}</span>
+                  <span className="text-[15px] font-bold text-ink whitespace-nowrap ml-auto">
+                    {s.amount ? money(Number(String(s.amount).replace(/[$,\s]/g, '')) || 0) : '—'}
+                  </span>
+                  <span className="text-[13.5px] font-semibold text-ink whitespace-nowrap">{s.rate ? `${s.rate}%` : '—'}</span>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap mt-1.5">
+                  {onSplitChange
                         ? <select value={s.purpose || ''}
                             onChange={e => onSplitChange(s.id, { purpose: e.target.value })}
                             className={`${INP} ${!s.purpose ? NEED : ''}`}>
@@ -343,10 +298,23 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                             className="text-[11.5px] text-chase bg-chase-bg border border-chase-edge rounded px-2 py-[3px] hover:underline">
                             set on the LO ↗
                           </a>}
-                    </td>
-                    {askFunds && (
-                      <td className="py-1.5 pr-3 whitespace-nowrap">
-                        {onSplitChange
+                  {onSplitChange
+                        ? <>
+                            <select value={s.repaymentType || ''}
+                              onChange={e => setDetail(s.id, { repaymentType: e.target.value })}
+                              className={`${INP} ${!s.repaymentType ? NEED : ''}`}>
+                              <option value="">P&I or interest only?</option>
+                              {SPLIT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                            {typeContradictsProduct({ repaymentType: s.repaymentType }, recOption) && (
+                              <div className="text-[10.5px] text-chase mt-0.5 max-w-[150px] leading-tight">
+                                the product has {typesOffered(recOption).join(' and ')} ticked
+                              </div>
+                            )}
+                          </>
+                        : <span className="text-[13.5px] text-ink">{s.repaymentType || '—'}</span>}
+                  {askFunds && (
+                    <>                        {onSplitChange
                           ? <select value={s.funds || ''}
                               onChange={e => onSplitChange(s.id, { funds: e.target.value })}
                               className={`${INP} ${!s.funds ? NEED : ''}`}>
@@ -360,41 +328,31 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                           : <a href={`/deals/${deal.id}?stage=LO`}
                               className="text-[11.5px] text-chase bg-chase-bg border border-chase-edge rounded px-2 py-[3px] hover:underline">
                               set on the LO ↗
-                            </a>}
-                      </td>
-                    )}
-                    <td className="py-1.5 pr-3">
-                      <input defaultValue={s.termYears} key={`t${s.id}${s.termYears}`}
+                            </a>}</>
+                  )}
+                </div>
+                <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap mt-1.5">
+                  <label className="inline-flex items-center gap-1.5"><span className={K}>Term</span><input aria-label='Term' defaultValue={s.termYears} key={`t${s.id}${s.termYears}`}
                         onBlur={e => { if (e.target.value !== s.termYears) setDetail(s.id, { termYears: e.target.value }) }}
-                        placeholder="years" className={`${INP} w-[76px] ${!s.termYears ? NEED : ''}`} />
-                    </td>
-                    {/* HOW LONG THE INTEREST ONLY RUNS. Blank on a P&I split,
-                        because there is nothing to answer. Prefilled from the
-                        recommended product's IO years and changed here when a
-                        split runs differently - see lib/deal-structure.ts and
-                        the Loughlin-Walsh handover that printed "IO" and
-                        stopped. */}
-                    <td className="py-1.5 pr-3">
-                      {isInterestOnly(s.repaymentType)
-                        ? <input defaultValue={s.ioYears} key={`io${s.id}${s.ioYears}`}
+                        placeholder="years" className={`${INP} w-[76px] ${!s.termYears ? NEED : ''}`} /></label>
+                  <label className="inline-flex items-center gap-1.5"><span className={K}>IO years</span>{isInterestOnly(s.repaymentType)
+                        ? <input aria-label='IO years' defaultValue={s.ioYears} key={`io${s.id}${s.ioYears}`}
                             onBlur={e => { if (e.target.value !== s.ioYears) setDetail(s.id, { ioYears: e.target.value }) }}
                             placeholder="years" className={`${INP} w-[76px] ${!s.ioYears ? NEED : ''}`} />
-                        : <span className="text-[13.5px] text-faint">—</span>}
-                    </td>
-                    <td className="py-1.5 pr-3">
-                      <input defaultValue={s.productType} key={`p${s.id}${s.productType}`}
+                        : <span className="text-[13.5px] text-faint">—</span>}</label>
+                  <label className="inline-flex items-center gap-1.5 min-w-0"><span className={K}>Product type</span><input aria-label='Product type' defaultValue={s.productType} key={`p${s.id}${s.productType}`}
                         onBlur={e => { if (e.target.value !== s.productType) setDetail(s.id, { productType: e.target.value }) }}
-                        placeholder="product" className={`${INP} w-[150px] ${!s.productType ? NEED : ''}`} />
-                    </td>
-                    {i === 0 && (
-                      <td className="py-1.5 align-top" rowSpan={splits.length}>
-                        <CashbackInput value={row.cashback} onSave={v => setField('cashback', v)} />
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        placeholder="product" className={`${INP} w-[150px] ${!s.productType ? NEED : ''}`} /></label>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* ONE PER DEAL, NOT ONE PER SPLIT. Fabio, 3 Sep 2026: "cashback dont
+              do one per split you only get one cashback or not". It was a cell
+              spanning every row; with no table it says so out loud. */}
+          <div className="mt-2.5 pt-2.5 border-t border-line-soft flex items-center gap-2.5 flex-wrap">
+            <span className={K}>Promotion / cashback</span>
+            <CashbackInput value={row.cashback} onSave={v => setField('cashback', v)} />
           </div>
 
           {row.ooTotal > 0 && row.invTotal > 0 && (

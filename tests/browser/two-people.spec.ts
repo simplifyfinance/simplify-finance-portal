@@ -30,7 +30,25 @@ async function openFactFind(page: Page) {
   await page.getByText('INTERNAL NOTES').waitFor({ timeout: 20_000 })
 }
 
-const notes = (page: Page) => page.locator('textarea').first()
+// INTERNAL NOTES LIVE IN THE RAIL NOW, NOT IN THE FORM.
+//
+// 5 Oct 2026. Until the rail was built the notes box was the first textarea on
+// the page, so `textarea.first()` found it. Moving the box out of the form
+// quietly repointed that line at Purpose of loan - a client facing Fact Find
+// box - and this test spent a ship typing robot text into it and reporting the
+// Fact Find's own save race as a notes fault.
+//
+// ASKED FOR BY NAME FROM NOW ON. A box that moves can no longer silently
+// hand this test a different box.
+const notes = (page: Page) =>
+  page.getByPlaceholder('Jot notes while on the phone with the client...')
+
+/** The rail shows the notes; Edit opens the box they are typed into. */
+async function openNotes(page: Page) {
+  const edit = page.getByRole('button', { name: 'Edit internal notes' })
+  if (await edit.count()) await edit.first().click()
+  await notes(page).waitFor({ timeout: 20_000 })
+}
 
 test.describe('two people in the same deal', () => {
   test.skip(!DEAL, 'Set PORTAL_TEST_DEAL_ID in .env.local.')
@@ -47,6 +65,8 @@ test.describe('two people in the same deal', () => {
     try {
       await openFactFind(kylie)
       await openFactFind(melissa)
+      await openNotes(kylie)
+      await openNotes(melissa)
 
       const original = await notes(kylie).inputValue()
       const mine = `${original}\n${MARK()} — KYLIE`
@@ -77,12 +97,14 @@ test.describe('two people in the same deal', () => {
       await kylie.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
       await kylie.getByRole('button', { name: /^Fact Find$/ }).click()
       await kylie.getByText('INTERNAL NOTES').waitFor({ timeout: 20_000 })
+      await openNotes(kylie)
       expect(await notes(kylie).inputValue(),
         'it survived on screen but never reached the database').toContain('KYLIE')
     } finally {
       // Put the notes back exactly as they were found.
       try {
         await openFactFind(kylie)
+        await openNotes(kylie)
         const back = (await notes(kylie).inputValue()).replace(/\n?robot \d+ — KYLIE ?/g, '')
         await notes(kylie).fill(back.trimEnd())
         await kylie.waitForTimeout(4000)
@@ -229,6 +251,8 @@ test.describe('two people in the same deal', () => {
       await kylie.waitForTimeout(4000)
 
       // MELISSA SAVES, from a screen loaded before any of that existed.
+      // Whichever box is first - the point is that her save eats nothing,
+      // not which box she touched. ANY BOX ON PURPOSE
       const hers = melissa.locator('textarea:visible:not([data-compose])').first()
       const hersWas = await hers.inputValue()
       await hers.fill(`${hersWas} `)

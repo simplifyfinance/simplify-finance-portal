@@ -110,7 +110,7 @@ export function RailNotes({ dealId, initial, meId }: {
   return (
     <RailCard title="Internal notes" action={
       <span className="flex items-center gap-3">
-        <button onClick={() => setEditing(true)}>Edit</button>
+        <button onClick={() => setEditing(true)} aria-label="Edit internal notes">Edit</button>
         <button onClick={() => remember(h > SHUT ? SHUT : TALL)}>
           {h > SHUT ? 'Shorter' : 'Taller'}
         </button>

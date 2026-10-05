@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ONE — what is decided, what is open, what ships</title>
+<style>
+  :root[data-theme="light"]{
+    --page:#F7F4EF;--panel:#FFFFFF;--line:#E8E2D8;--line2:#F1ECE4;
+    --ink:#17140F;--body:#4D4841;--muted:#6F6A62;--faint:#A79F93;
+    --blue:#107EA8;--bluebg:#EAF7FE;--blueedge:#BFE4F7;
+    --green:#117A45;--greenbg:#EFFAF4;--greenedge:#BFE6D2;
+    --purple:#5B3A9E;--purplebg:#F4F1FC;--purpleedge:#DACFF1;
+    --red:#A3302A;--redbg:#FDF3F2;--rededge:#EBD1CE;
+  }
+  :root[data-theme="dark"]{
+    --page:#1C2025;--panel:#24282E;--line:#383E46;--line2:#30353C;
+    --ink:#E9EDF1;--body:#C2CAD2;--muted:#9AA4AE;--faint:#737E89;
+    --blue:#6FD3FF;--bluebg:#123143;--blueedge:#20556E;
+    --green:#6EE7B7;--greenbg:#123328;--greenedge:#215C4B;
+    --purple:#B49BF0;--purplebg:#282140;--purpleedge:#45366E;
+    --red:#FF8E7F;--redbg:#3F2320;--rededge:#65362E;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);padding:0 0 70px;
+       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+       transition:background .18s,color .18s}
+  .wrap{max-width:1020px;margin:0 auto;padding:0 16px}
+  .bar{position:sticky;top:0;z-index:60;background:var(--panel);border-bottom:1px solid var(--line);
+       padding:9px 0;margin-bottom:18px}
+  .bar .in{max-width:1020px;margin:0 auto;padding:0 16px;display:flex;gap:13px;align-items:center}
+  .seg{display:inline-flex;background:var(--page);border:1px solid var(--line);border-radius:9px;padding:2px}
+  .seg button{appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-size:11.5px;
+              font-weight:600;padding:5px 12px;border-radius:7px;cursor:pointer}
+  .seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink)}
+  .seglbl{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-right:-8px}
+  .note{font-size:11.5px;color:var(--faint);margin:0}
+  h1{font-size:22px;margin:16px 0 5px}
+  .lede{font-size:13px;color:var(--body);line-height:1.65;margin:0 0 16px;max-width:88ch}
+  .lede b{color:var(--ink)}
+  h2{font-size:15px;margin:32px 0 6px;padding-top:20px;border-top:2px solid var(--line)}
+  h2 .n{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);
+        display:block;margin-bottom:4px}
+  .cap{font-size:12.5px;color:var(--body);line-height:1.6;margin:0 0 12px;max-width:90ch}
+  .cap b{color:var(--ink)}
+  .key{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:14px 16px;margin-top:12px;
+       font-size:12.5px;color:var(--body);line-height:1.65;max-width:90ch}
+  .key b{color:var(--ink)}.key p{margin:0 0 10px}.key p:last-child{margin:0}
+  .alarm{background:var(--panel);border:1px solid var(--rededge);border-left:3px solid var(--red);
+     border-radius:10px;padding:13px 15px;margin-top:10px;font-size:12.5px;color:var(--body);line-height:1.65;max-width:90ch}
+  .alarm b{color:var(--red)}
+  .q{background:var(--panel);border:1px solid var(--purpleedge);border-left:3px solid var(--purple);
+     border-radius:10px;padding:12px 15px;margin-top:12px;font-size:12.5px;color:var(--body);line-height:1.6;max-width:90ch}
+  .q b{color:var(--purple)}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:var(--line2);border-radius:4px;padding:1px 5px}
+  table.t{border-collapse:collapse;width:100%;max-width:92ch;font-size:12px;margin-top:8px;
+          background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  table.t th{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);text-align:left;
+             padding:8px 11px;border-bottom:1px solid var(--line);font-weight:700}
+  table.t td{padding:9px 11px;border-bottom:1px solid var(--line2);color:var(--body);vertical-align:top}
+  table.t tr:last-child td{border-bottom:0}
+  table.t td b{color:var(--ink)}
+  .pill{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+        border-radius:5px;padding:3px 7px;border:1px solid;white-space:nowrap}
+  .p-lock{color:var(--green);background:var(--greenbg);border-color:var(--greenedge)}
+  .p-open{color:var(--purple);background:var(--purplebg);border-color:var(--purpleedge)}
+  .p-hot{color:var(--red);background:var(--redbg);border-color:var(--rededge)}
+  .p-wait{color:var(--muted);background:var(--page);border-color:var(--line)}
+  .big{font-size:30px;font-weight:680;letter-spacing:-.02em;color:var(--ink);line-height:1.1}
+  .stat{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0 0}
+  .st{flex:1;min-width:160px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:13px 15px}
+  .st .k{font-size:11px;color:var(--muted);margin-bottom:4px}
+  .st.bad{border-color:var(--rededge);background:var(--redbg)}
+  .st.bad .big{color:var(--red)}
+</style>
+</head>
+<body>
+
+<div class="bar"><div class="in">
+  <span class="seglbl">Theme</span>
+  <div class="seg" id="segTheme">
+    <button data-t="light" aria-pressed="true">Light</button>
+    <button data-t="dark" aria-pressed="false">Dark</button>
+  </div>
+  <p class="note">The honest version.</p>
+</div></div>
+
+<div class="wrap">
+
+<h1>Honestly? Stop mocking. We are already losing track.</h1>
+<p class="lede">You asked, so here it is straight. <b>The drift has already started and I can prove it with
+something sitting on your disk right now.</b> No more mock-ups until something is live.</p>
+
+<div class="stat">
+  <div class="st"><div class="k">Mock-ups made in two days</div><div class="big">19</div></div>
+  <div class="st bad"><div class="k">Things shipped in two days</div><div class="big">0</div></div>
+  <div class="st bad"><div class="k">Finished work sitting uncommitted</div><div class="big">1</div></div>
+</div>
+
+<div class="alarm">
+  <b>The proof.</b> Yesterday you said "add to next ship" about the dash on the Statements tab. I wrote the
+  fix, wrote a test that scans every page in the portal so it cannot come back, broke the test on purpose to
+  prove it catches it, and put the file back byte-identical.
+  <br><br>
+  <b>It is still sitting on your machine, uncommitted, a day later.</b> Two files:
+  <code>components/StatementAnalysis.tsx</code> and <code>lib/escapes-in-jsx-attributes.test.ts</code>.
+  Finished work, never shipped, because we kept going with mock-ups. That is exactly the thing you are
+  worried about, and it has already happened once.
+</div>
+
+<h2><span class="n">Why settings is the wrong next thing</span>Mocking it now costs more than mocking it later</h2>
+<div class="key">
+  <p><b>Every mock-up so far has been me hand-writing hex codes.</b> That is why the board one took as long
+  as it did, and why I had the colours slightly wrong three times before you corrected me.</p>
+  <p><b>Ship one fixes that for every screen at once.</b> Once the portal has a named colour set, mocking
+  Settings is picking from a list of ten names instead of inventing forty values. The same mock-up goes from
+  an hour to about twenty minutes, and it cannot be wrong, because the names are the ones the code actually
+  uses.</p>
+  <p><b>So mocking Settings before ship one is doing the hard version of the job on purpose.</b></p>
+</div>
+
+<h2><span class="n">And the real cost</span>What the redesign has been pushing down the queue</h2>
+<p class="cap">These were open before we started on the look and feel, and none of them has moved since.
+I am listing them because two days of mock-ups is how a list like this gets quietly forgotten.</p>
+<table class="t">
+  <tr><th style="width:95px">Priority</th><th style="width:300px">Open item</th><th>Why it matters</th></tr>
+  <tr><td><span class="pill p-hot">Ask today</span></td>
+      <td><b>Did a live bridging deal go out with the understated peak debt?</b></td>
+      <td>The only one on this list that may have already reached a client with a wrong figure. It is a
+      question, not a build &mdash; and it has been open for days under a pile of colour swatches.</td></tr>
+  <tr><td><span class="pill p-hot">Ready now</span></td>
+      <td>The dash on the Statements tab</td>
+      <td>Written, tested, sitting uncommitted on your machine.</td></tr>
+  <tr><td><span class="pill p-wait">Waiting on you</span></td>
+      <td>Turn on the RBA rate notice and enter the bank applied dates</td>
+      <td>Built and live. Doing nothing until somebody fills in the dates.</td></tr>
+  <tr><td><span class="pill p-wait">Waiting on you</span></td>
+      <td>The four lender rules per bank &mdash; especially the insurance interested-party name</td>
+      <td>Wrong interested-party names cause settlement delays.</td></tr>
+  <tr><td><span class="pill p-wait">Waiting on you</span></td>
+      <td>Mobile numbers in Settings &rarr; Team &rarr; Access</td>
+      <td>Small, and blocks nothing else.</td></tr>
+  <tr><td><span class="pill p-open">Undecided</span></td>
+      <td>Should pre-approvals ask for a shorter document list?</td>
+      <td>Clients are being asked for eleven documents at pre-approval stage.</td></tr>
+  <tr><td><span class="pill p-open">Undecided</span></td>
+      <td>Board countdown to finance clause and settlement</td>
+      <td>Discussed, never specified.</td></tr>
+  <tr><td><span class="pill p-open">Undecided</span></td>
+      <td>SalesTrekker trigger for Outstanding; team email on offer accepted</td>
+      <td>Both half-specified.</td></tr>
+  <tr><td><span class="pill p-open">Undecided</span></td>
+      <td>Staging as a ship gate</td>
+      <td>Would have caught at least two of this month's bugs before they went live.</td></tr>
+  <tr><td><span class="pill p-open">Undecided</span></td>
+      <td>Emma and Joshua Byrnes compliance boxes</td>
+      <td>Named deals, still outstanding.</td></tr>
+</table>
+
+<h2><span class="n">Decided</span>What is locked, so nobody has to remember it</h2>
+<table class="t">
+  <tr><th style="width:230px">Decision</th><th>Settled as</th></tr>
+  <tr><td><b>Waiting colour</b></td><td>Deep purple <code>#5B3A9E</code>. Amber is gone entirely &mdash; it was
+      indistinguishable from the chase red to a colourblind reader.</td></tr>
+  <tr><td><b>Box shapes</b></td><td>Today's exact geometry. 12px columns, 10px cards, 38px strips, 10px gaps.</td></tr>
+  <tr><td><b>Marking a card</b></td><td>Colour all the way round, lightly. No stripe. The chip inside goes
+      white so it does not vanish.</td></tr>
+  <tr><td><b>Surface</b></td><td>Off-white, warm greys to match.</td></tr>
+  <tr><td><b>Dark mode</b></td><td>Light / Dark / Auto. Auto default. Beside your name and in Settings.
+      Saved against the person, not the browser.</td></tr>
+  <tr><td><b>Sidebar</b></td><td><code>#0F1115</code>, unchanged between themes. Dark page lifted to
+      <code>#1C2025</code> so the sidebar keeps an edge.</td></tr>
+  <tr><td><b>The mark</b></td><td>Your artwork, placed. Broking dot <code>#4FBBEA</code>. Ten lock-ups built
+      and verified against your construction spec.</td></tr>
+  <tr><td><b>The blue</b></td><td>One blue: <code>#4FBBEA</code> as fill, <code>#107EA8</code> for text on
+      light, <code>#6FD3FF</code> on dark. <code>#2DBEFF</code> retired.</td></tr>
+  <tr><td><b>The tab</b></td><td>The "o" from your artwork in broking blue. Title page-first &mdash;
+      "Deals &middot; ONE".</td></tr>
+  <tr><td><b>Login</b></td><td>Mark, tagline <i>One client. One platform. One view.</i>, licence line.
+      Tagline nowhere else in the interface.</td></tr>
+  <tr><td><b>The address</b></td><td><code>one.simplifyfinance.com.au</code>, after every link reads
+      <code>siteUrl()</code>. Switch is one setting, revertible in thirty seconds.</td></tr>
+</table>
+
+<h3 style="font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin:22px 0 9px">
+  Still open &mdash; and neither one blocks a single ship below</h3>
+<table class="t">
+  <tr><th style="width:230px">Open</th><th>My recommendation</th></tr>
+  <tr><td><b>The four tiles</b></td><td>Option A &mdash; Needs you today / Ready for your review / Waiting on
+      someone / All live deals, in the four card colours. Decide before ship 6, not before ship 1.</td></tr>
+  <tr><td><b>The three include-buttons</b></td><td>Fold Show settled, Show lost and Test deals inside
+      Filters. Same call you already made for the board filters in September.</td></tr>
+</table>
+
+<h2><span class="n">What I want to do</span>The order, and nothing else until it is done</h2>
+<table class="t">
+  <tr><th style="width:40px">#</th><th style="width:230px">Ship</th><th style="width:120px">Visible</th><th>State</th></tr>
+  <tr><td><b>0</b></td><td><b>The Statements dash</b></td><td>One character</td>
+      <td><span class="pill p-hot">Written, waiting on one command</span></td></tr>
+  <tr><td><b>1</b></td><td><b>Colours become names</b></td><td>Nothing</td>
+      <td>Needs no decision from you. Makes everything after it easier and every future mock-up faster.</td></tr>
+  <tr><td><b>2</b></td><td><b>Every link asks <code>siteUrl()</code></b></td><td>Nothing</td>
+      <td>Needs no decision. This is what makes the weekend domain switch safe and revertible.</td></tr>
+  <tr><td><b>3</b></td><td><b>The tab and the icon</b></td><td>Tab only</td>
+      <td>Needs no decision. Two small files.</td></tr>
+  <tr><td><b>4</b></td><td><b>The look</b></td><td>Everything</td>
+      <td>All decided. Saturday job, with coffee.</td></tr>
+  <tr><td><b>5</b></td><td><b>Dark mode and the switch</b></td><td>A button</td>
+      <td>All decided.</td></tr>
+  <tr><td><b>6</b></td><td><b>The domain</b></td><td>The address bar</td>
+      <td>After 1&ndash;5 have been live a day.</td></tr>
+  <tr><td><b>7</b></td><td><b>The strip and the toolbar</b></td><td>Four tiles</td>
+      <td>Needs the two open answers above. Can wait a week.</td></tr>
+</table>
+
+<div class="key">
+  <p><b>Ships 0, 1, 2 and 3 need nothing from you but the word go.</b> Not one of them changes anything you
+  can see except the tab icon. I can have all four written and tested tonight.</p>
+  <p><b>Then Settings gets mocked properly</b>, off the named colours, in a fraction of the time &mdash; and
+  the same for the client overview, the Reports screens and anything else left. The mock-ups get better
+  <i>because</i> we shipped first, not in spite of it.</p>
+</div>
+
+<div class="q">
+  <b>My suggestion, in one line.</b> Say go. I write 0 through 3 tonight, you run four commands tomorrow,
+  and the look goes on at the weekend. Then we mock Settings with the real tokens and it takes twenty
+  minutes instead of an hour.
+  <br><br>
+  <b>And answer the bridging question when you get a moment</b> &mdash; whether any live deal went out with
+  the understated peak debt. That is the only thing on either list that could already have reached a client,
+  and it has been sitting under all of this for days.
+</div>
+
+<p class="note" style="margin-top:22px">This is the last file until something ships.</p>
+
+</div>
+<script>
+var root=document.documentElement;
+document.getElementById('segTheme').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b) return;
+  root.setAttribute('data-theme',b.getAttribute('data-t'));
+  Array.prototype.forEach.call(this.querySelectorAll('button'),function(x){
+    x.setAttribute('aria-pressed',x.getAttribute('data-t')===b.getAttribute('data-t')?'true':'false')});
+});
+</script>
+</body>
+</html>
