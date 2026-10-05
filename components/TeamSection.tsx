@@ -225,7 +225,7 @@ export default function TeamSection() {
 
       {showInvite && (
         <div className="border border-gray-200 rounded-xl p-5 mb-4 bg-blue-50/30">
-          <p className="text-sm font-medium text-[#343333] mb-3">Invite a new team member</p>
+          <p className="text-sm font-medium text-ink mb-3">Invite a new team member</p>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <label className="text-xs text-gray-400 block mb-1">Full name</label>
@@ -258,7 +258,7 @@ export default function TeamSection() {
           </div>
           <div className="flex gap-2 items-center">
             <button onClick={handleInvite} disabled={inviting}
-              className="bg-[#343333] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#2a2a2a] transition disabled:opacity-50">
+              className="bg-ink text-page text-sm px-4 py-2 rounded-lg hover:opacity-90 transition disabled:opacity-50">
               {inviting ? 'Sending...' : 'Send invitation'}
             </button>
             <button onClick={() => setShowInvite(false)} className="text-sm text-gray-400 hover:text-gray-600">Cancel</button>
@@ -271,7 +271,7 @@ export default function TeamSection() {
         <div className="space-y-2">
           {users.map(user => (
             <div key={user.id} className={!user.active ? 'opacity-50' : ''}>
-            <div className={`border border-gray-200 ${accessId === user.id ? 'rounded-t-xl' : 'rounded-xl'} px-5 py-3 bg-white flex items-center justify-between gap-4`}>
+            <div className={`border border-gray-200 ${accessId === user.id ? 'rounded-t-xl' : 'rounded-xl'} px-5 py-3 bg-card flex items-center justify-between gap-4`}>
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div style={{ background: '#343333' }} className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
                   {user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
@@ -289,7 +289,7 @@ export default function TeamSection() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-[#343333] truncate">{user.full_name}</p>
+                      <p className="text-sm font-medium text-ink truncate">{user.full_name}</p>
                       <button onClick={() => { setEditingNameId(user.id); setNameInput(user.full_name) }}
                         className="text-xs text-[#2DBEFF] hover:underline flex-shrink-0">Edit</button>
                     </div>
@@ -346,7 +346,7 @@ export default function TeamSection() {
                     setPhoneInput(user.phone || '')
                     setAccessMsg('')
                   }}
-                  className={`text-xs px-3 py-1 rounded-lg border transition ${accessId === user.id ? 'border-[#343333] bg-[#343333] text-white' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                  className={`text-xs px-3 py-1 rounded-lg border transition ${accessId === user.id ? 'border-ink bg-ink text-page' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
                   Access
                 </button>
               </div>
@@ -362,7 +362,7 @@ export default function TeamSection() {
                         value={keyInput} onChange={e => setKeyInput(e.target.value)}
                         placeholder={suggestKey(user.full_name) || 'not set'} />
                       <button onClick={() => saveBrokerKey(user)}
-                        className="text-xs font-medium text-white bg-[#343333] px-3 py-1.5 rounded-lg hover:bg-[#2a2a2a]">Save</button>
+                        className="text-xs font-medium text-white bg-ink px-3 py-1.5 rounded-lg hover:opacity-90">Save</button>
                       {!user.broker_key && suggestKey(user.full_name) && keyInput !== suggestKey(user.full_name) && (
                         <button onClick={() => setKeyInput(suggestKey(user.full_name))}
                           className="text-xs text-[#2DBEFF] hover:underline">Use &ldquo;{suggestKey(user.full_name)}&rdquo;</button>
@@ -382,7 +382,7 @@ export default function TeamSection() {
                         value={phoneInput} onChange={e => setPhoneInput(e.target.value)}
                         placeholder="0429 228 148" />
                       <button onClick={() => savePhone(user)}
-                        className="text-xs font-medium text-white bg-[#343333] px-3 py-1.5 rounded-lg hover:bg-[#2a2a2a]">Save</button>
+                        className="text-xs font-medium text-white bg-ink px-3 py-1.5 rounded-lg hover:opacity-90">Save</button>
                     </div>
                     <p className="text-[11px] text-gray-400 mt-1.5 max-w-[420px]">
                       Printed under their name on client emails they send from the portal. Empty is fine
@@ -400,7 +400,7 @@ export default function TeamSection() {
                       <label key={f} className="flex items-start gap-2 mb-1.5 cursor-pointer">
                         <input type="checkbox" checked={!!user[f]} onChange={() => toggleFlag(user, f)} className="mt-[3px]" />
                         <span>
-                          <span className="text-sm text-[#343333] block leading-tight">{label}</span>
+                          <span className="text-sm text-ink block leading-tight">{label}</span>
                           <span className="text-[11px] text-gray-400">{why}</span>
                         </span>
                       </label>
@@ -416,8 +416,8 @@ export default function TeamSection() {
                   * the admin flag agreed with each other - it is the third thing
                   * that decides what a person can see. */}
                 {(user.role === 'admin' || user.is_admin) && !user.sees_all_deals && (
-                  <div className="mt-3 bg-[#FDF6E7] border border-[#EFE0BC] rounded-lg px-3 py-2 text-[12px] text-[#7A5F17]">
-                    <strong className="text-[#5E4A11]">This admin cannot see every deal.</strong>{' '}
+                  <div className="mt-3 bg-chase-bg border border-chase-edge rounded-lg px-3 py-2 text-[12px] text-chase">
+                    <strong className="text-chase">This admin cannot see every deal.</strong>{' '}
                     {user.full_name} is an admin, but &ldquo;Sees all deals&rdquo; is off &mdash; so the
                     database gives them only the deals assigned to them, plus anything they are the
                     credit officer on. Tick it above.
@@ -425,8 +425,8 @@ export default function TeamSection() {
                 )}
 
                 {(user.role === 'admin') !== !!user.is_admin && (
-                  <div className="mt-3 bg-[#FDF6E7] border border-[#EFE0BC] rounded-lg px-3 py-2 text-[12px] text-[#7A5F17]">
-                    <strong className="text-[#5E4A11]">Role and admin flag disagree.</strong>{' '}
+                  <div className="mt-3 bg-chase-bg border border-chase-edge rounded-lg px-3 py-2 text-[12px] text-chase">
+                    <strong className="text-chase">Role and admin flag disagree.</strong>{' '}
                     Their role is {user.role}, but the admin flag is {user.is_admin ? 'on' : 'off'}. The role drives
                     what the deal screens allow; the flag drives Targets, Monthly actuals and the sidebar. Set both
                     the same unless you mean this.
@@ -452,9 +452,9 @@ export default function TeamSection() {
       {emailAsk && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
              onClick={() => !emailBusy && setEmailAsk(null)}>
-          <div className="bg-white rounded-2xl w-[470px] max-w-full shadow-2xl px-6 py-5"
+          <div className="bg-card rounded-2xl w-[470px] max-w-full shadow-2xl px-6 py-5"
                onClick={e => e.stopPropagation()}>
-            <div className="text-[15px] font-semibold text-[#1F2328]">
+            <div className="text-[15px] font-semibold text-ink">
               Change how {emailAsk.user.full_name.split(' ')[0]} signs in?
             </div>
             <p className="text-[12.5px] text-gray-400 mt-0.5 mb-3.5">
@@ -470,13 +470,13 @@ export default function TeamSection() {
               <span className="font-semibold text-right break-all">{emailAsk.next}</span>
             </div>
 
-            <div className="mt-3 bg-[#FFF8EC] border border-[#F0DCB4] rounded-lg px-3 py-2.5 text-[12.5px] text-[#92400E] leading-relaxed">
-              <b className="text-[#7a4a08]">They will sign in with the new address from now on.</b>{' '}
+            <div className="mt-3 bg-chase-bg border border-chase-edge rounded-lg px-3 py-2.5 text-[12.5px] text-chase leading-relaxed">
+              <b className="text-chase">They will sign in with the new address from now on.</b>{' '}
               The old one stops working immediately. If they are signed in right now they stay signed
               in until they sign out.
             </div>
 
-            <div className="mt-2.5 bg-[#F2FAFE] border border-[#BFE3F5] rounded-lg px-3 py-2.5 text-[12.5px] text-[#0E5E82] leading-relaxed">
+            <div className="mt-2.5 bg-info-bg border border-info-edge rounded-lg px-3 py-2.5 text-[12.5px] text-info leading-relaxed">
               Send the invite again once this is saved, so they get a link that works.
             </div>
 
@@ -488,7 +488,7 @@ export default function TeamSection() {
 
             <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setEmailAsk(null)} disabled={emailBusy}
-                className="text-[13px] text-[#5B646D] border border-[#DDE2E6] rounded-lg px-4 py-2 disabled:opacity-50">
+                className="text-[13px] text-muted border border-[#DDE2E6] rounded-lg px-4 py-2 disabled:opacity-50">
                 Cancel
               </button>
               <button onClick={changeEmail} disabled={emailBusy}

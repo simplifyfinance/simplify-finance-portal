@@ -324,15 +324,15 @@ export default function CommissionLibrary() {
     }
   }
 
-  if (loading) return <div className="px-4 py-8 text-center text-[13px] text-[#A29889]">Loading the commission library…</div>
+  if (loading) return <div className="px-4 py-8 text-center text-[13px] text-faint">Loading the commission library…</div>
   if (loadError) return <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{loadError}</div>
 
   return (
     <div>
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <div>
-          <div className="text-[13px] font-semibold text-[#2E2A26] mb-1">Our lenders</div>
-          <div className="text-[11.5px] text-[#A29889]">
+          <div className="text-[13px] font-semibold text-ink mb-1">Our lenders</div>
+          <div className="text-[11.5px] text-faint">
             {rates.length} lenders · {rates.length - unconfirmed} confirmed
           </div>
         </div>
@@ -341,54 +341,54 @@ export default function CommissionLibrary() {
             value={q}
             onChange={e => setQ(e.target.value)}
             placeholder="Search lenders"
-            className="text-[13px] border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 w-[240px] focus:outline-none focus:border-[#2DBEFF]"
+            className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-[240px] focus:outline-none focus:border-[#2DBEFF]"
           />
           {rates.length > 0 && (
             <button onClick={() => { setSelecting(v => !v); setSelected([]); setOpen(null); setEditing(false); setErr('') }}
               className={`text-[12.5px] font-semibold rounded-lg px-3.5 py-2 transition border ${selecting
-                ? 'bg-[#343333] border-[#343333] text-white'
-                : 'bg-white border-[#E8E1D6] text-[#6E665C] hover:bg-[#FAF7F2] hover:text-[#2E2A26]'}`}>
+                ? 'bg-ink border-ink text-white'
+                : 'bg-card border-line text-muted hover:bg-page hover:text-ink'}`}>
               {selecting ? 'Done' : 'Delete lenders'}
             </button>
           )}
           {adding ? (
             <span className="flex gap-2 items-center">
-              <span className="inline-flex items-center gap-2 border border-[#E8E1D6] rounded-lg px-3 py-1.5 bg-white">
+              <span className="inline-flex items-center gap-2 border border-line rounded-lg px-3 py-1.5 bg-card">
                 <input
                   value={newLender}
                   onChange={e => setNewLender(e.target.value)}
                   placeholder="Lender name"
                   autoFocus
-                  className="text-[12.5px] outline-none w-[150px] text-[#2E2A26]"
+                  className="text-[12.5px] outline-none w-[150px] text-ink"
                 />
               </span>
-              <button onClick={addLender} disabled={busy} className="bg-[#343333] text-white rounded-lg px-4 py-2 text-[12.5px] font-semibold hover:bg-[#2a2a2a] transition disabled:opacity-40">Add</button>
-              <button onClick={() => { setAdding(false); setNewLender('') }} className="text-[12px] text-[#A29889] hover:text-[#2E2A26]">Cancel</button>
+              <button onClick={addLender} disabled={busy} className="bg-ink text-page rounded-lg px-4 py-2 text-[12.5px] font-semibold hover:opacity-90 transition disabled:opacity-40">Add</button>
+              <button onClick={() => { setAdding(false); setNewLender('') }} className="text-[12px] text-faint hover:text-ink">Cancel</button>
             </span>
           ) : (
-            <button onClick={() => setAdding(true)} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-3.5 py-2 hover:bg-[#EAF7FE] transition">Add a lender</button>
+            <button onClick={() => setAdding(true)} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-card border border-[#BFE6F9] rounded-lg px-3.5 py-2 hover:bg-[#EAF7FE] transition">Add a lender</button>
           )}
         </div>
       </div>
 
       {unconfirmed > 0 && (
-        <div className="flex items-start gap-3 bg-[#FDF6E7] border border-[#EFE0BC] rounded-xl px-4 py-3 mb-4">
-          <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="#946017" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2" /><path d="M8 5v3.4M8 10.8v.2" /></svg>
-          <span className="text-[12.5px] text-[#7A5F17]">
-            <strong className="text-[#5E4A11]">{unconfirmed} of {rates.length} lenders are not confirmed.</strong>{' '}
+        <div className="flex items-start gap-3 bg-chase-bg border border-chase-edge rounded-xl px-4 py-3 mb-4">
+          <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2" /><path d="M8 5v3.4M8 10.8v.2" /></svg>
+          <span className="text-[12.5px] text-chase">
+            <strong className="text-chase">{unconfirmed} of {rates.length} lenders are not confirmed.</strong>{' '}
             Commission is only calculated from confirmed rates — anything unconfirmed reads &ldquo;rate not confirmed&rdquo; rather than a number.
           </span>
         </div>
       )}
 
       {selecting && (
-        <div className="flex items-center gap-3 bg-[#FAF7F2] border border-[#E8E1D6] rounded-xl px-4 py-2.5 mb-3 flex-wrap">
-          <span className="text-[12.5px] text-[#6E665C]">
+        <div className="flex items-center gap-3 bg-page border border-line rounded-xl px-4 py-2.5 mb-3 flex-wrap">
+          <span className="text-[12.5px] text-muted">
             Tick every lender you are not accredited with. The SFG schedule is kept either way.
           </span>
           <span className="flex gap-2 items-center ml-auto">
             {selected.length > 0 && (
-              <button onClick={() => setSelected([])} className="text-[12px] text-[#A29889] hover:text-[#2E2A26]">Clear</button>
+              <button onClick={() => setSelected([])} className="text-[12px] text-faint hover:text-ink">Clear</button>
             )}
             <button
               onClick={() => removeMany(selected, rates.filter(r => selected.includes(r.id)).map(r => r.lender))}
@@ -401,15 +401,15 @@ export default function CommissionLibrary() {
       )}
 
       {err && <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm mb-3">{err}</div>}
-      {status && <div className="bg-white border border-[#EDE7DD] rounded-lg px-3 py-2.5 mb-3 text-[12.5px] text-[#6E665C]">{status}</div>}
+      {status && <div className="bg-card border border-[#EDE7DD] rounded-lg px-3 py-2.5 mb-3 text-[12.5px] text-muted">{status}</div>}
 
-      <div className="bg-white border border-[#EDE7DD] rounded-xl overflow-hidden">
-        <div className={`${GRID} px-4 py-2.5 text-[10px] font-semibold tracking-[.085em] uppercase text-[#A29889] border-b border-[#F6F2EA]`}>
+      <div className="bg-card border border-[#EDE7DD] rounded-xl overflow-hidden">
+        <div className={`${GRID} px-4 py-2.5 text-[10px] font-semibold tracking-[.085em] uppercase text-faint border-b border-[#F6F2EA]`}>
           <span>Lender</span><span>Upfront</span><span>Trail</span><span>Out of clawback</span><span>Status</span>
         </div>
 
         {shown.length === 0 && (
-          <div className="px-4 py-8 text-center text-[13px] text-[#A29889]">No lenders match &ldquo;{q}&rdquo;.</div>
+          <div className="px-4 py-8 text-center text-[13px] text-faint">No lenders match &ldquo;{q}&rdquo;.</div>
         )}
 
         {shown.map(r => {
@@ -419,30 +419,30 @@ export default function CommissionLibrary() {
             <div key={r.id} className="border-b border-[#F6F2EA] last:border-0">
               {selecting ? (
                 <label className={`w-full text-left ${GRID} px-4 py-3 text-[13px] hover:bg-[#FCFAF6] transition items-center cursor-pointer`}>
-                  <span className="font-medium text-[#2E2A26] flex items-center gap-2.5">
+                  <span className="font-medium text-ink flex items-center gap-2.5">
                     <input type="checkbox" checked={selected.includes(r.id)}
                       onChange={e => setSelected(sel => e.target.checked ? [...sel, r.id] : sel.filter(x => x !== r.id))} />
                     {r.lender}
                   </span>
-                  <span className="text-[#6E665C]">{upfrontText(r)}</span>
-                  <span className="text-[#6E665C]">{trailTextOf(r)}</span>
-                  <span className="text-[#6E665C]">{clawbackTextOf(r)}</span>
+                  <span className="text-muted">{upfrontText(r)}</span>
+                  <span className="text-muted">{trailTextOf(r)}</span>
+                  <span className="text-muted">{clawbackTextOf(r)}</span>
                   <span>
                     {r.confirmed
-                      ? <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-[#F1F7F3] border border-[#CFE6D5] text-[#25794C] rounded-full px-2 py-[2px]">Confirmed</span>
-                      : <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-[#FDF6E7] border border-[#EFE0BC] text-[#9A7B2E] rounded-full px-2 py-[2px]">Not confirmed</span>}
+                      ? <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-done-bg border border-done-edge text-done rounded-full px-2 py-[2px]">Confirmed</span>
+                      : <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-chase-bg border border-chase-edge text-chase rounded-full px-2 py-[2px]">Not confirmed</span>}
                   </span>
                 </label>
               ) : (
               <button onClick={() => toggleRow(r)} className={`w-full text-left ${GRID} px-4 py-3 text-[13px] hover:bg-[#FCFAF6] transition items-center`}>
-                <span className="font-medium text-[#2E2A26]">{r.lender}</span>
-                <span className="text-[#6E665C]">{upfrontText(r)}</span>
-                <span className="text-[#6E665C]">{trailTextOf(r)}</span>
-                <span className="text-[#6E665C]">{clawbackTextOf(r)}</span>
+                <span className="font-medium text-ink">{r.lender}</span>
+                <span className="text-muted">{upfrontText(r)}</span>
+                <span className="text-muted">{trailTextOf(r)}</span>
+                <span className="text-muted">{clawbackTextOf(r)}</span>
                 <span>
                   {r.confirmed
-                    ? <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-[#F1F7F3] border border-[#CFE6D5] text-[#25794C] rounded-full px-2 py-[2px]">Confirmed</span>
-                    : <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-[#FDF6E7] border border-[#EFE0BC] text-[#9A7B2E] rounded-full px-2 py-[2px]">Not confirmed</span>}
+                    ? <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-done-bg border border-done-edge text-done rounded-full px-2 py-[2px]">Confirmed</span>
+                    : <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-chase-bg border border-chase-edge text-chase rounded-full px-2 py-[2px]">Not confirmed</span>}
                 </span>
               </button>
               )}
@@ -451,52 +451,52 @@ export default function CommissionLibrary() {
                 <div className="px-4 pb-4 pt-1 bg-[#FDFCFA] border-t border-[#F6F2EA]">
                   <div className="grid grid-cols-3 gap-3 mb-3">
                     <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-[.08em] text-[#A29889] mb-1">Upfront</div>
-                      <div className="text-[13px] text-[#2E2A26]">{upfrontText(r)}</div>
-                      {hasBands(r) && <div className="text-[11px] text-[#A29889] mt-1">Set by LVR band</div>}
+                      <div className="text-[10px] font-semibold uppercase tracking-[.08em] text-faint mb-1">Upfront</div>
+                      <div className="text-[13px] text-ink">{upfrontText(r)}</div>
+                      {hasBands(r) && <div className="text-[11px] text-faint mt-1">Set by LVR band</div>}
                     </div>
                     <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-[.08em] text-[#A29889] mb-1">Trail</div>
-                      <div className="text-[13px] text-[#2E2A26]">{trailTextOf(r)}</div>
+                      <div className="text-[10px] font-semibold uppercase tracking-[.08em] text-faint mb-1">Trail</div>
+                      <div className="text-[13px] text-ink">{trailTextOf(r)}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-[.08em] text-[#A29889] mb-1">Out of clawback</div>
-                      <div className="text-[13px] text-[#2E2A26]">{clawbackTextOf(r)}</div>
+                      <div className="text-[10px] font-semibold uppercase tracking-[.08em] text-faint mb-1">Out of clawback</div>
+                      <div className="text-[13px] text-ink">{clawbackTextOf(r)}</div>
                     </div>
                   </div>
 
                   <div className="mb-3">
-                    <div className="text-[10px] font-semibold uppercase tracking-[.08em] text-[#A29889] mb-1">Comments</div>
-                    <div className="text-[12.5px] text-[#6E665C]">{r.notes || <span className="text-[#A29889]">None</span>}</div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[.08em] text-faint mb-1">Comments</div>
+                    <div className="text-[12.5px] text-muted">{r.notes || <span className="text-faint">None</span>}</div>
                   </div>
 
-                  <div className="text-[10px] font-semibold uppercase tracking-[.08em] text-[#A29889] mb-2">SFG schedule</div>
-                  {rows.length === 0 && <div className="text-[12px] text-[#A29889] mt-0.5">Not in the published schedule.</div>}
+                  <div className="text-[10px] font-semibold uppercase tracking-[.08em] text-faint mb-2">SFG schedule</div>
+                  {rows.length === 0 && <div className="text-[12px] text-faint mt-0.5">Not in the published schedule.</div>}
                   {rows.map(s => (
                     <div key={s.id} className="mb-3">
                       <div className="flex items-baseline gap-2 mb-1">
-                        <span className="text-[10px] font-bold uppercase tracking-[.05em] text-[#A29889]">{s.record_type || 'Schedule'}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-[.05em] text-faint">{s.record_type || 'Schedule'}</span>
                         {s.amended_at && (
                           <>
-                            <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-[#FDF6E7] border border-[#EFE0BC] text-[#9A7B2E] rounded-full px-2 py-[2px]">Amended</span>
-                            <button onClick={() => setShowOrig(o => ({ ...o, [s.id]: !o[s.id] }))} className="text-[12px] text-[#A29889] hover:text-[#2E2A26]">
+                            <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-info-bg border border-info-edge text-info rounded-full px-2 py-[2px]">Amended</span>
+                            <button onClick={() => setShowOrig(o => ({ ...o, [s.id]: !o[s.id] }))} className="text-[12px] text-faint hover:text-ink">
                               {showOrig[s.id] ? 'Hide original' : 'Show original'}
                             </button>
                           </>
                         )}
                       </div>
                       {SCHED_FIELDS.map(f => (s as any)[f.key] ? (
-                        <div key={f.key} className="text-[12px] text-[#6E665C] mb-2 last:mb-0">
-                          <span className="text-[10px] font-bold uppercase tracking-[.05em] text-[#A29889] mr-2">{f.label}</span>
+                        <div key={f.key} className="text-[12px] text-muted mb-2 last:mb-0">
+                          <span className="text-[10px] font-bold uppercase tracking-[.05em] text-faint mr-2">{f.label}</span>
                           {(s as any)[f.key]}
                         </div>
                       ) : null)}
                       {showOrig[s.id] && s.original && (
-                        <div className="bg-white border border-[#EDE7DD] rounded-lg px-3 py-2.5 mb-3">
-                          <div className="text-[10px] font-semibold uppercase tracking-[.08em] text-[#A29889] mb-1">Original, as loaded</div>
+                        <div className="bg-card border border-[#EDE7DD] rounded-lg px-3 py-2.5 mb-3">
+                          <div className="text-[10px] font-semibold uppercase tracking-[.08em] text-faint mb-1">Original, as loaded</div>
                           {SCHED_FIELDS.map(f => (s.original as any)[f.key] ? (
-                            <div key={f.key} className="text-[12px] text-[#6E665C] mb-2 last:mb-0">
-                              <span className="text-[10px] font-bold uppercase tracking-[.05em] text-[#A29889] mr-2">{f.label}</span>
+                            <div key={f.key} className="text-[12px] text-muted mb-2 last:mb-0">
+                              <span className="text-[10px] font-bold uppercase tracking-[.05em] text-faint mr-2">{f.label}</span>
                               {(s.original as any)[f.key]}
                             </div>
                           ) : null)}
@@ -506,8 +506,8 @@ export default function CommissionLibrary() {
                   ))}
 
                   <div className="flex gap-2 items-center flex-wrap">
-                    <button onClick={() => startEdit(r)} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">Edit</button>
-                    <button onClick={() => removeRate(r)} disabled={busy} className="text-[12px] text-[#A29889] hover:text-[#C4553B] ml-auto">Delete lender</button>
+                    <button onClick={() => startEdit(r)} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-card border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">Edit</button>
+                    <button onClick={() => removeRate(r)} disabled={busy} className="text-[12px] text-faint hover:text-[#C4553B] ml-auto">Delete lender</button>
                   </div>
                 </div>
               )}
@@ -516,67 +516,67 @@ export default function CommissionLibrary() {
                 <div className="px-4 pb-4 pt-1 bg-[#FDFCFA] border-t border-[#F6F2EA]">
                   <div className="grid grid-cols-3 gap-3 mb-3">
                     <div>
-                      <label className="block text-[11px] font-semibold text-[#A29889] mb-1">Upfront %</label>
+                      <label className="block text-[11px] font-semibold text-faint mb-1">Upfront %</label>
                       {hasBands(r) ? (
                         <>
-                          <div className="text-[13px] text-[#2E2A26]">{bandsText(r)}</div>
-                          <div className="text-[11px] text-[#A29889] mt-1">LVR banded — read only. Tell me if a band is wrong.</div>
+                          <div className="text-[13px] text-ink">{bandsText(r)}</div>
+                          <div className="text-[11px] text-faint mt-1">LVR banded — read only. Tell me if a band is wrong.</div>
                         </>
                       ) : (
-                        <input value={draft.upfront_pct} onChange={e => setDraft({ ...draft, upfront_pct: e.target.value })} placeholder="0.65" className="text-[13px] border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]" />
+                        <input value={draft.upfront_pct} onChange={e => setDraft({ ...draft, upfront_pct: e.target.value })} placeholder="0.65" className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]" />
                       )}
                     </div>
                     <div>
-                      <label className="block text-[11px] font-semibold text-[#A29889] mb-1">Trail %</label>
-                      <input value={draft.trail_pct} onChange={e => setDraft({ ...draft, trail_pct: e.target.value })} placeholder="0.15" className="text-[13px] border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]" />
-                      <div className="text-[11px] text-[#A29889] mt-1">One rate. Put any stepping in comments.</div>
+                      <label className="block text-[11px] font-semibold text-faint mb-1">Trail %</label>
+                      <input value={draft.trail_pct} onChange={e => setDraft({ ...draft, trail_pct: e.target.value })} placeholder="0.15" className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]" />
+                      <div className="text-[11px] text-faint mt-1">One rate. Put any stepping in comments.</div>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-semibold text-[#A29889] mb-1">Out of clawback after (months)</label>
-                      <input value={draft.clawback_months} onChange={e => setDraft({ ...draft, clawback_months: e.target.value })} placeholder="24" className="text-[13px] border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]" />
-                      <div className="text-[11px] text-[#A29889] mt-1">0 means no clawback.</div>
+                      <label className="block text-[11px] font-semibold text-faint mb-1">Out of clawback after (months)</label>
+                      <input value={draft.clawback_months} onChange={e => setDraft({ ...draft, clawback_months: e.target.value })} placeholder="24" className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]" />
+                      <div className="text-[11px] text-faint mt-1">0 means no clawback.</div>
                     </div>
                   </div>
 
                   <div className="mb-3">
-                    <label className="block text-[11px] font-semibold text-[#A29889] mb-1">Comments</label>
-                    <textarea value={draft.notes} onChange={e => setDraft({ ...draft, notes: e.target.value })} rows={2} className="text-[13px] border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]" />
+                    <label className="block text-[11px] font-semibold text-faint mb-1">Comments</label>
+                    <textarea value={draft.notes} onChange={e => setDraft({ ...draft, notes: e.target.value })} rows={2} className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]" />
                   </div>
 
                   {rows.length > 0 && (
                     <>
-                      <div className="text-[10px] font-semibold uppercase tracking-[.08em] text-[#A29889] mb-2">SFG schedule — editable</div>
+                      <div className="text-[10px] font-semibold uppercase tracking-[.08em] text-faint mb-2">SFG schedule — editable</div>
                       {rows.map(s => (
-                        <div key={s.id} className="bg-white border border-[#EDE7DD] rounded-lg px-3 py-2.5 mb-3">
-                          <div className="text-[10px] font-bold uppercase tracking-[.05em] text-[#A29889] mb-2">{s.record_type || 'Schedule'}</div>
+                        <div key={s.id} className="bg-card border border-[#EDE7DD] rounded-lg px-3 py-2.5 mb-3">
+                          <div className="text-[10px] font-bold uppercase tracking-[.05em] text-faint mb-2">{s.record_type || 'Schedule'}</div>
                           {SCHED_FIELDS.map(f => (
                             <div key={f.key} className="mb-3">
-                              <label className="block text-[11px] font-semibold text-[#A29889] mb-1">{f.label}</label>
+                              <label className="block text-[11px] font-semibold text-faint mb-1">{f.label}</label>
                               <textarea
                                 value={schedDraft[s.id]?.[f.key] || ''}
                                 onChange={e => setSchedDraft(m => ({ ...m, [s.id]: { ...(m[s.id] || sd(s)), [f.key]: e.target.value } }))}
                                 rows={2}
-                                className="text-[13px] border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]"
+                                className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]"
                               />
                             </div>
                           ))}
-                          <div className="text-[11px] text-[#A29889]">Editing this tags the entry as amended. The original text is kept.</div>
+                          <div className="text-[11px] text-faint">Editing this tags the entry as amended. The original text is kept.</div>
                         </div>
                       ))}
                     </>
                   )}
 
-                  <label className="inline-flex items-center gap-2 border border-[#E8E1D6] rounded-lg px-3 py-1.5 bg-white mb-3">
+                  <label className="inline-flex items-center gap-2 border border-line rounded-lg px-3 py-1.5 bg-card mb-3">
                     <input type="checkbox" checked={draft.confirmed} onChange={e => setDraft({ ...draft, confirmed: e.target.checked })} />
-                    <span className="text-[12.5px] text-[#2E2A26]">These rates are confirmed correct</span>
+                    <span className="text-[12.5px] text-ink">These rates are confirmed correct</span>
                   </label>
 
                   <div className="flex gap-2 items-center flex-wrap">
-                    <button onClick={() => save(r)} disabled={busy} className="bg-[#343333] text-white rounded-lg px-4 py-2 text-[12.5px] font-semibold hover:bg-[#2a2a2a] transition disabled:opacity-40">
+                    <button onClick={() => save(r)} disabled={busy} className="bg-ink text-page rounded-lg px-4 py-2 text-[12.5px] font-semibold hover:opacity-90 transition disabled:opacity-40">
                       {busy ? 'Saving…' : 'Save and close'}
                     </button>
-                    <button onClick={cancelEdit} disabled={busy} className="text-[12px] text-[#A29889] hover:text-[#2E2A26]">Cancel</button>
-                    <button onClick={() => removeRate(r)} disabled={busy} className="text-[12px] text-[#A29889] hover:text-[#C4553B] ml-auto">Delete lender</button>
+                    <button onClick={cancelEdit} disabled={busy} className="text-[12px] text-faint hover:text-ink">Cancel</button>
+                    <button onClick={() => removeRate(r)} disabled={busy} className="text-[12px] text-faint hover:text-[#C4553B] ml-auto">Delete lender</button>
                   </div>
                 </div>
               )}

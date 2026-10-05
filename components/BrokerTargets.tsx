@@ -242,7 +242,7 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
 
   const inp = 'w-[104px] text-right text-[12.5px] border rounded-lg px-2 py-1.5 tabular-nums focus:outline-none focus:border-[#2DBEFF]'
   const failed = status.startsWith('NOT SAVED')
-  const head = 'text-[10px] font-semibold tracking-[.085em] uppercase text-[#A29889]'
+  const head = 'text-[10px] font-semibold tracking-[.085em] uppercase text-faint'
 
   function hit(actual: number | null, target: number | null) {
     if (actual === null || !target) return <span className="text-[#C9C1B4] text-[11.5px]">—</span>
@@ -253,16 +253,16 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
   return (
     <div className="mt-4 border-t border-[#F6F2EA] pt-3">
       {nameDrift && login && (
-        <div className="flex items-start gap-3 bg-[#FDF6E7] border border-[#EFE0BC] rounded-lg px-3 py-2.5 mb-3">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#946017" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
-          <span className="text-[12px] text-[#7A5F17] flex-1">
-            <strong className="text-[#5E4A11]">Two different names.</strong> This profile says
+        <div className="flex items-start gap-3 bg-chase-bg border border-chase-edge rounded-lg px-3 py-2.5 mb-3">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
+          <span className="text-[12px] text-chase flex-1">
+            <strong className="text-chase">Two different names.</strong> This profile says
             &ldquo;{name}&rdquo;, their login says &ldquo;{login.full_name}&rdquo;. The login name is what the
             Pipeline, the snapshot and every broker chip shows; this one goes on client documents.
-            {nameMsg && <span className={`block mt-1 ${nameMsg.startsWith('NOT SAVED') ? 'text-[#C4553B] font-medium' : 'text-[#25794C]'}`}>{nameMsg}</span>}
+            {nameMsg && <span className={`block mt-1 ${nameMsg.startsWith('NOT SAVED') ? 'text-[#C4553B] font-medium' : 'text-done'}`}>{nameMsg}</span>}
           </span>
           <button type="button" onClick={pushName}
-            className="text-[12px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-3 py-1.5 hover:bg-[#EAF7FE] transition whitespace-nowrap shrink-0">
+            className="text-[12px] font-semibold text-[#0E8FCB] bg-card border border-[#BFE6F9] rounded-lg px-3 py-1.5 hover:bg-[#EAF7FE] transition whitespace-nowrap shrink-0">
             Use &ldquo;{name}&rdquo; everywhere
           </button>
         </div>
@@ -274,20 +274,20 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
           <path d={open ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'} />
         </svg>
         Targets and actuals for {name.split(' ')[0]}
-        {!open && totals.set > 0 && <span className="font-normal text-[#A29889]">· {compact(totals.tl)} targeted</span>}
+        {!open && totals.set > 0 && <span className="font-normal text-faint">· {compact(totals.tl)} targeted</span>}
       </button>
 
       {open && (
         <div className="mt-3">
           {!key ? (
-            <div className="bg-[#FDF6E7] border border-[#EFE0BC] rounded-lg px-3 py-2.5 text-[12px] text-[#7A5F17]">
+            <div className="bg-chase-bg border border-chase-edge rounded-lg px-3 py-2.5 text-[12px] text-chase">
               This profile has no broker key, so there is nothing to attach targets to. Give it one above.
             </div>
           ) : (
             <>
               <div className={`rounded-lg px-3 py-2.5 text-[12px] mb-3 border ${login
-                ? 'bg-[#F1F7F3] border-[#CFE6D5] text-[#25794C]'
-                : 'bg-[#FAF7F2] border-[#E8E1D6] text-[#6E665C]'}`}>
+                ? 'bg-done-bg border-done-edge text-done'
+                : 'bg-page border-line text-muted'}`}>
                 {login
                   ? <>Wired up. Key <b>{key}</b> matches the login for <b>{login.full_name}</b>, so deals stamped
                       &ldquo;{key}&rdquo; count towards them and they appear on the Pipeline.</>
@@ -302,18 +302,18 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
                 </span>
                 <span className="inline-flex items-center gap-2">
                   <button type="button" onClick={() => setFy(f => f - 1)}
-                    className="w-[24px] h-[24px] rounded-lg border border-[#E8E1D6] flex items-center justify-center text-[#6E665C] hover:bg-[#FAF7F2]">
+                    className="w-[24px] h-[24px] rounded-lg border border-line flex items-center justify-center text-muted hover:bg-page">
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5"/></svg>
                   </button>
                   <span className="text-[12.5px] font-semibold w-[46px] text-center">FY{String(fy).slice(2)}</span>
                   <button type="button" onClick={() => setFy(f => f + 1)}
-                    className="w-[24px] h-[24px] rounded-lg border border-[#E8E1D6] flex items-center justify-center text-[#6E665C] hover:bg-[#FAF7F2]">
+                    className="w-[24px] h-[24px] rounded-lg border border-line flex items-center justify-center text-muted hover:bg-page">
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3l5 5-5 5"/></svg>
                   </button>
                 </span>
               </div>
 
-              <div className="border border-[#EDE7DD] rounded-xl overflow-x-auto bg-white">
+              <div className="border border-[#EDE7DD] rounded-xl overflow-x-auto bg-card">
                 <table className="w-full">
                   <thead>
                     <tr>
@@ -334,15 +334,15 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
                       const al = parseNum(vals[k('al', m.month)] || '')
                       const as_ = parseNum(vals[k('as', m.month)] || '')
                       const over = !!m.h
-                      const ring = over ? ' border-[#BFE6F9] bg-[#EAF7FE]' : ' border-[#E8E1D6]'
+                      const ring = over ? ' border-[#BFE6F9] bg-[#EAF7FE]' : ' border-line'
                       return (
                         <tr key={m.month} className="border-b border-[#F6F2EA] last:border-0 hover:bg-[#FCFAF6]">
-                          <td className="px-4 py-1.5 text-[13px] font-medium text-[#6E665C]">{m.name}</td>
+                          <td className="px-4 py-1.5 text-[13px] font-medium text-muted">{m.name}</td>
                           <td className="px-2 py-1.5 text-right">
                             <input inputMode="numeric" placeholder="not set" value={vals[k('tl', m.month)] || ''}
                               onChange={e => set('tl', m.month, e.target.value)}
                               onBlur={e => set('tl', m.month, commas(e.target.value))}
-                              className={inp + ' border-[#E8E1D6]'} />
+                              className={inp + ' border-line'} />
                           </td>
                           <td className="px-2 py-1.5 text-right">
                             <input inputMode="numeric" placeholder="—" value={vals[k('al', m.month)] || ''}
@@ -355,7 +355,7 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
                             <input inputMode="numeric" placeholder="not set" value={vals[k('ts', m.month)] || ''}
                               onChange={e => set('ts', m.month, e.target.value)}
                               onBlur={e => set('ts', m.month, commas(e.target.value))}
-                              className={inp + ' border-[#E8E1D6]'} />
+                              className={inp + ' border-line'} />
                           </td>
                           <td className="px-2 py-1.5 text-right">
                             <input inputMode="numeric" placeholder="—" value={vals[k('as', m.month)] || ''}
@@ -378,7 +378,7 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="bg-[#FDFCFA] border-t border-[#E8E1D6]">
+                    <tr className="bg-[#FDFCFA] border-t border-line">
                       <td className="px-4 py-2.5 text-[13px] font-semibold">FY{String(fy).slice(2)}</td>
                       <td className="px-2 py-2.5 text-right text-[13px] font-semibold tabular-nums">{totals.tl ? compact(totals.tl) : '—'}</td>
                       <td className="px-2 py-2.5 text-right text-[13px] font-semibold tabular-nums">{totals.al ? compact(totals.al) : '—'}</td>
@@ -386,7 +386,7 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
                       <td className="px-2 py-2.5 text-right text-[13px] font-semibold tabular-nums">{totals.ts ? compact(totals.ts) : '—'}</td>
                       <td className="px-2 py-2.5 text-right text-[13px] font-semibold tabular-nums">{totals.as ? compact(totals.as) : '—'}</td>
                       <td className="px-2 py-2.5 text-right">{hit(totals.as || null, totals.tsRec || null)}</td>
-                      <td className="px-3 py-2.5 text-[11px] text-[#A29889] whitespace-nowrap">
+                      <td className="px-3 py-2.5 text-[11px] text-faint whitespace-nowrap">
                         {totals.rec ? 'against the months recorded' : ''}
                       </td>
                     </tr>
@@ -395,15 +395,15 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
               </div>
 
               <div className="flex items-center justify-between gap-3 mt-2.5 flex-wrap">
-                <span className={`text-[12px] ${failed ? 'text-[#C4553B] font-medium' : 'text-[#A29889]'}`}>
+                <span className={`text-[12px] ${failed ? 'text-[#C4553B] font-medium' : 'text-faint'}`}>
                   {status || (dirty ? 'Unsaved changes.' : 'A typed actual wins over deals counted in the portal. Clear both boxes to release the month.')}
                 </span>
                 <button type="button" onClick={save} disabled={!dirty || busy}
-                  className="bg-[#343333] text-white rounded-lg px-4 py-1.5 text-[12.5px] font-semibold hover:bg-[#2a2a2a] transition disabled:opacity-40">
+                  className="bg-ink text-page rounded-lg px-4 py-1.5 text-[12.5px] font-semibold hover:opacity-90 transition disabled:opacity-40">
                   {busy ? 'Saving...' : 'Save'}
                 </button>
               </div>
-              <p className="text-[11px] text-[#A29889] mt-2">
+              <p className="text-[11px] text-faint mt-2">
                 Saved straight away, separately from the Save button at the bottom of this page.
               </p>
             </>

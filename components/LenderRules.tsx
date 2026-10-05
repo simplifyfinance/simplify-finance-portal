@@ -77,20 +77,20 @@ export default function LenderRules() {
     }
   }
 
-  if (loading) return <p className="text-[13px] text-[#A29889]">Loading what the portal has learned…</p>
+  if (loading) return <p className="text-[13px] text-faint">Loading what the portal has learned…</p>
 
 
 
   return (
     <div>
-      <p className="text-[12.5px] text-[#6E665C] mb-4 max-w-[86ch]">
+      <p className="text-[12.5px] text-muted mb-4 max-w-[86ch]">
         Each of these is asked once, the first time a template needs it, and remembered against the
         lender from then on. <b>Blank means nobody has answered</b> — the portal asks rather than
         guessing, because a confident wrong sentence on a client email is worse than a question.
       </p>
 
       {err && (
-        <p className="mb-3 border border-[#E9D2CF] bg-[#FDF3F2] rounded-lg px-3 py-2 text-[12.5px] text-[#8E3A34]">{err}</p>
+        <p className="mb-3 border border-chase-edge bg-chase-bg rounded-lg px-3 py-2 text-[12.5px] text-chase">{err}</p>
       )}
 
       <div className="overflow-x-auto">
@@ -110,7 +110,7 @@ export default function LenderRules() {
           <tbody>
             {lenders.map(l => (
               <tr key={l.id}>
-                <td className="py-2 pr-3 border-b border-[#EEF0F2] font-semibold text-[#221F1B] align-top">{l.name}</td>
+                <td className="py-2 pr-3 border-b border-[#EEF0F2] font-semibold text-ink align-top">{l.name}</td>
                 {RULES.map(q => {
                   const mine = rules[l.id] || {}
                   const v = answerTo(mine, q.key)
@@ -127,14 +127,14 @@ export default function LenderRules() {
                       ) : (
                       <select value={v} onChange={e => setAnswer(l.id, q.key, e.target.value)}
                         aria-label={`${l.name} — ${q.ask}`}
-                        className={`text-[12px] border rounded-md px-1.5 py-1 bg-white max-w-[170px] ${
-                          v ? 'border-[#BBE7CF] text-[#0F7B4F] font-semibold' : 'border-[#EBD9BE] text-[#8A6218]'}`}>
+                        className={`text-[12px] border rounded-md px-1.5 py-1 bg-card max-w-[170px] ${
+                          v ? 'border-done-edge text-done font-semibold' : 'border-dashed border-field-line text-muted'}`}>
                         <option value="">not recorded</option>
                         {q.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </select>
                       )}
                       {v && mine[q.key]?.setBy && (
-                        <div className="text-[10px] text-[#C3BDB2] mt-[3px] leading-tight">
+                        <div className="text-[10px] text-faint mt-[3px] leading-tight">
                           {mine[q.key].setBy}
                           {mine[q.key].setAt ? ` · ${dayMonth(mine[q.key].setAt)}` : ''}
                           {mine[q.key].used > 0 ? ` · ${mine[q.key].used} deal${mine[q.key].used === 1 ? '' : 's'}` : ''}
@@ -143,9 +143,9 @@ export default function LenderRules() {
                     </td>
                   )
                 })}
-                <td className="py-2 border-b border-[#EEF0F2] align-top text-[#5B6672]">
+                <td className="py-2 border-b border-[#EEF0F2] align-top text-muted">
                   {l.reprice_over_percent === null
-                    ? <span className="text-[#C3BDB2]">N/A</span>
+                    ? <span className="text-faint">N/A</span>
                     : `${l.reprice_over_percent}%`}
                 </td>
               </tr>
@@ -154,7 +154,7 @@ export default function LenderRules() {
         </table>
       </div>
 
-      <p className="text-[11.5px] text-[#A29889] mt-4 max-w-[86ch]">
+      <p className="text-[11.5px] text-faint mt-4 max-w-[86ch]">
         Changing an answer here changes it for every deal with that lender from now on. To change one
         deal without changing the rule, do it on the send screen — it asks which you mean.
       </p>
@@ -187,10 +187,10 @@ function TypedCell({ value, lender, ask, onSave }: {
       aria-label={`${lender} — ${ask}`}
       placeholder="not recorded"
       title={draft || ask}
-      className={`text-[12px] border rounded-md px-1.5 py-1 bg-white w-[230px] ${
+      className={`text-[12px] border rounded-md px-1.5 py-1 bg-card w-[230px] ${
         draft.trim()
-          ? 'border-[#BBE7CF] text-[#0F7B4F] font-semibold'
-          : 'border-[#EBD9BE] text-[#8A6218] placeholder:text-[#8A6218]'}`}
+          ? 'border-done-edge text-done font-semibold'
+          : 'border-dashed border-field-line text-muted placeholder:text-muted'}`}
     />
   )
 }

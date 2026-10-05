@@ -31,7 +31,7 @@ function Status({ err, saved, note, notice }: {
   err: string; saved: string; note: string; notice: RateNotice
 }) {
   if (err) return (
-    <p className="mb-3 rounded-lg border border-[#E9D2CF] bg-[#FDF3F2] px-3 py-2 text-[12.5px] text-[#8E3A34]">
+    <p className="mb-3 rounded-lg border border-chase-edge bg-chase-bg px-3 py-2 text-[12.5px] text-chase">
       {err}
       {/* THE LIKELIEST REASON, SAID OUT LOUD. Only admins may write settings,
           and "the database refused the change" does not tell a credit officer
@@ -45,12 +45,12 @@ function Status({ err, saved, note, notice }: {
     </p>
   )
   if (note) return (
-    <p className="mb-3 rounded-lg border border-[#F0DCB4] bg-[#FFF8EC] px-3 py-2 text-[12.5px] text-[#92400E]">
+    <p className="mb-3 rounded-lg border border-info-edge bg-info-bg px-3 py-2 text-[12.5px] text-info">
       {note}
     </p>
   )
   if (saved) return (
-    <p className="mb-3 text-[12px] text-[#15803D]">
+    <p className="mb-3 text-[12px] text-done">
       {saved}{notice.decisionDate ? ` The notice is about the ${niceDate(notice.decisionDate)} decision.` : ''}
     </p>
   )
@@ -123,7 +123,7 @@ export default function RateNoticeSettings() {
     } : x))
   }
 
-  if (loading) return <p className="text-[13px] text-[#A29889]">Loading&hellip;</p>
+  if (loading) return <p className="text-[13px] text-faint">Loading&hellip;</p>
 
   const waiting = stillCarrying(lenders, notice)
   const silent = notAnnounced(lenders, notice)
@@ -134,26 +134,26 @@ export default function RateNoticeSettings() {
 
   return (
     <div className="max-w-[640px]">
-      <p className="text-[12.5px] text-[#6E665C] mb-4">
+      <p className="text-[12.5px] text-muted mb-4">
         Goes on every client email that quotes a rate &mdash; the borrowing capacity, the lending
         options, the pre-approval and the formal approval. <b>Nothing signed</b>, so it never outlives
         the few weeks it is about.
       </p>
 
       {overdue && (
-        <p className="mb-4 rounded-lg border border-[#E9D2CF] bg-[#FDF3F2] px-3 py-2.5 text-[12.5px] text-[#8E3A34] leading-relaxed">
+        <p className="mb-4 rounded-lg border border-chase-edge bg-chase-bg px-3 py-2.5 text-[12.5px] text-chase leading-relaxed">
           {nagLine(notice, lenders)}
         </p>
       )}
 
       {loadSoon && (
-        <p className="mb-4 rounded-lg border border-[#EBD9BE] bg-[#FDF6EC] px-3 py-2.5 text-[12.5px] text-[#8A6218] leading-relaxed">
+        <p className="mb-4 rounded-lg border border-info-edge bg-info-bg px-3 py-2.5 text-[12.5px] text-info leading-relaxed">
           {loadSoon}
         </p>
       )}
 
       {notice.on && done && (
-        <p className="mb-4 rounded-lg border border-[#BBE7CF] bg-[#F4FBF7] px-3 py-2.5 text-[12.5px] text-[#0F7B4F]">
+        <p className="mb-4 rounded-lg border border-done-edge bg-done-bg px-3 py-2.5 text-[12.5px] text-done">
           Every lender has passed this one on, so it is doing nothing. Turn it off.
         </p>
       )}
@@ -166,7 +166,7 @@ export default function RateNoticeSettings() {
           thing they had just pressed, which is the same as not saying it. */}
       <Status err={err} saved={saved} note={note} notice={notice} />
 
-      <label className="block text-[9.5px] font-bold tracking-[.07em] uppercase text-[#A29889] mb-1.5">
+      <label className="block text-[9.5px] font-bold tracking-[.07em] uppercase text-faint mb-1.5">
         Turn it on
       </label>
       <button type="button" onClick={() => {
@@ -185,10 +185,10 @@ export default function RateNoticeSettings() {
           save({ ...notice, on: !notice.on })
         }}
         className={`inline-flex items-center gap-2.5 rounded-lg border px-3 py-2 text-[12.5px] font-semibold transition ${
-          notice.on ? 'border-[#BBE7CF] bg-[#F4FBF7] text-[#0F7B4F]'
-                    : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'}`}>
+          notice.on ? 'border-done-edge bg-done-bg text-done'
+                    : 'border-gray-200 bg-card text-gray-500 hover:bg-gray-50'}`}>
         <span className={`w-[34px] h-[19px] rounded-full relative shrink-0 ${notice.on ? 'bg-[#0F7B4F]' : 'bg-gray-300'}`}>
-          <span className={`absolute top-[2px] w-[15px] h-[15px] rounded-full bg-white ${notice.on ? 'right-[2px]' : 'left-[2px]'}`} />
+          <span className={`absolute top-[2px] w-[15px] h-[15px] rounded-full bg-card ${notice.on ? 'right-[2px]' : 'left-[2px]'}`} />
         </span>
         {notice.on
           ? (waiting.length
@@ -206,7 +206,7 @@ export default function RateNoticeSettings() {
           finished sentence in grey. Everybody read the line, looked at words
           they could see, and concluded the toggle was broken. */}
       {!notice.on && (!notice.text.trim() || !notice.decisionDate) && (
-        <div className="mt-1.5 text-[11px] text-[#8A6218]">
+        <div className="mt-1.5 text-[11px] text-info">
           {!notice.text.trim() && (
             <p className="m-0">
               <strong>No wording saved yet.</strong> The grey text in the box below is a suggestion,
@@ -230,7 +230,7 @@ export default function RateNoticeSettings() {
         </button>
       )}
 
-      <label className="block text-[9.5px] font-bold tracking-[.07em] uppercase text-[#A29889] mb-1.5 mt-5">
+      <label className="block text-[9.5px] font-bold tracking-[.07em] uppercase text-faint mb-1.5 mt-5">
         What it says
       </label>
       <textarea value={notice.text} onChange={e => set({ text: e.target.value })}
@@ -244,7 +244,7 @@ export default function RateNoticeSettings() {
 
       <div className="flex gap-4 flex-wrap mt-5">
         <div>
-          <label className="block text-[9.5px] font-bold tracking-[.07em] uppercase text-[#A29889] mb-1.5">
+          <label className="block text-[9.5px] font-bold tracking-[.07em] uppercase text-faint mb-1.5">
             Decision date
           </label>
           <input type="date" value={notice.decisionDate}
@@ -269,7 +269,7 @@ export default function RateNoticeSettings() {
           </p>
         </div>
         <div>
-          <label className="block text-[9.5px] font-bold tracking-[.07em] uppercase text-[#A29889] mb-1.5">
+          <label className="block text-[9.5px] font-bold tracking-[.07em] uppercase text-faint mb-1.5">
             Remind me after
           </label>
           <input type="date" value={notice.reviewBy}
@@ -286,10 +286,10 @@ export default function RateNoticeSettings() {
 
       {notice.on && (
         <>
-          <label className="block text-[9.5px] font-bold tracking-[.07em] uppercase text-[#A29889] mb-2 mt-6">
+          <label className="block text-[9.5px] font-bold tracking-[.07em] uppercase text-faint mb-2 mt-6">
             Applied from
           </label>
-          <p className="text-[11.5px] text-[#A29889] mb-2 max-w-[520px]">
+          <p className="text-[11.5px] text-faint mb-2 max-w-[520px]">
             The day each bank&rsquo;s change takes effect, as they announce it. Blank means they have
             not told us, and their clients keep being warned until they do.
           </p>
@@ -314,30 +314,30 @@ export default function RateNoticeSettings() {
               return (
                 <div key={l.id || l.name}>
                 {firstWithDate && (
-                  <div className="px-3 py-1.5 bg-[#FBFAF8] border-b border-[#F0EFEC] text-[9.5px] font-bold tracking-[.06em] uppercase text-[#C3BDB2]">
+                  <div className="px-3 py-1.5 bg-page border-b border-[#F0EFEC] text-[9.5px] font-bold tracking-[.06em] uppercase text-faint">
                     Dates recorded
                   </div>
                 )}
                 <div
                   className={`flex items-center gap-3 px-3 py-2 border-b border-gray-50 last:border-b-0 text-[12.5px] ${
                     from ? '' : 'bg-[#FFFDF9]'}`}>
-                  <span className="font-semibold text-[#221F1B] w-[150px] shrink-0 truncate">{l.name}</span>
+                  <span className="font-semibold text-ink w-[150px] shrink-0 truncate">{l.name}</span>
                   {/* TYPED HERE, not four clicks away on another tab. */}
                   <input type="date" defaultValue={from}
                     key={`${l.id}-${notice.decisionDate}-${from}`}
                     onBlur={e => { if (e.target.value !== from) setApplied(l, e.target.value) }}
                     aria-label={`${l.name} applies the change on`}
-                    className={`text-[12px] border rounded-md px-1.5 py-1 bg-white shrink-0 ${
-                      from ? 'border-gray-200 text-[#343333]' : 'border-[#EBD9BE] text-[#8A6218]'}`} />
+                    className={`text-[12px] border rounded-md px-1.5 py-1 bg-card shrink-0 ${
+                      from ? 'border-gray-200 text-ink' : 'border-dashed border-field-line text-muted'}`} />
                   <span className={`text-[11.5px] ${
-                    live ? 'text-[#0F7B4F] font-semibold'
-                      : from ? 'text-[#0E8FCB]' : 'text-[#8A6218] font-semibold'}`}>
+                    live ? 'text-done font-semibold'
+                      : from ? 'text-info' : 'text-chase font-semibold'}`}>
                     {live ? 'Applied — no notice on their emails'
                       : from ? 'Notice until then, and it stops by itself'
                       : 'No date yet — notice runs with no end'}
                   </span>
                   {l.rate_notice_by && (
-                    <span className="text-[11px] text-[#C3BDB2] ml-auto shrink-0">{l.rate_notice_by}</span>
+                    <span className="text-[11px] text-faint ml-auto shrink-0">{l.rate_notice_by}</span>
                   )}
                 </div>
                 </div>
@@ -358,7 +358,7 @@ export default function RateNoticeSettings() {
           One field. Every date a bank gave you is stamped with the decision it
           answered, so a new decision date makes all of them stop applying at
           once - there is no clear-down to run and nothing to half-finish. */}
-      <label className="block text-[9.5px] font-bold tracking-[.07em] uppercase text-[#A29889] mb-1.5 mt-7">
+      <label className="block text-[9.5px] font-bold tracking-[.07em] uppercase text-faint mb-1.5 mt-7">
         Next RBA decision
       </label>
       <div className="flex items-center gap-2 flex-wrap">
@@ -366,7 +366,7 @@ export default function RateNoticeSettings() {
           className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-[12.5px]" />
         <button type="button" disabled={!nextDate}
           onClick={() => { save(forNextDecision(notice, nextDate)); setNextDate('') }}
-          className="rounded-lg bg-[#221F1B] px-3 py-1.5 text-[12.5px] font-semibold text-white disabled:opacity-40">
+          className="rounded-lg bg-ink px-3 py-1.5 text-[12.5px] font-semibold text-white disabled:opacity-40">
           Start it
         </button>
       </div>

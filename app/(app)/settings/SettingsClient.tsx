@@ -399,47 +399,47 @@ export default function SettingsPage() {
   }, [])
   const activePane = PANES.find(x => x.key === pane) || PANES[0]
 
-  if (loading) return <div className="p-8 max-w-5xl mx-auto text-[13px] text-[#A29889]">Loading settings...</div>
+  if (loading) return <div className="p-8 max-w-5xl mx-auto text-[13px] text-faint">Loading settings...</div>
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-1">
-        <h1 className="text-2xl font-bold text-[#2E2A26]">Settings</h1>
+        <h1 className="text-2xl font-bold text-ink">Settings</h1>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="text-[13px] bg-[#343333] text-white px-5 py-2 rounded-lg font-semibold hover:bg-[#2a2a2a] transition disabled:opacity-40"
+          className="text-[13px] bg-ink text-page px-5 py-2 rounded-lg font-semibold hover:opacity-90 transition disabled:opacity-40"
         >
           {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save settings'}
         </button>
       </div>
-      <p className="text-[13px] text-[#6E665C] mb-1">{activePane.label}</p>
-      <p className="text-[11.5px] text-[#A29889] mb-8">{activePane.blurb}</p>
+      <p className="text-[13px] text-muted mb-1">{activePane.label}</p>
+      <p className="text-[11.5px] text-faint mb-8">{activePane.blurb}</p>
       {pane === 'brands' && (
       <section className="mb-10">
-        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Brands</h2>
+        <h2 className="text-[10px] font-semibold text-faint uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-info inline-block shrink-0" />Brands</h2>
         {brands.map((brand) => (
-          <div key={brand.id} className="border border-[#EDE7DD] rounded-xl p-5 mb-4 bg-white">
+          <div key={brand.id} className="border border-[#EDE7DD] rounded-xl p-5 mb-4 bg-card">
             <div className="flex justify-between items-start mb-4">
               <div className="flex-1">
-                <input className="font-semibold text-[#2E2A26] text-[13.5px] border border-[#E8E1D6] rounded-lg px-3 py-1.5 w-full max-w-xs mb-1 focus:outline-none focus:border-[#2DBEFF]" value={brand.name} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, name: e.target.value} : b))} placeholder="Brand name" />
-                <p className="text-[11.5px] text-[#A29889]">{brand.isDefault ? 'Default brand' : 'Additional brand'}</p>
+                <input className="font-semibold text-ink text-[13.5px] border border-line rounded-lg px-3 py-1.5 w-full max-w-xs mb-1 focus:outline-none focus:border-[#2DBEFF]" value={brand.name} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, name: e.target.value} : b))} placeholder="Brand name" />
+                <p className="text-[11.5px] text-faint">{brand.isDefault ? 'Default brand' : 'Additional brand'}</p>
               </div>
               <div className="flex items-center gap-2">
                 {brand.isDefault && <span className="text-[10.5px] bg-[#EAF7FE] border border-[#BFE6F9] text-[#0E8FCB] px-2.5 py-1 rounded-full font-semibold">Default</span>}
-                {!brand.isDefault && <button onClick={() => setBrands(brands.filter(b => b.id !== brand.id))} className="text-[11.5px] text-[#A29889] hover:text-[#C4553B] transition">Remove</button>}
+                {!brand.isDefault && <button onClick={() => setBrands(brands.filter(b => b.id !== brand.id))} className="text-[11.5px] text-faint hover:text-[#C4553B] transition">Remove</button>}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">Header colour</label><div className="flex items-center gap-2"><input type="color" value={brand.headerColor} className="w-8 h-8 rounded cursor-pointer border border-[#E8E1D6] flex-shrink-0" onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, headerColor: e.target.value} : b))} /><input className="text-[12.5px] font-mono text-[#6E665C] border border-[#E8E1D6] rounded-lg px-2 py-1 w-24 focus:outline-none focus:border-[#2DBEFF]" value={brand.headerColor} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, headerColor: e.target.value} : b))} placeholder="#343333" /></div></div>
-              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">Accent colour</label><div className="flex items-center gap-2"><input type="color" value={brand.accentColor} className="w-8 h-8 rounded cursor-pointer border border-[#E8E1D6] flex-shrink-0" onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, accentColor: e.target.value} : b))} /><input className="text-[12.5px] font-mono text-[#6E665C] border border-[#E8E1D6] rounded-lg px-2 py-1 w-24 focus:outline-none focus:border-[#2DBEFF]" value={brand.accentColor} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, accentColor: e.target.value} : b))} placeholder="#2DBEFF" /></div></div>
-              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">Logo URL</label><input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={brand.logoUrl || ''} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, logoUrl: e.target.value} : b))} placeholder="https://.../logo.png" /></div>
-              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">ACL number</label><input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={brand.acl} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, acl: e.target.value} : b))} /><div className="text-[11px] text-[#A29889] mt-1">Appears in the footer of client emails.</div></div>
-              <div><label className="text-[11px] font-semibold text-[#A29889] block mb-1">Footer address</label><input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={brand.footerAddress} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, footerAddress: e.target.value} : b))} /></div>
+              <div><label className="text-[11px] font-semibold text-faint block mb-1">Header colour</label><div className="flex items-center gap-2"><input type="color" value={brand.headerColor} className="w-8 h-8 rounded cursor-pointer border border-line flex-shrink-0" onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, headerColor: e.target.value} : b))} /><input className="text-[12.5px] font-mono text-muted border border-line rounded-lg px-2 py-1 w-24 focus:outline-none focus:border-[#2DBEFF]" value={brand.headerColor} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, headerColor: e.target.value} : b))} placeholder="#343333" /></div></div>
+              <div><label className="text-[11px] font-semibold text-faint block mb-1">Accent colour</label><div className="flex items-center gap-2"><input type="color" value={brand.accentColor} className="w-8 h-8 rounded cursor-pointer border border-line flex-shrink-0" onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, accentColor: e.target.value} : b))} /><input className="text-[12.5px] font-mono text-muted border border-line rounded-lg px-2 py-1 w-24 focus:outline-none focus:border-[#2DBEFF]" value={brand.accentColor} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, accentColor: e.target.value} : b))} placeholder="#2DBEFF" /></div></div>
+              <div><label className="text-[11px] font-semibold text-faint block mb-1">Logo URL</label><input className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" value={brand.logoUrl || ''} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, logoUrl: e.target.value} : b))} placeholder="https://.../logo.png" /></div>
+              <div><label className="text-[11px] font-semibold text-faint block mb-1">ACL number</label><input className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" value={brand.acl} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, acl: e.target.value} : b))} /><div className="text-[11px] text-faint mt-1">Appears in the footer of client emails.</div></div>
+              <div><label className="text-[11px] font-semibold text-faint block mb-1">Footer address</label><input className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" value={brand.footerAddress} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, footerAddress: e.target.value} : b))} /></div>
             </div>
           </div>
         ))}
-        <button onClick={() => setBrands([...brands, {id: Date.now().toString(), name: 'New Brand', isDefault: false, headerColor: '#343333', accentColor: '#2DBEFF', acl: '387025', footerAddress: 'St Leonards, Sydney', logoUrl: ''}])} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">+ Add another brand</button>
+        <button onClick={() => setBrands([...brands, {id: Date.now().toString(), name: 'New Brand', isDefault: false, headerColor: '#343333', accentColor: '#2DBEFF', acl: '387025', footerAddress: 'St Leonards, Sydney', logoUrl: ''}])} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-card border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">+ Add another brand</button>
       </section>
       )}
       {pane === 'brokers' && <BrokerProfiles brands={brands} />}
@@ -448,23 +448,23 @@ export default function SettingsPage() {
         <>
           <StatementRulesPane value={statementRules} onChange={setStatementRules} />
 
-          <div className="bg-white border border-[#E5DED2] rounded-xl p-5 mt-4">
-            <h3 className="text-[13px] font-[640] text-[#221F1B] mb-1">Standing corrections</h3>
+          <div className="bg-card border border-[#E5DED2] rounded-xl p-5 mt-4">
+            <h3 className="text-[13px] font-[640] text-ink mb-1">Standing corrections</h3>
             <p className="text-[12.5px] text-[#575046] leading-[1.6] mb-3">
               Set from the Audit tab on a deal, by ticking “always treat this payer this way”.
               Each one changes how <b>every</b> client’s statements are read from the next
               re-analysis onwards. A correction made on a single file always beats these.
             </p>
-            {rulesMsg && <p className="text-[12px] text-[#1E7A4A] mb-2">{rulesMsg}</p>}
+            {rulesMsg && <p className="text-[12px] text-done mb-2">{rulesMsg}</p>}
             {payerRules.length === 0 ? (
-              <p className="text-[12.5px] text-[#7A7266]">None. Nothing is being forced on any file.</p>
+              <p className="text-[12.5px] text-muted">None. Nothing is being forced on any file.</p>
             ) : (
-              <div className="border border-[#EFEAE0] rounded-lg overflow-hidden">
+              <div className="border border-line rounded-lg overflow-hidden">
                 {payerRules.map((r: any, i: number) => (
-                  <div key={r.match + i} className="flex items-start gap-3 px-3 py-2.5 border-b border-[#EFEAE0] last:border-b-0">
+                  <div key={r.match + i} className="flex items-start gap-3 px-3 py-2.5 border-b border-line last:border-b-0">
                     <div className="flex-1">
-                      <p className="text-[12.5px] text-[#221F1B] m-0">{r.label || r.match}</p>
-                      <p className="text-[11px] text-[#7A7266] m-0">
+                      <p className="text-[12.5px] text-ink m-0">{r.label || r.match}</p>
+                      <p className="text-[11px] text-muted m-0">
                         counted as <b className="text-[#575046]">{TREATMENT_LABEL[r.treat_as as TreatAs] || r.treat_as}</b>
                         {r.added_by ? ` · added by ${r.added_by}` : ''}
                         {r.added_at ? ` · ${new Date(r.added_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
@@ -472,12 +472,12 @@ export default function SettingsPage() {
                     </div>
                     <button
                       onClick={() => { setPayerRules(removeRule(payerRules as any, r.match) as any); setRulesMsg('Removed. Press Save, then re-analyse any file it was affecting.') }}
-                      className="text-[11.5px] text-[#AD4227] underline">Remove</button>
+                      className="text-[11.5px] text-chase underline">Remove</button>
                   </div>
                 ))}
               </div>
             )}
-            <p className="text-[11px] text-[#7A7266] mt-2.5 leading-[1.5]">
+            <p className="text-[11px] text-muted mt-2.5 leading-[1.5]">
               Removing a rule does not change a file that has already been analysed. Press Re-analyse on that deal.
             </p>
           </div>
@@ -486,60 +486,60 @@ export default function SettingsPage() {
 
       {pane === 'connections' && (
       <section className="mb-10">
-        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Bank Statement Collection (WealthDesk)</h2>
-        <div className="border border-[#EDE7DD] rounded-xl p-5 bg-white">
-          <p className="text-[11.5px] text-[#A29889] mb-3">This is the same static link shared with every client to collect bank statements. It's used on the client "ready to proceed" page and in the manual next-steps email.</p>
-          <label className="text-[11px] font-semibold text-[#A29889] block mb-1">WealthDesk link</label>
-          <input className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF] font-mono" value={wealthDeskLink} onChange={(e) => setWealthDeskLink(e.target.value)} placeholder="https://simplify.wealthdesk.com.au/iv/tk/..." />
+        <h2 className="text-[10px] font-semibold text-faint uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-info inline-block shrink-0" />Bank Statement Collection (WealthDesk)</h2>
+        <div className="border border-[#EDE7DD] rounded-xl p-5 bg-card">
+          <p className="text-[11.5px] text-faint mb-3">This is the same static link shared with every client to collect bank statements. It's used on the client "ready to proceed" page and in the manual next-steps email.</p>
+          <label className="text-[11px] font-semibold text-faint block mb-1">WealthDesk link</label>
+          <input className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF] font-mono" value={wealthDeskLink} onChange={(e) => setWealthDeskLink(e.target.value)} placeholder="https://simplify.wealthdesk.com.au/iv/tk/..." />
         </div>
       </section>
       )}
       {pane === 'notifications' && (
       <section className="mb-10">
-        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Notification Routing</h2>
-        <div className="border border-[#EDE7DD] rounded-xl p-5 bg-white space-y-4">
-          <p className="text-[11.5px] text-[#A29889] mb-3">Who receives internal notification emails as deals move through the pipeline. Change this anytime without needing a code change.</p>
+        <h2 className="text-[10px] font-semibold text-faint uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-info inline-block shrink-0" />Notification Routing</h2>
+        <div className="border border-[#EDE7DD] rounded-xl p-5 bg-card space-y-4">
+          <p className="text-[11.5px] text-faint mb-3">Who receives internal notification emails as deals move through the pipeline. Change this anytime without needing a code change.</p>
           <div>
-            <label className="text-[11px] font-semibold text-[#A29889] block mb-1">When a new deal is created — who is asked to create the SalesTrekker card</label>
-            <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" aria-label="When a new deal is created — who is asked to create the SalesTrekker card" value={newDealNotificationUserId} onChange={(e) => setNewDealNotificationUserId(e.target.value)}>
+            <label className="text-[11px] font-semibold text-faint block mb-1">When a new deal is created — who is asked to create the SalesTrekker card</label>
+            <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" aria-label="When a new deal is created — who is asked to create the SalesTrekker card" value={newDealNotificationUserId} onChange={(e) => setNewDealNotificationUserId(e.target.value)}>
               <option value="">— select team member —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-semibold text-[#A29889] block mb-1">When a deal moves stage — who is asked to move the SalesTrekker card</label>
-            <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" aria-label="When a deal moves stage — who is asked to move the SalesTrekker card" value={stageMoveNotificationUserId} onChange={(e) => setStageMoveNotificationUserId(e.target.value)}>
+            <label className="text-[11px] font-semibold text-faint block mb-1">When a deal moves stage — who is asked to move the SalesTrekker card</label>
+            <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" aria-label="When a deal moves stage — who is asked to move the SalesTrekker card" value={stageMoveNotificationUserId} onChange={(e) => setStageMoveNotificationUserId(e.target.value)}>
               <option value="">— select team member —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-semibold text-[#A29889] block mb-1">When documents are requested — who raises them on SalesTrekker</label>
-            <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" aria-label="When documents are requested — who raises them on SalesTrekker" value={docsRequestNotificationUserId} onChange={(e) => setDocsRequestNotificationUserId(e.target.value)}>
+            <label className="text-[11px] font-semibold text-faint block mb-1">When documents are requested — who raises them on SalesTrekker</label>
+            <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" aria-label="When documents are requested — who raises them on SalesTrekker" value={docsRequestNotificationUserId} onChange={(e) => setDocsRequestNotificationUserId(e.target.value)}>
               <option value="">— same as the person below —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
-            <p className="text-[11px] text-[#A29889] mt-1">
+            <p className="text-[11px] text-faint mt-1">
               Who gets the email when somebody presses Request documents. Leave it blank and it goes
               to whoever files them, which is how it worked before this was here.
             </p>
           </div>
           <div>
-            <label className="text-[11px] font-semibold text-[#A29889] block mb-1">When documents are received — who renames and files them</label>
-            <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" aria-label="When documents are received — who renames and files them" value={docsFileNotificationUserId} onChange={(e) => setDocsFileNotificationUserId(e.target.value)}>
+            <label className="text-[11px] font-semibold text-faint block mb-1">When documents are received — who renames and files them</label>
+            <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" aria-label="When documents are received — who renames and files them" value={docsFileNotificationUserId} onChange={(e) => setDocsFileNotificationUserId(e.target.value)}>
               <option value="">— select team member —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-semibold text-[#A29889] block mb-1">How long to wait before telling the credit assessor</label>
+            <label className="text-[11px] font-semibold text-faint block mb-1">How long to wait before telling the credit assessor</label>
             <div className="flex items-center gap-2">
               <input type="number" min={0} max={240} value={docsDelayMinutes}
                 onChange={(e) => setDocsDelayMinutes(e.target.value)}
-                className="w-[110px] text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" />
-              <span className="text-[12.5px] text-[#A29889]">minutes</span>
+                className="w-[110px] text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" />
+              <span className="text-[12.5px] text-faint">minutes</span>
             </div>
-            <p className="text-[11px] text-[#A29889] mt-1">
+            <p className="text-[11px] text-faint mt-1">
               Roughly how long it takes to rename and file a set of documents. Change it whenever that stops
               being true. Zero tells both people at once. The assessor is always the credit officer allocated
               to the deal, so there is nobody to choose here.
@@ -551,21 +551,21 @@ export default function SettingsPage() {
       {pane === 'targets' && <PipelineTargets />}
       {pane === 'ai' && (
       <section className="mb-10">
-        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />AI expenses</h2>
+        <h2 className="text-[10px] font-semibold text-faint uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-info inline-block shrink-0" />AI expenses</h2>
         <AiExpenses />
       </section>
       )}
       {pane === 'commissions' && (
       <section className="mb-10">
-        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Commission library</h2>
+        <h2 className="text-[10px] font-semibold text-faint uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-info inline-block shrink-0" />Commission library</h2>
         <CommissionLibrary />
       </section>
       )}
       {pane === 'compliance' && (
       <section className="mb-10">
-        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Compliance AI Style Notes</h2>
-        <div className="border border-[#EDE7DD] rounded-xl p-5 bg-white">
-          <p className="text-[11.5px] text-[#A29889] mb-3">Corrections and preferences you've given before, fed into every future Compliance AI generation across all deals — e.g. "Always mention offset account benefits" or "Keep the deposit comment to one sentence, no exceptions."</p>
+        <h2 className="text-[10px] font-semibold text-faint uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-info inline-block shrink-0" />Compliance AI Style Notes</h2>
+        <div className="border border-[#EDE7DD] rounded-xl p-5 bg-card">
+          <p className="text-[11.5px] text-faint mb-3">Corrections and preferences you've given before, fed into every future Compliance AI generation across all deals — e.g. "Always mention offset account benefits" or "Keep the deposit comment to one sentence, no exceptions."</p>
           <div className="flex flex-col gap-2 mb-3">
             {complianceStyleNotes.map((note, i) => (
               <div key={i} className="flex items-center gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
@@ -575,17 +575,17 @@ export default function SettingsPage() {
             ))}
           </div>
           <div className="flex gap-2">
-            <input className="flex-1 text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={newStyleNote} onChange={e => setNewStyleNote(e.target.value)} placeholder="Add a style note..." onKeyDown={e => { if (e.key === 'Enter' && newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} />
-            <button onClick={() => { if (newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">Add</button>
+            <input className="flex-1 text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" value={newStyleNote} onChange={e => setNewStyleNote(e.target.value)} placeholder="Add a style note..." onKeyDown={e => { if (e.key === 'Enter' && newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} />
+            <button onClick={() => { if (newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-card border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">Add</button>
           </div>
         </div>
       </section>
       )}
       {pane === 'compliance' && (
       <section className="mb-10">
-        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Lending Options AI Style Notes</h2>
-        <div className="border border-[#EDE7DD] rounded-xl p-5 bg-white">
-          <p className="text-[11.5px] text-[#A29889] mb-3">The same idea for the LO recommendation paragraph. Kept apart from the Compliance notes on purpose — a correction about how a recommendation should read has no business changing a Compliance answer.</p>
+        <h2 className="text-[10px] font-semibold text-faint uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-info inline-block shrink-0" />Lending Options AI Style Notes</h2>
+        <div className="border border-[#EDE7DD] rounded-xl p-5 bg-card">
+          <p className="text-[11.5px] text-faint mb-3">The same idea for the LO recommendation paragraph. Kept apart from the Compliance notes on purpose — a correction about how a recommendation should read has no business changing a Compliance answer.</p>
           <div className="flex flex-col gap-2 mb-3">
             {loStyleNotes.map((note, i) => (
               <div key={i} className="flex items-center gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
@@ -593,31 +593,31 @@ export default function SettingsPage() {
                 <button onClick={() => setLoStyleNotes(prev => prev.filter((_, idx) => idx !== i))} className="text-xs text-[#C9C1B4] hover:text-red-400">✕</button>
               </div>
             ))}
-            {loStyleNotes.length === 0 && <p className="text-[11.5px] text-[#A29889]">None yet.</p>}
+            {loStyleNotes.length === 0 && <p className="text-[11.5px] text-faint">None yet.</p>}
           </div>
           <div className="flex gap-2">
-            <input className="flex-1 text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={newLoStyleNote} onChange={e => setNewLoStyleNote(e.target.value)} placeholder="Add a style note..." onKeyDown={e => { if (e.key === 'Enter' && newLoStyleNote.trim()) { setLoStyleNotes(prev => [...prev, newLoStyleNote.trim()]); setNewLoStyleNote('') } }} />
-            <button onClick={() => { if (newLoStyleNote.trim()) { setLoStyleNotes(prev => [...prev, newLoStyleNote.trim()]); setNewLoStyleNote('') } }} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">Add</button>
+            <input className="flex-1 text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" value={newLoStyleNote} onChange={e => setNewLoStyleNote(e.target.value)} placeholder="Add a style note..." onKeyDown={e => { if (e.key === 'Enter' && newLoStyleNote.trim()) { setLoStyleNotes(prev => [...prev, newLoStyleNote.trim()]); setNewLoStyleNote('') } }} />
+            <button onClick={() => { if (newLoStyleNote.trim()) { setLoStyleNotes(prev => [...prev, newLoStyleNote.trim()]); setNewLoStyleNote('') } }} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-card border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">Add</button>
           </div>
         </div>
       </section>
       )}
       {pane === 'compliance' && (
       <section className="mb-10">
-        <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Open Flags {complianceFlags.length > 0 && <span className="bg-amber-100 text-amber-600 rounded-full px-2 py-0.5 ml-1">{complianceFlags.length}</span>}</h2>
-        <div className="border border-[#EDE7DD] rounded-xl p-5 bg-white">
-          <p className="text-[11.5px] text-[#A29889] mb-3">Issues flagged by the team on live deals, from both Compliance and Lending Options. Promote a flag to turn it into a permanent Style Note applied to every future generation, or dismiss it if it doesn't need to become a standing rule.</p>
+        <h2 className="text-[10px] font-semibold text-faint uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-info inline-block shrink-0" />Open Flags {complianceFlags.length > 0 && <span className="bg-chase-bg text-chase rounded-full px-2 py-0.5 ml-1">{complianceFlags.length}</span>}</h2>
+        <div className="border border-[#EDE7DD] rounded-xl p-5 bg-card">
+          <p className="text-[11.5px] text-faint mb-3">Issues flagged by the team on live deals, from both Compliance and Lending Options. Promote a flag to turn it into a permanent Style Note applied to every future generation, or dismiss it if it doesn't need to become a standing rule.</p>
           {loadingFlags ? (
-            <p className="text-[11.5px] text-[#A29889]">Loading...</p>
+            <p className="text-[11.5px] text-faint">Loading...</p>
           ) : complianceFlags.length === 0 ? (
-            <p className="text-[11.5px] text-[#A29889]">No open flags.</p>
+            <p className="text-[11.5px] text-faint">No open flags.</p>
           ) : (
             <div className="flex flex-col gap-3">
               {complianceFlags.map((flag) => (
                 <div key={flag.id} className="bg-gray-50 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11.5px] font-medium text-[#6E665C]">
-                      <span className={`text-[9.5px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[1px] border mr-1.5 ${flag.stage === 'lo' ? 'bg-[#EAF7FE] border-[#BFE6F9] text-[#0E8FCB]' : 'bg-[#FAF7F2] border-[#E8E1D6] text-[#6E665C]'}`}>
+                    <span className="text-[11.5px] font-medium text-muted">
+                      <span className={`text-[9.5px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[1px] border mr-1.5 ${flag.stage === 'lo' ? 'bg-[#EAF7FE] border-[#BFE6F9] text-[#0E8FCB]' : 'bg-page border-line text-muted'}`}>
                         {flag.stage === 'lo' ? 'LO' : 'Compliance'}
                       </span>
                       {flag.field_label} — {flag.deals?.deal_name || 'Unknown deal'}
@@ -626,10 +626,10 @@ export default function SettingsPage() {
                   </div>
                   <p className="text-sm mb-2">{flag.note}</p>
                   <div className="flex gap-2">
-                    <button onClick={() => promoteFlag(flag)} className="text-[11.5px] bg-[#343333] text-white rounded-lg px-3 py-1.5 hover:bg-[#2a2a2a]">
+                    <button onClick={() => promoteFlag(flag)} className="text-[11.5px] bg-ink text-page rounded-lg px-3 py-1.5 hover:opacity-90">
                       Promote to {flag.stage === 'lo' ? 'LO' : 'Compliance'} Style Note
                     </button>
-                    <button onClick={() => dismissFlag(flag.id)} className="text-[11.5px] text-[#A29889] hover:text-[#2E2A26]">Dismiss</button>
+                    <button onClick={() => dismissFlag(flag.id)} className="text-[11.5px] text-faint hover:text-ink">Dismiss</button>
                   </div>
                 </div>
               ))}
@@ -641,43 +641,43 @@ export default function SettingsPage() {
       {pane === 'people' && (
       <section className="mb-10">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Credit Team</h2>
+          <h2 className="text-[10px] font-semibold text-faint uppercase tracking-[0.09em] flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-info inline-block shrink-0" />Credit Team</h2>
         </div>
-        <p className="text-[11.5px] text-[#A29889] mb-4">Manage who's on the credit team and which brokers' deals each person covers. This drives automatic allocation when a deal is sent to the credit team.</p>
+        <p className="text-[11.5px] text-faint mb-4">Manage who's on the credit team and which brokers' deals each person covers. This drives automatic allocation when a deal is sent to the credit team.</p>
         {creditTeamError && (
           <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-600 mb-4">{creditTeamError}</div>
         )}
         {loadingCreditTeam ? (
-          <div className="text-[13px] text-[#A29889]">Loading credit team...</div>
+          <div className="text-[13px] text-faint">Loading credit team...</div>
         ) : (
           <>
             {creditOfficers.map((officer) => (
-              <div key={officer.id} className="border border-[#EDE7DD] rounded-xl p-5 mb-4 bg-white">
+              <div key={officer.id} className="border border-[#EDE7DD] rounded-xl p-5 mb-4 bg-card">
                 <div className="flex justify-between items-start mb-4">
-                  <input className="font-semibold text-[#2E2A26] flex-1 border border-[#E8E1D6] rounded-lg px-3 py-2 focus:outline-none focus:border-[#2DBEFF]" value={officer.name} onChange={(e) => updateCreditOfficerName(officer.id, e.target.value)} placeholder="Credit officer name" />
+                  <input className="font-semibold text-ink flex-1 border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-[#2DBEFF]" value={officer.name} onChange={(e) => updateCreditOfficerName(officer.id, e.target.value)} placeholder="Credit officer name" />
                   <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-1.5 text-[11.5px] text-[#6E665C] cursor-pointer">
+                    <label className="flex items-center gap-1.5 text-[11.5px] text-muted cursor-pointer">
                       <input type="checkbox" checked={officer.active} onChange={(e) => toggleCreditOfficerActive(officer.id, e.target.checked)} />
                       Active
                     </label>
-                    <button onClick={() => removeCreditOfficer(officer.id)} className="text-[11.5px] text-[#A29889] hover:text-[#C4553B] transition">Remove</button>
+                    <button onClick={() => removeCreditOfficer(officer.id)} className="text-[11.5px] text-faint hover:text-[#C4553B] transition">Remove</button>
                   </div>
                 </div>
                 <div className="mb-3">
-                  <label className="text-[11px] font-semibold text-[#A29889] block mb-1">Linked portal account (used for assignment notification emails)</label>
-                  <select className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={officer.userId || ''} onChange={(e) => linkCreditOfficerUser(officer.id, e.target.value)}>
+                  <label className="text-[11px] font-semibold text-faint block mb-1">Linked portal account (used for assignment notification emails)</label>
+                  <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" value={officer.userId || ''} onChange={(e) => linkCreditOfficerUser(officer.id, e.target.value)}>
                     <option value="">— not linked —</option>
                     {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name} ({p.email})</option>)}
                   </select>
-                  {!officer.userId && <p className="text-xs text-amber-600 mt-1">⚠ No portal account linked — this person won't receive assignment emails until linked.</p>}
+                  {!officer.userId && <p className="text-xs text-chase mt-1">⚠ No portal account linked — this person won't receive assignment emails until linked.</p>}
                 </div>
                 <div className="mb-3">
-                  <label className="text-[11px] font-semibold text-[#A29889] block mb-1">Direct phone number</label>
-                  <input className={`w-full text-[13px] border rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF] ${officer.phone ? 'border-[#E8E1D6]' : 'border-[#EBD9BE] bg-[#FDF6EC]'}`}
+                  <label className="text-[11px] font-semibold text-faint block mb-1">Direct phone number</label>
+                  <input className={`w-full text-[13px] border rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF] ${officer.phone ? 'border-line' : 'border-dashed border-field-line bg-page'}`}
                     value={officer.phone || ''} placeholder="e.g. 0412 345 678"
                     onChange={(e) => updateCreditOfficerPhone(officer.id, e.target.value)} />
                   {!officer.phone && (
-                    <p className="text-xs text-amber-600 mt-1">
+                    <p className="text-xs text-chase mt-1">
                       ⚠ Needed before broker notes can be generated on this person&rsquo;s deals — it is the number
                       the lender&rsquo;s assessor is told to call.
                     </p>
@@ -685,25 +685,25 @@ export default function SettingsPage() {
                 </div>
                 <div className="mb-3 grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-semibold text-[#A29889] block mb-1">On leave from</label>
-                    <input type="date" className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={officer.onLeaveFrom || ''} onChange={(e) => updateCreditOfficerLeave(officer.id, 'onLeaveFrom', e.target.value)} />
+                    <label className="text-[11px] font-semibold text-faint block mb-1">On leave from</label>
+                    <input type="date" className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" value={officer.onLeaveFrom || ''} onChange={(e) => updateCreditOfficerLeave(officer.id, 'onLeaveFrom', e.target.value)} />
                   </div>
                   <div>
-                    <label className="text-[11px] font-semibold text-[#A29889] block mb-1">Until</label>
-                    <input type="date" className="w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]" value={officer.onLeaveUntil || ''} onChange={(e) => updateCreditOfficerLeave(officer.id, 'onLeaveUntil', e.target.value)} />
+                    <label className="text-[11px] font-semibold text-faint block mb-1">Until</label>
+                    <input type="date" className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" value={officer.onLeaveUntil || ''} onChange={(e) => updateCreditOfficerLeave(officer.id, 'onLeaveUntil', e.target.value)} />
                   </div>
                   {officer.onLeaveFrom && officer.onLeaveUntil && (
-                    <p className="text-xs text-amber-600 col-span-2">🏖 Excluded from auto-allocation between {officer.onLeaveFrom} and {officer.onLeaveUntil}</p>
+                    <p className="text-xs text-info col-span-2">🏖 Excluded from auto-allocation between {officer.onLeaveFrom} and {officer.onLeaveUntil}</p>
                   )}
                 </div>
-                <label className="text-[11px] font-semibold text-[#A29889] block mb-2">Covers deals for:</label>
+                <label className="text-[11px] font-semibold text-faint block mb-2">Covers deals for:</label>
                 <div className="flex flex-wrap gap-2">
                   {brokerList.map((b) => {
                     const slug = b.key
                     const covers = officer.brokers.some(x => String(x).toLowerCase() === slug)
                     return (
                       <button key={b.key} onClick={() => toggleBrokerCoverage(officer.id, slug)}
-                        className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors ${covers ? 'bg-[#343333] border-[#343333] text-white' : 'border-[#E8E1D6] text-[#6E665C] hover:bg-[#FAF7F2] hover:text-[#2E2A26]'}`}>
+                        className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors ${covers ? 'bg-ink border-ink text-white' : 'border-line text-muted hover:bg-page hover:text-ink'}`}>
                         {slug}
                       </button>
                     )
@@ -711,7 +711,7 @@ export default function SettingsPage() {
                 </div>
               </div>
             ))}
-            <button onClick={addCreditOfficer} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">+ Add credit officer</button>
+            <button onClick={addCreditOfficer} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-card border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">+ Add credit officer</button>
           </>
         )}
       </section>

@@ -107,15 +107,15 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
     await load()
   }
 
-  const field = 'w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]'
-  const label = 'text-[11px] font-semibold text-[#A29889] block mb-1'
+  const field = 'w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]'
+  const label = 'text-[11px] font-semibold text-faint block mb-1'
 
-  if (loading) return <p className="text-[13px] text-[#A29889]">Loading brokers…</p>
+  if (loading) return <p className="text-[13px] text-faint">Loading brokers…</p>
   if (err) return <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{err}</div>
 
   return (
     <section className="mb-10">
-      <h2 className="text-[10px] font-semibold text-[#A29889] uppercase tracking-[0.09em] mb-4 flex items-center gap-2">
+      <h2 className="text-[10px] font-semibold text-faint uppercase tracking-[0.09em] mb-4 flex items-center gap-2">
         <span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] inline-block shrink-0" />Broker Profiles
       </h2>
 
@@ -125,26 +125,26 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
         const m = msg[r.broker_key] || ''
         const failed = m.startsWith('NOT ')
         return (
-          <div key={r.broker_key} className={`border rounded-xl p-5 mb-4 bg-white ${val(r, 'active') ? 'border-[#EDE7DD]' : 'border-[#EDE7DD] opacity-60'}`}>
+          <div key={r.broker_key} className={`border rounded-xl p-5 mb-4 bg-card ${val(r, 'active') ? 'border-[#EDE7DD]' : 'border-[#EDE7DD] opacity-60'}`}>
             <div className="flex justify-between items-start gap-3 mb-3 flex-wrap">
               <div className="flex-1 min-w-[240px]">
-                <input className="font-semibold text-[#2E2A26] w-full border border-[#E8E1D6] rounded-lg px-3 py-2 focus:outline-none focus:border-[#2DBEFF]"
+                <input className="font-semibold text-ink w-full border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-[#2DBEFF]"
                   value={val(r, 'name')} onChange={e => edit(r.broker_key, { name: e.target.value })} placeholder="Broker name" />
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                   {/* shows-the-key: this screen is where the key is managed, so it is the subject, not a label. */}
-                  <span className="text-[11px] font-mono text-[#A29889]">key: {r.broker_key}</span>
+                  <span className="text-[11px] font-mono text-faint">key: {r.broker_key}</span>
                   {login
-                    ? <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-[#F1F7F3] border border-[#CFE6D5] text-[#25794C] rounded-full px-2 py-[2px]">Has a login</span>
-                    : <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C] rounded-full px-2 py-[2px]">No login yet</span>}
-                  {!val(r, 'crn') && <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-[#FBEDE9] border border-[#EFCFC5] text-[#C4553B] rounded-full px-2 py-[2px]">No CR number</span>}
+                    ? <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-done-bg border border-done-edge text-done rounded-full px-2 py-[2px]">Has a login</span>
+                    : <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-page border border-line text-muted rounded-full px-2 py-[2px]">No login yet</span>}
+                  {!val(r, 'crn') && <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-chase-bg border border-[#EFCFC5] text-[#C4553B] rounded-full px-2 py-[2px]">No CR number</span>}
                 </div>
               </div>
               <div className="flex gap-3 items-center shrink-0">
-                <label className="inline-flex items-center gap-2 text-[12px] text-[#6E665C] cursor-pointer">
+                <label className="inline-flex items-center gap-2 text-[12px] text-muted cursor-pointer">
                   <input type="checkbox" checked={!!val(r, 'active')} onChange={e => edit(r.broker_key, { active: e.target.checked })} />
                   Active
                 </label>
-                <button onClick={() => remove(r)} className="text-[11.5px] text-[#A29889] hover:text-[#C4553B] transition">Delete</button>
+                <button onClick={() => remove(r)} className="text-[11.5px] text-faint hover:text-[#C4553B] transition">Delete</button>
               </div>
             </div>
 
@@ -169,15 +169,15 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
                     ))}
                     <input value={colour} placeholder="not set"
                       onChange={e => edit(r.broker_key, { colour: e.target.value } as any)}
-                      className={'text-[12.5px] font-mono rounded-lg px-2 py-1 w-[94px] border focus:outline-none focus:border-[#2DBEFF] ' + (pale ? 'border-[#EBD9BE] bg-[#FDF6EC] text-[#946017]' : 'border-[#E8E1D6] text-[#2E2A26]')} />
+                      className={'text-[12.5px] font-mono rounded-lg px-2 py-1 w-[94px] border focus:outline-none focus:border-[#2DBEFF] ' + (pale ? 'border-chase-edge bg-chase-bg text-chase' : 'border-line text-ink')} />
                   </div>
                   <span className="w-[26px] h-[26px] rounded-full text-[10.5px] font-bold text-white inline-flex items-center justify-center border-[1.5px] border-white"
                     style={{ background: set || brokerColour(r.broker_key) }}>
                     {initialsOf(String(val(r, 'name')))}
                   </span>
-                  <span className="text-[11.5px] text-[#A29889]">
+                  <span className="text-[11.5px] text-faint">
                     {pale
-                      ? <b className="text-[#946017] font-semibold">Too pale - the initials disappear on a card. Pick a darker shade.</b>
+                      ? <b className="text-chase font-semibold">Too pale - the initials disappear on a card. Pick a darker shade.</b>
                       : set ? 'on their deal cards' : 'not set - the board is guessing this one'}
                   </span>
                   {set && (
@@ -205,17 +205,17 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
               </div>
               <div>
                 <label className={label}>Login</label>
-                <div className="text-[13px] text-[#6E665C] py-2">
+                <div className="text-[13px] text-muted py-2">
                   {/* shows-the-key: the person has to type this exact string into Team. */}
-                  {login ? login.full_name : <span className="text-[#A29889]">none — invite them in Team with the key “{r.broker_key}”</span>}
+                  {login ? login.full_name : <span className="text-faint">none — invite them in Team with the key “{r.broker_key}”</span>}
                 </div>
               </div>
             </div>
 
             {nameDrift && login && (
-              <div className="flex items-start gap-3 bg-[#FDF6E7] border border-[#EFE0BC] rounded-lg px-3 py-2.5 mt-3">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#946017" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
-                <span className="text-[12px] text-[#7A5F17] flex-1">
+              <div className="flex items-start gap-3 bg-info-bg border border-info-edge rounded-lg px-3 py-2.5 mt-3">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
+                <span className="text-[12px] text-info flex-1">
                   Their login reads &ldquo;{login.full_name}&rdquo;. Saving here does not change it.
                 </span>
                 <button onClick={async () => {
@@ -224,7 +224,7 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
                     if (data && data.length) { await load(); setMsg(mm => ({ ...mm, [r.broker_key]: 'Login name updated too.' })) }
                     else setMsg(mm => ({ ...mm, [r.broker_key]: 'NOT SAVED - the database refused the login name change.' }))
                   }}
-                  className="text-[12px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-3 py-1.5 hover:bg-[#EAF7FE] transition whitespace-nowrap shrink-0">
+                  className="text-[12px] font-semibold text-[#0E8FCB] bg-card border border-[#BFE6F9] rounded-lg px-3 py-1.5 hover:bg-[#EAF7FE] transition whitespace-nowrap shrink-0">
                   Use this name everywhere
                 </button>
               </div>
@@ -239,7 +239,7 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
                   return (
                     <button key={brand.id}
                       onClick={() => edit(r.broker_key, { brand_ids: has ? list.filter(x => x !== brand.id) : [...list, brand.id] })}
-                      className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors ${has ? 'bg-[#343333] border-[#343333] text-white' : 'border-[#E8E1D6] text-[#6E665C] hover:bg-[#FAF7F2] hover:text-[#2E2A26]'}`}>
+                      className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors ${has ? 'bg-ink border-ink text-white' : 'border-line text-muted hover:bg-page hover:text-ink'}`}>
                       {brand.name}
                     </button>
                   )
@@ -248,11 +248,11 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
             </div>
 
             <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
-              <span className={`text-[12px] ${failed ? 'text-[#C4553B] font-medium' : 'text-[#A29889]'}`}>
+              <span className={`text-[12px] ${failed ? 'text-[#C4553B] font-medium' : 'text-faint'}`}>
                 {m || (dirty(r.broker_key) ? 'Unsaved changes.' : '')}
               </span>
               <button onClick={() => save(r)} disabled={!dirty(r.broker_key) || busy === r.broker_key}
-                className="bg-[#343333] text-white rounded-lg px-4 py-2 text-[12.5px] font-semibold hover:bg-[#2a2a2a] transition disabled:opacity-40">
+                className="bg-ink text-page rounded-lg px-4 py-2 text-[12.5px] font-semibold hover:opacity-90 transition disabled:opacity-40">
                 {busy === r.broker_key ? 'Saving…' : 'Save'}
               </button>
             </div>
@@ -263,8 +263,8 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
       })}
 
       {adding ? (
-        <div className="border border-[#EDE7DD] rounded-xl p-5 bg-white">
-          <p className="text-[13px] font-semibold text-[#2E2A26] mb-3">Add a broker</p>
+        <div className="border border-[#EDE7DD] rounded-xl p-5 bg-card">
+          <p className="text-[13px] font-semibold text-ink mb-3">Add a broker</p>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
               <label className={label}>Full name</label>
@@ -274,18 +274,18 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
               <label className={label}>Broker key</label>
               <input className={field + ' font-mono'} value={newKey} onChange={e => setNewKey(e.target.value)}
                 placeholder={suggestKey(newName) || 'jane'} />
-              <p className="text-[11px] text-[#A29889] mt-1">Set once. It links their deals, login and targets, so it cannot be changed afterwards.</p>
+              <p className="text-[11px] text-faint mt-1">Set once. It links their deals, login and targets, so it cannot be changed afterwards.</p>
             </div>
           </div>
           {err && <p className="text-[12px] text-[#C4553B] mb-2">{err}</p>}
           <div className="flex gap-2 items-center">
-            <button onClick={addBroker} className="bg-[#343333] text-white rounded-lg px-4 py-2 text-[12.5px] font-semibold hover:bg-[#2a2a2a] transition">Add broker</button>
-            <button onClick={() => { setAdding(false); setErr('') }} className="text-[12px] text-[#A29889] hover:text-[#2E2A26]">Cancel</button>
+            <button onClick={addBroker} className="bg-ink text-page rounded-lg px-4 py-2 text-[12.5px] font-semibold hover:opacity-90 transition">Add broker</button>
+            <button onClick={() => { setAdding(false); setErr('') }} className="text-[12px] text-faint hover:text-ink">Cancel</button>
           </div>
         </div>
       ) : (
         <button onClick={() => setAdding(true)}
-          className="text-[12.5px] font-semibold text-[#0E8FCB] bg-white border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">
+          className="text-[12.5px] font-semibold text-[#0E8FCB] bg-card border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">
           + Add another broker
         </button>
       )}

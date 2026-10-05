@@ -82,12 +82,12 @@ export default function MilestoneFromTemplates({ templateId, onClose }: {
   return (
     <div className="fixed inset-0 z-50 bg-black/30 flex items-start justify-center p-4 overflow-auto"
          onClick={onClose}>
-      <div className="bg-white rounded-xl border border-[#E3E6E8] shadow-lg w-full max-w-[560px] mt-10"
+      <div className="bg-card rounded-xl border border-[#E3E6E8] shadow-lg w-full max-w-[560px] mt-10"
            onClick={e => e.stopPropagation()}>
         <div className="border-b border-[#EEF0F2] bg-[#FAFAF8] px-4 py-3 rounded-t-xl flex items-baseline gap-2">
           <b className="text-[13.5px]">{name}</b>
-          <span className="text-[12px] text-[#A29889]">Which deal is this for?</span>
-          <button onClick={onClose} className="ml-auto text-[#C3BDB2] hover:text-[#575046] text-[16px] leading-none">&times;</button>
+          <span className="text-[12px] text-faint">Which deal is this for?</span>
+          <button onClick={onClose} className="ml-auto text-faint hover:text-[#575046] text-[16px] leading-none">&times;</button>
         </div>
 
         <div className="p-4">
@@ -95,16 +95,16 @@ export default function MilestoneFromTemplates({ templateId, onClose }: {
             placeholder="Search by client or deal name…"
             className="w-full border border-[#E5DED2] rounded-lg px-3 py-2 text-[12.5px]" />
 
-          {loading && <p className="mt-3 text-[12.5px] text-[#A29889]">Loading deals…</p>}
+          {loading && <p className="mt-3 text-[12.5px] text-faint">Loading deals…</p>}
 
           {!loading && loadError && (
-            <p className="mt-3 text-[12.5px] text-[#8E3A34] bg-[#FDF3F2] border border-[#E9D2CF] rounded-lg px-3 py-2.5 leading-[1.5]">
+            <p className="mt-3 text-[12.5px] text-chase bg-chase-bg border border-chase-edge rounded-lg px-3 py-2.5 leading-[1.5]">
               The deals could not be loaded — {loadError}. Nothing is wrong with what you typed.
             </p>
           )}
 
           {!loading && !loadError && rows.length === 0 && (
-            <p className="mt-3 text-[12.5px] text-[#A29889]">No deal matches that.</p>
+            <p className="mt-3 text-[12.5px] text-faint">No deal matches that.</p>
           )}
 
           {!loading && rows.length > 0 && (
@@ -116,13 +116,13 @@ export default function MilestoneFromTemplates({ templateId, onClose }: {
                   <button key={d.id} type="button" disabled={!canOpen}
                     onClick={() => setPicked(d)}
                     className={`w-full text-left flex items-center gap-3 px-3 py-2.5 border-b border-[#F7F6F4] last:border-b-0 text-[12.5px] ${
-                      canOpen ? 'hover:bg-[#FAF8F4]' : 'bg-[#FCFCFB] cursor-default'}`}>
-                    <span className={`font-semibold truncate ${canOpen ? 'text-[#221F1B]' : 'text-[#A29889]'}`}>
+                      canOpen ? 'hover:bg-[#FAF8F4]' : 'bg-panel cursor-default'}`}>
+                    <span className={`font-semibold truncate ${canOpen ? 'text-ink' : 'text-faint'}`}>
                       {d.deal_name || 'Untitled deal'}
                     </span>
-                    <span className="text-[11.5px] text-[#A29889] truncate">{d.lender || ''}</span>
+                    <span className="text-[11.5px] text-faint truncate">{d.lender || ''}</span>
                     <span className={`ml-auto shrink-0 text-[11px] font-semibold ${
-                      ready ? 'text-[#0F7B4F]' : canOpen ? 'text-[#8A6218]' : 'text-[#C3BDB2]'}`}>
+                      ready ? 'text-done' : canOpen ? 'text-info' : 'text-faint'}`}>
                       {item?.note || ''}
                     </span>
                   </button>
@@ -132,7 +132,7 @@ export default function MilestoneFromTemplates({ templateId, onClose }: {
           )}
         </div>
 
-        <div className="border-t border-[#EEF0F2] bg-[#FAFAF8] px-4 py-2.5 rounded-b-xl text-[11.5px] text-[#A29889]">
+        <div className="border-t border-[#EEF0F2] bg-[#FAFAF8] px-4 py-2.5 rounded-b-xl text-[11.5px] text-faint">
           Ready first, then what has gone, then what cannot yet — the same order as on the deal.
         </div>
       </div>
