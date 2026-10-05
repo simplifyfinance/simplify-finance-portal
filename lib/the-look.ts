@@ -101,8 +101,10 @@ export const THE_LOOK: Piece[] = [
   // LENDING OPTIONS - the four Fabio picked, none of them built.
   { mock: 'lo.html', piece: 'LO: deal structure density B - two lines per split, not a table',
     proof: { file: 'components/DealStructure.tsx', contains: 'TWO LINES PER SPLIT' } },
-  { mock: 'lo.html', piece: 'LO: research criteria and important notes above the lender options', proof: null },
-  { mock: 'lo.html', piece: "LO: the client's decision inside the recommendation card", proof: null },
+  { mock: 'lo.html', piece: 'LO: research criteria and important notes above the lender options',
+    proof: { file: 'app/(app)/deals/[id]/LOForm.tsx', contains: 'WHAT WAS DECIDED BEFORE ANY LENDER WAS LOOKED AT' } },
+  { mock: 'lo.html', piece: "LO: the client's decision inside the recommendation card",
+    proof: { file: 'app/(app)/deals/[id]/LOForm.tsx', contains: 'AT THE FOOT OF THE RECOMMENDATION IT IS ABOUT' } },
   { mock: 'lo.html', piece: 'LO: rate modules as chips at the top with panels below', proof: null },
 
   // STATEMENTS - mocked and approved, nothing built but the colours.

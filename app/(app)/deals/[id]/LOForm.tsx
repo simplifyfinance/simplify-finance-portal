@@ -1760,6 +1760,46 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             </div>
           )}
 
+          {/* WHAT WAS DECIDED BEFORE ANY LENDER WAS LOOKED AT.
+              Fabio, 3 Oct 2026: "research criteria and important things to
+              note are at the top before all products". They were under the
+              options, which is the wrong way round - these are the reasons
+              the options are what they are. */}
+          {/* Research criteria */}
+          <div className="bg-card border border-gray-100 rounded-xl p-5">
+            <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Research criteria</div>
+            <div className="space-y-2 mb-3">
+              {CRITERIA_OPTIONS.map(c => (
+                <label key={c} className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                  <input type="checkbox" checked={d.criteriaUsed.includes(c)} onChange={() => toggleCriteria(c)} />
+                  {c}
+                </label>
+              ))}
+              {d.criteriaUsed.filter(c => !CRITERIA_OPTIONS.includes(c)).map((c, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input type="checkbox" checked readOnly />
+                  <span className="text-sm flex-1">{c}</span>
+                  <button onClick={() => setD({ ...d, criteriaUsed: d.criteriaUsed.filter(x => x !== c) })} className="text-xs text-red-400">Remove</button>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input className={inp} value={newCriteria} onChange={e => setNewCriteria(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && newCriteria.trim()) { setD({ ...d, criteriaUsed: [...d.criteriaUsed, newCriteria.trim()] }); setNewCriteria('') } }} placeholder="Add custom criteria and press Enter" />
+              <button onClick={() => { if (newCriteria.trim()) { setD({ ...d, criteriaUsed: [...d.criteriaUsed, newCriteria.trim()] }); setNewCriteria('') } }} className="bg-ink text-white text-sm px-4 rounded-lg">Add</button>
+            </div>
+            {/* IMPORTANT THINGS TO NOTE, UNDER THE CRITERIA RATHER THAN IN
+                A CARD OF ITS OWN. docs/approved-looks/lo.html draws the two as
+                one card with a sub heading, because they are both what was
+                decided before any lender was looked at. */}
+            <div className="mt-5 pt-4 border-t border-card-line">
+            <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Important things to note (included in email, one per line)</div>
+            <textarea spellCheck="true" className={inp + ' min-h-40 resize-y'} value={d.importantNotes || ''}
+              onFocus={() => focusField(ownRef.current, 'importantNotes')}
+              onBlur={() => blurField(ownRef.current, 'importantNotes')}
+              onChange={e => { markDirty(ownRef.current, 'importantNotes'); setD({ ...d, importantNotes: e.target.value }) }} placeholder="One note per line..." />
+            </div>
+          </div>
+
           {/* Lender options */}
           {d.lenders.map((lender, i) => {
             const isRec = isRecommended(d, lender)
@@ -2091,9 +2131,14 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             {flagMsg && (
               <div className={`mt-2 text-xs ${flagMsg.startsWith('NOT SENT') ? 'text-red-600' : 'text-green-600'}`}>{flagMsg}</div>
             )}
-          </div>
-
-          {/* THE CLIENT'S DECISION, WHERE IT CAN BE CHANGED.
+          {/* THE CLIENT'S DECISION, AT THE FOOT OF THE RECOMMENDATION IT IS ABOUT.
+            *
+            * Fabio, 3 Oct 2026: "clients decison tab dont like that it is at
+            * bottom". It was the second last thing on the tab, under the
+            * research. docs/approved-looks/lo.html draws it as the foot of the
+            * recommendation card - option 3, which he picked.
+            *
+            * WHERE IT CAN BE CHANGED.
             *
             * Fabio, 25 Sep 2026: "how do we avoid this as this happens all the
             * time customers change their mind a button perhaps??"
@@ -2109,7 +2154,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             * compliance notes go stale on their own the moment it changes,
             * because they are stamped with the lender they were written about.
             * See lib/client-agreement.ts. */}
-          <div className="bg-card border border-gray-100 rounded-xl p-5">
+          <div className="mt-5 pt-4 border-t border-card-line">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">The client&apos;s decision</div>
             {decisionOpen || !d.clientAgreedLender ? (
               <div className={`rounded-lg p-3.5 border ${d.clientAgreedLender ? 'bg-page border-gray-100' : 'bg-chase-bg border-chase-edge'}`}>
@@ -2185,37 +2230,6 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             )}
           </div>
 
-          {/* Research criteria */}
-          <div className="bg-card border border-gray-100 rounded-xl p-5">
-            <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Research criteria</div>
-            <div className="space-y-2 mb-3">
-              {CRITERIA_OPTIONS.map(c => (
-                <label key={c} className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                  <input type="checkbox" checked={d.criteriaUsed.includes(c)} onChange={() => toggleCriteria(c)} />
-                  {c}
-                </label>
-              ))}
-              {d.criteriaUsed.filter(c => !CRITERIA_OPTIONS.includes(c)).map((c, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input type="checkbox" checked readOnly />
-                  <span className="text-sm flex-1">{c}</span>
-                  <button onClick={() => setD({ ...d, criteriaUsed: d.criteriaUsed.filter(x => x !== c) })} className="text-xs text-red-400">Remove</button>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input className={inp} value={newCriteria} onChange={e => setNewCriteria(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && newCriteria.trim()) { setD({ ...d, criteriaUsed: [...d.criteriaUsed, newCriteria.trim()] }); setNewCriteria('') } }} placeholder="Add custom criteria and press Enter" />
-              <button onClick={() => { if (newCriteria.trim()) { setD({ ...d, criteriaUsed: [...d.criteriaUsed, newCriteria.trim()] }); setNewCriteria('') } }} className="bg-ink text-white text-sm px-4 rounded-lg">Add</button>
-            </div>
-          </div>
-
-          {/* Important notes */}
-          <div className="bg-card border border-gray-100 rounded-xl p-5">
-            <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Important things to note (included in email, one per line)</div>
-            <textarea spellCheck="true" className={inp + ' min-h-40 resize-y'} value={d.importantNotes || ''}
-              onFocus={() => focusField(ownRef.current, 'importantNotes')}
-              onBlur={() => blurField(ownRef.current, 'importantNotes')}
-              onChange={e => { markDirty(ownRef.current, 'importantNotes'); setD({ ...d, importantNotes: e.target.value }) }} placeholder="One note per line..." />
           </div>
 
           {/* Additional notes */}
