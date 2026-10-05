@@ -21,16 +21,27 @@ describe('it is on the deal page now', () => {
   // 5 Oct 2026: the document list moved into the rail, beside the form rather
   // than above it, so "under the document list" no longer describes anything.
   // Drawn once, above the tabs, is what this was for.
+  // 6 Oct 2026. It is no longer a red box of its own on the deal page. It is
+  // one of the prompts in the band across the top - one-inside-the-deal-v4.html
+  // - so the page holds the band, and the band holds the question. It is still
+  // drawn once, still above the tabs, and it still answers itself away.
+  const band = read('../components/DealPrompts.tsx')
+
   it('drawn once, above the tabs', () => {
-    expect((page.match(/<WhoIsDoingTheBc\s/g) || []).length).toBe(1)
-    const at = page.indexOf('<WhoIsDoingTheBc')
-    expect(at, 'WhoIsDoingTheBc is not on the deal page').toBeGreaterThan(-1)
+    expect((band.match(/<WhoIsDoingTheBc\s/g) || []).length,
+      'the question should be asked once, by the prompt band').toBe(1)
+    expect((page.match(/<DealPrompts\s/g) || []).length).toBe(1)
+    const at = page.indexOf('<DealPrompts')
+    expect(at, 'the prompt band is not on the deal page').toBeGreaterThan(-1)
     expect(page.slice(at)).toContain('<DealTabCards')
   })
 
   it('and it tells the page when it has been answered', () => {
-    const at = page.indexOf('<WhoIsDoingTheBc')
+    const at = page.indexOf('<DealPrompts')
     expect(page.slice(at, at + 300)).toContain('onUpdated')
+    // and the band passes that straight down to the question
+    const q = band.indexOf('<WhoIsDoingTheBc')
+    expect(band.slice(q, q + 200)).toContain('onUpdated')
   })
 })
 
@@ -41,7 +52,10 @@ describe('it is a question, not a permanent row of buttons', () => {
   it('disappears once somebody is on it', () => {
     expect(code).toContain('assigned_credit_officer')
     expect(code).toContain('bc_self_assigned')
-    expect(code).toContain('if (answered || finished) return null')
+    // The rule moved into bcUnanswered() so the prompt band can count the
+    // question before drawing anything. Same rule, asked from one place.
+    expect(code).toContain('if (!bcUnanswered(deal)) return null')
+    expect(code).toContain('return !answered && !finished')
   })
 
   it('and never shows on a finished deal', () => {

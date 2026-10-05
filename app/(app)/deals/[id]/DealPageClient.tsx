@@ -35,7 +35,7 @@ import { DealAlerts, FileNotes, AlertChips, useDealFile } from '@/components/Dea
 import { isLocked } from '@/lib/deal-lock'
 import { isWithLender } from '@/lib/deal-phase'
 import DocumentsBox from '@/components/DocumentsBox'
-import WhoIsDoingTheBc from '@/components/WhoIsDoingTheBc'
+import DealPrompts from '@/components/DealPrompts'
 import Outstanding from '@/components/Outstanding'
 import DealDocuments from '@/components/DealDocuments'
 import MilestoneEmails from '@/components/MilestoneEmails'
@@ -359,6 +359,14 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
         </div>
       </div>
 
+      {/* WHAT NOBODY HAS STARTED - one-inside-the-deal-v4.html, the band under
+          the broker and credit officer line. The BC question used to sit lower
+          down in a red box of its own; it is in here now, beside the documents
+          nobody has asked for. It draws nothing when there is nothing to say.
+          See components/DealPrompts.tsx. */}
+      <DealPrompts deal={dealData}
+        onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+
       <DealProgress deal={dealData} />
 
       {/* A lodged deal is being TRACKED, not written, and the tracking blocks
@@ -415,11 +423,6 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           them. Fabio, 3 Sep 2026: "It's always the same button. Make it across
           all stages. It's static across next to the deal card information." */}
 
-      {/* THE FIRST DECISION ON THE DEAL, ON THE DEAL. It used to be three clicks
-          deep - BC, then Preview & share, then the button. See
-          components/WhoIsDoingTheBc.tsx. It answers itself away. */}
-      <WhoIsDoingTheBc deal={dealData}
-        onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
 
       {/* THE LENDER CAME BACK WITH CONDITIONS. Same idea as the strip above: it
           does not exist before lodgement, it does not exist once the

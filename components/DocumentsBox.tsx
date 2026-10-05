@@ -8,6 +8,8 @@ import { rowsFor, tickedCount, toRequest, withTick, withAdded, withoutAdded, wit
          progressOf, requestRounds, COMMON_EXTRAS, extrasNotAlreadyListed,
          type DocProgress, type DocRow } from '@/lib/document-progress'
 import { formallyApproved } from '@/lib/document-rules'
+import { nowRowsOf, laterRowsOf } from '@/lib/documents-outstanding'
+import { requestDocuments } from '@/lib/request-documents'
 import { banksSeen, accountsPerBank, coveredRows, shortOfPeriod, salaryAccounts,
          expensesAccount, undeclaredBanks, type BanksSeen, type NamedAccount } from '@/lib/statement-cover'
 
@@ -89,11 +91,11 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
     return () => { alive = false }
   }, [open, cover, deal.id])
 
-  const approved = formallyApproved(deal)
-  const rows = useMemo(() => rowsFor(items, progress, { formallyApproved: approved }),
-    [items, progress, approved])
-  const nowRows = rows.filter(r => dueNow.includes(r.key) || r.addedByHand)
-  const laterRows = rows.filter(r => !dueNow.includes(r.key) && !r.addedByHand)
+  // THE SAME FUNCTION THE PROMPT BAND READS - lib/documents-outstanding.ts.
+  // It was four lines here, and the band at the top of the page needed the
+  // same answer. Two copies is how one screen ends up disagreeing with itself.
+  const nowRows = useMemo(() => nowRowsOf(deal, progress), [deal, progress])
+  const laterRows = useMemo(() => laterRowsOf(deal, progress), [deal, progress])
 
   // Nothing already on the list is offered again - see extrasNotAlreadyListed()
   // in lib/document-progress.ts for the rule and why statements are special.
@@ -122,19 +124,16 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
     if (pending.length === 0) return
     setSending(true); setSentMsg(''); setErr('')
     try {
-      const res = await fetch('/api/request-documents', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dealId: deal.id, keys: pending.map(r => r.key) }),
-      })
-      const data = await res.json().catch(() => null)
-      if (!res.ok || !data?.ok) {
-        setErr(data?.error || `The request could not be sent (${res.status}).`)
+      const sent = await requestDocuments(deal.id, pending.map(r => r.key))
+      if (!sent.ok) {
+        setErr(sent.error)
         // Recorded but unsent: the screen must show them as asked for, or the
         // next press sends the lot again.
-        if (data?.recorded) await reload()
+        if (sent.data?.recorded) await reload()
         setSending(false)
         return
       }
+      const data: any = sent.data
       if (data.skipped) { setSentMsg('Those were already asked for.'); await reload(); setSending(false); return }
       setSentMsg(`${data.count} ${data.count === 1 ? 'document' : 'documents'} sent to ${data.to || 'the requesting team'}.`)
       await reload()

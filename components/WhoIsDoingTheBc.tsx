@@ -17,18 +17,30 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 // moment it is answered - the credit officer chip in the header carries it from
 // then on. A deal that is finished never shows it at all.
 
-export default function WhoIsDoingTheBc({ deal, onUpdated }: {
+// IS THIS STILL AN OPEN QUESTION ON THIS DEAL?
+//
+// 6 Oct 2026. The prompt band has to count what nobody has started BEFORE it
+// decides whether to draw itself at all, so the question has to be answerable
+// without rendering anything. Same rule, one place.
+export function bcUnanswered(deal: any): boolean {
+  const answered = !!deal?.assigned_credit_officer || !!deal?.bc_self_assigned
+  const finished = deal?.status === 'completed' || !!deal?.settled_at
+  return !answered && !finished
+}
+
+export default function WhoIsDoingTheBc({ deal, onUpdated, bare }: {
   deal: any
   onUpdated?: (patch: any) => void
+  /** Inside the prompt band, which already draws the box and the colour.
+   *  A box inside a box is how a page starts looking like a form builder. */
+  bare?: boolean
 }) {
   const supabase = createSupabaseBrowser()
   const [sending, setSending] = useState(false)
   const [err, setErr] = useState('')
   const [msg, setMsg] = useState('')
 
-  const answered = !!deal?.assigned_credit_officer || !!deal?.bc_self_assigned
-  const finished = deal?.status === 'completed' || !!deal?.settled_at
-  if (answered || finished) return null
+  if (!bcUnanswered(deal)) return null
 
   // Ellie makes the SalesTrekker card off the back of either answer. The route
   // claims the send atomically, so pressing twice can never make two cards.
@@ -87,10 +99,10 @@ export default function WhoIsDoingTheBc({ deal, onUpdated }: {
     setSending(false)
   }
 
-  return (
-    <div className="bg-chase-bg border border-chase-edge rounded-xl px-4 py-3 mb-4">
+  const inner = (
+    <>
       <div className="flex items-center gap-2.5 flex-wrap">
-        <span className="text-[13px] font-semibold text-chase">Who is doing the borrowing capacity?</span>
+        <span className={`text-[13px] font-semibold ${bare ? 'text-waiting' : 'text-chase'}`}>Who is doing the borrowing capacity?</span>
         <button onClick={takeItMyself} disabled={sending}
           className="px-3 py-1.5 text-xs rounded-lg border border-[#E3E6E8] bg-card text-[#4A5158] hover:bg-gray-50 disabled:opacity-50">
           I&apos;ll do this myself
@@ -99,10 +111,18 @@ export default function WhoIsDoingTheBc({ deal, onUpdated }: {
           className="px-3 py-1.5 text-xs rounded-lg bg-ink text-page font-semibold hover:opacity-90 disabled:opacity-50">
           {sending ? 'Sending...' : 'Send to credit team'}
         </button>
-        <span className="text-[11.5px] text-chase">Nobody is on it yet.</span>
+        <span className={`text-[11.5px] ${bare ? 'text-waiting' : 'text-chase'}`}>Nobody is on it yet.</span>
       </div>
       {msg && <p className="m-0 mt-2 text-[12px] text-done">{msg}</p>}
       {err && <p className="m-0 mt-2 text-[12px] text-chase">{err}</p>}
+    </>
+  )
+
+  if (bare) return <div className="min-w-0">{inner}</div>
+
+  return (
+    <div className="bg-chase-bg border border-chase-edge rounded-xl px-4 py-3 mb-4">
+      {inner}
     </div>
   )
 }

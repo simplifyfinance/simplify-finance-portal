@@ -15,8 +15,24 @@
 // pressing. This is that line.
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'fs'
+import { readFileSync, readdirSync } from 'fs'
+import { join } from 'path'
 import { rowsFor, toRequest, progressOf, requestRounds } from './document-progress'
+
+// Every file a person could put a second sender in.
+function allSourceFiles(): string[] {
+  const out: string[] = []
+  const walk = (dir: string) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (e.name === 'node_modules' || e.name.startsWith('.')) continue
+      const full = join(dir, e.name)
+      if (e.isDirectory()) walk(full)
+      else if (/\.(ts|tsx)$/.test(e.name) && !e.name.includes('.test.')) out.push(full)
+    }
+  }
+  for (const root of ['app', 'components', 'lib']) walk(root)
+  return out.sort()
+}
 
 const read = (p: string) => readFileSync(new URL(p, import.meta.url), 'utf8')
 const box = read('../components/DocumentsBox.tsx')
@@ -89,8 +105,17 @@ describe('the line on the deal', () => {
   })
 
   it('presses the same button the list already had', () => {
-    // One sender, so the line and the list can never do different things.
-    expect((code.match(/fetch\('\/api\/request-documents'/g) || []).length).toBe(1)
+    // ONE SENDER, so the line and the list can never do different things.
+    //
+    // 6 Oct 2026: the sender moved out to lib/request-documents.ts, because the
+    // prompt band at the top of the deal grew a Request them button too. The
+    // rule did not change - there is still exactly one place that sends - so
+    // this now counts the sends across the whole portal rather than in one file.
+    const senders = allSourceFiles()
+      .filter(f => /fetch\(\s*['"`]\/api\/request-documents/.test(readFileSync(f, 'utf8')))
+    expect(senders, `more than one place sends the document request: ${senders.join(', ')}`)
+      .toEqual(['lib/request-documents.ts'])
+    expect(code).toContain('requestDocuments(')
     expect(code).toContain('onClick={requestThem}')
   })
 
