@@ -632,7 +632,7 @@ export default function LenderLibrary() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className="text-sm text-[#343333]">{product.product_name}</p>
-                              {product.is_draft ? <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">Draft</span> : <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">Live</span>}
+                              {product.is_draft ? <span className="text-xs bg-gray-100 text-gray-500 border border-gray-200 px-1.5 py-0.5 rounded-full">Draft</span> : <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">Live</span>}
                             </div>
                             <p className="text-xs text-gray-400 mt-0.5">
                               {product.rate_type === 'variable' ? 'Variable' : product.rate_type === 'fixed' ? 'Fixed' : 'Variable + Fixed'}
@@ -643,7 +643,7 @@ export default function LenderLibrary() {
                             </p>
                           </div>
                           <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
-                            <button onClick={() => toggleProductDraft(product.id, product.is_draft)} className={`text-xs border rounded px-2 py-0.5 transition ${product.is_draft ? 'border-green-200 text-green-600 hover:bg-green-50' : 'border-amber-200 text-amber-600 hover:bg-amber-50'}`}>{product.is_draft ? 'Go live' : 'Set draft'}</button>
+                            <button onClick={() => toggleProductDraft(product.id, product.is_draft)} className={`text-xs border rounded px-2 py-0.5 transition ${product.is_draft ? 'border-green-200 text-green-600 hover:bg-green-50' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{product.is_draft ? 'Go live' : 'Set draft'}</button>
                             <button onClick={() => openEditProduct(product, lender.name)} className="text-xs text-white bg-[#2DBEFF] hover:bg-blue-400 rounded px-2 py-0.5 transition">Edit</button>
                             <button onClick={() => toggleProductActive(product.id, product.active)} className={`text-xs border rounded px-2 py-0.5 transition ${product.active ? 'border-red-200 text-red-400 hover:bg-red-50' : 'border-green-200 text-green-500 hover:bg-green-50'}`}>{product.active ? 'Deactivate' : 'Activate'}</button>
                             <button onClick={() => setConfirmDelete({ type: 'product', id: product.id, name: product.product_name })} className="text-xs text-red-400 hover:text-red-600 border border-red-200 rounded px-2 py-0.5">Delete</button>
@@ -770,7 +770,7 @@ export default function LenderLibrary() {
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-gray-400 mb-4">All saved products start as <span className="text-amber-600 font-medium">Draft</span> — go live from the library after reviewing.</p>
+                <p className="text-xs text-gray-400 mb-4">All saved products start as <span className="text-gray-600 font-medium">Draft</span> — go live from the library after reviewing.</p>
                 {extractError && <p className="text-sm text-red-500 mb-3">{extractError}</p>}
                 <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
                   <button onClick={() => setImportStep('input')} className="text-sm text-gray-400 hover:text-gray-600 px-3">Back</button>

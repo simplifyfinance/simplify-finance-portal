@@ -14,13 +14,13 @@ export default function DraftBanner({ at, onRestore, onDiscard }: {
   onDiscard: () => void
 }) {
   return (
-    <div className="mb-4 flex items-start gap-3 bg-amber-50 border-2 border-amber-400 rounded-xl px-4 py-3">
-      <span className="text-amber-500 text-base leading-none mt-0.5">&#9888;</span>
+    <div className="mb-4 flex items-start gap-3 bg-chase-bg border-2 border-chase-edge rounded-xl px-4 py-3">
+      <span className="text-chase text-base leading-none mt-0.5">&#9888;</span>
       <div className="flex-1">
-        <div className="text-xs font-semibold text-amber-800">
+        <div className="text-xs font-semibold text-chase">
           Unsaved work from this computer, {draftWhen(at)}
         </div>
-        <div className="text-xs text-amber-700 leading-relaxed mt-0.5">
+        <div className="text-xs text-chase leading-relaxed mt-0.5">
           It never reached the database &mdash; the connection dropped, or the tab closed before the
           save went through. Nothing on screen has been changed.
         </div>
@@ -30,7 +30,7 @@ export default function DraftBanner({ at, onRestore, onDiscard }: {
             Put it back on screen
           </button>
           <button onClick={onDiscard}
-            className="text-xs font-medium border border-amber-300 text-amber-800 rounded-lg px-3 py-1.5 hover:bg-amber-100">
+            className="text-xs font-medium border border-chase-edge text-chase rounded-lg px-3 py-1.5 hover:bg-chase-bg">
             Discard it
           </button>
         </div>

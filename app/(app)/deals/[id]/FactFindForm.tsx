@@ -1360,7 +1360,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                 <label className="text-xs text-gray-500 block mb-1">
                   {applicant.relationshipStatus} to
                 </label>
-                <select className={inp + (applicant.relatedToApplicantId ? '' : ' border-amber-300 bg-[#FFFBF0]')}
+                <select className={inp + (applicant.relatedToApplicantId ? '' : ' border-dashed border-field-line bg-page')}
                   value={applicant.relatedToApplicantId || ''}
                   onChange={e => setRelationship(applicant.relationshipStatus, e.target.value)}>
                   <option value="">Select</option>
@@ -1510,7 +1510,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
             </div>
           ))}
           {totalHistoryMonths(applicant.addresses) < REQUIRED_HISTORY_MONTHS && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 mb-2">
+            <div className="bg-chase-bg border border-chase-edge rounded-lg px-3 py-2 text-xs text-chase mb-2">
               {totalHistoryMonths(applicant.addresses)} months of address history recorded — add a previous address to reach the required {REQUIRED_HISTORY_MONTHS} months.
             </div>
           )}
@@ -1572,7 +1572,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                   <label className="text-xs text-gray-500 block mb-1">
                     {emp.employmentType === 'Not working' ? 'Not working since' : 'Start date'}
                   </label>
-                  <input type="date" className={inp + (emp.startDate ? '' : ' border-amber-300 bg-[#FFFBF0]')}
+                  <input type="date" className={inp + (emp.startDate ? '' : ' border-dashed border-field-line bg-page')}
                     value={emp.startDate} onChange={e => updateEmployment(emp.id, 'startDate', e.target.value)} />
                 </div>
                 {!emp.isCurrent && (
@@ -1631,7 +1631,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
             const idle = current && current.employmentType === 'Not working' && current.startDate
               ? totalHistoryMonths([current]) : 0
             return (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700 mb-2">
+              <div className="bg-chase-bg border border-chase-edge rounded-lg px-3 py-2 text-xs text-chase mb-2">
                 <b>{mth(months)} of the {REQUIRED_HISTORY_MONTHS} a lender needs.</b>{' '}
                 {idle > 0
                   ? <>Not working accounts for {mth(idle)} of that. Add the employment
@@ -1724,9 +1724,9 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                       Fabio, 8 Sep 2026: "flag if no data on income input for
                       self employed." */}
                   {!selfEmployedFacts(inc, (applicant?.employment || []).find((e: any) => e.id === inc.employmentId)).hasFigures ? (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
-                      <div className="text-sm font-semibold text-amber-800">No income figures recorded yet</div>
-                      <div className="text-xs text-amber-700 mt-1">
+                    <div className="bg-chase-bg border border-chase-edge rounded-lg p-3 mb-3">
+                      <div className="text-sm font-semibold text-chase">No income figures recorded yet</div>
+                      <div className="text-xs text-chase mt-1">
                         {inc.seAssessmentMethod === "Director's salary"
                           ? 'Enter the director\'s salary below. Until then this income counts as nothing on the BC, the client email and the compliance notes.'
                           : 'Enter the financial year figures below. Until then this income counts as nothing on the BC, the client email and the compliance notes.'}
