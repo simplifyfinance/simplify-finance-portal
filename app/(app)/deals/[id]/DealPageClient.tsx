@@ -228,7 +228,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
       <TestDealBand deal={dealData} userRole={userRole} me={me}
         onChanged={(isTest) => setDealData((prev: any) => ({ ...prev, is_test: isTest }))} />
 
-      <div className="bg-white border border-gray-100 rounded-xl p-5 mb-4 flex items-start justify-between">
+      <div className="bg-card border border-gray-100 rounded-xl p-5 mb-4 flex items-start justify-between">
         <div>
           {editingName ? (
             <div className="flex items-center gap-2 mb-1">
@@ -267,13 +267,13 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
               name that differs, because the rest is the name above it. */}
           {otherDeals.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap mt-1.5 mb-1">
-              <span className="text-[9.5px] font-bold tracking-wider uppercase text-[#7BB8D2]">Also</span>
+              <span className="text-[9.5px] font-bold tracking-wider uppercase text-brand-ink/70">Also</span>
               {otherDeals.map(o => {
                 const label = splitOnCommonStart(String(o.deal_name || ''), [String(dealData.deal_name || '')]).tail
                 return (
                   <Link key={o.id} href={`/deals/${o.id}`}
-                    className="text-[12.5px] font-semibold text-[#0E5E86] bg-[#F4FAFE] border border-[#CDEBF8] rounded-lg px-2.5 py-1 hover:bg-[#E8F5FD]">
-                    {label} <span className="text-[#7BB8D2]">&rarr;</span>
+                    className="text-[12.5px] font-semibold text-info bg-info-bg border border-info-edge rounded-lg px-2.5 py-1 hover:bg-info-bg">
+                    {label} <span className="text-brand-ink/70">&rarr;</span>
                   </Link>
                 )
               })}
@@ -287,17 +287,17 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
             <BrokerAssignment dealId={dealData.id} currentBroker={dealData.assigned_broker} userRole={userRole} chip />
             <CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
             {templateLabel(dealData.bc_data?.template) && (
-              <span className="inline-flex items-baseline gap-1.5 bg-[#F4FCFF] border border-[#CDEBF8] rounded-lg px-2.5 py-1">
-                <span className="text-[9.5px] font-bold tracking-wider uppercase text-[#7BB8D2]">Scenario</span>
-                <span className="text-[13px] font-semibold text-[#0E86B8]">{templateLabel(dealData.bc_data?.template)}</span>
+              <span className="inline-flex items-baseline gap-1.5 bg-info-bg border border-info-edge rounded-lg px-2.5 py-1">
+                <span className="text-[9.5px] font-bold tracking-wider uppercase text-brand-ink/70">Scenario</span>
+                <span className="text-[13px] font-semibold text-info">{templateLabel(dealData.bc_data?.template)}</span>
               </span>
             )}
             {(() => {
               const waitingOn = getWaitingOnLabel(dealData)
               return waitingOn ? (
-                <span className="inline-flex items-baseline gap-2 bg-[#F3E9D7] border border-[#E7D8BC] rounded-lg px-3 py-1">
-                  <span className="text-[9.5px] font-bold tracking-wider uppercase text-[#A98B52]">Waiting on</span>
-                  <span className="text-[13px] font-semibold text-[#8A6A2F]">{waitingOn.text.replace(/^Waiting on:\s*/i, '')}</span>
+                <span className="inline-flex items-baseline gap-2 bg-waiting-bg border border-waiting-edge rounded-lg px-3 py-1">
+                  <span className="text-[9.5px] font-bold tracking-wider uppercase text-waiting">Waiting on</span>
+                  <span className="text-[13px] font-semibold text-waiting">{waitingOn.text.replace(/^Waiting on:\s*/i, '')}</span>
                 </span>
               ) : null
             })()}
@@ -310,11 +310,11 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
         <div className="flex items-center gap-3 flex-shrink-0">
           {(dealData.onedrive_link || dealData.salestrekker_link) && (
             <div className="flex items-center gap-2">
-              <span className="text-[9.5px] font-bold tracking-wider uppercase text-[#A29889]">Open</span>
-              <div className="inline-flex border border-[#E8E1D6] rounded-[10px] overflow-hidden">
+              <span className="text-[9.5px] font-bold tracking-wider uppercase text-faint">Open</span>
+              <div className="inline-flex border border-line rounded-[10px] overflow-hidden">
                 {dealData.onedrive_link && (
                   <a href={dealData.onedrive_link} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-[#6E665C] bg-[#FAF7F2] px-3.5 py-2 hover:bg-[#F4EEE4] transition inline-flex items-center gap-2 border-r border-[#E8E1D6]">
+                    className="text-xs text-muted bg-page px-3.5 py-2 hover:bg-line-soft transition inline-flex items-center gap-2 border-r border-line">
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12V5.5A1.5 1.5 0 0 1 3.5 4h3l1.5 2h4.5A1.5 1.5 0 0 1 14 7.5V12a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 12z"/></svg>
                     OneDrive
                   </a>
@@ -330,14 +330,14 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
             </div>
           )}
           <div className="flex items-center gap-2">
-            <span className="text-[9.5px] font-bold tracking-wider uppercase text-[#A29889]">Deal</span>
-            <div className="inline-flex border border-[#E8E1D6] rounded-[10px] overflow-hidden">
+            <span className="text-[9.5px] font-bold tracking-wider uppercase text-faint">Deal</span>
+            <div className="inline-flex border border-line rounded-[10px] overflow-hidden">
               <a href={`/deals/${deal.id}/summary`} target="_blank" rel="noopener noreferrer"
-                className="text-xs text-[#6E665C] bg-[#FAF7F2] px-3.5 py-2 hover:bg-[#F4EEE4] transition inline-flex items-center gap-2 border-r border-[#E8E1D6]">
+                className="text-xs text-muted bg-page px-3.5 py-2 hover:bg-line-soft transition inline-flex items-center gap-2 border-r border-line">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2h5l3 3v9H4z"/><path d="M9 2v3h3"/></svg>
                 Summary
               </a>
-              <button onClick={cloneThisDeal} disabled={cloning} className="text-xs text-[#6E665C] bg-[#FAF7F2] px-3.5 py-2 hover:bg-[#F4EEE4] transition inline-flex items-center gap-2 disabled:opacity-40">
+              <button onClick={cloneThisDeal} disabled={cloning} className="text-xs text-muted bg-page px-3.5 py-2 hover:bg-line-soft transition inline-flex items-center gap-2 disabled:opacity-40">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="9" rx="1.4"/><path d="M11 5V3.4A1.4 1.4 0 0 0 9.6 2H4.4A1.4 1.4 0 0 0 3 3.4v7.2A1.4 1.4 0 0 0 4.4 12H5"/></svg>
                 {cloning ? 'Cloning...' : 'Clone'}
               </button>
@@ -453,7 +453,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
       <div className="flex gap-2 mb-6">
         {tabs.map(({ key, label }) => (
           <button key={key} onClick={() => changeStage(key)}
-            className={`flex-1 text-center py-2.5 px-3 rounded-lg text-sm font-medium border transition-colors ${stage === key ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-400 bg-white hover:bg-gray-50'}`}>
+            className={`flex-1 text-center py-2.5 px-3 rounded-lg text-sm font-medium border transition-colors ${stage === key ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-400 bg-card hover:bg-gray-50'}`}>
             {label}
           </button>
         ))}

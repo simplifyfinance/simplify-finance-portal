@@ -214,10 +214,10 @@ const TEMPLATE_NOTES: Record<string, string[]> = {
 // dashed box, because empty already says unfinished. "Needs your attention"
 // wears the chase wash, the same as a card that needs you on the board.
 // Fabio, 3 Oct 2026: "I dont like the amber ... didnt we stop that??"
-const inputCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
+const inputCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-field w-full"
 function fieldCls(value: string) {
   return value && value.trim() && value !== '0'
-    ? "px-2.5 py-1.5 text-sm border border-green-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
+    ? "px-2.5 py-1.5 text-sm border border-green-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-field w-full"
     : "px-2.5 py-1.5 text-sm border border-dashed border-field-line rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-page w-full"
 }
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
@@ -225,7 +225,7 @@ import { annualIncomeOfApplicant, incomeBreakdownFor } from '@/lib/income-calcul
 import { newGuard, saveGuarded } from '@/lib/save-conflict'
 import { readMoney, formatAsTyped, money, moneyOrBlank } from '@/lib/money'
 
-const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
+const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-field w-full"
 
 // One copy, in lib/money.ts. This was written out identically here and in the
 // other form.
@@ -266,7 +266,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function NumberInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   const cls = value && value.trim() && value !== '0'
-    ? "pl-5 pr-2.5 py-1.5 text-sm border border-green-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-white w-full"
+    ? "pl-5 pr-2.5 py-1.5 text-sm border border-green-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-field w-full"
     : "pl-5 pr-2.5 py-1.5 text-sm border border-dashed border-field-line rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-page w-full"
   return (
     <div className="relative">
@@ -1325,12 +1325,12 @@ Key assumptions: ${checklistText}`
       <div className="flex gap-2 mb-4 items-center flex-wrap">
         {[['form','BC form'],['preview','Preview & share']].map(([id,label]) => (
           <button key={id} onClick={() => setActiveTab(id as any)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${activeTab === id ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500 bg-white'}`}>
+            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${activeTab === id ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500 bg-card'}`}>
             {label}
             {/* A warning nobody can see is not a warning. The figures move on the
                 BC form, and the email they broke is one tab away. */}
             {id === 'preview' && emailNeedsAttention && (
-              <span title="The saved email is out of date" className="ml-1.5 text-[#C79A2E]">●</span>
+              <span title="The saved email is out of date" className="ml-1.5 text-chase">●</span>
             )}
           </button>
         ))}
@@ -1349,7 +1349,7 @@ Key assumptions: ${checklistText}`
           </div>
         ) : (
           <button onClick={() => setShowMoveToLoPopup(true)}
-            className="px-3.5 py-1.5 text-sm rounded-lg font-semibold border border-[#141C24] bg-[#141C24] text-white hover:bg-[#28323c] transition">
+            className="px-3.5 py-1.5 text-sm rounded-lg font-semibold border border-ink bg-ink text-page hover:bg-ink/90 transition">
             Client agreed — move to LO
           </button>
         )}
@@ -1380,13 +1380,13 @@ Key assumptions: ${checklistText}`
         * Out here it opens from whichever tab somebody is looking at. */}
       {showMoveToLoPopup && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-[440px] shadow-xl">
-            <div className="text-base font-semibold mb-1 text-[#343333]">Send the next-steps email to the client?</div>
+          <div className="bg-card rounded-2xl p-6 w-[440px] shadow-xl">
+            <div className="text-base font-semibold mb-1 text-ink">Send the next-steps email to the client?</div>
             <p className="text-sm text-gray-500 mb-5">This moves the deal to LO and emails the client the same next-steps content (including the bank statement link, if entered) they'd see if they'd clicked "ready to proceed" themselves. Only use this if they agreed over a call rather than through the email.</p>
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowMoveToLoPopup(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={handleMoveToLo} disabled={sendingMoveToLo}
-                className="px-4 py-2 text-sm bg-[#343333] text-white rounded-lg font-medium hover:bg-[#2a2a2a] disabled:opacity-50">
+                className="px-4 py-2 text-sm bg-ink text-page rounded-lg font-medium hover:opacity-90 disabled:opacity-50">
                 {sendingMoveToLo ? 'Sending...' : 'Send and move to LO'}
               </button>
             </div>
@@ -1402,7 +1402,7 @@ Key assumptions: ${checklistText}`
               is exactly why the swap disappears once it does. See
               lib/bc-scenarios.ts. */}
           {(scenarioCount(deal) > 1 || canAdd(deal)) && (
-            <div className="bg-white border border-gray-100 rounded-xl p-4 mb-4">
+            <div className="bg-card border border-gray-100 rounded-xl p-4 mb-4">
               <div className="flex items-center gap-2 flex-wrap">
                 {tabsOf(liveDeal()).map(t => (
                   <button key={t.label + t.parkedIndex} disabled={scenarioBusy || (!t.live && !canSwap(deal))}
@@ -1412,11 +1412,11 @@ Key assumptions: ${checklistText}`
                       ? 'Lending options have been started on the other scenario. Clone the deal to change it.'
                       : ''}
                     className={t.live
-                      ? 'inline-flex items-center gap-2 bg-[#F4FBF7] border border-[#BBE7CF] text-[#0F7B4F] rounded-lg px-3 py-1.5 text-[12.5px] font-semibold'
+                      ? 'inline-flex items-center gap-2 bg-done-bg border border-done-edge text-done rounded-lg px-3 py-1.5 text-[12.5px] font-semibold'
                       : canSwap(deal)
-                        ? 'bg-white border border-gray-200 text-gray-600 rounded-lg px-3 py-1.5 text-[12.5px] hover:border-[#2DBEFF] hover:text-[#2DBEFF] transition'
-                        : 'bg-[#FCFCFB] border border-dashed border-gray-200 text-[#C3BDB2] rounded-lg px-3 py-1.5 text-[12.5px] cursor-default'}>
-                    {t.live && <span className="w-[7px] h-[7px] rounded-full bg-[#12A150] inline-block" />}
+                        ? 'bg-card border border-gray-200 text-gray-600 rounded-lg px-3 py-1.5 text-[12.5px] hover:border-[#2DBEFF] hover:text-[#2DBEFF] transition'
+                        : 'bg-panel border border-dashed border-gray-200 text-faint rounded-lg px-3 py-1.5 text-[12.5px] cursor-default'}>
+                    {t.live && <span className="w-[7px] h-[7px] rounded-full bg-done inline-block" />}
                     {t.label}
                   </button>
                 ))}
@@ -1430,7 +1430,7 @@ Key assumptions: ${checklistText}`
                     <button disabled={scenarioBusy}
                       onClick={() => { const name = window.prompt('Call this scenario', labelOf(buildBcData()))
                         if (name && name.trim()) writeScenarios(renameLive(liveDeal(), name.trim())) }}
-                      className="text-[11.5px] text-gray-400 hover:text-[#2E2A26]">Rename</button>
+                      className="text-[11.5px] text-gray-400 hover:text-ink">Rename</button>
                     {canSwap(deal) && (
                       <button disabled={scenarioBusy}
                         onClick={() => { const other = tabsOf(deal).find(t => !t.live)
@@ -1443,9 +1443,9 @@ Key assumptions: ${checklistText}`
                 )}
               </div>
               {scenarioCount(deal) > 1 && (
-                <div className="text-[11.5px] text-[#0F7B4F] mt-2.5">
+                <div className="text-[11.5px] text-done mt-2.5">
                   {downstreamStarted(deal)
-                    ? <span className="text-[#8A6218]">Lending options have been started on this scenario, so it is the one going ahead. To change it now, clone the deal.</span>
+                    ? <span className="text-chase">Lending options have been started on this scenario, so it is the one going ahead. To change it now, clone the deal.</span>
                     : <>This is the scenario going ahead &mdash; lending options and compliance are built from it.</>}
                 </div>
               )}
@@ -1453,7 +1453,7 @@ Key assumptions: ${checklistText}`
                   buttons in the email - a preference, not a switch. Somebody
                   here still chooses. See markProceeded in lib/proceed-flow.ts. */}
               {(deal.client_chose_scenario === 1 || deal.client_chose_scenario === 2) && (
-                <div className="text-[11.5px] text-[#0F7B4F] mt-2 font-semibold">
+                <div className="text-[11.5px] text-done mt-2 font-semibold">
                   The client pressed Option {deal.client_chose_scenario}
                   {deal.client_chose_scenario_at ? ` on ${auDate(deal.client_chose_scenario_at)}` : ''}
                   {' \u2014 '}
@@ -1464,13 +1464,13 @@ Key assumptions: ${checklistText}`
             </div>
           )}
 
-          <div className="bg-white border border-gray-100 rounded-xl p-4 mb-4">
+          <div className="bg-card border border-gray-100 rounded-xl p-4 mb-4">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">BC template</div>
             {deal.bc_completed_at && !showAllTemplates ? (
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="inline-flex items-center gap-2 bg-[#F4FCFF] border border-[#CDEBF8] rounded-lg px-3.5 py-2">
-                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#12A150" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.4 L6.2 11.4 L13 4.6"/></svg>
-                  <span className="text-sm font-semibold text-[#0E86B8]">{templateLabel(template)}</span>
+                <span className="inline-flex items-center gap-2 bg-info-bg border border-info-edge rounded-lg px-3.5 py-2">
+                  <svg className="text-done" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.4 L6.2 11.4 L13 4.6"/></svg>
+                  <span className="text-sm font-semibold text-info">{templateLabel(template)}</span>
                 </span>
                 <button onClick={() => setShowAllTemplates(true)} className="text-xs text-[#2DBEFF] hover:underline">Change scenario</button>
               </div>
@@ -1493,22 +1493,22 @@ Key assumptions: ${checklistText}`
           {askScenario && (
             <div className="fixed inset-0 z-50 bg-black/25 flex items-center justify-center p-4"
                  onClick={() => setAskScenario(null)}>
-              <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-5" onClick={e => e.stopPropagation()}>
+              <div className="bg-card rounded-2xl shadow-xl max-w-md w-full p-5" onClick={e => e.stopPropagation()}>
                 <div className="text-[15px] font-semibold mb-2">
                   Change to {TEMPLATES.find(t => t.id === askScenario.id)?.label || askScenario.id}?
                 </div>
                 <p className="text-xs text-gray-500 leading-relaxed mb-3">
                   That scenario sets up its own loan splits. You have typed into the ones you have now.
                 </p>
-                <div className="bg-[#FFF8F8] border border-[#F3D3D3] rounded-lg px-3 py-2.5 mb-4">
+                <div className="bg-chase-bg border border-chase-edge rounded-lg px-3 py-2.5 mb-4">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-red-700 mb-1.5">Would be replaced</div>
                   {askScenario.cost.lines.map((l, i) => (
-                    <div key={i} className="text-xs text-[#5B4141] py-0.5">{l}</div>
+                    <div key={i} className="text-xs text-chase py-0.5">{l}</div>
                   ))}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => { applyTemplate(askScenario.id, 'keep'); setAskScenario(null) }}
-                    className="text-xs font-semibold bg-[#2DBEFF] text-[#343333] rounded-lg px-3.5 py-2">
+                    className="text-xs font-semibold bg-[#2DBEFF] text-ink rounded-lg px-3.5 py-2">
                     Keep my splits{askScenario.adds > 0 ? ` (adds ${askScenario.adds} blank)` : ''}
                   </button>
                   <button onClick={() => { applyTemplate(askScenario.id, 'replace'); setAskScenario(null) }}
@@ -1534,7 +1534,7 @@ Key assumptions: ${checklistText}`
               runs in the order the work is done: the numbers, then the words
               that go to the client. Fabio, 3 Oct 2026. */}
           <div className="flex flex-col gap-4">
-              <div className="bg-white border border-gray-100 rounded-xl p-4">
+              <div className="bg-card border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Scenario details</div>
                 <div className="grid grid-cols-2 gap-2">
                   <Field label={['refinance_equity', 'refinance_only'].includes(template) ? 'Suburb' : 'State'}><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
@@ -1628,12 +1628,12 @@ Key assumptions: ${checklistText}`
                       ever say one, and the email would then name fewer accounts
                       than the client has. Nothing ticked and the sentence is
                       simply not in the email. */}
-                  <div className="flex flex-col gap-1.5 border border-gray-200 rounded-lg px-3 py-2 bg-white">
+                  <div className="flex flex-col gap-1.5 border border-gray-200 rounded-lg px-3 py-2 bg-field">
                     {splits.filter(x => (x.label || '').trim()).length === 0 && (
                       <span className="text-[11px] text-gray-400">Name a split first.</span>
                     )}
                     {splits.filter(x => (x.label || '').trim()).map((x, i) => (
-                      <label key={i} className="flex items-center gap-2 text-[12.5px] text-[#2E2A26] cursor-pointer">
+                      <label key={i} className="flex items-center gap-2 text-[12.5px] text-ink cursor-pointer">
                         <input type="checkbox" checked={offsetSplits.includes(x.label)}
                           onChange={e => setOffsetSplits(e.target.checked
                             ? [...offsetSplits.filter(l => l !== x.label), x.label]
@@ -1805,7 +1805,7 @@ Key assumptions: ${checklistText}`
                 </div>
               </div>
 
-              <div className="bg-white border border-gray-100 rounded-xl p-4">
+              <div className="bg-card border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">{isMultiOption ? "Loan Options — Multiple Deposits" : "Loan splits"}</div>
                 {/* THE PARTS AGAINST THE WHOLE. The same shape as the deposit
                     cross-check in the funds strip: it names a disagreement between
@@ -1870,7 +1870,7 @@ Key assumptions: ${checklistText}`
                         <Field label={capitalisedLmi ? "Base loan amount \u2014 before LMI" : "Amount"}>
                           <input className={inputCls} value={s.amount} onChange={e => handleLoanAmountChange(i, e.target.value)} />
                           {capitalisedLmi && (
-                            <span className="text-[11px] text-[#0E6C93] leading-snug">
+                            <span className="text-[11px] text-info leading-snug">
                               Do not add the LMI here \u2014 the portal adds it.{splitSum(s.amount)}
                             </span>
                           )}
@@ -1963,7 +1963,7 @@ Key assumptions: ${checklistText}`
                         )}
                         {isMultiOption && (
                           <Field label="LVR (calculated)">
-                            <div className={inputCls + " bg-white text-gray-700"}>{optLvrPercent > 0 ? `${optLvrPercent}%` : '\u2014'}</div>
+                            <div className={inputCls + " bg-field text-gray-700"}>{optLvrPercent > 0 ? `${optLvrPercent}%` : '\u2014'}</div>
                           </Field>
                         )}
                         {isMultiOption && optLvrPercent > 80 && (
@@ -1995,21 +1995,21 @@ Key assumptions: ${checklistText}`
                     const groups = groupsOf(buildBcData()).filter(g => g.property)
                     if (groups.length === 0) return null
                     return (
-                      <div className="border border-gray-100 rounded-lg p-3 bg-white">
+                      <div className="border border-gray-100 rounded-lg p-3 bg-card">
                         <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
                           Limit approved against each property
                         </div>
                         <div className="flex flex-col gap-2">
                           {groups.map(g => (
                             <div key={g.property} className="flex items-center gap-3 flex-wrap">
-                              <span className="text-[12.5px] text-[#2E2A26] flex-1 min-w-[160px]">{g.property}</span>
+                              <span className="text-[12.5px] text-ink flex-1 min-w-[160px]">{g.property}</span>
                               <span className="text-[11px] text-gray-400">drawn {fmtMoney(g.drawn)}</span>
                               <div className="w-[150px]">
                                 <NumberInput value={propertyLimits[g.property] || ''}
                                   onChange={(v: string) => setPropertyLimits({ ...propertyLimits, [g.property]: v })} />
                               </div>
                               {g.undrawn > 0 && (
-                                <span className="text-[11px] text-[#8A6218]">{fmtMoney(g.undrawn)} not drawn</span>
+                                <span className="text-[11px] text-chase">{fmtMoney(g.undrawn)} not drawn</span>
                               )}
                             </div>
                           ))}
@@ -2022,7 +2022,7 @@ Key assumptions: ${checklistText}`
                     if (!c.words) return null
                     return (
                       <div className={c.matches
-                        ? 'text-xs text-[#0F7B4F] bg-[#F4FBF7] border border-[#BBE7CF] rounded-lg px-3 py-2 leading-snug'
+                        ? 'text-xs text-done bg-done-bg border border-done-edge rounded-lg px-3 py-2 leading-snug'
                         : 'text-xs text-chase bg-chase-bg border border-chase-edge rounded-lg px-3 py-2 leading-snug'}>
                         {c.matches ? '' : '\u26a0 '}{c.words}
                       </div>
@@ -2033,7 +2033,7 @@ Key assumptions: ${checklistText}`
               </div>
 
               {template === "investment_equity" && (
-                <div className="bg-white border-2 border-[#2DBEFF]/40 rounded-xl p-4">
+                <div className="bg-card border-2 border-[#2DBEFF]/40 rounded-xl p-4">
                   <div className="text-xs font-medium text-[#2DBEFF] uppercase tracking-wider mb-3">New purchase</div>
                   <div className="grid grid-cols-2 gap-2">
                     {/* THE BOX THAT WAS LYING. This said "State" and wrote into
@@ -2117,7 +2117,7 @@ Key assumptions: ${checklistText}`
                 const altIsIO = /interest only|^io$/i.test(alt.type || '')
                 const altEstimate = altEstimatedRepayment(alt, loanTerm)
                 return (
-                <div key={alt.id} className="bg-white border-2 border-[#2DBEFF]/40 rounded-xl p-4">
+                <div key={alt.id} className="bg-card border-2 border-[#2DBEFF]/40 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="text-xs font-medium text-[#2DBEFF] uppercase tracking-wider">Alternative scenario {idx + 1}</div>
                     <button onClick={() => removeAltScenario(alt.id)} className="text-xs text-gray-400 hover:text-red-500">Remove</button>
@@ -2264,7 +2264,7 @@ Key assumptions: ${checklistText}`
                 <span className="h-px flex-1 bg-line" />
               </div>
 
-              <div className="bg-white border border-gray-100 rounded-xl p-4">
+              <div className="bg-card border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">"Based on your numbers" checklist</div>
                 <div className="flex flex-col gap-2 mb-2">
                   {checklist.map((item, i) => (
@@ -2290,7 +2290,7 @@ Key assumptions: ${checklistText}`
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mt-5 pt-4 border-t border-gray-100 mb-3">Notes</div>
                 <div className="flex flex-col gap-2">
                   <Field label="Broker summary notes (included in email)">
-                    <textarea spellCheck="true" className={`${brokerNotes ? "border-green-200 bg-white" : "border-dashed border-field-line bg-page"} px-2.5 py-1.5 text-sm rounded-lg focus:outline-none focus:border-[#2DBEFF] w-full min-h-16 resize-y border`} value={brokerNotes}
+                    <textarea spellCheck="true" className={`${brokerNotes ? "border-green-200 bg-field" : "border-dashed border-field-line bg-page"} px-2.5 py-1.5 text-sm rounded-lg focus:outline-none focus:border-[#2DBEFF] w-full min-h-16 resize-y border`} value={brokerNotes}
                       onFocus={() => focusField(ownRef.current, 'brokerNotes')}
                       onBlur={() => blurField(ownRef.current, 'brokerNotes')}
                       onChange={e => { markDirty(ownRef.current, 'brokerNotes'); setBrokerNotes(e.target.value) }} placeholder="✏ Add your personalised opening message — this goes directly into the client email..." />
@@ -2332,7 +2332,7 @@ Key assumptions: ${checklistText}`
                     It was the bright blue with a sparkle on it, which read as
                     decoration next to a row of real controls. */}
                 <button onClick={generateEmail} disabled={generating}
-                  className="px-4 py-2 text-sm bg-[#141C24] border border-[#141C24] text-white rounded-lg font-semibold hover:bg-[#28323c] transition disabled:opacity-50">
+                  className="px-4 py-2 text-sm bg-ink border border-ink text-page rounded-lg font-semibold hover:bg-ink/90 transition disabled:opacity-50">
                   {generating ? 'Generating...' : 'Generate email'}
                 </button>
               </div>
@@ -2346,7 +2346,7 @@ Key assumptions: ${checklistText}`
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               {sendToClientMsg && <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">{sendToClientMsg}</span>}
             </div>
-            <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
+            <div className="bg-card border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-2">
                 {deal.assigned_credit_officer ? (
                   <button onClick={markBCComplete} disabled={markingComplete || !!bcCompletedAt}
@@ -2394,17 +2394,17 @@ Key assumptions: ${checklistText}`
               sitting next to it. Say so here, where somebody is about to send
               it, rather than letting the preview look perfectly normal. */}
           {missingBoxes.length > 0 && (
-            <div className="mb-3 border border-[#EBD9BE] bg-[#FDF6EC] rounded-xl px-4 py-3.5 flex items-start gap-3">
+            <div className="mb-3 border border-chase-edge bg-chase-bg rounded-xl px-4 py-3.5 flex items-start gap-3">
               <span className="text-[15px] leading-none mt-[2px]">⚠</span>
-              <div className="text-[13px] text-[#8A6218] flex-1 leading-[1.6]">
-                <b className="text-[#141C24]">
+              <div className="text-[13px] text-chase flex-1 leading-[1.6]">
+                <b className="text-ink">
                   {missingBoxes.length === 1 ? 'One box on the BC is empty' : `${missingBoxes.length} boxes on the BC are empty`},
                   {' '}so {missingBoxes.length === 1 ? 'that line is' : 'those lines are'} missing from the email below.
                 </b>
                 <div className="mt-1.5">
                   {missingBoxes.map((m, i) => (
                     <div key={i} className="text-[12.5px]">
-                      <b className="text-[#141C24]">{m.label}</b> <span className="text-[#A08A5B]">— {m.where}</span>
+                      <b className="text-ink">{m.label}</b> <span className="text-muted">— {m.where}</span>
                     </div>
                   ))}
                 </div>
@@ -2415,25 +2415,25 @@ Key assumptions: ${checklistText}`
             </div>
           )}
           {freshness.state === 'stale' && (
-            <div className="mb-3 border border-[#EBD9BE] bg-[#FDF6E7] rounded-xl px-4 py-3.5 flex items-start gap-3">
+            <div className="mb-3 border border-chase-edge bg-chase-bg rounded-xl px-4 py-3.5 flex items-start gap-3">
               <span className="text-[15px] leading-none mt-[2px]">⚠</span>
-              <div className="text-[13px] text-[#8A6218] flex-1">
-                <b className="text-[#141C24]">This email was written for {templateLabel(freshness.wasFor)}.</b>
-                {' '}The deal is now on <b className="text-[#141C24]">{templateLabel(freshness.nowOn)}</b>, so every
+              <div className="text-[13px] text-chase flex-1">
+                <b className="text-ink">This email was written for {templateLabel(freshness.wasFor)}.</b>
+                {' '}The deal is now on <b className="text-ink">{templateLabel(freshness.nowOn)}</b>, so every
                 card and note below is for a different deal. Regenerate before you send it — nothing is blocked, but
                 this one is worth a look.
               </div>
               <button onClick={generateEmail} disabled={generating}
-                className="flex-none px-3 py-1.5 text-[12.5px] font-semibold rounded-lg bg-[#141C24] text-white disabled:opacity-50">
+                className="flex-none px-3 py-1.5 text-[12.5px] font-semibold rounded-lg bg-ink text-page disabled:opacity-50">
                 {generating ? 'Regenerating…' : 'Regenerate email'}
               </button>
             </div>
           )}
           {freshness.state === 'figures-moved' && (
-            <div className="mb-3 border border-[#EBD9BE] bg-[#FDF6E7] rounded-xl px-4 py-3.5 flex items-start gap-3">
+            <div className="mb-3 border border-chase-edge bg-chase-bg rounded-xl px-4 py-3.5 flex items-start gap-3">
               <span className="text-[15px] leading-none mt-[2px]">⚠</span>
-              <div className="text-[13px] text-[#8A6218] flex-1">
-                <b className="text-[#141C24]">
+              <div className="text-[13px] text-chase flex-1">
+                <b className="text-ink">
                   {freshness.changes.length === 1 ? 'A figure has changed' : `${freshness.changes.length} figures have changed`} since this email was written.
                 </b>
                 <div className="mt-1.5">
@@ -2448,13 +2448,13 @@ Key assumptions: ${checklistText}`
                 </div>
               </div>
               <button onClick={generateEmail} disabled={generating}
-                className="flex-none px-3 py-1.5 text-[12.5px] font-semibold rounded-lg bg-[#141C24] text-white disabled:opacity-50">
+                className="flex-none px-3 py-1.5 text-[12.5px] font-semibold rounded-lg bg-ink text-page disabled:opacity-50">
                 {generating ? 'Regenerating…' : 'Regenerate email'}
               </button>
             </div>
           )}
           {emailHtml ? (
-            <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+            <div className="bg-card border border-gray-100 rounded-xl overflow-hidden">
               <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between">
                 <span className="text-xs text-gray-500">Email preview — {deal.deal_name}</span>
                 <span className="text-xs text-[#2DBEFF]">{freshness.state === 'stale' ? `Out of date — written for ${templateLabel(freshness.wasFor)}` : freshness.state === 'figures-moved' ? 'Out of date — the figures have changed' : 'AI generated'}</span>
@@ -2462,7 +2462,7 @@ Key assumptions: ${checklistText}`
               <div dangerouslySetInnerHTML={{ __html: emailHtml }} />
             </div>
           ) : (
-            <div className="bg-white border border-gray-100 rounded-xl p-12 text-center">
+            <div className="bg-card border border-gray-100 rounded-xl p-12 text-center">
               <div className="text-2xl mb-2">✉️</div>
               <div className="text-sm font-medium text-gray-500 mb-1">No email generated yet</div>
               <div className="text-xs text-gray-400 mb-4">Fill in the BC form and click "Generate email"</div>
