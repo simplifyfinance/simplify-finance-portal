@@ -1,5 +1,10 @@
 import { test, expect, type Page } from '@playwright/test'
 
+// A BOX YOU COMPOSE IN AND THEN PRESS A BUTTON ON - "Add a note…" - is not a
+// field that saves itself, so it is not what this file is about. Those carry
+// data-compose and are skipped. Nothing else is: a field that saves itself and
+// then loses what you typed is exactly the fault being hunted here.
+
 // CHANGING TAB MUST NOT THROW AWAY WHAT YOU JUST TYPED.
 //
 // 14 Sep 2026, Aaron Hooper. Somebody finished the lending recommendations,
@@ -30,7 +35,7 @@ async function open(page: Page) {
 // box is found on the way back.
 function boxOn(page: Page, tab: string) {
   if (tab === 'Lending options') return page.getByPlaceholder('One note per line...')
-  const boxes = page.locator('textarea:visible')
+  const boxes = page.locator('textarea:visible:not([data-compose])')
   return boxes.last()
 }
 

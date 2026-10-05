@@ -198,7 +198,11 @@ export function FileNotes({ dealId, me, notes, onChanged }: {
           </div>
         )}
 
-        <textarea value={body} onChange={e => setBody(e.target.value)} rows={2}
+        {/* data-compose: this box is typed into and then ADDED with the button
+            below. It holds nothing until you press it, and it is empty again
+            afterwards - so the tests that check a field survives a reload skip
+            it. See tests/browser/typing-survives.spec.ts. */}
+        <textarea data-compose="1" value={body} onChange={e => setBody(e.target.value)} rows={2}
           className={INPUT + ' mt-2.5 resize-y'} placeholder="Add a note…" />
         <div className="flex gap-2 items-center mt-1.5">
           <button onClick={add} disabled={busy || !body.trim()}

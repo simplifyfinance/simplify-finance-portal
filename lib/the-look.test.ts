@@ -52,3 +52,61 @@ describe('the tab cards answer to their own names', () => {
     expect(src).toMatch(/aria-label=\{label\}/)
   })
 })
+
+// data-compose IS NOT A WAY OUT OF THE TYPING TESTS.
+//
+// It means one thing: this box is typed into and then added with a button, so
+// it holds nothing of its own. If it ever appears on a field that saves itself,
+// that field stops being checked for losing work - which is the fault those
+// tests exist for. So it is counted, and the count is small and named.
+describe('boxes that hold nothing are marked, and only those', () => {
+  const ALLOWED = ['components/DealFile.tsx']
+
+  it('only the add-a-note box is marked', () => {
+    const { execSync } = require('child_process')
+    const hits = execSync(
+      `grep -rl 'data-compose' app components || true`, { encoding: 'utf8' },
+    ).split('\n').filter(Boolean).sort()
+    expect(hits, 'something new was marked as holding nothing - is it really?').toEqual(ALLOWED)
+  })
+})
+
+// THE RAIL IS ALWAYS THERE, AND A LOCKED DEAL DOES NOT CLOSE IT.
+//
+// Fabio, 5 Oct 2026: "I want the functionality that even when deal is locked the
+// left hand boxes are ALWAYS open, that's how we run the deal card."
+//
+// Two things have to stay true for that. The rail must be rendered OUTSIDE
+// <TabLock>, which is what disables a locked tab, and none of the boxes in it
+// may decide for themselves to go quiet when a deal is locked.
+describe('the rail stays open on a locked deal', () => {
+  const page = readFileSync('app/(app)/deals/[id]/DealPageClient.tsx', 'utf8')
+
+  it('the rail is outside the tab lock', () => {
+    const rail = page.indexOf('<DealRail>')
+    const open = page.indexOf('<TabLock')
+    const shut = page.indexOf('</TabLock>')
+    expect(rail, 'the rail is not on the deal page').toBeGreaterThan(-1)
+    const inside = rail > open && rail < shut
+    expect(inside, 'the rail is inside the tab lock, so locking a deal would close it').toBe(false)
+  })
+
+  it('no box in the rail goes quiet when the deal is locked', () => {
+    for (const f of ['components/DealRail.tsx', 'components/DealFile.tsx',
+                     'components/InternalNotes.tsx', 'components/DocumentsBox.tsx']) {
+      expect(readFileSync(f, 'utf8'), `${f} changes what it draws when the deal is locked`)
+        .not.toMatch(/isLocked|dealUnlocked/)
+    }
+  })
+
+  // ONE EXCEPTION, AND IT IS THE RIGHT ONE. The PDF box lets you OPEN a filed
+  // document on a locked deal and refuses to let you REMOVE it. That is a
+  // locked deal behaving correctly, not the box closing - so what is checked
+  // here is that it never bails out of drawing itself.
+  it('the PDF box still draws on a locked deal, it only refuses to delete', () => {
+    const src = readFileSync('components/DealDocuments.tsx', 'utf8')
+    expect(src, 'the PDF box returns nothing when the deal is locked')
+      .not.toMatch(/if \(\s*isLocked\([^)]*\)\s*\)\s*return/)
+    expect(src).toMatch(/\{!isLocked\(deal\) && \(/)
+  })
+})

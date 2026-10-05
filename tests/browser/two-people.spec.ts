@@ -1,5 +1,10 @@
 import { test, expect, type Page, type BrowserContext } from '@playwright/test'
 
+// A BOX YOU COMPOSE IN AND THEN PRESS A BUTTON ON - "Add a note…" - is not a
+// field that saves itself, so it is not what this file is about. Those carry
+// data-compose and are skipped. Nothing else is: a field that saves itself and
+// then loses what you typed is exactly the fault being hunted here.
+
 // TWO PEOPLE, ONE DEAL, ONE FACT FIND.
 //
 // 14 Sep 2026. Kylie, with Melissa in the same deal card:
@@ -208,7 +213,7 @@ test.describe('two people in the same deal', () => {
       await openFactFind(kylie)
       await openFactFind(melissa)
 
-      const boxes = kylie.locator('textarea:visible')
+      const boxes = kylie.locator('textarea:visible:not([data-compose])')
       await boxes.first().waitFor({ timeout: 20_000 })
       const count = Math.min(await boxes.count(), 14)
       expect(count, 'No text boxes on the Fact Find.').toBeGreaterThan(0)
@@ -224,14 +229,14 @@ test.describe('two people in the same deal', () => {
       await kylie.waitForTimeout(4000)
 
       // MELISSA SAVES, from a screen loaded before any of that existed.
-      const hers = melissa.locator('textarea:visible').first()
+      const hers = melissa.locator('textarea:visible:not([data-compose])').first()
       const hersWas = await hers.inputValue()
       await hers.fill(`${hersWas} `)
       await melissa.waitForTimeout(5000)
 
       // AND EVERY ONE OF KYLIE'S BOXES HAS TO STILL BE THERE.
       await openFactFind(kylie)
-      const after = kylie.locator('textarea:visible')
+      const after = kylie.locator('textarea:visible:not([data-compose])')
       await after.first().waitFor({ timeout: 20_000 })
       const lost: number[] = []
       for (let i = 0; i < count; i++) {
@@ -249,7 +254,7 @@ test.describe('two people in the same deal', () => {
     } finally {
       try {
         await openFactFind(kylie)
-        const back = kylie.locator('textarea:visible')
+        const back = kylie.locator('textarea:visible:not([data-compose])')
         await back.first().waitFor({ timeout: 10_000 })
         for (let i = 0; i < originals.length; i++) {
           if (originals[i] === '\u0000') continue

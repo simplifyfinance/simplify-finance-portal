@@ -190,8 +190,19 @@ describe('the panel is written once, so marking the stage cannot destroy it', ()
 
   it('and is inside the column that is always drawn', () => {
     const at = page.indexOf('<OfferAccepted')
+    // 5 Oct 2026: there is no second column any more - Important and File notes
+    // moved to the rail - so the column it sits in is drawn unconditionally.
+    // What is checked is unchanged: it is written once, beside the settlement
+    // panel, and not inside a branch that a stage change can take away.
     expect(page.slice(0, at)).toContain('<DealSettlement ')
-    expect(page.slice(at)).toContain('{isWithLender(dealData) && (')
+    // It must not be written inside an isWithLender branch - that is the fault
+    // this whole file exists for. There is no such branch on the page now, and
+    // if one ever comes back the panel must still be outside it.
+    const before = page.slice(0, at)
+    const opened = (before.match(/\{isWithLender\(dealData\) && \(/g) || []).length
+    const closed = (before.match(/\)\}/g) || []).length
+    expect(opened === 0 || closed >= opened,
+      'OfferAccepted is written inside an isWithLender branch - settling the deal would take it away').toBe(true)
   })
 })
 

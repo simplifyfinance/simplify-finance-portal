@@ -1049,17 +1049,18 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     // box anywhere in this form, which is the other half of the fix above: the
     // common case is finishing a sentence and clicking the next thing, and that
     // should not depend on a timer at all.
-    <div className="grid grid-cols-[480px_1fr] gap-4 items-start" onBlurCapture={() => flush()}>
+    <div onBlurCapture={() => flush()}>
       <div>
         {draft.offer && (
           <DraftBanner at={draft.offer.at}
             onRestore={() => { setD(shape(draft.offer!.value)); draft.taken() }}
             onDiscard={draft.dismiss} />
         )}
-        {/* One notes field for the whole deal. This used to be a box of its own
-            saving to fact_find_data.internalNotes, with two more like it on BC
-            and Lending Options and none at all on Compliance. */}
-        <InternalNotes dealId={deal.id} initial={deal.internal_notes || ''} meId={me?.id} />
+        {/* THE NOTES MOVED TO THE RAIL, 5 Oct 2026. They were in a 480px column
+            of their own here - one box, and empty space under it on every deal,
+            with the form squeezed into what was left. Fabio: "yes ok to move
+            right". Same field, same notes, now on every tab instead of this one.
+            See components/DealRail.tsx. */}
 
         {showExtractReview && extractedData && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowExtractReview(false)}>

@@ -18,10 +18,13 @@ const strip = (s: string) => s.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\
 describe('it is on the deal page now', () => {
   const page = strip(read('../app/(app)/deals/[id]/DealPageClient.tsx'))
 
-  it('drawn once, under the document list and above the tabs', () => {
+  // 5 Oct 2026: the document list moved into the rail, beside the form rather
+  // than above it, so "under the document list" no longer describes anything.
+  // Drawn once, above the tabs, is what this was for.
+  it('drawn once, above the tabs', () => {
     expect((page.match(/<WhoIsDoingTheBc\s/g) || []).length).toBe(1)
     const at = page.indexOf('<WhoIsDoingTheBc')
-    expect(page.slice(0, at)).toContain('<DocumentsBox')
+    expect(at, 'WhoIsDoingTheBc is not on the deal page').toBeGreaterThan(-1)
     expect(page.slice(at)).toContain('<DealTabCards')
   })
 

@@ -1,5 +1,10 @@
 import { test, expect, type Page } from '@playwright/test'
 
+// A BOX YOU COMPOSE IN AND THEN PRESS A BUTTON ON - "Add a note…" - is not a
+// field that saves itself, so it is not what this file is about. Those carry
+// data-compose and are skipped. Nothing else is: a field that saves itself and
+// then loses what you typed is exactly the fault being hunted here.
+
 // DOES WHAT YOU TYPE SURVIVE - ON EVERY TAB, NOT THE ONE SOMEBODY COMPLAINED ABOUT.
 //
 // 14 Sep 2026. Fabio: "why are we just fixing one box and not checking all?"
@@ -54,7 +59,7 @@ test.describe('what you type survives, on every tab', () => {
 
         // NO PAUSE. This is the whole point - a tab is usable the instant it
         // draws, and a read that started when it drew lands a moment later.
-        const boxes = page.locator('textarea:visible')
+        const boxes = page.locator('textarea:visible:not([data-compose])')
         await boxes.first().waitFor({ timeout: 20_000 })
         const count = Math.min(await boxes.count(), MAX)
         expect(count, `No text boxes found on ${tab}.`).toBeGreaterThan(0)
@@ -80,7 +85,7 @@ test.describe('what you type survives, on every tab', () => {
         // AND IT IS ACTUALLY IN THE DATABASE. Surviving on screen and never
         // being written is the worse version of this fault: it looks saved.
         await openTab()
-        const after = page.locator('textarea:visible')
+        const after = page.locator('textarea:visible:not([data-compose])')
         await after.first().waitFor({ timeout: 20_000 })
         const lost: number[] = []
         for (let i = 0; i < count; i++) {
@@ -101,7 +106,7 @@ test.describe('what you type survives, on every tab', () => {
         // Put every box back exactly as it was found.
         try {
           await openTab()
-          const back = page.locator('textarea:visible')
+          const back = page.locator('textarea:visible:not([data-compose])')
           await back.first().waitFor({ timeout: 10_000 })
           for (let i = 0; i < originals.length; i++) {
             if (originals[i] === '\u0000') continue

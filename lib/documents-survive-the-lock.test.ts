@@ -35,13 +35,18 @@ describe('the documents are outside the lock', () => {
     expect(isLocked({})).toBe(false)
   })
 
-  it('the documents are rendered before the tabs, not inside them', () => {
+  // 5 Oct 2026: the documents moved into the rail, which sits BESIDE the form
+  // rather than above it. "Before the tabs" was never the point - the point is
+  // that a locked deal can still reach the PDFs, so what is checked is that
+  // they are outside <TabLock>, wherever on the page they are drawn.
+  it('the documents are outside the lock, not inside it', () => {
     const at = page.indexOf('<DealDocuments')
-    const tabs = page.indexOf('<DealTabCards')
-    const tabLock = page.indexOf('<TabLock')
+    const open = page.indexOf('<TabLock')
+    const shut = page.indexOf('</TabLock>')
     expect(at, 'DealDocuments is not on the deal page').toBeGreaterThan(-1)
-    expect(at).toBeLessThan(tabs)
-    expect(at).toBeLessThan(tabLock)
+    expect(open, 'the tab lock is not on the deal page').toBeGreaterThan(-1)
+    const inside = at > open && at < shut
+    expect(inside, 'DealDocuments is inside the tab lock, so a lodged deal cannot reach the PDFs').toBe(false)
   })
 
   it('they do not depend on the stage, the lock or the unlock', () => {

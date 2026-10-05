@@ -150,12 +150,15 @@ describe('how the forms use it', () => {
 
   it('every place that renders the notes box hands it the user', () => {
     // No user id, no draft. A box rendered without one silently loses its net.
-    for (const f of ['app/(app)/deals/[id]/FactFindForm.tsx', 'components/InternalNotesStrip.tsx']) {
+    // 5 Oct 2026: the fact find's own copy went when its 480px column did.
+    // The box is rendered in the rail now - and by the strip, which other tabs
+    // still use. Both are checked, and so is the rail's own call.
+    for (const f of ['components/DealRail.tsx', 'components/InternalNotesStrip.tsx']) {
       expect(readFileSync(f, 'utf8'), `${f} renders the notes box without a user`)
         .toMatch(/<InternalNotes [^>]*meId=/)
     }
     expect(readFileSync('app/(app)/deals/[id]/DealPageClient.tsx', 'utf8'))
-      .toMatch(/<InternalNotesStrip[\s\S]{0,200}meId=/)
+      .toMatch(/<RailNotes[\s\S]{0,200}meId=/)
   })
 
   it('the notes box does not float over what is underneath it', () => {

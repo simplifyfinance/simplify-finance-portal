@@ -28,6 +28,7 @@ export type Piece = {
 
 const V4 = 'one-inside-the-deal-v4.html'
 const PAGE = 'app/(app)/deals/[id]/DealPageClient.tsx'
+const RAIL = 'components/DealRail.tsx'
 
 export const THE_LOOK: Piece[] = [
   // ---- the deal page, top to bottom as the mock draws it -------------------
@@ -45,18 +46,22 @@ export const THE_LOOK: Piece[] = [
   { mock: V4, piece: 'The five tabs as cards with an icon and a status line',
     proof: { file: PAGE, contains: '<DealTabCards' } },
   { mock: V4, piece: 'Next action box beside the tab cards', proof: null },
-  // WITHDRAWN 5 Oct 2026. The two-column grid on the page is the SETTLEMENT
-  // columns, drawn only once a deal is with a lender. It is not the rail, and
-  // calling it one was the same mistake this list exists to catch.
-  { mock: V4, piece: 'Two columns: the form, and the rail beside it', proof: null },
-  // The component exists. It is inside the settlement grid, so on a Fact Find
-  // deal it is not on screen at all.
-  { mock: V4, piece: 'Important, in the rail', proof: null },
-  // Full width, stacked under the form. Not beside it.
-  { mock: V4, piece: 'Internal notes, in the rail', proof: null },
-  { mock: V4, piece: 'Internal notes can be made taller, and the words fade where they are cut off', proof: null },
-  // Same - full width, under the form.
-  { mock: V4, piece: 'Documents, in the rail', proof: null },
+  { mock: V4, piece: 'Two columns: the form, and the rail beside it',
+    proof: { file: PAGE, contains: '<DealRail>' } },
+  // The proof is that it is INSIDE the rail, not merely imported somewhere -
+  // which is the mistake that made this list wrong the first time.
+  { mock: V4, piece: 'Important, in the rail',
+    proof: { file: PAGE, contains: '<DealRail>\n          <DealAlerts' } },
+  { mock: V4, piece: 'Internal notes, in the rail',
+    proof: { file: PAGE, contains: '<RailNotes' } },
+  { mock: V4, piece: 'Internal notes can be made taller, and the words fade where they are cut off',
+    proof: { file: RAIL, contains: 'cursor-ns-resize' } },
+  { mock: V4, piece: 'Documents, in the rail',
+    proof: { file: PAGE, contains: '<DealRail>' } },
+  { mock: V4, piece: 'Build a PDF, in the rail',
+    proof: { file: PAGE, contains: '<DealDocuments' } },
+  { mock: V4, piece: 'File notes, in the rail',
+    proof: { file: PAGE, contains: '<FileNotes' } },
   { mock: V4, piece: 'Documents counts: to request, received, to check', proof: null },
 ]
 

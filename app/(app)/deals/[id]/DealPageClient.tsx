@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { brokerLabel } from '@/lib/broker-key'
 import DealPresence from '@/components/DealPresence'
 import DealTabCards, { DEAL_TABS } from '@/components/DealTabCards'
+import DealRail, { RailCard, RailNotes } from '@/components/DealRail'
 import DealHistory from '@/components/DealHistory'
 import { SaveIndicator, SaveIndicatorNote } from '@/components/SaveIndicator'
 import type { SaveStatus } from '@/lib/save-indicator'
@@ -371,8 +372,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           
           The rule this file now follows: NEVER render the same component in two
           branches of a condition that a deal can cross. */}
-      <div className={isWithLender(dealData)
-        ? 'grid grid-cols-[1.15fr_1fr] gap-3 max-[900px]:grid-cols-1' : ''}>
+      <div>
         <div>
           <DealSettlement deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
           {/* Written ONCE, inside the column that is always drawn - the rule
@@ -385,12 +385,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           <DealSettlementPanel deal={dealData} onUpdated={(patch) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
           <DealCommission deal={dealData} />
         </div>
-        {isWithLender(dealData) && (
-          <div>
-            <DealAlerts dealId={dealData.id} me={me} alerts={alerts} onChanged={reloadFile} />
-            <FileNotes dealId={dealData.id} me={me} notes={notes} onChanged={reloadFile} />
-          </div>
-        )}
+
       </div>
 
       {/* Pinned context, above the tabs. This is what is always true about the
@@ -398,17 +393,11 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           view before you choose a tab, not inside one. Same single field
           (deals.internal_notes) it has always been; Fact Find keeps its own left
           column so it is never shown twice on one screen. */}
-      {stage !== 'FactFind' && (
-        <InternalNotesStrip dealId={dealData.id} initial={dealData.internal_notes || ''}
-          openByDefault={stage === 'Compliance'} meId={me?.id} />
-      )}
 
       {/* THE DOCUMENT LIST. Same place on every stage, above the tabs, because
           documents are not a stage of the deal - they run alongside all of
           them. Fabio, 3 Sep 2026: "It's always the same button. Make it across
           all stages. It's static across next to the deal card information." */}
-      <DocumentsBox deal={dealData} me={me}
-        onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
 
       {/* THE FIRST DECISION ON THE DEAL, ON THE DEAL. It used to be three clicks
           deep - BC, then Preview & share, then the button. See
@@ -429,8 +418,6 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           disables wholesale - so the documents became unreachable exactly when
           they are wanted. Reading a deal changes nothing; see
           components/DealDocuments.tsx. */}
-      <DealDocuments deal={dealData} me={me} version={documentsVersion}
-        onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
 
       {/* THE CLIENT EMAILS, BESIDE THE DOCUMENTS AND FOR THE SAME REASON.
           Telling a client their loan is approved happens when the bank says so,
@@ -450,6 +437,13 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           replaces said nothing but its own name. */}
       <DealTabCards deal={dealData} stage={stage} onPick={changeStage} />
 
+      {/* THE FORM, AND THE RAIL BESIDE IT - one-inside-the-deal-v4.html.
+          Everything in the rail used to be stacked full width above the form,
+          or - for Important and File notes - inside the settlement grid, which
+          a Fact Find deal never draws. See components/DealRail.tsx. */}
+      <div className={stage === 'Statements' ? '' :
+        'grid grid-cols-[minmax(0,1.9fr)_minmax(0,330px)] gap-3 items-start max-[1100px]:grid-cols-1'}>
+        <div className="min-w-0">
       <TabLock locked={isLocked(dealData) && !dealUnlocked} tab={stage} dealId={dealData.id}
         role={userRole} me={me}
         onUnlocked={() => { setDealUnlocked(true); reloadFile() }}>
@@ -463,6 +457,18 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
             onDealPatched={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />}
         </TabBoundary>
       </TabLock>
+        </div>
+
+        {stage !== 'Statements' && <DealRail>
+          <DealAlerts dealId={dealData.id} me={me} alerts={alerts} onChanged={reloadFile} />
+          <RailNotes dealId={dealData.id} initial={dealData.internal_notes || ''} meId={me?.id} />
+          <DocumentsBox deal={dealData} me={me}
+            onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+          <DealDocuments deal={dealData} me={me} version={documentsVersion}
+            onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
+          <FileNotes dealId={dealData.id} me={me} notes={notes} onChanged={reloadFile} />
+        </DealRail>}
+      </div>
     </div>
   )
 }

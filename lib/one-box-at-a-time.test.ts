@@ -113,13 +113,17 @@ describe('the settlement panel is written once, so it survives settling', () => 
   }
 
   it('the layout changes around it, not the panel itself', () => {
-    // The grid is a class now, applied or not. Before, it was two different
-    // shapes of page with the panel built separately inside each.
-    expect(page).toContain("isWithLender(dealData)\n        ? 'grid grid-cols-[1.15fr_1fr]")
+    // 5 Oct 2026: the second column went to the rail, so the settlement block
+    // is one column and no longer changes shape at all. The fault this guards
+    // against was the panel being WRITTEN TWICE, once in each branch - so what
+    // is checked is that the page never builds two of it.
     expect(page).not.toMatch(/isWithLender\(dealData\) \? \(\s*<div className="grid/)
+    expect((page.match(/<DealSettlementPanel\s/g) || []).length).toBe(1)
   })
 
-  it('the second column is what comes and goes', () => {
-    expect(page).toContain('{isWithLender(dealData) && (')
+  it('and nothing on the page is drawn only for a deal with a lender', () => {
+    // Important and File notes were inside that branch, which is why a Fact
+    // Find deal never showed them. See components/DealRail.tsx.
+    expect(page).not.toContain('{isWithLender(dealData) && (')
   })
 })
