@@ -41,14 +41,16 @@ type Upload = {
   rules: any; parsed_meta: any; reanalysed_at: string | null
 }
 
-const INK = '#221F1B', BODY = '#575046', LABEL = '#7A7266', LINE = '#E5DED2'
-const POS = '#1E7A4A', WARN = '#946017', NEG = '#AD4227', ACCENT = '#0E8FCB'
+const INK = 'var(--color-ink)', BODY = 'var(--color-body)', LABEL = 'var(--color-muted)', LINE = 'var(--color-line)'
+// The middle of a scale was amber. It is the blue now, the same as the middle
+// of every other scale in the portal - see the Compliance toggles.
+const POS = 'var(--color-done)', WARN = 'var(--color-info)', NEG = 'var(--color-chase)', ACCENT = 'var(--color-brand-ink)'
 
 const flagInk = (f: string) => f === 'action' ? NEG : f === 'query' ? WARN : (f === 'ok' || f === 'favourable') ? POS : LABEL
 const flagChip = (f: string) =>
-  f === 'action' ? 'text-[#AD4227] bg-[#FCF4F1] border-[#E8CFC6]'
-  : f === 'query' ? 'text-[#946017] bg-[#FDF6EC] border-[#EBD9BE]'
-  : 'text-[#1E7A4A] bg-[#F1F7F3] border-[#CFE6D5]'
+  f === 'action' ? 'text-chase bg-chase-bg border-chase-edge'
+  : f === 'query' ? 'text-info bg-info-bg border-info-edge'
+  : 'text-done bg-done-bg border-done-edge'
 
 const money = (n: number, dp = 2) =>
   (n < 0 ? '−' : '') + '$' + Math.abs(Number(n) || 0).toLocaleString('en-AU', { minimumFractionDigits: dp, maximumFractionDigits: dp })
@@ -140,32 +142,32 @@ function Num({ card }: { card: any }) {
 
 function Bar({ pct, ink }: { pct: number; ink: string }) {
   return (
-    <div className="h-[6px] rounded bg-[#EFEAE0] overflow-hidden">
+    <div className="h-[6px] rounded bg-[var(--color-line)] overflow-hidden">
       <div className="h-[6px] rounded" style={{ width: `${Math.max(0, Math.min(100, pct))}%`, background: ink }} />
     </div>
   )
 }
 
 function TxnTable({ rows }: { rows: Txn[] }) {
-  if (rows.length === 0) return <p className="text-[12px] text-[#7A7266] py-3">No transactions to show.</p>
+  if (rows.length === 0) return <p className="text-[12px] text-muted py-3">No transactions to show.</p>
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-[12px]">
         <thead>
-          <tr className="border-b border-[#E5DED2]">
+          <tr className="border-b border-line">
             {['Date', 'Description', 'Account', 'Category', 'Amount'].map((h, i) => (
-              <th key={h} className={`text-[9.5px] font-bold tracking-[0.07em] uppercase text-[#7A7266] pb-1.5 pr-2 whitespace-nowrap ${i === 4 ? 'text-right pr-0' : 'text-left'}`}>{h}</th>
+              <th key={h} className={`text-[9.5px] font-bold tracking-[0.07em] uppercase text-muted pb-1.5 pr-2 whitespace-nowrap ${i === 4 ? 'text-right pr-0' : 'text-left'}`}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {rows.map(t => (
-            <tr key={t.id} className="border-b border-[#EFEAE0]">
-              <td className="py-1.5 pr-2 whitespace-nowrap text-[#575046]">{dateAu(t.txn_date)}</td>
-              <td className="py-1.5 pr-2 text-[#221F1B]">{t.description || t.merchant}</td>
-              <td className="py-1.5 pr-2 whitespace-nowrap text-[11px] text-[#7A7266]">{t.institution} {t.account_number?.slice(-4)}</td>
-              <td className="py-1.5 pr-2 whitespace-nowrap text-[11px] text-[#7A7266]">{t.category}</td>
-              <td className="py-1.5 text-right tabular-nums font-semibold text-[#221F1B] whitespace-nowrap">{money(t.amount)}</td>
+            <tr key={t.id} className="border-b border-line">
+              <td className="py-1.5 pr-2 whitespace-nowrap text-body">{dateAu(t.txn_date)}</td>
+              <td className="py-1.5 pr-2 text-ink">{t.description || t.merchant}</td>
+              <td className="py-1.5 pr-2 whitespace-nowrap text-[11px] text-muted">{t.institution} {t.account_number?.slice(-4)}</td>
+              <td className="py-1.5 pr-2 whitespace-nowrap text-[11px] text-muted">{t.category}</td>
+              <td className="py-1.5 text-right tabular-nums font-semibold text-ink whitespace-nowrap">{money(t.amount)}</td>
             </tr>
           ))}
         </tbody>
@@ -191,22 +193,22 @@ function AuditTable({ rows, txns, corrections, onCorrect, correcting }: {
     return m
   }, [txns])
   if (rows.length === 0) return (
-    <p className="text-[12px] text-[#7A7266] py-3">
+    <p className="text-[12px] text-muted py-3">
       Nothing here. Every line agrees with CashDeck and every credit is used by a figure above.
     </p>
   )
   const chip = (f: string) =>
-    f === 'differ' ? { t: 'Disagrees', c: 'text-[#AD4227] bg-[#FCF4F1] border-[#E8CFC6]' }
-    : f === 'uncounted' ? { t: 'Not counted', c: 'text-[#946017] bg-[#FDF6EC] border-[#EBD9BE]' }
-    : f === 'agree' ? { t: 'Agrees', c: 'text-[#1E7A4A] bg-[#F1F7F3] border-[#CFE6D5]' }
-    : { t: 'Spending', c: 'text-[#7A7266] bg-[#FCFAF6] border-[#EFEAE0]' }
+    f === 'differ' ? { t: 'Disagrees', c: 'text-chase bg-chase-bg border-chase-edge' }
+    : f === 'uncounted' ? { t: 'Not counted', c: 'text-info bg-info-bg border-info-edge' }
+    : f === 'agree' ? { t: 'Agrees', c: 'text-done bg-done-bg border-done-edge' }
+    : { t: 'Spending', c: 'text-muted bg-[var(--color-page)] border-line' }
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-[12px] min-w-[820px]">
         <thead>
-          <tr className="border-b border-[#E5DED2]">
+          <tr className="border-b border-line">
             {['', 'Date', 'Line on the statement', 'Account', 'CashDeck called it', 'We counted it as', 'Amount'].map((h, i) => (
-              <th key={h + i} className={`text-[9.5px] font-bold tracking-[0.07em] uppercase text-[#7A7266] pb-1.5 pr-2 whitespace-nowrap ${i === 6 ? 'text-right pr-0' : 'text-left'}`}>{h}</th>
+              <th key={h + i} className={`text-[9.5px] font-bold tracking-[0.07em] uppercase text-muted pb-1.5 pr-2 whitespace-nowrap ${i === 6 ? 'text-right pr-0' : 'text-left'}`}>{h}</th>
             ))}
           </tr>
         </thead>
@@ -215,54 +217,54 @@ function AuditTable({ rows, txns, corrections, onCorrect, correcting }: {
             const k = chip(r.flag)
             const fixed = corrections[r.externalId]
             return (
-              <tr key={r.externalId} className="border-b border-[#EFEAE0] align-top">
+              <tr key={r.externalId} className="border-b border-line align-top">
                 <td className="py-1.5 pr-2 whitespace-nowrap">
                   <span className={`text-[9px] font-bold tracking-wide uppercase rounded-full px-1.5 py-0.5 border ${k.c}`}>{k.t}</span>
                 </td>
-                <td className="py-1.5 pr-2 whitespace-nowrap text-[#575046]">{dateAu(r.date)}</td>
-                <td className="py-1.5 pr-2 text-[#221F1B]">
+                <td className="py-1.5 pr-2 whitespace-nowrap text-body">{dateAu(r.date)}</td>
+                <td className="py-1.5 pr-2 text-ink">
                   {r.description || r.merchant || '—'}
-                  {r.why && <span className="block text-[11px] text-[#7A7266] leading-[1.45] mt-0.5">{r.why}</span>}
+                  {r.why && <span className="block text-[11px] text-muted leading-[1.45] mt-0.5">{r.why}</span>}
                 </td>
-                <td className="py-1.5 pr-2 whitespace-nowrap text-[11px] text-[#7A7266]">{r.account}</td>
-                <td className="py-1.5 pr-2 whitespace-nowrap text-[11px] text-[#7A7266]">{r.cashdeck}</td>
-                <td className="py-1.5 pr-2 text-[11px] text-[#575046] min-w-[210px]">
+                <td className="py-1.5 pr-2 whitespace-nowrap text-[11px] text-muted">{r.account}</td>
+                <td className="py-1.5 pr-2 whitespace-nowrap text-[11px] text-muted">{r.cashdeck}</td>
+                <td className="py-1.5 pr-2 text-[11px] text-body min-w-[210px]">
                   {fixed ? (
-                    <span className="text-[#1E7A4A]">
+                    <span className="text-done">
                       ✓ {fixed.label}
-                      <span className="text-[#7A7266]"> · {fixed.source === 'always' ? 'standing rule' : 'set on this file'}</span>
+                      <span className="text-muted"> · {fixed.source === 'always' ? 'standing rule' : 'set on this file'}</span>
                     </span>
-                  ) : r.ours.length ? r.ours.join(', ') : <span className="text-[#B3ABA0]">nothing uses it</span>}
+                  ) : r.ours.length ? r.ours.join(', ') : <span className="text-[var(--color-faint)]">nothing uses it</span>}
 
                   {/* Reading it is only half a tool. This is where a person who
                       can see the answer tells us, and the figures move. */}
                   <button onClick={() => { setMenu(menu === r.externalId ? '' : r.externalId); setAlways(false) }}
                     disabled={!txnBy[r.externalId] || !!correcting}
-                    className="block mt-1 text-[11px] text-[#0E8FCB] underline disabled:opacity-40">
+                    className="block mt-1 text-[11px] text-info underline disabled:opacity-40">
                     {correcting === r.externalId ? 'Saving…' : fixed ? 'Change this' : 'Count this as…'}
                   </button>
 
                   {menu === r.externalId && (
-                    <div className="mt-1.5 rounded-lg border border-[#E5DED2] bg-white p-2 shadow-[0_3px_12px_rgba(60,48,30,0.10)] w-[268px]">
+                    <div className="mt-1.5 rounded-lg border border-line bg-card p-2 shadow-[0_3px_12px_rgba(60,48,30,0.10)] w-[268px]">
                       {TREATMENTS.map(tr => (
                         <button key={tr.id}
                           onClick={() => { onCorrect(txnBy[r.externalId], tr.id, always); setMenu('') }}
-                          className="block w-full text-left px-2 py-1.5 rounded-md hover:bg-[#FCFAF6]">
-                          <span className="text-[12px] text-[#221F1B] font-[560]">{tr.label}</span>
-                          <span className="block text-[10.5px] text-[#7A7266] leading-[1.4]">{tr.help}</span>
+                          className="block w-full text-left px-2 py-1.5 rounded-md hover:bg-[var(--color-page)]">
+                          <span className="text-[12px] text-ink font-[560]">{tr.label}</span>
+                          <span className="block text-[10.5px] text-muted leading-[1.4]">{tr.help}</span>
                         </button>
                       ))}
-                      <label className="flex gap-1.5 items-start mt-1.5 pt-1.5 border-t border-[#EFEAE0] px-2 cursor-pointer">
+                      <label className="flex gap-1.5 items-start mt-1.5 pt-1.5 border-t border-line px-2 cursor-pointer">
                         <input type="checkbox" checked={always} onChange={e => setAlways(e.target.checked)} className="mt-[3px]" />
-                        <span className="text-[10.5px] text-[#575046] leading-[1.45]">
+                        <span className="text-[10.5px] text-body leading-[1.45]">
                           Always treat this payer this way, on every client.
-                          <span className="block text-[#946017]">Changes how other people’s statements are read — removable in Settings.</span>
+                          <span className="block text-info">Changes how other people’s statements are read — removable in Settings.</span>
                         </span>
                       </label>
                     </div>
                   )}
                 </td>
-                <td className="py-1.5 text-right tabular-nums font-semibold text-[#221F1B] whitespace-nowrap">{money(r.amount)}</td>
+                <td className="py-1.5 text-right tabular-nums font-semibold text-ink whitespace-nowrap">{money(r.amount)}</td>
               </tr>
             )
           })}
@@ -297,17 +299,17 @@ function Rows({ head, body }: { head: string[]; body: (string | number | React.R
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-[12px]">
         <thead>
-          <tr className="border-b border-[#E5DED2]">
+          <tr className="border-b border-line">
             {head.map((h, i) => (
-              <th key={i} className={`text-[9.5px] font-bold tracking-[0.07em] uppercase text-[#7A7266] pb-1.5 pr-2 whitespace-nowrap ${i === head.length - 1 && head.length > 1 ? 'text-right pr-0' : 'text-left'}`}>{h}</th>
+              <th key={i} className={`text-[9.5px] font-bold tracking-[0.07em] uppercase text-muted pb-1.5 pr-2 whitespace-nowrap ${i === head.length - 1 && head.length > 1 ? 'text-right pr-0' : 'text-left'}`}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {body.map((r, i) => (
-            <tr key={i} className="border-b border-[#EFEAE0]">
+            <tr key={i} className="border-b border-line">
               {r.map((c, j) => (
-                <td key={j} className={`py-1.5 pr-2 align-top ${j === r.length - 1 && r.length > 1 ? 'text-right pr-0 tabular-nums font-semibold text-[#221F1B] whitespace-nowrap' : 'text-[#575046]'}`}>{c}</td>
+                <td key={j} className={`py-1.5 pr-2 align-top ${j === r.length - 1 && r.length > 1 ? 'text-right pr-0 tabular-nums font-semibold text-ink whitespace-nowrap' : 'text-body'}`}>{c}</td>
               ))}
             </tr>
           ))}
@@ -326,7 +328,7 @@ function Detail({ card, txns }: { card: any; txns: Txn[] }) {
   }, [card, txns])
   const copy = COPY[card.key] || { intro: '', why: '' }
   const H = ({ children }: { children: React.ReactNode }) =>
-    <p className="text-[10px] font-bold tracking-[0.08em] uppercase text-[#7A7266] mt-4 mb-2">{children}</p>
+    <p className="text-[10px] font-bold tracking-[0.08em] uppercase text-muted mt-4 mb-2">{children}</p>
 
   let summary: React.ReactNode = null
 
@@ -345,7 +347,7 @@ function Detail({ card, txns }: { card: any; txns: Txn[] }) {
         <H>Both financial years the period touches</H>
         <Rows head={['Financial year', 'Gross salary']} body={d.byFy.map((f: any) => [f.label + (f.headline ? ' — used' : ''), money(f.gross, 0)])} />
       </>}
-      {d.caveats?.length > 0 && <p className="text-[12px] text-[#946017] mt-3">{d.caveats.join(' ')}</p>}
+      {d.caveats?.length > 0 && <p className="text-[12px] text-info mt-3">{d.caveats.join(' ')}</p>}
     </>
   } else if (card.drill === 'source') {
     summary = <Rows head={['Line', 'Per year']} body={[
@@ -427,7 +429,7 @@ function Detail({ card, txns }: { card: any; txns: Txn[] }) {
       <Rows head={['Provider', 'Pattern', 'Declared', 'Returns', 'Per month']} body={(d.providers || []).map((p: any) => [
         p.provider, `${p.cadence} · ${p.count} instalments`, p.declared ? 'Yes' : 'No', p.returns || 0, money(p.monthly),
       ])} />
-      <p className="text-[12px] text-[#575046] mt-3"><b className="text-[#221F1B]">On the watchlist:</b> {(d.watchlist || []).join(', ')}.</p>
+      <p className="text-[12px] text-body mt-3"><b className="text-ink">On the watchlist:</b> {(d.watchlist || []).join(', ')}.</p>
     </>
   } else if (card.key === 'dishonours') {
     summary = <Rows head={['Date', 'Payer', 'Repaid within a fortnight', 'Amount']} body={(d.events || []).map((e: any) => [
@@ -440,11 +442,11 @@ function Detail({ card, txns }: { card: any; txns: Txn[] }) {
   } else if (card.key === 'cash') {
     summary = d.unexplainedDeposits?.length
       ? <Rows head={['Date', 'Deposit with nothing behind it', 'Amount']} body={d.unexplainedDeposits.map((t: any) => [dateAu(t.date), t.description, money(t.amount)])} />
-      : <p className="text-[12px] text-[#575046]">Every cash deposit has a withdrawal of similar size behind it.</p>
+      : <p className="text-[12px] text-body">Every cash deposit has a withdrawal of similar size behind it.</p>
   } else if (card.drill === 'balances') {
     const b = d.balances || d
     summary = <>
-      <p className="text-[12px] text-[#946017] mb-3">{b.reason || d.reason}</p>
+      <p className="text-[12px] text-info mb-3">{b.reason || d.reason}</p>
       {(b.monthEnds || d.monthEnds || []).length > 0 &&
         <Rows head={['Month end', 'Combined balance']} body={(b.monthEnds || d.monthEnds).map((p: any) => [dateAu(p.date), money(p.balance)])} />}
       {card.key === 'genuineSavings' && d.genuine !== null && d.genuine !== undefined &&
@@ -457,11 +459,11 @@ function Detail({ card, txns }: { card: any; txns: Txn[] }) {
 
   return (
     <div>
-      {copy.intro && <p className="text-[12.5px] leading-[1.62] text-[#575046] mb-3">{copy.intro}</p>}
+      {copy.intro && <p className="text-[12.5px] leading-[1.62] text-body mb-3">{copy.intro}</p>}
       {summary}
       {rows.length > 0 && <><H>{rows.length} transaction{rows.length === 1 ? '' : 's'} behind this</H><TxnTable rows={rows} /></>}
-      {card.drill === 'source' && <p className="text-[12px] text-[#7A7266] mt-3">From {d.field}.</p>}
-      {copy.why && <div className="mt-4 rounded-[10px] border border-[#EBD9BE] bg-[#FDF6EC] px-3.5 py-3 text-[12px] leading-[1.62] text-[#575046]">{copy.why}</div>}
+      {card.drill === 'source' && <p className="text-[12px] text-muted mt-3">From {d.field}.</p>}
+      {copy.why && <div className="mt-4 rounded-[10px] border border-info-edge bg-info-bg px-3.5 py-3 text-[12px] leading-[1.62] text-body">{copy.why}</div>}
     </div>
   )
 }
@@ -519,13 +521,13 @@ function Ledger({ txns, cards, corrections, onCorrect, correcting }: {
     return Object.entries(g).sort((a, b) => (b[1].i + b[1].o) - (a[1].i + a[1].o))
   }, [txns])
 
-  const sel = 'text-[12.5px] border border-[#E5DED2] rounded-lg px-2 py-1 bg-white text-[#221F1B]'
+  const sel = 'text-[12.5px] border border-line rounded-lg px-2 py-1 bg-card text-ink'
   return (
-    <div className="border border-[#E5DED2] rounded-xl bg-white overflow-hidden mt-6">
-      <div className="flex gap-0.5 border-b border-[#E5DED2] px-3 bg-[#FCFAF6] flex-wrap">
+    <div className="border border-line rounded-xl bg-card overflow-hidden mt-6">
+      <div className="flex gap-0.5 border-b border-line px-3 bg-[var(--color-page)] flex-wrap">
         {([['all', 'All transactions'], ['cat', 'By category'], ['audit', 'Audit']] as const).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
-            className={`text-[12.5px] px-3 py-2 border-b-2 ${tab === k ? 'text-[#221F1B] font-[640] border-[#0E8FCB]' : 'text-[#575046] border-transparent'}`}>
+            className={`text-[12.5px] px-3 py-2 border-b-2 ${tab === k ? 'text-ink font-[640] border-[var(--color-info)]' : 'text-body border-transparent'}`}>
             {label}
           </button>
         ))}
@@ -533,7 +535,7 @@ function Ledger({ txns, cards, corrections, onCorrect, correcting }: {
 
       {tab === 'all' ? (
         <>
-          <div className="flex gap-2 items-center flex-wrap px-3.5 py-2.5 border-b border-[#EFEAE0]">
+          <div className="flex gap-2 items-center flex-wrap px-3.5 py-2.5 border-b border-line">
             <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search description…"
               className={`${sel} flex-1 min-w-[170px]`} />
             <select value={acct} onChange={e => setAcct(e.target.value)} className={sel}>
@@ -542,7 +544,7 @@ function Ledger({ txns, cards, corrections, onCorrect, correcting }: {
             <select value={cat} onChange={e => setCat(e.target.value)} className={sel}>
               <option value="">All categories</option>{cats.map(c => <option key={c}>{c}</option>)}
             </select>
-            <span className="text-[11.5px] text-[#7A7266] ml-auto whitespace-nowrap">
+            <span className="text-[11.5px] text-muted ml-auto whitespace-nowrap">
               Showing {filtered.length} of {txns.length} stored
             </span>
           </div>
@@ -556,22 +558,22 @@ function Ledger({ txns, cards, corrections, onCorrect, correcting }: {
         </div>
       ) : (
         <>
-          <div className="px-4 py-3 border-b border-[#EFEAE0] text-[12.5px] leading-[1.6] text-[#575046]">
-            <b className="text-[#221F1B]">Every line, what CashDeck called it, and what we counted it as.</b>{' '}
+          <div className="px-4 py-3 border-b border-line text-[12.5px] leading-[1.6] text-body">
+            <b className="text-ink">Every line, what CashDeck called it, and what we counted it as.</b>{' '}
             {auditSum.differ === 0 && auditSum.uncounted === 0
               ? 'Nothing disagrees and every credit is accounted for.'
               : <>
-                  <b className="text-[#AD4227]">{auditSum.differ}</b> {auditSum.differ === 1 ? 'line where we disagree' : 'lines where we disagree'} with
-                  CashDeck ({money(auditSum.differValue)}), and <b className="text-[#946017]">{auditSum.uncounted}</b>{' '}
+                  <b className="text-chase">{auditSum.differ}</b> {auditSum.differ === 1 ? 'line where we disagree' : 'lines where we disagree'} with
+                  CashDeck ({money(auditSum.differValue)}), and <b className="text-info">{auditSum.uncounted}</b>{' '}
                   {auditSum.uncounted === 1 ? 'credit' : 'credits'} no income figure uses ({money(auditSum.uncountedValue)}).
                   A disagreement is not automatically our mistake — CashDeck files savings interest as wages often enough to matter.
                 </>}
           </div>
-          <div className="flex gap-2 items-center flex-wrap px-3.5 py-2.5 border-b border-[#EFEAE0]">
-            <div className="flex gap-0.5 border border-[#E5DED2] rounded-lg overflow-hidden">
+          <div className="flex gap-2 items-center flex-wrap px-3.5 py-2.5 border-b border-line">
+            <div className="flex gap-0.5 border border-line rounded-lg overflow-hidden">
               {([['attention', `Needs a look (${auditSum.differ + auditSum.uncounted})`], ['everything', `Everything (${auditSum.total})`]] as const).map(([k, label]) => (
                 <button key={k} onClick={() => setAuditView(k)}
-                  className={`text-[12px] px-2.5 py-1 ${auditView === k ? 'bg-[#0E8FCB] text-white font-[600]' : 'bg-white text-[#575046]'}`}>
+                  className={`text-[12px] px-2.5 py-1 ${auditView === k ? 'bg-info text-white font-[600]' : 'bg-card text-body'}`}>
                   {label}
                 </button>
               ))}
@@ -582,7 +584,7 @@ function Ledger({ txns, cards, corrections, onCorrect, correcting }: {
               <option value="">All categories</option>{cats.map(c => <option key={c}>{c}</option>)}
             </select>
             <button onClick={() => downloadAudit(auditRows)}
-              className="text-[11.5px] border border-[#E5DED2] rounded-md px-2.5 py-1 bg-white text-[#7A7266]">
+              className="text-[11.5px] border border-line rounded-md px-2.5 py-1 bg-card text-muted">
               Export {auditRows.length} to Excel
             </button>
           </div>
@@ -878,12 +880,12 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
   // on screen are what the current rules would produce.
   const stale = upload && liveRules !== null ? rulesChanged(upload.rules, liveRules) : []
 
-  if (loading) return <p className="text-[13px] text-[#7A7266] py-6">Loading statements…</p>
+  if (loading) return <p className="text-[13px] text-muted py-6">Loading statements…</p>
 
   return (
     <div>
       {error && (
-        <div className="mb-3 rounded-xl border border-[#E8CFC6] bg-[#FCF4F1] px-4 py-3 text-[13px] text-[#AD4227]">{error}</div>
+        <div className="mb-3 rounded-xl border border-chase-edge bg-chase-bg px-4 py-3 text-[13px] text-chase">{error}</div>
       )}
 
       {!upload ? (
@@ -891,7 +893,7 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
           <DropZone onFiles={upFiles} busy={busy} accept=".xlsm,.xlsx"
             title="Drop the CashDeck workbooks here"
             hint="The income verification exports (.xlsm or .xlsx). As many as you like — one applicant's bank, then the other's." />
-          <p className="text-[12px] text-[#7A7266] mt-3 max-w-[86ch]">
+          <p className="text-[12px] text-muted mt-3 max-w-[86ch]">
             The analysis reads the statements against this deal&rsquo;s fact find and flags the differences.
             It never changes the fact find.
           </p>
@@ -900,7 +902,7 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
         <>
           {/* ONE ROW PER SET, so a missing second bank is obvious here rather
               than something a lender tells you about. */}
-          <div className="text-[10px] font-bold tracking-[.08em] uppercase text-[#A29889] mb-2">
+          <div className="text-[10px] font-bold tracking-[.08em] uppercase text-faint mb-2">
             {uploads.length === 1 ? 'Statements loaded'
               : `Statements loaded — ${uploads.length} sets, `
                 + `${new Set(uploads.map(u => personOf(u as any))).size} `
@@ -910,30 +912,30 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
             const meta = (u as any).parsed_meta || {}
             const n = txns.filter(t => (t as any).upload_id === u.id).length
             return (
-              <div key={u.id} className="flex items-center gap-3 border border-[#E5DED2] rounded-xl px-3.5 py-2.5 bg-white mb-2 flex-wrap">
-                <span className="w-[25px] h-[31px] rounded bg-[#1E7A4A] text-white text-[7.5px] font-bold flex items-center justify-center flex-none">XLSM</span>
+              <div key={u.id} className="flex items-center gap-3 border border-line rounded-xl px-3.5 py-2.5 bg-card mb-2 flex-wrap">
+                <span className="w-[25px] h-[31px] rounded bg-[var(--color-done)] text-white text-[7.5px] font-bold flex items-center justify-center flex-none">XLSM</span>
                 <span className="min-w-0">
                   {uploads.length > 1 && (
-                    <span className="inline-block text-[10px] font-bold tracking-[.04em] rounded-full px-2 py-[1px] border border-[#BFE3F5] text-[#0E86B8] bg-[#F2FAFE] mr-1.5">
+                    <span className="inline-block text-[10px] font-bold tracking-[.04em] rounded-full px-2 py-[1px] border border-info-edge text-info bg-info-bg mr-1.5">
                       {personOf(u as any)}
                     </span>
                   )}
-                  <span className="text-[13px] text-[#221F1B] font-[560]">{u.file_name}</span><br />
-                  <span className="text-[11.5px] text-[#7A7266]">
+                  <span className="text-[13px] text-ink font-[560]">{u.file_name}</span><br />
+                  <span className="text-[11.5px] text-muted">
                     {(meta.institutions || []).join(', ')}
                     {meta.periodFrom ? ` · ${dateAu(meta.periodFrom)} → ${dateAu(meta.periodTo)}` : ''}
                     {meta.days ? ` · ${meta.days} days` : ''}
                     {(meta.accounts || []).length ? ` · ${(meta.accounts || []).length} account${(meta.accounts || []).length === 1 ? '' : 's'}` : ''}
                     {n ? ` · ${n.toLocaleString('en-AU')} transactions` : ''}
                   </span><br />
-                  <span className="text-[11px] text-[#A29889]">
+                  <span className="text-[11px] text-faint">
                     uploaded {new Date(u.uploaded_at).toLocaleString('en-AU', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
                     {u.uploaded_by_email ? ` by ${u.uploaded_by_email}` : ''}
                   </span>
                 </span>
                 <span className="ml-auto flex gap-2 flex-none">
                   <button onClick={() => remove(u.id)} disabled={busy}
-                    className="text-[11.5px] text-[#7A7266] border border-[#E5DED2] rounded-lg px-2.5 py-1 bg-white hover:text-[#221F1B] disabled:opacity-40">
+                    className="text-[11.5px] text-muted border border-line rounded-lg px-2.5 py-1 bg-card hover:text-ink disabled:opacity-40">
                     Remove
                   </button>
                 </span>
@@ -950,10 +952,10 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
 
           <div className="flex items-center gap-3 mb-3 flex-wrap">
             <button onClick={reanalyse} disabled={busy}
-              className="text-[11.5px] font-semibold text-[#0E8FCB] border border-[#BFE2F5] rounded-lg px-2.5 py-1 bg-[#EAF6FD] hover:bg-[#DCEDF8] disabled:opacity-40">
+              className="text-[11.5px] font-semibold text-info border border-[var(--color-info-edge)] rounded-lg px-2.5 py-1 bg-info-bg hover:bg-[var(--color-info-bg)] disabled:opacity-40">
               {busy ? 'Working…' : 'Re-analyse'}
             </button>
-            <span className="text-[11.5px] text-[#7A7266]">
+            <span className="text-[11.5px] text-muted">
               {uploads.length > 1
                 ? `One analysis across all ${uploads.length} sets.`
                 : 'The analysis reads the statements against this deal\u2019s fact find.'}
@@ -962,9 +964,9 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
           </div>
 
           {stale.length > 0 && (
-            <div className="rounded-xl border border-[#EBD9BE] bg-[#FDF6EC] px-3.5 py-2.5 text-[12.5px] text-[#575046] mb-3 flex items-center gap-2.5 flex-wrap leading-[1.55]">
+            <div className="rounded-xl border border-info-edge bg-info-bg px-3.5 py-2.5 text-[12.5px] text-body mb-3 flex items-center gap-2.5 flex-wrap leading-[1.55]">
               <span>
-                <b className="text-[#221F1B]">The rules have changed since this was analysed.</b>{' '}
+                <b className="text-ink">The rules have changed since this was analysed.</b>{' '}
                 {stale.join(', ')}{stale.length === 1 ? ' has' : ' have'} moved in Settings. These findings
                 still show what you saw
                 {upload.reanalysed_at
@@ -972,21 +974,21 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
                   : ` on ${new Date(upload.uploaded_at).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}`}.
               </span>
               <button onClick={reanalyse} disabled={busy}
-                className="ml-auto text-[11.5px] font-semibold text-white bg-[#0E8FCB] border border-[#0E8FCB] rounded-lg px-3 py-1.5 disabled:opacity-40">
+                className="ml-auto text-[11.5px] font-semibold text-white bg-info border border-[var(--color-info)] rounded-lg px-3 py-1.5 disabled:opacity-40">
                 {busy ? 'Working…' : 'Re-analyse now'}
               </button>
             </div>
           )}
 
           {/* period and accounts */}
-          <div className="border border-[#E5DED2] rounded-xl bg-white overflow-hidden mb-3">
-            <div className="px-3.5 py-2 border-b border-[#EFEAE0] bg-[#FCFAF6] text-[10px] font-bold tracking-[0.08em] uppercase text-[#7A7266] flex gap-2.5 flex-wrap items-center">
+          <div className="border border-line rounded-xl bg-card overflow-hidden mb-3">
+            <div className="px-3.5 py-2 border-b border-line bg-[var(--color-page)] text-[10px] font-bold tracking-[0.08em] uppercase text-muted flex gap-2.5 flex-wrap items-center">
               Period and accounts analysed
-              <span className={a?.coverage?.complete ? 'text-[#1E7A4A] tracking-normal' : 'text-[#946017] tracking-normal'}>
+              <span className={a?.coverage?.complete ? 'text-done tracking-normal' : 'text-info tracking-normal'}>
                 · {a?.coverage?.complete ? 'Coverage complete' : 'Coverage partial'}
               </span>
             </div>
-            <div className="flex gap-6 px-3.5 py-3 border-b border-[#EFEAE0] flex-wrap">
+            <div className="flex gap-6 px-3.5 py-3 border-b border-line flex-wrap">
               {[
                 ['Period analysed', `${dateAu(upload.period_from)} → ${dateAu(upload.period_to)} · ${upload.days} days`],
                 ['Financial years covered', (a?.period?.fys || []).map((f: string) => `FY ${f}`).join(' and ')],
@@ -995,16 +997,16 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
                 ['Transactions', String(upload.txn_count)],
               ].map(([k, v]) => (
                 <div key={k as string}>
-                  <div className="text-[9.5px] font-bold tracking-[0.07em] uppercase text-[#7A7266] mb-0.5">{k}</div>
-                  <div className="text-[12.5px] text-[#221F1B] font-[560]">{v}</div>
+                  <div className="text-[9.5px] font-bold tracking-[0.07em] uppercase text-muted mb-0.5">{k}</div>
+                  <div className="text-[12.5px] text-ink font-[560]">{v}</div>
                 </div>
               ))}
             </div>
             {(a?.coverage?.accounts || []).map((acc: any) => (
-              <div key={acc.accountNumber} className="flex items-center gap-2.5 px-3.5 py-2 border-b border-[#EFEAE0] last:border-b-0 text-[12.5px] flex-wrap">
-                <span className="text-[#221F1B] font-[560]">{acc.institution}</span>
-                <span className="text-[11.5px] text-[#7A7266]">· {acc.name} {acc.accountNumber}</span>
-                <span className={`ml-auto text-[11.5px] whitespace-nowrap ${acc.pct >= 90 ? 'text-[#575046]' : 'text-[#946017]'}`}>
+              <div key={acc.accountNumber} className="flex items-center gap-2.5 px-3.5 py-2 border-b border-line last:border-b-0 text-[12.5px] flex-wrap">
+                <span className="text-ink font-[560]">{acc.institution}</span>
+                <span className="text-[11.5px] text-muted">· {acc.name} {acc.accountNumber}</span>
+                <span className={`ml-auto text-[11.5px] whitespace-nowrap ${acc.pct >= 90 ? 'text-body' : 'text-info'}`}>
                   {dateAu(acc.from)} → {dateAu(acc.to)} · {acc.txnCount} transactions · {acc.pct}% of the period
                 </span>
               </div>
@@ -1013,25 +1015,25 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
 
           {/* score */}
           {a?.score && (
-            <div className="border border-[#E5DED2] rounded-xl bg-white px-4 py-4 mb-3 flex gap-5 items-center flex-wrap">
+            <div className="border border-line rounded-xl bg-card px-4 py-4 mb-3 flex gap-5 items-center flex-wrap">
               <div className="flex-none min-w-[150px]">
-                <p className="text-[10px] font-bold tracking-[0.08em] uppercase text-[#7A7266] mb-1">File verification score</p>
+                <p className="text-[10px] font-bold tracking-[0.08em] uppercase text-muted mb-1">File verification score</p>
                 <p className="text-[38px] leading-none font-[650] tracking-[-0.03em]"
                   style={{ color: a.score.total >= 85 ? POS : a.score.total >= 60 ? WARN : NEG }}>
-                  {a.score.total}<span className="text-[15px] text-[#7A7266] font-medium tracking-normal">/100</span>
+                  {a.score.total}<span className="text-[15px] text-muted font-medium tracking-normal">/100</span>
                 </p>
-                <p className="text-[11.5px] text-[#7A7266] mt-1.5">
+                <p className="text-[11.5px] text-muted mt-1.5">
                   {a.score.openItems === 0 ? 'Nothing outstanding' : `${a.score.openItems} item${a.score.openItems === 1 ? '' : 's'} need an answer`}<br />before this goes to a lender
                 </p>
               </div>
               <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-4 min-w-0">
                 {a.score.components.map((c: any) => (
                   <div key={c.key}>
-                    <div className="flex justify-between gap-2 text-[10px] font-bold tracking-[0.06em] uppercase text-[#7A7266] mb-1.5">
-                      <span>{c.label}</span><span className="text-[#221F1B] tracking-normal">{c.score}</span>
+                    <div className="flex justify-between gap-2 text-[10px] font-bold tracking-[0.06em] uppercase text-muted mb-1.5">
+                      <span>{c.label}</span><span className="text-ink tracking-normal">{c.score}</span>
                     </div>
                     <Bar pct={c.score} ink={c.score >= 85 ? POS : c.score >= 60 ? WARN : NEG} />
-                    <p className="text-[11px] text-[#7A7266] mt-1.5 leading-[1.4]">{c.note}</p>
+                    <p className="text-[11px] text-muted mt-1.5 leading-[1.4]">{c.note}</p>
                   </div>
                 ))}
               </div>
@@ -1040,14 +1042,14 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
 
           {/* worklist */}
           {a?.worklist?.length > 0 && (
-            <div className="rounded-xl border border-[#BFE2F5] bg-[#EAF6FD] overflow-hidden mb-5">
-              <div className="px-4 py-3 border-b border-[#BFE2F5] text-[13.5px] leading-[1.55] text-[#221F1B]">
+            <div className="rounded-xl border border-[var(--color-info-edge)] bg-info-bg overflow-hidden mb-5">
+              <div className="px-4 py-3 border-b border-[var(--color-info-edge)] text-[13.5px] leading-[1.55] text-ink">
                 {stillOpen === 0
                   ? `Every question on this file has been answered. ${a.worklist.length} ${a.worklist.length === 1 ? 'item is' : 'items are'} on the record below.`
                   : `${stillOpen} thing${stillOpen === 1 ? '' : 's'} to look at before this goes to a lender.`}
               </div>
               {answerErr && (
-                <div className="px-4 py-2 text-[12px] text-[#AD4227] bg-[#FCF4F1] border-b border-[#E8CFC6]">{answerErr}</div>
+                <div className="px-4 py-2 text-[12px] text-chase bg-chase-bg border-b border-chase-edge">{answerErr}</div>
               )}
               {a.worklist.map((w: any, i: number) => {
                 const key = w.key || w.card
@@ -1057,39 +1059,39 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
                 const stale = answered && upload?.reanalysed_at
                   && answered.answered_at < String(upload.reanalysed_at)
                 return (
-                  <div key={key || i} className="border-b border-[#DCEDF8] last:border-b-0">
-                    <div className="flex items-start gap-2.5 px-4 py-2.5 text-[12.5px] text-[#575046] leading-[1.5]">
+                  <div key={key || i} className="border-b border-[var(--color-info-bg)] last:border-b-0">
+                    <div className="flex items-start gap-2.5 px-4 py-2.5 text-[12.5px] text-body leading-[1.5]">
                       <span className={`text-[9.5px] font-bold tracking-wide uppercase rounded-full px-2 py-0.5 border flex-none mt-0.5 ${
-                        answered ? 'text-[#1E7A4A] bg-[#F1F7F3] border-[#CFE6D5]' : flagChip(w.flag)}`}>
+                        answered ? 'text-done bg-done-bg border-done-edge' : flagChip(w.flag)}`}>
                         {answered ? 'Answered' : w.label}
                       </span>
                       <div className="flex-1">
                         <span>{w.text}</span>
 
                         {answered ? (
-                          <div className="mt-1.5 text-[12px] text-[#1E7A4A]">
+                          <div className="mt-1.5 text-[12px] text-done">
                             ✓ {describeAnswer(answered)}
-                            <span className="text-[11px] text-[#7A7266]">
+                            <span className="text-[11px] text-muted">
                               {' '}· {answered.answered_by || 'recorded'} · {new Date(answered.answered_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                               {' '}· <button onClick={() => clearAnswer(key)} disabled={saving === key}
-                                        className="underline text-[#0E8FCB] disabled:opacity-50">Change</button>
+                                        className="underline text-info disabled:opacity-50">Change</button>
                             </span>
                             {stale && (
-                              <span className="block text-[11px] text-[#946017] mt-0.5">
+                              <span className="block text-[11px] text-info mt-0.5">
                                 Answered before the statements were last re-analysed — worth confirming it still holds.
                               </span>
                             )}
                           </div>
                         ) : (
                           <div className="mt-2 flex gap-1.5 flex-wrap items-center">
-                            <span className="text-[11px] text-[#7A7266] mr-0.5">Reason:</span>
+                            <span className="text-[11px] text-muted mr-0.5">Reason:</span>
                             {reasonsFor(key).map(r => (
                               <button key={r.id} disabled={saving === key}
                                 onClick={() => r.id === 'other'
                                   ? (setAsking(asking === key ? null : key), setAskNote(''))
                                   : saveAnswer(key, r.id, r.label, '')}
-                                className={`text-[11.5px] rounded-lg px-2.5 py-[3px] border bg-white text-[#221F1B] hover:bg-[#FCFAF6] disabled:opacity-50 ${
-                                  asking === key && r.id === 'other' ? 'border-[#0E8FCB] text-[#0E8FCB] font-[600]' : 'border-[#E5DED2]'}`}>
+                                className={`text-[11.5px] rounded-lg px-2.5 py-[3px] border bg-card text-ink hover:bg-[var(--color-page)] disabled:opacity-50 ${
+                                  asking === key && r.id === 'other' ? 'border-[var(--color-info)] text-info font-[600]' : 'border-line'}`}>
                                 {r.label}
                               </button>
                             ))}
@@ -1100,22 +1102,22 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
                           <div className="mt-2 flex gap-1.5 items-start">
                             <textarea value={askNote} onChange={e => setAskNote(e.target.value)} autoFocus
                               placeholder="What did the client say?"
-                              className="flex-1 text-[12.5px] leading-[1.5] rounded-lg border border-[#EBD9BE] bg-[#FDF6EC] px-2.5 py-2 text-[#575046] min-h-[54px]" />
+                              className="flex-1 text-[12.5px] leading-[1.5] rounded-lg border border-info-edge bg-info-bg px-2.5 py-2 text-body min-h-[54px]" />
                             <button disabled={!askNote.trim() || saving === key}
                               onClick={() => saveAnswer(key, 'other', 'Other', askNote)}
-                              className="text-[11.5px] rounded-lg px-3 py-[5px] bg-[#0E8FCB] text-white font-[600] disabled:opacity-40">
+                              className="text-[11.5px] rounded-lg px-3 py-[5px] bg-info text-white font-[600] disabled:opacity-40">
                               {saving === key ? 'Saving…' : 'Save'}
                             </button>
                           </div>
                         )}
                       </div>
                       <button onClick={() => setOpen(cardBy(w.card))}
-                        className="ml-auto text-[11.5px] font-semibold text-[#0E8FCB] whitespace-nowrap mt-0.5">Open ›</button>
+                        className="ml-auto text-[11.5px] font-semibold text-info whitespace-nowrap mt-0.5">Open ›</button>
                     </div>
                   </div>
                 )
               })}
-              <div className="px-4 py-2 text-[11px] text-[#7A7266] border-t border-[#DCEDF8]">
+              <div className="px-4 py-2 text-[11px] text-muted border-t border-[var(--color-info-bg)]">
                 Answers appear under Internal notes on the Fact Find, so a broker opening the deal sees them without coming here. They are not given to the AI and do not appear in the lending options or compliance write-up.
               </div>
             </div>
@@ -1124,8 +1126,8 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
           {/* cards */}
           {SECTIONS.map(sec => (
             <div key={sec.title}>
-              <h3 className="text-[11px] font-bold tracking-[0.1em] uppercase text-[#7A7266] mt-6 mb-2.5 flex items-center gap-2.5">
-                <span className="w-[5px] h-[5px] rounded-full bg-[#0E8FCB] flex-none" />{sec.title}
+              <h3 className="text-[11px] font-bold tracking-[0.1em] uppercase text-muted mt-6 mb-2.5 flex items-center gap-2.5">
+                <span className="w-[5px] h-[5px] rounded-full bg-info flex-none" />{sec.title}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                 {sec.keys.map(k => {
@@ -1133,14 +1135,14 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
                   if (!c) return null
                   return (
                     <button key={k} onClick={() => setOpen(c)}
-                      className="relative text-left bg-white border border-[#E5DED2] rounded-xl px-4 pt-3.5 pb-4 hover:border-[#D6CCBC] hover:shadow-[0_2px_9px_rgba(60,48,30,0.07)] transition">
-                      <span className="absolute top-3 right-3.5 text-[9px] font-bold tracking-[0.06em] uppercase text-[#B3ABA0]">{DRILL_LABEL[c.drill]}</span>
-                      <p className="text-[10px] font-bold tracking-[0.08em] uppercase text-[#7A7266] mb-2 pr-9 leading-[1.35]">{c.title}</p>
+                      className="relative text-left bg-card border border-line rounded-xl px-4 pt-3.5 pb-4 hover:border-[var(--color-line)] hover:shadow-[0_2px_9px_rgba(60,48,30,0.07)] transition">
+                      <span className="absolute top-3 right-3.5 text-[9px] font-bold tracking-[0.06em] uppercase text-[var(--color-faint)]">{DRILL_LABEL[c.drill]}</span>
+                      <p className="text-[10px] font-bold tracking-[0.08em] uppercase text-muted mb-2 pr-9 leading-[1.35]">{c.title}</p>
                       {c.flagLabel && (
                         <span className={`inline-block text-[9.5px] font-bold tracking-wide uppercase rounded-full px-2 py-0.5 border mb-1.5 ${flagChip(c.flag)}`}>{c.flagLabel}</span>
                       )}
                       <Num card={c} />
-                      <p className="text-[11.5px] text-[#7A7266] leading-[1.45]">{c.sub}</p>
+                      <p className="text-[11.5px] text-muted leading-[1.45]">{c.sub}</p>
                     </button>
                   )
                 })}
@@ -1152,12 +1154,12 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
             corrections={correctionMap} onCorrect={correctLine} correcting={correcting} />
 
           {a?.warnings?.length > 0 && (
-            <div className="mt-3 rounded-xl border border-[#EBD9BE] bg-[#FDF6EC] px-4 py-3 text-[12.5px] text-[#575046] leading-[1.65]">
-              <b className="text-[#221F1B]">Worth knowing about this file.</b> {a.warnings.join(' ')}
+            <div className="mt-3 rounded-xl border border-info-edge bg-info-bg px-4 py-3 text-[12.5px] text-body leading-[1.65]">
+              <b className="text-ink">Worth knowing about this file.</b> {a.warnings.join(' ')}
             </div>
           )}
-          <div className="mt-3 rounded-xl border border-[#BFE2F5] bg-[#EAF6FD] px-4 py-3 text-[12.5px] text-[#575046] leading-[1.65]">
-            <b className="text-[#221F1B]">The score reads the file, not the client.</b> It measures how much of what was
+          <div className="mt-3 rounded-xl border border-[var(--color-info-edge)] bg-info-bg px-4 py-3 text-[12.5px] text-body leading-[1.65]">
+            <b className="text-ink">The score reads the file, not the client.</b> It measures how much of what was
             declared the statements confirm and how many questions are still open. Nothing in it is an opinion about
             creditworthiness, it is never shown to the client, and it never goes to a lender. Every transaction is stored
             against this deal behind the same access as the rest of the file, and is deleted with it.
@@ -1167,21 +1169,21 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
 
       {open && (
         <div className="fixed inset-0 z-50 bg-[rgba(34,31,27,0.45)] overflow-auto p-4 sm:p-8" onClick={e => { if (e.target === e.currentTarget) setOpen(null) }}>
-          <div className="max-w-[840px] mx-auto bg-white border border-[#E5DED2] rounded-2xl overflow-hidden shadow-[0_18px_50px_rgba(34,31,27,0.24)]">
-            <div className="px-5 py-3 border-b border-[#EFEAE0] bg-[#FCFAF6] flex items-start justify-between gap-4">
+          <div className="max-w-[840px] mx-auto bg-card border border-line rounded-2xl overflow-hidden shadow-[0_18px_50px_rgba(34,31,27,0.24)]">
+            <div className="px-5 py-3 border-b border-line bg-[var(--color-page)] flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-[15px] font-[640] tracking-[-0.01em] m-0">{open.title}</h3>
-                <p className="text-[12px] text-[#7A7266] m-0">{open.sub}</p>
+                <p className="text-[12px] text-muted m-0">{open.sub}</p>
               </div>
               <button onClick={() => setOpen(null)} aria-label="Close"
-                className="border border-[#E5DED2] bg-white w-7 h-7 rounded-lg text-[#7A7266] hover:bg-[#FBF9F5] hover:text-[#221F1B] flex-none">×</button>
+                className="border border-line bg-card w-7 h-7 rounded-lg text-muted hover:bg-[var(--color-page)] hover:text-ink flex-none">×</button>
             </div>
             <div className="px-5 py-4 max-h-[66vh] overflow-auto"><Detail card={open} txns={txns} /></div>
-            <div className="px-5 py-2.5 border-t border-[#EFEAE0] bg-[#FCFAF6] flex items-center gap-2">
-              <span className="text-[11.5px] text-[#7A7266] mr-auto">
+            <div className="px-5 py-2.5 border-t border-line bg-[var(--color-page)] flex items-center gap-2">
+              <span className="text-[11.5px] text-muted mr-auto">
                 {open.txnIds?.length ? `${open.txnIds.length} transaction${open.txnIds.length === 1 ? '' : 's'}` : 'No transactions behind this figure'}
               </span>
-              <button onClick={() => setOpen(null)} className="text-[11.5px] border border-[#0E8FCB] bg-[#0E8FCB] text-white rounded-lg px-3 py-1.5">Done</button>
+              <button onClick={() => setOpen(null)} className="text-[11.5px] border border-[var(--color-info)] bg-info text-white rounded-lg px-3 py-1.5">Done</button>
             </div>
           </div>
         </div>
