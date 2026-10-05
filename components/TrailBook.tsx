@@ -207,7 +207,7 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
 
   useEffect(() => setLimit(STEPS[0]), [who, lookback])
 
-  const card = 'bg-white border rounded-xl'
+  const card = 'bg-card border rounded-xl'
   const cardS = { borderColor: TONE.line }
   const kk = 'text-[9.5px] font-bold tracking-[.1em] uppercase mb-[3px]'
   const th = 'px-3 py-2 text-[9.5px] font-semibold uppercase tracking-[.09em] whitespace-nowrap border-b'
@@ -259,7 +259,7 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
     <div className="mb-6">
       <div className="flex items-center gap-2.5 mb-3 flex-wrap">
         <select value={who} onChange={e => setWho(e.target.value)}
-          className="border rounded-lg px-2.5 py-[5px] text-[12.5px] bg-white"
+          className="border rounded-lg px-2.5 py-[5px] text-[12.5px] bg-card"
           style={{ borderColor: TONE.line, color: TONE.ink }}>
           <option value="all">Whole business</option>
           {brokers.map(b => <option key={b.key} value={b.key}>{b.name}</option>)}
@@ -294,7 +294,7 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
           <div className="flex items-start justify-between gap-2">
             <div className={kk} style={{ color: TONE.label }}>Gone</div>
             <select value={lookback} onChange={e => setLookback(Number(e.target.value))}
-              className="border rounded-md px-1.5 py-[1px] text-[11px] bg-white -mt-[2px]"
+              className="border rounded-md px-1.5 py-[1px] text-[11px] bg-card -mt-[2px]"
               style={{ borderColor: TONE.line, color: TONE.body }}>
               {windows.map(w => <option key={w.n} value={w.n}>{w.label}</option>)}
             </select>
@@ -388,7 +388,7 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
           <span className="text-[12.5px]" style={{ color: TONE.ink }}>{chosen.length} selected — why did it go?</span>
           {(['refinanced_away', 'sold', 'paid_out', 'moved_to_us', 'unknown'] as Reason[]).map(r => (
             <button key={r} onClick={() => setReason(r)} disabled={saving}
-              className="rounded-lg px-3 py-[5px] text-[12px] font-medium border bg-white disabled:opacity-40"
+              className="rounded-lg px-3 py-[5px] text-[12px] font-medium border bg-card disabled:opacity-40"
               style={{ borderColor: r === 'moved_to_us' ? '#CFE6D5' : TONE.line,
                        color: r === 'moved_to_us' ? TONE.pos : TONE.body }}>
               {REASON_LABEL[r]}
@@ -509,7 +509,7 @@ export default function TrailBook({ brokers }: { brokers: { key: string; name: s
         <div className="flex items-center gap-2 flex-wrap">
           <RowLimit shown={shown.length} total={listed.length} limit={limit} onChange={setLimit} />
           <button onClick={exportCsv} disabled={!listed.length}
-                  className="text-[11.5px] border rounded-md px-2.5 py-[3px] bg-white disabled:opacity-40 mr-3"
+                  className="text-[11.5px] border rounded-md px-2.5 py-[3px] bg-card disabled:opacity-40 mr-3"
                   style={{ borderColor: TONE.line, color: TONE.label }}>
             Export {listed.length} to Excel
           </button>

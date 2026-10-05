@@ -262,7 +262,7 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
       {undoing && (
         <div className="fixed inset-0 bg-black/30 flex items-start justify-center z-50 p-6 overflow-y-auto"
              onClick={e => { if (e.target === e.currentTarget && !undoBusy) setUndoing(null) }}>
-          <div className="bg-white rounded-2xl w-[560px] max-w-full shadow-2xl mt-16 overflow-hidden">
+          <div className="bg-card rounded-2xl w-[560px] max-w-full shadow-2xl mt-16 overflow-hidden">
             <div className="px-6 pt-5">
               <h2 className="text-[17px] font-bold text-ink m-0 mb-1.5">
                 Move this deal back to {PHASE_LABEL[undoing.target]}?
@@ -314,7 +314,7 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                 {undoBusy ? 'Moving…' : `Move it back to ${PHASE_LABEL[undoing.target]}`}
               </button>
               <button disabled={undoBusy} onClick={() => setUndoing(null)}
-                className="rounded-lg px-4 py-2 text-[13px] border bg-white border-line text-body">
+                className="rounded-lg px-4 py-2 text-[13px] border bg-card border-line text-body">
                 Leave it where it is
               </button>
             </div>
@@ -423,7 +423,7 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                       column reading 3 must never be mistaken for the whole
                       truth. See lib/board-filters.ts. */}
                   <span title={totalByColumn ? `${cards.length} of ${totalByColumn[p] || 0} while a filter is on` : ''}
-                    className={`ml-auto text-[11px] font-bold bg-white border border-card-line rounded-full px-1.5 ${
+                    className={`ml-auto text-[11px] font-bold bg-card border border-card-line rounded-full px-1.5 ${
                       totalByColumn ? 'text-faint' : 'text-body'}`}>
                     {countLabel(p, cards.length)}
                   </span>
@@ -518,7 +518,7 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                       {onDelete && (
                         <button title="Delete this deal"
                           onClick={e => onDelete(e, d)}
-                          className="absolute top-[7px] right-[30px] w-[22px] h-[22px] rounded-md border border-card-line bg-white text-faint flex items-center justify-center opacity-0 group-hover:opacity-100 transition hover:border-chase hover:text-chase hover:bg-chase-bg">
+                          className="absolute top-[7px] right-[30px] w-[22px] h-[22px] rounded-md border border-card-line bg-card text-faint flex items-center justify-center opacity-0 group-hover:opacity-100 transition hover:border-chase hover:text-chase hover:bg-chase-bg">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                             <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
                           </svg>
@@ -528,7 +528,7 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                       {/* A look before committing to opening it. */}
                       <button title="Quick look"
                         onClick={e => { e.stopPropagation(); setPeeking({ id: d.id, phase: p }) }}
-                        className="absolute top-[7px] right-2 w-[22px] h-[22px] rounded-md border border-card-line bg-white text-muted flex items-center justify-center hover:border-brand-ink hover:text-brand-ink hover:bg-info-bg">
+                        className="absolute top-[7px] right-2 w-[22px] h-[22px] rounded-md border border-card-line bg-card text-muted flex items-center justify-center hover:border-brand-ink hover:text-brand-ink hover:bg-info-bg">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <circle cx="7" cy="15" r="4" /><circle cx="17" cy="15" r="4" />
                           <path d="M11 15h2M6 11V5h3v6M15 11V5h3v6" />
@@ -605,7 +605,7 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                         <span className="text-[9px] font-extrabold tracking-[.07em] uppercase text-info whitespace-nowrap">
                           {lane.label}
                         </span>
-                        <span className="ml-auto bg-white border border-info-edge rounded-full px-1.5 text-[9px] font-bold text-info leading-[15px]">
+                        <span className="ml-auto bg-card border border-info-edge rounded-full px-1.5 text-[9px] font-bold text-info leading-[15px]">
                           {lane.items.length}
                         </span>
                       </div>

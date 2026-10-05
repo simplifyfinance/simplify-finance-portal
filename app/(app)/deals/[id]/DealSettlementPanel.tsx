@@ -91,24 +91,24 @@ export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; on
     await save(stepPatch(d, step, on))
   }
 
-  const inp = 'w-full text-[12.5px] border border-[#E8E1D6] rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:border-[#2DBEFF]'
-  const lab = 'block text-[10px] font-bold uppercase tracking-[.08em] text-[#A29889] mb-1'
+  const inp = 'w-full text-[12.5px] border border-line rounded-lg px-2.5 py-1.5 bg-card focus:outline-none focus:border-[#2DBEFF]'
+  const lab = 'block text-[10px] font-bold uppercase tracking-[.08em] text-faint mb-1'
   const failed = msg.startsWith('NOT SAVED')
 
   return (
-    <div className="bg-white border border-[#EDE7DD] rounded-xl overflow-hidden mb-6">
+    <div className="bg-card border border-[#EDE7DD] rounded-xl overflow-hidden mb-6">
       <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[#F6F2EA] flex-wrap">
-        <span className="text-[13.5px] font-semibold text-[#2E2A26]">Settlement</span>
+        <span className="text-[13.5px] font-semibold text-ink">Settlement</span>
         {attention && !d.settled_at && (
           <span className={`text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[2px] border ${
             attention.level === 'stale'
-              ? 'bg-[#FBEDE9] border-[#EFCFC5] text-[#C4553B]'
+              ? 'bg-chase-bg border-[#EFCFC5] text-[#C4553B]'
               : 'bg-waiting-bg border-waiting-edge text-waiting'}`}>
             {attention.why}
           </span>
         )}
         {d.settlement_updated_at && (
-          <span className="text-[11.5px] text-[#A29889] ml-auto">
+          <span className="text-[11.5px] text-faint ml-auto">
             updated {String(d.settlement_updated_at).slice(0, 10)}
           </span>
         )}
@@ -125,7 +125,7 @@ export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; on
             className={inp + (
               draft.finance_clause_date && !d.formal_approval_at &&
               (new Date(String(draft.finance_clause_date)).getTime() - Date.now()) < 7 * 86400000
-                ? ' border-[#EFD3CB] bg-[#FBECEC] text-[#AD4227] font-semibold' : '')} /></div>
+                ? ' border-chase-edge bg-[#FBECEC] text-chase font-semibold' : '')} /></div>
         <div><label className={lab}>Expected settlement</label>
           <input type="date" className={inp} value={draft.expected_settlement_date || ''}
             onChange={e => setDraft({ ...draft, expected_settlement_date: e.target.value })} /></div>
@@ -162,7 +162,7 @@ export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; on
         )}
         {isPurchase(d) && (
           <div><label className={lab}>Funds to complete</label>
-            <label className="flex items-center gap-2 text-[12.5px] text-[#2E2A26] py-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] text-ink py-1.5">
               <input type="checkbox" checked={!!draft.funds_to_complete_checked}
                 onChange={e => setDraft({ ...draft, funds_to_complete_checked: e.target.checked })} />
               Checked with the solicitor
@@ -190,7 +190,7 @@ export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; on
 
       {!d.settled_at && (
         <div className="flex gap-2 items-center flex-wrap px-4 pb-4">
-          <span className="text-[10px] font-bold uppercase tracking-[.08em] text-[#A29889] mr-1">Step</span>
+          <span className="text-[10px] font-bold uppercase tracking-[.08em] text-faint mr-1">Step</span>
           {STEPS.map(s => {
             const on = stepIsOn(d, s)
             const when = d[s === 'settlement_booked' ? 'settlement_booked_at' : 'contracts_returned_at']
@@ -198,23 +198,23 @@ export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; on
               <button key={s} type="button" disabled={busy} onClick={() => setStep(s, !on)}
                 title={on && when ? `Recorded ${String(when).slice(0, 10)}. Click to undo.` : ''}
                 className={`text-[12px] rounded-lg px-3 py-1.5 border transition ${on
-                  ? 'bg-[#343333] border-[#343333] text-white font-semibold'
-                  : 'bg-white border-[#E8E1D6] text-[#6E665C] hover:bg-[#FAF7F2]'}`}>
+                  ? 'bg-ink border-ink text-white font-semibold'
+                  : 'bg-card border-line text-muted hover:bg-page'}`}>
                 {stepLabel(s, d.transaction_type)}
                 {on && when && <span className="font-normal opacity-70 ml-1.5">{String(when).slice(8, 10)}/{String(when).slice(5, 7)}</span>}
               </button>
             )
           })}
-          <span className="text-[11px] text-[#A29889]">optional · either can be skipped · both are stages on the board now</span>
+          <span className="text-[11px] text-faint">optional · either can be skipped · both are stages on the board now</span>
         </div>
       )}
 
       <div className="flex items-center gap-3 px-4 py-3 border-t border-[#F6F2EA] bg-[#FDFCFA] flex-wrap">
         <button type="button" onClick={() => save()} disabled={busy}
-          className="bg-[#343333] text-white rounded-lg px-4 py-2 text-[12.5px] font-semibold hover:bg-[#2a2a2a] transition disabled:opacity-40">
+          className="bg-ink text-page rounded-lg px-4 py-2 text-[12.5px] font-semibold hover:opacity-90 transition disabled:opacity-40">
           {busy ? 'Saving…' : 'Save'}
         </button>
-        <span className={`text-[12px] ${failed ? 'text-[#C4553B] font-medium' : 'text-[#A29889]'}`}>{msg}</span>
+        <span className={`text-[12px] ${failed ? 'text-[#C4553B] font-medium' : 'text-faint'}`}>{msg}</span>
       </div>
     </div>
   )

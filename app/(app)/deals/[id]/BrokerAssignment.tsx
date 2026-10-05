@@ -55,12 +55,12 @@ export default function BrokerAssignment({ dealId, currentBroker, userRole, chip
   return (
     <div className="flex items-center gap-2 flex-wrap">
       {chip ? (
-        <span className="inline-flex items-baseline gap-1.5 bg-[#FAF7F2] border border-[#E8E1D6] rounded-lg px-2.5 py-1">
-          <span className="text-[9.5px] font-bold tracking-wider uppercase text-[#A29889]">Broker</span>
-          <span className="text-[13px] font-semibold text-[#2E2A26]">{assignedBroker ? nameFor(assignedBroker) : '—'}</span>
+        <span className="inline-flex items-baseline gap-1.5 bg-page border border-line rounded-lg px-2.5 py-1">
+          <span className="text-[9.5px] font-bold tracking-wider uppercase text-faint">Broker</span>
+          <span className="text-[13px] font-semibold text-ink">{assignedBroker ? nameFor(assignedBroker) : '—'}</span>
         </span>
       ) : (
-        <span className="text-xs text-gray-500 bg-gray-100 rounded-lg px-3 py-1.5">Broker: <span className="font-medium text-[#343333]">{assignedBroker ? nameFor(assignedBroker) : '—'}</span></span>
+        <span className="text-xs text-gray-500 bg-gray-100 rounded-lg px-3 py-1.5">Broker: <span className="font-medium text-ink">{assignedBroker ? nameFor(assignedBroker) : '—'}</span></span>
       )}
       {msg && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">{msg}</span>}
       {err && <span className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{err}</span>}
@@ -78,7 +78,7 @@ export default function BrokerAssignment({ dealId, currentBroker, userRole, chip
             ))}
           </select>
           <button onClick={handleReassign} disabled={!picked || saving}
-            className="text-xs bg-[#343333] text-white px-3 py-1.5 rounded-lg disabled:opacity-40">
+            className="text-xs bg-ink text-page px-3 py-1.5 rounded-lg disabled:opacity-40">
             {saving ? 'Saving...' : 'Confirm'}
           </button>
           <button onClick={() => { setShowPicker(false); setPicked('') }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>

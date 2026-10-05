@@ -170,8 +170,8 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
     return window.confirm('Reopen this deal? It goes back into the active list. Any next action stays.')
   }
 
-  const btn = 'text-xs text-[#6E665C] bg-[#FAF7F2] px-3.5 py-2 hover:bg-[#F4EEE4] hover:text-[#2E2A26] transition inline-flex items-center gap-2 disabled:opacity-40'
-  const inp = 'w-full text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-2 text-[#2E2A26] focus:outline-none focus:border-[#2DBEFF]'
+  const btn = 'text-xs text-muted bg-page px-3.5 py-2 hover:bg-line-soft hover:text-ink transition inline-flex items-center gap-2 disabled:opacity-40'
+  const inp = 'w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]'
 
   if (isClosed) {
     return (
@@ -192,24 +192,24 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
       {open && (
         <div className="fixed inset-0 z-50 bg-black/30 flex items-start justify-center p-6 overflow-y-auto"
              onClick={e => { if (e.target === e.currentTarget && !busy) { setOpen(false); reset() } }}>
-          <div className="bg-white rounded-2xl border border-[#EDE7DD] w-full max-w-[560px] mt-[6vh] overflow-hidden">
+          <div className="bg-card rounded-2xl border border-[#EDE7DD] w-full max-w-[560px] mt-[6vh] overflow-hidden">
             <div className="px-5 py-4 border-b border-[#F6F2EA]">
-              <div className="text-[15px] font-semibold text-[#2E2A26]">Close this deal</div>
-              <div className="text-[12px] text-[#A29889]">
+              <div className="text-[15px] font-semibold text-ink">Close this deal</div>
+              <div className="text-[12px] text-faint">
                 It leaves the active list and stops counting as work in progress. Nothing is deleted.
               </div>
             </div>
 
             <div className="px-5 py-4 space-y-4">
               <div>
-                <label className="block text-[11px] font-semibold text-[#A29889] mb-1.5">Why</label>
+                <label className="block text-[11px] font-semibold text-faint mb-1.5">Why</label>
                 <div className="space-y-1">
                   {CLOSE_REASONS.map(r => (
                     <label key={r.value}
                       className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border cursor-pointer transition ${reason === r.value ? 'border-[#BFE6F9] bg-[#EAF7FE]' : 'border-[#EDE7DD] hover:bg-[#FCFAF6]'}`}>
                       <input type="radio" name="close-reason" value={r.value}
                         checked={reason === r.value} onChange={() => setReason(r.value)} className="accent-[#0E8FCB]" />
-                      <span className="text-[13px] text-[#2E2A26]">{r.label}</span>
+                      <span className="text-[13px] text-ink">{r.label}</span>
                       {r.needsDate && <span className="ml-auto text-[10px] font-bold uppercase tracking-[.05em] text-waiting bg-waiting-bg border border-waiting-edge rounded-full px-2 py-[2px]">Comes back</span>}
                     </label>
                   ))}
@@ -217,7 +217,7 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-[#A29889] mb-1.5">
+                <label className="block text-[11px] font-semibold text-faint mb-1.5">
                   Note {reason === 'other' && <span className="text-[#C4553B]">— required</span>}
                 </label>
                 <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} className={inp}
@@ -225,17 +225,17 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
               </div>
 
               <div className="border border-[#EDE7DD] rounded-xl p-3.5 bg-[#FDFCFA]">
-                <label className="block text-[11px] font-semibold text-[#A29889] mb-1.5">
+                <label className="block text-[11px] font-semibold text-faint mb-1.5">
                   Next action {chosen?.needsDate && <span className="text-[#C4553B]">— required for this reason</span>}
                 </label>
                 <input value={action} onChange={e => setAction(e.target.value)} className={inp + ' mb-2'}
                   placeholder="Call about the refinance" />
                 <div className="flex items-center gap-2.5">
-                  <span className="text-[12px] text-[#6E665C]">When</span>
+                  <span className="text-[12px] text-muted">When</span>
                   <input type="date" value={due} onChange={e => setDue(e.target.value)}
-                    className="text-[13px] border border-[#E8E1D6] rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#2DBEFF]" />
+                    className="text-[13px] border border-line rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#2DBEFF]" />
                 </div>
-                <div className="text-[11px] text-[#A29889] mt-2">Setting a date emails support to put a follow-up task on the deal card, for the broker and themselves.</div>
+                <div className="text-[11px] text-faint mt-2">Setting a date emails support to put a follow-up task on the deal card, for the broker and themselves.</div>
               </div>
 
               {linked.length > 0 && (
@@ -243,10 +243,10 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
                   <input type="checkbox" checked={savePosition} onChange={e => setSavePosition(e.target.checked)}
                     className="mt-[3px] accent-[#0E8FCB]" />
                   <span>
-                    <span className="block text-[13px] font-medium text-[#2E2A26]">
+                    <span className="block text-[13px] font-medium text-ink">
                       Save the client&apos;s position for {linked.map((a: any) => a.name || 'applicant').join(' and ')}
                     </span>
-                    <span className="block text-[11.5px] text-[#A29889]">
+                    <span className="block text-[11.5px] text-faint">
                       Their properties, liabilities and assets as declared on the fact find. No loan is added,
                       because no loan happened. This overwrites what is on their client record.
                     </span>
@@ -263,9 +263,9 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
 
             <div className="px-5 py-3.5 border-t border-[#F6F2EA] bg-[#FDFCFA] flex justify-end gap-2">
               <button onClick={() => { setOpen(false); reset() }} disabled={busy}
-                className="text-[12.5px] text-[#6E665C] px-3.5 py-2 hover:text-[#2E2A26]">Cancel</button>
+                className="text-[12.5px] text-muted px-3.5 py-2 hover:text-ink">Cancel</button>
               <button onClick={confirm} disabled={busy}
-                className="bg-[#343333] text-white rounded-lg px-5 py-2 text-[13px] font-semibold hover:bg-[#2a2a2a] transition disabled:opacity-40">
+                className="bg-ink text-page rounded-lg px-5 py-2 text-[13px] font-semibold hover:opacity-90 transition disabled:opacity-40">
                 {busy ? 'Closing...' : 'Close deal'}
               </button>
             </div>

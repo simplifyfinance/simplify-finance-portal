@@ -261,11 +261,11 @@ export default function RefinanceTemplateForm() {
     }
   }
 
-  const panel = 'bg-white border rounded-xl px-4 py-4 mb-3.5'
+  const panel = 'bg-card border rounded-xl px-4 py-4 mb-3.5'
   const pS = { borderColor: TONE.line }
   const h3 = 'text-[11px] font-bold tracking-[.08em] uppercase mb-3'
   const lab = 'text-[11.5px] mb-1 block'
-  const inp = 'w-full border rounded-lg px-2.5 py-[7px] text-[13px] bg-white outline-none focus:border-[#0E8FCB]'
+  const inp = 'w-full border rounded-lg px-2.5 py-[7px] text-[13px] bg-card outline-none focus:border-[#0E8FCB]'
   const inpS = { borderColor: TONE.line, color: TONE.ink }
   const hint = 'text-[11px] mt-1'
 

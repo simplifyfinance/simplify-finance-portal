@@ -89,7 +89,7 @@ export default function StatementsLoaded({ statements, brokers, onChanged }: {
 
   if (!statements.length) return null
 
-  const card = 'bg-white border rounded-xl'
+  const card = 'bg-card border rounded-xl'
   const cardS = { borderColor: TONE.line }
   const th = 'px-3 py-2 text-[9.5px] font-semibold uppercase tracking-[.09em] whitespace-nowrap border-b'
   const td = 'px-3 py-[9px] text-[13px] text-right tabular-nums whitespace-nowrap border-b'
@@ -101,7 +101,7 @@ export default function StatementsLoaded({ statements, brokers, onChanged }: {
           Statements loaded
         </div>
         <select value={who} onChange={e => setWho(e.target.value)}
-          className="border rounded-lg px-2.5 py-[5px] text-[12.5px] bg-white"
+          className="border rounded-lg px-2.5 py-[5px] text-[12.5px] bg-card"
           style={{ borderColor: TONE.line, color: TONE.ink }}>
           <option value="all">Whole business</option>
           {brokers.map(b => <option key={b.key} value={b.key}>{b.name}</option>)}
@@ -163,7 +163,7 @@ export default function StatementsLoaded({ statements, brokers, onChanged }: {
                   {confirming === s.id ? (
                     <>
                       <button onClick={() => remove(s)} disabled={busy === s.id}
-                              className="text-[11.5px] border rounded-md px-2 py-[3px] bg-white disabled:opacity-40"
+                              className="text-[11.5px] border rounded-md px-2 py-[3px] bg-card disabled:opacity-40"
                               style={{ borderColor: '#E8CFC6', color: TONE.neg }}>
                         {busy === s.id ? 'Removing…' : 'Yes, remove'}
                       </button>
@@ -172,7 +172,7 @@ export default function StatementsLoaded({ statements, brokers, onChanged }: {
                     </>
                   ) : (
                     <button onClick={() => { setConfirming(s.id); setErr(''); setNote('') }}
-                            className="text-[11.5px] border rounded-md px-2 py-[3px] bg-white"
+                            className="text-[11.5px] border rounded-md px-2 py-[3px] bg-card"
                             style={{ borderColor: TONE.line, color: TONE.label }}>Remove</button>
                   )}
                 </td>
@@ -228,7 +228,7 @@ export default function StatementsLoaded({ statements, brokers, onChanged }: {
         </table>
         <div className="flex items-center gap-2 flex-wrap">
           <RowLimit shown={shown.length} total={rows.length} limit={limit} onChange={setLimit} />
-          <button onClick={exportCsv} className="text-[11.5px] border rounded-md px-2.5 py-[3px] bg-white mr-3"
+          <button onClick={exportCsv} className="text-[11.5px] border rounded-md px-2.5 py-[3px] bg-card mr-3"
                   style={{ borderColor: TONE.line, color: TONE.label }}>
             Export {rows.length} to Excel
           </button>

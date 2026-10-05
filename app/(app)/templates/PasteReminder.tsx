@@ -37,7 +37,7 @@ export default function PasteReminder({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
          style={{ background: 'rgba(34,31,27,.42)' }} onClick={onClose}>
-      <div className="bg-white rounded-2xl border w-full max-w-[420px] overflow-hidden"
+      <div className="bg-card rounded-2xl border w-full max-w-[420px] overflow-hidden"
            style={{ borderColor: TONE.line }} onClick={e => e.stopPropagation()}>
         <div className="px-6 pt-6 pb-5 text-center">
           <div className="w-11 h-11 rounded-full mx-auto mb-3 flex items-center justify-center text-[21px]"

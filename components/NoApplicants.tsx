@@ -33,7 +33,7 @@
 
 export default function NoApplicants({ tab }: { tab: string }) {
   return (
-    <div className="bg-white border border-[#E6D9BC] rounded-xl p-5">
+    <div className="bg-card border border-[#E6D9BC] rounded-xl p-5">
       <p className="text-[15px] font-semibold text-[#8A6A22] mb-1">
         Nobody has been added to this deal yet
       </p>
@@ -42,7 +42,7 @@ export default function NoApplicants({ tab }: { tab: string }) {
         on it — not here, and not on the Fact Find. Nothing has been lost and nothing is broken;
         there is simply nobody to fill in yet.
       </p>
-      <p className="text-[13px] text-[#3E4C59] leading-relaxed">
+      <p className="text-[13px] text-body leading-relaxed">
         Add the client on the <span className="font-medium">Fact Find</span> tab, then come back
         to this one. If the Fact Find <em>does</em> already show somebody, then this message is
         wrong and the portal has a fault — send a screenshot to whoever looks after it.

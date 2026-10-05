@@ -47,22 +47,22 @@ export default class TabBoundary extends React.Component<Props, State> {
   render() {
     if (!this.state.error) return this.props.children
     return (
-      <div className="bg-white border border-[#E5B7B2] rounded-xl p-5">
-        <p className="text-[15px] font-semibold text-[#B23A34] mb-1">
+      <div className="bg-card border border-chase-edge rounded-xl p-5">
+        <p className="text-[15px] font-semibold text-chase mb-1">
           The {this.props.tab} tab could not be drawn
         </p>
         <p className="text-[13px] text-[#8E3A32] mb-3 leading-relaxed">
           Every other tab on this deal still works, and nothing has been lost — this is a fault in
           the screen, not in the record. Send this panel to whoever is looking after the portal.
         </p>
-        <div className="bg-[#FDF0EF] border border-[#F0D2CF] rounded-lg px-3 py-2 mb-3">
+        <div className="bg-chase-bg border border-[#F0D2CF] rounded-lg px-3 py-2 mb-3">
           <p className="text-[12px] font-mono text-[#8E3A32] break-words">{this.state.error.message}</p>
           {this.state.where && (
             <p className="text-[11px] font-mono text-[#B87069] mt-1.5 break-words">{this.state.where}</p>
           )}
         </div>
         <button onClick={() => this.setState({ error: null, where: '' })}
-          className="text-[12.5px] font-medium text-[#3E4C59] border border-[#D7DCE1] bg-white rounded-lg px-3 py-1.5 hover:bg-gray-50">
+          className="text-[12.5px] font-medium text-body border border-line bg-card rounded-lg px-3 py-1.5 hover:bg-gray-50">
           Try this tab again
         </button>
       </div>

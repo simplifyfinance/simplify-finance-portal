@@ -111,12 +111,12 @@ export default function DealPresence({ dealId, tab, onSameTab }:
             className={`inline-flex items-center justify-center w-[26px] h-[26px] rounded-full
               text-[10px] font-extrabold select-none cursor-default
               ${sameTab ? 'bg-[#2DBEFF] text-[#08252F] ring-2 ring-[#2DBEFF]/25'
-                        : 'bg-[#E8E1D6] text-[#6E665C]'}`}>
+                        : 'bg-[#E8E1D6] text-muted'}`}>
             {initials(o.name)}
           </span>
         )
       })}
-      {line && <span className="text-[11.5px] text-[#6E665C] whitespace-nowrap">{line}</span>}
+      {line && <span className="text-[11.5px] text-muted whitespace-nowrap">{line}</span>}
     </div>
   )
 }

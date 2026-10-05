@@ -40,7 +40,7 @@ export default function SendConfirm({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
          style={{ background: 'rgba(34,31,27,.42)' }} onClick={() => !sending && onClose()}>
-      <div className="bg-white rounded-2xl border w-full max-w-[460px] overflow-hidden"
+      <div className="bg-card rounded-2xl border w-full max-w-[460px] overflow-hidden"
            style={{ borderColor: TONE.line }} onClick={e => e.stopPropagation()}>
         <div className="px-6 pt-6 pb-5">
           <p className="text-[17px] font-[640] tracking-[-.015em] mb-1.5" style={{ color: TONE.ink }}>

@@ -124,7 +124,7 @@ export default function MissingStatements({
               <button key={m} onClick={() => markNone(g.key, g.kind, m)}
                       disabled={busy === `${g.key}|${g.kind}|${m}`}
                       title="SFG issued nothing for this month — stop asking for it"
-                      className="rounded-md border px-1.5 py-[1px] bg-white disabled:opacity-40"
+                      className="rounded-md border px-1.5 py-[1px] bg-card disabled:opacity-40"
                       style={{ borderColor: TONE.accentLine, color: '#0B6F9E' }}>
                 {mLabel(m)}
               </button>

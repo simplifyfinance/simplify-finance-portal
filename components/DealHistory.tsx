@@ -65,9 +65,9 @@ export default function DealHistory({ dealId, tab, me }:
       {open && (
         <div className="fixed inset-0 z-50 bg-black/30 flex items-start justify-center p-6 overflow-auto"
              onClick={() => !busy && setOpen(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-xl mt-16 p-6" onClick={e => e.stopPropagation()}>
+          <div className="bg-card rounded-2xl w-full max-w-xl mt-16 p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-1">
-              <h3 className="m-0 text-[15px] font-semibold text-[#2E2A26]">Previous versions of this {tab === 'FactFind' ? 'Fact Find' : tab}</h3>
+              <h3 className="m-0 text-[15px] font-semibold text-ink">Previous versions of this {tab === 'FactFind' ? 'Fact Find' : tab}</h3>
               <button onClick={() => !busy && setOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
             </div>
             <p className="mt-0 mb-4 text-[12.5px] text-gray-500 leading-[1.6]">
@@ -88,11 +88,11 @@ export default function DealHistory({ dealId, tab, me }:
 
             {(versions || []).map(v => (
               <div key={v.id} className="border border-gray-100 rounded-xl px-4 py-3 mb-2 flex items-center gap-3">
-                <div className="flex-1 text-[12.5px] text-[#2E2A26]">{describeVersion(v)}</div>
+                <div className="flex-1 text-[12.5px] text-ink">{describeVersion(v)}</div>
                 {confirming === v.id ? (
                   <>
                     <button disabled={busy} onClick={() => putBack(v)}
-                      className="bg-[#343333] text-white rounded-lg px-3 py-1.5 text-[12px] font-semibold disabled:opacity-50">
+                      className="bg-ink text-page rounded-lg px-3 py-1.5 text-[12px] font-semibold disabled:opacity-50">
                       {busy ? 'Putting it back…' : 'Yes, put it back'}
                     </button>
                     <button disabled={busy} onClick={() => setConfirming(null)}
@@ -100,7 +100,7 @@ export default function DealHistory({ dealId, tab, me }:
                   </>
                 ) : (
                   <button onClick={() => setConfirming(v.id)}
-                    className="border border-gray-200 rounded-lg px-3 py-1.5 text-[12px] font-medium text-[#2E2A26] hover:border-[#2DBEFF]">
+                    className="border border-gray-200 rounded-lg px-3 py-1.5 text-[12px] font-medium text-ink hover:border-[#2DBEFF]">
                     Put this back
                   </button>
                 )}

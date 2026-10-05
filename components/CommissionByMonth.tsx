@@ -67,7 +67,7 @@ export default function CommissionByMonth({ statements }: { statements: any[] })
   )
 
   return (
-    <div className="bg-white border rounded-xl overflow-x-auto mb-6" style={{ borderColor: TONE.line }}>
+    <div className="bg-card border rounded-xl overflow-x-auto mb-6" style={{ borderColor: TONE.line }}>
       <table className="w-full min-w-[760px]">
         <thead>
           <tr>

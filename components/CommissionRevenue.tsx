@@ -92,7 +92,7 @@ export default function CommissionRevenue({
     return { rows, total }
   }, [inScope, brokers, kindFilter])
 
-  const card = 'bg-white border rounded-xl'
+  const card = 'bg-card border rounded-xl'
   const cardS = { borderColor: TONE.line }
   const kk = 'text-[9.5px] font-bold tracking-[.1em] uppercase mb-[3px]'
   const th = 'px-3 py-2 text-[9.5px] font-semibold uppercase tracking-[.09em] whitespace-nowrap border-b'
@@ -126,7 +126,7 @@ export default function CommissionRevenue({
           ))}
         </div>
         <select value={scope} onChange={e => setScope(e.target.value)}
-          className="border rounded-lg px-2.5 py-[5px] text-[12.5px] bg-white"
+          className="border rounded-lg px-2.5 py-[5px] text-[12.5px] bg-card"
           style={{ borderColor: TONE.line, color: TONE.ink }}>
           {periods.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
         </select>

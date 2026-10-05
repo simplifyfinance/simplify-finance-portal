@@ -46,7 +46,7 @@ function useTip() {
     onMouseLeave: () => setTip(null),
   })
   const node = tip ? (
-    <div className="fixed z-50 pointer-events-none bg-[#343333] text-white text-[11.5px] px-2.5 py-1.5 rounded-lg whitespace-nowrap shadow-lg"
+    <div className="fixed z-50 pointer-events-none bg-ink text-page text-[11.5px] px-2.5 py-1.5 rounded-lg whitespace-nowrap shadow-lg"
          style={{ left: Math.min(tip.x + 12, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 220), top: tip.y - 34 }}>
       {tip.text}
     </div>
@@ -57,17 +57,17 @@ function useTip() {
 function Frame({ title, sub, legend, children, table }:
   { title: string; sub: string; legend: React.ReactNode; children: React.ReactNode; table: React.ReactNode }) {
   return (
-    <div className="bg-white border border-gray-100 rounded-xl p-4 mb-4">
+    <div className="bg-card border border-gray-100 rounded-xl p-4 mb-4">
       <div className="flex items-baseline justify-between gap-4 flex-wrap mb-1">
         <div>
-          <div className="text-[13px] font-semibold text-[#2E2A26]">{title}</div>
-          <div className="text-[11.5px] text-[#A29889]">{sub}</div>
+          <div className="text-[13px] font-semibold text-ink">{title}</div>
+          <div className="text-[11.5px] text-faint">{sub}</div>
         </div>
         <div className="flex gap-3.5 items-center flex-wrap">{legend}</div>
       </div>
       {children}
       <details className="mt-2">
-        <summary className="text-[11.5px] text-[#A29889] cursor-pointer">Show the numbers</summary>
+        <summary className="text-[11.5px] text-faint cursor-pointer">Show the numbers</summary>
         {table}
       </details>
     </div>
@@ -76,7 +76,7 @@ function Frame({ title, sub, legend, children, table }:
 
 function Key({ color, label, dashed }: { color?: string; label: string; dashed?: boolean }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-[11.5px] text-[#6E665C]">
+    <span className="inline-flex items-center gap-1.5 text-[11.5px] text-muted">
       {dashed
         ? <i className="w-4 border-t-2 border-dashed" style={{ borderColor: QUIET }} />
         : <i className="w-[11px] h-[11px] rounded-[3px]" style={{ background: color }} />}
@@ -111,16 +111,16 @@ export function ContextChart({ bars, metric, kind }: {
       table={
         <table className="w-full text-[12px] mt-2">
           <tbody>
-            <tr className="text-[10px] uppercase tracking-wider text-[#A29889]">
+            <tr className="text-[10px] uppercase tracking-wider text-faint">
               <th className="text-left font-semibold py-1">Period</th>
               <th className="text-right font-semibold py-1">{noun}</th>
               <th className="text-right font-semibold py-1">3-year avg</th>
             </tr>
             {bars.map(b => (
               <tr key={b.label} className="border-t border-[#F2EDE4]">
-                <td className="py-1 text-[#6E665C]">{b.label}</td>
+                <td className="py-1 text-muted">{b.label}</td>
                 <td className="py-1 text-right">{money(b.value)}</td>
-                <td className="py-1 text-right text-[#A29889]">{b.avg === null ? '-' : money(b.avg)}</td>
+                <td className="py-1 text-right text-faint">{b.avg === null ? '-' : money(b.avg)}</td>
               </tr>
             ))}
           </tbody>
@@ -200,16 +200,16 @@ export function FyProgressChart({ now, prev, avg, nowLabel, prevLabel, metric }:
       table={
         <table className="w-full text-[12px] mt-2">
           <tbody>
-            <tr className="text-[10px] uppercase tracking-wider text-[#A29889]">
+            <tr className="text-[10px] uppercase tracking-wider text-faint">
               <th className="text-left font-semibold py-1">Month</th>
               <th className="text-right font-semibold py-1">{nowLabel}</th>
               <th className="text-right font-semibold py-1">{prevLabel}</th>
             </tr>
             {MONTHS.map((m, i) => (
               <tr key={m} className="border-t border-[#F2EDE4]">
-                <td className="py-1 text-[#6E665C]">{m}</td>
+                <td className="py-1 text-muted">{m}</td>
                 <td className="py-1 text-right">{cNow[i] === null ? '' : money(cNow[i] as number)}</td>
-                <td className="py-1 text-right text-[#A29889]">{cPrev[i] === null ? '' : money(cPrev[i] as number)}</td>
+                <td className="py-1 text-right text-faint">{cPrev[i] === null ? '' : money(cPrev[i] as number)}</td>
               </tr>
             ))}
           </tbody>
@@ -287,7 +287,7 @@ export function BrokerYearChart({ months, metric, name, fyLabel }: {
         : `${recorded.length} month${recorded.length === 1 ? '' : 's'} recorded · ${money(actualTotal)} against ${money(targetToDate)} to date`}
       legend={<>
         <Key color={NOW} label="Actual" />
-        <span className="inline-flex items-center gap-1.5 text-[11.5px] text-[#6E665C]">
+        <span className="inline-flex items-center gap-1.5 text-[11.5px] text-muted">
           <i className="w-[11px] h-[11px] rounded-[3px] border" style={{ borderColor: QUIET, background: 'transparent' }} />
           Target
         </span>
@@ -295,7 +295,7 @@ export function BrokerYearChart({ months, metric, name, fyLabel }: {
       table={
         <table className="w-full mt-2">
           <thead>
-            <tr className="text-[10px] font-semibold tracking-[.08em] uppercase text-[#A29889]">
+            <tr className="text-[10px] font-semibold tracking-[.08em] uppercase text-faint">
               <th className="text-left py-1">Month</th>
               <th className="text-right py-1">Target</th>
               <th className="text-right py-1">Actual</th>
@@ -305,9 +305,9 @@ export function BrokerYearChart({ months, metric, name, fyLabel }: {
           <tbody>
             {months.map(m => (
               <tr key={m.label} className="border-t border-[#F6F2EA]">
-                <td className="py-1 text-[12px] text-[#6E665C]">{m.label}</td>
-                <td className="py-1 text-[12px] text-right tabular-nums text-[#6E665C]">{m.target ? money(m.target) : '—'}</td>
-                <td className="py-1 text-[12px] text-right tabular-nums text-[#2E2A26]">{m.actual === null ? '—' : money(m.actual)}</td>
+                <td className="py-1 text-[12px] text-muted">{m.label}</td>
+                <td className="py-1 text-[12px] text-right tabular-nums text-muted">{m.target ? money(m.target) : '—'}</td>
+                <td className="py-1 text-[12px] text-right tabular-nums text-ink">{m.actual === null ? '—' : money(m.actual)}</td>
                 <td className={`py-1 text-[12px] text-right tabular-nums font-semibold ${
                   m.actual === null || !m.target ? 'text-[#C9C1B4]'
                     : m.actual >= m.target ? 'text-[#2E9E63]' : 'text-[#C4553B]'}`}>
@@ -315,7 +315,7 @@ export function BrokerYearChart({ months, metric, name, fyLabel }: {
                 </td>
               </tr>
             ))}
-            <tr className="border-t border-[#E8E1D6]">
+            <tr className="border-t border-line">
               <td className="py-1.5 text-[12px] font-semibold">{fyLabel}</td>
               <td className="py-1.5 text-[12px] text-right tabular-nums font-semibold">{yearTarget ? money(yearTarget) : '—'}</td>
               <td className="py-1.5 text-[12px] text-right tabular-nums font-semibold">{recorded.length ? money(actualTotal) : '—'}</td>

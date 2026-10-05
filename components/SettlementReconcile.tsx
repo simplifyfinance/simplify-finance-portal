@@ -170,7 +170,7 @@ export default function SettlementReconcile({ brokers }: {
 
   if (!ready || (deals.length === 0 && lines.length === 0)) return null
 
-  const card = 'bg-white border rounded-xl'
+  const card = 'bg-card border rounded-xl'
   const cardS = { borderColor: TONE.line }
   const th = 'px-3 py-2 text-[9.5px] font-semibold uppercase tracking-[.09em] whitespace-nowrap border-b'
   const td = 'px-3 py-[9px] text-[13px] text-right tabular-nums whitespace-nowrap border-b'
@@ -189,7 +189,7 @@ export default function SettlementReconcile({ brokers }: {
           ))}
         </div>
         <select value={who} onChange={e => setWho(e.target.value)}
-          className="border rounded-lg px-2.5 py-[5px] text-[12.5px] bg-white"
+          className="border rounded-lg px-2.5 py-[5px] text-[12.5px] bg-card"
           style={{ borderColor: TONE.line, color: TONE.ink }}>
           <option value="all">Whole business</option>
           {brokers.map(b => <option key={b.key} value={b.key}>{b.name}</option>)}
@@ -269,7 +269,7 @@ export default function SettlementReconcile({ brokers }: {
           <RowLimit shown={tab === 'unpaid' ? shownUnpaid.length : shownNodeal.length}
                     total={total} limit={limit} onChange={setLimit} />
           <button onClick={exportCsv} disabled={!total}
-                  className="text-[11.5px] border rounded-md px-2.5 py-[3px] bg-white disabled:opacity-40 mr-3"
+                  className="text-[11.5px] border rounded-md px-2.5 py-[3px] bg-card disabled:opacity-40 mr-3"
                   style={{ borderColor: TONE.line, color: TONE.label }}>
             Export {total} to Excel
           </button>

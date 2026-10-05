@@ -16,8 +16,8 @@ export const metadata = { title: 'Templates' }
 export default function TemplatesPage() {
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <p className="text-lg font-medium text-[#343333] mb-1">Templates</p>
-      <p className="text-[12.5px] text-[#7A7266] mb-5 max-w-[86ch]">
+      <p className="text-lg font-medium text-ink mb-1">Templates</p>
+      <p className="text-[12.5px] text-muted mb-5 max-w-[86ch]">
         Pick a template, fill in the client, and send it from your own mailbox. Nothing is saved.
       </p>
       <TemplatesClient />

@@ -203,11 +203,11 @@ export default function MonthlyActuals() {
     } finally { setBusy(false) }
   }
 
-  if (isAdmin === null) return <div className="max-w-6xl mx-auto p-6 text-sm text-[#A29889]">Loading...</div>
+  if (isAdmin === null) return <div className="max-w-6xl mx-auto p-6 text-sm text-faint">Loading...</div>
   if (isAdmin === false) return (
     <div className="max-w-6xl mx-auto p-6">
-      <p className="text-lg font-medium text-[#2E2A26] mb-2">Monthly actuals</p>
-      <p className="text-sm text-[#6E665C]">Only an admin can change the monthly figures.</p>
+      <p className="text-lg font-medium text-ink mb-2">Monthly actuals</p>
+      <p className="text-sm text-muted">Only an admin can change the monthly figures.</p>
     </div>
   )
 
@@ -228,26 +228,26 @@ export default function MonthlyActuals() {
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      <p className="text-lg font-medium text-[#2E2A26] mb-1">Monthly actuals</p>
-      <p className="text-[12.5px] text-[#A29889] mb-5 max-w-[80ch]">
+      <p className="text-lg font-medium text-ink mb-1">Monthly actuals</p>
+      <p className="text-[12.5px] text-faint mb-5 max-w-[80ch]">
         What the Pipeline reports for each month. A figure typed here overrides whatever the portal would count,
         until you release it — which is how you keep reporting real numbers while the team is still learning to
         mark deals through. The target sits beside each month, so you can see where the year stands as you type.
       </p>
 
-      <div className="border border-[#EDE7DD] rounded-xl bg-white overflow-hidden">
+      <div className="border border-[#EDE7DD] rounded-xl bg-card overflow-hidden">
         <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-[#F6F2EA] flex-wrap">
-          <div className="flex gap-2 items-center flex-wrap text-[11.5px] text-[#6E665C]">
-            <span className={tag + ' bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C]'}>Spreadsheet</span> loaded from your file
-            <span className={tag + ' bg-[#F1F7F3] border border-[#CFE6D5] text-[#25794C] ml-2'}>Portal</span> counted from deals here
+          <div className="flex gap-2 items-center flex-wrap text-[11.5px] text-muted">
+            <span className={tag + ' bg-page border border-line text-muted'}>Spreadsheet</span> loaded from your file
+            <span className={tag + ' bg-done-bg border border-done-edge text-done ml-2'}>Portal</span> counted from deals here
             <span className={tag + ' bg-[#EAF7FE] border border-[#BFE6F9] text-[#0E8FCB] ml-2'}>Override</span> typed by hand
           </div>
           <div className="inline-flex items-center gap-2">
-            <button onClick={() => setFy(f => f - 1)} className="w-[26px] h-[26px] rounded-lg border border-[#E8E1D6] flex items-center justify-center text-[#6E665C] hover:bg-[#FAF7F2]">
+            <button onClick={() => setFy(f => f - 1)} className="w-[26px] h-[26px] rounded-lg border border-line flex items-center justify-center text-muted hover:bg-page">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5"/></svg>
             </button>
             <span className="text-[13px] font-semibold w-[52px] text-center">FY{String(fy).slice(2)}</span>
-            <button onClick={() => setFy(f => f + 1)} className="w-[26px] h-[26px] rounded-lg border border-[#E8E1D6] flex items-center justify-center text-[#6E665C] hover:bg-[#FAF7F2]">
+            <button onClick={() => setFy(f => f + 1)} className="w-[26px] h-[26px] rounded-lg border border-line flex items-center justify-center text-muted hover:bg-page">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3l5 5-5 5"/></svg>
             </button>
           </div>
@@ -256,7 +256,7 @@ export default function MonthlyActuals() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="text-[10px] font-semibold tracking-[.085em] uppercase text-[#A29889]">
+              <tr className="text-[10px] font-semibold tracking-[.085em] uppercase text-faint">
                 <th className="text-left px-5 py-2.5 border-b border-[#F6F2EA]">Month</th>
                 <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">Deals lodged</th>
                 <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">Lodged</th>
@@ -271,10 +271,10 @@ export default function MonthlyActuals() {
             <tbody>
               {months.map(mm => {
                 const over = mm.src === 'override'
-                const ring = over ? ' border-[#BFE6F9] bg-[#EAF7FE]' : ' border-[#E8E1D6]'
+                const ring = over ? ' border-[#BFE6F9] bg-[#EAF7FE]' : ' border-line'
                 return (
                   <tr key={mm.month} className="border-b border-[#F6F2EA] last:border-0 hover:bg-[#FCFAF6]">
-                    <td className="px-5 py-2 text-[13px] font-medium text-[#6E665C]">
+                    <td className="px-5 py-2 text-[13px] font-medium text-muted">
                       {mm.name} {String(fy - (mm.mi >= 7 ? 1 : 0))}
                     </td>
                     {(['dl', 'la', 'pl', 'ds', 'sa', 'ps'] as const).map(f => {
@@ -299,9 +299,9 @@ export default function MonthlyActuals() {
                       )
                     })}
                     <td className="px-3 py-2">
-                      {mm.src === 'spreadsheet' && <span className={tag + ' bg-[#FAF7F2] border border-[#E8E1D6] text-[#6E665C]'}>Spreadsheet</span>}
+                      {mm.src === 'spreadsheet' && <span className={tag + ' bg-page border border-line text-muted'}>Spreadsheet</span>}
                       {mm.src === 'override' && <span className={tag + ' bg-[#EAF7FE] border border-[#BFE6F9] text-[#0E8FCB]'}>Override</span>}
-                      {mm.src === 'portal' && <span className={tag + ' bg-[#F1F7F3] border border-[#CFE6D5] text-[#25794C]'}>Portal</span>}
+                      {mm.src === 'portal' && <span className={tag + ' bg-done-bg border border-done-edge text-done'}>Portal</span>}
                       {mm.src === 'none' && <span className="text-[11.5px] text-[#C9C1B4]">{mm.future ? 'not started' : 'nothing recorded'}</span>}
                     </td>
                     <td className="px-5 py-2 text-right whitespace-nowrap">
@@ -313,7 +313,7 @@ export default function MonthlyActuals() {
                       )}
                       {mm.row && (
                         <button onClick={() => release(mm.month)} disabled={busy}
-                          className="text-[11.5px] text-[#A29889] hover:text-[#C4553B]">Release</button>
+                          className="text-[11.5px] text-faint hover:text-[#C4553B]">Release</button>
                       )}
                     </td>
                   </tr>
@@ -321,15 +321,15 @@ export default function MonthlyActuals() {
               })}
             </tbody>
             <tfoot>
-              <tr className="border-t border-[#E8E1D6] bg-[#FDFCFA]">
-                <td className="px-5 py-3 text-[13px] font-semibold text-[#2E2A26]">FY{String(fy).slice(2)} so far</td>
+              <tr className="border-t border-line bg-[#FDFCFA]">
+                <td className="px-5 py-3 text-[13px] font-semibold text-ink">FY{String(fy).slice(2)} so far</td>
                 <td className="px-3 py-3 text-right text-[13px] font-semibold tabular-nums">{totals.dl || '—'}</td>
                 <td className="px-3 py-3 text-right text-[13px] font-semibold tabular-nums">{totals.la ? compact(totals.la) : '—'}</td>
                 <td className="px-3 py-3 text-right">{pctOf(totals.la || null, totals.lt || null)}</td>
                 <td className="px-3 py-3 text-right text-[13px] font-semibold tabular-nums">{totals.ds || '—'}</td>
                 <td className="px-3 py-3 text-right text-[13px] font-semibold tabular-nums">{totals.sa ? compact(totals.sa) : '—'}</td>
                 <td className="px-3 py-3 text-right">{pctOf(totals.sa || null, totals.st || null)}</td>
-                <td colSpan={2} className="px-5 py-3 text-right text-[11.5px] text-[#A29889]">
+                <td colSpan={2} className="px-5 py-3 text-right text-[11.5px] text-faint">
                   {totals.recorded
                     ? `${totals.recorded} month${totals.recorded === 1 ? '' : 's'} recorded, against the target for those months`
                     : 'nothing recorded yet this year'}
@@ -340,11 +340,11 @@ export default function MonthlyActuals() {
         </div>
 
         <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-t border-[#F6F2EA] bg-[#FDFCFA] flex-wrap">
-          <span className={`text-[12px] ${failed ? 'text-[#C4553B] font-medium' : 'text-[#A29889]'}`}>
+          <span className={`text-[12px] ${failed ? 'text-[#C4553B] font-medium' : 'text-faint'}`}>
             {status || (dirty ? 'Unsaved changes.' : 'Clearing every box on a row and saving releases that month.')}
           </span>
           <button onClick={save} disabled={!dirty || busy}
-            className="bg-[#343333] text-white rounded-lg px-5 py-2 text-[13px] font-semibold hover:bg-[#2a2a2a] transition disabled:opacity-40">
+            className="bg-ink text-page rounded-lg px-5 py-2 text-[13px] font-semibold hover:opacity-90 transition disabled:opacity-40">
             {busy ? 'Saving...' : 'Save'}
           </button>
         </div>

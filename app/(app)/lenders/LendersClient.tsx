@@ -25,8 +25,8 @@ export default function LendersClient() {
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold text-[#2E2A26] mb-1">Lender Library</h1>
-      <p className="text-sm text-[#6E665C] mb-8">{active.blurb}</p>
+      <h1 className="text-2xl font-bold text-ink mb-1">Lender Library</h1>
+      <p className="text-sm text-muted mb-8">{active.blurb}</p>
       {pane === 'rate-notice' ? <RateNoticeSettings />
         : pane === 'rules' ? <LenderRules />
         : <LenderLibrary />}

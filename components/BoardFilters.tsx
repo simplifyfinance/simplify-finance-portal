@@ -100,7 +100,7 @@ export default function BoardFilters({
         </button>
 
         {open && (
-          <div className="absolute top-[calc(100%+6px)] left-0 z-30 w-[280px] bg-white border border-line rounded-xl shadow-[0_10px_30px_rgba(20,25,30,.16)] overflow-hidden">
+          <div className="absolute top-[calc(100%+6px)] left-0 z-30 w-[280px] bg-card border border-line rounded-xl shadow-[0_10px_30px_rgba(20,25,30,.16)] overflow-hidden">
             <div className="max-h-[370px] overflow-y-auto p-1.5">
 
               {/* WHAT IS ON THE BOARD AT ALL, before any question of whose it is.
@@ -254,7 +254,7 @@ export function BoardFilterBar({
       <b className="text-[12.5px] text-brand-ink">{showingLine(shown, total)}</b>
       {vchips.map(c => (
         <span key={`view:${c.which}`}
-          className="inline-flex items-center gap-1.5 bg-white border border-info-edge rounded-full pl-2.5 pr-1.5 py-[1px] text-[11.5px] text-brand-ink">
+          className="inline-flex items-center gap-1.5 bg-card border border-info-edge rounded-full pl-2.5 pr-1.5 py-[1px] text-[11.5px] text-brand-ink">
           {c.label}
           {onToggleView && (
             <button type="button" aria-label={`Stop ${c.label.toLowerCase()}`}
@@ -265,7 +265,7 @@ export function BoardFilterBar({
       ))}
       {chips.map(c => (
         <span key={`${c.which}:${c.value}`}
-          className="inline-flex items-center gap-1.5 bg-white border border-info-edge rounded-full pl-2.5 pr-1.5 py-[1px] text-[11.5px] text-brand-ink">
+          className="inline-flex items-center gap-1.5 bg-card border border-info-edge rounded-full pl-2.5 pr-1.5 py-[1px] text-[11.5px] text-brand-ink">
           {c.label}
           <button type="button" aria-label={`Stop filtering by ${c.label}`}
             onClick={() => c.which === 'nudge' ? onToggleNudge() : onToggle(c.which, c.value)}
@@ -273,7 +273,7 @@ export function BoardFilterBar({
         </span>
       ))}
       <button type="button" onClick={onClear}
-        className="ml-auto border border-info-edge bg-white rounded-lg px-2.5 py-1 text-[12px] font-semibold text-brand-ink hover:bg-info-bg">
+        className="ml-auto border border-info-edge bg-card rounded-lg px-2.5 py-1 text-[12px] font-semibold text-brand-ink hover:bg-info-bg">
         Clear all
       </button>
     </div>

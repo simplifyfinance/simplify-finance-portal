@@ -26,7 +26,7 @@ export default function DraftBanner({ at, onRestore, onDiscard }: {
         </div>
         <div className="flex gap-2 mt-2">
           <button onClick={onRestore}
-            className="text-xs font-semibold bg-[#2DBEFF] text-[#343333] rounded-lg px-3 py-1.5">
+            className="text-xs font-semibold bg-[#2DBEFF] text-ink rounded-lg px-3 py-1.5">
             Put it back on screen
           </button>
           <button onClick={onDiscard}

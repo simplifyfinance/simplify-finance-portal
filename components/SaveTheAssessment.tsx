@@ -24,7 +24,7 @@ export default function SaveTheAssessment({ deal, when }: { deal: Deal; when: 's
   }
 
   return (
-    <div className="border border-[#E8E1D6] bg-[#FDFCFA] rounded-xl px-3.5 py-3 mb-3">
+    <div className="border border-line bg-[#FDFCFA] rounded-xl px-3.5 py-3 mb-3">
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex-1 min-w-[200px]">
           <div className="text-[12.5px] font-semibold text-[#3B3B3B]">
@@ -37,12 +37,12 @@ export default function SaveTheAssessment({ deal, when }: { deal: Deal; when: 's
           </div>
         </div>
         <button onClick={go} disabled={busy}
-          className="text-[12px] font-semibold rounded-lg px-3 py-1.5 border border-[#DDE2E6] bg-white text-[#2E3439] hover:bg-[#F6F7F9] disabled:opacity-40">
+          className="text-[12px] font-semibold rounded-lg px-3 py-1.5 border border-[#DDE2E6] bg-card text-ink hover:bg-[#F6F7F9] disabled:opacity-40">
           {busy ? 'Building...' : done ? 'Download again' : 'Download'}
         </button>
       </div>
       {done && !err && (
-        <div className="text-[11.5px] text-[#0F7B4F] mt-2">
+        <div className="text-[11.5px] text-done mt-2">
           Saved to your downloads. File it in the client&rsquo;s folder.
         </div>
       )}

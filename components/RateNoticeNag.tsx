@@ -41,11 +41,11 @@ export default function RateNoticeNag() {
   if (!line) return null
 
   return (
-    <div className="mb-4 flex items-start gap-3 rounded-xl border border-[#E9D2CF] bg-[#FDF3F2] px-4 py-3">
-      <span className="text-[15px] leading-[1.2] text-[#8E3A34]">&#9888;</span>
-      <p className="m-0 text-[12.5px] text-[#8E3A34] leading-relaxed">{line}</p>
+    <div className="mb-4 flex items-start gap-3 rounded-xl border border-chase-edge bg-chase-bg px-4 py-3">
+      <span className="text-[15px] leading-[1.2] text-chase">&#9888;</span>
+      <p className="m-0 text-[12.5px] text-chase leading-relaxed">{line}</p>
       <Link href="/settings#rate-notice"
-        className="ml-auto shrink-0 rounded-lg border border-[#E9D2CF] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#8E3A34] hover:bg-[#FFF7F6]">
+        className="ml-auto shrink-0 rounded-lg border border-chase-edge bg-card px-3 py-1.5 text-[12px] font-semibold text-chase hover:bg-[#FFF7F6]">
         Open it
       </Link>
     </div>

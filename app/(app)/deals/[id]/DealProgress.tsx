@@ -44,7 +44,7 @@ export default function DealProgress({ deal }: { deal: any }) {
   const shown = folded ? beads.filter(b => b.group === 'tracked') : beads
 
   return (
-    <div className="bg-white border border-gray-100 rounded-xl px-6 pt-5 pb-3 mb-4">
+    <div className="bg-card border border-gray-100 rounded-xl px-6 pt-5 pb-3 mb-4">
       <div className="flex items-start">
 
         {/* The written half, folded. Four small dots on the same track, no labels,
@@ -81,9 +81,9 @@ export default function DealProgress({ deal }: { deal: any }) {
                       style={{ background: b.done ? GREEN : GREY }} />
               )}
               <div className={`relative z-10 w-[18px] h-[18px] rounded-full mx-auto flex items-center justify-center ${
-                b.done ? 'bg-[#12A150]'
-                : b.current ? 'bg-white border-2 border-[#2DBEFF] shadow-[0_0_0_4px_rgba(45,190,255,.16)]'
-                : 'bg-white border-2 border-[#dfe4e9]'}`}>
+                b.done ? 'bg-done'
+                : b.current ? 'bg-card border-2 border-[#2DBEFF] shadow-[0_0_0_4px_rgba(45,190,255,.16)]'
+                : 'bg-card border-2 border-[#dfe4e9]'}`}>
                 {b.done && (
                   <svg viewBox="0 0 12 12" className="w-[11px] h-[11px]" fill="none"
                        stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

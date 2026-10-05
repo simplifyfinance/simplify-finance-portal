@@ -66,7 +66,7 @@ export default function AbnAutocomplete({
         <div className="absolute right-3 top-2.5 text-xs text-gray-400">Searching...</div>
       )}
       {open && results.length > 0 && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-100 rounded-lg shadow-md max-h-56 overflow-y-auto">
+        <div className="absolute z-10 w-full mt-1 bg-card border border-gray-100 rounded-lg shadow-md max-h-56 overflow-y-auto">
           {results.map((r) => (
             <button
               key={r.abn}

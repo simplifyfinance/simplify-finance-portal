@@ -64,11 +64,11 @@ export default function ReportsPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <p className="text-lg font-medium text-[#343333] mb-4">Reports</p>
+      <p className="text-lg font-medium text-ink mb-4">Reports</p>
 
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit mb-5">
-        <button onClick={() => setTab('rate')} className={`px-4 py-1.5 text-sm rounded-md font-medium transition ${tab === 'rate' ? 'bg-white text-[#343333] shadow-sm' : 'text-gray-500'}`}>Rate exposure</button>
-        <button onClick={() => setTab('lvr')} className={`px-4 py-1.5 text-sm rounded-md font-medium transition ${tab === 'lvr' ? 'bg-white text-[#343333] shadow-sm' : 'text-gray-500'}`}>LVR exposure</button>
+        <button onClick={() => setTab('rate')} className={`px-4 py-1.5 text-sm rounded-md font-medium transition ${tab === 'rate' ? 'bg-card text-ink shadow-sm' : 'text-gray-500'}`}>Rate exposure</button>
+        <button onClick={() => setTab('lvr')} className={`px-4 py-1.5 text-sm rounded-md font-medium transition ${tab === 'lvr' ? 'bg-card text-ink shadow-sm' : 'text-gray-500'}`}>LVR exposure</button>
       </div>
 
       {loading ? (
@@ -81,7 +81,7 @@ export default function ReportsPage() {
               className="w-16 text-sm px-2 py-1.5 border border-gray-300 rounded-lg text-center" />
             <span className="text-sm text-gray-500">%</span>
           </div>
-          <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+          <div className="bg-card border border-gray-100 rounded-xl overflow-hidden">
             <div className="grid grid-cols-[1.5fr_2fr_1fr_0.8fr] px-4 py-2 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-gray-100">
               <span>Client</span><span>Property</span><span>Lender</span><span>Rate</span>
             </div>
@@ -95,7 +95,7 @@ export default function ReportsPage() {
           </div>
         </>
       ) : (
-        <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+        <div className="bg-card border border-gray-100 rounded-xl overflow-hidden">
           <div className="grid grid-cols-[1.5fr_2fr_1fr_1fr_0.8fr] px-4 py-2 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-gray-100">
             <span>Client</span><span>Property</span><span>Value</span><span>Loan balance</span><span>LVR</span>
           </div>

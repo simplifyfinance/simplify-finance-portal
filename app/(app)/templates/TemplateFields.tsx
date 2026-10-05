@@ -6,9 +6,9 @@ import type { Broker } from './useSender'
 // The BCC is typed per send because it belongs to that client's own deal card in
 // SalesTrekker, not to the person sending.
 
-export const inp = 'w-full border rounded-lg px-2.5 py-[7px] text-[13px] bg-white outline-none focus:border-[#0E8FCB]'
+export const inp = 'w-full border rounded-lg px-2.5 py-[7px] text-[13px] bg-card outline-none focus:border-[#0E8FCB]'
 export const inpS = { borderColor: TONE.line, color: TONE.ink }
-export const panel = 'bg-white border rounded-xl px-4 py-4 mb-3.5'
+export const panel = 'bg-card border rounded-xl px-4 py-4 mb-3.5'
 export const panelS = { borderColor: TONE.line }
 const h3 = 'text-[11px] font-bold tracking-[.08em] uppercase mb-3'
 const lab = 'text-[11.5px] mb-1 block'

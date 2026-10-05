@@ -145,7 +145,7 @@ export default function TemplatesClient() {
          style={{ borderColor: TONE.line, background: isArchived ? TONE.zebra : '#fff',
                   opacity: isArchived ? .68 : 1 }}>
       <button onClick={() => toggle(t.id, !isArchived)} disabled={busy === t.id}
-        className="absolute top-3 right-3 text-[11.5px] border rounded-md px-2 py-[3px] bg-white disabled:opacity-50"
+        className="absolute top-3 right-3 text-[11.5px] border rounded-md px-2 py-[3px] bg-card disabled:opacity-50"
         style={{ borderColor: TONE.line, color: TONE.label }}>
         {busy === t.id ? '…' : isArchived ? 'Restore' : 'Archive'}
       </button>
@@ -181,7 +181,7 @@ export default function TemplatesClient() {
       <div className="grid grid-cols-3 gap-3 max-[820px]:grid-cols-1 mb-6">
         {MILESTONES.map(t => (
           <button key={t.id} onClick={() => setMilestone(t.id)}
-            className="border rounded-xl px-4 py-4 text-left bg-white hover:border-[#BBE7CF] transition"
+            className="border rounded-xl px-4 py-4 text-left bg-card hover:border-done-edge transition"
             style={{ borderColor: TONE.line }}>
             <span className="inline-block text-[10px] font-bold tracking-[.05em] uppercase rounded-full px-2 py-[2px] border mb-2"
                   style={{ borderColor: '#BBE7CF', color: '#0F7B4F', background: '#F4FBF7' }}>
