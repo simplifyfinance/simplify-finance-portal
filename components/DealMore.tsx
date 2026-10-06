@@ -43,8 +43,27 @@ export default function DealMore({ children }: { children: React.ReactNode }) {
         </svg>
       </button>
 
+      {/* THE MENU DOES NOT SHUT ITSELF WHEN YOU PICK SOMETHING.
+       *
+       * 6 Oct 2026, and this broke Close deal for a day. The menu used to carry
+       * onClick={() => setOpen(false)}, so a click on Close deal did two things
+       * in order:
+       *
+       *   1. CloseDeal set its own "show the dialog" state to true
+       *   2. the click bubbled up to here and shut the menu
+       *
+       * and shutting the menu unmounts its children. CloseDeal was thrown away
+       * a frame after it decided to open, taking the state with it. The button
+       * did exactly what it was told and nothing appeared. Clone was unaffected
+       * because Clone does its work and leaves; anything that opens a dialog of
+       * its own could not survive.
+       *
+       * So the menu shuts on a click ANYWHERE ELSE and on Escape - both still
+       * above - and not on a click inside itself. Picking Close deal leaves it
+       * open underneath the dialog, where the dialog's own backdrop covers it,
+       * and the first click after the dialog closes puts it away. */}
       {open && (
-        <div role="menu" onClick={() => setOpen(false)}
+        <div role="menu"
           className="absolute right-0 top-[calc(100%+6px)] z-30 min-w-[215px]
             bg-card border border-card-line rounded-xl shadow-lg p-1.5 flex flex-col gap-0.5">
           {children}
