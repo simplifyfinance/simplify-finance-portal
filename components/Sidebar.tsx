@@ -152,7 +152,7 @@ export default function Sidebar() {
           .map(item => {
           const Icon = item.icon
           const linkClass = `flex items-center gap-2.5 px-3 py-2 rounded-md text-sm mb-0.5 transition-colors ${
-            path.startsWith(item.href) ? 'text-brand bg-brand/12' : 'text-on-brand/60 hover:text-on-brand hover:bg-white/5'
+            path.startsWith(item.href) ? 'text-brand bg-brand/12' : 'text-white/60 hover:text-white hover:bg-white/5'
           }`
           if ((item as any).newTab) {
             return (
@@ -198,7 +198,7 @@ export default function Sidebar() {
                   <Link href={item.href}
                     onClick={() => { if (!hasSubs) history.replaceState(null, '', item.href); setHash('') }}
                     className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm mb-0.5 transition-colors ${
-                      path.startsWith(item.href) ? 'text-brand bg-brand/12' : 'text-on-brand/60 hover:text-on-brand hover:bg-white/5'
+                      path.startsWith(item.href) ? 'text-brand bg-brand/12' : 'text-white/60 hover:text-white hover:bg-white/5'
                     }`}>
                     <Icon size={15} />
                     {item.label}

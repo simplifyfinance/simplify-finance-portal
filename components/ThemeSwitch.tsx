@@ -1,10 +1,11 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Sun, Moon } from 'lucide-react'
 import {
-  chooseTheme, prefersDark, readChoice, resolveTheme, applyTheme,
+  prefersDark, readChoice, resolveTheme, applyTheme,
   type Theme, type ThemeChoice,
 } from '@/lib/theme'
+import { useThemeChoice } from '@/lib/use-theme-choice'
 
 // SUN, MOON, AND A FOR AUTO.
 //
@@ -41,13 +42,16 @@ const OPTIONS: { choice: ThemeChoice; label: string; title: string }[] = [
 ]
 
 export default function ThemeSwitch({ onChange, className, tone = 'page' }: Props) {
-  const [choice, setChoice] = useState<ThemeChoice | null>(null)
+  // WHERE THE CHOICE LIVES IS NOT THIS FILE'S BUSINESS ANY MORE.
+  //
+  // 6 Oct 2026. It used to read and write the browser directly, which is why
+  // somebody who picked dark on one machine got light on the next. The reading,
+  // the writing and the correcting are all in lib/use-theme-choice.ts now, with
+  // the warning about optional chaining that used to live here. This file draws
+  // three buttons and says which one was pressed.
+  const { choice, pick } = useThemeChoice(onChange)
 
   useEffect(() => {
-    const now = readChoice()
-    setChoice(now)
-    onChange?.(resolveTheme(now, prefersDark()))
-
     // ON AUTO, THE MAC CAN CHANGE ITS MIND WHILE THE PAGE IS OPEN - at sunset,
     // or when somebody flips it in System Settings. Without this the portal
     // would stay on whichever theme it happened to start in.
@@ -65,26 +69,6 @@ export default function ThemeSwitch({ onChange, className, tone = 'page' }: Prop
     return () => { try { media?.removeEventListener('change', follow) } catch { /* gone already */ } }
   }, [])
 
-  function pick(next: ThemeChoice) {
-    // THE THEME IS CHANGED FIRST, AND TELLING ANYBODY COMES SECOND.
-    //
-    // 5 Oct 2026, and this is why dark mode never worked. It used to read:
-    //
-    //     onChange   ?.   ( chooseTheme(next) )      <- spaced out on purpose,
-    //                                                      so the test below
-    //                                                      does not match this
-    //                                                      comment
-    //
-    // `a?.(b())` does not call b() when a is undefined - optional chaining
-    // skips the whole call, arguments and all. Neither the sign-in screen nor
-    // the sidebar passes onChange, so chooseTheme was NEVER CALLED on either.
-    // The button lit up, because setChoice runs on the line above, and nothing
-    // else on the page moved. Fabio spent an afternoon on it: "the button is
-    // there but when I click nothing happnes".
-    setChoice(next)
-    const theme = chooseTheme(next)
-    onChange?.(theme)
-  }
 
   return (
     <div

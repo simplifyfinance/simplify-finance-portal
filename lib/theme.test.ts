@@ -250,16 +250,36 @@ describe('one place decides the theme', () => {
 // 5 Oct 2026. `onChange?.(chooseTheme(next))` looks fine and is not: optional
 // chaining skips the arguments too, so with no onChange the theme was never
 // applied. Dark mode was dead on both screens that have the switch, for weeks.
+//
+// 6 Oct 2026: THE PICK MOVED to lib/use-theme-choice.ts, so the theme can be
+// saved against the person rather than the browser. The guard moved with it -
+// and now watches BOTH files, so the fault cannot come back by being written
+// somewhere the guard is not looking.
 describe('picking a theme applies it', () => {
-  const src = readFileSync('components/ThemeSwitch.tsx', 'utf8')
+  const WHEREVER_PICKING_HAPPENS = [
+    'lib/use-theme-choice.ts',
+    'components/ThemeSwitch.tsx',
+  ]
 
   it('never hides the change inside an optional call', () => {
-    expect(src, 'chooseTheme is inside onChange?.() - it will not run when nobody is listening')
-      .not.toMatch(/onChange\?\.\(\s*chooseTheme/)
+    for (const f of WHEREVER_PICKING_HAPPENS) {
+      expect(readFileSync(f, 'utf8'),
+        `${f}: chooseTheme is inside an optional call - it will not run when nobody is listening`)
+        .not.toMatch(/\?\.\(\s*chooseTheme/)
+    }
   })
 
   it('changes the theme on its own line, then tells anybody who asked', () => {
+    const src = readFileSync('lib/use-theme-choice.ts', 'utf8')
     expect(src).toMatch(/const theme = chooseTheme\(next\)/)
-    expect(src).toMatch(/onChange\?\.\(theme\)/)
+    expect(src).toMatch(/\?\.\(theme\)/)
+  })
+
+  // THE SWITCH MUST NOT GO BACK TO ASKING THE BROWSER ON ITS OWN. If it does,
+  // the theme silently stops following the person and nothing else fails.
+  it('the switch gets the choice from the one file that saves it', () => {
+    const src = readFileSync('components/ThemeSwitch.tsx', 'utf8')
+    expect(src, 'ThemeSwitch is reading the choice itself again - go through useThemeChoice')
+      .toContain('useThemeChoice(')
   })
 })
