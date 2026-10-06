@@ -294,7 +294,14 @@ export default function MonthlyActuals() {
                             onChange={e => set(f, mm.month, e.target.value)}
                             onBlur={e => set(f, mm.month, commas(e.target.value))}
                             placeholder={mm.future ? '' : '—'}
-                            className={inp + ring + (f === 'dl' || f === 'ds' ? ' w-[74px]' : ' w-[118px]')} />
+                            // SIZED TO WHAT GOES IN THEM, so the table ends inside the
+                            // screen. 118px and 74px were fixed whatever was typed;
+                            // a count is two digits and the widest figure anybody
+                            // enters is eleven characters, so four boxes a row were
+                            // carrying about 180px of nothing - which is roughly the
+                            // width of the column that ended up off the right-hand
+                            // edge, taking Release with it. 6 Oct 2026.
+                            className={inp + ring + (f === 'dl' || f === 'ds' ? ' w-[52px]' : ' w-[98px]')} />
                         </td>
                       )
                     })}
@@ -307,13 +314,13 @@ export default function MonthlyActuals() {
                     <td className="px-5 py-2 text-right whitespace-nowrap">
                       {mm.p && (
                         <button onClick={() => pullFromPortal(mm.month)} disabled={busy}
-                          className="text-[11.5px] text-brand-ink hover:underline mr-3">
+                          className="block text-[11.5px] text-brand-ink hover:underline">
                           Use portal ({compact(mm.p.lodged)})
                         </button>
                       )}
                       {mm.row && (
                         <button onClick={() => release(mm.month)} disabled={busy}
-                          className="text-[11.5px] text-faint hover:text-chase">Release</button>
+                          className="block text-[11.5px] text-faint hover:text-chase ml-auto">Release</button>
                       )}
                     </td>
                   </tr>

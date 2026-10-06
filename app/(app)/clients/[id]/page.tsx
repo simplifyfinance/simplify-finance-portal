@@ -87,7 +87,8 @@ export default function ClientProfilePage() {
       </Link>
 
       <div className="flex items-center gap-4 mb-6">
-        <div style={{ background: 'rgba(79,187,234,0.12)', color: '#107EA8' }}
+        <div style={{ background: 'color-mix(in srgb, var(--color-brand) 12%, transparent)',
+                 color: 'var(--color-brand-ink)' }}
           className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold flex-shrink-0">
           {initials || '?'}
         </div>
@@ -97,7 +98,7 @@ export default function ClientProfilePage() {
           {(hasSmsfOpportunity || hasCarLoan) && (
             <div className="flex gap-2 mt-2">
               {hasSmsfOpportunity && (
-                <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full">SMSF opportunity</span>
+                <span className="text-xs font-medium bg-waiting-bg text-waiting px-2.5 py-1 rounded-full">SMSF opportunity</span>
               )}
               {hasCarLoan && (
                 <span className="text-xs font-medium bg-info-bg text-info px-2.5 py-1 rounded-full">Car loan present</span>
@@ -189,8 +190,19 @@ export default function ClientProfilePage() {
           </div>
         )}
 
+        {/* ALL THE WAY ROUND, NOT A STRIPE DOWN ONE SIDE.
+          *
+          * 6 Oct 2026. These three cards each had a 4px coloured edge on the
+          * left. lib/colours.ts: "A card wearing a status wears it ALL THE WAY
+          * ROUND, lightly - never a stripe down one side, which reads as
+          * damage rather than a state." The board cards were moved onto that
+          * rule days ago; these three were missed.
+          *
+          * Same three colours. Red on liabilities and green on assets is a
+          * real convention in this trade and a broker reads it instantly - it
+          * is the stripe that goes, not the meaning. */}
         {properties.length > 0 && (
-          <div className="bg-card border border-gray-100 border-l-4 border-l-info rounded-xl p-5 mb-3">
+          <div className="bg-info-bg border border-info-edge rounded-xl p-5 mb-3">
             <p className="text-xs font-medium text-info uppercase tracking-wider mb-3">Properties</p>
             <div className="flex flex-col gap-2">
               {properties.map((p: any, i: number) => (
@@ -226,13 +238,13 @@ export default function ClientProfilePage() {
         )}
 
         {liabilities.length > 0 && (
-          <div className="bg-card border border-gray-100 border-l-4 border-l-red-400 rounded-xl p-5 mb-3">
-            <p className="text-xs font-medium text-red-600 uppercase tracking-wider mb-3">Liabilities</p>
+          <div className="bg-chase-bg border border-chase-edge rounded-xl p-5 mb-3">
+            <p className="text-xs font-medium text-chase uppercase tracking-wider mb-3">Liabilities</p>
             <div className="flex flex-col gap-2">
               {liabilities.map((l: any, i: number) => (
                 <div key={i} className="bg-gray-50 rounded-lg px-3 py-2">
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700 flex-shrink-0">{l.liabilityType}</span>
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-card border border-chase-edge text-chase flex-shrink-0">{l.liabilityType}</span>
                     <span className="text-sm text-gray-600 flex-1">
                       {l.liabilityType === 'Credit card' ? `Limit ${moneyOrBlank(l.limitAmount)}` : `Balance ${moneyOrBlank(l.balance)}`}
                     </span>
@@ -248,13 +260,13 @@ export default function ClientProfilePage() {
             and until today shown nowhere at all. Savings and super are half of
             what a review conversation is about. */}
         {assets.length > 0 && (
-          <div className="bg-card border border-gray-100 border-l-4 border-l-emerald-400 rounded-xl p-5">
-            <p className="text-xs font-medium text-emerald-700 uppercase tracking-wider mb-3">Assets</p>
+          <div className="bg-done-bg border border-done-edge rounded-xl p-5">
+            <p className="text-xs font-medium text-done uppercase tracking-wider mb-3">Assets</p>
             <div className="flex flex-col gap-2">
               {assets.map((a: any, i: number) => (
                 <div key={i} className="bg-gray-50 rounded-lg px-3 py-2">
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 flex-shrink-0">{a.assetType || 'Asset'}</span>
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-card border border-done-edge text-done flex-shrink-0">{a.assetType || 'Asset'}</span>
                     <span className="text-sm text-gray-600 flex-1">{moneyOrBlank(a.value)}</span>
                   </div>
                   {a.description && <p className="text-xs text-gray-400 mt-1">{a.description}</p>}

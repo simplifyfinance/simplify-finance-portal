@@ -88,7 +88,8 @@ export default function ClientsPage() {
               <div key={client.id}
                 className={`flex items-center gap-4 px-5 py-3 ${i < filtered.length - 1 ? 'border-b border-gray-50' : ''}`}>
                 <Link href={`/clients/${client.id}`} className="flex items-center gap-4 flex-1 min-w-0">
-                  <div style={{ background: 'rgba(79,187,234,0.12)', color: '#107EA8' }}
+                  <div style={{ background: 'color-mix(in srgb, var(--color-brand) 12%, transparent)',
+                         color: 'var(--color-brand-ink)' }}
                     className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">
                     {initials || '?'}
                   </div>
@@ -113,7 +114,7 @@ export default function ClientsPage() {
                   )}
                 </div>
                 <button onClick={() => deleteClient(client.id, `${client.first_name} ${client.last_name}`)}
-                  className="w-8 h-8 rounded-full border border-gray-200 bg-card flex items-center justify-center text-gray-300 hover:text-red-400 hover:border-red-200 hover:bg-red-50 flex-shrink-0 transition">
+                  className="w-8 h-8 rounded-full border border-gray-200 bg-card flex items-center justify-center text-gray-300 hover:text-chase hover:border-chase-edge hover:bg-chase-bg flex-shrink-0 transition">
                   <Trash2 size={13} />
                 </button>
               </div>
