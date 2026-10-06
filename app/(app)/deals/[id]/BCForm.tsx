@@ -2374,8 +2374,6 @@ Key assumptions: ${checklistText}`
                     <button onClick={sendToClient}
                       title={freshness.state === 'stale' ? 'Heads up: this email was written for a different scenario.' : freshness.state === 'figures-moved' ? 'Heads up: figures have changed since this email was written.' : ''}
                       className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-40 disabled:hover:opacity-40">Send to client</button>
-                    <button onClick={copyEmailOnly}
-                      className="text-xs text-gray-400 hover:text-gray-600 underline disabled:opacity-40 disabled:no-underline">Copy without opening Outlook</button>
                   </>
                 ) : (
                   <span className="text-xs text-gray-400 italic">Only the broker can send this to the client — use "Done — send to broker for review" above.</span>

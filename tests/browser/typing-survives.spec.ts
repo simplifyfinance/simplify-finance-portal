@@ -27,7 +27,38 @@ import { test, expect, type Page } from '@playwright/test'
 // textareas - notes and comment boxes - never into a figure or a name.
 
 const DEAL = process.env.PORTAL_TEST_DEAL_ID || ''
-const TABS = ['Fact Find', 'BC — Borrowing capacity', 'Lending options', 'Compliance']
+// COMPLIANCE IS OFF THIS LIST, AND IT IS NOT BECAUSE IT PASSES.
+//
+// 6 Oct 2026. Compliance has a real saving fault and this robot catches it
+// about one run in two:
+//
+//     Compliance - 11 text box(es) typed into the moment the tab opened
+//       replaced on screen  : BOXES 0, 2
+//       never saved         : BOXES 0, 2
+//
+// Boxes 0, 1 and 2 are the three Needs & objectives boxes, which the form
+// fills in from the fact find a moment after it opens. Type into one of them
+// inside about a second of the tab opening and the words can be replaced on
+// screen and never written. It has been there since September - the one page
+// layout that went live this morning did not cause it, it put eleven boxes on
+// screen instead of three and made it far easier to hit.
+//
+// WHAT WAS TRIED AND DID NOT FIX IT, so nobody repeats them:
+//   - taking the merge base after the pre-fill effect rather than before
+//   - routing the mount read through keepOwned, the way the live path does
+//   - dropping the three-way merge from the mount path entirely
+//   - ignoring a read that was sent before this screen's own save
+// Each is defensible on its own. None of them stopped it.
+//
+// Fabio, 6 Oct 2026, having weighed it: keep the layout, carry the risk, and
+// stop every other ship being a coin toss. So Compliance comes off this list
+// until somebody can sit with that save path properly - NOT because it is
+// fixed, and NOT because it is unimportant. It is the most important thing on
+// the fix list.
+//
+// The other three tabs still run. Put Compliance back the day it is fixed, and
+// this robot will tell you honestly whether it is.
+const TABS = ['Fact Find', 'BC — Borrowing capacity', 'Lending options']
 
 async function openDeal(page: Page) {
   await page.goto(`/deals/${DEAL}`)

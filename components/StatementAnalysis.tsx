@@ -1126,10 +1126,10 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
           {/* cards */}
           {SECTIONS.map(sec => (
             <div key={sec.title}>
-              <h3 className="text-[11px] font-bold tracking-[0.1em] uppercase text-muted mt-6 mb-2.5 flex items-center gap-2.5">
+              <h3 className="text-[11px] font-bold tracking-[0.1em] uppercase text-faint mt-6 mb-2.5 flex items-center gap-2.5">
                 <span className="w-[5px] h-[5px] rounded-full bg-info flex-none" />{sec.title}
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {sec.keys.map(k => {
                   const c = cardBy(k)
                   if (!c) return null
@@ -1137,12 +1137,12 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
                     <button key={k} onClick={() => setOpen(c)}
                       className="relative text-left bg-card border border-line rounded-xl px-4 pt-3.5 pb-4 hover:border-[var(--color-line)] hover:shadow-[0_2px_9px_rgba(60,48,30,0.07)] transition">
                       <span className="absolute top-3 right-3.5 text-[9px] font-bold tracking-[0.06em] uppercase text-[var(--color-faint)]">{DRILL_LABEL[c.drill]}</span>
-                      <p className="text-[10px] font-bold tracking-[0.08em] uppercase text-muted mb-2 pr-9 leading-[1.35]">{c.title}</p>
+                      <p className="text-[10px] font-bold tracking-[0.08em] uppercase text-faint mb-2 pr-9 leading-[1.35]">{c.title}</p>
                       {c.flagLabel && (
                         <span className={`inline-block text-[9.5px] font-bold tracking-wide uppercase rounded-full px-2 py-0.5 border mb-1.5 ${flagChip(c.flag)}`}>{c.flagLabel}</span>
                       )}
                       <Num card={c} />
-                      <p className="text-[11.5px] text-muted leading-[1.45]">{c.sub}</p>
+                      <p className="text-[11.5px] text-faint leading-[1.45]">{c.sub}</p>
                     </button>
                   )
                 })}

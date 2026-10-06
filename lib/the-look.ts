@@ -111,10 +111,20 @@ export const THE_LOOK: Piece[] = [
     proof: { file: 'app/(app)/deals/[id]/LOForm.tsx', contains: 'RATE MODULES AS CHIPS' } },
 
   // STATEMENTS - mocked and approved, nothing built but the colours.
-  { mock: 'st-page.html', piece: 'Statements: the approved layout', proof: null },
+  { mock: 'st-page.html', piece: 'Statements: the approved layout',
+    proof: { file: 'components/StatementAnalysis.tsx', contains: 'lg:grid-cols-4' } },
 
   // Compliance, the last tab that had never been drawn. Fabio chose option C
   // on 6 Oct 2026: one page, index down the side, no tabs.
+  // Compliance, the last tab that had never been drawn. Fabio chose option C on
+  // 6 Oct 2026 - one page, index down the side, no tabs - and it went live the
+  // same morning.
+  //
+  // IT MAKES AN OLDER SAVING FAULT EASIER TO HIT. Five tabs meant three boxes
+  // on screen at a time; one page means eleven, and Compliance's autosave does
+  // not cope with that many changing at once. Fabio weighed it and kept the
+  // layout. The fault is on the list of things to fix, not here - it is not a
+  // look, and pretending the drawing is unbuilt does not fix it.
   { mock: 'one-compliance.html', piece: 'Compliance: one page with an index down the side',
     proof: { file: 'app/(app)/deals/[id]/ComplianceForm.tsx', contains: 'ONE PAGE, WITH AN INDEX DOWN THE SIDE' } },
   { mock: 'one-compliance.html', piece: 'Compliance: the index says what each section is still missing',

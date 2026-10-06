@@ -34,9 +34,13 @@ test.describe('box one — primary reasons for seeking credit', () => {
 
     // The button no longer says "Generate with AI", because no AI writes this.
     // THREE BOXES, THREE BUTTONS, THE SAME WORDS ON EACH.
-    // Boxes 2 and 3 got the same button on 10 Sep, so this has to say which
-    // one it means. Box one is the first.
-    await page.getByRole('button', { name: /Write from the deal/i }).first().click()
+    //
+    // It used to say "box one is the first one on the page", which was true
+    // while Compliance was five tabs and only one was ever on screen. 6 Oct
+    // 2026 it became one page, and "the first" stopped meaning box one in any
+    // reliable way. It asks for the button under its own field now - the same
+    // walk the boxes further down this file already use.
+    await box.locator('xpath=following::button[contains(., "Write from the deal")][1]').click()
 
     // Composed, so it is instant - no network call, nothing to wait for.
     await expect(box).not.toHaveValue('', { timeout: 5_000 })
@@ -219,7 +223,14 @@ test.describe('box four — analysis and assessment', () => {
     await field.press('Meta+a')
     await field.press('Delete')
 
-    await page.getByRole('button', { name: /Write from the deal/i }).first().click()
+    // THE BUTTON UNDER THIS FIELD, NOT THE FIRST ONE ON THE PAGE.
+    //
+    // 6 Oct 2026. Compliance stopped being five tabs and became one page, so
+    // "Write from the deal" went from appearing once on screen to appearing
+    // beside every note - and .first() started pressing the one in Needs &
+    // objectives while this test waited for box four to fill. It never did.
+    // Same walk the boxes below already use.
+    await field.locator('xpath=following::button[contains(., "Write from the deal")][1]').click()
     await expect(field).not.toHaveValue('', { timeout: 5_000 })
 
     const text = await field.inputValue()

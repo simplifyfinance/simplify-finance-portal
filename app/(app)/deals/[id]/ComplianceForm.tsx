@@ -1711,6 +1711,13 @@ Use the security address exactly as recorded. On a pre-approval it will already 
       )}
 
       {(!past || showWriteUp || locked) && (<>
+      {/* ONE PAGE, INDEX DOWN THE LEFT, SECTIONS DOWN THE RIGHT.
+          one-compliance.html option C: grid-template-columns 168px 1fr, and an
+          index that stays put while the right hand column scrolls past it.
+          On a narrow screen the column becomes a row above the sections,
+          because 168px of a phone is most of the phone. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[168px_minmax(0,1fr)] gap-3.5 items-start">
+
       {/* ONE PAGE, WITH AN INDEX DOWN THE SIDE.
           docs/approved-looks/one-compliance.html, option C, which Fabio chose
           on 6 Oct 2026. These were five tabs filling the width, and the only
@@ -1718,6 +1725,11 @@ Use the security address exactly as recorded. On a pre-approval it will already 
           complete and read the list it refuses you with. The number beside each
           section IS that list, counted, shown before you press anything. */}
       <ComplianceIndex sections={sectionState} current={stage} onGo={setStage} />
+
+      {/* THE RIGHT HAND COLUMN. min-w-0 so a wide table inside a section
+          cannot push the column wider than the page - grid children default to
+          min-content, which is how one long line of text blows out a layout. */}
+      <div className="min-w-0">
 
       {/* THE DEAL, AS ONE BLOCK. Replaces the four-field "pre-filled from BC
           & LO" strip that used to sit here, and it is the same component the
@@ -2547,6 +2559,9 @@ Use the security address exactly as recorded. On a pre-approval it will already 
         </div>
       </section>
 
+      </div>
+      </div>
+
       {/* Validation Modal */}
       {showValidation && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -2663,21 +2678,22 @@ function ComplianceIndex({ sections, current, onGo }: {
 
   return (
     <nav aria-label="Compliance sections"
-      className="sticky top-2 z-10 bg-card border border-card-line rounded-xl p-1.5 mb-3
-        flex gap-1 overflow-x-auto">
+      className="lg:sticky lg:top-2 z-10 bg-card border border-card-line rounded-xl p-2 mb-3 lg:mb-0
+        flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible">
       {sections.map(s => {
         const on = s.key === current
         return (
           <button key={s.key} onClick={() => go(s.key)} aria-current={on ? 'true' : undefined}
-            className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2
-              text-xs font-medium transition ${on ? 'bg-info-bg text-info font-semibold' : 'text-muted hover:text-ink hover:bg-page'}`}>
+            className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-[7px] px-2 py-1.5
+              text-[11.5px] font-medium transition text-left lg:w-full
+              ${on ? 'bg-info-bg text-info font-semibold' : 'text-muted hover:text-ink hover:bg-page'}`}>
             {s.label}
             {s.missing === null ? null : s.missing > 0 ? (
-              <span className="text-[9.5px] font-bold rounded-full px-1.5 py-[1px]
+              <span className="ml-auto text-[9.5px] font-bold rounded-full px-1.5 py-[1px]
                 bg-chase-bg text-chase border border-chase-edge">{s.missing}</span>
             ) : (
               <span aria-label="nothing missing"
-                className="text-[9.5px] font-bold rounded-full px-1.5 py-[1px]
+                className="ml-auto text-[9.5px] font-bold rounded-full px-1.5 py-[1px]
                 bg-done-bg text-done border border-done-edge">&#10003;</span>
             )}
           </button>

@@ -1956,7 +1956,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                           <div className="grid grid-cols-5 gap-2">
                             <div>
                               <label className="text-xs text-gray-400 block mb-1">Amount</label>
-                              <input className={inp} value={split.amount} onChange={e => updateLenderSplit(i, sidx, 'amount', e.target.value)} />
+                              <NumberInput value={split.amount} onChange={v => updateLenderSplit(i, sidx, 'amount', v)} />
                             </div>
                             <div>
                               <label className="text-xs text-gray-400 block mb-1">Rate % p.a.</label>
@@ -1964,7 +1964,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                             </div>
                             <div>
                               <label className="text-xs text-gray-400 block mb-1">Repayment</label>
-                              <input className={inp} value={split.repayment} onChange={e => updateLenderSplit(i, sidx, 'repayment', e.target.value)} />
+                              <NumberInput value={split.repayment} onChange={v => updateLenderSplit(i, sidx, 'repayment', v)} />
                             </div>
                             <div>
                               <label className="text-xs text-gray-400 block mb-1">Type</label>
@@ -2310,9 +2310,6 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   ) : (
                     <span className="text-xs text-gray-400 italic">Only the broker can send this to the client — use "Done — send to broker for review" above.</span>
                   )}
-                  <button
-                    onClick={() => { copyEmailToClipboard().then(() => setSent(true)).catch(e => setSendError(e?.message || 'Copy failed.')) }}
-                    className="text-xs text-gray-400 hover:text-gray-600 underline disabled:opacity-40 disabled:no-underline">Copy without opening Outlook</button>
                 </div>
                 <div className="w-px h-8 bg-gray-200 ml-auto" />
                 <div className="flex items-center gap-4">

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { boxTwo, boxThree, outlook, retirementPicture } from './box-goals'
 import { DEAL } from './box-fixture'
 
@@ -140,10 +140,24 @@ describe('box two — "nothing is expected to change" is reported, never asserte
 describe('box three — retirement, only when it lands in the period', () => {
   // Fabio, 10 Sep 2026: "only talk about retirement strategy if it falls within
   // the period 2 or 2-10 years."
+  // A FIXED TODAY, AND A FIXED BIRTHDAY.
+  //
+  // 6 Oct 2026, after this broke two ships in a row. The fixture built a client
+  // born "exactly fifty years ago" off the clock and then wrote the date out in
+  // UTC - so in Sydney the date landed a day early, the age came out one either
+  // side of fifty depending on the hour, and retirement moved between box two
+  // and box three. It passed on one machine and failed on another, all morning.
+  //
+  // Nothing here needs today's date to be real. It needs it to be the same
+  // every time.
+  const TODAY = new Date('2026-06-15T00:00:00Z')
+  beforeAll(() => { vi.useFakeTimers(); vi.setSystemTime(TODAY) })
+  afterAll(() => { vi.useRealTimers() })
+
   const retiringIn = (years: number, over: any = {}) => {
     const d = deal()
-    const born = new Date(); born.setFullYear(born.getFullYear() - 50)
-    d.fact_find_data.applicants[0].dob = born.toISOString().slice(0, 10)
+    // Fifty today, to the day.
+    d.fact_find_data.applicants[0].dob = '1976-06-15'
     d.compliance_data.risks[RACHEL] = { ...d.compliance_data.risks[RACHEL], retirementAge: String(50 + years), ...over }
     return d
   }
