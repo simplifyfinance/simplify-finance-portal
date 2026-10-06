@@ -41,10 +41,10 @@ type Props = {
 // deal page had all been moved onto phaseOf months ago; this was the last screen
 // still reading the old column.
 const stageColor: Record<string, string> = {
-  fact_find: 'bg-[#EAF7FE] text-[#0E8FCB]',
+  fact_find: 'bg-info-bg text-info',
   bc: 'bg-info-bg text-info',
-  lo: 'bg-purple-100 text-purple-600',
-  compliance: 'bg-green-100 text-green-600',
+  lo: 'bg-waiting-bg text-waiting',
+  compliance: 'bg-done-bg text-done',
 }
 
 type ActionType = 'proceeded_to_lo' | 'proceeded_to_compliance' | 'bc_to_lo' | 'lo_to_compliance' | 'awaiting_lodgement'
@@ -58,10 +58,10 @@ const actionLabel: Record<ActionType, string> = {
 }
 
 const actionColor: Record<ActionType, string> = {
-  proceeded_to_lo: 'bg-green-100 text-green-700',
-  proceeded_to_compliance: 'bg-green-100 text-green-700',
+  proceeded_to_lo: 'bg-done-bg text-done',
+  proceeded_to_compliance: 'bg-done-bg text-done',
   bc_to_lo: 'bg-info-bg text-info',
-  lo_to_compliance: 'bg-purple-100 text-purple-700',
+  lo_to_compliance: 'bg-waiting-bg text-waiting',
   awaiting_lodgement: 'bg-waiting-bg text-waiting',
 }
 
@@ -200,10 +200,27 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs text-gray-400">Deals by broker</div>
+            {/* ONE BLUE, THREE STEPS - NOT THREE STATUS COLOURS.
+                *
+                * 6 Oct 2026. This legend and the bars under it used to be the
+                * brand blue, Tailwind's purple-500 and Tailwind's green-500 for
+                * BC, LO and Compliance.
+                *
+                * Purple means WAITING ON SOMEBODY and green means DONE
+                * everywhere else in this portal - the board, a deal card,
+                * Settlements, Pipeline. Here green meant "at the Compliance
+                * stage", which is not done, and purple meant "at LO", which is
+                * not waiting. One colour, two meanings, on two screens somebody
+                * looks at within a minute of each other.
+                *
+                * So the bar uses no status colour at all. Pale blue, brand
+                * blue, deep blue: more of it means further along. All three
+                * have a dark value already, so the ramp inverts on a dark page
+                * instead of staying pale on black. */}
             <div className="flex gap-3 text-xs text-gray-400">
-              <span><span className="inline-block w-2 h-2 rounded-sm bg-brand mr-1" />BC</span>
-              <span><span className="inline-block w-2 h-2 rounded-sm bg-purple-500 mr-1" />LO</span>
-              <span><span className="inline-block w-2 h-2 rounded-sm bg-green-500 mr-1" />Compliance</span>
+              <span><span className="inline-block w-2 h-2 rounded-sm bg-info-edge mr-1" />BC</span>
+              <span><span className="inline-block w-2 h-2 rounded-sm bg-brand mr-1" />LO</span>
+              <span><span className="inline-block w-2 h-2 rounded-sm bg-brand-ink mr-1" />Compliance</span>
             </div>
           </div>
           <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(brokerSummary.length, 4)}, minmax(0, 1fr))` }}>
@@ -212,9 +229,9 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
                 <div className="text-xs font-medium text-ink mb-1">{labelFor(broker)}</div>
                 <div className="text-xl font-medium text-ink mb-2">{counts.total}</div>
                 <div className="flex h-1.5 rounded-sm overflow-hidden">
-                  {counts.BC > 0 && <div className="bg-brand" style={{ width: `${(counts.BC / counts.total) * 100}%` }} />}
-                  {counts.LO > 0 && <div className="bg-purple-500" style={{ width: `${(counts.LO / counts.total) * 100}%` }} />}
-                  {counts.Compliance > 0 && <div className="bg-green-500" style={{ width: `${(counts.Compliance / counts.total) * 100}%` }} />}
+                  {counts.BC > 0 && <div className="bg-info-edge" style={{ width: `${(counts.BC / counts.total) * 100}%` }} />}
+                  {counts.LO > 0 && <div className="bg-brand" style={{ width: `${(counts.LO / counts.total) * 100}%` }} />}
+                  {counts.Compliance > 0 && <div className="bg-brand-ink" style={{ width: `${(counts.Compliance / counts.total) * 100}%` }} />}
                 </div>
               </div>
             ))}
@@ -279,7 +296,8 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
             return (
               <Link key={deal.id} href={`/deals/${deal.id}`}
                 className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition">
-                <div style={{ background: 'rgba(79,187,234,0.12)', color: '#107EA8' }}
+                <div style={{ background: 'color-mix(in srgb, var(--color-brand) 12%, transparent)',
+                         color: 'var(--color-brand-ink)' }}
                   className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0">
                   {initials || '?'}
                 </div>
@@ -295,7 +313,7 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {((deal.client_proceeded && phaseOf(deal) === 'lo' && !deal.lo_completed_at) ||
                     (deal.lo_client_proceeded && phaseOf(deal) === 'compliance' && !deal.compliance_completed_at)) && (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Ready to proceed</span>
+                    <span className="text-xs bg-done-bg text-done px-2 py-0.5 rounded-full">Ready to proceed</span>
                   )}
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stageColor[phaseOf(deal)] || 'bg-gray-100 text-gray-500'}`}>
                     {PHASE_LABEL[phaseOf(deal)]}
