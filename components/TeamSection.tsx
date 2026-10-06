@@ -30,7 +30,7 @@ function suggestKey(fullName: string): string {
 const roleOptions = [...ROLES]
 const roleColors: Record<string, string> = {
   admin: 'bg-purple-100 text-purple-700',
-  broker: 'bg-blue-100 text-blue-700',
+  broker: 'bg-info-bg text-info',
   staff: 'bg-gray-100 text-gray-600',
 }
 
@@ -210,21 +210,21 @@ export default function TeamSection() {
     setTimeout(() => setResendMsg(prev => ({ ...prev, [user.id]: '' })), 4000)
   }
 
-  const inputCls = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]"
-  const selectCls = "border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-[#2DBEFF]"
+  const inputCls = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand"
+  const selectCls = "border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-brand"
 
   return (
     <section className="mb-10">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Team</h2>
         <button onClick={() => setShowInvite(!showInvite)}
-          className="text-sm text-[#2DBEFF] border border-dashed border-[#2DBEFF] rounded-lg px-4 py-1.5 hover:bg-blue-50 transition">
+          className="text-sm text-brand-ink border border-dashed border-brand rounded-lg px-4 py-1.5 hover:bg-info-bg transition">
           + Invite member
         </button>
       </div>
 
       {showInvite && (
-        <div className="border border-gray-200 rounded-xl p-5 mb-4 bg-blue-50/30">
+        <div className="border border-gray-200 rounded-xl p-5 mb-4 bg-info-bg">
           <p className="text-sm font-medium text-ink mb-3">Invite a new team member</p>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
@@ -263,7 +263,7 @@ export default function TeamSection() {
             </button>
             <button onClick={() => setShowInvite(false)} className="text-sm text-gray-400 hover:text-gray-600">Cancel</button>
           </div>
-          {inviteMsg && <p className="text-xs mt-2 text-[#2DBEFF]">{inviteMsg}</p>}
+          {inviteMsg && <p className="text-xs mt-2 text-brand-ink">{inviteMsg}</p>}
         </div>
       )}
 
@@ -279,11 +279,11 @@ export default function TeamSection() {
                 <div className="min-w-0">
                   {editingNameId === user.id ? (
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap min-w-0">
-                      <input className="text-sm font-medium border border-[#2DBEFF] rounded-lg px-2 py-1 w-[170px] min-w-0 focus:outline-none"
+                      <input className="text-sm font-medium border border-brand rounded-lg px-2 py-1 w-[170px] min-w-0 focus:outline-none"
                         value={nameInput} onChange={e => setNameInput(e.target.value)} autoFocus
                         onKeyDown={e => { if (e.key === 'Enter') saveName(user.id); if (e.key === 'Escape') setEditingNameId(null) }} />
                       <button onClick={() => saveName(user.id)}
-                        className="text-xs font-medium text-white bg-[#2DBEFF] px-2.5 py-1 rounded-lg shrink-0 hover:bg-[#0E8FCB] transition">Save</button>
+                        className="text-xs font-medium text-on-brand bg-brand px-2.5 py-1 rounded-lg shrink-0 hover:opacity-90 transition">Save</button>
                       <button onClick={() => setEditingNameId(null)}
                         className="text-xs text-gray-400 hover:text-gray-600 shrink-0">Cancel</button>
                     </div>
@@ -291,19 +291,19 @@ export default function TeamSection() {
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-ink truncate">{user.full_name}</p>
                       <button onClick={() => { setEditingNameId(user.id); setNameInput(user.full_name) }}
-                        className="text-xs text-[#2DBEFF] hover:underline flex-shrink-0">Edit</button>
+                        className="text-xs text-brand-ink hover:underline flex-shrink-0">Edit</button>
                     </div>
                   )}
                   {editingEmailId === user.id ? (
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap min-w-0">
-                      <input className="text-xs border border-[#2DBEFF] rounded-lg px-2 py-1 w-[250px] min-w-0 focus:outline-none"
+                      <input className="text-xs border border-brand rounded-lg px-2 py-1 w-[250px] min-w-0 focus:outline-none"
                         value={emailInput} onChange={e => setEmailInput(e.target.value)} autoFocus
                         onKeyDown={e => {
                           if (e.key === 'Enter') { setEmailErr(''); setEmailAsk({ user, next: emailInput.trim().toLowerCase() }) }
                           if (e.key === 'Escape') setEditingEmailId(null)
                         }} />
                       <button onClick={() => { setEmailErr(''); setEmailAsk({ user, next: emailInput.trim().toLowerCase() }) }}
-                        className="text-xs font-medium text-white bg-[#2DBEFF] px-2.5 py-1 rounded-lg shrink-0 hover:bg-[#0E8FCB] transition">Save</button>
+                        className="text-xs font-medium text-on-brand bg-brand px-2.5 py-1 rounded-lg shrink-0 hover:opacity-90 transition">Save</button>
                       <button onClick={() => setEditingEmailId(null)}
                         className="text-xs text-gray-400 hover:text-gray-600 shrink-0">Cancel</button>
                     </div>
@@ -311,7 +311,7 @@ export default function TeamSection() {
                     <div className="flex items-center gap-2">
                       <p className="text-xs text-gray-400 truncate">{user.email}</p>
                       <button onClick={() => { setEditingEmailId(user.id); setEmailInput(user.email || ''); setEmailErr('') }}
-                        className="text-[11px] text-[#2DBEFF] hover:underline flex-shrink-0">Edit</button>
+                        className="text-[11px] text-brand-ink hover:underline flex-shrink-0">Edit</button>
                     </div>
                   )}
                 </div>
@@ -326,7 +326,7 @@ export default function TeamSection() {
                 <button
                   onClick={() => handleResend(user)}
                   disabled={resendingId === user.id}
-                  className="text-xs px-3 py-1 rounded-lg border border-blue-200 text-[#2DBEFF] hover:bg-blue-50 transition disabled:opacity-50">
+                  className="text-xs px-3 py-1 rounded-lg border border-info-edge text-brand-ink hover:bg-info-bg transition disabled:opacity-50">
                   {resendingId === user.id ? 'Sending...' : resendMsg[user.id] || 'Resend invite'}
                 </button>
                 <button onClick={() => toggleActive(user.id, user.active)}
@@ -358,14 +358,14 @@ export default function TeamSection() {
                   <div>
                     <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block mb-1">Broker key</label>
                     <div className="flex gap-2 items-center">
-                      <input className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm w-[150px] focus:outline-none focus:border-[#2DBEFF]"
+                      <input className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm w-[150px] focus:outline-none focus:border-brand"
                         value={keyInput} onChange={e => setKeyInput(e.target.value)}
                         placeholder={suggestKey(user.full_name) || 'not set'} />
                       <button onClick={() => saveBrokerKey(user)}
                         className="text-xs font-medium text-white bg-ink px-3 py-1.5 rounded-lg hover:opacity-90">Save</button>
                       {!user.broker_key && suggestKey(user.full_name) && keyInput !== suggestKey(user.full_name) && (
                         <button onClick={() => setKeyInput(suggestKey(user.full_name))}
-                          className="text-xs text-[#2DBEFF] hover:underline">Use &ldquo;{suggestKey(user.full_name)}&rdquo;</button>
+                          className="text-xs text-brand-ink hover:underline">Use &ldquo;{suggestKey(user.full_name)}&rdquo;</button>
                       )}
                     </div>
                     <p className="text-[11px] text-gray-400 mt-1.5 max-w-[420px]">
@@ -378,7 +378,7 @@ export default function TeamSection() {
                   <div>
                     <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block mb-1">Mobile</label>
                     <div className="flex gap-2 items-center">
-                      <input className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm w-[150px] focus:outline-none focus:border-[#2DBEFF]"
+                      <input className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm w-[150px] focus:outline-none focus:border-brand"
                         value={phoneInput} onChange={e => setPhoneInput(e.target.value)}
                         placeholder="0429 228 148" />
                       <button onClick={() => savePhone(user)}
@@ -492,7 +492,7 @@ export default function TeamSection() {
                 Cancel
               </button>
               <button onClick={changeEmail} disabled={emailBusy}
-                className="bg-[#2DBEFF] text-white text-[13px] font-semibold rounded-lg px-4 py-2 disabled:opacity-50">
+                className="bg-brand text-on-brand text-[13px] font-semibold rounded-lg px-4 py-2 disabled:opacity-50">
                 {emailBusy ? 'Changing...' : 'Change it'}
               </button>
             </div>

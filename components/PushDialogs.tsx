@@ -16,7 +16,7 @@ import { COMMISSION_LABEL, ID_METHOD_LABEL, ID_SERVICE_LABEL, missingAnswers,
 const seg = 'text-[12.5px] px-3 py-1.5 transition'
 const on = 'bg-ink text-page font-semibold'
 const off = 'text-muted hover:bg-gray-50'
-const inp = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]'
+const inp = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand'
 const lab = 'text-[11px] text-[#9aa0a6] block mb-1'
 
 function Choice<T extends string>({ options, value, onChange }: {
@@ -280,7 +280,7 @@ export function PushForm({ deal, dealName, answers, setAnswers, onPush, onCancel
         <div className="px-5 py-3.5 border-t border-[#F0F2F4] bg-page flex items-center gap-2.5 flex-wrap">
           <button disabled={busy}
             onClick={() => { setTried(true); if (missingAnswers(answers).length === 0) onPush() }}
-            className="bg-[#2DBEFF] text-white text-[13px] font-bold rounded-lg px-4 py-2 disabled:opacity-40">
+            className="bg-brand text-on-brand text-[13px] font-bold rounded-lg px-4 py-2 disabled:opacity-40">
             {busy ? 'Pushing…' : 'Push to SalesTrekker'}
           </button>
           <button onClick={onCancel} disabled={busy} className="border border-[#DDE1E5] text-[#5a6169] text-[13px] rounded-lg px-4 py-2">Cancel</button>

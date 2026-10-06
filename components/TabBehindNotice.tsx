@@ -24,7 +24,7 @@ export default function TabBehindNotice({ behind, savedBy, savedAt, onDismiss }:
   return (
     <div className="mb-3 rounded-lg border border-[#BFE0F2] bg-info-bg px-3.5 py-2.5 flex items-start gap-3"
       role="status" data-tab-behind="1">
-      <span className="flex-none mt-[1px] w-[17px] h-[17px] rounded-full bg-[#2DBEFF] text-white text-[11px] font-bold flex items-center justify-center">i</span>
+      <span className="flex-none mt-[1px] w-[17px] h-[17px] rounded-full bg-brand text-on-brand text-[11px] font-bold flex items-center justify-center">i</span>
       <div className="min-w-[220px] flex-1">
         <div className="text-[12.5px] font-semibold text-info">
           This tab was behind the deal, and has caught up

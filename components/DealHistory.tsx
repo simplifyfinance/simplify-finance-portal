@@ -58,7 +58,7 @@ export default function DealHistory({ dealId, tab, me }:
   return (
     <>
       <button onClick={show}
-        className="text-[12px] text-gray-400 hover:text-[#2DBEFF] underline underline-offset-2">
+        className="text-[12px] text-gray-400 hover:text-brand-ink underline underline-offset-2">
         History
       </button>
 
@@ -100,7 +100,7 @@ export default function DealHistory({ dealId, tab, me }:
                   </>
                 ) : (
                   <button onClick={() => setConfirming(v.id)}
-                    className="border border-gray-200 rounded-lg px-3 py-1.5 text-[12px] font-medium text-ink hover:border-[#2DBEFF]">
+                    className="border border-gray-200 rounded-lg px-3 py-1.5 text-[12px] font-medium text-ink hover:border-brand">
                     Put this back
                   </button>
                 )}

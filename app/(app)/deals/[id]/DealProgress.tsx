@@ -65,7 +65,7 @@ export default function DealProgress({ deal }: { deal: any }) {
             </span>
             <span className="text-[11px] text-[#a8b0b8] whitespace-nowrap ml-2.5">
               {written.length} written steps{' '}
-              <span className="text-[#2DBEFF] group-hover:underline">show</span>
+              <span className="text-brand-ink group-hover:underline">show</span>
             </span>
           </button>
         )}
@@ -82,7 +82,7 @@ export default function DealProgress({ deal }: { deal: any }) {
               )}
               <div className={`relative z-10 w-[18px] h-[18px] rounded-full mx-auto flex items-center justify-center ${
                 b.done ? 'bg-done'
-                : b.current ? 'bg-card border-2 border-[#2DBEFF] shadow-[0_0_0_4px_rgba(45,190,255,.16)]'
+                : b.current ? 'bg-card border-2 border-brand shadow-[0_0_0_4px_rgba(45,190,255,.16)]'
                 : 'bg-card border-2 border-[#dfe4e9]'}`}>
                 {b.done && (
                   <svg viewBox="0 0 12 12" className="w-[11px] h-[11px]" fill="none"
@@ -93,11 +93,11 @@ export default function DealProgress({ deal }: { deal: any }) {
               </div>
               <div className={`text-[11px] leading-[1.25] mt-[9px] px-1 ${
                 b.done ? 'text-[#5c6773] font-medium'
-                : b.current ? 'text-[#2DBEFF] font-bold'
+                : b.current ? 'text-brand-ink font-bold'
                 : 'text-[#b0b7bf] font-medium'}`}>{labelOf(b, deal)}</div>
               {/* A finished stage shows when it finished. The live one shows who is holding it up. */}
               <div className={`text-[10.5px] mt-[2px] min-h-[14px] ${
-                b.current ? 'text-[#2DBEFF] italic' : 'text-[#a8b0b8]'}`}>
+                b.current ? 'text-brand-ink italic' : 'text-[#a8b0b8]'}`}>
                 {b.current ? (b.state || '') : (b.done ? fmt(b.date) : '')}
               </div>
             </div>

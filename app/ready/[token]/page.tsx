@@ -34,7 +34,7 @@ export default async function ReadyPage({ params }: { params: Promise<{ token: s
                     borderRadius: 14, overflow: 'hidden' }}>
         <div style={{ background: '#343333', padding: '22px 20px', textAlign: 'center' }}>
           <p style={{ color: '#fff', fontSize: 20, fontWeight: 700, letterSpacing: '-.01em', margin: 0 }}>
-            Simplify<span style={{ color: '#2DBEFF' }}>Finance.</span>
+            Simplify<span style={{ color: '#107EA8' }}>Finance.</span>
           </p>
           <p style={{ color: '#9E9E9E', fontSize: 9.5, letterSpacing: 2, textTransform: 'uppercase', margin: '5px 0 0' }}>
             Finance, Simplified.
@@ -57,7 +57,7 @@ export default async function ReadyPage({ params }: { params: Promise<{ token: s
             {STEPS.map(([h, d], i) => (
               <div key={i} style={{ position: 'relative', marginBottom: i === STEPS.length - 1 ? 0 : 15 }}>
                 <span style={{ position: 'absolute', left: -25, top: 5, width: 11, height: 11,
-                               borderRadius: '50%', background: '#fff', border: '2px solid #2DBEFF' }} />
+                               borderRadius: '50%', background: '#fff', border: '2px solid #4FBBEA' }} />
                 <div style={{ fontSize: 13.5, fontWeight: 620, marginBottom: 1, color: '#221F1B' }}>
                   {h.replace('{broker}', first)}
                 </div>
@@ -75,7 +75,7 @@ export default async function ReadyPage({ params }: { params: Promise<{ token: s
                 Pick a time that suits you and {first} will call then.
               </p>
               <a href={p.calendly}
-                 style={{ display: 'block', textAlign: 'center', background: '#2DBEFF', color: '#fff',
+                 style={{ display: 'block', textAlign: 'center', background: '#4FBBEA', color: '#0F1115',
                           padding: 13, borderRadius: 8, fontSize: 15, fontWeight: 700, textDecoration: 'none' }}>
                 Book a time with {first}
               </a>

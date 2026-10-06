@@ -21,7 +21,7 @@ export default function ProceedButton({ action }: {
   return (
     <form action={submit} style={{ textAlign: 'center', marginBottom: '26px' }}>
       <button type="submit" disabled={pending} style={{
-        backgroundColor: pending ? '#9ADFF8' : '#2DBEFF', color: '#fff', border: 0,
+        backgroundColor: pending ? '#A9DDF2' : '#4FBBEA', color: '#0F1115', border: 0,
         padding: '13px 22px', borderRadius: '8px', fontSize: '15px', fontWeight: 700,
         cursor: pending ? 'default' : 'pointer', width: '100%',
       }}>

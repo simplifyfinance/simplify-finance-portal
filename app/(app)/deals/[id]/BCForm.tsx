@@ -214,18 +214,18 @@ const TEMPLATE_NOTES: Record<string, string[]> = {
 // dashed box, because empty already says unfinished. "Needs your attention"
 // wears the chase wash, the same as a card that needs you on the board.
 // Fabio, 3 Oct 2026: "I dont like the amber ... didnt we stop that??"
-const inputCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-field w-full"
+const inputCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-brand bg-field w-full"
 function fieldCls(value: string) {
   return value && value.trim() && value !== '0'
-    ? "px-2.5 py-1.5 text-sm border border-green-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-field w-full"
-    : "px-2.5 py-1.5 text-sm border border-dashed border-field-line rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-page w-full"
+    ? "px-2.5 py-1.5 text-sm border border-green-200 rounded-lg focus:outline-none focus:border-brand bg-field w-full"
+    : "px-2.5 py-1.5 text-sm border border-dashed border-field-line rounded-lg focus:outline-none focus:border-brand bg-page w-full"
 }
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
 import { annualIncomeOfApplicant, incomeBreakdownFor } from '@/lib/income-calculations'
 import { newGuard, saveGuarded } from '@/lib/save-conflict'
 import { readMoney, formatAsTyped, money, moneyOrBlank } from '@/lib/money'
 
-const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-field w-full"
+const selectCls = "px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-brand bg-field w-full"
 
 // One copy, in lib/money.ts. This was written out identically here and in the
 // other form.
@@ -266,8 +266,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function NumberInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   const cls = value && value.trim() && value !== '0'
-    ? "pl-5 pr-2.5 py-1.5 text-sm border border-green-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-field w-full"
-    : "pl-5 pr-2.5 py-1.5 text-sm border border-dashed border-field-line rounded-lg focus:outline-none focus:border-[#2DBEFF] bg-page w-full"
+    ? "pl-5 pr-2.5 py-1.5 text-sm border border-green-200 rounded-lg focus:outline-none focus:border-brand bg-field w-full"
+    : "pl-5 pr-2.5 py-1.5 text-sm border border-dashed border-field-line rounded-lg focus:outline-none focus:border-brand bg-page w-full"
   return (
     <div className="relative">
       <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
@@ -1325,7 +1325,7 @@ Key assumptions: ${checklistText}`
       <div className="flex gap-2 mb-4 items-center flex-wrap">
         {[['form','BC form'],['preview','Preview & share']].map(([id,label]) => (
           <button key={id} onClick={() => setActiveTab(id as any)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${activeTab === id ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500 bg-card'}`}>
+            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${activeTab === id ? 'border-brand text-brand-ink bg-brand/5' : 'border-gray-200 text-gray-500 bg-card'}`}>
             {label}
             {/* A warning nobody can see is not a warning. The figures move on the
                 BC form, and the email they broke is one tab away. */}
@@ -1414,7 +1414,7 @@ Key assumptions: ${checklistText}`
                     className={t.live
                       ? 'inline-flex items-center gap-2 bg-done-bg border border-done-edge text-done rounded-lg px-3 py-1.5 text-[12.5px] font-semibold'
                       : canSwap(deal)
-                        ? 'bg-card border border-gray-200 text-gray-600 rounded-lg px-3 py-1.5 text-[12.5px] hover:border-[#2DBEFF] hover:text-[#2DBEFF] transition'
+                        ? 'bg-card border border-gray-200 text-gray-600 rounded-lg px-3 py-1.5 text-[12.5px] hover:border-brand hover:text-brand-ink transition'
                         : 'bg-panel border border-dashed border-gray-200 text-faint rounded-lg px-3 py-1.5 text-[12.5px] cursor-default'}>
                     {t.live && <span className="w-[7px] h-[7px] rounded-full bg-done inline-block" />}
                     {t.label}
@@ -1423,7 +1423,7 @@ Key assumptions: ${checklistText}`
                 {canAdd(deal) && (
                   <button disabled={scenarioBusy}
                     onClick={() => { const w = addScenario(liveDeal(), 'Second scenario'); if (w) writeScenarios(w) }}
-                    className="text-xs text-[#2DBEFF] hover:underline px-1">+ Add scenario</button>
+                    className="text-xs text-brand-ink hover:underline px-1">+ Add scenario</button>
                 )}
                 {scenarioCount(deal) > 1 && (
                   <div className="ml-auto flex items-center gap-3">
@@ -1472,13 +1472,13 @@ Key assumptions: ${checklistText}`
                   <svg className="text-done" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.4 L6.2 11.4 L13 4.6"/></svg>
                   <span className="text-sm font-semibold text-info">{templateLabel(template)}</span>
                 </span>
-                <button onClick={() => setShowAllTemplates(true)} className="text-xs text-[#2DBEFF] hover:underline">Change scenario</button>
+                <button onClick={() => setShowAllTemplates(true)} className="text-xs text-brand-ink hover:underline">Change scenario</button>
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {TEMPLATES.map(t => (
                   <button key={t.id} onClick={() => selectTemplate(t.id)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${template === t.id ? 'bg-[#2DBEFF] border-[#2DBEFF] text-white' : 'border-gray-200 text-gray-600 hover:border-[#2DBEFF] hover:text-[#2DBEFF]'}`}>
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${template === t.id ? 'bg-brand border-brand text-on-brand' : 'border-gray-200 text-gray-600 hover:border-brand hover:text-brand-ink'}`}>
                     {t.label}
                   </button>
                 ))}
@@ -1508,7 +1508,7 @@ Key assumptions: ${checklistText}`
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => { applyTemplate(askScenario.id, 'keep'); setAskScenario(null) }}
-                    className="text-xs font-semibold bg-[#2DBEFF] text-ink rounded-lg px-3.5 py-2">
+                    className="text-xs font-semibold bg-brand text-ink rounded-lg px-3.5 py-2">
                     Keep my splits{askScenario.adds > 0 ? ` (adds ${askScenario.adds} blank)` : ''}
                   </button>
                   <button onClick={() => { applyTemplate(askScenario.id, 'replace'); setAskScenario(null) }}
@@ -1837,7 +1837,7 @@ Key assumptions: ${checklistText}`
                     <div key={i} className="bg-card border border-card-line rounded-xl p-3">
                       <div className="-mx-3 -mt-3 mb-3 px-3.5 py-2.5 bg-gray-50 border-b border-card-line rounded-t-xl flex items-center gap-2.5">
                         <span className="w-[18px] h-[18px] flex-none rounded-full bg-card border border-card-line text-[10px] font-bold text-gray-500 inline-flex items-center justify-center">{i + 1}</span>
-                        <span className="text-xs font-medium text-[#2DBEFF]">{isMultiOption ? `Option ${i + 1}` : `Split ${i + 1}`}</span>
+                        <span className="text-xs font-medium text-brand-ink">{isMultiOption ? `Option ${i + 1}` : `Split ${i + 1}`}</span>
                         {splits.length > 1 && <button onClick={() => removeSplit(i)} className="ml-auto text-xs text-gray-400 hover:text-red-500">Remove</button>}
                       </div>
                       <div className="grid grid-cols-2 gap-2">
@@ -2028,13 +2028,13 @@ Key assumptions: ${checklistText}`
                       </div>
                     )
                   })()}
-                  <button onClick={addSplit} className="text-xs text-[#2DBEFF] hover:underline text-left">{isMultiOption ? "+ Add option" : "+ Add split"}</button>
+                  <button onClick={addSplit} className="text-xs text-brand-ink hover:underline text-left">{isMultiOption ? "+ Add option" : "+ Add split"}</button>
                 </div>
               </div>
 
               {template === "investment_equity" && (
-                <div className="bg-card border-2 border-[#2DBEFF]/40 rounded-xl p-4">
-                  <div className="text-xs font-medium text-[#2DBEFF] uppercase tracking-wider mb-3">New purchase</div>
+                <div className="bg-card border-2 border-brand/40 rounded-xl p-4">
+                  <div className="text-xs font-medium text-brand-ink uppercase tracking-wider mb-3">New purchase</div>
                   <div className="grid grid-cols-2 gap-2">
                     {/* THE BOX THAT WAS LYING. This said "State" and wrote into
                         newPurchaseSuburb - the SUBURB - so anybody typing NSW into
@@ -2117,9 +2117,9 @@ Key assumptions: ${checklistText}`
                 const altIsIO = /interest only|^io$/i.test(alt.type || '')
                 const altEstimate = altEstimatedRepayment(alt, loanTerm)
                 return (
-                <div key={alt.id} className="bg-card border-2 border-[#2DBEFF]/40 rounded-xl p-4">
+                <div key={alt.id} className="bg-card border-2 border-brand/40 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="text-xs font-medium text-[#2DBEFF] uppercase tracking-wider">Alternative scenario {idx + 1}</div>
+                    <div className="text-xs font-medium text-brand-ink uppercase tracking-wider">Alternative scenario {idx + 1}</div>
                     <button onClick={() => removeAltScenario(alt.id)} className="text-xs text-gray-400 hover:text-red-500">Remove</button>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -2249,7 +2249,7 @@ Key assumptions: ${checklistText}`
                 )
               })}
               {["oo_purchase", "investment_purchase", "refinance_equity"].includes(template) && compareOptions && (
-                <button onClick={addAltScenario} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition self-start">
+                <button onClick={addAltScenario} className="text-sm text-brand-ink border border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition self-start">
                   + Add alternative scenario
                 </button>
               )}
@@ -2290,7 +2290,7 @@ Key assumptions: ${checklistText}`
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mt-5 pt-4 border-t border-gray-100 mb-3">Notes</div>
                 <div className="flex flex-col gap-2">
                   <Field label="Broker summary notes (included in email)">
-                    <textarea spellCheck="true" className={`${brokerNotes ? "border-green-200 bg-field" : "border-dashed border-field-line bg-page"} px-2.5 py-1.5 text-sm rounded-lg focus:outline-none focus:border-[#2DBEFF] w-full min-h-16 resize-y border`} value={brokerNotes}
+                    <textarea spellCheck="true" className={`${brokerNotes ? "border-green-200 bg-field" : "border-dashed border-field-line bg-page"} px-2.5 py-1.5 text-sm rounded-lg focus:outline-none focus:border-brand w-full min-h-16 resize-y border`} value={brokerNotes}
                       onFocus={() => focusField(ownRef.current, 'brokerNotes')}
                       onBlur={() => blurField(ownRef.current, 'brokerNotes')}
                       onChange={e => { markDirty(ownRef.current, 'brokerNotes'); setBrokerNotes(e.target.value) }} placeholder="✏ Add your personalised opening message — this goes directly into the client email..." />
@@ -2344,7 +2344,7 @@ Key assumptions: ${checklistText}`
         <div>
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              {sendToClientMsg && <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">{sendToClientMsg}</span>}
+              {sendToClientMsg && <span className="text-xs text-info bg-info-bg border border-info-edge rounded-lg px-3 py-1.5">{sendToClientMsg}</span>}
             </div>
             <div className="bg-card border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-2">
@@ -2373,7 +2373,7 @@ Key assumptions: ${checklistText}`
                   <>
                     <button onClick={sendToClient}
                       title={freshness.state === 'stale' ? 'Heads up: this email was written for a different scenario.' : freshness.state === 'figures-moved' ? 'Heads up: figures have changed since this email was written.' : ''}
-                      className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-40 disabled:hover:opacity-40">Send to client</button>
+                      className="px-4 py-2 text-sm bg-brand text-on-brand rounded-lg font-medium hover:opacity-90 disabled:opacity-40 disabled:hover:opacity-40">Send to client</button>
                   </>
                 ) : (
                   <span className="text-xs text-gray-400 italic">Only the broker can send this to the client — use "Done — send to broker for review" above.</span>
@@ -2455,7 +2455,7 @@ Key assumptions: ${checklistText}`
             <div className="bg-card border border-gray-100 rounded-xl overflow-hidden">
               <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between">
                 <span className="text-xs text-gray-500">Email preview — {deal.deal_name}</span>
-                <span className="text-xs text-[#2DBEFF]">{freshness.state === 'stale' ? `Out of date — written for ${templateLabel(freshness.wasFor)}` : freshness.state === 'figures-moved' ? 'Out of date — the figures have changed' : 'AI generated'}</span>
+                <span className="text-xs text-brand-ink">{freshness.state === 'stale' ? `Out of date — written for ${templateLabel(freshness.wasFor)}` : freshness.state === 'figures-moved' ? 'Out of date — the figures have changed' : 'AI generated'}</span>
               </div>
               <div dangerouslySetInnerHTML={{ __html: emailHtml }} />
             </div>

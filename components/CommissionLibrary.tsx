@@ -341,7 +341,7 @@ export default function CommissionLibrary() {
             value={q}
             onChange={e => setQ(e.target.value)}
             placeholder="Search lenders"
-            className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-[240px] focus:outline-none focus:border-[#2DBEFF]"
+            className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-[240px] focus:outline-none focus:border-brand"
           />
           {rates.length > 0 && (
             <button onClick={() => { setSelecting(v => !v); setSelected([]); setOpen(null); setEditing(false); setErr('') }}
@@ -523,24 +523,24 @@ export default function CommissionLibrary() {
                           <div className="text-[11px] text-faint mt-1">LVR banded — read only. Tell me if a band is wrong.</div>
                         </>
                       ) : (
-                        <input value={draft.upfront_pct} onChange={e => setDraft({ ...draft, upfront_pct: e.target.value })} placeholder="0.65" className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]" />
+                        <input value={draft.upfront_pct} onChange={e => setDraft({ ...draft, upfront_pct: e.target.value })} placeholder="0.65" className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-brand" />
                       )}
                     </div>
                     <div>
                       <label className="block text-[11px] font-semibold text-faint mb-1">Trail %</label>
-                      <input value={draft.trail_pct} onChange={e => setDraft({ ...draft, trail_pct: e.target.value })} placeholder="0.15" className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]" />
+                      <input value={draft.trail_pct} onChange={e => setDraft({ ...draft, trail_pct: e.target.value })} placeholder="0.15" className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-brand" />
                       <div className="text-[11px] text-faint mt-1">One rate. Put any stepping in comments.</div>
                     </div>
                     <div>
                       <label className="block text-[11px] font-semibold text-faint mb-1">Out of clawback after (months)</label>
-                      <input value={draft.clawback_months} onChange={e => setDraft({ ...draft, clawback_months: e.target.value })} placeholder="24" className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]" />
+                      <input value={draft.clawback_months} onChange={e => setDraft({ ...draft, clawback_months: e.target.value })} placeholder="24" className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-brand" />
                       <div className="text-[11px] text-faint mt-1">0 means no clawback.</div>
                     </div>
                   </div>
 
                   <div className="mb-3">
                     <label className="block text-[11px] font-semibold text-faint mb-1">Comments</label>
-                    <textarea value={draft.notes} onChange={e => setDraft({ ...draft, notes: e.target.value })} rows={2} className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]" />
+                    <textarea value={draft.notes} onChange={e => setDraft({ ...draft, notes: e.target.value })} rows={2} className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-brand" />
                   </div>
 
                   {rows.length > 0 && (
@@ -556,7 +556,7 @@ export default function CommissionLibrary() {
                                 value={schedDraft[s.id]?.[f.key] || ''}
                                 onChange={e => setSchedDraft(m => ({ ...m, [s.id]: { ...(m[s.id] || sd(s)), [f.key]: e.target.value } }))}
                                 rows={2}
-                                className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]"
+                                className="text-[13px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-brand"
                               />
                             </div>
                           ))}

@@ -254,7 +254,7 @@ function NumberInput({ value, onChange, placeholder }: { value: string; onChange
   return (
     <div className="relative">
       <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
-      <input className="w-full border border-gray-200 rounded-lg pl-5 pr-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]" placeholder={placeholder} value={value}
+      <input className="w-full border border-gray-200 rounded-lg pl-5 pr-3 py-2 text-sm focus:outline-none focus:border-brand" placeholder={placeholder} value={value}
         onChange={e => onChange(formatNumber(e.target.value))} />
     </div>
   )
@@ -265,11 +265,11 @@ function LibraryField({ label, value, onChange }: { label: string; value: string
     <div>
       <div className="flex items-center gap-1.5 mb-1">
         <label className="text-xs font-medium text-gray-500">{label}</label>
-        <span className="text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">library</span>
+        <span className="text-[10px] bg-info-bg text-brand-ink px-1.5 py-0.5 rounded font-medium">library</span>
       </div>
       <div className="relative">
         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
-        <input className="w-full border border-gray-200 rounded-lg pl-5 pr-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] bg-blue-50/30" value={value} onChange={e => onChange(formatNumber(e.target.value))} placeholder="—" />
+        <input className="w-full border border-gray-200 rounded-lg pl-5 pr-3 py-2 text-sm focus:outline-none focus:border-brand bg-info-bg" value={value} onChange={e => onChange(formatNumber(e.target.value))} placeholder="—" />
       </div>
     </div>
   )
@@ -1415,8 +1415,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     setSendingToCreditTeam(false)
   }
 
-  const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]"
-  const sel = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]"
+  const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand"
+  const sel = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand"
   const isBridging = d.template === 'lo_bridging'
   const isRefinance = d.template === 'lo_refinance'
 
@@ -1549,9 +1549,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
               <label className="text-xs font-medium text-gray-500 block mb-2">Did the client agree with the recommended lender ({recommendedLabel(d) || 'not yet recommended'})?</label>
               <div className="flex gap-2">
                 <button onClick={() => setD(prev => ({ ...prev, clientAgreedLender: 'Yes', clientChosenLender: '', clientChosenLenderOther: '', clientChosenLenderReason: '' }))}
-                  className={`px-3 py-1.5 text-xs rounded-lg border ${d.clientAgreedLender === 'Yes' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>Yes</button>
+                  className={`px-3 py-1.5 text-xs rounded-lg border ${d.clientAgreedLender === 'Yes' ? 'border-brand text-brand-ink bg-brand/5' : 'border-gray-200 text-gray-500'}`}>Yes</button>
                 <button onClick={() => setD(prev => ({ ...prev, clientAgreedLender: 'No' }))}
-                  className={`px-3 py-1.5 text-xs rounded-lg border ${d.clientAgreedLender === 'No' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-500'}`}>No</button>
+                  className={`px-3 py-1.5 text-xs rounded-lg border ${d.clientAgreedLender === 'No' ? 'border-brand text-brand-ink bg-brand/5' : 'border-gray-200 text-gray-500'}`}>No</button>
               </div>
               {d.clientAgreedLender === 'No' && (
                 <div className="mt-3 flex flex-col gap-2">
@@ -1706,8 +1706,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   ))}
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  <button onClick={addRefinanceSplit} className="text-sm text-[#2DBEFF] border border-dashed border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">+ Add split</button>
-                  <button onClick={addEquityRelease} className="text-sm text-[#2DBEFF] border border-dashed border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">+ Add equity release</button>
+                  <button onClick={addRefinanceSplit} className="text-sm text-brand-ink border border-dashed border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition">+ Add split</button>
+                  <button onClick={addEquityRelease} className="text-sm text-brand-ink border border-dashed border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition">+ Add equity release</button>
                 </div>
               </div>
             )}
@@ -1717,12 +1717,12 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           <div className="bg-card border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Broker personalisation</div>
             <label className="text-xs text-gray-500 block mb-1">Broker signature</label>
-            <select className="w-full rounded-lg px-3 py-2 text-sm border border-gray-200 focus:outline-none focus:border-[#2DBEFF] mb-3" value={d.brokerSig} onChange={e => setD({ ...d, brokerSig: e.target.value })}>
+            <select className="w-full rounded-lg px-3 py-2 text-sm border border-gray-200 focus:outline-none focus:border-brand mb-3" value={d.brokerSig} onChange={e => setD({ ...d, brokerSig: e.target.value })}>
               {brokersList.map((b: any, i: number) => (
                 <option key={i} value={b.name}>{b.name} — Simplify Finance</option>
               ))}
             </select>
-            <textarea spellCheck="true" className={`${d.brokerPersonalisation ? "border-green-200 bg-card" : "border-dashed border-field-line bg-page"} w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-[80px] resize-y border`} value={d.brokerPersonalisation}
+            <textarea spellCheck="true" className={`${d.brokerPersonalisation ? "border-green-200 bg-card" : "border-dashed border-field-line bg-page"} w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand min-h-[80px] resize-y border`} value={d.brokerPersonalisation}
               onFocus={() => focusField(ownRef.current, 'brokerPersonalisation')}
               onBlur={() => blurField(ownRef.current, 'brokerPersonalisation')}
               onChange={e => { markDirty(ownRef.current, 'brokerPersonalisation'); setD({ ...d, brokerPersonalisation: e.target.value }) }} placeholder="✏ Add your personalised opening message..." />
@@ -1816,15 +1816,15 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             const isEmpty = !lender.lenderId
             const lenderSplits = resolveLenderSplits(lender, d.refinanceSplits)
             return (
-              <div key={i} className={`rounded-xl p-5 border transition-all ${isRec ? 'border-[#2DBEFF] bg-blue-50/30' : isEmpty ? 'border-dashed border-card-line bg-page' : 'bg-card border-gray-100'}`}>
+              <div key={i} className={`rounded-xl p-5 border transition-all ${isRec ? 'border-brand bg-info-bg' : isEmpty ? 'border-dashed border-card-line bg-page' : 'bg-card border-gray-100'}`}>
                 <div className="flex justify-between items-center mb-4">
                   <div className="flex items-center gap-2">
                     <div className="text-xs font-medium text-gray-400 uppercase tracking-widest">Option {i + 1}</div>
-                    {isRec && <span className="text-[10px] bg-[#2DBEFF] text-white px-2 py-0.5 rounded-full font-medium">★ Recommended</span>}
+                    {isRec && <span className="text-[10px] bg-brand text-on-brand px-2 py-0.5 rounded-full font-medium">★ Recommended</span>}
                   </div>
                   <div className="flex items-center gap-2">
                     {!isRec && lender.lenderName && (
-                      <button onClick={() => setD({ ...d, recommendedOptionId: lender.id, recommendedLender: lender.lenderName })} className="text-xs text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-2.5 py-1 hover:bg-blue-50 transition">★ Set as recommended</button>
+                      <button onClick={() => setD({ ...d, recommendedOptionId: lender.id, recommendedLender: lender.lenderName })} className="text-xs text-brand-ink border border-brand rounded-lg px-2.5 py-1 hover:bg-info-bg transition">★ Set as recommended</button>
                     )}
                     {d.lenders.length > 1 && <button onClick={() => removeLender(i)} className="text-xs text-red-400 hover:text-red-600">Remove</button>}
                   </div>
@@ -1846,10 +1846,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 </div>
 
                 {lender.lenderProductId && (
-                  <div className="mb-4 p-4 bg-blue-50/20 border border-blue-100 rounded-xl">
+                  <div className="mb-4 p-4 bg-info-bg border border-info-edge rounded-xl">
                     <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-3">
                       Fees
-                      <span className="ml-2 normal-case text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">auto-filled · editable</span>
+                      <span className="ml-2 normal-case text-[10px] bg-info-bg text-brand-ink px-1.5 py-0.5 rounded font-medium">auto-filled · editable</span>
                     </div>
                     <div className="grid grid-cols-2 gap-3 mb-3">
                       <LibraryField label="Application fee" value={lender.applicationFee} onChange={v => updateLender(i, 'applicationFee', v)} />
@@ -1897,7 +1897,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                     {!String(lender.specialNote || '').trim() && (
                       <button type="button"
                         onClick={() => updateLender(i, 'specialNote', String(lender.libraryNotes || '').trim())}
-                        className="flex-none text-[#2DBEFF] hover:underline">
+                        className="flex-none text-brand-ink hover:underline">
                         Tell the client
                       </button>
                     )}
@@ -1928,7 +1928,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                     <div className="flex justify-between items-center mb-3">
                       <div className="text-xs font-medium text-gray-400 uppercase tracking-widest">
                         Loan splits
-                        <span className="ml-2 normal-case text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded font-medium">pre-filled · editable per lender</span>
+                        <span className="ml-2 normal-case text-[10px] bg-info-bg text-brand-ink px-1.5 py-0.5 rounded font-medium">pre-filled · editable per lender</span>
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => syncLenderSplits(i)} className="text-xs text-gray-400 border border-gray-200 rounded-lg px-2.5 py-1 hover:bg-gray-50 transition">↺ Sync from top</button>
@@ -2079,7 +2079,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           })}
 
           {d.lenders.length < 3 && (
-            <button onClick={addLender} className="w-full py-3 border border-dashed border-gray-300 rounded-xl text-sm text-gray-400 hover:border-[#2DBEFF] hover:text-[#2DBEFF] transition">
+            <button onClick={addLender} className="w-full py-3 border border-dashed border-gray-300 rounded-xl text-sm text-gray-400 hover:border-brand hover:text-brand-ink transition">
               + Add another lender option
             </button>
           )}
@@ -2127,7 +2127,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 )
               })()}
             </Field>
-            <button onClick={generateRecommendation} disabled={generatingRec || !recommendedOption(d)} className="mt-2 text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-4 py-2 hover:bg-blue-50 transition disabled:opacity-40">
+            <button onClick={generateRecommendation} disabled={generatingRec || !recommendedOption(d)} className="mt-2 text-sm text-brand-ink border border-brand rounded-lg px-4 py-2 hover:bg-info-bg transition disabled:opacity-40">
               {generatingRec ? 'Generating...' : '✦ AI draft recommendation'}
             </button>
             <button onClick={() => { setFlagOpen(v => !v); setFlagNote('') }}
@@ -2188,10 +2188,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 </div>
                 <div className="flex gap-2 mt-2.5">
                   <button onClick={() => setD(prev => ({ ...prev, clientAgreedLender: 'Yes', clientChosenLender: '', clientChosenLenderOther: '', clientChosenLenderReason: '' }))}
-                    className={`px-3 py-1.5 text-xs rounded-lg border ${d.clientAgreedLender === 'Yes' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5 font-medium' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                    className={`px-3 py-1.5 text-xs rounded-lg border ${d.clientAgreedLender === 'Yes' ? 'border-brand text-brand-ink bg-brand/5 font-medium' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
                     Yes, they went with {decisionLenderName(d) || 'it'}</button>
                   <button onClick={() => setD(prev => ({ ...prev, clientAgreedLender: 'No' }))}
-                    className={`px-3 py-1.5 text-xs rounded-lg border ${d.clientAgreedLender === 'No' ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5 font-medium' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                    className={`px-3 py-1.5 text-xs rounded-lg border ${d.clientAgreedLender === 'No' ? 'border-brand text-brand-ink bg-brand/5 font-medium' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
                     No, they chose someone else</button>
                 </div>
                 {d.clientAgreedLender === 'No' && (
@@ -2271,7 +2271,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
           <div className="flex items-center justify-between">
             
-            <button onClick={generateEmail} disabled={generating} className="bg-[#2DBEFF] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-400 transition disabled:opacity-50">
+            <button onClick={generateEmail} disabled={generating} className="bg-brand text-on-brand px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition disabled:opacity-50">
               {generating ? 'Generating email...' : 'Generate LO email'}
             </button>
           </div>
@@ -2304,7 +2304,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   {canSendToClient ? (
                     <button onClick={sendEmail} disabled={sending || !emailHtml}
                       title={emailNeedsAttention ? 'Heads up: this email was written for a different scenario.' : ''}
-                      className="px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-40">
+                      className="px-4 py-2 text-sm bg-brand text-on-brand rounded-lg font-medium hover:opacity-90 disabled:opacity-40">
                       {sending ? 'Copying...' : sent ? '✓ Copied — paste in Outlook' : 'Send to client'}
                     </button>
                   ) : (

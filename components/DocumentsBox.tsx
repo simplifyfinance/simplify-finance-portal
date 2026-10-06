@@ -443,7 +443,7 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
                   onChange={e => setNewLabel(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') addTyped(); if (e.key === 'Escape') { setAdding(false); setNewLabel('') } }}
                   placeholder="Accountant's letter, older statements, …"
-                  className="flex-1 min-w-[220px] border border-line rounded-lg px-3 py-1.5 text-[13px] focus:outline-none focus:border-[#2DBEFF]" />
+                  className="flex-1 min-w-[220px] border border-line rounded-lg px-3 py-1.5 text-[13px] focus:outline-none focus:border-brand" />
                 <datalist id="doc-extras">
                   {extras.map(e => <option key={e.label} value={e.label} />)}
                 </datalist>

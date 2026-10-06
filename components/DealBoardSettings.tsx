@@ -23,7 +23,7 @@ const TYPE_IDS: TypeId[] = ['purchase', 'refinance', 'equity_release', 'construc
 const USE_IDS: UseId[] = ['owner_occupied', 'investment', 'smsf']
 
 const DOT = 'w-[22px] h-[22px] rounded-md border border-black/10 shrink-0'
-const HEXFIELD = 'text-[12.5px] font-mono border border-line rounded-lg px-2 py-1 w-[92px] text-ink focus:outline-none focus:border-[#2DBEFF] bg-card'
+const HEXFIELD = 'text-[12.5px] font-mono border border-line rounded-lg px-2 py-1 w-[92px] text-ink focus:outline-none focus:border-brand bg-card'
 
 // Deliberately at module level, NOT inside DealBoardSettings. A component
 // declared inside another is a new type on every render, so React unmounts and
@@ -152,9 +152,9 @@ export default function DealBoardSettings({ value, onChange }: {
                 <div key={p} className="grid grid-cols-[150px_86px_86px_1fr] gap-2 px-3 py-2 items-center border-b border-line last:border-b-0">
                   <span className="text-[12.5px] font-[620] text-ink">{PHASE_LABEL[p]}</span>
                   <input value={row.long} onChange={e => setDay(p, 'long', e.target.value)} inputMode="numeric"
-                    className="w-[52px] mx-auto text-center text-[12.5px] rounded-lg py-1 border border-line bg-field text-ink font-[640] focus:outline-none focus:border-[#2DBEFF]" />
+                    className="w-[52px] mx-auto text-center text-[12.5px] rounded-lg py-1 border border-line bg-field text-ink font-[640] focus:outline-none focus:border-brand" />
                   <input value={row.nudge} onChange={e => setDay(p, 'nudge', e.target.value)} inputMode="numeric"
-                    className="w-[52px] mx-auto text-center text-[12.5px] rounded-lg py-1 border border-chase-edge bg-[#FBECEC] text-chase font-[640] focus:outline-none focus:border-[#2DBEFF]" />
+                    className="w-[52px] mx-auto text-center text-[12.5px] rounded-lg py-1 border border-chase-edge bg-[#FBECEC] text-chase font-[640] focus:outline-none focus:border-brand" />
                   <span className="text-[11.5px] text-muted leading-[1.5]">
                     {off ? <i className="text-faint">Not aged. </i> : null}{WAITING_ON[p] || ''}
                   </span>

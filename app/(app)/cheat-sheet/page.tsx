@@ -74,7 +74,7 @@ export default function CheatSheetPage() {
             <button key={f} onClick={() => setLoanSizeFilter(f)}
               className="text-xs px-3 py-1.5 rounded-lg font-medium transition"
               style={loanSizeFilter === f
-                ? { background: '#2DBEFF', color: '#fff' }
+                ? { background: '#4FBBEA', color: '#0F1115' }
                 : { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)' }}>
               {filterLabel[f]}
             </button>

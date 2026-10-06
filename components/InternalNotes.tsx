@@ -216,7 +216,7 @@ export default function InternalNotes({ dealId, initial, meId }: { dealId: strin
       {err && <p className="text-xs text-red-600 mb-2">{err}</p>}
       {cameIn && <p className="text-xs text-[#0E8FCB] mb-2">{cameIn} Nothing you wrote was lost.</p>}
       <textarea spellCheck="true"
-        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] min-h-[300px] resize-y"
+        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand min-h-[300px] resize-y"
         placeholder="Jot notes while on the phone with the client..."
         value={text}
         onChange={e => onChange(e.target.value)}

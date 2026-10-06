@@ -18,7 +18,7 @@ const supabase = createSupabaseBrowser()
 const PANEL = 'border border-[#E5DED2] rounded-xl bg-card overflow-hidden mb-3'
 const HEAD = 'px-3 py-2 bg-[#FCFAF6] border-b border-line text-[9.5px] font-bold tracking-[.08em] uppercase text-muted flex items-center gap-2'
 const BODY = 'px-3 py-3'
-const INPUT = 'w-full border border-line rounded-lg px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-[#2DBEFF]'
+const INPUT = 'w-full border border-line rounded-lg px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-brand'
 
 // ---------------------------------------------------------------- chips ----
 // The whole argument for an alert: somebody who was not going to open the deal

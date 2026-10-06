@@ -66,7 +66,7 @@ export default function BrokerAssignment({ dealId, currentBroker, userRole, chip
       {err && <span className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{err}</span>}
       {isAdmin && !showPicker && (
         chip
-          ? <button onClick={() => setShowPicker(true)} className="text-xs text-[#2DBEFF] hover:underline">Reassign</button>
+          ? <button onClick={() => setShowPicker(true)} className="text-xs text-brand-ink hover:underline">Reassign</button>
           : <button onClick={() => setShowPicker(true)} className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Assign broker</button>
       )}
       {isAdmin && showPicker && (

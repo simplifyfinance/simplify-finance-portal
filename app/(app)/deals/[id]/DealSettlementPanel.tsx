@@ -91,7 +91,7 @@ export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; on
     await save(stepPatch(d, step, on))
   }
 
-  const inp = 'w-full text-[12.5px] border border-line rounded-lg px-2.5 py-1.5 bg-card focus:outline-none focus:border-[#2DBEFF]'
+  const inp = 'w-full text-[12.5px] border border-line rounded-lg px-2.5 py-1.5 bg-card focus:outline-none focus:border-brand'
   const lab = 'block text-[10px] font-bold uppercase tracking-[.08em] text-faint mb-1'
   const failed = msg.startsWith('NOT SAVED')
 

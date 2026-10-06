@@ -78,7 +78,7 @@ export default function LoanIds({ deal, onSaved, onSkip, heading }: {
               value={vals[i] || ''}
               onChange={e => setVals(p => p.map((v, j) => j === i ? e.target.value : v))}
               placeholder="from the bank"
-              className={`text-[12.5px] font-mono rounded-lg px-2.5 py-1.5 border w-full focus:outline-none focus:border-[#2DBEFF] ${
+              className={`text-[12.5px] font-mono rounded-lg px-2.5 py-1.5 border w-full focus:outline-none focus:border-brand ${
                 vals[i] ? 'border-done-edge bg-done-bg text-ink' : 'border-chase-edge bg-chase-bg text-chase'}`} />
           </div>
         ))}

@@ -72,7 +72,7 @@ export default function ClientsPage() {
           placeholder="Search by name or email..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full max-w-sm border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]"
+          className="w-full max-w-sm border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand"
         />
       </div>
 
@@ -88,7 +88,7 @@ export default function ClientsPage() {
               <div key={client.id}
                 className={`flex items-center gap-4 px-5 py-3 ${i < filtered.length - 1 ? 'border-b border-gray-50' : ''}`}>
                 <Link href={`/clients/${client.id}`} className="flex items-center gap-4 flex-1 min-w-0">
-                  <div style={{ background: 'rgba(45,190,255,0.12)', color: '#2DBEFF' }}
+                  <div style={{ background: 'rgba(79,187,234,0.12)', color: '#107EA8' }}
                     className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">
                     {initials || '?'}
                   </div>
@@ -102,7 +102,7 @@ export default function ClientsPage() {
                 <div className="flex-shrink-0 text-right">
                   {client.deal_id ? (
                     <Link href={`/deals/${client.deal_id}`}
-                      className="text-xs text-[#2DBEFF] hover:underline">
+                      className="text-xs text-brand-ink hover:underline">
                       {client.deal_name}
                     </Link>
                   ) : (

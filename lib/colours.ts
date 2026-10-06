@@ -8,10 +8,22 @@
 // That is the same fault as every bug we fixed in September - one fact with
 // more than one home, free to drift apart. So this is the home.
 //
-// THE MIGRATION HAS STARTED. 2 Oct 2026: the left-hand column and the login
-// screen are the first two screens to read from here. Everything else still has
-// its colours typed into it by hand and is still to come, one ship at a time -
-// the off-white surfaces, then the blue, then the washed cards.
+// THE MIGRATION. 2 Oct 2026: the left-hand column and the login screen were
+// the first two screens to read from here. The off-white surfaces followed,
+// then the washed cards.
+//
+// 6 Oct 2026: THE BLUE IS DONE. 272 places across 58 screens stopped spelling a
+// colour out by hand - 233 of the retired #2DBEFF and 39 of Tailwind's own cool
+// blues, which were the same fault wearing a different name. A fill became
+// brand, a word became brand-ink, a washed chip became info on info-bg, and 22
+// buttons that had white writing on a light blue - 2.1 to 1, unreadable - got
+// the near-black that was defined for them here and never used.
+//
+// What is left is the emails, and they are left on purpose. Fabio, 4 Oct 2026:
+// "these changes are esthetic to the portal we are not changing any html email
+// forms". Everything under app/api/ and every *-email file in lib/ still sends
+// the old blue, and the accent colour in Settings that builds them is still
+// #2DBEFF. That is one decision, taken once, not an unfinished sweep.
 //
 // THE TAILWIND NAMES LIVE IN app/globals.css, under @theme, with these exact
 // values. Two files is one too many - so lib/colours.test.ts reads both and
@@ -229,4 +241,8 @@ export const DARK = {
 // #2DBEFF was the portal's blue in 361 places and is not the brand's blue. It
 // is listed here so the migration has something to search for, and so nobody
 // reintroduces it from memory.
+//
+// 6 Oct 2026: NONE OF THOSE 361 ARE ON A SCREEN ANY MORE. The only ones left
+// are in the emails and in the brand accent colour that builds them, which are
+// deliberately unchanged - see the migration note at the top of this file.
 export const RETIRED = ['#2DBEFF'] as const

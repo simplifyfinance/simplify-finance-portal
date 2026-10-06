@@ -107,7 +107,7 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
     await load()
   }
 
-  const field = 'w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]'
+  const field = 'w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand'
   const label = 'text-[11px] font-semibold text-faint block mb-1'
 
   if (loading) return <p className="text-[13px] text-faint">Loading brokers…</p>
@@ -128,7 +128,7 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
           <div key={r.broker_key} className={`border rounded-xl p-5 mb-4 bg-card ${val(r, 'active') ? 'border-[#EDE7DD]' : 'border-[#EDE7DD] opacity-60'}`}>
             <div className="flex justify-between items-start gap-3 mb-3 flex-wrap">
               <div className="flex-1 min-w-[240px]">
-                <input className="font-semibold text-ink w-full border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-[#2DBEFF]"
+                <input className="font-semibold text-ink w-full border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-brand"
                   value={val(r, 'name')} onChange={e => edit(r.broker_key, { name: e.target.value })} placeholder="Broker name" />
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                   {/* shows-the-key: this screen is where the key is managed, so it is the subject, not a label. */}
@@ -169,7 +169,7 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
                     ))}
                     <input value={colour} placeholder="not set"
                       onChange={e => edit(r.broker_key, { colour: e.target.value } as any)}
-                      className={'text-[12.5px] font-mono rounded-lg px-2 py-1 w-[94px] border focus:outline-none focus:border-[#2DBEFF] ' + (pale ? 'border-chase-edge bg-chase-bg text-chase' : 'border-line text-ink')} />
+                      className={'text-[12.5px] font-mono rounded-lg px-2 py-1 w-[94px] border focus:outline-none focus:border-brand ' + (pale ? 'border-chase-edge bg-chase-bg text-chase' : 'border-line text-ink')} />
                   </div>
                   <span className="w-[26px] h-[26px] rounded-full text-[10.5px] font-bold text-white inline-flex items-center justify-center border-[1.5px] border-white"
                     style={{ background: set || brokerColour(r.broker_key) }}>

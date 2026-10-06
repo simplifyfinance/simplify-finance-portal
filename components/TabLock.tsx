@@ -82,7 +82,7 @@ export default function TabLock({ locked, tab, dealId, role, me, onUnlocked, chi
               file with your name against it.
             </p>
             <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} autoFocus
-              className="w-full border border-line rounded-lg px-3 py-2 text-[12.5px] my-3 focus:outline-none focus:border-[#2DBEFF] resize-y"
+              className="w-full border border-line rounded-lg px-3 py-2 text-[12.5px] my-3 focus:outline-none focus:border-brand resize-y"
               placeholder="e.g. employer was recorded as the wrong entity" />
             <div className="flex gap-2 items-center">
               <button onClick={unlock} disabled={busy}

@@ -118,7 +118,7 @@ export default function Outstanding({ deal, me, onUpdated }: {
           Record what they asked for and this deal moves to Outstanding, so it stops looking like one
           nobody has heard from.{' '}
           <button onClick={() => setOpen(true)}
-            className="text-[#2DBEFF] font-semibold hover:underline">Add the first one</button>
+            className="text-brand-ink font-semibold hover:underline">Add the first one</button>
         </p>
       )}
 
@@ -178,7 +178,7 @@ export default function Outstanding({ deal, me, onUpdated }: {
         </div>
       ) : here && (
         <button onClick={() => setOpen(true)}
-          className="mt-2 text-[12px] text-[#2DBEFF] font-semibold hover:underline">+ Add another</button>
+          className="mt-2 text-[12px] text-brand-ink font-semibold hover:underline">+ Add another</button>
       )}
 
       {/* EVERYTHING IS IN - BUT THAT IS NOT THE SAME AS APPROVED.

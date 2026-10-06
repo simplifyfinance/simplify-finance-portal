@@ -422,7 +422,7 @@ export default function SettingsPage() {
           <div key={brand.id} className="border border-[#EDE7DD] rounded-xl p-5 mb-4 bg-card">
             <div className="flex justify-between items-start mb-4">
               <div className="flex-1">
-                <input className="font-semibold text-ink text-[13.5px] border border-line rounded-lg px-3 py-1.5 w-full max-w-xs mb-1 focus:outline-none focus:border-[#2DBEFF]" value={brand.name} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, name: e.target.value} : b))} placeholder="Brand name" />
+                <input className="font-semibold text-ink text-[13.5px] border border-line rounded-lg px-3 py-1.5 w-full max-w-xs mb-1 focus:outline-none focus:border-brand" value={brand.name} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, name: e.target.value} : b))} placeholder="Brand name" />
                 <p className="text-[11.5px] text-faint">{brand.isDefault ? 'Default brand' : 'Additional brand'}</p>
               </div>
               <div className="flex items-center gap-2">
@@ -431,11 +431,11 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-[11px] font-semibold text-faint block mb-1">Header colour</label><div className="flex items-center gap-2"><input type="color" value={brand.headerColor} className="w-8 h-8 rounded cursor-pointer border border-line flex-shrink-0" onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, headerColor: e.target.value} : b))} /><input className="text-[12.5px] font-mono text-muted border border-line rounded-lg px-2 py-1 w-24 focus:outline-none focus:border-[#2DBEFF]" value={brand.headerColor} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, headerColor: e.target.value} : b))} placeholder="#343333" /></div></div>
-              <div><label className="text-[11px] font-semibold text-faint block mb-1">Accent colour</label><div className="flex items-center gap-2"><input type="color" value={brand.accentColor} className="w-8 h-8 rounded cursor-pointer border border-line flex-shrink-0" onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, accentColor: e.target.value} : b))} /><input className="text-[12.5px] font-mono text-muted border border-line rounded-lg px-2 py-1 w-24 focus:outline-none focus:border-[#2DBEFF]" value={brand.accentColor} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, accentColor: e.target.value} : b))} placeholder="#2DBEFF" /></div></div>
-              <div><label className="text-[11px] font-semibold text-faint block mb-1">Logo URL</label><input className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" value={brand.logoUrl || ''} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, logoUrl: e.target.value} : b))} placeholder="https://.../logo.png" /></div>
-              <div><label className="text-[11px] font-semibold text-faint block mb-1">ACL number</label><input className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" value={brand.acl} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, acl: e.target.value} : b))} /><div className="text-[11px] text-faint mt-1">Appears in the footer of client emails.</div></div>
-              <div><label className="text-[11px] font-semibold text-faint block mb-1">Footer address</label><input className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" value={brand.footerAddress} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, footerAddress: e.target.value} : b))} /></div>
+              <div><label className="text-[11px] font-semibold text-faint block mb-1">Header colour</label><div className="flex items-center gap-2"><input type="color" value={brand.headerColor} className="w-8 h-8 rounded cursor-pointer border border-line flex-shrink-0" onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, headerColor: e.target.value} : b))} /><input className="text-[12.5px] font-mono text-muted border border-line rounded-lg px-2 py-1 w-24 focus:outline-none focus:border-brand" value={brand.headerColor} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, headerColor: e.target.value} : b))} placeholder="#343333" /></div></div>
+              <div><label className="text-[11px] font-semibold text-faint block mb-1">Accent colour</label><div className="flex items-center gap-2"><input type="color" value={brand.accentColor} className="w-8 h-8 rounded cursor-pointer border border-line flex-shrink-0" onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, accentColor: e.target.value} : b))} /><input className="text-[12.5px] font-mono text-muted border border-line rounded-lg px-2 py-1 w-24 focus:outline-none focus:border-brand" value={brand.accentColor} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, accentColor: e.target.value} : b))} placeholder="#2DBEFF" /></div></div>
+              <div><label className="text-[11px] font-semibold text-faint block mb-1">Logo URL</label><input className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand" value={brand.logoUrl || ''} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, logoUrl: e.target.value} : b))} placeholder="https://.../logo.png" /></div>
+              <div><label className="text-[11px] font-semibold text-faint block mb-1">ACL number</label><input className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand" value={brand.acl} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, acl: e.target.value} : b))} /><div className="text-[11px] text-faint mt-1">Appears in the footer of client emails.</div></div>
+              <div><label className="text-[11px] font-semibold text-faint block mb-1">Footer address</label><input className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand" value={brand.footerAddress} onChange={(e) => setBrands(brands.map(b => b.id === brand.id ? {...b, footerAddress: e.target.value} : b))} /></div>
             </div>
           </div>
         ))}
@@ -490,7 +490,7 @@ export default function SettingsPage() {
         <div className="border border-[#EDE7DD] rounded-xl p-5 bg-card">
           <p className="text-[11.5px] text-faint mb-3">This is the same static link shared with every client to collect bank statements. It's used on the client "ready to proceed" page and in the manual next-steps email.</p>
           <label className="text-[11px] font-semibold text-faint block mb-1">WealthDesk link</label>
-          <input className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF] font-mono" value={wealthDeskLink} onChange={(e) => setWealthDeskLink(e.target.value)} placeholder="https://simplify.wealthdesk.com.au/iv/tk/..." />
+          <input className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand font-mono" value={wealthDeskLink} onChange={(e) => setWealthDeskLink(e.target.value)} placeholder="https://simplify.wealthdesk.com.au/iv/tk/..." />
         </div>
       </section>
       )}
@@ -501,21 +501,21 @@ export default function SettingsPage() {
           <p className="text-[11.5px] text-faint mb-3">Who receives internal notification emails as deals move through the pipeline. Change this anytime without needing a code change.</p>
           <div>
             <label className="text-[11px] font-semibold text-faint block mb-1">When a new deal is created — who is asked to create the SalesTrekker card</label>
-            <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" aria-label="When a new deal is created — who is asked to create the SalesTrekker card" value={newDealNotificationUserId} onChange={(e) => setNewDealNotificationUserId(e.target.value)}>
+            <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand" aria-label="When a new deal is created — who is asked to create the SalesTrekker card" value={newDealNotificationUserId} onChange={(e) => setNewDealNotificationUserId(e.target.value)}>
               <option value="">— select team member —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
           </div>
           <div>
             <label className="text-[11px] font-semibold text-faint block mb-1">When a deal moves stage — who is asked to move the SalesTrekker card</label>
-            <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" aria-label="When a deal moves stage — who is asked to move the SalesTrekker card" value={stageMoveNotificationUserId} onChange={(e) => setStageMoveNotificationUserId(e.target.value)}>
+            <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand" aria-label="When a deal moves stage — who is asked to move the SalesTrekker card" value={stageMoveNotificationUserId} onChange={(e) => setStageMoveNotificationUserId(e.target.value)}>
               <option value="">— select team member —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
           </div>
           <div>
             <label className="text-[11px] font-semibold text-faint block mb-1">When documents are requested — who raises them on SalesTrekker</label>
-            <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" aria-label="When documents are requested — who raises them on SalesTrekker" value={docsRequestNotificationUserId} onChange={(e) => setDocsRequestNotificationUserId(e.target.value)}>
+            <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand" aria-label="When documents are requested — who raises them on SalesTrekker" value={docsRequestNotificationUserId} onChange={(e) => setDocsRequestNotificationUserId(e.target.value)}>
               <option value="">— same as the person below —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
@@ -526,7 +526,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <label className="text-[11px] font-semibold text-faint block mb-1">When documents are received — who renames and files them</label>
-            <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" aria-label="When documents are received — who renames and files them" value={docsFileNotificationUserId} onChange={(e) => setDocsFileNotificationUserId(e.target.value)}>
+            <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand" aria-label="When documents are received — who renames and files them" value={docsFileNotificationUserId} onChange={(e) => setDocsFileNotificationUserId(e.target.value)}>
               <option value="">— select team member —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
@@ -536,7 +536,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2">
               <input type="number" min={0} max={240} value={docsDelayMinutes}
                 onChange={(e) => setDocsDelayMinutes(e.target.value)}
-                className="w-[110px] text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" />
+                className="w-[110px] text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand" />
               <span className="text-[12.5px] text-faint">minutes</span>
             </div>
             <p className="text-[11px] text-faint mt-1">
@@ -575,7 +575,7 @@ export default function SettingsPage() {
             ))}
           </div>
           <div className="flex gap-2">
-            <input className="flex-1 text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" value={newStyleNote} onChange={e => setNewStyleNote(e.target.value)} placeholder="Add a style note..." onKeyDown={e => { if (e.key === 'Enter' && newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} />
+            <input className="flex-1 text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand" value={newStyleNote} onChange={e => setNewStyleNote(e.target.value)} placeholder="Add a style note..." onKeyDown={e => { if (e.key === 'Enter' && newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} />
             <button onClick={() => { if (newStyleNote.trim()) { setComplianceStyleNotes(prev => [...prev, newStyleNote.trim()]); setNewStyleNote('') } }} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-card border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">Add</button>
           </div>
         </div>
@@ -596,7 +596,7 @@ export default function SettingsPage() {
             {loStyleNotes.length === 0 && <p className="text-[11.5px] text-faint">None yet.</p>}
           </div>
           <div className="flex gap-2">
-            <input className="flex-1 text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" value={newLoStyleNote} onChange={e => setNewLoStyleNote(e.target.value)} placeholder="Add a style note..." onKeyDown={e => { if (e.key === 'Enter' && newLoStyleNote.trim()) { setLoStyleNotes(prev => [...prev, newLoStyleNote.trim()]); setNewLoStyleNote('') } }} />
+            <input className="flex-1 text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand" value={newLoStyleNote} onChange={e => setNewLoStyleNote(e.target.value)} placeholder="Add a style note..." onKeyDown={e => { if (e.key === 'Enter' && newLoStyleNote.trim()) { setLoStyleNotes(prev => [...prev, newLoStyleNote.trim()]); setNewLoStyleNote('') } }} />
             <button onClick={() => { if (newLoStyleNote.trim()) { setLoStyleNotes(prev => [...prev, newLoStyleNote.trim()]); setNewLoStyleNote('') } }} className="text-[12.5px] font-semibold text-[#0E8FCB] bg-card border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition">Add</button>
           </div>
         </div>
@@ -654,7 +654,7 @@ export default function SettingsPage() {
             {creditOfficers.map((officer) => (
               <div key={officer.id} className="border border-[#EDE7DD] rounded-xl p-5 mb-4 bg-card">
                 <div className="flex justify-between items-start mb-4">
-                  <input className="font-semibold text-ink flex-1 border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-[#2DBEFF]" value={officer.name} onChange={(e) => updateCreditOfficerName(officer.id, e.target.value)} placeholder="Credit officer name" />
+                  <input className="font-semibold text-ink flex-1 border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-brand" value={officer.name} onChange={(e) => updateCreditOfficerName(officer.id, e.target.value)} placeholder="Credit officer name" />
                   <div className="flex items-center gap-3">
                     <label className="flex items-center gap-1.5 text-[11.5px] text-muted cursor-pointer">
                       <input type="checkbox" checked={officer.active} onChange={(e) => toggleCreditOfficerActive(officer.id, e.target.checked)} />
@@ -665,7 +665,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="mb-3">
                   <label className="text-[11px] font-semibold text-faint block mb-1">Linked portal account (used for assignment notification emails)</label>
-                  <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" value={officer.userId || ''} onChange={(e) => linkCreditOfficerUser(officer.id, e.target.value)}>
+                  <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand" value={officer.userId || ''} onChange={(e) => linkCreditOfficerUser(officer.id, e.target.value)}>
                     <option value="">— not linked —</option>
                     {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name} ({p.email})</option>)}
                   </select>
@@ -673,7 +673,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="mb-3">
                   <label className="text-[11px] font-semibold text-faint block mb-1">Direct phone number</label>
-                  <input className={`w-full text-[13px] border rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF] ${officer.phone ? 'border-line' : 'border-dashed border-field-line bg-page'}`}
+                  <input className={`w-full text-[13px] border rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand ${officer.phone ? 'border-line' : 'border-dashed border-field-line bg-page'}`}
                     value={officer.phone || ''} placeholder="e.g. 0412 345 678"
                     onChange={(e) => updateCreditOfficerPhone(officer.id, e.target.value)} />
                   {!officer.phone && (
@@ -686,11 +686,11 @@ export default function SettingsPage() {
                 <div className="mb-3 grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] font-semibold text-faint block mb-1">On leave from</label>
-                    <input type="date" className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" value={officer.onLeaveFrom || ''} onChange={(e) => updateCreditOfficerLeave(officer.id, 'onLeaveFrom', e.target.value)} />
+                    <input type="date" className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand" value={officer.onLeaveFrom || ''} onChange={(e) => updateCreditOfficerLeave(officer.id, 'onLeaveFrom', e.target.value)} />
                   </div>
                   <div>
                     <label className="text-[11px] font-semibold text-faint block mb-1">Until</label>
-                    <input type="date" className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]" value={officer.onLeaveUntil || ''} onChange={(e) => updateCreditOfficerLeave(officer.id, 'onLeaveUntil', e.target.value)} />
+                    <input type="date" className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand" value={officer.onLeaveUntil || ''} onChange={(e) => updateCreditOfficerLeave(officer.id, 'onLeaveUntil', e.target.value)} />
                   </div>
                   {officer.onLeaveFrom && officer.onLeaveUntil && (
                     <p className="text-xs text-info col-span-2">🏖 Excluded from auto-allocation between {officer.onLeaveFrom} and {officer.onLeaveUntil}</p>

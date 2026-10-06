@@ -42,7 +42,7 @@ type Props = {
 // still reading the old column.
 const stageColor: Record<string, string> = {
   fact_find: 'bg-[#EAF7FE] text-[#0E8FCB]',
-  bc: 'bg-blue-100 text-blue-600',
+  bc: 'bg-info-bg text-info',
   lo: 'bg-purple-100 text-purple-600',
   compliance: 'bg-green-100 text-green-600',
 }
@@ -60,7 +60,7 @@ const actionLabel: Record<ActionType, string> = {
 const actionColor: Record<ActionType, string> = {
   proceeded_to_lo: 'bg-green-100 text-green-700',
   proceeded_to_compliance: 'bg-green-100 text-green-700',
-  bc_to_lo: 'bg-blue-100 text-blue-700',
+  bc_to_lo: 'bg-info-bg text-info',
   lo_to_compliance: 'bg-purple-100 text-purple-700',
   awaiting_lodgement: 'bg-waiting-bg text-waiting',
 }
@@ -201,7 +201,7 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs text-gray-400">Deals by broker</div>
             <div className="flex gap-3 text-xs text-gray-400">
-              <span><span className="inline-block w-2 h-2 rounded-sm bg-blue-500 mr-1" />BC</span>
+              <span><span className="inline-block w-2 h-2 rounded-sm bg-brand mr-1" />BC</span>
               <span><span className="inline-block w-2 h-2 rounded-sm bg-purple-500 mr-1" />LO</span>
               <span><span className="inline-block w-2 h-2 rounded-sm bg-green-500 mr-1" />Compliance</span>
             </div>
@@ -212,7 +212,7 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
                 <div className="text-xs font-medium text-ink mb-1">{labelFor(broker)}</div>
                 <div className="text-xl font-medium text-ink mb-2">{counts.total}</div>
                 <div className="flex h-1.5 rounded-sm overflow-hidden">
-                  {counts.BC > 0 && <div className="bg-blue-500" style={{ width: `${(counts.BC / counts.total) * 100}%` }} />}
+                  {counts.BC > 0 && <div className="bg-brand" style={{ width: `${(counts.BC / counts.total) * 100}%` }} />}
                   {counts.LO > 0 && <div className="bg-purple-500" style={{ width: `${(counts.LO / counts.total) * 100}%` }} />}
                   {counts.Compliance > 0 && <div className="bg-green-500" style={{ width: `${(counts.Compliance / counts.total) * 100}%` }} />}
                 </div>
@@ -269,7 +269,7 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
       <div className="bg-card border border-gray-100 rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">Recent deals</div>
-          <Link href="/deals" className="text-xs text-[#2DBEFF] hover:underline">View all</Link>
+          <Link href="/deals" className="text-xs text-brand-ink hover:underline">View all</Link>
         </div>
         {recent.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-gray-400">No deals yet</div>
@@ -279,7 +279,7 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
             return (
               <Link key={deal.id} href={`/deals/${deal.id}`}
                 className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition">
-                <div style={{ background: 'rgba(45,190,255,0.12)', color: '#2DBEFF' }}
+                <div style={{ background: 'rgba(79,187,234,0.12)', color: '#107EA8' }}
                   className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0">
                   {initials || '?'}
                 </div>

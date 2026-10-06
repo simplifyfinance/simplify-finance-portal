@@ -28,7 +28,7 @@ import { optionOnTheDeal } from '@/lib/client-agreement'
 const money = (n: number) => '$' + Math.round(n).toLocaleString('en-AU')
 
 const K = 'text-[9.5px] font-semibold tracking-[.09em] uppercase text-faint'
-const INP = 'border border-line rounded-lg px-2.5 py-1.5 text-[13px] text-ink bg-card focus:outline-none focus:border-[#2DBEFF]'
+const INP = 'border border-line rounded-lg px-2.5 py-1.5 text-[13px] text-ink bg-card focus:outline-none focus:border-brand'
 const NEED = 'border-dashed border-field-line bg-page'
 
 export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSplit }: {
@@ -126,7 +126,7 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
             {needed.length} to complete
           </span>
         )}
-        <a href={`/deals/${deal.id}?stage=BC`} className="ml-auto text-[12px] text-[#2DBEFF] hover:underline">Open BC tab →</a>
+        <a href={`/deals/${deal.id}?stage=BC`} className="ml-auto text-[12px] text-brand-ink hover:underline">Open BC tab →</a>
       </div>
 
       {row.optionGap && (
@@ -258,7 +258,7 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
             </span>
             {onAddSplit && (
               <button onClick={onAddSplit}
-                className="ml-auto text-[12px] text-[#2DBEFF] border border-dashed border-[#2DBEFF] rounded-lg px-2.5 py-[3px] hover:bg-info-bg transition">
+                className="ml-auto text-[12px] text-brand-ink border border-dashed border-brand rounded-lg px-2.5 py-[3px] hover:bg-info-bg transition">
                 + Add split
               </button>
             )}

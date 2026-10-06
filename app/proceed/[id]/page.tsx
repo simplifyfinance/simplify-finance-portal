@@ -43,7 +43,7 @@ export default async function ProceedPage({ params, searchParams }: { params: Pr
       <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '40px', maxWidth: '480px', width: '100%', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
 
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{ width: '56px', height: '56px', backgroundColor: '#2DBEFF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '22px', color: '#fff', fontWeight: 'bold' }}>{done ? '\u2713' : '\u2192'}</div>
+          <div style={{ width: '56px', height: '56px', backgroundColor: '#4FBBEA', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '22px', color: '#0F1115', fontWeight: 'bold' }}>{done ? '\u2713' : '\u2192'}</div>
           <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#343333', margin: '0 0 6px' }}>
             {done ? `Great news, ${clientName}!` : `Ready to go ahead, ${clientName}?`}
           </h1>

@@ -514,7 +514,7 @@ export default function PipelinePage() {
     while (m < 1) { m += 12; y -= 1 }
     return `${y}-${String(m).padStart(2, '0')}`
   }
-  const dateInput = 'text-[12.5px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-[#2DBEFF]'
+  const dateInput = 'text-[12.5px] border border-line rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:border-brand'
 
   // Every hook above has already run, so switching the whole view here is safe.
   if (view === 'actuals') return <MonthlyActuals />

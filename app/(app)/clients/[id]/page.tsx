@@ -87,7 +87,7 @@ export default function ClientProfilePage() {
       </Link>
 
       <div className="flex items-center gap-4 mb-6">
-        <div style={{ background: 'rgba(45,190,255,0.12)', color: '#2DBEFF' }}
+        <div style={{ background: 'rgba(79,187,234,0.12)', color: '#107EA8' }}
           className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold flex-shrink-0">
           {initials || '?'}
         </div>
@@ -100,7 +100,7 @@ export default function ClientProfilePage() {
                 <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full">SMSF opportunity</span>
               )}
               {hasCarLoan && (
-                <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">Car loan present</span>
+                <span className="text-xs font-medium bg-info-bg text-info px-2.5 py-1 rounded-full">Car loan present</span>
               )}
             </div>
           )}
@@ -118,7 +118,7 @@ export default function ClientProfilePage() {
                   <p className="text-sm font-medium text-ink">{d.deal_name}</p>
                   <p className="text-xs text-gray-400 mt-0.5">{d.deal_type} · Broker: {brokerLabel(d.assigned_broker)}</p>
                 </div>
-                <span className="text-xs font-medium bg-[#2DBEFF]/10 text-[#2DBEFF] px-2.5 py-1 rounded-full">{PHASE_LABEL[phaseOf(d)]} →</span>
+                <span className="text-xs font-medium bg-brand/10 text-brand-ink px-2.5 py-1 rounded-full">{PHASE_LABEL[phaseOf(d)]} →</span>
               </Link>
             ))}
           </div>

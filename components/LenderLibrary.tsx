@@ -113,8 +113,8 @@ export default function LenderLibrary() {
   const [targetLenderId, setTargetLenderId] = useState<string>('')
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const inp = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]'
-  const sel = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF] bg-card'
+  const inp = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand'
+  const sel = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand bg-card'
 
   useEffect(() => { fetchAll() }, [])
 
@@ -479,7 +479,7 @@ export default function LenderLibrary() {
       <div className="flex justify-between items-center mb-2">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Lender Library</h2>
         <div className="flex gap-2">
-          <button onClick={openImport} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
+          <button onClick={openImport} className="text-sm text-brand-ink border border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition">
             ✦ Import via AI
           </button>
           <button onClick={() => { setShowAddLender(true); setNewLenderName('') }} className="text-sm text-ink border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
@@ -644,7 +644,7 @@ export default function LenderLibrary() {
                           </div>
                           <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
                             <button onClick={() => toggleProductDraft(product.id, product.is_draft)} className={`text-xs border rounded px-2 py-0.5 transition ${product.is_draft ? 'border-green-200 text-green-600 hover:bg-green-50' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{product.is_draft ? 'Go live' : 'Set draft'}</button>
-                            <button onClick={() => openEditProduct(product, lender.name)} className="text-xs text-white bg-[#2DBEFF] hover:bg-blue-400 rounded px-2 py-0.5 transition">Edit</button>
+                            <button onClick={() => openEditProduct(product, lender.name)} className="text-xs text-on-brand bg-brand hover:opacity-90 rounded px-2 py-0.5 transition">Edit</button>
                             <button onClick={() => toggleProductActive(product.id, product.active)} className={`text-xs border rounded px-2 py-0.5 transition ${product.active ? 'border-red-200 text-red-400 hover:bg-red-50' : 'border-green-200 text-green-500 hover:bg-green-50'}`}>{product.active ? 'Deactivate' : 'Activate'}</button>
                             <button onClick={() => setConfirmDelete({ type: 'product', id: product.id, name: product.product_name })} className="text-xs text-red-400 hover:text-red-600 border border-red-200 rounded px-2 py-0.5">Delete</button>
                           </div>
@@ -653,7 +653,7 @@ export default function LenderLibrary() {
                     )
                   })}
                   <div className="px-4 py-2.5">
-                    <button onClick={() => openAddProduct(lender.id, lender.name)} className="text-xs text-[#2DBEFF] hover:underline">+ Add product</button>
+                    <button onClick={() => openAddProduct(lender.id, lender.name)} className="text-xs text-brand-ink hover:underline">+ Add product</button>
                   </div>
                 </div>
               )}
@@ -707,7 +707,7 @@ export default function LenderLibrary() {
                   <button onClick={() => setImportTab('url')} className={`flex-1 py-2 text-sm transition ${importTab === 'url' ? 'bg-ink text-page' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>Paste URL</button>
                 </div>
                 {importTab === 'pdf' && (
-                  <div onClick={() => fileRef.current?.click()} className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center cursor-pointer hover:border-[#2DBEFF] hover:bg-blue-50/20 transition mb-4">
+                  <div onClick={() => fileRef.current?.click()} className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center cursor-pointer hover:border-brand hover:bg-info-bg/20 transition mb-4">
                     <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={e => setImportFile(e.target.files?.[0] || null)} />
                     {importFile ? (
                       <div>
@@ -731,7 +731,7 @@ export default function LenderLibrary() {
                 {extractError && <p className="text-sm text-red-500 mb-3">{extractError}</p>}
                 <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
                   <button onClick={() => setImportModal(false)} className="text-sm text-gray-400 hover:text-gray-600 px-3">Cancel</button>
-                  <button onClick={runExtraction} disabled={extracting || (importTab === 'pdf' ? !importFile : !importUrl.trim())} className="bg-[#2DBEFF] text-white text-sm px-5 py-2 rounded-lg hover:bg-blue-400 disabled:opacity-40 flex items-center gap-2">
+                  <button onClick={runExtraction} disabled={extracting || (importTab === 'pdf' ? !importFile : !importUrl.trim())} className="bg-brand text-on-brand text-sm px-5 py-2 rounded-lg hover:opacity-90 disabled:opacity-40 flex items-center gap-2">
                     {extracting ? (<><span className="animate-spin inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full"></span> Extracting...</>) : '✦ Extract with AI'}
                   </button>
                 </div>
@@ -751,10 +751,10 @@ export default function LenderLibrary() {
                 <div className="space-y-2 mb-4">
                   {extractedProducts.map((p, i) => (
                     <div key={i} onClick={() => setExtractedProducts(prev => prev.map((x, j) => j === i ? { ...x, selected: !x.selected } : x))}
-                      className={`border rounded-xl p-3 cursor-pointer transition ${p.selected ? 'border-[#2DBEFF] bg-blue-50/20' : 'border-gray-200 opacity-50'}`}>
+                      className={`border rounded-xl p-3 cursor-pointer transition ${p.selected ? 'border-brand bg-info-bg' : 'border-gray-200 opacity-50'}`}>
                       <div className="flex items-center justify-between mb-1">
                         <p className="text-sm font-medium text-ink">{p.product_name}</p>
-                        <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${p.selected ? 'bg-[#2DBEFF] border-[#2DBEFF]' : 'border-gray-300'}`}>
+                        <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${p.selected ? 'bg-brand border-brand' : 'border-gray-300'}`}>
                           {p.selected && <span className="text-white text-xs">✓</span>}
                         </span>
                       </div>

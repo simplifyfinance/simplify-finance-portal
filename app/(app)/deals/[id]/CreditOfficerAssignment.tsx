@@ -71,7 +71,7 @@ export default function CreditOfficerAssignment({ dealId, brokerName, userRole }
       {msg && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">{msg}</span>}
       {err && <span className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{err}</span>}
       {isAdmin && !showPicker && (
-        <button onClick={() => setShowPicker(true)} className="text-xs text-[#2DBEFF] hover:underline">Reassign</button>
+        <button onClick={() => setShowPicker(true)} className="text-xs text-brand-ink hover:underline">Reassign</button>
       )}
       {isAdmin && showPicker && (
         <div className="flex items-center gap-2">

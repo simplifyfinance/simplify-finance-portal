@@ -27,7 +27,7 @@ import { money, readMoney } from '@/lib/money'
 type Shade = { edge: string; tint: string; ink: string }
 const SHADES: Record<Accent, Shade> = {
   ink:    { edge: '#141C24', tint: '#F4F6F8', ink: '#141C24' },
-  blue:   { edge: '#2DBEFF', tint: '#EAF6FD', ink: '#0B5E8A' },
+  blue:   { edge: '#4FBBEA', tint: '#EAF6FD', ink: '#0B5E8A' },
   teal:   { edge: '#14A08B', tint: '#E6F5F2', ink: '#0C6355' },
   violet: { edge: '#7C6BD6', tint: '#F1EEFB', ink: '#463A8C' },
   green:  { edge: '#22A559', tint: '#EAF7EF', ink: '#15803D' },
@@ -153,13 +153,13 @@ export default function HandoverPage() {
         <div className="max-w-[1120px] mx-auto px-5 pt-6 pb-5 flex items-end gap-5 flex-wrap">
           <div className="flex-1 min-w-[260px]">
             <Link href={`/deals/${id}`} className="text-[11px] text-[#7FD3FF] hover:underline">&larr; Back to the deal</Link>
-            <div className="text-[10px] font-bold tracking-[.18em] text-[#2DBEFF] mt-3">HANDOVER &amp; FACT FIND</div>
+            <div className="text-[10px] font-bold tracking-[.18em] text-brand-ink mt-3">HANDOVER &amp; FACT FIND</div>
             <h1 className="text-[23px] font-bold mt-1.5 mb-1">{who}</h1>
             {meta && <div className="text-[12.5px] text-[#A9B7C2]">{meta}</div>}
           </div>
           {lvr !== null && (
             <div className="text-right">
-              <div className="text-[26px] font-bold text-[#2DBEFF] leading-none">{lvr}%</div>
+              <div className="text-[26px] font-bold text-brand-ink leading-none">{lvr}%</div>
               <div className="text-[9px] font-bold tracking-[.12em] text-faint mt-1">LVR</div>
             </div>
           )}

@@ -176,7 +176,7 @@ export default function PipelineTargets() {
 
   const isBusiness = scope === ''
   const scopeName = isBusiness ? 'the business' : (brokers.find(b => b.key === scope)?.name || scope)
-  const inp = 'w-[118px] text-right text-[13px] border rounded-lg px-2.5 py-1.5 tabular-nums focus:outline-none focus:border-[#2DBEFF]'
+  const inp = 'w-[118px] text-right text-[13px] border rounded-lg px-2.5 py-1.5 tabular-nums focus:outline-none focus:border-brand'
   const failed = status.startsWith('NOT SAVED')
 
   return (

@@ -236,7 +236,7 @@ export default function RateNoticeSettings() {
       <textarea value={notice.text} onChange={e => set({ text: e.target.value })}
         onBlur={() => save(notice)} rows={3}
         placeholder={SUGGESTED}
-        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[12.5px] leading-relaxed focus:outline-none focus:border-[#2DBEFF]" />
+        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[12.5px] leading-relaxed focus:outline-none focus:border-brand" />
       <p className="mt-1 text-[11px] text-gray-400">
         Your words. It is text rather than something built in, so the next one can be a cut, a hold
         or a different figure without anybody touching the code.

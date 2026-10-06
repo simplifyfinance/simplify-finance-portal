@@ -9,7 +9,7 @@ import { type StatementRules, type NamedTerms, type BenefitRule, DEFAULT_RULES, 
 
 const CARD = 'border border-[#EDE7DD] rounded-xl p-5 bg-card'
 const NOTE = 'text-[11.5px] text-faint mb-4 leading-[1.6] max-w-[92ch]'
-const IN = 'text-[12.5px] border border-line rounded-lg px-2 py-1.5 text-ink w-full focus:outline-none focus:border-[#2DBEFF]'
+const IN = 'text-[12.5px] border border-line rounded-lg px-2 py-1.5 text-ink w-full focus:outline-none focus:border-brand'
 const MONO = `${IN} font-mono text-[11.5px] text-muted`
 const TH = 'text-left text-[9.5px] font-bold tracking-[0.07em] uppercase text-faint pb-1.5 pr-2 whitespace-nowrap border-b border-line'
 const ADD = 'text-[12.5px] font-semibold text-[#0E8FCB] bg-card border border-[#BFE6F9] rounded-lg px-4 py-2 hover:bg-[#EAF7FE] transition mt-3'
@@ -102,7 +102,7 @@ function Chips({ label, hint, items, onChange, placeholder }: {
         ))}
         {items.length === 0 && <span className="text-[11.5px] text-faint">Empty — the shipped list will be used instead.</span>}
       </div>
-      <input className="text-[12.5px] border border-dashed border-line rounded-full px-3 py-1.5 min-w-[220px] text-ink focus:outline-none focus:border-[#2DBEFF]"
+      <input className="text-[12.5px] border border-dashed border-line rounded-full px-3 py-1.5 min-w-[220px] text-ink focus:outline-none focus:border-brand"
         placeholder={placeholder}
         onKeyDown={e => {
           if (e.key !== 'Enter') return

@@ -240,7 +240,7 @@ export default function BrokerTargets({ brokerKey, name }: { brokerKey: string; 
     } finally { setBusy(false) }
   }
 
-  const inp = 'w-[104px] text-right text-[12.5px] border rounded-lg px-2 py-1.5 tabular-nums focus:outline-none focus:border-[#2DBEFF]'
+  const inp = 'w-[104px] text-right text-[12.5px] border rounded-lg px-2 py-1.5 tabular-nums focus:outline-none focus:border-brand'
   const failed = status.startsWith('NOT SAVED')
   const head = 'text-[10px] font-semibold tracking-[.085em] uppercase text-faint'
 

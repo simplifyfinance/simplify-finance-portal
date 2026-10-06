@@ -157,7 +157,7 @@ export default function PositionAtSettlement({ deal, onDone }: {
                 <span className="text-[13.5px] font-semibold">{applicantName(a)}</span>
                 <span className="ml-auto flex gap-1.5">
                   <button onClick={() => setChoice(p => ({ ...p, [a.id]: true }))}
-                    className={`text-[12px] rounded-md px-3 py-1 border ${yes ? 'bg-[#2DBEFF] border-[#2DBEFF] text-white font-semibold' : 'border-gray-200 text-gray-500'}`}>
+                    className={`text-[12px] rounded-md px-3 py-1 border ${yes ? 'bg-brand border-brand text-on-brand font-semibold' : 'border-gray-200 text-gray-500'}`}>
                     Replace
                   </button>
                   <button onClick={() => setChoice(p => ({ ...p, [a.id]: false }))}

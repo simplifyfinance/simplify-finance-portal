@@ -376,7 +376,7 @@ export default function SettlementsPage() {
     )
   }
 
-  const inp = 'w-full text-[12.5px] border border-line rounded-lg px-2.5 py-1.5 bg-card focus:outline-none focus:border-[#2DBEFF]'
+  const inp = 'w-full text-[12.5px] border border-line rounded-lg px-2.5 py-1.5 bg-card focus:outline-none focus:border-brand'
   function Group({ title, sub, rows }: { title: string; sub: string; rows: any[] }) {
     return (
       <>

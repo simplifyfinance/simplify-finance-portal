@@ -245,7 +245,7 @@ function Toggle({ value, onChange, options, colors }: { value: string; onChange:
           if (color === 'green') cls += 'bg-green-50 text-green-700 border-green-300'
           else if (color === 'red') cls += 'bg-red-50 text-red-600 border-red-300'
           else if (color === 'info') cls += 'bg-info-bg text-info border-info-edge'
-          else if (color === 'blue') cls += 'bg-blue-50 text-[#2DBEFF] border-blue-300'
+          else if (color === 'blue') cls += 'bg-info-bg text-brand-ink border-info-edge'
           else cls += 'bg-ink text-page border-ink'
         } else {
           cls += 'bg-card text-gray-400 border-gray-200 hover:border-gray-300'
@@ -344,7 +344,7 @@ function NoteMeta({ meta, freshness, onAccept }: { meta?: NoteStamp; freshness: 
 function AIButton({ onClick, loading, label = 'Generate with AI' }: { onClick: () => void; loading?: boolean; label?: string }) {
   return (
     <button onClick={onClick} disabled={loading}
-      className="mt-2 text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition disabled:opacity-40 flex items-center gap-1.5 whitespace-nowrap">
+      className="mt-2 text-sm text-brand-ink border border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition disabled:opacity-40 flex items-center gap-1.5 whitespace-nowrap">
       <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 3v4M9 17v4M3 9h4M17 9h4M9 9l6 6M15 9l-6 6" />
       </svg>
@@ -1584,7 +1584,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
     markComplianceComplete()
   }
 
-  const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]"
+  const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand"
   const currentApplicant = d.applicants?.[activeApplicant]
   const currentRisk = d.risks[currentApplicant?.name] || defaultRisk()
 
@@ -1697,7 +1697,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                 The write-up itself is shown instead. */}
             {!locked && (
               <button onClick={() => setShowWriteUp(v => !v)}
-                className="ml-auto text-[12.5px] text-[#2DBEFF] hover:underline">
+                className="ml-auto text-[12.5px] text-brand-ink hover:underline">
                 {showWriteUp ? 'Hide the write-up' : 'Show the write-up'}
               </button>
             )}
@@ -1919,7 +1919,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
               return (
                 <button key={i} onClick={() => setActiveApplicant(i)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium border transition flex items-center gap-2 ${
-                    activeApplicant === i ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5'
+                    activeApplicant === i ? 'border-brand text-brand-ink bg-brand/5'
                     : started ? 'border-gray-200 text-gray-400'
                     : 'border-chase-edge text-chase bg-chase-bg'}`}>
                   {a.name}
@@ -2306,10 +2306,10 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                     no model writes. Fabio, 3 Sep 2026: "let's just make sure it
                     really screams out that they have to complete this section.
                     This is not done by AI." */}
-                <div className="border-2 border-[#2DBEFF] bg-info-bg rounded-lg px-3.5 py-3 mb-2">
+                <div className="border-2 border-brand bg-info-bg rounded-lg px-3.5 py-3 mb-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <label className="text-[13px] font-bold text-ink">Application submission notes</label>
-                    <span className="text-[10.5px] font-extrabold tracking-[.06em] uppercase text-on-brand bg-[#2DBEFF] rounded px-2 py-[3px]">
+                    <span className="text-[10.5px] font-extrabold tracking-[.06em] uppercase text-on-brand bg-brand rounded px-2 py-[3px]">
                       Goes to the lender
                     </span>
                   </div>
@@ -2327,7 +2327,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
                   placeholder="Press Compose, or type your own..." />
                 {notes.ready ? (
                   <button onClick={writeBrokerNotes}
-                    className="mt-2 text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition inline-flex items-center gap-1.5">
+                    className="mt-2 text-sm text-brand-ink border border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition inline-flex items-center gap-1.5">
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h10" />
                     </svg>

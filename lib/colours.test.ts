@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'fs'
+import { readFileSync, readdirSync } from 'fs'
 import * as C from './colours'
 
 // TWO FILES HOLD THE PALETTE, SO SOMETHING HAS TO STOP THEM DRIFTING.
@@ -263,9 +263,65 @@ describe('what is actually wired up', () => {
     }
   })
 
-  it('colours.ts says the migration has started, so the note cannot go stale', () => {
+  it('colours.ts keeps a note of where the migration is up to', () => {
     const src = readFileSync('lib/colours.ts', 'utf8')
-    expect(src).toContain('THE MIGRATION HAS STARTED')
+    expect(src).toContain('THE MIGRATION')
+    expect(src).toContain('THE BLUE IS DONE')
+  })
+})
+
+// THE OLD BLUE CANNOT COME BACK TO A SCREEN.
+//
+// 6 Oct 2026. 272 places stopped spelling a blue out by hand in one ship. The
+// only thing keeping them that way is this, because the next person reaching
+// for a blue will reach for the one they remember - that is how it got to 361
+// places the first time.
+//
+// TWO BLUES ARE BANNED, not one. #2DBEFF, and Tailwind's own blue-NNN ramp,
+// which is COOL. The portal's page, lines and ink are warm; a cool blue on a
+// warm off-white reads as dirty. That is the same fault lib/colours.ts fixed
+// for the greys, written down there at length.
+//
+// WHAT IS NOT A SCREEN. app/api/ builds HTML emails, and so does every *-email
+// file in lib/. Fabio, 4 Oct 2026: "these changes are esthetic to the portal we
+// are not changing any html email forms". The emails still send the old blue,
+// and the brand accent colour in Settings is the value they are built from - so
+// that one file is named below rather than swept, and the exception is the
+// decision, not an oversight.
+describe('a screen does not spell a blue out by hand', () => {
+  const ALLOWED = [
+    // the accent colour the emails are built from - see above
+    'app/(app)/settings/SettingsClient.tsx',
+  ]
+
+  const screens: string[] = []
+  const walk = (dir: string) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const f = `${dir}/${e.name}`
+      if (e.isDirectory()) { if (f !== 'app/api') walk(f) }
+      else if (/\.tsx?$/.test(e.name) && !ALLOWED.includes(f)) screens.push(f)
+    }
+  }
+  walk('app')
+  walk('components')
+
+  it('there are screens to check', () => {
+    expect(screens.length).toBeGreaterThan(100)
+  })
+
+  it('none of them has the retired blue or a Tailwind blue in it', () => {
+    const caught: string[] = []
+    for (const f of screens) {
+      const src = readFileSync(f, 'utf8')
+      if (src.includes(C.RETIRED[0])) caught.push(`${f}: ${C.RETIRED[0]}`)
+      for (const m of src.matchAll(/\b(?:bg|text|border|ring)-blue-\d+/g)) {
+        caught.push(`${f}: ${m[0]}`)
+      }
+    }
+    expect(caught, `a blue is spelled out by hand here. Use a name from\n`
+      + `lib/colours.ts instead - brand for a fill or an edge, brand-ink for a\n`
+      + `word, info / info-bg / info-edge for a washed blue chip.\n`
+      + caught.join('\n')).toEqual([])
   })
 })
 

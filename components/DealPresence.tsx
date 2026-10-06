@@ -110,7 +110,7 @@ export default function DealPresence({ dealId, tab, onSameTab }:
           <span key={o.userId} title={chipTitle(o)}
             className={`inline-flex items-center justify-center w-[26px] h-[26px] rounded-full
               text-[10px] font-extrabold select-none cursor-default
-              ${sameTab ? 'bg-[#2DBEFF] text-[#08252F] ring-2 ring-[#2DBEFF]/25'
+              ${sameTab ? 'bg-brand text-[#08252F] ring-2 ring-brand/25'
                         : 'bg-[#E8E1D6] text-muted'}`}>
             {initials(o.name)}
           </span>

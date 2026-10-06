@@ -171,7 +171,7 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
   }
 
   const btn = 'text-xs text-muted bg-page px-3.5 py-2 hover:bg-line-soft hover:text-ink transition inline-flex items-center gap-2 disabled:opacity-40'
-  const inp = 'w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-[#2DBEFF]'
+  const inp = 'w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand'
 
   if (isClosed) {
     return (
@@ -233,7 +233,7 @@ export default function CloseDeal({ deal, onUpdated }: { deal: any; onUpdated: (
                 <div className="flex items-center gap-2.5">
                   <span className="text-[12px] text-muted">When</span>
                   <input type="date" value={due} onChange={e => setDue(e.target.value)}
-                    className="text-[13px] border border-line rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#2DBEFF]" />
+                    className="text-[13px] border border-line rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand" />
                 </div>
                 <div className="text-[11px] text-faint mt-2">Setting a date emails support to put a follow-up task on the deal card, for the broker and themselves.</div>
               </div>

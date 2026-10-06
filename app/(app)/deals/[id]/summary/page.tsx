@@ -162,7 +162,7 @@ export default function DealSummaryPage() {
                 'Credit card': 'bg-red-100 text-red-700',
                 'Car loan': 'bg-purple-100 text-purple-700',
                 'Personal loan': 'bg-purple-100 text-purple-700',
-                'HECS': 'bg-blue-100 text-blue-700',
+                'HECS': 'bg-info-bg text-info',
                 'Health insurance': 'bg-teal-100 text-teal-700',
               }
               const badgeClass = badgeColors[l.liabilityType] || 'bg-gray-100 text-gray-700'
@@ -187,8 +187,8 @@ export default function DealSummaryPage() {
       )}
 
       {Object.keys(bc).length > 0 && (
-        <div className="bg-card border border-gray-100 border-l-4 border-l-[#2DBEFF] rounded-xl p-5 mb-4">
-          <p className="text-xs font-medium text-[#2DBEFF] uppercase tracking-wider mb-3">BC — borrowing capacity</p>
+        <div className="bg-card border border-gray-100 border-l-4 border-l-brand rounded-xl p-5 mb-4">
+          <p className="text-xs font-medium text-brand-ink uppercase tracking-wider mb-3">BC — borrowing capacity</p>
           <table className="w-full text-sm">
             <tbody>
               <tr><td className="text-gray-500 py-1 pr-2" style={{ width: '35%' }}>Template</td><td className="py-1">{(bc.template || '').replace(/_/g, ' ') || 'Not set'}</td></tr>

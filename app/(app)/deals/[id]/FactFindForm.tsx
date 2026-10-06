@@ -332,7 +332,7 @@ function OwnershipSplit({ applicants, ownership, onChange }: { applicants: FactF
       {applicants.map(a => (
         <div key={a.id}>
           <label className="text-xs text-gray-500 block mb-1">{a.firstName || 'Applicant'} ownership %</label>
-          <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2DBEFF]"
+          <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand"
             value={ownership[a.id] || ''} onChange={e => onChange({ ...ownership, [a.id]: e.target.value })} />
         </div>
       ))}
@@ -570,7 +570,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     }
   }, [flush])
 
-  const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-field focus:outline-none focus:border-[#2DBEFF]"
+  const inp = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-field focus:outline-none focus:border-brand"
   const applicant = d.applicants?.[activeApplicant]
 
   // WHICH ROW WAS TOUCHED. Every edit inside a list says so, and nothing
@@ -924,7 +924,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       {d.applicants.map((a, i) => (
         <div key={a.id} className="flex items-center">
           <button onClick={() => setActiveApplicant(i)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${activeApplicant === i ? 'border-[#2DBEFF] text-[#2DBEFF] bg-[#2DBEFF]/5' : 'border-gray-200 text-gray-400'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${activeApplicant === i ? 'border-brand text-brand-ink bg-brand/5' : 'border-gray-200 text-gray-400'}`}>
             {a.firstName || `Applicant ${i + 1}`}
           </button>
           {d.applicants.length > 1 && (
@@ -979,12 +979,12 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowAddApplicantModal(false)}>
           <div className="bg-card rounded-2xl p-6 w-[420px] max-h-[80vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="text-base font-semibold mb-4">Add applicant</div>
-            <button onClick={addApplicant} className="w-full text-left px-4 py-3 rounded-lg border border-dashed border-[#2DBEFF] text-[#2DBEFF] hover:bg-blue-50 transition mb-4 text-sm font-medium">
+            <button onClick={addApplicant} className="w-full text-left px-4 py-3 rounded-lg border border-dashed border-brand text-brand-ink hover:bg-info-bg transition mb-4 text-sm font-medium">
               + New applicant
             </button>
             <p className="text-xs font-medium text-gray-500 mb-2">Or select an existing customer</p>
             <input type="text" placeholder="Search clients..." value={applicantSearch} onChange={e => setApplicantSearch(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#2DBEFF] mb-2" />
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-brand mb-2" />
             <div className="max-h-56 overflow-y-auto flex flex-col gap-1">
               {existingClients
                 .filter(c => `${c.first_name} ${c.last_name}`.toLowerCase().includes(applicantSearch.toLowerCase()))
@@ -1112,7 +1112,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
             )}
 
             <div className="flex gap-2 mt-4">
-              <button onClick={applyExtractedData} className="flex-1 px-4 py-2 text-sm bg-[#2DBEFF] text-white rounded-lg font-medium hover:opacity-90">
+              <button onClick={applyExtractedData} className="flex-1 px-4 py-2 text-sm bg-brand text-on-brand rounded-lg font-medium hover:opacity-90">
                 Apply to Fact Find
               </button>
               <button onClick={() => { setShowExtractReview(false); setExtractedData(null) }} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">
@@ -1132,7 +1132,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
           </div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Attached documents</span>
-            <label className={`text-xs text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-2.5 py-1 hover:bg-blue-50 transition cursor-pointer ${uploadingDoc ? 'opacity-40 pointer-events-none' : ''}`}>
+            <label className={`text-xs text-brand-ink border border-brand rounded-lg px-2.5 py-1 hover:bg-info-bg transition cursor-pointer ${uploadingDoc ? 'opacity-40 pointer-events-none' : ''}`}>
               {uploadingDoc ? 'Uploading...' : '+ Add'}
               <input type="file" multiple className="hidden"
                 onChange={e => { const fs = Array.from(e.target.files || []); if (fs.length) uploadDocuments(fs) }} />
@@ -1168,7 +1168,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               : 'Documents on this deal are listed '}
             <button type="button"
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="text-[#2DBEFF] font-semibold hover:underline">
+              className="text-brand-ink font-semibold hover:underline">
               see them at the top of the page &uarr;
             </button>
           </p>
@@ -1229,7 +1229,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Purpose of loan / primary reason for finance{!d.loanPurpose?.trim() && <span className="text-red-600 font-semibold ml-1">● Required</span>}</label>
-              <textarea spellCheck="true" aria-label="Purpose of loan / primary reason for finance" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.loanPurpose?.trim() ? 'border-gray-200 focus:border-[#2DBEFF]' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="What the client told you they want this loan for..." value={d.loanPurpose}
+              <textarea spellCheck="true" aria-label="Purpose of loan / primary reason for finance" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.loanPurpose?.trim() ? 'border-gray-200 focus:border-brand' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="What the client told you they want this loan for..." value={d.loanPurpose}
                 onFocus={() => focusField(ownRef.current, 'loanPurpose')}
                 onBlur={() => blurField(ownRef.current, 'loanPurpose')}
                 onChange={e => { markDirty(ownRef.current, 'loanPurpose'); setD(prev => ({ ...prev, loanPurpose: e.target.value })) }} />
@@ -1237,7 +1237,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Goals — next 2 years{!d.goals2Years?.trim() && <span className="text-red-600 font-semibold ml-1">● Required</span>}</label>
-              <textarea spellCheck="true" aria-label="Goals — next 2 years" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.goals2Years?.trim() ? 'border-gray-200 focus:border-[#2DBEFF]' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="Client's own stated short-term plans..." value={d.goals2Years}
+              <textarea spellCheck="true" aria-label="Goals — next 2 years" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.goals2Years?.trim() ? 'border-gray-200 focus:border-brand' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="Client's own stated short-term plans..." value={d.goals2Years}
                 onFocus={() => focusField(ownRef.current, 'goals2Years')}
                 onBlur={() => blurField(ownRef.current, 'goals2Years')}
                 onChange={e => { markDirty(ownRef.current, 'goals2Years'); setD(prev => ({ ...prev, goals2Years: e.target.value })) }} />
@@ -1245,7 +1245,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Goals — 2 to 10 years{!d.goals10Years?.trim() && <span className="text-red-600 font-semibold ml-1">● Required</span>}</label>
-              <textarea spellCheck="true" aria-label="Goals — 2 to 10 years" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.goals10Years?.trim() ? 'border-gray-200 focus:border-[#2DBEFF]' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="Client's own stated long-term plans..." value={d.goals10Years}
+              <textarea spellCheck="true" aria-label="Goals — 2 to 10 years" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.goals10Years?.trim() ? 'border-gray-200 focus:border-brand' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="Client's own stated long-term plans..." value={d.goals10Years}
                 onFocus={() => focusField(ownRef.current, 'goals10Years')}
                 onBlur={() => blurField(ownRef.current, 'goals10Years')}
                 onChange={e => { markDirty(ownRef.current, 'goals10Years'); setD(prev => ({ ...prev, goals10Years: e.target.value })) }} />
@@ -1515,7 +1515,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               {totalHistoryMonths(applicant.addresses)} months of address history recorded — add a previous address to reach the required {REQUIRED_HISTORY_MONTHS} months.
             </div>
           )}
-          <button onClick={addAddress} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
+          <button onClick={addAddress} className="text-sm text-brand-ink border border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition">
             + Add previous address
           </button>
         </div>
@@ -1642,10 +1642,10 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
             )
           })()}
           <div className="flex gap-2">
-            <button onClick={addSecondaryEmployment} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
+            <button onClick={addSecondaryEmployment} className="text-sm text-brand-ink border border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition">
               + Add secondary employment
             </button>
-            <button onClick={addEmployment} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
+            <button onClick={addEmployment} className="text-sm text-brand-ink border border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition">
               + Add previous employment
             </button>
           </div>
@@ -1739,7 +1739,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                       <div className="text-xs text-red-500 mt-1">FY {inc.seYear2FY} (${Math.round(seYearTotalFF(inc, 2)).toLocaleString()}) is not lower than FY {inc.seYear1FY} (${Math.round(seYearTotalFF(inc, 1)).toLocaleString()}). Choose a different calculation method.</div>
                     </div>
                   ) : (
-                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-3">
+                    <div className="bg-info-bg border border-info-edge rounded-lg p-3 mb-3">
                       <div className="text-xs text-gray-500 mb-1">Assessable income (calculated)</div>
                       <div className="text-sm font-semibold text-gray-800">
                         ${Math.round(calculateSeAssessableIncome(inc)).toLocaleString()} p.a.
@@ -1930,7 +1930,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
             </div>
           ))}
           <div className="relative inline-block">
-            <button onClick={() => setAddIncomeMenuOpen(!addIncomeMenuOpen)} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
+            <button onClick={() => setAddIncomeMenuOpen(!addIncomeMenuOpen)} className="text-sm text-brand-ink border border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition">
               + Add income source
             </button>
             {addIncomeMenuOpen && (
@@ -1977,7 +1977,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               <OwnershipCheckboxes applicants={d.applicants} ownership={asset.ownership} onChange={v => updateAsset(asset.id, 'ownership', v)} label="Owned by" />
             </div>
           ))}
-          <button onClick={addAsset} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
+          <button onClick={addAsset} className="text-sm text-brand-ink border border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition">
             + Add asset
           </button>
         </div>
@@ -2083,13 +2083,13 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                     <OwnershipSplit applicants={d.applicants} ownership={loan.ownership} onChange={v => updatePropertyLoan(prop.id, loan.id, 'ownership', v)} />
                   </div>
                 ))}
-                <button onClick={() => addPropertyLoan(prop.id)} className="text-xs text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
+                <button onClick={() => addPropertyLoan(prop.id)} className="text-xs text-brand-ink border border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition">
                   + Add loan against this property
                 </button>
               </div>
             </div>
           ))}
-          <button onClick={addProperty} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
+          <button onClick={addProperty} className="text-sm text-brand-ink border border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition">
             + Add property
           </button>
         </div>
@@ -2155,7 +2155,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               <OwnershipCheckboxes applicants={d.applicants} ownership={liab.ownership} onChange={v => updateLiability(liab.id, 'ownership', v)} />
             </div>
           ))}
-          <button onClick={addLiability} className="text-sm text-[#2DBEFF] border border-[#2DBEFF] rounded-lg px-3 py-1.5 hover:bg-blue-50 transition">
+          <button onClick={addLiability} className="text-sm text-brand-ink border border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition">
             + Add liability
           </button>
         </div>

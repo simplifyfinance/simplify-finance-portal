@@ -397,7 +397,7 @@ export default function DealsPage() {
             <div className="text-xs text-gray-400 mb-1">Deals assigned to you</div>
             <div className="text-2xl font-semibold text-ink">{totalAssigned}</div>
           </div>
-          <div className="flex-1 bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div className="flex-1 bg-info-bg border border-info-edge rounded-xl p-4">
             <div className="text-xs text-brand mb-1">Active (not yet complete)</div>
             <div className="text-2xl font-semibold text-brand">{activeForStaff}</div>
           </div>
@@ -407,7 +407,7 @@ export default function DealsPage() {
         <div className="flex gap-0.5 border border-gray-200 rounded-lg overflow-hidden bg-card flex-none">
           {([['list', 'List'], ['board', 'Board']] as const).map(([k, label]) => (
             <button key={k} onClick={() => setLayout(k)}
-              className={`text-sm px-3 py-2 ${layout === k ? 'bg-brand text-white font-medium' : 'text-gray-500 hover:bg-gray-50'}`}>
+              className={`text-sm px-3 py-2 ${layout === k ? 'bg-brand text-on-brand font-medium' : 'text-gray-500 hover:bg-gray-50'}`}>
               {label}
             </button>
           ))}
@@ -563,7 +563,7 @@ export default function DealsPage() {
                 </span>
               </Link>
               <button onClick={e => cloneDeal(e, deal)}
-                className="w-8 h-8 rounded-full border border-gray-200 bg-card flex items-center justify-center text-gray-300 hover:text-brand hover:border-blue-200 hover:bg-blue-50 flex-shrink-0 transition">
+                className="w-8 h-8 rounded-full border border-gray-200 bg-card flex items-center justify-center text-gray-300 hover:text-brand hover:border-info-edge hover:bg-info-bg flex-shrink-0 transition">
                 <Copy size={13} />
               </button>
               <button onClick={e => askDelete(e, deal)}
@@ -821,11 +821,11 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
         {(mode === 'existing' ? !!selectedClient : true) && (
           !showSecondApplicant ? (
             <button onClick={() => setShowSecondApplicant(true)}
-              className="text-sm text-brand border border-dashed border-brand rounded-lg px-4 py-1.5 hover:bg-blue-50 transition w-full mb-4">
+              className="text-sm text-brand border border-dashed border-brand rounded-lg px-4 py-1.5 hover:bg-info-bg transition w-full mb-4">
               + Add second applicant
             </button>
           ) : (
-            <div className="border border-blue-100 rounded-xl p-4 bg-blue-50/30 mb-4">
+            <div className="border border-info-edge rounded-xl p-4 bg-info-bg mb-4">
               <div className="flex justify-between items-center mb-2">
                 <p className="text-xs font-medium text-gray-500">Applicant 2</p>
                 <button onClick={() => { setShowSecondApplicant(false); setForm2({ first_name: '', last_name: '', email: '', phone: '', client_id: '' }); setApp2Mode('new'); setApp2Search('') }}
@@ -916,7 +916,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
           <button onClick={handleCreate} disabled={saving || (!selectedClient && !form.first_name) || !deal.assigned_broker}
-            className="px-4 py-2 text-sm bg-brand text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-40">
+            className="px-4 py-2 text-sm bg-brand text-on-brand rounded-lg font-medium hover:opacity-90 disabled:opacity-40">
             {saving ? 'Creating...' : 'Create deal'}
           </button>
         </div>

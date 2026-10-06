@@ -377,7 +377,7 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
             Next: {stage.label}
             {available.length > 1 && (
               <button onClick={() => { setPickedKey(''); setConfirming(false); setErr('') }}
-                className="font-normal text-[12px] text-[#2DBEFF] hover:underline">change</button>
+                className="font-normal text-[12px] text-brand-ink hover:underline">change</button>
             )}
             {prior && <span className="font-normal text-faint"> &mdash; checked against {stage.snap === 'settled' && snaps.formal ? 'formal approval' : 'lodgement'}</span>}
           </div>
@@ -452,7 +452,7 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
                   )
                 })}
                 <button onClick={() => setSplits([...splits, { label: '', amount: '', rate: '', type: 'P&I' }])}
-                  className="text-[12px] text-[#2DBEFF] self-start">+ Add split</button>
+                  className="text-[12px] text-brand-ink self-start">+ Add split</button>
               </div>
 
               <div className="flex items-center gap-4 text-[13px] mb-3">
@@ -474,7 +474,7 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
 
           <div className="flex items-center gap-3 flex-wrap">
             <button onClick={() => { setStUpdated(false); setConfirming(true) }}
-              className="bg-[#2DBEFF] text-white text-[13.5px] font-semibold rounded-lg px-4 py-2.5 hover:bg-[#25AEEC] transition">
+              className="bg-brand text-on-brand text-[13.5px] font-semibold rounded-lg px-4 py-2.5 hover:opacity-90 transition">
               {stage.verb}
             </button>
             <span className="text-[11.5px] text-faint">Opens a confirmation before anything is recorded.</span>
@@ -565,7 +565,7 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
                 className="text-[13px] text-muted border border-line rounded-lg px-4 py-2">Cancel</button>
               <button onClick={confirmIt} disabled={saving || (needsSalestrekker(stage?.key) && !stUpdated)}
                 title={needsSalestrekker(stage?.key) && !stUpdated ? 'Tick that SalesTrekker is updated first' : undefined}
-                className="bg-[#2DBEFF] text-white text-[13px] font-semibold rounded-lg px-4 py-2 disabled:opacity-50">
+                className="bg-brand text-on-brand text-[13px] font-semibold rounded-lg px-4 py-2 disabled:opacity-50">
                 {saving ? 'Saving...' : 'Confirm and record'}
               </button>
             </div>

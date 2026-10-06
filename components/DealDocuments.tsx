@@ -311,7 +311,7 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
           {filed.map(f => (
             <span key={f.id} className="inline-flex items-center gap-1 min-w-0">
               <button onClick={() => openFiled(f.file_path)}
-                className="text-[11.5px] text-[#2DBEFF] hover:underline truncate"
+                className="text-[11.5px] text-brand-ink hover:underline truncate"
                 title={f.file_name}>
                 {f.file_name}
               </button>

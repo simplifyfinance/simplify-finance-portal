@@ -184,7 +184,7 @@ export default function BoardFilters({
                               // you have already picked", which is the truth.
                               o.count === 0 && !o.picked ? 'opacity-40' : ''}`}>
                             <span className={`w-[15px] h-[15px] rounded border-[1.5px] flex items-center justify-center text-[9px] font-bold shrink-0 ${
-                              o.picked ? 'bg-brand-ink border-brand-ink text-white' : 'border-gray-300 text-transparent'}`}>
+                              o.picked ? 'bg-brand-ink border-brand-ink text-on-brand' : 'border-gray-300 text-transparent'}`}>
                               &#10003;
                             </span>
                             {which === 'broker' && (

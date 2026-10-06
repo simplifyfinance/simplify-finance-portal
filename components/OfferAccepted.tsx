@@ -327,7 +327,7 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
 
           <button onClick={() => setTypedDeposit(String(assessed))}
             className={`w-full text-left mt-2 rounded-lg px-3 py-2.5 border bg-card transition ${
-              num(typedDeposit) === assessed ? 'border-[#2DBEFF] ring-1 ring-[#2DBEFF]' : 'border-[#E7DECC] hover:border-[#D9C9A8]'}`}>
+              num(typedDeposit) === assessed ? 'border-brand ring-1 ring-brand' : 'border-[#E7DECC] hover:border-[#D9C9A8]'}`}>
             <div className="text-[13px] font-medium text-ink">The same &mdash; {money(assessed)}</div>
             <div className="text-[12px] text-muted mt-0.5">The amount they were already bringing.</div>
           </button>

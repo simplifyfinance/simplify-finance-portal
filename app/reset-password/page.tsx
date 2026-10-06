@@ -41,7 +41,7 @@ function ResetForm() {
       <div style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '40px', width: '100%', maxWidth: '360px', border: '1px solid #f0f0f0' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{ width: '48px', height: '48px', background: '#343333', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-            <span style={{ color: '#2DBEFF', fontWeight: 'bold', fontSize: '18px' }}>SF</span>
+            <span style={{ color: '#107EA8', fontWeight: 'bold', fontSize: '18px' }}>SF</span>
           </div>
           <h1 style={{ fontSize: '20px', fontWeight: '600', color: '#343333', margin: '0 0 4px' }}>Set your password</h1>
           <p style={{ fontSize: '14px', color: '#999', margin: 0 }}>Choose a password for your account</p>

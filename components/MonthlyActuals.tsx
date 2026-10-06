@@ -211,7 +211,7 @@ export default function MonthlyActuals() {
     </div>
   )
 
-  const inp = 'text-right text-[13px] border rounded-lg px-2.5 py-1.5 tabular-nums focus:outline-none focus:border-[#2DBEFF]'
+  const inp = 'text-right text-[13px] border rounded-lg px-2.5 py-1.5 tabular-nums focus:outline-none focus:border-brand'
   const tag = 'text-[10px] font-bold tracking-[.05em] uppercase rounded-full px-2 py-[2px]'
   const failed = status.startsWith('NOT ')
 

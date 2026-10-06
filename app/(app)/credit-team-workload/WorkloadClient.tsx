@@ -17,7 +17,7 @@ type DealRow = {
 type BrokerStat = { key: string; name: string; total: number; inBC: number; inLO: number; inCompliance: number; completed: number }
 type OfficerStat = { id: string; name: string; total: number; active: number; completed: number; avgBcDays: number | null; avgLoComplianceDays: number | null }
 
-const BAR_COLOR = '#2DBEFF'
+const BAR_COLOR = '#4FBBEA'
 const DONUT_COLORS = ['#EF9F27', '#378ADD', '#639922', '#888780']
 
 export default function WorkloadClient() {

@@ -244,8 +244,8 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           {editingName ? (
             <div className="flex items-center gap-2 mb-1">
               <input value={nameInput} onChange={e => setNameInput(e.target.value)}
-                className="text-lg font-semibold border border-[#2DBEFF] rounded-lg px-2 py-0.5" autoFocus />
-              <button onClick={saveDealName} className="text-xs font-medium text-white bg-[#2DBEFF] px-3 py-1.5 rounded-lg">Save</button>
+                className="text-lg font-semibold border border-brand rounded-lg px-2 py-0.5" autoFocus />
+              <button onClick={saveDealName} className="text-xs font-medium text-on-brand bg-brand px-3 py-1.5 rounded-lg">Save</button>
               <button onClick={() => { setEditingName(false); setNameInput(dealData.deal_name) }} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
             </div>
           ) : (
