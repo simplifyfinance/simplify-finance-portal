@@ -203,8 +203,21 @@ export default function PipelineSnapshot({ hist, dealRows, targets, brokers, bro
 
   return (
     <div className="mb-6">
+
+      {/* THREE SECTIONS, THREE BANDS. Fabio picked this on 6 Oct 2026 out of
+          four looks - "each section in a tinted band" - because the top of this
+          page is three separate answers stacked on one another and nothing was
+          telling you where one stopped and the next began.
+          *
+          * THE TINTS ARE THE STATUS COLOURS DOING THEIR USUAL JOB. Blue is
+          * being-worked-on, purple is waiting-on-somebody. They are not new
+          * colours and they are not decoration - a band in a status colour
+          * means the same thing here as it does on a deal card.
+          *
+          * NOTHING INSIDE A BAND MOVED. Same cards, same order, same figures. */}
+      <div className="bg-info-bg border border-info-edge rounded-2xl p-3.5 mb-3">
       <div className="flex items-baseline justify-between gap-3 flex-wrap mb-2.5">
-        <span className="text-[13px] font-semibold text-ink">
+        <span className="text-[13px] font-semibold text-info">
           The business · FY{String(fy).slice(2)} so far
         </span>
         <span className="text-[11.5px] text-faint">
@@ -228,7 +241,10 @@ export default function PipelineSnapshot({ hist, dealRows, targets, brokers, bro
         </div>
       )}
 
-      <div className="text-[13px] font-semibold text-ink mt-5 mb-2.5">This month</div>
+      </div>
+
+      <div className="bg-panel border border-line rounded-2xl p-3.5 mb-3">
+      <div className="text-[13px] font-semibold text-ink mb-2.5">This month</div>
       <div className="grid grid-cols-4 gap-3 max-[900px]:grid-cols-2">
         <MonthCell label="Lodged" value={L.month ? L.month.amount : null} target={L.monthTarget} />
         <MonthCell label="Settled" value={S.month ? S.month.amount : null} target={S.monthTarget} />
@@ -244,10 +260,12 @@ export default function PipelineSnapshot({ hist, dealRows, targets, brokers, bro
         </div>
       </div>
 
+      </div>
+
       {cards.length > 0 && (
-        <>
-          <div className="flex items-baseline justify-between gap-3 flex-wrap mt-5 mb-2.5">
-            <span className="text-[13px] font-semibold text-ink">Brokers · against their own target</span>
+        <div className="bg-waiting-bg border border-waiting-edge rounded-2xl p-3.5">
+          <div className="flex items-baseline justify-between gap-3 flex-wrap mb-2.5">
+            <span className="text-[13px] font-semibold text-waiting">Brokers · against their own target</span>
             <span className="text-[11.5px] text-faint">click a broker to filter everything below</span>
           </div>
 
@@ -312,7 +330,7 @@ export default function PipelineSnapshot({ hist, dealRows, targets, brokers, bro
               )
             })}
           </div>
-        </>
+        </div>
       )}
     </div>
   )
