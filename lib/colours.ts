@@ -69,17 +69,28 @@ export const SIDEBAR = '#0F1115'
 // of 100 apart, which is another way of writing "identical". Purple against the
 // same red measures 24.
 
-export const CHASE       = '#A3302A'
-export const CHASE_BG    = '#FDF3F2'
-export const CHASE_EDGE  = '#EBD1CE'
+// 6 Oct 2026. SIGNAL AND MINT, picked off the Pipeline drawing.
+//
+// The red is exactly what was picked - 4.98 to 1 on white, 4.54 on the page,
+// so it clears the 4.5 this file has always set for a word.
+//
+// THE GREEN IS THE PICKED MINT, DARKENED. The mint on the drawing was #1E9E74,
+// which reads at 3.39 - and `done` is not a decoration, it is the word
+// "Complete" on a tab and "ahead of target to date" on Pipeline. Nothing in the
+// test suite would have caught that. This is the same hue taken down until it
+// reads at 5.33 on white. The bright mint survives in DARK below, where the
+// contrast runs the other way and it is readable as picked.
+export const CHASE       = '#D32F2F'
+export const CHASE_BG    = '#FDEDED'
+export const CHASE_EDGE  = '#F5C9C9'
 
 export const WAITING      = '#5B3A9E'
 export const WAITING_BG   = '#F4F1FC'
 export const WAITING_EDGE = '#DACFF1'
 
-export const DONE      = '#117A45'
-export const DONE_BG   = '#EFFAF4'
-export const DONE_EDGE = '#BFE6D2'
+export const DONE      = '#137A55'
+export const DONE_BG   = '#EAFAF4'
+export const DONE_EDGE = '#B4E7D5'
 
 export const INFO      = '#107EA8'
 export const INFO_BG   = '#EAF7FE'
@@ -94,12 +105,12 @@ export const INFO_EDGE = '#BFE4F7'
 //
 // The chip inside a washed card goes white, or it vanishes into the card.
 
-export const CARD_CHASE        = '#FDF4F3'
-export const CARD_CHASE_EDGE   = '#EEC9C5'
+export const CARD_CHASE        = '#FDF2F2'
+export const CARD_CHASE_EDGE   = '#F2CBCB'
 export const CARD_WAITING      = '#F7F4FD'
 export const CARD_WAITING_EDGE = '#D7CCF0'
-export const CARD_DONE         = '#F2FBF6'
-export const CARD_DONE_EDGE    = '#C6E7D5'
+export const CARD_DONE         = '#F0FBF6'
+export const CARD_DONE_EDGE    = '#BFE7D6'
 
 // ------------------------------------------------------------- the surfaces
 //
@@ -208,13 +219,13 @@ export const DARK = {
   brandInk: BRAND_LIFT,
   info:     BRAND_LIFT,
 
-  chase:   '#FF8E7F',
+  chase:   '#FF8F8F',
   waiting: '#B49BF0',
-  done:    '#6EE7B7',
+  done:    '#64E8BB',
 
-  chaseBg:     '#3F2320', chaseEdge:   '#65362E',
+  chaseBg:     '#3D1D1D', chaseEdge:   '#642E2E',
   waitingBg:   '#282140', waitingEdge: '#45366E',
-  doneBg:      '#123328', doneEdge:    '#215C4B',
+  doneBg:      '#0B332A', doneEdge:    '#1A5C49',
   infoBg:      '#123143', infoEdge:    '#20556E',
 
   // THE RAMP TURNS OVER. In light, gray-50 is nearly white and gray-800 is
@@ -231,9 +242,9 @@ export const DARK = {
   gray700: '#D5DCE3',
   gray800: '#E9EDF1',  // = ink
 
-  cardChase:       '#33241F', cardChaseEdge:   '#60352C',
+  cardChase:       '#351F1F', cardChaseEdge:   '#5E3131',
   cardWaiting:     '#28213B', cardWaitingEdge: '#44356E',
-  cardDone:        '#1A2B25', cardDoneEdge:    '#245B49',
+  cardDone:        '#103026', cardDoneEdge:    '#1F5745',
 } as const
 
 // --------------------------------------------------------------- retired

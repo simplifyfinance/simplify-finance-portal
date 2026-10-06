@@ -20,28 +20,28 @@
   --color-on-brand: #0F1115;
   --color-sidebar: #0F1115;
 
-  --color-chase: #A3302A;
-  --color-chase-bg: #FDF3F2;
-  --color-chase-edge: #EBD1CE;
+  --color-chase: #D32F2F;
+  --color-chase-bg: #FDEDED;
+  --color-chase-edge: #F5C9C9;
 
   --color-waiting: #5B3A9E;
   --color-waiting-bg: #F4F1FC;
   --color-waiting-edge: #DACFF1;
 
-  --color-done: #117A45;
-  --color-done-bg: #EFFAF4;
-  --color-done-edge: #BFE6D2;
+  --color-done: #137A55;
+  --color-done-bg: #EAFAF4;
+  --color-done-edge: #B4E7D5;
 
   --color-info: #107EA8;
   --color-info-bg: #EAF7FE;
   --color-info-edge: #BFE4F7;
 
-  --color-card-chase: #FDF4F3;
-  --color-card-chase-edge: #EEC9C5;
+  --color-card-chase: #FDF2F2;
+  --color-card-chase-edge: #F2CBCB;
   --color-card-waiting: #F7F4FD;
   --color-card-waiting-edge: #D7CCF0;
-  --color-card-done: #F2FBF6;
-  --color-card-done-edge: #C6E7D5;
+  --color-card-done: #F0FBF6;
+  --color-card-done-edge: #BFE7D6;
 
   --color-page: #F7F4EF;
   --color-panel: #FFFFFF;
@@ -104,16 +104,16 @@
   --color-brand-ink: #6FD3FF;
   --color-info: #6FD3FF;
 
-  --color-chase: #FF8E7F;
+  --color-chase: #FF8F8F;
   --color-waiting: #B49BF0;
-  --color-done: #6EE7B7;
+  --color-done: #64E8BB;
 
-  --color-chase-bg: #3F2320;
-  --color-chase-edge: #65362E;
+  --color-chase-bg: #3D1D1D;
+  --color-chase-edge: #642E2E;
   --color-waiting-bg: #282140;
   --color-waiting-edge: #45366E;
-  --color-done-bg: #123328;
-  --color-done-edge: #215C4B;
+  --color-done-bg: #0B332A;
+  --color-done-edge: #1A5C49;
   --color-info-bg: #123143;
   --color-info-edge: #20556E;
 
@@ -129,12 +129,12 @@
   --color-gray-700: #D5DCE3;
   --color-gray-800: #E9EDF1;
 
-  --color-card-chase: #33241F;
-  --color-card-chase-edge: #60352C;
+  --color-card-chase: #351F1F;
+  --color-card-chase-edge: #5E3131;
   --color-card-waiting: #28213B;
   --color-card-waiting-edge: #44356E;
-  --color-card-done: #1A2B25;
-  --color-card-done-edge: #245B49;
+  --color-card-done: #103026;
+  --color-card-done-edge: #1F5745;
 }
 
 /* THE PAGE ITSELF. Was #F5F5F3 - a cool grey, chosen before the brand was -
