@@ -5,11 +5,23 @@ import { useState } from 'react'
 // apart under red-green colourblindness and 22.4 under normal vision, so the two
 // years stay apart for everyone. The three-year average is a dashed neutral line
 // because it is a reference, not a thing the business did.
+// THESE TWO ARE LEFT AS HEXES ON PURPOSE. 6 Oct 2026, when everything
+// else on this screen moved to a name.
+//
+// They were MEASURED AGAINST EACH OTHER - the note above says 12.1 dE
+// apart under red-green colourblindness. Move one of them to a palette
+// name and that number is no longer true, because brand-ink is not
+// #0E8FCB and nobody re-ran the validator. Two lines on one chart that a
+// colourblind reader cannot tell apart is a worse fault than a hex.
+//
+// They also have no dark-mode value, which is the real job here: run the
+// validator against the dark surface and give both a name. Its own piece
+// of work, with its own drawing.
 const NOW = '#0E8FCB'
 const PREV = '#B0567E'
-const QUIET = '#8C8375'
-const GRID = '#EDE7DD'
-const INK3 = '#A29889'
+const QUIET = 'var(--color-gray-400)'
+const GRID = 'var(--color-card-line)'
+const INK3 = 'var(--color-faint)'
 
 function money(v: number): string {
   const a = Math.abs(v)
@@ -117,7 +129,7 @@ export function ContextChart({ bars, metric, kind }: {
               <th className="text-right font-semibold py-1">3-year avg</th>
             </tr>
             {bars.map(b => (
-              <tr key={b.label} className="border-t border-[#F2EDE4]">
+              <tr key={b.label} className="border-t border-line-soft">
                 <td className="py-1 text-muted">{b.label}</td>
                 <td className="py-1 text-right">{money(b.value)}</td>
                 <td className="py-1 text-right text-faint">{b.avg === null ? '-' : money(b.avg)}</td>
@@ -148,7 +160,7 @@ export function ContextChart({ bars, metric, kind }: {
                     className="cursor-pointer"
                     {...on(`${b.label} \u2014 ${money(b.value)}${b.partial ? ' (still running)' : ''}`)} />
               <text x={x + bw / 2} y={base + 15} textAnchor="middle" fontSize={9.5}
-                    fill={b.selected ? '#2E2A26' : INK3} fontWeight={b.selected ? 650 : 400}>
+                    fill={b.selected ? 'var(--color-ink)' : INK3} fontWeight={b.selected ? 650 : 400}>
                 {kind === 'month' ? b.label.split(' ')[0] : b.label}
               </text>
               {b.selected && b.value > 0 && (
@@ -206,7 +218,7 @@ export function FyProgressChart({ now, prev, avg, nowLabel, prevLabel, metric }:
               <th className="text-right font-semibold py-1">{prevLabel}</th>
             </tr>
             {MONTHS.map((m, i) => (
-              <tr key={m} className="border-t border-[#F2EDE4]">
+              <tr key={m} className="border-t border-line-soft">
                 <td className="py-1 text-muted">{m}</td>
                 <td className="py-1 text-right">{cNow[i] === null ? '' : money(cNow[i] as number)}</td>
                 <td className="py-1 text-right text-faint">{cPrev[i] === null ? '' : money(cPrev[i] as number)}</td>
@@ -304,13 +316,13 @@ export function BrokerYearChart({ months, metric, name, fyLabel }: {
           </thead>
           <tbody>
             {months.map(m => (
-              <tr key={m.label} className="border-t border-[#F6F2EA]">
+              <tr key={m.label} className="border-t border-line-soft">
                 <td className="py-1 text-[12px] text-muted">{m.label}</td>
                 <td className="py-1 text-[12px] text-right tabular-nums text-muted">{m.target ? money(m.target) : '—'}</td>
                 <td className="py-1 text-[12px] text-right tabular-nums text-ink">{m.actual === null ? '—' : money(m.actual)}</td>
                 <td className={`py-1 text-[12px] text-right tabular-nums font-semibold ${
-                  m.actual === null || !m.target ? 'text-[#C9C1B4]'
-                    : m.actual >= m.target ? 'text-[#2E9E63]' : 'text-[#C4553B]'}`}>
+                  m.actual === null || !m.target ? 'text-faint'
+                    : m.actual >= m.target ? 'text-done' : 'text-chase'}`}>
                   {m.actual === null || !m.target ? '—' : Math.round(m.actual / m.target * 100) + '%'}
                 </td>
               </tr>
@@ -320,8 +332,8 @@ export function BrokerYearChart({ months, metric, name, fyLabel }: {
               <td className="py-1.5 text-[12px] text-right tabular-nums font-semibold">{yearTarget ? money(yearTarget) : '—'}</td>
               <td className="py-1.5 text-[12px] text-right tabular-nums font-semibold">{recorded.length ? money(actualTotal) : '—'}</td>
               <td className={`py-1.5 text-[12px] text-right tabular-nums font-semibold ${
-                !recorded.length || !targetToDate ? 'text-[#C9C1B4]'
-                  : actualTotal >= targetToDate ? 'text-[#2E9E63]' : 'text-[#C4553B]'}`}>
+                !recorded.length || !targetToDate ? 'text-faint'
+                  : actualTotal >= targetToDate ? 'text-done' : 'text-chase'}`}>
                 {!recorded.length || !targetToDate ? '—' : Math.round(actualTotal / targetToDate * 100) + '%'}
               </td>
             </tr>

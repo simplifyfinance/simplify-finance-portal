@@ -530,7 +530,7 @@ export default function PipelinePage() {
 
       {/* toolbar */}
       <div className="bg-page border border-line rounded-xl p-3 flex items-center gap-3 flex-wrap mb-4">
-        <div className="flex gap-1 bg-[#F1EDE6] rounded-lg p-[3px]">
+        <div className="flex gap-1 bg-line-soft rounded-lg p-[3px]">
           {(['lodged', 'settled'] as const).map(v => (
             <button key={v} onClick={() => setMetric(v)}
               className={`px-4 py-1.5 text-[13px] rounded-md font-medium transition ${metric === v ? 'bg-card text-ink shadow-sm' : 'text-muted'}`}>
@@ -539,7 +539,7 @@ export default function PipelinePage() {
           ))}
         </div>
 
-        <div className="w-px h-5 bg-[#E8E1D6]" />
+        <div className="w-px h-5 bg-line" />
 
         <div className="flex gap-1.5 flex-wrap">
           <button onClick={() => setScope('')}
@@ -554,7 +554,7 @@ export default function PipelinePage() {
           ))}
         </div>
 
-        <div className="w-px h-5 bg-[#E8E1D6]" />
+        <div className="w-px h-5 bg-line" />
 
         <div className="flex gap-3.5">
           {kinds.map(({ k, label }) => (
@@ -565,17 +565,17 @@ export default function PipelinePage() {
           ))}
         </div>
 
-        <div className="w-px h-5 bg-[#E8E1D6]" />
+        <div className="w-px h-5 bg-line" />
 
         <div className="relative" ref={pickRef}>
           <button onClick={() => setPickOpen(o => !o)}
-            className="bg-card border border-line rounded-lg px-3 py-1.5 flex items-center gap-2.5 hover:border-[#C9C0B1] transition text-left">
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#A29889" strokeWidth="1.5" strokeLinecap="round"><rect x="2.2" y="3.2" width="11.6" height="10.6" rx="2"/><path d="M2.2 6.4h11.6M5.4 2v2.4M10.6 2v2.4"/></svg>
+            className="bg-card border border-line rounded-lg px-3 py-1.5 flex items-center gap-2.5 hover:border-gray-300 transition text-left">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="var(--color-faint)" strokeWidth="1.5" strokeLinecap="round"><rect x="2.2" y="3.2" width="11.6" height="10.6" rx="2"/><path d="M2.2 6.4h11.6M5.4 2v2.4M10.6 2v2.4"/></svg>
             <span>
               <span className="block text-[13px] font-semibold text-ink leading-tight">{period?.label || 'Pick two dates'}</span>
               <span className="block text-[10.5px] text-faint">{period?.range || 'from and to'}</span>
             </span>
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#A29889" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={pickOpen ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'}/></svg>
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="var(--color-faint)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={pickOpen ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'}/></svg>
           </button>
 
           {pickOpen && (
@@ -597,7 +597,7 @@ export default function PipelinePage() {
                     half month cannot be reported honestly.
                   </span>
                   {fromM && toM && fromM > toM && (
-                    <span className="text-[11.5px] text-[#C4553B]">The first month is after the last.</span>
+                    <span className="text-[11.5px] text-chase">The first month is after the last.</span>
                   )}
                 </div>
               )}
@@ -620,7 +620,7 @@ export default function PipelinePage() {
                   const exists = periods.some(p => p.key === key)
                   return (
                     <button key={mn} disabled={!exists} onClick={() => choose(key)}
-                      className={`py-2 rounded-lg text-[12.5px] font-medium transition ${period?.key === key ? 'bg-ink text-page font-semibold' : exists ? 'text-muted hover:bg-line-soft' : 'text-[#D3CCC0] cursor-not-allowed'}`}>
+                      className={`py-2 rounded-lg text-[12.5px] font-medium transition ${period?.key === key ? 'bg-ink text-page font-semibold' : exists ? 'text-muted hover:bg-line-soft' : 'text-gray-300 cursor-not-allowed'}`}>
                       {mn}
                     </button>
                   )
@@ -630,7 +630,7 @@ export default function PipelinePage() {
                   const exists = periods.some(p => p.key === key)
                   return (
                     <button key={q} disabled={!exists} onClick={() => choose(key)}
-                      className={`py-2 rounded-lg text-[12.5px] font-medium transition ${period?.key === key ? 'bg-ink text-page font-semibold' : exists ? 'text-muted hover:bg-line-soft' : 'text-[#D3CCC0] cursor-not-allowed'}`}>
+                      className={`py-2 rounded-lg text-[12.5px] font-medium transition ${period?.key === key ? 'bg-ink text-page font-semibold' : exists ? 'text-muted hover:bg-line-soft' : 'text-gray-300 cursor-not-allowed'}`}>
                       Q{q}
                     </button>
                   )
@@ -649,7 +649,7 @@ export default function PipelinePage() {
                 ))}
               </div>
 
-              <div className="flex gap-1.5 flex-wrap border-t border-[#EDE7DD] mt-3 pt-2.5">
+              <div className="flex gap-1.5 flex-wrap border-t border-card-line mt-3 pt-2.5">
                 <button onClick={() => quick('month', 0)} className="bg-page border border-line rounded-full px-2.5 py-1 text-[11.5px] text-muted hover:bg-line-soft">This month</button>
                 <button onClick={() => quick('month', 1)} className="bg-page border border-line rounded-full px-2.5 py-1 text-[11.5px] text-muted hover:bg-line-soft">Last month</button>
                 <button onClick={() => quick('quarter', 0)} className="bg-page border border-line rounded-full px-2.5 py-1 text-[11.5px] text-muted hover:bg-line-soft">This quarter</button>
@@ -721,7 +721,7 @@ export default function PipelinePage() {
                   {inProgress && <span className="text-faint font-normal"> · still in progress{shape?.clipped ? `, compared on the first ${shape.n} month${shape.n === 1 ? '' : 's'} of each year` : ''}</span>}
                 </span>
                 {record?.isBest ? (
-                  <span className="inline-flex items-center gap-1.5 bg-[#F3F9F4] border border-done-edge text-done rounded-full px-2.5 py-1 text-[11.5px] font-semibold">
+                  <span className="inline-flex items-center gap-1.5 bg-done-bg border border-done-edge text-done rounded-full px-2.5 py-1 text-[11.5px] font-semibold">
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2l1.8 3.9 4.2.5-3.1 2.9.8 4.2L8 11.6 4.3 13.5l.8-4.2L2 6.4l4.2-.5z"/></svg>
                     {shape?.clipped ? 'Best start on record' : 'Best on record'}
                   </span>
@@ -880,8 +880,8 @@ function Tile({ label, value, sub, subTone, sub2, sub2Tone }:
     <div className="bg-card border border-gray-100 rounded-xl p-4">
       <div className="text-[10px] font-semibold tracking-[.09em] uppercase text-faint mb-1.5">{label}</div>
       <div className="text-2xl font-semibold text-ink tracking-tight">{value}</div>
-      {sub && <div className={`text-[11.5px] mt-0.5 ${subTone === 'up' ? 'text-[#2E9E63]' : subTone === 'down' ? 'text-[#C4553B]' : 'text-faint'}`}>{sub}</div>}
-      {sub2 && <div className={`text-[11.5px] mt-0.5 ${sub2Tone === 'up' ? 'text-[#2E9E63]' : sub2Tone === 'down' ? 'text-[#C4553B]' : 'text-faint'}`}>{sub2}</div>}
+      {sub && <div className={`text-[11.5px] mt-0.5 ${subTone === 'up' ? 'text-done' : subTone === 'down' ? 'text-chase' : 'text-faint'}`}>{sub}</div>}
+      {sub2 && <div className={`text-[11.5px] mt-0.5 ${sub2Tone === 'up' ? 'text-done' : sub2Tone === 'down' ? 'text-chase' : 'text-faint'}`}>{sub2}</div>}
     </div>
   )
 }
@@ -891,11 +891,11 @@ function Cmp({ label, value, base, tone, meter, meterFull }:
   return (
     <div className="px-4 py-3.5 border-r border-gray-100 last:border-r-0">
       <div className="text-[10px] font-semibold tracking-[.085em] uppercase text-faint">{label}</div>
-      <div className={`text-[19px] font-semibold tracking-tight mt-1.5 ${tone === 'up' ? 'text-[#2E9E63]' : tone === 'down' ? 'text-[#C4553B]' : 'text-ink'}`}>{value}</div>
+      <div className={`text-[19px] font-semibold tracking-tight mt-1.5 ${tone === 'up' ? 'text-done' : tone === 'down' ? 'text-chase' : 'text-ink'}`}>{value}</div>
       <div className="text-[11.5px] text-faint mt-0.5">{base}</div>
       {meter !== null && meter !== undefined && (
         <div className="h-[5px] bg-line-soft rounded-full mt-2 overflow-hidden">
-          <div className={`h-full rounded-full ${meterFull ? 'bg-[#2E9E63]' : 'bg-[#8C8375]'}`} style={{ width: meter + '%' }} />
+          <div className={`h-full rounded-full ${meterFull ? 'bg-done' : 'bg-faint'}`} style={{ width: meter + '%' }} />
         </div>
       )}
     </div>

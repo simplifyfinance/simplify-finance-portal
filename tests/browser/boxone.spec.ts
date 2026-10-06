@@ -191,9 +191,22 @@ test.describe('boxes two and three', () => {
       await field.press('Meta+a')
       await field.press('Delete')
 
-      // Each box has its own button; the one directly under this field.
-      await page.getByRole('button', { name: /Write from the deal/i })
-        .nth(box === 'two' ? 1 : 2).click()
+      // THE BUTTON DIRECTLY UNDER THIS FIELD, ASKED FOR THAT WAY.
+      //
+      // 6 Oct 2026, and this cost a ship. It used to count: .nth(1) for box two,
+      // .nth(2) for box three, out of every "Write from the deal" on the page.
+      //
+      // That worked while Compliance showed one section at a time - three boxes,
+      // three buttons. It is ONE PAGE now, so all five sections are in the DOM
+      // together and the robot's own log says it: "Needs & objectives: 9 Write
+      // from the deal button(s)". Index 1 of nine is not box two's button, so
+      // the robot filled somebody else's box and then complained that this one
+      // was empty. The portal was fine. The test was counting.
+      //
+      // Every other box in this file already walks forward from its own field.
+      // These two were the last ones counting, and lib/tests-ask-by-name.test.ts
+      // now fails the ship if a third one appears.
+      await field.locator('xpath=following::button[contains(., "Write from the deal")][1]').click()
       await expect(field).not.toHaveValue('', { timeout: 5_000 })
 
       const text = await field.inputValue()

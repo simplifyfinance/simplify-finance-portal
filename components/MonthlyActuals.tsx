@@ -216,12 +216,12 @@ export default function MonthlyActuals() {
   const failed = status.startsWith('NOT ')
 
   function pctOf(actual: number | null, target: number | null | undefined) {
-    if (actual === null || !target) return <span className="text-[11.5px] text-[#C9C1B4]">&mdash;</span>
+    if (actual === null || !target) return <span className="text-[11.5px] text-faint">&mdash;</span>
     const p = actual / target * 100
     return (
       <span className="text-[11.5px] tabular-nums whitespace-nowrap">
-        <span className={`font-semibold ${p >= 100 ? 'text-[#2E9E63]' : 'text-[#C4553B]'}`}>{Math.round(p)}%</span>
-        <span className="text-[#C9C1B4]"> of {compact(target)}</span>
+        <span className={`font-semibold ${p >= 100 ? 'text-done' : 'text-chase'}`}>{Math.round(p)}%</span>
+        <span className="text-faint"> of {compact(target)}</span>
       </span>
     )
   }
@@ -235,12 +235,12 @@ export default function MonthlyActuals() {
         mark deals through. The target sits beside each month, so you can see where the year stands as you type.
       </p>
 
-      <div className="border border-[#EDE7DD] rounded-xl bg-card overflow-hidden">
-        <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-[#F6F2EA] flex-wrap">
+      <div className="border border-card-line rounded-xl bg-card overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line-soft flex-wrap">
           <div className="flex gap-2 items-center flex-wrap text-[11.5px] text-muted">
             <span className={tag + ' bg-page border border-line text-muted'}>Spreadsheet</span> loaded from your file
             <span className={tag + ' bg-done-bg border border-done-edge text-done ml-2'}>Portal</span> counted from deals here
-            <span className={tag + ' bg-[#EAF7FE] border border-[#BFE6F9] text-[#0E8FCB] ml-2'}>Override</span> typed by hand
+            <span className={tag + ' bg-info-bg border border-info-edge text-brand-ink ml-2'}>Override</span> typed by hand
           </div>
           <div className="inline-flex items-center gap-2">
             <button onClick={() => setFy(f => f - 1)} className="w-[26px] h-[26px] rounded-lg border border-line flex items-center justify-center text-muted hover:bg-page">
@@ -257,23 +257,23 @@ export default function MonthlyActuals() {
           <table className="w-full">
             <thead>
               <tr className="text-[10px] font-semibold tracking-[.085em] uppercase text-faint">
-                <th className="text-left px-5 py-2.5 border-b border-[#F6F2EA]">Month</th>
-                <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">Deals lodged</th>
-                <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">Lodged</th>
-                <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">vs target</th>
-                <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">Deals settled</th>
-                <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">Settled</th>
-                <th className="text-right px-3 py-2.5 border-b border-[#F6F2EA]">vs target</th>
-                <th className="text-left px-3 py-2.5 border-b border-[#F6F2EA]">Source</th>
-                <th className="text-right px-5 py-2.5 border-b border-[#F6F2EA]"></th>
+                <th className="text-left px-5 py-2.5 border-b border-line-soft">Month</th>
+                <th className="text-right px-3 py-2.5 border-b border-line-soft">Deals lodged</th>
+                <th className="text-right px-3 py-2.5 border-b border-line-soft">Lodged</th>
+                <th className="text-right px-3 py-2.5 border-b border-line-soft">vs target</th>
+                <th className="text-right px-3 py-2.5 border-b border-line-soft">Deals settled</th>
+                <th className="text-right px-3 py-2.5 border-b border-line-soft">Settled</th>
+                <th className="text-right px-3 py-2.5 border-b border-line-soft">vs target</th>
+                <th className="text-left px-3 py-2.5 border-b border-line-soft">Source</th>
+                <th className="text-right px-5 py-2.5 border-b border-line-soft"></th>
               </tr>
             </thead>
             <tbody>
               {months.map(mm => {
                 const over = mm.src === 'override'
-                const ring = over ? ' border-[#BFE6F9] bg-[#EAF7FE]' : ' border-line'
+                const ring = over ? ' border-info-edge bg-info-bg' : ' border-line'
                 return (
-                  <tr key={mm.month} className="border-b border-[#F6F2EA] last:border-0 hover:bg-[#FCFAF6]">
+                  <tr key={mm.month} className="border-b border-line-soft last:border-0 hover:bg-gray-50">
                     <td className="px-5 py-2 text-[13px] font-medium text-muted">
                       {mm.name} {String(fy - (mm.mi >= 7 ? 1 : 0))}
                     </td>
@@ -300,20 +300,20 @@ export default function MonthlyActuals() {
                     })}
                     <td className="px-3 py-2">
                       {mm.src === 'spreadsheet' && <span className={tag + ' bg-page border border-line text-muted'}>Spreadsheet</span>}
-                      {mm.src === 'override' && <span className={tag + ' bg-[#EAF7FE] border border-[#BFE6F9] text-[#0E8FCB]'}>Override</span>}
+                      {mm.src === 'override' && <span className={tag + ' bg-info-bg border border-info-edge text-brand-ink'}>Override</span>}
                       {mm.src === 'portal' && <span className={tag + ' bg-done-bg border border-done-edge text-done'}>Portal</span>}
-                      {mm.src === 'none' && <span className="text-[11.5px] text-[#C9C1B4]">{mm.future ? 'not started' : 'nothing recorded'}</span>}
+                      {mm.src === 'none' && <span className="text-[11.5px] text-faint">{mm.future ? 'not started' : 'nothing recorded'}</span>}
                     </td>
                     <td className="px-5 py-2 text-right whitespace-nowrap">
                       {mm.p && (
                         <button onClick={() => pullFromPortal(mm.month)} disabled={busy}
-                          className="text-[11.5px] text-[#0E8FCB] hover:underline mr-3">
+                          className="text-[11.5px] text-brand-ink hover:underline mr-3">
                           Use portal ({compact(mm.p.lodged)})
                         </button>
                       )}
                       {mm.row && (
                         <button onClick={() => release(mm.month)} disabled={busy}
-                          className="text-[11.5px] text-faint hover:text-[#C4553B]">Release</button>
+                          className="text-[11.5px] text-faint hover:text-chase">Release</button>
                       )}
                     </td>
                   </tr>
@@ -321,7 +321,7 @@ export default function MonthlyActuals() {
               })}
             </tbody>
             <tfoot>
-              <tr className="border-t border-line bg-[#FDFCFA]">
+              <tr className="border-t border-line bg-gray-50">
                 <td className="px-5 py-3 text-[13px] font-semibold text-ink">FY{String(fy).slice(2)} so far</td>
                 <td className="px-3 py-3 text-right text-[13px] font-semibold tabular-nums">{totals.dl || '—'}</td>
                 <td className="px-3 py-3 text-right text-[13px] font-semibold tabular-nums">{totals.la ? compact(totals.la) : '—'}</td>
@@ -339,8 +339,8 @@ export default function MonthlyActuals() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-t border-[#F6F2EA] bg-[#FDFCFA] flex-wrap">
-          <span className={`text-[12px] ${failed ? 'text-[#C4553B] font-medium' : 'text-faint'}`}>
+        <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-t border-line-soft bg-gray-50 flex-wrap">
+          <span className={`text-[12px] ${failed ? 'text-chase font-medium' : 'text-faint'}`}>
             {status || (dirty ? 'Unsaved changes.' : 'Clearing every box on a row and saving releases that month.')}
           </span>
           <button onClick={save} disabled={!dirty || busy}
