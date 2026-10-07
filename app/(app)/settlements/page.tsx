@@ -45,12 +45,48 @@ function Chip({ tone, children }: { tone: Tone; children: React.ReactNode }) {
   const c = {
     ok: 'bg-done-bg border-done-edge text-done',
     warn: 'bg-info-bg border-info-edge text-info',
-    stop: 'bg-chase-bg border-[#EFCFC5] text-[#C4553B]',
+    stop: 'bg-chase-bg border-chase-edge text-chase',
     flat: 'bg-page border-line text-muted',
-    cy:   'bg-[#EAF7FE] border-[#BFE6F9] text-[#0E8FCB]',
+    cy:   'bg-info-bg border-info-edge text-brand-ink',
   }[tone]
   return <span className={`inline-block text-[10px] font-bold uppercase tracking-[.04em] border rounded-full px-2 py-[2px] mr-1.5 whitespace-nowrap ${c}`}>{children}</span>
 }
+
+// A FINISHED CHORE IS NOT NEWS.
+//
+// 6 Oct 2026. A settled row carried Review sent, Compliance done and Paid as
+// three green chips - three pills shouting that three jobs are over - on the
+// same screen as a row whose At risk chip, the one somebody has to act on, was
+// no louder. Fabio picked B: the finished ones become small ticks and the
+// colour is kept for what is NOT done.
+//
+// Nothing is removed and nothing is reordered. Review not sent is still a chip,
+// because that one is still a job.
+function Ticks({ of }: { of: string[] }) {
+  if (!of.length) return null
+  return (
+    <span className="text-[10px] text-faint whitespace-nowrap mr-1.5 inline-block">
+      {of.map((w, i) => (
+        <Fragment key={w}>{i > 0 && ' · '}<b className="text-done">{'✓'}</b> {w}</Fragment>
+      ))}
+    </span>
+  )
+}
+
+// THE BLOCK WEARS ITS MEANING ON A STRIP ACROSS THE TOP.
+//
+// 6 Oct 2026, picked B. The three blocks were three identical white cards with
+// a small grey label floating above each - and once you scrolled, a confirmed
+// settlement and a settled one looked the same. The strip carries the colour,
+// the rows stay white, and the title travels with the card.
+//
+// Blue, purple, green are not decoration: they are the three meanings this
+// portal already uses everywhere - waiting on us, waiting on the bank, done.
+const BLOCK_STRIP = {
+  info:    'bg-info-bg border-info-edge text-info',
+  waiting: 'bg-waiting-bg border-waiting-edge text-waiting',
+  done:    'bg-done-bg border-done-edge text-done',
+} as const
 
 const GRID = 'grid grid-cols-[78px_1.6fr_1fr_1.05fr_96px_1.5fr_24px] gap-2.5 items-center'
 
@@ -233,8 +269,8 @@ export default function SettlementsPage() {
     const isOpen = open === d.id
     const refi = isRefinance(d)
     return (
-      <div className="border-b border-[#F6F2EA] last:border-0">
-        <button onClick={() => startEdit(d)} className={`w-full text-left ${GRID} px-4 py-2.5 text-[13px] hover:bg-[#FCFAF6] transition`}>
+      <div className="border-b border-line-soft last:border-0">
+        <button onClick={() => startEdit(d)} className={`w-full text-left ${GRID} px-4 py-2.5 text-[13px] hover:bg-gray-50 transition`}>
           <span className="tabular-nums text-muted">
             {d.confirmed_settlement_date ? <b className="text-ink">{dayLabel(date)}</b> : dayLabel(date)}
           </span>
@@ -256,18 +292,20 @@ export default function SettlementsPage() {
             {d.settlement_step && <Chip tone="cy">{stepLabel(d.settlement_step, d.transaction_type)}</Chip>}
             {refi && d.discharge_ready === false && <Chip tone="warn">Chasing discharge</Chip>}
             {refi && d.discharge_ready === true && <Chip tone="ok">Discharge ready</Chip>}
-            {d.settled_at && d.review_sent && <Chip tone="ok">Review sent</Chip>}
             {d.settled_at && !d.review_sent && <Chip tone="warn">Review not sent</Chip>}
-            {d.settled_at && d.compliance_finalised && <Chip tone="ok">Compliance done</Chip>}
-            {d.settled_at && d.commission_paid && <Chip tone="ok">Paid</Chip>}
+            {d.settled_at && <Ticks of={[
+              ...(d.review_sent ? ['review'] : []),
+              ...(d.compliance_finalised ? ['compliance'] : []),
+              ...(d.commission_paid ? ['paid'] : []),
+            ]} />}
             <LoanIdChip deal={d} />
             {a && !d.settled_at && <Chip tone={a.level === 'stale' ? 'stop' : 'warn'}>{a.why}</Chip>}
           </span>
-          <span className="text-[#C9C1B4] text-[11px] text-center">{isOpen ? '⌄' : '›'}</span>
+          <span className="text-faint text-[11px] text-center">{isOpen ? '⌄' : '›'}</span>
         </button>
 
         {isOpen && (
-          <div className="px-4 pb-4 pt-1 bg-[#FDFCFA] border-t border-[#F6F2EA]">
+          <div className="px-4 pb-4 pt-1 bg-gray-50 border-t border-line-soft">
             <div className="grid grid-cols-3 gap-3 max-[900px]:grid-cols-1">
               <F label="Expected settlement">
                 <input type="date" value={draft.expected_settlement_date || ''}
@@ -366,9 +404,9 @@ export default function SettlementsPage() {
               <button onClick={() => setOpen(null)} className="text-[12px] text-faint hover:text-ink">Cancel</button>
               {!d.settled_at && (
                 <button onClick={() => pushToNextMonth(d)} disabled={busy}
-                  className="text-[12px] text-faint hover:text-[#C4553B]">No chance this month → push</button>
+                  className="text-[12px] text-faint hover:text-chase">No chance this month → push</button>
               )}
-              <Link href={`/deals/${d.id}`} className="text-[12px] text-[#0E8FCB] hover:underline ml-auto">Open the deal ›</Link>
+              <Link href={`/deals/${d.id}`} className="text-[12px] text-brand-ink hover:underline ml-auto">Open the deal ›</Link>
             </div>
           </div>
         )}
@@ -377,15 +415,16 @@ export default function SettlementsPage() {
   }
 
   const inp = 'w-full text-[12.5px] border border-line rounded-lg px-2.5 py-1.5 bg-card focus:outline-none focus:border-brand'
-  function Group({ title, sub, rows }: { title: string; sub: string; rows: any[] }) {
+  function Group({ title, sub, rows, tone }:
+    { title: string; sub: string; rows: any[]; tone: keyof typeof BLOCK_STRIP }) {
     return (
       <>
-        <div className="flex items-baseline gap-3 mt-6 mb-2 flex-wrap">
-          <span className="text-[11px] font-bold uppercase tracking-[.08em] text-faint">{title}</span>
-          <span className="text-[11.5px] text-[#C9C1B4]">{sub}</span>
-        </div>
-        <div className="bg-card border border-[#EDE7DD] rounded-xl overflow-hidden">
-          <div className={`${GRID} px-4 py-2 text-[10px] font-semibold tracking-[.085em] uppercase text-faint border-b border-[#F6F2EA]`}>
+        <div className="bg-card border border-card-line rounded-xl overflow-hidden mt-6">
+          <div className={`flex items-baseline gap-3 flex-wrap px-4 py-2 border-b ${BLOCK_STRIP[tone]}`}>
+            <span className="text-[10.5px] font-bold uppercase tracking-[.08em]">{title}</span>
+            <span className="text-[11.5px] opacity-80">{sub}</span>
+          </div>
+          <div className={`${GRID} px-4 py-2 text-[10px] font-semibold tracking-[.085em] uppercase text-faint border-b border-line-soft`}>
             <span>Settles</span><span>Deal</span><span>Lender</span><span>Purpose</span>
             <span className="text-right">Amount</span><span>State</span><span />
           </div>
@@ -412,7 +451,7 @@ export default function SettlementsPage() {
         <button onClick={() => setMonth(addMonths(month, -1))} className="w-[26px] h-[26px] rounded-lg border border-line bg-card text-muted">‹</button>
         <span className="text-[13.5px] font-semibold min-w-[126px] text-center">{monthLabel(month)}</span>
         <button onClick={() => setMonth(addMonths(month, 1))} className="w-[26px] h-[26px] rounded-lg border border-line bg-card text-muted">›</button>
-        <span className="w-px h-5 bg-[#E8E1D6]" />
+        <span className="w-px h-5 bg-line" />
         <div className="flex gap-1.5 flex-wrap">
           <button onClick={() => setScope('')} className={pill(scope === '')}>All brokers</button>
           {brokers.map(b => (
@@ -429,20 +468,20 @@ export default function SettlementsPage() {
 
       {msg && (
         <div className={`rounded-xl px-4 py-2.5 mb-3 text-[12.5px] border ${msg.startsWith('NOT SAVED')
-          ? 'bg-red-50 border-red-200 text-red-700 font-medium' : 'bg-card border-[#EDE7DD] text-muted'}`}>{msg}</div>
+          ? 'bg-chase-bg border-chase-edge text-chase font-medium' : 'bg-card border-card-line text-muted'}`}>{msg}</div>
       )}
-      {loadError && <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm mb-3">{loadError}</div>}
+      {loadError && <div className="bg-chase-bg border border-chase-edge text-chase rounded-xl px-4 py-3 text-sm mb-3">{loadError}</div>}
 
       {view === 'attention' ? (
         <>
           <div className="flex items-baseline gap-3 mb-2 flex-wrap">
             <span className="text-[11px] font-bold uppercase tracking-[.08em] text-faint">Needs attention</span>
-            <span className="text-[11.5px] text-[#C9C1B4]">
+            <span className="text-[11.5px] text-faint">
               no update in {ATTENTION.staleBusinessDays} business days, within {ATTENTION.closeBusinessDays} of settling,
               or a purchase whose funds to complete are unchecked
             </span>
           </div>
-          <div className="bg-card border border-[#EDE7DD] rounded-xl overflow-hidden">
+          <div className="bg-card border border-card-line rounded-xl overflow-hidden">
             {attention.length === 0
               ? <div className="px-4 py-8 text-center text-[13px] text-faint">Nothing needs chasing. </div>
               : attention
@@ -462,11 +501,11 @@ export default function SettlementsPage() {
               sub="click to see them" onClick={() => setView('attention')} />
           </div>
 
-          {Group({ title: 'Confirmed to settle', rows: sorted(groups.confirmed),
+          {Group({ title: 'Confirmed to settle', tone: 'info', rows: sorted(groups.confirmed),
             sub: `${groups.confirmed.length} deals · ${compact(confirmedVol || null)} · formally approved` })}
-          {Group({ title: 'Submitted, not yet formal', rows: sorted(groups.forecast),
+          {Group({ title: 'Submitted, not yet formal', tone: 'waiting', rows: sorted(groups.forecast),
             sub: `${groups.forecast.length} deals · ${compact(forecastVol || null)} · refinances lodged and still possible this month` })}
-          {Group({ title: 'Settled this month', rows: sorted(groups.settled),
+          {Group({ title: 'Settled this month', tone: 'done', rows: sorted(groups.settled),
             sub: `${groups.settled.length} deals · ${compact(settledVol || null)} · reviews, compliance and commission` })}
         </>
       )}
@@ -486,16 +525,16 @@ function Tile({ label, value, sub, tone, meter, onClick }:
     <>
       <div className="text-[10px] font-bold tracking-[.09em] uppercase text-faint mb-1.5">{label}</div>
       <div className="text-2xl font-semibold text-ink tracking-tight">{value}</div>
-      {sub && <div className={`text-[11.5px] mt-0.5 ${tone === 'up' ? 'text-[#2E9E63]' : tone === 'down' ? 'text-[#C4553B]' : 'text-faint'}`}>{sub}</div>}
+      {sub && <div className={`text-[11.5px] mt-0.5 ${tone === 'up' ? 'text-done' : tone === 'down' ? 'text-chase' : 'text-faint'}`}>{sub}</div>}
       {meter !== null && meter !== undefined && (
         <div className="h-[5px] bg-line-soft rounded-full mt-2 overflow-hidden">
-          <div className={`h-full rounded-full ${meter >= 100 ? 'bg-[#2E9E63]' : 'bg-[#8C8375]'}`} style={{ width: Math.min(100, meter) + '%' }} />
+          <div className={`h-full rounded-full ${meter >= 100 ? 'bg-done' : 'bg-faint'}`} style={{ width: Math.min(100, meter) + '%' }} />
         </div>
       )}
     </>
   )
-  const cls = 'bg-card border border-[#EDE7DD] rounded-xl p-4 text-left'
+  const cls = 'bg-card border border-card-line rounded-xl p-4 text-left'
   return onClick
-    ? <button onClick={onClick} className={cls + ' hover:border-[#C9C0B1] transition'}>{inner}</button>
+    ? <button onClick={onClick} className={cls + ' hover:border-gray-300 transition'}>{inner}</button>
     : <div className={cls}>{inner}</div>
 }
