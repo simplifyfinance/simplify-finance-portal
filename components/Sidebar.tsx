@@ -10,6 +10,7 @@ import { can, roleLabel as formatRoleLabel } from '@/lib/permissions'
 import OneMark, { MARK_WIDTH } from '@/components/OneMark'
 import ThemeSwitch from '@/components/ThemeSwitch'
 import NewVersion from '@/components/NewVersion'
+import { navStarted, onBusyChange, isBusy } from '@/components/useBusy'
 
 const nav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -102,6 +103,12 @@ export default function Sidebar() {
     })
   }
 
+  // THE MARK RUNS WHILE THE PORTAL IS FETCHING.
+  // It is the top of the column you have just clicked in, so when the thing
+  // that is slow is a nav item, this is already where you are looking.
+  const [busy, setBusy] = useState(false)
+  useEffect(() => onBusyChange(() => setBusy(isBusy())), [])
+
   const [hash, setHash] = useState('')
   useEffect(() => {
     const read = () => setHash(window.location.hash.slice(1))
@@ -121,7 +128,7 @@ export default function Sidebar() {
     return (
       <div className="mb-1.5">
         {subs.map(sx => (
-          <button key={sx.key} onClick={() => { window.location.hash = sx.key }}
+          <button key={sx.key} onClick={() => { navStarted(); window.location.hash = sx.key }}
             className={`block w-full text-left pl-[31px] pr-2.5 py-1.5 rounded-md text-xs transition-colors ${
               active === sx.key ? 'bg-white/10 text-white font-semibold' : 'text-white/45 hover:text-white hover:bg-white/5'
             }`}>
@@ -142,7 +149,7 @@ export default function Sidebar() {
           was drawn against this exact value, so the two move together or not at
           all. 2 Oct 2026, replacing #343333. */}
       <div className="px-4 pt-[18px] pb-4 border-b border-white/[0.09]">
-        <OneMark width={MARK_WIDTH.sidebar} tone="dark" className="block" />
+        <OneMark width={MARK_WIDTH.sidebar} tone="dark" busy={busy} className="block" />
       </div>
 
       <nav className="flex-1 px-2 py-3">
@@ -166,8 +173,14 @@ export default function Sidebar() {
           const open = hasSubs && path.startsWith(item.href) && !collapsed.has(item.href)
           return (
             <div key={item.href}>
+              {/* PRESSED IS A STATE, AND IT USED TO HAVE NO MARK AT ALL.
+                  Nothing on this item changed until the page it points at had
+                  loaded its data, so for a second or two a press looked like a
+                  miss - and a person who thinks they missed presses again, and
+                  loads the whole thing twice. navStarted() puts the bar up and
+                  sets the mark running in the same tick as the click. */}
               <Link href={item.href} className={linkClass}
-                onClick={() => { if (!hasSubs) history.replaceState(null, '', item.href); setHash('') }}>
+                onClick={() => { navStarted(); if (!hasSubs) history.replaceState(null, '', item.href); setHash('') }}>
                 <Icon size={15} />
                 {item.label}
                 {hasSubs && (

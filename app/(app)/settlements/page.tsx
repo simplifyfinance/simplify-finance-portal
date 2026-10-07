@@ -13,6 +13,7 @@ import {
   stepLabel, STEPS, stepIsOn, stepPatch, monthOf, addMonths, monthLabel, businessDaysBetween,
   type SettlementState, type SettlementStep,
 } from '@/lib/settlement'
+import { useBusyWhile } from '@/components/useBusy'
 
 const num = (v: any): number | null => {
   if (v === null || v === undefined || v === '') return null
@@ -251,6 +252,12 @@ export default function SettlementsPage() {
     await load()
     setMsg(`${d.deal_name} moved to ${monthLabel(addMonths(monthOf(date) || month, 1))}.`)
   }
+
+  // The bar at the top of the page says this screen is fetching. The shape
+
+  // it will settle into is still to be drawn - see components/Skeleton.tsx.
+
+  useBusyWhile(loading)
 
   if (loading) return <div className={`${PAGE_WIDE} text-sm text-faint`}>Loading settlements…</div>
   if (allowed === false) return (

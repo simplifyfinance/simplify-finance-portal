@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Sidebar from "@/components/Sidebar";
+import TopProgress from "@/components/TopProgress";
 
 // EVERYTHING BEHIND THE LOGIN IS ONE. Nothing outside it is.
 //
@@ -26,6 +27,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // ours. See "the grey it wears" in lib/colours.ts.
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       <Sidebar />
+      {/* THE BAR GOES HERE AND NOWHERE ELSE.
+          It is fixed to the window rather than drawn inside <main>, which
+          scrolls - a bar that slides away the moment you scroll is a bar you
+          will not see on exactly the long pages that take longest to load. */}
+      <TopProgress />
       <main className="flex-1 overflow-y-auto overscroll-x-contain">
         {children}
       </main>

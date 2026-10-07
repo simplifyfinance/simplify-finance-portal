@@ -14,6 +14,7 @@ import { phaseOf, PHASE_LABEL } from '@/lib/deal-phase'
 // comma-formatted. Same fault the deal summary PDF had. See lib/money.ts.
 import { moneyOrBlank, readMoney} from '@/lib/money'
 import { auDate, heldLine, settledSince, outOfDateLine, sourceLine } from '@/lib/client-position'
+import { useBusyWhile } from '@/components/useBusy'
 
 export default function ClientProfilePage() {
   const params = useParams()
@@ -46,6 +47,12 @@ export default function ClientProfilePage() {
     }
     load()
   }, [clientId])
+
+  // The bar at the top of the page says this screen is fetching. The shape
+
+  // it will settle into is still to be drawn - see components/Skeleton.tsx.
+
+  useBusyWhile(loading)
 
   if (loading) return <div className="p-8 text-sm text-gray-400">Loading...</div>
   if (!client) return <div className="p-8 text-sm text-gray-400">Client not found</div>

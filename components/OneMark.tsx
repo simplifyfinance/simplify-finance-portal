@@ -25,10 +25,14 @@ type Props = {
   tone: MarkTone
   /** Leave the "by Simplify" line off. Only for spaces too small to read it. */
   withBy?: boolean
+  /** Run a ring around the dot, because the portal is fetching something.
+   *  NOT a style choice - it is on while something is loading and off when it
+   *  is not. See components/useBusy.ts. */
+  busy?: boolean
   className?: string
 }
 
-export default function OneMark({ width, tone, withBy = true, className }: Props) {
+export default function OneMark({ width, tone, withBy = true, busy = false, className }: Props) {
   const g = oneMarkGeometry(W, SCALE.screen)
   const art = ART[tone]
 
@@ -61,7 +65,32 @@ export default function OneMark({ width, tone, withBy = true, className }: Props
         <image href={art.by} x={round3(g.by.x)} y={round3(g.by.y)}
                width={round3(g.by.w)} height={round3(g.by.h)} />
       )}
-      <circle cx={round3(g.dot.cx)} cy={round3(g.dot.cy)} r={round3(g.dot.r)} fill={DOT_COLOUR} />
+      {/* THE DOT IS THE ONLY PART OF THIS MARK THAT CAN MOVE.
+          7 Oct 2026. Fabio asked for the O to load. It cannot: the wordmark is
+          a flat PNG, so animating the letter would mean re-cutting the master
+          artwork. The dot is drawn here, in code, and it is already the piece
+          that carries meaning - its colour is the division identifier. So the
+          dot is what loads.
+
+          While busy it dims to a quarter and a short arc runs round it at the
+          dot's own radius, so the mark keeps its exact size and the rest of
+          the left-hand column does not shift by a pixel. The stroke is a third
+          of the diameter, which is the heaviest a ring can be at this size and
+          still read as a ring rather than a thicker dot. */}
+      {busy ? (
+        <g>
+          <circle cx={round3(g.dot.cx)} cy={round3(g.dot.cy)} r={round3(g.dot.r)}
+                  fill={DOT_COLOUR} opacity="0.25" />
+          <circle cx={round3(g.dot.cx)} cy={round3(g.dot.cy)} r={round3(g.dot.r)}
+                  fill="none" stroke={DOT_COLOUR} strokeWidth={round3(g.dot.d / 3)}
+                  strokeLinecap="round"
+                  strokeDasharray={`${round3(g.dot.r * 1.6)} ${round3(g.dot.r * 4.7)}`}
+                  style={{ transformOrigin: `${round3(g.dot.cx)}px ${round3(g.dot.cy)}px`,
+                           animation: 'ringrun .9s linear infinite' }} />
+        </g>
+      ) : (
+        <circle cx={round3(g.dot.cx)} cy={round3(g.dot.cy)} r={round3(g.dot.r)} fill={DOT_COLOUR} />
+      )}
     </svg>
   )
 }

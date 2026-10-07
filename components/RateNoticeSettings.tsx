@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite } from '@/lib/checked-write'
+import { useBusyWhile } from '@/components/useBusy'
+import { SkelTile, SkelPanel } from '@/components/Skeleton'
 import {
   readNotice, defaultReviewBy, stillCarrying, notAnnounced, allPassedOn, isOverdue,
   nagLine, announcedFrom, hasTakenEffect, forNextDecision,
@@ -123,7 +125,28 @@ export default function RateNoticeSettings() {
     } : x))
   }
 
-  if (loading) return <p className="text-[13px] text-faint">Loading&hellip;</p>
+  useBusyWhile(loading)
+  // The two columns this page settles into: the controls on the left, the
+  // counts and the three bank panels on the right. 6 Oct's rebuild gave it
+  // this shape, so the skeleton has to carry the same one.
+  if (loading) return (
+    <div className="grid grid-cols-[420px_minmax(0,1fr)] gap-5 items-start max-[1150px]:grid-cols-1" aria-busy="true">
+      <div className="space-y-3">
+        <SkelPanel lines={3} />
+        <SkelPanel lines={5} />
+        <SkelPanel lines={2} />
+      </div>
+      <div>
+        <div className="grid grid-cols-4 gap-2.5 mb-3 max-[900px]:grid-cols-2">
+          {[0, 1, 2, 3].map(i => <SkelTile key={i} />)}
+        </div>
+        <div className="space-y-3">
+          <SkelPanel lines={4} />
+          <SkelPanel lines={4} />
+        </div>
+      </div>
+    </div>
+  )
 
   const waiting = stillCarrying(lenders, notice)
   const silent = notAnnounced(lenders, notice)

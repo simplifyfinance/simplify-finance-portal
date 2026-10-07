@@ -23,6 +23,7 @@ import { allSections, copyableCards, copyTextOf, outstanding,
 import { applicantNamesOf } from '@/lib/applicants'
 import { lenderOnTheDeal } from '@/lib/client-agreement'
 import { money, readMoney } from '@/lib/money'
+import { useBusyWhile } from '@/components/useBusy'
 
 type Shade = { edge: string; tint: string; ink: string }
 const SHADES: Record<Accent, Shade> = {
@@ -123,6 +124,12 @@ export default function HandoverPage() {
     el.animate?.([{ boxShadow: '0 0 0 0 rgba(45,190,255,.55)' }, { boxShadow: '0 0 0 14px rgba(45,190,255,0)' }],
                  { duration: 700 })
   }
+
+  // The bar at the top of the page says this screen is fetching. The shape
+
+  // it will settle into is still to be drawn - see components/Skeleton.tsx.
+
+  useBusyWhile(loading)
 
   if (loading) return <div className="p-8 text-[13px] text-faint">Loading the handover…</div>
   if (!deal) return <div className="p-8 text-[13px] text-chase">{problem || 'Deal not found.'}</div>

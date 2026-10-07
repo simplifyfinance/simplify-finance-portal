@@ -8,6 +8,7 @@ import { reasonsFor, describeAnswer, answerFor, openCount, type Answer } from '@
 import { TREATMENTS, signatureOf, upsertRule, type TreatAs, type PayerRule } from '@/lib/statement-overrides'
 import { combine, personOf, peopleByAccount, removalCost } from '@/lib/statement-combine'
 import { analyse } from '@/lib/statement-analysis'
+import { useBusyWhile } from '@/components/useBusy'
 
 // The Statements tab. Everything on screen comes from ONE analysis over ONE
 // ledger, so a card and the transactions behind it can never drift.
@@ -879,6 +880,12 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
   // What has moved in Settings since this analysis ran. Empty means the findings
   // on screen are what the current rules would produce.
   const stale = upload && liveRules !== null ? rulesChanged(upload.rules, liveRules) : []
+
+  // The bar at the top of the page says this screen is fetching. The shape
+
+  // it will settle into is still to be drawn - see components/Skeleton.tsx.
+
+  useBusyWhile(loading)
 
   if (loading) return <p className="text-[13px] text-muted py-6">Loading statements…</p>
 

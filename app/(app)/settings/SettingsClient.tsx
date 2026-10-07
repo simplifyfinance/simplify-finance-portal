@@ -11,6 +11,7 @@ import AiExpenses from '@/components/AiExpenses'
 import { checkedWrite, checkedWriteAllowingNone } from '@/lib/checked-write'
 import DealBoardSettings from '@/components/DealBoardSettings'
 import { DEFAULT_DOCS_DELAY_MINUTES, MIN_DOCS_DELAY_MINUTES, MAX_DOCS_DELAY_MINUTES } from '@/lib/docs-received'
+import { useBusyWhile } from '@/components/useBusy'
 
 const supabase = createSupabaseBrowser()
 
@@ -398,6 +399,12 @@ export default function SettingsPage() {
     return () => window.removeEventListener('hashchange', read)
   }, [])
   const activePane = PANES.find(x => x.key === pane) || PANES[0]
+
+  // The bar at the top of the page says this screen is fetching. The shape
+
+  // it will settle into is still to be drawn - see components/Skeleton.tsx.
+
+  useBusyWhile(loading)
 
   if (loading) return <div className="p-8 max-w-5xl mx-auto text-[13px] text-faint">Loading settings...</div>
 

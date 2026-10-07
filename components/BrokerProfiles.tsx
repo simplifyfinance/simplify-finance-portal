@@ -5,6 +5,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import BrokerTargets from '@/components/BrokerTargets'
 import { SWATCHES, normHex, tooPaleForWhiteText } from '@/lib/board-settings'
 import { brokerColour } from '@/lib/deal-labels'
+import { useBusyWhile } from '@/components/useBusy'
 
 type Broker = {
   broker_key: string
@@ -109,6 +110,12 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
 
   const field = 'w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand'
   const label = 'text-[11px] font-semibold text-faint block mb-1'
+
+  // The bar at the top of the page says this screen is fetching. The shape
+
+  // it will settle into is still to be drawn - see components/Skeleton.tsx.
+
+  useBusyWhile(loading)
 
   if (loading) return <p className="text-[13px] text-faint">Loading brokers…</p>
   if (err) return <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{err}</div>

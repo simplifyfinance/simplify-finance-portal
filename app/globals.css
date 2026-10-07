@@ -157,3 +157,42 @@ html,
 body {
   overscroll-behavior-x: contain;
 }
+
+/* ======================================================= 7 Oct 2026
+   TWO MOVEMENTS, AND BOTH OF THEM ARE HONEST ABOUT NOT KNOWING.
+
+   Fabio: "it just sits there. You don't know if it's loading or not."
+
+   creep  - the bar across the top. It eases to the right and never reaches
+            the end, because nothing here knows how far along a fetch is and a
+            bar claiming 80% is a lie that gets found out on every slow page.
+   breathe- the skeleton blocks. Slow, in place, no shimmer sweeping across -
+            a second travelling thing would compete with the bar for the same
+            half-second of attention.
+   ringrun- the ring around the mark's dot. The word ONE is flat artwork so
+            the letter O cannot move; the dot is the one drawn part, and it is
+            already the thing that says which part of the business this is. */
+@keyframes creep {
+  0%   { width: 4%; }
+  35%  { width: 58%; }
+  70%  { width: 82%; }
+  100% { width: 92%; }
+}
+.creep { animation: creep 2.4s cubic-bezier(.2,.8,.3,1) infinite; }
+
+@keyframes breathe {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .45; }
+}
+
+@keyframes ringrun { to { transform: rotate(360deg); } }
+
+/* NOBODY IS MADE DIZZY BY A LOADING BAR.
+   A person who has asked their machine to stop animating things gets a bar
+   and a ring that are simply there, not moving. They still say "busy"; they
+   just say it without the motion. */
+@media (prefers-reduced-motion: reduce) {
+  .creep { animation: none; width: 35%; }
+  @keyframes breathe { 0%, 100% { opacity: .7; } }
+  @keyframes ringrun { to { transform: rotate(0deg); } }
+}

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { useBusyWhile } from '@/components/useBusy'
 
 type Rate = {
   id: string
@@ -323,6 +324,12 @@ export default function CommissionLibrary() {
       setBusy(false)
     }
   }
+
+  // The bar at the top of the page says this screen is fetching. The shape
+
+  // it will settle into is still to be drawn - see components/Skeleton.tsx.
+
+  useBusyWhile(loading)
 
   if (loading) return <div className="px-4 py-8 text-center text-[13px] text-faint">Loading the commission library…</div>
   if (loadError) return <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{loadError}</div>

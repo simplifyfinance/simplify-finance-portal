@@ -2,6 +2,8 @@
 import { useEffect, useState, useRef, Fragment } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite } from '@/lib/checked-write'
+import { useBusyWhile } from '@/components/useBusy'
+import { SkelLine, SkelTile, SkelPanel, SkelRows } from '@/components/Skeleton'
 import { legalFeeLabel, confirmedFeeLabel, DEFAULT_LEGAL_FEE_LABEL, feeText } from '@/lib/lender-fees'
 import { readNotice, announcedFrom, hasTakenEffect, niceDate, NO_NOTICE } from '@/lib/rate-notice'
 
@@ -550,7 +552,31 @@ export default function LenderLibrary() {
     setSavingImport(false)
   }
 
-  if (loading) return <p className="text-sm text-gray-400">Loading lender library...</p>
+  useBusyWhile(loading)
+  // THE SHAPE THIS PAGE IS ABOUT TO BE.
+  // Four count tiles, a row of controls, then the banks. Drawn at the sizes
+  // the real thing uses, so nothing jumps when the figures arrive. It used to
+  // be the words "Loading lender library..." in small grey type at the top
+  // left of an empty page.
+  if (loading) return (
+    <section className="mb-10" aria-busy="true">
+      <div className="grid grid-cols-4 gap-2.5 mb-3 max-[900px]:grid-cols-2">
+        {[0, 1, 2, 3].map(i => <SkelTile key={i} />)}
+      </div>
+      <div className="bg-card border border-card-line rounded-xl px-3.5 py-3 mb-3 flex items-center gap-3.5">
+        <SkelLine w="w-[250px]" tall />
+        <span className="flex-1" />
+        <SkelLine w="w-32" tall />
+        <SkelLine w="w-24" tall />
+      </div>
+      <div className="space-y-2">
+        <SkelRows rows={5} cols={4} />
+        <SkelPanel lines={1} head={false} />
+        <SkelPanel lines={1} head={false} />
+        <SkelPanel lines={1} head={false} />
+      </div>
+    </section>
+  )
 
   return (
     <section className="mb-10">

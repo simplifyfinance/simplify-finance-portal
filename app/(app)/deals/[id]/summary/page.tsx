@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { calculateSeAssessableIncome } from '@/lib/income-calculations'
 import { money } from '@/lib/money'
+import { useBusyWhile } from '@/components/useBusy'
 
 // Was a hand-written formatter using Number(), which turns "506,514" into
 // nothing at all - the third copy of that mistake in this codebase. money() from
@@ -76,6 +77,12 @@ export default function DealSummaryPage() {
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [dealId])
+
+  // The bar at the top of the page says this screen is fetching. The shape
+
+  // it will settle into is still to be drawn - see components/Skeleton.tsx.
+
+  useBusyWhile(loading)
 
   if (loading) return <div className="p-8 text-sm text-gray-400">Loading summary...</div>
   if (!deal) return <div className="p-8 text-sm text-gray-400">Deal not found</div>

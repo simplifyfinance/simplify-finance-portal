@@ -5,6 +5,8 @@ import {
   RULES, rulesOf, answerTo, optionLabel, rememberedLine, isTyped, type LenderRule,
 } from '@/lib/lender-rules'
 import { dayMonth } from '@/lib/same-date-everywhere'
+import { useBusyWhile } from '@/components/useBusy'
+import { SkelPanel } from '@/components/Skeleton'
 
 // WHAT THE PORTAL HAS LEARNED ABOUT EACH LENDER.
 //
@@ -77,7 +79,14 @@ export default function LenderRules() {
     }
   }
 
-  if (loading) return <p className="text-[13px] text-faint">Loading what the portal has learned…</p>
+  useBusyWhile(loading)
+  if (loading) return (
+    <div className="space-y-3" aria-busy="true">
+      <SkelPanel lines={4} />
+      <SkelPanel lines={4} />
+      <SkelPanel lines={4} />
+    </div>
+  )
 
 
 
