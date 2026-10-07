@@ -15,10 +15,39 @@ type Client = {
   created_at: string
 }
 
+type ClientDeal = { id: string; deal_name: string; assigned_broker?: string }
+
 type ClientWithDeal = Client & {
-  deal_name?: string
-  deal_id?: string
+  deals: ClientDeal[]
   assigned_broker?: string
+}
+
+// FIVE COLUMNS, NONE OF THEM PINNED TO AN EDGE.
+//
+// 7 Oct 2026. The old row put the name hard left and the deal hard right with a
+// third of the screen dead between them, so your eye crossed that gap on every
+// line to join a person to their deal. Four fields do not need 1900px; five
+// columns that each earn their place do.
+//
+// ONE GRID, USED BY THE HEADER AND EVERY ROW, so a column cannot drift out of
+// line with its own heading.
+const ROW = 'grid grid-cols-[minmax(0,230px)_minmax(0,250px)_minmax(0,1fr)_110px_110px_40px] gap-4 items-center px-5 py-2.5'
+
+// HOW LONG THE CLIENT HAS BEEN ON THE BOOKS. The client's own created_at, which
+// is real - a deal has no "last touched" column, and inventing one out of the
+// timestamps that happen to be filled in would be a figure nobody could stand
+// behind.
+function whenAdded(iso: string): string {
+  if (!iso) return ''
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+  if (!Number.isFinite(days) || days < 0) return ''
+  if (days === 0) return 'today'
+  if (days === 1) return 'yesterday'
+  if (days < 7) return `${days} days ago`
+  if (days < 14) return 'a week ago'
+  if (days < 61) return `${Math.floor(days / 7)} weeks ago`
+  if (days < 365) return `${Math.floor(days / 30)} months ago`
+  return `${Math.floor(days / 365)}y ago`
 }
 
 export default function ClientsPage() {
@@ -45,10 +74,14 @@ export default function ClientsPage() {
       .order('first_name')
       .then(({ data }) => {
         if (data) {
+          // EVERY DEAL, NOT THE FIRST ONE.
+          //
+          // The select has always asked for all of them. The screen then read
+          // deals[0], so a client with three deals looked like a client with
+          // one - and the other two were unreachable from here.
           setClients(data.map((c: any) => ({
             ...c,
-            deal_name: c.deals?.[0]?.deal_name,
-            deal_id: c.deals?.[0]?.id,
+            deals: c.deals || [],
             assigned_broker: c.deals?.[0]?.assigned_broker,
           })))
         }
@@ -82,41 +115,47 @@ export default function ClientsPage() {
       ) : filtered.length === 0 ? (
         <p className="text-sm text-gray-400">No clients found.</p>
       ) : (
-        <div className="bg-card border border-gray-100 rounded-xl overflow-hidden">
+        <div className="bg-card border border-card-line rounded-xl overflow-hidden">
+          <div className={ROW + ' bg-gray-50 border-b border-line text-[9.5px] font-bold tracking-[.09em] uppercase text-faint'}>
+            <span>Client</span><span>Contact</span><span>Deals</span><span>Broker</span><span>Added</span><span />
+          </div>
           {filtered.map((client, i) => {
             const initials = `${client.first_name?.[0] || ''}${client.last_name?.[0] || ''}`.toUpperCase()
             return (
               <div key={client.id}
-                className={`flex items-center gap-4 px-5 py-3 ${i < filtered.length - 1 ? 'border-b border-gray-50' : ''}`}>
-                <Link href={`/clients/${client.id}`} className="flex items-center gap-4 flex-1 min-w-0">
-                  <div style={{ background: 'color-mix(in srgb, var(--color-brand) 12%, transparent)',
+                className={`${ROW} text-[13px] ${i < filtered.length - 1 ? 'border-b border-line-soft' : ''}`}>
+                <Link href={`/clients/${client.id}`} className="flex items-center gap-2.5 min-w-0">
+                  <span style={{ background: 'color-mix(in srgb, var(--color-brand) 12%, transparent)',
                          color: 'var(--color-brand-ink)' }}
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0">
                     {initials || '?'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-ink">{client.first_name} {client.last_name}</p>
-                    <p className="text-xs text-gray-400">
-                      {client.email}{client.phone ? ` · ${client.phone}` : ''}
-                    </p>
-                  </div>
+                  </span>
+                  <span className="font-medium text-ink truncate">{client.first_name} {client.last_name}</span>
                 </Link>
-                <div className="flex-shrink-0 text-right">
-                  {client.deal_id ? (
-                    <Link href={`/deals/${client.deal_id}`}
-                      className="text-xs text-brand-ink hover:underline">
-                      {client.deal_name}
-                    </Link>
-                  ) : (
-                    <span className="text-xs text-gray-300">No deal</span>
-                  )}
-                  {client.assigned_broker && (
-                    <p className="text-xs text-gray-400 mt-0.5">{brokerLabel(client.assigned_broker)}</p>
-                  )}
-                </div>
+
+                <span className="min-w-0">
+                  <span className="block truncate text-body">{client.email || <i className="not-italic text-faint">no email</i>}</span>
+                  <span className="block text-[12px] text-faint">{client.phone}</span>
+                </span>
+
+                {/* ALL OF THEM. A client with three deals used to show one. */}
+                <span className="flex gap-1.5 flex-wrap items-center min-w-0">
+                  {client.deals.length === 0
+                    ? <span className="text-faint">No deal</span>
+                    : client.deals.map(d => (
+                        <Link key={d.id} href={`/deals/${d.id}`}
+                          className="text-[12px] rounded-full border border-info-edge bg-info-bg text-info px-2.5 py-[2px] max-w-full truncate hover:opacity-80">
+                          {d.deal_name}
+                        </Link>
+                      ))}
+                </span>
+
+                <span className="text-muted truncate">{client.assigned_broker ? brokerLabel(client.assigned_broker) : ''}</span>
+                <span className="text-muted whitespace-nowrap">{whenAdded(client.created_at)}</span>
+
                 <button onClick={() => deleteClient(client.id, `${client.first_name} ${client.last_name}`)}
-                  className="w-8 h-8 rounded-full border border-gray-200 bg-card flex items-center justify-center text-gray-300 hover:text-chase hover:border-chase-edge hover:bg-chase-bg flex-shrink-0 transition">
-                  <Trash2 size={13} />
+                  className="w-7 h-7 rounded-full border border-gray-200 bg-card flex items-center justify-center text-gray-300 hover:text-chase hover:border-chase-edge hover:bg-chase-bg flex-shrink-0">
+                  <Trash2 size={12} />
                 </button>
               </div>
             )
