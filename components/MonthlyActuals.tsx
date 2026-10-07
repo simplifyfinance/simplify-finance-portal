@@ -211,7 +211,7 @@ export default function MonthlyActuals() {
     </div>
   )
 
-  const inp = 'text-right text-[13px] border rounded-lg px-2.5 py-1.5 tabular-nums focus:outline-none focus:border-brand'
+  const inp = 'text-right text-[14px] border rounded-lg px-3 py-2 tabular-nums focus:outline-none focus:border-brand'
   const tag = 'text-[10px] font-bold tracking-[.05em] uppercase rounded-full px-2 py-[2px]'
   const failed = status.startsWith('NOT ')
 
@@ -294,14 +294,16 @@ export default function MonthlyActuals() {
                             onChange={e => set(f, mm.month, e.target.value)}
                             onBlur={e => set(f, mm.month, commas(e.target.value))}
                             placeholder={mm.future ? '' : '—'}
-                            // SIZED TO WHAT GOES IN THEM, so the table ends inside the
-                            // screen. 118px and 74px were fixed whatever was typed;
-                            // a count is two digits and the widest figure anybody
-                            // enters is eleven characters, so four boxes a row were
-                            // carrying about 180px of nothing - which is roughly the
-                            // width of the column that ended up off the right-hand
-                            // edge, taking Release with it. 6 Oct 2026.
-                            className={inp + ring + (f === 'dl' || f === 'ds' ? ' w-[52px]' : ' w-[98px]')} />
+                            // BIG ENOUGH TO READ THE FIGURE IN.
+                            //
+                            // These were 118 and 74, then 52 and 98 on 6 Oct when I
+                            // shrank them to stop the table running off the right.
+                            // Wrong fix: it was running off because the page was
+                            // capped at 1152px, and that cap went on 7 Oct - see
+                            // lib/page-width.ts. What was left was $26,300,000 in a
+                            // 98px box. The table is w-full and always was, so the
+                            // columns share the page as soon as these let them.
+                            className={inp + ring + (f === 'dl' || f === 'ds' ? ' w-[92px]' : ' w-[168px]')} />
                         </td>
                       )
                     })}

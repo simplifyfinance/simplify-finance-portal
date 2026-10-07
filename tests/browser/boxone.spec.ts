@@ -98,12 +98,12 @@ test.describe('box one — primary reasons for seeking credit', () => {
     }
 
     const before1 = await whoIsShowing()
-    await page.getByRole('button', { name: /Write from the deal/i }).first().click()
+    await box.locator('xpath=following::button[contains(., "Write from the deal")][1]').click()
     await expect(box).not.toHaveValue('', { timeout: 5_000 })
     const first = await box.inputValue()
 
     const before2 = await whoIsShowing()
-    await page.getByRole('button', { name: /Write from the deal/i }).first().click()
+    await box.locator('xpath=following::button[contains(., "Write from the deal")][1]').click()
     await page.waitForTimeout(500)
     const second = await box.inputValue()
 
@@ -138,13 +138,21 @@ test.describe('box one — primary reasons for seeking credit', () => {
     await expect(box).toBeVisible({ timeout: 20_000 })
 
     // THREE BOXES, THREE BUTTONS, THE SAME WORDS ON EACH.
-    // Boxes 2 and 3 got the same button on 10 Sep, so this has to say which
-    // one it means. Box one is the first.
-    await page.getByRole('button', { name: /Write from the deal/i }).first().click()
+    // Boxes 2 and 3 got the same button on 10 Sep, and the header above all
+    // three got "Write ALL THREE from the deal" on 6 Oct - which /Write from
+    // the deal/i matches too. So this presses the first button AFTER box one,
+    // the way every other test in this file already does.
+    await box.locator('xpath=following::button[contains(., "Write from the deal")][1]').click()
     await expect(box).not.toHaveValue('', { timeout: 5_000 })
     const text = await box.inputValue()
     const shouting = /\*\* NOT RECORDED|\*\* ONLY ONE LENDER|\*\* NO RECOMMENDED/.test(text)
-    const list = page.getByText(/Recorded nowhere/)
+
+    // AND READ INSIDE BOX ONE, NOT ACROSS THE PAGE.
+    // All three boxes draw the same red block when they have a gap. Reading it
+    // page-wide meant a gap in box two decided whether box one passed - and on
+    // 7 Oct two boxes had one at the same time and the locator refused to
+    // guess which was meant. ancestor::div[1] is the block the box lives in.
+    const list = box.locator('xpath=ancestor::div[1]').getByText(/Recorded nowhere/)
 
     if (shouting) await expect(list).toBeVisible()
     else await expect(list).toHaveCount(0)
