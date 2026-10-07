@@ -148,6 +148,15 @@ type LOData = {
   // Carried through from the BC so the email can name the state the duty
   // belongs to, rather than printing NSW for everybody.
   dutyState: string
+  // WHERE THE CONTRIBUTION COMES FROM, in the BC's own words - "savings", "sale
+  // proceeds and savings", whatever that deal says. Carried 7 Oct 2026 so the LO
+  // can print the same sentence the client already read on the BC instead of
+  // calling every contribution a deposit.
+  depositSource: string
+  // And whether anything was added on top of the sale proceeds, which is the
+  // only thing that decides between "sale proceeds" and "sale proceeds and
+  // savings" on a buy and sell.
+  additionalSavings: string
   // And the trading name, so the LO cannot go out under a different brand from
   // the borrowing capacity email that preceded it on the same deal.
   brandId: string
@@ -491,6 +500,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       deposit: bc.deposit || '',
       stampDuty: bc.stampDuty || '',
       dutyState: dutyStateOf(bc),
+      depositSource: bc.depositSource || '',
+      additionalSavings: bc.additionalSavings || '',
       brandId: bc.brand || '',
       existingLoan: bc.existingLoanBal || '',
       propertyValue: bc.propertyValue || bc.purchasePrice || '',
@@ -666,6 +677,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       deposit: bc.deposit || '',
       stampDuty: bc.stampDuty || '',
       dutyState: dutyStateOf(bc),
+      depositSource: bc.depositSource || '',
+      additionalSavings: bc.additionalSavings || '',
       brandId: bc.brand || '',
       existingLoan: bc.existingLoanBal || '',
       propertyValue: bc.propertyValue || bc.purchasePrice || '',

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { loPurchaseBlock } from '@/lib/lo-purchase-block'
 import { ctas } from '@/lib/email-buttons'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { type Brand, resolveBrand, brandLegal } from '@/lib/brand'
@@ -237,24 +238,32 @@ export async function POST(req: NextRequest) {
 
   if (!isBridging && (d.purchasePrice || d.loanAmount)) {
     body += `<p style="font-size:14px;font-weight:600;color:#343333;margin-bottom:8px"><span style="color:#343333;">Your numbers would be:</span></p>`
-    if (d.purchasePrice) body += p(`Purchase Price: ${money(d.purchasePrice)}`)
-    if (d.stampDuty) {
-      // Was hardcoded to NSW, which was simply wrong for a client buying
-      // anywhere else. It now says whichever state the deal carries, or nothing
-      // at all rather than a state the deal never named.
-      const st = String(d.dutyState || '').trim().toUpperCase()
-      body += p(`Stamp Duty${st ? ` (${st})` : ''}: ${money(d.stampDuty)}`)
-    }
-    // See PLUS_INCIDENTALS in generate-email/route.ts - the same words, on the same
-    // line, so the two emails a client receives do not disagree about what they
-    // have to bring.
-    if (d.deposit) body += p(`Deposit Required (plus solicitor's fees and incidentals): ${money(d.deposit)}`)
 
-    // A refinance reads in the order the client thinks in: what I owe now, what
-    // extra I am taking, what the loan ends up being. It used to read "Loan
-    // Amount: $666,000" then "Existing Loan Balance: $666,000" - the same figure
-    // twice, with the equity release missing entirely.
-    if (d.existingLoan) {
+    // A PURCHASE PRINTS WHAT THE BC PRINTS, out of the one file that decides
+    // those words. 7 Oct 2026 - see lib/lo-purchase-block.ts for the whole of
+    // why, including what is deliberately left out of it.
+    //
+    // A REFINANCE IS UNTOUCHED. Its three lines are in the order a client thinks
+    // in - what I owe now, what extra I am taking, what the loan ends up being -
+    // and they are not a purchase breakdown. They stay exactly as they were.
+    if (!d.existingLoan) {
+      body += loPurchaseBlock(d)
+    } else {
+      if (d.purchasePrice) body += p(`Purchase Price: ${money(d.purchasePrice)}`)
+      if (d.stampDuty) {
+        // Was hardcoded to NSW, which was simply wrong for a client buying
+        // anywhere else. It now says whichever state the deal carries, or nothing
+        // at all rather than a state the deal never named.
+        const st = String(d.dutyState || '').trim().toUpperCase()
+        body += p(`Stamp Duty${st ? ` (${st})` : ''}: ${money(d.stampDuty)}`)
+      }
+      // See PLUS_INCIDENTALS in generate-email/route.ts - the same words, on the same
+      // line, so the two emails a client receives do not disagree about what they
+      // have to bring.
+      if (d.deposit) body += p(`Deposit Required (plus solicitor's fees and incidentals): ${money(d.deposit)}`)
+
+      // It used to read "Loan Amount: $666,000" then "Existing Loan Balance:
+      // $666,000" - the same figure twice, with the equity release missing.
       const total = lenderTotal(d.refinanceSplits)
       const extra = equityReleaseAmount(d.refinanceSplits, d.existingLoan)
       body += p(`Existing Loan Balance: ${money(d.existingLoan)}`)
@@ -264,8 +273,6 @@ export async function POST(req: NextRequest) {
       if (total > 0 && showsOwnLoanAmount(d.existingLoan, total)) {
         body += p(`Total Loan Amount: ${money(total)}`)
       }
-    } else if (d.loanAmount) {
-      body += p(`Loan Amount: ${money(d.loanAmount)}`)
     }
   }
 

@@ -1,4 +1,5 @@
 import { altLvrPurchase, altLvrEquity, altRepayment } from '@/lib/alt-scenario'
+import { card, row } from '@/lib/email-card'
 import { dutyLabel as sharedDutyLabel } from '@/lib/duty-state'
 import { NextRequest, NextResponse } from 'next/server'
 import { rateNoticeLines } from '@/lib/rate-notice-server'
@@ -106,12 +107,8 @@ function notesBox(items: string[]) {
 
 function heading() { return `<p style="font-size:11px;font-weight:600;color:#343333;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px"><span style="color:#343333;">Borrowing Capacity Review</span></p>` }
 
-function card(title: string, rows: string) {
-  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2E8DB" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px">
-    <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 10px"><span style="color:#7a5c3a;">${title}</span></p>
-    <table width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>
-  </td></tr></table>`
-}
+// card() and row() moved to lib/email-card.ts on 7 Oct 2026, so the LO email
+// can use the same card instead of holding a second copy of it.
 
 // Two names for the same number is not information. lib/email-amounts.ts holds
 // the rule and the reasoning; this just builds the row when there is one.
@@ -258,9 +255,7 @@ function existingLoanRow(d: any) {
 // column stays a clean column of numbers.
 export const PLUS_INCIDENTALS = " (plus solicitor's fees and incidentals)"
 
-function row(l: string, v: string) {
-  return `<tr><td style="font-size:12px;color:#555;padding:3px 0"><span style="color:#555;">${l}</span></td><td style="font-size:12px;color:#343333;font-weight:500;text-align:right"><span style="color:#343333;">${v}</span></td></tr>`
-}
+
 
 function check(items: string[]) {
   return `<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F2E8DB" style="background:#F2E8DB;border-radius:8px;margin-bottom:14px"><tr><td bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px">
