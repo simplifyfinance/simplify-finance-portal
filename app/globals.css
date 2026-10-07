@@ -172,13 +172,13 @@ body {
    ringrun- the ring around the mark's dot. The word ONE is flat artwork so
             the letter O cannot move; the dot is the one drawn part, and it is
             already the thing that says which part of the business this is. */
-@keyframes creep {
-  0%   { width: 4%; }
-  35%  { width: 58%; }
-  70%  { width: 82%; }
-  100% { width: 92%; }
-}
-.creep { animation: creep 2.4s cubic-bezier(.2,.8,.3,1) infinite; }
+/* THE BAR HAS NO KEYFRAMES ANY MORE, AND THAT IS THE FIX.
+   It used to run `creep` on a loop: out to 92%, snap back to 4%, again. Fabio,
+   7 Oct: "it keeps loading back and forth, back and forth, which is very
+   troubling." A looping bar is movement carrying no information.
+   Its width is now a number in components/TopProgress.tsx that never
+   decreases - part measured from how many fetches have landed, part a
+   decelerating creep - moved by a CSS transition rather than an animation. */
 
 @keyframes breathe {
   0%, 100% { opacity: 1; }
@@ -192,7 +192,6 @@ body {
    and a ring that are simply there, not moving. They still say "busy"; they
    just say it without the motion. */
 @media (prefers-reduced-motion: reduce) {
-  .creep { animation: none; width: 35%; }
   @keyframes breathe { 0%, 100% { opacity: .7; } }
   @keyframes ringrun { to { transform: rotate(0deg); } }
 }

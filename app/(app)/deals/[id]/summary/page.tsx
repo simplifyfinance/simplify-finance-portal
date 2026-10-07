@@ -6,6 +6,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { calculateSeAssessableIncome } from '@/lib/income-calculations'
 import { money } from '@/lib/money'
 import { useBusyWhile } from '@/components/useBusy'
+import Loading from '@/components/Loading'
 
 // Was a hand-written formatter using Number(), which turns "506,514" into
 // nothing at all - the third copy of that mistake in this codebase. money() from
@@ -84,7 +85,7 @@ export default function DealSummaryPage() {
 
   useBusyWhile(loading)
 
-  if (loading) return <div className="p-8 text-sm text-gray-400">Loading summary...</div>
+  if (loading) return <Loading what="Loading the summary" />
   if (!deal) return <div className="p-8 text-sm text-gray-400">Deal not found</div>
 
   const ff = deal.fact_find_data || {}

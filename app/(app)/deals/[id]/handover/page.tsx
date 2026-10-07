@@ -24,6 +24,7 @@ import { applicantNamesOf } from '@/lib/applicants'
 import { lenderOnTheDeal } from '@/lib/client-agreement'
 import { money, readMoney } from '@/lib/money'
 import { useBusyWhile } from '@/components/useBusy'
+import Loading from '@/components/Loading'
 
 type Shade = { edge: string; tint: string; ink: string }
 const SHADES: Record<Accent, Shade> = {
@@ -131,7 +132,7 @@ export default function HandoverPage() {
 
   useBusyWhile(loading)
 
-  if (loading) return <div className="p-8 text-[13px] text-faint">Loading the handover…</div>
+  if (loading) return <Loading what="Loading the handover" />
   if (!deal) return <div className="p-8 text-[13px] text-chase">{problem || 'Deal not found.'}</div>
 
   const names = applicantNamesOf(deal, deal.bc_data || {})

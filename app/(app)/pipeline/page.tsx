@@ -10,6 +10,8 @@ import { listPeriods, inPeriod, toAuDate, todayYmd, fyEndYear, customPeriod, bac
 import { ContextChart, FyProgressChart, BrokerYearChart } from '@/components/PipelineCharts'
 import MonthlyActuals from '@/components/MonthlyActuals'
 import PipelineSnapshot from '@/components/PipelineSnapshot'
+import { useBusyWhile } from '@/components/useBusy'
+import { SkelPanel } from '@/components/Skeleton'
 
 /* ---------- formatting ---------- */
 function num(v: any): number | null {
@@ -56,9 +58,22 @@ export default function PipelinePage() {
   const [targets, setTargets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
-  const [view, setView] = useState('report')
+  // THREE PANES, AND THE FIRST IS THE ONE PEOPLE OPEN THIS PAGE FOR.
+  //
+  // "report" was the whole thing on one page: a fixed snapshot of this year and
+  // this month, then a toolbar, then a period report that answered the toolbar
+  // while the snapshot above it did not. Two questions on one page and only one
+  // of them listening to the controls.
+  //
+  // Now is the snapshot on its own - always today, no controls, so nothing can
+  // be out of step with anything. Explore is the period report. The old #report
+  // still works and lands on Explore, because that is the half it was.
+  const [view, setView] = useState('now')
   useEffect(() => {
-    const read = () => setView(window.location.hash.slice(1) === 'actuals' ? 'actuals' : 'report')
+    const read = () => {
+      const h = window.location.hash.slice(1)
+      setView(h === 'actuals' ? 'actuals' : (h === 'explore' || h === 'report') ? 'explore' : 'now')
+    }
     read()
     window.addEventListener('hashchange', read)
     return () => window.removeEventListener('hashchange', read)
@@ -458,15 +473,33 @@ export default function PipelinePage() {
       .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
   }, [dealRows, period, metric, scope])
 
-  const byBroker = useMemo(() => {
-    const m: Record<string, { count: number; amount: number }> = {}
-    for (const r of rows) {
-      if (!m[r.broker]) m[r.broker] = { count: 0, amount: 0 }
-      m[r.broker].count += 1
-      m[r.broker].amount += r.amount || 0
-    }
-    return Object.entries(m).sort((a, b) => b[1].amount - a[1].amount)
-  }, [rows])
+  // THE TOTAL OF THE LIST, WHICH IS NOT ALWAYS THE FIGURE ABOVE IT.
+  //
+  // This is the thing Fabio could not place. Any month the business spreadsheet
+  // holds, the spreadsheet wins - deliberate, because the team is not marking
+  // every deal through the portal yet. But the list underneath has always been
+  // portal deals. So the headline reads $6.9m, the rows under it add to $3.1m,
+  // both are correct, and nothing on screen said why. Now the list carries its
+  // own total and says so in words when the two cannot match.
+  const rowsTotal = useMemo(() => rows.reduce((t, r) => t + (r.amount || 0), 0), [rows])
+
+  // The same period a year earlier, whichever kind of period is selected. The
+  // custom case had its own card and its own wording for the identical idea.
+  const yearAgo = custom ? (customPrior?.amount ?? null) : (lastYear?.value ?? null)
+
+  // WHAT A DEAL IS AT TODAY, WEARING THE BOARD'S OWN COLOURS.
+  // The column used to be a bare word called Status, which read as wrong: a
+  // list of September lodgements showing "Settled" looks like a mistake until
+  // you work out it is the stage the deal is at NOW, two months later.
+  const STAGE_TONE: Record<string, string> = {
+    'Settled': 'bg-done-bg border-done-edge text-done',
+    'Settlement booked': 'bg-info-bg border-info-edge text-info',
+    'Contracts returned': 'bg-info-bg border-info-edge text-info',
+    'Formal approval': 'bg-info-bg border-info-edge text-info',
+    'Offer accepted': 'bg-info-bg border-info-edge text-info',
+    'Preapproved': 'bg-waiting-bg border-waiting-edge text-waiting',
+    'Lodged': 'bg-waiting-bg border-waiting-edge text-waiting',
+  }
 
   function exportCsv() {
     if (!period || rows.length === 0) return
@@ -492,6 +525,7 @@ export default function PipelinePage() {
     setKind(k); setPeriodKey(list[offset]?.key || ''); setPickOpen(false)
   }
 
+  useBusyWhile(loading)
   const sandBtn = 'bg-page border border-line text-muted rounded-lg px-3.5 py-2 text-[12.5px] font-medium hover:bg-line-soft hover:text-ink transition inline-flex items-center gap-1.5 disabled:opacity-40'
   const kinds: { k: PeriodKind; label: string }[] = [
     { k: 'week', label: 'Week' }, { k: 'month', label: 'Month' },
@@ -520,14 +554,33 @@ export default function PipelinePage() {
   // Every hook above has already run, so switching the whole view here is safe.
   if (view === 'actuals') return <MonthlyActuals />
 
+  if (view === 'now') return (
+    <div className={PAGE_WIDE}>
+      <p className="text-lg font-medium text-ink">Now</p>
+      <p className="text-[12.5px] text-muted mb-4">
+        Where the business is against target, this month and this year. Nothing here is adjustable &mdash; it is always today.
+      </p>
+      {loadError ? (
+        <div className="bg-chase-bg border border-chase-edge text-chase rounded-xl px-4 py-3 text-sm">
+          Could not load the pipeline: {loadError}. Nothing here is reliable - reload before acting on it.
+        </div>
+      ) : loading ? (
+        <div className="grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
+          <SkelPanel lines={3} head={false} /><SkelPanel lines={3} head={false} />
+        </div>
+      ) : (
+        <PipelineSnapshot hist={hist} dealRows={dealRows} targets={targets} brokers={brokers} brokerHist={bhist}
+                          onPickBroker={key => { setScope(key); window.location.hash = 'explore' }} />
+      )}
+    </div>
+  )
+
   return (
     <div className={PAGE_WIDE}>
-      <p className="text-lg font-medium text-ink mb-4">Pipeline</p>
-
-      {!loading && !loadError && (
-        <PipelineSnapshot hist={hist} dealRows={dealRows} targets={targets} brokers={brokers} brokerHist={bhist}
-                          onPickBroker={key => setScope(key)} />
-      )}
+      <p className="text-lg font-medium text-ink">Explore</p>
+      <p className="text-[12.5px] text-muted mb-4">
+        Pick a period and a scope. Everything on this page answers that one question.
+      </p>
 
       {/* toolbar */}
       <div className="bg-page border border-line rounded-xl p-3 flex items-center gap-3 flex-wrap mb-4">
@@ -680,129 +733,117 @@ export default function PipelinePage() {
           Could not load the pipeline: {loadError}. Nothing below is reliable - reload before acting on it.
         </div>
       ) : loading ? (
-        <div className="text-sm text-gray-400">Loading...</div>
+        <div className="space-y-3">
+          <SkelPanel lines={4} head={false} />
+          <SkelPanel lines={5} head={false} />
+        </div>
       ) : (
         <>
-          {/* comparison */}
-          {custom && period && (
-            <div className="bg-card border border-gray-100 rounded-xl overflow-hidden mb-4">
-              <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
-                <span className="text-[13px] font-semibold text-ink">{period.range}</span>
-                <span className="text-[11.5px] text-faint">
-                  {scope ? (brokers.find(b => b.key === scope)?.name || scope) : 'whole business'}
+          {/* ONE HEADLINE AND ONE STRIP OF FOUR, WHATEVER IS SELECTED.
+              *
+              * There used to be three different cards here - four columns for
+              * the business, three for a broker, three more for custom dates -
+              * and four tiles underneath repeating two of the figures again.
+              * Which card you got depended on what you had pressed, so the page
+              * was a different shape every time you touched it and you never
+              * learned where anything lived.
+              *
+              * Now it is the same card in the same place with the same four
+              * cells. What changes is what a cell holds, and a cell with
+              * nothing to show says why rather than vanishing. */}
+          <div className="bg-card border border-card-line rounded-xl overflow-hidden mb-4">
+            <div className="px-4 py-3.5 flex items-baseline gap-5 flex-wrap">
+              <span>
+                <span className="text-[10px] font-bold tracking-[.085em] uppercase text-faint">
+                  {metric === 'settled' ? 'Settled' : 'Lodged'} in {period?.label}
+                  {' \u00b7 '}{scope ? (brokers.find(b => b.key === scope)?.name || scope) : 'whole business'}
                 </span>
-              </div>
-              <div className="grid grid-cols-3">
-                <Cmp label="vs the same dates last year"
-                     value={customPrior ? signed(pct(current.amount, customPrior.amount)) : '-'}
-                     tone={customPrior ? (current.amount >= customPrior.amount ? 'up' : 'down') : 'flat'}
-                     base={customPrior
-                       ? `${compact(customPrior.amount)} → ${compact(current.amount)}`
-                       : 'nothing held for those dates last year'} />
-                <Cmp label="vs target"
-                     value={target ? Math.round(current.amount / target * 100) + '%' : 'not set'}
-                     tone={target ? (current.amount >= target ? 'up' : 'down') : 'flat'}
-                     base={target
-                       ? `${compact(Math.abs(current.amount - target))} ${current.amount >= target ? 'ahead of' : 'short of'} ${compact(target)} for the whole months in range`
-                       : 'no whole month with a target sits inside these dates'}
-                     meter={target ? Math.min(100, current.amount / target * 100) : null}
-                     meterFull={!!target && current.amount >= target} />
-                <Cmp label="deals" value={String(current.deals || 0)} tone="flat"
-                     base={current.deals ? `${compact(current.amount / current.deals)} average` : 'none in range'} />
-              </div>
+                <span className="block text-[31px] font-semibold tracking-[-.025em] text-ink leading-[1.1] mt-1">
+                  {compact(current.amount || null)}
+                </span>
+                {inProgress && <span className="block text-[11.5px] text-faint">still in progress</span>}
+              </span>
+              <span className="border-l border-line-soft pl-5">
+                <span className="text-[10px] font-bold tracking-[.085em] uppercase text-faint">Deals</span>
+                <span className="block text-[20px] font-semibold text-ink tracking-tight">{current.deals || 0}</span>
+              </span>
+              <span className="border-l border-line-soft pl-5">
+                <span className="text-[10px] font-bold tracking-[.085em] uppercase text-faint">Average</span>
+                <span className="block text-[20px] font-semibold text-ink tracking-tight">
+                  {current.deals ? compact(current.amount / current.deals) : '\u2014'}
+                </span>
+              </span>
+              <span className="flex-1" />
+              {record?.isBest ? (
+                <span className="inline-flex items-center gap-1.5 bg-done-bg border border-done-edge text-done rounded-full px-2.5 py-1 text-[11.5px] font-semibold">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2l1.8 3.9 4.2.5-3.1 2.9.8 4.2L8 11.6 4.3 13.5l.8-4.2L2 6.4l4.2-.5z"/></svg>
+                  {shape?.clipped ? 'Best start on record' : 'Best on record'}
+                </span>
+              ) : record?.rank && record.rank <= 5 ? (
+                <span className="inline-flex items-center gap-1.5 bg-info-bg border border-info-edge text-info rounded-full px-2.5 py-1 text-[11.5px] font-semibold">
+                  {record.rank === 2 ? '2nd' : record.rank === 3 ? '3rd' : record.rank + 'th'} best on record
+                </span>
+              ) : null}
             </div>
-          )}
 
+            <div className="grid grid-cols-4 border-t border-line-soft max-[1000px]:grid-cols-2">
+              <Cmp label="vs target"
+                   value={target ? Math.round(current.amount / target * 100) + '%' : 'not set'}
+                   tone={target ? (current.amount >= target ? 'up' : 'down') : 'flat'}
+                   base={target
+                     ? `${compact(Math.abs(current.amount - target))} ${current.amount >= target ? 'ahead of' : 'short of'} ${compact(target)}`
+                     : custom ? 'no whole month with a target sits inside these dates'
+                     : 'no target loaded for this period'}
+                   meter={target ? Math.min(100, current.amount / target * 100) : null}
+                   meterFull={!!target && current.amount >= target} />
 
-          {!scope && kind !== 'week' && !custom && current.amount > 0 && (
-            <div className="bg-card border border-gray-100 rounded-xl overflow-hidden mb-4">
-              <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
-                <span className="text-[13px] font-semibold text-ink">
-                  How {period?.label} compares
-                  {inProgress && <span className="text-faint font-normal"> · still in progress{shape?.clipped ? `, compared on the first ${shape.n} month${shape.n === 1 ? '' : 's'} of each year` : ''}</span>}
-                </span>
-                {record?.isBest ? (
-                  <span className="inline-flex items-center gap-1.5 bg-done-bg border border-done-edge text-done rounded-full px-2.5 py-1 text-[11.5px] font-semibold">
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2l1.8 3.9 4.2.5-3.1 2.9.8 4.2L8 11.6 4.3 13.5l.8-4.2L2 6.4l4.2-.5z"/></svg>
-                    {shape?.clipped ? 'Best start on record' : 'Best on record'}
-                  </span>
-                ) : record?.rank && record.rank <= 5 ? (
-                  <span className="inline-flex items-center gap-1.5 bg-info-bg border border-info-edge text-info rounded-full px-2.5 py-1 text-[11.5px] font-semibold">
-                    {record.rank === 2 ? '2nd' : record.rank === 3 ? '3rd' : record.rank + 'th'} best on record
-                  </span>
-                ) : null}
-              </div>
-              <div className="grid grid-cols-4">
-                <Cmp label={shape?.clipped ? 'vs same point last year' : 'vs same period last year'}
-                     value={lastYear ? signed(pct(current.amount, lastYear.value)) : '-'}
-                     tone={lastYear ? (current.amount >= lastYear.value ? 'up' : 'down') : 'flat'}
-                     base={lastYear ? `${lastYear.p.label}${shape?.clipped ? ' at this point' : ''} · ${compact(lastYear.value)} \u2192 ${compact(current.amount)}` : 'no comparable period held'} />
-                <Cmp label="vs target"
-                     value={target ? Math.round(current.amount / target * 100) + '%' : 'not set'}
-                     tone={target ? (current.amount >= target ? 'up' : 'down') : 'flat'}
-                     base={target ? `${compact(Math.abs(current.amount - target))} ${current.amount >= target ? 'ahead of' : 'short of'} ${compact(target)}` : 'no target loaded for this period'}
-                     meter={target ? Math.min(100, current.amount / target * 100) : null}
-                     meterFull={!!target && current.amount >= target} />
-                <Cmp label={shape?.clipped ? 'vs 3-year average at this point' : 'vs 3-year average'}
-                     value={threeYear ? signed(pct(current.amount, threeYear.avg)) : '-'}
-                     tone={threeYear ? (current.amount >= threeYear.avg ? 'up' : 'down') : 'flat'}
-                     base={threeYear ? `${compact(threeYear.avg)} · average of ${threeYear.n} prior year${threeYear.n === 1 ? '' : 's'}${shape?.clipped ? ' at this point' : ''}` : 'not enough history yet'} />
-                <Cmp label={record?.isBest ? 'Previous best' : shape?.clipped ? 'Best start on record' : 'Best on record'}
-                     value={record ? compact(record.isBest ? (record.second?.value ?? null) : record.best.value) : '-'}
+              <Cmp label={custom ? 'vs the same dates last year'
+                        : shape?.clipped ? 'vs same point last year' : 'vs same period last year'}
+                   value={yearAgo ? signed(pct(current.amount, yearAgo)) : '\u2014'}
+                   tone={yearAgo ? (current.amount >= yearAgo ? 'up' : 'down') : 'flat'}
+                   base={yearAgo
+                     ? `${compact(yearAgo)} \u2192 ${compact(current.amount)}`
+                     : kind === 'week' ? 'the history held is monthly, so a week has nothing to compare against'
+                     : scope ? 'the years of history are a business total, not a split by broker'
+                     : 'no comparable period held'} />
+
+              {scope ? (
+                <Cmp label="share of the business"
+                     value={share && share.pct !== null ? share.pct.toFixed(0) + '%' : '\u2014'}
                      tone="flat"
-                     base={record
-                       ? (record.isBest
-                          ? (record.second ? `${record.second.p.label} · beaten by ${compact(current.amount - record.second.value)}` : 'first period on record')
-                          : `${record.best.p.label} · ${compact(record.best.value - current.amount)} ahead of ${period?.label}`)
-                       : ''} />
-              </div>
-            </div>
-          )}
+                     base={!share ? 'no business figure for this period'
+                       : share.pct === null ? 'the business figure here is the spreadsheet total, which has no broker split'
+                       : `of ${compact(share.biz)} across the business`} />
+              ) : (
+                <Cmp label={shape?.clipped ? 'vs 3-year average at this point' : 'vs 3-year average'}
+                     value={threeYear ? signed(pct(current.amount, threeYear.avg)) : '\u2014'}
+                     tone={threeYear ? (current.amount >= threeYear.avg ? 'up' : 'down') : 'flat'}
+                     base={threeYear
+                       ? `${compact(threeYear.avg)} \u00b7 average of ${threeYear.n} prior year${threeYear.n === 1 ? '' : 's'}${shape?.clipped ? ' at this point' : ''}`
+                       : custom ? 'not held for custom dates \u2014 pick a month, quarter or year'
+                       : kind === 'week' ? 'the history held is monthly'
+                       : 'not enough history yet'} />
+              )}
 
-          {scope && kind !== 'week' && current.amount > 0 && (
-            <div className="bg-card border border-gray-100 rounded-xl overflow-hidden mb-4">
-              <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100">
-                <span className="text-[13px] font-semibold text-ink">
-                  {brokers.find(b => b.key === scope)?.name || scope} · {period?.label}
-                  {inProgress && <span className="text-faint font-normal"> · still in progress</span>}
-                </span>
-              </div>
-              <div className="grid grid-cols-3">
-                <Cmp label="vs target"
-                     value={target ? Math.round(current.amount / target * 100) + '%' : 'not set'}
-                     tone={target ? (current.amount >= target ? 'up' : 'down') : 'flat'}
-                     base={target ? `${compact(Math.abs(current.amount - target))} ${current.amount >= target ? 'ahead of' : 'short of'} ${compact(target)}` : 'no target set for this period'}
-                     meter={target ? Math.min(100, current.amount / target * 100) : null}
-                     meterFull={!!target && current.amount >= target} />
+              {scope ? (
                 <Cmp label="financial year to date"
                      value={compact(fytd?.now || null)}
                      tone={pace ? (pace.ahead ? 'up' : 'down') : 'flat'}
                      base={pace
                        ? `${compact(Math.abs(pace.diff))} ${pace.ahead ? 'ahead of' : 'behind'} ${compact(pace.target)} to date`
                        : 'no targets set for this year'} />
-                <Cmp label="share of the business"
-                     value={share && share.pct !== null ? share.pct.toFixed(0) + '%' : '-'}
+              ) : (
+                <Cmp label={record?.isBest ? 'Previous best' : shape?.clipped ? 'Best start on record' : 'Best on record'}
+                     value={record ? compact(record.isBest ? (record.second?.value ?? null) : record.best.value) : '\u2014'}
                      tone="flat"
-                     base={!share ? 'no business figure for this period'
-                       : share.pct === null ? 'the business figure here is the spreadsheet total, which has no broker split'
-                       : `of ${compact(share.biz)} across the business`} />
-              </div>
+                     base={custom ? 'pick a month, quarter or year to see records'
+                       : record
+                         ? (record.isBest
+                            ? (record.second ? `${record.second.p.label} \u00b7 beaten by ${compact(current.amount - record.second.value)}` : 'first period on record')
+                            : `${record.best.p.label} \u00b7 ${compact(record.best.value - current.amount)} ahead of ${period?.label}`)
+                         : 'no history held'} />
+              )}
             </div>
-          )}
-
-          {/* tiles */}
-          <div className="grid grid-cols-4 gap-3 mb-4">
-            <Tile label={metric === 'settled' ? 'Deals settled' : 'Deals lodged'} value={String(current.deals || 0)} />
-            <Tile label={metric === 'settled' ? 'Settled volume' : 'Lodged volume'} value={compact(current.amount || null)} />
-            <Tile label="Average size" value={current.deals ? compact(current.amount / current.deals) : '-'} />
-            <Tile label="Financial year to date" value={compact(fytd?.now || null)}
-                  sub={pace
-                    ? `${compact(Math.abs(pace.diff))} ${pace.ahead ? 'ahead of' : 'behind'} target to date`
-                    : (fytd && fytd.keys.length === 0) ? 'nothing recorded yet this year'
-                    : 'no target set for this year'}
-                  subTone={pace ? (pace.ahead ? 'up' : 'down') : undefined}
-                  sub2={!scope && fytd && fytd.then > 0 ? `${signed(pct(fytd.now, fytd.then))} on the same point last year` : undefined}
-                  sub2Tone={!scope && fytd && fytd.then > 0 ? (fytd.now >= fytd.then ? 'up' : 'down') : undefined} />
           </div>
 
           {scope && brokerYear && brokerYear.some(m => m.target !== null || m.actual !== null) && (
@@ -828,61 +869,115 @@ export default function PipelinePage() {
             </div>
           )}
 
-          {byBroker.length > 1 && (
-            <div className="bg-card border border-gray-100 rounded-xl overflow-hidden mb-4">
-              <div className="grid grid-cols-[2fr_1fr_1fr] px-4 py-2 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-gray-100">
-                <span>Broker</span><span>Deals</span><span>Volume</span>
-              </div>
-              {byBroker.map(([broker, v]) => (
-                <div key={broker} className="grid grid-cols-[2fr_1fr_1fr] px-4 py-2.5 text-sm border-b border-gray-50 last:border-0">
-                  <span className="text-ink">{brokerLabel(broker)}</span>
-                  <span className="text-gray-600">{v.count}</span>
-                  <span className="font-medium text-ink">{fmt(v.amount)}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* THE BROKER TABLE WENT, 7 Oct 2026.
+              It was the broker cards from the top of the page again, cut down
+              to one period - the third place the same two figures appeared.
+              The broker pills in the toolbar do the same job properly: they
+              scope the WHOLE page rather than adding a table to the bottom
+              of it. */}
 
-          <div className="bg-card border border-gray-100 rounded-xl overflow-hidden">
-            <div className="grid grid-cols-[2.2fr_1fr_1.2fr_.8fr_1fr_.6fr_1.1fr] px-4 py-2 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-gray-100">
-              <span>Deal</span><span>Broker</span><span>Lender</span>
-              <span>{metric === 'settled' ? 'Settled' : 'Lodged'}</span><span>Amount</span><span>Splits</span><span>Status</span>
-            </div>
-            {rows.length === 0 ? (
-              <div className="px-4 py-8 text-sm text-gray-400 text-center">
-                {current.amount > 0
-                  ? `No deal-level detail for ${period?.label} - the total above came from the spreadsheet.`
-                  : `No deals ${metric === 'settled' ? 'settled' : 'lodged'} in ${period?.label}.`}
-              </div>
-            ) : rows.map(r => (
-              <Link key={r.id} href={`/deals/${r.id}`}
-                className="grid grid-cols-[2.2fr_1fr_1.2fr_.8fr_1fr_.6fr_1.1fr] px-4 py-3 text-sm border-b border-gray-50 last:border-0 hover:bg-gray-50 transition">
-                <span className="text-ink truncate pr-3">{r.name}</span>
-                <span className="text-gray-600 truncate pr-3">{r.broker}</span>
-                <span className="text-gray-600 truncate pr-3">{r.lender}</span>
-                <span className="text-gray-600">{dmy(r.date)}</span>
-                <span className={`font-medium ${r.amount === null ? 'text-chase' : 'text-ink'}`}>
-                  {r.amount === null ? 'not recorded' : fmt(r.amount)}
+          {/* THE LIST SAYS WHAT IT IS A LIST OF.
+              *
+              * Fabio, 7 Oct 2026: "there's some random deals at the bottom. I
+              * don't even know what the data is there."
+              *
+              * It never had a heading. It is every deal lodged - or settled -
+              * inside the selected period, which is obvious once said and
+              * impossible to guess when not. Three more things were wrong:
+              *
+              *   the total. The rows do not always add up to the headline, and
+              *   nothing said so. See rowsTotal above.
+              *
+              *   "Splits" was a bare number. It is how many loans the deal was
+              *   split into. It is Loans now, and a deal that was not split
+              *   shows a dash rather than a 1, so the column only speaks when
+              *   it has something to say.
+              *
+              *   "Status" is the stage the deal is at NOW, not the stage it was
+              *   at in the period. A September lodgement reading "Settled"
+              *   looks like a fault until you know that. It is "Now at", and it
+              *   wears the board's colours. */}
+          <div className="bg-card border border-card-line rounded-xl overflow-hidden">
+            <div className="flex items-baseline justify-between gap-3 px-4 py-2.5 border-b border-line-soft flex-wrap">
+              <span className="text-[12.5px] font-semibold text-ink">
+                {rows.length === 0
+                  ? `No deals ${metric === 'settled' ? 'settled' : 'lodged'} in ${period?.label}`
+                  : `The ${rows.length} deal${rows.length === 1 ? '' : 's'} ${metric === 'settled' ? 'settled' : 'lodged'} in ${period?.label}`}
+                {scope ? ` \u00b7 ${brokers.find(b => b.key === scope)?.name || scope}` : ''}
+              </span>
+              {rows.length > 0 && (
+                <span className="text-[11.5px] text-faint">
+                  {fmt(rowsTotal)}
+                  {Math.round(rowsTotal) === Math.round(current.amount)
+                    ? ' \u2014 the figure above, line by line'
+                    : ' recorded deal by deal'}
                 </span>
-                <span className="text-gray-500">{r.splits || '-'}</span>
-                <span className="text-gray-600">{r.status}</span>
-              </Link>
-            ))}
+              )}
+            </div>
+
+            {/* WHY THE TWO FIGURES DISAGREE, SAID WHERE THEY DISAGREE.
+                Only drawn when they actually differ - a note that is always
+                there is a note nobody reads. */}
+            {current.amount > 0 && Math.round(rowsTotal) !== Math.round(current.amount) && (
+              <div className="bg-gray-50 border-b border-line-soft px-4 py-2.5 text-[12px] text-muted leading-relaxed">
+                The <b className="text-ink">{compact(current.amount)}</b> above is the business spreadsheet figure
+                for {period?.label}. {rows.length === 0
+                  ? 'Nothing is recorded deal by deal for it yet.'
+                  : <>These {rows.length} deal{rows.length === 1 ? '' : 's'} {metric === 'settled' ? 'settled' : 'lodged'} are
+                     what the portal holds &mdash; <b className="text-ink">{compact(rowsTotal)}</b>. The rest is not recorded
+                     deal by deal yet.</>}
+              </div>
+            )}
+
+            {rows.length === 0 ? (
+              <div className="px-4 py-8 text-sm text-faint text-center">
+                Nothing to list for {period?.label}.
+              </div>
+            ) : (
+              <table className="w-full table-fixed border-collapse">
+                <thead>
+                  <tr className="text-[9.5px] font-bold uppercase tracking-[.075em] text-faint text-left">
+                    <th className="font-bold px-3 py-2 border-b border-line-soft w-[26%]">Deal</th>
+                    <th className="font-bold px-3 py-2 border-b border-line-soft w-[12%]">Broker</th>
+                    <th className="font-bold px-3 py-2 border-b border-line-soft w-[15%]">Lender</th>
+                    <th className="font-bold px-3 py-2 border-b border-line-soft w-[11%]">{metric === 'settled' ? 'Settled' : 'Lodged'}</th>
+                    <th className="font-bold px-3 py-2 border-b border-line-soft w-[13%] text-right">Amount</th>
+                    <th className="font-bold px-3 py-2 border-b border-line-soft w-[8%]">Loans</th>
+                    <th className="font-bold px-3 py-2 border-b border-line-soft w-[15%]">Now at</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(r => {
+                    const td = 'px-3 py-2.5 border-b border-line-soft text-[12.5px] text-body whitespace-nowrap truncate'
+                    return (
+                      <tr key={r.id} className="hover:bg-gray-50 transition">
+                        <td className={td + ' text-ink font-semibold'}>
+                          <Link href={`/deals/${r.id}`} className="hover:underline">{r.name}</Link>
+                        </td>
+                        <td className={td}>{brokerLabel(r.broker)}</td>
+                        <td className={td}>{r.lender}</td>
+                        <td className={td}>{dmy(r.date)}</td>
+                        <td className={td + ' text-right tabular-nums ' + (r.amount === null ? 'text-chase' : 'text-ink')}>
+                          {r.amount === null ? 'not recorded' : fmt(r.amount)}
+                        </td>
+                        <td className={td}>{r.splits > 1 ? r.splits : '\u2014'}</td>
+                        <td className={td}>
+                          {r.status === '-' ? <span className="text-faint">&mdash;</span> : (
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap ${
+                              STAGE_TONE[r.status] || 'bg-gray-100 border-line text-muted'}`}>
+                              {r.status}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </>
       )}
-    </div>
-  )
-}
-
-function Tile({ label, value, sub, subTone, sub2, sub2Tone }:
-  { label: string; value: string; sub?: string; subTone?: 'up' | 'down'; sub2?: string; sub2Tone?: 'up' | 'down' }) {
-  return (
-    <div className="bg-card border border-gray-100 rounded-xl p-4">
-      <div className="text-[10px] font-semibold tracking-[.09em] uppercase text-faint mb-1.5">{label}</div>
-      <div className="text-2xl font-semibold text-ink tracking-tight">{value}</div>
-      {sub && <div className={`text-[11.5px] mt-0.5 ${subTone === 'up' ? 'text-done' : subTone === 'down' ? 'text-chase' : 'text-faint'}`}>{sub}</div>}
-      {sub2 && <div className={`text-[11.5px] mt-0.5 ${sub2Tone === 'up' ? 'text-done' : sub2Tone === 'down' ? 'text-chase' : 'text-faint'}`}>{sub2}</div>}
     </div>
   )
 }

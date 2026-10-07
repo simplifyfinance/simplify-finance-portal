@@ -26,6 +26,7 @@ import type { Alert } from '@/lib/deal-notes'
 import { realDealsOnly, testDealsOnly } from '@/lib/test-deal'
 import DealName from '@/components/DealName'
 import { otherDealsForSameClients } from '@/lib/same-clients'
+import Loading from '@/components/Loading'
 
 type Client = { id: string; first_name: string; last_name: string; email?: string; phone?: string }
 type Deal = {
@@ -477,7 +478,7 @@ export default function DealsPage() {
           onCancel={() => { if (!deleteBusy) setDeleting(null) }} />
       )}
       {loading ? (
-        <div className="text-sm text-gray-400 text-center py-12">Loading deals...</div>
+        <Loading what="Loading the board" />
       ) : layout === 'board' ? (
         <>
           {/* ACROSS THE TOP OF THE BOARD, not beside the button. A filter is a

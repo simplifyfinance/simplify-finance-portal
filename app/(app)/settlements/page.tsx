@@ -14,6 +14,7 @@ import {
   type SettlementState, type SettlementStep,
 } from '@/lib/settlement'
 import { useBusyWhile } from '@/components/useBusy'
+import Loading from '@/components/Loading'
 
 const num = (v: any): number | null => {
   if (v === null || v === undefined || v === '') return null
@@ -259,7 +260,7 @@ export default function SettlementsPage() {
 
   useBusyWhile(loading)
 
-  if (loading) return <div className={`${PAGE_WIDE} text-sm text-faint`}>Loading settlements…</div>
+  if (loading) return <div className={PAGE_WIDE}><Loading what="Loading settlements" /></div>
   if (allowed === false) return (
     <div className={PAGE_WIDE}>
       <p className="text-lg font-medium text-ink mb-2">Settlements</p>

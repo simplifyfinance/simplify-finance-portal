@@ -15,6 +15,7 @@ import { phaseOf, PHASE_LABEL } from '@/lib/deal-phase'
 import { moneyOrBlank, readMoney} from '@/lib/money'
 import { auDate, heldLine, settledSince, outOfDateLine, sourceLine } from '@/lib/client-position'
 import { useBusyWhile } from '@/components/useBusy'
+import Loading from '@/components/Loading'
 
 export default function ClientProfilePage() {
   const params = useParams()
@@ -54,7 +55,7 @@ export default function ClientProfilePage() {
 
   useBusyWhile(loading)
 
-  if (loading) return <div className="p-8 text-sm text-gray-400">Loading...</div>
+  if (loading) return <Loading what="Loading the client" />
   if (!client) return <div className="p-8 text-sm text-gray-400">Client not found</div>
 
   const activeDeals = deals.filter(d => d.status !== 'completed')

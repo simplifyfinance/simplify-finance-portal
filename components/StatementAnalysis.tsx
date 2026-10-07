@@ -9,6 +9,7 @@ import { TREATMENTS, signatureOf, upsertRule, type TreatAs, type PayerRule } fro
 import { combine, personOf, peopleByAccount, removalCost } from '@/lib/statement-combine'
 import { analyse } from '@/lib/statement-analysis'
 import { useBusyWhile } from '@/components/useBusy'
+import Loading from '@/components/Loading'
 
 // The Statements tab. Everything on screen comes from ONE analysis over ONE
 // ledger, so a card and the transactions behind it can never drift.
@@ -887,7 +888,7 @@ export default function StatementAnalysis({ deal }: { deal: any }) {
 
   useBusyWhile(loading)
 
-  if (loading) return <p className="text-[13px] text-muted py-6">Loading statements…</p>
+  if (loading) return <Loading what="Loading statements…" />
 
   return (
     <div>

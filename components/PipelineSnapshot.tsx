@@ -146,192 +146,205 @@ export default function PipelineSnapshot({ hist, dealRows, targets, brokers, bro
   const card = 'bg-card border border-card-line rounded-2xl'
   const kk = 'text-[10px] font-bold tracking-[.09em] uppercase text-faint'
 
-  function Head({ label, h }: { label: string; h: ReturnType<typeof head> }) {
+  // HOW FAR THROUGH THIS MONTH WE ARE.
+  // A month figure at 73% of target means nothing until you know whether there
+  // are three weeks left or three days.
+  const dim = new Date(Date.UTC(fy, Number(thisMonth.slice(5, 7)), 0)).getUTCDate()
+  const dayOfMonth = Number(today.slice(8, 10))
+  const daysLeft = Math.max(0, dim - dayOfMonth)
+
+  function Year({ label, h }: { label: string; h: ReturnType<typeof head> }) {
     const hit = h.target > 0 ? h.now / h.target * 100 : null
     const diff = h.target > 0 ? h.now - h.target : null
     const good = diff !== null && diff >= 0
     return (
-      <div className={card + ' p-5'}>
-        <div className={kk}>{label}</div>
-        <div className="text-[33px] font-semibold tracking-[-.025em] text-ink leading-[1.1] mt-1">{compact(h.now || null)}</div>
-        <div className="text-[12.5px] text-faint">
-          {h.target > 0
-            ? <>of {compact(h.target)} targeted for the months recorded · <b className="text-ink">{Math.round(hit as number)}%</b></>
-            : 'no target set for the months recorded'}
+      <div className={card + ' p-4'}>
+        <div className="flex items-baseline justify-between gap-2">
+          <span className={kk}>{label} &middot; FY{String(fy).slice(2)} to date</span>
+          {hit === null
+            ? <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-gray-100 text-muted border border-line rounded-full px-2 py-[2px]">No target</span>
+            : <span className={`text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[2px] border ${
+                good ? 'bg-done-bg border-done-edge text-done' : 'bg-chase-bg border-chase-edge text-chase'}`}>
+                {Math.round(hit)}% of target
+              </span>}
         </div>
-        <div className="h-[8px] bg-line-soft rounded-full my-3 overflow-hidden">
+        <div className="text-[31px] font-semibold tracking-[-.025em] text-ink leading-[1.1] mt-1">{compact(h.now || null)}</div>
+        <div className="h-[7px] bg-line-soft rounded-full my-2.5 overflow-hidden">
           <div className={`h-full rounded-full ${good ? 'bg-done' : 'bg-chase'}`}
                style={{ width: Math.min(100, hit ?? 0) + '%' }} />
         </div>
-        <div className="flex justify-between gap-2 flex-wrap text-[12px]">
-          <span className={diff === null ? 'text-faint' : good ? 'text-done font-semibold' : 'text-chase font-semibold'}>
-            {diff === null ? '—' : `${compact(Math.abs(diff))} ${good ? 'ahead' : 'behind'}`}
-          </span>
-          <span className="text-faint">
-            {h.fullYear > 0 ? `${compact(h.fullYear)} for the full year · ${Math.round(h.now / h.fullYear * 100)}% of it done` : ''}
-          </span>
-        </div>
-        <div className="flex justify-between gap-2 flex-wrap text-[12px] mt-1">
-          <span className={h.comparable === 0 ? 'text-faint'
-            : h.now >= h.then ? 'text-done font-semibold' : 'text-chase font-semibold'}>
-            {h.comparable === 0 ? 'no comparable months held' : `${signed((h.now - h.then) / h.then * 100)} on the same point last year`}
-          </span>
-          <span className="text-faint">{h.keys.length} of 12 months recorded</span>
+        {/* ONE LINE, NOT FOUR. Everything worth acting on, in a sentence:
+            how far off target, over how many months, and the direction of
+            travel against last year. */}
+        <div className="text-[12px] text-faint leading-relaxed">
+          {diff === null
+            ? `no target set for the ${h.keys.length} month${h.keys.length === 1 ? '' : 's'} recorded`
+            : <>
+                <span className={good ? 'text-done font-semibold' : 'text-chase font-semibold'}>
+                  {compact(Math.abs(diff))} {good ? 'ahead' : 'behind'}
+                </span>
+                {' '}the {compact(h.target)} targeted for the {h.keys.length} month{h.keys.length === 1 ? '' : 's'} recorded
+              </>}
+          {h.comparable > 0 && <>
+            {' \u00b7 '}
+            <span className={h.now >= h.then ? 'text-done font-semibold' : 'text-chase font-semibold'}>
+              {signed((h.now - h.then) / h.then * 100)}
+            </span>
+            {' on this point last year'}
+          </>}
         </div>
       </div>
     )
   }
 
-  function MonthCell({ label, value, target }: { label: string; value: number | null; target: number | null }) {
+  // THE MONTH, AND HOW MUCH OF IT IS LEFT TO DO IT IN.
+  function MonthHalf({ label, value, target }: { label: string; value: number | null; target: number | null }) {
     const hit = value !== null && target ? value / target * 100 : null
+    const good = hit !== null && hit >= 100
+    // Where the month should be if the work landed evenly. Not a forecast -
+    // just the line that makes "73%" mean something on the 22nd.
+    const pace = dayOfMonth / dim * 100
+    const onPace = hit !== null && hit >= pace
+    const short = value !== null && target !== null ? target - value : null
     return (
-      <div className={card + ' px-4 py-3.5'}>
+      <div className="px-4 py-3.5 border-r border-line-soft last:border-r-0">
         <div className={kk + ' mb-1'}>{label}</div>
-        <div className="text-[21px] font-semibold tracking-[-.02em] text-ink">{compact(value)}</div>
-        <div className="text-[11.5px] mt-0.5">
-          {value === null
-            ? <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-chase-bg border border-chase-edge text-chase rounded-full px-2 py-[2px]">Not recorded</span>
-            : hit === null
-              ? <span className="text-faint">no target</span>
-              : <span className={hit >= 100 ? 'text-done font-semibold' : 'text-chase font-semibold'}>
-                  {Math.round(hit)}% <span className="text-faint font-normal">of {compact(target)}</span>
-                </span>}
-        </div>
+        {value === null ? (
+          <>
+            <div className="text-[20px] font-semibold tracking-[-.02em] text-faint">&mdash;</div>
+            <div className="text-[11.5px] mt-1">
+              <span className="text-[10px] font-bold uppercase tracking-[.05em] bg-chase-bg border border-chase-edge text-chase rounded-full px-2 py-[2px]">Not recorded</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="text-[20px] font-semibold tracking-[-.02em] text-ink">
+              {compact(value)}
+              {target !== null && <span className="text-[12px] font-normal text-faint"> of {compact(target)}</span>}
+            </div>
+            {hit !== null && (
+              <div className="h-[6px] bg-line-soft rounded-full my-2 overflow-hidden">
+                <div className={`h-full rounded-full ${good ? 'bg-done' : 'bg-chase'}`} style={{ width: Math.min(100, hit) + '%' }} />
+              </div>
+            )}
+            <div className="text-[11.5px] text-faint">
+              {hit === null ? 'no target set for this month'
+                : <>
+                    <span className={good ? 'text-done font-semibold' : onPace ? 'text-ink font-semibold' : 'text-chase font-semibold'}>
+                      {Math.round(hit)}%
+                    </span>
+                    {good ? ' \u2014 target met'
+                      : daysLeft === 0 ? ` \u2014 ${compact(short)} short, month over`
+                      : onPace ? ` \u2014 on pace with ${daysLeft} day${daysLeft === 1 ? '' : 's'} left`
+                      : ` \u2014 ${compact(short)} to find in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`}
+                  </>}
+            </div>
+          </>
+        )}
       </div>
     )
   }
+
+  // A BROKER IS A ROW, NOT A CARD.
+  // Each broker had a card carrying two meters, four figures and a share line.
+  // Three of them filled a third of the page and the same figures appeared
+  // again in a table near the bottom of it. One row each says the same thing,
+  // lines the brokers up so you can read down a column, and still fits nine.
+  function Pct({ value, target }: { value: number; target: number }) {
+    if (!target) return <span className="text-[11.5px] text-faint">no target</span>
+    const hit = value / target * 100
+    return (
+      <span className="whitespace-nowrap">
+        <span className={`text-[10px] font-bold uppercase tracking-[.05em] rounded-full px-2 py-[2px] border ${
+          hit >= 100 ? 'bg-done-bg border-done-edge text-done' : 'bg-chase-bg border-chase-edge text-chase'}`}>
+          {Math.round(hit)}%
+        </span>
+        <span className="text-[11.5px] text-faint"> of {compact(target)}</span>
+      </span>
+    )
+  }
+
+  const th = 'text-[9.5px] font-bold tracking-[.075em] uppercase text-faint text-left px-3 py-2 border-b border-line-soft whitespace-nowrap'
+  const td = 'px-3 py-2.5 border-b border-line-soft text-[12.5px] text-body whitespace-nowrap last:border-b-0'
 
   return (
     <div className="mb-6">
-
-      {/* THREE SECTIONS, THREE BANDS. Fabio picked this on 6 Oct 2026 out of
-          four looks - "each section in a tinted band" - because the top of this
-          page is three separate answers stacked on one another and nothing was
-          telling you where one stopped and the next began.
-          *
-          * THE TINTS ARE THE STATUS COLOURS DOING THEIR USUAL JOB. Blue is
-          * being-worked-on, purple is waiting-on-somebody. They are not new
-          * colours and they are not decoration - a band in a status colour
-          * means the same thing here as it does on a deal card.
-          *
-          * NOTHING INSIDE A BAND MOVED. Same cards, same order, same figures. */}
-      <div className="bg-info-bg border border-info-edge rounded-2xl p-3.5 mb-3">
-      <div className="flex items-baseline justify-between gap-3 flex-wrap mb-2.5">
-        <span className="text-[13px] font-semibold text-info">
-          The business · FY{String(fy).slice(2)} so far
-        </span>
-        <span className="text-[11.5px] text-faint">
-          measured against the target for the months recorded, never the whole year
-        </span>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
-        <Head label="Lodged" h={L} />
-        <Head label="Settled" h={S} />
-      </div>
-
       {!L.month && (
-        <div className="flex items-start gap-3 bg-chase-bg border border-chase-edge rounded-xl px-4 py-3 mt-3">
+        <div className="flex items-start gap-3 bg-chase-bg border border-chase-edge rounded-xl px-4 py-3 mb-3">
           <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="shrink-0 mt-[2px]"><circle cx="8" cy="8" r="6.2"/><path d="M8 5v3.4M8 10.8v.2"/></svg>
           <span className="text-[12.5px] text-chase">
             <strong className="text-chase">Nothing is recorded for this month yet.</strong>{' '}
-            It is left out of every figure above rather than counted as a zero. Enter it in Monthly actuals and
+            It is left out of every figure below rather than counted as a zero. Enter it in Monthly actuals and
             the page moves.
           </span>
         </div>
       )}
 
+      <div className="grid grid-cols-2 gap-3 mb-3 max-[900px]:grid-cols-1">
+        <Year label="Lodged" h={L} />
+        <Year label="Settled" h={S} />
       </div>
 
-      <div className="bg-panel border border-line rounded-2xl p-3.5 mb-3">
-      <div className="text-[13px] font-semibold text-ink mb-2.5">This month</div>
-      <div className="grid grid-cols-4 gap-3 max-[900px]:grid-cols-2">
-        <MonthCell label="Lodged" value={L.month ? L.month.amount : null} target={L.monthTarget} />
-        <MonthCell label="Settled" value={S.month ? S.month.amount : null} target={S.monthTarget} />
-        <div className={card + ' px-4 py-3.5'}>
-          <div className={kk + ' mb-1'}>Lodged target</div>
-          <div className="text-[21px] font-semibold tracking-[-.02em] text-ink">{compact(L.monthTarget)}</div>
-          <div className="text-[11.5px] text-faint mt-0.5">for the whole month</div>
+      <div className={card + ' mb-3 overflow-hidden'}>
+        <div className="flex items-baseline justify-between gap-3 px-4 py-2.5 border-b border-line-soft flex-wrap">
+          <span className="text-[12.5px] font-semibold text-ink">{MONTH_NAMES[Number(thisMonth.slice(5, 7)) - 1]}, so far</span>
+          <span className="text-[11.5px] text-faint">{dayOfMonth} of {dim} days gone</span>
         </div>
-        <div className={card + ' px-4 py-3.5'}>
-          <div className={kk + ' mb-1'}>Settled target</div>
-          <div className="text-[21px] font-semibold tracking-[-.02em] text-ink">{compact(S.monthTarget)}</div>
-          <div className="text-[11.5px] text-faint mt-0.5">for the whole month</div>
+        <div className="grid grid-cols-2 max-[700px]:grid-cols-1">
+          <MonthHalf label="Lodged" value={L.month ? L.month.amount : null} target={L.monthTarget} />
+          <MonthHalf label="Settled" value={S.month ? S.month.amount : null} target={S.monthTarget} />
         </div>
-      </div>
-
       </div>
 
       {cards.length > 0 && (
-        <div className="bg-waiting-bg border border-waiting-edge rounded-2xl p-3.5">
-          <div className="flex items-baseline justify-between gap-3 flex-wrap mb-2.5">
-            <span className="text-[13px] font-semibold text-waiting">Brokers · against their own target</span>
-            <span className="text-[11.5px] text-faint">click a broker to filter everything below</span>
+        <div className={card + ' overflow-hidden'}>
+          <div className="flex items-baseline justify-between gap-3 px-4 py-2.5 border-b border-line-soft flex-wrap">
+            <span className="text-[12.5px] font-semibold text-ink">Brokers &middot; FY{String(fy).slice(2)} to date</span>
+            <span className="text-[11.5px] text-faint">click a name to open it in Explore</span>
           </div>
 
           {L.sheet && (
-            <div className="bg-page border border-line text-muted rounded-xl px-4 py-2.5 text-[12.5px] mb-3">
+            <div className="bg-gray-50 border-b border-line-soft px-4 py-2.5 text-[12px] text-muted leading-relaxed">
               The business figure for these months came from the spreadsheet, which has no broker split, so share
               of the business is left out. A broker&rsquo;s own figures come from what is typed on their profile in
               Settings, or from deals marked through the portal where nothing is typed.
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-3 max-[900px]:grid-cols-1">
-            {cards.map(b => {
-              const half = (value: number, target: number, label: string, month: number, deals: number) => {
-                const hit = target > 0 ? value / target * 100 : null
-                const good = hit !== null && hit >= 100
-                return (
-                  <div>
-                    <div className={kk + ' mb-1'}>{label}</div>
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-[19px] font-semibold tracking-[-.02em] text-ink">{compact(value || null)}</span>
-                      <span className={`text-[12px] font-semibold ${hit === null ? 'text-faint' : good ? 'text-done' : 'text-chase'}`}>
-                        {hit === null ? 'no target' : Math.round(hit) + '%'}
-                      </span>
-                    </div>
-                    <div className="h-[5px] bg-line-soft rounded-full my-2 overflow-hidden">
-                      <div className={`h-full rounded-full ${good ? 'bg-done' : 'bg-chase'}`}
-                           style={{ width: Math.min(100, hit ?? 0) + '%' }} />
-                    </div>
-                    <div className="text-[11.5px] text-faint">
-                      {target > 0 ? `of ${compact(target)} to date` : 'no target set'}
-                    </div>
-                    <div className="text-[11.5px] text-faint">
-                      {deals} deal{deals === 1 ? '' : 's'} · {month ? compact(month) : 'nothing'} this month
-                    </div>
-                  </div>
-                )
-              }
-              return (
-                <button key={b.key} type="button" onClick={() => onPickBroker && onPickBroker(b.key)}
-                  className={card + ' p-4 text-left hover:border-gray-300 transition'}>
-                  <div className="flex items-center gap-2.5 mb-3.5">
-                    <span className="w-[30px] h-[30px] rounded-[9px] bg-ink text-page text-[12px] font-bold flex items-center justify-center shrink-0">
-                      {initials(b.name)}
-                    </span>
-                    <span>
-                      <span className="block text-[13.5px] font-semibold text-ink leading-tight">{b.name}</span>
-                      <span className="block text-[11px] text-faint">FY{String(fy).slice(2)} so far</span>
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {half(b.lodged, b.lodgedTarget, 'Lodged', b.monthLodged, b.lodgedDeals)}
-                    {half(b.settled, b.settledTarget, 'Settled', b.monthSettled, b.settledDeals)}
-                  </div>
-                  {!L.sheet && L.now > 0 && (
-                    <div className="flex justify-between text-[12px] pt-2.5 mt-2.5 border-t border-line-soft">
-                      <span className="text-faint">Share of the business</span>
-                      <span className="font-semibold tabular-nums">{Math.round(b.lodged / L.now * 100)}%</span>
-                    </div>
-                  )}
-                </button>
-              )
-            })}
-          </div>
+          <table className="w-full table-fixed border-collapse">
+            <thead>
+              <tr>
+                <th className={th + ' w-[21%]'}>Broker</th>
+                <th className={th + ' w-[13%] text-right'}>Lodged</th>
+                <th className={th + ' w-[17%]'}>vs target</th>
+                <th className={th + ' w-[13%] text-right'}>Settled</th>
+                <th className={th + ' w-[17%]'}>vs target</th>
+                <th className={th + ' w-[9%] text-right'}>Share</th>
+                <th className={th + ' w-[10%] text-right'}>This month</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cards.map(b => (
+                <tr key={b.key} onClick={() => onPickBroker && onPickBroker(b.key)}
+                    className="cursor-pointer hover:bg-gray-50 transition">
+                  <td className={td + ' text-ink font-semibold truncate'}>{b.name}</td>
+                  <td className={td + ' text-right tabular-nums text-ink'}>{compact(b.lodged || null)}</td>
+                  <td className={td}><Pct value={b.lodged} target={b.lodgedTarget} /></td>
+                  <td className={td + ' text-right tabular-nums text-ink'}>{compact(b.settled || null)}</td>
+                  <td className={td}><Pct value={b.settled} target={b.settledTarget} /></td>
+                  <td className={td + ' text-right tabular-nums'}>
+                    {!L.sheet && L.now > 0 ? Math.round(b.lodged / L.now * 100) + '%' : '\u2014'}
+                  </td>
+                  <td className={td + ' text-right tabular-nums'}>{b.monthLodged ? compact(b.monthLodged) : '\u2014'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
   )
 }
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+                     'July', 'August', 'September', 'October', 'November', 'December']

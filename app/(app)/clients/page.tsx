@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import Link from 'next/link'
 import { Trash2 } from 'lucide-react'
+import Loading from '@/components/Loading'
 
 type Client = {
   id: string
@@ -111,7 +112,7 @@ export default function ClientsPage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-400">Loading clients...</p>
+        <Loading what="Loading clients" />
       ) : filtered.length === 0 ? (
         <p className="text-sm text-gray-400">No clients found.</p>
       ) : (

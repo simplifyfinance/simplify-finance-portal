@@ -6,6 +6,7 @@ import BrokerTargets from '@/components/BrokerTargets'
 import { SWATCHES, normHex, tooPaleForWhiteText } from '@/lib/board-settings'
 import { brokerColour } from '@/lib/deal-labels'
 import { useBusyWhile } from '@/components/useBusy'
+import Loading from '@/components/Loading'
 
 type Broker = {
   broker_key: string
@@ -117,7 +118,7 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
 
   useBusyWhile(loading)
 
-  if (loading) return <p className="text-[13px] text-faint">Loading brokers…</p>
+  if (loading) return <Loading what="Loading brokers" />
   if (err) return <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{err}</div>
 
   return (

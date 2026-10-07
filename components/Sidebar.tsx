@@ -39,8 +39,12 @@ type Profile = { full_name: string; role: string; email: string; is_admin?: bool
 // Settings has outgrown one scroll, so it nests under the nav item rather than
 // growing a second left column beside the one the portal already has.
 const SUBNAV: Record<string, { key: string; label: string; adminOnly?: boolean; financeOnly?: boolean }[]> = {
+  // NOW, THEN EXPLORE. 7 Oct 2026, when the Pipeline stopped being two
+  // reports on one page. Now is the default and the one people open this for;
+  // Explore is the period report that used to sit under it.
   '/pipeline': [
-    { key: 'report', label: 'Report' },
+    { key: 'now', label: 'Now' },
+    { key: 'explore', label: 'Explore' },
     { key: 'actuals', label: 'Monthly actuals', adminOnly: true },
   ],
   // From lib/lender-panes.ts, never a copy - see the note on '/settings' below.

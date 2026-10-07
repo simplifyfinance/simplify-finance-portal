@@ -48,6 +48,13 @@ export default function OneMark({ width, tone, withBy = true, busy = false, clas
     ? oneMarkHeight(width, SCALE.screen)
     : round3(width * (shortH / g.canvasW))
 
+  // THE RING LIVES INSIDE THE DOT. See the note beside it below: the outer
+  // edge of the stroke lands exactly on the dot's own edge, so a loading mark
+  // is the same size as a still one and nothing on the page moves.
+  const ringW = g.dot.r / 2
+  const ringR = g.dot.r - ringW / 2
+  const ringC = 2 * Math.PI * ringR
+
   return (
     <svg
       className={className}
@@ -72,19 +79,33 @@ export default function OneMark({ width, tone, withBy = true, busy = false, clas
           that carries meaning - its colour is the division identifier. So the
           dot is what loads.
 
-          While busy it dims to a quarter and a short arc runs round it at the
-          dot's own radius, so the mark keeps its exact size and the rest of
-          the left-hand column does not shift by a pixel. The stroke is a third
-          of the diameter, which is the heaviest a ring can be at this size and
-          still read as a ring rather than a thicker dot. */}
+          AND IT LOADS INSIDE ITSELF. The first version drew a stroked circle AT
+          the dot's radius, which puts half the stroke width OUTSIDE it, over a
+          filled disc that was still there underneath. Fabio: "the spinning
+          wheel, it's actually going over the actual dot ... it just looks
+          terrible." He is right - it was a spinner sitting on top of a dot
+          rather than a dot that spins.
+
+          The arithmetic that fixes it, and the whole of why the ring is drawn
+          where it is:
+
+            stroke width  w  = r / 2
+            ring radius  rr  = r - w/2
+            outer edge       = rr + w/2 = r, exactly the dot's own edge
+
+          So the ring occupies precisely the circle the dot occupies. The mark
+          keeps its size to the pixel, nothing is drawn outside it, and the left
+          column does not shift while a page loads. The faint full ring behind
+          the arc is the dot ghosted, not a disc - a disc would show through the
+          hole in the middle and bring back the thing being fixed. */}
       {busy ? (
         <g>
-          <circle cx={round3(g.dot.cx)} cy={round3(g.dot.cy)} r={round3(g.dot.r)}
-                  fill={DOT_COLOUR} opacity="0.25" />
-          <circle cx={round3(g.dot.cx)} cy={round3(g.dot.cy)} r={round3(g.dot.r)}
-                  fill="none" stroke={DOT_COLOUR} strokeWidth={round3(g.dot.d / 3)}
+          <circle cx={round3(g.dot.cx)} cy={round3(g.dot.cy)} r={round3(ringR)}
+                  fill="none" stroke={DOT_COLOUR} strokeWidth={round3(ringW)} opacity="0.22" />
+          <circle cx={round3(g.dot.cx)} cy={round3(g.dot.cy)} r={round3(ringR)}
+                  fill="none" stroke={DOT_COLOUR} strokeWidth={round3(ringW)}
                   strokeLinecap="round"
-                  strokeDasharray={`${round3(g.dot.r * 1.6)} ${round3(g.dot.r * 4.7)}`}
+                  strokeDasharray={`${round3(ringC * 0.26)} ${round3(ringC * 0.74)}`}
                   style={{ transformOrigin: `${round3(g.dot.cx)}px ${round3(g.dot.cy)}px`,
                            animation: 'ringrun .9s linear infinite' }} />
         </g>
@@ -103,4 +124,7 @@ export const MARK_WIDTH = {
   /** The login card. Big enough to be the thing you see, small enough that the
    *  card still reads as a form rather than a poster. */
   login: 210,
+  /** Waiting in the middle of a page. Smaller than the login mark - it is a
+   *  thing you glance at, not the subject of the screen. See Loading.tsx. */
+  loading: 132,
 } as const

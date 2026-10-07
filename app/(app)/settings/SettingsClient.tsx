@@ -12,6 +12,7 @@ import { checkedWrite, checkedWriteAllowingNone } from '@/lib/checked-write'
 import DealBoardSettings from '@/components/DealBoardSettings'
 import { DEFAULT_DOCS_DELAY_MINUTES, MIN_DOCS_DELAY_MINUTES, MAX_DOCS_DELAY_MINUTES } from '@/lib/docs-received'
 import { useBusyWhile } from '@/components/useBusy'
+import Loading from '@/components/Loading'
 
 const supabase = createSupabaseBrowser()
 
@@ -406,7 +407,7 @@ export default function SettingsPage() {
 
   useBusyWhile(loading)
 
-  if (loading) return <div className="p-8 max-w-5xl mx-auto text-[13px] text-faint">Loading settings...</div>
+  if (loading) return <Loading what="Loading settings" />
 
   return (
     <div className="p-8 max-w-5xl mx-auto">

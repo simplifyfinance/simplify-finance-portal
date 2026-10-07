@@ -23,6 +23,7 @@ const busy = readFileSync('components/useBusy.ts', 'utf8')
 const bar = readFileSync('components/TopProgress.tsx', 'utf8')
 const sidebar = readFileSync('components/Sidebar.tsx', 'utf8')
 const mark = readFileSync('components/OneMark.tsx', 'utf8')
+const css = readFileSync('app/globals.css', 'utf8')
 
 describe('the bar comes on', () => {
   it('the moment a nav item is pressed, not when its data lands', () => {
@@ -36,6 +37,41 @@ describe('the bar comes on', () => {
 
   it('and when any screen is fetching', () => {
     expect(busy).toContain('export function useBusyWhile')
+  })
+})
+
+describe('the bar only ever goes forward', () => {
+  // 7 Oct 2026, the second version. The first ran a CSS animation on a loop -
+  // out to 92%, snap back to 4%, again - and Fabio said what it looked like:
+  // "it keeps loading back and forth, back and forth, which is very troubling."
+  // A bar that restarts is movement carrying no information.
+  it('has no looping animation left in it', () => {
+    expect(bar, 'the bar is animated again. An animation that repeats WILL walk\n'
+      + 'it backwards; its width has to be a number that never decreases.')
+      .not.toMatch(/animation:[^;'`]*infinite/)
+    expect(css, 'the looping keyframes are back in globals.css')
+      .not.toMatch(/\.creep\s*\{[^}]*infinite/)
+  })
+
+  it('never lets the width fall', () => {
+    // Math.max against its own previous value is the whole guarantee. Without
+    // it, a slow creep and a fast completion can disagree and the bar jumps
+    // back - which is the fault being fixed.
+    expect(bar).toMatch(/Math\.max\(p,/)
+  })
+
+  it('measures some of it from work that has actually landed', () => {
+    // Fabio: "the blue line at the top really loads in progression to how much
+    // you're loading". One fetch cannot show progress, but a page firing five
+    // can, and this is the half that is not guesswork.
+    expect(busy).toContain('export function busyProgress')
+    expect(bar).toContain('busyProgress()')
+  })
+
+  it('stops short of the end until the work is done', () => {
+    // Nothing here knows how long a query takes, so the bar must not reach 100
+    // on a guess. It creeps to a ceiling and only completes for real.
+    expect(bar).toMatch(/CREEP_CEILING = 9\d/)
   })
 })
 
@@ -68,15 +104,28 @@ describe('the bar goes off again', () => {
 })
 
 describe('the mark runs, and does not move while it does', () => {
-  it('keeps the dot at exactly the size and place it has when still', () => {
-    // The left-hand column is the one fixed thing on screen. A ring that drew
-    // itself any larger than the dot would push the wordmark on every fetch.
+  it('draws the ring INSIDE the dot, not over it', () => {
+    // 7 Oct 2026. The first version stroked a circle AT the dot's radius, which
+    // puts half the stroke width outside it - over a filled disc that was still
+    // there underneath. Fabio: "the spinning wheel, it's actually going over the
+    // actual dot ... it just looks terrible."
+    //
+    // A stroke of width w centred on radius rr reaches rr + w/2. For that to
+    // land exactly on the dot's edge, rr must be r - w/2. These two lines are
+    // the whole of it, and nothing else may set the ring's radius.
+    expect(mark, 'the ring no longer derives its width from the dot').toContain('const ringW = g.dot.r / 2')
+    expect(mark, 'the ring is not inset by half its stroke, so it overflows the dot')
+      .toContain('const ringR = g.dot.r - ringW / 2')
+
     const dot = mark.slice(mark.indexOf('{busy ? ('), mark.indexOf('</svg>'))
+    expect(dot, 'the ring is drawn at some other radius').toContain('r={round3(ringR)}')
+    expect(dot, 'a filled disc is back behind the ring. It shows through the hole\n'
+      + 'in the middle, which is the thing that looked wrong.')
+      .not.toMatch(/fill=\{DOT_COLOUR\}[^/]*\/>\s*<circle[^>]*fill="none"/)
+
     const centres = dot.match(/cx=\{round3\(g\.dot\.cx\)\} cy=\{round3\(g\.dot\.cy\)\}/g) || []
     expect(centres.length, 'the busy dot is drawn somewhere other than the still one')
       .toBeGreaterThanOrEqual(3)
-    expect(dot, 'the ring is drawn at a radius of its own instead of the dot\'s')
-      .toContain('r={round3(g.dot.r)}')
   })
 
   it('is driven by whether anything is loading, not by a style choice', () => {
@@ -101,12 +150,16 @@ describe('the bare "Loading..." line only ever goes away', () => {
     })
   }
 
-  it('is down to nine screens and must not climb', () => {
+  it('is down to no screens and must not climb', () => {
     const bare = walk('app').concat(walk('components'))
-      .filter(f => /if \(loading\) return <(p|div)/.test(readFileSync(f, 'utf8')))
+      // The fault is WORDS where a shape or the mark should be, so this looks
+      // for text sitting directly inside the element - not for any element at
+      // all. Settlements wraps <Loading /> in a div to carry the page width,
+      // which is the right answer, not the wrong one.
+      .filter(f => /return <(p|div)[^>]*>[^<>]*Loading/.test(readFileSync(f, 'utf8')))
     expect(bare.length, 'a screen went back to answering "am I loading" with a\n'
       + 'line of grey text. components/Skeleton.tsx draws the shape instead -\n'
       + 'and if one of these was converted, lower the number here.\n'
-      + bare.join('\n')).toBeLessThanOrEqual(9)
+      + bare.join('\n')).toBeLessThanOrEqual(0)
   })
 })
