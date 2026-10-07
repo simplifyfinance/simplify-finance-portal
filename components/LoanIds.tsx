@@ -16,9 +16,9 @@ const money = (n: number | null) => n === null ? '' : '$' + Math.round(n).toLoca
 export function LoanIdChip({ deal, className = '' }: { deal: any; className?: string }) {
   const s = loanIdStatus(deal)
   if (s.tone === 'not_settled') return null
-  const style = s.tone === 'complete' ? 'bg-[#F1FAF4] border-[#C9E3D4] text-done'
+  const style = s.tone === 'complete' ? 'bg-done-bg border-done-edge text-done'
     : s.tone === 'chase' ? 'bg-chase-bg border-chase-edge text-chase'
-    : 'bg-[#FCFAF6] border-line text-muted'
+    : 'bg-gray-50 border-line text-muted'
   return (
     <span className={`text-[9.5px] font-bold tracking-[.05em] uppercase rounded-[5px] px-[7px] py-[2px] border whitespace-nowrap ${style} ${className}`}>
       {s.label}
@@ -58,14 +58,14 @@ export default function LoanIds({ deal, onSaved, onSkip, heading }: {
 
   return (
     <div>
-      <p className="text-[12.5px] text-[#575046] leading-[1.6] m-0 mb-3">
+      <p className="text-[12.5px] text-body leading-[1.6] m-0 mb-3">
         {heading || 'The Loan ID for each split, from the bank.'} It is what the RCTI is matched
         against, so the portal can tell you when you have been paid instead of somebody having to
         remember.
       </p>
 
       <div className="border border-line rounded-lg overflow-hidden">
-        <div className="grid grid-cols-[1fr_110px_170px] gap-2 px-3 py-2 bg-[#FCFAF6] border-b border-[#E5DED2]">
+        <div className="grid grid-cols-[1fr_110px_170px] gap-2 px-3 py-2 bg-gray-50 border-b border-line">
           {['Split', 'Amount', 'Loan ID'].map((h, i) => (
             <span key={h} className={`text-[10px] font-bold tracking-[.07em] uppercase text-muted ${i === 1 ? 'text-right' : ''}`}>{h}</span>
           ))}
@@ -73,7 +73,7 @@ export default function LoanIds({ deal, onSaved, onSkip, heading }: {
         {rows.map((r, i) => (
           <div key={r.label + i} className="grid grid-cols-[1fr_110px_170px] gap-2 px-3 py-2.5 items-center border-b border-line last:border-b-0">
             <span className="text-[12.5px] text-ink font-[600]">{r.label}</span>
-            <span className="text-[12.5px] text-[#575046] text-right tabular-nums">{money(r.amount)}</span>
+            <span className="text-[12.5px] text-body text-right tabular-nums">{money(r.amount)}</span>
             <input
               value={vals[i] || ''}
               onChange={e => setVals(p => p.map((v, j) => j === i ? e.target.value : v))}
@@ -94,7 +94,7 @@ export default function LoanIds({ deal, onSaved, onSkip, heading }: {
             I don&rsquo;t have them yet
           </button>
         )}
-        <span className={`text-[12px] ${failed ? 'text-[#C4553B] font-medium' : msg ? 'text-done' : 'text-faint'}`}>
+        <span className={`text-[12px] ${failed ? 'text-chase font-medium' : msg ? 'text-done' : 'text-faint'}`}>
           {msg || 'Payment lands about 30 days after settlement. This is chased from day 15.'}
         </span>
       </div>

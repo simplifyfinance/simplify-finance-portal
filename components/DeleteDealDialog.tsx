@@ -69,7 +69,7 @@ export function DeleteDealDialog({ deal, documentCount, busy, onMarkLost, onDele
               <input autoFocus value={typed} onChange={e => setTyped(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && deleteConfirmed(typed) && !busy) onDelete() }}
                 placeholder={DELETE_WORD}
-                className="w-full border border-[#E3B4B0] rounded-lg px-3 py-2 text-[13px] font-semibold text-ink bg-card focus:outline-none focus:border-[#B23A34]" />
+                className="w-full border border-chase-edge rounded-lg px-3 py-2 text-[13px] font-semibold text-ink bg-card focus:outline-none focus:border-chase" />
             </div>
           </div>
         )}
@@ -94,7 +94,7 @@ export function DeleteDealDialog({ deal, documentCount, busy, onMarkLost, onDele
               </button>
               <span className="flex-1" />
               <button onClick={() => setSure(true)}
-                className={btn + ' bg-card border-[#E3B4B0] text-chase'}>
+                className={btn + ' bg-card border-chase-edge text-chase'}>
                 Delete permanently
               </button>
             </>
@@ -106,7 +106,7 @@ export function DeleteDealDialog({ deal, documentCount, busy, onMarkLost, onDele
               </button>
               <span className="flex-1" />
               <button onClick={onDelete} disabled={!deleteConfirmed(typed) || busy}
-                className={btn + ' bg-[#B23A34] border-[#B23A34] text-white'}>
+                className={btn + ' bg-chase border-chase text-page'}>
                 {busy ? 'Deleting…' : 'Delete permanently'}
               </button>
             </>

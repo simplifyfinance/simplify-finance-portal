@@ -152,7 +152,7 @@ export default function PositionAtSettlement({ deal, onDone }: {
           const next = positionFor(factFind, a)
           const yes = !!choice[a.id]
           return (
-            <div key={a.id} className="border border-gray-100 rounded-xl px-3.5 py-3 mb-2.5 bg-[#FCFDFD]">
+            <div key={a.id} className="border border-gray-100 rounded-xl px-3.5 py-3 mb-2.5 bg-card">
               <div className="flex items-center gap-2.5 flex-wrap">
                 <span className="text-[13.5px] font-semibold">{applicantName(a)}</span>
                 <span className="ml-auto flex gap-1.5">
@@ -161,7 +161,7 @@ export default function PositionAtSettlement({ deal, onDone }: {
                     Replace
                   </button>
                   <button onClick={() => setChoice(p => ({ ...p, [a.id]: false }))}
-                    className={`text-[12px] rounded-md px-3 py-1 border ${!yes ? 'bg-[#8B959D] border-[#8B959D] text-white font-semibold' : 'border-gray-200 text-gray-500'}`}>
+                    className={`text-[12px] rounded-md px-3 py-1 border ${!yes ? 'bg-faint border-faint text-page font-semibold' : 'border-gray-200 text-gray-500'}`}>
                     Leave it
                   </button>
                 </span>
@@ -202,7 +202,7 @@ export default function PositionAtSettlement({ deal, onDone }: {
           </div>
         )}
         {err && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2.5 text-[12.5px] leading-relaxed mb-3">
+          <div className="bg-chase-bg border border-chase-edge text-chase rounded-lg px-3 py-2.5 text-[12.5px] leading-relaxed mb-3">
             {err}
           </div>
         )}

@@ -26,12 +26,12 @@ export default function InternalNotesStrip({ dealId, initial, openByDefault, meI
   // and it is not an important note (something that needs doing).
   if (!open) return (
     <button onClick={() => setOpen(true)}
-      className="w-full text-left mb-3 bg-[#FCFAF6] border border-line rounded-xl px-3.5 py-2.5 flex items-start gap-2.5 hover:border-[#D6CCBC] transition">
+      className="w-full text-left mb-3 bg-gray-50 border border-line rounded-xl px-3.5 py-2.5 flex items-start gap-2.5 hover:border-gray-300 transition">
       <span className="text-[9.5px] font-bold tracking-[.08em] uppercase text-faint flex-none mt-[3px]">Internal notes</span>
-      <span className={`text-[12.5px] leading-[1.5] flex-1 ${preview ? 'text-[#575046]' : 'text-faint italic'}`}>
+      <span className={`text-[12.5px] leading-[1.5] flex-1 ${preview ? 'text-body' : 'text-faint italic'}`}>
         {preview ? preview.slice(0, 180) + (preview.length > 180 ? '…' : '') : 'Nothing written yet — what the client told us goes here.'}
       </span>
-      <span className="text-[11.5px] text-[#0E8FCB] flex-none mt-[1px]">{preview ? 'Edit' : 'Add'}</span>
+      <span className="text-[11.5px] text-brand-ink flex-none mt-[1px]">{preview ? 'Edit' : 'Add'}</span>
     </button>
   )
 

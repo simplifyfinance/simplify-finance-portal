@@ -75,7 +75,7 @@ export default function DealPeek({ deal, lenderName, brokerName, creditName, col
                     style={chipStyle(c.colour)}>{c.label}</span>
             ))}
             <span className="text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border"
-                  style={chipStyle('#0E8FCB')}>{p.phaseLabel}</span>
+                  style={chipStyle('var(--color-brand-ink)')}>{p.phaseLabel}</span>
             <span className="text-[11px] text-faint">{peekAge(deal)}</span>
           </div>
         </div>
@@ -124,7 +124,7 @@ export default function DealPeek({ deal, lenderName, brokerName, creditName, col
         <div className="px-[18px] pb-3">
           <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-muted m-0 mb-2">Internal notes</p>
           {p.notes ? (
-            <div className="text-[12px] leading-[1.55] text-[#575046] bg-[#FCFAF6] border border-line rounded-lg px-2.5 py-2 max-h-[96px] overflow-auto whitespace-pre-line">
+            <div className="text-[12px] leading-[1.55] text-body bg-gray-50 border border-line rounded-lg px-2.5 py-2 max-h-[96px] overflow-auto whitespace-pre-line">
               {p.notes}
             </div>
           ) : (
@@ -146,7 +146,7 @@ export default function DealPeek({ deal, lenderName, brokerName, creditName, col
                   <p className="text-[10px] text-faint m-0">
                     {whenLabel(n.created_at)} · {n.kind === 'system' ? 'recorded automatically' : (n.author_name || 'unknown')}
                   </p>
-                  <p className={`text-[12px] m-0 leading-[1.45] ${n.kind === 'system' ? 'text-muted italic' : 'text-[#575046]'}`}>
+                  <p className={`text-[12px] m-0 leading-[1.45] ${n.kind === 'system' ? 'text-muted italic' : 'text-body'}`}>
                     {n.body}
                   </p>
                 </div>
@@ -155,13 +155,13 @@ export default function DealPeek({ deal, lenderName, brokerName, creditName, col
           </div>
         )}
 
-        <div className="flex gap-2 items-center px-[18px] py-3 border-t border-line bg-[#FCFAF6]">
+        <div className="flex gap-2 items-center px-[18px] py-3 border-t border-line bg-gray-50">
           <button onClick={() => router.push(`/deals/${deal.id}`)}
-            className="text-[12.5px] rounded-lg px-3 py-1.5 bg-[#0E8FCB] text-white font-semibold">Open deal</button>
+            className="text-[12.5px] rounded-lg px-3 py-1.5 bg-brand-ink text-page font-semibold">Open deal</button>
           <button onClick={() => router.push(`/deals/${deal.id}?stage=Statements`)}
-            className="text-[12.5px] rounded-lg px-3 py-1.5 border border-[#E5DED2] bg-card text-ink">Open Statements</button>
+            className="text-[12.5px] rounded-lg px-3 py-1.5 border border-line bg-card text-ink">Open Statements</button>
           <button onClick={onClose}
-            className="text-[12.5px] rounded-lg px-3 py-1.5 border border-[#E5DED2] bg-card text-ink">Close</button>
+            className="text-[12.5px] rounded-lg px-3 py-1.5 border border-line bg-card text-ink">Close</button>
           {onStep && <span className="ml-auto text-[11.5px] text-faint">← → to step through the column</span>}
         </div>
       </div>

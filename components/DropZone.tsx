@@ -30,8 +30,8 @@ export default function DropZone({
   const state = disabled || busy
     ? 'opacity-60 pointer-events-none border-line'
     : over
-      ? 'border-brand bg-[#EAF7FE]'
-      : 'border-line hover:border-[#BFE6F9] hover:bg-[#FCFAF6]'
+      ? 'border-brand bg-info-bg'
+      : 'border-line hover:border-info-edge hover:bg-gray-50'
 
   return (
     <label

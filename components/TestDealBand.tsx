@@ -45,7 +45,7 @@ export default function TestDealBand({ deal, userRole, me, onChanged }: {
   return (
     <div className="mb-4 rounded-xl border border-chase-edge bg-chase-bg px-4 py-3">
       <div className="flex items-start gap-3 flex-wrap">
-        <span className="flex-none mt-0.5 text-[10.5px] font-bold tracking-[0.09em] text-white bg-[#C6952F] rounded px-2 py-1">
+        <span className="flex-none mt-0.5 text-[10.5px] font-bold tracking-[0.09em] text-page bg-chase rounded px-2 py-1">
           TEST DEAL
         </span>
         <div className="min-w-[240px] flex-1">
@@ -56,7 +56,7 @@ export default function TestDealBand({ deal, userRole, me, onChanged }: {
             {TEST_DEAL_SUMMARY}. Everything else works exactly as it does on a real deal,
             and a client email built here is sent to whoever presses send.
           </div>
-          {msg && <div className="text-[12px] text-[#B91C1C] mt-1.5">{msg}</div>}
+          {msg && <div className="text-[12px] text-chase mt-1.5">{msg}</div>}
         </div>
         {canChangeTestFlag(userRole) && (
           <button onClick={makeItReal} disabled={busy}

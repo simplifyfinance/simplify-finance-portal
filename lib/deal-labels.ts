@@ -141,10 +141,20 @@ export function chipStyle(colour: string, onWash = false): { color: string; back
   // that is itself a tint, the two mix into a muddy band and the chip stops
   // reading as a separate thing. On a washed card it takes the card colour
   // instead - a name rather than a hex, so dark mode gets it for free.
+  // A NAME WORKS HERE AS WELL AS A HEX, as of 7 Oct 2026.
+  //
+  // This used to glue '14' and '38' onto the end of the string - hex alpha, 8%
+  // and 22% - which only works on a 6-digit hex. So every caller had to hand it
+  // one, and a hex is the same colour in both themes. var(--color-...) goes
+  // through color-mix instead and gets dark mode for free.
+  const tint = (pct: number, hexAlpha: string) =>
+    colour.startsWith('var(')
+      ? `color-mix(in srgb, ${colour} ${pct}%, transparent)`
+      : colour + hexAlpha
   return {
     color: colour,
-    background: onWash ? 'var(--color-card)' : colour + '14',
-    borderColor: colour + '38',
+    background: onWash ? 'var(--color-card)' : tint(8, '14'),
+    borderColor: tint(22, '38'),
   }
 }
 

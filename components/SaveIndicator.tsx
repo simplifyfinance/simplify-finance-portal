@@ -33,7 +33,7 @@ export function SaveIndicator({ status }: { status?: SaveStatus }) {
   }
 
   const skin = line.tone === 'bad'
-    ? 'bg-red-100 text-red-700'
+    ? 'bg-chase-bg text-chase'
     : 'bg-chase-bg text-chase'
 
   return (

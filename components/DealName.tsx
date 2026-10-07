@@ -25,7 +25,7 @@ export default function DealName({ name, others, className }: {
   if (!shared) return <span className={className}>{name}</span>
   return (
     <span className={className}>
-      <span className="text-[#A8B0B7] font-normal">{shared}</span>{tail}
+      <span className="text-faint font-normal">{shared}</span>{tail}
     </span>
   )
 }
