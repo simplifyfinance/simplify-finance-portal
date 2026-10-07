@@ -346,7 +346,7 @@ export default function CommissionLibrary() {
           {rates.length > 0 && (
             <button onClick={() => { setSelecting(v => !v); setSelected([]); setOpen(null); setEditing(false); setErr('') }}
               className={`text-[12.5px] font-semibold rounded-lg px-3.5 py-2 transition border ${selecting
-                ? 'bg-ink border-ink text-white'
+                ? 'bg-ink border-ink text-page'
                 : 'bg-card border-line text-muted hover:bg-page hover:text-ink'}`}>
               {selecting ? 'Done' : 'Delete lenders'}
             </button>

@@ -211,12 +211,12 @@ export default function PipelineTargets() {
         <div className="flex items-center gap-2 px-5 py-3 border-b border-[#F6F2EA] flex-wrap">
           <span className="text-[11px] font-semibold text-faint mr-1">Targets for</span>
           <button type="button" onClick={() => setScope('')}
-            className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-medium border transition-colors ${isBusiness ? 'bg-ink border-ink text-white font-semibold' : 'border-line text-muted hover:bg-page hover:text-ink'}`}>
+            className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-medium border transition-colors ${isBusiness ? 'bg-ink border-ink text-page font-semibold' : 'border-line text-muted hover:bg-page hover:text-ink'}`}>
             Whole business
           </button>
           {brokers.map(b => (
             <button key={b.key} type="button" onClick={() => setScope(b.key)}
-              className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-medium border transition-colors ${scope === b.key ? 'bg-ink border-ink text-white font-semibold' : 'border-line text-muted hover:bg-page hover:text-ink'}`}>
+              className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-medium border transition-colors ${scope === b.key ? 'bg-ink border-ink text-page font-semibold' : 'border-line text-muted hover:bg-page hover:text-ink'}`}>
               {b.name}
             </button>
           ))}

@@ -362,7 +362,7 @@ export default function TeamSection() {
                         value={keyInput} onChange={e => setKeyInput(e.target.value)}
                         placeholder={suggestKey(user.full_name) || 'not set'} />
                       <button onClick={() => saveBrokerKey(user)}
-                        className="text-xs font-medium text-white bg-ink px-3 py-1.5 rounded-lg hover:opacity-90">Save</button>
+                        className="text-xs font-medium text-page bg-ink px-3 py-1.5 rounded-lg hover:opacity-90">Save</button>
                       {!user.broker_key && suggestKey(user.full_name) && keyInput !== suggestKey(user.full_name) && (
                         <button onClick={() => setKeyInput(suggestKey(user.full_name))}
                           className="text-xs text-brand-ink hover:underline">Use &ldquo;{suggestKey(user.full_name)}&rdquo;</button>
@@ -382,7 +382,7 @@ export default function TeamSection() {
                         value={phoneInput} onChange={e => setPhoneInput(e.target.value)}
                         placeholder="0429 228 148" />
                       <button onClick={() => savePhone(user)}
-                        className="text-xs font-medium text-white bg-ink px-3 py-1.5 rounded-lg hover:opacity-90">Save</button>
+                        className="text-xs font-medium text-page bg-ink px-3 py-1.5 rounded-lg hover:opacity-90">Save</button>
                     </div>
                     <p className="text-[11px] text-gray-400 mt-1.5 max-w-[420px]">
                       Printed under their name on client emails they send from the portal. Empty is fine

@@ -386,7 +386,7 @@ export default function SettlementsPage() {
                   return (
                     <button key={s} onClick={() => setStep(d, s, !on)} disabled={busy}
                       className={`text-[12px] rounded-lg px-3 py-1.5 border transition ${on
-                        ? 'bg-ink border-ink text-white font-semibold'
+                        ? 'bg-ink border-ink text-page font-semibold'
                         : 'bg-card border-line text-muted hover:bg-page'}`}>
                       {stepLabel(s, d.transaction_type)}
                     </button>
@@ -515,7 +515,7 @@ export default function SettlementsPage() {
 
 function pill(on: boolean) {
   return `rounded-full px-3 py-1.5 text-[12.5px] font-medium border transition-colors ${on
-    ? 'bg-ink border-ink text-white font-semibold'
+    ? 'bg-ink border-ink text-page font-semibold'
     : 'border-line bg-card text-muted hover:bg-page hover:text-ink'}`
 }
 

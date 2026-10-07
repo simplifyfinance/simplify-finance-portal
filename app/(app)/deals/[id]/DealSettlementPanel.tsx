@@ -198,7 +198,7 @@ export default function DealSettlementPanel({ deal, onUpdated }: { deal: any; on
               <button key={s} type="button" disabled={busy} onClick={() => setStep(s, !on)}
                 title={on && when ? `Recorded ${String(when).slice(0, 10)}. Click to undo.` : ''}
                 className={`text-[12px] rounded-lg px-3 py-1.5 border transition ${on
-                  ? 'bg-ink border-ink text-white font-semibold'
+                  ? 'bg-ink border-ink text-page font-semibold'
                   : 'bg-card border-line text-muted hover:bg-page'}`}>
                 {stepLabel(s, d.transaction_type)}
                 {on && when && <span className="font-normal opacity-70 ml-1.5">{String(when).slice(8, 10)}/{String(when).slice(5, 7)}</span>}

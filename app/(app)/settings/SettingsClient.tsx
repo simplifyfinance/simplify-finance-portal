@@ -703,7 +703,7 @@ export default function SettingsPage() {
                     const covers = officer.brokers.some(x => String(x).toLowerCase() === slug)
                     return (
                       <button key={b.key} onClick={() => toggleBrokerCoverage(officer.id, slug)}
-                        className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors ${covers ? 'bg-ink border-ink text-white' : 'border-line text-muted hover:bg-page hover:text-ink'}`}>
+                        className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors ${covers ? 'bg-ink border-ink text-page' : 'border-line text-muted hover:bg-page hover:text-ink'}`}>
                         {slug}
                       </button>
                     )

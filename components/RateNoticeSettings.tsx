@@ -366,7 +366,7 @@ export default function RateNoticeSettings() {
           className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-[12.5px]" />
         <button type="button" disabled={!nextDate}
           onClick={() => { save(forNextDecision(notice, nextDate)); setNextDate('') }}
-          className="rounded-lg bg-ink px-3 py-1.5 text-[12.5px] font-semibold text-white disabled:opacity-40">
+          className="rounded-lg bg-ink px-3 py-1.5 text-[12.5px] font-semibold text-page disabled:opacity-40">
           Start it
         </button>
       </div>

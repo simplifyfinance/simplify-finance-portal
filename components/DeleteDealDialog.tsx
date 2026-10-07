@@ -77,7 +77,7 @@ export function DeleteDealDialog({ deal, documentCount, busy, onMarkLost, onDele
         <div className="px-6 py-4 mt-2 flex items-center gap-2.5 flex-wrap">
           {!check.allowed ? (
             <>
-              <button onClick={onMarkLost} className={btn + ' bg-ink border-ink text-white'}>
+              <button onClick={onMarkLost} className={btn + ' bg-ink border-ink text-page'}>
                 Mark it as lost instead
               </button>
               <button onClick={onCancel} className={btn + ' bg-card border-line text-body font-medium'}>
@@ -86,7 +86,7 @@ export function DeleteDealDialog({ deal, documentCount, busy, onMarkLost, onDele
             </>
           ) : !sure ? (
             <>
-              <button onClick={onMarkLost} className={btn + ' bg-ink border-ink text-white'}>
+              <button onClick={onMarkLost} className={btn + ' bg-ink border-ink text-page'}>
                 Mark it as lost instead
               </button>
               <button onClick={onCancel} className={btn + ' bg-card border-line text-body font-medium'}>

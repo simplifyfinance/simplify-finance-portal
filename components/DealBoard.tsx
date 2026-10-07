@@ -310,7 +310,7 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                   if (problem) { setMsg(problem); setUndoing(null); return }
                   setUndoing(null)
                 }}
-                className="rounded-lg px-4 py-2 text-[13px] font-semibold border bg-ink border-ink text-white disabled:opacity-40">
+                className="rounded-lg px-4 py-2 text-[13px] font-semibold border bg-ink border-ink text-page disabled:opacity-40">
                 {undoBusy ? 'Moving…' : `Move it back to ${PHASE_LABEL[undoing.target]}`}
               </button>
               <button disabled={undoBusy} onClick={() => setUndoing(null)}

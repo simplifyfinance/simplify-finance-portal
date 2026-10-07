@@ -1448,7 +1448,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       <div className="flex gap-2 items-center flex-wrap">
         <div className="flex gap-2 bg-card border border-gray-100 rounded-xl p-1">
           {(['form', 'preview'] as const).map(t => (
-            <button key={t} onClick={() => setActiveTab(t)} className={`px-6 py-2 rounded-lg text-sm font-medium transition ${activeTab === t ? 'bg-ink text-white' : 'text-gray-400 hover:text-gray-600'}`}>
+            <button key={t} onClick={() => setActiveTab(t)} className={`px-6 py-2 rounded-lg text-sm font-medium transition ${activeTab === t ? 'bg-ink text-page' : 'text-gray-400 hover:text-gray-600'}`}>
               {t === 'form' ? 'LO Form' : 'Email Preview'}
             </button>
           ))}
@@ -1583,7 +1583,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowMoveToCompliancePopup(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleMoveToCompliance} disabled={sendingMoveToCompliance} className="px-4 py-2 text-sm bg-ink text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-50">
+              <button onClick={handleMoveToCompliance} disabled={sendingMoveToCompliance} className="px-4 py-2 text-sm bg-ink text-page rounded-lg font-medium hover:opacity-90 disabled:opacity-50">
                 {sendingMoveToCompliance ? 'Sending...' : 'Send and move to Compliance'}
               </button>
             </div>
@@ -1754,7 +1754,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             </div>
             <div className="flex gap-2">
               <input className={inp} value={newDoc} onChange={e => setNewDoc(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && newDoc.trim()) { setD({ ...d, documentsRequired: [...d.documentsRequired, newDoc.trim()] }); setNewDoc('') } }} placeholder="e.g. Latest payslips — add and press Enter" />
-              <button onClick={() => { if (newDoc.trim()) { setD({ ...d, documentsRequired: [...d.documentsRequired, newDoc.trim()] }); setNewDoc('') } }} className="bg-ink text-white text-sm px-4 rounded-lg">Add</button>
+              <button onClick={() => { if (newDoc.trim()) { setD({ ...d, documentsRequired: [...d.documentsRequired, newDoc.trim()] }); setNewDoc('') } }} className="bg-ink text-page text-sm px-4 rounded-lg">Add</button>
             </div>
           </div>
 
@@ -1808,7 +1808,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             </div>
             <div className="flex gap-2">
               <input className={inp} value={newCriteria} onChange={e => setNewCriteria(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && newCriteria.trim()) { setD({ ...d, criteriaUsed: [...d.criteriaUsed, newCriteria.trim()] }); setNewCriteria('') } }} placeholder="Add custom criteria and press Enter" />
-              <button onClick={() => { if (newCriteria.trim()) { setD({ ...d, criteriaUsed: [...d.criteriaUsed, newCriteria.trim()] }); setNewCriteria('') } }} className="bg-ink text-white text-sm px-4 rounded-lg">Add</button>
+              <button onClick={() => { if (newCriteria.trim()) { setD({ ...d, criteriaUsed: [...d.criteriaUsed, newCriteria.trim()] }); setNewCriteria('') } }} className="bg-ink text-page text-sm px-4 rounded-lg">Add</button>
             </div>
             {/* IMPORTANT THINGS TO NOTE, UNDER THE CRITERIA RATHER THAN IN
                 A CARD OF ITS OWN. docs/approved-looks/lo.html draws the two as
@@ -2233,7 +2233,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   )}
                   <button disabled={!d.clientAgreedLender}
                     onClick={() => { setD(prev => ({ ...prev, clientDecisionAt: new Date().toISOString(), clientDecisionBy: me?.name || '' })); setDecisionOpen(false) }}
-                    className="px-3 py-1.5 text-xs rounded-lg bg-ink text-white font-medium hover:opacity-90 disabled:opacity-40">Record it</button>
+                    className="px-3 py-1.5 text-xs rounded-lg bg-ink text-page font-medium hover:opacity-90 disabled:opacity-40">Record it</button>
                 </div>
               </div>
             ) : (

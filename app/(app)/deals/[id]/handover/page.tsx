@@ -177,7 +177,7 @@ export default function HandoverPage() {
                  style={{ width: cards.length ? `${doneCount / cards.length * 100}%` : '0%' }} />
           </div>
           <button onClick={jumpToNext}
-            className="bg-ink hover:opacity-90 text-white rounded-lg px-3.5 py-1.5 text-[12.5px] font-semibold">
+            className="bg-ink hover:opacity-90 text-page rounded-lg px-3.5 py-1.5 text-[12.5px] font-semibold">
             Jump to next &darr;
           </button>
         </div>

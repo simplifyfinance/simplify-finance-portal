@@ -155,7 +155,7 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
             {[['Formal', false], ['Pre-approval', true]].map(([label, pre]) => (
               <button key={String(label)} disabled={busy} onClick={() => setApproval(pre as boolean)}
                 className={`px-3 py-1.5 text-[12.5px] transition ${row.preApproval === pre
-                  ? 'bg-ink text-white font-semibold' : 'bg-card text-muted hover:bg-page'}`}>
+                  ? 'bg-ink text-page font-semibold' : 'bg-card text-muted hover:bg-page'}`}>
                 {label}
               </button>
             ))}

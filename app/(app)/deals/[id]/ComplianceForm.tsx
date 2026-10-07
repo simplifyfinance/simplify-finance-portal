@@ -1769,7 +1769,7 @@ Use the security address exactly as recorded. On a pre-approval it will already 
             {/* The PDFs are the record. This is what people type from - copying
                 out of a PDF loses the bold and breaks words across lines. */}
             <a href={`/deals/${deal.id}/handover`}
-              className="bg-ink border border-ink text-white rounded-lg px-3.5 py-2 text-[12.5px] font-semibold hover:bg-ink/90 transition inline-flex items-center gap-1.5">
+              className="bg-ink border border-ink text-page rounded-lg px-3.5 py-2 text-[12.5px] font-semibold hover:bg-ink/90 transition inline-flex items-center gap-1.5">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="9" height="11" rx="1.5"/><path d="M11 13v1H2V4h1"/></svg>
               Open to copy
             </a>

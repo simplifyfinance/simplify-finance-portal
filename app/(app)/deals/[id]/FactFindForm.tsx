@@ -1453,7 +1453,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                 </div>
                 <div className="flex gap-2 items-center flex-wrap">
                   <button onClick={() => (plan.kind === 'replace' ? setConfirmCopy(true) : doCopy())}
-                    className="bg-ink border border-ink text-white rounded-lg px-3 py-1.5 text-[12.5px] font-semibold hover:bg-ink/90">
+                    className="bg-ink border border-ink text-page rounded-lg px-3 py-1.5 text-[12.5px] font-semibold hover:bg-ink/90">
                     Copy {plan.count} {plan.count === 1 ? 'address' : 'addresses'} from {who}
                   </button>
                   <span className="text-[11.5px] text-faint">or fill them in below</span>

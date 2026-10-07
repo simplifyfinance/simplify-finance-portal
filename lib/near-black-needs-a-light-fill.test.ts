@@ -86,3 +86,44 @@ describe('near-black writing stands on the light blue, or nowhere', () => {
       + bad.join('\n')).toEqual([])
   })
 })
+
+// ================================================================= 7 Oct 2026
+//
+// THE SECOND HALF OF THE SAME FAULT: WHITE LETTERS ON A NEAR-WHITE PILL.
+//
+// The sidebar one above was near-black ink on a near-black fill. This is the
+// mirror image, and it was on 27 buttons across 22 files.
+//
+//   --color-ink   #17140F light   #E9EDF1 dark    it inverts, as it must
+//   text-white    #FFFFFF         #FFFFFF         it does not
+//
+// bg-ink with text-white is 17 to 1 on the light theme and 1.1 to 1 on the dark
+// one. Every selected broker pill, every selected settlement step, the Save on
+// a handover - all blank in dark mode, the words still sitting there.
+//
+// bg-brand-ink is the same thing reversed: #107EA8 light, #6FD3FF - a LIGHT
+// blue - dark, so white on it is 1.3 to 1.
+//
+// text-page is the ink that moves with them, and 68 places already used it.
+//
+// Matched only INSIDE one class string - no quote, backtick or brace between
+// the fill and the ink - so a line carrying two states cannot be accused of a
+// fault that belongs to neither half. That mistake is what put the sidebar on
+// this list in the first place.
+describe('an ink that does not invert never sits on a fill that does', () => {
+  const files = ROOTS.flatMap(d => walk(d))
+  const SAME_CLASS_STRING = /bg-(?:brand-)?ink[^"'`{}]*text-white|text-white[^"'`{}]*bg-(?:brand-)?ink/
+
+  it('no white writing on bg-ink or bg-brand-ink', () => {
+    const caught: string[] = []
+    for (const f of files) {
+      readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
+        if (SAME_CLASS_STRING.test(line)) caught.push(`${f}:${i + 1}`)
+      })
+    }
+    expect(caught, 'text-white is #FFFFFF in BOTH themes. ink and brand-ink both\n'
+      + 'invert, so in dark mode this is white on near-white - about 1.1 to 1,\n'
+      + 'and the button reads as empty. Use text-page, which inverts with them.\n'
+      + caught.join('\n')).toEqual([])
+  })
+})

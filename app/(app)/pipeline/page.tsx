@@ -543,12 +543,12 @@ export default function PipelinePage() {
 
         <div className="flex gap-1.5 flex-wrap">
           <button onClick={() => setScope('')}
-            className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium border transition-colors ${scope === '' ? 'bg-ink border-ink text-white font-semibold' : 'border-line bg-card text-muted hover:bg-page hover:text-ink'}`}>
+            className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium border transition-colors ${scope === '' ? 'bg-ink border-ink text-page font-semibold' : 'border-line bg-card text-muted hover:bg-page hover:text-ink'}`}>
             Business
           </button>
           {brokers.map(b => (
             <button key={b.key} onClick={() => setScope(b.key)}
-              className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium border transition-colors ${scope === b.key ? 'bg-ink border-ink text-white font-semibold' : 'border-line bg-card text-muted hover:bg-page hover:text-ink'}`}>
+              className={`rounded-full px-3 py-1.5 text-[12.5px] font-medium border transition-colors ${scope === b.key ? 'bg-ink border-ink text-page font-semibold' : 'border-line bg-card text-muted hover:bg-page hover:text-ink'}`}>
               {b.name}
             </button>
           ))}

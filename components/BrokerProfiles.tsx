@@ -239,7 +239,7 @@ export default function BrokerProfiles({ brands }: { brands: { id: string; name:
                   return (
                     <button key={brand.id}
                       onClick={() => edit(r.broker_key, { brand_ids: has ? list.filter(x => x !== brand.id) : [...list, brand.id] })}
-                      className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors ${has ? 'bg-ink border-ink text-white' : 'border-line text-muted hover:bg-page hover:text-ink'}`}>
+                      className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium border transition-colors ${has ? 'bg-ink border-ink text-page' : 'border-line text-muted hover:bg-page hover:text-ink'}`}>
                       {brand.name}
                     </button>
                   )

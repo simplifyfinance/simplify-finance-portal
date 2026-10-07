@@ -360,7 +360,7 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
                       aria-label={r.ticked ? `Do not ask for ${r.label}` : `Ask for ${r.label}`}
                       className={`w-4 h-4 rounded-[4px] border-[1.5px] mt-[3px] flex-none grid place-items-center transition
                         disabled:opacity-40 ${r.ticked
-                          ? 'bg-ink border-ink text-white'
+                          ? 'bg-ink border-ink text-page'
                           : 'bg-card border-[var(--color-faint)] text-transparent hover:border-[var(--color-faint)]'}`}>
                       {TICK}
                     </button>
