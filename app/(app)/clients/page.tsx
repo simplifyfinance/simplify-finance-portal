@@ -1,5 +1,6 @@
 'use client'
 import { brokerLabel } from '@/lib/broker-key'
+import { PAGE_WIDE } from '@/lib/page-width'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import Link from 'next/link'
@@ -60,7 +61,7 @@ export default function ClientsPage() {
   )
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className={PAGE_WIDE}>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-ink mb-1">Clients</h1>
         <p className="text-sm text-gray-500">All clients across your deals.</p>

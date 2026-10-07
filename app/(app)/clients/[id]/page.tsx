@@ -1,5 +1,6 @@
 'use client'
 import { brokerLabel } from '@/lib/broker-key'
+import { PAGE_READ } from '@/lib/page-width'
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
@@ -81,7 +82,7 @@ export default function ClientProfilePage() {
   const itemNote = (item: any) => heldLine(item?.held)
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
+    <div className={PAGE_READ}>
       <Link href="/clients" className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-5">
         <ArrowLeft size={14} /> Back to clients
       </Link>

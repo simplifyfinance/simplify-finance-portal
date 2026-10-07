@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { PAGE_WIDE } from '@/lib/page-width'
 import LenderLibrary from '@/components/LenderLibrary'
 import LenderRules from '@/components/LenderRules'
 import RateNoticeSettings from '@/components/RateNoticeSettings'
@@ -24,7 +25,7 @@ export default function LendersClient() {
   const active = PANES.find(x => x.key === pane) || PANES[0]
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className={PAGE_WIDE}>
       <h1 className="text-2xl font-bold text-ink mb-1">Lender Library</h1>
       <p className="text-sm text-muted mb-8">{active.blurb}</p>
       {pane === 'rate-notice' ? <RateNoticeSettings />

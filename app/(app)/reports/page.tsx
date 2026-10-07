@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { PAGE_WIDE } from '@/lib/page-width'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { readMoney, money } from '@/lib/money'
@@ -63,7 +64,7 @@ export default function ReportsPage() {
     .sort((a, b) => (b.lvr || 0) - (a.lvr || 0))
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className={PAGE_WIDE}>
       <p className="text-lg font-medium text-ink mb-4">Reports</p>
 
       <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit mb-5">

@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { PAGE_WIDE } from '@/lib/page-width'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 
 type LoanSizeFilter = 'all' | 'under500' | '500to1m' | 'over1m'
@@ -59,8 +60,8 @@ export default function CheatSheetPage() {
   }
 
   return (
-    <div style={{ background: '#1a1a1a', minHeight: '100vh' }} className="p-6">
-      <div className="max-w-4xl mx-auto">
+    <div style={{ background: '#1a1a1a', minHeight: '100vh' }}>
+      <div className={PAGE_WIDE}>
         <div className="flex justify-between items-center mb-1">
           <p className="text-lg font-medium text-white">Rate cheat sheet</p>
           <span className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>

@@ -178,7 +178,7 @@ export default function TemplatesClient() {
           The other templates are things somebody types. */}
       <div className="text-[11px] font-bold tracking-[.08em] uppercase mb-2.5"
            style={{ color: TONE.label }}>From a deal</div>
-      <div className="grid grid-cols-3 gap-3 max-[820px]:grid-cols-1 mb-6">
+      <div className="grid grid-cols-3 gap-3 max-[1150px]:grid-cols-2 max-[820px]:grid-cols-1 mb-6">
         {MILESTONES.map(t => (
           <button key={t.id} onClick={() => setMilestone(t.id)}
             className="border rounded-xl px-4 py-4 text-left bg-card hover:border-done-edge transition"
@@ -195,7 +195,7 @@ export default function TemplatesClient() {
 
       <div className="text-[11px] font-bold tracking-[.08em] uppercase mb-2.5"
            style={{ color: TONE.label }}>What you type</div>
-      <div className="grid grid-cols-2 gap-3 max-[820px]:grid-cols-1">
+      <div className="grid grid-cols-4 gap-3 max-[1500px]:grid-cols-3 max-[1150px]:grid-cols-2 max-[820px]:grid-cols-1">
         {live.map(t => card(t, false))}
       </div>
       {/* The heading only appears once something is in there, so the page stays
@@ -204,7 +204,7 @@ export default function TemplatesClient() {
         <>
           <div className="text-[11px] font-bold tracking-[.08em] uppercase mt-6 mb-2.5"
                style={{ color: TONE.label }}>Archived</div>
-          <div className="grid grid-cols-2 gap-3 max-[820px]:grid-cols-1">
+          <div className="grid grid-cols-4 gap-3 max-[1500px]:grid-cols-3 max-[1150px]:grid-cols-2 max-[820px]:grid-cols-1">
             {away.map(t => card(t, true))}
           </div>
         </>

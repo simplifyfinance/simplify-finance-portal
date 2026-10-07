@@ -1,5 +1,6 @@
 'use client'
 import { Fragment, useEffect, useMemo, useState } from 'react'
+import { PAGE_WIDE } from '@/lib/page-width'
 import { seedFromClients, seedSummary } from '@/lib/seed-from-client'
 import { dealMatches } from '@/lib/deal-search'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -353,7 +354,7 @@ export default function DealsPage() {
     chase: 'text-chase', review: 'text-info', waiting: 'text-waiting', all: 'text-ink',
   }
   return (
-    <div className="p-6">
+    <div className={PAGE_WIDE}>
       {/* FOUR QUESTIONS, FOUR PRESSES. What is on fire, what is waiting for me,
           what is out of my hands, and how much is there altogether.
 

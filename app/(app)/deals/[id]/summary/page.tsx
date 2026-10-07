@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { PAGE_READ } from '@/lib/page-width'
 import { useParams } from 'next/navigation'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { calculateSeAssessableIncome } from '@/lib/income-calculations'
@@ -88,7 +89,7 @@ export default function DealSummaryPage() {
   const simpleLvr = purchasePriceNum > 0 && totalLoanAmount > 0 ? Math.round((totalLoanAmount / purchasePriceNum) * 1000) / 10 : null
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
+    <div className={PAGE_READ}>
       <div className="flex justify-between items-center mb-6">
         <p className="text-lg font-medium text-ink">Deal summary — {deal.deal_name}</p>
         <span className="text-xs text-gray-400">Live data, always current</span>

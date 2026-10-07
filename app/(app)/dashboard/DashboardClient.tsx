@@ -1,5 +1,6 @@
 'use client'
 import RateNoticeNag from '@/components/RateNoticeNag'
+import { PAGE_WIDE } from '@/lib/page-width'
 import { useMemo, useState } from 'react'
 import { brokerKey as brokerKey_, brokerLabel, sameBroker } from '@/lib/broker-key'
 import Link from 'next/link'
@@ -161,7 +162,7 @@ export default function DashboardClient({ deals, fullName, brokerKey, creditOffi
   const recent = filteredDeals.slice(0, 8)
 
   return (
-    <div className="p-6 max-w-5xl">
+    <div className={PAGE_WIDE}>
       {/* ONLY EVER THERE WHEN A RATE NOTICE HAS OUTSTAYED ITS REVIEW DATE, which
           means it is not furniture anybody learns to look past. See
           components/RateNoticeNag.tsx. */}

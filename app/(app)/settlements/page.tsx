@@ -1,5 +1,6 @@
 'use client'
 import { brokerLabel, sameBroker } from '@/lib/broker-key'
+import { PAGE_WIDE } from '@/lib/page-width'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -251,9 +252,9 @@ export default function SettlementsPage() {
     setMsg(`${d.deal_name} moved to ${monthLabel(addMonths(monthOf(date) || month, 1))}.`)
   }
 
-  if (loading) return <div className="max-w-6xl mx-auto p-6 text-sm text-faint">Loading settlements…</div>
+  if (loading) return <div className={`${PAGE_WIDE} text-sm text-faint`}>Loading settlements…</div>
   if (allowed === false) return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className={PAGE_WIDE}>
       <p className="text-lg font-medium text-ink mb-2">Settlements</p>
       <p className="text-sm text-muted">You don&rsquo;t have access to settlements. An admin can grant it in Settings, Team, Access.</p>
     </div>
@@ -440,7 +441,7 @@ export default function SettlementsPage() {
     String(settlementDate(a) || '9999').localeCompare(String(settlementDate(b) || '9999')))
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className={PAGE_WIDE}>
       <p className="text-lg font-medium text-ink mb-1">Settlements</p>
       <p className="text-[12.5px] text-faint mb-4 max-w-[86ch]">
         Every deal expected to settle, grouped by how far along it is. The grouping comes from the deal itself,

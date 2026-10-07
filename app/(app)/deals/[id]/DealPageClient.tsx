@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link'
+import { PAGE_WIDE } from '@/lib/page-width'
 import { brokerLabel } from '@/lib/broker-key'
 import DealPresence from '@/components/DealPresence'
 import DealTabCards, { DEAL_TABS } from '@/components/DealTabCards'
@@ -217,7 +218,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
     // This flag flips the moment the handlers are live, so the robot can wait
     // for the page to be real rather than racing it - and so the next person to
     // chase a "the button did nothing" report can see the race is a known one.
-    <div className="p-6" data-ready={pageReady ? '1' : undefined}>
+    <div className={PAGE_WIDE} data-ready={pageReady ? '1' : undefined}>
       {/* DEALS / THE SCENARIO - one-inside-the-deal-v4.html. It was a button
           reading "Back to deals" on a line of its own; this goes to the same
           place and also says which scenario of this deal you are looking at. */}

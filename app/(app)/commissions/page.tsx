@@ -1,5 +1,6 @@
 'use client'
 import DropZone from '@/components/DropZone'
+import { PAGE_WIDE } from '@/lib/page-width'
 import CommissionRevenue from '@/components/CommissionRevenue'
 import TrailBook from '@/components/TrailBook'
 import MissingStatements from '@/components/MissingStatements'
@@ -126,9 +127,9 @@ export default function CommissionsPage() {
     return m
   }, [statements])
 
-  if (allowed === null) return <div className="max-w-6xl mx-auto p-6 text-sm text-muted">Loading…</div>
+  if (allowed === null) return <div className={`${PAGE_WIDE} text-sm text-muted`}>Loading…</div>
   if (allowed === false) return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className={PAGE_WIDE}>
       <p className="text-lg font-medium text-ink mb-2">Commissions</p>
       <p className="text-sm text-muted">Commissions are finance only.</p>
     </div>
@@ -138,7 +139,7 @@ export default function CommissionsPage() {
   const k = 'text-[10px] font-bold tracking-[.09em] uppercase text-muted mb-1'
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className={PAGE_WIDE}>
       <p className="text-lg font-medium text-ink mb-1">Commissions</p>
       <p className="text-[12.5px] text-muted mb-5 max-w-[86ch]">
         Drop every SFG statement — trail and upfront, both brokers, any month. Each file says which broker and

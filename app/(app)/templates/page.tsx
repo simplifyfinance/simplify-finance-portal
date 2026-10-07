@@ -1,4 +1,5 @@
 import TemplatesClient from './TemplatesClient'
+import { PAGE_WIDE } from '@/lib/page-width'
 
 export const metadata = { title: 'Templates' }
 
@@ -15,7 +16,7 @@ export const metadata = { title: 'Templates' }
  */
 export default function TemplatesPage() {
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className={PAGE_WIDE}>
       <p className="text-lg font-medium text-ink mb-1">Templates</p>
       <p className="text-[12.5px] text-muted mb-5 max-w-[86ch]">
         Pick a template, fill in the client, and send it from your own mailbox. Nothing is saved.

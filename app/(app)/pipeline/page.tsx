@@ -1,5 +1,6 @@
 'use client'
 import { brokerLabel } from '@/lib/broker-key'
+import { PAGE_WIDE } from '@/lib/page-width'
 import { compactMoney } from '@/lib/money'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -520,7 +521,7 @@ export default function PipelinePage() {
   if (view === 'actuals') return <MonthlyActuals />
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className={PAGE_WIDE}>
       <p className="text-lg font-medium text-ink mb-4">Pipeline</p>
 
       {!loading && !loadError && (
