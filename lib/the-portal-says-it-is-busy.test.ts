@@ -60,6 +60,18 @@ describe('the bar comes on', () => {
     expect(go, 'a sub-page pressed from another page cannot get there').toContain('router.push(')
   })
 
+  it('lets the arrow open a section from anywhere', () => {
+    // The arrow used to add the section to a set of things to HIDE, and a
+    // section was only ever drawn when the browser was already on its page. So
+    // pressing it from somewhere else added a hide for something that was not
+    // showing: nothing happened, silently. Fabio: "when I press it doesnt NOT
+    // drop down imediately."
+    expect(sidebar, 'the close-only set is back').not.toMatch(/setCollapsed/)
+    expect(sidebar).toContain('function sectionIsOpen(')
+    const fn = sidebar.slice(sidebar.indexOf('function sectionIsOpen('), sidebar.indexOf('function toggleSection('))
+    expect(fn, 'an arrow press no longer beats what the address says').toContain("if (href in forced) return forced[href]")
+  })
+
   it('opens a section\'s list without waiting for the page', () => {
     // The fault behind "very leggy on all 3": subNav drew nothing until
     // path.startsWith() was true, so the list of names waited for every query
@@ -160,6 +172,25 @@ describe('the mark runs, and does not move while it does', () => {
     const centres = dot.match(/cx=\{round3\(g\.dot\.cx\)\} cy=\{round3\(g\.dot\.cy\)\}/g) || []
     expect(centres.length, 'the busy dot is drawn somewhere other than the still one')
       .toBeGreaterThanOrEqual(3)
+  })
+
+  it('spins about its own centre, in every browser', () => {
+    // 7 Oct 2026. The first version set transform-origin to the dot's cx and cy
+    // in user units. That is right only where the browser measures
+    // transform-origin from the viewBox - Safari measures it from the ELEMENT'S
+    // OWN BOX, so the arc orbited a point well off to one side and swung
+    // outside the dot entirely. Fabio, with a screenshot: "the spinning wheel
+    // is outside of the circle still."
+    //
+    // fill-box plus center carries no coordinates, so there is nothing left to
+    // be measured from the wrong corner.
+    const dot = mark.slice(mark.indexOf('{busy ? ('), mark.indexOf('</svg>'))
+    expect(dot, 'the ring is positioned by coordinates again. Safari measures\n'
+      + 'those from the element box, not the viewBox, and the arc ends up\n'
+      + 'orbiting a point outside the mark.')
+      .not.toMatch(/transformOrigin: `\$\{/)
+    expect(dot).toContain("transformBox: 'fill-box'")
+    expect(dot).toContain("transformOrigin: 'center'")
   })
 
   it('is driven by whether anything is loading, not by a style choice', () => {

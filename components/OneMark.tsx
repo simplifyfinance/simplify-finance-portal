@@ -106,8 +106,26 @@ export default function OneMark({ width, tone, withBy = true, busy = false, clas
                   fill="none" stroke={DOT_COLOUR} strokeWidth={round3(ringW)}
                   strokeLinecap="round"
                   strokeDasharray={`${round3(ringC * 0.26)} ${round3(ringC * 0.74)}`}
-                  style={{ transformOrigin: `${round3(g.dot.cx)}px ${round3(g.dot.cy)}px`,
-                           animation: 'ringrun .9s linear infinite' }} />
+                  style={{
+                    // WHY NOT transformOrigin IN COORDINATES.
+                    //
+                    // 7 Oct 2026. It was written as the dot's own cx and cy in
+                    // user units, which is right only if the browser measures
+                    // transform-origin from the viewBox. Safari measures it
+                    // from the ELEMENT'S OWN BOX unless told otherwise, so
+                    // those two numbers landed a long way from the centre, the
+                    // arc orbited a point off to one side, and it swung outside
+                    // the dot and across the wordmark. Fabio saw it at once:
+                    // "the spinning wheel is outside of the circle still."
+                    //
+                    // fill-box plus center says the one thing that is true in
+                    // every browser: spin about the middle of this circle. No
+                    // coordinates, so nothing to be measured from the wrong
+                    // corner.
+                    transformBox: 'fill-box',
+                    transformOrigin: 'center',
+                    animation: 'ringrun .9s linear infinite',
+                  }} />
         </g>
       ) : (
         <circle cx={round3(g.dot.cx)} cy={round3(g.dot.cy)} r={round3(g.dot.r)} fill={DOT_COLOUR} />

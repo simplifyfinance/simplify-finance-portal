@@ -95,16 +95,32 @@ export default function Sidebar() {
       : can(profile?.role, 'manageTeam'))
 
   const initials = profile?.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || '?'
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  // THE ARROW COULD ONLY EVER CLOSE A SECTION, NEVER OPEN ONE.
+  //
+  // 7 Oct 2026. Fabio: "when I press it doesnt NOT drop down imediately."
+  //
+  // This was a set of sections to HIDE, and a section was drawn only when the
+  // browser was already on its page. So pressing the arrow beside Settings
+  // while standing on the Dashboard added Settings to a list of things to hide
+  // - and nothing was showing to hide. The arrow did nothing at all, silently,
+  // which is worse than a slow arrow.
+  //
+  // It is a straight answer now: open, shut, or not yet said. Where nothing has
+  // been said the section follows the page, as it always did. Where the arrow
+  // HAS been pressed, that wins - from anywhere, with no page load involved,
+  // because the names underneath were never read off the page to begin with.
+  const [forced, setForced] = useState<Record<string, boolean>>({})
+
+  function sectionIsOpen(href: string) {
+    if (href in forced) return forced[href]
+    return path.startsWith(href) || pending?.href === href
+  }
+
   function toggleSection(href: string, e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
-    setCollapsed(prev => {
-      const next = new Set(prev)
-      if (next.has(href)) next.delete(href)
-      else next.add(href)
-      return next
-    })
+    const now = sectionIsOpen(href)
+    setForced(prev => ({ ...prev, [href]: !now }))
   }
 
   // THE MARK RUNS WHILE THE PORTAL IS FETCHING.
@@ -139,6 +155,20 @@ export default function Sidebar() {
     window.addEventListener('hashchange', read)
     return () => window.removeEventListener('hashchange', read)
   }, [])
+
+  // Walking into a section forgets that it was once shut by hand. Otherwise
+  // you close Settings from the Dashboard, go to Settings, and its own pages
+  // are not there.
+  useEffect(() => {
+    setForced(prev => {
+      const next = { ...prev }
+      let changed = false
+      for (const href of Object.keys(next)) {
+        if (next[href] === false && path.startsWith(href)) { delete next[href]; changed = true }
+      }
+      return changed ? next : prev
+    })
+  }, [path])
 
   useEffect(() => {
     if (!pending) return
@@ -180,8 +210,7 @@ export default function Sidebar() {
     // Open if we are there, OR if it was just pressed. The second half is the
     // whole fix: the names do not depend on the page, so they must not wait
     // for it.
-    const showing = path.startsWith(href) || pending?.href === href
-    if (subs.length === 0 || !showing || collapsed.has(href)) return null
+    if (subs.length === 0 || !sectionIsOpen(href)) return null
     const active = (pending?.href === href && pending.key) ? pending.key
                  : subs.some(sx => sx.key === hash) ? hash
                  : subs[0].key
@@ -230,8 +259,7 @@ export default function Sidebar() {
             )
           }
           const hasSubs = !!SUBNAV[item.href]
-          const open = hasSubs && (path.startsWith(item.href) || pending?.href === item.href)
-                       && !collapsed.has(item.href)
+          const open = hasSubs && sectionIsOpen(item.href)
           return (
             <div key={item.href}>
               {/* PRESSED IS A STATE, AND IT USED TO HAVE NO MARK AT ALL.
@@ -245,10 +273,18 @@ export default function Sidebar() {
                 <Icon size={15} />
                 {item.label}
                 {hasSubs && (
+                  /* A TARGET YOU CAN ACTUALLY HIT.
+                     It started as an 11px chevron sitting inside the link, so
+                     missing it navigated instead of collapsing. 7 Oct 2026 it
+                     became 12px in a 24px square, and Fabio asked for one more
+                     step: it is now a 15px chevron in a 32px square.
+                     The negative margins pull that square back into the row's
+                     own padding, so the left column's spacing does not change
+                     by a pixel - the target grew, the menu did not. */
                   <span role="button" aria-label={open ? 'Collapse' : 'Expand'}
                     onClick={e => toggleSection(item.href, e)}
-                    className="ml-auto -mr-1.5 -my-1.5 w-6 h-6 flex items-center justify-center rounded opacity-50 hover:opacity-100 hover:bg-white/10">
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                    className="ml-auto -mr-2 -my-2 w-8 h-8 flex items-center justify-center rounded-md opacity-55 hover:opacity-100 hover:bg-white/10">
+                    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor"
                          strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                       <path d={open ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'} />
                     </svg>
@@ -266,8 +302,7 @@ export default function Sidebar() {
             {visibleAdmin.map(item => {
               const Icon = item.icon
               const hasSubs = !!SUBNAV[item.href]
-              const open = hasSubs && (path.startsWith(item.href) || pending?.href === item.href)
-                       && !collapsed.has(item.href)
+              const open = hasSubs && sectionIsOpen(item.href)
               return (
                 <div key={item.href}>
                   {/* THE ADMIN ITEMS ARE A SECOND COPY OF THE BLOCK ABOVE,
@@ -288,8 +323,8 @@ export default function Sidebar() {
                     {hasSubs && (
                       <span role="button" aria-label={open ? 'Collapse' : 'Expand'}
                         onClick={e => toggleSection(item.href, e)}
-                        className="ml-auto -mr-1.5 -my-1.5 w-6 h-6 flex items-center justify-center rounded opacity-50 hover:opacity-100 hover:bg-white/10">
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                        className="ml-auto -mr-2 -my-2 w-8 h-8 flex items-center justify-center rounded-md opacity-55 hover:opacity-100 hover:bg-white/10">
+                        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor"
                              strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                           <path d={open ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'} />
                         </svg>
