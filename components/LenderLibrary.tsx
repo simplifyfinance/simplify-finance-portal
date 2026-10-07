@@ -1,7 +1,7 @@
 'use client'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, Fragment } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { checkedWrite, checkedWriteAllowingNone } from '@/lib/checked-write'
+import { checkedWrite } from '@/lib/checked-write'
 import { legalFeeLabel, confirmedFeeLabel, DEFAULT_LEGAL_FEE_LABEL, feeText } from '@/lib/lender-fees'
 import { readNotice, announcedFrom, hasTakenEffect, niceDate, NO_NOTICE } from '@/lib/rate-notice'
 
@@ -95,7 +95,16 @@ export default function LenderLibrary() {
   const [productForm, setProductForm] = useState({ ...emptyProduct })
   const [editProductId, setEditProductId] = useState<string | null>(null)
   const [savingProduct, setSavingProduct] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState<{ type: 'lender' | 'product'; id: string; name: string } | null>(null)
+  // WHAT IS ON SCREEN, AND WHAT IS PUT AWAY.
+  // Archived is off by default. Everything archived still exists, still sits
+  // on the deals that used it, and is one button from coming back.
+  const [showArchived, setShowArchived] = useState(false)
+  const [find, setFind] = useState('')
+  // product id -> how many deals chose it. Filled when a bank is opened.
+  const [usedBy, setUsedBy] = useState<Record<string, number>>({})
+  // The archive question, drawn under the row it is about rather than over it.
+  const [archiveAsk, setArchiveAsk] =
+    useState<{ kind: 'lender' | 'product'; id: string; name: string; holds: string } | null>(null)
 
   const [importModal, setImportModal] = useState(false)
   const [importTab, setImportTab] = useState<'pdf' | 'url'>('pdf')
@@ -231,59 +240,76 @@ export default function LenderLibrary() {
     if (problem) { setWriteError(problem); return }
     setWriteError('')
     setLenders(prev => prev.map(l => l.id === id ? { ...l, active: !active } : l))
+    setArchiveAsk(null)
   }
 
   // WHY THE DATABASE WILL REFUSE, SAID BEFORE IT REFUSES.
   //
   // A lender that any deal or any commission rate points at cannot be deleted -
   // the row is holding up real records, and that is right. What was not right is
-  // what a person saw: they pressed "Yes, delete", the database said no, and the
+  // what a person saw: they pressed the confirm button, the database said no, and the
   // sentence explaining it was drawn underneath the very popup they were looking
   // at. Fabio, 16 Sep 2026: "delete lender sticks."
   //
   // So it is counted first and said in words, with the thing they should do
   // instead. Marking a lender inactive takes it off every dropdown and keeps
   // every deal that used it intact, which is what "delete" was being reached for.
-  async function whyItCannotGo(id: string): Promise<string> {
+  // WHAT A BANK IS HOLDING.
+  // This used to be the reason a delete was refused. Nothing is deleted any
+  // more, so the same two counts now say what archiving will leave alone.
+  async function whatBankHolds(id: string): Promise<string> {
     const { count: dealCount } = await supabase
       .from('deals').select('id', { count: 'exact', head: true }).eq('lender_id', id)
     const { count: rateCount } = await supabase
       .from('commission_rates').select('id', { count: 'exact', head: true }).eq('lender_id', id)
 
     const held: string[] = []
-    if (dealCount) held.push(`${dealCount} ${dealCount === 1 ? 'deal has' : 'deals have'} it recorded`)
-    if (rateCount) held.push(`${rateCount} commission ${rateCount === 1 ? 'rate' : 'rates'} point at it`)
-    if (!held.length) return ''
-
-    return `This lender cannot be deleted - ${held.join(' and ')}. Deleting it would take that `
-         + `history with it. Use the Active toggle instead: it comes off every dropdown and every `
-         + `deal that used it stays exactly as it is.`
+    if (dealCount) held.push(`${dealCount} ${dealCount === 1 ? 'deal' : 'deals'}`)
+    if (rateCount) held.push(`${rateCount} commission ${rateCount === 1 ? 'rate' : 'rates'}`)
+    return held.join(' and ')
   }
 
-  async function deleteLender(id: string) {
-    setWriteError('')
-    const inUse = await whyItCannotGo(id)
-    if (inUse) { setWriteError(inUse); return }
-    // A lender with no products deletes nothing here, which is not a failure.
-    const pProblem = await checkedWriteAllowingNone(
-      supabase.from('lender_products').delete().eq('lender_id', id), 'That lender\u2019s products')
-    if (pProblem) { setWriteError(pProblem); return }
-    const problem = await checkedWrite(supabase.from('lenders').delete().eq('id', id), 'That lender')
-    if (problem) { setWriteError(problem); return }
-    setWriteError('')
-    setLenders(prev => prev.filter(l => l.id !== id))
-    setProducts(prev => prev.filter(p => p.lender_id !== id))
-    setConfirmDelete(null)
+  // HOW MANY DEALS CHOSE THIS PRODUCT.
+  // A deal keeps the product's id inside lo_data.lenders, so this asks the
+  // database whether that blob contains it rather than dragging every deal's
+  // loan options record across the wire to count them here.
+  // A count that fails comes back as -1 and the screen then says nothing,
+  // because a wrong number beside an Archive button is worse than no number.
+  async function countProductUses(id: string): Promise<number> {
+    try {
+      const { count, error } = await supabase.from('deals')
+        .select('id', { count: 'exact', head: true })
+        .contains('lo_data', { lenders: [{ lenderProductId: id }] })
+      if (error) return -1
+      return count ?? 0
+    } catch { return -1 }
   }
 
-  async function deleteProduct(id: string) {
-    setWriteError('')
-    const problem = await checkedWrite(
-      supabase.from('lender_products').delete().eq('id', id), 'That product')
-    if (problem) { setWriteError(problem); return }
-    setWriteError('')
-    setProducts(prev => prev.filter(p => p.id !== id))
-    setConfirmDelete(null)
+  // Counted when a bank is opened, once per product, and never again.
+  async function countUsesFor(ids: string[]) {
+    const missing = ids.filter(id => usedBy[id] === undefined)
+    if (!missing.length) return
+    const pairs = await Promise.all(missing.map(async id => [id, await countProductUses(id)] as const))
+    setUsedBy(prev => {
+      const next = { ...prev }
+      for (const [id, n] of pairs) next[id] = n
+      return next
+    })
+  }
+
+  // THE ARCHIVE QUESTION. The write itself is toggleProductActive and
+  // toggleLenderActive, which have not changed - this only decides what the
+  // question says before one of them runs.
+  function askArchiveProduct(product: Product) {
+    const n = usedBy[product.id]
+    const holds = n === undefined || n < 0 ? '' : `${n} ${n === 1 ? 'deal' : 'deals'}`
+    setArchiveAsk({ kind: 'product', id: product.id, name: product.product_name, holds })
+  }
+
+  async function askArchiveLender(lender: Lender) {
+    setArchiveAsk({ kind: 'lender', id: lender.id, name: lender.name, holds: '' })
+    const holds = await whatBankHolds(lender.id)
+    setArchiveAsk(prev => prev && prev.id === lender.id ? { ...prev, holds } : prev)
   }
 
   function openAddProduct(lenderId: string, lenderName: string) {
@@ -360,6 +386,7 @@ export default function LenderLibrary() {
     if (problem) { setWriteError(problem); return }
     setWriteError('')
     setProducts(prev => prev.map(p => p.id === id ? { ...p, active: !active } : p))
+    setArchiveAsk(null)
   }
 
   async function toggleProductDraft(id: string, isDraft: boolean) {
@@ -371,20 +398,77 @@ export default function LenderLibrary() {
   }
 
   function toggleExpand(id: string) {
+    const opening = !expanded.has(id)
     setExpanded(prev => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
       return next
     })
+    // fire-and-forget: a missing Used by count greys one cell, and the page
+    // must open at once rather than wait on a count per product.
+    if (opening) countUsesFor(lenderProducts(id).map(x => x.id))
   }
 
   function lenderProducts(lenderId: string) {
     return products.filter(p => p.lender_id === lenderId)
   }
 
-  function fmtFee(val: string) {
-    if (!val || val === '0' || val.toLowerCase() === 'none') return ''
-    return val
+  // THE THREE TICKS AT THE TOP DECIDE WHAT IS DRAWN, and Find narrows it
+  // further. A bank whose name matches keeps all its products; otherwise only
+  // the products whose own name matches are shown, so searching a product name
+  // does not hide it behind a bank that does not match.
+  function matches(text: string) {
+    const q = find.trim().toLowerCase()
+    return !q || String(text || '').toLowerCase().includes(q)
+  }
+
+  function shownProducts(lender: Lender) {
+    const all = lenderProducts(lender.id)
+    const byTick = all.filter(x => x.active || showArchived)
+    return matches(lender.name) ? byTick : byTick.filter(x => matches(x.product_name))
+  }
+
+  function shownLenders() {
+    return lenders.filter(l => {
+      if (!l.active && !showArchived) return false
+      if (matches(l.name)) return true
+      return lenderProducts(l.id).some(x => (x.active || showArchived) && matches(x.product_name))
+    })
+  }
+
+  const liveCount = products.filter(x => x.active && !x.is_draft).length
+  const draftCount = products.filter(x => x.active && x.is_draft).length
+  const archivedCount = products.filter(x => !x.active).length
+    + lenders.filter(l => !l.active).length
+  const bankCount = lenders.filter(l => l.active).length
+
+  function usesLabel(id: string) {
+    const n = usedBy[id]
+    if (n === undefined || n < 0) return ''
+    if (n === 0) return 'none'
+    return `${n} ${n === 1 ? 'deal' : 'deals'}`
+  }
+
+  function rateTypeLabel(x: Product) {
+    return x.rate_type === 'variable' ? 'Variable' : x.rate_type === 'fixed' ? 'Fixed' : 'Variable + Fixed'
+  }
+  function purposeLabel(x: Product) {
+    return x.loan_purpose === 'oo' ? 'OO only' : x.loan_purpose === 'investment' ? 'INV only' : 'OO + INV'
+  }
+  function offsetLabelOf(x: Product) {
+    return x.offset_account ? (x.multiple_offsets ? 'Multiple offsets' : 'Offset') : 'No offset'
+  }
+
+  // A FEE CELL SAYS WHICH KIND OF NOTHING IT IS.
+  // Blank and zero are not the same thing and the old line could not tell them
+  // apart - both simply vanished. $0 is a bank that charges nothing; an empty
+  // column is a figure nobody has recorded, and the client email prints a dash
+  // where a number should be. The second one is a job, so it is marked.
+  function feeCell(val: string) {
+    const v = String(val ?? '').trim()
+    if (!v) return <span className="text-[10px] font-semibold bg-chase-bg text-chase border border-chase-edge px-1.5 py-0.5 rounded-full">blank</span>
+    if (v === '0' || v.toLowerCase() === 'none') return '$0'
+    return v.startsWith('$') ? v : `$${v}`
   }
 
   function openImport() {
@@ -476,21 +560,49 @@ export default function LenderLibrary() {
           <button onClick={() => setWriteError('')} className="underline shrink-0">Dismiss</button>
         </div>
       )}
-      <div className="flex justify-between items-center mb-2">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Lender Library</h2>
-        <div className="flex gap-2">
-          <button onClick={openImport} className="text-sm text-brand-ink border border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition">
-            ✦ Import via AI
-          </button>
-          <button onClick={() => { setShowAddLender(true); setNewLenderName('') }} className="text-sm text-ink border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
-            + Add lender
-          </button>
-        </div>
+      {/* FOUR COUNTS, THEN ONE ROW OF CONTROLS.
+          The page used to open on a bare list with the two buttons floating
+          above it, and nothing said how much of the library was live, how much
+          had never been checked, or how much was put away. */}
+      <div className="grid grid-cols-4 gap-2.5 mb-3 max-[900px]:grid-cols-2">
+        {[
+          { n: liveCount, t: 'Products live', tone: 'text-done' },
+          { n: draftCount, t: 'Still draft', tone: 'text-waiting' },
+          { n: archivedCount, t: 'Archived', tone: 'text-faint' },
+          { n: bankCount, t: 'Banks', tone: 'text-ink' },
+        ].map(tile => (
+          <div key={tile.t} className="bg-card border border-card-line rounded-xl px-3.5 py-2.5">
+            <p className={`text-[25px] font-bold leading-none tabular-nums ${tile.tone}`}>{tile.n}</p>
+            <p className="text-[11px] text-muted mt-0.5">{tile.t}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-card border border-card-line rounded-xl px-3.5 py-2.5 mb-3 flex items-center gap-3.5 flex-wrap">
+        <input value={find} onChange={e => setFind(e.target.value)}
+          placeholder="Find a bank or a product"
+          className="w-[250px] max-w-full border border-field-line rounded-lg px-2.5 py-1.5 text-[12.5px] bg-field focus:outline-none focus:border-brand" />
+        <span className="w-px self-stretch bg-line-soft" />
+        {/* Live and Draft are always drawn; the tick that matters is Archived,
+            which is off until somebody asks for it. */}
+        <span className="text-[12px] text-body whitespace-nowrap">Live and draft are always shown</span>
+        <label className="text-[12px] text-body inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
+          <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} />
+          Also show archived
+        </label>
+        <span className="flex-1" />
+        <button onClick={openImport} className="text-[12.5px] text-brand-ink border border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition whitespace-nowrap">
+          ✦ Import via AI
+        </button>
+        <button onClick={() => { setShowAddLender(true); setNewLenderName('') }} className="text-[12.5px] text-ink border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition whitespace-nowrap">
+          + Add a bank
+        </button>
       </div>
 
       <p className="text-xs text-gray-400 mb-4">
-        Small changes (fee update, new product) → use <span className="font-medium text-gray-500">Edit</span>. &nbsp;
-        Major changes → <span className="font-medium text-gray-500">Delete lender</span> and reimport via PDF or URL.
+        A fee that moved, or one new product: open the bank and press <span className="font-medium text-gray-500">Edit</span>.
+        A whole new rate sheet: <span className="font-medium text-gray-500">Import</span> it, and everything it finds arrives as a draft for you to check.
+        Nothing here is ever deleted &mdash; see <span className="font-medium text-gray-500">Archive</span>.
       </p>
 
       {showAddLender && (
@@ -505,29 +617,50 @@ export default function LenderLibrary() {
       )}
 
       <div className="space-y-2">
-        {lenders.map(lender => {
-          const lps = lenderProducts(lender.id)
+        {shownLenders().map(lender => {
+          const lps = shownProducts(lender)
           const isOpen = expanded.has(lender.id)
+          const archivedHere = lenderProducts(lender.id).filter(x => !x.active).length
+          const asking = archiveAsk && archiveAsk.kind === 'lender' && archiveAsk.id === lender.id
           return (
-            <div key={lender.id} className={`border border-gray-200 rounded-xl bg-card overflow-hidden ${!lender.active ? 'opacity-50' : ''}`}>
-              <div className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50 transition" onClick={() => toggleExpand(lender.id)}>
-                <div className="flex items-center gap-3">
-                  <span className={`text-gray-400 text-xs transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}>▶</span>
-                  <div>
-                    <p className="text-sm font-medium text-ink">{lender.name}</p>
-                    <p className="text-xs text-gray-400">
-                      {lps.length} product{lps.length !== 1 ? 's' : ''}
-                      {' · '}{legalFeeLabel(lender)}
-                      {!confirmedFeeLabel(lender) && <span className="text-chase"> (not checked)</span>}
-                    </p>
+            <div key={lender.id} className="border border-card-line rounded-xl bg-card overflow-hidden">
+              {/* THE BANK WEARS ITS STATE ON A STRIP, the same device the
+                  settlement blocks took on 6 Oct. Blue for a bank in use, grey
+                  for one that is archived - and the name is the widest thing on
+                  the strip, not a line of grey detail underneath it. */}
+              <div className={`flex items-center gap-3 px-3.5 py-2 border-b cursor-pointer transition ${
+                  lender.active ? 'bg-info-bg border-info-edge text-info hover:opacity-90'
+                                : 'bg-gray-50 border-line text-faint hover:opacity-90'}`}
+                onClick={() => toggleExpand(lender.id)}>
+                <span className={`text-[10px] transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}>▶</span>
+                <span className="text-[13.5px] font-bold uppercase tracking-[.02em] truncate flex-1 min-w-0">{lender.name}</span>
+                {!lender.active && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-faint border border-line whitespace-nowrap">Archived</span>}
+                <span className="text-[11px] opacity-85 truncate max-[1100px]:hidden">
+                  {lps.length} product{lps.length !== 1 ? 's' : ''}
+                  {archivedHere ? ` · ${archivedHere} archived` : ''}
+                  {' · '}{legalFeeLabel(lender)}
+                  {!confirmedFeeLabel(lender) && <span className="text-chase"> (not checked)</span>}
+                </span>
+                <span onClick={e => e.stopPropagation()}>
+                  {lender.active
+                    ? <button onClick={() => askArchiveLender(lender)} className="text-[11px] border border-card-line text-faint rounded px-2 py-0.5 hover:text-ink whitespace-nowrap">Archive bank</button>
+                    : <button onClick={() => toggleLenderActive(lender.id, lender.active)} className="text-[11px] border border-done-edge text-done rounded px-2 py-0.5 hover:bg-done-bg whitespace-nowrap">Bring back</button>}
+                </span>
+              </div>
+              {asking && (
+                <div className="bg-gray-50 border-b border-line-soft px-4 py-3">
+                  <p className="text-[13.5px] font-bold text-ink mb-1.5">Archive {lender.name}?</p>
+                  <p className="text-[12px] text-muted leading-relaxed mb-1">· the bank and all its products come off every loan options list</p>
+                  <p className="text-[12px] text-muted leading-relaxed mb-1">
+                    · {archiveAsk.holds ? `the ${archiveAsk.holds} that used it stay exactly as they are` : 'anything that already used it stays exactly as it is'}
+                  </p>
+                  <p className="text-[12px] text-muted leading-relaxed mb-3">· one button brings the whole bank back, products and all</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => toggleLenderActive(lender.id, lender.active)} className="text-[12px] bg-brand text-on-brand font-semibold rounded-lg px-3 py-1.5 hover:opacity-90">Archive the bank</button>
+                    <button onClick={() => setArchiveAsk(null)} className="text-[12px] text-muted rounded-lg px-3 py-1.5">Cancel</button>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${lender.active ? 'bg-done-bg text-done' : 'bg-gray-100 text-gray-500'}`}>{lender.active ? 'Active' : 'Inactive'}</span>
-                  <button onClick={() => toggleLenderActive(lender.id, lender.active)} className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded px-2 py-0.5">{lender.active ? 'Deactivate' : 'Activate'}</button>
-                  <button onClick={() => setConfirmDelete({ type: 'lender', id: lender.id, name: lender.name })} className="text-xs text-chase hover:opacity-80 border border-chase-edge rounded px-2 py-0.5">Delete</button>
-                </div>
-              </div>
+              )}
               {isOpen && (
                 <div className="border-t border-gray-100">
                   {/* One setting for the whole bank, so the wording does not have
@@ -638,40 +771,96 @@ export default function LenderLibrary() {
                     <span className="text-[11px] opacity-80">{lps.length === 1 ? '1 product' : `${lps.length} products`}</span>
                   </div>
                   {lps.length === 0 && <p className="text-xs text-gray-400 px-5 py-3">No products yet.</p>}
-                  {lps.map(product => {
-                    const fees = [
-                      fmtFee(product.application_fee) ? `App ${fmtFee(product.application_fee)}` : '',
-                      fmtFee(product.annual_fee) ? `Annual ${fmtFee(product.annual_fee)}` : '',
-                    ].filter(Boolean).join(' · ')
-                    const offsetLabel = product.offset_account ? (product.multiple_offsets ? 'Multiple offsets' : 'Offset') : 'No offset'
-                    return (
-                      <div key={product.id} className={`px-4 py-2.5 border-b border-gray-50 last:border-b-0 ${!product.active ? 'opacity-50' : ''}`}>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-sm text-ink">{product.product_name}</p>
-                              {product.is_draft ? <span className="text-xs bg-gray-100 text-gray-500 border border-gray-200 px-1.5 py-0.5 rounded-full">Draft</span> : <span className="text-xs bg-done-bg text-done px-1.5 py-0.5 rounded-full">Live</span>}
-                            </div>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                              {product.rate_type === 'variable' ? 'Variable' : product.rate_type === 'fixed' ? 'Fixed' : 'Variable + Fixed'}
-                              {' · '}
-                              {product.loan_purpose === 'oo' ? 'OO only' : product.loan_purpose === 'investment' ? 'INV only' : 'OO + INV'}
-                              {fees ? ` · ${fees}` : ''}
-                              {` · ${offsetLabel}`}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
-                            <button onClick={() => toggleProductDraft(product.id, product.is_draft)} className={`text-xs border rounded px-2 py-0.5 transition ${product.is_draft ? 'border-done-edge text-done hover:bg-done-bg' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{product.is_draft ? 'Go live' : 'Set draft'}</button>
-                            <button onClick={() => openEditProduct(product, lender.name)} className="text-xs text-on-brand bg-brand hover:opacity-90 rounded px-2 py-0.5 transition">Edit</button>
-                            <button onClick={() => toggleProductActive(product.id, product.active)} className={`text-xs border rounded px-2 py-0.5 transition ${product.active ? 'border-chase-edge text-chase hover:bg-chase-bg' : 'border-done-edge text-done hover:bg-done-bg'}`}>{product.active ? 'Deactivate' : 'Activate'}</button>
-                            <button onClick={() => setConfirmDelete({ type: 'product', id: product.id, name: product.product_name })} className="text-xs text-chase hover:opacity-80 border border-chase-edge rounded px-2 py-0.5">Delete</button>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                  <div className="px-4 py-2.5">
+                  {/* A TABLE, NOT A RUN-ON LINE.
+                      Every product used to be its name followed by type,
+                      purpose and the fees strung together in one grey sentence,
+                      which meant you could not read down a column and the name
+                      wrapped the moment the page narrowed. Fixed widths, the
+                      name takes a quarter of them, and a long one ends in an
+                      ellipsis rather than folding under its own chip. */}
+                  {lps.length > 0 && (
+                  <table className="w-full table-fixed border-collapse">
+                    <thead>
+                      <tr className="text-[9.5px] font-bold uppercase tracking-[.075em] text-faint text-left">
+                        <th className="font-bold px-2.5 py-2 border-b border-line-soft w-[26%]">Product</th>
+                        <th className="font-bold px-2.5 py-2 border-b border-line-soft w-[9%]">Type</th>
+                        <th className="font-bold px-2.5 py-2 border-b border-line-soft w-[8%]">Purpose</th>
+                        <th className="font-bold px-2.5 py-2 border-b border-line-soft w-[7%] text-right">App</th>
+                        <th className="font-bold px-2.5 py-2 border-b border-line-soft w-[7%] text-right">Annual</th>
+                        <th className="font-bold px-2.5 py-2 border-b border-line-soft w-[8%] text-right">Valuation</th>
+                        <th className="font-bold px-2.5 py-2 border-b border-line-soft w-[11%]">Offset</th>
+                        <th className="font-bold px-2.5 py-2 border-b border-line-soft w-[8%]">Used by</th>
+                        <th className="font-bold px-2.5 py-2 border-b border-line-soft w-[16%]" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lps.map(product => {
+                        const askingThis = archiveAsk && archiveAsk.kind === 'product' && archiveAsk.id === product.id
+                        const td = 'px-2.5 py-2.5 border-b border-line-soft text-[12.5px] text-body whitespace-nowrap truncate'
+                        return (
+                          <Fragment key={product.id}>
+                          <tr className={`${!product.active ? 'opacity-50' : ''} ${askingThis ? 'bg-chase-bg' : ''}`}>
+                            <td className={td + ' text-ink font-semibold'}>
+                              {product.product_name}
+                              {product.is_draft
+                                ? <span className="ml-1.5 align-middle text-[10px] font-semibold bg-gray-100 text-muted border border-line px-1.5 py-0.5 rounded-full">Draft</span>
+                                : !product.active
+                                  ? <span className="ml-1.5 align-middle text-[10px] font-semibold bg-gray-100 text-faint border border-line px-1.5 py-0.5 rounded-full">Archived</span>
+                                  : <span className="ml-1.5 align-middle text-[10px] font-semibold bg-done-bg text-done border border-done-edge px-1.5 py-0.5 rounded-full">Live</span>}
+                            </td>
+                            <td className={td}>{rateTypeLabel(product)}</td>
+                            <td className={td}>{purposeLabel(product)}</td>
+                            <td className={td + ' text-right tabular-nums'}>{feeCell(product.application_fee)}</td>
+                            <td className={td + ' text-right tabular-nums'}>{feeCell(product.annual_fee)}</td>
+                            <td className={td + ' text-right tabular-nums'}>{feeCell(product.valuation_fee)}</td>
+                            <td className={td}>{offsetLabelOf(product)}</td>
+                            <td className={td + ' text-faint'}>{usesLabel(product.id)}</td>
+                            <td className="px-2.5 py-2.5 border-b border-line-soft">
+                              <div className="flex gap-1.5 justify-end">
+                                {product.active && (
+                                  <button onClick={() => toggleProductDraft(product.id, product.is_draft)} className={`text-[11px] border rounded px-2 py-0.5 transition whitespace-nowrap ${product.is_draft ? 'border-done-edge text-done hover:bg-done-bg' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{product.is_draft ? 'Go live' : 'Set draft'}</button>
+                                )}
+                                <button onClick={() => openEditProduct(product, lender.name)} className="text-[11px] border border-field-line text-muted rounded px-2 py-0.5 hover:text-ink transition whitespace-nowrap">Edit</button>
+                                {product.active
+                                  ? <button onClick={() => askArchiveProduct(product)} className="text-[11px] border border-card-line text-faint rounded px-2 py-0.5 hover:text-ink transition whitespace-nowrap">Archive</button>
+                                  : <button onClick={() => toggleProductActive(product.id, product.active)} className="text-[11px] border border-done-edge text-done rounded px-2 py-0.5 hover:bg-done-bg transition whitespace-nowrap">Bring back</button>}
+                              </div>
+                            </td>
+                          </tr>
+                          {askingThis && (
+                            <tr>
+                              <td colSpan={9} className="bg-gray-50 border-b border-line-soft px-4 py-3">
+                                <p className="text-[13.5px] font-bold text-ink mb-1.5">Archive {product.product_name}?</p>
+                                <p className="text-[12px] text-muted leading-relaxed mb-1">· it comes off the product list on every new loan options screen</p>
+                                <p className="text-[12px] text-muted leading-relaxed mb-1">
+                                  · {archiveAsk.holds && archiveAsk.holds !== '0 deals'
+                                      ? `the ${archiveAsk.holds} that already chose it stay exactly as they are`
+                                      : 'anything that already chose it stays exactly as it is'}
+                                </p>
+                                <p className="text-[12px] text-muted leading-relaxed mb-3">· one button brings it back</p>
+                                <p className="text-[12px] text-muted leading-relaxed mb-3">
+                                  <span className="font-semibold text-ink">We archive, we never delete.</span> Deleting would break the deals that used it, and there is no undo.
+                                </p>
+                                <div className="flex gap-2">
+                                  <button onClick={() => toggleProductActive(product.id, product.active)} className="text-[12px] bg-brand text-on-brand font-semibold rounded-lg px-3 py-1.5 hover:opacity-90">Archive it</button>
+                                  <button onClick={() => setArchiveAsk(null)} className="text-[12px] text-muted rounded-lg px-3 py-1.5">Cancel</button>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          </Fragment>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                  )}
+                  <div className="px-4 py-2.5 flex items-center gap-3 flex-wrap">
                     <button onClick={() => openAddProduct(lender.id, lender.name)} className="text-xs text-brand-ink hover:underline">+ Add product</button>
+                    {!showArchived && archivedHere > 0 && (
+                      <span className="text-[11.5px] text-faint">
+                        {archivedHere} archived {archivedHere === 1 ? 'product is' : 'products are'} hidden &mdash; tick &ldquo;Also show archived&rdquo; at the top
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
@@ -682,30 +871,12 @@ export default function LenderLibrary() {
 
       {lenders.length === 0 && <p className="text-sm text-gray-400 text-center py-8">No lenders yet. Add your first lender above.</p>}
 
-      {/* Confirm Delete Modal */}
-      {confirmDelete && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-xl shadow-xl w-full max-w-xs p-5">
-            <p className="font-semibold text-ink mb-1">Delete {confirmDelete.type === 'lender' ? 'lender' : 'product'}?</p>
-            <p className="text-sm text-gray-500 mb-4"><span className="font-medium text-ink">{confirmDelete.name}</span>{confirmDelete.type === 'lender' ? ' and all its products will be permanently deleted.' : ' will be permanently deleted.'}</p>
-            {/* THE REASON IT REFUSED, WHERE THE PERSON PRESSING THE BUTTON CAN SEE IT.
-                A failed delete sets writeError and returns without closing this
-                modal - correct, the thing is not deleted - but the banner that
-                carries the message is drawn at the top of the page, underneath
-                this full-screen overlay. So the button did nothing, said nothing,
-                and the explanation was two inches away behind a grey sheet.
-                Fabio, 16 Sep 2026: "delete lender sticks." */}
-            {writeError && (
-              <p className="text-xs text-chase leading-relaxed bg-chase-bg border border-chase-edge rounded-lg px-3 py-2 mb-3">
-                {writeError}
-              </p>
-            )}
-            <button onClick={() => confirmDelete.type === 'lender' ? deleteLender(confirmDelete.id) : deleteProduct(confirmDelete.id)} className="w-full bg-chase text-white text-sm py-2.5 rounded-lg hover:opacity-90 mb-2">Yes, delete</button>
-            <button onClick={() => { setWriteError(''); setConfirmDelete(null) }} className="w-full text-sm text-gray-400 py-2">Cancel</button>
-          </div>
-        </div>
-      )}
-
+      {/* THERE IS NO DELETE MODAL ANY MORE.
+          7 Oct 2026. It used the word permanent about a product that any
+          number of deals could be pointing at, and about a bank the database
+          would then refuse to remove anyway. Archive replaced both, the two
+          delete functions went with it, and nothing on this screen can now
+          take a row out of the database. */}
       {/* AI Import Modal */}
       {importModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

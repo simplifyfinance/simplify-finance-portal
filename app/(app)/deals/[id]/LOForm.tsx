@@ -90,6 +90,10 @@ type LenderProduct = {
   notes: string | null
   is_draft: boolean
   active: boolean
+  // Whether the BANK is archived, carried down onto each of its products when
+  // they are loaded. An archived bank takes its products off this screen with
+  // it; archiving one by one would be a chore and would miss any added later.
+  lender_active: boolean
 }
 
 type RateModule = { enabled: boolean; rate: string; repayment: string; loanTerm: string; ioYears?: string; fixedYears?: string }
@@ -701,12 +705,20 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   useEffect(() => {
     Promise.all([
       supabase.from('lender_products').select('*'),
-      supabase.from('lenders').select('id, name')
+      supabase.from('lenders').select('id, name, active')
     ]).then(([{ data: products }, { data: lenders }]) => {
       if (products && lenders) {
         const lenderMap: Record<string, string> = {}
-        lenders.forEach((l: any) => { lenderMap[l.id] = l.name })
-        setAllProducts(products.map((p: any) => ({ ...p, lender_name: lenderMap[p.lender_id] || '' })))
+        const lenderLive: Record<string, boolean> = {}
+        lenders.forEach((l: any) => { lenderMap[l.id] = l.name; lenderLive[l.id] = l.active !== false })
+        // EVERY product is still loaded, archived ones included, because a deal
+        // that already chose one has to be able to show its name. What changes
+        // is which of them a dropdown offers - see getProductsForLender.
+        setAllProducts(products.map((p: any) => ({
+          ...p,
+          lender_name: lenderMap[p.lender_id] || '',
+          lender_active: lenderLive[p.lender_id] !== false,
+        })))
         // Name to id, so the recommended lender can be recorded on the deal.
         const byName: Record<string, string> = {}
         lenders.forEach((l: any) => { byName[String(l.name || '').trim().toLowerCase()] = l.id })
@@ -1007,10 +1019,26 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     }
   }, [flush])
 
-  const uniqueLenders = Array.from(new Map(allProducts.map(p => [p.lender_id, { id: p.lender_id, name: p.lender_name }])).values()).sort((a, b) => a.name.localeCompare(b.name))
+  // WHAT IS ON OFFER, AND WHAT IS ONLY STILL ON SCREEN.
+  //
+  // An archived bank or product is not offered on this deal - unless this deal
+  // already chose it, in which case it stays in its own dropdown so the box
+  // keeps showing what was actually recommended. Archiving must never silently
+  // empty a box on a deal that is already out with a client.
+  const chosenLenderIds = new Set(d.lenders.map(x => x.lenderId).filter(Boolean))
+  const chosenProductIds = new Set(d.lenders.map(x => x.lenderProductId).filter(Boolean))
+
+  const uniqueLenders = Array.from(new Map(
+    allProducts
+      .filter(p => p.lender_active || chosenLenderIds.has(p.lender_id))
+      .map(p => [p.lender_id, { id: p.lender_id, name: p.lender_name }])
+  ).values()).sort((a, b) => a.name.localeCompare(b.name))
 
   function getProductsForLender(lenderId: string) {
-    return allProducts.filter(p => p.lender_id === lenderId)
+    return allProducts.filter(p =>
+      p.lender_id === lenderId && (
+        (p.active && p.lender_active) || chosenProductIds.has(p.id)
+      ))
   }
 
   function selectLenderName(i: number, lenderId: string) {
