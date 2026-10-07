@@ -4,6 +4,7 @@ import { splitsTotal } from '@/lib/deal-phase'
 import { digitsOnly, compactMoney } from '@/lib/money'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { fyEndYear, todayYmd, toAuDate } from '@/lib/periods'
+import Loading from '@/components/Loading'
 
 const FY_MONTHS = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6]
 const NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -203,7 +204,7 @@ export default function MonthlyActuals() {
     } finally { setBusy(false) }
   }
 
-  if (isAdmin === null) return <div className="max-w-6xl mx-auto p-6 text-sm text-faint">Loading...</div>
+  if (isAdmin === null) return <Loading />
   if (isAdmin === false) return (
     <div className="max-w-6xl mx-auto p-6">
       <p className="text-lg font-medium text-ink mb-2">Monthly actuals</p>

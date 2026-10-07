@@ -113,6 +113,25 @@ export default function Sidebar() {
   const [busy, setBusy] = useState(false)
   useEffect(() => onBusyChange(() => setBusy(isBusy())), [])
 
+  // WHAT WAS JUST PRESSED, BEFORE THE PAGE IT POINTS AT HAS ARRIVED.
+  //
+  // 7 Oct 2026. Fabio: "settings dropdown still not working you click and it
+  // does not come down with all options straightaway very leggy on all 3
+  // lender library commissions and settings."
+  //
+  // It was not lag. subNav refused to draw anything unless path.startsWith()
+  // was already true - that is, unless the browser had FINISHED loading the
+  // page. So pressing Settings from the Dashboard meant waiting for every
+  // query Settings fires, and only then did the list of settings appear
+  // underneath it. That list is three or seven fixed names. It never needed
+  // the page at all.
+  //
+  // So the press is remembered here and the list opens on the same tick. The
+  // memory clears the moment the address catches up with it - and after six
+  // seconds regardless, so a navigation that never lands cannot leave the
+  // wrong section hanging open.
+  const [pending, setPending] = useState<{ href: string; key?: string } | null>(null)
+
   const [hash, setHash] = useState('')
   useEffect(() => {
     const read = () => setHash(window.location.hash.slice(1))
@@ -121,18 +140,55 @@ export default function Sidebar() {
     return () => window.removeEventListener('hashchange', read)
   }, [])
 
+  useEffect(() => {
+    if (!pending) return
+    if (path.startsWith(pending.href) && (!pending.key || hash === pending.key)) { setPending(null); return }
+    const t = setTimeout(() => setPending(null), 6000)
+    return () => clearTimeout(t)
+  }, [pending, path, hash])
+
+  // A SUB-PAGE IS REACHABLE FROM ANYWHERE, NOT ONLY FROM ITS OWN PAGE.
+  //
+  // This used to set window.location.hash and nothing else, which worked only
+  // because the list was never drawn unless you were already on the page. Now
+  // that it opens the moment you press the section, the button has to travel:
+  // on the page, the hash is the whole of it and changing it fires hashchange;
+  // off it, the route has to change and the hash rides along with it.
+  function goSub(href: string, key: string) {
+    navStarted()
+    setPending({ href, key })
+    if (path.startsWith(href)) window.location.hash = key
+    else router.push(`${href}#${key}`)
+  }
+
+  // THE PRESS, REMEMBERED BEFORE THE ROUTE MOVES.
+  // Both lists of nav items call this, because there are two of them - see the
+  // note on the Admin block below.
+  function pressNav(href: string, hasSubs: boolean) {
+    navStarted()
+    if (hasSubs) setPending({ href })
+    else history.replaceState(null, '', href)
+    setHash('')
+  }
+
   // One renderer for every nav item that has sub-items, so Settings and the Lender
   // library cannot drift apart as more sections gain sub-pages.
   function subNav(href: string) {
     const subs = (SUBNAV[href] || [])
       .filter(sx => !sx.adminOnly || profile?.is_admin)
       .filter(sx => !sx.financeOnly || profile?.sees_finance)
-    if (subs.length === 0 || !path.startsWith(href) || collapsed.has(href)) return null
-    const active = subs.some(sx => sx.key === hash) ? hash : subs[0].key
+    // Open if we are there, OR if it was just pressed. The second half is the
+    // whole fix: the names do not depend on the page, so they must not wait
+    // for it.
+    const showing = path.startsWith(href) || pending?.href === href
+    if (subs.length === 0 || !showing || collapsed.has(href)) return null
+    const active = (pending?.href === href && pending.key) ? pending.key
+                 : subs.some(sx => sx.key === hash) ? hash
+                 : subs[0].key
     return (
       <div className="mb-1.5">
         {subs.map(sx => (
-          <button key={sx.key} onClick={() => { navStarted(); window.location.hash = sx.key }}
+          <button key={sx.key} onClick={() => goSub(href, sx.key)}
             className={`block w-full text-left pl-[31px] pr-2.5 py-1.5 rounded-md text-xs transition-colors ${
               active === sx.key ? 'bg-white/10 text-white font-semibold' : 'text-white/45 hover:text-white hover:bg-white/5'
             }`}>
@@ -174,7 +230,8 @@ export default function Sidebar() {
             )
           }
           const hasSubs = !!SUBNAV[item.href]
-          const open = hasSubs && path.startsWith(item.href) && !collapsed.has(item.href)
+          const open = hasSubs && (path.startsWith(item.href) || pending?.href === item.href)
+                       && !collapsed.has(item.href)
           return (
             <div key={item.href}>
               {/* PRESSED IS A STATE, AND IT USED TO HAVE NO MARK AT ALL.
@@ -184,14 +241,14 @@ export default function Sidebar() {
                   loads the whole thing twice. navStarted() puts the bar up and
                   sets the mark running in the same tick as the click. */}
               <Link href={item.href} className={linkClass}
-                onClick={() => { navStarted(); if (!hasSubs) history.replaceState(null, '', item.href); setHash('') }}>
+                onClick={() => pressNav(item.href, hasSubs)}>
                 <Icon size={15} />
                 {item.label}
                 {hasSubs && (
                   <span role="button" aria-label={open ? 'Collapse' : 'Expand'}
                     onClick={e => toggleSection(item.href, e)}
-                    className="ml-auto -mr-1 px-1 py-0.5 rounded opacity-50 hover:opacity-100 hover:bg-white/10">
-                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                    className="ml-auto -mr-1.5 -my-1.5 w-6 h-6 flex items-center justify-center rounded opacity-50 hover:opacity-100 hover:bg-white/10">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor"
                          strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                       <path d={open ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'} />
                     </svg>
@@ -209,11 +266,20 @@ export default function Sidebar() {
             {visibleAdmin.map(item => {
               const Icon = item.icon
               const hasSubs = !!SUBNAV[item.href]
-              const open = hasSubs && path.startsWith(item.href) && !collapsed.has(item.href)
+              const open = hasSubs && (path.startsWith(item.href) || pending?.href === item.href)
+                       && !collapsed.has(item.href)
               return (
                 <div key={item.href}>
+                  {/* THE ADMIN ITEMS ARE A SECOND COPY OF THE BLOCK ABOVE,
+                      and until now they did not even call navStarted() - so
+                      Settings and Commissions, the two slowest pages in the
+                      portal, were the two that gave no sign of having been
+                      pressed at all. That is most of why Fabio named those two.
+                      Both lists now go through pressNav. The duplication itself
+                      is still here and still wants collapsing; this was not the
+                      ship to do it in. */}
                   <Link href={item.href}
-                    onClick={() => { if (!hasSubs) history.replaceState(null, '', item.href); setHash('') }}
+                    onClick={() => pressNav(item.href, hasSubs)}
                     className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm mb-0.5 transition-colors ${
                       path.startsWith(item.href) ? 'text-brand bg-brand/12' : 'text-white/60 hover:text-white hover:bg-white/5'
                     }`}>
@@ -222,8 +288,8 @@ export default function Sidebar() {
                     {hasSubs && (
                       <span role="button" aria-label={open ? 'Collapse' : 'Expand'}
                         onClick={e => toggleSection(item.href, e)}
-                        className="ml-auto -mr-1 px-1 py-0.5 rounded opacity-50 hover:opacity-100 hover:bg-white/10">
-                        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                        className="ml-auto -mr-1.5 -my-1.5 w-6 h-6 flex items-center justify-center rounded opacity-50 hover:opacity-100 hover:bg-white/10">
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor"
                              strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                           <path d={open ? 'M12 10L8 6l-4 4' : 'M4 6l4 4 4-4'} />
                         </svg>

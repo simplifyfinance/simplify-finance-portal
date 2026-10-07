@@ -14,6 +14,7 @@ import { money } from '@/lib/tone'
 import { useEffect, useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { todayYmd } from '@/lib/periods'
+import Loading from '@/components/Loading'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 const label = (m: string) => `${MONTHS[Number(m.slice(5, 7)) - 1]} ${m.slice(2, 4)}`
@@ -127,7 +128,7 @@ export default function CommissionsPage() {
     return m
   }, [statements])
 
-  if (allowed === null) return <div className={`${PAGE_WIDE} text-sm text-muted`}>Loading…</div>
+  if (allowed === null) return <div className={PAGE_WIDE}><Loading /></div>
   if (allowed === false) return (
     <div className={PAGE_WIDE}>
       <p className="text-lg font-medium text-ink mb-2">Commissions</p>

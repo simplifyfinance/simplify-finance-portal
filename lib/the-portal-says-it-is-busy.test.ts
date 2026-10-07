@@ -29,10 +29,44 @@ describe('the bar comes on', () => {
   it('the moment a nav item is pressed, not when its data lands', () => {
     // The whole complaint is about the second BEFORE anything has been
     // fetched. A bar that waits for the fetch to start is a bar that is late.
-    expect(sidebar, 'a nav item no longer says it was pressed')
-      .toContain('onClick={() => { navStarted();')
-    expect(sidebar, 'a sub-page no longer says it was pressed')
-      .toContain('navStarted(); window.location.hash')
+    expect(sidebar, 'pressNav is gone - it is the one place a nav press is recorded')
+      .toContain('function pressNav(')
+    const press = sidebar.slice(sidebar.indexOf('function pressNav('), sidebar.indexOf('function subNav('))
+    expect(press, 'pressing a nav item no longer puts the bar up').toContain('navStarted()')
+    expect(press, 'pressing a section no longer opens its list in the same tick')
+      .toContain('setPending({ href })')
+  })
+
+  it('from BOTH lists of nav items, not just the first one', () => {
+    // 7 Oct 2026. The Admin block - Commissions, Team, Settings - is a second
+    // copy of the nav item render, and its Link called neither navStarted nor
+    // anything else. So the two slowest pages in the portal were the two that
+    // gave no sign of having been pressed, which is exactly the pair Fabio
+    // named. Both copies go through pressNav now, and if a third list is ever
+    // added it has to as well.
+    const presses = sidebar.match(/onClick=\{\(\) => pressNav\(/g) || []
+    expect(presses.length, 'a nav list was added, or changed, without recording the press')
+      .toBeGreaterThanOrEqual(2)
+    const links = sidebar.match(/<Link href=\{item\.href\}/g) || []
+    expect(presses.length, 'there are more nav Links than there are presses recorded')
+      .toBeGreaterThanOrEqual(links.length)
+  })
+
+  it('and a sub-page says so too, from wherever it was pressed', () => {
+    expect(sidebar).toContain('function goSub(')
+    const go = sidebar.slice(sidebar.indexOf('function goSub('), sidebar.indexOf('// THE PRESS, REMEMBERED'))
+    expect(go, 'pressing a sub-page no longer puts the bar up').toContain('navStarted()')
+    // Off the page the hash alone goes nowhere - the route has to change.
+    expect(go, 'a sub-page pressed from another page cannot get there').toContain('router.push(')
+  })
+
+  it('opens a section\'s list without waiting for the page', () => {
+    // The fault behind "very leggy on all 3": subNav drew nothing until
+    // path.startsWith() was true, so the list of names waited for every query
+    // the page fired. The names do not come from the page.
+    const sub = sidebar.slice(sidebar.indexOf('function subNav('), sidebar.indexOf('const roleLabel'))
+    expect(sub, 'the sub-pages wait for the page to arrive again')
+      .toContain("pending?.href === href")
   })
 
   it('and when any screen is fetching', () => {
