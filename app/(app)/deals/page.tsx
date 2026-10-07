@@ -567,7 +567,7 @@ export default function DealsPage() {
                 <Copy size={13} />
               </button>
               <button onClick={e => askDelete(e, deal)}
-                className="w-8 h-8 rounded-full border border-gray-200 bg-card flex items-center justify-center text-gray-300 hover:text-red-400 hover:border-red-200 hover:bg-red-50 flex-shrink-0 transition">
+                className="w-8 h-8 rounded-full border border-gray-200 bg-card flex items-center justify-center text-gray-300 hover:text-chase hover:border-chase-edge hover:bg-chase-bg flex-shrink-0 transition">
                 <Trash2 size={13} />
               </button>
             </div>
@@ -829,7 +829,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
               <div className="flex justify-between items-center mb-2">
                 <p className="text-xs font-medium text-gray-500">Applicant 2</p>
                 <button onClick={() => { setShowSecondApplicant(false); setForm2({ first_name: '', last_name: '', email: '', phone: '', client_id: '' }); setApp2Mode('new'); setApp2Search('') }}
-                  className="text-xs text-gray-400 hover:text-red-400">Remove</button>
+                  className="text-xs text-gray-400 hover:text-chase">Remove</button>
               </div>
               <div className="flex gap-2 mb-3">
                 <button onClick={() => setApp2Mode('new')} className={`flex-1 py-1.5 rounded-lg text-xs font-medium border ${app2Mode==='new' ? 'border-brand text-brand bg-brand/5' : 'border-gray-200 text-gray-500'}`}>New person</button>
@@ -910,7 +910,7 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
         )}
 
         {createError && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-xs mb-3">{createError}</div>
+          <div className="bg-chase-bg border border-chase-edge text-chase rounded-lg px-3 py-2 text-xs mb-3">{createError}</div>
         )}
 
         <div className="flex justify-end gap-2">

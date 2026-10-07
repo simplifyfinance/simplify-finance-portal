@@ -471,7 +471,7 @@ export default function LenderLibrary() {
   return (
     <section className="mb-10">
       {writeError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-xs mb-3 flex items-start gap-2">
+        <div className="bg-chase-bg border border-chase-edge text-chase rounded-lg px-3 py-2 text-xs mb-3 flex items-start gap-2">
           <span className="flex-1">{writeError}</span>
           <button onClick={() => setWriteError('')} className="underline shrink-0">Dismiss</button>
         </div>
@@ -523,15 +523,29 @@ export default function LenderLibrary() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${lender.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{lender.active ? 'Active' : 'Inactive'}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${lender.active ? 'bg-done-bg text-done' : 'bg-gray-100 text-gray-500'}`}>{lender.active ? 'Active' : 'Inactive'}</span>
                   <button onClick={() => toggleLenderActive(lender.id, lender.active)} className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded px-2 py-0.5">{lender.active ? 'Deactivate' : 'Activate'}</button>
-                  <button onClick={() => setConfirmDelete({ type: 'lender', id: lender.id, name: lender.name })} className="text-xs text-red-400 hover:text-red-600 border border-red-200 rounded px-2 py-0.5">Delete</button>
+                  <button onClick={() => setConfirmDelete({ type: 'lender', id: lender.id, name: lender.name })} className="text-xs text-chase hover:opacity-80 border border-chase-edge rounded px-2 py-0.5">Delete</button>
                 </div>
               </div>
               {isOpen && (
                 <div className="border-t border-gray-100">
                   {/* One setting for the whole bank, so the wording does not have
                       to be fixed product by product. */}
+                  {/* TWO KINDS OF CONTENT, TWO STRIPS.
+                      *
+                      * 7 Oct 2026. Everything below used to run together: the
+                      * questions we have learned about this bank, then its
+                      * products, then an Add link, with nothing between them but
+                      * a hairline. The questions are policy - asked once, used by
+                      * every template after. The products are a list somebody
+                      * edits daily. Same device Settlements took on 6 Oct, and
+                      * the same rule as "a group of fields is a card with a grey
+                      * header strip". Nothing is added, removed or reordered. */}
+                  <div className="px-5 py-2 border-b flex items-baseline gap-2.5 flex-wrap bg-info-bg border-info-edge text-info">
+                    <span className="text-[10px] font-bold uppercase tracking-[.08em]">What we have learned</span>
+                    <span className="text-[11px] opacity-80">asked once, used by every template after</span>
+                  </div>
                   <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2.5 flex-wrap">
                     <span className="text-xs text-gray-500">This bank calls the settlement charge</span>
                     {/* The value is the lender's own setting, NOT what it falls
@@ -619,6 +633,10 @@ export default function LenderLibrary() {
                       </span>
                     </div>
                   )}
+                  <div className="px-5 py-2 border-b flex items-baseline gap-2.5 flex-wrap bg-gray-50 border-line text-muted">
+                    <span className="text-[10px] font-bold uppercase tracking-[.08em]">Products</span>
+                    <span className="text-[11px] opacity-80">{lps.length === 1 ? '1 product' : `${lps.length} products`}</span>
+                  </div>
                   {lps.length === 0 && <p className="text-xs text-gray-400 px-5 py-3">No products yet.</p>}
                   {lps.map(product => {
                     const fees = [
@@ -632,7 +650,7 @@ export default function LenderLibrary() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className="text-sm text-ink">{product.product_name}</p>
-                              {product.is_draft ? <span className="text-xs bg-gray-100 text-gray-500 border border-gray-200 px-1.5 py-0.5 rounded-full">Draft</span> : <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">Live</span>}
+                              {product.is_draft ? <span className="text-xs bg-gray-100 text-gray-500 border border-gray-200 px-1.5 py-0.5 rounded-full">Draft</span> : <span className="text-xs bg-done-bg text-done px-1.5 py-0.5 rounded-full">Live</span>}
                             </div>
                             <p className="text-xs text-gray-400 mt-0.5">
                               {product.rate_type === 'variable' ? 'Variable' : product.rate_type === 'fixed' ? 'Fixed' : 'Variable + Fixed'}
@@ -643,10 +661,10 @@ export default function LenderLibrary() {
                             </p>
                           </div>
                           <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
-                            <button onClick={() => toggleProductDraft(product.id, product.is_draft)} className={`text-xs border rounded px-2 py-0.5 transition ${product.is_draft ? 'border-green-200 text-green-600 hover:bg-green-50' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{product.is_draft ? 'Go live' : 'Set draft'}</button>
+                            <button onClick={() => toggleProductDraft(product.id, product.is_draft)} className={`text-xs border rounded px-2 py-0.5 transition ${product.is_draft ? 'border-done-edge text-done hover:bg-done-bg' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>{product.is_draft ? 'Go live' : 'Set draft'}</button>
                             <button onClick={() => openEditProduct(product, lender.name)} className="text-xs text-on-brand bg-brand hover:opacity-90 rounded px-2 py-0.5 transition">Edit</button>
-                            <button onClick={() => toggleProductActive(product.id, product.active)} className={`text-xs border rounded px-2 py-0.5 transition ${product.active ? 'border-red-200 text-red-400 hover:bg-red-50' : 'border-green-200 text-green-500 hover:bg-green-50'}`}>{product.active ? 'Deactivate' : 'Activate'}</button>
-                            <button onClick={() => setConfirmDelete({ type: 'product', id: product.id, name: product.product_name })} className="text-xs text-red-400 hover:text-red-600 border border-red-200 rounded px-2 py-0.5">Delete</button>
+                            <button onClick={() => toggleProductActive(product.id, product.active)} className={`text-xs border rounded px-2 py-0.5 transition ${product.active ? 'border-chase-edge text-chase hover:bg-chase-bg' : 'border-done-edge text-done hover:bg-done-bg'}`}>{product.active ? 'Deactivate' : 'Activate'}</button>
+                            <button onClick={() => setConfirmDelete({ type: 'product', id: product.id, name: product.product_name })} className="text-xs text-chase hover:opacity-80 border border-chase-edge rounded px-2 py-0.5">Delete</button>
                           </div>
                         </div>
                       </div>
@@ -678,11 +696,11 @@ export default function LenderLibrary() {
                 and the explanation was two inches away behind a grey sheet.
                 Fabio, 16 Sep 2026: "delete lender sticks." */}
             {writeError && (
-              <p className="text-xs text-red-600 leading-relaxed bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">
+              <p className="text-xs text-chase leading-relaxed bg-chase-bg border border-chase-edge rounded-lg px-3 py-2 mb-3">
                 {writeError}
               </p>
             )}
-            <button onClick={() => confirmDelete.type === 'lender' ? deleteLender(confirmDelete.id) : deleteProduct(confirmDelete.id)} className="w-full bg-red-500 text-white text-sm py-2.5 rounded-lg hover:bg-red-600 mb-2">Yes, delete</button>
+            <button onClick={() => confirmDelete.type === 'lender' ? deleteLender(confirmDelete.id) : deleteProduct(confirmDelete.id)} className="w-full bg-chase text-white text-sm py-2.5 rounded-lg hover:opacity-90 mb-2">Yes, delete</button>
             <button onClick={() => { setWriteError(''); setConfirmDelete(null) }} className="w-full text-sm text-gray-400 py-2">Cancel</button>
           </div>
         </div>
@@ -728,7 +746,7 @@ export default function LenderLibrary() {
                     <p className="text-xs text-gray-400 mt-1.5">Works best with direct links to PDF rate sheets or product pages</p>
                   </div>
                 )}
-                {extractError && <p className="text-sm text-red-500 mb-3">{extractError}</p>}
+                {extractError && <p className="text-sm text-chase mb-3">{extractError}</p>}
                 <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
                   <button onClick={() => setImportModal(false)} className="text-sm text-gray-400 hover:text-gray-600 px-3">Cancel</button>
                   <button onClick={runExtraction} disabled={extracting || (importTab === 'pdf' ? !importFile : !importUrl.trim())} className="bg-brand text-on-brand text-sm px-5 py-2 rounded-lg hover:opacity-90 disabled:opacity-40 flex items-center gap-2">
@@ -771,7 +789,7 @@ export default function LenderLibrary() {
                   ))}
                 </div>
                 <p className="text-xs text-gray-400 mb-4">All saved products start as <span className="text-gray-600 font-medium">Draft</span> — go live from the library after reviewing.</p>
-                {extractError && <p className="text-sm text-red-500 mb-3">{extractError}</p>}
+                {extractError && <p className="text-sm text-chase mb-3">{extractError}</p>}
                 <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
                   <button onClick={() => setImportStep('input')} className="text-sm text-gray-400 hover:text-gray-600 px-3">Back</button>
                   <button onClick={saveImport} disabled={savingImport || !extractedProducts.some(p => p.selected)} className="bg-ink text-page text-sm px-5 py-2 rounded-lg hover:opacity-90 disabled:opacity-40">

@@ -97,25 +97,25 @@ export default function LenderRules() {
         <table className="w-full border-collapse text-[12.5px]">
           <thead>
             <tr>
-              <th className="text-left text-[9.5px] uppercase tracking-[.06em] text-[#98A1AB] font-bold py-2 pr-3 border-b border-[#EEF0F2]">Lender</th>
+              <th className="text-left text-[9.5px] uppercase tracking-[.06em] text-faint font-bold py-2 pr-3 border-b border-line-soft">Lender</th>
               {RULES.map(q => (
                 <th key={q.key} title={q.ask}
-                  className="text-left text-[9.5px] uppercase tracking-[.06em] text-[#98A1AB] font-bold py-2 pr-3 border-b border-[#EEF0F2]">
+                  className="text-left text-[9.5px] uppercase tracking-[.06em] text-faint font-bold py-2 pr-3 border-b border-line-soft">
                   {q.short}
                 </th>
               ))}
-              <th className="text-left text-[9.5px] uppercase tracking-[.06em] text-[#98A1AB] font-bold py-2 border-b border-[#EEF0F2]">Reprice</th>
+              <th className="text-left text-[9.5px] uppercase tracking-[.06em] text-faint font-bold py-2 border-b border-line-soft">Reprice</th>
             </tr>
           </thead>
           <tbody>
             {lenders.map(l => (
               <tr key={l.id}>
-                <td className="py-2 pr-3 border-b border-[#EEF0F2] font-semibold text-ink align-top">{l.name}</td>
+                <td className="py-2 pr-3 border-b border-line-soft font-semibold text-ink align-top">{l.name}</td>
                 {RULES.map(q => {
                   const mine = rules[l.id] || {}
                   const v = answerTo(mine, q.key)
                   return (
-                    <td key={q.key} className="py-2 pr-3 border-b border-[#EEF0F2] align-top">
+                    <td key={q.key} className="py-2 pr-3 border-b border-line-soft align-top">
                       {/* A TYPED ANSWER GETS A BOX, NOT A DROPDOWN. No list of
                           options could hold what each bank wants to be called on
                           an insurance certificate. Saved when you leave the box
@@ -143,7 +143,7 @@ export default function LenderRules() {
                     </td>
                   )
                 })}
-                <td className="py-2 border-b border-[#EEF0F2] align-top text-muted">
+                <td className="py-2 border-b border-line-soft align-top text-muted">
                   {l.reprice_over_percent === null
                     ? <span className="text-faint">N/A</span>
                     : `${l.reprice_over_percent}%`}
