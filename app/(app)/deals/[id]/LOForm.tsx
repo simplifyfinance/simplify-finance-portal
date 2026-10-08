@@ -146,6 +146,18 @@ type LOData = {
   jointFirstName: string
   jointLastName: string
   loanAmount: string
+  // DID A PERSON PUT THAT NUMBER THERE.
+  //
+  // False, or absent on anything saved before 8 Oct 2026, means the loan
+  // amount in this record is a copy the form took from the BC - and a copy is
+  // not a second opinion. lib/funds-to-complete.ts prefers the BC's own splits
+  // over it, so a BC that changes carries across by itself.
+  //
+  // True means somebody typed a figure here, on purpose, and that it should
+  // survive the BC moving underneath it. Set by the four handlers that a
+  // person's typing runs through, and never by the effect that copies the BC
+  // in - the same line this file already draws between setD and setDRaw.
+  loanAmountByHand: boolean
   purchasePrice: string
   deposit: string
   stampDuty: string
@@ -499,7 +511,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       jointFirstName: ffApp2.firstName || '',
       jointLastName: ffApp2.lastName || '',
       // EVERY split, not the first. See the note on splitsTotal.
+      // The form copying the BC in is NOT somebody typing, so it does not set
+      // loanAmountByHand - see the note on that field.
       loanAmount: bcLoanAmount(),
+      loanAmountByHand: false,
       purchasePrice: bc.purchasePrice || '',
       deposit: bc.deposit || '',
       stampDuty: bc.stampDuty || '',
@@ -676,7 +691,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       jointFirstName: ffApp2.firstName || '',
       jointLastName: ffApp2.lastName || '',
       // EVERY split, not the first. See the note on splitsTotal.
+      // The form copying the BC in is NOT somebody typing, so it does not set
+      // loanAmountByHand - see the note on that field.
       loanAmount: bcLoanAmount(),
+      loanAmountByHand: false,
       purchasePrice: bc.purchasePrice || '',
       deposit: bc.deposit || '',
       stampDuty: bc.stampDuty || '',
@@ -1257,7 +1275,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   function handleLoPurchasePriceChange(val: string) {
     const price = num(val), dep = num(d.deposit), sd = num(d.stampDuty)
     if (dep > 0) {
-      setD(prev => ({ ...prev, purchasePrice: val, loanAmount: loanFrom(price, dep, sd) }))
+      // The loan is being recalculated from something a person typed, so the
+      // figure that lands in the box is theirs - see loanAmountByHand.
+      setD(prev => ({ ...prev, purchasePrice: val, loanAmount: loanFrom(price, dep, sd), loanAmountByHand: true }))
     } else {
       const loanAmt = num(d.loanAmount)
       if (loanAmt > 0) {
@@ -1271,18 +1291,19 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   function handleLoDepositChange(val: string) {
     const price = num(d.purchasePrice), dep = num(val), sd = num(d.stampDuty)
     if (price > 0) {
-      setD(prev => ({ ...prev, deposit: val, loanAmount: loanFrom(price, dep, sd) }))
+      setD(prev => ({ ...prev, deposit: val, loanAmount: loanFrom(price, dep, sd), loanAmountByHand: true }))
     } else {
       setD(prev => ({ ...prev, deposit: val }))
     }
   }
 
+  // The loan box itself. The plainest case: whatever is in it now is theirs.
   function handleLoLoanAmountChange(val: string) {
     const price = num(d.purchasePrice), loanAmt = num(val), sd = num(d.stampDuty)
     if (price > 0) {
-      setD(prev => ({ ...prev, loanAmount: val, deposit: depositFrom(price, loanAmt, sd) }))
+      setD(prev => ({ ...prev, loanAmount: val, deposit: depositFrom(price, loanAmt, sd), loanAmountByHand: true }))
     } else {
-      setD(prev => ({ ...prev, loanAmount: val }))
+      setD(prev => ({ ...prev, loanAmount: val, loanAmountByHand: true }))
     }
   }
 
@@ -1291,7 +1312,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   function handleLoStampDutyChange(val: string) {
     const price = num(d.purchasePrice), dep = num(d.deposit), sd = num(val)
     if (price > 0 && dep > 0) {
-      setD(prev => ({ ...prev, stampDuty: val, loanAmount: loanFrom(price, dep, sd) }))
+      setD(prev => ({ ...prev, stampDuty: val, loanAmount: loanFrom(price, dep, sd), loanAmountByHand: true }))
     } else {
       setD(prev => ({ ...prev, stampDuty: val }))
     }

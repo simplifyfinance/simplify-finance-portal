@@ -192,16 +192,61 @@ export function fundsToComplete(deal: any): FundsToComplete {
   }
 }
 
-// The LO's figure when there is one, otherwise the BC's splits added up.
+// THE BC IS THE LOAN UNLESS SOMEBODY TYPED OTHERWISE ON THE LENDING OPTIONS.
+//
+// 8 Oct 2026, and the reasoning is in the header of this file's companion
+// patch note - in short, this used to prefer lo_data.loanAmount, which is a
+// COPY the LO form took from the BC the day the LO record was first written.
+// Change the BC afterwards and every reader - the deal card, funds to
+// complete, the deal facts, and the prompt that writes the compliance wording
+// - went on quoting the old number. Nothing on screen said so.
+//
+// A copy is not a second opinion. What makes the LO's figure worth preferring
+// is a PERSON having typed it, and that is now recorded; see loanAmountByHand
+// in LOForm. Where nobody typed it, the BC wins and carries across by itself,
+// with nothing to press and no second writer on lo_data.
 export function loanAmount(deal: any): number {
   // Once somebody has answered how a changed price is funded, that answer is the
   // loan. Not before: recording a price does not decide the lending.
   const contracted = contractLoan(deal)
   if (contracted > 0) return contracted
   const lo = deal?.lo_data || {}
-  if (has(lo.loanAmount)) return num(lo.loanAmount)
+  if (lo.loanAmountByHand && has(lo.loanAmount)) return num(lo.loanAmount)
+  const fromBc = bcSplitsTotal(deal)
+  if (fromBc > 0) return fromBc
+  // A deal with no BC splits at all - the LO's figure is all there is.
+  return has(lo.loanAmount) ? num(lo.loanAmount) : 0
+}
+
+// The BC's own answer, added up. Every split, never the first - a multi-split
+// deal read off the first one reports half the loan.
+export function bcSplitsTotal(deal: any): number {
   const splits = deal?.bc_data?.splits || []
   return splits.reduce((s: number, x: any) => s + num(x?.amount), 0)
+}
+
+// WHEN THE TWO RECORDS DISAGREE, SAY SO. NEVER CORRECT IT QUIETLY.
+//
+// Returning null means there is nothing to report: they agree, or there is
+// only one of them, or a contract figure has settled the question. Otherwise
+// this is the pair of numbers and whether the difference is somebody's
+// decision or a copy left behind.
+//
+// This is the same device as depositAgrees above, and for the same reason: two
+// numbers that should be one are worth a sentence on screen, and never worth a
+// silent choice between them.
+export type LoanDisagreement = { using: number; stored: number; byHand: boolean }
+
+export function loanAmountDisagrees(deal: any): LoanDisagreement | null {
+  // An answered contract supersedes both; there is no disagreement left.
+  if (contractLoan(deal) > 0) return null
+  const lo = deal?.lo_data || {}
+  if (!has(lo.loanAmount)) return null
+  const stored = num(lo.loanAmount)
+  const fromBc = bcSplitsTotal(deal)
+  if (fromBc <= 0) return null
+  if (Math.abs(stored - fromBc) < 1) return null
+  return { using: loanAmount(deal), stored, byHand: !!lo.loanAmountByHand }
 }
 
 export type SecurityValue = { total: number; count: number; lvr: number | null; why?: string }

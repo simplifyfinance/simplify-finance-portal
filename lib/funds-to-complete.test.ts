@@ -151,9 +151,28 @@ describe('LVR', () => {
 })
 
 describe('the loan amount', () => {
-  it('prefers the LO figure, falls back to the BC splits', () => {
-    expect(loanAmount({ lo_data: { loanAmount: '700,000' }, bc_data: { splits: [{ amount: '680,000' }] } })).toBe(700_000)
+  // TURNED OVER ON 8 OCT 2026, AND THE OLD RULE IS THE BUG.
+  //
+  // This used to say "prefers the LO figure, falls back to the BC splits", and
+  // that is exactly what went wrong: lo_data.loanAmount is a COPY the LO form
+  // takes from the BC when the LO record is first written, and preferring the
+  // copy meant a BC that changed afterwards changed nothing - not the deal
+  // card, not funds to complete, not the compliance wording. Fabio, with a
+  // deal in front of him: "we changed the loan amoutn in BC but not carrying
+  // accross to LO ... imperative it does."
+  //
+  // A copy is not a second opinion. What earns the LO's figure its place is a
+  // person having typed it, which is recorded now.
+  it('takes the BC over a copy the lending options are still holding', () => {
+    expect(loanAmount({ lo_data: { loanAmount: '700,000' }, bc_data: { splits: [{ amount: '680,000' }] } })).toBe(680_000)
     expect(loanAmount({ bc_data: { splits: [{ amount: '520,000' }, { amount: '180,000' }] } })).toBe(700_000)
+  })
+
+  it('keeps a figure somebody typed on the lending options', () => {
+    expect(loanAmount({
+      lo_data: { loanAmount: '700,000', loanAmountByHand: true },
+      bc_data: { splits: [{ amount: '680,000' }] },
+    })).toBe(700_000)
   })
 
   it('copes with comma formatted money, which Number() alone cannot', () => {

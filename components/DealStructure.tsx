@@ -7,7 +7,7 @@ import {
   splitsOf, dealRow, stillNeeded, needsFundsRole, purposeSummary,
   withSplitDetail, isInterestOnly, PURPOSE_LABEL, FUNDS_LABEL, defaultSecurityAddress,
 } from '@/lib/deal-structure'
-import { fundsToComplete } from '@/lib/funds-to-complete'
+import { fundsToComplete, loanAmountDisagrees, bcSplitsTotal } from '@/lib/funds-to-complete'
 import { SPLIT_TYPES, typesOffered, typeContradictsProduct } from '@/lib/lo-splits'
 import { optionOnTheDeal } from '@/lib/client-agreement'
 
@@ -52,6 +52,8 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
   const recOption = useMemo(() => optionOnTheDeal(deal?.lo_data || {}), [deal])
   const row = useMemo(() => dealRow(deal), [deal])
   const funds = useMemo(() => fundsToComplete(deal), [deal])
+  // Two records, one loan. Null when they agree, which is almost always.
+  const loanSplit = useMemo(() => loanAmountDisagrees(deal), [deal])
   const needed = useMemo(() => stillNeeded(deal), [deal])
   const askFunds = needsFundsRole(deal)
   const purpose = purposeSummary(deal)
@@ -241,6 +243,27 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
             <div className="w-full mt-2 pt-2 border-t border-line text-[11.5px] text-chase">
               {funds.missing.join(' · ')}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* TWO RECORDS, ONE LOAN. See loanAmountDisagrees. */}
+      {loanSplit && (
+        <div className="bg-chase-bg border border-chase-edge rounded-xl px-4 py-2.5 mb-3 text-[12px] text-chase leading-relaxed">
+          {loanSplit.byHand ? (
+            <>
+              <b>The lending options hold a loan amount that was entered by hand.</b>{' '}
+              Using {money(loanSplit.using)} from the lending options. The borrowing capacity
+              says {money(bcSplitsTotal(deal))}. Everything quoted to the client, and the
+              compliance wording, follows the figure entered by hand.
+            </>
+          ) : (
+            <>
+              <b>The lending options are showing an older loan amount.</b>{' '}
+              They hold {money(loanSplit.stored)}; the borrowing capacity says{' '}
+              {money(loanSplit.using)}, and that is the figure being used everywhere.
+              Open the lending options and type it to make the two agree.
+            </>
           )}
         </div>
       )}

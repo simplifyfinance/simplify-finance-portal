@@ -4,10 +4,15 @@ import { DEAL } from './box-fixture'
 
 const deal = (over: any = {}) => ({ ...JSON.parse(JSON.stringify(DEAL)), id: 'deal-1', ...over })
 
+// `lending` is this deal's lending, stated outright - these tests are about the
+// security sentence, not about where a loan amount comes from. Since 8 Oct 2026
+// a bare lo_data.loanAmount is treated as a COPY of the BC and the BC wins, so
+// a figure meant to BE the loan has to say it was put there on purpose. See
+// lib/the-loan-amount-has-one-source.test.ts.
 const bc = (over: any, lending?: string) => {
   const d = deal()
   d.bc_data = { ...d.bc_data, ...over }
-  if (lending !== undefined) d.lo_data = { ...d.lo_data, loanAmount: lending }
+  if (lending !== undefined) d.lo_data = { ...d.lo_data, loanAmount: lending, loanAmountByHand: true }
   return d
 }
 

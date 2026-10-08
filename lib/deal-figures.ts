@@ -96,6 +96,26 @@ export function dealFigures(deal: any): Figures {
     if (txt(sp?.repaymentType)) out[`${txt(sp.label) || 'the split'} repayment type`] = txt(sp.repaymentType)
   }
 
+  // THE BORROWING CAPACITY'S OWN SPLITS, WHICH NOTHING HERE WATCHED.
+  //
+  // 8 Oct 2026. A BC was changed from one loan amount to another and no
+  // compliance box went stale, because every figure on this list came from the
+  // fact find or the lending options and not one of them came from the BC.
+  //
+  // Named individually AND totalled. The total catches the ordinary case; the
+  // names catch the one the total cannot - a loan that goes from one split of
+  // 522,000 to two of 405,000 is the same total and is not the same lending,
+  // and the compliance prose describes the splits.
+  ;(deal?.bc_data?.splits || []).forEach((sp: any, i: number) => {
+    const label = txt(sp?.label) || `split ${i + 1}`
+    out[`the BC's ${label}`] = money(sp?.amount) || 'nothing recorded'
+  })
+  {
+    const bcTotal = (deal?.bc_data?.splits || [])
+      .reduce((t: number, sp: any) => t + (Number(String(sp?.amount ?? '').replace(/[^0-9.]/g, '')) || 0), 0)
+    if (bcTotal > 0) out['the BC total lending'] = money(bcTotal) || 'nothing recorded'
+  }
+
   Object.assign(out, loRecordFigures(deal?.lo_data))
 
   return out
