@@ -31,7 +31,7 @@ const WORK_DONE = [
 ]
 
 const written = cloneFields({
-  client_id: 'c', deal_type: 't', assigned_broker: 'b',
+  client_id: 'c', deal_type: 't', assigned_broker: 'b', assigned_credit_officer: 'co-1',
   fact_find_data: { a: 1 }, bc_data: { b: 2 }, bc_scenarios: [{ c: 3 }], lo_data: { d: 4 },
 }, 'whoever_clone')
 
@@ -50,10 +50,26 @@ describe('a clone keeps the work', () => {
     expect(written.bc_scenarios).toEqual([{ c: 3 }])
   })
 
+  it('keeps the person working it, which the database checks', () => {
+    // 8 Oct 2026. A staff member got "new row violates row-level security
+    // policy for table deals" pressing Clone. The rule for creating a deal lets
+    // through an admin, a broker whose key matches assigned_broker, or a staff
+    // member who is the assigned_credit_officer ON THE NEW ROW. The clone
+    // copied the broker and not the credit officer, so a staff member's clone
+    // was born matching none of the three and the database refused it.
+    expect(written.assigned_credit_officer, 'a staff member cannot clone a deal\n'
+      + 'without this - the row-level security rule refuses the insert')
+      .toBe('co-1')
+    expect(CLONE_READS).toContain('assigned_credit_officer')
+    // Null rather than undefined, so a deal with no credit officer writes a
+    // blank rather than leaving the column to a default nobody has read.
+    expect(cloneFields({ assigned_broker: 'b' }, 'x').assigned_credit_officer).toBeNull()
+  })
+
   it('reads every column it writes', () => {
     // The select asking for one column fewer than the insert writes is how a
     // clone quietly loses a form - it writes undefined and nothing complains.
-    for (const k of ['fact_find_data', 'bc_data', 'bc_scenarios', 'lo_data', 'client_id', 'deal_type', 'assigned_broker']) {
+    for (const k of ['fact_find_data', 'bc_data', 'bc_scenarios', 'lo_data', 'client_id', 'deal_type', 'assigned_broker', 'assigned_credit_officer']) {
       expect(CLONE_READS, `${k} is written by the clone but never read off the original`)
         .toContain(k)
       expect(CLONE_SELECT).toContain(k)

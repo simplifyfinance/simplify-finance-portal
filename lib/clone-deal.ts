@@ -23,6 +23,11 @@
 //
 // ================================================================= what travels
 //
+//   assigned_credit_officer
+//                    who is working it. A re-lodgement is the same file with a
+//                    different bank. It is also what the database checks before
+//                    it will let a staff member create a deal at all - see the
+//                    note beside it below.
 //   fact_find_data   who they are. Already travelled.
 //   bc_data          the borrowing capacity, which is the scenario in play.
 //   bc_scenarios     the parked second scenario. Without it a clone silently
@@ -61,7 +66,7 @@
 // drift apart - the select asking for one column fewer than the insert writes
 // is how a clone quietly loses a form.
 export const CLONE_READS = [
-  'client_id', 'deal_type', 'assigned_broker',
+  'client_id', 'deal_type', 'assigned_broker', 'assigned_credit_officer',
   'fact_find_data', 'bc_data', 'bc_scenarios', 'lo_data',
 ] as const
 
@@ -85,6 +90,22 @@ export function cloneFields(from: any, newDealName: string): Record<string, any>
     client_id: from.client_id,
     deal_type: from.deal_type,
     assigned_broker: from.assigned_broker,
+    // THE CREDIT OFFICER COMES TOO, AND THE DATABASE INSISTS ON IT.
+    //
+    // 8 Oct 2026. A staff member pressed Clone and got "new row violates
+    // row-level security policy for table deals".
+    //
+    // The rule for creating a deal (docs/rls_rollback_2026-08-19.sql, "Deal
+    // editing by role") lets exactly three people through: an admin, a broker
+    // whose own broker_key matches assigned_broker, or a staff member who is
+    // the assigned_credit_officer ON THE NEW ROW. The clone copied the broker
+    // and not the credit officer, so a staff member's clone was born with that
+    // column empty, matched none of the three, and was refused by the database
+    // before it ever reached the board.
+    //
+    // It should travel anyway, RLS or no RLS: a re-lodgement is the same file
+    // with a different bank, and the person working it does not change.
+    assigned_credit_officer: from.assigned_credit_officer ?? null,
     // A NEW DEAL IS NOT A BC. This column is legacy - phaseOf works out where a
     // deal really is from what has actually been done to it - but it is still
     // written here, and it was being born as 'BC' in one of the two callers,
