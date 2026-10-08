@@ -27,6 +27,7 @@ import { realDealsOnly, testDealsOnly } from '@/lib/test-deal'
 import DealName from '@/components/DealName'
 import { otherDealsForSameClients } from '@/lib/same-clients'
 import Loading from '@/components/Loading'
+import { CLONE_SELECT, cloneFields, cloneAsks } from '@/lib/clone-deal'
 
 type Client = { id: string; first_name: string; last_name: string; email?: string; phone?: string }
 type Deal = {
@@ -115,31 +116,23 @@ export default function DealsPage() {
     if (!error && data) setDeals(data)
     setLoading(false)
   }
+  // WHAT A CLONE CARRIES IS DECIDED IN ONE FILE. See lib/clone-deal.ts - both
+  // Clone buttons used to hold their own copy of the column list and their own
+  // copy of the question, and both copies said the BC and the LO start fresh.
   async function cloneDeal(e: React.MouseEvent, deal: any) {
     e.preventDefault()
     e.stopPropagation()
-    if (!confirm(`Clone "${deal.deal_name}"? This copies Fact Find only — BC, LO, and Compliance start fresh.`)) return
+    if (!confirm(cloneAsks(deal.deal_name))) return
 
-    const { data: fullDeal } = await browser.from('deals').select('fact_find_data, client_id, deal_type, assigned_broker').eq('id', deal.id).single()
+    const { data: fullDeal } = await browser.from('deals').select(CLONE_SELECT).eq('id', deal.id).single()
     if (!fullDeal) { alert('Could not load deal to clone'); return }
 
     // A clone is marked as one and keeps the original's name otherwise, so the two
     // sit next to each other on the board and it is obvious which is which.
     const newDealName = `${deal.deal_name}_clone`
 
-    const { data: inserted, error } = await browser.from('deals').insert([{
-      deal_name: newDealName,
-      client_id: fullDeal.client_id,
-      deal_type: fullDeal.deal_type,
-      assigned_broker: fullDeal.assigned_broker,
-      // A NEW DEAL IS NOT A BC. This column is legacy - phaseOf works out where a
-      // deal really is from what has actually been done to it - but it is still
-      // written here, and it was being born as 'BC', which the dashboard printed
-      // on a deal nobody had opened yet.
-      stage: 'FactFind',
-      status: 'in_progress',
-      fact_find_data: fullDeal.fact_find_data
-    }]).select().single()
+    const { data: inserted, error } = await browser.from('deals')
+      .insert([cloneFields(fullDeal, newDealName)]).select().single()
 
     if (error || !inserted) { alert('Error cloning deal: ' + (error?.message || 'unknown error')); return }
     router.push(`/deals/${inserted.id}`)

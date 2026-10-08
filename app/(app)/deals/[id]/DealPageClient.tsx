@@ -46,6 +46,7 @@ import TestDealBand from '@/components/TestDealBand'
 import DealName from '@/components/DealName'
 import { splitOnCommonStart } from '@/lib/same-clients'
 import { useOtherDeals } from '@/components/useOtherDeals'
+import { CLONE_SELECT, cloneFields, cloneAsks } from '@/lib/clone-deal'
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
   const validStages = ['FactFind', 'Statements', 'BC', 'LO', 'Compliance']
@@ -75,24 +76,20 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
     setEditingName(false)
   }
 
+  // WHAT A CLONE CARRIES IS DECIDED IN ONE FILE - lib/clone-deal.ts. This copy
+  // and the board's had drifted already: this one was born in 'BC' and the
+  // board's in 'FactFind', from the same button with the same name.
   async function cloneThisDeal() {
-    if (!confirm(`Clone "${dealData.deal_name}"? This copies Fact Find only — BC, LO, and Compliance start fresh.`)) return
+    if (!confirm(cloneAsks(dealData.deal_name))) return
     setCloning(true)
-    const { data: fullDeal } = await supabase.from('deals').select('fact_find_data, client_id, deal_type, assigned_broker').eq('id', deal.id).single()
+    const { data: fullDeal } = await supabase.from('deals').select(CLONE_SELECT).eq('id', deal.id).single()
     if (!fullDeal) { alert('Could not load deal to clone'); setCloning(false); return }
 
     const namePart = dealData.deal_name.replace(/_\d{4}$/, '')
     const newDealName = `${namePart}_${new Date().getFullYear()}_Copy`
 
-    const { data: inserted, error } = await supabase.from('deals').insert([{
-      deal_name: newDealName,
-      client_id: fullDeal.client_id,
-      deal_type: fullDeal.deal_type,
-      assigned_broker: fullDeal.assigned_broker,
-      stage: 'BC',
-      status: 'in_progress',
-      fact_find_data: fullDeal.fact_find_data
-    }]).select().single()
+    const { data: inserted, error } = await supabase.from('deals')
+      .insert([cloneFields(fullDeal, newDealName)]).select().single()
 
     if (error || !inserted) { alert('Error cloning deal: ' + (error?.message || 'unknown error')); setCloning(false); return }
     router.push(`/deals/${inserted.id}`)
