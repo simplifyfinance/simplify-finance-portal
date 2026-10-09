@@ -1823,7 +1823,23 @@ Key assumptions: ${checklistText}`
                 <Field label="Funds to contribute (calculated)">
                   <div className={inputCls + " bg-gray-50 text-gray-700"}>
                     {(() => {
-                      const d = { landValue, constructionCost, stampDuty }
+                      // THE SAME FIVE FIELDS THE TOTAL COST BOX TWO FIELDS UP
+                      // PASSES, AND FOR THE SAME REASON.
+                      //
+                      // 9 Oct 2026. This built its figures from three, leaving
+                      // out how the land is held and the land loan balance -
+                      // and landFundingOf() treats a missing answer as "being
+                      // purchased". So on a client who already owned their land
+                      // with a loan on it, this box added the whole land value
+                      // in as a cost and dropped the payout: $1,850,000 instead
+                      // of $1,731,000, and $880,000 to contribute instead of
+                      // $761,000. Overstated by $119,000, which is exactly
+                      // their equity in the land.
+                      //
+                      // The email had it right all along, so the same screen
+                      // showed a total cost of $1,731,000 and worked the funds
+                      // out from $1,850,000, two fields apart.
+                      const d = { landFunding, landValue, landLoanBalance, constructionCost, stampDuty }
                       return totalCost(d) > 0 ? `$${formatNumber(String(fundsToContribute(d, splits)))}` : '\u2014'
                     })()}
                   </div>

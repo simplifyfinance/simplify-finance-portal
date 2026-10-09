@@ -116,6 +116,51 @@ export function dealFigures(deal: any): Figures {
     if (bcTotal > 0) out['the BC total lending'] = money(bcTotal) || 'nothing recorded'
   }
 
+  // THE SCENARIO'S OWN FIGURES, WHICH NOTHING HERE WATCHED EITHER.
+  //
+  // 9 Oct 2026. A construction deal's saved client email said "you already own
+  // the land, so the only funding required is the build itself" and quoted
+  // $430,000 to contribute. The BC by then said the land carried a $331,000
+  // loan being paid out, and the right answer was $761,000. The email sat
+  // there looking perfectly healthy.
+  //
+  // It looked healthy because every figure on this list came from the fact
+  // find, the splits or the lending options. Not one came from the BC's own
+  // scenario boxes - so the construction cost, the land value, how the land is
+  // held, the land loan balance and the as-if-complete valuation could all
+  // move and nothing was marked out of date. Fabio: "why is this constantly
+  // happening".
+  //
+  // Same family as the loan amount on 8 Oct and the BC splits beside it: a
+  // figure that reaches a client, watched by nothing.
+  //
+  // Named one at a time rather than hashed together, because the point of this
+  // list is that a stale box says WHICH figure moved.
+  {
+    const bc: any = deal?.bc_data || {}
+    const SCENARIO_FIGURES: [string, any][] = [
+      ['the purchase price', bc.purchasePrice],
+      ['the deposit', bc.deposit],
+      ['the stamp duty', bc.stampDuty],
+      ['the existing loan balance', bc.existingLoanBal],
+      ['the property value', bc.propertyValue],
+      ['the construction cost', bc.constructionCost],
+      ['the land value', bc.landValue],
+      ['the land loan being paid out', bc.landLoanBalance],
+      ['the "as if complete" valuation', bc.asIfCompleteValue],
+      ['the equity release', bc.equityRelease],
+      ['the sale price', bc.salePrice],
+      ['the peak debt', bc.peakDebt],
+    ]
+    for (const [label, v] of SCENARIO_FIGURES) {
+      if (txt(v)) out[label] = money(v) || txt(v)
+    }
+    // NOT A FIGURE, AND THE ONE THAT CHANGES THE SENTENCE. Whether the land is
+    // being bought, owned outright or owned with a loan decides what the email
+    // says it is funding - so it belongs on the list beside the amounts.
+    if (txt(bc.landFunding)) out['how the land is held'] = txt(bc.landFunding)
+  }
+
   Object.assign(out, loRecordFigures(deal?.lo_data))
 
   return out
