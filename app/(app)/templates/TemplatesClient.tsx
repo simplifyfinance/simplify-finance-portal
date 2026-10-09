@@ -2,9 +2,14 @@
 import MilestoneFromTemplates from '@/components/MilestoneFromTemplates'
 import { TEMPLATES as MILESTONE_TEMPLATES, type TemplateId } from '@/lib/milestone-emails'
 
-// THE SAME THREE, FROM THE SAME LIST lib/milestone-emails.ts holds - so this
-// page cannot offer one the deal does not, or miss one it gains.
+// THE SAME FOUR, FROM THE SAME LIST lib/milestone-emails.ts holds - so this
+// page cannot offer one the deal does not, or miss one it gains. The Record is
+// typed by TemplateId on purpose: a template added there and forgotten here
+// fails the build rather than quietly going missing from this page. It did
+// exactly that on 9 Oct 2026 when the final check-in was added.
 const MILESTONE_BLURB: Record<TemplateId, string> = {
+  final_checkin: 'For a client who has gone quiet after the borrowing capacity. Closes the file off '
+    + 'without closing the door. Always available \u2014 no milestone to wait for.',
   preapproval: 'Confirms the pre-approval and what the client needs once an offer is accepted.',
   preapproval_extension: 'A new expiry on a pre-approval that has already been sent.',
   formal_approval: 'The lender\u2019s full approval, with settlements copied in.',

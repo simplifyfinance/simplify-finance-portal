@@ -704,18 +704,6 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     setExtractedData(null)
   }
 
-  const [onedriveLink, setOnedriveLink] = useState(deal.onedrive_link || '')
-  const [salestrekkerLink, setSalestrekkerLink] = useState(deal.salestrekker_link || '')
-  const [salestrekkerBcc, setSalestrekkerBcc] = useState(deal.salestrekker_bcc || '')
-
-  async function saveDealLinks(field: string, value: string) {
-    const problem = await checkedWrite(
-      supabase.from('deals').update({ [field]: value }).eq('id', deal.id), 'That link')
-    if (problem) { save.failed(problem); return }
-    save.recovered()
-    onDealFieldChange?.(field, value)
-  }
-
   const [uploadingDoc, setUploadingDoc] = useState(false)
   // HOW MANY ARE UP THERE. A pointer that says "4 documents" is worth reading;
   // one that says "documents are listed at the top" gets skipped.
@@ -1174,24 +1162,18 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
           </p>
         </div>
 
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider block mb-2">Deal links</span>
-          <label className="text-xs text-gray-500 block mb-1">OneDrive folder</label>
-          <input type="text" className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 mb-2"
-            value={onedriveLink} onChange={e => setOnedriveLink(e.target.value)}
-            onBlur={() => saveDealLinks('onedrive_link', onedriveLink)}
-            placeholder="Paste OneDrive folder URL..." />
-          <label className="text-xs text-gray-500 block mb-1">SalesTrekker card</label>
-          <input type="text" className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 mb-2"
-            value={salestrekkerLink} onChange={e => setSalestrekkerLink(e.target.value)}
-            onBlur={() => saveDealLinks('salestrekker_link', salestrekkerLink)}
-            placeholder="Paste SalesTrekker deal URL..." />
-          <label className="text-xs text-gray-500 block mb-1">SalesTrekker BCC code</label>
-          <input type="text" className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5"
-            value={salestrekkerBcc} onChange={e => setSalestrekkerBcc(e.target.value)}
-            onBlur={() => saveDealLinks('salestrekker_bcc', salestrekkerBcc)}
-            placeholder="e.g. deal-12345@salestrekker.com" />
-        </div>
+        {/* DEAL LINKS MOVED TO THE RAIL, 9 Oct 2026.
+            *
+            * These three boxes sat at the top of this tab while the rail showed
+            * the same three as read-only rows - two places for one set of
+            * fields, and the one a person looks at could not be typed into.
+            *
+            * Fabio: "did we move to the top of the page? I dont like I want
+            * under salestrekker and links tab on the right."
+            *
+            * They are now in components/DealLinks.tsx, which writes the same
+            * three columns on the deals row and adds the BCC code beside them.
+            * One home. */}
       </div>
 
       <div className="space-y-4">

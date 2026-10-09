@@ -20,15 +20,28 @@ const sent = (template: any, at: string, by = 'Katie Amos'): SentEmail => ({
 })
 
 describe('the catalogue', () => {
-  it('is three, not four - there is no conditional approval template', () => {
+  it('is four, and there is still no conditional approval template', () => {
+    // 9 Oct 2026: the final check-in joined them, for a client who has gone
+    // quiet after the borrowing capacity. It leads the list because it is the
+    // earliest point a deal can reach it - TEMPLATES is in the order a deal
+    // LIVES them. Fabio, 30 Sep 2026, on the one that does NOT exist: "we dont
+    // have a condtional apporval tempalkte".
     expect(TEMPLATES.map(t => t.id))
-      .toEqual(['preapproval', 'preapproval_extension', 'formal_approval'])
+      .toEqual(['final_checkin', 'preapproval', 'preapproval_extension', 'formal_approval'])
     expect(templateById('conditional_approval')).toBeNull()
   })
 
-  it('every one needs the bank letter', () => {
-    // "letter is compulsory" - each of them says "please find attached".
-    for (const t of TEMPLATES) expect(t.letterRequired).toBe(true)
+  it('every one that promises an attachment requires one', () => {
+    // THE RULE THIS WAS ALWAYS STANDING IN FOR. It read "every one needs the
+    // bank letter", which was true while every template announced something the
+    // bank had put in writing - each of those says "please find attached", and
+    // an email that says that with nothing attached is a phone call.
+    //
+    // The final check-in announces nothing and attaches nothing, so it is not
+    // an exception to the rule; it is outside it.
+    for (const t of TEMPLATES) {
+      expect(t.letterRequired, `${t.id}`).toBe(t.id !== 'final_checkin')
+    }
   })
 
   it('only the formal approval copies settlements', () => {
@@ -78,13 +91,20 @@ describe('what has already gone out', () => {
 })
 
 describe('what is ready on a deal', () => {
-  it('nothing on a deal that has reached no milestone', () => {
+  it('no MILESTONE on a deal that has reached none, and still nothing suggested', () => {
     const menu = menuFor({})
-    expect(menu.every(i => i.state === 'not_yet')).toBe(true)
+    // The final check-in is always ready - it is not a milestone and nothing in
+    // the record knows whether a client has gone quiet. Everything else waits.
+    expect(menu.filter(i => i.id !== 'final_checkin').every(i => i.state === 'not_yet')).toBe(true)
+    expect(menu.find(i => i.id === 'final_checkin')!.state).toBe('ready')
+
+    // AND IT IS STILL NEVER THE SUGGESTION. Pressing Email on a brand new deal
+    // must not offer to close the client's file. See suggestedFor.
     expect(suggestedFor({})).toBeNull()
+
     // Listed rather than hidden - a missing button is a question, a greyed one
     // is an answer.
-    expect(menu).toHaveLength(3)
+    expect(menu).toHaveLength(4)
     for (const i of menu) expect(i.note).not.toBe('')
   })
 
@@ -146,6 +166,10 @@ describe('the menu reads in a useful order', () => {
     expect(menuFor(deal).map(i => [i.id, i.state])).toEqual([
       ['formal_approval', 'ready'],
       ['preapproval_extension', 'ready'],
+      // Ready, but last of the ready ones: it is the earliest thing a deal can
+      // reach and this deal is formally approved, so it is the least likely
+      // thing anybody wants here.
+      ['final_checkin', 'ready'],
       ['preapproval', 'sent'],
     ])
   })

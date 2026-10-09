@@ -173,7 +173,9 @@ export async function GET(req: NextRequest) {
     copyDropped: where.copyDropped,
     testDeal: isTestDeal(deal),
     redirected: where.redirected,
-    letterRequired: true,
+    // PER TEMPLATE, NOT ALWAYS. The final check-in attaches nothing and
+    // promises nothing - see lib/milestone-emails.ts.
+    letterRequired: templateById(templateId)?.letterRequired ?? true,
   })
 }
 

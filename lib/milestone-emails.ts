@@ -19,6 +19,7 @@
 const txt = (v: any) => String(v ?? '').trim()
 
 export type TemplateId = 'preapproval' | 'preapproval_extension' | 'formal_approval'
+  | 'final_checkin'
 
 export type MilestoneTemplate = {
   id: TemplateId
@@ -26,7 +27,14 @@ export type MilestoneTemplate = {
   // The bank's own letter. Fabio, 29 Sep: "letter is compulsory" - every one of
   // these says "please find attached", and an email that says that with nothing
   // attached is a phone call.
-  letterRequired: true
+  // THREE OF THE FOUR SAY "please find attached", AND ONE DOES NOT.
+  //
+  // This was a literal `true` because every milestone email announced something
+  // the bank had put in writing. The final check-in announces nothing and
+  // carries nothing, so the rule it was standing in for is written properly in
+  // lib/milestone-menu.test.ts: a template that PROMISES an attachment must
+  // require one.
+  letterRequired: boolean
   // Settlements copied in. Fabio's instinct on the other two, which I agree
   // with: there is no settlement to run on a pre-approval and a house hunt can
   // take months, so it would fill their inbox with deals nobody can act on.
@@ -34,6 +42,10 @@ export type MilestoneTemplate = {
 }
 
 export const TEMPLATES: MilestoneTemplate[] = [
+  // FIRST, BECAUSE IT IS THE EARLIEST POINT A DEAL CAN REACH THIS LIST - the
+  // borrowing capacity has gone and nothing has come back. TEMPLATES is in the
+  // order a deal LIVES them; see LIVED below.
+  { id: 'final_checkin', name: 'Final check-in', letterRequired: false, copySettlements: false },
   { id: 'preapproval', name: 'Pre-approval', letterRequired: true, copySettlements: false },
   { id: 'preapproval_extension', name: 'Pre-approval extension', letterRequired: true, copySettlements: false },
   { id: 'formal_approval', name: 'Formal approval', letterRequired: true, copySettlements: true },
@@ -124,6 +136,23 @@ function readiness(deal: any, t: MilestoneTemplate): { state: MenuState; note: s
     ? `sent ${when(already.at)}${already.by ? ` by ${already.by}` : ''}`
     : ''
 
+  // ALWAYS AVAILABLE, ON PURPOSE.
+  //
+  // Fabio, 9 Oct 2026: "this is when we are chasing clients so dont tie to
+  // anyhting like formal apporval settlement etc make it always available to
+  // generate."
+  //
+  // The other three announce something that either happened or did not, so they
+  // ask the deal. Nothing in the record knows whether a client has gone quiet -
+  // a person decides that - and a portal that guessed would hide the button on
+  // the deal somebody wants it for. Sent once already is still said, because
+  // sending it twice is worth noticing; it is not stopped.
+  if (t.id === 'final_checkin') {
+    return already
+      ? { state: 'sent', note: `${sentNote}${timesSent(deal, t.id) > 1 ? ` \u00b7 ${timesSent(deal, t.id)} times` : ''}` }
+      : { state: 'ready', note: 'send whenever a client has gone quiet' }
+  }
+
   if (t.id === 'formal_approval') {
     if (!deal?.formal_approval_at) return { state: 'not_yet', note: 'not formally approved yet' }
     return already
@@ -175,6 +204,13 @@ export function menuFor(deal: any): MenuItem[] {
 // The one to open when somebody presses Email without choosing: the milestone
 // this deal has just reached. Null where nothing is ready - then the menu opens
 // and explains itself.
+//
+// THE FINAL CHECK-IN IS NEVER SUGGESTED. It is always ready, so without this it
+// would be the answer on every deal that has reached no milestone - and pressing
+// Email on a brand new deal would offer to close the client's file. It is a
+// decision a person makes about a client who has gone quiet, never the portal's
+// idea of what comes next. It is in the menu, one click away, and that is where
+// it belongs.
 export function suggestedFor(deal: any): TemplateId | null {
-  return menuFor(deal).find(i => i.state === 'ready')?.id || null
+  return menuFor(deal).find(i => i.state === 'ready' && i.id !== 'final_checkin')?.id || null
 }

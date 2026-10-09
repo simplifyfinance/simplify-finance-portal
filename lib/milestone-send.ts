@@ -24,6 +24,7 @@ import { milestoneRows, loanDetails, missingFigures } from './milestone-figures'
 import { contractsByPhrase, insuredPartyName, type LenderRule } from './lender-rules'
 import { buildFormalApprovalEmail } from './formal-approval-email'
 import { buildPreapprovalEmail } from './preapproval-email'
+import { buildFinalCheckinEmail } from './final-checkin-email'
 import { lenderOnTheDeal, optionOnTheDeal, splitsOnTheDeal } from './client-agreement'
 import { toldTheOtherSide, copyTheseIn, otherSideGaps } from './other-side'
 import { clientEmails, clientFirstNames } from './client-emails'
@@ -219,7 +220,19 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
 
   let built: { subject: string; html: string; plainText: string }
 
-  if (template.id === 'formal_approval') {
+  // NOTHING OFF THE DEAL BUT THE NAMES. No figures, no lender, no conditions -
+  // so none of the problems above can apply to it, and there is nothing it can
+  // quietly get wrong. See lib/final-checkin-email.ts.
+  if (template.id === 'final_checkin') {
+    built = buildFinalCheckinEmail({
+      brand,
+      clientNames,
+      senderName: input.sender.name,
+      senderEmail: input.sender.email,
+      senderPhone: input.sender.phone,
+      senderWeb: brandWeb(brand),
+    })
+  } else if (template.id === 'formal_approval') {
     // The other side only goes on the copy line when the block is on, which is
     // the same condition the sentence in the email is written under. One
     // decision, so the email cannot say we told them while the copy line is empty.

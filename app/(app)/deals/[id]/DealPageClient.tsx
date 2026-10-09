@@ -475,7 +475,8 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
             onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
           <DealDocuments deal={dealData} me={me} version={documentsVersion}
             onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
-          <DealLinks deal={dealData} />
+          <DealLinks deal={dealData}
+            onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
           <FileNotes dealId={dealData.id} me={me} notes={notes} onChanged={reloadFile} />
         </DealRail>}
       </div>
