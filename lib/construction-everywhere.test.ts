@@ -111,17 +111,30 @@ describe('the compliance pack', () => {
 
 describe('the client email', () => {
   const route = readFileSync('app/api/generate-email/route.ts', 'utf8')
+  // THE CARD MOVED, THE RULES DID NOT. 9 Oct 2026: three emails now print a
+  // build - the BC on construction, the BC on a buy and sell funding one, and
+  // the lending options email - so the rows live in one file instead of inside
+  // one branch of one route.
+  const card = readFileSync('lib/build-card.ts', 'utf8')
 
   it('asks how the land is funded rather than assuming', () => {
-    expect(route).toContain('isLandPurchase(d)')
+    expect(card).toContain('isLandPurchase(d)')
   })
 
   it('only prints a duty row where there is duty', () => {
-    expect(route).toContain('buyingLand ? row(dutyLabel(d)')
+    expect(card).toContain('buyingLand ? row(dutyLabel(d)')
   })
 
   it('and says what the land equity is doing to the LVR', () => {
-    expect(route).toContain('landEquity(d)')
-    expect(route).toContain('equity in the land')
+    expect(card).toContain('landEquity(d)')
+    expect(card).toContain('equity in the land')
+  })
+
+  it('and the route still prints that card, on both scenarios that build', () => {
+    // A rule in a file nobody imports is not a rule. Both branches build their
+    // body from the one function, so neither can drift from the other.
+    expect(route).toContain('buildCostRows(d)')
+    expect(route).toContain("card('Your Loan Structure', buildStructure(d")
+    expect(route).toContain("card('Your Build', buildStructure(d")
   })
 })

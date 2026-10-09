@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { loPurchaseBlock } from '@/lib/lo-purchase-block'
+import { loPurchaseBlock, isBuyAndSell } from '@/lib/lo-purchase-block'
 import { ctas } from '@/lib/email-buttons'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { type Brand, resolveBrand, brandLegal } from '@/lib/brand'
@@ -217,7 +217,13 @@ function walletLinkBox(link: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const { broker, dealId, loData: d } = await req.json()
+  // bcData IS READ, NEVER STORED. The lending options form holds the deal, so
+  // it sends the borrowing capacity along with this request and the email is
+  // built from whatever the BC says at the moment the button is pressed. The
+  // alternative - copying the land value and the build cost onto the LO record
+  // - is the stale-copy fault this codebase spent 8 Oct undoing on the loan
+  // amount. See lib/lo-purchase-block.ts.
+  const { broker, dealId, loData: d, bcData } = await req.json()
   const resolved = await resolveBrokerProfile(broker)
   if (!resolved) return NextResponse.json({ error: noBrokerMessage(broker) }, { status: 400 })
   const b = {
@@ -246,8 +252,18 @@ export async function POST(req: NextRequest) {
     // A REFINANCE IS UNTOUCHED. Its three lines are in the order a client thinks
     // in - what I owe now, what extra I am taking, what the loan ends up being -
     // and they are not a purchase breakdown. They stay exactly as they were.
-    if (!d.existingLoan) {
-      body += loPurchaseBlock(d)
+    // IS THIS DEAL REFINANCING - NOT "IS THERE A NUMBER IN THAT BOX".
+    //
+    // 9 Oct 2026. The lending options form copies existingLoanBal across from
+    // the BC on every scenario, so on a buy and sell this box always holds the
+    // figure being DISCHARGED BY THE SALE. Reading it as a refinance sent every
+    // buy and sell down the branch below, which printed "Existing Loan Balance"
+    // on a purchase email and then an "Equity Release" line worked out as the
+    // lending minus that balance - a figure nobody typed and no client is
+    // getting. It also meant loPurchaseBlock, written for this exact scenario
+    // on 7 Oct, has never once run.
+    if (!d.existingLoan || isBuyAndSell(d)) {
+      body += loPurchaseBlock(d, bcData)
     } else {
       if (d.purchasePrice) body += p(`Purchase Price: ${money(d.purchasePrice)}`)
       if (d.stampDuty) {

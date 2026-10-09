@@ -110,7 +110,15 @@ describe('every purchase in the client email uses it', () => {
     // out here rather than quietly dragged into a shape it does not fit.
     const withoutConstruction = src.split("template === 'construction'")[0]
       + (src.split("} else if (template === 'investment_equity'")[1] || '')
-    const code = withoutConstruction.replace(/\/\/[^\n]*/g, '')
+    const code = withoutConstruction
+      // AND THE BUILD CARD, WHICH IS THOSE SAME WORDS WITH A NAME ON THEM.
+      //
+      // 9 Oct 2026. The rows above moved into buildStructure() and
+      // lib/build-card.ts so the buy and sell that funds a build prints the
+      // same card instead of a second copy of it. Same exclusion, same reason -
+      // it is construction's vocabulary, not a purchase breakdown.
+      .replace(/function buildStructure[\s\S]*?\n}\n/, '')
+      .replace(/\/\/[^\n]*/g, '')
     // The shapes that used to differ per template.
     expect(code, 'a purchase template is still calling the lending "Total lending"')
       .not.toMatch(/row\('Total lending'/)

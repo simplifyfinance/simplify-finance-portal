@@ -1420,7 +1420,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     const res = await fetch('/api/generate-lo-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ broker: d.brokerSig || deal.assigned_broker, dealId: deal.id, loData: { ...d, importantNotesList: (d.importantNotes || '').split('\n').map((n: string) => n.trim()).filter(Boolean) } })
+      // THE BORROWING CAPACITY GOES WITH IT, read here and not copied onto
+      // this record. A build is described by the BC's land value, build cost
+      // and valuation, and this form has never carried any of them.
+      body: JSON.stringify({ broker: d.brokerSig || deal.assigned_broker, dealId: deal.id, bcData: deal.bc_data || {}, loData: { ...d, importantNotesList: (d.importantNotes || '').split('\n').map((n: string) => n.trim()).filter(Boolean) } })
     })
     if (!res.ok) {
       const err = await res.json().catch(() => null)

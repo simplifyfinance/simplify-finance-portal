@@ -24,6 +24,7 @@
 //     them together. On the Chapman file the loan runs two years past the
 //     retirement age on the record, and nothing anywhere says so.
 
+import { buildsSomething } from './sale-build'
 import { splitsOf } from './deal-structure'
 import { ageFrom, fullName } from './fact-find'
 import { applicantsOf } from './applicants'
@@ -150,7 +151,9 @@ export function boxTwo(deal: any): Box {
   if (txt(bc.bridgingPeriod)) {
     parts.push(`The bridging period of ${txt(bc.bridgingPeriod)} falls entirely inside this window, and the loan is expected to reduce to the end debt within it.`)
   }
-  if (txt(bc.template) === 'construction') {
+  // A BUILD IS A BUILD WHOEVER IS PAYING FOR IT - the construction template, or
+  // a buy and sell whose proceeds are funding one. See lib/sale-build.ts.
+  if (buildsSomething(bc)) {
     parts.push(`This is a construction loan, so the build and its progress draws fall inside this period, with repayments rising as each draw is taken.`)
   }
 

@@ -41,6 +41,11 @@
 // the WORDS. It does not change where the numbers come from, and it must not be
 // read as having fixed that.
 import { dutyLabel } from './duty-state'
+import { buildsSomething } from './sale-build'
+import { totalCost, totalLending, num } from './construction'
+import { buildCostRows, fundsToContributeRow, landEquityNote, buildNote } from './build-card'
+import { money } from './money'
+import { INCIDENTALS } from './purchase-rows'
 // THE CARD IS NOT DRAWN TWICE. lib/no-duplicate-logic.test.ts caught the second
 // copy the day this file was written, which is exactly what it is for.
 import { card, row } from './email-card'
@@ -79,10 +84,54 @@ function contributionSource(d: any): string {
   return txt(d?.depositSource)
 }
 
+// THE SALE WARNING. Under the figures it is about, not six paragraphs later.
+function saleNote(d: any): string {
+  return isBuyAndSell(d)
+    ? `<p style="font-size:12.5px;color:#6b6b6b;font-style:italic;line-height:1.55;margin:0 0 14px"><span style="color:#6b6b6b;">${SALE_ESTIMATE_NOTE}</span></p>`
+    : ''
+}
+
+// A BUILD IS NOT A PURCHASE, AND THIS EMAIL COULD NOT SAY SO.
+//
+// 9 Oct 2026. Handed only the lending options record, this file had no land
+// value, no construction cost and no valuation - so a construction deal got a
+// card headed "New purchase" with a loan amount and a contribution in it and
+// nothing about a build. True of the Construction template since the day it was
+// built, and the buy and sell that funds a build would have walked into it.
+//
+// The borrowing capacity is passed in per request and never stored, so there is
+// no second copy of these figures to go stale. The rows are the same rows the
+// client email prints - see lib/build-card.ts.
+//
+// THE LENDING IS THE LENDING OPTIONS' OWN FIGURE, because this is their email
+// and the whole page is about the loan being applied for. The contribution is
+// then worked out from it, so the column a client reads adds up on its own
+// page rather than against a figure that is not on it.
+function loBuildBlock(d: any, bc: any): string {
+  const cost = totalCost(bc)
+  if (cost <= 0) return ''
+  const lending = num(d?.loanAmount) || totalLending(bc?.splits)
+  const contribute = Math.max(0, Math.round(cost - lending))
+  // Lower case because it lands mid-sentence, the same way purchaseRows does it.
+  const from = contributionSource(d).toLowerCase()
+  return card('Your build',
+    buildCostRows(bc) +
+    row('Total lending', money(lending)) +
+    fundsToContributeRow(contribute, INCIDENTALS) +
+    (from ? buildNote(`This comes from your ${from}.`) : '') +
+    landEquityNote(bc)
+  ) + saleNote(d)
+}
+
 // The whole block: the card, and on a buy and sell the estimate warning under
 // it. Empty when there is nothing to show, so the email simply skips it rather
 // than printing a card with one line in it.
-export function loPurchaseBlock(d: any): string {
+//
+// `bc` is the deal's borrowing capacity, passed through from the request. It is
+// optional only so that a caller with nothing to say about a build still
+// compiles; every real caller passes it.
+export function loPurchaseBlock(d: any, bc?: any): string {
+  if (buildsSomething(bc)) return loBuildBlock(d, bc)
   const rows = purchaseRows({
     price: d?.purchasePrice,
     duty: d?.stampDuty,
@@ -101,9 +150,5 @@ export function loPurchaseBlock(d: any): string {
 
   // UNDER THE FIGURES, NOT AT THE END OF THE EMAIL. It is a caveat on these
   // numbers; six paragraphs later it is just another line nobody reads.
-  const note = isBuyAndSell(d)
-    ? `<p style="font-size:12.5px;color:#6b6b6b;font-style:italic;line-height:1.55;margin:0 0 14px"><span style="color:#6b6b6b;">${SALE_ESTIMATE_NOTE}</span></p>`
-    : ''
-
-  return card('New purchase', body) + note
+  return card('New purchase', body) + saleNote(d)
 }

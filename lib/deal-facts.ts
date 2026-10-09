@@ -20,6 +20,8 @@
 //    facts, and flattening it to one number is why the notes never understood
 //    the purpose.
 
+import { buildsSomething } from './sale-build'
+import { totalCost, landFundingOf, landLoanPayout, landEquity } from './construction'
 import { currentAddress, currentEmployment, fullName, notWorking, selfEmployed, ageFrom } from './fact-find'
 import { templateLabel } from './templates'
 import { fundsToComplete, loanAmount, securityValue } from './funds-to-complete'
@@ -325,6 +327,42 @@ function assetLines(ff: any): string[] {
     })
 }
 
+// WHAT IS BEING BUILT, AND WHAT IT COSTS.
+//
+// Empty on every deal that is not building something, so the section simply is
+// not there rather than being there and saying nothing.
+//
+// HOW THE LAND IS HELD IS THE FIRST LINE, because it decides whether the land
+// value is a cost or a security - the fault of 30 Sep, where a client who owned
+// their land was asked to contribute $900,000 they did not need to find.
+export function buildLines(deal: any): string[] {
+  const bc = deal?.bc_data || {}
+  if (!buildsSomething(bc)) return []
+  const out: string[] = []
+  const held = landFundingOf(bc)
+  out.push(held === 'purchase' ? 'The land is being purchased as part of this deal.'
+    : held === 'owned_with_loan' ? 'The clients already own the land and there is a loan on it being paid out.'
+    : 'The clients already own the land outright.')
+  if (has(bc.landValue)) {
+    out.push(held === 'purchase'
+      ? `Land value: ${money(num(bc.landValue))}`
+      : `Land already owned, valued at ${money(num(bc.landValue))}`)
+  }
+  const payout = landLoanPayout(bc)
+  if (payout > 0) out.push(`Existing land loan being paid out: ${money(payout)}`)
+  if (has(bc.constructionCost)) out.push(`Construction cost: ${money(num(bc.constructionCost))}`)
+  const cost = totalCost(bc)
+  if (cost > 0) out.push(held === 'purchase' ? `Total cost: ${money(cost)}` : `Total to fund: ${money(cost)}`)
+  if (has(bc.asIfCompleteValue)) {
+    out.push(`"As if complete" valuation: ${money(num(bc.asIfCompleteValue))} — this is the security the lending is against, not a price paid.`)
+  } else {
+    out.push('The "as if complete" valuation is NOT RECORDED, so the LVR on this file cannot be stated.')
+  }
+  const equity = landEquity(bc)
+  if (equity > 0) out.push(`The clients' equity in the land is ${money(equity)}, and it takes the place of a deposit.`)
+  return out
+}
+
 // --- the build --------------------------------------------------------------
 
 export function dealFacts(deal: any): DealFacts {
@@ -373,6 +411,16 @@ export function dealFacts(deal: any): DealFacts {
   const gap = optionGap(lo)
   if (gap) missing.push(gap)
   if (loanLines.length) sections.push({ title: 'THE LOAN', lines: loanLines })
+
+  // THE BUILD, WHICH THIS SHEET HAS NEVER MENTIONED.
+  //
+  // 9 Oct 2026. Everything the compliance wording says is written from these
+  // sections, and not one of them carried a construction cost, a land value or
+  // an "as if complete" valuation. So a construction file got a pack that did
+  // not know a house was being built - and the figures were all sitting on the
+  // BC the whole time. lib/handover-view.ts already prints this exact list.
+  const build = buildLines(deal)
+  if (build.length) sections.push({ title: 'THE BUILD', lines: build })
 
   // People.
   const applicants = ff.applicants || []

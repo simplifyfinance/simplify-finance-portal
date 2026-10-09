@@ -27,8 +27,11 @@ import { estimatedRepayment } from '@/lib/email-figures'
 import { emailParagraphs } from '@/lib/rich-text'
 import { showsOwnLoanAmount } from '@/lib/email-amounts'
 import { PLEDGE_PROS, PLEDGE_CONS, PLEDGE_LOAN_1, PLEDGE_LOAN_2, guarantorPhrase } from '@/lib/family-pledge-copy'
-import { totalCost, totalLending, fundsToContribute, repaymentDuringConstruction,
-         isLandPurchase, landEquity, landLoanPayout, num, DRAWDOWN_NOTE } from '@/lib/construction'
+import { totalLending, fundsToContribute,
+         isLandPurchase, landLoanPayout } from '@/lib/construction'
+import { buildCostRows, buildSplitRows, fundsToContributeRow, landEquityNote,
+         duringConstructionRows, buildNote } from '@/lib/build-card'
+import { isSellAndBuild } from '@/lib/sale-build'
 import { totalLimit as recycledLimit, purposeLine, byPurpose, everySplitHasAPurpose,
          whySplitThisWay, openingLine, ACCOUNTANT_NOTE, splitsTotal, limitCheck,
          undrawnNote, STRUCTURE_NOTE } from '@/lib/debt-recycling'
@@ -254,6 +257,26 @@ function existingLoanRow(d: any) {
 // Plain text inside the label, so it inherits the label's colour and the money
 // column stays a clean column of numbers.
 export const PLUS_INCIDENTALS = " (plus solicitor's fees and incidentals)"
+
+// THE BUILD CARD'S BODY, FOR BOTH EMAILS THAT PRINT ONE.
+//
+// 9 Oct 2026. The construction template and a buy and sell whose proceeds are
+// funding a build describe the same thing, so they print the same rows in the
+// same order. The rows themselves live in lib/build-card.ts; this is the order
+// they go in, which is also shared and so also written down once.
+function buildStructure(d: any, lending: number, contribute: number, from?: string) {
+  return buildCostRows(d) +
+    buildSplitRows(d.splits) +
+    row('Total lending', money(lending)) +
+    fundsToContributeRow(contribute, PLUS_INCIDENTALS) +
+    // WHERE THE MONEY COMES FROM, on the scenario where it is not savings. A
+    // client who has just read a sale summary should not have to work out that
+    // the contribution below it is the same money.
+    (from ? buildNote(`This comes from your ${from}.`) : '') +
+    buildLVRLine(d) +
+    landEquityNote(d) +
+    duringConstructionRows(d.splits)
+}
 
 
 
@@ -761,28 +784,53 @@ export async function POST(req: NextRequest) {
 
   } else if (template === 'buy_sell') {
     const depositLabel = (Number(d.additionalSavings) || 0) > 0 ? 'Deposit (from sale proceeds and savings)' : 'Deposit (from sale proceeds)'
+    // THE PROCEEDS CAN GO INTO A BUILD RATHER THAN A PURCHASE. 9 Oct 2026.
+    //
+    // The sale half of this email does not change by a word - it is the same
+    // sale either way. What changes is the card under it, and it becomes the
+    // card the construction template already sends.
+    //
+    // Without this the form would let somebody answer "Building a home", fill
+    // in the land and the build cost, and send a client a card headed "New
+    // Purchase" with no price, no land and no total in it.
+    const sellBuild = isSellAndBuild(d)
+    const fromWords = (Number(d.additionalSavings) || 0) > 0 ? 'sale proceeds and savings' : 'sale proceeds'
+    const buildLending = totalLending(d.splits)
+    const buildContribute = fundsToContribute(d, d.splits)
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
-      p(`When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
+      p(sellBuild
+        // NO CLAIM ABOUT WHAT THE SALE COVERS. It may cover all of the build or
+        // some of it; the card below says which, and this sentence does not
+        // guess ahead of it.
+        ? `Your sale proceeds are going into a build, and the lending required is <strong>${amt(buildLending > 0 ? fmtNum(buildLending) : '', '[amount]')}</strong>.`
+        : `When looking at your numbers, your borrowing capacity is sitting at around <strong>${amt(d.splits?.[0]?.amount, '[amount]')}</strong>.`) +
       card('Sale Proceeds Summary',
         row('Expected sale price', money(d.salePrice)) +
         row('Agent fees / selling costs', money(d.agentFees)) +
         rowIf('Existing loan balance (to be discharged)', money(d.existingLoanBal)) +
         `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">Net proceeds (est.)</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">${money(d.netProceeds) || ''}</span></td></tr>`
       ) +
-      card('New Purchase',
-        purchaseBlock({
-          price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
-          loan: totalLending(d.splits), contribution: d.deposit,
-          contributionFrom: (Number(d.additionalSavings) || 0) > 0 ? 'sale proceeds and savings' : 'sale proceeds',
-          lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
-        }) +
-        buildLVRLine(d, lmiIsInTheLoan(d))
-      ) +
-      p13(structureLead(realSplits(d.splits).length)) +
-      splitCards(d, 'End debt', { termWithType: true }) +
+      (sellBuild
+        ? card('Your Build', buildStructure(d, buildLending, buildContribute, fromWords))
+        : card('New Purchase',
+            purchaseBlock({
+              price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
+              loan: totalLending(d.splits), contribution: d.deposit,
+              contributionFrom: (Number(d.additionalSavings) || 0) > 0 ? 'sale proceeds and savings' : 'sale proceeds',
+              lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
+            }) +
+            buildLVRLine(d, lmiIsInTheLoan(d))
+          )) +
+      // THE SPLIT CARDS ARE NOT DRAWN TWICE. The build card already names every
+      // split with its rate and type, which is why the construction template has
+      // never printed these underneath it.
+      (sellBuild ? '' : p13(structureLead(realSplits(d.splits).length))) +
+      (sellBuild ? '' : splitCards(d, 'End debt', { termWithType: true })) +
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
-      p('Now it is about finding the right lender, the right rate, and making sure the timing between your sale and purchase lines up perfectly. That is exactly what we are here for.') +
+      p(sellBuild
+        ? 'Now it is about finding the right lender for the build, and making sure the timing between your sale and your first construction draw lines up. That is exactly what we are here for.'
+        : 'Now it is about finding the right lender, the right rate, and making sure the timing between your sale and purchase lines up perfectly. That is exactly what we are here for.') +
       
       notesBox(notes) + sig(b)
 
@@ -961,27 +1009,20 @@ export async function POST(req: NextRequest) {
     // Every figure here used to read splits[0] and stop, so a land + construction
     // deal reported half the lending, four times the deposit and half the LVR.
     // lib/construction.ts holds the arithmetic and the reasoning.
-    const cost = totalCost(d)
     const lending = totalLending(d.splits)
     const contribute = fundsToContribute(d, d.splits)
-    const duringConstruction = repaymentDuringConstruction(d.splits)
-
-    // One row per split, so the construction loan and its own rate and repayment
-    // type are actually in the email. They never were.
-    const splitLines = (d.splits || [])
-      .filter((sp: any) => num(sp?.amount) > 0)
-      .map((sp: any, i: number) => row(
-        sp.label || `Split ${i + 1}`,
-        `${money(num(sp.amount))} &nbsp;\u00b7&nbsp; ${sp.rate || ''}% &nbsp;\u00b7&nbsp; ${sp.type || 'P&I'}`,
-      )).join('')
 
     // HOW THE LAND IS HELD CHANGES WHAT THIS EMAIL SAYS.
     //
     // Fabio, 30 Sep 2026: a client who already owned their land was told to
     // contribute $900,000 they did not need to find - the land was added in as
     // if it had to be bought. See lib/construction.ts.
+    //
+    // The ROWS of the card moved to lib/build-card.ts on 9 Oct, because the buy
+    // and sell email and the lending options email now print the same build.
+    // These two are still here because they decide the OPENING SENTENCE, which
+    // is this template's own.
     const buyingLand = isLandPurchase(d)
-    const equity = landEquity(d)
     const payout = landLoanPayout(d)
 
     const opening = buyingLand
@@ -992,49 +1033,7 @@ export async function POST(req: NextRequest) {
 
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p(opening) +
-      card('Your Loan Structure',
-        // WHAT HAS TO BE FUNDED, AND NOTHING ELSE IN THIS BLOCK.
-        //
-        // A client reads straight down the money column, so a figure that is not
-        // part of the sum cannot sit inside it. The first version had land the
-        // clients already owned in here, and an owned-land email read
-        // $900,000 + $600,000 = $600,000. Right arithmetic, unreadable page.
-        //
-        // The land and its duty sit together, then the build. Fabio, 30 Sep 2026:
-        // "Land value / Stamp duty (NSW) than Construction cost".
-        (buyingLand ? row('Land value', money(d.landValue)) : '') +
-        (buyingLand ? row(dutyLabel(d), money(d.stampDuty)) : '') +
-        row('Construction cost', money(d.constructionCost)) +
-        (payout > 0 ? row('Existing land loan paid out', money(payout)) : '') +
-        `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">${buyingLand ? 'Total cost' : 'Total to fund'}</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">${money(cost)}</span></td></tr>` +
-        // WHAT THE SECURITY IS WORTH, below the total and clearly not part of it.
-        (!buyingLand ? row('Land you already own', money(d.landValue)) : '') +
-        row('"As if complete" valuation', money(d.asIfCompleteValue)) +
-        splitLines +
-        row('Total lending', money(lending)) +
-        // Not "deposit". It is cash found across the land settlement and the
-        // build, not a deposit on a purchase. Fabio, 2 Sep 2026.
-        (contribute > 0
-          ? row(`Funds you need to contribute${PLUS_INCIDENTALS}`, money(contribute))
-          // "Nil" rather than "$0". And the parenthesis comes off the label,
-          // because "(plus solicitor's fees and incidentals): Nil" reads as if
-          // there is nothing to pay at all - so it is said underneath instead.
-          : row('Funds you need to contribute', 'Nil') +
-            `<tr><td colspan="2" style="font-size:11px;color:#7a5c3a;font-style:italic;line-height:1.5;padding:2px 0 0"><span style="color:#7a5c3a;">You will still have your solicitor&rsquo;s fees and incidentals to cover.</span></td></tr>`) +
-        buildLVRLine(d) +
-        // WHY THE LVR IS WHAT IT IS on a deal with no deposit in it. Their land
-        // equity is the answer, and without it 35% on a page with no deposit
-        // anywhere on it reads as a mistake.
-        (equity > 0
-          ? `<tr><td colspan="2" style="font-size:11px;color:#7a5c3a;font-style:italic;line-height:1.5;padding:4px 0 0"><span style="color:#7a5c3a;">Your ${money(equity)} of equity in the land takes the place of a deposit.</span></td></tr>`
-          : '') +
-        // Left out entirely when nobody has typed a repayment, rather than
-        // mailing a client "$0 / month".
-        (duringConstruction > 0
-          ? row('Repayments during construction', money(duringConstruction) + ' / month') +
-            `<tr><td colspan="2" style="font-size:11px;color:#7a5c3a;font-style:italic;line-height:1.5;padding:8px 0 0"><span style="color:#7a5c3a;">${DRAWDOWN_NOTE}</span></td></tr>`
-          : '')
-      ) +
+      card('Your Loan Structure', buildStructure(d, lending, contribute)) +
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender and construction loan structure for your project \u2014 and we will guide you through every step of that process.') +
