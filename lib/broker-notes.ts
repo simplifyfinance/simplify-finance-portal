@@ -1,5 +1,6 @@
 // THE NOTES THAT GO TO THE BANK.
 import { purchaseSuburbOf } from './duty-state'
+import { buildsSomething } from './sale-build'
 //
 // Every other box on the Compliance tab is between the broker, the client and
 // our own compliance team. This one is not: it is copied into the lender's
@@ -102,7 +103,13 @@ const PURCHASE_TEMPLATES = ['oo_purchase', 'oo_lvr_compare', 'investment_purchas
 
 function transaction(deal: any): { verb: string; isPurchase: boolean; isConstruction: boolean } {
   const t = txt(deal?.bc_data?.template)
-  if (t === 'construction') return { verb: 'construct', isPurchase: true, isConstruction: true }
+  // A BUILD IS A BUILD WHOEVER IS PAYING FOR IT.
+  //
+  // 9 Oct 2026. This read the template name, and buy_sell is in the purchase
+  // list below - so a buy and sell whose proceeds fund a build told an assessor
+  // the clients wanted to "purchase" a property in that suburb. Asked of
+  // lib/sale-build.ts now, like every other reader of this question.
+  if (buildsSomething(deal?.bc_data)) return { verb: 'construct', isPurchase: true, isConstruction: true }
   if (t === 'refinance_only') return { verb: 'refinance', isPurchase: false, isConstruction: false }
   if (t === 'refinance_equity') return { verb: 'refinance and release equity against', isPurchase: false, isConstruction: false }
   if (t === 'bridging') return { verb: 'purchase', isPurchase: true, isConstruction: false }

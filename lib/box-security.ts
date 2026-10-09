@@ -1,4 +1,5 @@
 import { money, readMoney } from './money'
+import { buildsSomething } from './sale-build'
 import { dutyStateOf } from './duty-state'
 import { dealRow } from './deal-structure'
 import { variantOf, andList, type Gap } from './box-one'
@@ -31,7 +32,12 @@ export type Box = { text: string; gaps: Gap[]; variant: 1 | 2 | 3 }
 export type Security = {
   // The property being bought has no address until somebody types one, so this
   // says which kind it is rather than leaving the caller to guess from a blank.
-  kind: 'purchase' | 'existing'
+  //
+  // 'build' is its own kind rather than a purchase with a different figure in
+  // it, because the figure is a valuation of a house that does not exist yet.
+  // "Being purchased for $1,340,000" would be a false sentence in a compliance
+  // pack. See the prose below.
+  kind: 'purchase' | 'build' | 'existing'
   address: string
   value: number
   // Owner occupied / Investment / Residential / Commercial / Rural, as recorded.
@@ -53,11 +59,22 @@ export function securitiesOf(deal: any): Security[] {
   const bc = deal?.bc_data || {}
   const out: Security[] = []
 
-  const buying = has(bc.purchasePrice) ? num(bc.purchasePrice)
-    : has(bc.newPurchasePrice) ? num(bc.newPurchasePrice) : 0
+  // A BUILD'S SECURITY IS WHAT IT WILL BE WORTH FINISHED.
+  //
+  // 9 Oct 2026. securityValue() was taught this and this function was not, so
+  // the deal structure block showed an LVR on a build while this box named no
+  // security at all - against this file's own opening promise that the two use
+  // the same test. The valuation is what the lender lends against; it is also
+  // what constructionLvr() has always used.
+  //
+  // No valuation recorded and there is nothing here, which is correct: an LVR
+  // on that file cannot be stated either, and lib/deal-facts.ts says so.
+  const built = buildsSomething(bc) && has(bc.asIfCompleteValue) ? num(bc.asIfCompleteValue) : 0
+  const buying = built || (has(bc.purchasePrice) ? num(bc.purchasePrice)
+    : has(bc.newPurchasePrice) ? num(bc.newPurchasePrice) : 0)
   if (buying > 0) {
     out.push({
-      kind: 'purchase',
+      kind: built > 0 ? 'build' : 'purchase',
       address: txt(deal?.compliance_data?.securityAddress),
       value: buying,
       // newPurchasePropertyType holds "Owner-occupied" - it is a USE, not a
@@ -136,7 +153,30 @@ export function securitySentences(deal: any, s: Security, only: boolean): { part
   const what = describe(s)
   const lead = only ? 'The security for this loan is' : 'One security is'
 
-  if (s.kind === 'purchase') {
+  // A HOUSE THAT DOES NOT EXIST YET, VALUED AT WHAT IT WILL BE WORTH.
+  //
+  // Kept apart from the purchase wording on purpose. "Being purchased for
+  // $1,340,000" reads as a price paid, and an assessor who takes it that way
+  // has been told something untrue about the file.
+  if (s.kind === 'build') {
+    const state = stateOf(deal)
+    const worth = `On completion it is valued at ${money(s.value)} \u2014 the "as if complete" `
+      + 'valuation the lending is assessed against, not a price paid.'
+    if (!s.address || /^TBA/i.test(s.address)) {
+      // A blank address on a pre-approval is a fact, not a gap - same rule as
+      // the purchase below.
+      if (row.preApproval) {
+        parts.push(`${lead} the property to be built${state ? ` in ${state}` : ''}. ${worth} `
+          + 'The address is not yet known as this is a pre-approval, and the security will be '
+          + 'confirmed once the land and the building contract are in place.')
+      } else {
+        parts.push(shout('NOT RECORDED \u2014 the security address.'))
+        gaps.push({ what: 'Security address', where: 'Deal structure' })
+      }
+    } else {
+      parts.push(`${lead} ${s.address}, ${what || 'the property'} being built. ${worth}`)
+    }
+  } else if (s.kind === 'purchase') {
     const state = stateOf(deal)
     if (!s.address || /^TBA/i.test(s.address)) {
       // A blank address on a pre-approval is a fact, not a gap.
