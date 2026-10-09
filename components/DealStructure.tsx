@@ -247,24 +247,30 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
         </div>
       )}
 
-      {/* TWO RECORDS, ONE LOAN. See loanAmountDisagrees. */}
-      {loanSplit && (
-        <div className="bg-chase-bg border border-chase-edge rounded-xl px-4 py-2.5 mb-3 text-[12px] text-chase leading-relaxed">
-          {loanSplit.byHand ? (
-            <>
-              <b>The lending options hold a loan amount that was entered by hand.</b>{' '}
-              Using {money(loanSplit.using)} from the lending options. The borrowing capacity
-              says {money(bcSplitsTotal(deal))}. Everything quoted to the client, and the
-              compliance wording, follows the figure entered by hand.
-            </>
-          ) : (
-            <>
-              <b>The lending options are showing an older loan amount.</b>{' '}
-              They hold {money(loanSplit.stored)}; the borrowing capacity says{' '}
-              {money(loanSplit.using)}, and that is the figure being used everywhere.
-              Open the lending options and type it to make the two agree.
-            </>
-          )}
+      {/* A DECISION IS WORTH A LINE. A LEFTOVER IS NOT.
+          *
+          * 8 Oct 2026, and the first version of this was wrong twice over.
+          * It drew a red banner whenever the lending options held a different
+          * loan amount - including the ordinary case where that figure is just
+          * an old copy the BC has since moved past. Nothing reads that copy,
+          * nothing can be done about it, and there is no way to clear it. A
+          * permanent red warning about dead data is noise, and Fabio said so:
+          * "this ridiculous red line is still there??"
+          *
+          * So the stale copy says nothing at all. It is handled - loanAmount()
+          * takes the BC - and a handled thing does not need a banner.
+          *
+          * What is left is the one case that IS worth knowing: somebody typed
+          * a loan amount on the lending options and it is overriding a
+          * borrowing capacity that now says something else. That is a real
+          * decision, one of the two figures goes in front of a client, and it
+          * is blue because it is information rather than a fault. */}
+      {loanSplit?.byHand && (
+        <div className="bg-info-bg border border-info-edge rounded-xl px-4 py-2.5 mb-3 text-[12px] text-info leading-relaxed">
+          <b>This loan amount was entered on the lending options.</b>{' '}
+          Using {money(loanSplit.using)}. The borrowing capacity says{' '}
+          {money(bcSplitsTotal(deal))} &mdash; the figure entered by hand wins, and it is
+          what the client sees and what the compliance wording uses.
         </div>
       )}
 

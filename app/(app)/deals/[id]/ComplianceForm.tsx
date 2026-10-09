@@ -16,13 +16,20 @@ import { hemStateOf, hemTotals, unansweredNote, type HemAnswer } from '@/lib/hem
 // to keep its own copy of it.
 import { EXPENSE_CATEGORIES } from '@/lib/handover-view'
 
-// The loan on this deal: what the LO settled on, or failing that the BC's splits
-// added up. It used to fall back to the FIRST BC split, so a multi-split deal
-// with no LO yet showed - and told the AI - half the loan.
-const dealLoanAmount = (lo: any, bc: any): string => {
-  if (lo?.loanAmount) return String(lo.loanAmount)
-  const total = splitsTotal(bc?.splits)
-  return total ? total.toLocaleString('en-AU') : ''
+// The loan on this deal. It used to fall back to the FIRST BC split, so a
+// multi-split deal with no LO yet showed - and told the AI - half the loan.
+//
+// AND THEN IT KEPT ITS OWN COPY OF THE RULE, which is how the compliance
+// WORDING came to quote a loan the deal no longer had. 8 Oct 2026: a BC was
+// changed and this went on reading lo_data.loanAmount, the copy the lending
+// options took from the BC the day the LO record was first written. The prompt
+// that writes the recommendation was handed the old number.
+//
+// There is one place the loan is decided now and this is not it. See
+// loanAmount() in lib/funds-to-complete.ts.
+const dealLoanAmount = (deal: any): string => {
+  const n = loanAmount(deal)
+  return n > 0 ? n.toLocaleString('en-AU') : ''
 }
 import { checkedWrite } from '@/lib/checked-write'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -30,7 +37,7 @@ import { dealFacts, factsBlock, dealPurpose } from '@/lib/deal-facts'
 import { noteFacts, noteFreshness, reviewNotes, fingerprint, type NoteFacts, type NoteStamp,
          type NoteFreshness } from '@/lib/notes-freshness'
 import { purposeSummary, dealRow } from '@/lib/deal-structure'
-import { fundsToComplete } from '@/lib/funds-to-complete'
+import { fundsToComplete, loanAmount } from '@/lib/funds-to-complete'
 import { money } from '@/lib/money'
 import { brokerNotes, type Assessor } from '@/lib/broker-notes'
 import { comparisonBlock } from '@/lib/lender-comparison'
@@ -403,7 +410,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDataChange, onDea
       // "written before the lender changed" warning could never fire on the one
       // case that needs it most. See lib/client-agreement.ts.
       lender: lenderOnTheDeal(lo),
-      loanAmount: money(dealLoanAmount(lo, from?.bc_data || {})),
+      loanAmount: money(dealLoanAmount(from)),
       purpose: purposeSummary(from),
       fundsToComplete: funds.applies && funds.workable ? (funds.toFind > 0 ? money(funds.toFind) : 'nil') : '',
       approval: row.preApproval ? 'a pre-approval' : 'a formal approval',
@@ -1160,7 +1167,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDataChange, onDea
           + `except where a fact belongs to one of them alone.`
         : `This is a single applicant: ${d.applicants?.[0]?.name || 'the applicant'}. The singular is correct.`,
       clientName: d.applicants.map(a => a.name).join(' and '),
-      loanAmount: dealLoanAmount(lo, bc),
+      loanAmount: dealLoanAmount(deal),
       purchasePrice: bc.purchasePrice || '',
       deposit: bc.deposit || '',
       loanType: bc.template || '',

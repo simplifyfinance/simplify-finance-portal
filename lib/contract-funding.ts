@@ -25,6 +25,7 @@
 
 import { lvrOf, securityValue } from './funds-to-complete'
 import { contractStampDuty } from './contract-figures'
+import { loanAmount } from './funds-to-complete'
 
 const num = (v: any): number => {
   const n = Number(String(v ?? '').replace(/[^0-9.]/g, ''))
@@ -58,8 +59,10 @@ export function depositAsAssessed(deal: any): number {
   if (recorded > 0) return recorded
   const price = num(bc.purchasePrice) || num(bc.newPurchasePrice)
   const duty = num(bc.stampDuty)
-  const loan = num(deal?.lo_data?.loanAmount)
-    || (bc.splits || []).reduce((s: number, x: any) => s + num(x?.amount), 0)
+  // loanAmount() decides this, and it already falls back to the BC's splits -
+  // which is what the second half of this expression was doing by hand, in the
+  // wrong order. See lib/funds-to-complete.ts.
+  const loan = loanAmount(deal)
   if (price <= 0 || loan <= 0) return 0
   return Math.max(0, Math.round(price + duty - loan))
 }

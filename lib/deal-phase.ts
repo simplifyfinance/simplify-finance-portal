@@ -1,3 +1,4 @@
+import { loanAmount } from './funds-to-complete'
 // Which column a deal is in. One answer, asked by every screen.
 //
 // Before this there were two lifecycles bolted together and they disagreed.
@@ -298,8 +299,31 @@ export function amountOf(deal: any): number | null {
     ?? num(deal?.lodged_total)
     ?? splitsTotal(deal?.lodged_splits)
     ?? num(deal?.loan_amount)
-    ?? num(deal?.lo_data?.loanAmount)
+    ?? loanOnceOptionsExist(deal)
     ?? splitsTotal(deal?.lo_data?.refinanceSplits)
+}
+
+// THE LOAN, BUT ONLY ONCE SOMEBODY HAS STARTED THE LENDING OPTIONS.
+//
+// Two rules meet here and both matter.
+//
+// A BC ON ITS OWN IS NOT A LOAN. Nobody has applied for a borrowing capacity,
+// and on the comparison template it is two alternatives for one deal - so
+// counting it inflates the pipeline. That rule is older than this function and
+// lib/deal-phase.test.ts holds it: "shows nothing before Lending Options".
+//
+// BUT ONCE THE OPTIONS EXIST, THE FIGURE IS WHATEVER loanAmount() SAYS. Until
+// 8 Oct 2026 this read lo_data.loanAmount itself - the copy the lending
+// options took from the BC the day they were first saved - so a BC that
+// changed afterwards left the deal CARD quoting the old number while the deal
+// page showed the new one. Fabio: "the deal card still shows 522."
+//
+// So: have the options been started at all, and only then, what is the loan.
+function loanOnceOptionsExist(deal: any): number | null {
+  const lo = deal?.lo_data || {}
+  const started = num(lo.loanAmount) !== null || splitsTotal(lo.refinanceSplits) !== null
+  if (!started) return null
+  return loanAmount(deal) || null
 }
 
 // When the deal entered the phase it is in — the milestone that put it there.

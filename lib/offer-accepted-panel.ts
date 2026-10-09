@@ -13,6 +13,7 @@ import { ruleFor, preapprovalAge, repricingCheck, repricingLine,
          needsAnzAcknowledgement, type LenderRule } from './offer-accepted-rules'
 import { lenderOnTheDeal } from './client-agreement'
 import { dayMonthYear } from './same-date-everywhere'
+import { loanAmount } from './funds-to-complete'
 
 const txt = (v: any) => String(v ?? '').trim()
 const num = (v: any) => {
@@ -130,5 +131,8 @@ export function stillBlank(deal: any): string[] {
 // Which of these two the panel compares against decides whether the repricing
 // line means anything, so it is one function and not a guess at each call site.
 export function loanOnTheDeal(deal: any): number {
-  return num(deal?.loan_amount) || num(deal?.lo_data?.loanAmount) || num(deal?.bc_data?.loanAmount)
+  // loanAmount() is the one place this is decided. This used to read
+  // lo_data.loanAmount itself, which is the copy, so the repricing line was
+  // measured against a figure the deal no longer held.
+  return num(deal?.loan_amount) || loanAmount(deal) || num(deal?.bc_data?.loanAmount)
 }
