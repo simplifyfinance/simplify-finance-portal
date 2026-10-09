@@ -52,6 +52,9 @@ export type AssembleInput = {
   rules: Record<string, LenderRule>
   brand?: Brand
   sender: Sender
+  // The chosen broker's booking link, for the templates that offer one. Blank
+  // means no button rather than a dead one - see lib/final-checkin-email.ts.
+  calendlyUrl?: string
   // What the person ticked or unticked on the send screen, by block key.
   overrides?: Overrides
   // The "anything else" box.
@@ -231,6 +234,7 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
       senderEmail: input.sender.email,
       senderPhone: input.sender.phone,
       senderWeb: brandWeb(brand),
+      calendlyUrl: input.calendlyUrl,
     })
   } else if (template.id === 'formal_approval') {
     // The other side only goes on the copy line when the block is on, which is

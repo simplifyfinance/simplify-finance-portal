@@ -39,16 +39,28 @@ export type MilestoneTemplate = {
   // with: there is no settlement to run on a pre-approval and a house hunt can
   // take months, so it would fill their inbox with deals nobody can act on.
   copySettlements: boolean
+  // WHO IT GOES OUT AS, AND WHETHER THAT IS A CHOICE.
+  //
+  // The other three are signed by whoever is logged in, because announcing a
+  // bank's decision is done by the person who just read the letter. The final
+  // check-in is a chase: it is sent on behalf of the broker whose client went
+  // quiet, which may not be the person at the keyboard, and it carries that
+  // broker's own booking link and trading name.
+  //
+  // So this template picks its sender the way the Templates page forms do -
+  // broker, brand, Calendly - see app/(app)/templates/useSender.ts. A template
+  // without this keeps the old behaviour untouched.
+  picksSender: boolean
 }
 
 export const TEMPLATES: MilestoneTemplate[] = [
   // FIRST, BECAUSE IT IS THE EARLIEST POINT A DEAL CAN REACH THIS LIST - the
   // borrowing capacity has gone and nothing has come back. TEMPLATES is in the
   // order a deal LIVES them; see LIVED below.
-  { id: 'final_checkin', name: 'Final check-in', letterRequired: false, copySettlements: false },
-  { id: 'preapproval', name: 'Pre-approval', letterRequired: true, copySettlements: false },
-  { id: 'preapproval_extension', name: 'Pre-approval extension', letterRequired: true, copySettlements: false },
-  { id: 'formal_approval', name: 'Formal approval', letterRequired: true, copySettlements: true },
+  { id: 'final_checkin', name: 'Final check-in', letterRequired: false, copySettlements: false, picksSender: true },
+  { id: 'preapproval', name: 'Pre-approval', letterRequired: true, copySettlements: false, picksSender: false },
+  { id: 'preapproval_extension', name: 'Pre-approval extension', letterRequired: true, copySettlements: false, picksSender: false },
+  { id: 'formal_approval', name: 'Formal approval', letterRequired: true, copySettlements: true, picksSender: false },
 ]
 
 export function templateById(id: any): MilestoneTemplate | null {

@@ -75,8 +75,22 @@ describe('the browser posts the deal, never the email', () => {
   })
 
   it('posts nothing but the deal, the choices and the letter', () => {
+    // CHOICES AND ONE TYPED BOX, NEVER THE EMAIL.
+    //
+    // brokerKey and calendly joined this list on 9 Oct 2026 when the final
+    // check-in gained a Sending as panel. Both belong to the same two classes
+    // this list already allows and neither widens it:
+    //
+    //   brokerKey is an id, like brandId. The server looks it up in public.brokers
+    //   and takes the NAME from there - a page that posted a made-up key gets a
+    //   fallback to the logged-in user, not a made-up signature.
+    //
+    //   calendly is a link typed on the screen, like extra. It lands in an href
+    //   and nowhere else; it cannot become a sentence.
+    //
+    // The words still come from the server. That is what the next two tests say.
     const allowed = ['dealId', 'template', 'overrides', 'extra', 'expiry',
-                     'insuranceAmount', 'brandId', 'file']
+                     'insuranceAmount', 'brandId', 'brokerKey', 'calendly', 'file']
     const extra = posted.filter(k => !allowed.includes(k))
     expect(extra, 'anything else on this form is something a browser could put in a client email')
       .toEqual([])
@@ -101,9 +115,30 @@ describe('the browser posts the deal, never the email', () => {
   })
 })
 
-describe('the letter is compulsory', () => {
+describe('the letter is compulsory for the ones that promise it', () => {
+  // THE RULE DID NOT CHANGE. WHAT IT ASKS DID.
+  //
+  // This read `if (!files.length)` - every milestone email announced something
+  // the bank had put in writing, so the server refused all four without one.
+  //
+  // 9 Oct 2026: the final check-in promises nothing and carries nothing, and
+  // the flat refusal meant it could not be sent AT ALL - Send was gated on a
+  // file that does not exist. So the route asks the template's own
+  // letterRequired instead of assuming, and WHICH templates promise an
+  // attachment is pinned separately in lib/milestone-menu.test.ts.
+  //
+  // What this test still guards, unweakened: for a template that does promise
+  // one, the refusal happens on the SERVER. A screen that greys a button out is
+  // not a rule - the next component simply posts without one.
   it('is refused by the server, not only greyed out on the screen', () => {
     expect(route).toContain("form.getAll('file')")
-    expect(route).toMatch(/if \(!files\.length\)[\s\S]{0,400}status: 400/)
+    expect(route).toMatch(/if \(template\.letterRequired && !files\.length\)[\s\S]{0,400}status: 400/)
+  })
+
+  it('and the gate is the template record, not a list written here', () => {
+    // A second list of ids in the route would rot the moment a fifth template
+    // arrives. It reads the flag off the record it was given.
+    expect(route).toContain('template.letterRequired')
+    expect(route).not.toMatch(/templateId === 'final_checkin'/)
   })
 })

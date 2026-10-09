@@ -115,6 +115,56 @@ async function senderOf(supabase: any) {
   }
 }
 
+// WHO THE EMAIL IS SIGNED BY, WHEN THAT IS A CHOICE.
+//
+// The other three milestone emails are signed by whoever is logged in, because
+// announcing a bank's decision is done by the person who just read the letter.
+// The final check-in is a chase on behalf of the broker whose client went
+// quiet, and that is often not the person at the keyboard - see picksSender in
+// lib/milestone-emails.ts.
+//
+// THE BROKER RECORD HAS NO EMAIL OR PHONE. public.brokers holds the name, the
+// title, the Calendly link and the brands. The address and the mobile live on
+// the user_profiles row, and brokers.user_id is the link between them. A broker
+// nobody has linked to a login therefore has a name and no contact details -
+// which is a thing to SAY, not to paper over with the wrong person's mobile.
+// The screen is told via senderNote and prints it.
+async function brokerSender(supabase: any, brokerKey: string) {
+  if (!brokerKey) return null
+  const { data: b } = await supabase.from('brokers')
+    .select('broker_key, name, calendly, user_id, active')
+    .eq('broker_key', brokerKey).maybeSingle()
+  if (!b) return null
+
+  let email = '', phone = ''
+  if (b.user_id) {
+    // phone arrives with docs/sender-phone-schema.sql, so it is asked for and
+    // then asked for again without it - the same two-step senderOf uses, for
+    // the same reason: the deploy and the migration land in either order.
+    const withPhone = await supabase.from('user_profiles')
+      .select('email, phone').eq('id', b.user_id).maybeSingle()
+    if (withPhone.error) {
+      const plain = await supabase.from('user_profiles')
+        .select('email').eq('id', b.user_id).maybeSingle()
+      email = txt((plain.data as any)?.email)
+    } else {
+      email = txt((withPhone.data as any)?.email)
+      phone = txt((withPhone.data as any)?.phone)
+    }
+  }
+
+  return {
+    name: txt(b.name) || brokerKey,
+    email,
+    phone,
+    calendly: txt(b.calendly),
+    // Said out loud rather than discovered in a sent email.
+    note: b.user_id
+      ? (email ? '' : `${txt(b.name) || brokerKey} has a login but no email address on it, so the signature carries no E line.`)
+      : `${txt(b.name) || brokerKey} is not linked to a login, so the signature carries their name without an email or mobile. Link them in Settings, Brokers.`,
+  }
+}
+
 // --- the preview -----------------------------------------------------------
 //
 // WHAT WOULD BE SENT, WITHOUT SENDING IT. The send screen draws itself from
@@ -138,13 +188,27 @@ export async function GET(req: NextRequest) {
   let overrides: Record<string, boolean> = {}
   try { overrides = JSON.parse(txt(req.nextUrl.searchParams.get('overrides')) || '{}') } catch { /* none */ }
 
+  // WHOSE NAME GOES AT THE FOOT. The logged-in user unless this template picks
+  // its own sender, and even then only if the chosen broker actually resolves -
+  // a key that matches nothing falls back rather than sending an email signed
+  // by nobody.
+  const tpl = templateById(templateId)
+  const chosen = tpl?.picksSender
+    ? await brokerSender(supabase, txt(req.nextUrl.searchParams.get('brokerKey')))
+    : null
+  const who = chosen || sender
+  const typedCalendly = txt(req.nextUrl.searchParams.get('calendly'))
+
   const lender = await loadLender(deal)
   const built = assembleMilestoneEmail({
     deal, templateId,
     rules: lender.rules,
     rateNotice: await loadRateNotice(lender.row),
     brand: await resolveBrand(txt(req.nextUrl.searchParams.get('brandId'))),
-    sender: { name: sender.name, email: sender.email, phone: sender.phone },
+    sender: { name: who.name, email: who.email, phone: who.phone },
+    // Typed on the screen wins for this one email; otherwise the broker's own
+    // link. Neither, and the email simply has no button.
+    calendlyUrl: tpl?.picksSender ? (typedCalendly || (chosen?.calendly || '')) : '',
     overrides,
     extra: txt(req.nextUrl.searchParams.get('extra')),
     expiry: txt(req.nextUrl.searchParams.get('expiry')),
@@ -176,6 +240,13 @@ export async function GET(req: NextRequest) {
     // PER TEMPLATE, NOT ALWAYS. The final check-in attaches nothing and
     // promises nothing - see lib/milestone-emails.ts.
     letterRequired: templateById(templateId)?.letterRequired ?? true,
+    // The screen draws its own Sending as panel off this rather than keeping a
+    // second list of which templates have one.
+    picksSender: tpl?.picksSender ?? false,
+    // Empty unless the chosen broker is missing contact details - see
+    // brokerSender above. Printed on the screen, not swallowed.
+    senderNote: chosen?.note || '',
+    senderName: who.name,
   })
 }
 
@@ -218,13 +289,23 @@ export async function POST(req: NextRequest) {
   let overrides: Record<string, boolean> = {}
   try { overrides = JSON.parse(txt(form.get('overrides')) || '{}') } catch { /* ticked nothing */ }
 
+  // The same resolution the preview did, from the form rather than the query.
+  // Both doors through one function, so a preview cannot show one signature and
+  // the send go out under another.
+  const chosen = template.picksSender
+    ? await brokerSender(supabase, txt(form.get('brokerKey')))
+    : null
+  const who = chosen || sender
+  const typedCalendly = txt(form.get('calendly'))
+
   const lender = await loadLender(deal)
   const built = assembleMilestoneEmail({
     deal, templateId: template.id,
     rules: lender.rules,
     rateNotice: await loadRateNotice(lender.row),
     brand: await resolveBrand(txt(form.get('brandId'))),
-    sender: { name: sender.name, email: sender.email, phone: sender.phone },
+    sender: { name: who.name, email: who.email, phone: who.phone },
+    calendlyUrl: template.picksSender ? (typedCalendly || (chosen?.calendly || '')) : '',
     overrides,
     extra: txt(form.get('extra')),
     expiry: txt(form.get('expiry')),
@@ -232,11 +313,15 @@ export async function POST(req: NextRequest) {
   })
   if (!built) return NextResponse.json({ error: 'Unknown template.' }, { status: 400 })
 
-  // THE LENDER'S LETTER IS COMPULSORY. Every one of these emails says the
-  // approval is attached. One that says so with nothing attached is a phone call
-  // from the client and a second email from us.
+  // THE LENDER'S LETTER IS COMPULSORY, FOR THE ONES THAT PROMISE IT.
+  //
+  // Three of these emails say the approval is attached, and one that says so
+  // with nothing attached is a phone call from the client and a second email
+  // from us. The final check-in promises nothing and carries nothing, so this
+  // asks the template instead of assuming - it is the record's letterRequired,
+  // the same flag the screen draws itself from.
   const files = form.getAll('file').filter((f): f is File => f instanceof File && f.size > 0)
-  if (!files.length) {
+  if (template.letterRequired && !files.length) {
     return NextResponse.json({
       error: `The ${template.name.toLowerCase()} email has to go out with the lender's own letter attached. Attach it and send again.`,
     }, { status: 400 })
@@ -269,7 +354,9 @@ export async function POST(req: NextRequest) {
   // Sent as the person pressing the button where their address is on our own
   // domain, because the name at the foot of the email is theirs and the two must
   // match. Resend refuses anything else outright.
-  const fromAddress = sender.email.toLowerCase().endsWith(DOMAIN) ? sender.email : FALLBACK_FROM
+  // The name at the foot and the name in the from line are the same person, so
+  // this follows whoever signed it - the broker when the template picks one.
+  const fromAddress = txt(who.email).toLowerCase().endsWith(DOMAIN) ? who.email : FALLBACK_FROM
   const subject = where.redirected ? testSubject(built.subject) : built.subject
 
   // REPLIES REACH BOTH. On a formal approval the client's reply has to land with

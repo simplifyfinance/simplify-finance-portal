@@ -1,6 +1,8 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { menuFor, lastSent, type MenuItem, type TemplateId } from '@/lib/milestone-emails'
+import { menuFor, lastSent, templateById, type MenuItem, type TemplateId } from '@/lib/milestone-emails'
+import { useSender } from '@/app/(app)/templates/useSender'
+import { SenderPanel } from '@/app/(app)/templates/TemplateFields'
 
 // THE CLIENT EMAILS A DEAL CAN SEND.
 //
@@ -38,6 +40,17 @@ type Preview = {
   testDeal: boolean
   redirected: boolean
   state: string | null
+  // OFF THE TEMPLATE RECORD, NOT GUESSED HERE. The screen used to assume every
+  // one of these carries a bank letter and is signed by whoever is logged in.
+  // Both are properties of the template, and both now arrive with the preview -
+  // see lib/milestone-emails.ts and the route that reads it.
+  letterRequired: boolean
+  picksSender: boolean
+  // Empty unless the chosen broker has no login linked, and so no email or
+  // mobile for the signature. Said on screen rather than discovered in a sent
+  // email.
+  senderNote: string
+  senderName: string
 }
 
 export default function MilestoneEmails({ deal, onUpdated }: {
@@ -153,14 +166,33 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
   const [done, setDone] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // WHO IT GOES OUT AS. The same hook and the same panel the Templates page
+  // forms use, so there is one Sending as box in the portal rather than two
+  // that drift. It loads on every template rather than only the ones that show
+  // it, because a hook cannot be called conditionally - two small selects, and
+  // the alternative is lifting its state out through callbacks and a loop.
+  // See app/(app)/templates/useSender.ts.
+  const sender = useSender('sf_milestone_sender_v1')
+  const picksSender = Boolean(preview?.picksSender)
+  const brokerKey = picksSender ? sender.brokerKey : ''
+  const brandId = picksSender ? sender.brandId : ''
+  const calendly = picksSender ? sender.calendlyUrl : ''
+
   const already = lastSent(deal, templateId)
   const isExtension = templateId === 'preapproval_extension'
+
+  // WHETHER A LETTER IS WANTED AT ALL. Off the template record, by way of the
+  // preview - true until the preview lands, so the screen can never flash a
+  // Send button that is about to be refused by the server.
+  const wantsLetter = preview ? preview.letterRequired !== false : true
 
   const load = useCallback(async () => {
     setErr('')
     const qs = new URLSearchParams({
       dealId: deal.id, template: templateId,
       overrides: JSON.stringify(overrides), extra, expiry, insuranceAmount,
+      // Ignored by the route for a template that does not pick its sender.
+      brokerKey, brandId, calendly,
     })
     try {
       const res = await fetch(`/api/send-milestone-email?${qs.toString()}`)
@@ -170,7 +202,7 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
     } catch (e: any) {
       setErr(`The preview could not be built — ${e?.message || 'network error'}.`)
     }
-  }, [deal.id, templateId, overrides, extra, expiry, insuranceAmount])
+  }, [deal.id, templateId, overrides, extra, expiry, insuranceAmount, brokerKey, brandId, calendly])
 
   // Redrawn as you tick. Typing is debounced so the free text box does not
   // rebuild the email on every keystroke.
@@ -180,7 +212,8 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
   }, [load])
 
   async function send() {
-    if (!file) { setErr('Attach the lender’s letter first.'); return }
+    // Only the three that say "please find attached" - see the template record.
+    if (wantsLetter && !file) { setErr('Attach the lender’s letter first.'); return }
     setBusy(true); setErr(''); setDone('')
     try {
       const body = new FormData()
@@ -190,7 +223,10 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
       body.set('extra', extra)
       body.set('expiry', expiry)
       body.set('insuranceAmount', insuranceAmount)
-      body.append('file', file)
+      body.set('brokerKey', brokerKey)
+      body.set('brandId', brandId)
+      body.set('calendly', calendly)
+      if (file) body.append('file', file)
       const res = await fetch('/api/send-milestone-email', { method: 'POST', body })
       const json = await res.json()
       if (!res.ok) { setErr(json?.error || 'The send was refused.'); return }
@@ -199,7 +235,7 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
       onSent({
         emails_sent: [...(Array.isArray(deal.emails_sent) ? deal.emails_sent : []), {
           template: templateId, at: new Date().toISOString(), by: 'you',
-          to: preview?.to || [], cc: json.cc || [], attached: true,
+          to: preview?.to || [], cc: json.cc || [], attached: Boolean(file),
         }],
       })
       setDone(json.warning || '')
@@ -249,15 +285,45 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
               </p>
             )}
 
-            <Shout className="mt-5">The bank&rsquo;s letter</Shout>
-            <input ref={fileRef} type="file" accept="application/pdf" className="hidden"
-              onChange={e => setFile(e.target.files?.[0] || null)} />
-            <button onClick={() => fileRef.current?.click()}
-              className={file
-                ? 'w-full text-left border border-done-edge bg-done-bg text-done rounded-lg px-3 py-2.5 text-[12px]'
-                : 'w-full border border-dashed border-[#D8DDE2] text-faint rounded-lg px-3 py-3 text-[12px]'}>
-              {file ? `${file.name} — ${Math.round(file.size / 1024)} KB` : 'Attach the approval letter (required)'}
-            </button>
+            {/* SENDING AS, FOR THE TEMPLATES THAT ARE SENT ON SOMEBODY'S BEHALF.
+                The brand control is always drawn, even for a broker with one
+                brand - a control that is simply absent says nothing about why. */}
+            {picksSender && (
+              <div className="mt-5">
+                <SenderPanel {...sender} />
+                {!!preview?.senderNote && (
+                  <p className="mt-1.5 text-[11px] text-chase leading-snug">{preview.senderNote}</p>
+                )}
+              </div>
+            )}
+
+            {/* THE LETTER, ONLY WHERE ONE IS PROMISED.
+                *
+                * Drawn always and required always, which is why the final
+                * check-in could not be sent at all: Send was gated on a file
+                * for an email that attaches nothing. The flag is on the
+                * template record and the API hands it over - see
+                * lib/milestone-emails.ts. */}
+            {wantsLetter ? (
+              <>
+                <Shout className="mt-5">The bank&rsquo;s letter</Shout>
+                <input ref={fileRef} type="file" accept="application/pdf" className="hidden"
+                  onChange={e => setFile(e.target.files?.[0] || null)} />
+                <button onClick={() => fileRef.current?.click()}
+                  className={file
+                    ? 'w-full text-left border border-done-edge bg-done-bg text-done rounded-lg px-3 py-2.5 text-[12px]'
+                    : 'w-full border border-dashed border-[#D8DDE2] text-faint rounded-lg px-3 py-3 text-[12px]'}>
+                  {file ? `${file.name} — ${Math.round(file.size / 1024)} KB` : 'Attach the approval letter (required)'}
+                </button>
+              </>
+            ) : (
+              // NOT A GAP. A thing missing on purpose has to say so, or it reads
+              // as something somebody broke - the same lesson as the deal links.
+              <p className="mt-5 text-[11.5px] text-muted leading-[1.55] bg-panel border border-card-line rounded-lg px-3 py-2.5">
+                <b className="text-ink">Nothing is attached.</b> This one carries no letter and names no
+                figure &mdash; four paragraphs and your signature.
+              </p>
+            )}
 
             {isExtension && (
               <>
@@ -267,7 +333,9 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
               </>
             )}
 
-            <Shout className="mt-5">What goes in</Shout>
+            {/* A heading over nothing is a screen with a piece missing. The
+                final check-in has no blocks, so it has no heading. */}
+            {blocks.length > 0 && <Shout className="mt-5">What goes in</Shout>}
             {blocks.map(b => (
               <div key={b.key} className="flex gap-2.5 items-start py-2 border-b border-[#F6F7F8] last:border-b-0">
                 <button onClick={() => setOverrides(o => ({ ...o, [b.key]: !isOn(b) }))}
@@ -339,7 +407,7 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
         )}
 
         <div className="border-t border-[#EEF0F2] bg-[#FAFAF8] px-5 py-3 flex gap-2 items-center flex-wrap rounded-b-xl">
-          <button onClick={send} disabled={busy || !file || !preview?.to?.length}
+          <button onClick={send} disabled={busy || (wantsLetter && !file) || !preview?.to?.length}
             className="bg-ink text-page rounded-lg px-4 py-2 text-[12.5px] font-semibold disabled:opacity-40">
             {busy ? 'Sending…' : 'Send'}
           </button>
@@ -358,8 +426,12 @@ function Shout({ children, className = '' }: { children: any; className?: string
   return <p className={`text-[9px] font-bold tracking-[.07em] uppercase text-faint mb-2 ${className}`}>{children}</p>
 }
 
+// ONE LIST, NOT A SECOND ONE WRITTEN BY HAND.
+//
+// This was a chain of three with everything else falling through to
+// "Pre-approval", so the fourth template opened a screen with the wrong name on
+// it and nothing anywhere said why. The names live in lib/milestone-emails.ts;
+// a fifth template cannot be mis-named either now.
 function titleOf(id: TemplateId): string {
-  return id === 'formal_approval' ? 'Formal approval'
-    : id === 'preapproval_extension' ? 'Pre-approval extension'
-    : 'Pre-approval'
+  return templateById(id)?.name || 'Email'
 }
