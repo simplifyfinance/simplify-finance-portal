@@ -298,9 +298,26 @@ export function amountOf(deal: any): number | null {
     ?? num(deal?.contract_loan_amount)
     ?? num(deal?.lodged_total)
     ?? splitsTotal(deal?.lodged_splits)
-    ?? num(deal?.loan_amount)
     ?? loanOnceOptionsExist(deal)
     ?? splitsTotal(deal?.lo_data?.refinanceSplits)
+    // deals.loan_amount LAST, AND THAT IS A DEMOTION.
+    //
+    // 9 Oct 2026. It used to sit above the lending options, and on a deal
+    // whose BC had been changed the CARD went on reading $522k while the deal
+    // itself said $810k - after the lending options, the funds to complete and
+    // the compliance wording had all been put right. Fabio: "look at it still
+    // show old numebr wtf".
+    //
+    // NOTHING IN THIS CODEBASE WRITES THIS COLUMN. Grep it: the only
+    // loan_amount writes are to lender_rate_observations, a reference table.
+    // So on any deal old enough to have one it is a fossil - a figure from an
+    // import or from a version of the portal that no longer exists - and it
+    // was outranking every live answer the deal has.
+    //
+    // It stays as the last resort, because a deal with no lending options and
+    // no lodged figure may have nothing else. It no longer beats work somebody
+    // has actually done.
+    ?? num(deal?.loan_amount)
 }
 
 // THE LOAN, BUT ONLY ONCE SOMEBODY HAS STARTED THE LENDING OPTIONS.

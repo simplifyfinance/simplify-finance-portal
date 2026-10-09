@@ -1045,8 +1045,16 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // rest of the time, and then nothing is asked. See lib/scenario-change.ts.
   const [askScenario, setAskScenario] = useState<{ id: string; cost: ChangeCost; adds: number } | null>(null)
 
+  // Drawn in one place and checked in another, because a disabled control is
+  // a courtesy and this is a rule. See lib/bc-scenarios.ts.
+  const frozen = downstreamStarted(deal)
+
   function selectTemplate(id: string) {
     if (id === template) return
+    // THE RULE, NOT THE BUTTON. The chips are hidden when this is true, so
+    // reaching here means something else called it - a keyboard, a stale
+    // render, a future caller. The scenario does not change either way.
+    if (frozen) return
     // Clicking a chip used to run setSplits(defaults) on the spot, and every
     // amount, rate, label, repayment and per-property balance went with it - no
     // confirmation, nothing in deal_history to put back, and the autosave wrote
@@ -1466,7 +1474,26 @@ Key assumptions: ${checklistText}`
 
           <div className="bg-card border border-gray-100 rounded-xl p-4 mb-4">
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">BC template</div>
-            {deal.bc_completed_at && !showAllTemplates ? (
+            {/* THE SAME GUARD AS THE SCENARIO TABS, AND THE SAME SENTENCE.
+                *
+                * 9 Oct 2026. This was the unlocked half of the pair: the tabs
+                * above refuse to swap once the lending options have been
+                * started, and these chips would change the scenario underneath
+                * a finished LO, a sent email and completed compliance without
+                * a word. Both are "change the scenario"; both are now the same
+                * rule, read from the same function. */}
+            {frozen ? (
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="inline-flex items-center gap-2 bg-info-bg border border-info-edge rounded-lg px-3.5 py-2">
+                  <svg className="text-done" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.4 L6.2 11.4 L13 4.6"/></svg>
+                  <span className="text-sm font-semibold text-info">{templateLabel(template)}</span>
+                </span>
+                <span className="text-[11.5px] text-chase leading-relaxed">
+                  Lending options have been started on this scenario, so it is the one going ahead.
+                  To change it now, clone the deal.
+                </span>
+              </div>
+            ) : deal.bc_completed_at && !showAllTemplates ? (
               <div className="flex items-center gap-3 flex-wrap">
                 <span className="inline-flex items-center gap-2 bg-info-bg border border-info-edge rounded-lg px-3.5 py-2">
                   <svg className="text-done" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.4 L6.2 11.4 L13 4.6"/></svg>

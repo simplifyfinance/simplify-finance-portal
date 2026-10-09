@@ -75,6 +75,24 @@ describe('which column a deal is in', () => {
     expect(amountOf({})).toBeNull()
   })
 
+  it('and the lending options over a column nothing writes any more', () => {
+    // deals.loan_amount is a fossil: nothing in this codebase has written it
+    // for a long time, and on a deal old enough to have one it was beating
+    // every live answer. A BC changed from 522 to 810 left the board CARD on
+    // 522 while the deal page, the funds to complete and the compliance
+    // wording had all moved.
+    expect(amountOf({
+      loan_amount: 522000,
+      lo_data: { loanAmount: '522,000' },
+      bc_data: { splits: [{ amount: '810000' }] },
+    }), 'the card is reading the fossil again').toBe(810000)
+
+    // Still the last resort, because a deal with nothing else has nothing else.
+    expect(amountOf({ loan_amount: 500000 })).toBe(500000)
+    // And what was lodged still beats it, which was always the rule.
+    expect(amountOf({ loan_amount: 500000, lodged_total: 520000 })).toBe(520000)
+  })
+
   it('shows nothing before Lending Options — a BC figure is a capacity, not a loan', () => {
     // Nobody has applied for a borrowing capacity, and on the comparison template
     // it is two alternatives for one deal. Counting it inflates the pipeline.
@@ -90,9 +108,19 @@ describe('which column a deal is in', () => {
     expect(amountOf({ lo_data: { refinanceSplits: [{ amount: '400000' }, { amount: '60000' }] } })).toBe(460000)
   })
 
-  it('prefers the deal\'s own column, which the LO now writes', () => {
+  it('no longer prefers deals.loan_amount, because nothing writes it', () => {
+    // THE CLAIM IN THIS TEST'S OLD NAME WAS "which the LO now writes". It does
+    // not. Grep loan_amount across app, lib and components: the only writes
+    // are to lender_rate_observations, a reference table. On any deal old
+    // enough to carry one, deals.loan_amount is a fossil from an import or
+    // from a version of the portal that is gone - and it was outranking every
+    // live answer the deal has.
+    //
+    // 9 Oct 2026: a BC changed from 522 to 810 and the board CARD stayed on
+    // 522 after the deal page, the funds to complete and the compliance
+    // wording had all moved. Fabio: "look at it still show old numebr wtf".
     const d = { loan_amount: 530000, lo_data: { loanAmount: '500,000' } }
-    expect(amountOf(d)).toBe(530000)
+    expect(amountOf(d), 'the fossil is beating the lending options again').toBe(500000)
   })
 
   it('ignores an LO figure that was never filled in', () => {
