@@ -204,6 +204,17 @@ type LOData = {
   // deal no longer held and nothing said so - see loFigures().
   emailFigures?: Record<string, string> | null
   refinanceSplits: RefinanceSplit[]
+  // DID A PERSON BUILD THIS LIST.
+  //
+  // False means it is a copy of the BC's splits and the BC may keep it current.
+  // True means somebody added a split, removed one, or typed a label or an
+  // amount, and it is theirs - the BC does not touch it again.
+  //
+  // ABSENT means a deal saved before 9 Oct 2026, and absent is treated as TRUE.
+  // There is no way to tell a hand-built list from a stale copy on a record
+  // that never recorded the difference, so every existing deal is left alone.
+  // See mergeWithBc below.
+  refinanceSplitsByHand?: boolean
   brokerSig: string
   // WHAT THE CLIENT DECIDED. The answer to "did they take the recommendation?",
   // and it lives here and nowhere else - the compliance tab holds a copy that is
@@ -467,6 +478,31 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     return [{ id: makeUid(), label: 'Loan to be refinanced', amount: bc.existingLoanBal || '' }]
   }
 
+  // THE BC's STRUCTURE, THE LENDING OPTIONS' OWN ANSWERS, AND THE SAME IDS.
+  //
+  // 9 Oct 2026. The id is what compliance_data.splitDetail files the term, the
+  // product type and the IO years under, so a new one throws all three away.
+  // Kept by id where the split still carries one, by position otherwise -
+  // which is exactly how splitsOf() matches these same two lists.
+  //
+  // purpose and funds are the lending options' own answers and are never
+  // overwritten by the BC, which does not hold them. Label and amount follow
+  // the BC, because that is the structure this list is a copy OF.
+  function mergeWithBc(existing: RefinanceSplit[]): RefinanceSplit[] {
+    const bcSplits: any[] = bc.splits || []
+    if (bcSplits.length === 0) return existing
+    return bcSplits.map((b: any, i: number) => {
+      const was = existing[i] || ({} as RefinanceSplit)
+      return {
+        id: was.id || makeUid(),
+        label: b.label || was.label || (i === 0 ? 'Loan to be refinanced' : `Split ${i + 1}`),
+        amount: b.amount || '',
+        purpose: was.purpose || normalisePurpose(b.purpose),
+        funds: was.funds,
+      }
+    })
+  }
+
   // A STORED RECORD NEVER USED TO GAIN A BOX.
   //
   // Opening a deal that already had lo_data handed the stored record back word
@@ -497,7 +533,11 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     // over the top of a real record.
     if (deal?.lo_data && Object.keys(deal.lo_data).length > 0) {
       const fromDb: any = deal.lo_data
-      if (!fromDb.refinanceSplits) fromDb.refinanceSplits = initRefinanceSplits()
+      if (!fromDb.refinanceSplits) {
+        fromDb.refinanceSplits = initRefinanceSplits()
+        // Built here and not by a person, so the BC may keep it current.
+        fromDb.refinanceSplitsByHand = false
+      }
       return fillMissing(fromDb, blankData())
     }
     return blankData()
@@ -546,6 +586,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       emailHtmlTemplate: '',
       emailFigures: null,
       refinanceSplits: initRefinanceSplits(),
+      refinanceSplitsByHand: false,
       brokerSig: deal.assigned_broker || 'Fabio',
       clientAgreedLender: '',
       clientChosenLender: '',
@@ -710,7 +751,18 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       brandId: bc.brand || '',
       existingLoan: bc.existingLoanBal || '',
       propertyValue: bc.propertyValue || bc.purchasePrice || '',
-      refinanceSplits: initRefinanceSplits(),
+      // THE LIST IS MERGED, NEVER REBUILT - AND NEVER OVER SOMEBODY'S WORK.
+      //
+      // 9 Oct 2026. This ran initRefinanceSplits() on every change to the
+      // borrowing capacity, which minted a new id for every split and dropped
+      // `funds`. See the note on refinanceSplitsByHand.
+      //
+      // Absent means an older deal, and an older deal is left exactly as it is.
+      refinanceSplits: (prev.refinanceSplits || []).length === 0
+        ? initRefinanceSplits()
+        : prev.refinanceSplitsByHand === false
+          ? mergeWithBc(prev.refinanceSplits)
+          : prev.refinanceSplits,
     }))
   }, [deal.bc_data])
 
@@ -859,7 +911,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   function loShape(stored: any): any {
     const loaded = fillMissing(stored, blankData())
     if (!loaded.importantNotes) loaded.importantNotes = (LO_TEMPLATE_NOTES[loaded.template] || []).join('\n')
-    if (!loaded.refinanceSplits) loaded.refinanceSplits = initRefinanceSplits()
+    if (!loaded.refinanceSplits) {
+      loaded.refinanceSplits = initRefinanceSplits()
+      loaded.refinanceSplitsByHand = false
+    }
     // OPTIONS SAVED BEFORE 16 SEP 2026 HAVE NO ID. Backfilled from the position
     // they are already in, NOT from makeUid(): two people opening the same old
     // deal have to arrive at the same ids, or a merge would see two different
@@ -1109,14 +1164,17 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     setD({ ...d, criteriaUsed: d.criteriaUsed.includes(c) ? d.criteriaUsed.filter(x => x !== c) : [...d.criteriaUsed, c] })
   }
 
+  // THE FOUR WAYS A PERSON CHANGES THIS LIST, and the only four that claim it.
+  // Answering purpose or funds on the deal strip does NOT - those are the
+  // lending options' own answers about the BC's structure, not a change to it.
   function addRefinanceSplit() {
     const newSplit: RefinanceSplit = { id: makeUid(), label: `Split ${d.refinanceSplits.length + 1}`, amount: '' }
-    setD({ ...d, refinanceSplits: [...d.refinanceSplits, newSplit] })
+    setD({ ...d, refinanceSplits: [...d.refinanceSplits, newSplit], refinanceSplitsByHand: true })
   }
 
   function addEquityRelease() {
     const newSplit: RefinanceSplit = { id: makeUid(), label: 'Equity release', amount: '' }
-    setD({ ...d, refinanceSplits: [...d.refinanceSplits, newSplit] })
+    setD({ ...d, refinanceSplits: [...d.refinanceSplits, newSplit], refinanceSplitsByHand: true })
   }
 
   // Written from the deal structure block at the top of this tab. It goes
@@ -1138,13 +1196,13 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
   function removeRefinanceSplit(idx: number) {
     if (d.refinanceSplits.length <= 1) return
-    setD({ ...d, refinanceSplits: d.refinanceSplits.filter((_, i) => i !== idx) })
+    setD({ ...d, refinanceSplits: d.refinanceSplits.filter((_, i) => i !== idx), refinanceSplitsByHand: true })
   }
 
   function updateRefinanceSplit(idx: number, field: keyof RefinanceSplit, value: string) {
     const splits = [...d.refinanceSplits]
     splits[idx] = { ...splits[idx], [field]: value }
-    setD({ ...d, refinanceSplits: splits })
+    setD({ ...d, refinanceSplits: splits, refinanceSplitsByHand: true })
   }
 
   function syncLenderSplits(lenderIdx: number) {

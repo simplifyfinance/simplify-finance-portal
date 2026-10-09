@@ -8,6 +8,7 @@ import {
   withSplitDetail, isInterestOnly, PURPOSE_LABEL, FUNDS_LABEL, defaultSecurityAddress,
 } from '@/lib/deal-structure'
 import { fundsToComplete, loanAmountDisagrees, bcSplitsTotal } from '@/lib/funds-to-complete'
+import { splitsDisagree } from '@/lib/deal-structure'
 import { SPLIT_TYPES, typesOffered, typeContradictsProduct } from '@/lib/lo-splits'
 import { optionOnTheDeal } from '@/lib/client-agreement'
 
@@ -54,6 +55,8 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
   const funds = useMemo(() => fundsToComplete(deal), [deal])
   // Two records, one loan. Null when they agree, which is almost always.
   const loanSplit = useMemo(() => loanAmountDisagrees(deal), [deal])
+  // Two split lists, one deal. Null when they agree, which is almost always.
+  const splitGap = useMemo(() => splitsDisagree(deal), [deal])
   const needed = useMemo(() => stillNeeded(deal), [deal])
   const askFunds = needsFundsRole(deal)
   const purpose = purposeSummary(deal)
@@ -271,6 +274,25 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
           Using {money(loanSplit.using)}. The borrowing capacity says{' '}
           {money(bcSplitsTotal(deal))} &mdash; the figure entered by hand wins, and it is
           what the client sees and what the compliance wording uses.
+        </div>
+      )}
+
+      {/* TWO SPLIT LISTS, ONE DEAL. See splitsDisagree in lib/deal-structure.ts.
+          *
+          * Not corrected, on purpose. A list somebody built on the lending
+          * options is theirs, and on a deal saved before 9 Oct 2026 there is
+          * nothing in the record that tells a hand-built list from a stale
+          * copy. Guessing would replace real work.
+          *
+          * Chase rather than info, because unlike the loan amount above this is
+          * not a decision anybody made - it is two answers nobody reconciled,
+          * and the documents are built from the lending options' one. */}
+      {splitGap && (
+        <div className="bg-chase-bg border border-chase-edge rounded-xl px-4 py-2.5 mb-3 text-[12px] text-chase leading-relaxed">
+          <b>The two split lists do not match.</b>{' '}
+          {splitGap.lines.join(', and ')}. Everything quoted to the client, and the compliance
+          wording, follows the lending options. Open the lending options and make the two agree
+          if the borrowing capacity is the one that is right.
         </div>
       )}
 

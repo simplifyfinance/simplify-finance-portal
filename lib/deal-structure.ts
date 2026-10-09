@@ -1,5 +1,6 @@
 // THE DEAL, AS ONE BLOCK, IN TWO PLACES.
 import { purchaseSuburbOf } from './duty-state'
+import { money } from './money'
 import { normalisePurpose } from './split-purpose'
 //
 // Replaces the "FROM BC" strip on the Lending options tab and the "DEAL SUMMARY"
@@ -263,6 +264,49 @@ function optionSplits(deal: any): any[] {
 
 function recommendedProduct(deal: any): string {
   return txt(optionOnTheDeal(deal?.lo_data || {})?.productName)
+}
+
+// WHEN THE TWO SPLIT LISTS DISAGREE, SAY SO. NEVER CORRECT IT QUIETLY.
+//
+// 9 Oct 2026. The lending options hold their own split list and splitsOf()
+// prefers it - the COUNT comes from it, and so do the labels and the amounts.
+// A list the BC keeps current can never drift; one a person built by hand, or
+// one saved before any of this existed, can.
+//
+// Those are not corrected. Replacing a list somebody built would be guessing
+// with their work, and on an older deal there is nothing in the record that
+// tells the two apart. So this reports and changes nothing, exactly as
+// loanAmountDisagrees does for the loan amount.
+//
+// ONLY THE TWO THAT MATTER. A different NUMBER of splits, or a different total.
+// Those are the ones that make a document describe a different deal. A split
+// renamed on the lending options is usually deliberate, and a line that fires
+// on every second deal is a line nobody reads twice.
+export type SplitsDisagreement = {
+  bcCount: number; loCount: number; bcTotal: number; loTotal: number; lines: string[]
+}
+
+export function splitsDisagree(deal: any): SplitsDisagreement | null {
+  const lo: any[] = deal?.lo_data?.refinanceSplits || []
+  const bc: any[] = deal?.bc_data?.splits || []
+  // Nothing to compare: one of the two has never been filled in.
+  if (lo.length === 0 || bc.length === 0) return null
+
+  const total = (list: any[]) => list.reduce((t, x) => t + num(x?.amount), 0)
+  const bcTotal = total(bc), loTotal = total(lo)
+  const lines: string[] = []
+
+  if (lo.length !== bc.length) {
+    lines.push(`the borrowing capacity has ${bc.length} split${bc.length === 1 ? '' : 's'}`
+      + ` and the lending options have ${lo.length}`)
+  }
+  // Both sides need a figure before a difference means anything - a list nobody
+  // has filled in yet is unfinished, not disagreeing.
+  if (bcTotal > 0 && loTotal > 0 && Math.abs(bcTotal - loTotal) >= 1) {
+    lines.push(`the borrowing capacity totals ${money(bcTotal)} and the lending options ${money(loTotal)}`)
+  }
+
+  return lines.length ? { bcCount: bc.length, loCount: lo.length, bcTotal, loTotal, lines } : null
 }
 
 // Writing one split's compliance-side detail, without disturbing the others.
