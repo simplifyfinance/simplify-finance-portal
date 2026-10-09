@@ -783,7 +783,19 @@ export async function POST(req: NextRequest) {
        notesBox(notes) + sig(b)
 
   } else if (template === 'buy_sell') {
-    const depositLabel = (Number(d.additionalSavings) || 0) > 0 ? 'Deposit (from sale proceeds and savings)' : 'Deposit (from sale proceeds)'
+    // MONEY IS COMMA FORMATTED, AND Number('300,000') IS NaN.
+    //
+    // 9 Oct 2026, Lucy Daniel & James McRorie. $300,000 of their own savings on
+    // top of the sale, and all three of these read Number() straight off the
+    // string - so every one of them fell to NaN, then to 0, then to "sale
+    // proceeds" with no mention of the savings. The client was told the whole
+    // contribution came out of the sale.
+    //
+    // This file's own note at the top of its money import says exactly this:
+    // formatting at the point of DISPLAY is the fix, and readMoney() is the
+    // reader that was already here for it.
+    const addedSavings = (readMoney(d.additionalSavings) || 0) > 0
+    const depositLabel = addedSavings ? 'Deposit (from sale proceeds and savings)' : 'Deposit (from sale proceeds)'
     // THE PROCEEDS CAN GO INTO A BUILD RATHER THAN A PURCHASE. 9 Oct 2026.
     //
     // The sale half of this email does not change by a word - it is the same
@@ -794,7 +806,7 @@ export async function POST(req: NextRequest) {
     // in the land and the build cost, and send a client a card headed "New
     // Purchase" with no price, no land and no total in it.
     const sellBuild = isSellAndBuild(d)
-    const fromWords = (Number(d.additionalSavings) || 0) > 0 ? 'sale proceeds and savings' : 'sale proceeds'
+    const fromWords = addedSavings ? 'sale proceeds and savings' : 'sale proceeds'
     const buildLending = totalLending(d.splits)
     const buildContribute = fundsToContribute(d, d.splits)
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -816,7 +828,7 @@ export async function POST(req: NextRequest) {
             purchaseBlock({
               price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
               loan: totalLending(d.splits), contribution: d.deposit,
-              contributionFrom: (Number(d.additionalSavings) || 0) > 0 ? 'sale proceeds and savings' : 'sale proceeds',
+              contributionFrom: fromWords,
               lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
             }) +
             buildLVRLine(d, lmiIsInTheLoan(d))
