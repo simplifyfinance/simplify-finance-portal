@@ -26,6 +26,7 @@
 // Fabio, 1 Oct 2026, having been shown that distinction: "love it build".
 
 import { money, readMoney } from './money'
+import { normalisePurpose } from './split-purpose'
 import { andList } from './and-list'
 
 const txt = (v: any) => String(v ?? '').trim()
@@ -54,7 +55,12 @@ export const PURPOSES: { id: Purpose; label: string }[] = [
 // unset; the email leaves the line out and the BC says the box is empty.
 export function purposeOf(split: any): Purpose | '' {
   const p = txt(split?.purpose)
-  return p === 'owner_occupied' || p === 'investment' ? p : ''
+  if (p === 'owner_occupied' || p === 'investment') return p
+  // THE SAME ANSWER IN THE DEAL STRIP'S WORDS. It writes 'OO' and 'INV' onto
+  // the same field, so a split answered there reached this file as unanswered
+  // and the email simply left the line out. See lib/split-purpose.ts.
+  const n = normalisePurpose(p)
+  return n === 'OO' ? 'owner_occupied' : n === 'INV' ? 'investment' : ''
 }
 
 export function purposeLabel(p: Purpose | '' | any): string {

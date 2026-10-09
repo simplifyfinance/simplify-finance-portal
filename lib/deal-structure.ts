@@ -1,5 +1,6 @@
 // THE DEAL, AS ONE BLOCK, IN TWO PLACES.
 import { purchaseSuburbOf } from './duty-state'
+import { normalisePurpose } from './split-purpose'
 //
 // Replaces the "FROM BC" strip on the Lending options tab and the "DEAL SUMMARY"
 // strip on Compliance. One component, one record - edit the approval type on the
@@ -194,7 +195,17 @@ export function splitsOf(deal: any): StructureSplit[] {
       // wins over every other copy, on every scenario.
       repaymentType: firstOf(d?.repaymentType, ls?.repaymentType, s?.repaymentType, s?.type,
                              bs?.repaymentType, bs?.type),
-      purpose: (txt(s?.purpose) as SplitPurpose) || '',
+      // BOTH SPELLINGS, AND THE BC's ANSWER WHERE THE LO HAS NONE.
+      //
+      // 9 Oct 2026. This was a cast, so 'owner_occupied' - what the BC's own
+      // dropdown writes - read as blank. And the lending options list is
+      // preferred over the BC the moment it exists, while initRefinanceSplits()
+      // never copied this field across, so on a deal with an LO the answer was
+      // gone twice over.
+      //
+      // The fall is the same one the repayment type above already makes: this
+      // list's answer, then the BC split it came from.
+      purpose: normalisePurpose(s?.purpose) || normalisePurpose(bs?.purpose),
       funds: (txt(s?.funds) as SplitFunds) || '',
       // The BC holds one term for the whole deal; it prefills every split, and a
       // split that differs is changed here.

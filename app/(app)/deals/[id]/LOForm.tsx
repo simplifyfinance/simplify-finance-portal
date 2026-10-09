@@ -1,5 +1,6 @@
 'use client'
 import { isDebtRecycling } from '@/lib/debt-recycling'
+import { normalisePurpose } from '@/lib/split-purpose'
 import { isComplexRefinance } from '@/lib/complex-refinance'
 import { dutyStateOf } from '@/lib/duty-state'
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
@@ -455,7 +456,12 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       return bc.splits.map((s: any, i: number) => ({
         id: makeUid(),
         label: s.label || (i === 0 ? 'Loan to be refinanced' : `Split ${i + 1}`),
-        amount: s.amount || ''
+        amount: s.amount || '',
+        // THE PURPOSE COMES WITH IT. It did not, and this list is preferred
+        // over the BC everywhere downstream - so a broker who answered owner
+        // occupied or investment on the BC was shown an empty dropdown here and
+        // told to "set it on the LO". See lib/split-purpose.ts.
+        purpose: normalisePurpose(s.purpose),
       }))
     }
     return [{ id: makeUid(), label: 'Loan to be refinanced', amount: bc.existingLoanBal || '' }]
