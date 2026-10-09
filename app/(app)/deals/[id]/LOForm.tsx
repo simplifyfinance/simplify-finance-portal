@@ -2,7 +2,10 @@
 import { isDebtRecycling } from '@/lib/debt-recycling'
 import { normalisePurpose } from '@/lib/split-purpose'
 import { isComplexRefinance } from '@/lib/complex-refinance'
-import { dutyStateOf } from '@/lib/duty-state'
+import { dutyStateOf, dutyLabel } from '@/lib/duty-state'
+import { buildsSomething, isSellAndBuild } from '@/lib/sale-build'
+import { totalCost, isLandPurchase, landLoanPayout, landEquity,
+         constructionLvr } from '@/lib/construction'
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { dayMonthYear, dayMonth, longDate } from '@/lib/same-date-everywhere'
 import { formatAsTyped } from '@/lib/money'
@@ -1750,8 +1753,69 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
               )}
             </div>
 
+            {/* THE BUILD, READ FROM THE BORROWING CAPACITY AND NOT COPIED.
+                9 Oct 2026. See the note at the top of this patch and
+                lib/lo-purchase-block.ts: the client email already reads these
+                from the BC when it is built, so a second editable copy here
+                could only ever disagree with what went out. */}
+            {!isRefinance && !isBridging && buildsSomething(bc) && (() => {
+              const buyingLand = isLandPurchase(bc)
+              const payout = landLoanPayout(bc)
+              const cost = totalCost(bc)
+              const loan = num(d.loanAmount)
+              const contribute = Math.max(0, Math.round(cost - loan))
+              const equity = landEquity(bc)
+              const pct = constructionLvr(bc.asIfCompleteValue, [{ amount: d.loanAmount }])
+              const from = isSellAndBuild(bc)
+                ? (num(bc.additionalSavings) > 0 ? 'sale proceeds and savings' : 'sale proceeds')
+                : String(bc.depositSource || '').toLowerCase()
+              const Row = ({ label, value, sub }: { label: string; value: string; sub?: string }) => (
+                <div className="flex flex-col gap-[2px]">
+                  <span className="text-[11px] text-gray-500">{label}</span>
+                  <span className="text-[13px] text-ink font-medium">{value}</span>
+                  {sub ? <span className="text-[10.5px] text-gray-400">{sub}</span> : null}
+                </div>
+              )
+              const fmt = (n: number) => n > 0 ? `$${formatNumber(String(n))}` : '\u2014'
+              return (
+                <>
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <Field label="LVR (calculated)">
+                      <div className={inp + " bg-gray-50 text-gray-700"}>{pct > 0 ? `${pct}%` : '\u2014'}</div>
+                    </Field>
+                  </div>
+                  <div className="rounded-xl border border-dashed border-field-line bg-page px-4 py-3 mb-4">
+                    <div className="flex items-baseline gap-2 mb-3">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                        From the borrowing capacity
+                      </span>
+                      <a href={`/deals/${deal.id}?stage=BC`}
+                         className="ml-auto text-[11.5px] text-brand-ink hover:underline">Open BC tab &rarr;</a>
+                    </div>
+                    <div className="grid grid-cols-3 gap-x-3 gap-y-3">
+                      {buyingLand && <Row label="Land value" value={fmt(num(bc.landValue))} />}
+                      {buyingLand && <Row label={dutyLabel(bc)} value={fmt(num(bc.stampDuty))} />}
+                      <Row label="Construction cost" value={fmt(num(bc.constructionCost))} />
+                      {payout > 0 && <Row label="Existing land loan paid out" value={fmt(payout)} />}
+                      <Row label={buyingLand ? 'Total cost' : 'Total to fund'} value={fmt(cost)} />
+                      {!buyingLand && <Row label="Land they already own" value={fmt(num(bc.landValue))} />}
+                      <Row label={'"As if complete" valuation'} value={fmt(num(bc.asIfCompleteValue))} />
+                      <Row label="Contribution" value={fmt(contribute)} sub={from || undefined} />
+                      {equity > 0 && (
+                        <Row label="Equity in the land" value={fmt(equity)} sub="takes the place of a deposit" />
+                      )}
+                    </div>
+                    <p className="text-[10.5px] text-gray-400 leading-snug mt-3">
+                      Read only. These live on the borrowing capacity and the client email is built from
+                      them there, so there is no second copy to go out of date.
+                    </p>
+                  </div>
+                </>
+              )
+            })()}
+
             {/* Purchase-specific fields */}
-            {!isRefinance && !isBridging && (
+            {!isRefinance && !isBridging && !buildsSomething(bc) && (
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Purchase price"><NumberInput value={d.purchasePrice} onChange={handleLoPurchasePriceChange} /></Field>
                 <Field label="Deposit">
