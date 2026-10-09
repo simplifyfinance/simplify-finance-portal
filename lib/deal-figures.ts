@@ -18,6 +18,7 @@
 // So this lists the figures BY NAME. Adding another is one line.
 
 import { money, readMoney } from './money'
+import { saleProceedsUseOf } from './sale-build'
 import { annualIncomeOfApplicant } from './income-calculations'
 import { resolveLenderSplits } from './lo-splits'
 import { lenderOnTheDeal } from './client-agreement'
@@ -159,6 +160,14 @@ export function dealFigures(deal: any): Figures {
     // being bought, owned outright or owned with a loan decides what the email
     // says it is funding - so it belongs on the list beside the amounts.
     if (txt(bc.landFunding)) out['how the land is held'] = txt(bc.landFunding)
+    // NOR IS THIS, AND IT CHANGES MORE THAN ANY FIGURE ON THE LIST ABOVE. A
+    // buy and sell that switches from buying to building swaps the whole second
+    // card in the client email: the purchase price goes, the land and the build
+    // and the valuation arrive. Compliance written before that flip is about a
+    // different deal. See lib/sale-build.ts.
+    if (txt(bc.template) === 'buy_sell') {
+      out['what the sale proceeds are funding'] = saleProceedsUseOf(bc)
+    }
   }
 
   Object.assign(out, loRecordFigures(deal?.lo_data))

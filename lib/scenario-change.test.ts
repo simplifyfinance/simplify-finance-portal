@@ -116,12 +116,24 @@ describe('the BC asks before it replaces anything', () => {
 
   it('asks first, and offers both ways out', () => {
     expect(src).toContain('scenarioChangeCost(splits')
-    expect(src).toContain("applyTemplate(askScenario.id, 'keep')")
-    expect(src).toContain("applyTemplate(askScenario.id, 'replace')")
+    // 9 Oct 2026: the buttons went through applyAsk(), because there are now
+    // TWO things that change which splits the email describes - a template chip
+    // and the buy-or-build question on buy / sell. One dialog, one wording, one
+    // pair of buttons; applyAsk routes to whichever was asked about. The rule
+    // being guarded is unchanged: never replace without offering to keep.
+    expect(src).toContain("applyAsk(askScenario, 'keep')")
+    expect(src).toContain("applyAsk(askScenario, 'replace')")
+    expect(src).toContain("applyTemplate(ask.id, splitsChoice)")
     expect(src).toContain('Would be replaced')
   })
 
   it('keeps the guard the notes already had', () => {
-    expect(src).toContain('notesAfterScenarioChange(prev, TEMPLATE_NOTES[previous]')
+    // Same guard, now asked through templateNotesFor() so that the buy-or-build
+    // answer carries the construction caveat with it. Still
+    // notesAfterScenarioChange, still comparing the OLD list with the NEW one,
+    // which is what stops a first home buyer being told about rental yield.
+    expect(src).toContain('notesAfterScenarioChange(prev,')
+    expect(src).toContain('templateNotesFor(previous, saleProceedsUse)')
+    expect(src).toContain('templateNotesFor(id, saleProceedsUse)')
   })
 })

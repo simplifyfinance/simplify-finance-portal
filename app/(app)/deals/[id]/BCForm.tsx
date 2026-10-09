@@ -16,6 +16,7 @@ import { tabsOf, canAdd, canSwap, swapTo, addScenario, removeParked, renameLive,
 import { proceedCredit } from '@/lib/deal-status'
 import { emailParagraphs, htmlToPlainText, copyHtmlAndPlain} from '@/lib/rich-text'
 import { totalCost, fundsToContribute, constructionLvr, LAND_FUNDING } from '@/lib/construction'
+import { SALE_PROCEEDS_USE, isSellAndBuild } from '@/lib/sale-build'
 import { emailFreshness, needsAttention, notesAfterScenarioChange } from '@/lib/email-freshness'
 import { missingForEmail, missingSentence } from '@/lib/bc-ready'
 import { dealFigures } from '@/lib/deal-figures'
@@ -168,6 +169,8 @@ type AltScenario = {
   equityReleaseAmount?: string
 }
 
+const CONSTRUCTION_NOTE = 'Construction cost estimates are indicative only and subject to builder contracts and council approvals.'
+
 const TEMPLATE_NOTES: Record<string, string[]> = {
   refinance_equity: [],
   refinance_only: [],
@@ -192,7 +195,7 @@ const TEMPLATE_NOTES: Record<string, string[]> = {
     'Please advise if you did NOT receive financial advice when setting up your SMSF.',
     'Please note, lenders will require you to obtain independent financial and legal advice at your own cost as you will be a guarantor on the application.',
   ],
-  construction: ['Construction cost estimates are indicative only and subject to builder contracts and council approvals.'],
+  construction: [CONSTRUCTION_NOTE],
   // THE TAX LINE IS NOT OPTIONAL ON THIS ONE. Simplify Finance holds a credit
   // licence, not a tax agent registration - see lib/debt-recycling.ts.
   // The accountant line is NOT here. It is written into the structure card in
@@ -205,6 +208,16 @@ const TEMPLATE_NOTES: Record<string, string[]> = {
     'Keeping each split to a single purpose is what allows the purpose of the borrowing to stay clear over time. Redrawing from a split, or paying one down and using it again for something else, changes what that split was used for.',
   ],
   custom: [],
+}
+
+// THE NOTES A SCENARIO PRE-FILLS, ONCE THE ANSWERS INSIDE IT ARE TAKEN INTO
+// ACCOUNT. Only buy / sell has one: the three sale warnings either way, plus
+// the construction caveat when the proceeds are funding a build. Everything
+// else is its template's list unchanged.
+function templateNotesFor(template: string, saleProceedsUse: string): string[] {
+  const base = TEMPLATE_NOTES[template] || []
+  if (isSellAndBuild({ template, saleProceedsUse })) return [...base, CONSTRUCTION_NOTE]
+  return base
 }
 
 // NO AMBER. lib/colours.ts: four status colours, each meaning one thing, and
@@ -534,6 +547,10 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // Defaults to a purchase, which is what every construction deal written
   // before today was. See lib/construction.ts.
   const [landFunding, setLandFunding] = useState(s.landFunding || 'purchase')
+  // WHAT THE SALE PROCEEDS ARE GOING INTO. Buy / sell only. Defaults to 'buy',
+  // which is what every buy and sell written before today was. See
+  // lib/sale-build.ts for why this is an answer and not a template.
+  const [saleProceedsUse, setSaleProceedsUse] = useState(s.saleProceedsUse || 'buy')
   const [landLoanBalance, setLandLoanBalance] = useState(s.landLoanBalance || '')
   const [constructionCost, setConstructionCostRaw] = useState(s.constructionCost || '')
   function setConstructionCost(val: string) { setConstructionCostRaw(val); recomputeAsIfComplete(landValue, val) }
@@ -596,11 +613,22 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   function setLandValue(val: string) { setLandValueRaw(val); recomputeAsIfComplete(val, constructionCost) }
   const [brokerNotes, setBrokerNotes] = useState(s.brokerNotes || '')
   const [templateNotes, setTemplateNotes] = useState(
-    s.templateNotes !== undefined ? s.templateNotes : (TEMPLATE_NOTES[s.template || 'oo_purchase'] || []).join('\n')
+    s.templateNotes !== undefined ? s.templateNotes
+      : templateNotesFor(s.template || 'oo_purchase', s.saleProceedsUse || 'buy').join('\n')
   )
 
+  // THE ONE DERIVED FACT, AND IT IS NOT DEFINED HERE. Every reader in the
+  // portal asks lib/sale-build.ts; so does the form.
+  const sellAndBuild = isSellAndBuild({ template, saleProceedsUse })
+  // Shows the land, the build cost and the "as if complete" valuation - the
+  // construction template, or a buy and sell answered that way.
+  const showsBuild = template === 'construction' || sellAndBuild
+
   const purchaseLinkTemplates = ['oo_purchase', 'investment_purchase', 'fhb', 'buy_sell']
-  const isPurchaseLinked = purchaseLinkTemplates.includes(template)
+  // A build has no purchase price box, so nothing can be linked to one. Without
+  // this the LVR below would be worked out against an empty price and come back
+  // zero, and a zero LVR prints a hardcoded "80%" on the client email.
+  const isPurchaseLinked = purchaseLinkTemplates.includes(template) && !sellAndBuild
 
   function handlePurchasePriceChange(val: string) {
     setPurchasePrice(val)
@@ -654,7 +682,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
 
   const isRefinanceLinked = ['refinance_equity', 'refinance_only', 'investment_equity'].includes(template)
   const isBridgingLinked = template === 'bridging'
-  const isConstructionLinked = template === 'construction'
+  const isConstructionLinked = showsBuild
   const showCalculatedLvr = isPurchaseLinked || isRefinanceLinked || isBridgingLinked || isConstructionLinked
 
   let lvrPercent = 0
@@ -849,6 +877,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     offsetSplits: setOffsetSplits, propertyLimits: setPropertyLimits,
     constructionCost: setConstructionCostRaw,
     landValue: setLandValueRaw, landFunding: setLandFunding, landLoanBalance: setLandLoanBalance,
+    saleProceedsUse: setSaleProceedsUse,
     asIfCompleteValue: setAsIfCompleteValue,
     compareOptions: setCompareOptions, optionLabel: setOptionLabel, altScenarios: setAltScenarios,
     brand: setBrand,
@@ -1013,13 +1042,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // pending stays in pendingSave and is written by the effect above when the
     // form actually leaves.
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, propertyLimits, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, propertyLimits, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, propertyLimits, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, propertyLimits, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand }
   }
 
   // Does the saved email still match the scenario the deal is on? Read in three
@@ -1043,7 +1072,16 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
 
   // WHAT A SCENARIO CHANGE WOULD COST, while it can still be stopped. Null the
   // rest of the time, and then nothing is asked. See lib/scenario-change.ts.
-  const [askScenario, setAskScenario] = useState<{ id: string; cost: ChangeCost; adds: number } | null>(null)
+  // EITHER DOOR. `id` is a template chip, `use` is the buy-or-build question -
+  // both change which splits the email describes, so both ask the same
+  // question in the same words rather than growing a second dialog.
+  const [askScenario, setAskScenario] = useState<
+    { id?: string; use?: string; cost: ChangeCost; adds: number } | null>(null)
+
+  function applyAsk(ask: { id?: string; use?: string }, splitsChoice: 'keep' | 'replace') {
+    if (ask.use) applyUse(ask.use, splitsChoice)
+    else if (ask.id) applyTemplate(ask.id, splitsChoice)
+  }
 
   // Drawn in one place and checked in another, because a disabled control is
   // a courtesy and this is a rule. See lib/bc-scenarios.ts.
@@ -1089,7 +1127,40 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // anything and leaving them means a first home buyer is told about rental
     // yield. notesAfterScenarioChange() is the one that tells those apart.
     setTemplateNotes((prev: string) =>
-      notesAfterScenarioChange(prev, TEMPLATE_NOTES[previous] || [], TEMPLATE_NOTES[id] || []))
+      notesAfterScenarioChange(prev,
+        templateNotesFor(previous, saleProceedsUse),
+        templateNotesFor(id, saleProceedsUse)))
+  }
+
+  // ANSWERING THE QUESTION IS A CHANGE OF SCENARIO IN EVERYTHING BUT NAME.
+  //
+  // It changes which splits the email describes - one end debt, or a land loan
+  // and a construction facility - so it goes through the same two guards the
+  // template chips do: frozen once lending options have been started, and
+  // keep-or-replace where splits have been typed.
+  function applyUse(next: string, splitsChoice: 'keep' | 'replace') {
+    const previous = saleProceedsUse
+    setSaleProceedsUse(next)
+    const defaults = next === 'build'
+      ? TEMPLATE_DEFAULTS.construction.splits
+      : TEMPLATE_DEFAULTS.buy_sell.splits
+    if (splitsChoice === 'keep') setSplits(prev => keepSplits(prev, defaults) as Split[])
+    else setSplits(defaults.map((x: Split) => ({ ...x })))
+    setTemplateNotes((prev: string) =>
+      notesAfterScenarioChange(prev,
+        templateNotesFor(template, previous),
+        templateNotesFor(template, next)))
+  }
+
+  function selectUse(next: string) {
+    if (next === saleProceedsUse) return
+    if (frozen) return
+    const want = next === 'build'
+      ? TEMPLATE_DEFAULTS.construction.splits
+      : TEMPLATE_DEFAULTS.buy_sell.splits
+    const cost = scenarioChangeCost(splits, want)
+    if (cost) { setAskScenario({ use: next, cost, adds: splitsAdded(splits, want) }); return }
+    applyUse(next, 'replace')
   }
 
   function updateSplit(i: number, key: keyof Split, val: string) {
@@ -1522,7 +1593,9 @@ Key assumptions: ${checklistText}`
                  onClick={() => setAskScenario(null)}>
               <div className="bg-card rounded-2xl shadow-xl max-w-md w-full p-5" onClick={e => e.stopPropagation()}>
                 <div className="text-[15px] font-semibold mb-2">
-                  Change to {TEMPLATES.find(t => t.id === askScenario.id)?.label || askScenario.id}?
+                  Change to {askScenario.use
+                    ? (SALE_PROCEEDS_USE.find(o => o.value === askScenario.use)?.label || askScenario.use)
+                    : (TEMPLATES.find(t => t.id === askScenario.id)?.label || askScenario.id)}?
                 </div>
                 <p className="text-xs text-gray-500 leading-relaxed mb-3">
                   That scenario sets up its own loan splits. You have typed into the ones you have now.
@@ -1534,11 +1607,11 @@ Key assumptions: ${checklistText}`
                   ))}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button onClick={() => { applyTemplate(askScenario.id, 'keep'); setAskScenario(null) }}
+                  <button onClick={() => { applyAsk(askScenario, 'keep'); setAskScenario(null) }}
                     className="text-xs font-semibold bg-brand text-ink rounded-lg px-3.5 py-2">
                     Keep my splits{askScenario.adds > 0 ? ` (adds ${askScenario.adds} blank)` : ''}
                   </button>
-                  <button onClick={() => { applyTemplate(askScenario.id, 'replace'); setAskScenario(null) }}
+                  <button onClick={() => { applyAsk(askScenario, 'replace'); setAskScenario(null) }}
                     className="text-xs font-semibold border border-gray-200 text-gray-600 rounded-lg px-3.5 py-2 hover:border-gray-300">
                     Replace them
                   </button>
@@ -1563,6 +1636,26 @@ Key assumptions: ${checklistText}`
           <div className="flex flex-col gap-4">
               <div className="bg-card border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Scenario details</div>
+                {/* WHAT THE SALE PROCEEDS ARE GOING INTO.
+                    It governs the whole card below it, so it sits at the top of
+                    the card rather than beside the boxes it turns on and off.
+                    Drawn as the offset-accounts row already is. 9 Oct 2026. */}
+                {template === 'buy_sell' && (
+                  <div className="flex items-center gap-2 flex-wrap mb-3">
+                    <span className="text-[11px] text-gray-500 mr-1">Sale proceeds are going into</span>
+                    {SALE_PROCEEDS_USE.map(o => (
+                      <button key={o.value} type="button" onClick={() => selectUse(o.value)}
+                        disabled={frozen}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                          saleProceedsUse === o.value
+                            ? 'bg-info-bg border-info-edge text-info font-semibold'
+                            : 'border-gray-200 text-gray-600 hover:border-brand hover:text-brand-ink'
+                        } ${frozen ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-2">
                   <Field label={['refinance_equity', 'refinance_only'].includes(template) ? 'Suburb' : 'State'}><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
                   {template !== "fhb" && <Field label="Property type"><select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>}
@@ -1592,7 +1685,7 @@ Key assumptions: ${checklistText}`
                       </Field>
                     </div>
                   )}
-                  {!["refinance_equity", "refinance_only", "investment_equity", "construction"].includes(template) && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={handlePurchasePriceChange} /></Field>}
+                  {!["refinance_equity", "refinance_only", "investment_equity", "construction"].includes(template) && !sellAndBuild && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={handlePurchasePriceChange} /></Field>}
                   {/* THE CONTRIBUTION BOX, BACK ON THE FAMILY PLEDGE.
                       15 Sep 2026. The deposit box was hidden on this template,
                       yet the client email prints "Your contribution required"
@@ -1629,10 +1722,10 @@ Key assumptions: ${checklistText}`
                       owns has none, so the box is not there to be left blank and
                       then reported as missing. lib/construction.ts. */}
                   {!["refinance_equity", "refinance_only", "investment_equity"].includes(template)
-                    && !(template === 'construction' && landFunding !== 'purchase')
+                    && !(showsBuild && landFunding !== 'purchase')
                     && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={handleStampDutyChange} /></Field>}
                   {!["refinance_equity", "refinance_only", "investment_equity"].includes(template)
-                    && !(template === 'construction' && landFunding !== 'purchase') && (
+                    && !(showsBuild && landFunding !== 'purchase') && (
                     <Field label="State">
                       <select className={selectCls} value={dutyState} onChange={e => setDutyState(e.target.value)}>
                         <option value="">Select</option>
@@ -1785,7 +1878,7 @@ Key assumptions: ${checklistText}`
                   email told them to contribute $900,000 they did not need to
                   find. Land value was being used both as the security and as a
                   cost. See lib/construction.ts. */}
-              {template === 'construction' && (
+              {showsBuild && (
                 <Field label="The land">
                   <select className={selectCls} value={landFunding}
                     onChange={e => setLandFunding(e.target.value)}>
@@ -1793,18 +1886,18 @@ Key assumptions: ${checklistText}`
                   </select>
                 </Field>
               )}
-              {template === 'construction' && (
+              {showsBuild && (
                 <Field label={landFunding === 'purchase' ? 'Land value' : 'Land value (current)'}>
                   <NumberInput value={landValue} onChange={setLandValue} />
                 </Field>
               )}
-              {template === 'construction' && landFunding === 'owned_with_loan' && (
+              {showsBuild && landFunding === 'owned_with_loan' && (
                 <Field label="Existing land loan being paid out">
                   <NumberInput value={landLoanBalance} onChange={setLandLoanBalance} />
                 </Field>
               )}
-              {template === 'construction' && <Field label="Construction cost"><NumberInput value={constructionCost} onChange={setConstructionCost} /></Field>}
-              {template === 'construction' && (
+              {showsBuild && <Field label="Construction cost"><NumberInput value={constructionCost} onChange={setConstructionCost} /></Field>}
+              {showsBuild && (
                 <Field label="Total cost (calculated)">
                   <div className={inputCls + " bg-gray-50 text-gray-700"}>
                     {(() => {
@@ -1814,12 +1907,12 @@ Key assumptions: ${checklistText}`
                   </div>
                 </Field>
               )}
-              {template === 'construction' && <Field label={'"As if complete" valuation'}><NumberInput value={asIfCompleteValue} onChange={setAsIfCompleteValue} /></Field>}
+              {showsBuild && <Field label={'"As if complete" valuation'}><NumberInput value={asIfCompleteValue} onChange={setAsIfCompleteValue} /></Field>}
               {/* Total cost less EVERY split, and called what it is: cash the
                   client finds across the land settlement and the build, not a
                   deposit on a purchase. It read splits[0] only, so on a deal with
                   a land loan and a construction loan it asked for the build twice. */}
-              {template === 'construction' && (
+              {showsBuild && (
                 <Field label="Funds to contribute (calculated)">
                   <div className={inputCls + " bg-gray-50 text-gray-700"}>
                     {(() => {

@@ -1,3 +1,5 @@
+import { isSellAndBuild } from './sale-build'
+
 // What a deal IS, worked out from the deal rather than typed onto it.
 //
 // Fabio, 1 Sep 2026: "find a way to prepopulate labels based on BC and LO". A
@@ -84,6 +86,12 @@ export function typeOf(deal: any): TypeId {
   if (txn === 'refinance') return 'refinance'
   if (txn === 'equity_release') return 'equity_release'
   if (txn === 'construction') return 'construction'
+
+  // A BUY AND SELL FUNDING A BUILD IS A CONSTRUCTION DEAL. The table below
+  // maps buy_sell to 'purchase', which is right until the proceeds go into a
+  // build - and then every chip, card colour and filter in the portal has it
+  // filed under the wrong thing. See lib/sale-build.ts.
+  if (isSellAndBuild(deal?.bc_data)) return 'construction'
 
   const tpl = FROM_TEMPLATE[String(deal?.bc_data?.template || '')]
   if (tpl?.type) return tpl.type

@@ -1,5 +1,6 @@
 import { contractPrice, contractLoan, contractStampDuty } from './contract-figures'
 import { isLandPurchase, landLoanPayout, dutyApplies } from './construction'
+import { buildsSomething, purchasePriceOf } from './sale-build'
 
 // WHAT THE CLIENT HAS TO FIND.
 //
@@ -65,8 +66,18 @@ function num(v: any): number {
 const has = (v: any) => num(v) > 0
 const txt = (v: any) => String(v ?? '').trim()
 
+// A BUILD IS A BUILD WHOEVER IS PAYING FOR IT.
+//
+// 9 Oct 2026. This asked the template name, so a buy and sell funding a build
+// was treated as an ordinary purchase: the funds box would have added a
+// purchase price that is not there and ignored the land and the build.
+//
+// buildsSomething() is the construction template OR a buy and sell answered
+// that way - see lib/sale-build.ts. The typed-cost line below it stays: it is
+// the net for records written before any of this, and it is deliberately NOT
+// the thing that decides, because a half-typed box is not an answer.
 export function isConstruction(deal: any): boolean {
-  return txt(deal?.bc_data?.template) === 'construction'
+  return buildsSomething(deal?.bc_data)
     || has(deal?.bc_data?.constructionCost)
 }
 
@@ -78,9 +89,30 @@ export function fundsApply(deal: any): boolean {
 }
 
 // A deal that both refinances and buys.
+//
+// purchasePriceOf() rather than bc.purchasePrice: a deal switched from buying
+// to building keeps the price it was typed with, and reading it raw would have
+// this reporting a purchase that is not happening - which costs a total,
+// because a mixed deal refuses to answer until every split has a role.
 function mixed(deal: any): boolean {
   const bc = deal?.bc_data || {}
-  return (has(bc.purchasePrice) || has(bc.newPurchasePrice)) && refinancedDebt(deal) > 0
+  // A BUY AND SELL IS NOT ONE OF THESE, AND HAS BEEN TREATED AS ONE SINCE THIS
+  // WAS WRITTEN.
+  //
+  // 9 Oct 2026. The existing loan on a buy and sell is discharged OUT OF THE
+  // SALE - the net proceeds box is the sale price less the agent fees less that
+  // balance, and what survives becomes the deposit. The new lending funds the
+  // purchase and nothing else.
+  //
+  // Reading an existing loan balance here made every buy and sell deal in the
+  // portal refuse to show a funds to complete at all. It asked for a role on
+  // each split, which this scenario has already answered, and until somebody
+  // gave it one the box said nothing.
+  //
+  // refinancedDebt() itself is deliberately untouched: that debt IS being paid
+  // out and the deal row is right to say so.
+  if (txt(bc.template) === 'buy_sell') return false
+  return (has(purchasePriceOf(bc)) || has(bc.newPurchasePrice)) && refinancedDebt(deal) > 0
 }
 
 // THE LENDING THAT ACTUALLY REACHES THE PURCHASE.
@@ -262,8 +294,20 @@ export function securityValue(deal: any): SecurityValue {
   // The security is worth what was paid for it, once that is known. An LVR
   // worked out against a price nobody paid is a number people act on, and it
   // would be wrong in both directions.
-  const buying = contractPrice(deal)
-    || (has(bc.purchasePrice) ? num(bc.purchasePrice)
+  // A BUILD'S SECURITY IS WHAT IT WILL BE WORTH FINISHED.
+  //
+  // 9 Oct 2026. Nothing here knew that, so a construction deal reached this
+  // with no purchase price, no refinanced property and no BC property value -
+  // and the compliance facts sheet printed "LVR cannot be worked out" while the
+  // client email on the same deal printed an LVR off the "as if complete"
+  // valuation. One of those two goes in front of a regulator.
+  //
+  // It is the figure the lender lends against and the one constructionLvr()
+  // already uses, so this is the sheet agreeing with the email rather than a
+  // new opinion about anything.
+  const built = buildsSomething(bc) && has(bc.asIfCompleteValue) ? num(bc.asIfCompleteValue) : 0
+  const buying = contractPrice(deal) || built
+    || (has(purchasePriceOf(bc)) ? num(purchasePriceOf(bc))
       : has(bc.newPurchasePrice) ? num(bc.newPurchasePrice) : 0)
   if (buying > 0) values.push(buying)
 

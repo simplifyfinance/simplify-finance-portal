@@ -19,6 +19,7 @@
 // and a warning that lists irrelevant things is one nobody reads twice.
 
 import { everySplitHasAPurpose } from './debt-recycling'
+import { isSellAndBuild } from './sale-build'
 import { everySplitHasAProperty } from './complex-refinance'
 
 const txt = (v: any) => String(v ?? '').trim()
@@ -36,7 +37,14 @@ const NEEDS: Record<string, string[]> = {
   investment_purchase: ['suburb', 'purchasePrice', 'deposit', 'stampDuty', 'splitAmount', 'splitRate'],
   fhb:                 ['suburb', 'purchasePrice', 'deposit', 'stampDuty', 'splitAmount', 'splitRate'],
   oo_lvr_compare:      ['suburb', 'purchasePrice', 'splitAmount', 'splitRate'],
-  buy_sell:            ['salePrice', 'agentFees', 'existingLoanBal', 'newPurchasePrice', 'newPurchaseDeposit', 'splitAmount', 'splitRate'],
+  // THE BOXES THIS FORM ACTUALLY HAS. It asked for newPurchasePrice and
+  // newPurchaseDeposit, which the buy and sell form never draws and the buy and
+  // sell email never prints - so every one of these BCs reported two boxes
+  // missing that nobody could fill. 9 Oct 2026.
+  buy_sell:            ['salePrice', 'agentFees', 'existingLoanBal', 'purchasePrice', 'deposit', 'splitAmount', 'splitRate'],
+  // The same sale, and then the construction card instead of the purchase one.
+  // See lib/sale-build.ts - this is an answer on buy_sell, not a template.
+  buy_sell_build:      ['salePrice', 'agentFees', 'existingLoanBal', 'landValue', 'constructionCost', 'asIfCompleteValue', 'splitAmount', 'splitRate'],
   bridging:            ['suburb', 'purchasePrice', 'existingLoanBal', 'splitAmount', 'splitRate'],
   family_pledge:       ['suburb', 'purchasePrice', 'deposit', 'guarantorName', 'splitAmount', 'splitRate'],
   smsf:                ['suburb', 'purchasePrice', 'deposit', 'splitAmount', 'splitRate'],
@@ -95,7 +103,11 @@ function valueOf(key: string, d: any): any {
 }
 
 export function missingForEmail(template: string, d: any): MissingBox[] {
-  const wanted = NEEDS[txt(template)] || NEEDS.custom
+  // The template decides, except where an answer inside the template decides
+  // instead. Asked of the record, so nothing has to pass a second argument.
+  const wanted = isSellAndBuild({ ...d, template })
+    ? NEEDS.buy_sell_build
+    : (NEEDS[txt(template)] || NEEDS.custom)
   const missing = wanted
     .filter(k => empty(valueOf(k, d)))
     .map(k => LABEL[k])
