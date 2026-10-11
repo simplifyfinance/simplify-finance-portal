@@ -39,6 +39,24 @@ const NOT_CLIENT_FACING: Record<string, string> = {
   'app/(app)/deals/[id]/FactFindForm.tsx':  'the form somebody types into',
 }
 
+// CLIENT FACING, BUT THE PERCENTAGE IS NOT AN INTEREST RATE.
+//
+// 9 Oct 2026. The buyers agency email tripped this guard on "12.3% p.a." - a
+// capital growth rate across a client portfolio - and it also quotes a 4.8%
+// rental yield. Neither is a lender's interest rate, so lib/rate-notice.ts has
+// nothing to say about them: that notice exists to tell a client a bank has
+// changed a rate since the figures were prepared, which cannot happen to a
+// growth rate that already happened.
+//
+// THIS LIST IS NOT A WAY OUT OF THE OTHER TWO. A file goes here only when the
+// percentage is historical or a yield AND the email carries its own caveat
+// about it. The buyers agency email does - see DISCLAIMER in
+// lib/simplify-ba-email.ts, which names past performance, the single example
+// and the yield - and the test below checks that rather than taking my word.
+const NOT_AN_INTEREST_RATE: Record<string, string> = {
+  'lib/simplify-ba-email.ts': 'past capital growth and a rental yield, with its own performance caveat',
+}
+
 function walk(dir: string, out: string[] = []): string[] {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     if (e.name === 'node_modules' || e.name.startsWith('.')) continue
@@ -65,7 +83,7 @@ describe('the notice reaches every client email that quotes a rate', () => {
   // THE GUARD. Anything new that prints a rate has to be classified.
   it('and nothing new prints a rate to anybody without being on a list', () => {
     const files = [...walk('lib'), ...walk('app'), ...walk('components')]
-      .filter(f => !(f in WIRED) && !(f in NOT_CLIENT_FACING))
+      .filter(f => !(f in WIRED) && !(f in NOT_CLIENT_FACING) && !(f in NOT_AN_INTEREST_RATE))
       .filter(f => !f.includes('rate-notice'))
       .filter(f => /p\.a\.|Indicative rate|'Interest rate'/.test(codeOf(f)))
     expect(files,
@@ -73,8 +91,19 @@ describe('the notice reaches every client email that quotes a rate', () => {
       'NOT_CLIENT_FACING with a reason.').toEqual([])
   })
 
+  // AND THE EXCUSE HAS TO BE TRUE. A file claiming its percentage is historical
+  // must actually caveat it, or this list is just somewhere to hide.
+  it('anything excused as not-an-interest-rate carries its own caveat', () => {
+    for (const f of Object.keys(NOT_AN_INTEREST_RATE)) {
+      const code = readFileSync(f, 'utf8')
+      expect(/past performance/i.test(code),
+        `${f} is excused as historical but says nothing about past performance`).toBe(true)
+    }
+  })
+
   it('the lists are about real files, so neither is quietly stale', () => {
-    for (const f of [...Object.keys(WIRED), ...Object.keys(NOT_CLIENT_FACING)]) {
+    for (const f of [...Object.keys(WIRED), ...Object.keys(NOT_CLIENT_FACING),
+                     ...Object.keys(NOT_AN_INTEREST_RATE)]) {
       expect(() => readFileSync(f, 'utf8'), `${f} is on a list but no longer exists`).not.toThrow()
     }
   })

@@ -5,6 +5,7 @@ import { resolveBrand } from '@/lib/brand'
 import { buildRebateEmail } from '@/lib/new-property-rebate-email'
 import { buildNegativeGearingEmail } from '@/lib/negative-gearing-email'
 import { buildPriceOpportunityEmail } from '@/lib/price-opportunity-email'
+import { buildSimplifyBaEmail } from '@/lib/simplify-ba-email'
 
 // Sending a template email from the portal rather than from the sender's mailbox.
 //
@@ -24,6 +25,7 @@ const BUILDERS: Record<string, (ctx: any) => { subject: string; html: string; pl
   'new-property-rebate': buildRebateEmail,
   'negative-gearing': buildNegativeGearingEmail,
   'price-opportunity': buildPriceOpportunityEmail,
+  'simplify-ba': buildSimplifyBaEmail,
 }
 
 const DOMAIN = '@simplifyfinance.com.au'

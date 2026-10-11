@@ -23,6 +23,7 @@ import RefinanceTemplateForm from './RefinanceTemplateForm'
 import SimpleTemplateForm, { type ExtraField } from './SimpleTemplateForm'
 import { buildNegativeGearingEmail } from '@/lib/negative-gearing-email'
 import { buildPriceOpportunityEmail } from '@/lib/price-opportunity-email'
+import { buildSimplifyBaEmail } from '@/lib/simplify-ba-email'
 import { buildRebateEmail } from '@/lib/new-property-rebate-email'
 import { buildReferralPartnerEmail } from '@/lib/referral-partner-email'
 
@@ -63,6 +64,18 @@ const TEMPLATES = [
            'a better purchase price is worth nine to ten years of the tax benefit.',
     needs: 'the client only',
     needsTail: '— no figures',
+  },
+  {
+    // THE FIRST TEMPLATE THAT IS NOT ABOUT LENDING AT ALL. Simplify Buyers
+    // Agency introducing itself, and the proof it offers is a purchase outcome
+    // rather than a loan. Every word is out of Fabio's John Halliday document -
+    // see lib/simplify-ba-email.ts and the test that holds it there.
+    id: 'simplify-ba',
+    name: 'Simplify Buyers Agency \u2014 the $85,000 difference',
+    blurb: 'John Halliday and the Simplify BA difference. Two identical properties 10km from the '
+         + 'Melbourne CBD, purchased 12 weeks apart and $85,000 apart.',
+    needs: 'the client only',
+    needsTail: '\u2014 no figures',
   },
   {
     id: 'new-property-rebate',
@@ -131,6 +144,7 @@ export default function TemplatesClient() {
           <SimpleTemplateForm build={buildNegativeGearingEmail} usesOpportunityLink />
         )}
         {chosen === 'price-opportunity' && <SimpleTemplateForm build={buildPriceOpportunityEmail} />}
+        {chosen === 'simplify-ba' && <SimpleTemplateForm build={buildSimplifyBaEmail} />}
         {chosen === 'referral-partner' && (
           <SimpleTemplateForm build={buildReferralPartnerEmail} audience="referrer" />
         )}
