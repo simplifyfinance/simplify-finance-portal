@@ -123,9 +123,23 @@ export function propertyAddressOf(deal: any): string {
 // it must be looking at the same list the email is built from.
 export function blocksFor(deal: any, templateId: TemplateId,
                           rules: Record<string, LenderRule>): Block[] {
-  return templateId === 'formal_approval'
-    ? formalApprovalBlocks(deal, rules)
-    : preapprovalBlocks(deal, rules)
+  // NOT A FALL-THROUGH ANY MORE.
+  //
+  // 9 Oct 2026. This read "formal approval, otherwise the pre-approval blocks",
+  // which was true while there were three templates and all three announced a
+  // bank's decision. The final check-in then inherited the whole pre-approval
+  // checklist - strata title, restricted postcodes, RP Data reports, deposit
+  // bonds - on a screen for an email that contains none of it. Fabio saw it in
+  // a deal: "we dont need the atatchements section on the left you are copying
+  // from prepapproval dont do that".
+  //
+  // AN EMAIL WITH NOTHING OFF THE DEAL IN IT HAS NOTHING TO TICK. The final
+  // check-in is four paragraphs and a signature - there is no sentence in it
+  // that could be turned on or off, so the honest answer is an empty list and
+  // the screen draws no section at all.
+  if (templateId === 'final_checkin') return []
+  if (templateId === 'formal_approval') return formalApprovalBlocks(deal, rules)
+  return preapprovalBlocks(deal, rules)
 }
 
 // A BLOCK THAT WOULD PRINT A HOLE IS NOT A BLOCK.
@@ -172,7 +186,11 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
     phrases)
 
   const problems: string[] = []
-  const missing = missingFigures(deal)
+  // AND IT CANNOT BE SHORT OF A FIGURE IT NEVER PRINTS. The money block, the
+  // lender's answers and the missing-figure warnings all describe an email
+  // built out of the deal. The final check-in is not one, so none of them can
+  // be true of it and saying them would only teach people to scroll past.
+  const missing = template.id === 'final_checkin' ? [] : missingFigures(deal)
   if (missing.length) {
     // Said as one sentence rather than three, because it is one job.
     problems.push(`The money block is left out — ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} not on the deal.`)

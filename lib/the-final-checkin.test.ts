@@ -10,6 +10,7 @@
 //
 // Nothing in the record knows whether a client has gone quiet. A person decides
 // that, so the portal never withholds the button - and never suggests it either.
+import { readFileSync } from 'fs'
 import { describe, it, expect } from 'vitest'
 import { TEMPLATES, templateById, menuFor, suggestedFor } from './milestone-emails'
 import { buildFinalCheckinEmail, SUBJECT, BOOK_LABEL } from './final-checkin-email'
@@ -233,5 +234,79 @@ describe('every template can say its own name', () => {
 
   it('the final check-in is not called Pre-approval', () => {
     expect(templateById('final_checkin')!.name).toBe('Final check-in')
+  })
+})
+
+
+// ---------------------------------------------------------------------------
+// IT INHERITED THE PRE-APPROVAL'S CHECKLIST, AND SHOWED IT ON SCREEN.
+//
+// 9 Oct 2026. Fabio opened a real deal and the final check-in's send screen was
+// offering him strata title, restricted postcodes, an RP Data report, a deposit
+// bond and the $800 extension fee - none of which are in this email, because
+// this email is four paragraphs and a signature.
+//
+// The cause was one line: blocksFor said "formal approval, otherwise the
+// pre-approval blocks", which was true while there were three templates and all
+// three announced a bank's decision. The fourth fell through.
+//
+// "we dont need the atatchements section on the left you are copying from
+// prepapproval dont do that"
+import { blocksFor, assembleMilestoneEmail } from './milestone-send'
+
+describe('it has nothing to tick', () => {
+  const deal = {
+    clients: { first_name: 'India', last_name: 'Roberts', email: 'india@example.com' },
+    lo_data: { lender: 'Sunco Bank' },
+  }
+  const sender = { name: 'Fabio de Castro', email: 'fabio@example.com', phone: '0400 000 000' }
+
+  it('blocksFor gives it none', () => {
+    expect(blocksFor(deal, 'final_checkin', {})).toEqual([])
+  })
+
+  it('and the other three still get theirs, so this is not a blanket off switch', () => {
+    for (const id of ['preapproval', 'preapproval_extension', 'formal_approval'] as const) {
+      expect(blocksFor(deal, id, {}).length,
+        `${id} lost its blocks`).toBeGreaterThan(0)
+    }
+  })
+
+  it('the assembled email carries no blocks at all', () => {
+    const built = assembleMilestoneEmail({
+      deal, templateId: 'final_checkin', rules: {}, sender,
+    })
+    expect(built!.blocks).toEqual([])
+  })
+
+  it('and is never short of a figure it does not print', () => {
+    // missingFigures warned about a money block this email has never had, on a
+    // deal with no figures on it - a warning that is always true and never
+    // relevant teaches people to scroll past the ones that matter.
+    const built = assembleMilestoneEmail({
+      deal: { clients: deal.clients }, templateId: 'final_checkin', rules: {}, sender,
+    })
+    expect(built!.problems.filter(p => p.includes('money block'))).toEqual([])
+  })
+})
+
+describe('the send screen draws what the template actually has', () => {
+  const ui = readFileSync('components/MilestoneEmails.tsx', 'utf8')
+
+  it('no blocks, no heading', () => {
+    expect(ui).toContain('blocks.length > 0 && <Shout')
+  })
+
+  it('the letter box is asked for, not assumed', () => {
+    expect(ui).toContain('wantsLetter')
+    expect(ui).not.toContain("disabled={busy || !file ||")
+  })
+
+  it('the preview is scaled to the column rather than clipped by it', () => {
+    // A 600px email in a 380px column lost its right-hand third, and the
+    // person sending could not see what they were sending.
+    expect(ui).toContain('transformOrigin')
+    expect(ui).toContain('/ 600')
+    expect(ui).not.toContain('h-[460px]')
   })
 })

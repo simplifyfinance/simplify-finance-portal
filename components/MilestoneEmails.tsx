@@ -166,6 +166,21 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
   const [done, setDone] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // HOW MUCH OF THE 600px EMAIL FITS. Measured rather than assumed, so the
+  // preview shrinks on a laptop and sits at 100% on a wide screen - see the
+  // note on the preview column below.
+  const frameRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+  useEffect(() => {
+    const frame = frameRef.current
+    if (!frame) return
+    const measure = () => setScale(Math.min(1, (frame.clientWidth || 600) / 600))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(frame)
+    return () => ro.disconnect()
+  }, [])
+
   // WHO IT GOES OUT AS. The same hook and the same panel the Templates page
   // forms use, so there is one Sending as box in the portal rather than two
   // that drift. It loads on every template rather than only the ones that show
@@ -252,7 +267,7 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
   return (
     <div className="fixed inset-0 z-50 bg-black/30 flex items-start justify-center p-4 overflow-auto"
          onClick={onClose}>
-      <div className="bg-card rounded-xl border border-[#E3E6E8] shadow-lg w-full max-w-[1000px] mt-6"
+      <div className="bg-card rounded-xl border border-[#E3E6E8] shadow-lg w-full max-w-[1180px] mt-6"
            onClick={e => e.stopPropagation()}>
 
         <div className="border-b border-[#EEF0F2] bg-[#FAFAF8] px-5 py-3 flex items-baseline gap-2 flex-wrap rounded-t-xl">
@@ -316,14 +331,7 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
                   {file ? `${file.name} — ${Math.round(file.size / 1024)} KB` : 'Attach the approval letter (required)'}
                 </button>
               </>
-            ) : (
-              // NOT A GAP. A thing missing on purpose has to say so, or it reads
-              // as something somebody broke - the same lesson as the deal links.
-              <p className="mt-5 text-[11.5px] text-muted leading-[1.55] bg-panel border border-card-line rounded-lg px-3 py-2.5">
-                <b className="text-ink">Nothing is attached.</b> This one carries no letter and names no
-                figure &mdash; four paragraphs and your signature.
-              </p>
-            )}
+            ) : null}
 
             {isExtension && (
               <>
@@ -375,13 +383,36 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
               className="w-full border border-[#E3E6E8] rounded-lg px-2.5 py-2 text-[12.5px]" />
           </div>
 
-          {/* --- what they will get ------------------------------------- */}
-          <div className="flex-1 min-w-[310px] basis-[380px] p-4 bg-panel">
+          {/* --- what they will get -------------------------------------
+              *
+              * THE WHOLE EMAIL, NOT THE LEFT-HAND 380px OF IT.
+              *
+              * 9 Oct 2026. These emails are 600px wide - every one of them, by
+              * design, because that is the width mail clients handle. This
+              * column was 380px, so the preview was a 600px email with its
+              * right-hand third cut off and nobody could check what they were
+              * about to send. Fabio, in a deal: "the screen on the left doesnt
+              * sjow the full email".
+              *
+              * SCALED TO FIT, NEVER CLIPPED - the same answer the Templates
+              * page reached: measure the column, shrink the email into it, and
+              * say what percentage is on screen so the preview is not mistaken
+              * for the real size. See app/(app)/templates/SimpleTemplateForm.tsx.
+              *
+              * STILL A SANDBOXED IFRAME. The email carries whatever was typed
+              * into "anything else"; it does not go into this page's own DOM. */}
+          <div className="flex-1 min-w-[320px] basis-[620px] p-4 bg-panel">
             <Shout>What they will get</Shout>
-            <p className="text-[12px] text-ink font-semibold mb-2">{preview?.subject || ' '}</p>
-            <iframe title="The email" sandbox="" srcDoc={preview?.html || ''}
-              className="w-full h-[460px] border border-[#EEF0F2] rounded-lg bg-card" />
+            <p className="text-[12px] text-ink font-semibold mb-2">{preview?.subject || ' '}</p>
+            <div ref={frameRef} className="border border-[#EEF0F2] rounded-lg bg-card overflow-hidden">
+              <div style={{ height: 1100 * scale }}>
+                <iframe title="The email" sandbox="" srcDoc={preview?.html || ''}
+                  style={{ width: 600, height: 1100, border: 0,
+                           transform: `scale(${scale})`, transformOrigin: 'top left' }} />
+              </div>
+            </div>
             <p className="mt-2 text-[11px] text-faint">
+              {scale < 0.995 ? `Shown at ${Math.round(scale * 100)}% to fit. The client receives it full size. ` : ''}
               Every figure comes off the deal. Nothing on this screen can be typed over a number.
             </p>
           </div>
