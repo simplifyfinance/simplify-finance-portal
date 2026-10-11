@@ -20,6 +20,13 @@ const WIRED: Record<string, string> = {
   'app/api/generate-lo-email/route.ts': 'rateNoticeLines',   // lending options
   'lib/formal-approval-email.ts':       'ctx.rateNotice',
   'lib/preapproval-email.ts':           'ctx.rateNotice',
+  // 9 Oct 2026. Added by an audit, not by this guard - which is the point of
+  // the widened pattern below. It quotes two rates and carried nothing.
+  'lib/refinance-email-template.ts':    'ctx.rateNotice',
+  // The form that builds it. Unlike the other four this email is assembled in
+  // the BROWSER, so the notice is fetched here and handed to the builder -
+  // which is exactly why this was the one template nobody wired.
+  'app/(app)/templates/RefinanceTemplateForm.tsx': 'setRateNotice',
 }
 
 // Prints a rate, but never to a client - so there is nothing to disclaim.
@@ -37,6 +44,34 @@ const NOT_CLIENT_FACING: Record<string, string> = {
   'app/(app)/deals/[id]/BCForm.tsx':        'the form somebody types into',
   'app/(app)/deals/[id]/LOForm.tsx':        'the form somebody types into',
   'app/(app)/deals/[id]/FactFindForm.tsx':  'the form somebody types into',
+  // 9 Oct 2026. Surfaced by the widened pattern above, all three staff screens
+  // inside the portal. A client never sees any of them, so there is nothing to
+  // disclaim - but they are named here rather than left to a pattern that
+  // happens not to match them.
+  'components/CommissionLibrary.tsx': 'commission rates we are paid, an internal page',
+  'components/LenderLibrary.tsx':     'the team\'s own lender reference, never sent',
+  'components/RateNoticeSettings.tsx': 'the screen where the notice itself is written',
+
+  // AND THE THIRTEEN THE TIGHTENED PATTERN FOUND, each checked rather than
+  // waved through. None is an email to a client: they are screens inside the
+  // portal, documents for the lender or the file, or builders whose only
+  // consumers are emails already on the WIRED list above.
+  'lib/build-card.ts':          'builds the construction rows; generate-email prints them and is wired',
+  'lib/box-four.ts':            'compliance box, for the file',
+  'lib/box-options.ts':         'compliance box, for the file',
+  'lib/deal-figures.ts':        'the figures behind the forms somebody types into',
+  'lib/property-checklist.ts':  'the fact find checklist, filled in with the client in front of you',
+  'lib/scenario-change.ts':     'what changed between two versions of a scenario, internal',
+  'lib/tax-au.ts':              'the tax tables behind the statement analysis, never sent',
+  'app/(app)/clients/[id]/page.tsx':        'the client page inside the portal, staff only',
+  'app/(app)/deals/[id]/summary/page.tsx':  'the deal summary screen, staff only',
+  'app/api/generate-broker-notes-pdf/route.tsx': 'notes for the lender portal, not the client',
+  // THIS ONE IS AN EMAIL, AND IT WAS WORTH CHECKING PROPERLY. It quotes both
+  // rates - but it goes to the BROKER and info@, telling them a client has
+  // pressed proceed. The client never receives it; they are the subject of it.
+  'app/api/ready-notify/route.ts': 'tells the broker a client is ready; sent to us, never to them',
+  'components/DealStructure.tsx':   'the structure panel on the deal screen',
+  'components/StatementsLoaded.tsx':'the statement analysis screen, staff only',
 }
 
 // CLIENT FACING, BUT THE PERCENTAGE IS NOT AN INTEREST RATE.
@@ -56,6 +91,37 @@ const NOT_CLIENT_FACING: Record<string, string> = {
 const NOT_AN_INTEREST_RATE: Record<string, string> = {
   'lib/simplify-ba-email.ts': 'past capital growth and a rental yield, with its own performance caveat',
 }
+
+// WHAT "PRINTS A RATE" LOOKS LIKE IN THIS CODEBASE.
+//
+// This was three fixed phrases: p.a., "Indicative rate", and 'Interest rate'.
+// On 9 Oct 2026 an audit found lib/refinance-email-template.ts quoting TWO live
+// interest rates to clients - "Your rate now 5.89%" and "Your new rate 5.49%" -
+// with no notice on it ever, for any lender, on any date.
+//
+// THE FILE WAS NOT MISSED. THE PATTERN WAS. That email writes a number followed
+// by a percent sign under a label, and never types any of the three phrases, so
+// a guard whose whole job was to make this impossible had never once looked at
+// it. A list that only catches the wording somebody happened to use first is a
+// list that grows a hole per template.
+//
+// So it now also catches the way a rate is actually WRITTEN: a label naming a
+// rate, or a number formatted as one.
+// It looks for a rate being FORMATTED FOR SOMEBODY TO READ, not the word
+// "rate" in prose - a first attempt matched validation messages and a sentence
+// about test deals, and a guard that cries wolf gets a file added to the
+// exceptions list rather than read.
+//
+// Two shapes, both of which the refinance email has and neither of which it
+// could avoid while still showing a client a number:
+//   someRate.toFixed(...)   a rate variable turned into text
+//   ${...rate...}%           a rate dropped into a template with a percent sign
+//
+// Both name a VARIABLE called a rate. A looser "the word rate near a percent
+// sign" was tried first and matched thirty files - "accurate", "separate",
+// "generate" - which is how a guard stops being read.
+const PRINTS_A_RATE =
+  /p\.a\.|Indicative rate|'Interest rate'|[A-Za-z]*[Rr]ate\.toFixed|\$\{[^}\n]*[Rr]ate[^}\n]*\}\s*%/
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -85,7 +151,7 @@ describe('the notice reaches every client email that quotes a rate', () => {
     const files = [...walk('lib'), ...walk('app'), ...walk('components')]
       .filter(f => !(f in WIRED) && !(f in NOT_CLIENT_FACING) && !(f in NOT_AN_INTEREST_RATE))
       .filter(f => !f.includes('rate-notice'))
-      .filter(f => /p\.a\.|Indicative rate|'Interest rate'/.test(codeOf(f)))
+      .filter(f => PRINTS_A_RATE.test(codeOf(f)))
     expect(files,
       'this file prints a rate. Wire it to lib/rate-notice.ts, or add it to ' +
       'NOT_CLIENT_FACING with a reason.').toEqual([])

@@ -15,6 +15,7 @@ import {
 } from '@/lib/refinance-email-template'
 import { TONE } from '@/lib/tone'
 import { type Brand, DEFAULT_BRAND, normaliseBrand } from '@/lib/brand'
+import { readNotice, noticeForMany } from '@/lib/rate-notice'
 import PasteReminder from './PasteReminder'
 
 // The email goes out in a broker's name, and anyone on the team may be the one
@@ -37,6 +38,8 @@ export default function RefinanceTemplateForm() {
   // templates use. Brands are loaded the same way here so the two cannot end up
   // offering different lists.
   const [brandList, setBrandList] = useState<Brand[]>([])
+  // The RBA notice for this email, or empty - see where it is loaded below.
+  const [rateNotice, setRateNotice] = useState('')
   const [brandId, setBrandId] = useState('')
   const [brokerKey, setBrokerKey] = useState('')
   const [calendlyOverride, setCalendlyOverride] = useState('')
@@ -97,11 +100,27 @@ export default function RefinanceTemplateForm() {
           brandIds: Array.isArray(r.brand_ids) ? r.brand_ids.map(String) : [],
         }))
       setBrokers(list)
-      const { data: st } = await supabase.from('settings').select('brands').eq('id', 'singleton').maybeSingle()
+      const { data: st } = await supabase.from('settings')
+        .select('brands, rate_notice').eq('id', 'singleton').maybeSingle()
       const brandRows: Brand[] = Array.isArray((st as any)?.brands) && (st as any).brands.length
         ? (st as any).brands.map(normaliseBrand)
         : [DEFAULT_BRAND]
       setBrandList(brandRows)
+
+      // THE RBA NOTICE, WHICH THIS EMAIL NEVER CARRIED.
+      //
+      // 9 Oct 2026, found in an audit. It quotes "Your rate now" and "Your new
+      // rate" as two percentages and had no connection to the notice at all -
+      // not switched off for a reason, simply never wired. The other four
+      // client emails that quote a rate are built on the SERVER, where reaching
+      // Settings is easy; this one is built in the browser, which is why it was
+      // the one that got missed.
+      //
+      // IT NAMES NO LENDER, so there is nobody to switch it off against and
+      // noticeForMany returns the text as written while the notice is on - the
+      // same rule the borrowing capacity email follows before a bank is chosen.
+      // See lib/rate-notice.ts.
+      setRateNotice(noticeForMany([], readNotice((st as any)?.rate_notice)).text)
       if (brokerKey) return
       const { data: u } = await supabase.auth.getUser()
       if (u?.user) {
@@ -209,8 +228,9 @@ export default function RefinanceTemplateForm() {
       calendlyUrl: calendlyUrl || '#',
       proceedUrl: proceedUrl.trim() || readyUrl || calendlyUrl || '#',
       brand,
+      rateNotice,
     })
-  }, [input, result, greeting, clientFirstName, broker, calendlyUrl, proceedUrl, readyUrl, brand])
+  }, [input, result, greeting, clientFirstName, broker, calendlyUrl, proceedUrl, readyUrl, brand, rateNotice])
 
   useEffect(() => {
     const frame = frameRef.current, inner = innerRef.current

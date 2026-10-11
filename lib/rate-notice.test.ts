@@ -260,3 +260,62 @@ describe('several lenders on one email', () => {
     expect(noticeForMany(three(), { ...NOTICE, on: false }).text).toBe('')
   })
 })
+
+// ---------------------------------------------------------------------------
+// THE DAY IS A SYDNEY DAY.
+//
+// 9 Oct 2026, found in an audit. startOfDay() read the UTC date and the server
+// runs in UTC, so for the first ten or eleven hours of every Australian working
+// day the code still thought it was yesterday and kept adding the notice.
+//
+// A client emailed at 9am Sydney on the day Macquarie's rise took effect was
+// quoted the NEW rate with a line underneath saying it did not reflect the
+// recent RBA change. Right figure, contradicting sentence, and it corrected
+// itself around 11am with nobody the wiser.
+describe('the cut-off is Sydney midnight, not London midnight', () => {
+  const notice = readNotice({
+    on: true, text: 'The rates above do not factor in the recent RBA change.',
+    decisionDate: '2026-09-29', reviewBy: '2026-10-20',
+  })
+  // Announced for that decision, effective 15 October.
+  const macquarie = { name: 'Macquarie', rate_notice_for: '2026-09-29', rate_notice_from: '2026-10-15' }
+  const at = (iso: string) => noticeFor(macquarie, notice, new Date(iso))
+
+  it('still prints the night before', () => {
+    expect(at('2026-10-14T12:59:00Z')).not.toBe('')   // 14 Oct 11:59pm Sydney
+  })
+
+  it('stops at midnight Sydney, not at 11am', () => {
+    // 15 Oct 00:05 Sydney. Under the old code this was still 14 Oct in UTC and
+    // the notice printed - this is the exact minute the bug started each day.
+    expect(at('2026-10-14T13:05:00Z')).toBe('')
+  })
+
+  it('and is off right through the working day it takes effect', () => {
+    expect(at('2026-10-14T22:00:00Z')).toBe('')       // 15 Oct 9am Sydney
+    expect(at('2026-10-14T23:30:00Z')).toBe('')       // 15 Oct 10:30am Sydney
+    expect(at('2026-10-15T00:30:00Z')).toBe('')       // 15 Oct 11:30am Sydney
+  })
+
+  it('and still off the day after', () => {
+    expect(at('2026-10-15T22:00:00Z')).toBe('')       // 16 Oct 9am Sydney
+  })
+
+  it('and the boundary moves with daylight saving, as it must', () => {
+    // THE OFFSET IS NOT A CONSTANT, which is why this is a named time zone
+    // rather than "take eleven hours off". NSW is UTC+11 in October and UTC+10
+    // in July, so Sydney midnight is a different UTC instant in each - and a
+    // fix that subtracted a fixed number of hours would be right for half the
+    // year and an hour wrong for the other half.
+    const july = { name: 'ANZ', rate_notice_for: '2026-09-29', rate_notice_from: '2026-07-15' }
+
+    // 14 Jul 11:59pm Sydney (UTC+10). Still the 14th - the notice stands.
+    expect(noticeFor(july, notice, new Date('2026-07-14T13:59:00Z'))).not.toBe('')
+    // 15 Jul 00:00 Sydney. One minute later, and it is off.
+    expect(noticeFor(july, notice, new Date('2026-07-14T14:00:00Z'))).toBe('')
+
+    // The October boundary is an hour earlier in UTC, for the same local time.
+    expect(at('2026-10-14T12:59:00Z')).not.toBe('')  // 14 Oct 11:59pm Sydney
+    expect(at('2026-10-14T13:00:00Z')).toBe('')      // 15 Oct 00:00 Sydney
+  })
+})

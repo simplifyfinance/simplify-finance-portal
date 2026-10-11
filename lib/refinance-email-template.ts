@@ -27,6 +27,16 @@ export interface EmailContext {
   brokerName: string;
   calendlyUrl: string;
   proceedUrl: string;
+  /**
+   * The RBA notice, or empty. 9 Oct 2026: this email quotes TWO interest rates
+   * — "Your rate now" and "Your new rate" — and carried no notice at all, for
+   * any lender, on any date. Not switched off for a reason: never connected.
+   *
+   * It names no lender, so there is nobody to switch it off against; while the
+   * notice is on it goes on this email, which is the same rule the borrowing
+   * capacity email follows before a bank is chosen. See lib/rate-notice.ts.
+   */
+  rateNotice?: string;
 }
 
 // Simplify Finance. The charcoal header and cyan action button are the same
@@ -37,8 +47,12 @@ const CYAN = '#2DBEFF';        // the one action colour
 const GREEN = '#1E7A4A';
 const GREEN_BG = '#F1F7F3';
 const GREEN_DARK = '#12563A';
-const AMBER_BG = '#FDF6E7';
-const AMBER_DARK = '#7A5F17';
+// NO AMBER. Fabio's standing rule, and this box was breaking it on a live
+// client email. The cashback is good news, so it takes the same green the
+// saving figures already use rather than a second highlight colour competing
+// with them.
+const CASHBACK_BG = GREEN_BG;
+const CASHBACK_DARK = GREEN_DARK;
 const BORDER = '#E4E2DC';
 const GREY = '#6b6b66';
 const BODY = '#3d3d3a';
@@ -63,6 +77,15 @@ const DISCLAIMER =
   'charges and any lender-specific conditions. This is general information, not credit ' +
   'assistance or a recommendation, and is not an offer of finance. Any refinance is ' +
   'subject to lender assessment and approval.';
+
+// THE RBA NOTICE, IN THE SAME QUIET BOX THE TAX NOTE USES. It is a caveat on
+// the figures above it, so it sits directly under them rather than at the foot
+// with the standing disclaimer, which people have stopped reading.
+function rateNoticeBlock(text: string): string {
+  const t = String(text || '').trim();
+  if (!t) return '';
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${NOTE_BG}" style="background-color:${NOTE_BG};margin:0 0 16px 0;"><tr><td bgcolor="${NOTE_BG}" style="background-color:${NOTE_BG};padding:11px 13px;border-left:3px solid #B4B2A9;font-family:${FONT};font-size:13px;color:#5F5E5A;line-height:1.5;"><span style="color:#5F5E5A;">${t}</span></td></tr></table>`;
+}
 
 const IO_TAX_NOTE =
   'Interest on investment loans is generally deductible, so your after-tax position ' +
@@ -127,7 +150,7 @@ function cashbackBlock(r: RefinanceResult, cashback: number): string {
     r.netCashPosition >= 0
       ? " &mdash; which covers the switching costs, so it doesn't cost you anything to move."
       : ' towards your switching costs.';
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${AMBER_BG}" style="background-color:${AMBER_BG};border-radius:6px;margin:0 0 14px 0;"><tr><td style="padding:12px 14px;font-family:${FONT};font-size:14px;color:${AMBER_DARK};line-height:1.5;"><span style="color:${AMBER_DARK};"><strong>Plus a ${formatCurrency(cashback)} cashback</strong>${tail}</span></td></tr></table>`;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${CASHBACK_BG}" style="background-color:${CASHBACK_BG};border-radius:6px;margin:0 0 14px 0;"><tr><td style="padding:12px 14px;font-family:${FONT};font-size:14px;color:${CASHBACK_DARK};line-height:1.5;"><span style="color:${CASHBACK_DARK};"><strong>Plus a ${formatCurrency(cashback)} cashback</strong>${tail}</span></td></tr></table>`;
 }
 
 export function buildRefinanceEmail(
@@ -162,6 +185,7 @@ ${statCell('Per year', formatCurrency(r.annualSaving))}
 ${statCell(periodLabel, formatCurrency(r.periodSaving))}
 </tr></table>
 ${cashbackBlock(r, input.cashback)}
+${rateNoticeBlock(ctx.rateNotice || '')}
 ${closingLine}
 ${button('Book a 15-minute chat', ctx.calendlyUrl, true)}
 ${button('Get started now', ctx.proceedUrl, false)}
@@ -181,6 +205,7 @@ ${signOff(ctx)}`;
     `Your new rate: ${input.newRate.toFixed(2)}% (${formatCurrency(r.newRepayment)}/mo)`,
     `Saving: ${formatCurrency(r.monthlySaving)} per month, ${formatCurrency(r.annualSaving)} per year`,
     '',
+    ...(String(ctx.rateNotice || '').trim() ? [String(ctx.rateNotice).trim(), ''] : []),
     `Book a chat: ${ctx.calendlyUrl}`,
     `Get started: ${ctx.proceedUrl}`,
     '',

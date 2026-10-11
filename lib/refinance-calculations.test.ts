@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { buildRefinanceEmail } from './refinance-email-template';
 import {
   calculateRefinance,
   monthlyRepaymentPI,
@@ -107,3 +108,54 @@ describe('net cash position', () => {
     expect(calculateRefinance({ ...PI, cashback: 0 }).netCashPosition).toBe(-800);
   });
 });
+
+// ---------------------------------------------------------------------------
+// THE REFINANCE EMAIL CARRIES THE RBA NOTICE, AND HAS NO AMBER IN IT.
+//
+// 9 Oct 2026, both found in an audit.
+//
+// It quotes TWO live interest rates to a client - "Your rate now" and "Your new
+// rate" - and had no connection to the rate notice at all. Not switched off for
+// a reason: never wired. The other four client emails that quote a rate are
+// built on the server, where reaching Settings is easy; this one is built in
+// the browser, which is why it was the one that got missed.
+//
+// And its cashback box was amber, which Fabio has ruled out everywhere.
+describe('the refinance email and the rate notice', () => {
+  const input = {
+    balance: 650000, currentRate: 5.89, newRate: 5.49,
+    remainingYears: 27, repaymentType: 'PI' as const, cashback: 0,
+  }
+  const ctx = {
+    clientFirstName: 'Dervla', brokerName: 'Fabio de Castro',
+    calendlyUrl: 'https://calendly.com/fabio', proceedUrl: 'https://example.com/proceed',
+  }
+  const NOTICE = 'Please note, the rates quoted above do not factor in the recent RBA rate change.'
+
+  it('prints the notice when it is handed one', () => {
+    const out = buildRefinanceEmail(input, { ...ctx, rateNotice: NOTICE })
+    expect(out.html).toContain(NOTICE)
+    expect(out.plainText).toContain(NOTICE)
+  })
+
+  it('prints nothing at all when there is none', () => {
+    const out = buildRefinanceEmail(input, { ...ctx, rateNotice: '' })
+    expect(out.html).not.toContain('RBA')
+    // And the email is otherwise unchanged - the rates are still there.
+    expect(out.html).toContain('5.89')
+    expect(out.html).toContain('5.49')
+  })
+
+  it('treats a blank one as none, not as an empty box', () => {
+    const out = buildRefinanceEmail(input, { ...ctx, rateNotice: '   ' })
+    expect(out.html).not.toContain('border-left:3px solid #B4B2A9')
+  })
+
+  it('has no amber in it', () => {
+    // The cashback box. Green, like the saving figures it sits beside.
+    const out = buildRefinanceEmail({ ...input, cashback: 3000 }, ctx)
+    for (const amber of ['#FDF6E7', '#7A5F17']) {
+      expect(out.html, `${amber} is amber and is in a client email`).not.toContain(amber)
+    }
+  })
+})

@@ -50,8 +50,33 @@ function asDate(v: any): Date | null {
 // COMPARED BY DAY, NEVER BY THE CLOCK. An increase effective 21 October is in
 // force all day on the 21st, including at nine in the morning - so a notice that
 // waited for the exact hour would be wrong for most of the day it stops.
+//
+// AND THE DAY IS A SYDNEY DAY, NOT A LONDON ONE.
+//
+// 9 Oct 2026, found in an audit. This read the UTC date, and the server runs in
+// UTC - so for the first ten or eleven hours of every Australian working day the
+// code still thought it was yesterday. A client emailed at 9am Sydney on the day
+// Macquarie's rise took effect was quoted the NEW rate with a line underneath
+// saying the rate did not reflect the recent RBA change. Right figure,
+// contradicting sentence, and it corrected itself around 11am with nobody the
+// wiser.
+//
+// The whole feature is about Australian banks changing Australian rates on days
+// they named in Australia. There is no reading of "21 October" here that means
+// anything else, so every comparison in this file is made on the Sydney
+// calendar - including from a browser in another time zone, which is why this
+// is a stated zone rather than the machine's own.
+const ZONE = 'Australia/Sydney'
+
+// en-CA gives YYYY-MM-DD, which is the one locale format that is already the
+// order we need. Returned as a UTC midnight so the day arithmetic below is
+// unchanged and nothing else in the file has to know about zones.
+const SYDNEY_DAY = new Intl.DateTimeFormat('en-CA', {
+  timeZone: ZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+})
+
 function startOfDay(d: Date): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+  return new Date(`${SYDNEY_DAY.format(d)}T00:00:00Z`)
 }
 
 export type RateNotice = {
