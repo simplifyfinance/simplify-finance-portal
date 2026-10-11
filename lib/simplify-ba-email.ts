@@ -39,12 +39,20 @@ export type SimplifyBaContext = {
   calendlyUrl: string
 }
 
-// THE ACCENT IS THE BRAND'S, NOT THIS FILE'S.
+// THE ACCENT IS THIS FILE'S, AND NO BRAND CHANGES IT.
 //
-// A brand with its own accent colour uses it, so this email looks like whoever
-// is sending it. GREEN is only the fallback, for a brand record that has not
-// set one - chosen because the buyers agency reads green rather than the
-// finance blue, and a buyers agency email in finance blue is the wrong firm.
+// 9 Oct 2026, first attempt: `brand.accentColor || GREEN`, so the email would
+// "look like whoever is sending it". It went out AMBER - because the brand
+// picked in the Sending as box has an amber accent saved in Settings, Brands,
+// and the green was only ever the fallback for a brand with none.
+//
+// Fabio had already said no amber anywhere, and had already agreed green.
+//
+// SO IT IS NOT A FALLBACK. A buyers agency email must not change colour because
+// somebody chose a different finance brand to send it under - the firms are
+// different firms, and the brand record's accent belongs to the lending emails.
+// The brand still sets the header, the logo, the name and the footer; it does
+// not set this. lib/the-ba-email-is-his.test.ts holds it.
 const GREEN = '#15614A'
 const GREEN_DARK = '#0E4435'
 const GREEN_TINT = '#F0F7F3'
@@ -150,26 +158,42 @@ const outcome = (accent: string) =>
 const identical = () =>
   `<p style="margin:18px 0 9px;font-family:${FONT};font-size:11px;font-weight:bold;letter-spacing:.8px;color:${FADED};text-align:center;"><span style="color:${FADED};">${IDENTICAL}</span></p>`
 
-// THE TWO HOUSES, AS CARDS. Their site lays every result out this way - the
-// place, the price, and what it came to - so an email that argues the same
-// point should not argue it in a different shape.
-function cards(tint: string, edge: string, dark: string, accent: string): string {
-  const card = (h: typeof HOUSE_B, win: boolean) => {
-    const bg = win ? tint : '#ffffff'
-    const line = win ? edge : BORDER
-    const label = win ? accent : FADED
-    const price = win ? dark : FADED
-    const diff = win ? dark : FADED
-    return `<td width="50%" valign="top" bgcolor="${bg}" style="background-color:${bg};border:1px solid ${line};border-radius:8px;padding:15px 12px;font-family:${FONT};">
-<div style="font-size:11.5px;font-weight:bold;letter-spacing:.8px;color:${label};text-align:center;"><span style="color:${label};">${h.name.toUpperCase()}</span></div>
-<div style="font-size:25px;font-weight:bold;color:${price};text-align:center;padding:8px 0 7px;"><span style="color:${price};">${h.price}</span></div>
-<div style="font-size:11.5px;line-height:1.45;color:${GREY};text-align:center;"><span style="color:${GREY};">${h.timing}</span></div>
-<div style="font-size:12px;font-weight:bold;color:${diff};text-align:center;border-top:1px solid ${line};margin-top:9px;padding-top:9px;"><span style="color:${diff};">${h.difference}</span></div>
-</td>`
-  }
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-${card(HOUSE_B, true)}<td width="10" style="width:10px;font-size:0;line-height:0;">&nbsp;</td>${card(HOUSE_A, false)}
-</tr></table>`
+// THE TWO HOUSES, AS A COMPARISON TABLE.
+//
+// 9 Oct 2026. The first build drew these as two cards side by side. Fabio chose
+// the table - and it is the better shape for this: the document compares the
+// two houses on three NAMED things, and a table puts those names down the left
+// so each row is a like-for-like line rather than two blocks the reader has to
+// hold side by side in their head.
+//
+// HOUSE B IS THE FIRST COLUMN, tinted and dark green. It is the better outcome,
+// which is the point of the comparison, so it leads. House A is grey - present,
+// readable, and plainly not the one being argued for.
+//
+// A REAL TABLE, NOT DIVS. Outlook on Windows renders through Word; a flex or
+// grid layout collapses to a stack. Every tinted cell carries bgcolor as well
+// as the CSS, because Word paints a background from the attribute and discards
+// the rest - scripts/check-email-html.sh fails the ship if that slips.
+function comparison(tint: string, edge: string, dark: string, accent: string): string {
+  const head = (t: string, win: boolean) =>
+    `<td align="center" ${win ? `bgcolor="${tint}" ` : 'bgcolor="#ffffff" '}style="background-color:${win ? tint : '#ffffff'};border:1px solid ${BORDER};border-left-width:0;padding:11px 10px;font-family:${FONT};font-size:12.5px;font-weight:bold;letter-spacing:.7px;color:${win ? dark : FADED};"><span style="color:${win ? dark : FADED};">${t}</span></td>`
+
+  const row = (label: string, b: string, a: string) =>
+    `<tr>
+<td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid ${BORDER};border-top-width:0;padding:11px 12px;font-family:${FONT};font-size:12.5px;color:${FADED};line-height:1.4;"><span style="color:${FADED};">${label}</span></td>
+<td align="center" bgcolor="${tint}" style="background-color:${tint};border:1px solid ${BORDER};border-top-width:0;border-left-width:0;padding:11px 10px;font-family:${FONT};font-size:14px;font-weight:bold;color:${dark};line-height:1.4;"><span style="color:${dark};">${b}</span></td>
+<td align="center" bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid ${BORDER};border-top-width:0;border-left-width:0;padding:11px 10px;font-family:${FONT};font-size:14px;color:${FADED};line-height:1.4;"><span style="color:${FADED};">${a}</span></td>
+</tr>`
+
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+<tr>
+<td bgcolor="#ffffff" width="34%" style="background-color:#ffffff;border:1px solid ${BORDER};padding:11px 12px;font-size:0;line-height:0;">&nbsp;</td>
+${head(HOUSE_B.name.toUpperCase(), true)}${head(HOUSE_A.name.toUpperCase(), false)}
+</tr>
+${row('Purchase Price', HOUSE_B.price, HOUSE_A.price)}
+${row('Purchase Timing', HOUSE_B.timing, HOUSE_A.timing)}
+${row('Price Difference', HOUSE_B.difference, HOUSE_A.difference)}
+</table>`
 }
 
 function signature(brokerName: string, brandName: string): string {
@@ -204,12 +228,9 @@ export function buildSimplifyBaEmail(ctx: SimplifyBaContext): {
 } {
   const brand = ctx.brand || DEFAULT_BRAND
   const name = String(ctx.clientFirstName || '').trim() || 'there'
-  const accent = String(brand.accentColor || '').trim() || GREEN
-  // The tinted pieces stay the green family unless the brand is on the default
-  // accent, in which case they follow it. A brand that has set its own accent
-  // gets that accent on the loud elements and the neutral tint behind the rest,
-  // which reads correctly whatever colour it chose.
-  const dark = accent === GREEN ? GREEN_DARK : accent
+  // FIXED. Not brand.accentColor - see the note above.
+  const accent = GREEN
+  const dark = GREEN_DARK
   const tint = GREEN_TINT
   const edge = GREEN_EDGE
 
@@ -220,7 +241,7 @@ export function buildSimplifyBaEmail(ctx: SimplifyBaContext): {
     points(tint, edge, dark) +
     outcome(accent) +
     identical() +
-    cards(tint, edge, dark, accent) +
+    comparison(tint, edge, dark, accent) +
     timingHeading(TIMING_HEADING) +
     CLOSING.map(p).join('') +
     (ctx.calendlyUrl ? shellButton(ctx.calendlyUrl, BOOK_LABEL, accent) : '') +

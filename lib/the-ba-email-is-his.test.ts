@@ -17,6 +17,7 @@ import {
   buildSimplifyBaEmail, OPENING, DIFFERENCE_HEADING, DIFFERENCE_POINTS, OUTCOME,
   IDENTICAL, TIMING_HEADING, HOUSE_A, HOUSE_B, CLOSING, SUBJECT, DISCLAIMER,
 } from './simplify-ba-email'
+import { readFileSync } from 'fs'
 import { DEFAULT_BRAND } from './brand'
 
 // Straight out of the .docx, pasted. Not imported, not derived - a copy made by
@@ -107,6 +108,54 @@ describe('House B comes first', () => {
     // It was missing from the first three drafts entirely.
     const w = words(buildSimplifyBaEmail(ctx).html)
     expect(w).toContain('$85,000 lower')
+  })
+
+  it('all three rows are named down the left', () => {
+    // 9 Oct 2026. Built as two cards first; Fabio chose the table, which names
+    // what is being compared on each line instead of asking the reader to hold
+    // two blocks side by side.
+    const w = words(buildSimplifyBaEmail(ctx).html)
+    for (const label of ['Purchase Price', 'Purchase Timing', 'Price Difference']) {
+      expect(w).toContain(label)
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// GREEN, AND NO BRAND CHANGES IT.
+//
+// 9 Oct 2026. The first build read brand.accentColor with green only as a
+// fallback, so it went out AMBER - the brand chosen in the Sending as box has
+// an amber accent saved in Settings, Brands. Fabio had already said no amber
+// anywhere, and had already agreed green.
+//
+// A buyers agency email does not change colour because somebody picked a
+// different finance brand to send it under. The brand still sets the header,
+// the logo, the name and the footer. It does not set this.
+describe('the accent is green and is not the brand\'s', () => {
+  const GREEN = '#15614A'
+
+  it('is green with the default brand', () => {
+    expect(buildSimplifyBaEmail(ctx).html).toContain(GREEN)
+  })
+
+  it('and stays green under a brand whose accent is something else', () => {
+    const amber = { ...DEFAULT_BRAND, accentColor: '#FFC86A' }
+    const html = buildSimplifyBaEmail({ ...ctx, brand: amber }).html
+    expect(html).toContain(GREEN)
+    expect(html, 'the brand accent reached the email').not.toContain('#FFC86A')
+  })
+
+  it('the builder does not read accentColor at all', () => {
+    // Said in the code as well as in the output, so a later "tidy-up" that
+    // re-introduces the fallback fails here rather than in somebody's inbox.
+    //
+    // COMMENTS STRIPPED FIRST. The note above the constant says "not
+    // brand.accentColor", which is the point of the note - a test that read it
+    // as code would fail on the very explanation of why it exists.
+    const code = readFileSync('lib/simplify-ba-email.ts', 'utf8')
+      .split('\n').filter(l => !l.trim().startsWith('//')).join('\n')
+    expect(code).not.toContain('accentColor')
   })
 })
 
