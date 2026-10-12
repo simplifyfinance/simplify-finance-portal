@@ -31,6 +31,11 @@ const has = (v: any) => num(v) > 0
 export type Box = { text: string; gaps: Gap[]; variant: 1 | 2 | 3 }
 
 export type Security = {
+  // THE FACT FIND PROPERTY'S OWN ID, so a split can be matched to the house it
+  // is against. Blank on a purchase or a build, which have no fact find
+  // property behind them yet. Added 12 Oct 2026 - without it this list and the
+  // splits could be printed in the same pack and never joined up.
+  id: string
   // The property being bought has no address until somebody types one, so this
   // says which kind it is rather than leaving the caller to guess from a blank.
   //
@@ -88,6 +93,7 @@ export function securitiesOf(deal: any): Security[] {
   if (buying > 0) {
     out.push({
       kind: built > 0 ? 'build' : 'purchase',
+      id: '',
       address: txt(deal?.compliance_data?.securityAddress),
       value: buying,
       // newPurchasePropertyType holds "Owner-occupied" - it is a USE, not a
@@ -122,6 +128,7 @@ export function securitiesOf(deal: any): Security[] {
     if (ticked.length > 0 ? !ticked.includes(txt(p?.id)) : !loan) continue
     out.push({
       kind: 'existing',
+      id: txt(p?.id),
       address: txt(p?.address),
       value: num(p?.value),
       use: txt(p?.ownershipType),
@@ -136,7 +143,7 @@ export function securitiesOf(deal: any): Security[] {
 
   if (out.length === 0 && has(bc.propertyValue)) {
     out.push({
-      kind: 'existing', address: txt(deal?.compliance_data?.securityAddress),
+      kind: 'existing', id: '', address: txt(deal?.compliance_data?.securityAddress),
       value: num(bc.propertyValue), use: '', subtype: '', zoning: '',
       futureUse: '', valuationMethod: '', mortgagee: '', owing: 0,
     })

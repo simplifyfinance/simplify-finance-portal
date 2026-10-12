@@ -31,6 +31,7 @@ import { fullName, currentEmployment, notWorking, selfEmployed, monthsBetween } 
 import { annualIncomeOfApplicant } from './income-calculations'
 import { applicantsOf } from './applicants'
 import { variantOf, andList, structureOf, flexibilityPassage, type Gap } from './box-one'
+import { lendingBySplit } from './lending-by-split'
 import { retirementPicture } from './box-goals'
 import { CREDIT_QUESTIONS } from './credit-history-facts'
 import { clientAgreement, optionOnTheDeal, optionGap, lenderOnTheDeal } from './client-agreement'
@@ -333,12 +334,60 @@ export function boxFour(deal: any): Box {
     return `, on a rate of ${rates[0]}%`
   })()
   const repay = splitsOf(deal).map(x => txt(x.repaymentType)).find(Boolean)
+  // THE SPLITS, ONE AT A TIME, UNDER THE HOUSE EACH IS SECURED BY.
+  //
+  // 12 Oct 2026. The sentence below used to end "with principal and interest
+  // repayments" on a deal where half the money was interest only, because it
+  // read the FIRST split's type and called it the deal's. Two sentences later
+  // the flexibility passage said interest only. See lib/lending-by-split.ts for
+  // the whole fault.
+  //
+  // So on a deal with more than one split, or more than one security, the
+  // summary stops claiming a repayment type and the splits say it themselves.
+  // A single-split deal is unchanged - there is nothing to flatten.
+  const perSplit = lendingBySplit(deal)
+
   if (s.lender && s.product) {
     let line = `${s.lender}'s ${s.product} has been recommended`
     line += rateClause
-    if (repay) line += ` with ${repay.toLowerCase().includes('io') || /interest only/i.test(repay) ? 'interest only' : 'principal and interest'} repayments`
+    if (repay && !perSplit.worthSaying) {
+      line += ` with ${repay.toLowerCase().includes('io') || /interest only/i.test(repay) ? 'interest only' : 'principal and interest'} repayments`
+    }
     if (term) line += ` over a ${termInWords(term)} year term`
     assessment.push(line + '.')
+  }
+
+  if (perSplit.worthSaying) {
+    const spread = perSplit.mixed
+      ? ' The lending is not on one repayment type \u2014 each split is set to suit the money in it.' : ''
+    // Said once above the list rather than under every line - see sharedPurpose.
+    const shared = perSplit.sharedPurpose ? ` All of it is ${perSplit.sharedPurpose}.` : ''
+    if (perSplit.securityCount > 1) {
+      assessment.push(`This is a refinance of existing lending secured by ${COUNT[perSplit.securityCount] || String(perSplit.securityCount)} properties. ` +
+        'The existing split structure has been kept, because each split reflects what those funds were ' +
+        'originally used for.' + shared + spread)
+    } else if (perSplit.mixed || shared) {
+      assessment.push((shared + spread).trim())
+    }
+
+    for (const g of perSplit.groups) {
+      if (g.security) assessment.push(`Secured by ${g.security.address || 'a property whose address is not recorded'}:`)
+      else if (perSplit.securityCount > 1) assessment.push('Not recorded against any of the securities above:')
+      for (const l of g.lines) assessment.push(l.text)
+    }
+
+    // NOT RECORDED, RATHER THAN A PLAUSIBLE SENTENCE. The only reason anybody
+    // writes down is the "Original purpose of funds" box and the split's
+    // purpose; a split with neither is a gap on the form, not a gap in the
+    // wording to be filled in here.
+    const blind = perSplit.lines.filter(l => l.unexplained)
+    if (blind.length > 0) {
+      assessment.push(shout(`NOT RECORDED \u2014 nothing has been recorded to explain ` +
+        `${blind.length === 1 ? 'the' : 'the following'} split${blind.length === 1 ? '' : 's'}: ` +
+        `${andList(blind.map(l => l.split.label || 'unnamed split'))}. ` +
+        `Record the purpose of the funds on the borrowing capacity.`))
+      gaps.push({ what: 'Purpose of funds on each split', where: 'Borrowing capacity' })
+    }
   }
 
   // what they said mattered - the one box that asks it

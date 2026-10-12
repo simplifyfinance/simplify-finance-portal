@@ -106,6 +106,19 @@ export type StructureSplit = {
   // Recorded on the block itself - neither exists per split anywhere else.
   termYears?: string
   productType?: string
+  // WHICH HOUSE THIS SPLIT IS SECURED BY, and what the money was originally
+  // for, in the broker's own words.
+  //
+  // 12 Oct 2026. Every compliance box reads splits through this shape, and this
+  // shape dropped both - so the pack described six loans and three properties as
+  // two unrelated facts and could not say which loan sat on which house. The
+  // lending options tab has known it since this morning; it stopped here.
+  //
+  // fundsUsedFor is the "Original purpose of funds" box. It is the only reason
+  // for a split's repayment type that anybody has actually written down, which
+  // is why the wording reads it rather than inventing one. See lib/box-four.ts.
+  securityId?: string
+  fundsUsedFor?: string
   // HOW LONG THE INTEREST ONLY RUNS.
   //
   // Fabio, 27 Sep 2026, looking at the Loughlin-Walsh handover: "The handover
@@ -188,6 +201,10 @@ export function splitsOf(deal: any): StructureSplit[] {
       amount: txt(amount),
       // Rate is only ever typed on the per-lender copy.
       rate: firstOf(ls?.rate, s?.rate, bs?.rate),
+      // The structure, so the BC has the last word where the lists disagree -
+      // which house a loan sits on is not a lending options decision.
+      securityId: firstOf(bs?.securityId, s?.securityId, ls?.securityId),
+      fundsUsedFor: firstOf(s?.fundsUsedFor, bs?.fundsUsedFor, s?.funds),
       // ANSWERED HERE FIRST. 17 Sep 2026, Dylan Smyth and Megan Isherwood: an
       // investment PURCHASE, where the per-lender splits box does not exist -
       // it is drawn on refinances only. So the repayment type came from the BC

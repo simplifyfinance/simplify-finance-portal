@@ -58,6 +58,7 @@ const NOT_CLIENT_FACING: Record<string, string> = {
   // consumers are emails already on the WIRED list above.
   'lib/build-card.ts':          'builds the construction rows; generate-email prints them and is wired',
   'lib/box-four.ts':            'compliance box, for the file',
+  'lib/lending-by-split.ts':    'the split lines inside box four, same document, never emailed',
   'lib/box-options.ts':         'compliance box, for the file',
   'lib/deal-figures.ts':        'the figures behind the forms somebody types into',
   'lib/property-checklist.ts':  'the fact find checklist, filled in with the client in front of you',
