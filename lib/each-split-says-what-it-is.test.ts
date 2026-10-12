@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { boxFour } from './box-four'
+import { boxNine } from './box-security'
 import { lendingBySplit, howItRepays, reasonFor } from './lending-by-split'
 import { DEAL } from './box-fixture'
 
@@ -193,5 +194,98 @@ describe('what the arranging itself returns', () => {
   it('drops a split with no money in it', () => {
     const withBlank = [...SIX, split({ id: 'blank', label: 'Empty', amount: '', securityId: 'p1' })]
     expect(lendingBySplit(deal(withBlank, TWO_HOUSES)).lines).toHaveLength(4)
+  })
+})
+
+// THE OPENING SENTENCE NAMES THE HOUSES.
+//
+// 12 Oct 2026. On a three-property refinance it said the clients were borrowing
+// "against the security recorded on this deal" - a placeholder, because
+// compliance_data.securityAddress is one box and there were three houses. Box
+// nine named all three immediately underneath it.
+describe('the opening sentence', () => {
+  it('names every security instead of the placeholder', () => {
+    const s = text(deal(SIX, TWO_HOUSES))
+    expect(s).toContain('against 16 Sample Street, Paddington and 7/22 Sample Road, Hawks Nest.')
+    expect(s).not.toContain('the security recorded on this deal')
+  })
+
+  it('names the one, on a deal with one', () => {
+    const one = [split({ id: 'only', label: 'Loan', amount: '1,000,000', securityId: 'p1' })]
+    expect(text(deal(one, [TWO_HOUSES[0]]))).toContain('against 16 Sample Street, Paddington.')
+  })
+
+  // It must never name a property box nine does not, which is why both read the
+  // same list in the same order.
+  it('names the same houses box nine does', () => {
+    const d = deal(SIX, TWO_HOUSES)
+    const four = text(d)
+    for (const addr of ['16 Sample Street, Paddington', '7/22 Sample Road, Hawks Nest']) {
+      expect(four).toContain(addr)
+      expect(boxNine(d).text).toContain(addr)
+    }
+  })
+
+  it('falls back to the old line when nothing is recorded', () => {
+    const bare = deal(SIX, [])
+    bare.bc_data.securityIds = []
+    bare.fact_find_data = { ...bare.fact_find_data, properties: [] }
+    bare.bc_data.propertyValue = ''
+    expect(text(bare)).toContain('the security recorded on this deal')
+  })
+})
+
+// "They own ..., AN UNIT." See lib/a-or-an.test.ts for the rule itself.
+describe('it writes a and an properly', () => {
+  it('says a unit, not an unit', () => {
+    const d = deal(SIX, TWO_HOUSES)
+    expect(text(d)).toContain(', a unit.')
+    expect(text(d)).not.toContain('an unit')
+  })
+})
+
+// THE INTEREST ONLY PARAGRAPH SAYS WHICH MONEY IT IS ABOUT.
+//
+// 12 Oct 2026. flexibilityPassage() opens "Interest only repayments for the
+// first 5 years keep the commitment as low as possible", which reads as the
+// whole loan. On this deal half the money is principal and interest.
+//
+// Fabio approved one sentence in front of it. The paragraph itself is his and
+// is not touched.
+describe('the interest only paragraph, on a deal whose splits disagree', () => {
+  it('says which splits it is talking about', () => {
+    const s = text(deal(SIX, TWO_HOUSES))
+    expect(s).toContain('Where splits are on interest only, the reasoning is as follows.')
+  })
+
+  it('puts that sentence immediately before the paragraph, not somewhere else', () => {
+    const s = text(deal(SIX, TWO_HOUSES))
+    const lead = s.indexOf('Where splits are on interest only, the reasoning is as follows.')
+    const para = s.indexOf('Interest only repayments for')
+    expect(lead).toBeGreaterThan(-1)
+    expect(para).toBeGreaterThan(lead)
+    expect(para - lead).toBeLessThan(80)
+  })
+
+  // The wording itself is untouched.
+  it('leaves the paragraph exactly as it was', () => {
+    expect(text(deal(SIX, TWO_HOUSES)))
+      .toContain('keep the commitment as low as possible while')
+  })
+
+  it('adds nothing when every split is interest only', () => {
+    const allIO = SIX.map(s => ({ ...s, repaymentType: 'Interest only', ioYears: '5' }))
+    expect(text(deal(allIO, TWO_HOUSES))).not.toContain('Where splits are on interest only')
+  })
+
+  it('adds nothing when no split is interest only', () => {
+    const allPI = SIX.map(s => ({ ...s, repaymentType: 'P&I', ioYears: '' }))
+    const s = text(deal(allPI, TWO_HOUSES))
+    expect(s).not.toContain('Where splits are on interest only')
+  })
+
+  it('adds nothing on a single split deal', () => {
+    const one = [split({ id: 'only', label: 'Loan', amount: '1,000,000', securityId: 'p1', repaymentType: 'Interest only', ioYears: '5' })]
+    expect(text(deal(one, [TWO_HOUSES[0]]))).not.toContain('Where splits are on interest only')
   })
 })

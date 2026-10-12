@@ -25,6 +25,7 @@
 //     own estimate. Both offered, both declined.
 
 import { money, readMoney } from './money'
+import { article } from './article'
 import { loanAmount, lvrOf, fundsToComplete } from './funds-to-complete'
 import { splitsOf, dealRow } from './deal-structure'
 import { fullName, currentEmployment, notWorking, selfEmployed, monthsBetween } from './fact-find'
@@ -32,6 +33,7 @@ import { annualIncomeOfApplicant } from './income-calculations'
 import { applicantsOf } from './applicants'
 import { variantOf, andList, structureOf, flexibilityPassage, type Gap } from './box-one'
 import { lendingBySplit } from './lending-by-split'
+import { securitiesOf } from './box-security'
 import { retirementPicture } from './box-goals'
 import { CREDIT_QUESTIONS } from './credit-history-facts'
 import { clientAgreement, optionOnTheDeal, optionGap, lenderOnTheDeal } from './client-agreement'
@@ -48,7 +50,8 @@ const TERM_WORDS: Record<string, string> = {
   '30': 'thirty', '35': 'thirty-five', '40': 'forty',
 }
 const termInWords = (t: string) => TERM_WORDS[txt(t)] || txt(t)
-const article = (w: string) => /^[aeiou]/i.test(txt(w)) ? 'an' : 'a'
+// One copy, in lib/article.ts - it was written out four times and was wrong
+// in all four. See the note there.
 
 // HOW THEY SAID THEY WOULD CLEAR THE DEBT.
 //
@@ -198,9 +201,20 @@ export function boxFour(deal: any): Box {
 
   let open = `${whoFull} ${plural ? 'are' : 'is'} borrowing ${amount > 0 ? money(amount) : shout('NOT RECORDED — no loan amount has been recorded')}`
   if (term) open += ` over a ${termInWords(term)} year term`
+  // THE SECURITIES, BY NAME.
+  //
+  // 12 Oct 2026. On a three-property refinance this said the clients were
+  // borrowing "against the security recorded on this deal" - a placeholder,
+  // because compliance_data.securityAddress is one box and there were three
+  // houses. Box nine then named all three immediately underneath it.
+  //
+  // securitiesOf() is the same list box nine uses and in the same order, so the
+  // two cannot name different properties. The old line stays as the fallback
+  // for a deal with nothing recorded at all.
+  const named = securitiesOf(deal).map(x => txt(x.address)).filter(Boolean)
   open += isPurchase
     ? ` to purchase an owner-occupied property${txt(bc.suburb) ? ` in ${txt(bc.suburb)}` : ''}`
-    : ` against ${txt(row.securityAddress) || 'the security recorded on this deal'}`
+    : ` against ${named.length > 0 ? andList(named) : (txt(row.securityAddress) || 'the security recorded on this deal')}`
   if (purchase && purchase > 0) open += `, against a purchase price of ${money(purchase)}`
   if (deposit && deposit > 0) open += ` and a contribution of ${money(deposit)}`
   analysis.push(open + '.')
@@ -407,8 +421,25 @@ export function boxFour(deal: any): Box {
     assessment.push(`The clients ${bits.join(', and ')}.`)
   }
 
+  // WHICH MONEY THE NEXT PARAGRAPH IS ABOUT.
+  //
+  // 12 Oct 2026. flexibilityPassage() describes the loan's shape, and on a deal
+  // where only SOME splits are interest only it opens "Interest only repayments
+  // for the first 5 years keep the commitment as low as possible" - which reads
+  // as the whole loan. Half the money was principal and interest.
+  //
+  // THE PARAGRAPH ITSELF IS NOT TOUCHED. Those three wordings were read aloud
+  // before they went in and they are Fabio's; one sentence goes in front of
+  // them instead, and only on a deal whose splits disagree. A deal that is
+  // entirely interest only, or entirely principal and interest, prints exactly
+  // what it printed yesterday.
   const flex = flexibilityPassage(s, who, v)
-  if (flex) assessment.push(flex)
+  if (flex) {
+    if (perSplit.mixed && s.interestOnly) {
+      assessment.push('Where splits are on interest only, the reasoning is as follows.')
+    }
+    assessment.push(flex)
+  }
 
   // the fees, from the lender's own record
   // THE FEES AND THE TURNAROUND BELONG TO THE LENDER THIS DEAL IS WITH.

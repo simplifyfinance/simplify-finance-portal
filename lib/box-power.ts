@@ -1,4 +1,5 @@
 import { money, readMoney } from './money'
+import { article } from './article'
 import { dealRow, splitsOf } from './deal-structure'
 import { applicantsOf } from './applicants'
 import { annualIncomeOfApplicant } from './income-calculations'
@@ -51,7 +52,8 @@ export type Box = { text: string; gaps: Gap[]; variant: 1 | 2 | 3 }
 const first = (name: string) => name.split(' ')[0]
 
 // A OR AN, for an occupation typed by a person.
-const article = (w: string) => /^[aeiou]/i.test(w.trim()) ? 'an' : 'a'
+// One copy, in lib/article.ts - it was written out four times and was wrong
+// in all four. See the note there.
 
 // WHAT EACH APPLICANT EARNS AND HOW.
 //

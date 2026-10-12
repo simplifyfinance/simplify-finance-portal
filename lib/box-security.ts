@@ -4,6 +4,7 @@ import { dutyStateOf } from './duty-state'
 import { dealRow } from './deal-structure'
 import { variantOf, andList, type Gap } from './box-one'
 import { buysNothing } from './buying'
+import { withArticle } from './article'
 
 // BOX NINE — SECURITY.
 //
@@ -166,7 +167,8 @@ function bare(s: Security): string {
 function describe(s: Security): string {
   const phrase = bare(s)
   if (!phrase) return ''
-  return `${/^[aeiou]/.test(phrase) ? 'an' : 'a'} ${phrase}`
+  // One copy, in lib/article.ts: this said "an unit".
+  return withArticle(phrase)
 }
 
 // The state the duty was worked out in, which is the only state this portal

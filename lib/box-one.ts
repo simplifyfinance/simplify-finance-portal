@@ -33,6 +33,7 @@
 //    for the deal itself... we don't vary or deviate to that."
 
 import { isDebtRecycling, complianceLines, everySplitHasAPurpose } from './debt-recycling'
+import { article } from './article'
 import { andList } from './and-list'
 import { money, readMoney } from './money'
 import { fundsToComplete, loanAmount, lvrOf } from './funds-to-complete'
@@ -91,7 +92,8 @@ const COUNT_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'
 const countInWords = (n: string) => COUNT_WORDS[Number(txt(n))] ?? txt(n)
 
 // "investment manager" needs its article; "director of nursing" needs it too.
-const article = (word: string) => /^[aeiou]/i.test(txt(word)) ? 'an' : 'a'
+// One copy, in lib/article.ts - it was written out four times and was wrong
+// in all four. See the note there.
 
 // ---------------------------------------------------------------------------
 // WHAT THE RECOMMENDED LOAN ACTUALLY IS
