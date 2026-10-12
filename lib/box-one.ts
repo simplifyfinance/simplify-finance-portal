@@ -34,6 +34,8 @@
 
 import { isDebtRecycling, complianceLines, everySplitHasAPurpose } from './debt-recycling'
 import { article } from './article'
+import { securitiesOf } from './box-security'
+import { variantOf } from './box-variant'
 import { andList } from './and-list'
 import { money, readMoney } from './money'
 import { fundsToComplete, loanAmount, lvrOf } from './funds-to-complete'
@@ -61,17 +63,10 @@ export type BoxOne = {
 // SHOUTED, SO IT SURVIVES A COPY AND PASTE.
 const shout = (s: string) => `** ${s} **`
 
-// THE VARIANT IS THE DEAL'S, NOT THE MOMENT'S.
-//
-// Seeded from the deal id, so it never moves. Two deals side by side read
-// differently; one deal regenerated ten times reads the same ten times.
-export function variantOf(dealId: any): 1 | 2 | 3 {
-  const s = txt(dealId)
-  if (!s) return 1
-  let h = 0
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
-  return ((h % 3) + 1) as 1 | 2 | 3
-}
+// Moved to lib/box-variant.ts to break a circle - see the note there. Still
+// exported from here, so the seven files that import it from box-one are
+// untouched, and used below like any other import.
+export { variantOf }
 
 // Natural English for a list of names or lenders: "A", "A and B", "A, B and C".
 // Moved to lib/and-list.ts so the offset sentence can use it without a
@@ -359,9 +354,16 @@ export function boxOne(deal: any): BoxOne {
   opening.push(`${whoFull} ${apps.length > 1 ? 'are' : 'is'} borrowing ${amount > 0 ? money(amount) : shout('NOT RECORDED — no loan amount has been recorded')}`)
   if (term) opening.push(` over a ${termInWords(term)} year term`)
   else gaps.push({ what: 'Loan term', where: 'BC → loan term' })
+  // THE SECURITIES, BY NAME - the same fix box four got earlier today, which
+  // this line was missed by. On a three-property refinance it said the clients
+  // were borrowing "against the security recorded on this deal" while box nine
+  // named all three. securitiesOf() is the list box nine uses, in its order, so
+  // the two cannot name different houses.
+  const namedSecurities = securitiesOf(deal).map(x => txt(x.address)).filter(Boolean)
   opening.push(isPurchase
     ? ` to buy an owner-occupied property${txt(bc.suburb) ? ` in ${txt(bc.suburb)}` : ''}`
-    : ` against ${txt(row.securityAddress) || 'the security recorded on this deal'}`)
+    : ` against ${namedSecurities.length > 0 ? andList(namedSecurities)
+        : (txt(row.securityAddress) || 'the security recorded on this deal')}`)
   if (purchase && purchase > 0) opening.push(`, against a purchase price of ${money(purchase)}`)
   if (lvr !== null) opening.push(` — a loan to value ratio of ${lvr}%`)
   let p1 = opening.join('') + '.'

@@ -9,6 +9,7 @@ import {
 } from '@/lib/deal-structure'
 import { fundsToComplete, loanAmountDisagrees, bcSplitsTotal } from '@/lib/funds-to-complete'
 import { splitsDisagree } from '@/lib/deal-structure'
+import { securitiesOf } from '@/lib/box-security'
 import { SPLIT_TYPES, typesOffered, typeContradictsProduct } from '@/lib/lo-splits'
 import { optionOnTheDeal } from '@/lib/client-agreement'
 
@@ -167,15 +168,46 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
           </div>
         </Field>
 
-        <Field label="Security address" grow>
-          <input defaultValue={row.securityAddress} key={row.securityAddress}
-            onBlur={e => { if (e.target.value !== row.securityAddress) setField('securityAddress', e.target.value) }}
-            placeholder={row.preApproval ? 'TBA' : 'Street, suburb, state'}
-            className={`${INP} w-full`} />
-          {row.preApproval && row.securityAddress.startsWith('TBA') && (
-            <p className="text-[11px] text-info mt-1 mb-0">Filled from the BC suburb because this is a pre-approval</p>
-          )}
-        </Field>
+        {/* ONE ANSWER, NOT TWO.
+          *
+          * 12 Oct 2026. This box is older than ticking securities on the BC. On
+          * a deal that has them it sat beside three real, named properties
+          * asking somebody to type a fourth answer - and whatever they typed
+          * won in several places. docs/the-chain.md, rule 1: the fact find and
+          * the borrowing capacity own the securities, and Compliance does not
+          * get to hold a competing copy.
+          *
+          * So where the deal HAS securities it reads them, the same list box
+          * nine names, in the same order. Where it has none - a pre-approval
+          * with no property identified yet - nothing upstream exists to read,
+          * so the box stays exactly as it was: editable, with its TBA fill.
+          * That is the only case it was ever right for. */}
+        {(() => {
+          const secs = securitiesOf(deal).filter(x => String(x.address || '').trim())
+          if (secs.length === 0) {
+            return (
+              <Field label="Security address" grow>
+                <input defaultValue={row.securityAddress} key={row.securityAddress}
+                  onBlur={e => { if (e.target.value !== row.securityAddress) setField('securityAddress', e.target.value) }}
+                  placeholder={row.preApproval ? 'TBA' : 'Street, suburb, state'}
+                  className={`${INP} w-full`} />
+                {row.preApproval && row.securityAddress.startsWith('TBA') && (
+                  <p className="text-[11px] text-info mt-1 mb-0">Filled from the BC suburb because this is a pre-approval</p>
+                )}
+              </Field>
+            )
+          }
+          return (
+            <Field label={secs.length === 1 ? 'Security' : `Securities (${secs.length})`} grow>
+              <div className="flex flex-col gap-0.5">
+                {secs.map((x, i) => (
+                  <span key={i} className="text-[12.5px] text-ink">{x.address}</span>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted mt-1 mb-0">From the fact find, ticked on the BC</p>
+            </Field>
+          )
+        })()}
 
         <Field label="Property value">
           <Value v={row.propertyValue > 0 ? money(row.propertyValue) : ''}

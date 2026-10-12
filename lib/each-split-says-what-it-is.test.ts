@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { boxFour } from './box-four'
 import { boxNine } from './box-security'
+import { boxOne } from './box-one'
+import { readFileSync } from 'fs'
 import { lendingBySplit, howItRepays, reasonFor } from './lending-by-split'
 import { DEAL } from './box-fixture'
 
@@ -287,5 +289,52 @@ describe('the interest only paragraph, on a deal whose splits disagree', () => {
   it('adds nothing on a single split deal', () => {
     const one = [split({ id: 'only', label: 'Loan', amount: '1,000,000', securityId: 'p1', repaymentType: 'Interest only', ioYears: '5' })]
     expect(text(deal(one, [TWO_HOUSES[0]]))).not.toContain('Where splits are on interest only')
+  })
+})
+
+// BOX ONE HAD THE SAME PLACEHOLDER BOX FOUR DID.
+//
+// 12 Oct 2026. Box four was fixed earlier the same day and this line was missed:
+// on a three-property refinance box one still said the clients were borrowing
+// "against the security recorded on this deal" while box nine named all three.
+describe('box one names the securities too', () => {
+  it('names them instead of the placeholder', () => {
+    const s = boxOne(deal(SIX, TWO_HOUSES)).text.replace(/\s+/g, ' ')
+    expect(s).toContain('against 16 Sample Street, Paddington and 7/22 Sample Road, Hawks Nest')
+    expect(s).not.toContain('the security recorded on this deal')
+  })
+
+  it('names the same houses box four and box nine do', () => {
+    const d = deal(SIX, TWO_HOUSES)
+    for (const addr of ['16 Sample Street, Paddington', '7/22 Sample Road, Hawks Nest']) {
+      expect(boxOne(d).text).toContain(addr)
+      expect(boxFour(d).text).toContain(addr)
+      expect(boxNine(d).text).toContain(addr)
+    }
+  })
+
+  it('falls back to the old line when nothing is recorded', () => {
+    const bare = deal(SIX, [])
+    bare.bc_data.securityIds = []
+    bare.fact_find_data = { ...bare.fact_find_data, properties: [] }
+    bare.bc_data.propertyValue = ''
+    bare.compliance_data = { ...bare.compliance_data, securityAddress: '' }
+    expect(boxOne(bare).text).toContain('the security recorded on this deal')
+  })
+})
+
+// THE DEAL STRIP STOPPED ASKING FOR A FOURTH ANSWER.
+describe('the security address box on the deal strip', () => {
+  const STRIP = readFileSync('components/DealStructure.tsx', 'utf8')
+
+  it('reads the securities where the deal has them', () => {
+    expect(STRIP).toContain('securitiesOf(deal)')
+    expect(STRIP).toContain('From the fact find, ticked on the BC')
+  })
+
+  // The one case it was ever right for: a pre-approval with no property yet.
+  it('keeps the typed box when there is nothing upstream to read', () => {
+    expect(STRIP).toContain("setField('securityAddress'")
+    expect(STRIP).toContain('Filled from the BC suburb because this is a pre-approval')
   })
 })

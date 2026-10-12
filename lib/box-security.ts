@@ -2,7 +2,13 @@ import { money, readMoney } from './money'
 import { buildsSomething } from './sale-build'
 import { dutyStateOf } from './duty-state'
 import { dealRow } from './deal-structure'
-import { variantOf, andList, type Gap } from './box-one'
+// NOT FROM box-one.ts. box-one imports securitiesOf() from this file, so taking
+// anything from it here would be a circle. See lib/box-variant.ts.
+import { variantOf } from './box-variant'
+import { andList } from './and-list'
+// `import type`, not a plain import: a type is erased when this compiles, so it
+// leaves no runtime edge back to box-one and the circle stays broken.
+import type { Gap } from './box-one'
 import { buysNothing } from './buying'
 import { withArticle } from './article'
 
