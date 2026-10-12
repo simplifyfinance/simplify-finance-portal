@@ -11,6 +11,8 @@ import { templateLabel } from '@/lib/templates'
 import { auDate } from '@/lib/client-position'
 import { PURPOSES, isDebtRecycling, limitCheck } from '@/lib/debt-recycling'
 import { isComplexRefinance, groupsOf } from '@/lib/complex-refinance'
+import { ffProperties, securitiesOf, totalsOf, groupBySecurity, orphanSplits,
+         lvrOf, pct, legacyAddress } from '@/lib/securities'
 import { tabsOf, canAdd, canSwap, swapTo, addScenario, removeParked, renameLive,
          labelOf, scenarioCount, downstreamStarted, parkedOf } from '@/lib/bc-scenarios'
 import { proceedCredit } from '@/lib/deal-status'
@@ -139,7 +141,11 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
 // those scenarios' emails say about a split beyond its figures.
 // property: complex refinance only. Which house the split is against, and what
 // the whole email is grouped by. See lib/debt-recycling.ts, lib/complex-refinance.ts.
-type Split = { label: string; amount: string; rate: string; type: string; ioYears?: string; existingBalance?: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string; interestCapitalised?: string; purpose?: string; fundsUsedFor?: string; property?: string }
+// securityId: WHICH HOUSE THIS SPLIT IS AGAINST, by the fact find property's own
+// id. `property` is the old free-text address, kept so deals recorded before
+// 12 Oct 2026 still read - it is never written to again. See lib/securities.ts
+// for why an id and not an address.
+type Split = { label: string; amount: string; rate: string; type: string; ioYears?: string; existingBalance?: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string; interestCapitalised?: string; purpose?: string; fundsUsedFor?: string; property?: string; securityId?: string }
 
 type AltScenario = {
   label?: string
@@ -542,6 +548,17 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // drawn figure with no limit beside it cannot see what is still available.
   const [propertyLimits, setPropertyLimits] = useState<Record<string, string>>(
     (s.propertyLimits && typeof s.propertyLimits === 'object') ? s.propertyLimits : {})
+
+  // WHICH PROPERTIES THIS LOAN IS SECURED BY, and what is approved against each.
+  //
+  // 12 Oct 2026. Ticked from the fact find and held by id. Before this there was
+  // no field saying which of a client's properties were security at all, so the
+  // total security value - and therefore the real LVR - could not be worked out.
+  // See lib/securities.ts.
+  const [securityIds, setSecurityIds] = useState<string[]>(
+    Array.isArray(s.securityIds) ? s.securityIds.map(String) : [])
+  const [securityLimits, setSecurityLimits] = useState<Record<string, string>>(
+    (s.securityLimits && typeof s.securityLimits === 'object') ? s.securityLimits : {})
   const [offsetSplits, setOffsetSplits] = useState<string[]>(
     Array.isArray(s.offsetSplits) ? s.offsetSplits : (s.offsetSplit ? [s.offsetSplit] : []))
   // Defaults to a purchase, which is what every construction deal written
@@ -875,6 +892,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     depositSource: setDepositSource, lmi: setLmi, fhog: setFhog, guarantorName: setGuarantorName,
     bridgingPeriod: setBridgingPeriod, peakDebt: setPeakDebt, totalLimit: setTotalLimit,
     offsetSplits: setOffsetSplits, propertyLimits: setPropertyLimits,
+    securityIds: setSecurityIds, securityLimits: setSecurityLimits,
     constructionCost: setConstructionCostRaw,
     landValue: setLandValueRaw, landFunding: setLandFunding, landLoanBalance: setLandLoanBalance,
     saleProceedsUse: setSaleProceedsUse,
@@ -1042,13 +1060,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // pending stays in pendingSave and is written by the effect above when the
     // form actually leaves.
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, propertyLimits, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, propertyLimits, securityIds, securityLimits, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, propertyLimits, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, propertyLimits, securityIds, securityLimits, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand }
   }
 
   // Does the saved email still match the scenario the deal is on? Read in three
@@ -2023,17 +2041,45 @@ Key assumptions: ${checklistText}`
                             property cannot become two cards through two
                             spellings of its address, and still typeable for
                             anything the fact find does not hold. */}
-                        {isComplexRefinance(template) && (
-                          <Field label="Property">
-                            <input className={inputCls} value={s.property || ''} list="bc-ff-properties"
-                              placeholder="Which property is this against?"
-                              onChange={e => updateSplit(i, 'property', e.target.value)} />
-                            <datalist id="bc-ff-properties">
-                              {(ff.properties || []).map((pr: any, k: number) =>
-                                <option key={k} value={String(pr?.address || '')} />)}
-                            </datalist>
-                          </Field>
-                        )}
+                        {/* PICKED, NOT TYPED.
+                          *
+                          * 12 Oct 2026. This was a text box that OFFERED the fact
+                          * find addresses and then saved whatever was typed - so
+                          * "12 Smith St" and "12 Smith Street" became two
+                          * properties, two limits and two cards in the client
+                          * email for one house. A blank one pointed at nothing
+                          * and dropped out of the grouping in silence.
+                          *
+                          * Now it is the securities ticked above, by id. One
+                          * house cannot become two and nothing is orphaned
+                          * without the screen saying so. See lib/securities.ts.
+                          *
+                          * A DEAL RECORDED BEFORE TODAY keeps its typed address
+                          * and says so, rather than being quietly re-pointed at
+                          * whichever property looks closest. */}
+                        {isComplexRefinance(template) && (() => {
+                          const secs = securitiesOf(buildBcData(), ff)
+                          const typed = legacyAddress(s)
+                          return (
+                            <Field label="Security">
+                              <select className={selectCls} value={s.securityId || ''}
+                                onChange={e => updateSplit(i, 'securityId', e.target.value)}>
+                                <option value="">
+                                  {secs.length ? 'Which security is this against?' : 'Tick a security above first'}
+                                </option>
+                                {secs.map(sec => (
+                                  <option key={sec.id} value={sec.id}>{sec.address || 'Address not recorded'}</option>
+                                ))}
+                              </select>
+                              {typed && (
+                                <p className="mt-1 text-[11px] text-chase leading-snug">
+                                  Recorded as &ldquo;{typed}&rdquo; before securities were a list.
+                                  Pick it above and this split joins the grouping.
+                                </p>
+                              )}
+                            </Field>
+                          )
+                        })()}
                         {(isDebtRecycling(template) || isComplexRefinance(template)) && (
                           <>
                             <Field label="Purpose">
@@ -2123,33 +2169,121 @@ Key assumptions: ${checklistText}`
                   {/* THE SPLITS AGAINST THE LIMIT. Warn loudly, never block -
                       the same rule as the peak debt box and the balances line
                       above. A send refused at 6pm is the worse failure. */}
-                  {/* ONE LIMIT PER PROPERTY, listed from whatever the splits
-                      above actually name - so a property appears here the
-                      moment a split points at it, and disappears when none do.
-                      Left blank, the email simply shows what is drawn. */}
+                  {/* THE SECURITIES, TICKED FROM THE FACT FIND.
+                    *
+                    * 12 Oct 2026. Fabio: "I want the ability of adding multiple
+                    * securities ... ensure carries to LO and Compliance".
+                    *
+                    * This block used to list whatever the splits had TYPED, keyed
+                    * by the address string. So nothing recorded which properties
+                    * were actually security, the total security value could not
+                    * be worked out, and two spellings of one house were two rows.
+                    *
+                    * The fact find already holds every property with its id,
+                    * value, use and type. Ticking is the whole job - nothing is
+                    * retyped, and a value corrected on the fact find corrects the
+                    * LVR here, because it is read rather than copied.
+                    *
+                    * See lib/securities.ts. */}
                   {isComplexRefinance(template) && (() => {
-                    const groups = groupsOf(buildBcData()).filter(g => g.property)
-                    if (groups.length === 0) return null
+                    const props = ffProperties(ff)
+                    if (props.length === 0) {
+                      return (
+                        <div className="border border-chase-edge bg-chase-bg rounded-lg p-3 text-[12px] text-chase">
+                          No properties on the fact find yet, so there is nothing to secure this against.
+                          Add them on the Fact Find tab and they appear here.
+                        </div>
+                      )
+                    }
+                    const bcNow = buildBcData()
+                    const secs = securitiesOf(bcNow, ff)
+                    const t = totalsOf(secs)
+                    const groups = groupBySecurity(splits, secs)
+                    const orphans = orphanSplits(splits, secs)
+                    const drawnOf = (id: string) => groups.find(g => g.security.id === id)?.drawn || 0
+                    const toggle = (id: string) => setSecurityIds(
+                      securityIds.includes(id) ? securityIds.filter(x => x !== id) : [...securityIds, id])
+
                     return (
                       <div className="border border-gray-100 rounded-lg p-3 bg-card">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
-                          Limit approved against each property
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">
+                          Securities for this loan
                         </div>
-                        <div className="flex flex-col gap-2">
-                          {groups.map(g => (
-                            <div key={g.property} className="flex items-center gap-3 flex-wrap">
-                              <span className="text-[12.5px] text-ink flex-1 min-w-[160px]">{g.property}</span>
-                              <span className="text-[11px] text-gray-400">drawn {fmtMoney(g.drawn)}</span>
-                              <div className="w-[150px]">
-                                <NumberInput value={propertyLimits[g.property] || ''}
-                                  onChange={(v: string) => setPropertyLimits({ ...propertyLimits, [g.property]: v })} />
+                        <p className="text-[11px] text-gray-400 mb-2.5">
+                          {props.length} propert{props.length === 1 ? 'y' : 'ies'} on the fact find.
+                          Tick the ones this loan is secured by.
+                        </p>
+
+                        <div className="flex flex-col gap-1">
+                          {props.map(p => {
+                            const on = securityIds.includes(String(p.id))
+                            const sec = secs.find(x => x.id === String(p.id))
+                            const l = sec ? lvrOf(sec) : null
+                            return (
+                              <div key={String(p.id)}
+                                   className={`flex items-center gap-3 flex-wrap rounded-lg px-2 py-1.5 ${on ? '' : 'opacity-55'}`}>
+                                <button type="button" onClick={() => toggle(String(p.id))}
+                                  aria-pressed={on} aria-label={`${on ? 'Remove' : 'Add'} ${p.address || 'this property'} as security`}
+                                  className={`shrink-0 w-4 h-4 rounded border-[1.5px] flex items-center justify-center text-[10px] font-bold ${
+                                    on ? 'bg-ink border-ink text-page' : 'bg-card border-gray-300 text-transparent'}`}>
+                                  &#10003;
+                                </button>
+                                <span className="text-[12.5px] text-ink flex-1 min-w-[170px]">
+                                  {p.address || 'Address not recorded'}
+                                </span>
+                                <span className="text-[11px] text-gray-400 w-[96px]">{p.ownershipType || ''}</span>
+                                <span className="text-[11px] text-gray-400 w-[86px] text-right">
+                                  {fmtMoney(Number(String(p.value || p.rpDataEstimatedValue || '').replace(/[^0-9.]/g, '')) || 0)}
+                                </span>
+                                {on ? (
+                                  <>
+                                    <div className="w-[140px]">
+                                      <NumberInput value={securityLimits[String(p.id)] || ''}
+                                        onChange={(v: string) => setSecurityLimits({ ...securityLimits, [String(p.id)]: v })} />
+                                    </div>
+                                    <span className="text-[11px] text-gray-400 w-[52px] text-right">
+                                      {l === null ? '' : pct(l)}
+                                    </span>
+                                    <span className="text-[11px] text-gray-400 w-[110px] text-right">
+                                      drawn {fmtMoney(drawnOf(String(p.id)))}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="text-[11px] text-gray-400 flex-1 text-right">not security</span>
+                                )}
                               </div>
-                              {g.undrawn > 0 && (
-                                <span className="text-[11px] text-chase">{fmtMoney(g.undrawn)} not drawn</span>
-                              )}
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
+
+                        {secs.length > 0 && (
+                          <div className="mt-2.5 pt-2.5 border-t border-card-line flex items-center gap-3 flex-wrap text-[12px]">
+                            <b className="text-ink">Total security</b>
+                            <span className="text-muted">{fmtMoney(t.value)}</span>
+                            <span className="text-gray-400">against</span>
+                            <span className="text-muted">{fmtMoney(t.limit)}</span>
+                            {t.lvr !== null && <b className="text-info ml-auto">{pct(t.lvr)} LVR</b>}
+                          </div>
+                        )}
+
+                        {/* A VALUE MISSING MAKES THE TOTAL TOO LOW AND THE LVR TOO
+                          * HIGH. A number that looks precise and is not is worse
+                          * than no number, so it is said here. */}
+                        {secs.length > 0 && !t.valuedAll && (
+                          <p className="mt-1.5 text-[11px] text-chase leading-snug">
+                            One of these has no value on the fact find, so the total is understated
+                            and the LVR is overstated.
+                          </p>
+                        )}
+
+                        {/* MONEY NO PROPERTY IS CARRYING. These used to vanish. */}
+                        {orphans.length > 0 && (
+                          <p className="mt-1.5 text-[11px] text-chase leading-snug">
+                            {orphans.length} split{orphans.length === 1 ? '' : 's'} not against any security
+                            &mdash; {orphans.map(o => o.label || 'unnamed').join(', ')}. Pick one on the split,
+                            or tick the property it belongs to.
+                          </p>
+                        )}
                       </div>
                     )
                   })()}

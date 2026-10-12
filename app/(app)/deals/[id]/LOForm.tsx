@@ -3,6 +3,10 @@ import { isDebtRecycling } from '@/lib/debt-recycling'
 import { normalisePurpose } from '@/lib/split-purpose'
 import { TAG_GROUPS, tagsOf, toggleTag, tagLine } from '@/lib/deal-tags'
 import { isComplexRefinance } from '@/lib/complex-refinance'
+// Aliased: this file already has a local `pct` for the single-property LVR a
+// few hundred lines down, and two things called pct in one file is how the
+// wrong one gets used in six months.
+import { securitiesOf, totalsOf, lvrOf, pct as lvrPct } from '@/lib/securities'
 import { dutyStateOf, dutyLabel } from '@/lib/duty-state'
 import { buildsSomething, isSellAndBuild } from '@/lib/sale-build'
 import { totalCost, isLandPurchase, landLoanPayout, landEquity,
@@ -60,6 +64,14 @@ type RefinanceSplit = {
   // the scenario's name filed those deals owner occupied.
   purpose?: string
   funds?: string
+  // WHICH SECURITY THIS SPLIT IS AGAINST, by the fact find property's id.
+  //
+  // 12 Oct 2026. This list dropped the property entirely, so a three-security
+  // complex refinance arrived here as a flat set of splits and neither the
+  // comparison nor the LO email could say which loan sat against which house.
+  // It follows the BC, like the label and the amount, because it is part of the
+  // structure this list is a copy OF. See lib/securities.ts.
+  securityId?: string
 }
 
 type LenderSplit = {
@@ -513,6 +525,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         amount: b.amount || '',
         purpose: was.purpose || normalisePurpose(b.purpose),
         funds: was.funds,
+        // Follows the BC. Which house a loan is secured by is not a lending
+        // options decision - it is the structure, and the BC owns it.
+        securityId: b.securityId || was.securityId,
       }
     })
   }
@@ -1888,6 +1903,71 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 adding multiple splits??" It always could - on refinances. */}
             {(
               <div className="border-t border-gray-100 pt-4">
+
+                {/* THE SECURITIES, READ ONLY, FROM THE BC.
+                  *
+                  * 12 Oct 2026. A complex refinance arrived on this tab as a flat
+                  * list of splits with no property on them, so neither the
+                  * comparison nor the LO email could say which loan sat against
+                  * which house - and the LVR above divides by ONE property value,
+                  * which is not what a three-security deal has.
+                  *
+                  * Shown rather than editable, like the construction strip above:
+                  * which house a loan is secured by is the structure, and the BC
+                  * owns the structure. See lib/securities.ts. */}
+                {isComplexRefinance(bc.template) && (() => {
+                  const secs = securitiesOf(bc, ff)
+                  if (secs.length === 0) return null
+                  const t = totalsOf(secs)
+                  const drawnOn = (id: string) => d.refinanceSplits
+                    .filter(x => x.securityId === id)
+                    .reduce((sum, x) => sum + (Number(String(x.amount).replace(/[^0-9.]/g, '')) || 0), 0)
+                  return (
+                    <div className="rounded-xl border border-dashed border-field-line bg-page px-4 py-3 mb-4">
+                      <div className="flex items-baseline gap-2 mb-2.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                          Secured by {secs.length} propert{secs.length === 1 ? 'y' : 'ies'}
+                        </span>
+                        <a href={`/deals/${deal.id}?stage=BC`}
+                           className="ml-auto text-[11.5px] text-brand-ink hover:underline">Open BC tab &rarr;</a>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        {secs.map(sec => {
+                          const l = lvrOf(sec)
+                          const drawn = drawnOn(sec.id)
+                          return (
+                            <div key={sec.id} className="flex items-baseline gap-3 flex-wrap text-[12px]">
+                              <span className="text-ink flex-1 min-w-[170px]">{sec.address || 'Address not recorded'}</span>
+                              <span className="text-gray-400 w-[90px]">{sec.use}</span>
+                              <span className="text-gray-400 w-[96px] text-right">
+                                {drawn > 0 ? `$${formatNumber(String(drawn))} drawn` : 'nothing drawn'}
+                              </span>
+                              <span className="text-brand-ink w-[54px] text-right font-semibold">
+                                {l === null ? '\u2014' : lvrPct(l)}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      {t.lvr !== null && (
+                        <div className="mt-2 pt-2 border-t border-card-line flex items-baseline gap-3 text-[12px]">
+                          <b className="text-ink">Across all of them</b>
+                          <span className="text-gray-400 ml-auto">
+                            ${formatNumber(String(t.limit))} against ${formatNumber(String(t.value))}
+                          </span>
+                          <b className="text-brand-ink">{lvrPct(t.lvr)}</b>
+                        </div>
+                      )}
+                      {/* THE LVR BOX ABOVE IS NOT THIS NUMBER, and on a
+                        * multi-security deal it is the wrong one to quote. */}
+                      <p className="mt-1.5 text-[11px] text-gray-400 leading-snug">
+                        The LVR box above measures against a single property value. On this deal the
+                        figure a lender assesses is the one here.
+                      </p>
+                    </div>
+                  )
+                })()}
+
                 <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-3">Global loan splits — define the deal structure</div>
                 <div className="space-y-2 mb-3">
                   {d.refinanceSplits.map((split, idx) => (

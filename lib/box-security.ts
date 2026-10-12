@@ -86,9 +86,27 @@ export function securitiesOf(deal: any): Security[] {
     })
   }
 
+  // WHEN SOMEBODY HAS SAID WHICH PROPERTIES ARE SECURITY, THAT ANSWER WINS.
+  //
+  // 12 Oct 2026. A complex refinance now ticks its securities on the BC, by id -
+  // see lib/securities.ts. That is a person's explicit answer; the loan-status
+  // test below is an INFERENCE from how the fact find was filled in.
+  //
+  // An explicit answer must beat an inference, or the two disagree and a
+  // compliance pack names a property the deal structure did not count - which is
+  // the exact failure this file's opening note is about, arrived at from the
+  // other direction.
+  //
+  // The inference is not being replaced. Every deal that is not a complex
+  // refinance, and every complex refinance where nobody has ticked anything,
+  // still reaches it untouched below.
+  const ticked: string[] = Array.isArray(bc?.securityIds) ? bc.securityIds.map(txt).filter(Boolean) : []
+
   for (const p of deal?.fact_find_data?.properties || []) {
     const loan = (p?.loans || []).find((l: any) => REFINANCING.includes(txt(l?.status)))
-    if (!loan) continue
+    // Ticked and carrying no refinancing loan is still security - a property put
+    // up purely to support the lend has no loan on it to mark.
+    if (ticked.length > 0 ? !ticked.includes(txt(p?.id)) : !loan) continue
     out.push({
       kind: 'existing',
       address: txt(p?.address),
