@@ -49,6 +49,48 @@ export const TAG_GROUPS: TagGroup[] = [
 // reads them in - so a list built from this reads the same way.
 export const ALL_TAGS: string[] = TAG_GROUPS.flatMap(g => g.tags)
 
+// HOW PEOPLE ACTUALLY ASK FOR THESE.
+//
+// 12 Oct 2026. Paco matches a question against this list by words, not by a
+// model's judgement - so the list has to know that somebody asking about "self
+// employed" means the tag that reads "Self-employed under 2 yrs", and that
+// nobody types "SMSF" when they mean "self managed super fund" half the time.
+//
+// ONLY WORDS THAT MEAN THE SAME THING. This is not a place to widen a tag: an
+// alias that is merely RELATED makes Paco answer a question nobody asked, which
+// is the same failure as inventing. "Acreage" belongs to rural; "regional" does
+// not, because a regional townhouse is not an acreage.
+export const TAG_ALIASES: Record<string, string[]> = {
+  'Limited title':             ['limited and qualified title', 'qualified title', 'limited titles'],
+  'Company title':             ['company titles'],
+  'Rural / acreage':           ['rural', 'acreage', 'rural residential', 'hobby farm'],
+  'High density':              ['high rise', 'highrise', 'inner city apartment'],
+  'Off the plan':              ['otp', 'off plan'],
+  'Strata defects':            ['strata defect', 'building defects', 'defective strata'],
+  'Dual occupancy':            ['dual occ', 'granny flat', 'secondary dwelling'],
+  'Casual income':             ['casual', 'casual employment'],
+  'Self-employed under 2 yrs': ['self employed', 'selfemployed', 'self employed under 2 years',
+                                'under two years self employed'],
+  'Contract income':           ['contractor', 'contract employment', 'fixed term contract'],
+  'Overtime / allowances':     ['overtime', 'allowances', 'shift allowance', 'penalty rates'],
+  'Foreign income':            ['overseas income', 'foreign currency income'],
+  'Trust income':              ['distributions from a trust'],
+  'SMSF':                      ['self managed super', 'self managed super fund', 'super fund purchase'],
+  'Company or trust borrower': ['company borrower', 'trust borrower', 'corporate trustee'],
+  'Guarantor':                 ['family guarantee', 'guarantee', 'security guarantee'],
+  'Construction':              ['construction loan', 'building a home', 'knock down rebuild'],
+  'Bridging':                  ['bridging loan', 'bridge', 'peak debt'],
+  'Multiple securities':       ['multiple security', 'cross collateralised', 'two securities'],
+  'Credit impairment':         ['bad credit', 'default', 'credit default', 'impaired credit'],
+  'Debt consolidation':        ['consolidation', 'consolidating debt', 'debt consol'],
+  'ATO debt':                  ['tax debt', 'ato'],
+  'Exiting private lending':   ['private lender', 'private lending', 'caveat loan'],
+  'Serviceability':            ['servicing', 'borrowing capacity', 'service'],
+  'Turnaround':                ['turnaround times', 'sla', 'fast approval', 'quick approval'],
+  'Cashback':                  ['cash back', 'rebate'],
+  'Policy exception granted':  ['exception', 'policy exception', 'escalation'],
+}
+
 const txt = (v: any) => String(v ?? '').trim()
 
 // WHAT THIS DEAL IS TAGGED WITH, AND NOTHING ELSE.

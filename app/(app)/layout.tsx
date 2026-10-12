@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Sidebar from "@/components/Sidebar";
 import TopProgress from "@/components/TopProgress";
+import Paco from "@/components/Paco";
 
 // EVERYTHING BEHIND THE LOGIN IS ONE. Nothing outside it is.
 //
@@ -35,6 +36,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 overflow-y-auto overscroll-x-contain">
         {children}
       </main>
+      {/* PACO, ON EVERY PAGE, FROM ONE PLACE.
+          Fabio, 12 Oct 2026: "I want him everywhere". This layout is the only
+          thing that wraps every screen behind the login, so mounting him here
+          means he cannot be missing from the page somebody happens to be on
+          when they need him - and there is one copy to fix rather than fifteen.
+          He is fixed to the window and opens over the page; nothing behind him
+          moves and nothing navigates. See components/Paco.tsx. */}
+      <Paco />
     </div>
   );
 }
