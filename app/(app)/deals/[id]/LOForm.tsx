@@ -1764,13 +1764,17 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         * Out here it opens from whichever tab somebody is looking at. */}
       {showMoveToCompliancePopup && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-card rounded-2xl p-6 w-[440px] shadow-xl">
+          {/* WIDER, AND A SIZE UP ON THE TEXT. Fabio, 12 Oct 2026: "I like the box
+              just need the pop up box to be slightly larger hard to read on
+              current size". This dialog asks somebody to decide whether an email
+              goes to a real client, so it is the wrong place to be squinting. */}
+          <div className="bg-card rounded-2xl p-7 w-[560px] shadow-xl">
             {/* TWO WAYS OUT, NOT ONE. The same change the BC tab's move to LO
               * got on 12 Oct 2026, one stage later. The only way to avoid
               * emailing was Cancel, which left the deal on LO with the client
               * never recorded as having agreed to the lender. */}
-            <div className="text-base font-semibold mb-1 text-ink">Client agreed — move to Compliance</div>
-            <p className="text-sm text-gray-500 mb-4">This records their decision and moves the deal to Compliance. Choose whether they get the next-steps email &mdash; the one about documents to sign and submission.</p>
+            <div className="text-[17px] font-semibold mb-1.5 text-ink">Client agreed — move to Compliance</div>
+            <p className="text-[13.5px] text-gray-500 mb-4 leading-relaxed">This records their decision and moves the deal to Compliance. Choose whether they get the next-steps email &mdash; the one about documents to sign and submission.</p>
 
             <div className="bg-gray-50 rounded-lg p-3 mb-4">
               <label className="text-xs font-medium text-gray-500 block mb-2">Did the client agree with the recommended lender ({recommendedLabel(d) || 'not yet recommended'})?</label>
@@ -1796,13 +1800,13 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             </div>
 
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowMoveToCompliancePopup(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={() => setShowMoveToCompliancePopup(false)} className="px-4 py-2.5 text-[13.5px] border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={() => handleMoveToCompliance(false)} disabled={sendingMoveToCompliance}
-                className="px-4 py-2 text-sm border border-gray-300 text-ink rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50">
+                className="px-4 py-2.5 text-[13.5px] border border-gray-300 text-ink rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50">
                 {sendingMoveToCompliance ? 'Moving...' : 'Just move to Compliance'}
               </button>
               <button onClick={() => handleMoveToCompliance(true)} disabled={sendingMoveToCompliance}
-                className="px-4 py-2 text-sm bg-ink text-page rounded-lg font-medium hover:opacity-90 disabled:opacity-50">
+                className="px-4 py-2.5 text-[13.5px] bg-ink text-page rounded-lg font-medium hover:opacity-90 disabled:opacity-50">
                 {sendingMoveToCompliance ? 'Sending...' : 'Email the client and move'}
               </button>
             </div>

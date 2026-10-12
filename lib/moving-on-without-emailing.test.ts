@@ -138,3 +138,30 @@ describe('moving to Compliance', () => {
     expect(LO_FORM).toContain('setShowMoveToCompliancePopup(false)')
   })
 })
+
+// BIG ENOUGH TO READ.
+//
+// Fabio, 12 Oct 2026: "I like the box just need the pop up box to be slightly
+// larger hard to read on current size". It asks somebody to decide whether an
+// email goes to a real client, which is the wrong place to be squinting.
+describe('the dialog is readable', () => {
+  it.each([
+    ['app/(app)/deals/[id]/BCForm.tsx'],
+    ['app/(app)/deals/[id]/LOForm.tsx'],
+  ])('%s is wide enough', (f) => {
+    const code = readFileSync(f, 'utf8')
+    expect(code).toContain('w-[560px]')
+    expect(code, 'back to the old narrow box').not.toContain('w-[440px]')
+    expect(code).not.toContain('w-[470px]')
+  })
+
+  it.each([
+    ['app/(app)/deals/[id]/BCForm.tsx'],
+    ['app/(app)/deals/[id]/LOForm.tsx'],
+  ])('%s does not set the choices in the smallest type we have', (f) => {
+    const code = readFileSync(f, 'utf8')
+    const i = code.indexOf('Email the client and move')
+    const block = code.slice(Math.max(0, i - 2200), i + 600)
+    expect(block, 'the option descriptions are back to text-xs').not.toContain('text-xs text-gray-500 leading-snug')
+  })
+})

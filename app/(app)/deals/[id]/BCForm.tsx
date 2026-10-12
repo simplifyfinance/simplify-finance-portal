@@ -1524,27 +1524,31 @@ Key assumptions: ${checklistText}`
             *
             * Both buttons record the agreement and move the deal. Emailing stays
             * the dark one, because it is still the normal case. */}
-          <div className="bg-card rounded-2xl p-6 w-[470px] shadow-xl">
-            <div className="text-base font-semibold mb-1 text-ink">Client agreed — move to LO</div>
-            <p className="text-sm text-gray-500 mb-4">This records that they agreed and moves the deal to Lending options. Choose whether they get the next-steps email.</p>
+          {/* WIDER, AND A SIZE UP ON THE TEXT. Fabio, 12 Oct 2026: "I like the box
+              just need the pop up box to be slightly larger hard to read on
+              current size". This dialog asks somebody to decide whether an email
+              goes to a real client, so it is the wrong place to be squinting. */}
+          <div className="bg-card rounded-2xl p-7 w-[560px] shadow-xl">
+            <div className="text-[17px] font-semibold mb-1.5 text-ink">Client agreed — move to LO</div>
+            <p className="text-[13.5px] text-gray-500 mb-4 leading-relaxed">This records that they agreed and moves the deal to Lending options. Choose whether they get the next-steps email.</p>
             <div className="flex flex-col gap-2 mb-5">
               <div className="border border-gray-200 rounded-xl px-3 py-2.5">
-                <div className="text-[13px] font-semibold text-ink mb-0.5">Email the client and move</div>
-                <div className="text-xs text-gray-500 leading-snug">Sends the next-steps email, including the bank statement link if one is entered &mdash; the same thing they would get if they had clicked &quot;ready to proceed&quot; themselves.</div>
+                <div className="text-[14px] font-semibold text-ink mb-1">Email the client and move</div>
+                <div className="text-[12.5px] text-gray-500 leading-relaxed">Sends the next-steps email, including the bank statement link if one is entered &mdash; the same thing they would get if they had clicked &quot;ready to proceed&quot; themselves.</div>
               </div>
               <div className="border border-gray-200 rounded-xl px-3 py-2.5">
-                <div className="text-[13px] font-semibold text-ink mb-0.5">Just move to LO</div>
-                <div className="text-xs text-gray-500 leading-snug">No email goes out. Use this when they have already sent their statements, or you are taking it straight to a lender.</div>
+                <div className="text-[14px] font-semibold text-ink mb-1">Just move to LO</div>
+                <div className="text-[12.5px] text-gray-500 leading-relaxed">No email goes out. Use this when they have already sent their statements, or you are taking it straight to a lender.</div>
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowMoveToLoPopup(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={() => setShowMoveToLoPopup(false)} className="px-4 py-2.5 text-[13.5px] border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={() => handleMoveToLo(false)} disabled={sendingMoveToLo}
-                className="px-4 py-2 text-sm border border-gray-300 text-ink rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50">
+                className="px-4 py-2.5 text-[13.5px] border border-gray-300 text-ink rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50">
                 {sendingMoveToLo ? 'Moving...' : 'Just move to LO'}
               </button>
               <button onClick={() => handleMoveToLo(true)} disabled={sendingMoveToLo}
-                className="px-4 py-2 text-sm bg-ink text-page rounded-lg font-medium hover:opacity-90 disabled:opacity-50">
+                className="px-4 py-2.5 text-[13.5px] bg-ink text-page rounded-lg font-medium hover:opacity-90 disabled:opacity-50">
                 {sendingMoveToLo ? 'Sending...' : 'Email the client and move'}
               </button>
             </div>
