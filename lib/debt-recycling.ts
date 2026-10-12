@@ -28,6 +28,7 @@
 import { money, readMoney } from './money'
 import { normalisePurpose } from './split-purpose'
 import { andList } from './and-list'
+import { offsetNames } from './offset-splits'
 
 const txt = (v: any) => String(v ?? '').trim()
 // readMoney gives null for anything it cannot read. Nothing downstream wants a
@@ -183,16 +184,13 @@ export function everySplitHasAPurpose(bc: any): boolean {
 //
 // Reads the list, and still reads the single value that shipped this morning, so
 // a deal saved in the hour between the two says the same thing afterwards.
+//
+// 12 Oct 2026: KEYED BY POSITION, NOT BY NAME, and the house is named where
+// there is more than one. This de-duplicated the labels, so three identical
+// "Investment equity loan split" rows across three houses came out as one line
+// with nothing to say which. See lib/offset-splits.ts for the whole fault.
 export function offsetSplitLabels(bc: any): string[] {
-  const raw = Array.isArray(bc?.offsetSplits) ? bc.offsetSplits : [bc?.offsetSplit]
-  const live = realOnes(bc?.splits).map(s => txt(s?.label))
-  const out: string[] = []
-  for (const v of raw.map(txt)) {
-    if (v && live.includes(v) && !out.includes(v)) out.push(v)
-  }
-  // Named in the order the splits are in, not the order they were ticked - the
-  // email lists them beside figures that are already in that order.
-  return live.filter(l => out.includes(l))
+  return offsetNames(bc)
 }
 
 // --- the words ---------------------------------------------------------------

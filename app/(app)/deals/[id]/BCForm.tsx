@@ -240,6 +240,7 @@ function fieldCls(value: string) {
     : "px-2.5 py-1.5 text-sm border border-dashed border-field-line rounded-lg focus:outline-none focus:border-brand bg-page w-full"
 }
 import { buysNothing } from '@/lib/buying'
+import { offsetIsOn, toggleOffset, offsetsAfterRemoving } from '@/lib/offset-splits'
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
 import { annualIncomeOfApplicant, incomeBreakdownFor } from '@/lib/income-calculations'
 import { newGuard, saveGuarded } from '@/lib/save-conflict'
@@ -560,8 +561,20 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     Array.isArray(s.securityIds) ? s.securityIds.map(String) : [])
   const [securityLimits, setSecurityLimits] = useState<Record<string, string>>(
     (s.securityLimits && typeof s.securityLimits === 'object') ? s.securityLimits : {})
+  // WHICH SPLITS CARRY AN OFFSET - BY POSITION, NOT BY NAME.
+  //
+  // 12 Oct 2026. Three houses, each with a split called "Investment equity loan
+  // split", and the tick was stored by that name - so ticking one ticked all
+  // three and the client email named the loan without naming the house. The
+  // whole fault, and why position rather than an id, is in lib/offset-splits.ts.
+  //
+  // A record saved before today holds names and is read as names, so no deal
+  // changes its meaning on its own. The moment somebody ticks a box here it is
+  // written as positions.
   const [offsetSplits, setOffsetSplits] = useState<string[]>(
     Array.isArray(s.offsetSplits) ? s.offsetSplits : (s.offsetSplit ? [s.offsetSplit] : []))
+  const [offsetSplitIdx, setOffsetSplitIdx] = useState<number[] | null>(
+    Array.isArray(s.offsetSplitIdx) ? s.offsetSplitIdx.map(Number).filter(Number.isInteger) : null)
   // Defaults to a purchase, which is what every construction deal written
   // before today was. See lib/construction.ts.
   const [landFunding, setLandFunding] = useState(s.landFunding || 'purchase')
@@ -892,7 +905,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     additionalSavings: setAdditionalSavingsRaw, equityRelease: setEquityRelease,
     depositSource: setDepositSource, lmi: setLmi, fhog: setFhog, guarantorName: setGuarantorName,
     bridgingPeriod: setBridgingPeriod, peakDebt: setPeakDebt, totalLimit: setTotalLimit,
-    offsetSplits: setOffsetSplits, propertyLimits: setPropertyLimits,
+    offsetSplits: setOffsetSplits, offsetSplitIdx: setOffsetSplitIdx, propertyLimits: setPropertyLimits,
     securityIds: setSecurityIds, securityLimits: setSecurityLimits,
     constructionCost: setConstructionCostRaw,
     landValue: setLandValueRaw, landFunding: setLandFunding, landLoanBalance: setLandLoanBalance,
@@ -1061,13 +1074,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // pending stays in pendingSave and is written by the effect above when the
     // form actually leaves.
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, propertyLimits, securityIds, securityLimits, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, propertyLimits, securityIds, securityLimits, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand }
   }
 
   // Does the saved email still match the scenario the deal is on? Read in three
@@ -1211,6 +1224,14 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   }
 
   function removeSplit(i: number) {
+    // THE OFFSET TICKS MOVE WITH THE LIST.
+    //
+    // They are positions now, so removing a split from the middle would leave
+    // every tick after it pointing one loan too far down - an offset silently
+    // sliding onto the wrong split, which is worse than the fault this replaced.
+    // Worked out BEFORE the list changes, off the record as it stands.
+    // See lib/offset-splits.ts.
+    setOffsetSplitIdx(offsetsAfterRemoving(buildBcData(), i))
     setSplits(prev => prev.filter((_, idx) => idx !== i))
   }
 
@@ -1913,15 +1934,33 @@ Key assumptions: ${checklistText}`
                     {splits.filter(x => (x.label || '').trim()).length === 0 && (
                       <span className="text-[11px] text-gray-400">Name a split first.</span>
                     )}
-                    {splits.filter(x => (x.label || '').trim()).map((x, i) => (
-                      <label key={i} className="flex items-center gap-2 text-[12.5px] text-ink cursor-pointer">
-                        <input type="checkbox" checked={offsetSplits.includes(x.label)}
-                          onChange={e => setOffsetSplits(e.target.checked
-                            ? [...offsetSplits.filter(l => l !== x.label), x.label]
-                            : offsetSplits.filter(l => l !== x.label))} />
-                        {x.label}
-                      </label>
-                    ))}
+                    {(() => {
+                      const bcNow = buildBcData()
+                      const str = (v: any) => String(v ?? '').trim()
+                      const houses = new Set(splits.map((x: any) => str(x?.securityId)).filter(Boolean))
+                      const addressFor = (x: any) => {
+                        const id = str(x?.securityId)
+                        if (!id) return ''
+                        const hit = (ff.properties || []).find((p: any) => str(p?.id) === id)
+                        return hit ? str(hit.address) : ''
+                      }
+                      return splits.map((x: any, i: number) => {
+                        if (!(x.label || '').trim()) return null
+                        const addr = houses.size > 1 ? addressFor(x) : ''
+                        return (
+                          <label key={i} className="flex items-center gap-2 text-[12.5px] text-ink cursor-pointer">
+                            <input type="checkbox" checked={offsetIsOn(bcNow, i)}
+                              onChange={() => setOffsetSplitIdx(toggleOffset(bcNow, i))} />
+                            <span>{x.label}</span>
+                            {/* THE HOUSE, BECAUSE THE NAME ALONE IS NOT ENOUGH.
+                                Six splits, three pairs with the same two names -
+                                without this there is no way to tell which row is
+                                which. Only drawn when there IS more than one. */}
+                            {addr && <span className="text-gray-400 text-[11.5px]">&mdash; {addr}</span>}
+                          </label>
+                        )
+                      })
+                    })()}
                   </div>
                 </Field>
               )}
