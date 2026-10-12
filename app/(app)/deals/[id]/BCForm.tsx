@@ -1389,7 +1389,13 @@ Key assumptions: ${checklistText}`
         ], housingExpense: buildHousingExpenseLine(ffApp), factFindChecklist: propertyChecklist(ff), jointFirstName: ffApp2.firstName || '',
           // The values behind the property cards. The BC holds no value per
           // property and must not invent one - these come from the fact find.
-          ffProperties: (ff.properties || []).map((pr: any) => ({ address: pr?.address || '', value: pr?.value || '' })),
+          // THE ID TRAVELS WITH THEM. The email groups its property cards by
+          // resolving each split's securityId against this list - without the
+          // id every split on a deal recorded after 12 Oct 2026 lands in "Other
+          // lending" and the client gets one unheaded card instead of a card
+          // per house. See propertyOf in lib/complex-refinance.ts.
+          ffProperties: (ff.properties || []).map((pr: any) => ({
+            id: pr?.id || '', address: pr?.address || '', value: pr?.value || '' })),
           // BOTH SCENARIOS, WHEN THERE ARE TWO. The email builder puts them side
           // by side; with one, nothing changes and it builds exactly the email
           // it builds today. See lib/bc-scenarios.ts.

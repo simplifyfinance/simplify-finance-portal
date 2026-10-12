@@ -6,6 +6,12 @@
 // than just the assertion.
 import { readFileSync } from 'fs'
 import { describe, it, expect } from 'vitest'
+// limitOf is aliased: lib/securities.ts exports one too - by id, returning the
+// typed string - and two things of that name in one file is how the wrong one
+// gets asserted against. This is the email's, which resolves both shapes and
+// returns a number.
+import { groupsOf, propertyOf, limitOf as crLimitOf,
+         everySplitHasAProperty, UNASSIGNED } from './complex-refinance'
 import {
   securitiesOf, securityIdsOf, isSecurity, limitOf, lvrOf, totalsOf,
   groupBySecurity, orphanSplits, securityLines, totalLine, legacyMatch,
@@ -242,5 +248,112 @@ describe('it reaches the other two tabs', () => {
     expect(box).toContain('securityIds')
     // And the old inference survives for every deal that has not ticked one.
     expect(box).toContain('REFINANCING.includes')
+  })
+})
+
+
+// ---------------------------------------------------------------------------
+// AND THE CLIENT EMAIL STILL DRAWS ONE CARD PER HOUSE.
+//
+// 12 Oct 2026. This is the test that should have existed before the BC was
+// touched at all, and its absence is why a1d6c40 shipped broken.
+//
+// The complex refinance email groups its property cards by reading the address
+// off each split. The securities change replaced that typed address with an id,
+// so every split on a new deal landed in "Other lending" and the client got ONE
+// unheaded card holding all their money instead of a card per property - the
+// single thing the template exists to do. Every test passed. Nothing covered
+// the email.
+//
+// Fabio found it by asking what the email looked like.
+describe('the email finds the houses by id', () => {
+  const ffProps = [
+    { id: 'p1', address: '18 Rowallan Pde, Blackburn', value: '1,320,000' },
+    { id: 'p2', address: '9 Finchley St, Coburg', value: '910,000' },
+    { id: 'p3', address: '2/44 Ardoyne Rd, Yarraville', value: '640,000' },
+  ]
+  // Three properties, two splits each - the shape Fabio asked about.
+  const six = [
+    { label: 'Split 1', amount: '540,000', securityId: 'p1' },
+    { label: 'Split 2', amount: '160,000', securityId: 'p1' },
+    { label: 'Split 3', amount: '395,000', securityId: 'p2' },
+    { label: 'Split 4', amount: '60,000',  securityId: 'p2' },
+    { label: 'Split 5', amount: '330,000', securityId: 'p3' },
+    { label: 'Split 6', amount: '45,000',  securityId: 'p3' },
+  ]
+  const bc = {
+    template: 'complex_refinance', splits: six, ffProperties: ffProps,
+    securityLimits: { p1: '780,000', p2: '455,000', p3: '375,000' },
+  }
+
+  it('three houses, three cards, two splits in each', () => {
+    const g = groupsOf(bc)
+    expect(g.length).toBe(3)
+    expect(g.map(x => x.heading)).toEqual(ffProps.map(p => p.address))
+    expect(g.map(x => x.splits.length)).toEqual([2, 2, 2])
+  })
+
+  it('and NOT one card called Other lending', () => {
+    // The exact shape of the break.
+    expect(groupsOf(bc).map(x => x.heading)).not.toContain(UNASSIGNED)
+  })
+
+  it('each card totals its own splits', () => {
+    expect(groupsOf(bc).map(x => x.drawn)).toEqual([700000, 455000, 375000])
+  })
+
+  it('the limit is found by id, and what is undrawn is still said', () => {
+    const g = groupsOf(bc)
+    expect(g[0].limit).toBe(780000)
+    expect(g[0].undrawn).toBe(80000)
+    expect(g[1].undrawn).toBe(0)
+  })
+
+  it('and the value still comes off the fact find list', () => {
+    expect(groupsOf(bc)[0].value).toBe('$1,320,000')
+  })
+})
+
+describe('deals recorded before the change still read', () => {
+  const typed = {
+    template: 'complex_refinance',
+    splits: [
+      { label: 'Split 1', amount: '420,000', property: '12 Smith St, Hawthorn' },
+      { label: 'Split 2', amount: '310,000', property: '7 Elgin Ave, Carnegie' },
+    ],
+    propertyLimits: { '12 Smith St, Hawthorn': '600,000' },
+  }
+
+  it('the typed address still groups them', () => {
+    expect(groupsOf(typed).map(g => g.heading))
+      .toEqual(['12 Smith St, Hawthorn', '7 Elgin Ave, Carnegie'])
+  })
+
+  it('and the old address-keyed limit is still found', () => {
+    expect(crLimitOf(typed, '12 Smith St, Hawthorn')).toBe(600000)
+  })
+
+  it('a split with neither is unassigned and says so', () => {
+    const none = { splits: [{ label: 'Split 1', amount: '50,000' }] }
+    expect(groupsOf(none)[0].heading).toBe(UNASSIGNED)
+    expect(everySplitHasAProperty(none)).toBe(false)
+  })
+
+  it('an id pointing at a property that is gone is unassigned, not a blank heading', () => {
+    const ghost = { splits: [{ label: 'Split 1', amount: '50,000', securityId: 'gone' }],
+                    ffProperties: [{ id: 'p1', address: 'somewhere' }] }
+    expect(propertyOf(ghost.splits[0], ghost)).toBe('')
+    expect(groupsOf(ghost)[0].heading).toBe(UNASSIGNED)
+  })
+})
+
+describe('the id reaches the email at all', () => {
+  it('the BC puts it on the payload the email reads', () => {
+    const ui = readFileSync('app/(app)/deals/[id]/BCForm.tsx', 'utf8')
+    const at = ui.indexOf('ffProperties:')
+    expect(at).toBeGreaterThan(-1)
+    // Without the id on this list there is nothing for propertyOf to resolve
+    // against, and every card collapses into one.
+    expect(ui.slice(at, at + 200)).toContain('id:')
   })
 })
