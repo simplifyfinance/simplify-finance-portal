@@ -239,6 +239,7 @@ function fieldCls(value: string) {
     ? "px-2.5 py-1.5 text-sm border border-green-200 rounded-lg focus:outline-none focus:border-brand bg-field w-full"
     : "px-2.5 py-1.5 text-sm border border-dashed border-field-line rounded-lg focus:outline-none focus:border-brand bg-page w-full"
 }
+import { buysNothing } from '@/lib/buying'
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
 import { annualIncomeOfApplicant, incomeBreakdownFor } from '@/lib/income-calculations'
 import { newGuard, saveGuarded } from '@/lib/save-conflict'
@@ -1658,6 +1659,132 @@ Key assumptions: ${checklistText}`
               runs in the order the work is done: the numbers, then the words
               that go to the client. Fabio, 3 Oct 2026. */}
           <div className="flex flex-col gap-4">
+              {/* SECURITIES FIRST, THEN THE SPLITS AGAINST THEM.
+                  Fabio, 12 Oct 2026: "securities tab should be at the top". It
+                  was the last thing inside the Loan splits card, which is the
+                  wrong way round - you choose the houses, then you split against
+                  them, and the split's Security dropdown is a list of whatever
+                  was ticked here. Below the splits it was a list nobody had
+                  filled in yet by the time they needed it. Same block, moved. */}
+                  {/* THE SECURITIES, TICKED FROM THE FACT FIND.
+                    *
+                    * 12 Oct 2026. Fabio: "I want the ability of adding multiple
+                    * securities ... ensure carries to LO and Compliance".
+                    *
+                    * This block used to list whatever the splits had TYPED, keyed
+                    * by the address string. So nothing recorded which properties
+                    * were actually security, the total security value could not
+                    * be worked out, and two spellings of one house were two rows.
+                    *
+                    * The fact find already holds every property with its id,
+                    * value, use and type. Ticking is the whole job - nothing is
+                    * retyped, and a value corrected on the fact find corrects the
+                    * LVR here, because it is read rather than copied.
+                    *
+                    * See lib/securities.ts. */}
+                  {isComplexRefinance(template) && (() => {
+                    const props = ffProperties(ff)
+                    if (props.length === 0) {
+                      return (
+                        <div className="border border-chase-edge bg-chase-bg rounded-lg p-3 text-[12px] text-chase">
+                          No properties on the fact find yet, so there is nothing to secure this against.
+                          Add them on the Fact Find tab and they appear here.
+                        </div>
+                      )
+                    }
+                    const bcNow = buildBcData()
+                    const secs = securitiesOf(bcNow, ff)
+                    const t = totalsOf(secs)
+                    const groups = groupBySecurity(splits, secs)
+                    const orphans = orphanSplits(splits, secs)
+                    const drawnOf = (id: string) => groups.find(g => g.security.id === id)?.drawn || 0
+                    const toggle = (id: string) => setSecurityIds(
+                      securityIds.includes(id) ? securityIds.filter(x => x !== id) : [...securityIds, id])
+
+                    return (
+                      <div className="border border-gray-100 rounded-lg p-3 bg-card">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">
+                          Securities for this loan
+                        </div>
+                        <p className="text-[11px] text-gray-400 mb-2.5">
+                          {props.length} propert{props.length === 1 ? 'y' : 'ies'} on the fact find.
+                          Tick the ones this loan is secured by.
+                        </p>
+
+                        <div className="flex flex-col gap-1">
+                          {props.map(p => {
+                            const on = securityIds.includes(String(p.id))
+                            const sec = secs.find(x => x.id === String(p.id))
+                            const l = sec ? lvrOf(sec) : null
+                            return (
+                              <div key={String(p.id)}
+                                   className={`flex items-center gap-3 flex-wrap rounded-lg px-2 py-1.5 ${on ? '' : 'opacity-55'}`}>
+                                <button type="button" onClick={() => toggle(String(p.id))}
+                                  aria-pressed={on} aria-label={`${on ? 'Remove' : 'Add'} ${p.address || 'this property'} as security`}
+                                  className={`shrink-0 w-4 h-4 rounded border-[1.5px] flex items-center justify-center text-[10px] font-bold ${
+                                    on ? 'bg-ink border-ink text-page' : 'bg-card border-gray-300 text-transparent'}`}>
+                                  &#10003;
+                                </button>
+                                <span className="text-[12.5px] text-ink flex-1 min-w-[170px]">
+                                  {p.address || 'Address not recorded'}
+                                </span>
+                                <span className="text-[11px] text-gray-400 w-[96px]">{p.ownershipType || ''}</span>
+                                <span className="text-[11px] text-gray-400 w-[86px] text-right">
+                                  {fmtMoney(Number(String(p.value || p.rpDataEstimatedValue || '').replace(/[^0-9.]/g, '')) || 0)}
+                                </span>
+                                {on ? (
+                                  <>
+                                    <div className="w-[140px]">
+                                      <NumberInput value={securityLimits[String(p.id)] || ''}
+                                        onChange={(v: string) => setSecurityLimits({ ...securityLimits, [String(p.id)]: v })} />
+                                    </div>
+                                    <span className="text-[11px] text-gray-400 w-[52px] text-right">
+                                      {l === null ? '' : pct(l)}
+                                    </span>
+                                    <span className="text-[11px] text-gray-400 w-[110px] text-right">
+                                      drawn {fmtMoney(drawnOf(String(p.id)))}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="text-[11px] text-gray-400 flex-1 text-right">not security</span>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+
+                        {secs.length > 0 && (
+                          <div className="mt-2.5 pt-2.5 border-t border-card-line flex items-center gap-3 flex-wrap text-[12px]">
+                            <b className="text-ink">Total security</b>
+                            <span className="text-muted">{fmtMoney(t.value)}</span>
+                            <span className="text-gray-400">against</span>
+                            <span className="text-muted">{fmtMoney(t.limit)}</span>
+                            {t.lvr !== null && <b className="text-info ml-auto">{pct(t.lvr)} LVR</b>}
+                          </div>
+                        )}
+
+                        {/* A VALUE MISSING MAKES THE TOTAL TOO LOW AND THE LVR TOO
+                          * HIGH. A number that looks precise and is not is worse
+                          * than no number, so it is said here. */}
+                        {secs.length > 0 && !t.valuedAll && (
+                          <p className="mt-1.5 text-[11px] text-chase leading-snug">
+                            One of these has no value on the fact find, so the total is understated
+                            and the LVR is overstated.
+                          </p>
+                        )}
+
+                        {/* MONEY NO PROPERTY IS CARRYING. These used to vanish. */}
+                        {orphans.length > 0 && (
+                          <p className="mt-1.5 text-[11px] text-chase leading-snug">
+                            {orphans.length} split{orphans.length === 1 ? '' : 's'} not against any security
+                            &mdash; {orphans.map(o => o.label || 'unnamed').join(', ')}. Pick one on the split,
+                            or tick the property it belongs to.
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })()}
+
               <div className="bg-card border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Scenario details</div>
                 {/* WHAT THE SALE PROCEEDS ARE GOING INTO.
@@ -1681,7 +1808,13 @@ Key assumptions: ${checklistText}`
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-2">
-                  <Field label={['refinance_equity', 'refinance_only'].includes(template) ? 'Suburb' : 'State'}><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
+                  {/* IT IS THE SUBURB BOX. It writes into `suburb`, it is read
+                      as the suburb everywhere, and the "what is missing" check
+                      asks for "Suburb" - but it only SAID Suburb on two of the
+                      templates. On a complex refinance it said "State", two
+                      boxes above a second box also called "State" that really is
+                      one. Fabio, 12 Oct 2026. */}
+                  <Field label={buysNothing(template) ? 'Suburb' : 'State'}><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
                   {template !== "fhb" && <Field label="Property type"><select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>}
                   {/* Amber until answered, the same way the LO marks a split
                       with no purpose - it is not optional, it decides a
@@ -1709,7 +1842,7 @@ Key assumptions: ${checklistText}`
                       </Field>
                     </div>
                   )}
-                  {!["refinance_equity", "refinance_only", "investment_equity", "construction"].includes(template) && !sellAndBuild && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={handlePurchasePriceChange} /></Field>}
+                  {!buysNothing(template) && !["refinance_equity", "refinance_only", "investment_equity", "construction"].includes(template) && !sellAndBuild && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={handlePurchasePriceChange} /></Field>}
                   {/* THE CONTRIBUTION BOX, BACK ON THE FAMILY PLEDGE.
                       15 Sep 2026. The deposit box was hidden on this template,
                       yet the client email prints "Your contribution required"
@@ -1722,7 +1855,7 @@ Key assumptions: ${checklistText}`
                       <NumberInput value={deposit} onChange={handleDepositChange} />
                     </Field>
                   )}
-                  {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "construction"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={handleDepositChange} />
+                  {!buysNothing(template) && !["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "construction"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={handleDepositChange} />
                     {(() => {
                       const dep = parseFloat(deposit.replace(/,/g, '')) || 0
                       const sd = parseFloat(stampDuty.replace(/,/g, '')) || 0
@@ -1731,7 +1864,7 @@ Key assumptions: ${checklistText}`
                       return <div className="text-[11px] text-gray-500 mt-1">${formatNumber(Math.round(dep - sd).toString())} into the property after stamp duty</div>
                     })()}
                   </Field>}
-              {!["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "buy_sell"].includes(template) && (
+              {!buysNothing(template) && !["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "buy_sell"].includes(template) && (
                 <Field label="Deposit source">
                   <select className={selectCls} value={depositSource} onChange={e => setDepositSource(e.target.value)}>
                     <option value="">Select source</option>
@@ -1745,10 +1878,14 @@ Key assumptions: ${checklistText}`
                   {/* NO PURCHASE, NO DUTY. A build on land somebody already
                       owns has none, so the box is not there to be left blank and
                       then reported as missing. lib/construction.ts. */}
-                  {!["refinance_equity", "refinance_only", "investment_equity"].includes(template)
+                  {/* NO PURCHASE, NO DUTY, AND NO STATE TO WORK IT OUT IN.
+                      buysNothing() in front of both - see lib/buying.ts. */}
+                  {!buysNothing(template)
+                    && !["refinance_equity", "refinance_only", "investment_equity"].includes(template)
                     && !(showsBuild && landFunding !== 'purchase')
                     && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={handleStampDutyChange} /></Field>}
-                  {!["refinance_equity", "refinance_only", "investment_equity"].includes(template)
+                  {!buysNothing(template)
+                    && !["refinance_equity", "refinance_only", "investment_equity"].includes(template)
                     && !(showsBuild && landFunding !== 'purchase') && (
                     <Field label="State">
                       <select className={selectCls} value={dutyState} onChange={e => setDutyState(e.target.value)}>
@@ -2175,124 +2312,6 @@ Key assumptions: ${checklistText}`
                   {/* THE SPLITS AGAINST THE LIMIT. Warn loudly, never block -
                       the same rule as the peak debt box and the balances line
                       above. A send refused at 6pm is the worse failure. */}
-                  {/* THE SECURITIES, TICKED FROM THE FACT FIND.
-                    *
-                    * 12 Oct 2026. Fabio: "I want the ability of adding multiple
-                    * securities ... ensure carries to LO and Compliance".
-                    *
-                    * This block used to list whatever the splits had TYPED, keyed
-                    * by the address string. So nothing recorded which properties
-                    * were actually security, the total security value could not
-                    * be worked out, and two spellings of one house were two rows.
-                    *
-                    * The fact find already holds every property with its id,
-                    * value, use and type. Ticking is the whole job - nothing is
-                    * retyped, and a value corrected on the fact find corrects the
-                    * LVR here, because it is read rather than copied.
-                    *
-                    * See lib/securities.ts. */}
-                  {isComplexRefinance(template) && (() => {
-                    const props = ffProperties(ff)
-                    if (props.length === 0) {
-                      return (
-                        <div className="border border-chase-edge bg-chase-bg rounded-lg p-3 text-[12px] text-chase">
-                          No properties on the fact find yet, so there is nothing to secure this against.
-                          Add them on the Fact Find tab and they appear here.
-                        </div>
-                      )
-                    }
-                    const bcNow = buildBcData()
-                    const secs = securitiesOf(bcNow, ff)
-                    const t = totalsOf(secs)
-                    const groups = groupBySecurity(splits, secs)
-                    const orphans = orphanSplits(splits, secs)
-                    const drawnOf = (id: string) => groups.find(g => g.security.id === id)?.drawn || 0
-                    const toggle = (id: string) => setSecurityIds(
-                      securityIds.includes(id) ? securityIds.filter(x => x !== id) : [...securityIds, id])
-
-                    return (
-                      <div className="border border-gray-100 rounded-lg p-3 bg-card">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">
-                          Securities for this loan
-                        </div>
-                        <p className="text-[11px] text-gray-400 mb-2.5">
-                          {props.length} propert{props.length === 1 ? 'y' : 'ies'} on the fact find.
-                          Tick the ones this loan is secured by.
-                        </p>
-
-                        <div className="flex flex-col gap-1">
-                          {props.map(p => {
-                            const on = securityIds.includes(String(p.id))
-                            const sec = secs.find(x => x.id === String(p.id))
-                            const l = sec ? lvrOf(sec) : null
-                            return (
-                              <div key={String(p.id)}
-                                   className={`flex items-center gap-3 flex-wrap rounded-lg px-2 py-1.5 ${on ? '' : 'opacity-55'}`}>
-                                <button type="button" onClick={() => toggle(String(p.id))}
-                                  aria-pressed={on} aria-label={`${on ? 'Remove' : 'Add'} ${p.address || 'this property'} as security`}
-                                  className={`shrink-0 w-4 h-4 rounded border-[1.5px] flex items-center justify-center text-[10px] font-bold ${
-                                    on ? 'bg-ink border-ink text-page' : 'bg-card border-gray-300 text-transparent'}`}>
-                                  &#10003;
-                                </button>
-                                <span className="text-[12.5px] text-ink flex-1 min-w-[170px]">
-                                  {p.address || 'Address not recorded'}
-                                </span>
-                                <span className="text-[11px] text-gray-400 w-[96px]">{p.ownershipType || ''}</span>
-                                <span className="text-[11px] text-gray-400 w-[86px] text-right">
-                                  {fmtMoney(Number(String(p.value || p.rpDataEstimatedValue || '').replace(/[^0-9.]/g, '')) || 0)}
-                                </span>
-                                {on ? (
-                                  <>
-                                    <div className="w-[140px]">
-                                      <NumberInput value={securityLimits[String(p.id)] || ''}
-                                        onChange={(v: string) => setSecurityLimits({ ...securityLimits, [String(p.id)]: v })} />
-                                    </div>
-                                    <span className="text-[11px] text-gray-400 w-[52px] text-right">
-                                      {l === null ? '' : pct(l)}
-                                    </span>
-                                    <span className="text-[11px] text-gray-400 w-[110px] text-right">
-                                      drawn {fmtMoney(drawnOf(String(p.id)))}
-                                    </span>
-                                  </>
-                                ) : (
-                                  <span className="text-[11px] text-gray-400 flex-1 text-right">not security</span>
-                                )}
-                              </div>
-                            )
-                          })}
-                        </div>
-
-                        {secs.length > 0 && (
-                          <div className="mt-2.5 pt-2.5 border-t border-card-line flex items-center gap-3 flex-wrap text-[12px]">
-                            <b className="text-ink">Total security</b>
-                            <span className="text-muted">{fmtMoney(t.value)}</span>
-                            <span className="text-gray-400">against</span>
-                            <span className="text-muted">{fmtMoney(t.limit)}</span>
-                            {t.lvr !== null && <b className="text-info ml-auto">{pct(t.lvr)} LVR</b>}
-                          </div>
-                        )}
-
-                        {/* A VALUE MISSING MAKES THE TOTAL TOO LOW AND THE LVR TOO
-                          * HIGH. A number that looks precise and is not is worse
-                          * than no number, so it is said here. */}
-                        {secs.length > 0 && !t.valuedAll && (
-                          <p className="mt-1.5 text-[11px] text-chase leading-snug">
-                            One of these has no value on the fact find, so the total is understated
-                            and the LVR is overstated.
-                          </p>
-                        )}
-
-                        {/* MONEY NO PROPERTY IS CARRYING. These used to vanish. */}
-                        {orphans.length > 0 && (
-                          <p className="mt-1.5 text-[11px] text-chase leading-snug">
-                            {orphans.length} split{orphans.length === 1 ? '' : 's'} not against any security
-                            &mdash; {orphans.map(o => o.label || 'unnamed').join(', ')}. Pick one on the split,
-                            or tick the property it belongs to.
-                          </p>
-                        )}
-                      </div>
-                    )
-                  })()}
                   {isDebtRecycling(template) && (() => {
                     const c = limitCheck(buildBcData())
                     if (!c.words) return null

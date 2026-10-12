@@ -108,15 +108,35 @@ describe('the property value', () => {
   })
 })
 
+// THE BOX IS PRINTED AS IT IS TYPED, AND NOTHING IS PASTED ONTO IT.
+//
+// Rewritten 12 Oct 2026. This used to expect a composed sentence - the Purpose
+// dropdown's label, an em dash, the words "originally used to", then the box -
+// which read like a form filling itself in rather than like a broker writing to
+// a client. Fabio: "just the wording we put in the box".
 describe('what each split says about itself', () => {
-  it('names the purpose and what the money originally did', () => {
-    expect(originalPurposeLine(bc.splits[1]))
-      .toBe('Investment — originally used to purchase 12 Example Road')
-    expect(originalPurposeLine(bc.splits[0])).toBe('Owner-occupied')
+  it('prints the broker\'s own words, exactly as typed', () => {
+    expect(originalPurposeLine(bc.splits[1])).toBe('purchase 12 Example Road')
   })
 
-  it('and says nothing at all without a purpose', () => {
-    expect(originalPurposeLine({ amount: '100,000', fundsUsedFor: 'buy shares' })).toBe('')
+  it('pastes no purpose, no dash and no preamble onto the front of them', () => {
+    const line = originalPurposeLine(bc.splits[1])
+    expect(line).not.toContain('Investment')
+    expect(line).not.toContain('—')
+    expect(line).not.toContain('originally used to')
+  })
+
+  // A purpose with an empty box said "Owner-occupied" on this line. It no longer
+  // falls back: a line that is sometimes one word from a dropdown and sometimes
+  // a sentence somebody wrote is two different things wearing one place on the
+  // page. The Purpose dropdown still does its job everywhere else.
+  it('says nothing when the box is empty, whatever the purpose is', () => {
+    expect(originalPurposeLine(bc.splits[0])).toBe('')
+    expect(originalPurposeLine({ amount: '100,000', purpose: 'investment' })).toBe('')
+  })
+
+  it('and still says nothing when there is no purpose either', () => {
+    expect(originalPurposeLine({ amount: '100,000' })).toBe('')
   })
 })
 

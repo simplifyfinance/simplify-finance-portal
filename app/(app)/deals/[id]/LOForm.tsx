@@ -3,6 +3,7 @@ import { isDebtRecycling } from '@/lib/debt-recycling'
 import { normalisePurpose } from '@/lib/split-purpose'
 import { TAG_GROUPS, tagsOf, toggleTag, tagLine } from '@/lib/deal-tags'
 import { isComplexRefinance } from '@/lib/complex-refinance'
+import { loTemplateFor, settleLoTemplate } from '@/lib/lo-template'
 // Aliased: this file already has a local `pct` for the single-property LVR a
 // few hundred lines down, and two things called pct in one file is how the
 // wrong one gets used in six months.
@@ -175,6 +176,10 @@ type LOData = {
   // person's typing runs through, and never by the effect that copies the BC
   // in - the same line this file already draws between setD and setDRaw.
   loanAmountByHand: boolean
+  // SOMEBODY PICKED THE EMAIL TEMPLATE THEMSELVES, so it survives the borrowing
+  // capacity moving underneath it. Absent or false means it follows the BC - see
+  // lib/lo-template.ts, and the same line this file draws for the loan amount.
+  templateByHand?: boolean
   purchasePrice: string
   deposit: string
   stampDuty: string
@@ -567,16 +572,20 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         // Built here and not by a person, so the BC may keep it current.
         fromDb.refinanceSplitsByHand = false
       }
-      return fillMissing(fromDb, blankData())
+      const first = fillMissing(fromDb, blankData())
+      // The same settling loShape does, because the first record on screen
+      // comes through here and not through loShape.
+      first.template = settleLoTemplate(first, bc.template)
+      return first
     }
     return blankData()
   }
 
   function blankData(): LOData {
-    // Debt recycling is a refinance in everything the LO cares about - an
-    // existing loan moving, no purchase - so it starts on the refinance
-    // template. startsWith('refinance') alone sent it to lo_purchase.
-    const initialTemplate = bc.template?.startsWith('refinance') || isDebtRecycling(bc.template) || isComplexRefinance(bc.template) ? 'lo_refinance' : bc.template === 'bridging' ? 'lo_bridging' : 'lo_purchase'
+    // One rule, in lib/lo-template.ts. It was written out by hand here and in
+    // two other places in this file, and a complex refinance was missing from
+    // one of the copies.
+    const initialTemplate = loTemplateFor(bc.template)
     return {
       template: initialTemplate,
       bcTemplate: bc.template || '',
@@ -601,7 +610,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       propertyValue: bc.propertyValue || bc.purchasePrice || '',
       brokerPersonalisation: '',
       documentsRequired: [],
-      criteriaUsed: bc.template?.startsWith('refinance') || isDebtRecycling(bc.template) || isComplexRefinance(bc.template) ? ['Competitive interest rate', 'Good turnaround times', 'Ability to have an offset account'] :
+      criteriaUsed: loTemplateFor(bc.template) === 'lo_refinance' ? ['Competitive interest rate', 'Good turnaround times', 'Ability to have an offset account'] :
         bc.template === 'bridging' ? ['Competitive interest rate', 'Good turnaround times', 'Flexible with bridging finance'] :
         ['Competitive interest rate', 'Good turnaround times', 'Ability to have an offset account', 'Fully assessed pre-approval applications'],
       additionalNotes: '',
@@ -755,12 +764,13 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   }, [])
 
   useEffect(() => {
-    const newTemplate = bc.template?.startsWith('refinance') || isDebtRecycling(bc.template) || isComplexRefinance(bc.template) ? 'lo_refinance' : bc.template === 'bridging' ? 'lo_bridging' : 'lo_purchase'
+    const newTemplate = loTemplateFor(bc.template)
     // setDRaw: the BC's figures being copied across is the form arranging itself,
     // not somebody typing.
     setDRaw(prev => ({
       ...prev,
-      template: newTemplate,
+      // Somebody's own pick is not overwritten by the BC moving.
+      template: prev.templateByHand === true ? prev.template : newTemplate,
       bcTemplate: bc.template || '',
       firstName: bc.firstName || '',
       lastName: bc.lastName || '',
@@ -804,6 +814,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     setD({
       ...d,
       template: id,
+      // Chosen, so it is kept - see lib/lo-template.ts.
+      templateByHand: true,
       importantNotes: notesAfterScenarioChange(d.importantNotes, LO_TEMPLATE_NOTES[d.template] || [], LO_TEMPLATE_NOTES[id] || []),
     })
   }
@@ -940,6 +952,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // lib/save-conflict.ts.
   function loShape(stored: any): any {
     const loaded = fillMissing(stored, blankData())
+    // THE STALE TEMPLATE CANNOT WIN. Every stored record passes through here on
+    // its way to the screen, so this is where it is settled. Before the notes
+    // below, which are read off the template. See lib/lo-template.ts.
+    loaded.template = settleLoTemplate(loaded, bc.template)
     if (!loaded.importantNotes) loaded.importantNotes = (LO_TEMPLATE_NOTES[loaded.template] || []).join('\n')
     if (!loaded.refinanceSplits) {
       loaded.refinanceSplits = initRefinanceSplits()

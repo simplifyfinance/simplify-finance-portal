@@ -142,14 +142,23 @@ export function undrawnNoteFor(g: PropertyGroup): string {
   return `${money(g.undrawn)} of the limit above is not drawn at settlement and remains available.`
 }
 
-// WHAT THIS SPLIT'S MONEY WAS ORIGINALLY FOR. Same two facts the other scenario
-// prints, worded for a structure being preserved rather than created: here it is
-// history, and the history is the reason nothing may be merged.
+// WHAT THIS SPLIT'S MONEY WAS ORIGINALLY FOR - IN THE BROKER'S OWN WORDS.
+//
+// THE BOX IS PRINTED AS IT IS TYPED. Nothing is pasted on the front of it.
+//
+// It used to compose a sentence: the Purpose dropdown's label, an em dash, the
+// words "originally used to", and then whatever was in the box. The box already
+// holds a phrase somebody wrote to be read, so the result read like a form
+// filling itself in - "Investment - originally used to Purchase investment
+// property". Fabio, 12 Oct 2026: "just the wording we put in the box".
+//
+// THE PURPOSE DROPDOWN IS NOT LOST. It still decides how the split is treated
+// everywhere else it matters; it is only no longer glued onto this line. And an
+// empty box prints nothing at all rather than falling back to the dropdown,
+// because a line that sometimes says "Investment" and sometimes says a sentence
+// is two different things wearing one place on the page.
 export function originalPurposeLine(split: any): string {
-  const label = purposeLabel(purposeOf(split))
-  if (!label) return ''
-  const used = fundsUsedFor(split)
-  return used ? `${label} — originally used to ${used}` : label
+  return fundsUsedFor(split)
 }
 
 export function everySplitHasAProperty(bc: any): boolean {

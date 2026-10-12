@@ -3,6 +3,7 @@ import { buildsSomething } from './sale-build'
 import { dutyStateOf } from './duty-state'
 import { dealRow } from './deal-structure'
 import { variantOf, andList, type Gap } from './box-one'
+import { buysNothing } from './buying'
 
 // BOX NINE — SECURITY.
 //
@@ -70,7 +71,19 @@ export function securitiesOf(deal: any): Security[] {
   // No valuation recorded and there is nothing here, which is correct: an LVR
   // on that file cannot be stated either, and lib/deal-facts.ts says so.
   const built = buildsSomething(bc) && has(bc.asIfCompleteValue) ? num(bc.asIfCompleteValue) : 0
-  const buying = built || (has(bc.purchasePrice) ? num(bc.purchasePrice)
+  // NOTHING IS BEING BOUGHT ON A REFINANCE, WHATEVER IS IN THE BOX.
+  //
+  // 12 Oct 2026. This asked one question - is there a purchase price? - and a
+  // complex refinance was drawing a Purchase price box it had no business
+  // drawing. A figure typed into it would have put "to be purchased for
+  // $X" into a compliance pack for a deal where nothing is being purchased.
+  //
+  // The box is going from the form as well. This stays regardless, because the
+  // stale figure on a deal where somebody already typed one has to stop
+  // reaching the pack too, and because a regulated document should not depend
+  // on a form remembering to hide a box. See lib/buying.ts.
+  const buying = buysNothing(bc.template) ? 0
+    : built || (has(bc.purchasePrice) ? num(bc.purchasePrice)
     : has(bc.newPurchasePrice) ? num(bc.newPurchasePrice) : 0)
   if (buying > 0) {
     out.push({

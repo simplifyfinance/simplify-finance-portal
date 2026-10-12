@@ -61,7 +61,14 @@ describe('what counts as security', () => {
   it('agrees with the deal structure block on how many there are', () => {
     // securityValue() counts them for the block; this lists them. If the two
     // ever disagree the box is describing a deal nobody is looking at.
-    const both = withRefinanced({ purchasePrice: '780,000' }, {})
+    //
+    // ON A TEMPLATE THAT REALLY DOES BOTH. This read refinance_only with a
+    // purchase price dropped into it, which is not a deal that exists - and
+    // since 12 Oct 2026 a scenario we know buys nothing is not allowed to name
+    // a purchase, however it got into the box. See lib/buying.ts. Investment
+    // equity is the scenario this was always describing: equity released from
+    // one property to buy another, so two securities and both of them real.
+    const both = withRefinanced({ template: 'investment_equity', purchasePrice: '780,000' }, {})
     expect(securitiesOf(both)).toHaveLength(2)
   })
 
@@ -170,8 +177,10 @@ describe('a refinance of an existing property', () => {
 })
 
 describe('more than one security', () => {
-  const d = () => withRefinanced({ purchasePrice: '780,000', dutyState: 'VIC',
-    propertyType: 'Owner occupied', purchasePropertySubtype: 'Unit' }, {})
+  // Investment equity, not refinance_only with a purchase price bolted on - see
+  // the note on "agrees with the deal structure block" above.
+  const d = () => withRefinanced({ template: 'investment_equity', purchasePrice: '780,000',
+    dutyState: 'VIC', propertyType: 'Owner occupied', purchasePropertySubtype: 'Unit' }, {})
 
   it('says how many, then lists them', () => {
     const t = boxNine(d()).text

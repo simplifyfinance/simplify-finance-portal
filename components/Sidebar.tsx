@@ -241,7 +241,18 @@ export default function Sidebar() {
         <OneMark width={MARK_WIDTH.sidebar} tone="dark" busy={busy} className="block" />
       </div>
 
-      <nav className="flex-1 px-2 py-3">
+      {/* THE MENU GIVES WAY FIRST, AND THE FOOTER NEVER LEAVES THE SCREEN.
+          12 Oct 2026, after Katie could not find the Reload button. This column
+          is h-screen and the page outside it is overflow-hidden, so anything
+          taller than the window is not scrolled to - it is gone. A flex child
+          defaults to min-height:auto, which means this list refused to shrink
+          below its own content and pushed her name, Reload, the light/dark
+          switch and Sign out off the bottom edge. On an admin's menu with a
+          sub-list open that is 135px of column nobody can reach.
+          min-h-0 lets it shrink; overflow-y-auto gives it its own scroll. The
+          footer below is then always on screen, on every window height.
+          Guarded by lib/the-sidebar-keeps-its-footer.test.ts. */}
+      <nav className="flex-1 min-h-0 overflow-y-auto px-2 py-3">
         <div className="text-white/30 text-xs uppercase tracking-widest px-2 mb-2">Main</div>
         {nav
           .filter(item => !(item as any).settlementsOnly || profile?.is_admin || profile?.sees_settlements)
