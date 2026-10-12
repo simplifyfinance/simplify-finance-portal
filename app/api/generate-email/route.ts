@@ -1,5 +1,6 @@
 import { altLvrPurchase, altLvrEquity, altRepayment } from '@/lib/alt-scenario'
 import { card, row } from '@/lib/email-card'
+import { bufferNoteBlock } from '@/lib/buffer-note'
 import { dutyLabel as sharedDutyLabel } from '@/lib/duty-state'
 import { NextRequest, NextResponse } from 'next/server'
 import { rateNoticeLines } from '@/lib/rate-notice-server'
@@ -615,6 +616,7 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px"><span style="color:#7a5c3a;">Equity Release Options</span></p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptionsRE.join('')}</tr></table>
       </td></tr></table>` +
+      bufferNoteBlock(template) +
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation \u2014 and that is exactly what we will do for you.') +
@@ -633,6 +635,7 @@ export async function POST(req: NextRequest) {
       // Those two cards are written by hand because each has a headline figure of
       // its own. A third split had nowhere to go and was dropped in silence.
       splitCards(d, 'Additional lending', { from: 2, amountLabel: 'New loan amount', showTerm: true }) +
+      bufferNoteBlock(template) +
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
@@ -652,6 +655,7 @@ export async function POST(req: NextRequest) {
         // The LVR is a fact about the whole deal, not about a part of it.
         after: (i) => (i === 0 ? buildLVRLine(d, lmiIsInTheLoan(d) && realSplits(d.splits).length === 1) : ''),
       }) +
+      bufferNoteBlock(template) +
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
@@ -1099,6 +1103,7 @@ export async function POST(req: NextRequest) {
       // Three columns are written by hand because each sits against a different
       // security. A fourth split belongs to neither and used to disappear.
       splitCards(d, 'Additional lending', { from: 3, termWithType: true }) +
+      bufferNoteBlock(template) +
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('Please let us know your thoughts and if you have any questions regarding the numbers above.') +
@@ -1247,6 +1252,7 @@ export async function POST(req: NextRequest) {
       card('About this structure',
         aboutThisStructure(d).map((l: string) => note(l)).join('') +
         note(REFINANCE_ACCOUNTANT_NOTE)) +
+      bufferNoteBlock(template) +
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender for a structure like this one \u2014 and that is exactly what we will do for you.') +

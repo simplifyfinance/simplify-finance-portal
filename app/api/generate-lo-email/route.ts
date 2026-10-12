@@ -20,6 +20,7 @@ import { money } from '@/lib/money'
 import { emailParagraphs } from '@/lib/rich-text'
 import { resolveLenderSplits, lenderTotal, lenderLvr, equityReleaseAmount } from '@/lib/lo-splits'
 import { securitiesOf } from '@/lib/securities'
+import { bufferNoteBlock } from '@/lib/buffer-note'
 import { propertyColour } from '@/lib/lo-by-property'
 import { showsOwnLoanAmount } from '@/lib/email-amounts'
 import { rowLegalFeeLabel, feeText} from '@/lib/lender-fees'
@@ -366,11 +367,20 @@ export async function POST(req: NextRequest) {
     body += p(d.additionalNotes)
   }
 
-  // The buffer covers a final repayment and a discharge fee on a loan being paid
-  // out. A purchase has neither, so the paragraph only ever confused the client.
-  if (d.template !== 'lo_purchase') {
-    body += p('Please note, for the requested loan amount, we have added a buffer to cover the last month\'s repayment and any applicable discharge fees. This will ensure there is no shortfall come settlement. Any funds not required will be credited back into your loan so that no additional interest is charged.')
-  }
+  // THE BUFFER NOTE, DECIDED BY THE DEAL AND NOT BY THIS EMAIL'S TEMPLATE.
+  //
+  // 12 Oct 2026. This read `d.template !== 'lo_purchase'`. That is a label on an
+  // email deciding whether a client is told about their own loan amount, and
+  // when a refinance got stuck on the purchase template - which is exactly what
+  // was happening, see lib/lo-template.ts - the paragraph silently stopped
+  // going out. Nothing prints to say a paragraph was left out, so it went
+  // unnoticed for weeks.
+  //
+  // It reads the borrowing capacity's scenario now, which is the same thing the
+  // borrowing capacity email reads, so the two cannot disagree about whether a
+  // client was told. And it wears the same panel as the BC email rather than
+  // being a loose paragraph. See lib/buffer-note.ts.
+  body += bufferNoteBlock(bcData?.template)
 
   // The note is written text and stays, even on an old deal where we cannot tell
   // which of two same-bank products was meant. recommendedLabel() falls back to
