@@ -1,6 +1,7 @@
 import { contractPrice, contractLoan, contractStampDuty } from './contract-figures'
 import { isLandPurchase, landLoanPayout, dutyApplies } from './construction'
 import { buildsSomething, purchasePriceOf } from './sale-build'
+import { securitiesOf, totalsOf } from './securities'
 
 // WHAT THE CLIENT HAS TO FIND.
 //
@@ -305,6 +306,37 @@ export function securityValue(deal: any): SecurityValue {
   // It is the figure the lender lends against and the one constructionLvr()
   // already uses, so this is the sheet agreeing with the email rather than a
   // new opinion about anything.
+  // THE SECURITIES THE BC ACTUALLY TICKED COME FIRST.
+  //
+  // 13 Oct 2026, the Veljovic deal. The strip listed SECURITIES (3) with their
+  // addresses and said PROPERTY VALUE "not recorded" and LVR "not known" in the
+  // same row. Both were true at once, because they were reading different
+  // lists: the addresses came from the securities ticked on the BC, and the
+  // value came from the loop below, which only counts a fact find property
+  // whose LOAN is marked to be refinanced. Tick a house as security without its
+  // loan being paid out - which is the whole point of a complex refinance - and
+  // it is a security worth nothing.
+  //
+  // Fabio: "the logic is ALWAYS THE SAME BC sets the tone structure". Which
+  // houses secure this deal is the BC's answer, so what they are worth is the
+  // total of those houses. securitiesOf and totalsOf are the same two functions
+  // the strip already draws the addresses with, so the two cannot disagree again.
+  const ticked = securitiesOf(bc, deal?.fact_find_data)
+  if (ticked.length > 0) {
+    const t = totalsOf(ticked)
+    const loan = loanAmount(deal)
+    if (t.value > 0 && loan > 0) {
+      return { total: t.value, count: ticked.length, lvr: Math.round((loan / t.value) * 1000) / 10 }
+    }
+    // Ticked but not valued. Said as what it is - an unanswered question on the
+    // fact find - rather than falling through to a total built another way,
+    // which is how the two came to disagree in the first place.
+    if (t.value <= 0) {
+      return { total: 0, count: ticked.length, lvr: null,
+        why: 'the securities on this deal have no value on the fact find' }
+    }
+  }
+
   const built = buildsSomething(bc) && has(bc.asIfCompleteValue) ? num(bc.asIfCompleteValue) : 0
   const buying = contractPrice(deal) || built
     || (has(purchasePriceOf(bc)) ? num(purchasePriceOf(bc))

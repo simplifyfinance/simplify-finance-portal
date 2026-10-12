@@ -7,7 +7,13 @@
 export type LenderPane = { key: string; label: string; blurb: string }
 
 export const LENDER_PANES: LenderPane[] = [
-  { key: 'lenders', label: 'Products & policy',
+  // PRODUCTS AND FEES, NOT "PRODUCTS & POLICY".
+  //
+  // 13 Oct 2026. It was called Products & policy and holds products and fees.
+  // Once the lenders' actual written policy became its own pane, two things on
+  // the same menu claimed the word policy, and the one that did NOT hold any
+  // policy came first.
+  { key: 'lenders', label: 'Products & fees',
     blurb: 'Manage lenders and products. Import from a PDF or URL, or add manually.' },
   { key: 'rules', label: 'What we have learned',
     blurb: 'Answers the portal keeps per lender, asked once and used by every template after.' },
@@ -23,6 +29,11 @@ export const LENDER_PANES: LenderPane[] = [
   //
   // It also belongs beside the per-lender dates it drives, rather than a page
   // away from them.
+  // THE LENDERS' OWN WRITTEN POLICY. Paco's third source and the one that
+  // outranks the other two. Uploading happens on each lender rather than here,
+  // so the bank is never chosen from a dropdown - see LenderPolicyDocs.
+  { key: 'policy', label: 'Policy documents',
+    blurb: 'The credit manuals Paco answers from. He quotes them; he never paraphrases.' },
   { key: 'rate-notice', label: 'RBA rate notice',
     blurb: 'The line that goes on every client email quoting a rate, until each bank passes the change on.' },
 ]

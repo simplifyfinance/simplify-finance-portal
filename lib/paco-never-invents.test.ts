@@ -266,8 +266,8 @@ describe('the panel is big enough to read', () => {
   const panel = readFileSync('components/Paco.tsx', 'utf8')
 
   it('is wider than it was, with a floor under its height', () => {
-    expect(panel).toContain('w-[480px]')
-    expect(panel).toContain('h-[520px]')
+    expect(panel).toContain('w-[560px]')
+    expect(panel).toContain('h-[620px]')
   })
 
   it('and never bigger than the window it is in', () => {
@@ -276,7 +276,7 @@ describe('the panel is big enough to read', () => {
   })
 
   it('with what Paco says set a point larger than the chrome around it', () => {
-    expect(panel).toContain('text-[13.5px] text-body max-w-[380px]')
+    expect(panel).toContain('text-[14.5px] text-body max-w-[430px]')
   })
 })
 

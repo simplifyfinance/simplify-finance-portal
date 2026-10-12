@@ -4,6 +4,7 @@ import { PAGE_WIDE } from '@/lib/page-width'
 import LenderLibrary from '@/components/LenderLibrary'
 import LenderRules from '@/components/LenderRules'
 import RateNoticeSettings from '@/components/RateNoticeSettings'
+import LenderPolicyDocs from '@/components/LenderPolicyDocs'
 import { LENDER_PANES, isLenderPane, DEFAULT_LENDER_PANE } from '@/lib/lender-panes'
 
 // Panes under one nav item, driven by the URL hash the way Settings already is -
@@ -29,6 +30,7 @@ export default function LendersClient() {
       <h1 className="text-2xl font-bold text-ink mb-1">{active.label}</h1>
       <p className="text-sm text-muted mb-8">{active.blurb}</p>
       {pane === 'rate-notice' ? <RateNoticeSettings />
+        : pane === 'policy' ? <LenderPolicyDocs />
         : pane === 'rules' ? <LenderRules />
         : <LenderLibrary />}
     </div>

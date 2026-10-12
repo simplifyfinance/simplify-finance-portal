@@ -102,12 +102,13 @@ export default function Paco() {
     // dialog instead, which was the box on screen when he asked, not the box he
     // meant.
     //
-    // 480 rather than 420, with a floor under the height so an empty Paco is
+    // 560 rather than 420 - Fabio tried the middle size on 13 Oct and asked for
+    // the biggest of the three. A floor under the height so an empty Paco is
     // the same shape as a full one, and the type a point larger throughout. The
     // max-width and max-height still win on a small screen, so it can never be
     // taller or wider than the window.
-    <div className="fixed right-5 bottom-5 z-40 w-[480px] max-w-[calc(100vw-2rem)]
-                    h-[520px] max-h-[calc(100vh-3rem)] bg-card border border-card-line rounded-2xl
+    <div className="fixed right-5 bottom-5 z-40 w-[560px] max-w-[calc(100vw-2rem)]
+                    h-[620px] max-h-[calc(100vh-3rem)] bg-card border border-card-line rounded-2xl
                     shadow-[0_20px_50px_rgba(0,0,0,0.26)] flex flex-col overflow-hidden">
       <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-[#0F1115] text-white">
         <Bird size={30} />
@@ -152,7 +153,7 @@ export default function Paco() {
         <Bubble>
           {HOLA}
           {counts && counts.tagged === 0 && (
-            <p className="text-[12px] text-faint mt-1.5 leading-snug">
+            <p className="text-[12.5px] text-faint mt-1.5 leading-snug">
               No deal has been tagged yet, so there is not much I can answer. Tag one on its
               Lending Options tab and I will remember it.
             </p>
@@ -160,7 +161,7 @@ export default function Paco() {
           <div className="flex flex-wrap gap-1.5 mt-2">
             {SUGGEST.map(s => (
               <button key={s} onClick={() => ask(`Who have we used for ${s.toLowerCase()}?`)}
-                className="text-[12.5px] text-info bg-info-bg border border-info-edge rounded-full px-2.5 py-1">
+                className="text-[13px] text-info bg-info-bg border border-info-edge rounded-full px-2.5 py-1">
                 {s}
               </button>
             ))}
@@ -169,7 +170,7 @@ export default function Paco() {
 
         {turns.map((t, i) => t.mine ? (
           <div key={i} className="flex justify-end mb-3">
-            <div className="bg-[#0F1115] text-white/90 rounded-[14px_14px_4px_14px] px-3 py-2 text-[13.5px] max-w-[340px]">
+            <div className="bg-[#0F1115] text-white/90 rounded-[14px_14px_4px_14px] px-3 py-2 text-[14.5px] max-w-[390px]">
               {t.text}
             </div>
           </div>
@@ -177,7 +178,7 @@ export default function Paco() {
           <Bubble key={i}>{t.error ? <span className="text-chase">{t.error}</span> : <Said a={t.a!} />}</Bubble>
         ))}
 
-        {busy && <Bubble><span className="text-faint text-[13.5px]">&hellip;</span></Bubble>}
+        {busy && <Bubble><span className="text-faint text-[14.5px]">&hellip;</span></Bubble>}
         <div ref={endRef} />
       </div>
 
@@ -188,7 +189,7 @@ export default function Paco() {
           <input value={q} onChange={e => setQ(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') ask(q) }}
             placeholder="Ask Paco something…" aria-label="Ask Paco something"
-            className="flex-1 min-w-0 text-[13.5px] bg-transparent focus:outline-none" />
+            className="flex-1 min-w-0 text-[14.5px] bg-transparent focus:outline-none" />
           <button onClick={() => ask(q)} disabled={busy || !q.trim()} aria-label="Ask"
             className="w-[22px] h-[22px] rounded-full bg-brand text-white text-[12px] font-bold
                        flex items-center justify-center disabled:opacity-40">&uarr;</button>
@@ -233,7 +234,7 @@ function Notes({ a }: { a: Answer }) {
             </span>
           </div>
           {/* Quoted, so it can never read as Paco's own sentence. */}
-          <div className="text-[13px] text-ink leading-[1.5]">&ldquo;{n.said}&rdquo;</div>
+          <div className="text-[14px] text-ink leading-[1.5]">&ldquo;{n.said}&rdquo;</div>
           <div className="text-[10.5px] text-faint mt-1">{attribution(n)}</div>
           {n.source && <div className="text-[10.5px] text-faint">{n.source}</div>}
           {caveatFor(n) && <div className="text-[10.5px] text-chase mt-0.5">{caveatFor(n)}</div>}
@@ -304,7 +305,7 @@ function Bubble({ children }: { children: any }) {
     <div className="flex gap-2 mb-3 items-start">
       <Bird size={26} />
       <div className="bg-card border border-line-soft rounded-[14px_14px_14px_4px] px-3 py-2
-                      text-[13.5px] text-body max-w-[380px] leading-[1.55]">{children}</div>
+                      text-[14.5px] text-body max-w-[430px] leading-[1.55]">{children}</div>
     </div>
   )
 }

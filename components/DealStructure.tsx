@@ -10,6 +10,7 @@ import {
 import { fundsToComplete, loanAmountDisagrees, bcSplitsTotal } from '@/lib/funds-to-complete'
 import { splitsDisagree } from '@/lib/deal-structure'
 import { securitiesOf } from '@/lib/box-security'
+import { securitiesOf as tickedSecurities, lvrOf as securityLvr, totalsOf } from '@/lib/securities'
 import { SPLIT_TYPES, typesOffered, typeContradictsProduct } from '@/lib/lo-splits'
 import { optionOnTheDeal } from '@/lib/client-agreement'
 
@@ -33,7 +34,7 @@ const K = 'text-[9.5px] font-semibold tracking-[.09em] uppercase text-faint'
 const INP = 'border border-line rounded-lg px-2.5 py-1.5 text-[13px] text-ink bg-card focus:outline-none focus:border-brand'
 const NEED = 'border-dashed border-field-line bg-page'
 
-export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSplit, onRemoveSplit }: {
+export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSplit, onRemoveSplit, structureIsBc }: {
   deal: any
   onUpdated?: (patch: any) => void
   // Supplied only by the Lending options tab, which owns lo_data and can write
@@ -50,12 +51,32 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
   // of its own, and this list is built in the same order as the lending
   // options' own, so the position is the one thing both sides agree on.
   onRemoveSplit?: (idx: number) => void
+  // THE BORROWING CAPACITY DECIDES THE STRUCTURE. THE LENDING OPTIONS PICK THE
+  // PRODUCT. That is the whole rule and it has been broken on this panel the
+  // entire time.
+  //
+  // 13 Oct 2026, Fabio, on a deal where every split was answered Interest only
+  // on the BC and the lending options still showed an empty "P&I or interest
+  // only?" dropdown beside each one: "the logic is ALWAYS THE SAME BC sets the
+  // tone structure the LO is JUST where we select products DO YOU FINALLY
+  // UNDERSTAND THIS".
+  //
+  // So on the lending options these are shown, not asked. A dropdown here is an
+  // invitation to answer a question that already has an answer somewhere that
+  // owns it, and two answers to one question is how they end up disagreeing.
+  structureIsBc?: boolean
 }) {
   const supabase = createSupabaseBrowser()
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
 
   const splits = useMemo(() => splitsOf(deal), [deal])
+  // Handlers alone used to mean "this tab may edit the structure". Now the tab
+  // also has to be one that OWNS the structure, and the lending options is not.
+  const canEditStructure = !!onSplitChange && !structureIsBc
+  // Where to send somebody when the answer is missing. It said "set on the LO"
+  // on every tab, including the LO itself.
+  const setItOn = structureIsBc ? 'BC' : 'LO'
   // HOW MANY OF THOSE BELONG TO THE BORROWING CAPACITY.
   //
   // splitsOf builds its list as the BC's splits followed by anything the
@@ -229,20 +250,76 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
           )
         })()}
 
-        <Field label="Property value">
-          <Value v={row.propertyValue > 0 ? money(row.propertyValue) : ''}
-            src={row.securityCount > 1 ? `${row.securityCount} securities` : 'from the BC'} />
-        </Field>
+        {/* ONE VALUE AND ONE LVR PER HOUSE, ON A DEAL WITH SEVERAL.
+            *
+            * 13 Oct 2026. Fabio: "in the complex sceario should be property
+            * value and LVR in the deal strautre one per property and the data
+            * just comes from BC anyway".
+            *
+            * It does. The value is the fact find's figure for that property and
+            * the limit is what is approved against it, typed on the BC - the
+            * same two numbers lib/securities.ts has always held. One combined
+            * LVR across three houses is not a number a lender assesses or a
+            * credit officer can act on; each house has its own.
+            *
+            * The total stays underneath, because that IS the figure on a
+            * multi-security deal, and a reader should not have to add three
+            * numbers in their head to find it. */}
+        {(() => {
+          const ticked = tickedSecurities(deal?.bc_data, deal?.fact_find_data)
+          if (ticked.length < 2) {
+            return (
+              <Field label="Property value">
+                <Value v={row.propertyValue > 0 ? money(row.propertyValue) : ''} src="from the BC" />
+              </Field>
+            )
+          }
+          const t = totalsOf(ticked)
+          return (
+            <Field label="Value and LVR, per property" grow>
+              <div className="flex flex-col gap-1 mt-0.5">
+                {ticked.map(x => {
+                  const l = securityLvr(x)
+                  return (
+                    <div key={x.id} className="flex items-baseline gap-2 flex-wrap text-[12.5px]">
+                      <span className="text-muted min-w-0 truncate max-w-[260px]">{x.address}</span>
+                      <span className="font-semibold text-ink ml-auto">
+                        {Number(String(x.value).replace(/[^0-9.]/g, '')) > 0 ? money(Number(String(x.value).replace(/[^0-9.]/g, ''))) : 'no value on the fact find'}
+                      </span>
+                      <span className="font-semibold text-ink w-[62px] text-right">
+                        {l === null ? '—' : `${Math.round(l * 10) / 10}%`}
+                      </span>
+                    </div>
+                  )
+                })}
+                <div className="flex items-baseline gap-2 flex-wrap text-[12.5px] border-t border-line-soft pt-1 mt-0.5">
+                  <span className="text-muted">All {ticked.length} together</span>
+                  <span className="font-semibold text-ink ml-auto">{t.value > 0 ? money(t.value) : '—'}</span>
+                  <span className="font-semibold text-ink w-[62px] text-right">
+                    {t.lvr === null ? '—' : `${Math.round(t.lvr * 10) / 10}%`}
+                  </span>
+                </div>
+                {!t.valuedAll && (
+                  <p className="text-[11px] text-chase mt-0.5 mb-0">
+                    One of these has no value on the fact find, so the total is lower than the real one.
+                  </p>
+                )}
+              </div>
+            </Field>
+          )
+        })()}
 
         {row.existingLoan > 0 && (
           <Field label="Existing loan"><Value v={money(row.existingLoan)} src="being refinanced" /></Field>
         )}
 
-        <Field label="LVR">
-          {row.lvr !== null
-            ? <Value v={`${row.lvr}%`} src={`${money(row.totalLending)} lending`} />
-            : <span className="text-[12.5px] font-semibold text-muted">not known</span>}
-        </Field>
+        {tickedSecurities(deal?.bc_data, deal?.fact_find_data).length < 2 && (
+          <Field label="LVR">
+            {row.lvr !== null
+              ? <Value v={`${row.lvr}%`} src={`${money(row.totalLending)} lending`} />
+              : <span className="text-[12.5px] font-semibold text-muted">not known</span>}
+          </Field>
+        )}
 
         {/* Cashback lives beside Product type in the splits table below, where
             Fabio asked for it. It only appears here when there are no splits to
@@ -360,7 +437,11 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                 ? 'amount and rate come from the lender options below'
                 : 'amount, rate, repayment and purpose come from the Lending options tab'}
             </span>
-            {onAddSplit && (
+            {/* ADDING ONE IS STRUCTURE. Every split this tab added on Veljovic
+                existed because the BC's six were not reaching it. They reach it
+                now, so the place to add a seventh is the BC. The × stays, to
+                clear the ones already added. */}
+            {onAddSplit && !structureIsBc && (
               <button onClick={onAddSplit}
                 className="ml-auto text-[12px] text-brand-ink border border-dashed border-brand rounded-lg px-2.5 py-[3px] hover:bg-info-bg transition">
                 + Add split
@@ -394,7 +475,7 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap mt-1.5">
-                  {onSplitChange
+                  {canEditStructure
                         ? <select value={s.purpose || ''}
                             onChange={e => onSplitChange(s.id, { purpose: e.target.value })}
                             className={`${INP} ${!s.purpose ? NEED : ''}`}>
@@ -407,11 +488,11 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                             s.purpose === 'INV' ? 'bg-ink text-page' : 'bg-info text-page'}`}>
                             {PURPOSE_LABEL[s.purpose]}
                           </span>
-                        : <a href={`/deals/${deal.id}?stage=LO`}
+                        : <a href={`/deals/${deal.id}?stage=${setItOn}`}
                             className="text-[11.5px] text-chase bg-chase-bg border border-chase-edge rounded px-2 py-[3px] hover:underline">
-                            set on the LO ↗
+                            set on the {setItOn} ↗
                           </a>}
-                  {onSplitChange
+                  {canEditStructure
                         ? <>
                             <select value={s.repaymentType || ''}
                               onChange={e => setDetail(s.id, { repaymentType: e.target.value })}
@@ -427,7 +508,7 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                           </>
                         : <span className="text-[13.5px] text-ink">{s.repaymentType || '—'}</span>}
                   {askFunds && (
-                    <>                        {onSplitChange
+                    <>                        {canEditStructure
                           ? <select value={s.funds || ''}
                               onChange={e => onSplitChange(s.id, { funds: e.target.value })}
                               className={`${INP} ${!s.funds ? NEED : ''}`}>
@@ -438,24 +519,39 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                             </select>
                           : s.funds
                           ? <span className="text-[12px] text-ink">{FUNDS_LABEL[s.funds]}</span>
-                          : <a href={`/deals/${deal.id}?stage=LO`}
+                          : <a href={`/deals/${deal.id}?stage=${setItOn}`}
                               className="text-[11.5px] text-chase bg-chase-bg border border-chase-edge rounded px-2 py-[3px] hover:underline">
-                              set on the LO ↗
+                              set on the {setItOn} ↗
                             </a>}</>
                   )}
                 </div>
                 <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap mt-1.5">
-                  <label className="inline-flex items-center gap-1.5"><span className={K}>Term</span><input aria-label='Term' defaultValue={s.termYears} key={`t${s.id}${s.termYears}`}
-                        onBlur={e => { if (e.target.value !== s.termYears) setDetail(s.id, { termYears: e.target.value }) }}
-                        placeholder="years" className={`${INP} w-[76px] ${!s.termYears ? NEED : ''}`} /></label>
-                  <label className="inline-flex items-center gap-1.5"><span className={K}>IO years</span>{isInterestOnly(s.repaymentType)
-                        ? <input aria-label='IO years' defaultValue={s.ioYears} key={`io${s.id}${s.ioYears}`}
+                  {/* TERM AND IO YEARS ARE THE BC's ANSWERS. The BC asks both,
+                      per split - see Split.type and Split.ioYears in BCForm. On
+                      the lending options they are printed, because this tab
+                      does not decide how long the loan runs for.
+                      PRODUCT TYPE IS NOT TYPED ANYWHERE. It is read off the
+                      lending option marked as recommended, which is the one
+                      thing on this row the LO genuinely owns. A box inviting
+                      somebody to type it by hand was a third copy of an answer
+                      that already has a home. */}
+                  <label className="inline-flex items-center gap-1.5"><span className={K}>Term</span>{structureIsBc
+                        ? <span className="text-[13.5px] text-ink">{s.termYears || '—'}</span>
+                        : <input aria-label='Term' defaultValue={s.termYears} key={`t${s.id}${s.termYears}`}
+                            onBlur={e => { if (e.target.value !== s.termYears) setDetail(s.id, { termYears: e.target.value }) }}
+                            placeholder="years" className={`${INP} w-[76px] ${!s.termYears ? NEED : ''}`} />}</label>
+                  <label className="inline-flex items-center gap-1.5"><span className={K}>IO years</span>{!isInterestOnly(s.repaymentType)
+                        ? <span className="text-[13.5px] text-faint">—</span>
+                        : structureIsBc
+                        ? <span className="text-[13.5px] text-ink">{s.ioYears || '—'}</span>
+                        : <input aria-label='IO years' defaultValue={s.ioYears} key={`io${s.id}${s.ioYears}`}
                             onBlur={e => { if (e.target.value !== s.ioYears) setDetail(s.id, { ioYears: e.target.value }) }}
-                            placeholder="years" className={`${INP} w-[76px] ${!s.ioYears ? NEED : ''}`} />
-                        : <span className="text-[13.5px] text-faint">—</span>}</label>
-                  <label className="inline-flex items-center gap-1.5 min-w-0"><span className={K}>Product type</span><input aria-label='Product type' defaultValue={s.productType} key={`p${s.id}${s.productType}`}
-                        onBlur={e => { if (e.target.value !== s.productType) setDetail(s.id, { productType: e.target.value }) }}
-                        placeholder="product" className={`${INP} w-[150px] ${!s.productType ? NEED : ''}`} /></label>
+                            placeholder="years" className={`${INP} w-[76px] ${!s.ioYears ? NEED : ''}`} />}</label>
+                  <label className="inline-flex items-center gap-1.5 min-w-0"><span className={K}>Product</span>{structureIsBc
+                        ? <span className="text-[13.5px] text-ink">{s.productType || <span className="text-faint">from the lender option you tick</span>}</span>
+                        : <input aria-label='Product type' defaultValue={s.productType} key={`p${s.id}${s.productType}`}
+                            onBlur={e => { if (e.target.value !== s.productType) setDetail(s.id, { productType: e.target.value }) }}
+                            placeholder="product" className={`${INP} w-[150px] ${!s.productType ? NEED : ''}`} />}</label>
                 </div>
               </div>
             ))}

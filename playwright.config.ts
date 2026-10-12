@@ -21,7 +21,23 @@ export default defineConfig({
   testDir: './tests/browser',
   // A dropped keystroke is a race. Racing tests that retry quietly are how a
   // flake becomes a fact of life, so a failure here fails.
-  retries: 0,
+  //
+  // 13 OCT 2026: ONE RETRY, AND NOT A RELAXATION OF THE LINE ABOVE.
+  //
+  // Three ships in two days were stopped by timing rather than by broken code -
+  // boxone twice on page.goto, then next-steps-email on a link that was there
+  // all along. Each cost 7m44s, and each was re-run by hand immediately
+  // afterwards and passed in about a second.
+  //
+  // A test that fails TWICE still fails the ship, so nothing broken gets
+  // through; Playwright marks a test that needed its retry as flaky and prints
+  // it, so it stays visible rather than being swallowed. What this removes is
+  // only the case where the whole run is thrown away for a page that was slow
+  // near the end of forty-four tests against one server.
+  //
+  // If a test starts needing its retry regularly, that is a real fault in the
+  // page and this line is not the place to deal with it.
+  retries: 1,
   workers: 1,
   timeout: 60_000,
   reporter: [['list']],

@@ -1842,7 +1842,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             onUpdated={(patch: any) => onDealFieldChange?.('compliance_data', patch.compliance_data)}
             onSplitChange={setSplitField}
             onAddSplit={addRefinanceSplit}
-            onRemoveSplit={removeRefinanceSplit} />
+            onRemoveSplit={removeRefinanceSplit}
+            structureIsBc />
 
           {/* Scenario */}
           <div className="bg-card border border-gray-100 rounded-xl p-5">

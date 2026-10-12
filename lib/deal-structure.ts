@@ -164,6 +164,31 @@ export type StructureSplit = {
 // split those are the same number by definition. Two blank splits get nothing -
 // there is no way to know how the money divides, and inventing a division here
 // would put a made-up figure in a credit note.
+// WHO DECIDES WHAT, INSIDE ONE FIELD.
+//
+// 13 Oct 2026. The repayment type carries two different decisions in one
+// string, owned by two different tabs, and that is why putting the BC first
+// outright was wrong.
+//
+//   P&I or interest only   the BORROWING CAPACITY's. It asks per split.
+//   fixed or variable      the LENDING OPTIONS'. It rides on the same string,
+//                          as "Fixed P&I" or "Fixed IO".
+//
+// Fabio: "BC sets the tone structure the LO is JUST where we select products".
+// Fixed versus variable IS the product, so it stays. Which of P&I or interest
+// only a split is, is not, so the BC wins that.
+//
+// So a more specific answer is kept only while it still agrees with the BC
+// about which of the two this split is. "Fixed P&I" survives a BC saying P&I.
+// A bare "P&I" left over on an older copy does NOT survive a BC saying Interest
+// only - that is the Veljovic fault, six splits answered Interest only on the
+// BC and an empty dropdown on every one of them.
+export function settleRepayment(fromBc: string, fromProduct: string): string {
+  if (!fromBc) return fromProduct
+  if (!fromProduct) return fromBc
+  return isInterestOnly(fromProduct) === isInterestOnly(fromBc) ? fromProduct : fromBc
+}
+
 export function splitsOf(deal: any): StructureSplit[] {
   const lo = deal?.lo_data || {}
   const detail = deal?.compliance_data?.splitDetail || {}
@@ -246,8 +271,20 @@ export function splitsOf(deal: any): StructureSplit[] {
       // split and there was nowhere on the whole deal to change it, while the
       // product above had Interest Only ticked. Answering it on this panel now
       // wins over every other copy, on every scenario.
-      repaymentType: firstOf(d?.repaymentType, ls?.repaymentType, gs?.repaymentType, gs?.type,
-                             s?.repaymentType, s?.type, bs?.repaymentType, bs?.type),
+      // THE BORROWING CAPACITY ANSWERS THIS, AND ITS ANSWER WINS.
+      //
+      // 13 Oct 2026. The BC asks P&I or Interest only on every split and has
+      // done all along. This read the compliance copy, then the per-lender
+      // copy, then the lending options' copy, and only then the BC - so on the
+      // Veljovic deal, where all six splits were answered Interest only on the
+      // BC, the lending options showed an empty dropdown beside every one.
+      //
+      // Fabio: "we selected IO splits on BC and STILL LO sits as PI or IO for
+      // you to choose". The older note under this field was written when the BC
+      // could not be relied on to carry; it carries now, and it owns this.
+      repaymentType: settleRepayment(
+        firstOf(bs?.repaymentType, bs?.type, s?.repaymentType, s?.type),
+        firstOf(d?.repaymentType, ls?.repaymentType, gs?.repaymentType, gs?.type)),
       // BOTH SPELLINGS, AND THE BC's ANSWER WHERE THE LO HAS NONE.
       //
       // 9 Oct 2026. This was a cast, so 'owner_occupied' - what the BC's own
@@ -267,7 +304,10 @@ export function splitsOf(deal: any): StructureSplit[] {
       productType: txt(d?.productType) || txt(gs?.productType) || txt(s?.productType) || recommendedProduct(deal),
       // Same three-step fall as the term above: this block's own answer, then
       // whatever the split carries, then the recommended product's IO years.
-      ioYears: txt(d?.ioYears) || txt(gs?.ioYears) || txt(s?.ioYears) || txt(ls?.ioYears) || recommendedIoYears(deal),
+      // Same rule, same reason: the BC asks how many interest only years the
+      // moment Interest only is chosen, per split.
+      ioYears: txt(bs?.ioYears) || txt(s?.ioYears) || txt(d?.ioYears) || txt(gs?.ioYears)
+        || txt(ls?.ioYears) || recommendedIoYears(deal),
     }
   })
 }
