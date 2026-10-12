@@ -38,7 +38,7 @@ test.describe('what happens when the BC tries to save', () => {
       writes.push(`${method} ${r.status()} ${r.statusText()} :: ${body}`)
     })
 
-    await page.goto(`/deals/${DEAL}`)
+    await page.goto(`/deals/${DEAL}`, { waitUntil: 'domcontentloaded' })
     // The page is HTML before it is a page. See data-ready in DealPageClient -
     // a click before this appears goes nowhere, which is a race, not a bug in
     // whatever was clicked.

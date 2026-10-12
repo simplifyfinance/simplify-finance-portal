@@ -20,8 +20,15 @@ import { readFileSync, readdirSync } from 'fs'
 // variantOf now lives in box-variant.ts, which imports nothing, and the only
 // thing box-security still takes from box-one is a TYPE - erased when it
 // compiles, so it leaves no runtime edge.
+// EVERY FILE IN lib, NOT JUST THE COMPLIANCE BOXES.
+//
+// This started as a guard on box-*.ts. Within the hour the same fault was made
+// again, in Paco - paco.ts imported claimsFor() from paco-knowledge.ts, which
+// imported flat() back from paco.ts - and this test did not catch it because it
+// was only looking at files beginning with "box". A guard that covers the one
+// place you have already been burned is not a guard.
 const FILES = readdirSync('lib')
-  .filter(f => /^box-.*\.ts$/.test(f) && !f.includes('.test.'))
+  .filter(f => /\.ts$/.test(f) && !f.includes('.test.'))
 
 // A plain import creates a runtime edge. `import type` does not.
 function runtimeImports(file: string): string[] {
@@ -38,7 +45,7 @@ function runtimeImports(file: string): string[] {
   return out
 }
 
-describe('no compliance box imports another that imports it back', () => {
+describe('no file imports another that imports it back', () => {
   it.each(FILES.map(f => [f]))('%s', (file) => {
     const mine = file.replace(/\.ts$/, '')
     for (const dep of runtimeImports(file)) {
@@ -52,9 +59,10 @@ describe('no compliance box imports another that imports it back', () => {
     }
   })
 
-  it('variantOf lives somewhere that imports nothing', () => {
-    expect(runtimeImports('box-variant.ts')).toEqual([])
-  })
+  it.each([['box-variant.ts'], ['plain-words.ts']])(
+    '%s is small enough to be shared by anybody', (f) => {
+      expect(runtimeImports(f)).toEqual([])
+    })
 
   // The thing the circle was created for in the first place.
   it('box one can still name the securities', () => {

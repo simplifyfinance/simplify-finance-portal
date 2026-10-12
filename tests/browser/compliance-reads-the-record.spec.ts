@@ -32,7 +32,7 @@ test.describe('compliance composes from the record, not from the page', () => {
     // --- the broker opens the deal and goes to Compliance FIRST -------------
     // His page now holds a copy of the deal as it is right now. Everything the
     // credit officer does below is invisible to it.
-    await page.goto(`/deals/${DEAL}`)
+    await page.goto(`/deals/${DEAL}`, { waitUntil: 'domcontentloaded' })
     await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
     await page.getByRole('button', { name: /^Compliance$/ }).click()
     await page.getByRole('button', { name: /Broker comments/ }).click()

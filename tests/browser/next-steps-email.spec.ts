@@ -101,7 +101,7 @@ test.describe('the next-steps email', () => {
   test("the client's own page shows the same step and the same link", async ({ page }) => {
     // READ ONLY. The page has a "Yes, let's proceed" button on it that moves the
     // deal and emails people. It is not pressed.
-    await page.goto(`/proceed/${DEAL}?from=BC`)
+    await page.goto(`/proceed/${DEAL}?from=BC`, { waitUntil: 'domcontentloaded' })
 
     // By role, not by text. "Share your bank statements" is the step's heading AND
     // a substring of the button's own label, and getByText matches substrings
@@ -132,7 +132,7 @@ test('Settings refuses to save the WealthDesk link blank', async ({ page }) => {
   page.on('dialog', async d => { alerts.push(d.message()); await d.dismiss() })
 
   // The box lives on the Connections pane, and the pane is read from the hash.
-  await page.goto('/settings#connections')
+  await page.goto('/settings#connections', { waitUntil: 'domcontentloaded' })
 
   // SETTINGS IS ADMIN ONLY, and the robot may not be one - page.tsx redirects
   // anybody else to /deals, where every locator below fails with "element(s) not
@@ -160,7 +160,7 @@ test('Settings refuses to save the WealthDesk link blank', async ({ page }) => {
   } finally {
     // Put it back whatever happened above. The guard returns before the upsert,
     // so nothing was written either way - this is belt and braces.
-    await page.goto('/settings#connections')
+    await page.goto('/settings#connections', { waitUntil: 'domcontentloaded' })
     const again = page.locator('input[placeholder^="https://simplify.wealthdesk"]')
     await again.waitFor({ timeout: 20_000 })
     await again.fill(before)
@@ -168,7 +168,7 @@ test('Settings refuses to save the WealthDesk link blank', async ({ page }) => {
     await page.waitForTimeout(2000)
   }
 
-  await page.goto('/settings#connections')
+  await page.goto('/settings#connections', { waitUntil: 'domcontentloaded' })
   const box2 = page.locator('input[placeholder^="https://simplify.wealthdesk"]')
   await expect(box2).toBeVisible({ timeout: 20_000 })
   expect(await box2.inputValue(), 'the link was not put back').toBe(before)

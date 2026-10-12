@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
+import { tierLabel, isOfficial, attribution, caveatFor, TYPEABLE_TIERS, type TypeableTier } from '@/lib/paco-knowledge'
 import { HOLA, type Answer } from '@/lib/paco'
 
 // PACO, IN THE BOTTOM RIGHT OF EVERY PAGE.
@@ -48,6 +49,7 @@ export default function Paco() {
   const [busy, setBusy] = useState(false)
   const [turns, setTurns] = useState<Turn[]>([])
   const [counts, setCounts] = useState<Answer['counts'] | null>(null)
+  const [telling, setTelling] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
 
   // What he can see at all, fetched once when he is first opened rather than on
@@ -87,8 +89,18 @@ export default function Paco() {
   }
 
   return (
-    <div className="fixed right-5 bottom-5 z-40 w-[420px] max-w-[calc(100vw-2rem)]
-                    max-h-[calc(100vh-3rem)] bg-card border border-card-line rounded-2xl
+    // BIG ENOUGH TO READ. Fabio, 12 Oct 2026: "I like the box just need the pop
+    // up box to be slighlty larger hard to read on current size", and again the
+    // same night when it had not changed - the first time I sized the move-on
+    // dialog instead, which was the box on screen when he asked, not the box he
+    // meant.
+    //
+    // 480 rather than 420, with a floor under the height so an empty Paco is
+    // the same shape as a full one, and the type a point larger throughout. The
+    // max-width and max-height still win on a small screen, so it can never be
+    // taller or wider than the window.
+    <div className="fixed right-5 bottom-5 z-40 w-[480px] max-w-[calc(100vw-2rem)]
+                    h-[520px] max-h-[calc(100vh-3rem)] bg-card border border-card-line rounded-2xl
                     shadow-[0_20px_50px_rgba(0,0,0,0.26)] flex flex-col overflow-hidden">
       <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-[#0F1115] text-white">
         <Bird size={30} />
@@ -104,7 +116,7 @@ export default function Paco() {
         <Bubble>
           {HOLA}
           {counts && counts.tagged === 0 && (
-            <p className="text-[11px] text-faint mt-1.5 leading-snug">
+            <p className="text-[12px] text-faint mt-1.5 leading-snug">
               No deal has been tagged yet, so there is not much I can answer. Tag one on its
               Lending Options tab and I will remember it.
             </p>
@@ -112,7 +124,7 @@ export default function Paco() {
           <div className="flex flex-wrap gap-1.5 mt-2">
             {SUGGEST.map(s => (
               <button key={s} onClick={() => ask(`Who have we used for ${s.toLowerCase()}?`)}
-                className="text-[11.5px] text-info bg-info-bg border border-info-edge rounded-full px-2.5 py-1">
+                className="text-[12.5px] text-info bg-info-bg border border-info-edge rounded-full px-2.5 py-1">
                 {s}
               </button>
             ))}
@@ -121,7 +133,7 @@ export default function Paco() {
 
         {turns.map((t, i) => t.mine ? (
           <div key={i} className="flex justify-end mb-3">
-            <div className="bg-[#0F1115] text-white/90 rounded-[14px_14px_4px_14px] px-3 py-2 text-[12.5px] max-w-[290px]">
+            <div className="bg-[#0F1115] text-white/90 rounded-[14px_14px_4px_14px] px-3 py-2 text-[13.5px] max-w-[340px]">
               {t.text}
             </div>
           </div>
@@ -129,23 +141,123 @@ export default function Paco() {
           <Bubble key={i}>{t.error ? <span className="text-chase">{t.error}</span> : <Said a={t.a!} />}</Bubble>
         ))}
 
-        {busy && <Bubble><span className="text-faint text-[12.5px]">&hellip;</span></Bubble>}
+        {busy && <Bubble><span className="text-faint text-[13.5px]">&hellip;</span></Bubble>}
         <div ref={endRef} />
       </div>
+
+      {telling && <Tell onDone={() => { setTelling(false); setCounts(null) }} />}
 
       <div className="border-t border-line-soft p-2.5 bg-card">
         <div className="flex items-center gap-2 border border-card-line rounded-full px-3 py-1.5">
           <input value={q} onChange={e => setQ(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') ask(q) }}
             placeholder="Ask Paco something…" aria-label="Ask Paco something"
-            className="flex-1 min-w-0 text-[12.5px] bg-transparent focus:outline-none" />
+            className="flex-1 min-w-0 text-[13.5px] bg-transparent focus:outline-none" />
           <button onClick={() => ask(q)} disabled={busy || !q.trim()} aria-label="Ask"
             className="w-[22px] h-[22px] rounded-full bg-brand text-white text-[12px] font-bold
                        flex items-center justify-center disabled:opacity-40">&uarr;</button>
         </div>
-        <p className="text-[10px] text-faint text-center mt-1.5">
-          Policies &middot; BDM notes &middot; our own deals. Nothing else.
+        <p className="text-[10.5px] text-faint text-center mt-1.5">
+          Policies &middot; what you tell me &middot; our own deals. Nothing else.
+          {' '}
+          <button onClick={() => setTelling(true)} className="text-info underline">Tell me something</button>
         </p>
+      </div>
+    </div>
+  )
+}
+
+// WHAT THE TEAM HAS TOLD HIM, WORD FOR WORD.
+//
+// The note is reproduced exactly as it was typed. It is never shortened, never
+// tidied, never blended with the one below it - the moment Paco starts writing
+// about lending he stops being a parrot. The only thing around it is the stamp:
+// who, when, and how firm. See lib/paco-knowledge.ts.
+function Notes({ a }: { a: Answer }) {
+  const notes = a.notes || []
+  if (notes.length === 0) return null
+  return (
+    <div className="mt-2">
+      <div className="text-[10.5px] text-faint mb-1">
+        {notes.length === 1 ? 'Someone here told me:' : `${notes.length} things the team has told me:`}
+      </div>
+      {a.notesDisagree && (
+        <div className="text-[11px] text-chase bg-chase-bg border border-chase-edge rounded-[8px] px-2 py-1.5 mb-1.5">
+          These do not agree with each other. Both are below &mdash; I am not picking one.
+        </div>
+      )}
+      {notes.map(n => (
+        <div key={n.id} className="border border-line-soft rounded-[10px] p-2 mb-1.5 bg-panel">
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className="text-[12.5px] font-[650] text-ink">{n.lender}</span>
+            <span className={`ml-auto text-[9px] font-bold uppercase tracking-wide rounded-full px-2 py-[2px] border ${
+              isOfficial(n.tier) ? 'bg-done-bg text-done border-done-edge'
+                                 : 'bg-info-bg text-info border-info-edge'}`}>
+              {tierLabel(n.tier)}
+            </span>
+          </div>
+          {/* Quoted, so it can never read as Paco's own sentence. */}
+          <div className="text-[13px] text-ink leading-[1.5]">&ldquo;{n.said}&rdquo;</div>
+          <div className="text-[10.5px] text-faint mt-1">{attribution(n)}</div>
+          {n.source && <div className="text-[10.5px] text-faint">{n.source}</div>}
+          {caveatFor(n) && <div className="text-[10.5px] text-chase mt-0.5">{caveatFor(n)}</div>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// TELLING PACO SOMETHING. Anyone, any time, live the moment it is saved.
+function Tell({ onDone }: { onDone: () => void }) {
+  const [lender, setLender] = useState('')
+  const [said, setSaid] = useState('')
+  const [tier, setTier] = useState<TypeableTier>('D')
+  const [source, setSource] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function save() {
+    if (!lender.trim() || !said.trim() || saving) return
+    setSaving(true); setErr('')
+    try {
+      const res = await fetch('/api/paco', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lender: lender.trim(), said: said.trim(), tier, source: source.trim() }),
+      })
+      const j = await res.json()
+      if (!res.ok) { setErr(j?.error || 'I could not write that down.'); setSaving(false); return }
+      onDone()
+    } catch { setErr('I could not write that down just then.'); setSaving(false) }
+  }
+
+  const inp = 'w-full text-[12.5px] border border-card-line rounded-lg px-2.5 py-1.5 bg-card focus:outline-none focus:border-brand'
+  return (
+    <div className="p-3 bg-panel border-t border-line-soft">
+      <div className="text-[11.5px] text-muted mb-2">
+        Tell me something and I will repeat it, with your name on it.
+      </div>
+      <input className={inp + ' mb-1.5'} value={lender} onChange={e => setLender(e.target.value)}
+        placeholder="Which lender" aria-label="Which lender" />
+      <textarea className={inp + ' mb-1.5 min-h-[62px] resize-y'} value={said} onChange={e => setSaid(e.target.value)}
+        placeholder="What do you know? I will quote this exactly." aria-label="What do you know" />
+      <div className="flex gap-1.5 mb-1.5">
+        {TYPEABLE_TIERS.map(t => (
+          <button key={t} type="button" onClick={() => setTier(t)}
+            className={`text-[11px] rounded-full px-2.5 py-1 border ${tier === t
+              ? 'bg-ink text-page border-ink' : 'border-card-line text-muted'}`}>
+            {tierLabel(t)}
+          </button>
+        ))}
+      </div>
+      <input className={inp} value={source} onChange={e => setSource(e.target.value)}
+        placeholder="Where from? e.g. email from BDM John, 3 Oct" aria-label="Where from" />
+      {err && <div className="text-[11px] text-chase mt-1.5">{err}</div>}
+      <div className="flex gap-2 mt-2">
+        <button onClick={onDone} className="text-[12px] text-muted px-3 py-1.5">Cancel</button>
+        <button onClick={save} disabled={saving || !lender.trim() || !said.trim()}
+          className="ml-auto text-[12px] bg-ink text-page rounded-lg px-3.5 py-1.5 font-medium disabled:opacity-40">
+          {saving ? 'Writing it down…' : 'Tell Paco'}
+        </button>
       </div>
     </div>
   )
@@ -156,7 +268,7 @@ function Bubble({ children }: { children: any }) {
     <div className="flex gap-2 mb-3 items-start">
       <Bird size={26} />
       <div className="bg-card border border-line-soft rounded-[14px_14px_14px_4px] px-3 py-2
-                      text-[12.5px] text-body max-w-[330px] leading-[1.55]">{children}</div>
+                      text-[13.5px] text-body max-w-[380px] leading-[1.55]">{children}</div>
     </div>
   )
 }
@@ -171,7 +283,18 @@ function Said({ a }: { a: Answer }) {
 
   return (
     <>
-      {a.kind === 'found' && (
+      {a.kind === 'found' && total === 0 && (
+        <>
+          {/* A NOTE IS AN ANSWER WITH NO DEAL BEHIND IT. Somebody writing down
+              what a BDM told them is the whole point of the notebook. */}
+          <div className="font-semibold text-ink">
+            &iexcl;Eso! Nothing in our deals, but someone has told me this.
+          </div>
+          <Notes a={a} />
+        </>
+      )}
+
+      {a.kind === 'found' && total > 0 && (
         <>
           <div className="font-semibold text-ink">
             &iexcl;Eso! {total} deal{total === 1 ? '' : 's'} tagged {names(a.asked)}.
@@ -196,6 +319,8 @@ function Said({ a }: { a: Answer }) {
               ))}
             </div>
           ))}
+
+          <Notes a={a} />
 
           {a.alsoConsidered.length > 0 && (
             <p className="text-[11.5px] text-muted mt-2">

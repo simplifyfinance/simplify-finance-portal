@@ -29,7 +29,7 @@ test.describe('notification routing', () => {
     // "element(s) not found" and reads exactly like a broken page. 10 Sep 2026 I
     // blamed the labels, then blamed the admin role; the real answer was that
     // nobody had told the robot which pane to open.
-    await page.goto('/settings#notifications')
+    await page.goto('/settings#notifications', { waitUntil: 'domcontentloaded' })
 
     // SETTINGS IS ADMIN ONLY, and the robot may not be one.
     //

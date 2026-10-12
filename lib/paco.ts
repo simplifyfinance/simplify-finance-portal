@@ -34,9 +34,12 @@ const txt = (v: any) => String(v ?? '').trim()
 
 // Punctuation and case are not meaning. "Self-employed" and "self employed" are
 // the same question.
-export function flat(s: any): string {
-  return String(s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()
-}
+// Moved to lib/plain-words.ts to break a circle - see the note there. Still
+// exported from here, so nothing that reads it from paco.ts has to change.
+export { flat }
+
+import { claimsFor, disagree, type Claim } from './paco-knowledge'
+import { flat } from './plain-words'
 
 // --- what was asked --------------------------------------------------------
 
@@ -141,13 +144,23 @@ export type Answer = {
   lenders: LenderLine[]
   alsoConsidered: string[]
   counts: Counts
+  // WHAT THE TEAM HAS TOLD HIM, word for word.
+  //
+  // 12 Oct 2026, his second source. Carried beside the deals rather than blended
+  // with them: a deal is a fact about what happened, a note is somebody's
+  // sentence, and the two must never read as the same kind of thing. See
+  // lib/paco-knowledge.ts.
+  notes: Claim[]
+  // Two notes about one lender at different tiers. Both are shown; Paco never
+  // picks a winner.
+  notesDisagree: boolean
   // Which of his three sources he is missing on this question. Every answer
   // ends with this, because the line that says what is missing is the line that
   // turns a lookup into a habit.
   missing: ('policy' | 'bdm')[]
 }
 
-export function answer(question: string, deals: DealRow[], counts?: Partial<Counts>): Answer {
+export function answer(question: string, deals: DealRow[], counts?: Partial<Counts>, notes?: any): Answer {
   const rows = Array.isArray(deals) ? deals : []
   const facts = rows.map(factOf)
   const tagged = facts.filter(f => f.tags.length > 0)
@@ -164,18 +177,30 @@ export function answer(question: string, deals: DealRow[], counts?: Partial<Coun
   if (base.bdmNotes === 0) missing.push('bdm')
 
   const asked = tagsAsked(question)
-  const named = lenderAsked(question, facts.map(f => f.lender))
+  // A lender he has never written a deal with is still a lender somebody may
+  // have left a note about, so the names from the notes count too.
+  const noteRows: Claim[] = Array.isArray(notes) ? notes : []
+  const named = lenderAsked(question, [...facts.map(f => f.lender), ...noteRows.map(n => String(n?.lender || ''))])
+
+  const hitNotes = claimsFor(noteRows, asked, named)
+  const notesDisagree = disagree(hitNotes)
 
   if (asked.length === 0 && !named) {
-    return { kind: 'not_understood', asked: [], lenders: [], alsoConsidered: [], counts: base, missing }
+    return { kind: 'not_understood', asked: [], lenders: [], alsoConsidered: [],
+             counts: base, notes: [], notesDisagree: false, missing }
   }
 
   const hits = tagged.filter(f =>
     (asked.length === 0 || asked.some(t => f.tags.includes(t))) &&
     (!named || flat(f.lender) === flat(named)))
 
+  // A NOTE IS AN ANSWER EVEN WITH NO DEAL BEHIND IT. Somebody writing down what
+  // a BDM told them is the whole point of the notes, and it would be a strange
+  // parrot that held the answer and said "nada" because no deal matched.
   if (hits.length === 0) {
-    return { kind: 'none_tagged', asked, lenders: [], alsoConsidered: [], counts: base, missing }
+    return { kind: hitNotes.length > 0 ? 'found' : 'none_tagged',
+             asked, lenders: [], alsoConsidered: [],
+             counts: base, notes: hitNotes, notesDisagree, missing }
   }
 
   // GROUPED BY LENDER, MOST DEALS FIRST - which is the shape of the question.
@@ -197,7 +222,8 @@ export function answer(question: string, deals: DealRow[], counts?: Partial<Coun
   const alsoConsidered = [...new Set(hits.flatMap(f => f.considered))]
     .filter(n => !chosen.has(flat(n)))
 
-  return { kind: 'found', asked, lenders, alsoConsidered, counts: base, missing }
+  return { kind: 'found', asked, lenders, alsoConsidered, counts: base,
+           notes: hitNotes, notesDisagree, missing }
 }
 
 // --- his manners -----------------------------------------------------------

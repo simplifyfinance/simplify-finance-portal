@@ -50,7 +50,7 @@ const goals2 = (p: Page) => p.getByLabel('Goals — next 2 years')
 const goals10 = (p: Page) => p.getByLabel('Goals — 2 to 10 years')
 
 async function openOrCreate(page: Page): Promise<void> {
-  await page.goto('/deals')
+  await page.goto('/deals', { waitUntil: 'domcontentloaded' })
   await page.getByPlaceholder(/Search by name, client, purpose/i).fill(FIRST)
 
   // WHERE THE ROBOT'S OWN DEAL LIVES NOW.

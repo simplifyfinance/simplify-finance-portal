@@ -172,9 +172,30 @@ export function splitsOf(deal: any): StructureSplit[] {
   const bcSplits: any[] = deal?.bc_data?.splits || []
   const lenderSplits: any[] = optionSplits(deal)
 
-  const base = globals.length > 0 ? globals
-    : lenderSplits.length > 0 ? lenderSplits
-    : bcSplits
+  // THE BORROWING CAPACITY OWNS THE STRUCTURE. ALWAYS.
+  //
+  // 12 Oct 2026, the Veljovic deal. This used to read the lending options'
+  // list first and stop there. That list is a COPY of the BC's, taken once,
+  // and nothing re-took it - so when the BC went from two splits to six, this
+  // function went on reporting two.
+  //
+  // It is not a screen fault. The lending options tab rebuilds its own copy on
+  // load, but a load never writes (see writeNow in LOForm - arrival is not an
+  // edit, on purpose), so the DATABASE still held two. The broker notes PDF
+  // reads the deal straight from the database and comes through here, which
+  // means the compliance pack was built from two splits and $1,020,000 while
+  // the deal was six splits and $2,720,000.
+  //
+  // So the structure is taken from the BC wherever the BC has one. How many
+  // splits there are, what each is called, what it is worth and which house it
+  // secures are the BC's answers. docs/the-chain.md, rule 1.
+  //
+  // ANYTHING THE LENDING OPTIONS ADDED BEYOND IT IS KEPT, not dropped - the
+  // same rule mergeWithBc follows on the tab itself. Following is not deleting.
+  const bcOwns = bcSplits.length > 0
+  const base = bcOwns ? [...bcSplits, ...globals.slice(bcSplits.length)]
+    : globals.length > 0 ? globals
+    : lenderSplits
   if (base.length === 0) return []
 
   // Same split, seen from another list. Ids match when the per-lender copy was
@@ -187,32 +208,46 @@ export function splitsOf(deal: any): StructureSplit[] {
   const onlySplit = base.length === 1
 
   return base.map((s: any, i: number) => {
-    const id = txt(s?.id) || `s${i}`
+    // THE LENDING OPTIONS' OWN ROW FOR THIS POSITION.
+    //
+    // When the BC owns the list above, `s` is a BC split and carries none of
+    // the answers that belong to this tab - the purpose, what the money does,
+    // the rate. Those are read from here instead. Where the BC does not own the
+    // list, this is the same object as `s`, so every chain below behaves as it
+    // always did.
+    const gs = globals[i] || {}
+    // AND THE ID COMES FROM THE LENDING OPTIONS FIRST, which matters more than
+    // it looks: compliance_data.splitDetail files the term, the product type
+    // and the IO years under this id. BC splits have no id at all, so taking
+    // the BC's would mint `s0`, `s1` ... and orphan all three on every deal
+    // already written.
+    const id = txt(gs?.id) || txt(s?.id) || `s${i}`
     const d = detail[id] || {}
     const ls = same(lenderSplits, id, i)
     const bs = same(bcSplits, id, i)
 
-    const amount = firstOf(s?.amount, ls?.amount, bs?.amount,
+    // Label and amount follow the BC, because this list is a copy OF it.
+    const amount = firstOf(s?.amount, gs?.amount, ls?.amount, bs?.amount,
       onlySplit && loanAmount(deal) > 0 ? String(loanAmount(deal)) : '')
 
     return {
       id,
-      label: firstOf(s?.label, ls?.label, bs?.label) || `Split ${i + 1}`,
+      label: firstOf(s?.label, gs?.label, ls?.label, bs?.label) || `Split ${i + 1}`,
       amount: txt(amount),
       // Rate is only ever typed on the per-lender copy.
-      rate: firstOf(ls?.rate, s?.rate, bs?.rate),
+      rate: firstOf(ls?.rate, gs?.rate, s?.rate, bs?.rate),
       // The structure, so the BC has the last word where the lists disagree -
       // which house a loan sits on is not a lending options decision.
-      securityId: firstOf(bs?.securityId, s?.securityId, ls?.securityId),
-      fundsUsedFor: firstOf(s?.fundsUsedFor, bs?.fundsUsedFor, s?.funds),
+      securityId: firstOf(bs?.securityId, s?.securityId, gs?.securityId, ls?.securityId),
+      fundsUsedFor: firstOf(gs?.fundsUsedFor, s?.fundsUsedFor, bs?.fundsUsedFor, gs?.funds, s?.funds),
       // ANSWERED HERE FIRST. 17 Sep 2026, Dylan Smyth and Megan Isherwood: an
       // investment PURCHASE, where the per-lender splits box does not exist -
       // it is drawn on refinances only. So the repayment type came from the BC
       // split and there was nowhere on the whole deal to change it, while the
       // product above had Interest Only ticked. Answering it on this panel now
       // wins over every other copy, on every scenario.
-      repaymentType: firstOf(d?.repaymentType, ls?.repaymentType, s?.repaymentType, s?.type,
-                             bs?.repaymentType, bs?.type),
+      repaymentType: firstOf(d?.repaymentType, ls?.repaymentType, gs?.repaymentType, gs?.type,
+                             s?.repaymentType, s?.type, bs?.repaymentType, bs?.type),
       // BOTH SPELLINGS, AND THE BC's ANSWER WHERE THE LO HAS NONE.
       //
       // 9 Oct 2026. This was a cast, so 'owner_occupied' - what the BC's own
@@ -223,16 +258,16 @@ export function splitsOf(deal: any): StructureSplit[] {
       //
       // The fall is the same one the repayment type above already makes: this
       // list's answer, then the BC split it came from.
-      purpose: normalisePurpose(s?.purpose) || normalisePurpose(bs?.purpose),
-      funds: (txt(s?.funds) as SplitFunds) || '',
+      purpose: normalisePurpose(gs?.purpose) || normalisePurpose(s?.purpose) || normalisePurpose(bs?.purpose),
+      funds: (txt(gs?.funds) as SplitFunds) || (txt(s?.funds) as SplitFunds) || '',
       // The BC holds one term for the whole deal; it prefills every split, and a
       // split that differs is changed here.
-      termYears: txt(d?.termYears) || txt(s?.termYears) || txt(deal?.bc_data?.loanTerm),
+      termYears: txt(d?.termYears) || txt(gs?.termYears) || txt(s?.termYears) || txt(deal?.bc_data?.loanTerm),
       // The LO holds one product per lender, not per split. Same idea.
-      productType: txt(d?.productType) || txt(s?.productType) || recommendedProduct(deal),
+      productType: txt(d?.productType) || txt(gs?.productType) || txt(s?.productType) || recommendedProduct(deal),
       // Same three-step fall as the term above: this block's own answer, then
       // whatever the split carries, then the recommended product's IO years.
-      ioYears: txt(d?.ioYears) || txt(s?.ioYears) || txt(ls?.ioYears) || recommendedIoYears(deal),
+      ioYears: txt(d?.ioYears) || txt(gs?.ioYears) || txt(s?.ioYears) || txt(ls?.ioYears) || recommendedIoYears(deal),
     }
   })
 }

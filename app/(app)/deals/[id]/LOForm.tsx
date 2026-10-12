@@ -994,10 +994,22 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     // below, which are read off the template. See lib/lo-template.ts.
     loaded.template = settleLoTemplate(loaded, bc.template)
     if (!loaded.importantNotes) loaded.importantNotes = (LO_TEMPLATE_NOTES[loaded.template] || []).join('\n')
-    if (!loaded.refinanceSplits) {
-      loaded.refinanceSplits = initRefinanceSplits()
-      loaded.refinanceSplitsByHand = false
-    }
+    // AND THE SPLIT LIST FOLLOWS THE BC HERE TOO, NOT ONLY IN THE EFFECT.
+    //
+    // 12 Oct 2026, the second half of the Veljovic fault. The effect on
+    // [deal.bc_data] does merge - and it did, once, on mount. Then the record
+    // arrived from the database and came through this function, which only
+    // built a list when the field was MISSING and otherwise put the stored one
+    // straight back. So the merge was undone seconds after it happened, by
+    // every load, every realtime update and every save that adopts.
+    //
+    // The effect is still there and still right. This is the path it cannot
+    // cover: a record arriving, which is the common case and the one the user
+    // actually sees.
+    loaded.refinanceSplits = (loaded.refinanceSplits || []).length === 0
+      ? initRefinanceSplits()
+      : mergeWithBc(loaded.refinanceSplits)
+    loaded.refinanceSplitsByHand = false
     // OPTIONS SAVED BEFORE 16 SEP 2026 HAVE NO ID. Backfilled from the position
     // they are already in, NOT from makeUid(): two people opening the same old
     // deal have to arrive at the same ids, or a merge would see two different

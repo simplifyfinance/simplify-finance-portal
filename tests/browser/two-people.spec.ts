@@ -24,7 +24,7 @@ const DEAL = process.env.PORTAL_TEST_DEAL_ID || ''
 const MARK = () => `robot ${Date.now()}`
 
 async function openFactFind(page: Page) {
-  await page.goto(`/deals/${DEAL}`)
+  await page.goto(`/deals/${DEAL}`, { waitUntil: 'domcontentloaded' })
   await page.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
   await page.getByRole('button', { name: /^Fact Find$/ }).click()
   await page.getByText('INTERNAL NOTES').waitFor({ timeout: 20_000 })

@@ -61,7 +61,7 @@ const DEAL = process.env.PORTAL_TEST_DEAL_ID || ''
 const TABS = ['Fact Find', 'BC — Borrowing capacity', 'Lending options']
 
 async function openDeal(page: Page) {
-  await page.goto(`/deals/${DEAL}`)
+  await page.goto(`/deals/${DEAL}`, { waitUntil: 'domcontentloaded' })
   await page.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
 }
 

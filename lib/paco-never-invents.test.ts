@@ -182,10 +182,52 @@ describe('no model writes a sentence about lending', () => {
     }
   })
 
-  it('the route reads and never writes', () => {
-    expect(route).not.toContain('.update(')
-    expect(route).not.toContain('.insert(')
+  // ASKING HIM A QUESTION WRITES NOTHING.
+  //
+  // 12 Oct 2026. This used to say the route never writes at all, which was true
+  // until the team could tell him things. The rule it was really protecting is
+  // narrower and still holds: a QUESTION changes no record anywhere. Only the
+  // POST writes, and only to add a note or retire one.
+  it('the question handler writes nothing', () => {
+    const get = route.slice(route.indexOf('export async function GET'),
+                            route.indexOf('export async function POST'))
+    expect(get).not.toContain('.update(')
+    expect(get).not.toContain('.insert(')
+    expect(get).not.toContain('.delete(')
+  })
+
+  // AND NOTHING ANYWHERE DELETES OR REWRITES WHAT SOMEBODY SAID.
+  //
+  // A note is added, or it is retired. It is never edited and never removed -
+  // which is what makes the name and the date on it worth anything.
+  it('nothing deletes a note', () => {
     expect(route).not.toContain('.delete(')
+  })
+
+  it('the only update is a retirement', () => {
+    const i = route.indexOf('.update(')
+    expect(i).toBeGreaterThan(-1)
+    const near = route.slice(i, i + 300)
+    expect(near).toContain('retired_at')
+    expect(near).not.toContain('said:')
+    expect(near).not.toContain('tier:')
+    // One update in the whole file.
+    expect(route.indexOf('.update(', i + 1)).toBe(-1)
+  })
+
+  // THE STAMP IS TAKEN FROM THE SESSION, NEVER FROM THE BROWSER. Otherwise the
+  // name on a note is whatever the sender typed, and the stamp is the entire
+  // safeguard - there is no approval step behind it.
+  it('a note is stamped with whoever is signed in', () => {
+    expect(route).toContain('said_by: auth.user.id')
+    expect(route).not.toMatch(/said_by:\s*body/)
+    expect(route).not.toMatch(/said_by_name:\s*body/)
+  })
+
+  // A and C are what a lender wrote. Letting them be typed would mean somebody
+  // could mark their own recollection as the lender's own policy.
+  it('a person can only choose the two tiers that are theirs to choose', () => {
+    expect(route).toContain("tier: body?.tier === 'B' ? 'B' : 'D'")
   })
 
   it('the route needs a signed-in person', () => {
@@ -211,5 +253,29 @@ describe('he is on every page, from one place', () => {
   it('and nowhere else, so there is one of him to fix', () => {
     // A second copy on one page is how he ends up subtly different on that page.
     expect((layout.match(/<Paco \/>/g) || []).length).toBe(1)
+  })
+})
+
+// BIG ENOUGH TO READ, AND IT STAYS THAT WAY.
+//
+// Fabio asked for this twice. The first time I changed the move-on dialog,
+// because that was the box on screen when he asked - so the one he meant went
+// out at exactly the size he had just told me was too small. A number in a
+// class name is the easiest thing in this file to lose in a tidy-up.
+describe('the panel is big enough to read', () => {
+  const panel = readFileSync('components/Paco.tsx', 'utf8')
+
+  it('is wider than it was, with a floor under its height', () => {
+    expect(panel).toContain('w-[480px]')
+    expect(panel).toContain('h-[520px]')
+  })
+
+  it('and never bigger than the window it is in', () => {
+    expect(panel).toContain('max-w-[calc(100vw-2rem)]')
+    expect(panel).toContain('max-h-[calc(100vh-3rem)]')
+  })
+
+  it('with what Paco says set a point larger than the chrome around it', () => {
+    expect(panel).toContain('text-[13.5px] text-body max-w-[380px]')
   })
 })

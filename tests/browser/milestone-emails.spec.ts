@@ -20,7 +20,7 @@ test.describe('the client emails', () => {
   test.skip(!DEAL, 'Set PORTAL_TEST_DEAL_ID in .env.local.')
 
   test('all three are listed, and the ready one opens and previews', async ({ page }) => {
-    await page.goto(`/deals/${DEAL}`)
+    await page.goto(`/deals/${DEAL}`, { waitUntil: 'domcontentloaded' })
     await page.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
 
     // THE EMAILS LIVE BEHIND ONE WORD IN THE HEADER NOW, not in a band across

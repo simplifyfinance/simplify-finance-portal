@@ -49,6 +49,20 @@ describe('the re-seed', () => {
     expect(effect, 'something is gating the merge again').not.toContain('refinanceSplitsByHand')
   })
 
+  // THE EFFECT WAS NEVER THE PATH THAT MATTERED.
+  //
+  // It fires on mount. Every record that arrives afterwards - the first load
+  // finishing, a realtime update, a save adopting what the database returned -
+  // goes through loShape instead, and loShape used to put the stored list back
+  // untouched. The merge was real and was undone seconds later, which is why
+  // the Veljovic deal still read two splits after the flag was retired.
+  it('merges on the path a record actually arrives by, not just on mount', () => {
+    const shape = code.slice(code.indexOf('function loShape'),
+                             code.indexOf('function loShape') + 1600)
+    expect(shape, 'loShape is putting the stored split list back untouched')
+      .toContain('mergeWithBc(loaded.refinanceSplits)')
+  })
+
   it('keeps the id, which is what the compliance answers are filed under', () => {
     const merge = code.slice(code.indexOf('function mergeWithBc'),
                              code.indexOf('function mergeWithBc') + 700)
@@ -128,17 +142,63 @@ describe('when the two lists disagree', () => {
     expect(splitsDisagree(deal([{ id: 'a', label: 'End Debt', amount: '521,000' }], []))).toBeNull()
   })
 
-  // IT SHOULD NOW BE ALMOST SILENT. The lists reconcile themselves on every
-  // load, so the only thing left for this to catch is a split living on the
-  // lending options that the borrowing capacity has never heard of - structure
-  // in a place that does not own it, which the client never agreed to.
+  // THIS TEST SAID THE OPPOSITE THIS MORNING, AND THE DEAL PROVED IT WRONG.
   //
-  // Fabio, 12 Oct 2026: "hopefully these warning saying split dont match will be
-  // far and between and only show if there is a real error in place".
-  it('reports and changes nothing - it is a warning, not a correction', () => {
+  // It read "reports and changes nothing - it is a warning, not a correction",
+  // and asserted splitsOf returned the lending options' one split while the BC
+  // held two. I wrote that believing the tab reconciled the lists on load, so
+  // this function would only ever see them agree.
+  //
+  // The tab does reconcile - on screen. A load never writes (writeNow: arrival
+  // is not an edit), so the DATABASE keeps whatever it had. And the broker
+  // notes PDF reads the deal from the database and comes through here. On the
+  // Veljovic deal that meant the compliance pack was built from two splits and
+  // $1,020,000 while the deal was six splits and $2,720,000 - a regulated
+  // document describing a loan nobody was writing, with no warning on it,
+  // because the warning is on a screen nobody had to open.
+  //
+  // So splitsOf follows the BC too. The warning still appears, and it is still
+  // a warning rather than the thing doing the work - but what the documents say
+  // no longer depends on whether somebody opened a tab.
+  it('follows the borrowing capacity, so the documents cannot be left behind', () => {
     const d = deal([{ id: 'a', label: 'End Debt', amount: '521,000' }])
     expect(splitsDisagree(d)).not.toBeNull()
-    expect(splitsOf(d).map(s => s.label)).toEqual(['End Debt'])
+    expect(splitsOf(d).map(s => s.label)).toEqual(['Land loan', 'Construction loan'])
+    expect(splitsOf(d).map(s => s.amount)).toEqual(['320,000', '201,000'])
+  })
+
+  // AND FOLLOWING IS NOT DELETING. A split typed straight onto the lending
+  // options - an equity release the BC has not caught up with - is kept on the
+  // end, which is the same rule mergeWithBc follows on the tab.
+  it('keeps a split the lending options added beyond the BC list', () => {
+    const d = deal([
+      { id: 'a', label: 'Land loan', amount: '320,000' },
+      { id: 'b', label: 'Construction loan', amount: '201,000' },
+      { id: 'c', label: 'Equity release', amount: '80,000' },
+    ])
+    expect(splitsOf(d).map(s => s.label)).toEqual(['Land loan', 'Construction loan', 'Equity release'])
+  })
+
+  // THE IDS ARE THE LENDING OPTIONS', NOT POSITIONS MINTED HERE.
+  // compliance_data.splitDetail files the term, the product type and the IO
+  // years under them. BC splits carry no id at all, so taking the BC's would
+  // orphan all three on every deal already written.
+  it('keeps the ids the compliance answers are filed under', () => {
+    const d = deal([
+      { id: 'uid-1', label: 'Land loan', amount: '320,000' },
+      { id: 'uid-2', label: 'Construction loan', amount: '201,000' },
+    ])
+    expect(splitsOf(d).map(s => s.id)).toEqual(['uid-1', 'uid-2'])
+  })
+
+  // The pricing and the answers that are this tab's to give are still read off
+  // the lending options' row, not thrown away with its structure.
+  it('still reads the lending options own answers off their own row', () => {
+    const d = deal([
+      { id: 'uid-1', label: 'whatever', amount: '1', purpose: 'INV', funds: 'refinance' },
+      { id: 'uid-2', label: 'whatever', amount: '1', purpose: 'OO' },
+    ])
+    expect(splitsOf(d).map(s => s.purpose)).toEqual(['INV', 'OO'])
   })
 
   it('and the strip no longer tells you to go and reconcile it by hand', () => {

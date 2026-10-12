@@ -21,7 +21,7 @@ test.describe('the documents box', () => {
   test.skip(!DEAL, 'Set PORTAL_TEST_DEAL_ID in .env.local.')
 
   test('the add list is alphabetical and offers nothing already on the deal', async ({ page }) => {
-    await page.goto(`/deals/${DEAL}`)
+    await page.goto(`/deals/${DEAL}`, { waitUntil: 'domcontentloaded' })
     await page.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
 
     // The box is collapsed until somebody opens it.

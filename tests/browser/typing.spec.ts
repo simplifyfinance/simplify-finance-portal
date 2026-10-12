@@ -19,7 +19,7 @@ const NOTE =
 
 
 async function openBcNotes(page: Page) {
-  await page.goto(`/deals/${DEAL}`)
+  await page.goto(`/deals/${DEAL}`, { waitUntil: 'domcontentloaded' })
     // The page is HTML before it is a page. See data-ready in DealPageClient -
     // a click before this appears goes nowhere, which is a race, not a bug in
     // whatever was clicked.
@@ -211,7 +211,7 @@ test.describe('typing into a deal', () => {
     await expect(other).toBeVisible({ timeout: 20_000 })
     const originalOther = await other.inputValue()
 
-    await page.goto(`/deals/${DEAL}`)
+    await page.goto(`/deals/${DEAL}`, { waitUntil: 'domcontentloaded' })
     await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
     await page.getByRole('button', { name: /^Fact Find$/ }).click()
     const box = page.getByLabel(/Goals — next 2 years/i)

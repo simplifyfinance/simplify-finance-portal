@@ -41,7 +41,7 @@ const NINE: { stage: string; label: RegExp; name: string }[] = [
 ]
 
 async function openCompliance(page: Page) {
-  await page.goto(`/deals/${DEAL}`)
+  await page.goto(`/deals/${DEAL}`, { waitUntil: 'domcontentloaded' })
   await page.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
   await page.getByRole('button', { name: /^Compliance$/ }).click()
   // A deal whose compliance has already gone to the credit team draws the

@@ -28,7 +28,7 @@ const DEAL = process.env.PORTAL_TEST_DEAL_ID || ''
 const TABS = ['Lending options', 'BC — Borrowing capacity', 'Compliance', 'Fact Find']
 
 async function open(page: Page) {
-  await page.goto(`/deals/${DEAL}`)
+  await page.goto(`/deals/${DEAL}`, { waitUntil: 'domcontentloaded' })
   await page.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
 }
 // The box this test writes in, per tab. Named where a name exists, so the same

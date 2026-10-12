@@ -26,7 +26,7 @@ const GOALS_2 = 'Two year goals typed by the robot.'
 const GOALS_10 = 'Ten year goals typed by the robot.'
 
 async function openOrCreate(page: Page): Promise<void> {
-  await page.goto('/deals')
+  await page.goto('/deals', { waitUntil: 'domcontentloaded' })
   await page.getByPlaceholder(/Search by name, client, purpose/i).fill(ROBOT_FIRST)
 
   // WHERE THE ROBOT'S OWN DEAL LIVES NOW.

@@ -41,7 +41,7 @@ test.describe('Wesley Perrott — the compliance tab that will not open', () => 
       if (msg.type() === 'error') consoleErrors.push(msg.text().slice(0, 2000))
     })
 
-    await page.goto(`/deals/${WESLEY}`)
+    await page.goto(`/deals/${WESLEY}`, { waitUntil: 'domcontentloaded' })
     await page.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
 
     // The deal itself loaded. If this fails the problem is not the tab.

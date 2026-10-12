@@ -29,7 +29,7 @@ test.describe('lending options reaches compliance without a reload', () => {
     // came from what was just typed and not from what was already there.
     const mark = `robot criterion ${Date.now()}`
 
-    await page.goto(`/deals/${DEAL}`)
+    await page.goto(`/deals/${DEAL}`, { waitUntil: 'domcontentloaded' })
     await page.locator('[data-ready="1"]').waitFor({ timeout: 20_000 })
 
     // --- 1. type it on the Lending options tab ------------------------------

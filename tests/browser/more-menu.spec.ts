@@ -23,7 +23,7 @@ test.describe('the More menu', () => {
   test.skip(!DEAL, 'Set PORTAL_TEST_DEAL_ID in .env.local.')
 
   test('Close deal opens the dialog and Cancel puts it away', async ({ page }) => {
-    await page.goto(`/deals/${DEAL}`)
+    await page.goto(`/deals/${DEAL}`, { waitUntil: 'domcontentloaded' })
     await page.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
 
     const more = page.getByRole('button', { name: /^More$/ })
