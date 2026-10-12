@@ -80,10 +80,17 @@ export default function Paco() {
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} aria-label="Ask Paco"
+      <button type="button" onClick={() => setOpen(true)}
+        aria-label={turns.length ? 'Open Paco - he is holding a conversation' : 'Ask Paco'}
         className="fixed right-5 bottom-5 z-40 w-[58px] h-[58px] rounded-full bg-card border border-card-line
                    shadow-[0_10px_26px_rgba(0,0,0,0.2)] flex items-center justify-center hover:scale-105 transition">
         <Bird size={44} />
+        {/* MINIMISED HOLDING SOMETHING, OR MINIMISED EMPTY. Without this they
+            are the same circle, and the only way to find out is to open him. */}
+        {turns.length > 0 && (
+          <span aria-hidden
+            className="absolute top-0.5 right-0.5 w-[13px] h-[13px] rounded-full bg-info border-2 border-card" />
+        )}
       </button>
     )
   }
@@ -108,8 +115,37 @@ export default function Paco() {
           <b className="text-[13.5px] block leading-tight">Paco</b>
           <span className="text-[10.5px] text-white/55">Repeats. Never invents.</span>
         </div>
-        <button onClick={() => setOpen(false)} aria-label="Close Paco"
-          className="ml-auto text-white/55 hover:text-white text-[17px] leading-none">&times;</button>
+        {/* A MINUS, BECAUSE THAT IS WHAT IT DOES.
+            *
+            * Paco is in the app layout, so he never unmounts while you move
+            * between deals - closing him only swapped the panel for the bubble
+            * and the conversation was still sitting there. A cross means
+            * discard everywhere else, so nobody believed it had survived and
+            * nobody tried. Fabio, 13 Oct 2026: "if we close pco is opens on the
+            * last chat or should we have a minus button to be safe".
+            *
+            * AND A MINUS NEEDS A WAY OUT. If hiding never clears it, a
+            * conversation never ends - you would scroll past Tuesday to find
+            * today. Start again is the only honest companion to a minus.
+            *
+            * NOTHING IS STORED. The conversation is state in this one browser
+            * window: it does not reach the server, it does not reach anybody
+            * else, and a refresh clears it. Two people on the same deal get
+            * their own. That is also why it is not restored after a refresh -
+            * restoring it would mean keeping it somewhere, and somewhere is
+            * where it could end up in front of the wrong person. */}
+        <div className="ml-auto flex items-center gap-1">
+          {turns.length > 0 && (
+            <button onClick={() => { setTurns([]); setTelling(false) }}
+              className="text-[11px] text-white/60 hover:text-white border border-white/20
+                         hover:border-white/40 rounded-md px-2 py-[3px] transition">
+              Start again
+            </button>
+          )}
+          <button onClick={() => setOpen(false)} aria-label="Minimise Paco"
+            title="Minimise. Your conversation is kept."
+            className="text-white/55 hover:text-white text-[17px] leading-none font-bold px-1.5">&minus;</button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3.5 bg-panel">

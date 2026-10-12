@@ -279,3 +279,55 @@ describe('the panel is big enough to read', () => {
     expect(panel).toContain('text-[13.5px] text-body max-w-[380px]')
   })
 })
+
+// MINIMISE, NOT CLOSE - AND YOUR CHAT IS YOURS.
+//
+// Paco sits in the app layout and never unmounts, so closing him only ever hid
+// him; the conversation was still there on reopening. The cross said otherwise,
+// so nobody trusted it. Fabio, 13 Oct 2026: "should we have a minus button to be
+// safe", and then the question underneath it - "we dont want me opening paco and
+// seeing some elses conversation".
+//
+// They cannot. The turns are state in one browser window. Nothing writes them
+// anywhere, which is why a refresh clears them and why there is nothing to
+// restore. Storing them to survive a refresh would be the only way one person's
+// chat could ever reach another, so this file holds that line.
+describe('minimise keeps your conversation, and keeps it yours', () => {
+  const panel = readFileSync('components/Paco.tsx', 'utf8')
+
+  it('the button minimises rather than claiming to close', () => {
+    expect(panel).toContain('aria-label="Minimise Paco"')
+    expect(panel).toContain('&minus;')
+    expect(panel, 'the cross is back on the panel header').not.toContain('aria-label="Close Paco"')
+  })
+
+  it('hiding him does not throw the conversation away', () => {
+    // Tight around the minimise button's own element. Wider than this and it
+    // swallows the Start again button above it, which is SUPPOSED to clear.
+    const at = panel.indexOf('aria-label="Minimise Paco"')
+    const hide = panel.slice(at - 60, at + 200)
+    expect(hide).toContain('setOpen(false)')
+    expect(hide, 'minimising is clearing the chat again').not.toContain('setTurns([])')
+  })
+
+  it('and there is a way to clear it on purpose', () => {
+    expect(panel).toContain('Start again')
+    expect(panel).toContain('setTurns([])')
+  })
+
+  it('the bubble says when he is holding one', () => {
+    expect(panel).toContain('turns.length > 0')
+  })
+
+  // THE ONE THAT MATTERS. A conversation that is never written down cannot be
+  // read by anybody else, cannot be restored onto somebody else's screen, and
+  // cannot outlive the window it was had in.
+  it('nothing about the conversation is ever stored or sent', () => {
+    expect(panel).not.toMatch(/localStorage|sessionStorage|indexedDB/i)
+    // The only thing posted from this panel is a note somebody deliberately
+    // typed into the Tell box, which is team knowledge and is meant to be shared.
+    const posts = panel.match(/method:\s*'POST'/g) || []
+    expect(posts.length).toBe(1)
+    expect(panel).not.toMatch(/body:\s*JSON\.stringify\(\{[^}]*turns/)
+  })
+})

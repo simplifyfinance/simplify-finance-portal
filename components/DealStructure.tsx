@@ -4,7 +4,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { patchDealColumn } from '@/lib/patch-deal-column'
 import { templateLabel } from '@/lib/templates'
 import {
-  splitsOf, dealRow, stillNeeded, needsFundsRole, purposeSummary,
+  splitsOf, dealRow, whatIsLeft, splitsNamed, needsFundsRole, purposeSummary,
   withSplitDetail, isInterestOnly, PURPOSE_LABEL, FUNDS_LABEL, defaultSecurityAddress,
 } from '@/lib/deal-structure'
 import { fundsToComplete, loanAmountDisagrees, bcSplitsTotal } from '@/lib/funds-to-complete'
@@ -75,7 +75,7 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
   const loanSplit = useMemo(() => loanAmountDisagrees(deal), [deal])
   // Two split lists, one deal. Null when they agree, which is almost always.
   const splitGap = useMemo(() => splitsDisagree(deal), [deal])
-  const needed = useMemo(() => stillNeeded(deal), [deal])
+  const left = useMemo(() => whatIsLeft(deal), [deal])
   const askFunds = needsFundsRole(deal)
   const purpose = purposeSummary(deal)
 
@@ -144,9 +144,12 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
           </span>
         )}
         {purpose && <span className="text-[12px] text-muted">{purpose}</span>}
-        {needed.length > 0 && (
-          <span className="text-[11px] font-semibold text-chase bg-chase-bg border border-chase-edge rounded-md px-2 py-[2px]">
-            {needed.length} to complete
+        {/* THE SAME COUNT, AND IT WAS RED TOO. It counted empty fields, so the
+            Veljovic deal wore a red "14 to complete" chip in its heading for
+            two things nobody had got to yet. Jobs, and quiet. */}
+        {left.jobs > 0 && (
+          <span className="text-[11px] font-medium text-muted bg-page border border-card-line rounded-md px-2 py-[2px]">
+            {left.jobs} to complete
           </span>
         )}
         <a href={`/deals/${deal.id}?stage=BC`} className="ml-auto text-[12px] text-brand-ink hover:underline">Open BC tab →</a>
@@ -478,25 +481,47 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
         </>
       )}
 
-      {/* THE WARNING, NOT A LOCK. The tab opens as normal; it is the credit
-          notes that wait. Fabio, 3 Sep 2026: "dont lock but warning sign saying
-          we need that information to generate compliance". */}
-      {needed.length > 0 && (
-        <div className="mt-3 border border-chase-edge bg-chase-bg rounded-[10px] px-4 py-3">
-          <h4 className="m-0 mb-1 text-[13.5px] text-ink font-semibold">
-            ⚠ {needed.length === 1 ? 'One thing is' : `${needed.length} things are`} needed before the credit notes can be written
-          </h4>
-          <p className="m-0 text-[12.5px] text-chase">
-            Left blank, the notes would either say nothing useful about that money or start guessing.
-          </p>
-          <ul className="mt-2 mb-0 pl-5 text-[12.5px] text-chase">
-            {needed.slice(0, 6).map((n, i) => (
-              <li key={i} className="mb-0.5">
-                <b className="text-ink">{n.splitLabel}</b> — {n.what}
-              </li>
-            ))}
-            {needed.length > 6 && <li>and {needed.length - 6} more</li>}
-          </ul>
+      {/* NOT A LOCK, AND NO LONGER A WARNING EITHER.
+          *
+          * The tab opens as normal; it is the credit notes that wait. Fabio,
+          * 3 Sep 2026: "dont lock but warning sign saying we need that
+          * information to generate compliance".
+          *
+          * 13 Oct 2026, it stopped being a warning sign. It was red, it counted
+          * empty fields rather than jobs, it printed labels that repeat, and it
+          * hid most of itself behind "and 8 more". On the Veljovic deal that
+          * read "14 things are needed" when there were two things to do.
+          *
+          * Fabio: "I dont like warnigns for the sake of warnigns unless it is
+          * needed meaning BC and LO are not mtching". A deal being written has
+          * blanks in it. Red is spent on splitsDisagree above, and spending it
+          * twice is how both stop being read. See whatIsLeft(). */}
+      {left.jobs > 0 && (
+        <div className="mt-3 border border-card-line bg-page rounded-[10px] px-4 py-3">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <h4 className="m-0 text-[13px] text-ink font-semibold">
+              {left.jobs === 1 ? 'One thing left' : `${left.jobs} things left`} before the credit notes
+            </h4>
+            <span className="text-[12px] text-muted">Nothing is wrong. The notes just wait for these.</span>
+          </div>
+
+          {/* THE CAUSE FIRST, and what ticking it actually does. One tick, a
+              whole column of splits answered. */}
+          {left.pickLender && (
+            <div className="mt-2 bg-info-bg border border-info-edge rounded-lg px-3 py-2
+                            text-[12.5px] text-info leading-relaxed">
+              <b>Tick the lending option you are recommending.</b> The product on every split is read
+              from it, so that one tick answers {left.ofSplits === 1 ? 'it' : `all ${left.ofSplits}`}.
+            </div>
+          )}
+
+          {/* BY SPLIT NUMBER, which is what is printed on the rows above. All of
+              them - a list that hides half of itself cannot be worked through. */}
+          {left.lines.map((l, i) => (
+            <div key={i} className="mt-2 text-[12.5px] text-body leading-relaxed">
+              <b className="text-ink">{splitsNamed(l.splits)}</b> &mdash; {l.what}
+            </div>
+          ))}
         </div>
       )}
     </div>

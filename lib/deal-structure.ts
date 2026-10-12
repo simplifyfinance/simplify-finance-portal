@@ -421,6 +421,86 @@ export function stillNeeded(deal: any): Needed[] {
   return out
 }
 
+// --- what is left, said as jobs rather than as gaps -------------------------
+//
+// 13 Oct 2026. stillNeeded() above returns one entry per EMPTY FIELD, and the
+// strip printed them straight out in red. On the Veljovic deal that was a red
+// box reading "14 things are needed", with six identical lines in it and "and 8
+// more" hiding the rest. Fabio: "confused with meaning".
+//
+// Three faults, and only the third is cosmetic.
+//
+// ONE. Ten of the fourteen were the same untick. A split's product is not typed
+// on the split - it is read off whichever lending option is marked as
+// recommended (see recommendedProduct). With no option picked there is nothing
+// to read, so every split reports it. Ten symptoms, one cause, and the box
+// named none of them.
+//
+// TWO. It printed the split's LABEL. Labels repeat - three lines said "Existing
+// Investment Home loan" and nothing told them apart. The split NUMBER is on the
+// screen directly above, and is the only thing a person can act on.
+//
+// THREE. It was red. Fabio: "I dont like warnigns for the sake of warnigns
+// unless it is needed meaning BC and LO are not mtching". A deal somebody is
+// halfway through writing has blanks in it; that is the normal state of a deal,
+// not a fault. Red belongs to splitsDisagree, which IS a fault, and it only
+// reads as one when nothing else on the page is shouting alongside it.
+export type LeftJob = { splits: number[]; what: string }
+export type WhatIsLeft = { jobs: number; pickLender: boolean; ofSplits: number; lines: LeftJob[] }
+
+// PLAIN WORDS, NOT THE NAMES OF BOXES. "product type" and "term" are what the
+// fields are called in here. Neither tells somebody what to do, and neither is
+// set where they would look.
+const LEFT_WORDS: Record<string, string> = {
+  product: 'set the product',
+  purpose: 'say whether it is owner occupied or investment',
+  repayment: 'say whether it is principal and interest or interest only',
+  funds: 'say what the money does - funds the purchase, pays out debt, or releases equity',
+  term: 'set the loan term',
+}
+const LEFT_ORDER = ['product', 'purpose', 'repayment', 'funds', 'term']
+
+/** "Split 7", or "Splits 7, 8, 9 and 10". */
+export function splitsNamed(ns: number[]): string {
+  if (ns.length === 0) return ''
+  if (ns.length === 1) return `Split ${ns[0]}`
+  const all = ns.map(String)
+  return `Splits ${all.slice(0, -1).join(', ')} and ${all[all.length - 1]}`
+}
+
+export function whatIsLeft(deal: any): WhatIsLeft {
+  const splits = splitsOf(deal)
+  const askFunds = needsFundsRole(deal)
+  const gaps: Record<string, number[]> = {}
+  const add = (k: string, n: number) => { gaps[k] = [...(gaps[k] || []), n] }
+
+  splits.forEach((s, i) => {
+    const n = i + 1
+    if (!s.purpose) add('purpose', n)
+    if (askFunds && !s.funds) add('funds', n)
+    if (!s.termYears) add('term', n)
+    if (!s.repaymentType) add('repayment', n)
+    if (!s.productType) add('product', n)
+  })
+
+  // THE ONE UNTICK THAT ANSWERS A WHOLE COLUMN. Only when it really is all of
+  // them and really is the missing recommendation - a single split left blank
+  // while the others are answered is that split's own gap, and is listed as one.
+  const productGaps = gaps.product || []
+  const pickLender = splits.length > 0
+    && !recommendedProduct(deal)
+    && productGaps.length === splits.length
+  if (pickLender) delete gaps.product
+
+  const lines = LEFT_ORDER
+    .filter(k => (gaps[k] || []).length > 0)
+    .map(k => ({ splits: gaps[k], what: LEFT_WORDS[k] }))
+
+  // JOBS, NOT GAPS. Fourteen empty boxes was two things to go and do, and a
+  // number that large on a deal in progress reads as a deal in trouble.
+  return { jobs: (pickLender ? 1 : 0) + lines.length, pickLender, ofSplits: splits.length, lines }
+}
+
 // The lending that actually reaches the purchase. On a plain purchase that is
 // all of it; on a mixed deal it is only the splits somebody marked as funding
 // the purchase. Null when the deal is mixed and not every split has been
