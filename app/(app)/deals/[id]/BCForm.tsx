@@ -1255,21 +1255,29 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     setMarkingComplete(false)
   }
 
-  async function handleMoveToLo() {
+  // sendEmail decides only whether the CLIENT hears about it. Both ways record
+  // that they agreed and both move the deal - see the note on the dialog below.
+  async function handleMoveToLo(sendEmail = true) {
     setSendingMoveToLo(true)
     setMoveToLoMsg('')
     try {
       const res = await fetch('/api/send-next-steps-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dealId: deal.id, stage: 'BC' })
+        body: JSON.stringify({ dealId: deal.id, stage: 'BC', sendEmail })
       })
       const data = await res.json()
       if (!data.ok) { setMoveToLoMsg(data.error || 'Failed'); setSendingMoveToLo(false); return }
       setClientProceeded(true)
       setProceedInfo({ when: new Date().toISOString(), who: data.by ? `recorded by ${data.by}` : 'recorded by our office' })
       setShowMoveToLoPopup(false)
-      setMoveToLoMsg(data.alreadyProceeded ? 'Already moved to LO' : data.emailSent ? 'Moved to LO — client emailed' : 'Moved to LO — no email on file for client')
+      // WHICH OF THE TWO HAPPENED, IN WORDS. "no email on file" used to cover
+      // both a missing address and a deliberate choice not to write, so nobody
+      // could tell them apart afterwards.
+      setMoveToLoMsg(data.alreadyProceeded ? 'Already moved to LO'
+        : data.emailSent ? 'Moved to LO — client emailed'
+        : data.notSentOnPurpose ? 'Moved to LO — client not emailed'
+        : 'Moved to LO — no email on file for client')
       onStageChange?.('LO')
     } catch (e: any) {
       setMoveToLoMsg(e.message)
@@ -1505,14 +1513,39 @@ Key assumptions: ${checklistText}`
         * Out here it opens from whichever tab somebody is looking at. */}
       {showMoveToLoPopup && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-card rounded-2xl p-6 w-[440px] shadow-xl">
-            <div className="text-base font-semibold mb-1 text-ink">Send the next-steps email to the client?</div>
-            <p className="text-sm text-gray-500 mb-5">This moves the deal to LO and emails the client the same next-steps content (including the bank statement link, if entered) they'd see if they'd clicked "ready to proceed" themselves. Only use this if they agreed over a call rather than through the email.</p>
+          {/* TWO WAYS OUT, NOT ONE.
+            *
+            * 12 Oct 2026. Fabio: "sometimes we need the deal to go from BC
+            * straight to LO ... we dont so need that blockage to be an option".
+            * Until now the only way to avoid emailing the client was Cancel,
+            * which left the deal on BC and the client never recorded as having
+            * agreed - so the choice was between an email nobody wanted and a
+            * deal that could not move.
+            *
+            * Both buttons record the agreement and move the deal. Emailing stays
+            * the dark one, because it is still the normal case. */}
+          <div className="bg-card rounded-2xl p-6 w-[470px] shadow-xl">
+            <div className="text-base font-semibold mb-1 text-ink">Client agreed — move to LO</div>
+            <p className="text-sm text-gray-500 mb-4">This records that they agreed and moves the deal to Lending options. Choose whether they get the next-steps email.</p>
+            <div className="flex flex-col gap-2 mb-5">
+              <div className="border border-gray-200 rounded-xl px-3 py-2.5">
+                <div className="text-[13px] font-semibold text-ink mb-0.5">Email the client and move</div>
+                <div className="text-xs text-gray-500 leading-snug">Sends the next-steps email, including the bank statement link if one is entered &mdash; the same thing they would get if they had clicked &quot;ready to proceed&quot; themselves.</div>
+              </div>
+              <div className="border border-gray-200 rounded-xl px-3 py-2.5">
+                <div className="text-[13px] font-semibold text-ink mb-0.5">Just move to LO</div>
+                <div className="text-xs text-gray-500 leading-snug">No email goes out. Use this when they have already sent their statements, or you are taking it straight to a lender.</div>
+              </div>
+            </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowMoveToLoPopup(false)} className="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleMoveToLo} disabled={sendingMoveToLo}
+              <button onClick={() => handleMoveToLo(false)} disabled={sendingMoveToLo}
+                className="px-4 py-2 text-sm border border-gray-300 text-ink rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50">
+                {sendingMoveToLo ? 'Moving...' : 'Just move to LO'}
+              </button>
+              <button onClick={() => handleMoveToLo(true)} disabled={sendingMoveToLo}
                 className="px-4 py-2 text-sm bg-ink text-page rounded-lg font-medium hover:opacity-90 disabled:opacity-50">
-                {sendingMoveToLo ? 'Sending...' : 'Send and move to LO'}
+                {sendingMoveToLo ? 'Sending...' : 'Email the client and move'}
               </button>
             </div>
           </div>

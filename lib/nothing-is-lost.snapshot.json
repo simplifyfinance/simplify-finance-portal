@@ -361,8 +361,6 @@
     "Select",
     "Select guarantor",
     "Select source",
-    "Send and move to LO",
-    "Send the next-steps email to the client?",
     "Send to client",
     "Send to credit team",
     "Simplify Finance",
@@ -391,7 +389,9 @@
     "e.g. Purchasing a new property",
     "e.g. Purchasing an existing property",
     "e.g. purchase 12 Example Road",
-    "— select —"
+    "— select —",
+    "Email the client and move",
+    "Just move to LO"
   ],
   "app/(app)/deals/[id]/LOForm.tsx": [
     "1-2 business days",

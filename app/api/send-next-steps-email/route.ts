@@ -50,7 +50,20 @@ export async function GET(req: NextRequest) {
 // office, not pressed by the client - and we name who, so the two are never
 // confused later.
 export async function POST(req: NextRequest) {
-  const { dealId, stage } = await req.json()
+  // sendEmail: false MOVES THE DEAL WITHOUT WRITING TO THE CLIENT.
+  //
+  // 12 Oct 2026. Fabio: "sometimes we need the deal to go from BC straight to
+  // LO ... we dont so need that blockage to be an option". A client who has
+  // already sent their statements, or one being taken straight to a lender, does
+  // not need the next-steps email - and until now the only way to skip it was to
+  // press Cancel, which left the deal on BC and the client never recorded as
+  // having agreed.
+  //
+  // The two halves were already separate here: markProceeded() below records the
+  // agreement and moves the stage, and the email is built after it. This only
+  // stops short of the second half. ABSENT MEANS SEND, so every existing caller
+  // behaves exactly as it did.
+  const { dealId, stage, sendEmail } = await req.json()
   if (!dealId || (stage !== 'BC' && stage !== 'LO')) {
     return NextResponse.json({ ok: false, error: 'Missing dealId or invalid stage' }, { status: 400 })
   }
@@ -79,6 +92,13 @@ export async function POST(req: NextRequest) {
   const { deal, alreadyProceeded, wealthDeskLink } = result
   if (alreadyProceeded) {
     return NextResponse.json({ ok: true, alreadyProceeded: true, by: byName })
+  }
+
+  // Moved, and deliberately not emailed. Said in those words so it can never be
+  // confused with a client who has no address on file, which is the other way
+  // this can come back with emailSent false.
+  if (sendEmail === false) {
+    return NextResponse.json({ ok: true, emailSent: false, by: byName, notSentOnPurpose: true })
   }
 
   // A TEST DEAL NEVER EMAILS THE CLIENT.
