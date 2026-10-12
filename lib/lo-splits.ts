@@ -17,6 +17,9 @@
 // already saved without touching the database.
 
 export type GlobalSplit = { id: string; label: string; amount: string; securityId?: string }
+// A figure out of a split, however it was typed.
+const money = (v: any): number => Number(String(v ?? '').replace(/[^0-9.]/g, '')) || 0
+
 export type LenderSplit = {
   id: string; label: string; amount: string
   // WHICH HOUSE THIS SPLIT IS AGAINST, carried from the global split it was
@@ -131,12 +134,59 @@ export function resolveLenderSplits(
     // AND THE LIST ITSELF IS HANDED BACK UNTOUCHED WHEN THERE IS NOTHING TO
     // FILL IN. Not a copy that happens to be equal - the same array. Callers
     // rely on "its own splits are left completely alone" meaning exactly that.
-    const byId = new Map((globals || []).map(g => [g.id, g.securityId || '']))
-    const needs = own.some(sp => !sp.securityId && byId.get(sp.id))
+    const g = globals || []
+
+    // ONE LOAN IS STILL ONE LOAN, AND IT IS THE BC'S TOTAL.
+    //
+    // 13 Oct 2026. Combining into one loan is a real decision - some lenders
+    // you present as a single facility rather than six - so it stays. What it
+    // must not be is a FROZEN number: the row used to keep whatever the splits
+    // added up to on the day it was pressed, so a BC that moved afterwards left
+    // this lender quoting an old total.
+    //
+    // Fabio, asked whether he ever shows a lender a different amount on
+    // purpose: "That would be very rare". So it is added up every time.
+    if (own.length === 1 && own[0].label === 'One loan' && g.length > 1) {
+      const total = g.reduce((t, x) => t + money(x.amount), 0)
+      const amount = total > 0 ? total.toLocaleString('en-AU') : ''
+      if (own[0].amount === amount) return own
+      return [{ ...own[0], amount }]
+    }
+
+    // OTHERWISE THE AMOUNT AND THE LABEL FOLLOW THE BC, AND THE PRICING DOES NOT.
+    //
+    // The last place a split amount could disagree with the borrowing capacity.
+    // Each lender kept its own copy, taken once, and nothing re-took it - the
+    // same fault that held the lending options at two splits while the BC went
+    // to six, one level further down.
+    //
+    // The rate, the repayment, the repayment type and the IO years are this
+    // lender's answers about this lender's product and are never touched.
+    const at = (sp: LenderSplit, i: number) =>
+      g.find(x => x.id && x.id === sp.id) || g[i]
+
+    // AND THE LIST ITSELF IS HANDED BACK UNTOUCHED WHEN THERE IS NOTHING TO
+    // CHANGE. Not a copy that happens to be equal - the same array. Callers
+    // rely on "its own splits are left completely alone" meaning exactly that.
+    const needs = own.some((sp, i) => {
+      const x = at(sp, i)
+      if (!x) return false
+      return (x.amount || '') !== (sp.amount || '')
+        || (x.label || '') !== (sp.label || '')
+        || (!sp.securityId && !!(x.securityId || ''))
+    })
     if (!needs) return own
-    return own.map(sp => sp.securityId || !byId.get(sp.id)
-      ? sp
-      : { ...sp, securityId: byId.get(sp.id) || '' })
+
+    return own.map((sp, i) => {
+      const x = at(sp, i)
+      if (!x) return sp
+      return {
+        ...sp,
+        label: x.label || sp.label,
+        amount: x.amount || '',
+        securityId: sp.securityId || x.securityId || '',
+      }
+    })
   }
   // Seeded from THIS lender's ticks, not from a fixed P&I - see seedFromGlobal.
   return seedFromGlobal(globals, lender as RateModuleHolder)

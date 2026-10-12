@@ -143,3 +143,40 @@ describe('value and LVR, one per house', () => {
     expect(strip).toContain('so the total is lower than the real one')
   })
 })
+
+// THE THIRTEENTH PLACE, AND THE LAST ONE THE AUDIT FOUND.
+//
+// 13 Oct 2026. Every lender option keeps its own copy of the splits. The rate
+// belongs there - that is the product, and it is the lending options' whole
+// job. The AMOUNT does not, and it was sitting there as its own number, taken
+// once when the option was priced and never taken again.
+//
+// It is the same fault as the one that held the lending options at two splits
+// while the borrowing capacity went to six, one level further down and per
+// lender, so a comparison could show four banks quoting four different totals.
+//
+// Fabio, asked whether a lender is ever shown a different amount on purpose:
+// "That would be very rare that the amounts will change like that."
+describe('each lender prices the same deal', () => {
+  const lo = readFileSync('lib/lo-splits.ts', 'utf8')
+
+  it('the amount and the label come from the deal, not from the lender', () => {
+    expect(lo).toContain("amount: x.amount || ''")
+    expect(lo).toContain('label: x.label || sp.label')
+  })
+
+  it("and the lender's own pricing is never touched", () => {
+    const resolve = lo.slice(lo.indexOf('export function resolveLenderSplits'),
+                             lo.indexOf('// --- the totals under each lender'))
+    for (const theirs of ['rate:', 'repayment:', 'repaymentType:', 'ioYears:']) {
+      expect(resolve, `${theirs} is being overwritten from the deal`).not.toContain(`${theirs} x.`)
+    }
+  })
+
+  // Combining into one loan stays - some lenders you present as one facility.
+  // What it stopped being is a number frozen on the day it was pressed.
+  it('one loan adds the BC up again rather than keeping an old total', () => {
+    expect(lo).toContain("own[0].label === 'One loan'")
+    expect(lo).toContain('g.reduce((t, x) => t + money(x.amount), 0)')
+  })
+})

@@ -81,10 +81,45 @@ describe('the rest of the split is untouched', () => {
                             lvr: '', rate: '', repayment: '', repaymentType: 'IO', ioYears: '' })
   })
 
-  it('a lender that already has its own splits keeps every one of them', () => {
+  // 13 OCT 2026: ITS PRICING IS ITS OWN. ITS AMOUNTS ARE THE DEAL'S.
+  //
+  // This used to say a lender's own splits were returned completely untouched,
+  // label and amount included. That was the last place a split amount could
+  // disagree with the borrowing capacity: each lender kept a copy, taken once,
+  // and nothing ever re-took it.
+  //
+  // The rate, the repayment, the repayment type and the IO years are this
+  // lender's answers about this lender's product, and those are still never
+  // touched.
+  it("keeps the lender's pricing and takes the amount from the deal", () => {
     const own = [{ id: 'a', label: 'x', amount: '1', lvr: '', rate: '6', repayment: '', repaymentType: 'P&I' }]
     const out = resolveLenderSplits({ ...lender({ variableIO: on }), lenderSplits: own } as any, GLOBALS)
+    expect(out[0].rate).toBe('6')
+    expect(out[0].repaymentType).toBe('P&I')
+    expect(out[0].amount).toBe(GLOBALS[0].amount)
+    expect(out[0].label).toBe(GLOBALS[0].label)
+  })
+
+  // The identity promise is unchanged, and callers still rely on it: when there
+  // is nothing to bring across, it is the same array back, not an equal copy.
+  it('and hands back the very same list when nothing needs changing', () => {
+    const own = GLOBALS.map(g => ({ id: g.id, label: g.label, amount: g.amount, securityId: '',
+                                    lvr: '', rate: '6', repayment: '', repaymentType: 'P&I' }))
+    const out = resolveLenderSplits({ ...lender({ variableIO: on }), lenderSplits: own } as any, GLOBALS)
     expect(out).toBe(own)
+  })
+
+  // Combining into one loan is a real decision and it stays. What it stopped
+  // being is a frozen number - it adds the BC's splits up every time, so a BC
+  // that moves cannot leave one lender quoting an old total.
+  it('one loan is the BC total, worked out again each time', () => {
+    const one = [{ id: 'a', label: 'One loan', amount: '1', lvr: '', rate: '6', repayment: '', repaymentType: 'P&I' }]
+    const out = resolveLenderSplits({ ...lender({ variableIO: on }), lenderSplits: one } as any, GLOBALS)
+    expect(out).toHaveLength(1)
+    expect(out[0].label).toBe('One loan')
+    expect(out[0].rate).toBe('6')
+    const total = GLOBALS.reduce((t, g) => t + Number(String(g.amount).replace(/[^0-9.]/g, '')), 0)
+    expect(out[0].amount).toBe(total.toLocaleString('en-AU'))
   })
 
   it('a lender with no splits of its own is seeded from its own ticks', () => {
