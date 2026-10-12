@@ -288,7 +288,10 @@ describe('the menu', () => {
 describe('the schema files do not fight over a table name', () => {
   // A catch-up file exists to re-run other schemas and bring an environment
   // level, so repeating a table is its whole job. Everything else is a clash.
-  const isCatchUp = (f: string) => /catchup|catch-up/i.test(f)
+  // A catch-up file re-runs other schemas to bring an environment level, and a
+  // "-all" file is several schemas joined so there is no order to get wrong.
+  // Repeating a table is the whole job of both.
+  const isCatchUp = (f: string) => /catchup|catch-up|-all\.sql$/i.test(f)
   // Comments talk ABOUT tables. Only the statements count.
   const statements = (sql: string) => sql.replace(/--[^\n]*/g, '')
 

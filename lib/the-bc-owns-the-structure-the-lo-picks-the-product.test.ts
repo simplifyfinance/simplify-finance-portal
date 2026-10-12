@@ -87,7 +87,9 @@ describe('the lending options shows the structure, it does not ask for it', () =
   })
 
   it('and the panel only draws the dropdowns where the tab owns the answer', () => {
-    expect(strip).toContain('const canEditStructure = !!onSplitChange && !structureIsBc')
+    // 13 Oct 2026: not "unless this tab owns it" any more - NO tab owns it but
+    // the BC, so the panel never offers these, wherever it is drawn.
+    expect(strip).toContain('const canEditStructure: boolean = false')
     for (const asked of ['s.purpose', 's.repaymentType', 's.funds']) {
       const at = strip.indexOf(`value={${asked} || ''}`)
       expect(at, `${asked} is not drawn at all`).toBeGreaterThan(-1)
@@ -97,11 +99,13 @@ describe('the lending options shows the structure, it does not ask for it', () =
     }
   })
 
-  it('the term, the IO years and the product are printed there, not typed', () => {
-    for (const shown of ['{s.termYears || \'—\'}', '{s.ioYears || \'—\'}', '{s.productType ||']) {
-      expect(strip, `${shown} is still a box on the lending options`).toContain(shown)
-    }
+  // AND ON COMPLIANCE TOO. 13 Oct 2026, the rest of the audit: compliance could
+  // still type all four, which is the same second copy by another door.
+  it('the term, the IO years and the product are printed, on every tab', () => {
     expect(strip).toContain('from the lender option you tick')
+    for (const gone of ['setDetail(s.id, { termYears:', 'setDetail(s.id, { ioYears:', 'setDetail(s.id, { productType:']) {
+      expect(strip, `${gone} is a box again`).not.toContain(gone)
+    }
   })
 
   // Adding a split is structure too. Every extra one on Veljovic existed only
@@ -111,7 +115,7 @@ describe('the lending options shows the structure, it does not ask for it', () =
   })
 
   it('a missing answer sends you to the tab that owns it', () => {
-    expect(strip).toContain("const setItOn = structureIsBc ? 'BC' : 'LO'")
+    expect(strip).toContain("const setItOn = 'BC'")
     expect(strip, 'it still tells you to set it on the tab you are already on').not.toContain('set on the LO ↗')
   })
 })

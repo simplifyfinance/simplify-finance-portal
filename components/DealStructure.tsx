@@ -73,10 +73,23 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
   const splits = useMemo(() => splitsOf(deal), [deal])
   // Handlers alone used to mean "this tab may edit the structure". Now the tab
   // also has to be one that OWNS the structure, and the lending options is not.
-  const canEditStructure = !!onSplitChange && !structureIsBc
+  // 13 Oct 2026, the rest of the audit. This started as "the lending options
+  // show the structure". Compliance was left alone that day because Fabio was
+  // talking about the LO - but it could still edit the repayment type, the
+  // term, the IO years and the product, which are the same four controls, and
+  // the rule does not change with which tab you are standing on.
+  //
+  // So the BC owns the structure everywhere. The only place these are answered
+  // is the tab that owns them.
+  // Typed, not inferred: as a bare `false` TypeScript narrows it and then
+  // complains about the branch it has proved unreachable. The branch is left in
+  // place deliberately - it is the only record of what this panel used to offer,
+  // and lib/structure-repayment.test.ts still reads it.
+  const canEditStructure: boolean = false
   // Where to send somebody when the answer is missing. It said "set on the LO"
   // on every tab, including the LO itself.
-  const setItOn = structureIsBc ? 'BC' : 'LO'
+  // Always the BC now. It said "set on the LO" on every tab including the LO.
+  const setItOn = 'BC'
   // HOW MANY OF THOSE BELONG TO THE BORROWING CAPACITY.
   //
   // splitsOf builds its list as the BC's splits followed by anything the
@@ -479,7 +492,7 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                 <div className="flex items-center gap-2 flex-wrap mt-1.5">
                   {canEditStructure
                         ? <select value={s.purpose || ''}
-                            onChange={e => onSplitChange(s.id, { purpose: e.target.value })}
+                            onChange={e => onSplitChange?.(s.id, { purpose: e.target.value })}
                             className={`${INP} ${!s.purpose ? NEED : ''}`}>
                             <option value="">Owner occupied or investment?</option>
                             <option value="OO">{PURPOSE_LABEL.OO}</option>
@@ -512,7 +525,7 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                   {askFunds && (
                     <>                        {canEditStructure
                           ? <select value={s.funds || ''}
-                              onChange={e => onSplitChange(s.id, { funds: e.target.value })}
+                              onChange={e => onSplitChange?.(s.id, { funds: e.target.value })}
                               className={`${INP} ${!s.funds ? NEED : ''}`}>
                               <option value="">What does this money do?</option>
                               {Object.entries(FUNDS_LABEL).map(([k, v]) => (
@@ -537,23 +550,29 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                       thing on this row the LO genuinely owns. A box inviting
                       somebody to type it by hand was a third copy of an answer
                       that already has a home. */}
-                  <label className="inline-flex items-center gap-1.5"><span className={K}>Term</span>{structureIsBc
-                        ? <span className="text-[13.5px] text-ink">{s.termYears || '—'}</span>
-                        : <input aria-label='Term' defaultValue={s.termYears} key={`t${s.id}${s.termYears}`}
-                            onBlur={e => { if (e.target.value !== s.termYears) setDetail(s.id, { termYears: e.target.value }) }}
-                            placeholder="years" className={`${INP} w-[76px] ${!s.termYears ? NEED : ''}`} />}</label>
-                  <label className="inline-flex items-center gap-1.5"><span className={K}>IO years</span>{!isInterestOnly(s.repaymentType)
-                        ? <span className="text-[13.5px] text-faint">—</span>
-                        : structureIsBc
-                        ? <span className="text-[13.5px] text-ink">{s.ioYears || '—'}</span>
-                        : <input aria-label='IO years' defaultValue={s.ioYears} key={`io${s.id}${s.ioYears}`}
-                            onBlur={e => { if (e.target.value !== s.ioYears) setDetail(s.id, { ioYears: e.target.value }) }}
-                            placeholder="years" className={`${INP} w-[76px] ${!s.ioYears ? NEED : ''}`} />}</label>
-                  <label className="inline-flex items-center gap-1.5 min-w-0"><span className={K}>Product</span>{structureIsBc
-                        ? <span className="text-[13.5px] text-ink">{s.productType || <span className="text-faint">from the lender option you tick</span>}</span>
-                        : <input aria-label='Product type' defaultValue={s.productType} key={`p${s.id}${s.productType}`}
-                            onBlur={e => { if (e.target.value !== s.productType) setDetail(s.id, { productType: e.target.value }) }}
-                            placeholder="product" className={`${INP} w-[150px] ${!s.productType ? NEED : ''}`} />}</label>
+                  {/* TERM, IO YEARS AND PRODUCT - PRINTED, ON EVERY TAB.
+                      The term and the interest only years are asked per split
+                      on the BC. The product is read off the lending option
+                      marked as recommended. None of the three is typed here any
+                      more, on the lending options OR on compliance: each was a
+                      second copy of an answer that already has a home, and a
+                      second copy is only ever a way for two answers to differ. */}
+                  <label className="inline-flex items-center gap-1.5">
+                    <span className={K}>Term</span>
+                    <span className="text-[13.5px] text-ink">{s.termYears || '—'}</span>
+                  </label>
+                  <label className="inline-flex items-center gap-1.5">
+                    <span className={K}>IO years</span>
+                    {isInterestOnly(s.repaymentType)
+                      ? <span className="text-[13.5px] text-ink">{s.ioYears || '—'}</span>
+                      : <span className="text-[13.5px] text-faint">—</span>}
+                  </label>
+                  <label className="inline-flex items-center gap-1.5 min-w-0">
+                    <span className={K}>Product</span>
+                    <span className="text-[13.5px] text-ink">
+                      {s.productType || <span className="text-faint">from the lender option you tick</span>}
+                    </span>
+                  </label>
                 </div>
               </div>
             ))}

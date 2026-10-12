@@ -821,12 +821,9 @@
     "Loan splits",
     "Owner occupied or investment?",
     "P&I or interest only?",
-    "Product type",
     "Property value",
     "Security address",
     "What does this money do?",
-    "none",
-    "product",
-    "years"
+    "none"
   ]
 }

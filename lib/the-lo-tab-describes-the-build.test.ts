@@ -80,13 +80,37 @@ describe('what it shows instead', () => {
   })
 })
 
-describe('the purchase half is untouched', () => {
-  it('still draws every box it always did', () => {
-    const purchase = code.slice(code.indexOf('!buildsSomething(bc) && ('),
-                                code.indexOf('Global loan splits'))
-    expect(purchase).toContain('Purchase price')
-    expect(purchase).toContain('handleLoDepositChange')
-    expect(purchase).toContain('handleLoStampDutyChange')
-    expect(purchase).toContain('LVR (calculated)')
+// 13 OCT 2026: THE PURCHASE HALF STILL SAYS EVERYTHING. IT NO LONGER ASKS.
+//
+// This block used to check the purchase price, the deposit and the stamp duty
+// were still EDITABLE here. They were - and they were also overwritten from the
+// borrowing capacity on every load, so typing in one of them looked saved and
+// came back as the BC's figure next time anybody opened the deal.
+//
+// Fabio, 13 Oct 2026: "BC sets the tone structure the LO is JUST where we
+// select products". A purchase price is not a product. They are printed now,
+// with a link back to the tab that owns them.
+describe('the purchase half still says everything, it just does not ask', () => {
+  const purchase = () => code.slice(code.indexOf('!buildsSomething(bc) && ('),
+                                    code.indexOf('Global loan splits'))
+
+  it('every figure is still shown', () => {
+    expect(purchase()).toContain('Purchase price')
+    expect(purchase()).toContain('Deposit')
+    expect(purchase()).toContain('Stamp duty')
+    expect(purchase()).toContain('LVR (calculated)')
+  })
+
+  it('and none of them is a box any more', () => {
+    for (const handler of ['handleLoDepositChange', 'handleLoStampDutyChange', 'handleLoPurchasePriceChange']) {
+      expect(purchase(), `${handler} is wired to an input again`).not.toContain(handler)
+    }
+    expect(purchase()).toContain('FromBc')
+  })
+
+  // The deposit still explains itself - what is left after stamp duty is useful
+  // and is not a copy of anything.
+  it('and the deposit still says what lands in the property', () => {
+    expect(purchase()).toContain('into the property after stamp duty')
   })
 })

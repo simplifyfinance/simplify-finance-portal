@@ -266,6 +266,27 @@ type LOData = {
 // THE BANK'S NAME, for the one question that is about the bank rather than the
 // product. "Did the client agree with Bankwest?" is how somebody would say it;
 // "did the client agree with Bankwest — Simple Home Loan?" is not.
+// SHOWN, NOT ASKED - THE REST OF THE AUDIT.
+//
+// 13 Oct 2026. Eight boxes on this tab were editable AND overwritten from the
+// borrowing capacity on every load: both names, both joint names, the purchase
+// price, the deposit, the stamp duty and the loan amount. Type in one and it
+// looked saved; the next time anybody opened the deal it came back as the BC's
+// figure. That is worse than read only, because it looks like it worked.
+//
+// Fabio's rule, 13 Oct 2026: "BC sets the tone structure the LO is JUST where
+// we select products". None of these are products.
+function FromBc({ value, dealId }: { value: any; dealId: string }) {
+  const v = String(value ?? '').trim()
+  if (v) return <span className="text-[13px] text-ink">{v}</span>
+  return (
+    <a href={`/deals/${dealId}?stage=BC`}
+      className="text-[11.5px] text-chase bg-chase-bg border border-chase-edge rounded px-2 py-[3px] hover:underline">
+      set on the BC &#8599;
+    </a>
+  )
+}
+
 function decisionLenderName(lo: any): string {
   return String(lo?.recommendedLender || '').trim() || recommendedLabel(lo)
 }
@@ -1849,13 +1870,13 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           <div className="bg-card border border-gray-100 rounded-xl p-5">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Scenario</div>
             <div className="grid grid-cols-2 gap-3 mb-4">
-              <Field label="First name"><input className={inp} value={d.firstName} onChange={e => setD({ ...d, firstName: e.target.value })} /></Field>
-              <Field label="Last name"><input className={inp} value={d.lastName} onChange={e => setD({ ...d, lastName: e.target.value })} /></Field>
+              <Field label="First name"><FromBc value={d.firstName} dealId={deal.id} /></Field>
+              <Field label="Last name"><FromBc value={d.lastName} dealId={deal.id} /></Field>
             </div>
             {d.joint === 'Yes' && (
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <Field label="Joint applicant first name"><input className={inp} value={d.jointFirstName} onChange={e => setD({ ...d, jointFirstName: e.target.value })} /></Field>
-                <Field label="Joint applicant last name"><input className={inp} value={d.jointLastName} onChange={e => setD({ ...d, jointLastName: e.target.value })} /></Field>
+                <Field label="Joint applicant first name"><FromBc value={d.jointFirstName} dealId={deal.id} /></Field>
+                <Field label="Joint applicant last name"><FromBc value={d.jointLastName} dealId={deal.id} /></Field>
               </div>
             )}
             <div className="grid grid-cols-2 gap-3 mb-4">
@@ -1864,9 +1885,12 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   {TEMPLATES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                 </select>
               </Field>
+              {/* The loan is the sum of the BC's splits - see loanAmount() in
+                  lib/funds-to-complete.ts. A second box to type it in here is
+                  how $1,000,000 came to sit against a BC of $2,720,000. */}
               {!isRefinance && (
                 <Field label="Loan amount">
-                  <NumberInput value={d.loanAmount} onChange={handleLoLoanAmountChange} />
+                  <FromBc value={d.loanAmount ? formatNumber(String(d.loanAmount)) : ''} dealId={deal.id} />
                 </Field>
               )}
             </div>
@@ -1935,9 +1959,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             {/* Purchase-specific fields */}
             {!isRefinance && !isBridging && !buildsSomething(bc) && (
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Purchase price"><NumberInput value={d.purchasePrice} onChange={handleLoPurchasePriceChange} /></Field>
+                <Field label="Purchase price"><FromBc value={d.purchasePrice ? formatNumber(String(d.purchasePrice)) : ''} dealId={deal.id} /></Field>
                 <Field label="Deposit">
-                  <NumberInput value={d.deposit} onChange={handleLoDepositChange} />
+                  <FromBc value={d.deposit ? formatNumber(String(d.deposit)) : ''} dealId={deal.id} />
                   {(() => {
                     const dep = num(d.deposit), sd = num(d.stampDuty)
                     if (!dep || !sd) return null
@@ -1947,7 +1971,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                     </div>
                   })()}
                 </Field>
-                <Field label="Stamp duty"><NumberInput value={d.stampDuty} onChange={handleLoStampDutyChange} /></Field>
+                <Field label="Stamp duty"><FromBc value={d.stampDuty ? formatNumber(String(d.stampDuty)) : ''} dealId={deal.id} /></Field>
                 {depositGap && (
                   <div className="col-span-2 rounded-lg border px-3 py-2.5 text-[12px] leading-[1.6] bg-chase-bg border-chase-edge text-chase">
                     <b>These three numbers do not agree.</b>{' '}
@@ -1957,10 +1981,15 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                       : <>Purchase price less the deposit after stamp duty does not come to the loan amount, out
                           by ${formatNumber(String(Math.abs(depositGap.gap)))}. </>}
                     Setting the deposit to <b>${depositGap.suggestedDeposit}</b> makes them line up.
-                    <button onClick={() => handleLoDepositChange(depositGap.suggestedDeposit)}
-                            className="ml-2 rounded-md border px-2 py-[2px] bg-card border-chase-edge text-chase">
-                      Use ${depositGap.suggestedDeposit}
-                    </button>
+                    {/* IT SAYS WHAT WOULD FIX IT; IT NO LONGER DOES IT HERE.
+                        The button used to write the deposit onto the lending
+                        options, where the BC overwrites it on the next load -
+                        so the numbers lined up until somebody reopened the
+                        deal. The deposit is the BC's. */}
+                    <a href={`/deals/${deal.id}?stage=BC`}
+                       className="ml-2 inline-block rounded-md border px-2 py-[2px] bg-card border-chase-edge text-chase hover:underline">
+                      Set it on the BC &#8599;
+                    </a>
                   </div>
                 )}
                 {/* Comes across from the BC. Editable here so an LO built without

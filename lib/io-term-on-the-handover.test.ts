@@ -133,12 +133,28 @@ describe('the handover actually prints it', () => {
   })
 })
 
+// 13 OCT 2026: THE SOMEWHERE IS THE BORROWING CAPACITY.
+//
+// This used to require a box on the deal structure panel, because when it was
+// written there was nowhere else - the per-lender splits box is drawn on
+// refinances only, so on a purchase the IO years could not be answered at all.
+//
+// The BC asks it per split now, the moment Interest only is chosen, and the
+// panel prints what the BC said. A second box here would be a second answer,
+// and two answers to one question is the whole fault this day was spent on.
 describe('and there is somewhere to change it', () => {
   const block = readFileSync(new URL('../components/DealStructure.tsx', import.meta.url), 'utf8')
+  const bcForm = readFileSync(new URL('../app/(app)/deals/[id]/BCForm.tsx', import.meta.url), 'utf8')
 
-  it('the deal structure block has a box for it', () => {
-    expect(block).toContain("'IO years'")
-    expect(block).toContain('ioYears: e.target.value')
+  it('the borrowing capacity asks for it', () => {
+    expect(bcForm).toContain("updateSplit(i, 'ioYears', e.target.value)")
+  })
+
+  it('and the deal structure panel prints it rather than asking again', () => {
+    // Plain text now, so no aria-label and no quoted string to look for.
+    expect(block).toContain('>IO years<')
+    expect(block).toContain("{s.ioYears || '—'}")
+    expect(block, 'the IO years are a box again').not.toContain('setDetail(s.id, { ioYears:')
   })
 
   it('shown only on a split that is interest only', () => {
