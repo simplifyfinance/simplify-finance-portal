@@ -19,6 +19,8 @@ import { isRecommended, recommendedLabel, recommendedOption, recommendedFirst } 
 import { money } from '@/lib/money'
 import { emailParagraphs } from '@/lib/rich-text'
 import { resolveLenderSplits, lenderTotal, lenderLvr, equityReleaseAmount } from '@/lib/lo-splits'
+import { securitiesOf } from '@/lib/securities'
+import { propertyColour } from '@/lib/lo-by-property'
 import { showsOwnLoanAmount } from '@/lib/email-amounts'
 import { rowLegalFeeLabel, feeText} from '@/lib/lender-fees'
 import { siteUrl } from '@/lib/site-url'
@@ -77,7 +79,7 @@ function notesBox(items: string[]) {
 // the deal into a single loan is shorter than the others, and that gap is
 // information rather than a hole - it is exactly what is different about that
 // option.
-function splitBand(lenders: any[], globals: any[], propertyValue: any): string {
+function splitBand(lenders: any[], globals: any[], propertyValue: any, secs: any[] = []): string {
   const per = lenders.map(l => resolveLenderSplits(l, globals))
   const deepest = per.reduce((m, rows) => Math.max(m, rows.length), 0)
   if (deepest === 0) return ''
@@ -87,25 +89,23 @@ function splitBand(lenders: any[], globals: any[], propertyValue: any): string {
   const totalCell = (inner: string) =>
     `<td bgcolor="#fbfbfb" style="background:#fbfbfb;padding:12px 14px;border:1px solid #e0e0e0;vertical-align:top">${inner}</td>`
 
-  let out = `<tr>${lenders.map(() => `<td bgcolor="#fafafa" style="padding:10px 14px;border:1px solid #e0e0e0;background:#fafafa"><p style="font-size:12px;font-weight:700;color:#343333;margin:0"><span style="color:#343333;">Loan splits</span></p></td>`).join('')}</tr>`
-
-  for (let i = 0; i < deepest; i++) {
-    out += `<tr>${per.map(rows => {
-      const sp = rows[i]
-      if (!sp) return cell(`<p style="font-size:12px;color:#bbbbbb;margin:0"><span style="color:#bbbbbb;">&mdash;</span></p>`)
-      const line2 = [sp.rate ? `${sp.rate}%` : '', sp.repaymentType || ''].filter(Boolean).join(' &nbsp;\u00b7&nbsp; ')
-      return cell(
-        `<p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 2px"><span style="color:#343333;">${sp.label || 'Split'}</span></p>` +
-        `<p style="font-size:12px;color:#444444;margin:0 0 1px"><span style="color:#444444;">${money(sp.amount) || ''}${line2 ? ' &nbsp;\u00b7&nbsp; ' + line2 : ''}</span></p>` +
-        (sp.repayment ? `<p style="font-size:11px;color:#777777;margin:0"><span style="color:#777777;">${money(sp.repayment)} / month</span></p>` : '')
-      )
-    }).join('')}</tr>`
+  const splitCell = (sp: any) => {
+    if (!sp) return cell(`<p style="font-size:12px;color:#bbbbbb;margin:0"><span style="color:#bbbbbb;">&mdash;</span></p>`)
+    const line2 = [sp.rate ? `${sp.rate}%` : '', sp.repaymentType || ''].filter(Boolean).join(' &nbsp;\u00b7&nbsp; ')
+    return cell(
+      `<p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 2px"><span style="color:#343333;">${sp.label || 'Split'}</span></p>` +
+      `<p style="font-size:12px;color:#444444;margin:0 0 1px"><span style="color:#444444;">${money(sp.amount) || ''}${line2 ? ' &nbsp;\u00b7&nbsp; ' + line2 : ''}</span></p>` +
+      (sp.repayment ? `<p style="font-size:11px;color:#777777;margin:0"><span style="color:#777777;">${money(sp.repayment)} / month</span></p>` : '')
+    )
   }
 
-  // One LVR per lender: that lender's whole loan over the property value. Never
+  const heading = (text: string) =>
+    `<tr>${lenders.map(() => `<td bgcolor="#fafafa" style="padding:10px 14px;border:1px solid #e0e0e0;background:#fafafa"><p style="font-size:12px;font-weight:700;color:#343333;margin:0"><span style="color:#343333;">${text}</span></p></td>`).join('')}</tr>`
+
+  // ONE LVR PER LENDER: that lender's whole loan over the property value. Never
   // per split - an LVR is a question about the deal, and it is calculated here
   // rather than typed so the email and the form cannot disagree.
-  out += `<tr>${per.map(rows => {
+  const totals = () => `<tr>${per.map(rows => {
     const tot = lenderTotal(rows)
     const lvr = lenderLvr(rows, propertyValue)
     return totalCell(
@@ -113,12 +113,64 @@ function splitBand(lenders: any[], globals: any[], propertyValue: any): string {
     )
   }).join('')}</tr>`
 
-  return out
+  // ONE HOUSE AT A TIME, IN THE SAME ORDER UNDER EVERY LENDER.
+  //
+  // 12 Oct 2026. Fabio: "each line that has a property make it a different
+  // colour to really pop and separate". A complex refinance put six loans in
+  // front of a client as one flat list with nothing saying which house any of
+  // them sat on.
+  //
+  // NO SUBTOTAL UNDER EACH PROPERTY. There was one, and Fabio asked for it to
+  // go: "scrap the last line on each property", "no need to add splits and
+  // repayments". The only total is the whole deal's, at the foot.
+  //
+  // THE COLOUR IS NEVER THE ONLY CUE - every band carries its number and its
+  // address, for a client who prints in black and white or a mail client that
+  // strips the colour. The three colours are checked for colourblind separation
+  // in lib/lo-by-property.ts; they are not chosen here.
+  const list = (secs || []).filter((x: any) => x && x.id)
+  if (list.length > 1) {
+    const idsOf = (rows: any[], id: string) => rows.filter(r => String(r?.securityId || '') === id)
+    const known = new Set(list.map((x: any) => String(x.id)))
+    let out = heading('Your loans, by property')
+
+    list.forEach((sec: any, n: number) => {
+      const c = propertyColour(n)
+      const mine = per.map(rows => idsOf(rows, String(sec.id)))
+      const rowsHere = mine.reduce((m, r) => Math.max(m, r.length), 0)
+      if (rowsHere === 0) return
+      const name = `${n + 1} &nbsp;&middot;&nbsp; ${sec.address || 'Address not recorded'}`
+      out += `<tr>${lenders.map(() => `<td bgcolor="${c.band}" style="padding:9px 14px;border:1px solid #e0e0e0;border-left:5px solid ${c.bar};background:${c.band}"><p style="font-size:12.5px;font-weight:700;color:${c.ink};margin:0"><span style="color:${c.ink};">${name}</span></p></td>`).join('')}</tr>`
+      for (let i = 0; i < rowsHere; i++) {
+        out += `<tr>${mine.map(rows => splitCell(rows[i])).join('')}</tr>`
+      }
+    })
+
+    // A loan against nothing is never dropped. It is the one the client should
+    // be asking about.
+    const orphans = per.map(rows => rows.filter(r => !known.has(String(r?.securityId || ''))))
+    const looseRows = orphans.reduce((m, r) => Math.max(m, r.length), 0)
+    if (looseRows > 0) {
+      out += heading('Other lending')
+      for (let i = 0; i < looseRows; i++) {
+        out += `<tr>${orphans.map(rows => splitCell(rows[i])).join('')}</tr>`
+      }
+    }
+
+    return out + totals()
+  }
+
+  // One security, or none recorded: the flat list, exactly as it was.
+  let out = heading('Loan splits')
+  for (let i = 0; i < deepest; i++) {
+    out += `<tr>${per.map(rows => splitCell(rows[i])).join('')}</tr>`
+  }
+  return out + totals()
 }
 
 // `lo` rather than a lender name: two options from the same bank both answered
 // yes to a name, so both columns wore the star. See lib/recommended-option.ts.
-function buildLenderTable(lenders: any[], isBridging: boolean, lo?: any, globals?: any[], propertyValue?: any) {
+function buildLenderTable(lenders: any[], isBridging: boolean, lo?: any, globals?: any[], propertyValue?: any, secs: any[] = []) {
   const cols = lenders.length
   const pct = cols === 1 ? '100%' : cols === 2 ? '50%' : '33%'
 
@@ -198,7 +250,7 @@ function buildLenderTable(lenders: any[], isBridging: boolean, lo?: any, globals
   // Splits go directly under the lender names, before the rates: the client's
   // first question about an option is what the money looks like, not what the
   // annual fee is. Bridging keeps its own structure block instead.
-  const splits = isBridging ? '' : splitBand(lenders, globals || [], propertyValue)
+  const splits = isBridging ? '' : splitBand(lenders, globals || [], propertyValue, secs)
   return `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px"><tr>${headers}</tr>${splits}${featureCells}</table>`
 }
 
@@ -223,7 +275,11 @@ export async function POST(req: NextRequest) {
   // alternative - copying the land value and the build cost onto the LO record
   // - is the stale-copy fault this codebase spent 8 Oct undoing on the loan
   // amount. See lib/lo-purchase-block.ts.
-  const { broker, dealId, loData: d, bcData } = await req.json()
+  //
+  // ffData COMES WITH IT FOR THE SAME REASON. The addresses, the uses and the
+  // values of the securities live on the fact find, and the email names them -
+  // so it reads them live rather than printing a copy that was right last week.
+  const { broker, dealId, loData: d, bcData, ffData } = await req.json()
   const resolved = await resolveBrokerProfile(broker)
   if (!resolved) return NextResponse.json({ error: noBrokerMessage(broker) }, { status: 400 })
   const b = {
@@ -340,7 +396,10 @@ export async function POST(req: NextRequest) {
   body += ctas(b.calendly, proceedUrl)
 
   const sortedLenders = recommendedFirst(d, d.lenders || [])
-  body += buildLenderTable(sortedLenders, isBridging, d, d.refinanceSplits, d.propertyValue)
+  // The securities, read live off the borrowing capacity and the fact find
+  // rather than copied - see the note on bcData at the top of this handler.
+  const secs = securitiesOf(bcData || {}, ffData || {})
+  body += buildLenderTable(sortedLenders, isBridging, d, d.refinanceSplits, d.propertyValue, secs)
 
   body += p('Please let us know which lender you would like to proceed with and if you have any questions regarding the numbers above.')
   // THE RBA NOTICE, FIRST IN THE BOX THE CLIENT ALREADY READS FOR CAVEATS.

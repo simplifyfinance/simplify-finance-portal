@@ -16,9 +16,15 @@
 // promises - "pre-filled - editable per lender" - and it repairs every LO
 // already saved without touching the database.
 
-export type GlobalSplit = { id: string; label: string; amount: string }
+export type GlobalSplit = { id: string; label: string; amount: string; securityId?: string }
 export type LenderSplit = {
   id: string; label: string; amount: string
+  // WHICH HOUSE THIS SPLIT IS AGAINST, carried from the global split it was
+  // seeded from. 12 Oct 2026: every lender is priced against the same structure,
+  // so the comparison can group each lender's splits under the same properties
+  // in the same order. The property is not a lender's decision - it is the
+  // deal's - which is why it rides along rather than being asked again here.
+  securityId?: string
   lvr: string; rate: string; repayment: string; repaymentType: string
   // HOW LONG THE INTEREST ONLY PERIOD RUNS, on this split, with this lender.
   // It lived on the rate module, which is per lender - so a deal with a home
@@ -100,7 +106,7 @@ export function seedFromGlobal(globals: GlobalSplit[] | undefined | null,
   // copying either onto each split would put a figure nobody typed on a row.
   const io = String(soleModule(lender)?.ioYears ?? '').trim()
   return (globals || []).map(s => ({
-    id: s.id, label: s.label, amount: s.amount,
+    id: s.id, label: s.label, amount: s.amount, securityId: s.securityId || '',
     lvr: '', rate: '', repayment: '', repaymentType: type, ioYears: io,
   }))
 }
@@ -114,7 +120,24 @@ export function resolveLenderSplits(
   globals: GlobalSplit[] | undefined | null,
 ): LenderSplit[] {
   const own = lender?.lenderSplits
-  if (own && own.length > 0) return own
+  if (own && own.length > 0) {
+    // A LENDER PRICED BEFORE TODAY HAS NO PROPERTY ON ITS SPLITS.
+    //
+    // Its own rates, repayments and types are its own and are never touched.
+    // The house each split is against is not the lender's answer - it is the
+    // deal's - so it is filled in from the global split of the same id, which
+    // is where it has always come from. A split that already carries one keeps
+    // it, and one whose global is gone is left alone rather than guessed at.
+    // AND THE LIST ITSELF IS HANDED BACK UNTOUCHED WHEN THERE IS NOTHING TO
+    // FILL IN. Not a copy that happens to be equal - the same array. Callers
+    // rely on "its own splits are left completely alone" meaning exactly that.
+    const byId = new Map((globals || []).map(g => [g.id, g.securityId || '']))
+    const needs = own.some(sp => !sp.securityId && byId.get(sp.id))
+    if (!needs) return own
+    return own.map(sp => sp.securityId || !byId.get(sp.id)
+      ? sp
+      : { ...sp, securityId: byId.get(sp.id) || '' })
+  }
   // Seeded from THIS lender's ticks, not from a fixed P&I - see seedFromGlobal.
   return seedFromGlobal(globals, lender as RateModuleHolder)
 }

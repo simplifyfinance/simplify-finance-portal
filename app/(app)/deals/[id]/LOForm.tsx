@@ -8,6 +8,7 @@ import { loTemplateFor, settleLoTemplate } from '@/lib/lo-template'
 // few hundred lines down, and two things called pct in one file is how the
 // wrong one gets used in six months.
 import { securitiesOf, totalsOf, lvrOf, pct as lvrPct } from '@/lib/securities'
+import { groupLoSplits, propertyColour } from '@/lib/lo-by-property'
 import { dutyStateOf, dutyLabel } from '@/lib/duty-state'
 import { buildsSomething, isSellAndBuild } from '@/lib/sale-build'
 import { totalCost, isLandPurchase, landLoanPayout, landEquity,
@@ -504,6 +505,11 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         // occupied or investment on the BC was shown an empty dropdown here and
         // told to "set it on the LO". See lib/split-purpose.ts.
         purpose: normalisePurpose(s.purpose),
+        // AND SO DOES THE HOUSE IT IS AGAINST. mergeWithBc carried this and
+        // this did not, so the very first lending options built on a complex
+        // refinance started with six splits and no property on any of them -
+        // the exact flat list the grouping below exists to stop.
+        securityId: s.securityId || '',
       }))
     }
     return [{ id: makeUid(), label: 'Loan to be refinanced', amount: bc.existingLoanBal || '' }]
@@ -1213,8 +1219,11 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // THE FOUR WAYS A PERSON CHANGES THIS LIST, and the only four that claim it.
   // Answering purpose or funds on the deal strip does NOT - those are the
   // lending options' own answers about the BC's structure, not a change to it.
-  function addRefinanceSplit() {
-    const newSplit: RefinanceSplit = { id: makeUid(), label: `Split ${d.refinanceSplits.length + 1}`, amount: '' }
+  // `securityId` so a split added from inside a property's own group arrives
+  // already sitting against that house. A split created with nowhere to sit is
+  // money no property is carrying - see lib/lo-by-property.ts.
+  function addRefinanceSplit(securityId = '') {
+    const newSplit: RefinanceSplit = { id: makeUid(), label: `Split ${d.refinanceSplits.length + 1}`, amount: '', securityId }
     setD({ ...d, refinanceSplits: [...d.refinanceSplits, newSplit], refinanceSplitsByHand: true })
   }
 
@@ -1533,7 +1542,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       // THE BORROWING CAPACITY GOES WITH IT, read here and not copied onto
       // this record. A build is described by the BC's land value, build cost
       // and valuation, and this form has never carried any of them.
-      body: JSON.stringify({ broker: d.brokerSig || deal.assigned_broker, dealId: deal.id, bcData: deal.bc_data || {}, loData: { ...d, importantNotesList: (d.importantNotes || '').split('\n').map((n: string) => n.trim()).filter(Boolean) } })
+      body: JSON.stringify({ broker: d.brokerSig || deal.assigned_broker, dealId: deal.id, bcData: deal.bc_data || {}, ffData: deal.fact_find_data || {}, loData: { ...d, importantNotesList: (d.importantNotes || '').split('\n').map((n: string) => n.trim()).filter(Boolean) } })
     })
     if (!res.ok) {
       const err = await res.json().catch(() => null)
@@ -1985,6 +1994,117 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 })()}
 
                 <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-3">Global loan splits — define the deal structure</div>
+                {(() => {
+                  // THE SPLITS, UNDER THE HOUSE EACH ONE IS AGAINST.
+                  //
+                  // 12 Oct 2026. Fabio: "I now need the ability in LO to say
+                  // Property 1 these splits Property 2 these splits". Six loans
+                  // across three houses arrived here as a flat list with nothing
+                  // saying which was which.
+                  //
+                  // ONLY WHERE THERE IS SOMETHING TO GROUP BY. A deal with one
+                  // security, or no securities ticked at all, keeps the plain
+                  // list below - grouping one house under a heading of its own
+                  // name is noise. See lib/lo-by-property.ts.
+                  const secs = isComplexRefinance(bc.template) ? securitiesOf(bc, ff) : []
+                  if (secs.length < 2) return null
+                  const { groups, loose } = groupLoSplits(d.refinanceSplits, secs)
+
+                  const splitRow = (split: any, idx: number) => (
+                    <div key={split.id} className="bg-card border border-gray-100 rounded-lg p-3">
+                      <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1fr 1fr 24px' }}>
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">Label</label>
+                          <input className={inp} value={split.label} onChange={e => updateRefinanceSplit(idx, 'label', e.target.value)} placeholder="Loan to be refinanced" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">Amount</label>
+                          <input className={inp} value={split.amount} onChange={e => updateRefinanceSplit(idx, 'amount', e.target.value)} />
+                        </div>
+                        <div>
+                          {/* MOVED HERE, NOT RE-ASKED ON THE BC. A split can be
+                              put against another house without leaving this tab,
+                              but the list it chooses from is the securities
+                              ticked on the BC - the lending options cannot
+                              invent a fourth property. */}
+                          <label className="text-xs text-gray-500 block mb-1">Security</label>
+                          <select className={sel} value={split.securityId || ''}
+                                  onChange={e => updateRefinanceSplit(idx, 'securityId', e.target.value)}>
+                            <option value="">— not against a security —</option>
+                            {secs.map(x => <option key={x.id} value={x.id}>{x.address || 'Address not recorded'}</option>)}
+                          </select>
+                        </div>
+                        <div className="flex items-end pb-2">
+                          {d.refinanceSplits.length > 1 && (
+                            <button onClick={() => removeRefinanceSplit(idx)} className="text-gray-300 hover:text-red-400 text-sm transition">✕</button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+
+                  return (
+                    <div className="space-y-3 mb-3">
+                      {groups.map((g, i) => {
+                        const c = propertyColour(i)
+                        const sec = g.security!
+                        const l = lvrOf(sec)
+                        return (
+                          <div key={sec.id} className="rounded-xl overflow-hidden border border-gray-100"
+                               style={{ borderLeft: `5px solid ${c.bar}` }}>
+                            <div className="flex items-baseline gap-2.5 flex-wrap px-3 py-2"
+                                 style={{ background: c.band, color: c.ink }}>
+                              {/* The number is here for the same reason it is in
+                                  the email: the colour must never be the only
+                                  thing telling two properties apart. */}
+                              <span className="w-5 h-5 rounded text-[11px] font-bold text-white flex items-center justify-center shrink-0"
+                                    style={{ background: c.bar }}>{i + 1}</span>
+                              <b className="text-[12.5px]">{sec.address || 'Address not recorded'}</b>
+                              <span className="text-[11px] opacity-80">
+                                {(() => {
+                                  const cash = (v: any) => {
+                                    const n = Number(String(v ?? '').replace(/[^0-9.]/g, '')) || 0
+                                    return n > 0 ? `$${formatNumber(String(Math.round(n)))}` : ''
+                                  }
+                                  const val = cash(sec.value), lim = cash(sec.limit)
+                                  return [sec.use, val && `value ${val}`,
+                                    lim && `limit ${lim}${l === null ? '' : ` · ${lvrPct(l)} LVR`}`]
+                                    .filter(Boolean).join(' · ')
+                                })()}
+                              </span>
+                            </div>
+                            <div className="p-3 space-y-2 bg-page">
+                              {g.rows.length === 0 && (
+                                <p className="text-[11.5px] text-gray-400 m-0">No loan against this property yet.</p>
+                              )}
+                              {g.rows.map(r => splitRow(r.split, r.index))}
+                              <button onClick={() => addRefinanceSplit(sec.id)}
+                                className="text-[11.5px] text-brand-ink border border-dashed border-brand rounded-lg px-2.5 py-1 hover:bg-info-bg transition">
+                                + Add a split here
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+
+                      {/* MONEY NO PROPERTY IS CARRYING. Never hidden - a split
+                          whose security was untceked would otherwise vanish from
+                          a grouped list in silence. */}
+                      {loose.rows.length > 0 && (
+                        <div className="rounded-xl overflow-hidden border border-chase-edge">
+                          <div className="px-3 py-2 bg-chase-bg text-chase text-[12.5px] font-semibold">
+                            {loose.rows.length} split{loose.rows.length === 1 ? '' : 's'} against no security
+                            <span className="font-normal"> — pick one on the split, or tick the property on the BC.</span>
+                          </div>
+                          <div className="p-3 space-y-2 bg-page">
+                            {loose.rows.map(r => splitRow(r.split, r.index))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+                {(!isComplexRefinance(bc.template) || securitiesOf(bc, ff).length < 2) && (
                 <div className="space-y-2 mb-3">
                   {d.refinanceSplits.map((split, idx) => (
                     <div key={split.id} className="bg-gray-50 border border-gray-100 rounded-lg p-3">
@@ -2006,8 +2126,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                     </div>
                   ))}
                 </div>
+                )}
                 <div className="flex gap-2 flex-wrap">
-                  <button onClick={addRefinanceSplit} className="text-sm text-brand-ink border border-dashed border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition">+ Add split</button>
+                  <button onClick={() => addRefinanceSplit()} className="text-sm text-brand-ink border border-dashed border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition">+ Add split</button>
                   <button onClick={addEquityRelease} className="text-sm text-brand-ink border border-dashed border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition">+ Add equity release</button>
                 </div>
               </div>
@@ -2116,6 +2237,30 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             const isRec = isRecommended(d, lender)
             const isEmpty = !lender.lenderId
             const lenderSplits = resolveLenderSplits(lender, d.refinanceSplits)
+            // THE SAME HOUSES, IN THE SAME ORDER, UNDER EVERY LENDER.
+            //
+            // 12 Oct 2026. You read one column down and across to the next
+            // instead of holding two split lists in your head. The heading is
+            // drawn BETWEEN the rows rather than wrapped around them, so a
+            // split is still edited exactly where it was and nothing below this
+            // line had to change.
+            //
+            // Worked out here rather than inside the loop: "is this the first
+            // split on this house" is a question about the list, and a map
+            // built per row would answer it wrong. See lib/lo-by-property.ts.
+            const cmpSecs = isComplexRefinance(bc.template) ? securitiesOf(bc, ff) : []
+            const headingAt: Record<number, { n: number; address: string }> = {}
+            if (cmpSecs.length > 1) {
+              const place = new Map(cmpSecs.map((x, n) => [x.id, { n, address: x.address }]))
+              const done = new Set<string>()
+              lenderSplits.forEach((sp: any, n: number) => {
+                const id = String(sp?.securityId || '')
+                const hit = place.get(id)
+                if (!hit || done.has(id)) return
+                done.add(id)
+                headingAt[n] = hit
+              })
+            }
             return (
               <div key={i} className={`rounded-xl p-5 border transition-all ${isRec ? 'border-brand bg-info-bg' : isEmpty ? 'border-dashed border-card-line bg-page' : 'bg-card border-gray-100'}`}>
                 <div className="flex justify-between items-center mb-4">
@@ -2244,7 +2389,21 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                     )}
                     <div className="space-y-2">
                       {lenderSplits.map((split, sidx) => (
-                        <div key={split.id} className="bg-gray-50 border border-gray-100 rounded-lg p-3">
+                        <div key={split.id}>
+                        {headingAt[sidx] && (() => {
+                          const c = propertyColour(headingAt[sidx].n)
+                          return (
+                            <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg mb-2"
+                                 style={{ background: c.band, color: c.ink, borderLeft: `4px solid ${c.bar}` }}>
+                              {/* The number, because the colour is never the
+                                  only thing telling two properties apart. */}
+                              <span className="w-4 h-4 rounded text-[10px] font-bold text-white flex items-center justify-center shrink-0"
+                                    style={{ background: c.bar }}>{headingAt[sidx].n + 1}</span>
+                              <b className="text-[11.5px]">{headingAt[sidx].address || 'Address not recorded'}</b>
+                            </div>
+                          )
+                        })()}
+                        <div className="bg-gray-50 border border-gray-100 rounded-lg p-3">
                           <div className="flex items-center mb-2">
                             <div className="text-xs font-medium text-gray-500">{split.label || `Split ${sidx + 1}`}</div>
                             <button onClick={() => removeLenderSplit(i, sidx)} title="Remove this split from this lender only"
@@ -2299,6 +2458,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                               reads the split, so they will not agree.
                             </div>
                           )}
+                        </div>
                         </div>
                       ))}
                     </div>

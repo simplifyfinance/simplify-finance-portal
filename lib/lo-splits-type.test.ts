@@ -71,7 +71,13 @@ describe('the rest of the split is untouched', () => {
     const [first] = seedFromGlobal(GLOBALS, lender({ variableIO: on }))
     // ioYears joined the row on 17 Sep 2026 - the interest only period is a
     // property of the split, not of the lender.
+    //
+    // securityId joined it on 12 Oct 2026 - which house the split is against is
+    // a property of the DEAL, carried across so every lender in the comparison
+    // can be grouped under the same properties in the same order. Blank here
+    // because these globals carry none. See lib/lo-by-property.ts.
     expect(first).toEqual({ id: 'a', label: 'Existing loan refinanced', amount: '540000',
+                            securityId: '',
                             lvr: '', rate: '', repayment: '', repaymentType: 'IO', ioYears: '' })
   })
 
