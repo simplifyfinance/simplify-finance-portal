@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { isGettingOld, daysSince, citation, cleanProposed } from '@/lib/policy-rules'
+import { kindOf, tierFor } from '@/lib/dropped-files'
 
 // THE LENDERS' OWN WRITTEN POLICY.
 //
@@ -89,59 +90,94 @@ export default function LenderPolicyDocs() {
       const sha = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', buf)))
         .map(b => b.toString(16).padStart(2, '0')).join('')
 
+      // THE ORIGINAL GOES IN FIRST, WHOLE AND HASHED - the zip itself, not just
+      // what came out of it. "What did we actually receive" has to stay
+      // answerable, and it is the only copy nobody has interpreted.
       const path = `${lender.id}/${sha.slice(0, 16)}-${file.name.replace(/[^\w.\-]+/g, '_')}`
       const up = await supabase.storage.from('lender-documents')
-        .upload(path, file, { contentType: 'application/pdf', upsert: false })
-      // Already there is not a failure: the same file, hashed the same, is the
-      // same file. The row below is what makes it count.
+        .upload(path, file, { upsert: false })
       if (up.error && !String(up.error.message).toLowerCase().includes('exists')) {
         setErr(`That document was not filed — ${up.error.message}`); return
       }
 
-      const prev = currentDoc(lender.id)
-      const { data: row, error } = await supabase.from('lender_documents').insert({
-        lender_id: lender.id,
-        title: file.name.replace(/\.pdf$/i, ''),
-        file_path: path, file_name: file.name, sha256: sha,
-        uploaded_by: uid,
-        uploaded_by_name: (me?.user?.user_metadata as any)?.full_name || me?.user?.email || '',
-        supersedes: prev?.id || null,
-      }).select().single()
-      if (error) { setErr(`Filed, but not recorded — ${error.message}`); return }
+      // THEN IT IS OPENED. A PDF is one part; a zip is many; a spreadsheet is
+      // its sheets; an email is its message and its attachments.
+      setNote('Filed. Opening it…')
+      const form = new FormData()
+      form.append('file', file)
+      const ex = await fetch('/api/expand-drop', { method: 'POST', body: form })
+      const opened = await ex.json()
+      if (!ex.ok) { setErr(opened?.error || 'That file could not be opened.'); await load(); return }
 
-      setNote('Filed. Reading it now — this takes a minute on a long manual.')
-      await read(row as Doc, file, lender)
+      const parts: any[] = Array.isArray(opened?.parts) ? opened.parts : []
+      const skipped: any[] = Array.isArray(opened?.skipped) ? opened.skipped : []
+      if (parts.length === 0) {
+        setErr('Nothing in that file could be read.' +
+          (skipped.length ? ` ${skipped.length} left out.` : '')); await load(); return
+      }
+
+      const prev = currentDoc(lender.id)
+      const byName = kindOf(file.name)
+      let read = 0, kept = 0, left = 0
+
+      for (const [i, part] of parts.entries()) {
+        const { data: row, error } = await supabase.from('lender_documents').insert({
+          lender_id: lender.id,
+          title: String(part.name || file.name).replace(/\.[^.]+$/, ''),
+          file_path: path, file_name: file.name, sha256: sha,
+          uploaded_by: uid,
+          uploaded_by_name: (me?.user?.user_metadata as any)?.full_name || me?.user?.email || '',
+          // Only the first part supersedes what was there - the rest are its
+          // brothers and sisters, not twelve replacements of each other.
+          supersedes: i === 0 ? (prev?.id || null) : null,
+        }).select().single()
+        if (error) { setErr(`Filed, but not recorded — ${error.message}`); await load(); return }
+
+        const got = await readPart(row as Doc, part, lender,
+                                  tierFor(part.insideAnEmail ? 'email' : byName, !!part.insideAnEmail))
+        read += got.read; kept += got.kept; left += got.left
+      }
+
+      setNote(
+        `${parts.length} ${parts.length === 1 ? 'part' : 'parts'} opened, ${kept} rules read out` +
+        (left ? `, ${left} left out because they could not quote the document` : '') +
+        (skipped.length ? `. ${skipped.length} file${skipped.length === 1 ? '' : 's'} in the zip were not opened: ${skipped.map((x: any) => `${x.name} (${x.why})`).join('; ')}` : '') +
+        '. Check them below.')
+      setOpen(lender.id)
+      await load()
     } finally { setBusy('') }
   }
 
-  // --- reading it ----------------------------------------------------------
-  async function read(doc: Doc, file: File, lender: Lender) {
-    const form = new FormData()
-    form.append('file', file)
-    form.append('documentId', doc.id)
-    form.append('lenderId', lender.id)
-    const res = await fetch('/api/extract-policy', { method: 'POST', body: form })
+  async function readPart(doc: Doc, part: any, lender: Lender, tier: string) {
+    const res = await fetch('/api/extract-policy', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        documentId: doc.id, lenderId: lender.id,
+        base64: part.base64 || '', text: part.text || '',
+      }),
+    })
     const j = await res.json()
-    if (!res.ok) { setErr(j?.error || 'That document could not be read.'); await load(); return }
+    if (!res.ok) return { read: 0, kept: 0, left: 0 }
 
     // SECOND PASS THROUGH THE SAME GATE. The route already dropped anything
-    // that could not quote; doing it again here costs nothing and means a
-    // future caller cannot get round it by posting rows straight in.
+    // that could not quote; doing it again costs nothing and means a future
+    // caller cannot get round it by posting rows straight in.
     const { rules: clean, dropped } = cleanProposed(j?.rules, doc.id, lender.id)
-    if (clean.length === 0) {
-      setErr('Nothing in that document could quote itself, so nothing was kept.'); await load(); return
-    }
+    if (clean.length === 0) return { read: 0, kept: 0, left: dropped.length }
+
     const { error } = await supabase.from('lender_policy_rules').insert(clean.map(r => ({
       document_id: r.documentId, lender_id: r.lenderId, says: r.says, quote: r.quote,
-      section: r.section, heading: r.heading, tags: r.tags, tier: r.tier,
+      section: r.section, heading: r.heading, tags: r.tags,
+      // THE TIER COMES FROM WHERE IT ARRIVED, never from what it says. An email
+      // is an update, a manual is policy, a spreadsheet is indicative.
+      tier,
       row_headers: r.rowHeaders, row_cells: r.rowCells, depends_on: r.dependsOn,
       excludes: r.excludes, max_lvr: r.maxLvr, min_value: r.minValue, max_value: r.maxValue,
       effective_from: r.effectiveFrom, status: 'proposed',
     })))
-    if (error) { setErr(`Read, but not saved — ${error.message}`); await load(); return }
-    setNote(`${clean.length} rules read out${dropped.length ? `, ${dropped.length} left out because they could not quote the document` : ''}. Check them below.`)
-    setOpen(lender.id)
-    await load()
+    if (error) return { read: 0, kept: 0, left: dropped.length }
+    return { read: 1, kept: clean.length, left: dropped.length }
   }
 
   async function decide(r: Rule, keep: boolean) {
@@ -254,14 +290,16 @@ export default function LenderPolicyDocs() {
 
             <label className="block m-4 border-[1.5px] border-dashed border-info-edge bg-info-bg
                               rounded-xl p-5 text-center cursor-pointer hover:bg-info-bg/70 transition">
-              <input type="file" accept="application/pdf" className="hidden"
+              <input type="file" accept=".pdf,.zip,.xlsx,.xlsm,.csv,.eml,.md,.txt" className="hidden"
                 disabled={busy === lender.id}
                 onChange={e => { const f = e.target.files?.[0]; if (f) addDocument(lender, f); e.currentTarget.value = '' }} />
               <b className="block text-[13px] text-info mb-1">
-                {busy === lender.id ? 'Filing and reading it…' : 'Choose a credit manual'}
+                {busy === lender.id ? 'Filing and reading it…' : 'Choose a credit manual, a zip, a spreadsheet or an email'}
               </b>
               <span className="text-[12px] text-muted">
-                PDF. The original is kept and never changed. Paco quotes it, so you can open the page he took a line from.
+                PDF, a zip of chapters, a spreadsheet, or an email you have forwarded.
+                The original is kept exactly as it arrived and never changed. Paco quotes it,
+                so you can open the thing he took a line from.
               </span>
             </label>
           </div>

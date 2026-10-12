@@ -78,26 +78,37 @@ export async function POST(req: Request) {
     const key = process.env.ANTHROPIC_API_KEY
     if (!key) return NextResponse.json({ error: 'No API key is configured.' }, { status: 500 })
 
-    const form = await req.formData()
-    const file = form.get('file') as File | null
-    const documentId = String(form.get('documentId') || '')
-    const lenderId = String(form.get('lenderId') || '')
-    if (!file) return NextResponse.json({ error: 'No document was sent.' }, { status: 400 })
+    // A PDF, OR TEXT THAT CAME OUT OF SOMETHING ELSE.
+    //
+    // 13 Oct 2026. A credit policy does not only arrive as a PDF - it arrives as
+    // a zip of chapters, a spreadsheet of limits, or an email somebody
+    // forwarded. /api/expand-drop turns any of those into parts, and a part is
+    // either a PDF or text. Both are read here, by the same prompt, under the
+    // same rules.
+    const body = await req.json().catch(() => null) as any
+    const documentId = String(body?.documentId || '')
+    const lenderId = String(body?.lenderId || '')
+    const base64 = String(body?.base64 || '')
+    const plain = String(body?.text || '')
+    if (!base64 && !plain) return NextResponse.json({ error: 'No document was sent.' }, { status: 400 })
     if (!documentId || !lenderId) {
       return NextResponse.json({ error: 'The document was not filed first.' }, { status: 400 })
     }
 
-    const base64 = Buffer.from(await file.arrayBuffer()).toString('base64')
     const client = new Anthropic({ apiKey: key })
+    const source = base64
+      ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } }
+      // THE DOCUMENT GOES IN ITS OWN TAGS, and the instructions sit outside
+      // them. It does not make the text safe - nothing does - but it means the
+      // model is never handed a document and a prompt as one undivided block.
+      : { type: 'text', text: `<document>\n${plain.slice(0, 400_000)}\n</document>` }
+
     const response = await client.messages.create({
       model: 'claude-opus-4-5',
       max_tokens: 16384,
       messages: [{
         role: 'user',
-        content: [
-          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
-          { type: 'text', text: PROMPT },
-        ] as any,
+        content: [source, { type: 'text', text: PROMPT }] as any,
       }],
     })
 
