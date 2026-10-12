@@ -215,3 +215,45 @@ describe('the strip shows it', () => {
     expect(strip).toContain('The two split lists do not match')
   })
 })
+
+// EVERY LIST YOU CAN ADD TO, YOU CAN TAKE FROM.
+//
+// 13 Oct 2026. The deal strip had "+ Add split" and nothing else. Fabio pressed
+// it four times on the Veljovic deal and the list could only grow: "I dont have
+// the ability to delete splits on LO? come on".
+//
+// The remove is deliberately NOT on every row. The borrowing capacity owns the
+// first n splits, and one deleted here would be back on the next load - the
+// merge puts it straight back, which is the whole point of the merge. A button
+// that undoes itself is worse than no button, so it appears only on the ones
+// this tab added beyond the BC's list, which are genuinely its own.
+describe('the splits can be taken away as well as added', () => {
+  const strip = readFileSync('components/DealStructure.tsx', 'utf8')
+
+  it('the strip offers a remove at all', () => {
+    expect(strip).toContain('onRemoveSplit')
+    expect(strip, 'the remove is not reaching the row').toContain('onRemoveSplit(i)')
+  })
+
+  it('only on the splits the lending options added beyond the BC', () => {
+    expect(strip).toContain('i >= bcOwned')
+    expect(strip).toContain("const bcOwned: number = (deal?.bc_data?.splits || []).length")
+  })
+
+  it('and the lending options tab hands it one', () => {
+    expect(form).toContain('onRemoveSplit={removeRefinanceSplit}')
+  })
+
+  // Compliance draws the same block and must not be able to change the LO's
+  // mind - it passes no handlers, so no remove is drawn there either.
+  it('but only where the tab is allowed to write to lo_data', () => {
+    const compliance = readFileSync('app/(app)/deals/[id]/ComplianceForm.tsx', 'utf8')
+    expect(compliance).not.toContain('onRemoveSplit')
+  })
+
+  // The banner used to send him somewhere else to do it. There is a button now.
+  it('and the warning points at the button instead of sending you away', () => {
+    expect(strip).not.toContain('or remove it there')
+    expect(strip).toContain('Remove it below with the')
+  })
+})

@@ -33,7 +33,7 @@ const K = 'text-[9.5px] font-semibold tracking-[.09em] uppercase text-faint'
 const INP = 'border border-line rounded-lg px-2.5 py-1.5 text-[13px] text-ink bg-card focus:outline-none focus:border-brand'
 const NEED = 'border-dashed border-field-line bg-page'
 
-export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSplit }: {
+export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSplit, onRemoveSplit }: {
   deal: any
   onUpdated?: (patch: any) => void
   // Supplied only by the Lending options tab, which owns lo_data and can write
@@ -42,12 +42,29 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
   // two places, but only one of them is allowed to change the LO's mind.
   onSplitChange?: (splitId: string, patch: { purpose?: string; funds?: string }) => void
   onAddSplit?: () => void
+  // THERE WAS AN ADD AND NO TAKE AWAY. 13 Oct 2026, Fabio on the Veljovic deal:
+  // "I dont have the ability to delete splits on LO?" - he had pressed add four
+  // times and the list only ever grew.
+  //
+  // It takes the POSITION, not the id. A split that came from the BC has no id
+  // of its own, and this list is built in the same order as the lending
+  // options' own, so the position is the one thing both sides agree on.
+  onRemoveSplit?: (idx: number) => void
 }) {
   const supabase = createSupabaseBrowser()
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
 
   const splits = useMemo(() => splitsOf(deal), [deal])
+  // HOW MANY OF THOSE BELONG TO THE BORROWING CAPACITY.
+  //
+  // splitsOf builds its list as the BC's splits followed by anything the
+  // lending options added beyond them, so everything from this index on is the
+  // LO's own. Only those may be removed here: a BC split deleted on this tab
+  // would be back on the next load, because the BC owns the structure and the
+  // merge puts it straight back. A button that undoes itself is worse than no
+  // button. It is removed on the BC, which is where it lives.
+  const bcOwned: number = (deal?.bc_data?.splits || []).length
   // The product the deal structure is describing - option one until somebody
   // picks a recommendation, exactly as splitsOf itself does. Only ever used to
   // say that the ticks and the answer here disagree; it never changes either.
@@ -324,7 +341,8 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
           <b>The two split lists do not match.</b>{' '}
           {splitGap.lines.join(', and ')}. The lending options follow the borrowing capacity now,
           so this only appears when a split exists on the lending options that the borrowing
-          capacity has never heard of. Add it on the borrowing capacity, or remove it there.
+          capacity has never heard of. Remove it below with the &times;, or add it on the
+          borrowing capacity so the two agree.
         </div>
       )}
 
@@ -362,6 +380,15 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                     {s.amount ? money(Number(String(s.amount).replace(/[$,\s]/g, '')) || 0) : '—'}
                   </span>
                   <span className="text-[13.5px] font-semibold text-ink whitespace-nowrap">{s.rate ? `${s.rate}%` : '—'}</span>
+                  {onRemoveSplit && i >= bcOwned && (
+                    <button onClick={() => onRemoveSplit(i)}
+                      aria-label={`Remove split ${i + 1}`}
+                      title="Remove this split. It was added here, so it is this tab's to remove."
+                      className="text-[15px] leading-none text-faint hover:text-chase px-1.5 py-0.5 rounded
+                                 hover:bg-chase-bg transition">
+                      &times;
+                    </button>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap mt-1.5">
                   {onSplitChange
