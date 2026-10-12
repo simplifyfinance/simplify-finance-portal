@@ -1,6 +1,7 @@
 'use client'
 import { isDebtRecycling } from '@/lib/debt-recycling'
 import { normalisePurpose } from '@/lib/split-purpose'
+import { TAG_GROUPS, tagsOf, toggleTag, tagLine } from '@/lib/deal-tags'
 import { isComplexRefinance } from '@/lib/complex-refinance'
 import { dutyStateOf, dutyLabel } from '@/lib/duty-state'
 import { buildsSomething, isSellAndBuild } from '@/lib/sale-build'
@@ -198,6 +199,16 @@ type LOData = {
   recommendedOptionId: string
   recommendedLender: string
   recommendationNote: string
+  // WHAT MADE THIS DEAL HARD, as taps rather than prose.
+  //
+  // 12 Oct 2026. Everything else about the choice is already on this tab - the
+  // options, the recommendation, the note, the client's decision - and the deal
+  // itself records what happened. The one thing nothing holds is the OBSTACLE,
+  // which is the word somebody searches on two years later. See lib/deal-tags.ts.
+  //
+  // ABSENT on every deal saved before today, and absent means "nobody said",
+  // never "nothing was hard".
+  dealTags?: string[]
   internalNotes: string
   emailHtml: string
   // Which scenario emailHtml was written for. Same shape as the BC - the saved
@@ -584,6 +595,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       recommendedOptionId: '',
       recommendedLender: '',
       recommendationNote: '',
+      dealTags: [],
       internalNotes: '',
       emailHtml: '',
       emailHtmlTemplate: '',
@@ -2348,6 +2360,66 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             {flagMsg && (
               <div className={`mt-2 text-xs ${flagMsg.startsWith('NOT SENT') ? 'text-red-600' : 'text-green-600'}`}>{flagMsg}</div>
             )}
+
+            {/* WHAT MADE THIS ONE HARD.
+              *
+              * 12 Oct 2026. It sits directly under the recommendation note
+              * because this is the screen where somebody is already deciding
+              * between three lenders and writing down why - so tagging the
+              * obstacle is part of the same thought, not a second job a week
+              * later at lodgement when the reasoning is half remembered.
+              *
+              * TAPS, NOT PROSE. The reason is already written above in the
+              * broker's own words. A second free-text box here would be a
+              * second door onto recommendationNote and would be filled in with
+              * "best rate". What is missing is the one word a recommendation
+              * note never contains - that the TITLE was the problem - and that
+              * is a list, not a sentence.
+              *
+              * NOTHING IS REQUIRED. No warning, no amber, no nag. A deal with
+              * nothing unusual gets no tags and that is a true answer.
+              *
+              * See lib/deal-tags.ts. */}
+            <div className="mt-5 pt-4 border-t border-card-line">
+              <div className="flex items-baseline gap-2 mb-1">
+                <div className="text-xs font-medium text-gray-400 uppercase tracking-widest">
+                  What made this one hard?
+                </div>
+                <span className="text-[11px] text-gray-400">Optional. Tap any that applied.</span>
+              </div>
+              <p className="text-[11.5px] text-gray-400 leading-snug mb-3">
+                Everything else about this choice is already recorded above. This is the only part
+                that cannot be worked out later.
+              </p>
+
+              {TAG_GROUPS.map(g => (
+                <div key={g.group} className="mb-2.5">
+                  <div className="text-[10px] font-bold tracking-[.08em] uppercase text-gray-400 mb-1.5">
+                    {g.group}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {g.tags.map(t => {
+                      const on = tagsOf(d).includes(t)
+                      return (
+                        <button key={t} type="button"
+                          aria-pressed={on}
+                          onClick={() => { markDirty(ownRef.current, 'dealTags')
+                                           setD({ ...d, dealTags: toggleTag(d.dealTags, t) }) }}
+                          className={`text-[12px] rounded-full px-3 py-1.5 border transition ${
+                            on ? 'bg-ink text-page border-ink font-semibold'
+                               : 'bg-card text-muted border-card-line hover:border-brand'}`}>
+                          {t}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {tagsOf(d).length > 0 && (
+                <p className="text-[12px] text-done mt-2">&#10003; {tagLine(d.dealTags || [])}</p>
+              )}
+            </div>
           {/* THE CLIENT'S DECISION, AT THE FOOT OF THE RECOMMENDATION IT IS ABOUT.
             *
             * Fabio, 3 Oct 2026: "clients decison tab dont like that it is at
