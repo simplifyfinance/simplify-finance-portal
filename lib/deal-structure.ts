@@ -290,10 +290,19 @@ function recommendedProduct(deal: any): string {
 // A list the BC keeps current can never drift; one a person built by hand, or
 // one saved before any of this existed, can.
 //
-// Those are not corrected. Replacing a list somebody built would be guessing
-// with their work, and on an older deal there is nothing in the record that
-// tells the two apart. So this reports and changes nothing, exactly as
-// loanAmountDisagrees does for the loan amount.
+// THIS SHOULD NOW BE ALMOST SILENT. 12 Oct 2026: the lending options list
+// follows the borrowing capacity on every load - see mergeWithBc in LOForm and
+// docs/the-chain.md. Drift between the two can no longer build up on its own.
+//
+// What is left for this to catch is the one case the merge deliberately does not
+// touch: a split added on the lending options that the borrowing capacity has no
+// counterpart for. That is structure living somewhere it is not owned, and the
+// client never agreed to it, so it is said out loud rather than absorbed.
+//
+// It reports and changes nothing, the same as loanAmountDisagrees does for the
+// loan amount. Fabio, 12 Oct 2026: "hopefully these warning saying split dont
+// match will be far and between and only show if there is a real error in
+// place".
 //
 // ONLY THE TWO THAT MATTER. A different NUMBER of splits, or a different total.
 // Those are the ones that make a document describe a different deal. A split

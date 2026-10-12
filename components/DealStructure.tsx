@@ -290,9 +290,9 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
       {splitGap && (
         <div className="bg-chase-bg border border-chase-edge rounded-xl px-4 py-2.5 mb-3 text-[12px] text-chase leading-relaxed">
           <b>The two split lists do not match.</b>{' '}
-          {splitGap.lines.join(', and ')}. Everything quoted to the client, and the compliance
-          wording, follows the lending options. Open the lending options and make the two agree
-          if the borrowing capacity is the one that is right.
+          {splitGap.lines.join(', and ')}. The lending options follow the borrowing capacity now,
+          so this only appears when a split exists on the lending options that the borrowing
+          capacity has never heard of. Add it on the borrowing capacity, or remove it there.
         </div>
       )}
 

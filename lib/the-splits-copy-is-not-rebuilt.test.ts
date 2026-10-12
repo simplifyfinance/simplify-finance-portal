@@ -1,15 +1,24 @@
-// THE LENDING OPTIONS SPLIT LIST IS MERGED, NEVER REBUILT.
+// THE LENDING OPTIONS SPLIT LIST FOLLOWS THE BORROWING CAPACITY. ALWAYS.
 //
 // 9 Oct 2026. LOForm replaced the whole list with initRefinanceSplits() on every
 // change to the borrowing capacity, and that function mints a new id for every
 // split. compliance_data.splitDetail files the term, the product type and the
-// IO years under those ids, so each rebuild threw all three away - silently,
-// because setDRaw does not save until the broker types one character.
+// IO years under those ids, so each rebuild threw all three away - silently.
+// mergeWithBc fixed that by keeping the id and this tab's own answers.
 //
-// THE FLAG IS SET THE SAFE WAY ROUND. refinanceSplitsByHand is false on a list
-// this form built, true once a person changes it, and ABSENT on every deal
-// saved before today. Absent is treated as true, so no existing deal is
-// touched. Fabio, 9 Oct 2026: "i want to minimise impact on current deals".
+// 12 Oct 2026. A SECOND FIX WENT IN THE SAME DAY AND WAS WRONG. A flag,
+// refinanceSplitsByHand, froze the list the moment anybody typed in it - one
+// keystroke, for good. On the Veljovic deal that held the lending options at two
+// splits while the borrowing capacity went on to six, so three properties read
+// "no loan against this property yet" and both the client email and the
+// compliance pack described a deal nobody was writing.
+//
+// Fabio: "WHY would all the work done in BC in terms of structure and splits
+// carry accross to LO?? theres no logical explantion for it".
+//
+// There is none. The borrowing capacity owns the structure - how many splits,
+// their names, their amounts, which house each secures. The lending options own
+// the pricing. The flag is retired and nothing reads it. See docs/the-chain.md.
 //
 // Invented clients, invented figures.
 import { describe, it, expect } from 'vitest'
@@ -25,14 +34,19 @@ const BC = [
 ]
 
 describe('the re-seed', () => {
-  it('no longer throws the list away when the BC changes', () => {
-    // The whole fault in one line. If initRefinanceSplits() is called
-    // unconditionally here again, every id on the deal changes.
+  it('merges from the BC rather than rebuilding, so the ids survive', () => {
     const effect = code.slice(code.indexOf('refinanceSplits: (prev.refinanceSplits'),
                               code.indexOf('}, [deal.bc_data])'))
     expect(effect, 'the BC is rebuilding the split list again').toBeTruthy()
-    expect(effect).toContain('prev.refinanceSplitsByHand === false')
     expect(effect).toContain('mergeWithBc(prev.refinanceSplits)')
+  })
+
+  // THE FAULT THIS FILE NOW EXISTS FOR. Nothing may stand between the borrowing
+  // capacity and this list.
+  it('merges every time, with nothing allowed to switch it off', () => {
+    const effect = code.slice(code.indexOf('refinanceSplits: (prev.refinanceSplits'),
+                              code.indexOf('}, [deal.bc_data])'))
+    expect(effect, 'something is gating the merge again').not.toContain('refinanceSplitsByHand')
   })
 
   it('keeps the id, which is what the compliance answers are filed under', () => {
@@ -51,27 +65,29 @@ describe('the re-seed', () => {
   })
 })
 
-describe('the flag', () => {
-  it('is claimed by the four ways a person changes the list, and only those', () => {
-    for (const fn of ['addRefinanceSplit', 'addEquityRelease',
-                      'removeRefinanceSplit', 'updateRefinanceSplit']) {
-      const body = code.slice(code.indexOf(`function ${fn}`),
-                              code.indexOf(`function ${fn}`) + 400)
-      expect(body, `${fn} does not claim the list`).toContain('refinanceSplitsByHand: true')
-    }
+// RETIRED, AND IT STAYS RETIRED.
+describe('the flag that froze the list', () => {
+  it('is never set by anything again', () => {
+    expect(code).not.toContain('refinanceSplitsByHand: true')
   })
 
-  it('is never claimed by the form copying the BC in', () => {
-    // setD is a person; setDRaw is the form arranging itself. If the re-seed
-    // ever sets this true, one visit to this tab freezes the list for good.
-    const effect = code.slice(code.indexOf('setDRaw(prev => ({'),
-                              code.indexOf('}, [deal.bc_data])'))
-    expect(effect).not.toContain('refinanceSplitsByHand: true')
+  it('is never read to decide what the list holds', () => {
+    expect(code).not.toContain('refinanceSplitsByHand ===')
+    expect(code).not.toContain('refinanceSplitsByHand ?')
   })
+})
 
-  it('marks a list this form creates as a copy, in all three places it creates one', () => {
-    expect((code.match(/refinanceSplitsByHand = false|refinanceSplitsByHand: false/g) || []).length)
-      .toBeGreaterThanOrEqual(3)
+// A SPLIT THIS TAB ADDED IS NOT DELETED BY THE MERGE.
+//
+// mergeWithBc walks the BC's list, so anything beyond the end of it - an equity
+// release typed straight onto the lending options - would fall off. Following
+// the borrowing capacity is not the same as deleting what it has not got.
+describe('a split the lending options added', () => {
+  it('survives the merge', () => {
+    const merge = code.slice(code.indexOf('function mergeWithBc'),
+                             code.indexOf('function mergeWithBc') + 1400)
+    expect(merge).toContain('existing.slice(bcSplits.length)')
+    expect(merge).toContain('[...merged, ...extra]')
   })
 })
 
@@ -112,12 +128,23 @@ describe('when the two lists disagree', () => {
     expect(splitsDisagree(deal([{ id: 'a', label: 'End Debt', amount: '521,000' }], []))).toBeNull()
   })
 
-  it('reports and changes nothing - the documents still read the lending options', () => {
+  // IT SHOULD NOW BE ALMOST SILENT. The lists reconcile themselves on every
+  // load, so the only thing left for this to catch is a split living on the
+  // lending options that the borrowing capacity has never heard of - structure
+  // in a place that does not own it, which the client never agreed to.
+  //
+  // Fabio, 12 Oct 2026: "hopefully these warning saying split dont match will be
+  // far and between and only show if there is a real error in place".
+  it('reports and changes nothing - it is a warning, not a correction', () => {
     const d = deal([{ id: 'a', label: 'End Debt', amount: '521,000' }])
     expect(splitsDisagree(d)).not.toBeNull()
-    // The reader is untouched on purpose: correcting this would replace a list
-    // somebody may have built by hand.
     expect(splitsOf(d).map(s => s.label)).toEqual(['End Debt'])
+  })
+
+  it('and the strip no longer tells you to go and reconcile it by hand', () => {
+    const strip = readFileSync('components/DealStructure.tsx', 'utf8')
+    expect(strip).not.toContain('make the two agree')
+    expect(strip).toContain('follow the borrowing capacity now')
   })
 })
 

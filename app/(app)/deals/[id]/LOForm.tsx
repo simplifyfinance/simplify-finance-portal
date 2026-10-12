@@ -238,14 +238,15 @@ type LOData = {
   refinanceSplits: RefinanceSplit[]
   // DID A PERSON BUILD THIS LIST.
   //
-  // False means it is a copy of the BC's splits and the BC may keep it current.
-  // True means somebody added a split, removed one, or typed a label or an
-  // amount, and it is theirs - the BC does not touch it again.
+  // RETIRED 12 Oct 2026, AND NOTHING READS IT.
   //
-  // ABSENT means a deal saved before 9 Oct 2026, and absent is treated as TRUE.
-  // There is no way to tell a hand-built list from a stale copy on a record
-  // that never recorded the difference, so every existing deal is left alone.
-  // See mergeWithBc below.
+  // It meant "somebody typed in this list, so the borrowing capacity must never
+  // update it again" - and a single keystroke set it. That froze the Veljovic
+  // deal at two splits while the borrowing capacity went on to six.
+  //
+  // The borrowing capacity owns the structure, always. See mergeWithBc below and
+  // docs/the-chain.md. The field is still declared because deals saved before
+  // today carry it; it is not written any more and must not be read again.
   refinanceSplitsByHand?: boolean
   brokerSig: string
   // WHAT THE CLIENT DECIDED. The answer to "did they take the recommendation?",
@@ -528,7 +529,15 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   function mergeWithBc(existing: RefinanceSplit[]): RefinanceSplit[] {
     const bcSplits: any[] = bc.splits || []
     if (bcSplits.length === 0) return existing
-    return bcSplits.map((b: any, i: number) => {
+    // ANYTHING THIS TAB ADDED THAT THE BC HAS NO COUNTERPART FOR IS KEPT.
+    //
+    // The map below walks the BC's list, so a split added here - an equity
+    // release typed straight onto the lending options, say - would simply fall
+    // off the end of it. It is appended instead, and it keeps everything it had.
+    // docs/the-chain.md, rule 1: the structure follows the borrowing capacity,
+    // but following is not the same as deleting.
+    const extra: RefinanceSplit[] = existing.slice(bcSplits.length)
+    const merged: RefinanceSplit[] = bcSplits.map((b: any, i: number) => {
       const was = existing[i] || ({} as RefinanceSplit)
       return {
         id: was.id || makeUid(),
@@ -541,6 +550,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         securityId: b.securityId || was.securityId,
       }
     })
+    return [...merged, ...extra]
   }
 
   // A STORED RECORD NEVER USED TO GAIN A BOX.
@@ -797,18 +807,39 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       brandId: bc.brand || '',
       existingLoan: bc.existingLoanBal || '',
       propertyValue: bc.propertyValue || bc.purchasePrice || '',
-      // THE LIST IS MERGED, NEVER REBUILT - AND NEVER OVER SOMEBODY'S WORK.
+      // THE BORROWING CAPACITY OWNS THE STRUCTURE. ALWAYS.
       //
-      // 9 Oct 2026. This ran initRefinanceSplits() on every change to the
-      // borrowing capacity, which minted a new id for every split and dropped
-      // `funds`. See the note on refinanceSplitsByHand.
+      // 12 Oct 2026. This used to end `: prev.refinanceSplits` - meaning a list
+      // somebody had touched was frozen and the borrowing capacity could never
+      // update it again. Not once. Not ever.
       //
-      // Absent means an older deal, and an older deal is left exactly as it is.
+      // And what counted as "touched" was a single keystroke in any field of any
+      // split. On the Veljovic deal that froze the list at two splits while the
+      // borrowing capacity went on to have six, so three properties sat on the
+      // lending options reading "no loan against this property yet" and the
+      // client email and the compliance pack both described a deal that was not
+      // the one being written.
+      //
+      // Fabio: "WHY would all the work done in BC in terms of structure and
+      // splits carry accross to LO?? theres no logical explantion for it" - and
+      // he was right, there is none. The borrowing capacity decides how many
+      // splits there are, what they are called, what they are worth and which
+      // house each one secures. This tab decides the pricing. See
+      // docs/the-chain.md.
+      //
+      // THE LOCK WAS A SECOND FIX FOR A PROBLEM ALREADY SOLVED. It went in on
+      // 9 Oct because this line used to run initRefinanceSplits() on every
+      // change, minting new ids and dropping `funds`. mergeWithBc fixed that
+      // properly by keeping the id and the lending options' own answers. The
+      // lock should have come out the same day and did not.
+      //
+      // refinanceSplitsByHand is left on the record - it is written on deals
+      // already saved - but nothing reads it any more. docs/the-chain.md, rule 4:
+      // nothing that decides what a client sees hangs off a flag that can flip
+      // without anyone seeing it.
       refinanceSplits: (prev.refinanceSplits || []).length === 0
         ? initRefinanceSplits()
-        : prev.refinanceSplitsByHand === false
-          ? mergeWithBc(prev.refinanceSplits)
-          : prev.refinanceSplits,
+        : mergeWithBc(prev.refinanceSplits),
     }))
   }, [deal.bc_data])
 
@@ -1224,12 +1255,12 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // money no property is carrying - see lib/lo-by-property.ts.
   function addRefinanceSplit(securityId = '') {
     const newSplit: RefinanceSplit = { id: makeUid(), label: `Split ${d.refinanceSplits.length + 1}`, amount: '', securityId }
-    setD({ ...d, refinanceSplits: [...d.refinanceSplits, newSplit], refinanceSplitsByHand: true })
+    setD({ ...d, refinanceSplits: [...d.refinanceSplits, newSplit] })
   }
 
   function addEquityRelease() {
     const newSplit: RefinanceSplit = { id: makeUid(), label: 'Equity release', amount: '' }
-    setD({ ...d, refinanceSplits: [...d.refinanceSplits, newSplit], refinanceSplitsByHand: true })
+    setD({ ...d, refinanceSplits: [...d.refinanceSplits, newSplit] })
   }
 
   // Written from the deal structure block at the top of this tab. It goes
@@ -1251,13 +1282,13 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
   function removeRefinanceSplit(idx: number) {
     if (d.refinanceSplits.length <= 1) return
-    setD({ ...d, refinanceSplits: d.refinanceSplits.filter((_, i) => i !== idx), refinanceSplitsByHand: true })
+    setD({ ...d, refinanceSplits: d.refinanceSplits.filter((_, i) => i !== idx) })
   }
 
   function updateRefinanceSplit(idx: number, field: keyof RefinanceSplit, value: string) {
     const splits = [...d.refinanceSplits]
     splits[idx] = { ...splits[idx], [field]: value }
-    setD({ ...d, refinanceSplits: splits, refinanceSplitsByHand: true })
+    setD({ ...d, refinanceSplits: splits })
   }
 
   function syncLenderSplits(lenderIdx: number) {
