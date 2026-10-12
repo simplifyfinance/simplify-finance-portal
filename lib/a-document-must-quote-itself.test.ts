@@ -25,7 +25,7 @@ const TODAY = '2026-10-13'
 const ok = {
   says: 'Limited title is considered to 80%',
   quote: 'Properties held under limited title are acceptable security to a maximum LVR of 80%.',
-  page: 14, heading: 'Acceptable security', tags: ['Limited title'],
+  section: '7.2', heading: 'Acceptable security', tags: ['Limited title'],
 }
 
 describe('a rule that cannot quote is not a rule', () => {
@@ -34,7 +34,7 @@ describe('a rule that cannot quote is not a rule', () => {
     expect(rules).toHaveLength(1)
     expect(dropped).toHaveLength(0)
     expect(rules[0].quote).toBe(ok.quote)
-    expect(rules[0].page).toBe(14)
+    expect(rules[0].section).toBe('7.2')
   })
 
   it('drops one that quotes nothing, and says why', () => {
@@ -138,13 +138,75 @@ describe('old is hedged, not hidden', () => {
   })
 })
 
-describe('the citation can be opened', () => {
-  it('names the document, the page and the heading', () => {
-    expect(citation(ok, 'Credit guidelines')).toBe('Credit guidelines, page 14, under Acceptable security')
+// NO PAGES. Fabio, 13 Oct 2026, having read NAB's own chapters with me:
+// "there is no need to ever reference a page thats not relevant just mention
+// section of policy". NAB's policy came off a web portal and has no pages at
+// all, and 10.7 is a more precise address than page 38 ever was.
+describe('the citation names the section', () => {
+  it('the document, the section and the heading', () => {
+    expect(citation(ok, 'Credit guidelines')).toBe('Credit guidelines, section 7.2, Acceptable security')
   })
 
-  it('and says less rather than inventing a page it does not have', () => {
-    expect(citation({ ...ok, page: null, heading: '' }, 'Credit guidelines')).toBe('Credit guidelines')
+  it('and says less rather than inventing an address it does not have', () => {
+    expect(citation({ ...ok, section: '', heading: '' }, 'Credit guidelines')).toBe('Credit guidelines')
+  })
+
+  it('and no page ever appears in one', () => {
+    expect(citation({ ...ok, page: 14 }, 'Credit guidelines')).not.toContain('page')
+  })
+})
+
+// THE PART NAB'S OWN DOCUMENT FORCED. 345 table rows across twelve chapters,
+// and the tables hold the answers brokers ask for.
+describe('a table row is kept as a row', () => {
+  const shading = {
+    says: 'Commission income is shaded 20% and verified over 6 months',
+    rowHeaders: ['Income Type', 'Income Shading', 'Verification Period'],
+    rowCells: ['Commissions', '20%', '6 Months'],
+    section: '10.7', heading: 'Income - Eligibility, Shading and Verification Period',
+  }
+
+  it('headings and cells survive, in order', () => {
+    const { rules } = cleanProposed([shading], 'd1', 'l1')
+    expect(rules[0].rowHeaders).toEqual(shading.rowHeaders)
+    expect(rules[0].rowCells).toEqual(shading.rowCells)
+    expect(rules[0].quote).toBe('')
+  })
+
+  it('a row whose headings do not line up with its cells is dropped', () => {
+    const { dropped } = cleanProposed([{ ...shading, rowHeaders: ['Income Type'] }], 'd1', 'l1')
+    expect(dropped[0].why).toContain('did not line up')
+  })
+
+  // "Up to and including 95%**" on its own is the dangerous output - it looks
+  // like a complete citation and means nothing without the four cells beside it.
+  it('and a single cell on its own proves nothing', () => {
+    const { dropped } = cleanProposed([{ says: 'NAB allows 95%', rowHeaders: ['Max LVR'], rowCells: ['Up to and including 95%'] }], 'd1', 'l1')
+    expect(dropped[0].why).toContain('one column row')
+  })
+
+  it('the rule can name the rules it leans on', () => {
+    const { rules } = cleanProposed([{ ...ok, dependsOn: ['10.1', '10.2'] }], 'd1', 'l1')
+    expect(rules[0].dependsOn).toEqual(['10.1', '10.2'])
+  })
+
+  it('exclusions crammed into one cell come out as a list', () => {
+    const { rules } = cleanProposed([{ ...ok, excludes: ['vacant land', 'off the plan'] }], 'd1', 'l1')
+    expect(rules[0].excludes).toEqual(['vacant land', 'off the plan'])
+  })
+
+  // Blueprint section 16: a numeric boundary is compared by code, not read by
+  // a model out of a sentence.
+  it('a number that decides is read out as a number', () => {
+    const { rules } = cleanProposed([{ ...ok, maxLvr: 'Up to and including 95%', maxValue: '$3,000,000' }], 'd1', 'l1')
+    expect(rules[0].maxLvr).toBe(95)
+    expect(rules[0].maxValue).toBe(3000000)
+  })
+
+  it('and nonsense in a number is left empty rather than guessed', () => {
+    const { rules } = cleanProposed([{ ...ok, maxLvr: 'see table', maxValue: 'varies' }], 'd1', 'l1')
+    expect(rules[0].maxLvr).toBeNull()
+    expect(rules[0].maxValue).toBeNull()
   })
 })
 

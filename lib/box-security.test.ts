@@ -12,7 +12,16 @@ const deal = (over: any = {}) => ({ ...JSON.parse(JSON.stringify(DEAL)), id: 'de
 const bc = (over: any, lending?: string) => {
   const d = deal()
   d.bc_data = { ...d.bc_data, ...over }
-  if (lending !== undefined) d.lo_data = { ...d.lo_data, loanAmount: lending, loanAmountByHand: true }
+  // THE LENDING LIVES ON THE BC NOW, so these fixtures put it there.
+  //
+  // 13 Oct 2026. This used to set lo_data.loanAmount with loanAmountByHand, back
+  // when a figure typed on the lending options beat the borrowing capacity. It
+  // does not any more - the loan is the sum of the BC's splits. See
+  // loanAmount() and lib/the-loan-amount-has-one-source.test.ts.
+  if (lending !== undefined) {
+    d.bc_data = { ...d.bc_data, splits: [{ label: 'Loan', amount: lending }] }
+    d.lo_data = { ...d.lo_data, loanAmount: lending }
+  }
   return d
 }
 

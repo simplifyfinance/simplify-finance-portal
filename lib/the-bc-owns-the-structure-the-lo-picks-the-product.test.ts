@@ -119,7 +119,20 @@ describe('the lending options shows the structure, it does not ask for it', () =
 describe('value and LVR, one per house', () => {
   it('the panel draws them per property once there is more than one', () => {
     expect(strip).toContain('Value and LVR, per property')
-    expect(strip).toContain('All {ticked.length} together')
+  })
+
+  // Fabio asked for the per-property figures, saw them, and then asked twice
+  // for the combined line to go: "the 'all together' line still there".
+  it('and adds nothing up underneath them', () => {
+    expect(strip, 'the combined total is back').not.toContain('together</span>')
+    expect(strip).not.toContain('All {ticked.length} together')
+  })
+
+  // The LVR was printing a dash beside a real value because it read a limit
+  // typed on the BC that nobody fills in. The lending on a house is the sum of
+  // the splits secured against it, and that is already on the deal.
+  it('and the LVR comes from the splits secured on each house', () => {
+    expect(strip).toContain("String(sp.securityId || '') === String(x.id)")
   })
 
   it('and says when a total is short because a house has no value', () => {

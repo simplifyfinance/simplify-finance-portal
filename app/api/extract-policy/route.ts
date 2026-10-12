@@ -20,20 +20,46 @@ Pull out the lending RULES: what this lender will and will not accept, and on
 what conditions. Security types, income types, LVR limits, loan purposes,
 borrower types, exclusions.
 
-Return ONLY a JSON array. Each item:
+Return ONLY a JSON array. Each item is EITHER a prose rule or a table row.
+
+A prose rule:
 {
   "says": "the rule in one plain sentence, as a broker would say it",
   "quote": "the exact sentence from the document, copied word for word",
-  "page": 14,
-  "heading": "the section heading it sits under, if there is one",
-  "tags": ["one or more of the tags listed below, or omit"],
+  "section": "10.2.1",
+  "heading": "the section heading it sits under",
+  "tags": ["from the list below, or omit"],
+  "dependsOn": ["10.1"],
+  "excludes": ["vacant land", "off the plan"],
+  "maxLvr": 80,
+  "minValue": 250000,
+  "maxValue": 3000000,
   "effectiveFrom": "YYYY-MM-DD, ONLY if the document gives this rule a start date"
 }
 
+A table row - USE THIS FOR ANYTHING THAT IS A ROW IN A TABLE:
+{
+  "says": "Commission income is shaded 20% and verified over 6 months",
+  "rowHeaders": ["Income Type", "Income Shading", "Verification Period"],
+  "rowCells":   ["Commissions", "20%", "6 Months"],
+  "section": "10.7",
+  "heading": "Income - Eligibility, Shading and Verification Period"
+}
+
 Hard requirements:
-- "quote" must be copied EXACTLY from the document. Never tidy it, shorten it,
-  or join two sentences. If you cannot copy an exact sentence, leave the rule out.
-- "page" must be the page the quote is actually on.
+- A row MUST keep its headings and its cells, in the same order, one heading per
+  cell. Never flatten a row into a sentence: "Commissions 20% 6 Months" loses
+  which number is the shading and which is the verification period.
+- Where a row's meaning depends on the other cells beside it - a maximum LVR
+  that only applies to one valuation type and one property type - keep the whole
+  row. A single cell quoted alone is a citation that looks complete and is not.
+- "quote" on a prose rule must be copied EXACTLY. Never tidy it, shorten it or
+  join two sentences. If you cannot copy an exact sentence, leave the rule out.
+- "section" is the numbered section, like 10.2.1. There are no page numbers.
+- "dependsOn" lists other sections this rule refers to. If a rule says to meet
+  the criteria in 10.1, put 10.1 there.
+- "excludes" is for a list of exclusions crammed into one cell or sentence -
+  one entry per exclusion, not one long string.
 - Never return a rule you inferred. Only rules the document states.
 - If the document is not a lender policy document, return [].
 

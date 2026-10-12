@@ -7,7 +7,7 @@ import {
   splitsOf, dealRow, whatIsLeft, splitsNamed, needsFundsRole, purposeSummary,
   withSplitDetail, isInterestOnly, PURPOSE_LABEL, FUNDS_LABEL, defaultSecurityAddress,
 } from '@/lib/deal-structure'
-import { fundsToComplete, loanAmountDisagrees, bcSplitsTotal } from '@/lib/funds-to-complete'
+import { fundsToComplete, bcSplitsTotal } from '@/lib/funds-to-complete'
 import { splitsDisagree } from '@/lib/deal-structure'
 import { securitiesOf } from '@/lib/box-security'
 import { securitiesOf as tickedSecurities, lvrOf as securityLvr, totalsOf } from '@/lib/securities'
@@ -93,7 +93,6 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
   const row = useMemo(() => dealRow(deal), [deal])
   const funds = useMemo(() => fundsToComplete(deal), [deal])
   // Two records, one loan. Null when they agree, which is almost always.
-  const loanSplit = useMemo(() => loanAmountDisagrees(deal), [deal])
   // Two split lists, one deal. Null when they agree, which is almost always.
   const splitGap = useMemo(() => splitsDisagree(deal), [deal])
   const left = useMemo(() => whatIsLeft(deal), [deal])
@@ -279,7 +278,22 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
             <Field label="Value and LVR, per property" grow>
               <div className="flex flex-col gap-1 mt-0.5">
                 {ticked.map(x => {
-                  const l = securityLvr(x)
+                  // WHAT IS ACTUALLY BORROWED AGAINST THIS HOUSE.
+                  //
+                  // 13 Oct 2026. This read securityLimits - a figure typed on
+                  // the BC and almost never filled in - so every LVR on the
+                  // Veljovic deal printed a dash beside a real value. Fabio:
+                  // "LVR is blank wtf".
+                  //
+                  // The answer was already on the deal. Every split carries the
+                  // security it sits against, so the lending on a house is the
+                  // sum of its splits. The typed limit stays as the fallback for
+                  // a deal where somebody filled it in and there are no splits.
+                  const against = splits
+                    .filter(sp => String(sp.securityId || '') === String(x.id))
+                    .reduce((t, sp) => t + (Number(String(sp.amount).replace(/[^0-9.]/g, '')) || 0), 0)
+                  const val = Number(String(x.value).replace(/[^0-9.]/g, '')) || 0
+                  const l = against > 0 && val > 0 ? (against / val) * 100 : securityLvr(x)
                   return (
                     <div key={x.id} className="flex items-baseline gap-2 flex-wrap text-[12.5px]">
                       <span className="text-muted min-w-0 truncate max-w-[260px]">{x.address}</span>
@@ -292,13 +306,12 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                     </div>
                   )
                 })}
-                <div className="flex items-baseline gap-2 flex-wrap text-[12.5px] border-t border-line-soft pt-1 mt-0.5">
-                  <span className="text-muted">All {ticked.length} together</span>
-                  <span className="font-semibold text-ink ml-auto">{t.value > 0 ? money(t.value) : '—'}</span>
-                  <span className="font-semibold text-ink w-[62px] text-right">
-                    {t.lvr === null ? '—' : `${Math.round(t.lvr * 10) / 10}%`}
-                  </span>
-                </div>
+                {/* NO "ALL 3 TOGETHER" LINE. Fabio asked for the per-property
+                    figures and then, seeing it, asked twice for the total to go:
+                    "the 'all together' line still there". A combined LVR across
+                    three houses is not a number any lender assesses, and adding
+                    three values up is not a fact about this deal that anybody
+                    needs on this row. */}
                 {!t.valuedAll && (
                   <p className="text-[11px] text-chase mt-0.5 mb-0">
                     One of these has no value on the fact find, so the total is lower than the real one.
@@ -379,32 +392,21 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
         </div>
       )}
 
-      {/* A DECISION IS WORTH A LINE. A LEFTOVER IS NOT.
+      {/* THE BLUE BANNER THAT USED TO SIT HERE IS GONE.
           *
-          * 8 Oct 2026, and the first version of this was wrong twice over.
-          * It drew a red banner whenever the lending options held a different
-          * loan amount - including the ordinary case where that figure is just
-          * an old copy the BC has since moved past. Nothing reads that copy,
-          * nothing can be done about it, and there is no way to clear it. A
-          * permanent red warning about dead data is noise, and Fabio said so:
-          * "this ridiculous red line is still there??"
+          * It said: "This loan amount was entered on the lending options. Using
+          * $1,000,000. The borrowing capacity says $2,720,000 - the figure
+          * entered by hand wins, and it is what the client sees and what the
+          * compliance wording uses."
           *
-          * So the stale copy says nothing at all. It is handled - loanAmount()
-          * takes the BC - and a handled thing does not need a banner.
+          * Which was true, and was the fault. A number typed on the lending
+          * options overruled the borrowing capacity for good, and this banner
+          * calmly explained that it had. Fabio, 13 Oct 2026: "why LO anc BC
+          * amount dont match fucking hell".
           *
-          * What is left is the one case that IS worth knowing: somebody typed
-          * a loan amount on the lending options and it is overriding a
-          * borrowing capacity that now says something else. That is a real
-          * decision, one of the two figures goes in front of a client, and it
-          * is blue because it is information rather than a fault. */}
-      {loanSplit?.byHand && (
-        <div className="bg-info-bg border border-info-edge rounded-xl px-4 py-2.5 mb-3 text-[12px] text-info leading-relaxed">
-          <b>This loan amount was entered on the lending options.</b>{' '}
-          Using {money(loanSplit.using)}. The borrowing capacity says{' '}
-          {money(bcSplitsTotal(deal))} &mdash; the figure entered by hand wins, and it is
-          what the client sees and what the compliance wording uses.
-        </div>
-      )}
+          * They cannot disagree any more. The loan is the sum of the BC's
+          * splits - see loanAmount in lib/funds-to-complete.ts - so there is
+          * nothing left for a banner to report. */}
 
       {/* TWO SPLIT LISTS, ONE DEAL. See splitsDisagree in lib/deal-structure.ts.
           *

@@ -98,11 +98,28 @@ describe('a changed BC carries across by itself', () => {
   })
 })
 
-describe('but a figure somebody typed is still theirs', () => {
-  it('wins over the BC when it was entered by hand', () => {
+// 13 OCT 2026: A FIGURE TYPED ON THE LENDING OPTIONS IS NO LONGER THEIRS.
+//
+// This block used to say the opposite, and it was right at the time: the
+// lending options held a stale COPY of the BC's amount, there was no way to
+// tell a stale copy from a deliberate figure, so a flag marked the deliberate
+// ones and they won.
+//
+// What that produced on the Veljovic deal: $1,000,000 on the lending options
+// against a borrowing capacity of $2,720,000, with a blue banner on the strip
+// calmly explaining that the typed figure wins and is "what the client sees and
+// what the compliance wording uses".
+//
+// Fabio, 13 Oct 2026: "why LO anc BC amount dont match fucking hell".
+//
+// They cannot now. How much is being borrowed is the sum of the splits; the
+// splits are the borrowing capacity's; so the total is the borrowing
+// capacity's. The lending options price the loan, they do not size it.
+// loanAmountByHand is still on records already saved and is never read.
+describe('the borrowing capacity sizes the loan', () => {
+  it('its splits win over anything typed on the lending options', () => {
     const deal = { bc_data: bcOf(810000), lo_data: { loanAmount: '522,000', loanAmountByHand: true } }
-    expect(loanAmount(deal), 'a figure a broker entered on purpose is being\n'
-      + 'overruled by the BC. The flag exists so that cannot happen.').toBe(522000)
+    expect(loanAmount(deal)).toBe(810000)
   })
 
   it('and the contract beats both, as it always did', () => {
@@ -114,91 +131,22 @@ describe('but a figure somebody typed is still theirs', () => {
     expect(loanAmount(deal)).toBe(700000)
   })
 
-  it('falls back to the LO on a deal with no BC splits at all', () => {
-    expect(loanAmount({ lo_data: { loanAmount: '522,000' } })).toBe(522000)
-  })
-})
-
-describe('the lending options record who put the number there', () => {
-  it('sets the flag on all four ways a person lands a figure in that box', () => {
-    // The loan box itself, and the three figures that recalculate it: price,
-    // deposit and stamp duty. All four are deliberate acts describing THIS
-    // lending.
-    const hands = lo.match(/loanAmountByHand: true/g) || []
-    expect(hands.length, 'a handler that a person types through no longer records\n'
-      + 'that the loan amount is theirs, so their figure will be overruled by the BC')
-      .toBeGreaterThanOrEqual(5)
+  // A deal with no BC splits at all - a pre-approval somebody started on the
+  // lending options - still has to report something.
+  it('but with no BC splits the lending options figure is all there is', () => {
+    expect(loanAmount({ bc_data: {}, lo_data: { loanAmount: '522,000' } })).toBe(522000)
   })
 
-  it('never sets it when the form copies the BC in', () => {
-    // If either copy site ever claims the flag, one VISIT to the lending
-    // options freezes the BC's figure for good and the fault comes straight
-    // back - this time looking like a deliberate override.
-    const copies = lo.match(/loanAmount: bcLoanAmount\(\),\s*\n\s*loanAmountByHand: false,/g) || []
-    expect(copies.length, 'a place that copies the BC in is no longer declaring\n'
-      + 'itself as a copy').toBe(2)
-    expect(lo).not.toMatch(/loanAmount: bcLoanAmount\(\),\s*\n\s*loanAmountByHand: true/)
-  })
-})
-
-describe('and nothing changes quietly', () => {
-  it('reports two records that disagree', () => {
-    const copy = loanAmountDisagrees({ bc_data: bcOf(810000), lo_data: { loanAmount: '522,000' } })
-    expect(copy).toEqual({ using: 810000, stored: 522000, byHand: false })
-
-    const typed = loanAmountDisagrees({ bc_data: bcOf(810000), lo_data: { loanAmount: '522,000', loanAmountByHand: true } })
-    expect(typed).toEqual({ using: 522000, stored: 522000, byHand: true })
-  })
-
-  it('says nothing when they agree, or when there is only one of them', () => {
-    expect(loanAmountDisagrees({ bc_data: bcOf(810000), lo_data: { loanAmount: '810,000' } })).toBeNull()
-    expect(loanAmountDisagrees({ bc_data: bcOf(810000) })).toBeNull()
-    expect(loanAmountDisagrees({ lo_data: { loanAmount: '522,000' } })).toBeNull()
-    // An answered contract settles it; there is no disagreement left to report.
-    expect(loanAmountDisagrees({
-      contract_loan_amount: '700,000', bc_data: bcOf(810000), lo_data: { loanAmount: '522,000' },
-    })).toBeNull()
-  })
-
-  it('says nothing at all about a stale copy', () => {
-    // The first version drew a red banner for this case. Nothing reads the
-    // copy, nothing can be done about it, and there is no way to clear it - a
-    // permanent red warning about dead data. Fabio: "this ridiculous red line
-    // is still there??" He is right. A handled thing does not need a banner.
-    expect(structure, 'the stale copy is being warned about again')
-      .not.toMatch(/older loan amount/i)
-    expect(structure, 'it tells somebody to type into a Loan amount box, which\n'
-      + 'is never drawn on a refinance').not.toMatch(/type it to make the two agree/i)
-    expect(structure, 'the line is drawn for every disagreement again, not only\n'
-      + 'for one somebody made on purpose').toContain('loanSplit?.byHand &&')
-  })
-
-  it('but names a figure somebody entered on purpose', () => {
-    // One of the two numbers goes in front of a client. Blue, not red: this is
-    // information, not a fault.
-    expect(structure).toContain('loanAmountDisagrees')
-    expect(structure).toMatch(/entered on the lending options/i)
-    const block = structure.slice(structure.indexOf('{loanSplit?.byHand &&'))
-    expect(block.slice(0, 400), 'a recorded decision is being shown as an error')
-      .toContain('bg-info-bg')
-  })
-})
-
-describe('and compliance written before the change says so', () => {
-  it('stamps the BC splits, which nothing used to watch', () => {
-    // Every compliance box is stamped with what it was written from, so it can
-    // be marked stale by name when those figures move. The list came from the
-    // fact find and the lending options and never from the BC - so changing
-    // the loan in the BC marked nothing stale at all. The guard built to catch
-    // this was being shown the one number that could not change.
-    expect(figures, "the stamp no longer watches the BC's splits")
-      .toMatch(/bc_data\?\.splits/)
-    expect(figures).toMatch(/the BC total lending/)
-  })
-
-  it('names each split as well as the total', () => {
-    // One split of 810,000 and two of 405,000 have the same total and are not
-    // the same lending, and the compliance prose describes the splits.
-    expect(figures).toMatch(/the BC's \$\{label\}|the BC's \$\{/)
+  it('nothing in the portal reads the flag any more', () => {
+    const { readdirSync } = require('fs')
+    const reads: string[] = []
+    for (const dir of ['lib', 'components']) {
+      for (const f of readdirSync(dir).filter((f: string) => f.endsWith('.ts') || f.endsWith('.tsx'))) {
+        if (f.includes('.test.')) continue
+        const src = readFileSync(`${dir}/${f}`, 'utf8').replace(/\/\/[^\n]*/g, '')
+        if (/loanAmountByHand/.test(src)) reads.push(`${dir}/${f}`)
+      }
+    }
+    expect(reads, 'the flag is being read again').toEqual([])
   })
 })

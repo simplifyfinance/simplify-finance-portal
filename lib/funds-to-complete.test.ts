@@ -168,11 +168,19 @@ describe('the loan amount', () => {
     expect(loanAmount({ bc_data: { splits: [{ amount: '520,000' }, { amount: '180,000' }] } })).toBe(700_000)
   })
 
-  it('keeps a figure somebody typed on the lending options', () => {
+  // 13 Oct 2026: THE OTHER WAY ROUND NOW. A figure typed on the lending options
+  // used to win for good, which is how the Veljovic deal came to show
+  // $1,000,000 against a borrowing capacity of $2,720,000. The loan is the sum
+  // of the BC's splits.
+  it('the BC splits win over a figure typed on the lending options', () => {
     expect(loanAmount({
       lo_data: { loanAmount: '700,000', loanAmountByHand: true },
       bc_data: { splits: [{ amount: '680,000' }] },
-    })).toBe(700_000)
+    })).toBe(680_000)
+  })
+
+  it('but with no BC splits the lending options figure still answers', () => {
+    expect(loanAmount({ lo_data: { loanAmount: '700,000' }, bc_data: {} })).toBe(700_000)
   })
 
   it('copes with comma formatted money, which Number() alone cannot', () => {

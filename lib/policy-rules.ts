@@ -24,9 +24,20 @@ export type PolicyRule = {
   documentId: string
   lenderId: string
   says: string
+  // ONE OR THE OTHER OF THESE, NEVER NEITHER. Prose rules quote a sentence;
+  // table rules carry the row. See cleanProposed.
   quote: string
-  page: number | null
+  rowHeaders: string[]
+  rowCells: string[]
+  // "10.7". NOT a page - NAB's policy came off a web portal and has none, and a
+  // section number is a better address than a page was anyway.
+  section: string
   heading: string
+  dependsOn: string[]
+  maxLvr: number | null
+  minValue: number | null
+  maxValue: number | null
+  excludes: string[]
   tags: string[]
   tier: string
   effectiveFrom: string | null
@@ -38,6 +49,19 @@ export type PolicyRule = {
 }
 
 const txt = (v: any): string => (typeof v === 'string' ? v.trim() : v == null ? '' : String(v).trim())
+const list = (v: any): string[] => (Array.isArray(v) ? v.map(txt).filter(Boolean) : [])
+// A PERCENTAGE OUT OF A DOCUMENT, OR NOTHING. "95", "95%", "Up to and including
+// 95%" all mean 95. Anything that is not a sensible LVR is dropped rather than
+// guessed at - a wrong number here would be compared against by code.
+const pct = (v: any): number | null => {
+  const m = /(\d+(?:\.\d+)?)\s*%?/.exec(txt(v))
+  const n = m ? Number(m[1]) : NaN
+  return Number.isFinite(n) && n > 0 && n <= 110 ? n : null
+}
+const money = (v: any): number | null => {
+  const n = Number(txt(v).replace(/[^0-9.]/g, ''))
+  return Number.isFinite(n) && n > 0 ? n : null
+}
 const day = (v: any): string => txt(v).slice(0, 10)
 
 // --- 1. it has to quote --------------------------------------------------
@@ -58,16 +82,44 @@ export function cleanProposed(raw: any, documentId: string, lenderId: string): C
   for (const r of rows) {
     const says = txt(r?.says)
     const quote = txt(r?.quote)
-    if (!says) { dropped.push({ says: txt(r?.quote).slice(0, 80), why: 'it did not say what the rule is' }); continue }
-    if (!quote) { dropped.push({ says, why: 'it quoted nothing from the document' }); continue }
-    // A "quote" shorter than a few words is not a sentence out of a credit
-    // manual - it is a fragment that proves nothing when you open the page.
-    if (quote.split(/\s+/).length < 4) { dropped.push({ says, why: 'the quote was too short to check' }); continue }
+    const cells = list(r?.rowCells)
+    const headers = list(r?.rowHeaders)
+    if (!says) { dropped.push({ says: quote.slice(0, 80), why: 'it did not say what the rule is' }); continue }
 
-    const pageNum = Number(r?.page)
+    // A TABLE ROW IS A SOURCE, AND KEEPING IT AS A ROW IS THE POINT.
+    //
+    // 13 Oct 2026, from NAB's own chapters. The income shading rule is a row in
+    // a three column table - Commissions, 20%, 6 Months. Flatten it and nobody
+    // can tell which number is the shading and which is the verification
+    // period. The valuation table is worse: the cell alone reads "Up to and
+    // including 95%**", which looks like a complete citation and is meaningless
+    // without the four other cells beside it.
+    const isRow = cells.length > 0
+    if (isRow) {
+      if (headers.length !== cells.length) {
+        dropped.push({ says, why: 'the table row did not line up with its headings' }); continue
+      }
+      if (cells.length < 2) {
+        dropped.push({ says, why: 'a one column row proves nothing on its own' }); continue
+      }
+    } else {
+      if (!quote) { dropped.push({ says, why: 'it quoted nothing from the document' }); continue }
+      // A "quote" shorter than a few words is not a sentence out of a credit
+      // manual - it is a fragment that proves nothing when you go and look.
+      if (quote.split(/\s+/).length < 4) { dropped.push({ says, why: 'the quote was too short to check' }); continue }
+    }
+
     rules.push({
-      documentId, lenderId, says, quote,
-      page: Number.isFinite(pageNum) && pageNum > 0 ? Math.floor(pageNum) : null,
+      documentId, lenderId, says,
+      quote: isRow ? '' : quote,
+      rowHeaders: isRow ? headers : [],
+      rowCells: isRow ? cells : [],
+      section: txt(r?.section),
+      dependsOn: list(r?.dependsOn),
+      maxLvr: pct(r?.maxLvr),
+      minValue: money(r?.minValue),
+      maxValue: money(r?.maxValue),
+      excludes: list(r?.excludes),
       heading: txt(r?.heading),
       // Only tags the portal already knows. A tag the model invented would sit
       // in the list for ever and never be asked for.
@@ -142,11 +194,18 @@ export function isGettingOld(lastChecked: any, today: string): boolean {
 /** "Macquarie credit guidelines, page 14 — last checked 2 Oct 2026". */
 export function citation(r: any, docTitle: string): string {
   const bits = [txt(docTitle) || 'the lender document']
-  const p = Number(r?.page)
-  if (Number.isFinite(p) && p > 0) bits.push(`page ${Math.floor(p)}`)
+  // THE SECTION, NEVER A PAGE. Fabio, 13 Oct 2026: "there is no need to ever
+  // reference a page thats not relevant just mention section of policy".
+  const sec = txt(r?.section)
+  if (sec) bits.push(`section ${sec}`)
   const h = txt(r?.heading)
-  if (h) bits.push(`under ${h}`)
+  if (h) bits.push(h)
   return bits.join(', ')
+}
+
+/** "and it leans on 10.1" - said out loud, because answering 10.2.1 alone is half an answer. */
+export function leansOn(r: any): string[] {
+  return list(r?.dependsOn)
 }
 
 // --- the document text is data, never an instruction -----------------------

@@ -235,7 +235,7 @@ export function fundsToComplete(deal: any): FundsToComplete {
 // - went on quoting the old number. Nothing on screen said so.
 //
 // A copy is not a second opinion. What makes the LO's figure worth preferring
-// is a PERSON having typed it, and that is now recorded; see loanAmountByHand
+// is a PERSON having typed it, and that used to be recorded on a flag (retired
 // in LOForm. Where nobody typed it, the BC wins and carries across by itself,
 // with nothing to press and no second writer on lo_data.
 export function loanAmount(deal: any): number {
@@ -244,7 +244,25 @@ export function loanAmount(deal: any): number {
   const contracted = contractLoan(deal)
   if (contracted > 0) return contracted
   const lo = deal?.lo_data || {}
-  if (lo.loanAmountByHand && has(lo.loanAmount)) return num(lo.loanAmount)
+  // THE BORROWING CAPACITY'S SPLITS ARE THE LOAN.
+  //
+  // 13 Oct 2026. This line used to come first:
+  //
+  //   if (lo.loanAmountByHand && has(lo.loanAmount)) return num(lo.loanAmount)
+  //
+  // A figure typed on the lending options beat the borrowing capacity, for
+  // good, and the deal strip carried a blue banner explaining that it had -
+  // "the figure entered by hand wins, and it is what the client sees and what
+  // the compliance wording uses". On the Veljovic deal that meant $1,000,000
+  // against a borrowing capacity of $2,720,000, in front of a client.
+  //
+  // Fabio: "why LO anc BC amount dont match fucking hell". They do not match
+  // because this line let them. How much is being borrowed is the sum of the
+  // splits, the splits are the BC's, so the total is the BC's. The lending
+  // options price it; they do not decide how big it is.
+  //
+  // loanAmountByHand is left on the record because deals already carry it. It
+  // is not written any more and must not be read again. docs/the-chain.md.
   const fromBc = bcSplitsTotal(deal)
   if (fromBc > 0) return fromBc
   // A deal with no BC splits at all - the LO's figure is all there is.
@@ -279,7 +297,9 @@ export function loanAmountDisagrees(deal: any): LoanDisagreement | null {
   const fromBc = bcSplitsTotal(deal)
   if (fromBc <= 0) return null
   if (Math.abs(stored - fromBc) < 1) return null
-  return { using: loanAmount(deal), stored, byHand: !!lo.loanAmountByHand }
+  // byHand is always false now. The field stays on the type because callers
+  // destructure it; nothing can set it, because nothing may overrule the BC.
+  return { using: loanAmount(deal), stored, byHand: false }
 }
 
 export type SecurityValue = { total: number; count: number; lvr: number | null; why?: string }

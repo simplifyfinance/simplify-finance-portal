@@ -25,7 +25,9 @@ type Doc = {
 }
 type Rule = {
   id: string; document_id: string; lender_id: string; says: string; quote: string
-  page: number | null; heading: string; status: string; created_at: string
+  section: string; heading: string; status: string; created_at: string
+  row_headers: string[]; row_cells: string[]; depends_on: string[]; excludes: string[]
+  max_lvr: number | null; min_value: number | null; max_value: number | null
 }
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -55,7 +57,7 @@ export default function LenderPolicyDocs() {
     const [a, b, c] = await Promise.all([
       supabase.from('lenders').select('id, name, active').order('name'),
       supabase.from('lender_documents').select('*').order('created_at', { ascending: false }),
-      supabase.from('lender_policy_rules').select('id, document_id, lender_id, says, quote, page, heading, status, created_at'),
+      supabase.from('lender_policy_rules').select('id, document_id, lender_id, says, quote, section, heading, status, created_at, row_headers, row_cells, depends_on, excludes, max_lvr, min_value, max_value'),
     ])
     setLenders(((a.data || []) as Lender[]).filter(l => l.active !== false))
     // The table not existing yet is not an error worth shouting about - the SQL
@@ -131,7 +133,9 @@ export default function LenderPolicyDocs() {
     }
     const { error } = await supabase.from('lender_policy_rules').insert(clean.map(r => ({
       document_id: r.documentId, lender_id: r.lenderId, says: r.says, quote: r.quote,
-      page: r.page, heading: r.heading, tags: r.tags, tier: r.tier,
+      section: r.section, heading: r.heading, tags: r.tags, tier: r.tier,
+      row_headers: r.rowHeaders, row_cells: r.rowCells, depends_on: r.dependsOn,
+      excludes: r.excludes, max_lvr: r.maxLvr, min_value: r.minValue, max_value: r.maxValue,
       effective_from: r.effectiveFrom, status: 'proposed',
     })))
     if (error) { setErr(`Read, but not saved — ${error.message}`); await load(); return }
@@ -277,13 +281,39 @@ export default function LenderPolicyDocs() {
                   {waiting.map(r => (
                     <div key={r.id} className="py-3.5 border-t border-line-soft first:border-t-0">
                       <p className="m-0 mb-1.5 text-[13px] font-semibold text-ink">{r.says}</p>
-                      {/* THE SENTENCE, AS IT IS IN THE DOCUMENT. Shown, never
-                          obeyed - a manual may contain any words at all. */}
-                      <div className="bg-page border-l-[3px] border-info rounded-r-lg px-3 py-2
-                                      text-[12.5px] text-body leading-relaxed mb-1.5">
-                        &ldquo;{r.quote}&rdquo;
+                      {/* WHAT THE DOCUMENT SAYS. Shown, never obeyed - a credit
+                          manual may legitimately contain any words at all.
+                          A TABLE ROW IS DRAWN AS A ROW. Squashing NAB's shading
+                          table into a sentence loses which number is the 20%
+                          and which is the 6 months. */}
+                      {(r.row_cells || []).length > 0 ? (
+                        <div className="bg-page border-l-[3px] border-info rounded-r-lg px-3 py-2 mb-1.5 overflow-x-auto">
+                          <table className="text-[12px] text-body">
+                            <tbody>
+                              {(r.row_headers || []).map((h, k) => (
+                                <tr key={k}>
+                                  <td className="pr-4 py-[2px] text-faint whitespace-nowrap align-top">{h}</td>
+                                  <td className="py-[2px] align-top">{r.row_cells[k]}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="bg-page border-l-[3px] border-info rounded-r-lg px-3 py-2
+                                        text-[12.5px] text-body leading-relaxed mb-1.5">
+                          &ldquo;{r.quote}&rdquo;
+                        </div>
+                      )}
+                      {(r.excludes || []).length > 0 && (
+                        <ul className="text-[11.5px] text-body mb-1.5 mt-0 pl-5">
+                          {r.excludes.map((x, k) => <li key={k}>not {x}</li>)}
+                        </ul>
+                      )}
+                      <div className="text-[11px] text-faint mb-2">
+                        {citation(r, d.title)}
+                        {(r.depends_on || []).length > 0 && ` — also read ${r.depends_on.join(', ')}`}
                       </div>
-                      <div className="text-[11px] text-faint mb-2">{citation(r, d.title)}</div>
                       <div className="flex gap-2">
                         <button onClick={() => decide(r, true)}
                           className="text-[12px] bg-ink text-page rounded-lg px-3 py-[5px] font-medium">Keep it</button>
