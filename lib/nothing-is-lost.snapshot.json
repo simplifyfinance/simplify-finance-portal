@@ -508,8 +508,6 @@
     "Select lender the client chose",
     "Select recommended lender",
     "Select the lender the client chose",
-    "Send and move to Compliance",
-    "Send the next-steps email to the client?",
     "Send to client",
     "Set as recommended",
     "Special note (optional)",
@@ -539,7 +537,10 @@
     "— select lender —",
     "— select product —",
     "— select —",
-    "✏ Add your personalised opening message..."
+    "✏ Add your personalised opening message...",
+    "Client agreed — move to Compliance",
+    "Email the client and move",
+    "Just move to Compliance"
   ],
   "app/(app)/deals/[id]/ComplianceForm.tsx": [
     "AI generated",

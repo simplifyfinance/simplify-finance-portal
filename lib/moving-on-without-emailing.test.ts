@@ -83,3 +83,58 @@ describe('what it says afterwards', () => {
     expect(FORM).toContain('data.notSentOnPurpose')
   })
 })
+
+// AND THE SAME ONE STAGE LATER.
+//
+// Moving from lending options to Compliance emails the client too - a different
+// email, "Next steps - documents to sign and submission", about the credit guide
+// and the lender application form. Fabio, 12 Oct 2026, having asked whether it
+// did: "so build it!".
+//
+// THIS ONE WENT UP WITHOUT BEING TESTED. It was written while a ship was already
+// running, and ship.sh does `git add -A` after the tests have passed - so the
+// change was committed in b687fb1 having never been through them. These are the
+// tests it should have had. Nothing is written while a ship is running again.
+const LO_FORM = readFileSync('app/(app)/deals/[id]/LOForm.tsx', 'utf8')
+
+describe('moving to Compliance', () => {
+  it('offers both ways out', () => {
+    expect(LO_FORM).toContain('Email the client and move')
+    expect(LO_FORM).toContain('Just move to Compliance')
+  })
+
+  it('sends on one and not on the other', () => {
+    expect(LO_FORM).toContain('handleMoveToCompliance(true)')
+    expect(LO_FORM).toContain('handleMoveToCompliance(false)')
+  })
+
+  it('defaults to sending when nobody says otherwise', () => {
+    expect(LO_FORM).toContain('async function handleMoveToCompliance(sendEmail = true)')
+  })
+
+  it('passes the choice to the route', () => {
+    expect(LO_FORM).toContain("stage: 'LO', sendEmail })")
+  })
+
+  it('keeps emailing as the obvious one', () => {
+    const i = LO_FORM.indexOf('handleMoveToCompliance(true)')
+    expect(LO_FORM.slice(i, i + 400)).toContain('bg-ink text-page')
+  })
+
+  it('names which of the two happened afterwards', () => {
+    expect(LO_FORM).toContain("'Moved to Compliance — client emailed'")
+    expect(LO_FORM).toContain("'Moved to Compliance — client not emailed'")
+    expect(LO_FORM).toContain("'Moved to Compliance — no email on file'")
+  })
+
+  // The dialog also asks whether the client took the recommended lender. That
+  // question is the reason this popup is not the same component as the BC one,
+  // and it must survive the rewrite.
+  it('still asks whether they agreed with the recommended lender', () => {
+    expect(LO_FORM).toContain('Did the client agree with the recommended lender')
+  })
+
+  it('still has a way to back out that does nothing', () => {
+    expect(LO_FORM).toContain('setShowMoveToCompliancePopup(false)')
+  })
+})
