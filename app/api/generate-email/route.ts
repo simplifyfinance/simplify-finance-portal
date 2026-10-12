@@ -3,7 +3,6 @@ import { card, row } from '@/lib/email-card'
 import { bufferNoteBlock } from '@/lib/buffer-note'
 import { dutyLabel as sharedDutyLabel } from '@/lib/duty-state'
 import { NextRequest, NextResponse } from 'next/server'
-import { rateNoticeLines } from '@/lib/rate-notice-server'
 import { ctas, ctasTwo } from '@/lib/email-buttons'
 import { labelOf as scenarioLabel } from '@/lib/bc-scenarios'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
@@ -464,14 +463,22 @@ export async function POST(req: NextRequest) {
   const template = d.template || 'oo_purchase'
   const personalisation = d.brokerNotes || ''
   const checkItems = [...buildChecklist(d), ...(d.factFindChecklist || []), ...(d.checklist || [])]
-  // THE RBA NOTICE GOES IN FRONT OF EVERY OTHER NOTE, on all nine shapes this
-  // email takes - one change here rather than nine at the boxes, so a shape
-  // added later cannot quietly miss it.
+  // NO RBA NOTICE ON A BORROWING CAPACITY. Removed 12 Oct 2026 on Fabio's call:
+  // "can you remove the rba message from all bc email just keep rules for LO".
   //
-  // A BORROWING CAPACITY NAMES NO LENDER, so there is no per-bank half of it
-  // here: nobody has passed anything on, and the notice stands as written
-  // whenever it is on. See lib/rate-notice.ts.
-  const notes = [...await rateNoticeLines([]), ...(d.additionalNotes || [])]
+  // The reasoning, so it can be argued with rather than just undone. The notice
+  // warns a client that the bank quoting them a rate has not passed the RBA's
+  // move on yet. It is a statement about a named lender, and the whole per-bank
+  // half of lib/rate-notice.ts - each bank's own effective date - exists to say
+  // which one. A borrowing capacity names no lender and quotes an indicative
+  // figure for capacity, not an offer, so there is no bank to be waiting on and
+  // nothing the notice can truthfully be about.
+  //
+  // IT STAYS ON EVERY EMAIL THAT NAMES A LENDER: lending options, pre-approval,
+  // formal approval and the refinance saving template. Those are where it earns
+  // its place. lib/rate-notice-everywhere.test.ts holds the list and will fail
+  // the ship if one of them loses it.
+  const notes = [...(d.additionalNotes || [])]
 
   let body = ''
 

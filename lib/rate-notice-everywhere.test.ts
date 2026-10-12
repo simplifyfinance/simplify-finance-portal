@@ -16,7 +16,6 @@ import { readFileSync, readdirSync } from 'fs'
 
 // The client-facing surfaces, and where each one gets the notice.
 const WIRED: Record<string, string> = {
-  'app/api/generate-email/route.ts':    'rateNoticeLines',   // borrowing capacity
   'app/api/generate-lo-email/route.ts': 'rateNoticeLines',   // lending options
   'lib/formal-approval-email.ts':       'ctx.rateNotice',
   'lib/preapproval-email.ts':           'ctx.rateNotice',
@@ -27,6 +26,26 @@ const WIRED: Record<string, string> = {
   // the BROWSER, so the notice is fetched here and handed to the builder -
   // which is exactly why this was the one template nobody wired.
   'app/(app)/templates/RefinanceTemplateForm.tsx': 'setRateNotice',
+}
+
+// GOES TO A CLIENT, QUOTES A RATE, AND CARRIES NO NOTICE ON PURPOSE.
+//
+// This list is deliberately short and deliberately awkward to be on. A file here
+// is one somebody decided a client does NOT need the warning on, which is the
+// decision this whole test exists to make somebody write down.
+const CLIENT_FACING_BUT_EXEMPT: Record<string, string> = {
+  // 12 Oct 2026, Fabio: "can you remove the rba message from all bc email just
+  // keep rules for LO".
+  //
+  // The notice tells a client that the bank quoting them has not passed the
+  // RBA's move on yet. It is about a NAMED lender - the per-bank effective
+  // dates in lib/rate-notice.ts are the whole mechanism. A borrowing capacity
+  // names no lender and quotes an indicative figure for capacity rather than an
+  // offer, so there is no bank to be waiting on.
+  //
+  // If this email ever starts naming a lender's own rate, it belongs back in
+  // WIRED and this line is wrong.
+  'app/api/generate-email/route.ts': 'borrowing capacity - indicative rate, no lender named',
 }
 
 // Prints a rate, but never to a client - so there is nothing to disclaim.
@@ -150,12 +169,29 @@ describe('the notice reaches every client email that quotes a rate', () => {
   // THE GUARD. Anything new that prints a rate has to be classified.
   it('and nothing new prints a rate to anybody without being on a list', () => {
     const files = [...walk('lib'), ...walk('app'), ...walk('components')]
-      .filter(f => !(f in WIRED) && !(f in NOT_CLIENT_FACING) && !(f in NOT_AN_INTEREST_RATE))
+      .filter(f => !(f in WIRED) && !(f in NOT_CLIENT_FACING) && !(f in NOT_AN_INTEREST_RATE)
+                && !(f in CLIENT_FACING_BUT_EXEMPT))
       .filter(f => !f.includes('rate-notice'))
       .filter(f => PRINTS_A_RATE.test(codeOf(f)))
     expect(files,
       'this file prints a rate. Wire it to lib/rate-notice.ts, or add it to ' +
       'NOT_CLIENT_FACING with a reason.').toEqual([])
+  })
+
+  // THE BORROWING CAPACITY REALLY DOES NOT NAME A LENDER.
+  //
+  // That is the whole reason it is excused, so it is checked rather than taken
+  // on trust. The moment this email starts quoting a named bank's own rate, the
+  // excuse stops being true and this fails.
+  it('the email excused for naming no lender really names none', () => {
+    const code = codeOf('app/api/generate-email/route.ts')
+    expect(code).not.toContain('rateNoticeLines')
+    expect(code, 'the borrowing capacity email is naming a lender now')
+      .not.toMatch(/lenderName|recommendedLender/)
+  })
+
+  it('and it is the only client email excused', () => {
+    expect(Object.keys(CLIENT_FACING_BUT_EXEMPT)).toEqual(['app/api/generate-email/route.ts'])
   })
 
   // AND THE EXCUSE HAS TO BE TRUE. A file claiming its percentage is historical
@@ -170,7 +206,8 @@ describe('the notice reaches every client email that quotes a rate', () => {
 
   it('the lists are about real files, so neither is quietly stale', () => {
     for (const f of [...Object.keys(WIRED), ...Object.keys(NOT_CLIENT_FACING),
-                     ...Object.keys(NOT_AN_INTEREST_RATE)]) {
+                     ...Object.keys(NOT_AN_INTEREST_RATE),
+                     ...Object.keys(CLIENT_FACING_BUT_EXEMPT)]) {
       expect(() => readFileSync(f, 'utf8'), `${f} is on a list but no longer exists`).not.toThrow()
     }
   })
