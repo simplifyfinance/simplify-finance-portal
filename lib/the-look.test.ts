@@ -150,7 +150,16 @@ describe('the deal page holds no more state than it did', () => {
   it('and anything new has to justify itself', () => {
     const page = readFileSync('app/(app)/deals/[id]/DealPageClient.tsx', 'utf8')
     const held = (page.match(/useState[<(]/g) || []).length
+    // 13 OCT 2026: 12 -> 13, and here is the answer to the question this test
+    // asks. The new one is `proposed` - the screen that shows what this deal
+    // does to the clients' position before another deal is started from it.
+    //
+    // It cannot land mid-keystroke. Nothing sets it except a deliberate press
+    // on a menu item, there is no fetch that resolves into it behind somebody's
+    // back, and while it is set a modal is over the form so nobody is typing
+    // underneath. That is the whole hazard this number exists to guard, and
+    // this one does not have it.
     expect(held, 'the deal page is holding more state than it was - can it land mid-keystroke?')
-      .toBeLessThanOrEqual(12)
+      .toBeLessThanOrEqual(13)
   })
 })

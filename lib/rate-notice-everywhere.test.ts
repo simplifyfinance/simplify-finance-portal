@@ -60,6 +60,10 @@ const NOT_CLIENT_FACING: Record<string, string> = {
   'lib/factfind-form-content.ts':   'the fact find sheet, filled in with the client in front of you',
   'lib/self-employed-facts.ts':     'income working, internal',
   'lib/income-calculations.ts':     'income working, internal',
+  // 13 Oct 2026. Builds the fact find for a NEW deal out of this one's lending
+  // options - the rate it carries is going into a liability row on a form, not
+  // into anything a client is sent.
+  'lib/position-after-settlement.ts': 'builds a fact find, which is a form, not a client email',
   'app/(app)/deals/[id]/BCForm.tsx':        'the form somebody types into',
   'app/(app)/deals/[id]/LOForm.tsx':        'the form somebody types into',
   'app/(app)/deals/[id]/FactFindForm.tsx':  'the form somebody types into',

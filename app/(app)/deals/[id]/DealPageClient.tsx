@@ -47,6 +47,7 @@ import DealName from '@/components/DealName'
 import { splitOnCommonStart } from '@/lib/same-clients'
 import { useOtherDeals } from '@/components/useOtherDeals'
 import { CLONE_SELECT, cloneFields, cloneAsks, provenanceLine, type CloneKind } from '@/lib/clone-deal'
+import { positionChanges, applyChanges, type PositionChange } from '@/lib/position-after-settlement'
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
   const validStages = ['FactFind', 'Statements', 'BC', 'LO', 'Compliance']
@@ -87,16 +88,37 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   // 'clients' is the one Fabio asked for on 13 Oct, with four refinances about
   // to lodge and a purchase to write beside them: their circumstances come, the
   // loan does not. See lib/clone-deal.ts for what each carries and why.
+  // WHAT THIS DEAL DOES TO THEIR POSITION, SHOWN BEFORE ANYTHING IS CREATED.
+  //
+  // 13 Oct 2026. Velimir refinances three properties and takes cash out while a
+  // purchase goes to a different lender at the same time. The second lender is
+  // not assessing what he owes today - it is assessing what he owes once this
+  // deal completes, and that is written on the LENDING OPTIONS here, nowhere
+  // else. See lib/position-after-settlement.ts.
+  const [proposed, setProposed] = useState<null | { changes: PositionChange[]; chosen: Set<string>; full: any }>(null)
+
   async function cloneThisDeal(kind: CloneKind = 'deal') {
+    if (kind === 'clients') {
+      setCloning(true)
+      const { data: full } = await supabase.from('deals').select(CLONE_SELECT).eq('id', deal.id).single()
+      setCloning(false)
+      if (!full) { alert('Could not load this deal'); return }
+      const changes = positionChanges(full, (full as any)?.fact_find_data?.savings)
+      // Everything is ticked to begin with, because on a normal file every one
+      // of them is true. Untick is the exception, which is why it is a tick and
+      // not a question.
+      setProposed({ changes, chosen: new Set(changes.map(c => c.id)), full })
+      return
+    }
     if (!confirm(cloneAsks(dealData.deal_name, kind))) return
     setCloning(true)
     const { data: fullDeal } = await supabase.from('deals').select(CLONE_SELECT).eq('id', deal.id).single()
     if (!fullDeal) { alert('Could not load deal to clone'); setCloning(false); return }
 
+    // 'clients' never reaches here - it goes through the proposal screen above
+    // and createFromProposal does the insert.
     const namePart = dealData.deal_name.replace(/_\d{4}$/, '')
-    const newDealName = kind === 'clients'
-      ? `${namePart}_${new Date().getFullYear()}_New`
-      : `${namePart}_${new Date().getFullYear()}_Copy`
+    const newDealName = `${namePart}_${new Date().getFullYear()}_Copy`
 
     const { data: inserted, error } = await supabase.from('deals')
       .insert([cloneFields(fullDeal, newDealName, kind)]).select().single()
@@ -104,6 +126,22 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
     if (error || !inserted) { alert('Error cloning deal: ' + (error?.message || 'unknown error')); setCloning(false); return }
     router.push(`/deals/${inserted.id}`)
   }
+  async function createFromProposal() {
+    if (!proposed) return
+    setCloning(true)
+    const chosen = proposed.changes.filter(c => proposed.chosen.has(c.id))
+    const namePart = dealData.deal_name.replace(/_\d{4}$/, '')
+    const fields = cloneFields(proposed.full, `${namePart}_${new Date().getFullYear()}_New`, 'clients')
+    // APPLIED TO THE NEW DEAL'S FACT FIND AND NOWHERE ELSE. Not this deal, and
+    // never the client record - that question has its own answer at settlement.
+    fields.fact_find_data = applyChanges(fields.fact_find_data, chosen, String(dealData.deal_name || ''))
+    const { data: inserted, error } = await supabase.from('deals').insert([fields]).select().single()
+    setCloning(false)
+    if (error || !inserted) { alert('Error creating deal: ' + (error?.message || 'unknown error')); return }
+    setProposed(null)
+    router.push(`/deals/${inserted.id}`)
+  }
+
   const router = useRouter()
   const supabase = createSupabaseBrowser()
 
@@ -311,6 +349,85 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
               * BEFORE they complete. That is not what a lender will assess the
               * purchase on. Said here, with the open deals named above, rather
               * than found out from the lender. */}
+          {/* THE SCREEN FABIO ASKED FOR, 13 Oct 2026: "a whole screen shows up
+              and say, this is what I am changing on the fact find."
+              *
+              * It states and lets you choose. It does not ask yes or no to the
+              * whole thing - on a real file some of these are right and some
+              * are not, and one button for all of them would be answered by
+              * habit within a week. */}
+          {proposed && (
+            <div className="fixed inset-0 z-50 bg-black/45 flex items-start justify-center p-6 overflow-y-auto"
+                 onClick={() => setProposed(null)}>
+              <div className="bg-card rounded-2xl w-[720px] max-w-full my-8 shadow-[0_24px_70px_rgba(0,0,0,0.32)] overflow-hidden"
+                   onClick={e => e.stopPropagation()}>
+                <div className="px-6 pt-5">
+                  <h3 className="m-0 mb-1 text-[17px] font-bold text-ink">Start another deal for these clients</h3>
+                  <p className="m-0 mb-4 text-[12.5px] text-muted leading-relaxed">
+                    This is what {dealData.deal_name} does to their position. Untick anything that
+                    should not carry. Nothing is created until you press the button.
+                  </p>
+                </div>
+
+                <div className="px-6 pb-2">
+                  {proposed.changes.length === 0 && (
+                    <p className="text-[12.5px] text-muted border border-card-line rounded-xl px-4 py-3">
+                      Nothing on this deal changes their position yet &mdash; no loans are marked as being
+                      refinanced and there is no equity release. Their fact find carries across as it is.
+                    </p>
+                  )}
+                  {proposed.changes.map(c => (
+                    <label key={c.id} className="flex items-start gap-3 py-3 border-t border-line-soft first:border-t-0 cursor-pointer">
+                      <input type="checkbox" checked={proposed.chosen.has(c.id)}
+                        onChange={() => setProposed(p => {
+                          if (!p) return p
+                          const next = new Set(p.chosen)
+                          if (next.has(c.id)) next.delete(c.id); else next.add(c.id)
+                          return { ...p, chosen: next }
+                        })}
+                        className="mt-[3px] w-4 h-4 accent-brand-ink shrink-0" />
+                      <span className="min-w-0 flex-1">
+                        <b className="block text-[12.5px] font-semibold text-ink mb-[3px]">{c.about}</b>
+                        <span className="flex items-center gap-2 flex-wrap text-[12.5px] text-body">
+                          {c.was && <><span className="text-faint line-through">{c.was}</span>
+                            <span className="text-faint">&rarr;</span></>}
+                          <span className="font-semibold">{c.now}</span>
+                          {c.kind === 'add' && (
+                            <span className="text-[10px] font-bold rounded px-[7px] py-[2px] bg-done-bg text-done border border-done-edge">
+                              new liability</span>
+                          )}
+                          {c.subjectToSettlement && (
+                            <span className="text-[10px] font-bold rounded px-[7px] py-[2px] bg-waiting-bg text-waiting border border-waiting-edge">
+                              subject to settlement</span>
+                          )}
+                        </span>
+                        {c.kind === 'funds' && (
+                          <span className="block text-[11px] text-muted mt-1 leading-relaxed">
+                            The released equity is counted as money they can put towards the next deal.
+                            Untick it if it is staying in the loan.
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2 px-6 py-3.5 bg-page border-t border-line-soft">
+                  <span className="text-[11.5px] text-muted mr-auto">
+                    Writes only to the new deal. The client record is not touched.
+                  </span>
+                  <button onClick={() => setProposed(null)}
+                    className="text-[12.5px] border border-card-line bg-card rounded-lg px-3.5 py-[7px] text-body">
+                    Cancel
+                  </button>
+                  <button disabled={cloning} onClick={createFromProposal}
+                    className="text-[12.5px] bg-ink text-page rounded-lg px-4 py-[7px] font-medium disabled:opacity-40">
+                    {cloning ? 'Creating…' : 'Create the deal'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {provenanceLine(dealData.fact_find_data) && (
             <div className="mt-1.5 mb-1 border-l-[3px] border-info bg-info-bg rounded-r-lg px-3.5 py-2.5
                             text-[12.5px] text-body leading-relaxed">
@@ -383,14 +500,39 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
               see components/DealLinks.tsx - and these two live here. Same
               clone, same close. */}
           <DealMore>
-            <button onClick={() => cloneThisDeal('deal')} disabled={cloning} className="text-xs text-muted rounded-lg px-2.5 py-2 hover:bg-page transition inline-flex items-center gap-2 text-left disabled:opacity-40">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="9" rx="1.4"/><path d="M11 5V3.4A1.4 1.4 0 0 0 9.6 2H4.4A1.4 1.4 0 0 0 3 3.4v7.2A1.4 1.4 0 0 0 4.4 12H5"/></svg>
-                {cloning ? 'Cloning...' : 'Clone'}
+            {/* TWO JOBS, AND THEY STOPPED LOOKING LIKE TWO FLAVOURS OF ONE BUTTON.
+                *
+                * 13 Oct 2026. Both items read "clone" and both were a bare
+                * label, so Fabio's team could not tell them apart: "clone is
+                * clone, they're just used to cloning".
+                *
+                * One of these IS a clone and the other is not, so the word
+                * stays on the one they already know and comes off the other
+                * entirely. The line underneath each is doing most of the work,
+                * and the rule between them stops the eye reading a list. */}
+            <button onClick={() => cloneThisDeal('deal')} disabled={cloning} className="text-xs rounded-lg px-2.5 py-2 hover:bg-page transition flex items-start gap-2.5 text-left disabled:opacity-40">
+                <svg className="mt-[2px] text-muted shrink-0" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="9" rx="1.4"/><path d="M11 5V3.4A1.4 1.4 0 0 0 9.6 2H4.4A1.4 1.4 0 0 0 3 3.4v7.2A1.4 1.4 0 0 0 4.4 12H5"/></svg>
+                <span className="min-w-0">
+                  <b className="block text-[12.5px] font-semibold text-ink leading-snug">
+                    {cloning ? 'Cloning...' : 'Clone this deal'}</b>
+                  <span className="block text-[11px] text-muted leading-[1.5] mt-[2px]">
+                    Same clients, same scenario, through to lending options. For trying another lender.</span>
+                </span>
               </button>
-            <button onClick={() => cloneThisDeal('clients')} disabled={cloning} className="text-xs text-muted rounded-lg px-2.5 py-2 hover:bg-page transition inline-flex items-center gap-2 text-left disabled:opacity-40">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="5.5" r="2.4"/><path d="M2.2 13.2c0-2.1 1.7-3.4 3.8-3.4s3.8 1.3 3.8 3.4"/><path d="M12 5v4M14 7h-4"/></svg>
-                {cloning ? 'Creating...' : 'New deal for these clients'}
+            <div className="h-px bg-line-soft mx-2.5 my-1" />
+            <button onClick={() => cloneThisDeal('clients')} disabled={cloning} className="text-xs rounded-lg px-2.5 py-2 hover:bg-page transition flex items-start gap-2.5 text-left disabled:opacity-40">
+                <svg className="mt-[2px] text-muted shrink-0" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="5.5" r="2.4"/><path d="M2.2 13.2c0-2.1 1.7-3.4 3.8-3.4s3.8 1.3 3.8 3.4"/><path d="M12 5v4M14 7h-4"/></svg>
+                <span className="min-w-0">
+                  <b className="block text-[12.5px] font-semibold text-ink leading-snug">
+                    {cloning ? 'Creating...' : 'Start another deal for these clients'}</b>
+                  {/* Deliberately NOT "for a purchase alongside a refinance".
+                      Fabio: "I don't want to pigeonhole that because it could
+                      be other situations." */}
+                  <span className="block text-[11px] text-muted leading-[1.5] mt-[2px]">
+                    Carries their position AFTER this deal settles.</span>
+                </span>
               </button>
+            <div className="h-px bg-line-soft mx-2.5 my-1" />
             <CloseDeal deal={dealData} onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
           </DealMore>
         </div>

@@ -122,10 +122,24 @@ describe('the new deal says where its fact find came from', () => {
 describe('the wiring', () => {
   const page = readFileSync('app/(app)/deals/[id]/DealPageClient.tsx', 'utf8')
 
+  // 13 OCT 2026, RENAMED. Both items read "clone" and both were a bare label,
+  // so Fabio's team could not tell them apart - "clone is clone, they're just
+  // used to cloning". The word stays on the one they know and comes off the
+  // other, and the line underneath each does most of the work.
   it('there are two actions in the menu, not a question on one', () => {
     expect(page).toContain("cloneThisDeal('deal')")
     expect(page).toContain("cloneThisDeal('clients')")
-    expect(page).toContain('New deal for these clients')
+    expect(page).toContain('Clone this deal')
+    expect(page).toContain('Start another deal for these clients')
+  })
+
+  it('and each says what it is for, which is what was missing', () => {
+    expect(page).toContain('For trying another lender.')
+    expect(page).toContain('Carries their position AFTER this deal settles.')
+    // Fabio: "I don't want to pigeonhole that because it could be other
+    // situations." So it does not name the purchase-beside-a-refinance case.
+    expect(page, 'the description pigeonholes it again')
+      .not.toContain('For a purchase alongside a refinance')
   })
 
   // The select asking for one column fewer than the insert writes is how a

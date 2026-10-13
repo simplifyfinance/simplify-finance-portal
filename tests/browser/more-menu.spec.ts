@@ -32,7 +32,19 @@ test.describe('the More menu', () => {
 
     // Both of them are listed. A menu that has quietly lost an item is a
     // question somebody has to ask somebody else.
-    await expect(page.getByRole('button', { name: /^Clone$/ })).toBeVisible({ timeout: 10_000 })
+    //
+    // 13 OCT 2026, RENAMED. This read /^Clone$/ and the item is now "Clone this
+    // deal", with a line of description underneath it that forms part of the
+    // accessible name - so the anchor stays at the start and the rest is left
+    // open. Fabio's team could not tell the two actions apart while both said
+    // clone and both were a bare label.
+    await expect(page.getByRole('button', { name: /^Clone this deal/ })).toBeVisible({ timeout: 10_000 })
+
+    // And the second one, which is NOT a clone - it starts a new deal from
+    // these clients' position after this one settles. See
+    // lib/position-after-settlement.ts.
+    await expect(page.getByRole('button', { name: /^Start another deal for these clients/ }))
+      .toBeVisible({ timeout: 10_000 })
 
     // The deal may already be closed, in which case this reads Reopen and there
     // is no dialog to open. Say so rather than pass silently.
