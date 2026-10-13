@@ -264,7 +264,7 @@ describe('the menu', () => {
   it('stops claiming policy twice', () => {
     const panes = readFileSync('lib/lender-panes.ts', 'utf8')
     expect(panes).toContain("label: 'Products & fees'")
-    expect(panes).toContain("label: 'Policy documents'")
+    expect(panes).toContain("label: 'Library'")
     expect(panes).not.toContain("label: 'Products & policy'")
   })
 

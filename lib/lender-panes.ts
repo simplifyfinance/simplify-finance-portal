@@ -32,8 +32,15 @@ export const LENDER_PANES: LenderPane[] = [
   // THE LENDERS' OWN WRITTEN POLICY. Paco's third source and the one that
   // outranks the other two. Uploading happens on each lender rather than here,
   // so the bank is never chosen from a dropdown - see LenderPolicyDocs.
-  { key: 'policy', label: 'Policy documents',
-    blurb: 'The credit manuals Paco answers from. He quotes them; he never paraphrases.' },
+  // THE LIBRARY, NOT "POLICY DOCUMENTS".
+  //
+  // 13 Oct 2026. Fabio: "mock up a page that sasys library and we drop
+  // information that we need need ebvery lender showing". A page called Policy
+  // documents sounds like a filing cabinet somebody else keeps. The library is
+  // the thing the whole team drops into, and every bank is on it whether it has
+  // anything or not - the empty ones are the useful part.
+  { key: 'policy', label: 'Library',
+    blurb: 'Everything each lender has told us in writing. Drop a file or paste a link; Paco quotes it and never paraphrases.' },
   { key: 'rate-notice', label: 'RBA rate notice',
     blurb: 'The line that goes on every client email quoting a rate, until each bank passes the change on.' },
 ]

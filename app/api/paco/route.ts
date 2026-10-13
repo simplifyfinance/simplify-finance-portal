@@ -4,8 +4,16 @@ import { answer, HOLA, lenderAsked } from '@/lib/paco'
 import { realDealsOnly } from '@/lib/test-deal'
 import { isUsable, type Claim } from '@/lib/paco-knowledge'
 import { answerFrom } from '@/lib/paco-answers-from-policy'
+import { whereToGetIt, WHERE_THE_POLICY_LIVES } from '@/lib/where-the-policy-lives'
 import { type PolicyRule } from '@/lib/policy-rules'
 import { flat } from '@/lib/plain-words'
+
+// THE BANK NAMES PACO CAN RECOGNISE IN A QUESTION.
+//
+// Every lender the source sweep covered, not only the ones we hold a rule for.
+// A question about a bank with nothing on file is exactly the one worth
+// answering with where to go and get it.
+const KNOWN_LENDERS = WHERE_THE_POLICY_LIVES.map(w => w.lender)
 
 // WHAT PACO IS ALLOWED TO LOOK AT.
 //
@@ -77,13 +85,30 @@ export async function GET(req: NextRequest) {
   // "shown alongside, never instead" are all in answerFrom.
   // The same two things the deals were filtered by: the lender the question
   // named, and what it is about. Read off the question, not off the answer.
+  // EVERY BANK WE DEAL WITH, NOT ONLY THE ONES WITH A DOCUMENT. A question
+  // about a bank with nothing on file is exactly the one worth answering with
+  // where to go and get it.
+  const lenders = KNOWN_LENDERS
   const mine = forThisQuestion(
     policy,
-    lenderAsked(question, policy.map(r => String((r as any).lenderName || '')).filter(Boolean)),
+    lenderAsked(question, lenders),
     said.asked,
   )
   const fromPolicy = answerFrom(mine, said.notes || [], new Date().toISOString().slice(0, 10))
-  return NextResponse.json({ question, ...said, policy: fromPolicy })
+  // WHEN HE HAS NOTHING IN WRITING, HE SAYS WHERE IT IS.
+  //
+  // 13 Oct 2026. "Nothing recorded, check with the lender" is true and it is a
+  // dead end. Every lender's policy source was checked by hand that afternoon,
+  // so the honest next line is where the missing document actually lives - on
+  // their website, behind their portal, or nowhere at all.
+  //
+  // It is OUR note about a website and it is stamped with the day we looked.
+  // It never says what a bank will lend, and lib/where-the-policy-lives.test.ts
+  // holds it to that.
+  const whereToGet = fromPolicy.policy.length === 0
+    ? whereToGetIt(lenderAsked(question, lenders))
+    : ''
+  return NextResponse.json({ question, ...said, policy: fromPolicy, whereToGet })
 }
 
 // WHAT THE LENDERS THEMSELVES HAVE WRITTEN DOWN.

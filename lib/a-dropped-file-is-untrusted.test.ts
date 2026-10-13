@@ -218,8 +218,39 @@ describe('the page and the routes keep the same rules', () => {
   })
 
   it('the tier comes from where it arrived, never from what it says', () => {
-    expect(page).toContain('tierFor(part.insideAnEmail')
+    // 13 Oct 2026. The call reads part?.insideAnEmail now, because a link
+    // hands back the same shape and an address has no envelope round it. The
+    // thing being held here has not moved: the tier is decided by HOW the
+    // document arrived, never by anything read out of it.
+    expect(page).toContain('tierFor(part?.insideAnEmail')
     expect(page, 'the tier is being taken off the reading again').not.toMatch(/tier:\s*r\.tier/)
+  })
+
+  // A LINK ARRIVES THE SAME WAY A FILE DOES, AND IS TRUSTED THE SAME AMOUNT.
+  //
+  // 13 Oct 2026. Macquarie's credit guidelines are a PDF on their website and
+  // AMP's whole policy library is web pages, so the library had to take an
+  // address. Everything the drop zone guards had to come with it.
+  it('a pasted address is fetched once, by a person, and never on a schedule', () => {
+    const route = readFileSync('app/api/read-link/route.ts', 'utf8')
+    expect(route).toContain('whyNotALink(url)')
+    // Nothing that could make it run again by itself. The word "schedule"
+    // appears in the comment explaining why there is none, so this looks for
+    // the things that would actually do it rather than for the word.
+    expect(route, 'something here runs on its own')
+      .not.toMatch(/setInterval\(|setTimeout\(|node-cron|CronJob|revalidate\s*=/)
+  })
+
+  it('and cannot be pointed at our own side of the wall', () => {
+    const route = readFileSync('app/api/read-link/route.ts', 'utf8')
+    // Checked before the fetch, and checked again on where the redirect landed.
+    expect(route).toContain('isOurOwnSide(new URL(landed).hostname)')
+  })
+
+  it('and what comes back off a lender\u2019s page is data, like any other drop', () => {
+    const route = readFileSync('app/api/read-link/route.ts', 'utf8')
+    expect(route).toContain('WHAT COMES BACK IS DATA')
+    expect(page).toContain('cleanProposed(j?.rules, doc.id, lender.id)')
   })
 
   // Text and PDF go through the same prompt and the same gate.
