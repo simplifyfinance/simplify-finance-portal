@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import {
   HARD, EASIER, WHY, empty, tidy, saidSomething, whatPacoKeeps, theShortVersion,
-  type Handover as Note, type Stage,
+  whatIsMissing, readyToSend, type Handover as Note, type Stage,
 } from '@/lib/handover-notes'
 
 // THE BOX THAT POPS WHEN CREDIT HANDS A DEAL OVER.
@@ -14,10 +14,17 @@ import {
 // this deal hard" section sitting on the lending options - is a chore, and
 // Fabio threw that version out for exactly that reason.
 //
-// NOTHING HERE BLOCKS THE HANDOVER. "Send without notes" is always there and
-// always one click. The moment this becomes a form somebody has to get past,
-// people will type anything to get past it and every count Paco does becomes
-// rubbish.
+// THE BOXES GET ANSWERED. There is no way past this.
+//
+// 13 Oct 2026. The first version had a "Send without notes" button, which I
+// put there on my own reasoning and nobody asked for. Fabio: "I never heard of
+// it we never discussed so NO they need to fucking answer the boxes."
+//
+// The explanation that used to go in the email is the whole point of this
+// screen. An opt-out means it goes back to not happening. What is required is
+// small and honest - a sentence, and the one question this stage can answer -
+// and "Nothing unusual" is a real answer so nobody has to invent a difficulty
+// to get on with their day.
 
 const CHIP = 'text-[11.5px] rounded-full px-2.5 py-1 border transition'
 const OFF = 'border-card-line bg-page text-body hover:bg-card'
@@ -77,12 +84,14 @@ export default function HandoverBox({ dealId, stage, lenders, toWhom, onSent, on
     return { ...x, why: { ...x.why, [lender]: had.includes(v) ? had.filter(y => y !== v) : [...had, v] } }
   })
 
-  async function send(withNotes: boolean) {
+  async function send() {
     if (busy) return
+    const clean0 = tidy(h, lenders)
+    if (!readyToSend(clean0, lenders)) return
     setBusy(true); setErr('')
     try {
-      const clean = tidy(h, lenders)
-      if (withNotes && saidSomething(clean)) {
+      const clean = clean0
+      if (saidSomething(clean)) {
         const { data: me } = await supabase.auth.getUser()
         const uid = me?.user?.id
         if (!uid) { setErr('You are not signed in.'); setBusy(false); return }
@@ -122,6 +131,7 @@ export default function HandoverBox({ dealId, stage, lenders, toWhom, onSent, on
 
   const bc = stage === 'bc'
   const what = bc ? 'borrowing capacity' : 'lending options'
+  const missing = whatIsMissing(tidy(h, lenders), lenders)
 
   return (
     <div className="fixed inset-0 z-50 bg-ink/45 flex items-start justify-center p-6 overflow-y-auto">
@@ -152,7 +162,7 @@ export default function HandoverBox({ dealId, stage, lenders, toWhom, onSent, on
           {bc ? (
             <>
               <Q title="Was anything hard about this one?"
-                 why="Tap what applies. This is the only part Paco sees, and it is what makes him useful on the next deal like it.">
+                 why="Tap what applies — and Nothing unusual is a real answer. This is the only part Paco sees, and it is what makes him useful on the next deal like it.">
                 <Chips all={HARD} picked={h.hard} pick={toggle('hard')} />
               </Q>
               <Q title="What would have made it easier?" why="Optional. One tap, and the broker sees it too.">
@@ -198,15 +208,21 @@ export default function HandoverBox({ dealId, stage, lenders, toWhom, onSent, on
         </div>
 
         <div className="flex gap-2 items-center px-5 py-3 bg-page border-t border-line-soft flex-wrap">
-          <span className="flex-1 min-w-[180px] text-[11px] text-muted leading-relaxed">
-            Goes with your name and today&rsquo;s date. Nothing about the clients reaches Paco —
-            only the bank and what it did.
+          <span className="flex-1 min-w-[200px] text-[11px] leading-relaxed">
+            {missing.length > 0 ? (
+              /* WHAT IS LEFT, NAMED. A greyed-out button with no reason beside
+                 it is the thing people complain about, so it says exactly
+                 which box is still empty. */
+              <span className="text-chase">Still to answer: {missing.join(', ')}.</span>
+            ) : (
+              <span className="text-muted">
+                Goes with your name and today&rsquo;s date. Nothing about the clients reaches Paco —
+                only the bank and what it did.
+              </span>
+            )}
           </span>
           <button type="button" onClick={onCancel} className={BTN} disabled={busy}>Back</button>
-          <button type="button" onClick={() => send(false)} className={BTN} disabled={busy}>
-            Send without notes
-          </button>
-          <button type="button" onClick={() => send(true)} disabled={busy}
+          <button type="button" onClick={send} disabled={busy || missing.length > 0}
             className="text-[12px] bg-ink text-page rounded-lg px-3.5 py-1.5 font-medium disabled:opacity-40">
             {busy ? 'Sending…' : `Send to ${toWhom || 'the broker'}`}
           </button>

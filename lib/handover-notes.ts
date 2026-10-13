@@ -39,6 +39,11 @@ export const HARD = [
   'SMSF',
   'Expat',
   'Construction',
+  // THE HONEST WAY OUT. The questions have to be answered, so there has to be a
+  // true answer for a deal that was simply straightforward. Without this
+  // somebody ticks "credit history" on a clean file to get past the box, and
+  // every count Paco does afterwards is rubbish.
+  'Nothing unusual',
 ] as const
 
 /** What would have made it easier. Optional, and the broker sees it too. */
@@ -113,10 +118,51 @@ export function tidy(h: any, lenders: string[] = []): Handover {
   }
 }
 
-/** Is there anything here at all, or did they just hit send. */
+/** Is there anything here at all. */
 export function saidSomething(h: Handover): boolean {
   return !!(txt(h.note) || h.hard.length || h.easier.length ||
             Object.keys(h.why).length || txt(h.surprise))
+}
+
+// THE BOXES GET ANSWERED.
+//
+// 13 Oct 2026. The first version had a "Send without notes" button on it,
+// which I put there on my own reasoning that nothing should block a handover.
+// Nobody asked for it and Fabio was blunt about it: "I never heard of it we
+// never discussed so NO they need to fucking answer the boxes."
+//
+// He is right. The whole point is that the explanation which used to go in the
+// email has a home again - an opt-out means it goes back to not happening, and
+// the one thing worse than no answers is answers from half the team.
+//
+// WHAT IS REQUIRED IS DELIBERATELY SMALL. A sentence to the broker, and the
+// question that stage can answer. "Nothing unusual" is a real answer and the
+// surprise box stays optional, because most deals have no surprise and
+// demanding one would manufacture them.
+const NEEDS_A_SENTENCE = 12
+
+export function whatIsMissing(h: Handover, lenders: string[] = []): string[] {
+  const missing: string[] = []
+  if (txt(h.note).length < NEEDS_A_SENTENCE) missing.push('what the broker needs to know')
+
+  if (h.stage === 'bc') {
+    if (h.hard.length === 0) missing.push('whether anything was hard about it')
+    return missing
+  }
+
+  const names = (Array.isArray(lenders) ? lenders : []).map(txt).filter(Boolean)
+  const unanswered = names.filter(n => (h.why[n] || []).length === 0)
+  if (unanswered.length > 0) {
+    missing.push(unanswered.length === names.length
+      ? 'why these lenders are on the deal'
+      : `why ${unanswered.join(' and ')} ${unanswered.length === 1 ? 'is' : 'are'} on the deal`)
+  }
+  return missing
+}
+
+/** Can this be sent. */
+export function readyToSend(h: Handover, lenders: string[] = []): boolean {
+  return whatIsMissing(h, lenders).length === 0
 }
 
 /**

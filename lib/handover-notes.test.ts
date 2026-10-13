@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'fs'
 import {
   HARD, EASIER, WHY, empty, tidy, saidSomething, whatPacoKeeps, theShortVersion, asksAbout,
+  whatIsMissing, readyToSend,
 } from './handover-notes'
 
 const LENDERS = ['Bankwest', 'Macquarie']
@@ -160,5 +162,73 @@ describe('the questions themselves', () => {
     for (const q of [...HARD, ...EASIER, ...WHY]) {
       expect(q.length, `"${q}" is too long to be a chip`).toBeLessThan(30)
     }
+  })
+})
+
+
+// THE BOXES GET ANSWERED. THERE IS NO WAY PAST.
+//
+// 13 Oct 2026. The first version of this screen had a "Send without notes"
+// button on it, which I added on my own reasoning that nothing should ever
+// block a handover. Nobody asked for it. Fabio: "I never heard of it we never
+// discussed so NO they need to fucking answer the boxes."
+//
+// The explanation that used to go in the email is the entire point of the
+// screen, and an opt-out means it goes back to not happening.
+describe('nothing is sent until the boxes are answered', () => {
+  const note = 'Capacity is tight, I have focused on the smaller banks.'
+
+  it('the borrowing capacity needs a sentence and an answer', () => {
+    expect(readyToSend(tidy({ stage: 'bc', note, hard: ['Servicing was tight'] }))).toBe(true)
+  })
+
+  it('and says which box is still empty, rather than just greying out', () => {
+    expect(whatIsMissing(tidy({ stage: 'bc' })))
+      .toEqual(['what the broker needs to know', 'whether anything was hard about it'])
+    expect(whatIsMissing(tidy({ stage: 'bc', note })))
+      .toEqual(['whether anything was hard about it'])
+    expect(whatIsMissing(tidy({ stage: 'bc', hard: ['Credit history'] })))
+      .toEqual(['what the broker needs to know'])
+  })
+
+  it('a few characters is not a sentence', () => {
+    expect(readyToSend(tidy({ stage: 'bc', note: 'ok', hard: ['Credit history'] }))).toBe(false)
+  })
+
+  // THE HONEST WAY OUT. Without it somebody ticks "credit history" on a clean
+  // file to get past the box, and every count Paco does is rubbish.
+  it('and a straightforward deal has a true answer to give', () => {
+    expect(HARD as readonly string[]).toContain('Nothing unusual')
+    expect(readyToSend(tidy({ stage: 'bc', note, hard: ['Nothing unusual'] }))).toBe(true)
+  })
+
+  it('the lending options need a reason for every lender on the deal', () => {
+    const lenders = ['Bankwest', 'Macquarie']
+    expect(readyToSend(tidy({ stage: 'lo', note, why: { Bankwest: ['Policy fit'] } }, lenders), lenders)).toBe(false)
+    expect(whatIsMissing(tidy({ stage: 'lo', note, why: { Bankwest: ['Policy fit'] } }, lenders), lenders))
+      .toEqual(['why Macquarie is on the deal'])
+    expect(readyToSend(tidy({ stage: 'lo', note,
+      why: { Bankwest: ['Policy fit'], Macquarie: ['Rate'] } }, lenders), lenders)).toBe(true)
+  })
+
+  it('and names them all when none are answered', () => {
+    const lenders = ['Bankwest', 'Macquarie']
+    expect(whatIsMissing(tidy({ stage: 'lo', note }, lenders), lenders))
+      .toEqual(['why these lenders are on the deal'])
+  })
+
+  // MOST DEALS HAVE NO SURPRISE. Demanding one would manufacture them, and a
+  // manufactured surprise is a wrong thing told to everybody who asks later.
+  it('but the surprise stays optional', () => {
+    const lenders = ['Bankwest']
+    expect(readyToSend(tidy({ stage: 'lo', note, why: { Bankwest: ['Rate'] } }, lenders), lenders)).toBe(true)
+  })
+
+  it('and there is no way round it on the screen', () => {
+    const box = readFileSync('components/Handover.tsx', 'utf8')
+    expect(box).toContain('disabled={busy || missing.length > 0}')
+    // The only mention left is the comment explaining why it went.
+    expect((box.match(/Send without notes/g) || []).length).toBe(1)
+    expect(box).not.toContain('onClick={() => send(false)}')
   })
 })
