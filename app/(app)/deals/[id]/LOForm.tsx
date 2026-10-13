@@ -1,5 +1,6 @@
 'use client'
 import { isDebtRecycling } from '@/lib/debt-recycling'
+import { bcFieldsWin } from '@/lib/the-lo-copies-nothing-it-does-not-own'
 import { normalisePurpose } from '@/lib/split-purpose'
 import { TAG_GROUPS, tagsOf, toggleTag, tagLine } from '@/lib/deal-tags'
 import { isComplexRefinance } from '@/lib/complex-refinance'
@@ -1009,7 +1010,15 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // it is compared with the screen. See the note on snapshot() in
   // lib/save-conflict.ts.
   function loShape(stored: any): any {
-    const loaded = fillMissing(stored, blankData())
+    // THE BC's FIGURES ARE NOT THE LENDING OPTIONS' TO KEEP.
+    //
+    // 13 Oct 2026, India Roberts. fillMissing fills only keys that are ABSENT,
+    // and a stale copy is not absent - so a purchase price saved here weeks ago
+    // beat the borrowing capacity for ever, and the client email was built from
+    // it. The strip above it read the BC and showed a different number on the
+    // same screen. See lib/the-lo-copies-nothing-it-does-not-own.ts.
+    const fresh = blankData()
+    const loaded = bcFieldsWin(fillMissing(stored, fresh), fresh)
     // THE STALE TEMPLATE CANNOT WIN. Every stored record passes through here on
     // its way to the screen, so this is where it is settled. Before the notes
     // below, which are read off the template. See lib/lo-template.ts.
