@@ -1,4 +1,5 @@
 'use client'
+import HandoverBox from '@/components/Handover'
 import { dutyStateOf } from '@/lib/duty-state'
 import { useState, useEffect, useRef } from 'react'
 import { dayMonthYear, dayMonth, longDate } from '@/lib/same-date-everywhere'
@@ -795,6 +796,10 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const [emailError, setEmailError] = useState('')
   const [bcCompletedAt, setBcCompletedAt] = useState<string | null>(deal.bc_completed_at || null)
   const [markingComplete, setMarkingComplete] = useState(false)
+  // THE HANDOVER BOX. Asked for by Fabio's team, 13 Oct 2026: credit had no way
+  // to tell the broker WHY, so it was happening in Slack or not at all. It sits
+  // in front of this button and never blocks it - see components/Handover.tsx.
+  const [handingOver, setHandingOver] = useState(false)
   const canSendToClient = can(userRole, 'sendClientEmails')
 
   const [showAllTemplates, setShowAllTemplates] = useState(false)
@@ -2711,6 +2716,13 @@ Key assumptions: ${checklistText}`
         </div>
       )}
 
+      {handingOver && (
+        <HandoverBox dealId={deal.id} stage="bc" lenders={[]}
+          toWhom={String(deal.assigned_broker || 'the broker').split(' ')[0]}
+          onCancel={() => setHandingOver(false)}
+          onSent={() => { setHandingOver(false); markBCComplete() }} />
+      )}
+
       {activeTab === 'preview' && (
         <div>
           <div className="mb-4">
@@ -2720,7 +2732,7 @@ Key assumptions: ${checklistText}`
             <div className="bg-card border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-2">
                 {deal.assigned_credit_officer ? (
-                  <button onClick={markBCComplete} disabled={markingComplete || !!bcCompletedAt}
+                  <button onClick={() => setHandingOver(true)} disabled={markingComplete || !!bcCompletedAt}
                     title="This notifies the broker that BC is ready for their final review and personalisation"
                     className={`px-3 py-1.5 text-sm rounded-lg font-medium disabled:opacity-70 ${bcCompletedAt ? 'bg-green-50 text-green-600 border border-green-200' : 'border border-gray-200 hover:bg-gray-50'}`}>
                     {bcCompletedAt ? '✓ Sent to broker for review' : markingComplete ? 'Marking...' : 'Done — send to broker for review'}

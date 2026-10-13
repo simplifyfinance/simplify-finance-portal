@@ -31,6 +31,7 @@ import CloseDeal from './CloseDeal'
 import { templateLabel } from '@/lib/templates'
 import StatementAnalysis from '@/components/StatementAnalysis'
 import InternalNotesStrip from '@/components/InternalNotesStrip'
+import { HandoverNotes } from '@/components/Handover'
 import TabLock from '@/components/TabLock'
 import { DealAlerts, FileNotes, AlertChips, useDealFile } from '@/components/DealFile'
 import { isLocked } from '@/lib/deal-lock'
@@ -590,6 +591,12 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
         onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
 
       <DealProgress deal={dealData} />
+
+      {/* WHAT CREDIT SAID WHEN THEY HANDED IT OVER.
+          13 Oct 2026. It sits right under the stage bar because the broker
+          reads it before they ring anybody - "sell Bankwest, Macquarie will be
+          harder" is the first thing they need and it was living in Slack. */}
+      <HandoverNotes dealId={dealData.id} />
 
       {/* A lodged deal is being TRACKED, not written, and the tracking blocks
           stacked one under another put the tabs 1300px down the page. Two

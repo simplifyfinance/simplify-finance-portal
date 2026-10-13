@@ -1,4 +1,5 @@
 'use client'
+import HandoverBox from '@/components/Handover'
 import { isDebtRecycling } from '@/lib/debt-recycling'
 import { bcFieldsWin } from '@/lib/the-lo-copies-nothing-it-does-not-own'
 import { normalisePurpose } from '@/lib/split-purpose'
@@ -400,6 +401,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   const [sendError, setSendError] = useState('')
   const [loCompletedAt, setLoCompletedAt] = useState<string | null>(deal.lo_completed_at || null)
   const [markingLoComplete, setMarkingLoComplete] = useState(false)
+  // THE HANDOVER BOX. On the lending options it asks WHY each lender is on the
+  // deal, which is the question the borrowing capacity cannot answer. It never
+  // blocks the button - see components/Handover.tsx.
+  const [handingOver, setHandingOver] = useState(false)
   const [sendingToCreditTeam, setSendingToCreditTeam] = useState(false)
   const [creditTeamMsg, setCreditTeamMsg] = useState('')
   const [creditTeamErr, setCreditTeamErr] = useState('')
@@ -2940,10 +2945,17 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 {moveToComplianceMsg && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">{moveToComplianceMsg}</span>}
                 {sendError && <span className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{sendError}</span>}
               </div>
+              {handingOver && (
+                <HandoverBox dealId={deal.id} stage="lo"
+                  lenders={d.lenders.map(x => String(x.lenderName || '').trim()).filter(Boolean)}
+                  toWhom={String(deal.assigned_broker || 'the broker').split(' ')[0]}
+                  onCancel={() => setHandingOver(false)}
+                  onSent={() => { setHandingOver(false); markLOComplete() }} />
+              )}
               <div className="bg-card border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
                   {deal.assigned_credit_officer && (
-                    <button onClick={markLOComplete} disabled={markingLoComplete || !!loCompletedAt} className={`px-3 py-1.5 text-sm rounded-lg font-medium disabled:opacity-70 ${loCompletedAt ? 'bg-green-50 text-green-600 border border-green-200' : 'border border-gray-200 hover:bg-gray-50'}`}>
+                    <button onClick={() => setHandingOver(true)} disabled={markingLoComplete || !!loCompletedAt} className={`px-3 py-1.5 text-sm rounded-lg font-medium disabled:opacity-70 ${loCompletedAt ? 'bg-green-50 text-green-600 border border-green-200' : 'border border-gray-200 hover:bg-gray-50'}`}>
                       {loCompletedAt ? '✓ Sent to broker for review' : markingLoComplete ? 'Marking...' : 'Done — send to broker for review'}
                     </button>
                   )}
