@@ -2,6 +2,10 @@
 import { useMemo, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { patchDealColumn } from '@/lib/patch-deal-column'
+import {
+  withSplitAmount, withPropertyValue, splitAmountEffect, propertyValueEffect,
+  rateEffect, columnFor, LANDS_SAY, type Lands,
+} from '@/lib/edit-across'
 import { templateLabel } from '@/lib/templates'
 import {
   splitsOf, dealRow, whatIsLeft, splitsNamed, needsFundsRole, purposeSummary,
@@ -34,7 +38,7 @@ const K = 'text-[9.5px] font-semibold tracking-[.09em] uppercase text-faint'
 const INP = 'border border-line rounded-lg px-2.5 py-1.5 text-[13px] text-ink bg-card focus:outline-none focus:border-brand'
 const NEED = 'border-dashed border-field-line bg-page'
 
-export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSplit, onRemoveSplit, structureIsBc }: {
+export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSplit, onRemoveSplit, onRateChange, structureIsBc }: {
   deal: any
   onUpdated?: (patch: any) => void
   // Supplied only by the Lending options tab, which owns lo_data and can write
@@ -51,6 +55,10 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
   // of its own, and this list is built in the same order as the lending
   // options' own, so the position is the one thing both sides agree on.
   onRemoveSplit?: (idx: number) => void
+  // The rate is the one of the three that goes nowhere - it IS the product, and
+  // it belongs to one lender option. The lending options tab owns lo_data, so
+  // it does the writing; this panel only asks.
+  onRateChange?: (splitId: string, rate: string) => void
   // THE BORROWING CAPACITY DECIDES THE STRUCTURE. THE LENDING OPTIONS PICK THE
   // PRODUCT. That is the whole rule and it has been broken on this panel the
   // entire time.
@@ -69,6 +77,28 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
   const supabase = createSupabaseBrowser()
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  // WHICH FIGURE IS BEING CHANGED, AND WHERE IT WILL LAND.
+  //
+  // 13 Oct 2026. The lending options prints what the BC and the fact find own
+  // and sends you there to change it. Right, and a walk - six splits in, "set
+  // on the BC" means leaving the page and finding the right one. This edits it
+  // from here and writes it THERE, so there is still one copy of the figure.
+  const [editing, setEditing] = useState<null | {
+    lands: Lands; title: string; was: string; value: string
+    // What the sentence underneath needs. Carried, not parsed back out of the
+    // title - a heading is for reading, not for holding an index.
+    at?: number; propId?: string
+    apply: (value: string) => void
+  }>(null)
+
+  async function saveAcross(column: 'bc_data' | 'fact_find_data', apply: (cur: any) => any) {
+    setBusy(true)
+    const { problem } = await patchDealColumn(supabase, deal.id, column, apply, (deal as any)[column])
+    setBusy(false)
+    if (problem) { setErr(problem); return }
+    setEditing(null)
+    onUpdated?.({ [column]: apply((deal as any)[column]) })
+  }
 
   const splits = useMemo(() => splitsOf(deal), [deal])
   // Handlers alone used to mean "this tab may edit the structure". Now the tab
@@ -313,6 +343,15 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                       <span className="font-semibold text-ink ml-auto">
                         {Number(String(x.value).replace(/[^0-9.]/g, '')) > 0 ? money(Number(String(x.value).replace(/[^0-9.]/g, ''))) : 'no value on the fact find'}
                       </span>
+                      {onSplitChange && <button onClick={() => setEditing({
+                        lands: 'factfind', title: `${x.address} — value`, propId: x.id,
+                        was: String(x.value || ''), value: String(x.value || ''),
+                        apply: (v: string) => saveAcross('fact_find_data', cur => withPropertyValue(cur, x.id, v)),
+                      })}
+                        className="text-[10.5px] text-info bg-info-bg border border-info-edge
+                                   rounded-md px-[7px] py-[1px] ml-1.5 hover:bg-info-bg/70 transition">
+                        Edit
+                      </button>}
                       <span className="font-semibold text-ink w-[62px] text-right">
                         {l === null ? '—' : `${Math.round(l * 10) / 10}%`}
                       </span>
@@ -478,7 +517,25 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
                   <span className="text-[15px] font-bold text-ink whitespace-nowrap ml-auto">
                     {s.amount ? money(Number(String(s.amount).replace(/[$,\s]/g, '')) || 0) : '—'}
                   </span>
+                  {onSplitChange && i < bcOwned && <button onClick={() => setEditing({
+                    lands: 'bc', title: `Split ${i + 1} — amount`, at: i,
+                    was: String(s.amount || ''), value: String(s.amount || ''),
+                    apply: (v: string) => saveAcross('bc_data', cur => withSplitAmount(cur, i, v)),
+                  })}
+                        className="text-[10.5px] text-info bg-info-bg border border-info-edge
+                                   rounded-md px-[7px] py-[1px] ml-1.5 hover:bg-info-bg/70 transition">
+                        Edit
+                      </button>}
                   <span className="text-[13.5px] font-semibold text-ink whitespace-nowrap">{s.rate ? `${s.rate}%` : '—'}</span>
+                  {onRateChange && <button onClick={() => setEditing({
+                    lands: 'lo', title: `Split ${i + 1} — rate`,
+                    was: s.rate ? `${s.rate}%` : '', value: String(s.rate || ''),
+                    apply: (v: string) => { onRateChange(s.id, v.replace(/[^0-9.]/g, '')); setEditing(null) },
+                  })}
+                        className="text-[10.5px] text-info bg-info-bg border border-info-edge
+                                   rounded-md px-[7px] py-[1px] ml-1.5 hover:bg-info-bg/70 transition">
+                        Edit
+                      </button>}
                   {onRemoveSplit && i >= bcOwned && (
                     <button onClick={() => onRemoveSplit(i)}
                       aria-label={`Remove split ${i + 1}`}
@@ -596,6 +653,73 @@ export default function DealStructure({ deal, onUpdated, onSplitChange, onAddSpl
             </div>
           )}
         </>
+      )}
+
+      {/* THE BOX SAYS WHERE IT LANDS. IT DOES NOT ASK.
+          *
+          * Fabio, 13 Oct 2026: "now that I come think about it is alwasy yes so
+          * pop up just warnign sayibng we are changing ff we are changin BC."
+          *
+          * He is right, and a yes/no would have been worse than useless. The
+          * answer is always yes, so the question only trains people to click
+          * through it - and a "no" that kept a different number on this tab
+          * would rebuild the very fault this week was spent removing, with the
+          * added problem of looking deliberate.
+          *
+          * So it states two things and gets out of the way: where the change is
+          * written, and WHAT ELSE MOVES. A split amount is not only a split
+          * amount - it is the total the client sees and an LVR on a house. */}
+      {editing && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-5"
+             onClick={() => setEditing(null)}>
+          <div className="bg-card rounded-2xl w-[460px] max-w-full overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.3)]"
+               onClick={e => e.stopPropagation()}>
+            <div className="px-5 pt-4">
+              <h3 className="m-0 mb-1.5 text-[15.5px] font-semibold text-ink">{editing.title}</h3>
+              <span className={`inline-block text-[11.5px] font-semibold rounded-md px-2.5 py-[3px] mb-2.5 border ${
+                editing.lands === 'lo'
+                  ? 'bg-done-bg text-done border-done-edge'
+                  : 'bg-info-bg text-info border-info-edge'}`}>
+                {LANDS_SAY[editing.lands]}
+              </span>
+            </div>
+            <div className="px-5 pb-1">
+              <div className="flex items-center gap-2.5 mb-3">
+                {editing.was && <span className="text-[13px] text-faint line-through">{editing.was}</span>}
+                {editing.was && <span className="text-faint">&rarr;</span>}
+                <input autoFocus value={editing.value}
+                  onChange={e => setEditing({ ...editing, value: e.target.value })}
+                  onKeyDown={e => { if (e.key === 'Enter' && !busy) editing.apply(editing.value) }}
+                  className="text-[14px] font-semibold border border-line rounded-lg px-2.5 py-[7px] w-[160px] bg-card" />
+              </div>
+              {(() => {
+                const said = editing.lands === 'bc'
+                  ? splitAmountEffect(deal, editing.at ?? -1, editing.value)
+                  : editing.lands === 'factfind'
+                  ? propertyValueEffect(deal, editing.propId || '', editing.value)
+                  : rateEffect()
+                if (said.length === 0) return null
+                return (
+                  <div className="bg-page border border-card-line rounded-[9px] px-3 py-2.5 mb-3.5
+                                  text-[12px] text-body leading-relaxed">
+                    {said.map((line, i) => <div key={i}>{line}</div>)}
+                  </div>
+                )
+              })()}
+            </div>
+            <div className="flex gap-2 justify-end px-5 py-3 bg-page border-t border-line-soft">
+              <button onClick={() => setEditing(null)}
+                className="text-[12.5px] border border-card-line bg-card rounded-lg px-3.5 py-[6px] text-body">
+                Cancel
+              </button>
+              <button disabled={busy} onClick={() => editing.apply(editing.value)}
+                className="text-[12.5px] bg-ink text-page rounded-lg px-3.5 py-[6px] font-medium disabled:opacity-40">
+                {busy ? 'Saving…' : editing.lands === 'bc' ? 'Save to the BC'
+                  : editing.lands === 'factfind' ? 'Save to the fact find' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* NOT A LOCK, AND NO LONGER A WARNING EITHER.

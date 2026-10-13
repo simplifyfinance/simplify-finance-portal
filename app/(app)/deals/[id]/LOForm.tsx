@@ -1313,6 +1313,32 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     })
   }
 
+  // THE RATE, CHANGED FROM THE DEAL STRIP.
+  //
+  // 13 Oct 2026. The strip shows the recommended option's rate against each
+  // split, so that is the option the Edit button changes - not every lender in
+  // the comparison. A rate is the product and the product is per lender; moving
+  // one bank's pricing is not a statement about the others.
+  function setSplitRate(splitId: string, rate: string) {
+    // NOTHING HERE REACHES INTO A STORED LIST BY POSITION.
+    //
+    // scripts/check-browser's record loader check stopped the first version of
+    // this, and it was right to: d.lenders[lenderIdx] on a record saved before
+    // this existed is undefined, and resolveLenderSplits would have been handed
+    // it. The option is found by its own id and taken with ?.[ ], so a deal
+    // whose options have moved on simply does nothing instead of breaking.
+    const rec = recommendedOption(d)
+    const lenders = Array.isArray(d.lenders) ? d.lenders : []
+    const lenderIdx = lenders.findIndex(l => l?.id && l.id === rec?.id)
+    const option = lenders?.[lenderIdx]
+    if (!option) return
+    const splits = resolveLenderSplits(option, d.refinanceSplits)
+    const splitIdx = splits.findIndex(sp => sp?.id === splitId)
+    if (splitIdx < 0) return
+    const next = splits.map((sp, i) => i === splitIdx ? { ...sp, rate } : sp)
+    setD({ ...d, lenders: lenders.map((l, i) => i === lenderIdx ? { ...l, lenderSplits: next } : l) })
+  }
+
   function removeRefinanceSplit(idx: number) {
     if (d.refinanceSplits.length <= 1) return
     setD({ ...d, refinanceSplits: d.refinanceSplits.filter((_, i) => i !== idx) })
@@ -1864,6 +1890,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             onSplitChange={setSplitField}
             onAddSplit={addRefinanceSplit}
             onRemoveSplit={removeRefinanceSplit}
+            onRateChange={setSplitRate}
             structureIsBc />
 
           {/* Scenario */}

@@ -140,9 +140,20 @@ describe('the lending options email', () => {
     // figure in it on a buy and sell - and the route read that as a refinance.
     // The client was then shown "Existing Loan Balance" on a purchase email and
     // an "Equity Release" line worked out as lending minus that balance.
+    //
+    // 13 OCT 2026, THE SAME FAULT ONE STEP ALONG. The test said "not by whether
+    // a box has a number in it" and the code it pinned still asked exactly
+    // that - `!d.existingLoan`, where "0" is a truthy string. So the Veljovic
+    // complex refinance printed "Existing Loan Balance: $0" and three purchase
+    // lines nobody typed for it.
+    //
+    // It now asks the deal: does this scenario buy anything (lib/buying.ts),
+    // and is anything actually owing.
     const route = readFileSync('app/api/generate-lo-email/route.ts', 'utf8')
-    expect(route).toContain('if (!d.existingLoan || isBuyAndSell(d))')
+    expect(route).toContain('const buying = !buysNothing(')
+    expect(route).toContain('if ((buying && owes === 0) || isBuyAndSell(d))')
     expect(route).toContain('loPurchaseBlock(d, bcData)')
+    expect(route, 'it is reading the box again').not.toContain('if (!d.existingLoan ||')
   })
 
   it('is handed the borrowing capacity rather than keeping a copy of it', () => {

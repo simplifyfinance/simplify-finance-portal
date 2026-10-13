@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { loPurchaseBlock, isBuyAndSell } from '@/lib/lo-purchase-block'
+import { buysNothing } from '@/lib/buying'
 import { ctas } from '@/lib/email-buttons'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { type Brand, resolveBrand, brandLegal } from '@/lib/brand'
@@ -299,6 +300,10 @@ export async function POST(req: NextRequest) {
   // the same sentence, so the email goes straight to the figures.
   let body = brokerBox(d.brokerPersonalisation, d.firstName, d.jointFirstName, d.joint)
 
+  // DOES THIS DEAL BUY ANYTHING. Asked once, off the scenario, and used by
+  // every line below that talks about a purchase. See lib/buying.ts.
+  const buying = !buysNothing(d.bcTemplate || bcData?.template)
+  const owes = Number(String(d.existingLoan ?? '').replace(/[^0-9.]/g, '')) || 0
   if (!isBridging && (d.purchasePrice || d.loanAmount)) {
     body += `<p style="font-size:14px;font-weight:600;color:#343333;margin-bottom:8px"><span style="color:#343333;">Your numbers would be:</span></p>`
 
@@ -319,11 +324,26 @@ export async function POST(req: NextRequest) {
     // lending minus that balance - a figure nobody typed and no client is
     // getting. It also meant loPurchaseBlock, written for this exact scenario
     // on 7 Oct, has never once run.
-    if (!d.existingLoan || isBuyAndSell(d)) {
+    if ((buying && owes === 0) || isBuyAndSell(d)) {
       body += loPurchaseBlock(d, bcData)
     } else {
-      if (d.purchasePrice) body += p(`Purchase Price: ${money(d.purchasePrice)}`)
-      if (d.stampDuty) {
+      // NOTHING IS BEING BOUGHT ON A REFINANCE, WHATEVER IS LEFT IN THE BOXES.
+      //
+      // 13 Oct 2026, the Veljovic email. A complex refinance went to the client
+      // reading "Purchase Price: $1,000,000", "Stamp Duty: $40,000", "Deposit
+      // Required: $20,000". Nobody typed any of them for this deal - the BC
+      // stopped showing a purchase box on a complex refinance last week, and
+      // the figures somebody entered before that are still on the record.
+      //
+      // This asked "is there a number in that box", which is a question about
+      // the record. The question that matters is whether this deal buys
+      // anything, and lib/buying.ts has answered that since 12 Oct. The same
+      // mistake, and the same fix, as box-security.ts made on the compliance
+      // side - this is the client-facing half of it, which is the worse half.
+      if (!buying) {
+        // Nothing to print. A refinance's own three lines follow below.
+      } else if (d.purchasePrice) body += p(`Purchase Price: ${money(d.purchasePrice)}`)
+      if (buying && d.stampDuty) {
         // Was hardcoded to NSW, which was simply wrong for a client buying
         // anywhere else. It now says whichever state the deal carries, or nothing
         // at all rather than a state the deal never named.
@@ -333,13 +353,17 @@ export async function POST(req: NextRequest) {
       // See PLUS_INCIDENTALS in generate-email/route.ts - the same words, on the same
       // line, so the two emails a client receives do not disagree about what they
       // have to bring.
-      if (d.deposit) body += p(`Deposit Required (plus solicitor's fees and incidentals): ${money(d.deposit)}`)
+      if (buying && d.deposit) body += p(`Deposit Required (plus solicitor's fees and incidentals): ${money(d.deposit)}`)
 
       // It used to read "Loan Amount: $666,000" then "Existing Loan Balance:
       // $666,000" - the same figure twice, with the equity release missing.
       const total = lenderTotal(d.refinanceSplits)
       const extra = equityReleaseAmount(d.refinanceSplits, d.existingLoan)
-      body += p(`Existing Loan Balance: ${money(d.existingLoan)}`)
+      // A ZERO BALANCE IS NOT A BALANCE. "0" is a truthy string, so the test
+      // above sent this deal down the refinance branch and then printed
+      // "Existing Loan Balance: $0" to a client. Nothing is being refinanced
+      // off it; the line says nothing instead.
+      if (owes > 0) body += p(`Existing Loan Balance: ${money(d.existingLoan)}`)
       if (extra > 0) body += p(`Equity Release: ${money(extra)}`)
       // Dropped when it is the balance under a second name - the same rule the
       // BC follows. A dollar-for-dollar refinance has one number, not two.
@@ -356,7 +380,11 @@ export async function POST(req: NextRequest) {
   }
 
   if (d.criteriaUsed.length > 0) {
-    body += p('<strong>When conducting our research, we focused on lenders that would offer the following:</strong>')
+    // ONE OPTION IS A LENDER, NOT LENDERS. Katie, 13 Oct 2026: "one option only
+    // so should be lender - we have specifically focused on a specific lender".
+    // Counted rather than hard-coded, so it is still right at three.
+    body += p(`<strong>When conducting our research, we focused on ${
+      (Array.isArray(d.lenders) ? d.lenders.length : 0) === 1 ? 'a lender' : 'lenders'} that would offer the following:</strong>`)
     body += d.criteriaUsed.map((c: string) => `<p style="font-size:13px;color:#555;margin:4px 0"><span style="color:#555;">&ndash; ${c}</span></p>`).join('')
     body += '<br>'
   }
