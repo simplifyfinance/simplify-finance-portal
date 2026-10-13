@@ -111,9 +111,19 @@ export function whereIsPaco(docs: DocLike[], rules: RuleLike[], today: string): 
   }
 }
 
-/** Which colour the badge wears, in the portal's own four. Never amber. */
-export function rungTone(r: Rung): 'quiet' | 'info' | 'done' {
-  return r === 'hangar' || r === 'ground' ? 'quiet' : r === 'wheels' ? 'info' : 'done'
+// A COLOUR A RUNG, IN THE PORTAL'S OWN FOUR. Never amber.
+//
+// 13 Oct 2026. Fabio, looking at thirty five grey tiles: "give me more
+// colour". The first answer was to colour by how a bank's policy could be
+// fetched - paste a link, behind a login - and he threw it out, rightly:
+// "all of that is obsolete as the library holds ther data". How a document
+// arrived stops mattering the moment it is here. What it is worth does not.
+//
+// So the colour is the rung and nothing else. Purple is the one this portal
+// already has and this page was not using: it means read but unchecked, which
+// is where most of the library will live.
+export function rungTone(r: Rung): 'quiet' | 'waiting' | 'info' | 'done' {
+  return r === 'hangar' ? 'quiet' : r === 'ground' ? 'waiting' : r === 'wheels' ? 'info' : 'done'
 }
 
 /** Lowest rung first, so the library can lead with the banks that need work. */

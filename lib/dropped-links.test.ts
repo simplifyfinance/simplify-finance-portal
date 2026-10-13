@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   tidyLink, whyNotALink, looksLikeALink, kindFromLink, nameFromLink, siteOf,
   isOurOwnSide, pageToText, tooThinToRead, LINK_MAX_BYTES,
+  splitIntoTopics, TOPIC_LIMITS, HEADING_MARK,
 } from './dropped-links'
 
 const MACQUARIE = 'https://www.macquarie.com.au/assets/bfs/documents/broker/mortgages/macquarie_broker-credit-guidelines.pdf'
@@ -138,5 +139,92 @@ describe('an error page is not a credit policy', () => {
 
   it('and lets a real one through', () => {
     expect(tooThinToRead('x'.repeat(401))).toBe(false)
+  })
+})
+
+
+// ONE TOPIC AT A TIME.
+//
+// 13 Oct 2026. AMP's policy library is one page of 124,000 characters. Handed
+// to the reader whole it does not fail loudly - the answer comes back cut in
+// half, nothing parses, and the library reports zero rules with no reason.
+// This is the half that stops that happening.
+describe('cutting a page into its own topics', () => {
+  const page = (...sections: [string, number][]) =>
+    pageToText(sections.map(([h, n]) => `<h2>${h}</h2><p>${'word '.repeat(n)}</p>`).join(''))
+
+  it('marks a heading on the way through, and never leaves the mark behind', () => {
+    const text = pageToText('<h2>Serviceability</h2><p>The assessment rate applies.</p>')
+    expect(text).toContain(HEADING_MARK)
+    for (const t of splitIntoTopics(text)) {
+      expect(t.name).not.toContain(HEADING_MARK)
+      expect(t.text).not.toContain(HEADING_MARK)
+    }
+  })
+
+  it('gives each topic the lender\u2019s own heading as its name', () => {
+    const got = splitIntoTopics(page(['Serviceability', 200], ['High density apartments', 200]))
+    expect(got.map(t => t.name)).toEqual(['Serviceability', 'High density apartments'])
+  })
+
+  it('keeps the heading at the top of its own topic, so the reader has context', () => {
+    const got = splitIntoTopics(page(['Monthly living expenses', 200]))
+    expect(got[0].text.startsWith('Monthly living expenses')).toBe(true)
+  })
+
+  // A NAVIGATION MENU IS THIRTY HEADINGS WITH A LINE EACH, not thirty topics.
+  it('joins a heading with almost nothing under it onto the one before', () => {
+    const got = splitIntoTopics(page(['Serviceability', 200], ['See also', 2]))
+    expect(got.length).toBe(1)
+    expect(got[0].name).toBe('Serviceability')
+    expect(got[0].text).toContain('See also')
+  })
+
+  it('cuts a topic that is too big on its own, rather than sending it whole', () => {
+    const huge = page(['Security', 8000])
+    const got = splitIntoTopics(huge)
+    expect(got.length).toBeGreaterThan(1)
+    for (const t of got) expect(t.text.length).toBeLessThanOrEqual(TOPIC_LIMITS.maxChars)
+    expect(got.map(t => t.name)).toEqual(got.map((_, i) => `Security (${i + 1})`))
+  })
+
+  // THE REASON FOR CUTTING HAS NOTHING TO DO WITH WHETHER THE LENDER USED AN H2.
+  it('cuts a page with no headings at all into even pieces', () => {
+    const flat = 'A line of policy.\n'.repeat(4000)
+    const got = splitIntoTopics(flat, 'credit policy')
+    expect(got.length).toBeGreaterThan(1)
+    for (const t of got) expect(t.text.length).toBeLessThanOrEqual(TOPIC_LIMITS.maxChars)
+    expect(got[0].name).toBe('credit policy (1)')
+  })
+
+  it('leaves a small page as one topic', () => {
+    const got = splitIntoTopics(pageToText('<p>A short policy page about nothing much at all.</p>'), 'policies')
+    expect(got.length).toBe(1)
+    expect(got[0].name).toBe('policies')
+  })
+
+  // LOSING THE END OF A CREDIT POLICY IS WORSE THAN A LONG WAIT.
+  it('joins the tail up rather than dropping it past the cap', () => {
+    const many: [string, number][] = []
+    for (let i = 0; i < TOPIC_LIMITS.maxParts + 20; i++) many.push([`Topic ${i}`, 200])
+    const got = splitIntoTopics(page(...many))
+    expect(got.length).toBe(TOPIC_LIMITS.maxParts)
+    expect(got[got.length - 1].name).toBe('The rest of the page')
+    expect(got[got.length - 1].text).toContain(`Topic ${TOPIC_LIMITS.maxParts + 19}`)
+  })
+
+  it('and copes with nothing', () => {
+    expect(splitIntoTopics('')).toEqual([])
+    expect(splitIntoTopics(null)).toEqual([])
+  })
+
+  // THE WHOLE POINT, SAID AS A NUMBER. AMP is 124,000 characters; the reader
+  // can answer comfortably at 18,000 a go.
+  it('would cut a page the size of AMP\u2019s into readable pieces', () => {
+    const amp = 'Policy sentence that says something about lending.\n'.repeat(2500)
+    expect(amp.length).toBeGreaterThan(120_000)
+    const got = splitIntoTopics(amp, 'policies')
+    expect(got.length).toBeGreaterThan(6)
+    for (const t of got) expect(t.text.length).toBeLessThanOrEqual(TOPIC_LIMITS.maxChars)
   })
 })

@@ -67,8 +67,17 @@ const PILL = 'text-[10.5px] font-semibold rounded-full px-2.5 py-[3px] whitespac
 
 const TONE: Record<string, string> = {
   quiet: 'bg-page text-muted border-card-line',
+  waiting: 'bg-waiting-bg text-waiting border-waiting-edge',
   info: 'bg-info-bg text-info border-info-edge',
   done: 'bg-done-bg text-done border-done-edge',
+}
+// The tile itself picks the colour up quietly, so a wall of them reads at a
+// glance without forty saturated cards shouting at once.
+const TILE: Record<string, string> = {
+  quiet: 'border-dashed border-card-line bg-transparent',
+  waiting: 'border-card-waiting-edge bg-card-waiting',
+  info: 'border-info-edge bg-info-bg',
+  done: 'border-card-done-edge bg-card-done',
 }
 
 export default function LenderPolicyDocs() {
@@ -339,8 +348,7 @@ export default function LenderPolicyDocs() {
               const line = sourceLine(where)
               return (
                 <button key={l.id} onClick={() => setOpen(l.id)}
-                  className={`text-left rounded-xl p-3 border transition hover:bg-page
-                    ${s.rung === 'hangar' ? 'border-dashed border-card-line bg-transparent' : 'border-card-line bg-card'}`}>
+                  className={`text-left rounded-xl p-3 border transition hover:brightness-[.98] ${TILE[rungTone(s.rung)]}`}>
                   <span className="block text-[12.5px] font-bold text-ink leading-tight mb-1.5">{l.name}</span>
                   <span className={`${PILL} inline-block border ${TONE[rungTone(s.rung)]} mb-1.5`}>{s.label}</span>
                   <span className="block text-[11px] text-muted leading-snug">
@@ -376,9 +384,24 @@ export default function LenderPolicyDocs() {
           {/* WHAT THE SWEEP FOUND FOR THIS BANK. Shown hardest where it is
               needed most: a bank with nothing on file, where without it the
               page is a dead end. */}
+          {/* WHERE TO GET IT, WHILE THERE IS STILL NOTHING HERE.
+              13 Oct 2026. Fabio: "all of that is obsolete as the library holds
+              ther data". Right - the moment a document lands, how it was
+              fetched stops mattering, so this drops to one line underneath
+              rather than sitting at the top of the page. */}
           {(() => {
             const w = whereFor(lender.name)
             if (!w) return null
+            if (docsFor(lender.id).length > 0) {
+              return (
+                <p className="mb-3 text-[11px] text-faint leading-relaxed">
+                  {w.url
+                    ? <>Their own copy: <a href={w.url} target="_blank" rel="noreferrer" className="text-muted underline break-all">{w.url}</a></>
+                    : w.portal ? <>Their copy sits behind {w.portal}.</> : <>Nothing published by this bank.</>}
+                  {' '}Our own check on {when(REGISTER_CHECKED_ON)}.
+                </p>
+              )
+            }
             return (
               <div className="mb-3 border-l-[3px] border-info bg-info-bg rounded-r-xl px-4 py-3">
                 <b className="block text-[12.5px] text-ink mb-1">Where this bank keeps its policy</b>

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import {
   tidyLink, whyNotALink, isOurOwnSide, kindFromLink, nameFromLink, siteOf,
-  pageToText, tooThinToRead, LINK_MAX_BYTES, LINK_TIMEOUT_MS,
+  pageToText, tooThinToRead, splitIntoTopics, LINK_MAX_BYTES, LINK_TIMEOUT_MS,
 } from '@/lib/dropped-links'
 
 export const maxDuration = 120
@@ -101,9 +101,14 @@ export async function POST(req: Request) {
     }, { status: 422 })
   }
 
+  // ONE TOPIC AT A TIME. AMP's policy library is one page with thirty five
+  // topics on it. Sent whole it comes back cut in half and parses to nothing;
+  // cut on the lender's own headings it reads like a zip of chapters, and the
+  // library counts it down the same way.
+  const topics = splitIntoTopics(text, name)
   return NextResponse.json({
     kind: 'page', url: landed, site: siteOf(landed),
-    parts: [{ name, kind: 'text', text }],
+    parts: topics.map(t => ({ name: t.name, kind: 'text', text: t.text })),
     skipped: [],
   })
 }

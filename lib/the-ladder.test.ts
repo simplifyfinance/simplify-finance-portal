@@ -16,7 +16,9 @@ describe('the four rungs', () => {
   })
 
   it('wear only colours this portal already has, and never amber', () => {
-    expect(RUNGS.map(rungTone)).toEqual(['quiet', 'quiet', 'info', 'done'])
+    // One a rung. Purple is the colour the portal had and this page was not
+    // using; red stays out of it, because an empty shelf is not urgent.
+    expect(RUNGS.map(rungTone)).toEqual(['quiet', 'waiting', 'info', 'done'])
   })
 
   it('sort lowest first, so the work is at the top', () => {
