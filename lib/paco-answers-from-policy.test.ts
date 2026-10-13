@@ -17,7 +17,7 @@
 // Invented lenders where invented; the tiers are the blueprint's.
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
-import { answerFrom, sourceOf, isChecked, whatToCheck, rankOfTier, NOTE_BESIDE_POLICY } from './paco-answers-from-policy'
+import { answerFrom, sourceOf, isChecked, whatToCheck, rankOfTier, USABLE, NOTE_BESIDE_POLICY } from './paco-answers-from-policy'
 
 const TODAY = '2026-10-13'
 const rule = (o: any = {}) => ({
@@ -187,10 +187,16 @@ describe('the wiring', () => {
   const route = readFileSync('app/api/paco/route.ts', 'utf8')
   const panel = readFileSync('components/Paco.tsx', 'utf8')
 
-  it('both ticked and unticked rules are read, and rejected ones are not', () => {
+  it('both ticked and unticked rules are read', () => {
     expect(route).toContain(".in('status', USABLE")
-    expect(route, 'a rejected line is answering again')
-      .not.toContain("'rejected'")
+  })
+
+  // A LINE SOMEBODY CALLED WRONG STOPS ANSWERING, and that is the only thing
+  // that stops one. USABLE is the whole list, so 'rejected' being absent from
+  // it is what keeps it out.
+  it('and a rejected one is not', () => {
+    expect([...USABLE]).toEqual(['live', 'proposed'])
+    expect([...USABLE]).not.toContain('rejected')
   })
 
   // THE COUNT NOBODY WAS PASSING. "0 lender policies loaded" was not a reading
@@ -201,14 +207,34 @@ describe('the wiring', () => {
     expect(route).toContain('policies: policy.length')
   })
 
-  it('the panel marks a line nobody has checked', () => {
-    expect(panel).toContain('nobody has checked this yet')
-    expect(panel).toContain('isChecked(r)')
+  // NO QUEUE, NO NAG, ONE CORRECTION.
+  //
+  // 13 Oct 2026. Fabio, after 455 lines landed in a review list: "a lot of
+  // these are statements. Just it really is reading. Like, why do I need to
+  // confirm? So that needs to go."
+  //
+  // What replaced it is one link under every answer, used by somebody who
+  // tripped over a wrong line while doing their job. So the panel must offer
+  // that, and must not have grown a queue or a nag back.
+  it('the panel offers one correction, under the answer', () => {
+    expect(panel).toContain('That is not what it says')
+    expect(panel).toContain('<Wrong id={r.id}')
   })
 
-  it('and says once, underneath, how many of them there were', () => {
-    expect(panel).toContain('p.unchecked > 0')
-    expect(panel).toContain('not checked by a person')
+  it('and never asks anybody to go and confirm anything', () => {
+    for (const nag of ['nobody has checked this yet', 'not checked by a person', 'waiting to be checked']) {
+      expect(panel, `the nag is back: "${nag}"`).not.toContain(nag)
+    }
+  })
+
+  // HE ASKS WHEN HE HAS NOTHING. That is the whole of "make it conversational":
+  // a dead end becomes an offer, and the bank comes with it so nobody types it
+  // in twice.
+  it('and asks whether you know when he has nothing', () => {
+    expect(panel).toContain('Do you know?')
+    expect(panel).toContain('Yes, I know this one')
+    expect(panel).toContain('onTell((a as any).askedAbout')
+    expect(route).toContain('askedAbout')
   })
 
   // A Macquarie question answered with a Bankwest rule would be worse than no
@@ -224,7 +250,7 @@ describe('the wiring', () => {
   })
 
   it('and the policy is drawn above the deals and the notes', () => {
-    const said = panel.slice(panel.indexOf('function Said({ a }'))
+    const said = panel.slice(panel.indexOf('function Said({ a, onTell }'))
     expect(said.indexOf('<Policy')).toBeGreaterThan(-1)
     expect(said.indexOf('<Policy')).toBeLessThan(said.indexOf('<Notes'))
   })

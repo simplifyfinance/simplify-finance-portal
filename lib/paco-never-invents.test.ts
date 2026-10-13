@@ -204,15 +204,27 @@ describe('no model writes a sentence about lending', () => {
     expect(route).not.toContain('.delete(')
   })
 
-  it('the only update is a retirement', () => {
-    const i = route.indexOf('.update(')
-    expect(i).toBeGreaterThan(-1)
-    const near = route.slice(i, i + 300)
-    expect(near).toContain('retired_at')
-    expect(near).not.toContain('said:')
-    expect(near).not.toContain('tier:')
-    // One update in the whole file.
-    expect(route.indexOf('.update(', i + 1)).toBe(-1)
+  // TWO UPDATES NOW, AND BOTH ARE THE SAME KIND OF THING.
+  //
+  // 13 Oct 2026. The review list went, so a line read out of a document is in
+  // and Paco uses it. The one thing that takes it back out is somebody reading
+  // an answer and seeing it is wrong - the twin of retiring a note.
+  //
+  // Neither deletes and neither edits what was said. Both stamp a name and a
+  // time and stop the thing answering, which is what makes the name on it
+  // worth anything.
+  it('every update is a retirement or a correction, and neither edits what was said', () => {
+    const updates = [...route.matchAll(/\.update\(/g)].map(m => m.index || 0)
+    expect(updates.length).toBe(2)
+    for (const i of updates) {
+      const near = route.slice(i, i + 400)
+      expect(near).toMatch(/retired_at|status: 'rejected'/)
+      expect(near, 'an update is editing what somebody said').not.toContain('said:')
+      expect(near, 'an update is changing how firm a claim is').not.toContain('tier:')
+      expect(near, 'an update is rewriting the quote').not.toContain('quote:')
+      expect(near).toMatch(/retired_by_name|decided_by_name/)
+    }
+    // And nothing else in the file updates anything, ever.
   })
 
   // THE STAMP IS TAKEN FROM THE SESSION, NEVER FROM THE BROWSER. Otherwise the
@@ -326,8 +338,14 @@ describe('minimise keeps your conversation, and keeps it yours', () => {
     expect(panel).not.toMatch(/localStorage|sessionStorage|indexedDB/i)
     // The only thing posted from this panel is a note somebody deliberately
     // typed into the Tell box, which is team knowledge and is meant to be shared.
+    // Two things are posted from this panel, and both are a deliberate act by
+    // the person reading: a note they typed into the Tell box, and "that is
+    // not what it says" under an answer they were already reading. Neither
+    // carries the conversation.
     const posts = panel.match(/method:\s*'POST'/g) || []
-    expect(posts.length).toBe(1)
+    expect(posts.length).toBe(2)
+    expect(panel).toContain("JSON.stringify({ lender: lender.trim()")
+    expect(panel).toContain("{ wrong: id }")
     expect(panel).not.toMatch(/body:\s*JSON\.stringify\(\{[^}]*turns/)
   })
 })

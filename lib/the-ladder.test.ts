@@ -1,12 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { whereIsPaco, rungLabel, rungTone, byRung, RUNGS } from './the-ladder'
 
-const TODAY = '2026-10-13'
-const A_YEAR_AGO = '2025-09-01'
-
-const doc = (id: string, lastChecked = TODAY) =>
-  ({ id, last_checked_at: lastChecked })
-const rule = (document_id: string, status: string) => ({ document_id, status })
+const doc = (id: string) => ({ id })
+const line = (status = 'live') => ({ status })
+const note = (retired = '') => ({ retired_at: retired })
 
 describe('the four rungs', () => {
   it('are named in the words Fabio picked', () => {
@@ -15,108 +12,127 @@ describe('the four rungs', () => {
     ])
   })
 
+  // Purple is what one of us said, blue is what the bank wrote - the same two
+  // colours Paco answers in, so the tile and the answer agree.
   it('wear only colours this portal already has, and never amber', () => {
-    // One a rung. Purple is the colour the portal had and this page was not
-    // using; red stays out of it, because an empty shelf is not urgent.
     expect(RUNGS.map(rungTone)).toEqual(['quiet', 'waiting', 'info', 'done'])
   })
 
-  it('sort lowest first, so the work is at the top', () => {
+  it('sort lowest first, so the banks he knows least about come up the top', () => {
     expect([...RUNGS].sort(byRung)).toEqual(['hangar', 'ground', 'wheels', 'up'])
   })
 })
 
 describe('where Paco stands on one bank', () => {
-  it('is in the hangar with nothing on file', () => {
-    const s = whereIsPaco([], [], TODAY)
+  it('is in the hangar with nothing at all', () => {
+    const s = whereIsPaco([], [], [])
     expect(s.rung).toBe('hangar')
-    expect(s.why).toMatch(/our own notes/)
-    expect(s.documents).toBe(0)
+    expect(s.why).toMatch(/says so rather than guessing/)
   })
 
-  it('is in ground school once a document is read and nobody has checked it', () => {
-    const s = whereIsPaco([doc('d1')], [rule('d1', 'proposed'), rule('d1', 'proposed')], TODAY)
+  it('is still in the hangar with a document nothing was read out of', () => {
+    const s = whereIsPaco([doc('d1')], [], [])
+    expect(s.rung).toBe('hangar')
+    expect(s.why).toMatch(/nothing has been read out of it yet/)
+  })
+
+  // A REAL AND COMMON STATE. Before this it looked identical to a bank with
+  // nothing, and it is not the same: somebody knows something and nobody has
+  // got the manual yet.
+  it('is in ground school on hearsay alone', () => {
+    const s = whereIsPaco([], [], [note(), note()])
     expect(s.rung).toBe('ground')
-    expect(s.waiting).toBe(2)
-    expect(s.why).toMatch(/shows the quote/)
+    expect(s.fromUs).toBe(2)
+    expect(s.fromTheBank).toBe(0)
+    expect(s.why).toMatch(/Nothing the bank has written down/)
   })
 
-  it('is still in ground school with a document nothing was read out of', () => {
-    const s = whereIsPaco([doc('d1')], [], TODAY)
-    expect(s.rung).toBe('ground')
-    expect(s.why).toMatch(/nothing has been read out of it/)
-  })
-
-  it('has the training wheels on once some of it is checked', () => {
-    const s = whereIsPaco([doc('d1')],
-      [rule('d1', 'live'), rule('d1', 'live'), rule('d1', 'proposed')], TODAY)
+  it('has the training wheels on once the bank’s own document is in', () => {
+    const s = whereIsPaco([doc('d1')], [line(), line(), line()], [])
     expect(s.rung).toBe('wheels')
-    expect(s.checked).toBe(2)
-    expect(s.waiting).toBe(1)
+    expect(s.fromTheBank).toBe(3)
+    expect(s.why).toMatch(/Nothing from us yet/)
   })
 
-  it('gets the wheels up when the whole thing has been looked at', () => {
-    const s = whereIsPaco([doc('d1')], [rule('d1', 'live'), rule('d1', 'live')], TODAY)
+  it('gets the wheels up with the document and our own on top', () => {
+    const s = whereIsPaco([doc('d1')], [line(), line()], [note()])
     expect(s.rung).toBe('up')
-    expect(s.why).toMatch(/quote on request/)
+    expect(s.why).toMatch(/2 lines from the bank, and 1 thing we have told him/)
   })
 
-  it('counts a rejected line as neither checked nor waiting', () => {
-    const s = whereIsPaco([doc('d1')], [rule('d1', 'live'), rule('d1', 'rejected')], TODAY)
-    expect(s.rung).toBe('up')
-    expect(s.checked).toBe(1)
-    expect(s.waiting).toBe(0)
+  it('reads properly when there is one of each', () => {
+    expect(whereIsPaco([doc('d1')], [line()], [note()]).why)
+      .toBe('1 line from the bank, and 1 thing we have told him on top.')
   })
 })
 
-// THE HALF THAT MATTERS. A badge that only ever climbs is a badge that lies.
+// NOTHING IS TICKED ANY MORE, SO NOTHING COUNTS TICKS.
+describe('a line is in the moment it is read', () => {
+  it('counts a line nobody has looked at, because looking is not a job', () => {
+    expect(whereIsPaco([doc('d1')], [line('proposed')], []).fromTheBank).toBe(1)
+    expect(whereIsPaco([doc('d1')], [line('live')], []).fromTheBank).toBe(1)
+  })
+
+  // THE ONE THING THAT STILL STOPS A LINE. Somebody read it against the
+  // document and said it was wrong. That is a decision and it stands.
+  it('but not one somebody has said is wrong', () => {
+    const s = whereIsPaco([doc('d1')], [line('live'), line('rejected')], [])
+    expect(s.fromTheBank).toBe(1)
+  })
+
+  it('and not a note that has been retired', () => {
+    const s = whereIsPaco([], [], [note(), note('2026-10-01T00:00:00Z')])
+    expect(s.fromUs).toBe(1)
+  })
+})
+
 describe('it goes backwards', () => {
-  it('drops off wheels up the moment a new document lands unread', () => {
-    const settled = whereIsPaco([doc('d1')], [rule('d1', 'live')], TODAY)
-    expect(settled.rung).toBe('up')
-
-    const andThenOctoberArrives = whereIsPaco(
-      [doc('d1'), doc('d2')],
-      [rule('d1', 'live'), rule('d2', 'proposed'), rule('d2', 'proposed')], TODAY)
-    expect(andThenOctoberArrives.rung).toBe('wheels')
-    expect(andThenOctoberArrives.waiting).toBe(2)
+  it('drops when the last thing we told him is retired', () => {
+    expect(whereIsPaco([doc('d1')], [line()], [note()]).rung).toBe('up')
+    expect(whereIsPaco([doc('d1')], [line()], [note('2026-10-01T00:00:00Z')]).rung).toBe('wheels')
   })
 
-  it('holds a bank down when nobody has looked at the document in a year', () => {
-    const s = whereIsPaco([doc('d1', A_YEAR_AGO)], [rule('d1', 'live')], TODAY)
-    expect(s.rung).toBe('wheels')
-    expect(s.why).toMatch(/not been looked at in a year/)
-  })
-
-  it('and says how many documents went stale, not just that one did', () => {
-    const s = whereIsPaco(
-      [doc('d1', A_YEAR_AGO), doc('d2', A_YEAR_AGO)],
-      [rule('d1', 'live')], TODAY)
-    expect(s.why).toMatch(/2 documents have not been looked at/)
+  it('and all the way down when a line is called wrong and the note retired', () => {
+    expect(whereIsPaco([doc('d1')], [line('rejected')], [note('2026-10-01T00:00:00Z')]).rung).toBe('hangar')
   })
 })
 
 describe('it never falls over on rubbish', () => {
   it('takes nothing at all', () => {
-    expect(whereIsPaco(null as any, null as any, TODAY).rung).toBe('hangar')
+    expect(whereIsPaco(null as any, null as any, null as any).rung).toBe('hangar')
   })
 
-  it('and a row with no status on it', () => {
-    const s = whereIsPaco([doc('d1')], [{ document_id: 'd1' }, rule('d1', 'live')], TODAY)
-    expect(s.rung).toBe('up')
-    expect(s.checked).toBe(1)
+  it('and rows with nothing on them', () => {
+    expect(whereIsPaco([doc('d1')], [{}, {}], [{}]).fromTheBank).toBe(2)
   })
 })
 
 // NO POINTS, NO STREAK, NO LEADERBOARD.
 describe('the badge is a readout, not a reward', () => {
-  it('says nothing anywhere about helping, learning, levels or scores', () => {
-    const everything = RUNGS.map(r => {
-      const s = whereIsPaco([doc('d1')], [rule('d1', 'live')], TODAY)
-      return `${rungLabel(r)} ${s.why}`
-    }).join(' ').toLowerCase()
+  it('says nothing about helping, learning, levels or scores', () => {
+    const everything = [
+      ...RUNGS.map(rungLabel),
+      whereIsPaco([], [], []).why,
+      whereIsPaco([], [], [note()]).why,
+      whereIsPaco([doc('d')], [line()], []).why,
+      whereIsPaco([doc('d')], [line()], [note()]).why,
+    ].join(' ').toLowerCase()
     for (const word of ['help paco', 'level', 'score', 'points', 'streak', 'well done', 'congratulations']) {
       expect(everything, `the badge says "${word}"`).not.toContain(word)
+    }
+  })
+
+  // AND IT NEVER NAGS. The whole reason the old rungs went is that they
+  // counted a job nobody had agreed to do.
+  it('and never asks anybody to check, confirm, tick or approve anything', () => {
+    const everything = [
+      whereIsPaco([], [], []).why,
+      whereIsPaco([], [], [note()]).why,
+      whereIsPaco([doc('d')], [line()], []).why,
+      whereIsPaco([doc('d')], [line(), line()], [note()]).why,
+    ].join(' ').toLowerCase()
+    for (const word of ['confirm', 'tick', 'approve', 'waiting', 'review', 'check']) {
+      expect(everything, `the badge is nagging: "${word}"`).not.toContain(word)
     }
   })
 })

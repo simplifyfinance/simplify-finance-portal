@@ -112,7 +112,10 @@ export async function GET(req: NextRequest) {
   const whereToGet = fromPolicy.policy.length === 0
     ? whereToGetIt(lenderAsked(question, lenders))
     : ''
-  return NextResponse.json({ question, ...said, policy: fromPolicy, whereToGet })
+  // THE BANK THE QUESTION NAMED, HANDED BACK. When he has nothing he asks
+  // whether you know, and nobody should have to type the bank in again.
+  const askedAbout = lenderAsked(question, lenders)
+  return NextResponse.json({ question, ...said, policy: fromPolicy, whereToGet, askedAbout })
 }
 
 // WHAT THE LENDERS THEMSELVES HAVE WRITTEN DOWN.
@@ -218,6 +221,30 @@ export async function POST(req: NextRequest) {
       })
       .eq('id', String(body.retire))
     if (error) return NextResponse.json({ error: `I could not retire that — ${error.message}` }, { status: 500 })
+    return NextResponse.json({ ok: true })
+  }
+
+  // A LINE SOMEBODY READ AND SAW WAS WRONG.
+  //
+  // 13 Oct 2026. The review list is gone: a line read out of a document is in
+  // and Paco uses it, with the sentence it came from under every answer. That
+  // quote is the check, and this is the one thing that happens when it fails.
+  //
+  // NEVER A DELETE AND NEVER AN EDIT, same as retiring a note. The line stops
+  // answering and stays readable, with the name of whoever called it and when.
+  // Nobody goes hunting for things to fix; this is clicked by somebody who
+  // tripped over one while doing their job.
+  if (body?.wrong) {
+    const { error } = await supabase.from('lender_policy_rules')
+      .update({
+        status: 'rejected',
+        decided_by: auth.user.id,
+        decided_by_name: await nameOf(supabase, auth.user.id),
+        decided_at: new Date().toISOString(),
+        rejected_why: String(body.why || 'Not what the document says').slice(0, 500),
+      })
+      .eq('id', String(body.wrong))
+    if (error) return NextResponse.json({ error: `I could not drop that — ${error.message}` }, { status: 500 })
     return NextResponse.json({ ok: true })
   }
 

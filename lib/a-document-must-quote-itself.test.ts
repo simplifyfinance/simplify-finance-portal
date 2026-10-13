@@ -230,8 +230,22 @@ describe('the page keeps the promises the schema makes', () => {
     expect(sql).toContain('length(sha256) = 64')
   })
 
-  it('and nothing read out of it can reach Paco without a person', () => {
-    expect(page).toContain("status: 'proposed'")
+  // WHAT ACTUALLY STOPS A MACHINE'S READING BEING TAKEN FOR THE BANK'S POLICY.
+  //
+  // 13 Oct 2026. This used to hold that a person had to tick every line first.
+  // NAB's policy produced 455 of them and Fabio, rightly: "a lot of these are
+  // statements. Just it really is reading. Like, why do I need to confirm? So
+  // that needs to go."
+  //
+  // The tick was never the thing doing the work. The QUOTE is: every rule
+  // brings back the sentence it came from, it is shown under every answer, and
+  // a rule that cannot quote the document is thrown away before it is stored -
+  // twice, once in the route and again here. A tick nobody has time to do
+  // three hundred times protects nobody. A sentence from the document under
+  // every answer protects everybody.
+  it('and nothing read out of it reaches Paco without the sentence it came from', () => {
+    expect(page).toContain('cleanProposed(j?.rules, doc.id, lender.id)')
+    expect(page).toContain("status: 'live'")
     expect(sql).toContain("status text not null default 'proposed'")
   })
 

@@ -6,6 +6,7 @@ import { kindOf, tierFor } from '@/lib/dropped-files'
 import { whereIsPaco, rungTone, type Standing } from '@/lib/the-ladder'
 import { whereFor, sourceLine, REGISTER_CHECKED_ON } from '@/lib/where-the-policy-lives'
 import { tidyLink, whyNotALink, nameFromLink, siteOf } from '@/lib/dropped-links'
+import { flat } from '@/lib/plain-words'
 
 // THE LENDERS' OWN WRITTEN POLICY.
 //
@@ -46,6 +47,7 @@ type Doc = {
   pages: number | null; uploaded_by_name: string; created_at: string
   supersedes: string | null; last_checked_at: string
 }
+type Note = { id: string; lender: string; retired_at: string | null }
 type Rule = {
   id: string; document_id: string; lender_id: string; says: string; quote: string
   section: string; heading: string; status: string; created_at: string
@@ -85,6 +87,7 @@ export default function LenderPolicyDocs() {
   const [lenders, setLenders] = useState<Lender[]>([])
   const [docs, setDocs] = useState<Doc[]>([])
   const [rules, setRules] = useState<Rule[]>([])
+  const [notes, setNotes] = useState<Note[]>([])
   const [open, setOpen] = useState('')          // which lender is open
   const [err, setErr] = useState('')
   const [note, setNote] = useState('')
@@ -95,10 +98,14 @@ export default function LenderPolicyDocs() {
   const [link, setLink] = useState('')
 
   async function load() {
-    const [a, b, c] = await Promise.all([
+    const [a, b, c, d] = await Promise.all([
       supabase.from('lenders').select('id, name, active').order('name'),
       supabase.from('lender_documents').select('*').order('created_at', { ascending: false }),
       supabase.from('lender_policy_rules').select('id, document_id, lender_id, says, quote, section, heading, status, created_at, row_headers, row_cells, depends_on, excludes, max_lvr, min_value, max_value'),
+      // WHAT THE TEAM HAS TOLD HIM. The other half of what Paco can answer
+      // from, and the half that grows every week without anybody uploading
+      // anything. A bank with notes and no manual is not a bank with nothing.
+      supabase.from('paco_knowledge').select('id, lender, retired_at'),
     ])
     setLenders(((a.data || []) as Lender[]).filter(l => l.active !== false))
     // The table not existing yet is not an error worth shouting about - the SQL
@@ -106,6 +113,8 @@ export default function LenderPolicyDocs() {
     if (b.error) { setErr('The policy documents table is not set up yet. Run docs/lender-documents-schema.sql in Supabase.'); return }
     setDocs((b.data || []) as Doc[])
     setRules((c.data || []) as Rule[])
+    // His notebook not existing yet is not a fault worth shouting about.
+    setNotes(((d.data || []) as Note[]))
   }
   useEffect(() => { load() }, [])
 
@@ -114,8 +123,14 @@ export default function LenderPolicyDocs() {
   const rulesFor = (docId: string, status: string) =>
     rules.filter(r => r.document_id === docId && r.status === status)
   const rulesOf = (lenderId: string) => rules.filter(r => r.lender_id === lenderId)
-  const standingOf = (lenderId: string): Standing =>
-    whereIsPaco(docsFor(lenderId), rulesOf(lenderId), today())
+  // WHAT THE TEAM HAS TOLD HIM ABOUT THIS BANK. Matched on the name, because
+  // a note is typed against a lender by name rather than picked from a list.
+  const notesOf = (name: string) => {
+    const want = flat(name)
+    return want ? notes.filter(n => flat(n.lender) === want) : []
+  }
+  const standingOf = (l: Lender): Standing =>
+    whereIsPaco(docsFor(l.id), rulesOf(l.id), notesOf(l.name))
 
   const sha256 = async (data: ArrayBuffer | string): Promise<string> => {
     const buf = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data)
@@ -288,24 +303,23 @@ export default function LenderPolicyDocs() {
       tier,
       row_headers: r.rowHeaders, row_cells: r.rowCells, depends_on: r.dependsOn,
       excludes: r.excludes, max_lvr: r.maxLvr, min_value: r.minValue, max_value: r.maxValue,
-      effective_from: r.effectiveFrom, status: 'proposed',
+            // A LINE IS IN THE MOMENT IT IS READ.
+      //
+      // 13 Oct 2026. These used to land as 'proposed' and wait for somebody to
+      // tick them. NAB's policy produced 455 and Fabio, rightly: "a lot of
+      // these are statements. Just it really is reading. Like, why do I need to
+      // confirm? So that needs to go."
+      //
+      // The thing that stops a machine's reading being mistaken for the bank's
+      // policy was never the tick - it is the quote, which sits under every
+      // answer Paco gives. 'rejected' is still here, set the one time it is
+      // needed: somebody reads an answer, sees it is wrong, and says so.
+      effective_from: r.effectiveFrom, status: 'live',
     })))
     if (error) return { read: 0, kept: 0, left: dropped.length }
     return { read: 1, kept: clean.length, left: dropped.length }
   }
 
-  async function decide(r: Rule, keep: boolean) {
-    const { data: me } = await supabase.auth.getUser()
-    const { error } = await supabase.from('lender_policy_rules').update({
-      status: keep ? 'live' : 'rejected',
-      decided_by: me?.user?.id || null,
-      decided_by_name: (me?.user?.user_metadata as any)?.full_name || me?.user?.email || '',
-      decided_at: new Date().toISOString(),
-      rejected_why: keep ? '' : 'Not what the document says',
-    }).eq('id', r.id)
-    if (error) { setErr(error.message); return }
-    await load()
-  }
 
   // A DOCUMENT WE HOLD OPENS FROM OUR STORAGE. One we read off a lender's own
   // website opens on their website, because theirs is the copy that stays right.
@@ -330,7 +344,7 @@ export default function LenderPolicyDocs() {
           <div className={HEAD}>
             <b className="text-[13.5px]">Every lender</b>
             <span className="text-[12px] text-muted">
-              {lenders.filter(l => docsFor(l.id).length > 0).length} of {lenders.length} have something on file
+              {lenders.filter(l => standingOf(l).rung !== 'hangar').length} of {lenders.length} he can say something about
             </span>
             <button onClick={() => setMissingOnly(v => !v)} className={`ml-auto ${BTN}`}>
               {missingOnly ? 'Show all' : 'Only ones with nothing on file'}
@@ -343,7 +357,7 @@ export default function LenderPolicyDocs() {
               for. */}
           <div className="p-3 grid gap-2 grid-cols-[repeat(auto-fill,minmax(210px,1fr))]">
             {shown.map(l => {
-              const s = standingOf(l.id)
+              const s = standingOf(l)
               const where = whereFor(l.name)
               const line = sourceLine(where)
               return (
@@ -351,10 +365,13 @@ export default function LenderPolicyDocs() {
                   className={`text-left rounded-xl p-3 border transition hover:brightness-[.98] ${TILE[rungTone(s.rung)]}`}>
                   <span className="block text-[12.5px] font-bold text-ink leading-tight mb-1.5">{l.name}</span>
                   <span className={`${PILL} inline-block border ${TONE[rungTone(s.rung)]} mb-1.5`}>{s.label}</span>
+                  {/* WHAT HE CAN ANSWER FROM, not what is waiting on anybody.
+                      Nothing on this page asks for a decision any more. */}
                   <span className="block text-[11px] text-muted leading-snug">
-                    {s.documents === 0
-                      ? (line || 'Nothing on file')
-                      : `${s.documents} ${s.documents === 1 ? 'document' : 'documents'}${s.waiting ? `, ${s.waiting} waiting` : ''}`}
+                    {s.fromTheBank > 0 && `${s.fromTheBank} ${s.fromTheBank === 1 ? 'line' : 'lines'} from their policy`}
+                    {s.fromTheBank > 0 && s.fromUs > 0 && ' · '}
+                    {s.fromUs > 0 && `${s.fromUs} from us`}
+                    {s.fromTheBank === 0 && s.fromUs === 0 && (line || 'Nothing on file')}
                   </span>
                 </button>
               )
@@ -375,11 +392,11 @@ export default function LenderPolicyDocs() {
           <button onClick={() => setOpen('')} className={`${BTN} mb-3`}>&larr; The library</button>
           <div className="flex items-center gap-2.5 flex-wrap mb-1">
             <h2 className="text-[19px] font-bold text-ink m-0">{lender.name}</h2>
-            <span className={`${PILL} border ${TONE[rungTone(standingOf(lender.id).rung)]}`}>
-              {standingOf(lender.id).label}
+            <span className={`${PILL} border ${TONE[rungTone(standingOf(lender).rung)]}`}>
+              {standingOf(lender).label}
             </span>
           </div>
-          <p className="text-[12.5px] text-muted mb-4">{standingOf(lender.id).why}</p>
+          <p className="text-[12.5px] text-muted mb-4">{standingOf(lender).why}</p>
 
           {/* WHAT THE SWEEP FOUND FOR THIS BANK. Shown hardest where it is
               needed most: a bank with nothing on file, where without it the
@@ -526,65 +543,6 @@ export default function LenderPolicyDocs() {
             </div>
           </div>
 
-          {/* WHAT WAS READ OUT, WAITING ON A PERSON. Nothing here reaches Paco
-              until it is ticked - see docs/lender-documents-schema.sql. */}
-          {docsFor(lender.id).map(d => {
-            const waiting = rulesFor(d.id, 'proposed')
-            if (waiting.length === 0) return null
-            return (
-              <div key={d.id} className={CARD}>
-                <div className={HEAD}>
-                  <b className="text-[13.5px]">Check what was read out of {d.title}</b>
-                  <span className="text-[12px] text-muted">{waiting.length} waiting. Nothing reaches Paco until you keep it.</span>
-                </div>
-                <div className="px-4 pb-2">
-                  {waiting.map(r => (
-                    <div key={r.id} className="py-3.5 border-t border-line-soft first:border-t-0">
-                      <p className="m-0 mb-1.5 text-[13px] font-semibold text-ink">{r.says}</p>
-                      {/* WHAT THE DOCUMENT SAYS. Shown, never obeyed - a credit
-                          manual may legitimately contain any words at all.
-                          A TABLE ROW IS DRAWN AS A ROW. Squashing NAB's shading
-                          table into a sentence loses which number is the 20%
-                          and which is the 6 months. */}
-                      {(r.row_cells || []).length > 0 ? (
-                        <div className="bg-page border-l-[3px] border-info rounded-r-lg px-3 py-2 mb-1.5 overflow-x-auto">
-                          <table className="text-[12px] text-body">
-                            <tbody>
-                              {(r.row_headers || []).map((h, k) => (
-                                <tr key={k}>
-                                  <td className="pr-4 py-[2px] text-faint whitespace-nowrap align-top">{h}</td>
-                                  <td className="py-[2px] align-top">{r.row_cells?.[k]}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <div className="bg-page border-l-[3px] border-info rounded-r-lg px-3 py-2
-                                        text-[12.5px] text-body leading-relaxed mb-1.5">
-                          &ldquo;{r.quote}&rdquo;
-                        </div>
-                      )}
-                      {(r.excludes || []).length > 0 && (
-                        <ul className="text-[11.5px] text-body mb-1.5 mt-0 pl-5">
-                          {r.excludes.map((x, k) => <li key={k}>not {x}</li>)}
-                        </ul>
-                      )}
-                      <div className="text-[11px] text-faint mb-2">
-                        {citation(r, d.title)}
-                        {(r.depends_on || []).length > 0 && ` — also read ${r.depends_on.join(', ')}`}
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => decide(r, true)}
-                          className="text-[12px] bg-ink text-page rounded-lg px-3 py-[5px] font-medium">Keep it</button>
-                        <button onClick={() => decide(r, false)} className={BTN}>Not what it says</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          })}
         </>
       )}
     </div>

@@ -262,6 +262,10 @@ describe('the page and the routes keep the same rules', () => {
 
   it('and every rule still passes the gate twice', () => {
     expect(page).toContain('cleanProposed(j?.rules, doc.id, lender.id)')
-    expect(page).toContain("status: 'proposed'")
+    // 13 Oct 2026. They land usable rather than waiting on a tick - see the
+    // note in lib/a-document-must-quote-itself.test.ts. The gate that matters
+    // is above this line and it has not moved: a rule that cannot quote the
+    // document never gets this far.
+    expect(page).toContain("status: 'live'")
   })
 })

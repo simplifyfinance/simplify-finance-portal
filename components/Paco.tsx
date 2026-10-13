@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { tierLabel, isOfficial, attribution, caveatFor, TYPEABLE_TIERS, type TypeableTier } from '@/lib/paco-knowledge'
 import { HOLA, type Answer } from '@/lib/paco'
-import { sourceOf, isChecked, NOTE_BESIDE_POLICY, type Answer as PolicyAnswer } from '@/lib/paco-answers-from-policy'
+import { sourceOf, NOTE_BESIDE_POLICY, type Answer as PolicyAnswer } from '@/lib/paco-answers-from-policy'
 import { citation, leansOn } from '@/lib/policy-rules'
 import { offeringToTell, YES_TELL_ME, NOT_THE_LIBRARY } from '@/lib/paco-takes-a-note'
 
@@ -53,6 +53,9 @@ export default function Paco() {
   const [turns, setTurns] = useState<Turn[]>([])
   const [counts, setCounts] = useState<Answer['counts'] | null>(null)
   const [telling, setTelling] = useState(false)
+  // Which bank the note starts against, when he asked and you said yes.
+  const [tellAbout, setTellAbout] = useState('')
+  const startTelling = (lender: string) => { setTellAbout(lender); setTelling(true) }
   const endRef = useRef<HTMLDivElement>(null)
 
   // What he can see at all, fetched once when he is first opened rather than on
@@ -82,7 +85,7 @@ export default function Paco() {
     // lending - just who was doing the telling. See lib/paco-takes-a-note.ts.
     if (offeringToTell(said).offered) {
       setTurns(t => [...t, { mine: false, offer: true }])
-      setTelling(true)
+      startTelling(offeringToTell(said, []).lender)
       return
     }
 
@@ -156,7 +159,7 @@ export default function Paco() {
             * where it could end up in front of the wrong person. */}
         <div className="ml-auto flex items-center gap-1">
           {turns.length > 0 && (
-            <button onClick={() => { setTurns([]); setTelling(false) }}
+            <button onClick={() => { setTurns([]); setTelling(false); setTellAbout('') }}
               className="text-[11px] text-white/60 hover:text-white border border-white/20
                          hover:border-white/40 rounded-md px-2 py-[3px] transition">
               Start again
@@ -200,7 +203,7 @@ export default function Paco() {
                 <p className="m-0 text-[14.5px] text-ink leading-snug">{YES_TELL_ME}</p>
                 <p className="m-0 mt-1.5 text-[12.5px] text-muted leading-relaxed">{NOT_THE_LIBRARY}</p>
               </>
-            ) : t.error ? <span className="text-chase">{t.error}</span> : <Said a={t.a!} />}
+            ) : t.error ? <span className="text-chase">{t.error}</span> : <Said a={t.a!} onTell={startTelling} />}
           </Bubble>
         ))}
 
@@ -208,7 +211,7 @@ export default function Paco() {
         <div ref={endRef} />
       </div>
 
-      {telling && <Tell onDone={() => { setTelling(false); setCounts(null) }} />}
+      {telling && <Tell about={tellAbout} onDone={() => { setTelling(false); setTellAbout(''); setCounts(null) }} />}
 
       <div className="border-t border-line-soft p-2.5 bg-card">
         <div className="flex items-center gap-2 border border-card-line rounded-full px-3 py-1.5">
@@ -223,7 +226,7 @@ export default function Paco() {
         <p className="text-[10.5px] text-faint text-center mt-1.5">
           Policies &middot; what you tell me &middot; our own deals. Nothing else.
           {' '}
-          <button onClick={() => setTelling(true)} className="text-info underline">Tell me something</button>
+          <button onClick={() => startTelling('')} className="text-info underline">Tell me something</button>
         </p>
       </div>
     </div>
@@ -271,8 +274,8 @@ function Notes({ a }: { a: Answer }) {
 }
 
 // TELLING PACO SOMETHING. Anyone, any time, live the moment it is saved.
-function Tell({ onDone }: { onDone: () => void }) {
-  const [lender, setLender] = useState('')
+function Tell({ onDone, about }: { onDone: () => void; about?: string }) {
+  const [lender, setLender] = useState(about || '')
   const [said, setSaid] = useState('')
   const [tier, setTier] = useState<TypeableTier>('D')
   const [source, setSource] = useState('')
@@ -349,6 +352,44 @@ function Bubble({ children }: { children: any }) {
 //
 // A citation you cannot open is not a citation, and a paraphrase with a section
 // number beside it is the dangerous output - it reads exactly like one.
+// SOMEBODY READ IT AND IT IS WRONG.
+//
+// 13 Oct 2026. The review list is gone - a line read out of a document is in,
+// and the sentence it came from sits under every answer. That quote is the
+// check, and this is what happens when the check fails.
+//
+// It is deliberately the only correction there is, and it lives where the
+// mistake is found rather than in a queue. One click, by somebody who was
+// already reading it, with their name and the time on it. The line is never
+// deleted and never edited: it stops answering, and stays readable.
+function Wrong({ id, what }: { id: string; what: 'line' | 'note' }) {
+  const [gone, setGone] = useState(false)
+  const [busy, setBusy] = useState(false)
+  if (gone) {
+    return (
+      <div className="text-[10.5px] text-muted mt-1.5">
+        Gone, with your name and the time on it. It stays readable, it just stops answering.
+      </div>
+    )
+  }
+  return (
+    <button type="button" disabled={busy}
+      onClick={async () => {
+        setBusy(true)
+        try {
+          await fetch('/api/paco', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(what === 'line' ? { wrong: id } : { retire: id, why: 'Not right any more' }),
+          })
+          setGone(true)
+        } finally { setBusy(false) }
+      }}
+      className="text-[10.5px] text-muted underline mt-1.5 disabled:opacity-40">
+      {what === 'line' ? 'That is not what it says' : 'That is wrong now'}
+    </button>
+  )
+}
+
 function Policy({ p }: { p: PolicyAnswer | null | undefined }) {
   if (!p) return null
   if (p.policy.length === 0 && p.coming.length === 0) return null
@@ -360,15 +401,10 @@ function Policy({ p }: { p: PolicyAnswer | null | undefined }) {
         // sentence either way; what nobody has done is read it back against
         // the document. That is a fact about us, not about the rule, and it
         // belongs on the answer rather than in the way of it.
-        const checked = isChecked(r)
         return (
-          <div key={r.id}
-            className={`mb-2.5 border-l-[3px] rounded-r-[10px] px-3 py-2
-              ${checked ? 'border-info bg-info-bg' : 'border-waiting bg-waiting-bg'}`}>
-            <div className={`text-[9.5px] font-bold tracking-[.06em] uppercase mb-1
-              ${checked ? 'text-info' : 'text-waiting'}`}>
-              {r.lenderName ? `${r.lenderName} — written policy` : 'Written policy'}
-              {!checked && ' · nobody has checked this yet'}
+          <div key={r.id} className="mb-2.5 border-l-[3px] border-info bg-info-bg rounded-r-[10px] px-3 py-2">
+            <div className="text-[9.5px] font-bold tracking-[.06em] uppercase text-info mb-1">
+              {r.lenderName ? `${r.lenderName} — what the bank wrote` : 'What the bank wrote'}
             </div>
             <div className="text-[13.5px] font-semibold text-ink leading-snug">{r.says}</div>
             {src && 'quote' in src && (
@@ -395,17 +431,14 @@ function Policy({ p }: { p: PolicyAnswer | null | undefined }) {
               {citation(r, r.lenderName ? `${r.lenderName}'s policy` : 'the lender document')}
               {leansOn(r).length > 0 && ` — also read ${leansOn(r).join(', ')}`}
             </div>
+            {/* THE ONLY CORRECTION THERE IS, and it is used in anger rather
+                than in bulk. Nobody goes hunting for things to fix; you fix it
+                when you trip over it, while you are already reading the quote
+                that shows it is wrong. Your name and the time go on it. */}
+            <Wrong id={r.id} what="line" />
           </div>
         )
       })}
-
-      {p.unchecked > 0 && (
-        <p className="m-0 mb-2.5 text-[11.5px] text-muted leading-relaxed">
-          {p.unchecked === 1 ? 'One line above has' : `${p.unchecked} lines above have`} been
-          read out of the document but not checked by a person. Read the quote before you
-          rely on it, and tell us if it is wrong.
-        </p>
-      )}
 
       {/* LENDERS ANNOUNCE IN OCTOBER FOR NOVEMBER. Held, and said - "nothing
           recorded" and "one starts in three weeks" are different answers. */}
@@ -428,7 +461,7 @@ function Policy({ p }: { p: PolicyAnswer | null | undefined }) {
   )
 }
 
-function Said({ a }: { a: Answer }) {
+function Said({ a, onTell }: { a: Answer; onTell: (lender: string) => void }) {
   const total = a.lenders.reduce((t, l) => t + l.deals.length, 0)
   const names = (x: string[]) => x.map(s => s.toLowerCase()).join(', ')
 
@@ -505,12 +538,28 @@ function Said({ a }: { a: Answer }) {
               words on those tags.
             </p>
           )}
-          <div className="border border-line-soft rounded-[10px] p-2 mt-2 bg-card">
+          {/* HE ASKS. THAT IS THE WHOLE THING.
+              13 Oct 2026, Fabio: "Parco needs to be conversational. It needs
+              to be able to reply back and say, I don't have the answer. Um,
+              then maybe a box that we can tick and say, we, we do know the
+              answer and then we can add it."
+              The bank he was asked about comes back with the answer, so nobody
+              types it in twice. */}
+          <p className="text-[12.5px] text-body mt-2 leading-relaxed">
+            <b className="text-ink">Do you know?</b> Tell me and I will remember it, with your
+            name and the date on it.
+          </p>
+          <button type="button" onClick={() => onTell((a as any).askedAbout || '')}
+            className="text-[12.5px] bg-ink text-page rounded-full px-3 py-1.5 font-medium mt-2">
+            Yes, I know this one
+          </button>
+
+          <div className="border border-line-soft rounded-[10px] p-2 mt-2.5 bg-card">
             <div className="text-[9px] font-bold uppercase tracking-wider text-faint mb-1">What I can see</div>
             <Count n={a.counts.tagged} what="deals tagged" />
             <Count n={a.counts.untagged} what="deals not tagged yet" />
-            <Count n={a.counts.policies} what="lender policies loaded" />
-            <Count n={a.counts.bdmNotes} what="BDM notes" />
+            <Count n={a.counts.policies} what="lines from lender policies" />
+            <Count n={a.counts.bdmNotes} what="things the team has told me" />
           </div>
         </>
       )}
