@@ -17,8 +17,10 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import {
-  positionChanges, applyChanges, subjectToSettlementCount, REFINANCING,
+  positionChanges, applyChanges, subjectToSettlementCount,
 } from './position-after-settlement'
+
+const num = (v: any) => Number(String(v ?? '').replace(/[^0-9.]/g, '')) || 0
 
 const deal = () => ({
   id: 'd1',
@@ -56,67 +58,90 @@ const deal = () => ({
 
 const changes = () => positionChanges(deal(), deal().fact_find_data.savings)
 
-describe('what the lending options do to their position', () => {
-  it('every loan being paid out is replaced by the one replacing it', () => {
-    const rep = changes().filter(c => c.kind === 'replace')
-    expect(rep).toHaveLength(2)
-    expect(rep[0].was).toContain('Westpac')
-    expect(rep[0].now).toContain('Bankwest')
-    expect(rep[0].now).toContain('$1,313,000')
-    expect(rep[0].now).toContain('Interest only')
+// 13 OCT 2026, AN HOUR AFTER IT SHIPPED: IT READ THE LABEL.
+//
+// The first version decided whether a split paid a loan out or released equity
+// by matching /equity|release|cash out/ against its LABEL. On this very deal
+// every split is called "Investment equity loan split", so all three read as
+// equity, none as a refinance, and Fabio got a screen with three new
+// liabilities, no refinance at all, and $934,000 of savings.
+//
+// A label is free text somebody typed. The deal already holds the answer -
+// `funds` is purchase, payout or equity - and where nobody was asked, the
+// arithmetic answers: money above what is being paid out is money coming out.
+describe('every liability is listed, and what becomes of it', () => {
+  it('a loan being refinanced is shown as being paid out', () => {
+    const closed = changes().filter(c => c.kind === 'close')
+    expect(closed).toHaveLength(2)
+    expect(closed[0].was).toContain('Westpac')
+    expect(closed[0].now).toContain('paid out')
+    expect(closed[0].amount).toBe('1,313,000')
   })
 
-  it('an equity release is a new liability on the next application', () => {
-    const add = changes().find(c => c.kind === 'add')
-    expect(add).toBeTruthy()
-    expect(add!.now).toContain('$200,000')
-    expect(add!.about).toContain('16 Spring Street Paddington')
+  // Fabio: "maybe list all libiities not just the equity". A position you can
+  // only see half of is one somebody has to go and check somewhere else.
+  it('and a loan that is not changing is listed too, as unchanged', () => {
+    const d: any = deal()
+    d.fact_find_data.properties[1].loans.push({
+      id: 'l9', lenderName: 'CBA', balance: '88,000', repaymentType: 'P&I', status: 'Ongoing',
+    })
+    const kept = positionChanges(d, '45,000').filter(c => c.kind === 'keep')
+    expect(kept).toHaveLength(1)
+    expect(kept[0].was).toContain('CBA')
+    expect(kept[0].now).toBe('unchanged')
+    // Nothing to decide about it, so nothing to tick and nothing to edit.
+    expect(kept[0].editable).toBe(false)
   })
 
-  // THE LOANS DO NOT EXIST YET. Whoever writes the second application has to
-  // see that, and so does the lender reading it.
-  it('and everything the other deal has to settle first says so', () => {
-    for (const c of changes().filter(c => c.kind !== 'funds')) {
+  it('every split becomes a loan they will owe', () => {
+    const added = changes().filter(c => c.kind === 'add')
+    expect(added).toHaveLength(3)
+    expect(added.map(a => a.amount)).toEqual(['1,313,000', '447,000', '200,000'])
+    expect(added[0].now).toContain('Bankwest')
+  })
+
+  it('named against the house it sits on', () => {
+    const added = changes().filter(c => c.kind === 'add')
+    expect(added[0].about).toBe('16 Spring Street Paddington')
+    expect(added[1].about).toBe('7/22-26 Russell Street Hawks Nest')
+  })
+
+  // THE LOANS DO NOT EXIST YET.
+  it('and everything new says it waits on settlement', () => {
+    for (const c of changes().filter(c => c.kind === 'add')) {
       expect(c.subjectToSettlement, `${c.about} does not say it waits on settlement`).toBe(true)
     }
   })
 
-  it('a loan nobody marked as being refinanced is left alone', () => {
-    const d: any = deal()
-    d.fact_find_data.properties[1].loans[0].status = 'Ongoing'
-    expect(positionChanges(d, '45,000').filter(c => c.kind === 'replace')).toHaveLength(1)
-  })
-
-  // Where the BC never said which house a split sits against there is nothing
-  // to match a loan to, and guessing which figure pays out which debt is not a
-  // guess worth making.
-  it('and so is one whose split names no property', () => {
-    const d: any = deal()
-    d.bc_data.splits = d.bc_data.splits.map((s: any) => ({ ...s, securityId: '' }))
-    expect(positionChanges(d, '45,000').filter(c => c.kind === 'replace')).toHaveLength(0)
+  // Fabio: "we can only tick and untick so I want to edit the figures".
+  it('the new figures can be changed on the screen', () => {
+    for (const c of changes().filter(c => c.kind === 'add')) expect(c.editable).toBe(true)
+    expect(changes().find(c => c.kind === 'funds')!.editable).toBe(true)
   })
 })
 
-describe('the cash out is offered, never assumed', () => {
-  it('it is its own line, with what they would hold', () => {
-    const f = changes().find(c => c.kind === 'funds')
-    expect(f!.was).toBe('$45,000')
-    expect(f!.now).toBe('$245,000')
-  })
-
-  // Released equity is deposit money on some files and stays in the loan on
-  // others. Only a person knows which, so the two are separate answers.
-  it('and leaving it out does not touch the liability it came from', () => {
-    const chosen = changes().filter(c => c.kind !== 'funds')
-    const ff = applyChanges(deal().fact_find_data, chosen, 'Veljovic_Refinance_2026')
-    expect(ff.savings).toBe('45,000')
-    expect(subjectToSettlementCount(ff)).toBe(3)
-  })
-
-  it('no cash out, no line', () => {
+describe('what the money does is asked of the deal, never read off the name', () => {
+  // THE EXACT FAULT. Every split on this deal is called "Investment equity loan
+  // split" and only one of them is equity.
+  it('a label saying equity on every split does not make them all equity', () => {
     const d: any = deal()
-    d.bc_data.splits = d.bc_data.splits.filter((s: any) => !/equity/i.test(s.label))
-    d.lo_data.lenders[0].lenderSplits = d.lo_data.lenders[0].lenderSplits.filter((s: any) => !/equity/i.test(s.label))
+    d.bc_data.splits = d.bc_data.splits.map((x: any) => ({ ...x, label: 'Investment equity loan split' }))
+    const f = positionChanges(d, '45,000').find(c => c.kind === 'funds')
+    // $1,960,000 of new lending against $1,760,000 being paid out.
+    expect(f!.amount).toBe('245,000')
+  })
+
+  it('and where somebody answered what the money does, that answer is used', () => {
+    const d: any = deal()
+    d.bc_data.splits = d.bc_data.splits.map((x: any, i: number) =>
+      ({ ...x, label: 'Loan', funds: i === 2 ? 'equity' : 'payout' }))
+    expect(positionChanges(d, '45,000').find(c => c.kind === 'funds')!.amount).toBe('245,000')
+  })
+
+  it('no money coming out, no savings line', () => {
+    const d: any = deal()
+    d.bc_data.splits = d.bc_data.splits.filter((x: any) => num(x.amount) !== 200000)
+    d.lo_data.lenders[0].lenderSplits = d.lo_data.lenders[0].lenderSplits.slice(0, 2)
     expect(positionChanges(d, '45,000').some(c => c.kind === 'funds')).toBe(false)
   })
 })
@@ -124,44 +149,47 @@ describe('the cash out is offered, never assumed', () => {
 describe('applying only what was ticked', () => {
   const ff = () => applyChanges(deal().fact_find_data, changes(), 'Veljovic_Refinance_2026')
 
-  it('the old loan becomes the new one', () => {
-    const l = ff().properties[0].loans[0]
-    expect(l.lenderName).toBe('Bankwest')
-    expect(l.balance).toBe('1,313,000')
-    expect(l.interestRate).toBe('6.04')
-    expect(l.repaymentType).toBe('Interest only')
+  // Leaving it beside the loan that replaces it would double their liabilities
+  // on the next application.
+  it('a loan being paid out is gone', () => {
+    const loans = ff().properties[0].loans
+    expect(loans.some((l: any) => l.lenderName === 'Westpac')).toBe(false)
   })
 
-  // On the NEW deal it is simply a loan they have. Left as "To be refinanced"
-  // the next borrowing capacity would think it is paying these out again.
-  it('and stops being marked as one being refinanced', () => {
-    expect(ff().properties[0].loans[0].status).toBe('Ongoing')
-    expect(REFINANCING).toContain('To be refinanced')
-  })
-
-  it('the equity release arrives as a loan of its own', () => {
+  it('and the new ones are there, stamped with the deal they wait on', () => {
     const loans = ff().properties[0].loans
     expect(loans).toHaveLength(2)
-    expect(loans[1].balance).toBe('200,000')
+    expect(loans[0].lenderName).toBe('Bankwest')
+    expect(loans[0].subjectToSettlementOf).toBe('Veljovic_Refinance_2026')
+    expect(subjectToSettlementCount(ff())).toBe(3)
   })
 
-  it('every one of them is stamped with the deal it waits on', () => {
-    expect(subjectToSettlementCount(ff())).toBe(3)
-    expect(ff().properties[0].loans[0].subjectToSettlementOf).toBe('Veljovic_Refinance_2026')
+  it('an edited figure is what lands', () => {
+    const edited = changes().map(c => c.kind === 'add' && c.amount === '447,000' ? { ...c, amount: '500,000' } : c)
+    const after = applyChanges(deal().fact_find_data, edited, 'X')
+    const loans = after.properties[1].loans
+    expect(loans[loans.length - 1].balance).toBe('500,000')
+  })
+
+  it('the savings follow the cash out', () => {
+    expect(ff().savings).toBe('245,000')
+  })
+
+  it('and leaving the savings line out keeps what they had', () => {
+    const without = changes().filter(c => c.kind !== 'funds')
+    expect(applyChanges(deal().fact_find_data, without, 'X').savings).toBe('45,000')
   })
 
   it('ticking nothing changes nothing', () => {
-    const before = deal().fact_find_data
-    const after = applyChanges(before, [], 'X')
+    const after = applyChanges(deal().fact_find_data, [], 'X')
     expect(after.savings).toBe('45,000')
     expect(subjectToSettlementCount(after)).toBe(0)
     expect(after.properties[0].loans[0].lenderName).toBe('Westpac')
   })
 
   it('and what it is not asked about is untouched', () => {
-    const after = ff()
-    expect(after.properties[1].address).toBe('7/22-26 Russell Street Hawks Nest')
-    expect(after.properties[0].value).toBe('2200000')
+    expect(ff().properties[1].address).toBe('7/22-26 Russell Street Hawks Nest')
+    expect(ff().properties[0].value).toBe('2200000')
   })
 })
 
@@ -194,7 +222,8 @@ describe('what is on the screen before anything is created', () => {
 
   it('the proposal is worked out and shown, not applied', () => {
     expect(page).toContain('positionChanges(full')
-    expect(page).toContain('setProposed({ changes, chosen:')
+    expect(page).toContain('setProposed({')
+    expect(page).toContain("c.kind !== 'keep'")
   })
 
   // Everything starts ticked because on a normal file every line is true.

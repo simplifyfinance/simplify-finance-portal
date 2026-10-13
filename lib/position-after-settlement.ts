@@ -34,37 +34,60 @@ const money = (n: number): string => n > 0 ? n.toLocaleString('en-AU') : ''
 // Same two words lib/funds-to-complete.ts has always used.
 export const REFINANCING = ['To be refinanced', 'To be consolidated']
 
-export type ChangeKind = 'replace' | 'add' | 'funds'
+export type ChangeKind = 'close' | 'add' | 'keep' | 'funds'
 
 export type PositionChange = {
   id: string
   kind: ChangeKind
-  /** The property or account it is about, for the heading. */
+  /** The property it is against, for the heading. */
   about: string
-  /** How it reads today. Empty on something being added. */
+  /** What it is today. Empty on a loan that does not exist yet. */
   was: string
-  /** How it will read. */
+  /** What it becomes. Empty on one that is being paid out and gone. */
   now: string
+  /** The figure, on its own, so it can be edited without parsing a sentence. */
+  amount: string
+  /** Can the figure be changed on the screen. */
+  editable: boolean
   /** Does not exist until the other deal completes. */
   subjectToSettlement: boolean
-  /** Enough to apply it without working any of it out twice. */
   apply: {
     propertyId?: string
     loanId?: string
     lenderName?: string
-    limitAmount?: string
-    balance?: string
     interestRate?: string
     repaymentType?: string
-    savings?: string
+    savings?: boolean
   }
 }
 
+// WHAT A SPLIT'S MONEY DOES - ASKED OF THE DEAL, NOT GUESSED FROM ITS NAME.
+//
+// 13 Oct 2026, and this is the fault Fabio found within an hour of it shipping.
+// The first version decided whether a split was paying a loan out or releasing
+// equity by matching /equity|release|cash out/ against its LABEL. On the
+// Veljovic deal every split is labelled "Investment equity loan split", so all
+// three read as equity, none as a refinance, and the screen showed him three
+// new liabilities, no refinance at all, and $934,000 of savings.
+//
+// A label is free text somebody typed. The deal already holds the answer -
+// `funds` is purchase, payout or equity, asked on the split itself - so that is
+// what is read. Where nobody was asked, the arithmetic answers instead: money
+// above what is being paid out is money coming out. Never the name.
+const equityOf = (splits: any[], payingOut: number): number => {
+  const answered = splits.filter(s => txt(s.funds) === 'equity')
+  if (answered.length > 0) return answered.reduce((t, s) => t + num(s.amount), 0)
+  const lending = splits.reduce((t, s) => t + num(s.amount), 0)
+  return Math.max(0, lending - payingOut)
+}
+
 /**
- * What this deal's lending options do to these clients' position.
+ * What this deal does to these clients' position, as a list of lines.
  *
- * Nothing is decided here. Every line comes back unticked or ticked by the
- * caller, and applyChanges only touches what it is handed.
+ * EVERY LIABILITY IS LISTED, not only the ones that change. Fabio: "maybe list
+ * all libiities not just the equity". A position you can only see half of is
+ * one somebody has to go and check somewhere else, which is the whole thing
+ * this screen exists to avoid.
  */
 export function positionChanges(deal: any, savingsNow: string): PositionChange[] {
   const out: PositionChange[] = []
@@ -72,77 +95,69 @@ export function positionChanges(deal: any, savingsNow: string): PositionChange[]
   const splits = splitsOf(deal)
   const secs = securitiesOf(deal?.bc_data, deal?.fact_find_data)
   const props: any[] = deal?.fact_find_data?.properties || []
+  const addressOf = (id: any) =>
+    txt(props.find(p => txt(p?.id) === txt(id))?.address) || txt(secs.find(x => x.id === txt(id))?.address) || 'a property'
 
-  // 1. EVERY LOAN BEING PAID OUT IS REPLACED BY WHAT REPLACES IT.
+  let payingOut = 0
+
+  // 1. EVERY LIABILITY THEY HAVE, AND WHAT BECOMES OF IT.
   for (const p of props) {
     for (const l of p?.loans || []) {
-      if (!REFINANCING.includes(txt(l?.status))) continue
-      const mine = splits.filter(s => txt(s.securityId) === txt(p?.id))
-      // The split that is paying this loan out: the one against this house that
-      // is not an equity release. Where the BC did not say which house a split
-      // is against there is nothing to match on, and nothing is proposed -
-      // better than guessing which loan a figure belongs to.
-      const payout = mine.find(s => !/equity|release|cash\s*out/i.test(txt(s.label)))
-      if (!payout) continue
+      const going = REFINANCING.includes(txt(l?.status))
+      const reads = [txt(l.lenderName), num(l.balance) > 0 && `$${money(num(l.balance))}`,
+                     txt(l.repaymentType), txt(l.interestRate) && `${txt(l.interestRate)}%`]
+                     .filter(Boolean).join(' · ')
+      if (going) payingOut += num(l.balance)
       out.push({
-        id: `replace:${txt(p.id)}:${txt(l.id)}`,
-        kind: 'replace',
+        id: `${going ? 'close' : 'keep'}:${txt(p.id)}:${txt(l.id)}`,
+        kind: going ? 'close' : 'keep',
         about: txt(p.address) || 'a property',
-        was: [txt(l.lenderName), money(num(l.balance)) && `$${money(num(l.balance))}`,
-              txt(l.repaymentType), txt(l.interestRate) && `${txt(l.interestRate)}%`]
-              .filter(Boolean).join(' · '),
-        now: [lender, `$${money(num(payout.amount))}`, txt(payout.repaymentType),
-              txt(payout.rate) && `${txt(payout.rate)}%`].filter(Boolean).join(' · '),
-        subjectToSettlement: true,
-        apply: {
-          propertyId: txt(p.id), loanId: txt(l.id), lenderName: lender,
-          limitAmount: money(num(payout.amount)), balance: money(num(payout.amount)),
-          interestRate: txt(payout.rate), repaymentType: txt(payout.repaymentType),
-        },
+        was: reads,
+        now: going ? `paid out by the ${lender} lending` : 'unchanged',
+        amount: money(num(l.balance)),
+        // A loan being paid out has no figure left to argue about, and one that
+        // is not changing is not this screen's business to change.
+        editable: false,
+        subjectToSettlement: false,
+        apply: { propertyId: txt(p.id), loanId: txt(l.id) },
       })
     }
   }
 
-  // 2. ANYTHING NEW THEY ARE BORROWING. An equity release is a liability on the
-  //    second application whether or not the money has been spent.
-  for (const s of splits) {
-    if (!/equity|release|cash\s*out/i.test(txt(s.label))) continue
-    const house = secs.find(x => x.id === txt(s.securityId))
+  // 2. WHAT THEY WILL OWE INSTEAD. Every split on the deal becomes a loan.
+  for (const sp of splits) {
+    if (num(sp.amount) <= 0) continue
     out.push({
-      id: `add:${txt(s.id)}`,
+      id: `add:${txt(sp.id)}`,
       kind: 'add',
-      about: house?.address ? `${txt(s.label)} — ${house.address}` : txt(s.label),
+      about: txt(sp.securityId) ? addressOf(sp.securityId) : txt(sp.label) || 'the new lending',
       was: '',
-      now: [lender, `$${money(num(s.amount))}`, txt(s.repaymentType),
-            txt(s.rate) && `${txt(s.rate)}%`].filter(Boolean).join(' · '),
+      now: [lender, txt(sp.repaymentType), txt(sp.rate) && `${txt(sp.rate)}%`].filter(Boolean).join(' · '),
+      amount: money(num(sp.amount)),
+      editable: true,
       subjectToSettlement: true,
       apply: {
-        propertyId: txt(s.securityId) || undefined, lenderName: lender,
-        limitAmount: money(num(s.amount)), balance: money(num(s.amount)),
-        interestRate: txt(s.rate), repaymentType: txt(s.repaymentType),
+        propertyId: txt(sp.securityId) || undefined, lenderName: lender,
+        interestRate: txt(sp.rate), repaymentType: txt(sp.repaymentType),
       },
     })
   }
 
-  // 3. WHAT THE CASH OUT LEAVES THEM HOLDING.
-  //
-  // Offered, never assumed. Released equity is money towards the next deposit
-  // on some files and stays inside the loan on others, and only a person knows
-  // which. Untick it and the liability above still carries - the two are
-  // separate answers to separate questions.
-  const released = splits
-    .filter(s => /equity|release|cash\s*out/i.test(txt(s.label)))
-    .reduce((t, s) => t + num(s.amount), 0)
+  // 3. WHAT THE CASH OUT LEAVES THEM HOLDING. Offered, never assumed - released
+  //    equity is deposit money on some files and stays in the loan on others.
+  const released = equityOf(splits, payingOut)
   if (released > 0) {
     const before = num(savingsNow)
     out.push({
       id: 'funds:savings',
       kind: 'funds',
       about: 'Savings',
-      was: before > 0 ? `$${money(before)}` : '$0',
-      now: `$${money(before + released)}`,
+      was: `$${money(before) || '0'}`,
+      now: 'after the equity released',
+      amount: money(before + released),
+      editable: true,
       subjectToSettlement: false,
-      apply: { savings: money(before + released) },
+      apply: { savings: true },
     })
   }
 
@@ -150,7 +165,7 @@ export function positionChanges(deal: any, savingsNow: string): PositionChange[]
 }
 
 /**
- * The new deal's fact find with the ticked changes applied.
+ * The new deal's fact find with the chosen lines applied.
  *
  * Takes a fact find and gives back a fact find. It has no idea what a deal is,
  * cannot reach a database, and cannot touch a client record - which is the
@@ -158,34 +173,24 @@ export function positionChanges(deal: any, savingsNow: string): PositionChange[]
  */
 export function applyChanges(factFind: any, changes: PositionChange[], sourceDealName: string): any {
   const ff = factFind && typeof factFind === 'object' ? factFind : {}
-  let props: any[] = Array.isArray(ff.properties) ? ff.properties.map((p: any) => ({ ...p, loans: [...(p?.loans || [])] })) : []
+  let props: any[] = Array.isArray(ff.properties)
+    ? ff.properties.map((p: any) => ({ ...p, loans: [...(p?.loans || [])] }))
+    : []
   let savings = ff.savings
 
+  // A loan being paid out goes. Leaving it beside the loan that replaces it
+  // would double their liabilities on the next application.
+  const closing = new Set(changes.filter(c => c.kind === 'close').map(c => txt(c.apply.loanId)))
+  props = props.map(p => ({ ...p, loans: (p.loans || []).filter((l: any) => !closing.has(txt(l.id))) }))
+
   for (const c of changes) {
-    if (c.kind === 'replace') {
-      props = props.map(p => txt(p.id) !== txt(c.apply.propertyId) ? p : {
-        ...p,
-        loans: (p.loans || []).map((l: any) => txt(l.id) !== txt(c.apply.loanId) ? l : {
-          ...l,
-          lenderName: c.apply.lenderName ?? l.lenderName,
-          limitAmount: c.apply.limitAmount ?? l.limitAmount,
-          balance: c.apply.balance ?? l.balance,
-          interestRate: c.apply.interestRate || l.interestRate,
-          repaymentType: c.apply.repaymentType || l.repaymentType,
-          // IT IS NOT BEING REFINANCED ANY MORE - on the new deal it is just a
-          // loan they have. Leaving the old status would have the next
-          // borrowing capacity think it is paying these out again.
-          status: 'Ongoing',
-          subjectToSettlementOf: sourceDealName,
-        }),
-      })
-    }
     if (c.kind === 'add') {
       const at = props.findIndex(p => txt(p.id) === txt(c.apply.propertyId))
       const loan = {
         id: `after-${c.id}`,
-        lenderName: c.apply.lenderName || '', limitAmount: c.apply.limitAmount || '',
-        balance: c.apply.balance || '', interestRate: c.apply.interestRate || '',
+        lenderName: c.apply.lenderName || '',
+        limitAmount: c.amount, balance: c.amount,
+        interestRate: c.apply.interestRate || '',
         repaymentType: c.apply.repaymentType || 'Interest only',
         repaymentFrequency: 'Monthly', rateType: 'Variable',
         remainingLoanTermYears: '30', status: 'Ongoing', ownership: {},
@@ -193,7 +198,7 @@ export function applyChanges(factFind: any, changes: PositionChange[], sourceDea
       }
       if (at >= 0) props[at] = { ...props[at], loans: [...(props[at].loans || []), loan] }
     }
-    if (c.kind === 'funds' && c.apply.savings !== undefined) savings = c.apply.savings
+    if (c.kind === 'funds' && c.apply.savings) savings = c.amount
   }
 
   const next: any = { ...ff, properties: props }

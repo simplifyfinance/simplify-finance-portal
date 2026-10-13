@@ -107,7 +107,15 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
       // Everything is ticked to begin with, because on a normal file every one
       // of them is true. Untick is the exception, which is why it is a tick and
       // not a question.
-      setProposed({ changes, chosen: new Set(changes.map(c => c.id)), full })
+      // Everything that IS a choice starts ticked, because on a normal file
+      // every one of them is true. A loan that is not changing is not a choice
+      // and is never in the set - it is listed so the position reads in one
+      // place, and applyChanges would do nothing with it anyway.
+      setProposed({
+        changes,
+        chosen: new Set(changes.filter(c => c.kind !== 'keep').map(c => c.id)),
+        full,
+      })
       return
     }
     if (!confirm(cloneAsks(dealData.deal_name, kind))) return
@@ -376,40 +384,75 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
                       refinanced and there is no equity release. Their fact find carries across as it is.
                     </p>
                   )}
-                  {proposed.changes.map(c => (
-                    <label key={c.id} className="flex items-start gap-3 py-3 border-t border-line-soft first:border-t-0 cursor-pointer">
-                      <input type="checkbox" checked={proposed.chosen.has(c.id)}
-                        onChange={() => setProposed(p => {
-                          if (!p) return p
-                          const next = new Set(p.chosen)
-                          if (next.has(c.id)) next.delete(c.id); else next.add(c.id)
-                          return { ...p, chosen: next }
-                        })}
-                        className="mt-[3px] w-4 h-4 accent-brand-ink shrink-0" />
-                      <span className="min-w-0 flex-1">
-                        <b className="block text-[12.5px] font-semibold text-ink mb-[3px]">{c.about}</b>
-                        <span className="flex items-center gap-2 flex-wrap text-[12.5px] text-body">
-                          {c.was && <><span className="text-faint line-through">{c.was}</span>
-                            <span className="text-faint">&rarr;</span></>}
-                          <span className="font-semibold">{c.now}</span>
-                          {c.kind === 'add' && (
-                            <span className="text-[10px] font-bold rounded px-[7px] py-[2px] bg-done-bg text-done border border-done-edge">
-                              new liability</span>
-                          )}
-                          {c.subjectToSettlement && (
-                            <span className="text-[10px] font-bold rounded px-[7px] py-[2px] bg-waiting-bg text-waiting border border-waiting-edge">
-                              subject to settlement</span>
-                          )}
-                        </span>
-                        {c.kind === 'funds' && (
-                          <span className="block text-[11px] text-muted mt-1 leading-relaxed">
-                            The released equity is counted as money they can put towards the next deal.
-                            Untick it if it is staying in the loan.
-                          </span>
-                        )}
-                      </span>
-                    </label>
-                  ))}
+                  {(['close', 'add', 'funds', 'keep'] as const).map(group => {
+                    const rows = proposed.changes.filter(c => c.kind === group)
+                    if (rows.length === 0) return null
+                    const heading = group === 'close' ? 'Paid out by this deal'
+                      : group === 'add' ? 'What they will owe instead'
+                      : group === 'funds' ? 'Funds'
+                      : 'Not changing'
+                    return (
+                      <div key={group} className="mb-3">
+                        <div className="text-[10px] font-bold tracking-[.07em] uppercase text-muted mb-1 mt-2">{heading}</div>
+                        {rows.map(c => (
+                          <div key={c.id} className="flex items-start gap-3 py-2.5 border-t border-line-soft first:border-t-0">
+                            {/* A LOAN THAT IS NOT CHANGING IS NOT A CHOICE. It is
+                                listed so the position can be read in one place -
+                                Fabio: "maybe list all libiities not just the
+                                equity" - and there is nothing to tick. */}
+                            {c.kind === 'keep' ? <span className="w-4 shrink-0" /> : (
+                              <input type="checkbox" checked={proposed.chosen.has(c.id)}
+                                onChange={() => setProposed(p => {
+                                  if (!p) return p
+                                  const next = new Set(p.chosen)
+                                  if (next.has(c.id)) next.delete(c.id); else next.add(c.id)
+                                  return { ...p, chosen: next }
+                                })}
+                                className="mt-[3px] w-4 h-4 accent-brand-ink shrink-0" />
+                            )}
+                            <span className={`min-w-0 flex-1 ${c.kind === 'keep' ? 'opacity-60' : ''}`}>
+                              <b className="block text-[12.5px] font-semibold text-ink mb-[3px]">{c.about}</b>
+                              <span className="flex items-center gap-2 flex-wrap text-[12.5px] text-body">
+                                {c.was && <span className={c.kind === 'close' ? 'text-faint line-through' : ''}>{c.was}</span>}
+                                {c.was && c.now && <span className="text-faint">&rarr;</span>}
+                                {c.now && <span className={c.kind === 'close' ? 'text-muted' : 'font-semibold'}>{c.now}</span>}
+                                {c.subjectToSettlement && (
+                                  <span className="text-[10px] font-bold rounded px-[7px] py-[2px] bg-waiting-bg text-waiting border border-waiting-edge">
+                                    subject to settlement</span>
+                                )}
+                              </span>
+                              {c.kind === 'funds' && (
+                                <span className="block text-[11px] text-muted mt-1 leading-relaxed">
+                                  The released equity is counted as money they can put towards the next deal.
+                                  Untick it if it is staying in the loan.
+                                </span>
+                              )}
+                            </span>
+                            {/* THE FIGURE, ON ITS OWN AND CHANGEABLE. Fabio: "we
+                                can only tick and untick so I want to edit the
+                                figures". A lender's offer moves between the
+                                lending options and the second application, and
+                                retyping it on the new deal afterwards is the
+                                step this screen exists to remove. */}
+                            {c.editable ? (
+                              <span className="flex items-center gap-1 shrink-0">
+                                <span className="text-[12.5px] text-faint">$</span>
+                                <input value={c.amount}
+                                  onChange={e => setProposed(p => p && ({
+                                    ...p,
+                                    changes: p.changes.map(x => x.id === c.id ? { ...x, amount: e.target.value } : x),
+                                  }))}
+                                  className="text-[12.5px] font-semibold text-right border border-line rounded-lg px-2 py-[4px] w-[110px] bg-card" />
+                              </span>
+                            ) : (
+                              <span className="text-[12.5px] font-semibold text-ink shrink-0 w-[118px] text-right">
+                                {c.amount ? `$${c.amount}` : ''}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })}
                 </div>
 
                 <div className="flex items-center gap-2 px-6 py-3.5 bg-page border-t border-line-soft">
