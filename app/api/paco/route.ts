@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { answer, HOLA } from '@/lib/paco'
+import { answer, HOLA, lenderAsked } from '@/lib/paco'
 import { realDealsOnly } from '@/lib/test-deal'
 import { isUsable, type Claim } from '@/lib/paco-knowledge'
+import { answerFrom } from '@/lib/paco-answers-from-policy'
+import { type PolicyRule } from '@/lib/policy-rules'
+import { flat } from '@/lib/plain-words'
 
 // WHAT PACO IS ALLOWED TO LOOK AT.
 //
@@ -52,13 +55,81 @@ export async function GET(req: NextRequest) {
   // A test deal is not the business. lib/test-deal.ts.
   const deals = realDealsOnly((data || []) as any[])
   const notes = await readNotes(supabase)
+  // THE LENDERS' OWN WRITTEN POLICY. Read beside the notes, never instead of
+  // them - see lib/paco-answers-from-policy.ts for why both are shown.
+  const policy = await readPolicy(supabase)
 
   if (!question) {
     const a = answer('', deals, { bdmNotes: notes.length }, notes)
-    return NextResponse.json({ hola: HOLA, counts: a.counts, tellable: notes !== null })
+    return NextResponse.json({
+      hola: HOLA,
+      counts: { ...a.counts, policy: policy.length },
+      tellable: notes !== null,
+    })
   }
 
-  return NextResponse.json({ question, ...answer(question, deals, { bdmNotes: notes.length }, notes) })
+  const said = answer(question, deals, { bdmNotes: notes.length }, notes)
+  // WHAT THE LENDER WROTE DOWN, FOR THIS QUESTION.
+  //
+  // Filtered the same way the notes are - by the lender named in the question
+  // and by the subjects it is about - so Paco cannot answer a Macquarie
+  // question with a Bankwest rule. The ordering, the held future rules and the
+  // "shown alongside, never instead" are all in answerFrom.
+  // The same two things the deals were filtered by: the lender the question
+  // named, and what it is about. Read off the question, not off the answer.
+  const mine = forThisQuestion(
+    policy,
+    lenderAsked(question, policy.map(r => String((r as any).lenderName || '')).filter(Boolean)),
+    said.asked,
+  )
+  const fromPolicy = answerFrom(mine, said.notes || [], new Date().toISOString().slice(0, 10))
+  return NextResponse.json({ question, ...said, policy: fromPolicy })
+}
+
+// WHAT THE LENDERS THEMSELVES HAVE WRITTEN DOWN.
+//
+// Only what somebody has ticked - status 'live'. A rule read out of a document
+// and not yet checked has never been seen by a person, and the one thing Paco
+// may not do is repeat a machine's reading of a credit manual as though it were
+// the bank's policy. See docs/paco-policy-tables-all.sql.
+//
+// A missing table is a thing nobody has set up yet, not a fault. Same as the
+// notebook above: he answers from what he does have.
+async function readPolicy(supabase: any): Promise<PolicyRule[]> {
+  const { data, error } = await supabase.from('lender_policy_rules')
+    .select('id, lender_id, document_id, says, quote, section, heading, tags, tier, status, effective_from, effective_to, row_headers, row_cells, depends_on, excludes, max_lvr, lenders(name)')
+    .eq('status', 'live')
+    .limit(5000)
+  if (error || !data) return []
+  return (data as any[]).map(r => ({
+    id: String(r.id), documentId: String(r.document_id || ''), lenderId: String(r.lender_id || ''),
+    says: String(r.says || ''), quote: String(r.quote || ''),
+    rowHeaders: Array.isArray(r.row_headers) ? r.row_headers.map(String) : [],
+    rowCells: Array.isArray(r.row_cells) ? r.row_cells.map(String) : [],
+    section: String(r.section || ''), heading: String(r.heading || ''),
+    tags: Array.isArray(r.tags) ? r.tags.map(String) : [],
+    tier: String(r.tier || 'A'),
+    dependsOn: Array.isArray(r.depends_on) ? r.depends_on.map(String) : [],
+    excludes: Array.isArray(r.excludes) ? r.excludes.map(String) : [],
+    maxLvr: r.max_lvr === null || r.max_lvr === undefined ? null : Number(r.max_lvr),
+    minValue: null, maxValue: null,
+    effectiveFrom: r.effective_from || null, effectiveTo: r.effective_to || null,
+    status: 'live' as const,
+    decidedByName: '', decidedAt: null, rejectedWhy: '',
+    // The bank's name, for saying whose policy this is.
+    lenderName: String((r as any)?.lenders?.name || ''),
+  })) as any
+}
+
+// THE SAME TWO FILTERS THE NOTES GET: the lender the question named, and what
+// it is about. A Macquarie question answered with a Bankwest rule would be
+// worse than no answer, because it would look like one.
+function forThisQuestion(rules: PolicyRule[], lender: string, tags: string[]): PolicyRule[] {
+  const named = flat(lender)
+  const want = (Array.isArray(tags) ? tags : []).filter(Boolean)
+  return rules
+    .filter(r => !named || flat((r as any).lenderName) === named)
+    .filter(r => want.length === 0 || (r.tags || []).some(t => want.includes(t)))
 }
 
 // THE NOTEBOOK, OR AN EMPTY ONE.

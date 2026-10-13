@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { tierLabel, isOfficial, attribution, caveatFor, TYPEABLE_TIERS, type TypeableTier } from '@/lib/paco-knowledge'
 import { HOLA, type Answer } from '@/lib/paco'
+import { sourceOf, NOTE_BESIDE_POLICY, type Answer as PolicyAnswer } from '@/lib/paco-answers-from-policy'
+import { citation, leansOn } from '@/lib/policy-rules'
 
 // PACO, IN THE BOTTOM RIGHT OF EVERY PAGE.
 //
@@ -314,12 +316,85 @@ function Bubble({ children }: { children: any }) {
 //
 // There is no branch here that writes a claim about a lender. Every string is
 // either a field off a deal or one of Paco's own lines from lib/paco.ts.
+// THE LENDER'S OWN POLICY, SAID FIRST AND QUOTED.
+//
+// 13 Oct 2026. It outranks our deals and our notes - blueprint section 2 - so
+// it is at the top. And it is QUOTED, not described: the sentence or the table
+// row it came out of, with the section, so the person asking can open the
+// manual at that section and read it themselves.
+//
+// A citation you cannot open is not a citation, and a paraphrase with a section
+// number beside it is the dangerous output - it reads exactly like one.
+function Policy({ p }: { p: PolicyAnswer | null | undefined }) {
+  if (!p) return null
+  if (p.policy.length === 0 && p.coming.length === 0) return null
+  return (
+    <div className="mb-3">
+      {p.policy.map((r: any) => {
+        const src = sourceOf(r)
+        return (
+          <div key={r.id} className="mb-2.5 border-l-[3px] border-info bg-info-bg rounded-r-[10px] px-3 py-2">
+            <div className="text-[9.5px] font-bold tracking-[.06em] uppercase text-info mb-1">
+              {r.lenderName ? `${r.lenderName} — written policy` : 'Written policy'}
+            </div>
+            <div className="text-[13.5px] font-semibold text-ink leading-snug">{r.says}</div>
+            {src && 'quote' in src && (
+              <div className="text-[13px] text-body leading-[1.55] mt-1.5">&ldquo;{src.quote}&rdquo;</div>
+            )}
+            {src && 'cells' in src && (
+              <table className="text-[12.5px] text-body mt-1.5">
+                <tbody>
+                  {src.headers.map((h: string, i: number) => (
+                    <tr key={i}>
+                      <td className="pr-4 py-[1px] text-faint align-top whitespace-nowrap">{h}</td>
+                      <td className="py-[1px] align-top">{src.cells[i]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {(r.excludes || []).length > 0 && (
+              <ul className="text-[12px] text-body mt-1.5 mb-0 pl-4">
+                {r.excludes.map((x: string, i: number) => <li key={i}>not {x}</li>)}
+              </ul>
+            )}
+            <div className="text-[10.5px] text-faint mt-1.5">
+              {citation(r, r.lenderName ? `${r.lenderName}'s policy` : 'the lender document')}
+              {leansOn(r).length > 0 && ` — also read ${leansOn(r).join(', ')}`}
+            </div>
+          </div>
+        )
+      })}
+
+      {/* LENDERS ANNOUNCE IN OCTOBER FOR NOVEMBER. Held, and said - "nothing
+          recorded" and "one starts in three weeks" are different answers. */}
+      {p.coming.map((r: any) => (
+        <div key={r.id} className="mb-2.5 border-l-[3px] border-waiting bg-waiting-bg rounded-r-[10px] px-3 py-2">
+          <div className="text-[9.5px] font-bold tracking-[.06em] uppercase text-waiting mb-1">
+            Starts {String(r.effectiveFrom || '').slice(0, 10)}
+          </div>
+          <div className="text-[13px] text-ink leading-snug">{r.says}</div>
+          <div className="text-[10.5px] text-faint mt-1">Not in force yet. Today&rsquo;s answer is above.</div>
+        </div>
+      ))}
+
+      {/* OUR OWN EXPERIENCE NEVER SILENTLY OVERWRITES THE POLICY. It is shown
+          with it and said to be ours. */}
+      {p.disagrees && (
+        <div className="text-[11.5px] text-muted mb-1.5">{NOTE_BESIDE_POLICY}</div>
+      )}
+    </div>
+  )
+}
+
 function Said({ a }: { a: Answer }) {
   const total = a.lenders.reduce((t, l) => t + l.deals.length, 0)
   const names = (x: string[]) => x.map(s => s.toLowerCase()).join(', ')
 
   return (
     <>
+      <Policy p={(a as any).policy} />
+
       {a.kind === 'found' && total === 0 && (
         <>
           {/* A NOTE IS AN ANSWER WITH NO DEAL BEHIND IT. Somebody writing down
