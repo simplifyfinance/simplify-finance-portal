@@ -46,7 +46,7 @@ import TestDealBand from '@/components/TestDealBand'
 import DealName from '@/components/DealName'
 import { splitOnCommonStart } from '@/lib/same-clients'
 import { useOtherDeals } from '@/components/useOtherDeals'
-import { CLONE_SELECT, cloneFields, cloneAsks } from '@/lib/clone-deal'
+import { CLONE_SELECT, cloneFields, cloneAsks, provenanceLine, type CloneKind } from '@/lib/clone-deal'
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
   const validStages = ['FactFind', 'Statements', 'BC', 'LO', 'Compliance']
@@ -79,17 +79,27 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   // WHAT A CLONE CARRIES IS DECIDED IN ONE FILE - lib/clone-deal.ts. This copy
   // and the board's had drifted already: this one was born in 'BC' and the
   // board's in 'FactFind', from the same button with the same name.
-  async function cloneThisDeal() {
-    if (!confirm(cloneAsks(dealData.deal_name))) return
+  // TWO ACTIONS, ONE PIECE OF MACHINERY.
+  //
+  // 'deal' is the clone that has always been here: same people, same scenario,
+  // through to the lending options, for pointing at a different bank.
+  //
+  // 'clients' is the one Fabio asked for on 13 Oct, with four refinances about
+  // to lodge and a purchase to write beside them: their circumstances come, the
+  // loan does not. See lib/clone-deal.ts for what each carries and why.
+  async function cloneThisDeal(kind: CloneKind = 'deal') {
+    if (!confirm(cloneAsks(dealData.deal_name, kind))) return
     setCloning(true)
     const { data: fullDeal } = await supabase.from('deals').select(CLONE_SELECT).eq('id', deal.id).single()
     if (!fullDeal) { alert('Could not load deal to clone'); setCloning(false); return }
 
     const namePart = dealData.deal_name.replace(/_\d{4}$/, '')
-    const newDealName = `${namePart}_${new Date().getFullYear()}_Copy`
+    const newDealName = kind === 'clients'
+      ? `${namePart}_${new Date().getFullYear()}_New`
+      : `${namePart}_${new Date().getFullYear()}_Copy`
 
     const { data: inserted, error } = await supabase.from('deals')
-      .insert([cloneFields(fullDeal, newDealName)]).select().single()
+      .insert([cloneFields(fullDeal, newDealName, kind)]).select().single()
 
     if (error || !inserted) { alert('Error cloning deal: ' + (error?.message || 'unknown error')); setCloning(false); return }
     router.push(`/deals/${inserted.id}`)
@@ -287,6 +297,31 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
               })}
             </div>
           )}
+          {/* WHERE THIS FACT FIND CAME FROM, SAID ON THE DEAL.
+              *
+              * A fact find copied from another deal is a SNAPSHOT. Update the
+              * original next week and this one will not hear about it. That is
+              * the same drift we spent two days removing, one level up - two
+              * deals rather than two tabs - and the cheap honest defence is for
+              * the deal to say so rather than for somebody to remember.
+              *
+              * AND THE LIABILITIES ARE THE CREDIT POINT. Fabio's case was a
+              * purchase written beside four refinances that had not settled, so
+              * the balances and repayments copied across are the position
+              * BEFORE they complete. That is not what a lender will assess the
+              * purchase on. Said here, with the open deals named above, rather
+              * than found out from the lender. */}
+          {provenanceLine(dealData.fact_find_data) && (
+            <div className="mt-1.5 mb-1 border-l-[3px] border-info bg-info-bg rounded-r-lg px-3.5 py-2.5
+                            text-[12.5px] text-body leading-relaxed">
+              <b className="text-ink">The fact find was copied {provenanceLine(dealData.fact_find_data)}.</b>{' '}
+              It is a copy, not a link &mdash; if that deal&apos;s fact find changes afterwards, this one will not.
+              {otherDeals.length > 0 && (
+                <> These clients have {otherDeals.length === 1 ? 'another deal' : `${otherDeals.length} other deals`} still
+                  open, so the liabilities here are the position before {otherDeals.length === 1 ? 'it settles' : 'they settle'}.</>
+              )}
+            </div>
+          )}
           {/* Client and loan type are not repeated here - the deal name already contains both. */}
           <div className="flex gap-2 items-center flex-wrap">
             {/* CHANGEABLE, like the credit officer beside it. Until 17 Sep 2026
@@ -348,9 +383,13 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
               see components/DealLinks.tsx - and these two live here. Same
               clone, same close. */}
           <DealMore>
-            <button onClick={cloneThisDeal} disabled={cloning} className="text-xs text-muted rounded-lg px-2.5 py-2 hover:bg-page transition inline-flex items-center gap-2 text-left disabled:opacity-40">
+            <button onClick={() => cloneThisDeal('deal')} disabled={cloning} className="text-xs text-muted rounded-lg px-2.5 py-2 hover:bg-page transition inline-flex items-center gap-2 text-left disabled:opacity-40">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="9" rx="1.4"/><path d="M11 5V3.4A1.4 1.4 0 0 0 9.6 2H4.4A1.4 1.4 0 0 0 3 3.4v7.2A1.4 1.4 0 0 0 4.4 12H5"/></svg>
                 {cloning ? 'Cloning...' : 'Clone'}
+              </button>
+            <button onClick={() => cloneThisDeal('clients')} disabled={cloning} className="text-xs text-muted rounded-lg px-2.5 py-2 hover:bg-page transition inline-flex items-center gap-2 text-left disabled:opacity-40">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="5.5" r="2.4"/><path d="M2.2 13.2c0-2.1 1.7-3.4 3.8-3.4s3.8 1.3 3.8 3.4"/><path d="M12 5v4M14 7h-4"/></svg>
+                {cloning ? 'Creating...' : 'New deal for these clients'}
               </button>
             <CloseDeal deal={dealData} onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
           </DealMore>

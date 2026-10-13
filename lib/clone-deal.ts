@@ -66,15 +66,43 @@
 // drift apart - the select asking for one column fewer than the insert writes
 // is how a clone quietly loses a form.
 export const CLONE_READS = [
+  // `id` and `deal_name` so a fact find can say where it came from - see
+  // withProvenance. The select asking for one column fewer than the insert
+  // writes is how a clone quietly loses a form, so they live in one list.
+  'id', 'deal_name',
   'client_id', 'deal_type', 'assigned_broker', 'assigned_credit_officer',
   'fact_find_data', 'bc_data', 'bc_scenarios', 'lo_data',
 ] as const
 
 export const CLONE_SELECT = CLONE_READS.join(', ')
 
-// The question, in one place, because it was asked in two and both copies said
-// something that stopped being true.
-export function cloneAsks(dealName: string): string {
+// TWO DIFFERENT THINGS, AND THEY WERE NEARLY ONE BUTTON.
+//
+// 13 Oct 2026. Fabio, with four refinances about to lodge and a purchase to
+// write alongside them for the same clients:
+//
+//   "when we clone that deal that is a complex refinance, it's not allowing me
+//    to do a purchase because it's cloning all the way to lending options"
+//
+// Cloning to the lending options is "another version of THIS deal" - same
+// people, same scenario, pointed at a different bank. He likes it and it stays
+// exactly as it is.
+//
+// What he needed is "another deal for THESE PEOPLE". Their circumstances are
+// the same; everything about the loan is new. That is not a copy of a deal at
+// all, which is why it gets its own name rather than a question on Clone. A
+// dialog asking "how far should this copy?" makes somebody think about our
+// tabs at the moment they are trying to do something simple.
+export type CloneKind = 'deal' | 'clients'
+
+export function cloneAsks(dealName: string, kind: CloneKind = 'deal'): string {
+  if (kind === 'clients') {
+    return `New deal for the clients on "${dealName}"?\n\n`
+         + 'Comes across: both applicants, their income, expenses, liabilities and properties.\n\n'
+         + 'Does not: the scenario, the securities, the splits, the lending options, '
+         + 'compliance, documents.\n\n'
+         + 'You start on a blank borrowing capacity and choose the scenario yourself.'
+  }
   return `Clone "${dealName}"?\n\n`
        + 'The fact find, the borrowing capacity and the lending options all come across, '
        + 'ready to be pointed at a different bank.\n\n'
@@ -82,9 +110,57 @@ export function cloneAsks(dealName: string): string {
        + 'no lender, no dates, no documents.'
 }
 
+// WHERE THIS FACT FIND CAME FROM, AND WHEN.
+//
+// It is a COPY, not a link. Update the refinance's fact find next week and this
+// one will not hear about it - the same drift we spent two days removing, one
+// level up. The expensive fix is both deals reading one client record; the
+// cheap and honest one is for the new deal to say where its figures came from
+// so nobody assumes they are live. That line is the whole defence.
+export function withProvenance(factFind: any, from: any, dealName: string, when: Date): any {
+  const ff = factFind && typeof factFind === 'object' ? factFind : {}
+  return {
+    ...ff,
+    copiedFrom: {
+      dealId: from?.id ?? null,
+      dealName: String(dealName || ''),
+      at: when.toISOString(),
+    },
+  }
+}
+
+/** "from Velimir_Veljovic_Refinance_2026, copied on 13 October 2026" */
+export function provenanceLine(factFind: any): string {
+  const c = factFind?.copiedFrom
+  if (!c?.dealName) return ''
+  const d = new Date(String(c.at || ''))
+  const when = isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+  return `from ${c.dealName}${when ? `, copied on ${when}` : ''}`
+}
+
 // What gets written. Everything not named here is left at its default on
 // purpose; see the note above for the ones that matter.
-export function cloneFields(from: any, newDealName: string): Record<string, any> {
+export function cloneFields(from: any, newDealName: string, kind: CloneKind = 'deal'): Record<string, any> {
+  // THE LOAN DOES NOT COME. Only the people and what they own.
+  //
+  // bc_data carries the scenario, the securities and the splits; lo_data
+  // carries the lenders and the pricing. A purchase written on top of a complex
+  // refinance's borrowing capacity is the fault Fabio hit - the scenario was
+  // already answered and would not let him change it.
+  if (kind === 'clients') {
+    return {
+      deal_name: newDealName,
+      client_id: from.client_id,
+      assigned_broker: from.assigned_broker,
+      assigned_credit_officer: from.assigned_credit_officer ?? null,
+      stage: 'FactFind',
+      status: 'in_progress',
+      // deal_type is left out on purpose: a refinance's type on a deal that
+      // has not chosen its scenario yet is a guess, and it is the one thing
+      // this whole action exists to let somebody answer afresh.
+      fact_find_data: withProvenance(from.fact_find_data, from, String(from.deal_name || ''), new Date()),
+    }
+  }
   return {
     deal_name: newDealName,
     client_id: from.client_id,
