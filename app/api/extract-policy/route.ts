@@ -153,9 +153,34 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Nothing could be read out of that document.' }, { status: 422 })
     }
 
+    // A REPLY THAT RAN OUT OF ROOM STILL HAS RULES IN IT.
+    //
+    // 13 Oct 2026. Macquarie's guidelines are 57,000 characters. The reader
+    // read them, started writing out the rules, and hit its own ceiling partway
+    // through the list - so the JSON came back cut off mid-object, nothing
+    // parsed, and the whole document reported zero lines. Fabio: "how do i know
+    // Macqaurie is done???" He did not, because 180 perfectly good rules were
+    // thrown away on account of the 181st being half written.
+    //
+    // So a reply that will not parse is trimmed back to its last COMPLETE
+    // object and parsed again. Nothing is repaired or guessed at - a half
+    // written rule is dropped, and every whole one before it is kept.
+    const salvage = (raw: string): any[] | null => {
+      const cut = raw.lastIndexOf('}')
+      if (cut === -1) return null
+      try { return JSON.parse(`${raw.slice(0, cut + 1)}]`) } catch { return null }
+    }
+
     let parsed: any = []
-    try { parsed = JSON.parse(text.slice(start, end + 1)) }
-    catch { return NextResponse.json({ error: 'What came back could not be read.' }, { status: 422 }) }
+    let cutShort = false
+    const whole = text.slice(start, end + 1)
+    try { parsed = JSON.parse(whole) }
+    catch {
+      const some = salvage(text.slice(start))
+      if (!some) return NextResponse.json({ error: 'What came back could not be read.' }, { status: 422 })
+      parsed = some
+      cutShort = true
+    }
 
     // THE GATE IS HERE, NOT IN THE PROMPT.
     //
@@ -163,7 +188,11 @@ export async function POST(req: Request) {
     // quote it could have copied is dropped and counted, whatever the document
     // asked for and whatever the model decided to send. See lib/policy-rules.ts.
     const { rules, dropped } = cleanProposed(parsed, documentId, lenderId)
-    return NextResponse.json({ rules, dropped, stopped: response.stop_reason })
+    // SAID OUT LOUD WHEN THERE IS MORE IN THE DOCUMENT THAN CAME BACK. The
+    // rules we have are real; they are just not all of them, and somebody
+    // deciding whether this bank is done needs to know which.
+    const ranOut = cutShort || response.stop_reason === 'max_tokens'
+    return NextResponse.json({ rules, dropped, stopped: response.stop_reason, ranOut })
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || 'That document could not be read.' }, { status: 500 })
   }

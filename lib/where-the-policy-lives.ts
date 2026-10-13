@@ -46,6 +46,16 @@ export type Source = {
   portal?: string
   /** Anything a person needs to know before trusting it. */
   note?: string
+  /**
+   * Other banks this same document covers.
+   *
+   * 13 Oct 2026. Westpac Group's credit policy is one document for Westpac,
+   * St George, Bank of Melbourne and BankSA. MyState's lending procedure
+   * covers Auswide and says so on its face. Filing it once per brand means
+   * reading the same 25 sections four times and then having four copies of
+   * the same rules to correct separately.
+   */
+  alsoCovers?: string[]
 }
 
 /** The day a person checked every link in this file. Shown wherever it is. */
@@ -70,6 +80,7 @@ export const WHERE_THE_POLICY_LIVES: Source[] = [
     what: 'Mortgage Lending Procedure, broker version. Servicing floor and buffer, income types, LVR, security and guarantors.',
     url: 'https://brokers.mystate.com.au/credit-policy/',
     dated: 'Broker version 1.0a, effective 1 July 2026',
+    alsoCovers: ['Auswide Bank'],
   },
   {
     lender: 'Auswide', access: 'public', firmness: 'policy',
@@ -142,6 +153,8 @@ export const WHERE_THE_POLICY_LIVES: Source[] = [
   },
   {
     lender: 'Westpac', access: 'public', firmness: 'guide',
+    // THE GROUP POLICY IS ONE DOCUMENT FOR FOUR BRANDS.
+    alsoCovers: ['St George', 'Bank of Melbourne', 'BankSA'],
     what: 'A "Policy made simple" summary page. LMI waivers, self employed and investor positions.',
     url: 'https://westpac.com.au/brokers/policy',
     dated: '',
@@ -253,6 +266,16 @@ export function whereFor(lenderName: any): Source | null {
     for (const other of s.also || []) if (hits(other, asked)) return s
   }
   return null
+}
+
+/**
+ * The other banks a document filed under this one also covers.
+ *
+ * Names as the register spells them; the caller matches them against the
+ * lender list it actually holds.
+ */
+export function alsoCoveredBy(lenderName: any): string[] {
+  return whereFor(lenderName)?.alsoCovers || []
 }
 
 /** One line for a tile: what is there, in as few words as it takes. */

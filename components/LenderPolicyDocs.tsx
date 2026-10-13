@@ -4,7 +4,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { citation, cleanProposed } from '@/lib/policy-rules'
 import { kindOf, tierFor } from '@/lib/dropped-files'
 import { whereIsPaco, rungTone, type Standing } from '@/lib/the-ladder'
-import { whereFor, sourceLine, REGISTER_CHECKED_ON } from '@/lib/where-the-policy-lives'
+import { whereFor, sourceLine, alsoCoveredBy, REGISTER_CHECKED_ON } from '@/lib/where-the-policy-lives'
 import { tidyLink, whyNotALink, nameFromLink, siteOf } from '@/lib/dropped-links'
 import { flat } from '@/lib/plain-words'
 
@@ -96,6 +96,10 @@ export default function LenderPolicyDocs() {
   // WHERE THE READING IS UP TO. Null when nothing is being read.
   const [step, setStep] = useState<{ i: number; of: number; name: string } | null>(null)
   const [link, setLink] = useState('')
+  // Whether a file is being dragged over the box right now.
+  const [overIt, setOverIt] = useState(false)
+  // Whether to file this under the other brands the same policy covers.
+  const [alsoAlso, setAlsoAlso] = useState(true)
 
   async function load() {
     const [a, b, c, d] = await Promise.all([
@@ -128,6 +132,12 @@ export default function LenderPolicyDocs() {
   const notesOf = (name: string) => {
     const want = flat(name)
     return want ? notes.filter(n => flat(n.lender) === want) : []
+  }
+  // The other banks on our list that a document filed here also covers.
+  const lendersCoveredWith = (l: Lender): Lender[] => {
+    const names = alsoCoveredBy(l.name).map(flat)
+    return names.length === 0 ? []
+      : lenders.filter(x => x.id !== l.id && names.includes(flat(x.name)))
   }
   const standingOf = (l: Lender): Standing =>
     whereIsPaco(docsFor(l.id), rulesOf(l.id), notesOf(l.name))
@@ -236,7 +246,9 @@ export default function LenderPolicyDocs() {
     }
 
     const prev = currentDoc(lender.id)
-    let kept = 0, left = 0, failed = 0
+    // The other banks this same document covers, as lenders we actually hold.
+    const alsoFile = alsoAlso ? lendersCoveredWith(lender) : []
+    let kept = 0, left = 0, failed = 0, ranOutOn = 0
     const whyFailed: string[] = []
 
     for (const [i, part] of parts.entries()) {
@@ -261,6 +273,37 @@ export default function LenderPolicyDocs() {
                                 tierFor(part?.insideAnEmail ? 'email' : from.kind, !!part?.insideAnEmail))
       kept += got.kept; left += got.left
       if (got.read === 0) { failed += 1; if (got.why) whyFailed.push(`${part?.name || 'it'} — ${got.why}`) }
+      if (got.ranOut) ranOutOn += 1
+
+      // ONE DOCUMENT, FOUR BANKS.
+      //
+      // 13 Oct 2026. Westpac Group's credit policy is one document covering
+      // Westpac, St George, Bank of Melbourne and BankSA. MyState's covers
+      // Auswide and says so on its face. Dropping it once per brand means
+      // reading the same 25 sections four times and then holding four copies
+      // of the same rules to correct separately.
+      //
+      // So it is read ONCE and the lines are copied across, each against its
+      // own bank with its own document row. The copies carry the same quote
+      // and the same section, because they came out of the same sentence.
+      for (const other of alsoFile) {
+        const { data: twin } = await supabase.from('lender_documents').insert({
+          lender_id: other.id,
+          title: String(part?.name || from.fileName).replace(/\.[^.]+$/, ''),
+          file_path: from.path, file_name: from.fileName, sha256: from.sha,
+          uploaded_by: from.uid, uploaded_by_name: from.byName, supersedes: null,
+        }).select().single()
+        if (!twin || got.rows.length === 0) continue
+        // CHECKED, because a silent failure here is the worst kind: the screen
+        // says St George is filed, the tile says St George is filed, and Paco
+        // has nothing for St George.
+        const { data: copied } = await supabase.from('lender_policy_rules').insert(
+          got.rows.map(r => ({ ...r, lender_id: other.id, document_id: (twin as any).id }))).select('id')
+        if (!copied || copied.length === 0) {
+          failed += 1
+          whyFailed.push(`${other.name} — the copy was refused, nothing was filed under it`)
+        }
+      }
 
       // AND LET THE LIST FILL IN AS IT GOES. One refresh per chapter costs
       // nothing beside a full read of one, and it is the difference between
@@ -273,6 +316,10 @@ export default function LenderPolicyDocs() {
       (left ? `, ${left} left out because they could not quote the document` : '') +
       (failed ? `. ${failed} could not be read: ${whyFailed.slice(0, 3).join('; ')}` : '') +
       (skipped.length ? `. ${skipped.length} file${skipped.length === 1 ? '' : 's'} were not opened: ${skipped.map((x: any) => `${x?.name} (${x?.why})`).join('; ')}` : '') +
+      // THE ANSWER TO "HOW DO I KNOW THIS BANK IS DONE". A document bigger
+      // than the reader can answer in one go is not finished, and nothing on
+      // screen said so.
+      (ranOutOn ? `. There is more in ${ranOutOn === 1 ? 'it' : `${ranOutOn} of them`} than came back — what is here is real, it is just not all of it` : '') +
       '. Check them below.')
     if (failed > 0 && kept === 0) setErr(say); else setNote(say)
     setOpen(lender.id)
@@ -298,18 +345,18 @@ export default function LenderPolicyDocs() {
     // Every failure - a document too big to post, a website refusing us, a key
     // missing - arrived on screen as "0 lines" with no reason, and Fabio spent
     // an afternoon re-pressing buttons that were never going to work.
-    if (!res.ok) return { read: 0, kept: 0, left: 0, why: String(j?.error || `the reader answered ${res.status}`) }
+    if (!res.ok) return { read: 0, kept: 0, left: 0, rows: [], ranOut: false, why: String(j?.error || `the reader answered ${res.status}`) }
 
     // SECOND PASS THROUGH THE SAME GATE. The route already dropped anything
     // that could not quote; doing it again costs nothing and means a future
     // caller cannot get round it by posting rows straight in.
     const { rules: clean, dropped } = cleanProposed(j?.rules, doc.id, lender.id)
     if (clean.length === 0) {
-      return { read: 0, kept: 0, left: dropped.length,
+      return { read: 0, kept: 0, left: dropped.length, rows: [], ranOut: !!j?.ranOut,
                why: dropped.length ? 'nothing in it could quote the document' : 'nothing was read out of it' }
     }
 
-    const { error } = await supabase.from('lender_policy_rules').insert(clean.map(r => ({
+    const rows = clean.map(r => ({
       document_id: r.documentId, lender_id: r.lenderId, says: r.says, quote: r.quote,
       section: r.section, heading: r.heading, tags: r.tags,
       // THE TIER COMES FROM WHERE IT ARRIVED, never from what it says. An email
@@ -329,11 +376,53 @@ export default function LenderPolicyDocs() {
       // answer Paco gives. 'rejected' is still here, set the one time it is
       // needed: somebody reads an answer, sees it is wrong, and says so.
       effective_from: r.effectiveFrom, status: 'live',
-    })))
-    if (error) return { read: 0, kept: 0, left: dropped.length, why: error.message }
-    return { read: 1, kept: clean.length, left: dropped.length, why: '' }
+    }))
+    const { error } = await supabase.from('lender_policy_rules').insert(rows)
+    if (error) return { read: 0, kept: 0, left: dropped.length, why: error.message, rows: [], ranOut: false }
+    return { read: 1, kept: clean.length, left: dropped.length, why: '', rows, ranOut: !!j?.ranOut }
   }
 
+
+  // READ A DOCUMENT WE ALREADY HOLD, AGAIN.
+  //
+  // 13 Oct 2026. Five banks sat with a document on file and nothing read out of
+  // it: they were filed while PDFs were still being shipped through the browser,
+  // the read died on Vercel's request cap, and nothing could have another go.
+  // Dropping the file again would have left two copies of the same document.
+  //
+  // It does not re-file anything. The row, the hash and the original stay
+  // exactly as they are - this only runs the reading over again.
+  async function readItAgain(doc: Doc, lender: Lender) {
+    setErr(''); setNote(''); setBusy(lender.id)
+    try {
+      const fromTheWeb = /^https?:\/\//i.test(doc.file_path)
+      let part: any = null
+
+      if (fromTheWeb) {
+        setNote(`Opening ${siteOf(doc.file_path)}…`)
+        const res = await fetch('/api/read-link', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ url: doc.file_path }),
+        })
+        const opened = await res.json()
+        if (!res.ok) { setErr(opened?.error || 'That address could not be opened.'); return }
+        part = (opened?.parts || [])?.[0]
+      } else {
+        // A FILE OF OURS IS READ FROM OUR OWN STORAGE, not asked for again.
+        const { data, error } = await supabase.storage.from('lender-documents')
+          .createSignedUrl(doc.file_path, 120)
+        if (error || !data?.signedUrl) { setErr('That document could not be opened.'); return }
+        part = { name: doc.title, kind: 'pdf', fileUrl: data.signedUrl }
+      }
+
+      if (!part) { setErr('There was nothing in it to read.'); return }
+      setStep({ i: 1, of: 1, name: doc.title })
+      const got = await readPart(doc, part, lender, tierFor(kindOf(doc.file_name), false))
+      await load()
+      if (got.read === 0) setErr(`Still nothing — ${got.why || 'the reader gave no reason'}`)
+      else setNote(`${got.kept} lines read out of ${doc.title}.`)
+    } finally { setBusy(''); setStep(null) }
+  }
 
   // A DOCUMENT WE HOLD OPENS FROM OUR STORAGE. One we read off a lender's own
   // website opens on their website, because theirs is the copy that stays right.
@@ -540,6 +629,14 @@ export default function LenderPolicyDocs() {
                           : waiting ? `${waiting} waiting`
                           : `${rulesFor(d.id, 'live').length} lines`}
                       </span>
+                      {rulesFor(d.id, 'live').length === 0 && waiting === 0 && (
+                        /* NOTHING CAME OUT OF IT. Offer another go rather than
+                           leaving somebody to re-drop the same file. */
+                        <button onClick={() => readItAgain(d, lender)} disabled={busy === lender.id}
+                          className="text-[12px] bg-ink text-page rounded-lg px-2.5 py-[5px] font-medium disabled:opacity-40">
+                          Read it again
+                        </button>
+                      )}
                       <button onClick={() => openDocument(d.file_path)} className={BTN}>
                         {fromTheWeb ? 'Open on their site' : 'Open the document'}
                       </button>
@@ -567,21 +664,58 @@ export default function LenderPolicyDocs() {
               </div>
             )}
 
-            <label className={`block mx-4 mt-4 border-[1.5px] border-dashed border-info-edge bg-info-bg
-                              rounded-xl p-5 text-center transition
-                              ${busy === lender.id ? 'opacity-60' : 'cursor-pointer hover:bg-info-bg/70'}`}>
-              <input type="file" accept=".pdf,.zip,.xlsx,.xlsm,.csv,.eml,.md,.txt" className="hidden"
+            {/* IT SAID DROP AND IT ONLY TOOK A CLICK.
+                13 Oct 2026. Fabio, holding a file, looking straight at this
+                box: "see??? where the fuck do i drop it???????????????????????"
+                Every word on this screen said drop. It was a label over a
+                hidden file input and a drag did nothing at all. It takes a
+                drag now, and it says both. */}
+            <label
+              onDragOver={e => { e.preventDefault(); if (busy !== lender.id) setOverIt(true) }}
+              onDragLeave={() => setOverIt(false)}
+              onDrop={e => {
+                e.preventDefault(); setOverIt(false)
+                if (busy === lender.id) return
+                const f = e.dataTransfer?.files?.[0]
+                if (f) addDocument(lender, f)
+              }}
+              className={`block mx-4 mt-4 border-[1.5px] border-dashed rounded-xl p-5 text-center transition
+                ${overIt ? 'border-info bg-info-bg scale-[1.01]' : 'border-info-edge bg-info-bg'}
+                ${busy === lender.id ? 'opacity-60' : 'cursor-pointer hover:bg-info-bg/70'}`}>
+              <input type="file" accept=".pdf,.zip,.xlsx,.xlsm,.csv,.eml,.md,.txt,.doc,.docx" className="hidden"
                 disabled={busy === lender.id}
                 onChange={e => { const f = e.target.files?.[0]; if (f) addDocument(lender, f); e.currentTarget.value = '' }} />
               <b className="block text-[13px] text-info mb-1">
-                {busy === lender.id ? 'Working on it…' : 'Choose a credit manual, a zip, a spreadsheet or an email'}
+                {busy === lender.id ? 'Working on it…'
+                  : overIt ? 'Let go and I will read it'
+                  : 'Drag a file here, or click to choose one'}
               </b>
               <span className="text-[12px] text-muted">
-                PDF, a zip of chapters, a spreadsheet, or an email you have forwarded.
-                The original is kept exactly as it arrived and never changed. Paco quotes it,
-                so you can open the thing he took a line from.
+                A credit manual, a zip of chapters, a spreadsheet, a Word document, or an email
+                you have forwarded. The original is kept exactly as it arrived and never changed.
+                Paco quotes it, so you can open the thing he took a line from.
               </span>
             </label>
+
+            {/* ONE DOCUMENT, FOUR BANKS - SAID ON SCREEN BEFORE IT HAPPENS.
+                Filing something under a bank nobody asked for would be worse
+                than the extra work it saves, so it names them and can be
+                turned off. */}
+            {(() => {
+              const also = lendersCoveredWith(lender)
+              if (also.length === 0) return null
+              return (
+                <label className="mx-4 mb-1 flex gap-2.5 items-start cursor-pointer">
+                  <input type="checkbox" checked={alsoAlso} onChange={e => setAlsoAlso(e.target.checked)}
+                    className="mt-[3px] accent-ink" />
+                  <span className="text-[12px] text-body leading-relaxed">
+                    <b className="text-ink">Also file it under {also.map(x => x.name).join(', ')}.</b>{' '}
+                    This is one policy covering {also.length + 1} brands, so it is read once and the
+                    lines are copied across rather than read {also.length + 1} times.
+                  </span>
+                </label>
+              )
+            })()}
 
             {/* OR PASTE THE ADDRESS. Macquarie's guidelines are a PDF on their
                 website and AMP's policy library is web pages. Neither is a file

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  WHERE_THE_POLICY_LIVES, REGISTER_CHECKED_ON, whereFor, sourceLine, whereToGetIt,
+  WHERE_THE_POLICY_LIVES, REGISTER_CHECKED_ON, whereFor, sourceLine, whereToGetIt, alsoCoveredBy,
 } from './where-the-policy-lives'
 
 // THE REGISTER IS A NOTE ABOUT WEBSITES, NOT A STATEMENT OF POLICY.
@@ -162,6 +162,48 @@ describe('what Paco says when he has nothing in writing', () => {
     for (const s of WHERE_THE_POLICY_LIVES) {
       const line = whereToGetIt(s.lender)
       expect(line, `${s.lender} reads like policy`).not.toMatch(/\bwill (lend|accept|allow|take)\b/)
+    }
+  })
+})
+
+
+// ONE DOCUMENT, FOUR BANKS.
+//
+// 13 Oct 2026. Fabio: "remeber I dropped NAB and Westpac St Goerge nbank SA do
+// the same thinhg". Westpac Group's credit policy is one document covering four
+// brands. Dropping it once per brand means reading the same 25 sections four
+// times and then holding four copies of the same rules to correct separately.
+describe('a document that covers more than one bank', () => {
+  it('knows Westpac Group covers the other three brands', () => {
+    expect(alsoCoveredBy('Westpac')).toEqual(['St George', 'Bank of Melbourne', 'BankSA'])
+  })
+
+  it('and MyState covers Auswide, because the document says so on its face', () => {
+    expect(alsoCoveredBy('MyState')).toEqual(['Auswide Bank'])
+  })
+
+  it('says nothing for a bank that stands on its own', () => {
+    expect(alsoCoveredBy('Macquarie')).toEqual([])
+    expect(alsoCoveredBy('NAB')).toEqual([])
+    expect(alsoCoveredBy('Some Lender')).toEqual([])
+  })
+
+  // A NAME THAT MATCHES NOTHING WOULD FILE A POLICY UNDER NO BANK AT ALL, or
+  // worse, be quietly dropped and leave somebody thinking it had been done.
+  it('and every name it gives is a bank the register itself knows', () => {
+    for (const s of WHERE_THE_POLICY_LIVES) {
+      for (const other of s.alsoCovers || []) {
+        expect(whereFor(other), `${s.lender} points at "${other}", which is not in the register`)
+          .not.toBeNull()
+      }
+    }
+  })
+
+  it('and no bank claims to cover itself', () => {
+    for (const s of WHERE_THE_POLICY_LIVES) {
+      for (const other of s.alsoCovers || []) {
+        expect(whereFor(other)?.lender, `${s.lender} lists itself`).not.toBe(s.lender)
+      }
     }
   })
 })

@@ -109,3 +109,97 @@ describe('and none of it weakens the gate', () => {
     }
   })
 })
+
+
+// A DOCUMENT THAT READ NOTHING CAN BE READ AGAIN.
+//
+// 13 Oct 2026. Five banks sat with a document on file and zero lines out of it.
+// They were filed while PDFs still went through the browser, the read died on
+// the request cap, and nothing anywhere could have another go - the only way
+// back was to drop the same file a second time and end up with two copies.
+describe('read it again', () => {
+  it('is offered on a document nothing came out of', () => {
+    expect(page).toContain("rulesFor(d.id, 'live').length === 0 && waiting === 0")
+    expect(page).toContain('Read it again')
+    expect(page).toContain('readItAgain(d, lender)')
+  })
+
+  // IT RE-READS, IT DOES NOT RE-FILE. The row, the hash and the original are
+  // the record of what we actually received and none of them may move.
+  it('and files nothing a second time', () => {
+    const fn = page.slice(page.indexOf('async function readItAgain'),
+                          page.indexOf('// A DOCUMENT WE HOLD OPENS FROM OUR STORAGE'))
+    expect(fn.length).toBeGreaterThan(200)
+    expect(fn, 'read-it-again is inserting another document row')
+      .not.toContain("from('lender_documents').insert")
+    expect(fn, 'read-it-again is uploading the file again')
+      .not.toContain('storage.from(\'lender-documents\')\n        .upload')
+  })
+
+  it('reads one we hold out of our own storage', () => {
+    expect(page).toContain("createSignedUrl(doc.file_path, 120)")
+  })
+
+  it('and one we read off a website from the website', () => {
+    expect(page).toContain("body: JSON.stringify({ url: doc.file_path })")
+  })
+
+  it('and still says why when it fails a second time', () => {
+    expect(page).toContain('Still nothing — ${got.why')
+  })
+})
+
+
+// IT SAID DROP AND IT ONLY TOOK A CLICK.
+//
+// 13 Oct 2026. Fabio, holding the file, looking straight at the box:
+// "see??? where the fuck do i drop it???????????????????????"
+//
+// Every word on that screen said drop - the page heading, the blurb, the
+// sidebar. The box was a label over a hidden file input and a drag did
+// absolutely nothing. He was not missing it; it was not there.
+describe('the drop zone takes a drop', () => {
+  it('handles a file dragged onto it', () => {
+    expect(page).toContain('onDrop={e =>')
+    expect(page).toContain('e.dataTransfer?.files?.[0]')
+  })
+
+  it('and shows it is ready to catch one', () => {
+    expect(page).toContain('onDragOver')
+    expect(page).toContain('onDragLeave')
+    expect(page).toContain('Let go and I will read it')
+  })
+
+  // THE WORDS HAVE TO MATCH WHAT IT DOES. Either is fine on its own; saying
+  // one and doing the other is what wasted an afternoon.
+  it('and says both things it will take', () => {
+    expect(page).toContain('Drag a file here, or click to choose one')
+  })
+
+  it('and still takes the same file types', () => {
+    expect(page).toContain(".pdf,.zip,.xlsx,.xlsm,.csv,.eml,.md,.txt")
+  })
+})
+
+
+describe('and the library actually files it under all of them', () => {
+  it('reads once and copies the lines across', () => {
+    expect(page).toContain('for (const other of alsoFile)')
+    expect(page).toContain('lender_id: other.id, document_id: (twin as any).id')
+  })
+
+  it('each brand gets its own document row, from the same original', () => {
+    expect(page).toContain('file_path: from.path, file_name: from.fileName, sha256: from.sha')
+  })
+
+  // FILING UNDER A BANK NOBODY ASKED FOR WOULD BE WORSE THAN THE WORK IT SAVES.
+  it('and it is named on screen before it happens, and can be turned off', () => {
+    expect(page).toContain('Also file it under')
+    expect(page).toContain('checked={alsoAlso}')
+    expect(page).toContain('const alsoFile = alsoAlso ? lendersCoveredWith(lender) : []')
+  })
+
+  it('and only ever names banks we actually hold', () => {
+    expect(page).toContain('lenders.filter(x => x.id !== l.id && names.includes(flat(x.name)))')
+  })
+})
