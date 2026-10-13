@@ -70,14 +70,48 @@ export const PROPERTY_SUBTYPES = [
   'Other',
 ] as const
 
+// SAVINGS, NOT "BANK ACCOUNT".
+//
+// 13 Oct 2026, Fabio: "Change 'bank account' to 'savings' on the other assets
+// page in the Fact Find - and then have this come through on the BC email."
+//
+// The stored value on every deal that already has one is still "Bank account"
+// and stays that way. keptValue() below is exactly for this: an old row goes on
+// showing what it has always shown, nobody has to go back through live client
+// files to change a label, and both words read as savings everywhere that
+// matters - see ASSET_WORDS in lib/box-power.ts.
 export const ASSET_TYPES = [
-  'Bank account',
+  'Savings',
   'Shares',
   'Super',
   'Vehicle',
   'Home Contents',
   'Other',
 ] as const
+
+// WHAT HAPPENS TO A LIABILITY AT SETTLEMENT.
+//
+// 13 Oct 2026. Two changes, both from Fabio.
+//
+// "To be refinanced" came off: "to be consolidated and refinanced is the same
+// remove refinanced". Every deal already carrying it still shows it and still
+// behaves the same everywhere in the code - lib/funds-to-complete.ts,
+// lib/box-security.ts and lib/position-after-settlement.ts all still read it -
+// because dropping a value a live deal is holding is how a record quietly
+// snaps to something nobody chose.
+//
+// "Limit to be reduced" went on: a card whose limit is coming down before
+// settlement is neither staying as it was nor being closed, and there was no
+// way to say so.
+export const LIABILITY_STATUSES = [
+  'Remain open',
+  'To be closed',
+  'To be consolidated',
+  'Limit to be reduced',
+] as const
+
+/** The one status that asks for a second number. */
+export const LIMIT_REDUCED = 'Limit to be reduced'
 
 // Where the deposit comes from - a gift needs a gift letter, and nothing on the
 // fact find could say so. It exists on the BC today, which is too late: by then

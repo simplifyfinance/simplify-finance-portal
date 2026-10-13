@@ -13,7 +13,7 @@ import BankSelect from './BankSelect'
 import { seYearTotalFF, calculateSeAssessableIncome } from '@/lib/income-calculations'
 import { selfEmployedFacts } from '@/lib/self-employed-facts'
 import InternalNotes from '@/components/InternalNotes'
-import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET_TYPES, DEPOSIT_SOURCES, optionsFor } from '@/lib/fact-find-options'
+import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET_TYPES, DEPOSIT_SOURCES, LIABILITY_STATUSES, LIMIT_REDUCED, optionsFor } from '@/lib/fact-find-options'
 import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship } from '@/lib/relationship'
 import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS } from '@/lib/fact-find'
 import { newGuard, saveGuarded } from '@/lib/save-conflict'
@@ -211,6 +211,10 @@ type Liability = {
   lenderName: string
   accountNumber: string
   limitAmount: string
+  // What the limit is coming down to before settlement, when it is. Its own
+  // field rather than overwriting limitAmount, because the assessment and the
+  // email both need to say what it was AND what it will be.
+  newLimitAmount: string
   balance: string
   repaymentAmount: string
   repaymentFrequency: string
@@ -288,7 +292,7 @@ const defaultApplicant = (): FactFindApplicant => ({
 })
 
 const defaultAsset = (): Asset => ({
-  id: uid(), assetType: 'Bank account', description: '', value: '',
+  id: uid(), assetType: 'Savings', description: '', value: '',
   bsb: '', accountNumber: '', regNumber: '', membershipNumber: '', ownership: {}
 })
 
@@ -311,7 +315,7 @@ const defaultProperty = (): FactFindProperty => ({
 })
 
 const defaultLiability = (): Liability => ({
-  id: uid(), liabilityType: 'Credit card', lenderName: '', accountNumber: '',
+  id: uid(), liabilityType: 'Credit card', lenderName: '', accountNumber: '', newLimitAmount: '',
   limitAmount: '', balance: '', repaymentAmount: '', repaymentFrequency: 'Monthly',
   status: 'Remain open', ownership: {}
 })
@@ -1939,7 +1943,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                 <button onClick={() => removeAsset(asset.id)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
               </div>
               <div className="grid grid-cols-2 gap-3 mb-3">
-                {asset.assetType === 'Bank account' && (
+                {(asset.assetType === 'Savings' || asset.assetType === 'Bank account') && (
                   <BankSelect className={inp} value={asset.description} onChange={v => updateAsset(asset.id, 'description', v)} />
                 )}
                 {asset.assetType === 'Super' && (
@@ -2092,7 +2096,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <CurrencyInput className={inp} placeholder="Balance" value={liab.balance} onChange={val => updateLiability(liab.id, 'balance', val)} />
                   <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}>
-                    <option value="Remain open">Remain open</option><option value="To be refinanced">To be refinanced</option><option value="To be closed">To be closed</option><option value="To be consolidated">To be consolidated</option>
+                    {optionsFor(liab.status, LIABILITY_STATUSES).map(x => <option key={x} value={x}>{x}</option>)}
                   </select>
                 </div>
               )}
@@ -2103,18 +2107,27 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                     <option>Monthly</option><option>Fortnightly</option><option>Weekly</option>
                   </select>
                   <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}>
-                    <option value="Remain open">Remain open</option><option value="To be refinanced">To be refinanced</option><option value="To be closed">To be closed</option><option value="To be consolidated">To be consolidated</option>
+                    {optionsFor(liab.status, LIABILITY_STATUSES).map(x => <option key={x} value={x}>{x}</option>)}
                   </select>
                 </div>
               )}
               {liab.liabilityType === 'Credit card' && (
-                <div className="grid grid-cols-4 gap-3 mb-3">
+                /* THE NEW LIMIT APPEARS ONLY WHEN THE LIMIT IS COMING DOWN.
+                   13 Oct 2026, asked for by Fabio. A card is assessed on its
+                   limit, not its balance, so "we are reducing it to $10,000
+                   before settlement" is a different deal from "it stays at
+                   $30,000" - and there was no way to record it. */
+                <div className={`grid ${liab.status === LIMIT_REDUCED ? 'grid-cols-5' : 'grid-cols-4'} gap-3 mb-3`}>
                   <BankSelect className={inp} value={liab.lenderName} onChange={v => updateLiability(liab.id, 'lenderName', v)} />
                   <CurrencyInput className={inp} placeholder="Credit limit" value={liab.limitAmount} onChange={val => updateLiability(liab.id, 'limitAmount', val)} />
                   <CurrencyInput className={inp} placeholder="Current balance" value={liab.balance} onChange={val => updateLiability(liab.id, 'balance', val)} />
                   <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}>
-                    <option value="Remain open">Remain open</option><option value="To be refinanced">To be refinanced</option><option value="To be closed">To be closed</option><option value="To be consolidated">To be consolidated</option>
+                    {optionsFor(liab.status, LIABILITY_STATUSES).map(x => <option key={x} value={x}>{x}</option>)}
                   </select>
+                  {liab.status === LIMIT_REDUCED && (
+                    <CurrencyInput className={inp} placeholder="New limit" value={liab.newLimitAmount}
+                      onChange={val => updateLiability(liab.id, 'newLimitAmount', val)} />
+                  )}
                 </div>
               )}
               {(liab.liabilityType === 'Car loan' || liab.liabilityType === 'Personal loan' || liab.liabilityType === 'Other') && (
@@ -2129,7 +2142,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                       <option>Monthly</option><option>Fortnightly</option><option>Weekly</option>
                     </select>
                     <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}>
-                      <option value="Remain open">Remain open</option><option value="To be refinanced">To be refinanced</option><option value="To be closed">To be closed</option><option value="To be consolidated">To be consolidated</option>
+                      {optionsFor(liab.status, LIABILITY_STATUSES).map(x => <option key={x} value={x}>{x}</option>)}
                     </select>
                   </div>
                 </>

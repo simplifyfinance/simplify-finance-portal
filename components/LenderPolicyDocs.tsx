@@ -378,6 +378,44 @@ export default function LenderPolicyDocs() {
             })}
           </div>
 
+          {/* AND FILL THE ONES WE ALREADY HOLD AN ADDRESS FOR, IN ONE GO.
+              The register was checked by hand; these seven publish their
+              credit policy and nobody has filed it. One click, one person's
+              name on all of it. */}
+          {(() => {
+            const ready = lenders.filter(l => {
+              const w = whereFor(l.name)
+              return !!w?.url && w.firmness === 'policy' && docsFor(l.id).length === 0
+            })
+            if (ready.length === 0 || busy) return null
+            return (
+              <div className="mx-4 mb-4 border border-card-waiting-edge bg-card-waiting rounded-xl px-4 py-3
+                              flex items-center gap-3 flex-wrap">
+                <div className="flex-1 min-w-[240px]">
+                  <b className="block text-[12.5px] text-ink mb-0.5">
+                    {ready.length} {ready.length === 1 ? 'bank publishes' : 'banks publish'} their
+                    credit policy and nobody has filed it
+                  </b>
+                  <span className="block text-[11.5px] text-muted leading-relaxed">
+                    {ready.map(l => l.name).join(', ')}. I already hold the address for each one.
+                  </span>
+                </div>
+                <button type="button"
+                  onClick={async () => {
+                    for (const [i, l] of ready.entries()) {
+                      setNote(`Bank ${i + 1} of ${ready.length} — ${l.name}`)
+                      const w = whereFor(l.name)
+                      if (w?.url) await addLink(l, w.url)
+                    }
+                    setNote(`Read ${ready.length} ${ready.length === 1 ? 'bank' : 'banks'}. Check them below.`)
+                  }}
+                  className="text-[12px] bg-ink text-page rounded-lg px-3.5 py-2 font-medium whitespace-nowrap">
+                  Read all {ready.length}
+                </button>
+              </div>
+            )
+          })()}
+
           {/* WHERE EACH BANK'S POLICY LIVES, AND WHEN SOMEBODY LOOKED. Our own
               note about websites, never a statement of policy, and always
               carrying its date - see lib/where-the-policy-lives.ts. */}
@@ -426,9 +464,29 @@ export default function LenderPolicyDocs() {
                 {w.dated && <p className="m-0 mt-1 text-[11.5px] text-muted">The document says: {w.dated}</p>}
                 {w.note && <p className="m-0 mt-1 text-[11.5px] text-muted">{w.note}</p>}
                 {w.url && (
-                  <p className="m-0 mt-1.5 text-[11.5px]">
-                    <a href={w.url} target="_blank" rel="noreferrer" className="text-info underline break-all">{w.url}</a>
-                  </p>
+                  <>
+                    {/* ONE CLICK. The address is already in the register, so
+                        asking anybody to copy it across is work we invented.
+                        It says the bank and the full address first, because a
+                        wrong row in my register plus a one-click fetch is a
+                        policy filed under the wrong bank with nobody reading
+                        the URL - see the Police Bank row for how easily that
+                        happens. */}
+                    <p className="m-0 mt-2 flex gap-2 items-center flex-wrap">
+                      <button type="button"
+                        onClick={() => addLink(lender, w.url || '')}
+                        disabled={busy === lender.id}
+                        className="text-[12px] bg-ink text-page rounded-lg px-3 py-1.5 font-medium disabled:opacity-40">
+                        {busy === lender.id ? 'Reading it\u2026' : `Read it from ${siteOf(w.url)}`}
+                      </button>
+                      <span className="text-[11px] text-muted">
+                        Files it under {lender.name}. Nothing goes looking on its own.
+                      </span>
+                    </p>
+                    <p className="m-0 mt-1.5 text-[11px]">
+                      <a href={w.url} target="_blank" rel="noreferrer" className="text-muted underline break-all">{w.url}</a>
+                    </p>
+                  </>
                 )}
                 {w.portal && !w.url && <p className="m-0 mt-1 text-[11.5px] text-muted">Log in at {w.portal}.</p>}
                 <p className="m-0 mt-1.5 text-[11px] text-faint">
@@ -515,7 +573,7 @@ export default function LenderPolicyDocs() {
                 website and AMP's policy library is web pages. Neither is a file
                 anybody should have to go and find first. */}
             <div className="m-4 mt-3">
-              <b className="block text-[12.5px] text-ink mb-1">Or paste a link to it</b>
+              <b className="block text-[12.5px] text-ink mb-1">Or paste a different link</b>
               <span className="block text-[11.5px] text-muted mb-2 leading-relaxed">
                 A page or a PDF on the lender&rsquo;s own website. We read it once, now, and
                 keep the address so anybody can open their copy. Nothing goes looking on its own.

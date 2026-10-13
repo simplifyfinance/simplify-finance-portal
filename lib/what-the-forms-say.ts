@@ -18,7 +18,7 @@
 // a perfect parse of JSX - it has to be stable, and it has to shrink when a
 // field goes. Extra entries cost nothing; a missed one costs everything.
 
-import { readFileSync } from 'fs'
+import { readFileSync, existsSync } from 'fs'
 
 // The forms a person types into, plus the one block that is shown on two of
 // them. If a new form tab is ever added, it is added here and its words are
@@ -147,9 +147,28 @@ export function wordsIn(source: string): string[] {
 
 export type FormWords = Record<string, string[]>
 
+// THE LISTS A FORM RENDERS ARE WORDS ON THAT FORM.
+//
+// 13 Oct 2026. Four hard-coded dropdowns on the Fact Find became one list in
+// lib/fact-find-options.ts, and the snapshot immediately reported "To be
+// closed" and "To be consolidated" as missing - because they had stopped being
+// literal text in the JSX. They were still on the screen.
+//
+// A snapshot that cries wolf every time a list is tidied is a snapshot people
+// learn to overrule, which is the one thing it cannot survive. So a form's
+// words include the options it draws from. A value genuinely taken OFF a list
+// still fails, which is the whole point.
+const OPTION_LISTS = ['lib/fact-find-options.ts']
+
 export function readFormWords(files: readonly string[] = FORM_FILES): FormWords {
+  const fromLists = OPTION_LISTS
+    .filter(f => existsSync(f))
+    .flatMap(f => wordsIn(readFileSync(f, 'utf8')))
   const out: FormWords = {}
-  for (const f of files) out[f] = wordsIn(readFileSync(f, 'utf8'))
+  for (const f of files) {
+    const own = wordsIn(readFileSync(f, 'utf8'))
+    out[f] = [...new Set([...own, ...fromLists])].sort()
+  }
   return out
 }
 

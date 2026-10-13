@@ -1,4 +1,5 @@
 import { money, readMoney } from './money'
+import { LIMIT_REDUCED } from './fact-find-options'
 import { article } from './article'
 import { dealRow, splitsOf } from './deal-structure'
 import { applicantsOf } from './applicants'
@@ -123,7 +124,17 @@ export function liabilityLine(deal: any): string {
     const kind = txt(l?.liabilityType).toLowerCase() || 'liability'
     const lender = txt(l?.lenderName)
     const bal = num(l?.balance)
-    return `${article(kind)} ${kind}${lender ? ` with ${lender}` : ''}${bal > 0 ? ` of ${money(bal)}` : ''}`
+    // A LIMIT COMING DOWN IS SAID ON THE END OF THE LINE, not in the "being
+    // cleared" sentence. 13 Oct 2026. The card is not going anywhere - the
+    // limit is - and an assessor reading "being cleared as part of this loan"
+    // about a card that stays open would be reading something untrue.
+    const was = num(l?.limitAmount), now = num(l?.newLimitAmount)
+    const cut = txt(l?.status) === LIMIT_REDUCED && now > 0 && was > now
+      ? `, with its limit reduced from ${money(was)} to ${money(now)} before settlement`
+      : txt(l?.status) === LIMIT_REDUCED
+        ? ', with its limit to be reduced before settlement'
+        : ''
+    return `${article(kind)} ${kind}${lender ? ` with ${lender}` : ''}${bal > 0 ? ` of ${money(bal)}` : ''}${cut}`
   }
 
   const bits: string[] = []
@@ -142,7 +153,11 @@ export function liabilityLine(deal: any): string {
 // "Bank account", "Vehicle", "Super". In a sentence about a total they read
 // wrong: "$2,170,000 in bank account". These are the words for a sum of them.
 const ASSET_WORDS: Record<string, string> = {
-  'Bank account': 'bank accounts',
+  // 13 Oct 2026. The list says Savings now; every deal already on file still
+  // says "Bank account" and always will. Both land on the same word here, so
+  // the email reads the same whichever one a deal is carrying.
+  'Savings': 'savings',
+  'Bank account': 'savings',
   'Super': 'superannuation',
   'Vehicle': 'vehicles',
   'Shares': 'shares',
