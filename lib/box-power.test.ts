@@ -201,7 +201,10 @@ describe('what they hold', () => {
   it('groups by kind rather than listing seven rows', () => {
     const t = assetLine(deal())
     expect(t).toContain('$3,400,000')
-    expect(t).toContain('$2,170,000 in bank accounts')
+    // 13 Oct 2026. The fact find says Savings now and the deals already on file
+    // still say Bank account. Both land on the same word here, so the email
+    // reads the same whichever one a deal is carrying.
+    expect(t).toContain('$2,170,000 in savings')
     expect(t).toContain('$750,000 in superannuation')
   })
 

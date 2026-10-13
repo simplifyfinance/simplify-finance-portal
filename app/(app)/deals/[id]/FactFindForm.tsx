@@ -14,6 +14,7 @@ import { seYearTotalFF, calculateSeAssessableIncome } from '@/lib/income-calcula
 import { selfEmployedFacts } from '@/lib/self-employed-facts'
 import InternalNotes from '@/components/InternalNotes'
 import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET_TYPES, DEPOSIT_SOURCES, LIABILITY_STATUSES, LIMIT_REDUCED, optionsFor } from '@/lib/fact-find-options'
+import { withLimitConditions, conditionsChanged } from '@/lib/limit-to-send'
 import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship } from '@/lib/relationship'
 import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS } from '@/lib/fact-find'
 import { newGuard, saveGuarded } from '@/lib/save-conflict'
@@ -521,6 +522,31 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
     save.landed(token, out.kind === 'saved' || out.kind === 'merged' || out.kind === 'overwrote')
     // It is in the database now, so the copy has done its job.
     draft.clear()
+
+    // AND A LIMIT COMING DOWN BECOMES SOMEBODY'S JOB.
+    //
+    // 13 Oct 2026, Fabio: "handover goes 10,000 condition to be reduced". The
+    // assessment now sends the reduced limit, which is only honest if somebody
+    // is actually made to do the reduction - so the condition lands on the deal
+    // card the moment it is recorded, waiting on the client.
+    //
+    // It writes nothing when there is nothing new. A fact find is saved thirty
+    // times while it is being built and withLimitConditions() matches on the
+    // card rather than the sentence, so correcting the figure adds nothing.
+    //
+    // AND IT IS CHECKED, because this is the one that must not fail quietly.
+    // Postgres returns no rows and no error when a policy blocks a write, so a
+    // silent failure here means the bank is sent $10,000 and nobody is ever
+    // asked to do the reduction. That is the whole fault this condition exists
+    // to prevent, so it is reported on screen like any other save.
+    const withIt = { ...deal, fact_find_data: value }
+    const next = withLimitConditions(withIt)
+    if (conditionsChanged(withIt, next)) {
+      const failed = await checkedWrite(
+        supabase.from('deals').update({ outstanding_items: next }).eq('id', deal.id),
+        'The credit card condition')
+      if (failed) save.failed(failed, '')
+    }
     // Against the screen as it is NOW: anything typed while this was in flight
     // keeps that box protected.
     settleSaved(ownRef.current, value, liveD.current)

@@ -7,7 +7,7 @@ import {
 describe('a value already on a deal is never lost', () => {
   it('leaves a listed value alone', () => {
     expect(keptValue('Company', SELF_EMPLOYED_STRUCTURES)).toBeNull()
-    expect(keptValue('Bank account', ASSET_TYPES)).toBeNull()
+    expect(keptValue('Savings', ASSET_TYPES)).toBeNull()
   })
 
   it('keeps a value nobody would pick today', () => {

@@ -93,14 +93,15 @@ export const ASSET_TYPES = [
 //
 // 13 Oct 2026. Two changes, both from Fabio.
 //
-// "To be refinanced" came off: "to be consolidated and refinanced is the same
-// remove refinanced". Every deal already carrying it still shows it and still
+// The refinanced option came off. Fabio, 13 Oct 2026: to be consolidated and
+// refinanced is the same, remove refinanced. Every deal already carrying the
+// old value still shows it and still
 // behaves the same everywhere in the code - lib/funds-to-complete.ts,
 // lib/box-security.ts and lib/position-after-settlement.ts all still read it -
 // because dropping a value a live deal is holding is how a record quietly
 // snaps to something nobody chose.
 //
-// "Limit to be reduced" went on: a card whose limit is coming down before
+// Limit to be reduced went on: a card whose limit is coming down before
 // settlement is neither staying as it was nor being closed, and there was no
 // way to say so.
 export const LIABILITY_STATUSES = [

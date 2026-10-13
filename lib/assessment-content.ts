@@ -8,6 +8,7 @@
 // because a deal is thin is worse than a blank line to write on.
 
 import type { Item, Column, Line } from './assessment-form'
+import { limitToSend } from './limit-to-send'
 
 const s = (v: any) => (v === null || v === undefined) ? '' : String(v)
 // Deliberately `any`. These lists come out of a jsonb column with no type at
@@ -325,7 +326,13 @@ export function assessmentItems(input: BuildInput): Item[] {
       const cards = liabilitiesOfType(liabilities, s(a.id), /credit card/i)
       return Array.from({ length: 4 }, (_, k): Line => [
         { prefix: 'Lender', name: A(i, `cc${k + 1}.lender`), value: s(cards[k]?.lenderName), grow: 2 },
-        { prefix: 'Limit',  name: A(i, `cc${k + 1}.limit`),  value: s(cards[k]?.limitAmount), money: true, grow: 1 },
+        // THE LIMIT THE BANK IS ASSESSING ON. 13 Oct 2026, Fabio: "handover
+        // goes 10,000". A card whose limit is coming down before settlement is
+        // assessed on what it is coming down to - that is the whole reason a
+        // broker asks for it. A condition lands on the deal card at the same
+        // moment, so the promise is somebody's job rather than a hope. See
+        // lib/limit-to-send.ts.
+        { prefix: 'Limit',  name: A(i, `cc${k + 1}.limit`),  value: s(limitToSend(cards[k])), money: true, grow: 1 },
       ])
     }, applicants) })
 
