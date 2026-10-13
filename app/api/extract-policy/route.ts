@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { cleanProposed } from '@/lib/policy-rules'
 import { ALL_TAGS } from '@/lib/deal-tags'
+import { tidyLink, whyNotALink, isOurOwnSide } from '@/lib/dropped-links'
 
 export const maxDuration = 300
 
@@ -88,8 +89,42 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null) as any
     const documentId = String(body?.documentId || '')
     const lenderId = String(body?.lenderId || '')
-    const base64 = String(body?.base64 || '')
+    let base64 = String(body?.base64 || '')
     const plain = String(body?.text || '')
+
+    // A PDF ON A LENDER'S WEBSITE IS FETCHED HERE, not carried through the
+    // browser. 13 Oct 2026 - see the note in app/api/read-link/route.ts. The
+    // address has already been checked there; it is checked again because this
+    // route can be called on its own.
+    const fileUrl = tidyLink(body?.fileUrl)
+    if (!base64 && !plain && fileUrl) {
+      const why = whyNotALink(fileUrl)
+      if (why) return NextResponse.json({ error: why }, { status: 400 })
+      try {
+        const got = await fetch(fileUrl, {
+          redirect: 'follow',
+          signal: AbortSignal.timeout(60_000),
+          headers: {
+            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
+              + '(KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+            accept: 'application/pdf,*/*;q=0.8',
+            'accept-language': 'en-AU,en;q=0.9',
+          },
+        })
+        if (!got.ok) {
+          return NextResponse.json({
+            error: `Their website answered ${got.status} when we went back for the document.`,
+          }, { status: 502 })
+        }
+        if (isOurOwnSide(new URL(got.url || fileUrl).hostname)) {
+          return NextResponse.json({ error: 'That address redirected onto our own network.' }, { status: 400 })
+        }
+        base64 = Buffer.from(await got.arrayBuffer()).toString('base64')
+      } catch {
+        return NextResponse.json({ error: 'That document could not be fetched.' }, { status: 502 })
+      }
+    }
+
     if (!base64 && !plain) return NextResponse.json({ error: 'No document was sent.' }, { status: 400 })
     if (!documentId || !lenderId) {
       return NextResponse.json({ error: 'The document was not filed first.' }, { status: 400 })

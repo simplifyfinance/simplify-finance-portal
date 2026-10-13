@@ -237,6 +237,7 @@ export default function LenderPolicyDocs() {
 
     const prev = currentDoc(lender.id)
     let kept = 0, left = 0, failed = 0
+    const whyFailed: string[] = []
 
     for (const [i, part] of parts.entries()) {
       // SAY WHERE IT IS UP TO, BEFORE DOING IT. Twelve chapters is twenty
@@ -259,7 +260,7 @@ export default function LenderPolicyDocs() {
       const got = await readPart(row as Doc, part, lender,
                                 tierFor(part?.insideAnEmail ? 'email' : from.kind, !!part?.insideAnEmail))
       kept += got.kept; left += got.left
-      if (got.read === 0) failed += 1
+      if (got.read === 0) { failed += 1; if (got.why) whyFailed.push(`${part?.name || 'it'} — ${got.why}`) }
 
       // AND LET THE LIST FILL IN AS IT GOES. One refresh per chapter costs
       // nothing beside a full read of one, and it is the difference between
@@ -267,12 +268,13 @@ export default function LenderPolicyDocs() {
       await load()
     }
 
-    setNote(
+    const say = (
       `${parts.length} ${parts.length === 1 ? 'part' : 'parts'} opened, ${kept} lines read out` +
       (left ? `, ${left} left out because they could not quote the document` : '') +
-      (failed ? `. ${failed} could not be read at all and ${failed === 1 ? 'is' : 'are'} on file unread` : '') +
+      (failed ? `. ${failed} could not be read: ${whyFailed.slice(0, 3).join('; ')}` : '') +
       (skipped.length ? `. ${skipped.length} file${skipped.length === 1 ? '' : 's'} were not opened: ${skipped.map((x: any) => `${x?.name} (${x?.why})`).join('; ')}` : '') +
       '. Check them below.')
+    if (failed > 0 && kept === 0) setErr(say); else setNote(say)
     setOpen(lender.id)
     await load()
   }
@@ -284,16 +286,28 @@ export default function LenderPolicyDocs() {
       body: JSON.stringify({
         documentId: doc.id, lenderId: lender.id,
         base64: part?.base64 || '', text: part?.text || '',
+        // A PDF comes back as an address rather than a file - see
+        // app/api/read-link/route.ts for why.
+        fileUrl: part?.fileUrl || '',
       }),
     })
     const j = await res.json()
-    if (!res.ok) return { read: 0, kept: 0, left: 0 }
+    // WHY IT FAILED, ON SCREEN.
+    //
+    // 13 Oct 2026. This line used to be `return { read: 0 }` and nothing else.
+    // Every failure - a document too big to post, a website refusing us, a key
+    // missing - arrived on screen as "0 lines" with no reason, and Fabio spent
+    // an afternoon re-pressing buttons that were never going to work.
+    if (!res.ok) return { read: 0, kept: 0, left: 0, why: String(j?.error || `the reader answered ${res.status}`) }
 
     // SECOND PASS THROUGH THE SAME GATE. The route already dropped anything
     // that could not quote; doing it again costs nothing and means a future
     // caller cannot get round it by posting rows straight in.
     const { rules: clean, dropped } = cleanProposed(j?.rules, doc.id, lender.id)
-    if (clean.length === 0) return { read: 0, kept: 0, left: dropped.length }
+    if (clean.length === 0) {
+      return { read: 0, kept: 0, left: dropped.length,
+               why: dropped.length ? 'nothing in it could quote the document' : 'nothing was read out of it' }
+    }
 
     const { error } = await supabase.from('lender_policy_rules').insert(clean.map(r => ({
       document_id: r.documentId, lender_id: r.lenderId, says: r.says, quote: r.quote,
@@ -316,8 +330,8 @@ export default function LenderPolicyDocs() {
       // needed: somebody reads an answer, sees it is wrong, and says so.
       effective_from: r.effectiveFrom, status: 'live',
     })))
-    if (error) return { read: 0, kept: 0, left: dropped.length }
-    return { read: 1, kept: clean.length, left: dropped.length }
+    if (error) return { read: 0, kept: 0, left: dropped.length, why: error.message }
+    return { read: 1, kept: clean.length, left: dropped.length, why: '' }
   }
 
 

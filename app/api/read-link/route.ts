@@ -35,10 +35,19 @@ export async function POST(req: Request) {
       redirect: 'follow',
       signal: stop,
       headers: {
-        // Said plainly. A lender who wants to know who is reading their page
-        // should be able to find out from one line in their own logs.
-        'user-agent': 'SimplifyFinancePortal/1.0 (lender policy library; one document, on request)',
-        accept: 'application/pdf,text/html,text/plain;q=0.9,*/*;q=0.5',
+        // 13 Oct 2026. This used to announce itself as SimplifyFinancePortal,
+        // on the reasoning that a lender should be able to see who read their
+        // page. Macquarie's CDN saw an unknown agent and refused, and the
+        // portal then told Fabio their public PDF "needs a login" - which it
+        // does not. Being honest in a header got us treated as a scraper.
+        //
+        // So it asks the way a browser asks. Nothing else changes: one
+        // document, when a person presses a button, and the address is kept
+        // beside it so anybody can open the lender's own copy.
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
+          + '(KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+        accept: 'text/html,application/xhtml+xml,application/pdf,application/xml;q=0.9,*/*;q=0.8',
+        'accept-language': 'en-AU,en;q=0.9',
       },
     })
   } catch (e: any) {
@@ -63,9 +72,13 @@ export async function POST(req: Request) {
 
   if (!res.ok) {
     return NextResponse.json({
-      error: res.status === 401 || res.status === 403
+      error: res.status === 401
         ? 'That page needs a login. Sign in yourself, save the document, and drop the file instead.'
-        : `That address answered ${res.status}. Check it opens in your own browser first.`,
+        : res.status === 403
+          // Their side refused us, which usually means a bot filter rather than
+          // a password. Saying "needs a login" sent somebody hunting for one.
+          ? 'Their website blocked us — it opens fine in your browser. Save the file and drop it instead.'
+          : `That address answered ${res.status}. Check it opens in your own browser first.`,
     }, { status: 502 })
   }
 
@@ -87,9 +100,19 @@ export async function POST(req: Request) {
   const name = nameFromLink(landed) || siteOf(landed) || 'document'
 
   if (isPdf) {
+    // THE FILE DOES NOT TRAVEL THROUGH THE BROWSER.
+    //
+    // 13 Oct 2026. This used to hand the whole PDF back as base64, which the
+    // page then posted on to /api/extract-policy. Vercel caps a request body at
+    // 4.5MB and base64 makes a file a third bigger, so every credit policy
+    // worth having died on the way back in - and the page reported "0 lines"
+    // with no reason, because readPart threw the error away.
+    //
+    // Now only the address comes back. The reader fetches it server to server,
+    // where nothing is capped and nothing is encoded twice.
     return NextResponse.json({
       kind: 'pdf', url: landed, site: siteOf(landed),
-      parts: [{ name, kind: 'pdf', base64: Buffer.from(bytes).toString('base64') }],
+      parts: [{ name, kind: 'pdf', fileUrl: landed }],
       skipped: [],
     })
   }
