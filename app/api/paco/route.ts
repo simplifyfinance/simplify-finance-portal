@@ -3,7 +3,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { answer, HOLA, lenderAsked } from '@/lib/paco'
 import { realDealsOnly } from '@/lib/test-deal'
 import { isUsable, type Claim } from '@/lib/paco-knowledge'
-import { answerFrom } from '@/lib/paco-answers-from-policy'
+import { answerFrom, USABLE } from '@/lib/paco-answers-from-policy'
 import { whereToGetIt, WHERE_THE_POLICY_LIVES } from '@/lib/where-the-policy-lives'
 import { type PolicyRule } from '@/lib/policy-rules'
 import { flat } from '@/lib/plain-words'
@@ -76,7 +76,11 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  const said = answer(question, deals, { bdmNotes: notes.length }, notes)
+  // THE COUNT WAS NEVER PASSED IN. "0 lender policies loaded" was not a
+  // reading of anything - policies defaulted to nought and stayed there, so
+  // Paco reported an empty library however full it was.
+  const said = answer(question, deals,
+    { bdmNotes: notes.length, policies: policy.length }, notes)
   // WHAT THE LENDER WROTE DOWN, FOR THIS QUESTION.
   //
   // Filtered the same way the notes are - by the lender named in the question
@@ -113,17 +117,22 @@ export async function GET(req: NextRequest) {
 
 // WHAT THE LENDERS THEMSELVES HAVE WRITTEN DOWN.
 //
-// Only what somebody has ticked - status 'live'. A rule read out of a document
-// and not yet checked has never been seen by a person, and the one thing Paco
-// may not do is repeat a machine's reading of a credit manual as though it were
-// the bank's policy. See docs/paco-policy-tables-all.sql.
+// 13 Oct 2026. This used to take only what somebody had ticked, and that made
+// the library useless the moment it filled up: NAB's policy went in, 455 lines
+// came out of it, and Paco answered "I have no lender policy on this" to a
+// question whose answer was on the screen behind him.
+//
+// He now reads unchecked lines too and SAYS they are unchecked, every time,
+// with the sentence they came from. The quote is what stops a machine's
+// reading being mistaken for the bank's policy - not a tick nobody has time
+// to do three hundred times. See lib/paco-answers-from-policy.ts.
 //
 // A missing table is a thing nobody has set up yet, not a fault. Same as the
 // notebook above: he answers from what he does have.
 async function readPolicy(supabase: any): Promise<PolicyRule[]> {
   const { data, error } = await supabase.from('lender_policy_rules')
     .select('id, lender_id, document_id, says, quote, section, heading, tags, tier, status, effective_from, effective_to, row_headers, row_cells, depends_on, excludes, max_lvr, lenders(name)')
-    .eq('status', 'live')
+    .in('status', USABLE as unknown as string[])
     .limit(5000)
   if (error || !data) return []
   return (data as any[]).map(r => ({

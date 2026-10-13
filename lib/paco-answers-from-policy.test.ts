@@ -17,7 +17,7 @@
 // Invented lenders where invented; the tiers are the blueprint's.
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
-import { answerFrom, sourceOf, whatToCheck, rankOfTier, NOTE_BESIDE_POLICY } from './paco-answers-from-policy'
+import { answerFrom, sourceOf, isChecked, whatToCheck, rankOfTier, NOTE_BESIDE_POLICY } from './paco-answers-from-policy'
 
 const TODAY = '2026-10-13'
 const rule = (o: any = {}) => ({
@@ -40,15 +40,65 @@ describe('the firmest thing he has, first', () => {
   })
 })
 
-describe('nothing a person has not ticked ever answers', () => {
-  // A machine's reading of a credit manual, repeated as though it were the
-  // bank's policy, is the one thing this whole design exists to prevent.
-  it('a proposed rule is not an answer', () => {
-    expect(answerFrom([rule({ status: 'proposed' })], [], TODAY).policy).toHaveLength(0)
+// AN UNCHECKED LINE ANSWERS, AND SAYS SO.
+//
+// 13 Oct 2026. This used to hold that nothing unticked ever answered, and the
+// day the library filled up that turned out to be the wrong promise: NAB's
+// policy went in, 455 lines came out, and Paco told Fabio he had no lender
+// policy on a question whose answer was on the screen behind him.
+//
+// The thing that stops a machine's reading being mistaken for the bank's
+// policy was never the tick. It is the quote. A tick nobody has time to do
+// three hundred times protects nobody; a sentence from the document sitting
+// under every answer protects everybody. So the promise is now harder to keep,
+// not easier: an unchecked line must answer, must be marked every single time,
+// and must never be shown above a line a person has read.
+describe('an unchecked line answers, and says it is unchecked', () => {
+  it('a proposed rule is an answer', () => {
+    const a = answerFrom([rule({ status: 'proposed' })], [], TODAY)
+    expect(a.policy).toHaveLength(1)
   })
 
-  it('nor a rejected one', () => {
+  it('and it is counted, so the mark can never be quietly dropped', () => {
+    const a = answerFrom([rule({ status: 'proposed' }), rule({ status: 'proposed' })], [], TODAY)
+    expect(a.unchecked).toBe(2)
+  })
+
+  it('a ticked one is not counted as unchecked', () => {
+    expect(answerFrom([rule({ status: 'live' })], [], TODAY).unchecked).toBe(0)
+    expect(isChecked(rule({ status: 'live' }))).toBe(true)
+    expect(isChecked(rule({ status: 'proposed' }))).toBe(false)
+  })
+
+  // ORDER IS THE OTHER HALF OF THE MARK. A line somebody has read against the
+  // document goes first, even where the unchecked one is just as official.
+  it('and what a person has read comes first', () => {
+    const a = answerFrom([
+      rule({ id: 'unread', status: 'proposed', tier: 'A' }),
+      rule({ id: 'read', status: 'live', tier: 'A' }),
+    ], [], TODAY)
+    expect(a.policy.map(r => r.id)).toEqual(['read', 'unread'])
+  })
+
+  // THE ONE THAT STILL NEVER ANSWERS. Somebody looked at this line, held it
+  // against the document and said it was wrong. That is a decision, and it
+  // stands.
+  it('a rejected one still never answers', () => {
     expect(answerFrom([rule({ status: 'rejected' })], [], TODAY).policy).toHaveLength(0)
+    expect(answerFrom([rule({ status: 'rejected' })], [], TODAY).unchecked).toBe(0)
+  })
+
+  // AND AN UNCHECKED READING IS NOT A SOURCE FALLING OUT WITH A TEAM NOTE.
+  // That is a machine and a person, and dressing it up as a conflict between
+  // the bank and our own experience would be theatre.
+  it('does not pick a fight with a team note on its own', () => {
+    const withNote = answerFrom([rule({ status: 'proposed', tier: 'A' })],
+      [{ lender: 'NAB', said: 'They took nine months once' }], TODAY)
+    expect(withNote.disagrees).toBe(false)
+
+    const checked = answerFrom([rule({ status: 'live', tier: 'A' })],
+      [{ lender: 'NAB', said: 'They took nine months once' }], TODAY)
+    expect(checked.disagrees).toBe(true)
   })
 })
 
@@ -137,8 +187,28 @@ describe('the wiring', () => {
   const route = readFileSync('app/api/paco/route.ts', 'utf8')
   const panel = readFileSync('components/Paco.tsx', 'utf8')
 
-  it('only ticked rules are read', () => {
-    expect(route).toContain(".eq('status', 'live')")
+  it('both ticked and unticked rules are read, and rejected ones are not', () => {
+    expect(route).toContain(".in('status', USABLE")
+    expect(route, 'a rejected line is answering again')
+      .not.toContain("'rejected'")
+  })
+
+  // THE COUNT NOBODY WAS PASSING. "0 lender policies loaded" was not a reading
+  // of anything: policies defaulted to nought in lib/paco.ts and the route
+  // never sent a real one, so Paco reported an empty library however full it
+  // was, and then said "I have no lender policy on this" off the back of it.
+  it('and the number of policies he holds is actually passed to him', () => {
+    expect(route).toContain('policies: policy.length')
+  })
+
+  it('the panel marks a line nobody has checked', () => {
+    expect(panel).toContain('nobody has checked this yet')
+    expect(panel).toContain('isChecked(r)')
+  })
+
+  it('and says once, underneath, how many of them there were', () => {
+    expect(panel).toContain('p.unchecked > 0')
+    expect(panel).toContain('not checked by a person')
   })
 
   // A Macquarie question answered with a Bankwest rule would be worse than no

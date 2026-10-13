@@ -2,8 +2,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { tierLabel, isOfficial, attribution, caveatFor, TYPEABLE_TIERS, type TypeableTier } from '@/lib/paco-knowledge'
 import { HOLA, type Answer } from '@/lib/paco'
-import { sourceOf, NOTE_BESIDE_POLICY, type Answer as PolicyAnswer } from '@/lib/paco-answers-from-policy'
+import { sourceOf, isChecked, NOTE_BESIDE_POLICY, type Answer as PolicyAnswer } from '@/lib/paco-answers-from-policy'
 import { citation, leansOn } from '@/lib/policy-rules'
+import { offeringToTell, YES_TELL_ME, NOT_THE_LIBRARY } from '@/lib/paco-takes-a-note'
 
 // PACO, IN THE BOTTOM RIGHT OF EVERY PAGE.
 //
@@ -41,7 +42,7 @@ function Bird({ size = 40 }: { size?: number }) {
   )
 }
 
-type Turn = { mine: boolean; text?: string; a?: Answer; error?: string }
+type Turn = { mine: boolean; text?: string; a?: Answer; error?: string; offer?: boolean }
 
 const SUGGEST = ['Limited title', 'Casual income', 'SMSF', 'Construction']
 
@@ -69,6 +70,22 @@ export default function Paco() {
     if (!said || busy) return
     setQ('')
     setTurns(t => [...t, { mine: true, text: said }])
+
+    // BEING OFFERED SOMETHING IS NOT BEING ASKED SOMETHING.
+    //
+    // 13 Oct 2026. Fabio typed "Can I give you the answer and you file on
+    // library?" and Paco matched the word savings and handed back an unrelated
+    // NAB rule. He was offered knowledge and went looking for it instead.
+    //
+    // Checked here, before the question is sent anywhere, so he cannot answer
+    // over the top of somebody trying to help him. No model, no guessing about
+    // lending - just who was doing the telling. See lib/paco-takes-a-note.ts.
+    if (offeringToTell(said).offered) {
+      setTurns(t => [...t, { mine: false, offer: true }])
+      setTelling(true)
+      return
+    }
+
     setBusy(true)
     try {
       const res = await fetch(`/api/paco?q=${encodeURIComponent(said)}`)
@@ -177,7 +194,14 @@ export default function Paco() {
             </div>
           </div>
         ) : (
-          <Bubble key={i}>{t.error ? <span className="text-chase">{t.error}</span> : <Said a={t.a!} />}</Bubble>
+          <Bubble key={i}>
+            {t.offer ? (
+              <>
+                <p className="m-0 text-[14.5px] text-ink leading-snug">{YES_TELL_ME}</p>
+                <p className="m-0 mt-1.5 text-[12.5px] text-muted leading-relaxed">{NOT_THE_LIBRARY}</p>
+              </>
+            ) : t.error ? <span className="text-chase">{t.error}</span> : <Said a={t.a!} />}
+          </Bubble>
         ))}
 
         {busy && <Bubble><span className="text-faint text-[14.5px]">&hellip;</span></Bubble>}
@@ -332,10 +356,19 @@ function Policy({ p }: { p: PolicyAnswer | null | undefined }) {
     <div className="mb-3">
       {p.policy.map((r: any) => {
         const src = sourceOf(r)
+        // AN UNCHECKED LINE ANSWERS, AND SAYS SO. It is the bank's own
+        // sentence either way; what nobody has done is read it back against
+        // the document. That is a fact about us, not about the rule, and it
+        // belongs on the answer rather than in the way of it.
+        const checked = isChecked(r)
         return (
-          <div key={r.id} className="mb-2.5 border-l-[3px] border-info bg-info-bg rounded-r-[10px] px-3 py-2">
-            <div className="text-[9.5px] font-bold tracking-[.06em] uppercase text-info mb-1">
+          <div key={r.id}
+            className={`mb-2.5 border-l-[3px] rounded-r-[10px] px-3 py-2
+              ${checked ? 'border-info bg-info-bg' : 'border-waiting bg-waiting-bg'}`}>
+            <div className={`text-[9.5px] font-bold tracking-[.06em] uppercase mb-1
+              ${checked ? 'text-info' : 'text-waiting'}`}>
               {r.lenderName ? `${r.lenderName} — written policy` : 'Written policy'}
+              {!checked && ' · nobody has checked this yet'}
             </div>
             <div className="text-[13.5px] font-semibold text-ink leading-snug">{r.says}</div>
             {src && 'quote' in src && (
@@ -365,6 +398,14 @@ function Policy({ p }: { p: PolicyAnswer | null | undefined }) {
           </div>
         )
       })}
+
+      {p.unchecked > 0 && (
+        <p className="m-0 mb-2.5 text-[11.5px] text-muted leading-relaxed">
+          {p.unchecked === 1 ? 'One line above has' : `${p.unchecked} lines above have`} been
+          read out of the document but not checked by a person. Read the quote before you
+          rely on it, and tell us if it is wrong.
+        </p>
+      )}
 
       {/* LENDERS ANNOUNCE IN OCTOBER FOR NOVEMBER. Held, and said - "nothing
           recorded" and "one starts in three weeks" are different answers. */}

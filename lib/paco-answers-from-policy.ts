@@ -24,9 +24,31 @@ const day = (v: any): string => txt(v).slice(0, 10)
 const RANK: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 }
 export const rankOfTier = (t: any): number => RANK[txt(t).toUpperCase()] ?? 9
 
+// NOTHING IS HELD BACK, AND THE MARK RIDES ALONG WITH IT.
+//
+// 13 Oct 2026. Fabio asked Paco what NAB does with an applicant living rent
+// free. The rule had been read out of NAB's chapter 12, it was on his screen
+// while he asked, and Paco said he had no lender policy at all - because a
+// line nobody had ticked was invisible to him.
+//
+// That gate was wrong. A line arrives carrying the sentence it came from, and
+// the quote is the defence, not the tick. Three hundred and seventy lines
+// waiting on somebody's Sunday is not a safeguard, it is a bottleneck that
+// makes the whole library useless until it clears.
+//
+// So an unchecked line answers. It says it is unchecked, every time, and it
+// shows its quote so a person can see in two seconds whether the reading was
+// right. A checked line is shown first.
+export const USABLE = ['live', 'proposed'] as const
+
+/** Has a person read this line against the document and kept it. */
+export function isChecked(r: any): boolean { return txt(r?.status) === 'live' }
+
 export type Answer = {
-  /** Lender policy, firmest first. */
+  /** Lender policy, checked first, then firmest first. */
   policy: PolicyRule[]
+  /** How many of those nobody has checked yet. Said, never hidden. */
+  unchecked: number
   /** Rules with a start date that has not arrived. Said, not hidden. */
   coming: PolicyRule[]
   /** What the team has told him, shown with the policy and never instead. */
@@ -50,7 +72,7 @@ export function answerFrom(
   const coming: PolicyRule[] = []
 
   for (const r of Array.isArray(rules) ? rules : []) {
-    if (txt(r?.status) !== 'live') continue
+    if (!(USABLE as readonly string[]).includes(txt(r?.status))) continue
     const from = day(r?.effectiveFrom), to = day(r?.effectiveTo), now = day(today)
     // LENDERS ANNOUNCE IN OCTOBER FOR NOVEMBER. A rule that has not started is
     // held and said to be coming, with its date - "nothing recorded" and
@@ -60,7 +82,10 @@ export function answerFrom(
     live.push(r)
   }
 
+  // CHECKED FIRST, then firmest first. A line a person has read against the
+  // document outranks one nobody has looked at, even where both are tier A.
   live.sort((a, b) =>
+    (isChecked(b) ? 1 : 0) - (isChecked(a) ? 1 : 0) ||
     rankOfTier(a.tier) - rankOfTier(b.tier) ||
     day(b.effectiveFrom).localeCompare(day(a.effectiveFrom)))
   coming.sort((a, b) => day(a.effectiveFrom).localeCompare(day(b.effectiveFrom)))
@@ -69,9 +94,15 @@ export function answerFrom(
   // decide whether they contradict - he has no business doing that. It is
   // simply that something official and something internal are both on record
   // for this question, which is exactly when a person should read both.
-  const official = live.some(r => rankOfTier(r.tier) <= 1)
+  // DISAGREEING NEEDS SOMETHING SOMEBODY HAS CHECKED on the official side.
+  // An unchecked reading against a team note is not two sources falling out,
+  // it is a machine and a person, and saying so would be theatre.
+  const official = live.some(r => rankOfTier(r.tier) <= 1 && isChecked(r))
   const internal = (Array.isArray(notes) ? notes : []).length > 0
-  return { policy: live, coming, notes: Array.isArray(notes) ? notes : [], disagrees: official && internal }
+  return {
+    policy: live, coming, unchecked: live.filter(r => !isChecked(r)).length,
+    notes: Array.isArray(notes) ? notes : [], disagrees: official && internal,
+  }
 }
 
 /** What a rule shows as its source: a sentence, or the row it came out of. */
