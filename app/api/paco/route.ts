@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { answer, HOLA, lenderAsked } from '@/lib/paco'
 import { realDealsOnly } from '@/lib/test-deal'
+import { sectionAnswer, type SectionAnswer } from '@/lib/paco-reads-the-section'
 import { isUsable, type Claim } from '@/lib/paco-knowledge'
 import { answerFrom, USABLE } from '@/lib/paco-answers-from-policy'
 import { whereToGetIt, WHERE_THE_POLICY_LIVES } from '@/lib/where-the-policy-lives'
@@ -118,7 +119,53 @@ export async function GET(req: NextRequest) {
   // THE BANK THE QUESTION NAMED, HANDED BACK. When he has nothing he asks
   // whether you know, and nobody should have to type the bank in again.
   const askedAbout = lenderAsked(question, lenders)
-  return NextResponse.json({ question, ...said, policy: fromPolicy, whereToGet, askedAbout })
+  // THE SECTIONS, BESIDE THE RULES AND NEVER INSTEAD OF THEM.
+  //
+  // The pre-chopped rules do not disappear the day this ships - every lender
+  // already read has hundreds of them and they are still true. The sections
+  // are the better answer where they exist; both are handed over and the
+  // screen leads with the sections.
+  const sections = await readSections(supabase, question, askedAbout)
+  return NextResponse.json({ question, ...said, policy: fromPolicy, whereToGet, askedAbout, sections })
+}
+
+// THE LENDER'S OWN SECTION, SEARCHED WHEN SOMEBODY ASKS.
+//
+// 14 Oct 2026, and this is the half the whole library was for. Fabio: "are you
+// now saving these as one big library where it will just search answers to
+// questions? this is the whole premise."
+//
+// The document is stored whole and split into the sections the lender wrote.
+// Nothing is carved up in advance, so an answer is a real section with its
+// heading and its tables still attached.
+//
+// A MISSING FUNCTION IS NOT A FAULT. Same as the notebook and the rules above:
+// if docs/lender-policy-search-that-works.sql has not been run, he answers from
+// what he does have rather than reporting a broken screen.
+async function readSections(
+  supabase: any, question: string, lenderName: string,
+): Promise<SectionAnswer | null> {
+  if (!question.trim()) return null
+
+  // The search is per lender, because a Macquarie question must never be
+  // answered out of Bankwest's manual. No lender named, no section search -
+  // lib/paco.ts already handles the across-everything case from deals.
+  if (!lenderName) return null
+  const { data: row } = await supabase.from('lenders')
+    .select('id').ilike('name', lenderName).limit(1).maybeSingle()
+  if (!row?.id) return null
+
+  const { data, error } = await supabase.rpc('paco_find_sections', {
+    p_lender: row.id, p_query: question, p_limit: 5,
+  })
+  if (error) return null
+
+  const rows = Array.isArray(data) ? data : []
+  // `loosened` comes back on every row and is the same for all of them - it
+  // describes the SEARCH, not the section. See lib/paco-reads-the-section.ts
+  // for why it decides whether any of this is allowed to be called an answer.
+  const loosened = rows.length > 0 && !!rows[0]?.loosened
+  return sectionAnswer(rows, loosened, lenderName)
 }
 
 // WHAT THE LENDERS THEMSELVES HAVE WRITTEN DOWN.

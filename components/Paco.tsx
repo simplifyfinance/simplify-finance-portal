@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { tierLabel, isOfficial, attribution, caveatFor, TYPEABLE_TIERS, type TypeableTier } from '@/lib/paco-knowledge'
 import { HOLA, type Answer } from '@/lib/paco'
 import { sourceOf, NOTE_BESIDE_POLICY, type Answer as PolicyAnswer } from '@/lib/paco-answers-from-policy'
+import { type SectionAnswer, type FoundSection } from '@/lib/paco-reads-the-section'
 import { citation, leansOn } from '@/lib/policy-rules'
 import { offeringToTell, YES_TELL_ME, NOT_THE_LIBRARY } from '@/lib/paco-takes-a-note'
 
@@ -390,6 +391,64 @@ function Wrong({ id, what }: { id: string; what: 'line' | 'note' }) {
   )
 }
 
+// THE LENDER'S OWN SECTION, WHOLE.
+//
+// 14 Oct 2026. The pre-chopped rules below this are four fragments that were
+// separated from each other the day a document was dropped. A section is the
+// thing the lender actually wrote, with its heading and its tables still
+// attached, found when somebody asked.
+//
+// IT LEADS, because where a section exists it is the better answer. The rules
+// stay underneath rather than being deleted - every lender already read has
+// hundreds of them and they are still true.
+function Sections({ s }: { s: SectionAnswer | null | undefined }) {
+  if (!s) return null
+  if (s.kind === 'nothing') {
+    // NOT A DEAD END. The honest next line is who does know.
+    return <div className="mb-3 text-[13px] text-body leading-relaxed">{s.says}</div>
+  }
+
+  // A LOOSENED SEARCH IS NOT AN ANSWER, AND MUST NOT LOOK LIKE ONE.
+  //
+  // Measured 14 Oct 2026 against the real document: asked about crypto - a
+  // word that appears nowhere in Macquarie's guidelines - the loose pass
+  // matches "deposit" and returns the section about genuine savings. So the
+  // closest sections wear the quiet treatment and the sentence above them says
+  // the question was not matched, rather than the blue "what the bank wrote"
+  // band that means this IS the policy.
+  const near = s.kind === 'closest'
+  const list: FoundSection[] = near ? s.closest : s.sections
+
+  return (
+    <div className="mb-3">
+      <div className={`text-[13px] leading-relaxed mb-2 ${near ? 'text-body' : 'text-ink font-semibold'}`}>
+        {s.says}
+      </div>
+      {list.map(x => (
+        <div key={x.sectionId}
+             className={near
+               ? 'mb-2.5 border border-card-line bg-page rounded-[10px] px-3 py-2'
+               : 'mb-2.5 border-l-[3px] border-info bg-info-bg rounded-r-[10px] px-3 py-2'}>
+          <div className={`text-[9.5px] font-bold tracking-[.06em] uppercase mb-1 ${near ? 'text-faint' : 'text-info'}`}>
+            {near ? 'Closest section' : 'What the bank wrote'}
+          </div>
+          <div className="text-[13.5px] font-semibold text-ink leading-snug">
+            {x.number ? `${x.number} ${x.title}` : x.title}
+            {x.part && <span className="font-normal text-faint"> (part {x.part})</span>}
+          </div>
+          {/* THE SECTION'S OWN WORDS, AND NOTHING ELSE. whitespace-pre-wrap
+              because the line breaks are the lender's - a table flattened into
+              a paragraph is how two numbers get swapped. */}
+          <div className="text-[13px] text-body leading-[1.55] mt-1.5 whitespace-pre-wrap">{x.body}</div>
+          {x.path && x.path !== x.title && (
+            <div className="text-[10.5px] text-faint mt-1.5">{x.path}</div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function Policy({ p }: { p: PolicyAnswer | null | undefined }) {
   if (!p) return null
   if (p.policy.length === 0 && p.coming.length === 0) return null
@@ -467,6 +526,7 @@ function Said({ a, onTell }: { a: Answer; onTell: (lender: string) => void }) {
 
   return (
     <>
+      <Sections s={(a as any).sections} />
       <Policy p={(a as any).policy} />
 
       {a.kind === 'found' && total === 0 && (
