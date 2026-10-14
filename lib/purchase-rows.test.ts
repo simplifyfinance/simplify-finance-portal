@@ -102,6 +102,50 @@ describe('the awkward deals', () => {
   // A capitalised fee is borrowed, not paid. It raises the debt and buys none
   // of the house, so the cash due on the day does not move. Fabio, 14 Oct 2026:
   // "funds to complete need to be calculated exclusing fee only using base loan".
+  // THE PRE-APPROVAL, WITH ITS REAL FIGURES.
+  //
+  // 14 Oct 2026. It went out showing a loan of $1,162,053 and a contribution of
+  // $929,947 - exactly total cost minus that loan. The LMI and the lender's
+  // risk fee were already inside the $1,162,053, so the client was told to bring
+  // the premium's worth less cash than they actually needed.
+  //
+  // Fabio: "the LMI AS DISCUSSED comes out so the funds to complete is wrong".
+  //
+  //   Funds to complete = total cost - (loan amount - LMI)
+  it('takes the LMI out of the loan before working out the cash', () => {
+    const rows = purchaseRows({
+      price: '2,000,000', duty: '92,000', dutyLabel: 'Stamp duty (NSW)',
+      loan: '1,162,053',                 // the whole loan, premium inside it
+      contribution: '929,947',           // the box, short by the premium
+      contributionFrom: 'savings',
+      lmiApplicable: 'Applicable', lmi: '22,000',
+      // Deliberately unanswered - which is the state the real deal was in, and
+      // the reason nothing on the screen caught it.
+    })
+    const loan = rows.find(r => r.label === 'Loan amount')!
+    const give = rows.find(r => r.label.startsWith('Your contribution required'))!
+    const lmi  = rows.find(r => r.label.startsWith('LMI'))!
+
+    // What they borrow does not move. It is what they borrow.
+    expect(loan.value).toBe('$1,162,053')
+    // 2,092,000 - (1,162,053 - 22,000). More cash, not less.
+    expect(give.value, 'the premium is being counted as if it bought the house').toBe('$951,947')
+    // And the line that says what the premium is.
+    expect(lmi.value).toBe('$22,000')
+  })
+
+  it('leaves it in when the premium is paid at settlement, not borrowed', () => {
+    // Nothing to take out - it was never in the loan. It is money to find on
+    // the day, and the line underneath already says so.
+    const rows = purchaseRows({
+      price: '2,000,000', duty: '92,000', dutyLabel: 'Stamp duty (NSW)',
+      loan: '1,162,053', contribution: '929,947', contributionFrom: 'savings',
+      lmiApplicable: 'Applicable', lmi: '22,000', lmiTreatment: 'Settlement',
+    })
+    expect(rows.find(r => r.label.startsWith('Your contribution required'))!.value).toBe('$929,947')
+    expect(rows.find(r => r.label.startsWith('LMI'))!.value).toContain('payable at settlement')
+  })
+
   it('leaves capitalised LMI out of the contribution', () => {
     const rows = purchaseRows({
       price: '900,000', duty: '35,000', dutyLabel: 'Stamp duty (NSW)',

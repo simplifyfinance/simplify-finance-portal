@@ -26,7 +26,7 @@ import { dutyLabel } from './duty-state'
 // it; the box is already the answer.
 
 import { money, readMoney } from './money'
-import { clientLoan, lmiTrailingLines } from './lmi'
+import { clientLoan, lmiTrailingLines, lmiAmount, lmiTreatment } from './lmi'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -93,36 +93,46 @@ export function purchaseRows(input: PurchaseInput): PurchaseRow[] {
   add('Loan amount', amount(loan.amount))
   if (loan.note && loan.amount) out.push({ label: '', value: loan.note, note: true })
 
-  // THE CONTRIBUTION IS WORKED FROM THE BASE LOAN, NEVER FROM THE BOX.
+  // THE LMI COMES OUT OF THE LOAN BEFORE THE SUM.
   //
-  // 14 Oct 2026. An investment pre-approval went out showing a loan amount with
-  // the LMI and the lender's risk fee inside it, and a contribution worked out
-  // by subtracting that figure from the total cost. The client was told to
-  // bring about $24,000 less than they actually needed.
+  // 14 Oct 2026. An investment pre-approval went out with a loan amount of
+  // $1,162,053 and a contribution of $929,947 - which is exactly total cost
+  // minus that loan. The LMI and the lender's risk fee were already inside the
+  // $1,162,053, so the client was told to bring the premium's worth less cash
+  // than they actually needed.
   //
-  // A capitalised fee is BORROWED, not paid. It raises the debt and buys none
-  // of the house, so the cash required on the day does not move. Fabio had
-  // already set this rule for the internal funds-to-complete strip on 3 Sep
-  // 2026 - "it doesnt impact funds to complete as LMI and risk fee is
-  // capitalised on the loans" - and said it again on 14 Oct: "funds to complete
-  // need to be calculated exclusing fee only using base loan". The client email
-  // was the one place still taking the deposit box at its word.
+  // Fabio, 14 Oct 2026: "the LMI AS DISCUSSED comes out so the funds to
+  // complete is wrong".
   //
-  // The box is only right while something keeps it in step with the loan. The
-  // BC does that through handlePurchasePriceChange and its siblings, but only
-  // on a linked purchase, and never when the figure typed into the split
-  // already had the fees inside it - which is exactly what happened here.
+  //   Funds to complete = total cost − (loan amount − LMI)
   //
-  // So it is worked out instead of trusted: total cost minus the base loan.
-  // `input.loan` is the base - the splits before any premium - because the
-  // premium is added below, inside clientLoan(), and nowhere else.
+  // NOT total cost − loan amount, which is what this did before and is the
+  // whole fault. A capitalised premium raises the debt and buys none of the
+  // house: the cash due on the day does not move, so the premium has to come
+  // off the loan before it is subtracted.
   //
-  // The box is still used where the sum cannot be done: no price, or no loan
-  // recorded yet. A number nobody can check beats no number at all.
+  // I had this backwards first time. I built it assuming the box holds the
+  // BASE loan and the portal adds the premium on top. It is the other way
+  // round in practice - the box holds the whole loan and the premium has to be
+  // taken off.
+  //
+  // THE ONE EXCEPTION. Paid at settlement, the premium was never in the loan,
+  // so there is nothing to take out. It is money to find on the day and
+  // lmiTrailingLines() already says so underneath.
   const totalCost = totalPurchaseCost(input.price, input.duty)
-  const baseLoan = readMoney(input.loan)
-  const worked = totalCost !== null && baseLoan !== null && baseLoan > 0
-    ? totalCost - baseLoan
+  const premium = lmiAmount(input)
+  const inTheLoan = premium !== null && lmiTreatment(input) !== 'settlement'
+
+  // `loan.amount` is what the client sees on the Loan amount line - the typed
+  // figure, or the base plus the premium where the portal added it. Either way
+  // this is the number the premium has to come out of.
+  const shownLoan = loan.amount
+  const fundsLoan = shownLoan === null ? null
+    : inTheLoan ? shownLoan - (premium as number)
+    : shownLoan
+
+  const worked = totalCost !== null && fundsLoan !== null && fundsLoan > 0
+    ? totalCost - fundsLoan
     : null
 
   const from = txt(input.contributionFrom)
