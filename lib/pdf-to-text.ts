@@ -46,8 +46,24 @@ export async function pdfToText(bytes: Uint8Array | ArrayBuffer): Promise<PdfTex
   // Imported here rather than at the top so that a route which never sees a
   // PDF does not pay to load it.
   const { getDocumentProxy } = await import('unpdf')
-  const pdf = await getDocumentProxy(
-    bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes))
+
+  // A NODE Buffer IS A Uint8Array, AND unpdf REFUSES IT ANYWAY.
+  //
+  // 14 Oct 2026, the first real PDF Fabio dropped after this shipped:
+  //
+  //   That PDF could not be opened - Please provide binary data as
+  //   `Uint8Array`, rather than `Buffer`.
+  //
+  // This line used to read `bytes instanceof Uint8Array ? bytes : new
+  // Uint8Array(bytes)`. Buffer EXTENDS Uint8Array, so the check was true for a
+  // Buffer and handed it straight through - and the route always has a Buffer,
+  // because that is what Buffer.from() and arrayBuffer() give you.
+  //
+  // My own test passed because I wrote `new Uint8Array(readFileSync(...))` by
+  // hand, which is not what the route does. I tested the library instead of my
+  // own code. The guard is gone: a plain Uint8Array is built every time, which
+  // costs one copy and cannot be wrong.
+  const pdf = await getDocumentProxy(new Uint8Array(bytes as any))
 
   const pages = pdf.numPages
   const read = Math.min(pages, MOST_PAGES)
