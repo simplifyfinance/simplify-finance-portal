@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { citation, cleanProposed } from '@/lib/policy-rules'
+import { splitIntoSections, contextLineFor } from '@/lib/split-into-sections'
 import { kindOf, tierFor } from '@/lib/dropped-files'
 import { whereIsPaco, rungTone, type Standing } from '@/lib/the-ladder'
 import { whereFor, sourceLine, alsoCoveredBy, REGISTER_CHECKED_ON } from '@/lib/where-the-policy-lives'
@@ -249,6 +250,7 @@ export default function LenderPolicyDocs() {
     // The other banks this same document covers, as lenders we actually hold.
     const alsoFile = alsoAlso ? lendersCoveredWith(lender) : []
     let kept = 0, left = 0, failed = 0, ranOutOn = 0
+    let wordsOn = 0, sectionsOn = 0
     const whyFailed: string[] = []
 
     for (const [i, part] of parts.entries()) {
@@ -272,7 +274,14 @@ export default function LenderPolicyDocs() {
       const got = await readPart(row as Doc, part, lender,
                                 tierFor(part?.insideAnEmail ? 'email' : from.kind, !!part?.insideAnEmail))
       kept += got.kept; left += got.left
-      if (got.read === 0) { failed += 1; if (got.why) whyFailed.push(`${part?.name || 'it'} — ${got.why}`) }
+      if (got.words) wordsOn += 1
+      sectionsOn += got.sections || 0
+      // THE WORDS AND THE SECTIONS FAIL SEPARATELY FROM THE RULES, and are
+      // said separately, because "0 lines" meaning six different things is the
+      // thing that cost a day.
+      if (got.whyWords) whyFailed.push(`${part?.name || 'it'} — the words: ${got.whyWords}`)
+      else if (got.whySections) whyFailed.push(`${part?.name || 'it'} — the sections: ${got.whySections}`)
+      if (got.read === 0) { failed += 1; if (got.why) whyFailed.push(`${part?.name || 'it'} — the rules: ${got.why}`) }
       if (got.ranOut) ranOutOn += 1
 
       // ONE DOCUMENT, FOUR BANKS.
@@ -303,6 +312,30 @@ export default function LenderPolicyDocs() {
           failed += 1
           whyFailed.push(`${other.name} — the copy was refused, nothing was filed under it`)
         }
+
+        // AND THE SECTIONS, because one document covering four brands should
+        // be quotable under all four. Same run id, its own document row, and
+        // the pointer moves last here too.
+        if (got.secRows.length > 0) {
+          const twinId = (twin as any).id
+          const mine = got.secRows.map((r: any) => ({ ...r, lender_id: other.id, document_id: twinId }))
+          let put = 0
+          for (let k = 0; k < mine.length; k += 100) {
+            const { data: w } = await supabase.from('lender_policy_sections')
+              .insert(mine.slice(k, k + 100)).select('id')
+            if (!w) break
+            put += w.length
+          }
+          if (put === mine.length) {
+            const { data: f } = await supabase.from('lender_documents')
+              .update({ current_read: mine[0].read_run, sectioned_at: new Date().toISOString() })
+              .eq('id', twinId).select('id')
+            if (!f || f.length === 0) whyFailed.push(`${other.name} — its sections saved but it would not point at them`)
+            else sectionsOn += put
+          } else {
+            whyFailed.push(`${other.name} — only ${put} of ${mine.length} sections copied`)
+          }
+        }
       }
 
       // AND LET THE LIST FILL IN AS IT GOES. One refresh per chapter costs
@@ -311,22 +344,146 @@ export default function LenderPolicyDocs() {
       await load()
     }
 
+    // WHAT ACTUALLY HAPPENED, IN THE ORDER IT HAPPENED.
+    //
+    // 13 Oct 2026. This used to lead with a line count, which was the one
+    // number that could be zero for six unrelated reasons. It now says the
+    // three steps separately, because "the words are stored but it would not
+    // come apart into sections" and "nothing happened at all" are completely
+    // different situations and used to look identical.
+    const steps = [
+      wordsOn
+        ? `the words are stored for ${wordsOn} of ${parts.length}`
+        : 'no words could be stored',
+      sectionsOn
+        ? `${sectionsOn} section${sectionsOn === 1 ? '' : 's'} to quote from`
+        : 'nothing came apart into sections, so Paco can only search the words',
+      `${kept} rule${kept === 1 ? '' : 's'} read out`,
+    ]
+
     const say = (
-      `${parts.length} ${parts.length === 1 ? 'part' : 'parts'} opened, ${kept} lines read out` +
+      `${parts.length} ${parts.length === 1 ? 'part' : 'parts'} opened. ${steps.join(', ')}` +
       (left ? `, ${left} left out because they could not quote the document` : '') +
-      (failed ? `. ${failed} could not be read: ${whyFailed.slice(0, 3).join('; ')}` : '') +
+      (failed || whyFailed.length ? `. What went wrong: ${whyFailed.slice(0, 3).join('; ')}` : '') +
       (skipped.length ? `. ${skipped.length} file${skipped.length === 1 ? '' : 's'} were not opened: ${skipped.map((x: any) => `${x?.name} (${x?.why})`).join('; ')}` : '') +
       // THE ANSWER TO "HOW DO I KNOW THIS BANK IS DONE". A document bigger
       // than the reader can answer in one go is not finished, and nothing on
       // screen said so.
       (ranOutOn ? `. There is more in ${ranOutOn === 1 ? 'it' : `${ranOutOn} of them`} than came back — what is here is real, it is just not all of it` : '') +
       '. Check them below.')
-    if (failed > 0 && kept === 0) setErr(say); else setNote(say)
+    if (kept === 0 && sectionsOn === 0 && wordsOn === 0) setErr(say); else setNote(say)
     setOpen(lender.id)
     await load()
   }
 
+  // THE THREE STEPS, IN THIS ORDER, AND THE ORDER IS THE POINT.
+  //
+  // 13 Oct 2026. Macquarie's guidelines were uploaded, hashed and sitting in
+  // the bucket, complete, and Paco could not read one line of them - because
+  // one model call tried to carve the whole document into hundreds of rules,
+  // ran out of room, and everything downstream depended on it having worked.
+  //
+  //   1. the words are stored, and THAT is what "filed" means
+  //   2. the document is split into the sections the lender already wrote
+  //   3. rules are read out of it
+  //
+  // Each step reports its own failure and none of them can undo the one
+  // before. A document that reaches step 1 is searchable by its words. One
+  // that reaches step 2 is quotable by section. Neither can be taken away by
+  // step 3 going wrong, which is the whole difference from yesterday.
   async function readPart(doc: Doc, part: any, lender: Lender, tier: string) {
+    const name = String(part?.name || doc.title || 'Document')
+
+    // ---- STEP ONE: THE WORDS -------------------------------------------
+    let words = 0, sections = 0
+    let whyWords = '', whySections = ''
+    let text = ''
+    // Kept so the brands this one policy also covers get the same sections,
+    // rather than one document being read four times.
+    let secRows: any[] = []
+    let secRun = ''
+    try {
+      const tr = await fetch('/api/document-text', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          base64: part?.base64 || '', text: part?.text || '', fileUrl: part?.fileUrl || '',
+        }),
+      })
+      const tj = await tr.json()
+      if (!tr.ok) whyWords = String(tj?.error || `the reader answered ${tr.status}`)
+      else {
+        text = String(tj?.text || '')
+        if (!text.trim()) whyWords = 'there were no words in it'
+      }
+    } catch (e: any) { whyWords = String(e?.message || e) }
+
+    if (text) {
+      // CHECKED. A silent failure here means the tile says filed and Paco has
+      // nothing behind it, which is exactly the lie we are removing.
+      const { data: stored, error: sErr } = await supabase.from('lender_documents')
+        .update({
+          body_text: text, body_chars: text.length,
+          body_stored_at: new Date().toISOString(), last_read_error: '',
+        })
+        .eq('id', doc.id).select('id')
+      if (sErr || !stored || stored.length === 0) {
+        whyWords = sErr?.message || 'the words were read but would not save'
+      } else {
+        words = text.length
+
+        // ---- STEP TWO: THE SECTIONS --------------------------------------
+        //
+        // Split in the browser, because lib/split-into-sections is a function
+        // of the text and nothing else - no key, no network, nothing to fail
+        // halfway. A read is a RUN: every section carries the run it came from
+        // and the document only points at it once all of them are written, so
+        // a re-read that dies halfway leaves the previous read still answering.
+        try {
+          const run = crypto.randomUUID()
+          secRun = run
+          const secs = splitIntoSections(text, name)
+          const rows = secs.map(x => ({
+            document_id: doc.id, lender_id: lender.id, read_run: run,
+            ordinal: x.ordinal, number: x.number, title: x.title, path: x.path,
+            part: x.part, body: x.body, chars: x.chars,
+            context: contextLineFor(x, lender.name, name),
+            tier,
+          }))
+          let put = 0
+          for (let i = 0; i < rows.length; i += 100) {
+            const { data: w, error: wErr } = await supabase
+              .from('lender_policy_sections').insert(rows.slice(i, i + 100)).select('id')
+            if (wErr || !w) { whySections = wErr?.message || 'the sections would not save'; break }
+            put += w.length
+          }
+          // THE POINTER MOVES LAST, or not at all.
+          if (!whySections && put > 0 && put === rows.length) {
+            const { data: flipped, error: fErr } = await supabase.from('lender_documents')
+              .update({ current_read: run, sectioned_at: new Date().toISOString() })
+              .eq('id', doc.id).select('id')
+            if (fErr || !flipped || flipped.length === 0) {
+              whySections = fErr?.message || 'the sections saved but the document would not point at them'
+            } else { sections = put; secRows = rows }
+          } else if (!whySections) {
+            whySections = `only ${put} of ${rows.length} sections saved, so the document still points at the last good read`
+          }
+        } catch (e: any) { whySections = String(e?.message || e) }
+      }
+    }
+
+    if (whyWords || whySections) {
+      // fire-and-forget: a note ABOUT a failure, kept on the row so a document
+      // that went wrong last Tuesday can still say why today. The failure
+      // itself is already on screen and already in the return value - if this
+      // write is refused, the person has still been told. Failing the whole
+      // read because we could not write down why it went wrong would be the
+      // tail wagging the dog.
+      await supabase.from('lender_documents')
+        .update({ last_read_error: (whyWords || whySections).slice(0, 500) })
+        .eq('id', doc.id)
+    }
+
+    // ---- STEP THREE: THE RULES -----------------------------------------
     const res = await fetch('/api/extract-policy', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -345,7 +502,7 @@ export default function LenderPolicyDocs() {
     // Every failure - a document too big to post, a website refusing us, a key
     // missing - arrived on screen as "0 lines" with no reason, and Fabio spent
     // an afternoon re-pressing buttons that were never going to work.
-    if (!res.ok) return { read: 0, kept: 0, left: 0, rows: [], ranOut: false, why: String(j?.error || `the reader answered ${res.status}`) }
+    if (!res.ok) return { read: 0, kept: 0, left: 0, rows: [], ranOut: false, words, sections, whyWords, whySections, secRows, why: String(j?.error || `the reader answered ${res.status}`) }
 
     // SECOND PASS THROUGH THE SAME GATE. The route already dropped anything
     // that could not quote; doing it again costs nothing and means a future
@@ -353,6 +510,7 @@ export default function LenderPolicyDocs() {
     const { rules: clean, dropped } = cleanProposed(j?.rules, doc.id, lender.id)
     if (clean.length === 0) {
       return { read: 0, kept: 0, left: dropped.length, rows: [], ranOut: !!j?.ranOut,
+               words, sections, whyWords, whySections, secRows,
                why: dropped.length ? 'nothing in it could quote the document' : 'nothing was read out of it' }
     }
 
@@ -378,8 +536,8 @@ export default function LenderPolicyDocs() {
       effective_from: r.effectiveFrom, status: 'live',
     }))
     const { error } = await supabase.from('lender_policy_rules').insert(rows)
-    if (error) return { read: 0, kept: 0, left: dropped.length, why: error.message, rows: [], ranOut: false }
-    return { read: 1, kept: clean.length, left: dropped.length, why: '', rows, ranOut: !!j?.ranOut }
+    if (error) return { read: 0, kept: 0, left: dropped.length, why: error.message, rows: [], ranOut: false, words, sections, whyWords, whySections, secRows }
+    return { read: 1, kept: clean.length, left: dropped.length, why: '', rows, ranOut: !!j?.ranOut, words, sections, whyWords, whySections, secRows }
   }
 
 

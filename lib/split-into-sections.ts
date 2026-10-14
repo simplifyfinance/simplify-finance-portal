@@ -276,9 +276,12 @@ const renumber = (secs: Section[]): Section[] =>
  * does not need one. The lender, the document and the section's own path say
  * it exactly, for nothing, with no call to go wrong.
  */
+export function contextLineFor(s: Section, lender: string, document: string): string {
+  return [lender, document, s.path || s.title].filter(Boolean).join(' — ')
+}
+
 export function searchTextFor(s: Section, lender: string, document: string): string {
-  const head = [lender, document, s.path || s.title].filter(Boolean).join(' — ')
-  return `${head}\n\n${s.body}`
+  return `${contextLineFor(s, lender, document)}\n\n${s.body}`
 }
 
 /** How a quote from this section is addressed, in a broker's words. */

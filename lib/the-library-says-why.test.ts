@@ -45,8 +45,20 @@ describe('a failure says why, on screen', () => {
 
   // AN EMPTY RESULT IS NOT A QUIET NOTE. A blue banner saying "0 lines read
   // out" is how somebody presses the same button four times.
-  it('and nothing read at all is an error, not a note', () => {
-    expect(page).toContain('if (failed > 0 && kept === 0) setErr(say); else setNote(say)')
+  //
+  // CHANGED THE SAME DAY, DELIBERATELY. This used to read:
+  //
+  //   if (failed > 0 && kept === 0) setErr(say); else setNote(say)
+  //
+  // which was right when rules were the only thing a document produced. They
+  // are not any more - the words are stored first and the sections second, and
+  // either of those landing is a real result. A document whose text is stored
+  // and whose 25 sections are quotable is NOT a failure because the rules read
+  // came back empty; calling it one would send somebody re-dropping a document
+  // that is already working. It is an error only when all three produced
+  // nothing. See lib/the-words-are-stored-first.test.ts.
+  it('and nothing at all landing is an error, not a note', () => {
+    expect(page).toContain('if (kept === 0 && sectionsOn === 0 && wordsOn === 0) setErr(say); else setNote(say)')
   })
 })
 
