@@ -71,3 +71,41 @@ describe('the sidebar keeps its footer on screen', () => {
     expect(AFTER_NAV).toContain(needle)
   })
 })
+
+// THE LENDING OPTIONS PAGE SCROLLED FOREVER.
+//
+// 14 Oct 2026. Fabio: "the page keeps rolling, never did that" - and only on
+// that one tab. His own console gave the answer in three numbers:
+//
+//   body 930    the inner scrolling area, exactly one screen
+//   doc  4834   the whole document
+//   lowest element 4833
+//
+// The rate-module checkboxes wear `sr-only`, which is position:absolute. With
+// no positioned ancestor their containing block was the document itself, so
+// they escaped the 930px scroller, landed 4833px down the page and stretched
+// it to 4834 - a second scrollbar over almost entirely empty space.
+//
+// It is the only sr-only in the whole app, which is why no other page did it.
+describe('a visually hidden input cannot stretch the page', () => {
+  const lo = readFileSync('app/(app)/deals/[id]/LOForm.tsx', 'utf8')
+
+  it('every sr-only input sits inside a positioned parent', () => {
+    let from = 0
+    let found = 0
+    for (;;) {
+      const at = lo.indexOf('className="sr-only"', from)
+      if (at < 0) break
+      found += 1
+      // The label that opens immediately above it must establish a containing
+      // block, or the input is absolutely positioned against the document.
+      const before = lo.slice(Math.max(0, at - 700), at)
+      const label = before.lastIndexOf('<label')
+      expect(label, 'an sr-only input with no label around it').toBeGreaterThan(-1)
+      expect(before.slice(label), 'this sr-only input will stretch the page again')
+        .toMatch(/className=\{?`?\s*relative\b/)
+      from = at + 1
+    }
+    expect(found, 'the sr-only inputs have gone - delete this test if that was deliberate').toBeGreaterThan(0)
+  })
+})

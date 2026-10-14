@@ -21,15 +21,15 @@ describe('two moments, two questions', () => {
 
 describe('what somebody typed, cleaned', () => {
   it('keeps the taps we offered', () => {
-    const h = tidy({ stage: 'bc', hard: ['Servicing was tight', 'Self-employed income'] })
-    expect(h.hard).toEqual(['Servicing was tight', 'Self-employed income'])
+    const h = tidy({ stage: 'bc', hard: ['Serviceability', 'Self-employed under 2 yrs'] })
+    expect(h.hard).toEqual(['Serviceability', 'Self-employed under 2 yrs'])
   })
 
   // A MADE-UP TAG WOULD POISON EVERY COUNT PACO DOES AFTERWARDS, quietly and
   // for good. Anything we did not offer is thrown away.
   it('throws away a tap nobody was offered', () => {
-    const h = tidy({ stage: 'bc', hard: ['Servicing was tight', 'Whatever I fancy'] })
-    expect(h.hard).toEqual(['Servicing was tight'])
+    const h = tidy({ stage: 'bc', hard: ['Serviceability', 'Whatever I fancy'] })
+    expect(h.hard).toEqual(['Serviceability'])
   })
 
   it('and only keeps reasons against a lender actually on the deal', () => {
@@ -60,7 +60,7 @@ describe('what somebody typed, cleaned', () => {
 
   it('knows when somebody actually said something', () => {
     expect(saidSomething(tidy({ note: 'Capacity is tight.' }))).toBe(true)
-    expect(saidSomething(tidy({ hard: ['Credit history'] }))).toBe(true)
+    expect(saidSomething(tidy({ hard: ['Credit impairment'] }))).toBe(true)
     expect(saidSomething(tidy({ note: '   ' }))).toBe(false)
   })
 })
@@ -87,7 +87,7 @@ describe('almost none of it reaches Paco', () => {
     const h = tidy({
       stage: 'lo',
       why: { Bankwest: ['Policy fit', 'Only one who would'] },
-      hard: ['Servicing was tight'],
+      hard: ['Serviceability'],
     }, LENDERS)
     expect(whatPacoKeeps(h)).toBeNull()
   })
@@ -115,11 +115,11 @@ describe('what the broker reads', () => {
   it('says what was hard and what would have helped', () => {
     const h = tidy({
       stage: 'bc',
-      hard: ['Servicing was tight', 'Self-employed income'],
+      hard: ['Serviceability', 'Self-employed under 2 yrs'],
       easier: ['Another year of returns'],
     })
     expect(theShortVersion(h))
-      .toBe('Hard because: servicing was tight, self-employed income. Easier with: another year of returns')
+      .toBe('Hard because: serviceability, self-employed under 2 yrs. Easier with: another year of returns')
   })
 
   it('and why each lender is on the deal', () => {
@@ -134,7 +134,7 @@ describe('what the broker reads', () => {
 
 describe('the questions themselves', () => {
   it('cover what actually makes an Australian deal hard', () => {
-    for (const must of ['Servicing was tight', 'Self-employed income', 'Credit history', 'SMSF', 'Construction']) {
+    for (const must of ['Serviceability', 'Self-employed under 2 yrs', 'Credit impairment', 'SMSF', 'Construction']) {
       expect(HARD as readonly string[]).toContain(must)
     }
   })
@@ -179,7 +179,7 @@ describe('nothing is sent until the boxes are answered', () => {
   const note = 'Capacity is tight, I have focused on the smaller banks.'
 
   it('the borrowing capacity needs a sentence and an answer', () => {
-    expect(readyToSend(tidy({ stage: 'bc', note, hard: ['Servicing was tight'] }))).toBe(true)
+    expect(readyToSend(tidy({ stage: 'bc', note, hard: ['Serviceability'] }))).toBe(true)
   })
 
   it('and says which box is still empty, rather than just greying out', () => {
@@ -187,12 +187,12 @@ describe('nothing is sent until the boxes are answered', () => {
       .toEqual(['what the broker needs to know', 'whether anything was hard about it'])
     expect(whatIsMissing(tidy({ stage: 'bc', note })))
       .toEqual(['whether anything was hard about it'])
-    expect(whatIsMissing(tidy({ stage: 'bc', hard: ['Credit history'] })))
+    expect(whatIsMissing(tidy({ stage: 'bc', hard: ['Credit impairment'] })))
       .toEqual(['what the broker needs to know'])
   })
 
   it('a few characters is not a sentence', () => {
-    expect(readyToSend(tidy({ stage: 'bc', note: 'ok', hard: ['Credit history'] }))).toBe(false)
+    expect(readyToSend(tidy({ stage: 'bc', note: 'ok', hard: ['Credit impairment'] }))).toBe(false)
   })
 
   // THE HONEST WAY OUT. Without it somebody ticks "credit history" on a clean

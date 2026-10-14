@@ -3,7 +3,6 @@ import HandoverBox from '@/components/Handover'
 import { isDebtRecycling } from '@/lib/debt-recycling'
 import { bcFieldsWin } from '@/lib/the-lo-copies-nothing-it-does-not-own'
 import { normalisePurpose } from '@/lib/split-purpose'
-import { TAG_GROUPS, tagsOf, toggleTag, tagLine } from '@/lib/deal-tags'
 import { isComplexRefinance } from '@/lib/complex-refinance'
 import { loTemplateFor, settleLoTemplate } from '@/lib/lo-template'
 // Aliased: this file already has a local `pct` for the single-property LVR a
@@ -2453,7 +2452,6 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                               checked={!!lender.feeInLoan}
                               onChange={e => updateLender(i, 'feeInLoan', e.target.checked as any)} />
                             <span className="text-[11.5px] font-medium text-done">Added to the loan</span>
-                            <span className="text-[10.5px] text-gray-500">— the client does not pay this at settlement</span>
                           </label>
                         ) : undefined} />
                       <LibraryField label="Annual fee" value={lender.annualFee} onChange={v => updateLender(i, 'annualFee', v)} />
@@ -2663,8 +2661,26 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                       </div>
                       <div className="flex flex-wrap gap-1.5 mb-3">
                         {MODULES.map(({ key, label }) => (
+                          // `relative` IS LOAD-BEARING. DO NOT DROP IT.
+                          //
+                          // 14 Oct 2026. Fabio: "the page keeps rolling, never
+                          // did that", on the Lending Options tab only. The
+                          // numbers off his own console:
+                          //
+                          //   body 930   the inner scroller, exactly one screen
+                          //   doc  4834  the whole document
+                          //
+                          // The real content sits in that 930px scroller. The
+                          // sr-only input below is position:absolute, and with
+                          // no positioned ancestor its containing block was the
+                          // document - so it landed 4833px down the PAGE,
+                          // outside the scroller, and stretched the document to
+                          // 4834. One almost entirely empty second scrollbar.
+                          //
+                          // This is the only sr-only in the app, which is why
+                          // no other page did it. One word contains the input.
                           <label key={key} title={label}
-                            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] cursor-pointer transition-colors ${
+                            className={`relative inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] cursor-pointer transition-colors ${
                               lender[key].enabled
                                 ? 'border-info bg-info-bg text-info font-semibold'
                                 : 'border-line bg-card text-muted hover:text-body'}`}>
@@ -2774,65 +2790,22 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
               <div className={`mt-2 text-xs ${flagMsg.startsWith('NOT SENT') ? 'text-red-600' : 'text-green-600'}`}>{flagMsg}</div>
             )}
 
-            {/* WHAT MADE THIS ONE HARD.
+            {/* "WHAT MADE THIS ONE HARD" USED TO SIT HERE.
               *
-              * 12 Oct 2026. It sits directly under the recommendation note
-              * because this is the screen where somebody is already deciding
-              * between three lenders and writing down why - so tagging the
-              * obstacle is part of the same thought, not a second job a week
-              * later at lodgement when the reasoning is half remembered.
+              * 14 Oct 2026. Removed. It asked the same question the handover
+              * box asks when the BC is sent - a box built a day AFTER this one,
+              * to replace it. The note at the top of components/Handover.tsx
+              * says this version "was thrown out for exactly that reason", and
+              * it never actually was. Fabio, finding it still on the page: "we
+              * removed that when we added notes when sending BC and LO didnt
+              * we?"
               *
-              * TAPS, NOT PROSE. The reason is already written above in the
-              * broker's own words. A second free-text box here would be a
-              * second door onto recommendationNote and would be filled in with
-              * "best rate". What is missing is the one word a recommendation
-              * note never contains - that the TITLE was the problem - and that
-              * is a list, not a sentence.
-              *
-              * NOTHING IS REQUIRED. No warning, no amber, no nag. A deal with
-              * nothing unusual gets no tags and that is a true answer.
-              *
-              * See lib/deal-tags.ts. */}
-            <div className="mt-5 pt-4 border-t border-card-line">
-              <div className="flex items-baseline gap-2 mb-1">
-                <div className="text-xs font-medium text-gray-400 uppercase tracking-widest">
-                  What made this one hard?
-                </div>
-                <span className="text-[11px] text-gray-400">Optional. Tap any that applied.</span>
-              </div>
-              <p className="text-[11.5px] text-gray-400 leading-snug mb-3">
-                Everything else about this choice is already recorded above. This is the only part
-                that cannot be worked out later.
-              </p>
-
-              {TAG_GROUPS.map(g => (
-                <div key={g.group} className="mb-2.5">
-                  <div className="text-[10px] font-bold tracking-[.08em] uppercase text-gray-400 mb-1.5">
-                    {g.group}
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {g.tags.map(t => {
-                      const on = tagsOf(d).includes(t)
-                      return (
-                        <button key={t} type="button"
-                          aria-pressed={on}
-                          onClick={() => { markDirty(ownRef.current, 'dealTags')
-                                           setD({ ...d, dealTags: toggleTag(d.dealTags, t) }) }}
-                          className={`text-[12px] rounded-full px-3 py-1.5 border transition ${
-                            on ? 'bg-ink text-page border-ink font-semibold'
-                               : 'bg-card text-muted border-card-line hover:border-brand'}`}>
-                          {t}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-
-              {tagsOf(d).length > 0 && (
-                <p className="text-[12px] text-done mt-2">&#10003; {tagLine(d.dealTags || [])}</p>
-              )}
-            </div>
+              * THE WORDS MOVED, NOT JUST THE QUESTION. The two lists were not
+              * the same thing twice - this one was detailed (Off the plan,
+              * Self-employed under 2 yrs) and the handover's was general
+              * (Servicing was tight), and lib/paco.ts only ever read this one.
+              * So this list is now HARD in lib/handover-notes.ts, and deleting
+              * the question here costs Paco nothing. */}
           {/* THE CLIENT'S DECISION, AT THE FOOT OF THE RECOMMENDATION IT IS ABOUT.
             *
             * Fabio, 3 Oct 2026: "clients decison tab dont like that it is at

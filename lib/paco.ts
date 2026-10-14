@@ -109,13 +109,25 @@ export function outcomeOf(deal: DealRow): string {
 
 export function factOf(deal: DealRow): DealFact {
   const lo = deal?.lo_data || {}
+  // THE TAGS MOVED HOUSE ON 14 OCT 2026.
+  //
+  // They used to be ticked on the Lending Options tab and saved into lo_data.
+  // That question was a duplicate of the one the handover box asks when the BC
+  // is sent, so the tab's version was deleted and its words moved into the box.
+  //
+  // BOTH ARE READ, and that is not temporary tidiness. Every deal tagged before
+  // today has its answers in lo_data and they are still true; every deal from
+  // today has them on the handover. Reading one would quietly halve what Paco
+  // knows, in one direction or the other.
+  const fromHandover: string[] = (Array.isArray((deal as any)?.deal_handovers)
+    ? (deal as any).deal_handovers : []).flatMap((h: any) => Array.isArray(h?.hard) ? h.hard : [])
   const lender = txt(lenderOnTheDeal(lo))
   const options: any[] = Array.isArray(lo?.lenders) ? lo.lenders : []
   const considered = options.map(o => txt(o?.lenderName))
     .filter(n => n && flat(n) !== flat(lender))
   return {
     lender,
-    tags: tagsOf(lo),
+    tags: tagsOf({ dealTags: [...(Array.isArray(lo?.dealTags) ? lo.dealTags : []), ...fromHandover] }),
     when: monthYear(deal?.settled_at || deal?.formal_approval_at || deal?.lodged_at),
     outcome: outcomeOf(deal),
     considered: [...new Set(considered)],

@@ -1,8 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { TAG_GROUPS } from '@/lib/deal-tags'
 import {
-  HARD, EASIER, WHY, empty, tidy, saidSomething, whatPacoKeeps, theShortVersion,
+  NOTHING_UNUSUAL, EASIER, WHY, empty, tidy, saidSomething, whatPacoKeeps, theShortVersion,
   whatIsMissing, readyToSend, type Handover as Note, type Stage,
 } from '@/lib/handover-notes'
 
@@ -163,7 +164,23 @@ export default function HandoverBox({ dealId, stage, lenders, toWhom, onSent, on
             <>
               <Q title="Was anything hard about this one?"
                  why="Tap what applies — and Nothing unusual is a real answer. This is the only part Paco sees, and it is what makes him useful on the next deal like it.">
-                <Chips all={HARD} picked={h.hard} pick={toggle('hard')} />
+                {/* GROUPED, BECAUSE THE LIST GOT LONGER.
+                  *
+                  * 14 Oct 2026. These words came off the Lending Options tab
+                  * when that duplicate question was deleted. There are 28 of
+                  * them, and 28 chips in one wall is unreadable - so they keep
+                  * the headings they already had on the tab they came from. */}
+                {TAG_GROUPS.map(g => (
+                  <div key={g.group} className="mb-2">
+                    <div className="text-[9.5px] font-bold tracking-[.08em] uppercase text-faint mb-1.5">{g.group}</div>
+                    <Chips all={g.tags} picked={h.hard} pick={toggle('hard')} />
+                  </div>
+                ))}
+                {/* The honest way out, kept apart from the obstacles so it does
+                  * not read as one of them. */}
+                <div className="border-t border-dashed border-card-line mt-1 pt-2">
+                  <Chips all={[NOTHING_UNUSUAL]} picked={h.hard} pick={toggle('hard')} />
+                </div>
               </Q>
               <Q title="What would have made it easier?" why="Optional. One tap, and the broker sees it too.">
                 <Chips all={EASIER} picked={h.easier} pick={toggle('easier')} />

@@ -41,7 +41,10 @@ export const dynamic = 'force-dynamic'
 // NARROW ON PURPOSE. lo_data is the big one and it is the only one we need in
 // full; pulling '*' would drag every fact find and compliance pack across the
 // wire to count some tags.
-const COLUMNS = 'id, deal_name, lodged_at, formal_approval_at, settled_at, lo_data'
+// deal_handovers(hard) is where the "what was hard" answers live from 14 Oct
+// 2026 - see factOf in lib/paco.ts. Older deals still carry theirs in lo_data,
+// so both are pulled and both are read.
+const COLUMNS = 'id, deal_name, lodged_at, formal_approval_at, settled_at, lo_data, deal_handovers(hard)'
 
 export async function GET(req: NextRequest) {
   const supabase = await createSupabaseServer()

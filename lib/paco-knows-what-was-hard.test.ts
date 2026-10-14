@@ -93,40 +93,49 @@ describe('turning one on and off', () => {
 
 // ---------------------------------------------------------------------------
 // AND THE SCREEN KEEPS ITS SIDE OF THE BARGAIN.
-describe('where it sits on the Lending Options tab', () => {
-  const ui = readFileSync('app/(app)/deals/[id]/LOForm.tsx', 'utf8')
+// WHERE THIS QUESTION LIVES NOW, 14 OCT 2026.
+//
+// It used to be a block of chips on the Lending Options tab. It is gone from
+// there - it asked the same thing the handover box asks when the BC is sent, a
+// box built the day AFTER it to replace it and which never did. Fabio: "we
+// removed that when we added notes when sending BC and LO didnt we?"
+//
+// These tests did not get deleted with the block. They moved, because what
+// they were protecting is still worth protecting: the chips must come off one
+// list, nothing may nag, and the question must be asked ONCE.
+describe('where this question lives now', () => {
+  const lo = readFileSync('app/(app)/deals/[id]/LOForm.tsx', 'utf8')
+  const box = readFileSync('components/Handover.tsx', 'utf8')
 
-  it('is under the recommendation, not somewhere else', () => {
-    const tags = ui.indexOf('What made this one hard?')
-    const note = ui.indexOf("Field label=\"Recommendation paragraph\"")
-    const decision = ui.indexOf("The client&apos;s decision")
-    expect(tags).toBeGreaterThan(-1)
-    expect(tags).toBeGreaterThan(note)
-    expect(tags, 'the tags belong above the client decision, not below it').toBeLessThan(decision)
+  it('is asked in the handover box, and nowhere else', () => {
+    expect(box, 'the question has gone missing altogether').toContain('Was anything hard about this one?')
+    expect(lo, 'the duplicate is back on the Lending Options tab')
+      .not.toContain('What made this one hard?')
   })
 
   it('draws the groups off the one list rather than a second copy', () => {
-    expect(ui).toContain('TAG_GROUPS.map')
-    // A hand-written chip in the tab would drift from lib/deal-tags.ts the first
-    // time the list changed.
+    expect(box).toContain('TAG_GROUPS.map')
+    // A hand-written chip would drift from lib/deal-tags.ts the first time the
+    // list changed.
     for (const t of ['Limited title', 'Casual income', 'SMSF']) {
-      expect(ui, `${t} is written out in the tab instead of coming off the list`)
+      expect(box, `${t} is written out by hand instead of coming off the list`)
         .not.toContain(`>${t}<`)
     }
   })
 
-  it('is optional, and says so', () => {
-    expect(ui).toContain('Optional. Tap any that applied.')
+  it('still offers the honest way out, and takes it from one place', () => {
+    // Without "Nothing unusual" somebody ticks a real obstacle on a clean file
+    // to get past a box they cannot skip, and every count Paco does is rubbish.
+    expect(box).toContain('NOTHING_UNUSUAL')
+    expect(box, 'the words are written out here as well as in handover-notes')
+      .not.toContain("'Nothing unusual'")
   })
 
-  it('nothing nags about it', () => {
-    // No warning pill, no red, no required. A deal with nothing unusual is a
-    // true answer and must not look like an unfinished form.
-    const at = ui.indexOf('What made this one hard?')
-    const block = ui.slice(at, at + 2600)
+  it('nothing nags about which chip you pick', () => {
+    const at = box.indexOf('Was anything hard about this one?')
+    const block = box.slice(at, at + 1800)
     expect(block).not.toContain('text-chase')
     expect(block).not.toContain('border-chase-edge')
-    expect(block).not.toContain('required')
   })
 })
 

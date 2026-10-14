@@ -1,3 +1,4 @@
+import { ALL_TAGS } from './deal-tags'
 // WHAT CREDIT TELLS THE BROKER WHEN THEY HAND IT OVER.
 //
 // 13 Oct 2026. Fabio: "when a credit is building the BC and is sending to the
@@ -27,24 +28,33 @@
 export type Stage = 'bc' | 'lo'
 
 /** What made this deal hard. Asked at the borrowing capacity, never later. */
-export const HARD = [
-  'Servicing was tight',
-  'Credit history',
-  'Self-employed income',
-  'Unusual security',
-  'High density',
-  'Casual or new job',
-  'Foreign income',
-  'Trust or company',
-  'SMSF',
-  'Expat',
-  'Construction',
+// THE SAME WORDS THE LENDING OPTIONS TAB USED TO ASK FOR.
+//
+// 14 Oct 2026. The broker was asked "what made this one hard" twice - once on
+// the Lending Options tab and again here when the BC is sent. The comment at
+// the top of components/Handover.tsx even says the Lending Options version was
+// thrown out for being a chore. It never was. Fabio, finding it still there:
+// "we removed that when we added notes when sending BC and LO didnt we?"
+//
+// So the Lending Options block is gone and its list moved here, because the two
+// lists were NOT the same question stored twice:
+//
+//   this file's old list    Servicing was tight, Credit history, Expat
+//   the tab's list          Off the plan, Limited title, Self-employed under 2 yrs
+//
+// Paco only ever read the tab's. Deleting the tab and keeping these words would
+// have quietly stopped him learning anything useful, so the detailed ones won.
+//
+// ONE LIST, IN ONE PLACE. lib/deal-tags.ts owns the words; this is the same
+// list with the honest way out on the end.
+export const NOTHING_UNUSUAL = 'Nothing unusual'
+
+export const HARD = [...ALL_TAGS,
   // THE HONEST WAY OUT. The questions have to be answered, so there has to be a
   // true answer for a deal that was simply straightforward. Without this
-  // somebody ticks "credit history" on a clean file to get past the box, and
+  // somebody ticks "credit impairment" on a clean file to get past the box, and
   // every count Paco does afterwards is rubbish.
-  'Nothing unusual',
-] as const
+  NOTHING_UNUSUAL] as const
 
 /** What would have made it easier. Optional, and the broker sees it too. */
 export const EASIER = [
