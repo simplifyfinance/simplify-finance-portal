@@ -935,7 +935,15 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // the merged record to the database; the only thing that does not happen is
   // this screen being rewritten underneath a cursor.
   function applyBcData(incoming: any) {
-    applyOwned(incoming, BC_SETTERS, ownRef.current)
+    // WHAT IS ON SCREEN GOES IN TOO.
+    //
+    // 14 Oct 2026. Without it this protects the three boxes that call
+    // markDirty and nothing else - so Kylie's repayment figure and her
+    // checklist item were both overwritten by her own save coming back, which
+    // reads on screen as a field that refuses to be typed in. Handed the live
+    // record, applyOwned can see that a box no longer matches what was last
+    // saved and leave it alone.
+    applyOwned(incoming, BC_SETTERS, ownRef.current, buildBcData())
   }
 
   // SOMEBODY ELSE JUST SAVED. Their fields land here without disturbing a

@@ -178,7 +178,14 @@ export function writePath(obj: any, field: string, value: any): any {
 export function keepOwned(incoming: any, onScreen: any, o: Ownership): any {
   if (!isRecord(incoming)) return incoming
   let out = incoming
-  for (const field of busyFields(o)) {
+  // Every box in use, PLUS every box that no longer matches what we last saw
+  // saved. Same rule as applyOwned - the Fact Find, Lending options and
+  // Compliance tabs replace the whole record at once, so they need it just as
+  // much as the BC does.
+  const changed = isRecord(onScreen)
+    ? Object.keys(onScreen).filter(k => changedSinceSaved(o, k, onScreen))
+    : []
+  for (const field of [...new Set([...busyFields(o), ...changed])]) {
     const mine = readPath(onScreen, field)
     if (mine === undefined) continue
     if (JSON.stringify(readPath(out, field)) === JSON.stringify(mine)) continue
@@ -197,6 +204,43 @@ export function settleSaved(o: Ownership, saved: any, onScreen: any): void {
     if (wrote !== undefined) noteSaved(o, field, wrote)
     if (JSON.stringify(wrote) === JSON.stringify(readPath(onScreen, field))) markSaved(o, field)
   }
+
+  // AND EVERY OTHER BOX IN THE RECORD, so changedSinceSaved() below has
+  // something to compare against. Three boxes used to call markDirty; the other
+  // hundred never did, and that is the whole reason this file had to grow.
+  if (isRecord(saved)) {
+    for (const key of Object.keys(saved)) {
+      if (!Object.prototype.hasOwnProperty.call(o.lastSaved, key) ||
+          JSON.stringify(o.lastSaved[key]) !== JSON.stringify(saved[key])) {
+        noteSaved(o, key, saved[key])
+      }
+    }
+  }
+}
+
+// HAS THIS BOX CHANGED SINCE THE LAST SAVE LANDED?
+//
+// 14 Oct 2026. Kylie, testing with the credit team: "I was unable to type
+// anything in the repayment field", and a checklist item that vanished before
+// it reached the email.
+//
+// Neither was locked. Both were overwritten - the same fault reported on 15 Sep
+// and fixed, that time, by making THREE boxes call markDirty. Every other box
+// on the form was left exposed, and splits and the checklist are two of them.
+//
+// Asking a hundred onChange handlers to remember a call is not a fix, it is the
+// same fix waiting to fail a third time. So nothing has to remember anything:
+// if what is on screen is not what we last saw saved, somebody changed it, and
+// it is theirs until their own save carries it.
+//
+// Unknown means do not interfere. A box this screen has never seen saved has
+// nothing to compare against, so the incoming record wins - which is right on
+// first load, where the incoming record is all there is.
+export function changedSinceSaved(o: Ownership, field: string, onScreen: any): boolean {
+  if (!Object.prototype.hasOwnProperty.call(o.lastSaved, field)) return false
+  const mine = readPath(onScreen, field)
+  if (mine === undefined) return false
+  return JSON.stringify(mine) !== JSON.stringify(o.lastSaved[field])
 }
 
 // Used by the last write on the way out - see lib/keepalive-patch.ts.
@@ -208,6 +252,9 @@ export function applyOwned(
   incoming: any,
   setters: Record<string, (v: any) => void>,
   o: Ownership,
+  // What is on screen right now. Optional only so an older caller still
+  // compiles; pass it, or this protects three boxes instead of all of them.
+  onScreen?: any,
 ): string[] {
   if (!isRecord(incoming)) return []
   const held: string[] = []
@@ -216,6 +263,9 @@ export function applyOwned(
     // existed must not blank that field out on the person merging.
     if (!Object.prototype.hasOwnProperty.call(incoming, key)) continue
     if (!mayWrite(o, key)) { held.push(key); continue }
+    // The box is not focused and nothing called markDirty for it - but it does
+    // not match what we last saw saved, so somebody changed it. Theirs.
+    if (onScreen !== undefined && changedSinceSaved(o, key, onScreen)) { held.push(key); continue }
     set(incoming[key])
   }
   return held

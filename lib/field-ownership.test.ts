@@ -220,3 +220,110 @@ describe('what this screen last saw saved', () => {
     expect(o.lastSaved.goals2Years).toBe('now it has')
   })
 })
+
+// KYLIE'S TEST DEAL, 14 OCT 2026.
+//
+// Two faults reported the same afternoon, both of them the same fault:
+//
+//   "I was unable to type anything in the repayment field in the LO section"
+//   "I added test copy in the based on your numbers section, and it didn't
+//    appear anywhere in the email"
+//
+// Neither field was locked. Both were overwritten by her own save coming back,
+// about a second after she typed - which on screen is indistinguishable from a
+// box that will not accept typing.
+//
+// This is the SAME fault she reported on 15 Sep, fixed that time by making
+// three boxes call markDirty. Splits and the checklist were not three of them,
+// and neither is anything else on the form. The rule now holds any box whose
+// value no longer matches what this screen last saw saved, so nothing has to
+// remember to call anything.
+describe("the box somebody has changed belongs to them, whether or not it said so", () => {
+  const setters = (into: any) => ({
+    splits: (v: any) => { into.splits = v },
+    checklist: (v: any) => { into.checklist = v },
+    purchasePrice: (v: any) => { into.purchasePrice = v },
+  })
+
+  it('keeps a repayment typed into a split when the save comes back', () => {
+    const o = newOwnership()
+    const saved = { splits: [{ id: 's1', repayment: '' }], checklist: [], purchasePrice: '795,000' }
+    settleSaved(o, saved, saved)
+
+    // She types a repayment. Nothing calls markDirty - nothing ever did.
+    const onScreen = { splits: [{ id: 's1', repayment: '4,820' }], checklist: [], purchasePrice: '795,000' }
+
+    const landed: any = {}
+    const held = applyOwned(saved, setters(landed), o, onScreen)
+
+    expect(held, 'the split is being overwritten again').toContain('splits')
+    expect(landed.splits, 'her repayment was rewritten from the past').toBeUndefined()
+    // And everything she has NOT touched still updates normally.
+    expect(landed.purchasePrice).toBe('795,000')
+  })
+
+  it('keeps a checklist item added seconds before the save lands', () => {
+    const o = newOwnership()
+    const saved = { splits: [], checklist: ['Joint application'], purchasePrice: '' }
+    settleSaved(o, saved, saved)
+
+    const onScreen = { splits: [], checklist: ['Joint application', 'Based on your numbers test'], purchasePrice: '' }
+    const landed: any = {}
+    applyOwned(saved, setters(landed), o, onScreen)
+
+    expect(landed.checklist, 'the item was thrown away before it reached the email').toBeUndefined()
+  })
+
+  it('still takes somebody else\'s work on a box this person has not touched', () => {
+    const o = newOwnership()
+    const mine = { splits: [], checklist: [], purchasePrice: '795,000' }
+    settleSaved(o, mine, mine)
+
+    const theirs = { splits: [], checklist: [], purchasePrice: '812,000' }
+    const landed: any = {}
+    const held = applyOwned(theirs, setters(landed), o, mine)
+
+    expect(held).not.toContain('purchasePrice')
+    expect(landed.purchasePrice, 'holding everything back is not the fix either').toBe('812,000')
+  })
+
+  it('does not interfere on first load, when nothing has been saved yet', () => {
+    const o = newOwnership()
+    const incoming = { splits: [{ id: 's1', repayment: '4,820' }], checklist: ['x'], purchasePrice: '1' }
+    const landed: any = {}
+    const held = applyOwned(incoming, setters(landed), o, {})
+    expect(held).toEqual([])
+    expect(landed.purchasePrice).toBe('1')
+  })
+
+  it('lets go once her own save carries the value', () => {
+    const o = newOwnership()
+    const before = { splits: [{ id: 's1', repayment: '' }], checklist: [], purchasePrice: '' }
+    settleSaved(o, before, before)
+
+    const typed = { splits: [{ id: 's1', repayment: '4,820' }], checklist: [], purchasePrice: '' }
+    // Her save goes out and lands.
+    settleSaved(o, typed, typed)
+
+    // Now somebody else's edit to the same split is allowed through, because
+    // hers is safely on the record.
+    const theirs = { splits: [{ id: 's1', repayment: '5,000' }], checklist: [], purchasePrice: '' }
+    const landed: any = {}
+    applyOwned(theirs, setters(landed), o, typed)
+    expect(landed.splits, 'it is frozen forever, which is its own kind of broken').toEqual(theirs.splits)
+  })
+})
+
+describe('the whole-record tabs get the same protection', () => {
+  // Fact Find, Lending options and Compliance replace the record wholesale with
+  // setD(), so they go through keepOwned rather than applyOwned.
+  it('puts a changed box back into the incoming record', () => {
+    const o = newOwnership()
+    const saved = { lenders: [{ id: 'a', applicationFee: '4,053' }], goals2Years: 'x' }
+    settleSaved(o, saved, saved)
+
+    const onScreen = { lenders: [{ id: 'a', applicationFee: '4,053', feeInLoan: true }], goals2Years: 'x' }
+    const out = keepOwned(saved, onScreen, o)
+    expect(out.lenders, 'the tick was wiped by the save coming back').toEqual(onScreen.lenders)
+  })
+})
