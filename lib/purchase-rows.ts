@@ -60,6 +60,20 @@ export type PurchaseInput = {
   lmiApplicable?: any
   lmi?: any
   lmiTreatment?: any
+  // A LENDER FEE THAT SITS INSIDE THE LOAN FIGURE ABOVE.
+  //
+  // 14 Oct 2026. ORDE charge a $4,053 application fee and add it to the loan,
+  // so the split reads $1,162,053 against a base of $1,158,000. The fee bought
+  // none of the house, so the cash due on the day is $4,053 HIGHER than total
+  // cost minus that figure - and the email had been quietly saying lower.
+  //
+  // Fabio: "sometimes smaller lender like ORDE have a risk fee or application
+  // fee so we need to deduct form loan amount".
+  //
+  // Set from the tick beside the fee on the Lending Options screen. Blank on
+  // every lender that charges it at settlement, which is most of them.
+  feeInLoan?: any
+  feeLabel?: string
 }
 
 export function purchaseRows(input: PurchaseInput): PurchaseRow[] {
@@ -87,11 +101,22 @@ export function purchaseRows(input: PurchaseInput): PurchaseRow[] {
   // A zero duty is different and stays: on a first home buyer it is the answer.
   const amount = (v: any) => { const n = readMoney(v); return n && n > 0 ? money(n) : '' }
 
+  // A lender fee the broker has ticked as being inside the loan. Same rule as
+  // the LMI premium, for the same reason: borrowed, not paid.
+  const fee = readMoney(input.feeInLoan)
+  const feeInside = fee !== null && fee > 0 ? fee : 0
+  const feeWords = txt(input.feeLabel) || 'fee'
+
   // ONE LOAN LINE. Capitalised, this is the base plus the premium and the
   // sentence under it says so. Every other answer leaves it exactly as typed.
   const loan = clientLoan(input, readMoney(input.loan))
   add('Loan amount', amount(loan.amount))
   if (loan.note && loan.amount) out.push({ label: '', value: loan.note, note: true })
+  // AND THE LINE THAT EXPLAINS THE FEE. Without it the column does not subtract
+  // to itself and the email looks broken rather than correct.
+  if (feeInside > 0 && loan.amount) {
+    out.push({ label: '', value: `includes ${money(feeInside)} ${feeWords}, added to the loan`, note: true })
+  }
 
   // THE LMI COMES OUT OF THE LOAN BEFORE THE SUM.
   //
@@ -123,13 +148,13 @@ export function purchaseRows(input: PurchaseInput): PurchaseRow[] {
   const premium = lmiAmount(input)
   const inTheLoan = premium !== null && lmiTreatment(input) !== 'settlement'
 
+
   // `loan.amount` is what the client sees on the Loan amount line - the typed
   // figure, or the base plus the premium where the portal added it. Either way
   // this is the number the premium has to come out of.
   const shownLoan = loan.amount
   const fundsLoan = shownLoan === null ? null
-    : inTheLoan ? shownLoan - (premium as number)
-    : shownLoan
+    : shownLoan - (inTheLoan ? (premium as number) : 0) - feeInside
 
   const worked = totalCost !== null && fundsLoan !== null && fundsLoan > 0
     ? totalCost - fundsLoan

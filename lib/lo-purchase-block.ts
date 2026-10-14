@@ -49,6 +49,7 @@ import { INCIDENTALS } from './purchase-rows'
 // THE CARD IS NOT DRAWN TWICE. lib/no-duplicate-logic.test.ts caught the second
 // copy the day this file was written, which is exactly what it is for.
 import { card, row } from './email-card'
+import { optionOnTheDeal } from './client-agreement'
 import { purchaseRows } from './purchase-rows'
 
 const txt = (v: any) => String(v ?? '').trim()
@@ -132,6 +133,22 @@ function loBuildBlock(d: any, bc: any): string {
 // compiles; every real caller passes it.
 export function loPurchaseBlock(d: any, bc?: any): string {
   if (buildsSomething(bc)) return loBuildBlock(d, bc)
+  // THE FEE OFF THE LENDER THIS DEAL IS ACTUALLY ON.
+  //
+  // 14 Oct 2026. The fee was already on this screen - auto-filled from the
+  // lender library - and the purchase block simply never asked for it.
+  //
+  // optionOnTheDeal, NOT recommendedOption. The first version of this read the
+  // recommended one and lib/lender-on-the-deal.test.ts stopped it, which is
+  // the whole reason that guard exists: on Lucy Ilbery & Andrew Leigh we
+  // recommended Macquarie, the clients went to ubank, and every reader kept
+  // printing Macquarie's figures under ubank's name. Reading the recommended
+  // option here would have put Macquarie's application fee into the cash a
+  // ubank client has to find - a wrong figure under a right name, which is
+  // worse than a wrong name because nobody notices it.
+  const option = optionOnTheDeal(d)
+  const feeInLoan = option && option.feeInLoan ? option.applicationFee : ''
+
   const rows = purchaseRows({
     price: d?.purchasePrice,
     duty: d?.stampDuty,
@@ -139,6 +156,8 @@ export function loPurchaseBlock(d: any, bc?: any): string {
     loan: d?.loanAmount,
     contribution: d?.deposit,
     contributionFrom: contributionSource(d),
+    feeInLoan,
+    feeLabel: 'application fee',
   })
   if (!rows.length) return ''
 

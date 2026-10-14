@@ -113,3 +113,65 @@ describe('it survives Outlook', () => {
     }
   })
 })
+
+// THE FEE REACHES THE EMAIL FROM THE SCREEN IT IS ALREADY ON.
+//
+// 14 Oct 2026. The application fee was sitting in the Lending Options fees
+// block, auto-filled from the lender library, and the purchase card never
+// asked for it. Only the RECOMMENDED option's fee counts - that is the loan
+// the client is being quoted, so another option's fee has nothing to do with
+// this figure.
+describe('a lender fee that sits inside the loan', () => {
+  const deal = (lenders: any[]) => ({
+    purchasePrice: '2,000,000', stampDuty: '92,000', dutyState: 'NSW',
+    loanAmount: '1,162,053', deposit: '929,947', depositSource: 'Savings',
+    recommendedOptionId: 'a', lenders,
+  })
+
+  it('comes off the loan when the recommended option has it ticked', () => {
+    const html = loPurchaseBlock(deal([
+      { id: 'a', lenderName: 'ORDE Financial', applicationFee: '4,053', feeInLoan: true },
+    ]))
+    expect(html).toContain('$1,162,053')
+    expect(html).toContain('includes $4,053 application fee, added to the loan')
+    expect(html, 'the fee is still being counted as if it bought the house').toContain('$934,000')
+  })
+
+  it('is left alone when nobody ticked it', () => {
+    const html = loPurchaseBlock(deal([
+      { id: 'a', lenderName: 'ORDE Financial', applicationFee: '4,053' },
+    ]))
+    expect(html).toContain('$929,947')
+    expect(html).not.toContain('added to the loan')
+  })
+
+  // LUCY ILBERY & ANDREW LEIGH, AGAIN.
+  //
+  // We recommended one bank, the clients went to another. The fee has to come
+  // off the lender the deal is ON. Reading the recommended option here would
+  // put the wrong bank's fee into the cash these clients have to find - a wrong
+  // figure under a right name, which nobody notices.
+  it('uses the lender the clients actually went with, not the one we recommended', () => {
+    const html = loPurchaseBlock({
+      purchasePrice: '2,000,000', stampDuty: '92,000', dutyState: 'NSW',
+      loanAmount: '1,162,053', deposit: '929,947', depositSource: 'Savings',
+      recommendedLender: 'ORDE Financial', recommendedOptionId: 'a',
+      clientAgreedLender: 'No', clientChosenLender: 'ubank',
+      lenders: [
+        { id: 'a', lenderName: 'ORDE Financial', applicationFee: '4,053', feeInLoan: true },
+        { id: 'b', lenderName: 'ubank', applicationFee: '', feeInLoan: false },
+      ],
+    })
+    expect(html, "ORDE's fee is being charged to a ubank client").not.toContain('$4,053')
+    expect(html).toContain('$929,947')
+  })
+
+  it('ignores a fee on an option that was not recommended', () => {
+    const html = loPurchaseBlock(deal([
+      { id: 'a', lenderName: 'ORDE Financial', applicationFee: '' },
+      { id: 'b', lenderName: 'Other Bank', applicationFee: '9,000', feeInLoan: true },
+    ]))
+    expect(html).toContain('$929,947')
+    expect(html).not.toContain('$9,000')
+  })
+})

@@ -134,6 +134,54 @@ describe('the awkward deals', () => {
     expect(lmi.value).toBe('$22,000')
   })
 
+  // THE ORDE DEAL.
+  //
+  // 14 Oct 2026. ORDE Financial add their $4,053 application fee to the loan,
+  // so the split read $1,162,053 against a base of $1,158,000 - Fabio's own
+  // note on the deal said exactly that. The fee bought none of the house, so
+  // the cash due on the day is $4,053 HIGHER, and the email was saying lower.
+  //
+  // There is no LMI anywhere on this deal, which is why the LMI fix did not
+  // touch it.
+  it('takes a lender fee out of the loan when it is ticked as added to it', () => {
+    const rows = purchaseRows({
+      price: '2,000,000', duty: '92,000', dutyLabel: 'Stamp duty (NSW)',
+      loan: '1,162,053',        // base 1,158,000 with the fee inside it
+      contribution: '929,947',  // the box, short by the fee
+      contributionFrom: 'savings',
+      feeInLoan: '4,053', feeLabel: 'application fee',
+    })
+    const loan = rows.find(r => r.label === 'Loan amount')!
+    const give = rows.find(r => r.label.startsWith('Your contribution required'))!
+
+    expect(loan.value, 'what they borrow does not move').toBe('$1,162,053')
+    // 2,092,000 - (1,162,053 - 4,053)
+    expect(give.value, 'the fee is being counted as if it bought the house').toBe('$934,000')
+    // And the line that explains why the column does not subtract to itself.
+    expect(rows.some(r => r.note && r.value === 'includes $4,053 application fee, added to the loan')).toBe(true)
+  })
+
+  it('and leaves the cash alone when the fee is not ticked', () => {
+    // Most lenders charge it at settlement, where it is already money to find.
+    const rows = purchaseRows({
+      price: '2,000,000', duty: '92,000', dutyLabel: 'Stamp duty (NSW)',
+      loan: '1,162,053', contribution: '929,947', contributionFrom: 'savings',
+    })
+    expect(rows.find(r => r.label.startsWith('Your contribution required'))!.value).toBe('$929,947')
+    expect(rows.some(r => r.note)).toBe(false)
+  })
+
+  it('takes BOTH out when a deal has capitalised LMI and a fee in the loan', () => {
+    const rows = purchaseRows({
+      price: '2,000,000', duty: '92,000', dutyLabel: 'Stamp duty (NSW)',
+      loan: '1,162,053', contribution: '0', contributionFrom: 'savings',
+      lmiApplicable: 'Applicable', lmi: '22,000',
+      feeInLoan: '4,053', feeLabel: 'application fee',
+    })
+    // 2,092,000 - (1,162,053 - 22,000 - 4,053)
+    expect(rows.find(r => r.label.startsWith('Your contribution required'))!.value).toBe('$956,000')
+  })
+
   it('leaves it in when the premium is paid at settlement, not borrowed', () => {
     // Nothing to take out - it was never in the loan. It is money to find on
     // the day, and the line underneath already says so.

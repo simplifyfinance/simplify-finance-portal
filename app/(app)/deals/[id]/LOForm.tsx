@@ -131,6 +131,9 @@ type LenderOption = {
   productName: string
   approvalDays: string
   applicationFee: string
+  // Ticked when this lender adds the application fee to the loan rather than
+  // charging it at settlement. See lib/lo-purchase-block.ts.
+  feeInLoan?: boolean
   annualFee: string
   valuationFee: string
   legalFee: string
@@ -353,7 +356,7 @@ function NumberInput({ value, onChange, placeholder }: { value: string; onChange
   )
 }
 
-function LibraryField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function LibraryField({ label, value, onChange, under }: { label: string; value: string; onChange: (v: string) => void; under?: React.ReactNode }) {
   return (
     <div>
       <div className="flex items-center gap-1.5 mb-1">
@@ -364,6 +367,7 @@ function LibraryField({ label, value, onChange }: { label: string; value: string
         <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">$</span>
         <input className="w-full border border-gray-200 rounded-lg pl-5 pr-3 py-2 text-sm focus:outline-none focus:border-brand bg-info-bg" value={value} onChange={e => onChange(formatNumber(e.target.value))} placeholder="—" />
       </div>
+      {under}
     </div>
   )
 }
@@ -1253,7 +1257,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   function selectLenderName(i: number, lenderId: string) {
     const lender = uniqueLenders.find(l => l.id === lenderId)
     const updated = [...d.lenders]
-    updated[i] = { ...updated[i], lenderId, lenderName: lender?.name || '', legalFeeLabel: legalFeeLabel(lender), lenderProductId: '', productName: '', applicationFee: '', annualFee: '', valuationFee: '', legalFee: '', rateLockFee: '', earlyRepaymentFee: '', dischargeFee: '', offsetAccount: '', libraryNotes: '' }
+    updated[i] = { ...updated[i], lenderId, lenderName: lender?.name || '', legalFeeLabel: legalFeeLabel(lender), lenderProductId: '', productName: '', applicationFee: '', feeInLoan: false, annualFee: '', valuationFee: '', legalFee: '', rateLockFee: '', earlyRepaymentFee: '', dischargeFee: '', offsetAccount: '', libraryNotes: '' }
     setD({ ...d, lenders: updated })
   }
 
@@ -1261,7 +1265,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     const product = allProducts.find(p => p.id === productId)
     if (!product) return
     const updated = [...d.lenders]
-    updated[i] = { ...updated[i], lenderProductId: productId, productName: product.product_name, applicationFee: product.application_fee || '', annualFee: product.annual_fee || '', valuationFee: product.valuation_fee || '', legalFee: product.legal_fee || '', rateLockFee: product.rate_lock_fee || '', earlyRepaymentFee: product.early_repayment_fee || '', dischargeFee: product.discharge_fee || '', offsetAccount: product.offset_account ? (product.multiple_offsets ? 'Yes — multiple offsets' : 'Yes') : 'No', libraryNotes: product.notes || '' }
+    updated[i] = { ...updated[i], lenderProductId: productId, productName: product.product_name, applicationFee: product.application_fee || '', feeInLoan: false, annualFee: product.annual_fee || '', valuationFee: product.valuation_fee || '', legalFee: product.legal_fee || '', rateLockFee: product.rate_lock_fee || '', earlyRepaymentFee: product.early_repayment_fee || '', dischargeFee: product.discharge_fee || '', offsetAccount: product.offset_account ? (product.multiple_offsets ? 'Yes — multiple offsets' : 'Yes') : 'No', libraryNotes: product.notes || '' }
     setD({ ...d, lenders: updated })
   }
 
@@ -2434,7 +2438,24 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                       <span className="ml-2 normal-case text-[10px] bg-info-bg text-brand-ink px-1.5 py-0.5 rounded font-medium">auto-filled · editable</span>
                     </div>
                     <div className="grid grid-cols-2 gap-3 mb-3">
-                      <LibraryField label="Application fee" value={lender.applicationFee} onChange={v => updateLender(i, 'applicationFee', v)} />
+                      {/* IS THE FEE INSIDE THE LOAN, OR PAID ON THE DAY?
+                          14 Oct 2026. ORDE add their $4,053 application fee to
+                          the loan, so the split reads $1,162,053 against a base
+                          of $1,158,000. The fee bought none of the house, so the
+                          cash the client needs is HIGHER than total cost minus
+                          that figure - and the email had been saying lower.
+                          Off by default: most lenders charge it at settlement,
+                          where it is already counted as money to find. */}
+                      <LibraryField label="Application fee" value={lender.applicationFee} onChange={v => updateLender(i, 'applicationFee', v)}
+                        under={lender.applicationFee ? (
+                          <label className="flex items-center gap-2 mt-1.5 px-2.5 py-1.5 bg-card border border-card-line rounded-lg cursor-pointer">
+                            <input type="checkbox" className="accent-done w-3.5 h-3.5"
+                              checked={!!lender.feeInLoan}
+                              onChange={e => updateLender(i, 'feeInLoan', e.target.checked as any)} />
+                            <span className="text-[11.5px] font-medium text-done">Added to the loan</span>
+                            <span className="text-[10.5px] text-gray-500">— the client does not pay this at settlement</span>
+                          </label>
+                        ) : undefined} />
                       <LibraryField label="Annual fee" value={lender.annualFee} onChange={v => updateLender(i, 'annualFee', v)} />
                       <LibraryField label="Valuation fee" value={lender.valuationFee} onChange={v => updateLender(i, 'valuationFee', v)} />
                       <LibraryField label={rowLegalFeeLabel(lender)} value={lender.legalFee} onChange={v => updateLender(i, 'legalFee', v)} />
