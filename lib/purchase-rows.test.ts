@@ -73,10 +73,53 @@ describe('the awkward deals', () => {
     expect(purchaseRows({ ...base, contributionFrom: '' })[4].label).toBe('Your contribution required')
   })
 
-  it('never tells a client their contribution is $0', () => {
-    // Jacob Joson: loan recorded, deposit box left at 0. "$0" is a claim.
+  it('never tells a client their contribution is $0 - it works it out instead', () => {
+    // Jacob Joson, 16 Sep 2026: loan recorded, deposit box left at 0. "$0" is a
+    // claim, not a missing figure, and it told a client they had nothing to find.
+    //
+    // CHANGED 14 Oct 2026. The old answer was to leave the row out. The better
+    // answer is to do the sum: total cost minus the base loan. The box being
+    // blank is no reason to withhold a figure we can work out exactly.
     const rows = purchaseRows({ ...base, contribution: '0' })
+    const row = rows.find(r => r.label.startsWith('Your contribution required'))
+    expect(row, 'the row should be answered, not hidden').toBeTruthy()
+    expect(row!.value).toBe('$228,070')
+  })
+
+  it('and leaves it out entirely when the sum cannot be done either', () => {
+    // No loan recorded, nothing to subtract. A blank still beats a $0.
+    const rows = purchaseRows({ ...base, loan: '', contribution: '0' })
     expect(rows.map(r => r.label).join(' ')).not.toContain('Your contribution required')
+  })
+
+  // THE PRE-APPROVAL THAT SENT A CLIENT THE WRONG DEPOSIT.
+  //
+  // 14 Oct 2026. An investment pre-approval showed a loan amount with the LMI
+  // and the lender's risk fee inside it, and a contribution worked out by
+  // subtracting that same figure from the total cost. The client was told to
+  // bring roughly $24,000 less than they actually needed.
+  //
+  // A capitalised fee is borrowed, not paid. It raises the debt and buys none
+  // of the house, so the cash due on the day does not move. Fabio, 14 Oct 2026:
+  // "funds to complete need to be calculated exclusing fee only using base loan".
+  it('leaves capitalised LMI out of the contribution', () => {
+    const rows = purchaseRows({
+      price: '900,000', duty: '35,000', dutyLabel: 'Stamp duty (NSW)',
+      loan: '765,000',
+      // The box, derived from the capitalised figure. Deliberately wrong.
+      contribution: '145,600', contributionFrom: 'savings',
+      lmiApplicable: 'Applicable', lmi: '21,400', lmiTreatment: 'Capitalised',
+    })
+    const loan = rows.find(r => r.label === 'Loan amount')!
+    const give = rows.find(r => r.label.startsWith('Your contribution required'))!
+
+    // The loan still shows what they borrow, premium included.
+    expect(loan.value).toBe('$786,400')
+    // And the line that explains it is there, because without it the column
+    // looks like it does not add up.
+    expect(rows.some(r => r.note && r.value.includes('$21,400'))).toBe(true)
+    // The cash is worked from the BASE loan: 935,000 - 765,000.
+    expect(give.value, 'the premium has leaked into the contribution again').toBe('$170,000')
   })
 
   it('keeps a zero duty, because on a first home buyer that is the answer', () => {
