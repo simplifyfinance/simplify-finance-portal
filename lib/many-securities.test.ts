@@ -36,10 +36,19 @@ describe('the screen asks this one question, not the old one', () => {
   const src = readFileSync('app/(app)/deals/[id]/BCForm.tsx', 'utf8')
 
   it('the securities block and the per-split Security box read the same answer', () => {
-    // Two gates. If one is left on isComplexRefinance you can tick securities
-    // and then have nowhere to point a split at them.
+    // Three now: the securities block, the per-split Security box, and the
+    // `manySecurities` flag that hides the single-property figures. If one is
+    // left on isComplexRefinance you can tick securities and then have nowhere
+    // to point a split at them.
     const gates = src.match(/canHaveManySecurities\(template\)/g) || []
-    expect(gates.length, 'both gates must ask the same question').toBe(2)
+    expect(gates.length, 'every gate must ask the same question').toBe(3)
+  })
+
+  it('and the per-property figures replace the single set', () => {
+    // One Existing loan balance under two ticked houses belonged to neither.
+    expect(src).toContain('securityBalances')
+    expect(src).toContain('securityReleases')
+    expect(src).toContain('const manySecurities =')
   })
 
   it('and the heading says which property the figures are about', () => {

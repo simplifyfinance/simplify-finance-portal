@@ -560,6 +560,20 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // See lib/securities.ts.
   const [securityIds, setSecurityIds] = useState<string[]>(
     Array.isArray(s.securityIds) ? s.securityIds.map(String) : [])
+  // WHAT IS OWED ON EACH SECURITY, AND WHAT IS COMING OUT OF IT.
+  //
+  // 15 Oct 2026. Fabio, on a deal refinancing two properties at once: "only
+  // allows me to have one property being refinanced." He was right - the
+  // securities list let him tick two houses and then there was exactly one
+  // Existing loan balance and one Equity release amount underneath, which
+  // belonged to neither of them in particular.
+  //
+  // Keyed by the fact find property's id, the same way securityLimits already
+  // is. By id, never by address - see lib/securities.ts.
+  const [securityBalances, setSecurityBalances] = useState<Record<string, string>>(
+    s.securityBalances && typeof s.securityBalances === 'object' ? s.securityBalances : {})
+  const [securityReleases, setSecurityReleases] = useState<Record<string, string>>(
+    s.securityReleases && typeof s.securityReleases === 'object' ? s.securityReleases : {})
   const [securityLimits, setSecurityLimits] = useState<Record<string, string>>(
     (s.securityLimits && typeof s.securityLimits === 'object') ? s.securityLimits : {})
   // WHICH SPLITS CARRY AN OFFSET - BY POSITION, NOT BY NAME.
@@ -715,7 +729,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const isRefinanceLinked = ['refinance_equity', 'refinance_only', 'investment_equity'].includes(template)
   const isBridgingLinked = template === 'bridging'
   const isConstructionLinked = showsBuild
-  const showCalculatedLvr = isPurchaseLinked || isRefinanceLinked || isBridgingLinked || isConstructionLinked
+  // THE ONE LVR GOES WHEN THERE IS MORE THAN ONE HOUSE. It was worked out from
+  // the single Property value and Existing loan balance, and both of those now
+  // live on each security. The securities list shows an LVR per property and a
+  // total across them, which is the honest version of this number.
+  const manySecurities = canHaveManySecurities(template) && securityIds.length > 0
+  const showCalculatedLvr = (isPurchaseLinked || isRefinanceLinked || isBridgingLinked || isConstructionLinked)
+    && !manySecurities
 
   let lvrPercent = 0
   if (isPurchaseLinked) {
@@ -912,6 +932,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     bridgingPeriod: setBridgingPeriod, peakDebt: setPeakDebt, totalLimit: setTotalLimit,
     offsetSplits: setOffsetSplits, offsetSplitIdx: setOffsetSplitIdx, propertyLimits: setPropertyLimits,
     securityIds: setSecurityIds, securityLimits: setSecurityLimits,
+    securityBalances: setSecurityBalances, securityReleases: setSecurityReleases,
     constructionCost: setConstructionCostRaw,
     landValue: setLandValueRaw, landFunding: setLandFunding, landLoanBalance: setLandLoanBalance,
     saleProceedsUse: setSaleProceedsUse,
@@ -1087,13 +1108,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // pending stays in pendingSave and is written by the effect above when the
     // form actually leaves.
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand }
   }
 
   // Does the saved email still match the scenario the deal is on? Read in three
@@ -1166,6 +1187,19 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     })
     if (changed) setSplits(next)
   }, [splits, loanTerm])
+
+  // THE EMAIL READS ONE BALANCE AND ONE RELEASE, so the first security's
+  // figures are mirrored into the fields it already reads. Nothing downstream
+  // had to change, and a deal with one security behaves exactly as before.
+  useEffect(() => {
+    if (!manySecurities) return
+    const first = securityIds[0]
+    if (!first) return
+    const bal = securityBalances[first] || ''
+    const rel = securityReleases[first] || ''
+    if (bal && bal !== existingLoanBal) setExistingLoanBal(bal)
+    if (rel && rel !== equityRelease) setEquityRelease(rel)
+  }, [manySecurities, securityIds, securityBalances, securityReleases, existingLoanBal, equityRelease])
 
   // Drawn in one place and checked in another, because a disabled control is
   // a courtesy and this is a rule. See lib/bc-scenarios.ts.
@@ -1859,9 +1893,23 @@ Key assumptions: ${checklistText}`
                                 </span>
                                 {on ? (
                                   <>
-                                    <div className="w-[140px]">
+                                    {/* OWES / RELEASING / LIMIT, per property. The one set of
+                                        these fields that used to sit below belonged to
+                                        whichever house you had in your head. 15 Oct 2026. */}
+                                    <div className="w-[128px]">
+                                      <NumberInput value={securityBalances[String(p.id)] || ''}
+                                        onChange={(v: string) => setSecurityBalances({ ...securityBalances, [String(p.id)]: v })} />
+                                      <span className="block text-[10px] text-gray-400 mt-0.5">owes now</span>
+                                    </div>
+                                    <div className="w-[128px]">
+                                      <NumberInput value={securityReleases[String(p.id)] || ''}
+                                        onChange={(v: string) => setSecurityReleases({ ...securityReleases, [String(p.id)]: v })} />
+                                      <span className="block text-[10px] text-gray-400 mt-0.5">releasing</span>
+                                    </div>
+                                    <div className="w-[128px]">
                                       <NumberInput value={securityLimits[String(p.id)] || ''}
                                         onChange={(v: string) => setSecurityLimits({ ...securityLimits, [String(p.id)]: v })} />
+                                      <span className="block text-[10px] text-gray-400 mt-0.5">new limit</span>
                                     </div>
                                     <span className="text-[11px] text-gray-400 w-[52px] text-right">
                                       {l === null ? '' : pct(l)}
@@ -2023,7 +2071,7 @@ Key assumptions: ${checklistText}`
                       </select>
                     </Field>
                   )}
-              {REFINANCING_TEMPLATES.includes(template) && <Field label="Existing loan balance"><NumberInput value={existingLoanBal} onChange={handleExistingLoanBalChange} /></Field>}
+              {REFINANCING_TEMPLATES.includes(template) && !(manySecurities) && <Field label="Existing loan balance"><NumberInput value={existingLoanBal} onChange={handleExistingLoanBalChange} /></Field>}
               {isDebtRecycling(template) && (
                 <Field label="Total limit after restructure">
                   <NumberInput value={totalLimit} onChange={setTotalLimit} />
@@ -2090,8 +2138,8 @@ Key assumptions: ${checklistText}`
                   </select>
                 </Field>
               )}
-              {["refinance_equity", "refinance_only", "investment_equity"].includes(template) && <Field label="Property value"><NumberInput value={propertyValue} onChange={setPropertyValue} /></Field>}
-              {["refinance_equity", "investment_equity"].includes(template) && <Field label="Equity release amount"><NumberInput value={equityRelease} onChange={handleEquityReleaseChange} /></Field>}
+              {["refinance_equity", "refinance_only", "investment_equity"].includes(template) && !(manySecurities) && <Field label="Property value"><NumberInput value={propertyValue} onChange={setPropertyValue} /></Field>}
+              {["refinance_equity", "investment_equity"].includes(template) && !(manySecurities) && <Field label="Equity release amount"><NumberInput value={equityRelease} onChange={handleEquityReleaseChange} /></Field>}
 
                   {showCalculatedLvr && (
                     <Field label="LVR (calculated)">
