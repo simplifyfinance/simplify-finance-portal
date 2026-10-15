@@ -13,6 +13,7 @@ import { auDate } from '@/lib/client-position'
 import { PURPOSES, isDebtRecycling, limitCheck } from '@/lib/debt-recycling'
 import { isComplexRefinance, canHaveManySecurities, groupsOf } from '@/lib/complex-refinance'
 import { ffProperties, securitiesOf, totalsOf, groupBySecurity, orphanSplits,
+        BEING_PURCHASED, BEING_PURCHASED_LABEL,
          lvrOf, pct, legacyAddress } from '@/lib/securities'
 import { tabsOf, canAdd, canSwap, swapTo, addScenario, removeScenario, whyNotDelete, renameLive,
          labelOf, scenarioCount, downstreamStarted, parkedOf } from '@/lib/bc-scenarios'
@@ -2426,6 +2427,14 @@ Key assumptions: ${checklistText}`
                                 {secs.map(sec => (
                                   <option key={sec.id} value={sec.id}>{sec.address || 'Address not recorded'}</option>
                                 ))}
+                                {/* THE HOUSE THAT IS NOT BOUGHT YET.
+                                    Without it the new purchase split has to sit
+                                    against one of the existing houses, which is
+                                    how Alter Street came to read 124%. Offered
+                                    only where the scenario buys something. */}
+                                {!buysNothing(template) && (
+                                  <option value={BEING_PURCHASED}>{BEING_PURCHASED_LABEL}</option>
+                                )}
                               </select>
                               {typed && (
                                 <p className="mt-1 text-[11px] text-chase leading-snug">

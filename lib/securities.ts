@@ -155,6 +155,39 @@ export function groupBySecurity(splits: any, securities: Security[]): Grouped[] 
   })
 }
 
+// THE HOUSE THAT IS NOT BOUGHT YET.
+//
+// 15 Oct 2026. Fabio, on an equity release and purchase with two securities:
+// "the deal structure is not allocating the new loan to the TBA security (new
+// security) hence why you are getting all this issues."
+//
+// He had it exactly. The Security dropdown offered only the two houses on the
+// fact find, so the $438,000 New purchase split had to sit against one of them.
+// It landed on Alter Street, which then carried $506,000 + $290,000 + $438,000
+// against a $995,000 value and printed 124% - a number that is not true about
+// any property on the deal, and which every figure downstream then inherited.
+//
+// The property being purchased is real lending and is not any of those houses.
+// It is also not an orphan - an orphan is money nobody has thought about, and
+// this is money with a house that does not exist yet.
+//
+// A RESERVED ID RATHER THAN A ROW. There is nothing on the fact find to point
+// at and inventing a property there would put a phantom house on the client's
+// record. The id is reserved, it matches no security, so it is excluded from
+// every property's LVR for free.
+export const BEING_PURCHASED = 'being-purchased'
+
+export const BEING_PURCHASED_LABEL = 'The property being purchased (TBA)'
+
+export function isBeingPurchased(split: any): boolean {
+  return splitSecurityId(split) === BEING_PURCHASED
+}
+
+/** The lending that sits against the house nobody has bought yet. */
+export function purchaseLending(splits: any): number {
+  return realOnes(splits).filter(isBeingPurchased).reduce((t, s) => t + num(s.amount), 0)
+}
+
 // THE SPLITS THAT POINT AT NOTHING, WHICH ARE THE DANGEROUS ONES.
 //
 // A split with no security, or one whose security has been unticked, is money
@@ -162,7 +195,10 @@ export function groupBySecurity(splits: any, securities: Security[]): Grouped[] 
 // grouping in silence. Named here so a screen can say so out loud.
 export function orphanSplits(splits: any, securities: Security[]): any[] {
   const have = new Set((securities || []).map(s => s.id))
-  return realOnes(splits).filter(s => !have.has(splitSecurityId(s)))
+  // The property being purchased is NOT an orphan. It has been thought about;
+  // it just has no address yet. Flagging it would train somebody to ignore the
+  // warning on the deals where it means something.
+  return realOnes(splits).filter(s => !isBeingPurchased(s) && !have.has(splitSecurityId(s)))
 }
 
 // --- saying it ---------------------------------------------------------------
