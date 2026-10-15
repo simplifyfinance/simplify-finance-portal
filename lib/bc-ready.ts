@@ -102,12 +102,23 @@ function valueOf(key: string, d: any): any {
   return d?.[key]
 }
 
+// THE FOUR BOXES THAT MOVED ONTO THE SECURITIES.
+//
+// 15 Oct 2026. The BC stopped asking for one suburb, one property value, one
+// existing balance and one equity release the moment a deal could be secured
+// by two houses - every one of those now sits on the security it belongs to.
+// This check had not heard, so it listed all four as missing and told Fabio to
+// go and fill in boxes that are not on the screen any more.
+const ON_THE_SECURITIES = ['suburb', 'existingLoanBal', 'propertyValue', 'equityRelease']
+
 export function missingForEmail(template: string, d: any): MissingBox[] {
   // The template decides, except where an answer inside the template decides
   // instead. Asked of the record, so nothing has to pass a second argument.
-  const wanted = isSellAndBuild({ ...d, template })
+  const base = isSellAndBuild({ ...d, template })
     ? NEEDS.buy_sell_build
     : (NEEDS[txt(template)] || NEEDS.custom)
+  const securedByMany = Array.isArray(d?.securityIds) && d.securityIds.length > 0
+  const wanted = securedByMany ? base.filter(k => !ON_THE_SECURITIES.includes(k)) : base
   const missing = wanted
     .filter(k => empty(valueOf(k, d)))
     .map(k => LABEL[k])

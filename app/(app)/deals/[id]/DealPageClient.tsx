@@ -98,7 +98,7 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   // else. See lib/position-after-settlement.ts.
   const [proposed, setProposed] = useState<null | { changes: PositionChange[]; chosen: Set<string>; full: any }>(null)
 
-  async function cloneThisDeal(kind: CloneKind = 'deal') {
+  async function cloneThisDeal(kind: CloneKind = 'borrowing-capacity') {
     if (kind === 'clients') {
       setCloning(true)
       const { data: full } = await supabase.from('deals').select(CLONE_SELECT).eq('id', deal.id).single()
@@ -554,13 +554,27 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
                 * stays on the one they already know and comes off the other
                 * entirely. The line underneath each is doing most of the work,
                 * and the rule between them stops the eye reading a list. */}
-            <button onClick={() => cloneThisDeal('deal')} disabled={cloning} className="text-xs rounded-lg px-2.5 py-2 hover:bg-page transition flex items-start gap-2.5 text-left disabled:opacity-40">
+            {/* TWO CLONES, BECAUSE THEY COST DIFFERENT THINGS. 15 Oct 2026,
+                Fabio: "put a little note that if you clone it to lending
+                options, you won't be able to change BC." The line underneath
+                each is doing most of the work. */}
+            <button onClick={() => cloneThisDeal('borrowing-capacity')} disabled={cloning} className="text-xs rounded-lg px-2.5 py-2 hover:bg-page transition flex items-start gap-2.5 text-left disabled:opacity-40">
                 <svg className="mt-[2px] text-muted shrink-0" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="9" rx="1.4"/><path d="M11 5V3.4A1.4 1.4 0 0 0 9.6 2H4.4A1.4 1.4 0 0 0 3 3.4v7.2A1.4 1.4 0 0 0 4.4 12H5"/></svg>
                 <span className="min-w-0">
                   <b className="block text-[12.5px] font-semibold text-ink leading-snug">
-                    {cloning ? 'Cloning...' : 'Clone this deal'}</b>
+                    {cloning ? 'Cloning...' : 'Clone to the borrowing capacity'}</b>
                   <span className="block text-[11px] text-muted leading-[1.5] mt-[2px]">
-                    Same clients, same scenario, through to lending options. For trying another lender.</span>
+                    Same clients, same figures. Lending options start blank, so the scenario is still yours to change.</span>
+                </span>
+              </button>
+            <button onClick={() => cloneThisDeal('lending-options')} disabled={cloning} className="text-xs rounded-lg px-2.5 py-2 hover:bg-page transition flex items-start gap-2.5 text-left disabled:opacity-40">
+                <svg className="mt-[2px] text-muted shrink-0" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="8" height="9" rx="1.4"/><path d="M11 5V3.4A1.4 1.4 0 0 0 9.6 2H4.4A1.4 1.4 0 0 0 3 3.4v7.2A1.4 1.4 0 0 0 4.4 12H5"/></svg>
+                <span className="min-w-0">
+                  <b className="block text-[12.5px] font-semibold text-ink leading-snug">
+                    {cloning ? 'Cloning...' : 'Clone with the lending options'}</b>
+                  <span className="block text-[11px] text-muted leading-[1.5] mt-[2px]">
+                    Lender options and pricing come too, for another bank.{' '}
+                    <span className="text-chase">The scenario is locked.</span></span>
                 </span>
               </button>
             <div className="h-px bg-line-soft mx-2.5 my-1" />

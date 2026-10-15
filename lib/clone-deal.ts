@@ -98,9 +98,24 @@ export const CLONE_SELECT = CLONE_READS.join(', ')
 // all, which is why it gets its own name rather than a question on Clone. A
 // dialog asking "how far should this copy?" makes somebody think about our
 // tabs at the moment they are trying to do something simple.
-export type CloneKind = 'deal' | 'clients'
+// THREE DOORS, NOT TWO.
+//
+// 15 Oct 2026. Fabio: "would you like to clone this deal all the way to lending
+// options, or would you like to clone this deal all the way to borrowing
+// capacity? And then put a little note that if you clone it to lending
+// options, you won't be able to change BC."
+//
+// Earlier today the lending options stopped travelling at all, because carrying
+// them froze the clone's scenario the moment it was born. That fixed the freeze
+// and quietly took away re-lodging the same deal at another bank. Offering both
+// and naming the cost is better than either default.
+//
+//   'lending-options'     everything, ready for another bank. Scenario locked.
+//   'borrowing-capacity'  the figures, lending options blank. Scenario yours.
+//   'clients'             the people only. UNCHANGED - do not touch it.
+export type CloneKind = 'lending-options' | 'borrowing-capacity' | 'clients'
 
-export function cloneAsks(dealName: string, kind: CloneKind = 'deal'): string {
+export function cloneAsks(dealName: string, kind: CloneKind = 'borrowing-capacity'): string {
   if (kind === 'clients') {
     return `New deal for the clients on "${dealName}"?\n\n`
          + 'Comes across: both applicants, their income, expenses, liabilities and properties.\n\n'
@@ -108,8 +123,18 @@ export function cloneAsks(dealName: string, kind: CloneKind = 'deal'): string {
          + 'compliance, documents.\n\n'
          + 'You start on a blank borrowing capacity and choose the scenario yourself.'
   }
-  return `Clone "${dealName}"?\n\n`
-       + 'The fact find and the borrowing capacity come across - the people, the figures, '
+  if (kind === 'lending-options') {
+    return `Clone "${dealName}" with the lending options?\n\n`
+         + 'Comes across: the fact find, the borrowing capacity, and the lender options and '
+         + 'pricing. Ready to point at another bank.\n\n'
+         + 'THE SCENARIO IS LOCKED. Because the lending options come too, you will not be '
+         + 'able to change the BC template or swap scenarios on the copy. To change it, '
+         + 'clone to the borrowing capacity instead.\n\n'
+         + 'Compliance starts fresh, and nothing about the old lodgement comes with it - '
+         + 'no lender, no dates, no documents.'
+  }
+  return `Clone "${dealName}" to the borrowing capacity?\n\n`
+       + 'Comes across: the fact find and the borrowing capacity - the people, the figures, '
        + 'the securities and the splits.\n\n'
        + 'The lending options start fresh, so you pick the bank again and the scenario is '
        + 'still yours to change.\n\n'
@@ -147,7 +172,7 @@ export function provenanceLine(factFind: any): string {
 
 // What gets written. Everything not named here is left at its default on
 // purpose; see the note above for the ones that matter.
-export function cloneFields(from: any, newDealName: string, kind: CloneKind = 'deal'): Record<string, any> {
+export function cloneFields(from: any, newDealName: string, kind: CloneKind = 'borrowing-capacity'): Record<string, any> {
   // THE LOAN DOES NOT COME. Only the people and what they own.
   //
   // bc_data carries the scenario, the securities and the splits; lo_data
@@ -198,7 +223,14 @@ export function cloneFields(from: any, newDealName: string, kind: CloneKind = 'd
     fact_find_data: from.fact_find_data,
     bc_data: from.bc_data,
     bc_scenarios: from.bc_scenarios,
-    // THE LENDING OPTIONS DO NOT TRAVEL, AND THAT IS WHAT UNLOCKS THE CLONE.
+    // THE LENDING OPTIONS TRAVEL ONLY WHEN THEY WERE ASKED FOR BY NAME.
+    //
+    // Carrying them is what froze the clone - downstreamStarted() reads lo_data
+    // to answer "has anybody started the lending options", so a copy of it is a
+    // copy of the answer YES onto a deal nobody has opened. Still true. It is
+    // now a thing somebody CHOSE, with the cost written on the button.
+    ...(kind === 'lending-options' ? { lo_data: from.lo_data } : {}),
+    // AND WHY THEY DO NOT ON THE OTHER ONE, WHICH IS WHAT UNLOCKS IT.
     //
     // 15 Oct 2026. Fabio cloned a deal to change the scenario from an owner
     // occupied purchase to an investment purchase, and the clone was frozen

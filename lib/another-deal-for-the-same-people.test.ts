@@ -129,15 +129,18 @@ describe('the wiring', () => {
   // so Fabio's team could not tell them apart - "clone is clone, they're just
   // used to cloning". The word stays on the one they know and comes off the
   // other, and the line underneath each does most of the work.
-  it('there are two actions in the menu, not a question on one', () => {
-    expect(page).toContain("cloneThisDeal('deal')")
+  it('there are three actions in the menu, not a question on one', () => {
+    // 15 Oct 2026: "Clone this deal" became two, because carrying the lending
+    // options locks the scenario and that is a choice, not a default. The
+    // third is untouched. See lib/clone-three-ways.test.ts.
+    expect(page).toContain("cloneThisDeal('borrowing-capacity')")
+    expect(page).toContain("cloneThisDeal('lending-options')")
     expect(page).toContain("cloneThisDeal('clients')")
-    expect(page).toContain('Clone this deal')
     expect(page).toContain('Start another deal for these clients')
   })
 
   it('and each says what it is for, which is what was missing', () => {
-    expect(page).toContain('For trying another lender.')
+    expect(page).toContain('for another bank')
     expect(page).toContain('Carries their position AFTER this deal settles.')
     // Fabio: "I don't want to pigeonhole that because it could be other
     // situations." So it does not name the purchase-beside-a-refinance case.

@@ -172,7 +172,17 @@ export function loPurchaseBlock(d: any, bc?: any): string {
   // release and purchase the lending is three or four splits and only one of
   // them buys anything. Found by the split's own label rather than its
   // position, because a broker can add and remove splits in any order.
-  const buying = (Array.isArray(d?.splits) ? d.splits : [])
+  // OFF THE BC's SPLITS, NOT THE LENDING OPTIONS'.
+  //
+  // The first version of this looked in d.splits - a list the lending options
+  // do not keep. The LO carries refinanceSplits and a set per lender; d.splits
+  // is empty, so it fell back to d.loanAmount and printed $1,844,000 of total
+  // lending under a heading that says New purchase, on a deal buying a
+  // $690,000 property. The BC email next door had it right at $438,000.
+  //
+  // Fabio, 15 Oct 2026: "BC DICTATES STRUCTURE, LO is just rates and product."
+  // So the structure is read where the structure lives.
+  const buying = (Array.isArray(bc?.splits) ? bc.splits : [])
     .find((x: any) => /new purchase/i.test(String(x?.label || '')))
   const loan = buying?.amount || d?.loanAmount
 

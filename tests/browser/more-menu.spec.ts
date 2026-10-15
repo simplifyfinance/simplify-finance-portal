@@ -33,12 +33,20 @@ test.describe('the More menu', () => {
     // Both of them are listed. A menu that has quietly lost an item is a
     // question somebody has to ask somebody else.
     //
-    // 13 OCT 2026, RENAMED. This read /^Clone$/ and the item is now "Clone this
+    // 13 OCT 2026, RENAMED. This read /^Clone$/ and the item became "Clone this
     // deal", with a line of description underneath it that forms part of the
     // accessible name - so the anchor stays at the start and the rest is left
     // open. Fabio's team could not tell the two actions apart while both said
     // clone and both were a bare label.
-    await expect(page.getByRole('button', { name: /^Clone this deal/ })).toBeVisible({ timeout: 10_000 })
+    //
+    // 15 OCT 2026, SPLIT IN TWO. "Clone this deal" is now two items, because
+    // carrying the lending options locks the copy's scenario and that is a
+    // choice rather than a default. Both are checked: a menu that has quietly
+    // lost one of them is the thing this test exists to catch.
+    await expect(page.getByRole('button', { name: /^Clone to the borrowing capacity/ }))
+      .toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('button', { name: /^Clone with the lending options/ }))
+      .toBeVisible({ timeout: 10_000 })
 
     // And the second one, which is NOT a clone - it starts a new deal from
     // these clients' position after this one settles. See
