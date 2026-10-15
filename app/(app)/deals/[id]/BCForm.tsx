@@ -11,7 +11,7 @@ import { can } from '@/lib/permissions'
 import { templateLabel } from '@/lib/templates'
 import { auDate } from '@/lib/client-position'
 import { PURPOSES, isDebtRecycling, limitCheck } from '@/lib/debt-recycling'
-import { isComplexRefinance, groupsOf } from '@/lib/complex-refinance'
+import { isComplexRefinance, canHaveManySecurities, groupsOf } from '@/lib/complex-refinance'
 import { ffProperties, securitiesOf, totalsOf, groupBySecurity, orphanSplits,
          lvrOf, pct, legacyAddress } from '@/lib/securities'
 import { tabsOf, canAdd, canSwap, swapTo, addScenario, removeScenario, whyNotDelete, renameLive,
@@ -1807,7 +1807,7 @@ Key assumptions: ${checklistText}`
                     * LVR here, because it is read rather than copied.
                     *
                     * See lib/securities.ts. */}
-                  {isComplexRefinance(template) && (() => {
+                  {canHaveManySecurities(template) && (() => {
                     const props = ffProperties(ff)
                     if (props.length === 0) {
                       return (
@@ -1911,7 +1911,11 @@ Key assumptions: ${checklistText}`
                   })()}
 
               <div className="bg-card border border-gray-100 rounded-xl p-4">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Scenario details</div>
+                {/* IT IS THE PROPERTY BEING REFINANCED, SO IT SAYS SO. 15 Oct 2026 -
+    "Scenario details" told nobody which house these figures were
+    about, and on a deal with two securities that is the only
+    question worth answering. */}
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">{REFINANCING_TEMPLATES.includes(template) ? 'Property being refinanced' : 'Scenario details'}</div>
                 {/* WHAT THE SALE PROCEEDS ARE GOING INTO.
                     It governs the whole card below it, so it sits at the top of
                     the card rather than beside the boxes it turns on and off.
@@ -2343,7 +2347,7 @@ Key assumptions: ${checklistText}`
                           * A DEAL RECORDED BEFORE TODAY keeps its typed address
                           * and says so, rather than being quietly re-pointed at
                           * whichever property looks closest. */}
-                        {isComplexRefinance(template) && (() => {
+                        {canHaveManySecurities(template) && (() => {
                           const secs = securitiesOf(buildBcData(), ff)
                           const typed = legacyAddress(s)
                           return (

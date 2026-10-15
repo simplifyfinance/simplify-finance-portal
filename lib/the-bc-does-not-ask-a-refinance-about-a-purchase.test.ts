@@ -65,9 +65,12 @@ describe('the box at the top of the card says what it is', () => {
 })
 
 describe('the securities are chosen before anything is split against them', () => {
-  it('the securities block is above Scenario details, not inside Loan splits', () => {
+  it('the securities block is above the property details, not inside Loan splits', () => {
+    // 15 Oct 2026: that heading now reads "Property being refinanced" on a
+    // refinancing scenario and "Scenario details" on the rest, so the anchor is
+    // the line that renders either one.
     const sec = FORM.indexOf('Securities for this loan')
-    const scenario = FORM.indexOf('>Scenario details<')
+    const scenario = FORM.indexOf("'Property being refinanced' : 'Scenario details'")
     const splits = FORM.indexOf('"Loan splits"')
     expect(sec).toBeGreaterThan(-1)
     expect(sec).toBeLessThan(scenario)

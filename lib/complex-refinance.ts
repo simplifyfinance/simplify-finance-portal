@@ -32,6 +32,29 @@ export function isComplexRefinance(template: any): boolean {
   return txt(template) === 'complex_refinance'
 }
 
+// WHICH SCENARIOS CAN BE SECURED BY MORE THAN ONE HOUSE.
+//
+// 15 Oct 2026. Fabio, on an equity release and purchase where two properties
+// were being refinanced at once: "I also would like to add the ability of
+// adding another property into the template ... and then under the loan split
+// sections, we will then tag which property relates to which. We had this
+// already done in the complex scenario."
+//
+// He is right that it was already done. Complex refinance has picked its
+// securities from the fact find by id since 12 Oct, and every split already
+// carries securityId. The only thing stopping Equity release + purchase from
+// doing the same was this predicate naming one template.
+//
+// A LIST, NOT A GUESS. Anything that refinances an existing property can need
+// two; a straight purchase cannot. Adding a template here is the whole job -
+// the securities block, the per-split Security box and the LVR across the
+// securities all read this one answer.
+const MANY_SECURITIES = ['complex_refinance', 'investment_equity']
+
+export function canHaveManySecurities(template: any): boolean {
+  return MANY_SECURITIES.includes(txt(template))
+}
+
 // WHICH HOUSE A SPLIT IS AGAINST.
 //
 // 12 Oct 2026. A split used to carry the address as TYPED TEXT. It now carries
