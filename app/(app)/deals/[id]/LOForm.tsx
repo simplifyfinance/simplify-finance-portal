@@ -2024,13 +2024,27 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             })()}
 
             {/* Purchase-specific fields */}
-            {!isRefinance && !isBridging && !buildsSomething(bc) && (
+            {!isRefinance && !isBridging && !buildsSomething(bc) && (() => {
+            // THE BC's OWN FIGURES, BEFORE TELLING ANYBODY TO GO AND SET THEM.
+            //
+            // 15 Oct 2026. Fabio, on an equity release and purchase: three red
+            // "set on the BC" chips under Purchase price, Deposit and Stamp
+            // duty - on a deal where all three were already filled in on the
+            // BC's New purchase block. Nobody types them twice, so the LO's own
+            // copies were empty and the screen shouted about it.
+            //
+            // The chip is still right when the figure exists NOWHERE. It was
+            // only ever wrong about where it had looked.
+            const bcPrice = d.purchasePrice || bc?.newPurchasePrice || bc?.purchasePrice
+            const bcDeposit = d.deposit || bc?.newPurchaseDeposit || bc?.deposit
+            const bcDuty = d.stampDuty || bc?.newPurchaseStampDuty || bc?.stampDuty
+            return (
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Purchase price"><FromBc value={d.purchasePrice ? formatNumber(String(d.purchasePrice)) : ''} dealId={deal.id} /></Field>
+                <Field label="Purchase price"><FromBc value={bcPrice ? formatNumber(String(bcPrice)) : ''} dealId={deal.id} /></Field>
                 <Field label="Deposit">
-                  <FromBc value={d.deposit ? formatNumber(String(d.deposit)) : ''} dealId={deal.id} />
+                  <FromBc value={bcDeposit ? formatNumber(String(bcDeposit)) : ''} dealId={deal.id} />
                   {(() => {
-                    const dep = num(d.deposit), sd = num(d.stampDuty)
+                    const dep = num(bcDeposit), sd = num(bcDuty)
                     if (!dep || !sd) return null
                     if (sd >= dep) return <div className="text-[11px] text-red-500 mt-1">Stamp duty exceeds the deposit</div>
                     return <div className="text-[11px] text-gray-500 mt-1">
@@ -2038,7 +2052,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                     </div>
                   })()}
                 </Field>
-                <Field label="Stamp duty"><FromBc value={d.stampDuty ? formatNumber(String(d.stampDuty)) : ''} dealId={deal.id} /></Field>
+                <Field label="Stamp duty"><FromBc value={bcDuty ? formatNumber(String(bcDuty)) : ''} dealId={deal.id} /></Field>
                 {depositGap && (
                   <div className="col-span-2 rounded-lg border px-3 py-2.5 text-[12px] leading-[1.6] bg-chase-bg border-chase-edge text-chase">
                     <b>These three numbers do not agree.</b>{' '}
@@ -2073,7 +2087,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 <Field label="LVR (calculated)">
                   <div className={inp + " bg-gray-50 text-gray-700"}>
                     {(() => {
-                      const price = parseFloat((d.purchasePrice || '0').replace(/,/g, '')) || 0
+                      const price = parseFloat(String(bcPrice || '0').replace(/,/g, '')) || 0
                       const loanAmt = parseFloat((d.loanAmount || '0').replace(/,/g, '')) || 0
                       const pct = price > 0 ? Math.round((loanAmt / price) * 1000) / 10 : 0
                       return pct > 0 ? `${pct}%` : '\u2014'
@@ -2081,7 +2095,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   </div>
                 </Field>
               </div>
-            )}
+            )})()}
 
             {/* GLOBAL LOAN SPLITS - on every scenario, not just refinances.
                 Gating this on the refinance template meant a purchase could only
