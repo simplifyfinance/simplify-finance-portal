@@ -1963,7 +1963,25 @@ Key assumptions: ${checklistText}`
     "Scenario details" told nobody which house these figures were
     about, and on a deal with two securities that is the only
     question worth answering. */}
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">{REFINANCING_TEMPLATES.includes(template) ? 'Property being refinanced' : 'Scenario details'}</div>
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">{
+                  /* THREE NAMES, BECAUSE IT IS THREE DIFFERENT BOXES.
+                   *
+                   * 15 Oct 2026. Fabio, with two securities ticked and one set
+                   * of figures underneath them: "I don't understand why that
+                   * box is there then."
+                   *
+                   * He was right. Once each property carries its own balance,
+                   * release and limit, what is left in here is the loan term
+                   * and the state - things about the whole loan, not about a
+                   * property. Calling it "Property being refinanced" at that
+                   * point is a lie about what it holds. */
+                  /* 15 Oct 2026, and the heading goes with it: "the two tick
+                   * boxes is all you need ... that first box that says property
+                   * details needs to go." What is left under it is the loan
+                   * term and the state, which belong to the loan rather than to
+                   * a house, so they are shown without a heading at all. */
+                  manySecurities ? '' : REFINANCING_TEMPLATES.includes(template)
+                    ? 'Property being refinanced' : 'Scenario details'}</div>
                 {/* WHAT THE SALE PROCEEDS ARE GOING INTO.
                     It governs the whole card below it, so it sits at the top of
                     the card rather than beside the boxes it turns on and off.

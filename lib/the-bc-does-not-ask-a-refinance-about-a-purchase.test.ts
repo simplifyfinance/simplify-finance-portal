@@ -70,7 +70,7 @@ describe('the securities are chosen before anything is split against them', () =
     // refinancing scenario and "Scenario details" on the rest, so the anchor is
     // the line that renders either one.
     const sec = FORM.indexOf('Securities for this loan')
-    const scenario = FORM.indexOf("'Property being refinanced' : 'Scenario details'")
+    const scenario = FORM.indexOf("manySecurities ? '' : REFINANCING_TEMPLATES.includes(template)")
     const splits = FORM.indexOf('"Loan splits"')
     expect(sec).toBeGreaterThan(-1)
     expect(sec).toBeLessThan(scenario)

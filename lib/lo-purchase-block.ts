@@ -149,12 +149,39 @@ export function loPurchaseBlock(d: any, bc?: any): string {
   const option = optionOnTheDeal(d)
   const feeInLoan = option && option.feeInLoan ? option.applicationFee : ''
 
+  // THE PURCHASE FIGURES COME FROM THE BC WHEN THE LO HAS NOT BEEN TOLD THEM.
+  //
+  // 15 Oct 2026. Fabio, looking at a New purchase card holding one line -
+  // "Loan amount $1,844,000" - on a deal buying a $700,000 property: "in LO
+  // purchase price figures are coming like this, come on, we know purchase
+  // price from BC, COPY IT ACROSS."
+  //
+  // The price, the duty and the deposit were only ever read off the lending
+  // options, which nobody fills in again because they are already on the
+  // borrowing capacity. So the card printed the one figure it did have - the
+  // total lending across every split, refinances included - under a heading
+  // that says New purchase. A right number under a wrong name.
+  //
+  // THE LO's OWN FIGURE STILL WINS where somebody typed one. This is a
+  // fallback, not an override.
+  const price = d?.purchasePrice || bc?.newPurchasePrice || bc?.purchasePrice
+  const duty = d?.stampDuty || bc?.newPurchaseStampDuty || bc?.stampDuty
+  const contribution = d?.deposit || bc?.newPurchaseDeposit || bc?.deposit
+
+  // AND THE LOAN IS THE NEW PURCHASE'S SPLIT, NOT THE WHOLE DEAL. On an equity
+  // release and purchase the lending is three or four splits and only one of
+  // them buys anything. Found by the split's own label rather than its
+  // position, because a broker can add and remove splits in any order.
+  const buying = (Array.isArray(d?.splits) ? d.splits : [])
+    .find((x: any) => /new purchase/i.test(String(x?.label || '')))
+  const loan = buying?.amount || d?.loanAmount
+
   const rows = purchaseRows({
-    price: d?.purchasePrice,
-    duty: d?.stampDuty,
+    price,
+    duty,
     dutyLabel: dutyLabel(d),
-    loan: d?.loanAmount,
-    contribution: d?.deposit,
+    loan,
+    contribution,
     contributionFrom: contributionSource(d),
     feeInLoan,
     feeLabel: 'application fee',

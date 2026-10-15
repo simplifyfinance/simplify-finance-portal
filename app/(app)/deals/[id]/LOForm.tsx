@@ -3,7 +3,7 @@ import HandoverBox from '@/components/Handover'
 import { isDebtRecycling } from '@/lib/debt-recycling'
 import { bcFieldsWin } from '@/lib/the-lo-copies-nothing-it-does-not-own'
 import { normalisePurpose } from '@/lib/split-purpose'
-import { isComplexRefinance } from '@/lib/complex-refinance'
+import { isComplexRefinance, canHaveManySecurities } from '@/lib/complex-refinance'
 import { loTemplateFor, settleLoTemplate } from '@/lib/lo-template'
 // Aliased: this file already has a local `pct` for the single-property LVR a
 // few hundred lines down, and two things called pct in one file is how the
@@ -45,6 +45,7 @@ import { recordsRateData } from '@/lib/test-deal'
 import { tabIsBehind, keepWhatTheyTyped, type TabBehind } from '@/lib/tab-behind'
 import TabBehindNotice from '@/components/TabBehindNotice'
 import EmailPreview from '@/components/EmailPreview'
+import { estimatedRepayment } from '@/lib/email-figures'
 
 // A finished "client agreed" is not something to hide. It used to disappear the
 // instant it was pressed, which made "already done" look exactly like "broken".
@@ -1402,7 +1403,25 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     // empty list of its own, so editing a row would otherwise write into nothing
     // and the typing would vanish. The first edit is what makes the copy real.
     const splits = [...resolveLenderSplits(updated[lenderIdx], d.refinanceSplits)]
-    splits[splitIdx] = { ...splits[splitIdx], [field]: value }
+    const next: any = { ...splits[splitIdx], [field]: value }
+
+    // THE REPAYMENT FOLLOWS THE THREE THINGS IT IS MADE OF.
+    //
+    // 15 Oct 2026. Fabio: "all loan splits in bank options, if I select IO
+    // calculate IO repayments there as well." The BC fills them in; these did
+    // not, so a lender option carried an amount, a rate, IO - and a blank
+    // repayment, or worse, the P&I figure from before the type was changed.
+    //
+    // Recalculated when the AMOUNT, the RATE or the TYPE moves, because when
+    // any of those change the repayment beside them is stale by definition.
+    // Typing in the repayment box itself is left alone until one of the three
+    // changes again.
+    if (field === 'amount' || field === 'rate' || field === 'repaymentType') {
+      const worked = estimatedRepayment(next.amount, next.rate, bc?.loanTerm || '30', next.repaymentType)
+      if (worked) next.repayment = worked.replace(/^\$/, '')
+    }
+
+    splits[splitIdx] = next
     updated[lenderIdx] = { ...updated[lenderIdx], lenderSplits: splits }
     setD({ ...d, lenders: updated })
   }
@@ -1410,6 +1429,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // THE CLIENT CHANGED THEIR MIND. Open only while somebody is changing the
   // answer; the block below shows what was decided the rest of the time.
   // `decisionWas` is what to put back if they press Cancel.
+  // Which lenders have had their rate modules asked for by hand. Not saved -
+  // it is a glance, not a decision.
+  const [showModules, setShowModules] = useState<Record<string, boolean>>({})
   const [decisionOpen, setDecisionOpen] = useState(false)
   const decisionWas = useRef<Partial<LOData> | null>(null)
 
@@ -2146,7 +2168,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   // security, or no securities ticked at all, keeps the plain
                   // list below - grouping one house under a heading of its own
                   // name is noise. See lib/lo-by-property.ts.
-                  const secs = isComplexRefinance(bc.template) ? securitiesOf(bc, ff) : []
+                  const secs = canHaveManySecurities(bc.template) ? securitiesOf(bc, ff) : []
                   if (secs.length < 2) return null
                   const { groups, loose } = groupLoSplits(d.refinanceSplits, secs)
 
@@ -2622,14 +2644,26 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                         cannot say different things. */}
                     {lenderSplits.length > 0 && (() => {
                       const tot = lenderTotal(lenderSplits)
-                      const lvr = lenderLvr(lenderSplits, d.propertyValue)
+                      // THE SECURITIES, NOT THE ONE OLD FIELD.
+                      //
+                      // 15 Oct 2026. This line read "no property value on this
+                      // deal yet" directly under a panel listing $830,000 and
+                      // $995,000 with an LVR against each. It was reading
+                      // d.propertyValue - the single field that existed before
+                      // a deal could be secured by more than one house, and
+                      // which is empty on every deal that now uses securities.
+                      const secured = securitiesOf(bc, ff)
+                        .reduce((t: number, sec: any) =>
+                          t + (Number(String(sec?.value || '').replace(/[^0-9.]/g, '')) || 0), 0)
+                      const against = secured || d.propertyValue
+                      const lvr = lenderLvr(lenderSplits, String(against || ''))
                       return (
                         <div className="mt-3 text-[12.5px] bg-info-bg border border-info-edge rounded-lg px-3 py-2 text-ink">
                           <strong>Total lending ${tot.toLocaleString('en-AU')}</strong>
                           {lvr > 0
                             ? <> &middot; LVR <strong>{lvr}%</strong>
-                                <span className="text-muted"> &mdash; against the ${Number(String(d.propertyValue).replace(/[^0-9.]/g, '') || 0).toLocaleString('en-AU')} property value. Calculated, not typed.</span></>
-                            : <span className="text-chase"> &mdash; no property value on this deal yet, so there is no LVR to show.</span>}
+                                <span className="text-muted"> &mdash; against ${Number(String(against).replace(/[^0-9.]/g, '') || 0).toLocaleString('en-AU')} of security. Calculated, not typed.</span></>
+                            : <span className="text-chase"> &mdash; no security value on this deal yet, so there is no LVR to show.</span>}
                         </div>
                       )
                     })()}
@@ -2657,10 +2691,31 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                           pushed everything below them off the screen. The ticks
                           now sit on one line and only a module that is ON opens a
                           panel. EVERY BOX IS THE ONE THAT WAS THERE. */}
-                      <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-2">
+                      {/* HIDDEN ONCE EVERY SPLIT CARRIES ITS OWN RATE.
+                          15 Oct 2026. Fabio: "the loan splits, it's already
+                          pre-filled from the BC. Why do I have rate modules at
+                          the bottom?" Because they were built before the splits
+                          were priced, and on a deal like his they are the same
+                          numbers typed a second time. They still earn their
+                          place when you want to show a client variable against
+                          fixed, so they are offered rather than removed. */}
+                      {lenderSplits.length > 0 && lenderSplits.every((x: any) => String(x?.rate || '').trim())
+                        && !MODULES.some(({ key }) => (lender as any)?.[key]?.on) ? (
+                        <button type="button" onClick={() => setShowModules(prev => ({ ...prev, [lender.id]: true }))}
+                          className="text-[11.5px] text-brand-ink hover:underline mb-2">
+                          Every split already has a rate &mdash; show rate modules anyway
+                        </button>
+                      ) : null}
+                      <div className={`text-xs font-medium text-gray-400 uppercase tracking-widest mb-2 ${
+                        lenderSplits.length > 0 && lenderSplits.every((x: any) => String(x?.rate || '').trim())
+                        && !MODULES.some(({ key }) => (lender as any)?.[key]?.on)
+                        && !showModules[lender.id] ? 'hidden' : ''}`}>
                         Rate modules <span className="normal-case tracking-normal text-gray-400">&mdash; tick the ones this product offers</span>
                       </div>
-                      <div className="flex flex-wrap gap-1.5 mb-3">
+                      <div className={`flex flex-wrap gap-1.5 mb-3 ${
+                        lenderSplits.length > 0 && lenderSplits.every((x: any) => String(x?.rate || '').trim())
+                        && !MODULES.some(({ key }) => (lender as any)?.[key]?.on)
+                        && !showModules[lender.id] ? 'hidden' : ''}`}>
                         {MODULES.map(({ key, label }) => (
                           // `relative` IS LOAD-BEARING. DO NOT DROP IT.
                           //
