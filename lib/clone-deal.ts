@@ -71,7 +71,12 @@ export const CLONE_READS = [
   // writes is how a clone quietly loses a form, so they live in one list.
   'id', 'deal_name',
   'client_id', 'deal_type', 'assigned_broker', 'assigned_credit_officer',
-  'fact_find_data', 'bc_data', 'bc_scenarios', 'lo_data',
+  'fact_find_data', 'bc_data', 'bc_scenarios',
+  // lo_data IS STILL READ although neither kind of clone writes it: a deal
+  // page that has it in hand can say what is being left behind. It is listed
+  // here so the select and the insert stay one list - a select asking for one
+  // column fewer than the insert writes is how a clone quietly loses a form.
+  'lo_data',
 ] as const
 
 export const CLONE_SELECT = CLONE_READS.join(', ')
@@ -104,9 +109,11 @@ export function cloneAsks(dealName: string, kind: CloneKind = 'deal'): string {
          + 'You start on a blank borrowing capacity and choose the scenario yourself.'
   }
   return `Clone "${dealName}"?\n\n`
-       + 'The fact find, the borrowing capacity and the lending options all come across, '
-       + 'ready to be pointed at a different bank.\n\n'
-       + 'Compliance starts fresh, and nothing about the old lodgement comes with it - '
+       + 'The fact find and the borrowing capacity come across - the people, the figures, '
+       + 'the securities and the splits.\n\n'
+       + 'The lending options start fresh, so you pick the bank again and the scenario is '
+       + 'still yours to change.\n\n'
+       + 'Compliance starts fresh too, and nothing about the old lodgement comes with it - '
        + 'no lender, no dates, no documents.'
 }
 
@@ -191,6 +198,29 @@ export function cloneFields(from: any, newDealName: string, kind: CloneKind = 'd
     fact_find_data: from.fact_find_data,
     bc_data: from.bc_data,
     bc_scenarios: from.bc_scenarios,
-    lo_data: from.lo_data,
+    // THE LENDING OPTIONS DO NOT TRAVEL, AND THAT IS WHAT UNLOCKS THE CLONE.
+    //
+    // 15 Oct 2026. Fabio cloned a deal to change the scenario from an owner
+    // occupied purchase to an investment purchase, and the clone was frozen
+    // the moment it was born - "Lending options have been started on this
+    // scenario, so it is the one going ahead. To change it now, clone the
+    // deal." On the clone. Telling him to do the thing he had just done.
+    //
+    // downstreamStarted() in lib/bc-scenarios.ts asks "has anybody started the
+    // lending options" by looking at lo_data - the lenders, the LO email, the
+    // lender on the deal. Copying lo_data copied the answer YES onto a deal
+    // nobody had opened yet.
+    //
+    // This is the same fault that was fixed one level up on 13 Oct for "New
+    // deal for these clients", and the note there says it exactly: "A purchase
+    // written on top of a complex refinance's borrowing capacity is the fault
+    // Fabio hit - the scenario was already answered and would not let him
+    // change it." The fix was never applied to Clone.
+    //
+    // Nothing is lost that was worth keeping. A clone goes to a DIFFERENT bank
+    // or a different scenario; either way the old lender list and its pricing
+    // are wrong for it, and a wrong figure carried forward is worse than a
+    // blank one. The borrowing capacity - the securities, the splits, the
+    // numbers - is the part worth having, and it still comes.
   }
 }

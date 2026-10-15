@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { CLONE_READS, CLONE_SELECT, cloneFields, cloneAsks } from './clone-deal'
+import { downstreamStarted, canSwap } from './bc-scenarios'
 
 // A CLONE KEEPS THE WORK AND LEAVES THE HISTORY.
 //
@@ -36,11 +37,33 @@ const written = cloneFields({
 }, 'whoever_clone')
 
 describe('a clone keeps the work', () => {
-  it('brings the fact find, the borrowing capacity and the lending options', () => {
+  it('brings the fact find and the borrowing capacity', () => {
     expect(written.fact_find_data, 'the fact find no longer travels').toEqual({ a: 1 })
     expect(written.bc_data, 'the borrowing capacity no longer travels - this is the\n'
       + 'whole reason the clone was changed').toEqual({ b: 2 })
-    expect(written.lo_data, 'the lending options no longer travel').toEqual({ d: 4 })
+  })
+
+  // 15 OCT 2026. THE CLONE WAS BORN FROZEN.
+  //
+  // Fabio cloned a deal to change its scenario and the clone would not let
+  // him, with the message "To change it now, clone the deal." On the clone.
+  //
+  // downstreamStarted() reads lo_data to answer "has anybody started the
+  // lending options". Copying lo_data copied the answer YES onto a deal
+  // nobody had opened. The whole point of a clone is that nothing has
+  // happened on it yet.
+  it('does NOT bring the lending options', () => {
+    expect(written.lo_data,
+      'the lending options travelled again, which freezes the clone').toBeUndefined()
+  })
+
+  it('and so the clone is not frozen before anybody has touched it', () => {
+    // The real assertion. The one above is how; this is why.
+    expect(downstreamStarted(written),
+      'a brand new clone says the lending options have already been started').toBe(false)
+    // A parked scenario carries its bc under `bc` - see parkedOf.
+    expect(canSwap({ ...written, bc_scenarios: [{ bc: { template: 'oo_purchase' } }] }),
+      'the scenario cannot be changed on a deal nobody has worked yet').toBe(true)
   })
 
   it('brings the parked second scenario too', () => {
@@ -69,7 +92,7 @@ describe('a clone keeps the work', () => {
   it('reads every column it writes', () => {
     // The select asking for one column fewer than the insert writes is how a
     // clone quietly loses a form - it writes undefined and nothing complains.
-    for (const k of ['fact_find_data', 'bc_data', 'bc_scenarios', 'lo_data', 'client_id', 'deal_type', 'assigned_broker', 'assigned_credit_officer']) {
+    for (const k of ['fact_find_data', 'bc_data', 'bc_scenarios', 'client_id', 'deal_type', 'assigned_broker', 'assigned_credit_officer']) {
       expect(CLONE_READS, `${k} is written by the clone but never read off the original`)
         .toContain(k)
       expect(CLONE_SELECT).toContain(k)

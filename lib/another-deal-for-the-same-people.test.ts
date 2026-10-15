@@ -35,14 +35,17 @@ const from = {
 describe('the clone that already existed is untouched', () => {
   const out = cloneFields(from, 'Veljovic_Refinance_2026_Copy')
 
-  it('still carries the borrowing capacity and the lending options', () => {
+  it('still carries the borrowing capacity', () => {
     expect(out.bc_data).toEqual(from.bc_data)
-    expect(out.lo_data).toEqual(from.lo_data)
     expect(out.bc_scenarios).toEqual(from.bc_scenarios)
   })
 
-  it('and its wording still describes that', () => {
-    expect(cloneAsks('X')).toContain('pointed at a different bank')
+  it('but no longer the lending options, which froze it - 15 Oct 2026', () => {
+    expect(out.lo_data).toBeUndefined()
+  })
+
+  it('and its wording says so', () => {
+    expect(cloneAsks('X')).toContain('lending options start fresh')
   })
 })
 
