@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { money } from '@/lib/money'
 import { SkelRows, SkelTile } from '@/components/Skeleton'
+import BookImport from '@/components/BookImport'
 import {
   STAGES, stageLabel, outcomeLabel, countsFor, sortForTheList,
   dueState, whenDue, fullName, type Stage,
@@ -96,6 +97,7 @@ export default function PortfolioReview() {
   const [stage, setStage] = useState<'all' | Stage>('all')
   const [onlyDue, setOnlyDue] = useState(false)
   const [find, setFind] = useState('')
+  const [importing, setImporting] = useState(false)
 
   // ONE CLOCK FOR THE WHOLE SCREEN, taken once.
   //
@@ -167,6 +169,8 @@ export default function PortfolioReview() {
         </div>
       )}
 
+      {importing && <BookImport onFinished={() => window.location.reload()} />}
+
       <div className="flex gap-2 flex-wrap mb-3">
         <Count n={counts.onTheList} what="on the list" />
         <Count n={counts.reviewed} what="reviewed" />
@@ -195,6 +199,10 @@ export default function PortfolioReview() {
         <span className="ml-auto text-[11.5px] text-faint">
           {shown.length} of {(rows || []).length}
         </span>
+        <button onClick={() => setImporting(v => !v)}
+          className="text-[11.5px] font-semibold text-brand-ink bg-card border border-dashed border-info-edge rounded-lg px-3 py-[6px] hover:bg-page transition">
+          {importing ? 'Close the import' : 'Import the book'}
+        </button>
       </div>
 
       <div className={`${GRID} px-4 pb-2 text-[9.5px] font-bold uppercase tracking-[.06em] text-faint`}>
