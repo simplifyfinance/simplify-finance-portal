@@ -14,7 +14,7 @@ import { PURPOSES, isDebtRecycling, limitCheck } from '@/lib/debt-recycling'
 import { isComplexRefinance, groupsOf } from '@/lib/complex-refinance'
 import { ffProperties, securitiesOf, totalsOf, groupBySecurity, orphanSplits,
          lvrOf, pct, legacyAddress } from '@/lib/securities'
-import { tabsOf, canAdd, canSwap, swapTo, addScenario, removeParked, renameLive,
+import { tabsOf, canAdd, canSwap, swapTo, addScenario, removeScenario, whyNotDelete, renameLive,
          labelOf, scenarioCount, downstreamStarted, parkedOf } from '@/lib/bc-scenarios'
 import { proceedCredit } from '@/lib/deal-status'
 import { emailParagraphs, htmlToPlainText, copyHtmlAndPlain} from '@/lib/rich-text'
@@ -29,7 +29,7 @@ import { LMI_CAPITALISED, LMI_SETTLEMENT, lmiAmount, looksAlreadyCapitalised } f
 import { propertyChecklist } from '@/lib/property-checklist'
 import { altLvrPurchase, altLvrEquity, altEstimatedRepayment, altNeedsLmi, altLmiUnanswered,
          loanFromDeposit, depositFromLoan } from '@/lib/alt-scenario'
-import { repaymentMismatch, balancesDisagree } from '@/lib/split-cards'
+import { repaymentMismatch, balancesDisagree, repaymentOf } from '@/lib/split-cards'
 import { scenarioChangeCost, keepSplits, splitsAdded, type ChangeCost } from '@/lib/scenario-change'
 import { useDraft } from '@/components/useDraft'
 import DraftBanner from '@/components/DraftBanner'
@@ -1128,6 +1128,45 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     else if (ask.id) applyTemplate(ask.id, splitsChoice)
   }
 
+  // THE REPAYMENT IS FILLED IN FOR YOU, AND IS STILL YOURS.
+  //
+  // 15 Oct 2026. Fabio, on an equity access split that showed no repayment
+  // while the one above it did: "yes, I want the interest-only repayments to
+  // be there, but it's always editable. So yeah, pre-populate, and then I
+  // choose if it's right or wrong."
+  //
+  // The box used to stay empty and the figure was only worked out later, when
+  // the email was built - so a split with a typed repayment and one without
+  // looked like one calculating and one broken. They were both doing the same
+  // thing; only one had a number in it.
+  //
+  // ONLY EVER INTO AN EMPTY BOX. repaymentOf() returns what is typed if
+  // anything is, so this can never write over a figure somebody entered - the
+  // rule from 16 Sep 2026 stands: "our typed repayments take over".
+  // IT KEEPS UP WHILE IT IS OURS, AND STOPS THE MOMENT IT IS YOURS.
+  //
+  // The first version filled an empty box and never touched it again, which is
+  // worse than useless: typing an amount fills the repayment off "2", and by
+  // the time the amount reads 290,000 the repayment still says the figure for
+  // two dollars. So we remember what WE put there. If the box still holds our
+  // own last answer, it is ours to update. The moment it holds anything else,
+  // somebody typed it and we never touch it again.
+  const ourRepayment = useRef<Record<number, string>>({})
+  useEffect(() => {
+    let changed = false
+    const next = splits.map((s, i) => {
+      const worked = repaymentOf({ ...s, repayment: '' } as any, loanTerm).replace(/^\$/, '')
+      const now = String(s.repayment || '').trim()
+      // Theirs. Leave it exactly as it is - the rule from 16 Sep 2026.
+      if (now && now !== ourRepayment.current[i]) return s
+      if (!worked || now === worked) { if (worked) ourRepayment.current[i] = worked; return s }
+      ourRepayment.current[i] = worked
+      changed = true
+      return { ...s, repayment: worked }
+    })
+    if (changed) setSplits(next)
+  }, [splits, loanTerm])
+
   // Drawn in one place and checked in another, because a disabled control is
   // a courtesy and this is a rule. See lib/bc-scenarios.ts.
   const frozen = downstreamStarted(deal)
@@ -1579,22 +1618,45 @@ Key assumptions: ${checklistText}`
           {(scenarioCount(deal) > 1 || canAdd(deal)) && (
             <div className="bg-card border border-gray-100 rounded-xl p-4 mb-4">
               <div className="flex items-center gap-2 flex-wrap">
-                {tabsOf(liveDeal()).map(t => (
-                  <button key={t.label + t.parkedIndex} disabled={scenarioBusy || (!t.live && !canSwap(deal))}
-                    onClick={() => { if (t.live) return
-                      const w = swapTo(liveDeal(), t.parkedIndex); if (w) writeScenarios(w) }}
-                    title={!t.live && !canSwap(deal)
-                      ? 'Lending options have been started on the other scenario. Clone the deal to change it.'
-                      : ''}
-                    className={t.live
-                      ? 'inline-flex items-center gap-2 bg-done-bg border border-done-edge text-done rounded-lg px-3 py-1.5 text-[12.5px] font-semibold'
+                {/* A DELETE ON THE TAB ITSELF. 15 Oct 2026 - the only way to remove a
+                    scenario was a grey "Remove the other" link at the far right, which
+                    could never remove the one you were looking at. Fabio: "if I remove
+                    the investment purchase scenario, it deletes everything within that
+                    scenario." See removeScenario in lib/bc-scenarios.ts. */}
+                {tabsOf(liveDeal()).map((t, tabIndex) => {
+                  const cannot = whyNotDelete(liveDeal(), tabIndex)
+                  return (
+                  <span key={t.label + t.parkedIndex} className={t.live
+                      ? 'inline-flex items-center gap-2 bg-done-bg border border-done-edge text-done rounded-lg pl-3 pr-1.5 py-1.5 text-[12.5px] font-semibold'
                       : canSwap(deal)
-                        ? 'bg-card border border-gray-200 text-gray-600 rounded-lg px-3 py-1.5 text-[12.5px] hover:border-brand hover:text-brand-ink transition'
-                        : 'bg-panel border border-dashed border-gray-200 text-faint rounded-lg px-3 py-1.5 text-[12.5px] cursor-default'}>
+                        ? 'inline-flex items-center gap-2 bg-card border border-gray-200 text-gray-600 rounded-lg pl-3 pr-1.5 py-1.5 text-[12.5px]'
+                        : 'inline-flex items-center gap-2 bg-panel border border-dashed border-gray-200 text-faint rounded-lg pl-3 pr-1.5 py-1.5 text-[12.5px]'}>
                     {t.live && <span className="w-[7px] h-[7px] rounded-full bg-done inline-block" />}
-                    {t.label}
-                  </button>
-                ))}
+                    <button disabled={scenarioBusy || (!t.live && !canSwap(deal))}
+                      onClick={() => { if (t.live) return
+                        const w = swapTo(liveDeal(), t.parkedIndex); if (w) writeScenarios(w) }}
+                      title={!t.live && !canSwap(deal)
+                        ? 'Lending options have been started on the other scenario. Clone the deal to change it.'
+                        : ''}
+                      className={t.live ? 'cursor-default' : 'hover:text-brand-ink transition'}>
+                      {t.label}
+                    </button>
+                    {scenarioCount(deal) > 1 && (
+                      <button disabled={scenarioBusy || !!cannot}
+                        title={cannot || `Delete "${t.label}" and everything in it`}
+                        aria-label={`Delete ${t.label}`}
+                        onClick={() => {
+                          if (cannot) return
+                          if (!window.confirm(`Delete "${t.label}"? Everything typed into it goes with it.`)) return
+                          const w = removeScenario(liveDeal(), tabIndex); if (w) writeScenarios(w) }}
+                        className={cannot
+                          ? 'w-[18px] h-[18px] rounded-md text-faint cursor-default'
+                          : 'w-[18px] h-[18px] rounded-md text-gray-400 hover:text-chase hover:bg-chase-bg transition'}>
+                        &times;
+                      </button>
+                    )}
+                  </span>
+                )})}
                 {canAdd(deal) && (
                   <button disabled={scenarioBusy}
                     onClick={() => { const w = addScenario(liveDeal(), 'Second scenario'); if (w) writeScenarios(w) }}
@@ -1606,14 +1668,6 @@ Key assumptions: ${checklistText}`
                       onClick={() => { const name = window.prompt('Call this scenario', labelOf(buildBcData()))
                         if (name && name.trim()) writeScenarios(renameLive(liveDeal(), name.trim())) }}
                       className="text-[11.5px] text-gray-400 hover:text-ink">Rename</button>
-                    {canSwap(deal) && (
-                      <button disabled={scenarioBusy}
-                        onClick={() => { const other = tabsOf(deal).find(t => !t.live)
-                          if (!other) return
-                          if (!window.confirm(`Remove "${other.label}"? Everything typed into it goes with it.`)) return
-                          const w = removeParked(liveDeal(), other.parkedIndex); if (w) writeScenarios(w) }}
-                        className="text-[11.5px] text-gray-400 hover:text-red-500">Remove the other</button>
-                    )}
                   </div>
                 )}
               </div>

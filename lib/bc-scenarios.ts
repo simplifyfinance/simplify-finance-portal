@@ -160,6 +160,59 @@ export function removeParked(deal: any, parkedIndex: number): ScenarioWrite | nu
   }
 }
 
+// DELETING A SCENARIO, WHICHEVER ONE YOU ARE LOOKING AT.
+//
+// 15 Oct 2026. Fabio: "if I remove the investment purchase scenario, it deletes
+// everything within that scenario ... when I create a scenario and I type
+// everything and then I add another scenario, I can delete the previous one."
+//
+// removeParked() below could only ever remove the one you were NOT on, through
+// a grey link at the far right of the row. You cannot point at the scenario you
+// mean and delete it, which is what anybody would try first.
+//
+// `index` is the tab's position as tabsOf() lists them: 0 is the live one,
+// 1 upwards are the parked ones.
+//
+// DELETING THE LIVE SCENARIO PROMOTES THE OTHER ONE. It does not leave the deal
+// with no scenario, and it does not quietly keep the one that was deleted - the
+// remaining scenario becomes the one going ahead, which is the only answer that
+// leaves the deal in a state somebody can carry on working.
+export function removeScenario(deal: any, index: number): ScenarioWrite | null {
+  const parked = parkedOf(deal)
+  // The last scenario is the deal. There is nothing to fall back to.
+  if (parked.length === 0) return null
+
+  if (index === 0) {
+    // THE ONE GOING AHEAD IS BEING DELETED. Refused once lending options or
+    // anything after them exist, for the same reason a swap is: the file would
+    // describe a loan the clients are not taking.
+    if (downstreamStarted(deal)) return null
+    const [promoted, ...rest] = parked
+    return {
+      bc_data: promoted.bc,
+      bc_scenarios: rest,
+      bc_completed_at: promoted.completedAt,
+    }
+  }
+
+  const at = index - 1
+  if (!parked[at]) return null
+  return {
+    bc_data: deal?.bc_data || {},
+    bc_scenarios: parked.filter((_, i) => i !== at),
+    bc_completed_at: txt(deal?.bc_completed_at) || null,
+  }
+}
+
+/** Why a scenario cannot be deleted, in words, or empty when it can. */
+export function whyNotDelete(deal: any, index: number): string {
+  if (parkedOf(deal).length === 0) return 'A deal needs one scenario.'
+  if (index === 0 && downstreamStarted(deal)) {
+    return 'Lending options have been started on this one. Switch to the other scenario first.'
+  }
+  return ''
+}
+
 export function renameLive(deal: any, label: string): { bc_data: any } {
   return { bc_data: { ...(deal?.bc_data || {}), scenarioLabel: txt(label) } }
 }

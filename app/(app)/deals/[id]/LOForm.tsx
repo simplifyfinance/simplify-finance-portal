@@ -44,6 +44,7 @@ import DealStructure from '@/components/DealStructure'
 import { recordsRateData } from '@/lib/test-deal'
 import { tabIsBehind, keepWhatTheyTyped, type TabBehind } from '@/lib/tab-behind'
 import TabBehindNotice from '@/components/TabBehindNotice'
+import EmailPreview from '@/components/EmailPreview'
 
 // A finished "client agreed" is not something to hide. It used to disappear the
 // instant it was pressed, which made "already done" look exactly like "broken".
@@ -3016,9 +3017,13 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
               </button>
             </div>
           )}
+          {/* Was a fixed h-[800px] frame, so the email scrolled inside a box while
+              the BC preview next door ran down the page. The frame stays - it is
+              what keeps the portal's CSS out of the email - and measures itself.
+              See components/EmailPreview.tsx. */}
           <div className="bg-card border border-gray-100 rounded-xl overflow-hidden">
             {emailHtml ? (
-              <iframe srcDoc={emailHtml} className="w-full h-[800px] border-0" title="LO Email Preview" />
+              <EmailPreview html={emailHtml} title="LO Email Preview" />
             ) : (
               <div className="p-8 text-center text-sm text-gray-400">Generate the email first to see a preview</div>
             )}
