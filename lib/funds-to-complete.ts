@@ -1,7 +1,7 @@
 import { contractPrice, contractLoan, contractStampDuty } from './contract-figures'
 import { isLandPurchase, landLoanPayout, dutyApplies } from './construction'
 import { buildsSomething, purchasePriceOf } from './sale-build'
-import { securitiesOf, totalsOf } from './securities'
+import { securitiesWithPurchase, totalsOf } from './securities'
 
 // WHAT THE CLIENT HAS TO FIND.
 //
@@ -341,7 +341,15 @@ export function securityValue(deal: any): SecurityValue {
   // houses secure this deal is the BC's answer, so what they are worth is the
   // total of those houses. securitiesOf and totalsOf are the same two functions
   // the strip already draws the addresses with, so the two cannot disagree again.
-  const ticked = securitiesOf(bc, deal?.fact_find_data)
+  // AND THE HOUSE BEING BOUGHT IS ONE OF THEM.
+  //
+  // 16 Oct 2026. This found the ticked securities and returned on the spot,
+  // never reaching the purchase price below - so on a deal that refinances two
+  // houses and buys a third, the purchase LOAN was in the numerator and the
+  // purchase PRICE was not in the denominator. 1,855,000 over 1,825,000 of
+  // security: 101.6%, printed in Box 1 and Box 4 of a compliance pack. The
+  // honest figure is 73.5%.
+  const ticked = securitiesWithPurchase(bc, deal?.fact_find_data)
   if (ticked.length > 0) {
     const t = totalsOf(ticked)
     const loan = loanAmount(deal)

@@ -14,7 +14,8 @@ import {
 import { fundsToComplete, bcSplitsTotal } from '@/lib/funds-to-complete'
 import { splitsDisagree } from '@/lib/deal-structure'
 import { securitiesOf } from '@/lib/box-security'
-import { securitiesOf as tickedSecurities, lvrOf as securityLvr, totalsOf } from '@/lib/securities'
+import { securitiesWithPurchase as tickedSecurities, lvrOf as securityLvr,
+         totalsOf } from '@/lib/securities'
 import { SPLIT_TYPES, typesOffered, typeContradictsProduct } from '@/lib/lo-splits'
 import { optionOnTheDeal } from '@/lib/client-agreement'
 

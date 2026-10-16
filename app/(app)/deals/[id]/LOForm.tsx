@@ -3,12 +3,13 @@ import HandoverBox from '@/components/Handover'
 import { isDebtRecycling } from '@/lib/debt-recycling'
 import { bcFieldsWin } from '@/lib/the-lo-copies-nothing-it-does-not-own'
 import { normalisePurpose } from '@/lib/split-purpose'
-import { isComplexRefinance, canHaveManySecurities } from '@/lib/complex-refinance'
+import { canHaveManySecurities } from '@/lib/complex-refinance'
 import { loTemplateFor, settleLoTemplate } from '@/lib/lo-template'
 // Aliased: this file already has a local `pct` for the single-property LVR a
 // few hundred lines down, and two things called pct in one file is how the
 // wrong one gets used in six months.
-import { securitiesOf, totalsOf, lvrOf, pct as lvrPct } from '@/lib/securities'
+import { securitiesOf, securitiesWithPurchase, purchaseLoanOf, totalsOf, lvrOf,
+         pct as lvrPct } from '@/lib/securities'
 import { groupLoSplits, propertyColour } from '@/lib/lo-by-property'
 import { dutyStateOf, dutyLabel } from '@/lib/duty-state'
 import { buildsSomething, isSellAndBuild } from '@/lib/sale-build'
@@ -2087,8 +2088,21 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 <Field label="LVR (calculated)">
                   <div className={inp + " bg-gray-50 text-gray-700"}>
                     {(() => {
+                      // THE LOAN THAT BUYS THIS HOUSE, NOT EVERY LOAN ON THE DEAL.
+                      //
+                      // 16 Oct 2026. Fabio: "why LVR is 125%? investigate where
+                      // this figure comes from as the global splits are correct."
+                      // They were. This box read d.loanAmount - $1,855,000 across
+                      // four splits, three of them refinancing houses he already
+                      // owns - over a $700,000 purchase price, and printed 265%.
+                      //
+                      // A number nobody could use and nothing checked. The loan
+                      // against the purchase is $449,000, which is 64.1%.
                       const price = parseFloat(String(bcPrice || '0').replace(/,/g, '')) || 0
-                      const loanAmt = parseFloat((d.loanAmount || '0').replace(/,/g, '')) || 0
+                      const buying = purchaseLoanOf(bc)
+                      const loanAmt = buying > 0
+                        ? buying
+                        : parseFloat((d.loanAmount || '0').replace(/,/g, '')) || 0
                       const pct = price > 0 ? Math.round((loanAmt / price) * 1000) / 10 : 0
                       return pct > 0 ? `${pct}%` : '\u2014'
                     })()}
@@ -2116,8 +2130,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   * Shown rather than editable, like the construction strip above:
                   * which house a loan is secured by is the structure, and the BC
                   * owns the structure. See lib/securities.ts. */}
-                {isComplexRefinance(bc.template) && (() => {
-                  const secs = securitiesOf(bc, ff)
+                {canHaveManySecurities(bc.template) && (() => {
+                  const secs = securitiesWithPurchase(bc, ff)
                   if (secs.length === 0) return null
                   const t = totalsOf(secs)
                   const drawnOn = (id: string) => d.refinanceSplits
@@ -2182,7 +2196,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   // security, or no securities ticked at all, keeps the plain
                   // list below - grouping one house under a heading of its own
                   // name is noise. See lib/lo-by-property.ts.
-                  const secs = canHaveManySecurities(bc.template) ? securitiesOf(bc, ff) : []
+                  const secs = canHaveManySecurities(bc.template) ? securitiesWithPurchase(bc, ff) : []
                   if (secs.length < 2) return null
                   const { groups, loose } = groupLoSplits(d.refinanceSplits, secs)
 
@@ -2280,7 +2294,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                     </div>
                   )
                 })()}
-                {(!isComplexRefinance(bc.template) || securitiesOf(bc, ff).length < 2) && (
+                {(!canHaveManySecurities(bc.template) || securitiesWithPurchase(bc, ff).length < 2) && (
                 <div className="space-y-2 mb-3">
                   {d.refinanceSplits.map((split, idx) => (
                     <div key={split.id} className="bg-gray-50 border border-gray-100 rounded-lg p-3">
@@ -2424,7 +2438,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             // Worked out here rather than inside the loop: "is this the first
             // split on this house" is a question about the list, and a map
             // built per row would answer it wrong. See lib/lo-by-property.ts.
-            const cmpSecs = isComplexRefinance(bc.template) ? securitiesOf(bc, ff) : []
+            const cmpSecs = canHaveManySecurities(bc.template) ? securitiesWithPurchase(bc, ff) : []
             const headingAt: Record<number, { n: number; address: string }> = {}
             if (cmpSecs.length > 1) {
               const place = new Map(cmpSecs.map((x, n) => [x.id, { n, address: x.address }]))
@@ -2666,7 +2680,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                       // d.propertyValue - the single field that existed before
                       // a deal could be secured by more than one house, and
                       // which is empty on every deal that now uses securities.
-                      const secured = securitiesOf(bc, ff)
+                      const secured = securitiesWithPurchase(bc, ff)
                         .reduce((t: number, sec: any) =>
                           t + (Number(String(sec?.value || '').replace(/[^0-9.]/g, '')) || 0), 0)
                       const against = secured || d.propertyValue

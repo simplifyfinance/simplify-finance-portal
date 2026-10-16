@@ -6,6 +6,8 @@
 // a wrong commission figure is worse than a visible gap, because nobody checks a
 // number that looks plausible.
 
+import { securitiesWithPurchase, totalsOf } from './securities'
+
 export type CommissionRate = {
   lender?: string | null
   upfront_pct?: number | null
@@ -139,6 +141,22 @@ export function lvrOf(deal: any): number | null {
   // is found. See lib/contract-figures.ts.
   const loan = n(deal?.settled_total) ?? n(deal?.contract_loan_amount)
     ?? n(deal?.lodged_total) ?? n(deal?.loan_amount) ?? n(bc.loanAmount)
+
+  // EVERY HOUSE THE LOAN IS SECURED BY, AND THIS IS NOT A COSMETIC FIX.
+  //
+  // 16 Oct 2026. This read bc.propertyValue and fell back to bc.purchasePrice.
+  // On a deal secured by more than one property that first box is empty - the
+  // values live on the securities - so it divided TOTAL lending by the purchase
+  // price alone. One real deal came out at 1,855,000 / 700,000 = 265%.
+  //
+  // A lender who pays by LVR band is then handed 265%. pickBand above finds
+  // nothing that covers it and calcCommission returns "no band covers an LVR of
+  // 265%", so the commission reads as unknown - or, where a band has no maximum,
+  // it pays at the rate meant for the riskiest lending on the book. Either way
+  // the figure is wrong and nothing on the screen says why.
+  const t = totalsOf(securitiesWithPurchase(bc, deal?.fact_find_data))
+  if (loan && t.value > 0) return Math.round((loan / t.value) * 1000) / 10
+
   const value = n(bc.propertyValue) ?? n(bc.purchasePrice)
   if (loan && value && value > 0) return Math.round((loan / value) * 1000) / 10
   const stated = n(bc.lvrCustom) ?? n(bc.lvr)

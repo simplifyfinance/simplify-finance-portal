@@ -51,6 +51,7 @@ import { INCIDENTALS } from './purchase-rows'
 import { card, row } from './email-card'
 import { optionOnTheDeal } from './client-agreement'
 import { purchaseRows } from './purchase-rows'
+import { purchaseLoanOf } from './securities'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -182,9 +183,13 @@ export function loPurchaseBlock(d: any, bc?: any): string {
   //
   // Fabio, 15 Oct 2026: "BC DICTATES STRUCTURE, LO is just rates and product."
   // So the structure is read where the structure lives.
-  const buying = (Array.isArray(bc?.splits) ? bc.splits : [])
-    .find((x: any) => /new purchase/i.test(String(x?.label || '')))
-  const loan = buying?.amount || d?.loanAmount
+  //
+  // 16 Oct 2026. The lookup moved into lib/securities.ts as purchaseLoanOf. It
+  // reads the split's securityId first and its label second, and three screens
+  // now share it instead of each holding an opinion - which is how the LVR box
+  // on this same tab came to print 265%.
+  const buying = purchaseLoanOf(bc)
+  const loan = buying > 0 ? buying : d?.loanAmount
 
   const rows = purchaseRows({
     price,

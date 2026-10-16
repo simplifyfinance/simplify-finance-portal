@@ -183,9 +183,89 @@ export function isBeingPurchased(split: any): boolean {
   return splitSecurityId(split) === BEING_PURCHASED
 }
 
+// A SCENARIO THAT REFINANCES HOUSES AND BUYS ONE. The only shape where a
+// security list needs a row for a property nobody owns yet. Named here rather
+// than asked as "which template is this" on four screens.
+const BUYS_AND_REFINANCES = ['investment_equity']
+
+export function canBuyAndRefinance(template: any): boolean {
+  return BUYS_AND_REFINANCES.includes(txt(template))
+}
+
 /** The lending that sits against the house nobody has bought yet. */
 export function purchaseLending(splits: any): number {
   return realOnes(splits).filter(isBeingPurchased).reduce((t, s) => t + num(s.amount), 0)
+}
+
+// THE LOAN THAT BUYS THE NEW HOUSE, FOUND THE SAME WAY EVERYWHERE.
+//
+// 16 Oct 2026. Three screens wanted this number and each worked it out
+// differently. lib/lo-purchase-block.ts looked for a split labelled "New
+// purchase". The LVR box on the lending options used d.loanAmount - the WHOLE
+// deal - over the purchase price, and printed 265% on a deal buying a $700,000
+// property with $1,855,000 of lending across four splits. The compliance pack
+// used a third answer again.
+//
+// THE TAG BEATS THE LABEL. A split pointed at the property being purchased says
+// so by its securityId; a label is what somebody typed. The label is still read
+// second, because every deal recorded before BEING_PURCHASED existed has only
+// that.
+export function purchaseLoanOf(bc: any): number {
+  const splits = Array.isArray(bc?.splits) ? bc.splits : []
+  const tagged = purchaseLending(splits)
+  if (tagged > 0) return tagged
+  const named = splits.find((x: any) => /new purchase/i.test(txt(x?.label)))
+  return num(named?.amount)
+}
+
+export function purchasePriceOf(bc: any): string {
+  return txt(bc?.newPurchasePrice) || txt(bc?.purchasePrice)
+}
+
+// THE HOUSE BEING BOUGHT, AS A SECURITY ROW LIKE ANY OTHER.
+//
+// 16 Oct 2026. BEING_PURCHASED was a reserved id and nothing more, so it could
+// be chosen on the BC and nowhere else. The lending options Security dropdown
+// offered only the ticked fact find properties, which left a broker buying a
+// house with two bad options: hang the purchase loan on one of the properties
+// being refinanced - Fabio did, and Alter Street printed 125% - or create a
+// property on the fact find called "TBA", which puts a house that does not
+// exist on the client's permanent record.
+//
+// So the purchase becomes a row. Every screen that works off a list of
+// securities - the dropdown, the grouped splits, the per-property LVR, the
+// totals - then handles it without knowing anything new.
+//
+// ONLY WHERE THERE IS SOMETHING TO BUY. A refinance has no purchase row, and a
+// straight purchase has one security which is the house, so this is for the
+// scenarios that do both.
+//
+// ITS VALUE IS THE PURCHASE PRICE, which is what a lender lends against before
+// there is a valuation, and its limit is the loan that buys it. Neither is
+// invented: both are already on the BC.
+export function securitiesWithPurchase(bc: any, ff: any): Security[] {
+  const real = securitiesOf(bc, ff)
+  // NOTHING TICKED MEANS THIS LIST IS NOT IN USE ON THIS DEAL, and a list
+  // holding only the house being bought is not a security list - it is the
+  // deal. Every caller has an older path for that case which already counts
+  // the purchase AND the properties being refinanced off the fact find; adding
+  // a row here makes those callers stop early and lose the rest.
+  //
+  // Caught by lib/box-security.test.ts before this shipped: a deal with one
+  // refinanced house and a $780,000 purchase went from $1,830,000 of security
+  // to $780,000, which would have raised its LVR instead of correcting it.
+  if (real.length === 0) return real
+  if (!canBuyAndRefinance(bc?.template)) return real
+  const price = purchasePriceOf(bc)
+  const loan = purchaseLoanOf(bc)
+  if (num(price) <= 0 && loan <= 0) return real
+  return [...real, {
+    id: BEING_PURCHASED,
+    address: BEING_PURCHASED_LABEL,
+    use: '', subtype: '',
+    value: price,
+    limit: loan > 0 ? String(loan) : '',
+  }]
 }
 
 // THE SPLITS THAT POINT AT NOTHING, WHICH ARE THE DANGEROUS ONES.
