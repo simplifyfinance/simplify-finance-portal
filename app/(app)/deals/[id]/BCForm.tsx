@@ -11,7 +11,8 @@ import { can } from '@/lib/permissions'
 import { templateLabel } from '@/lib/templates'
 import { auDate } from '@/lib/client-position'
 import { PURPOSES, isDebtRecycling, limitCheck } from '@/lib/debt-recycling'
-import { isComplexRefinance, canHaveManySecurities, groupsOf } from '@/lib/complex-refinance'
+import { isComplexRefinance, canHaveManySecurities, canReleaseEquity,
+         groupsOf } from '@/lib/complex-refinance'
 import { ffProperties, securitiesOf, totalsOf, groupBySecurity, orphanSplits,
         BEING_PURCHASED, BEING_PURCHASED_LABEL,
          lvrOf, pct, legacyAddress } from '@/lib/securities'
@@ -1189,15 +1190,27 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     if (changed) setSplits(next)
   }, [splits, loanTerm])
 
-  // THE EMAIL READS ONE BALANCE AND ONE RELEASE, so the first security's
-  // figures are mirrored into the fields it already reads. Nothing downstream
-  // had to change, and a deal with one security behaves exactly as before.
+  // A DEAL-LEVEL BOX HOLDS A DEAL-LEVEL FIGURE. THE TOTAL, NOT THE FIRST.
+  //
+  // 15 Oct 2026 this mirrored the FIRST security's balance into existingLoanBal
+  // so the existing email kept working. 53 places read that box, and on a deal
+  // with two houses every one of them was handed one house's number and told it
+  // was the deal's.
+  //
+  // The lending options email was the one that showed: it works out an equity
+  // release as lending minus that balance, so on the Avard deal the second
+  // house's whole refinanced loan printed to a client as $131,608 of equity on
+  // a deal releasing nothing. 16 Oct 2026, and the LO now reads the BC rather
+  // than subtracting - but this box was still wrong, for everything else too.
   useEffect(() => {
     if (!manySecurities) return
-    const first = securityIds[0]
-    if (!first) return
-    const bal = securityBalances[first] || ''
-    const rel = securityReleases[first] || ''
+    const sum = (store: Record<string, string>) => {
+      const total = securityIds.reduce((t, id) =>
+        t + (parseFloat(String(store[id] || '').replace(/[^0-9.]/g, '')) || 0), 0)
+      return total > 0 ? String(total) : ''
+    }
+    const bal = sum(securityBalances)
+    const rel = sum(securityReleases)
     if (bal && bal !== existingLoanBal) setExistingLoanBal(bal)
     if (rel && rel !== equityRelease) setEquityRelease(rel)
   }, [manySecurities, securityIds, securityBalances, securityReleases, existingLoanBal, equityRelease])
@@ -1902,11 +1915,16 @@ Key assumptions: ${checklistText}`
                                         onChange={(v: string) => setSecurityBalances({ ...securityBalances, [String(p.id)]: v })} />
                                       <span className="block text-[10px] text-gray-400 mt-0.5">owes now</span>
                                     </div>
-                                    <div className="w-[128px]">
-                                      <NumberInput value={securityReleases[String(p.id)] || ''}
-                                        onChange={(v: string) => setSecurityReleases({ ...securityReleases, [String(p.id)]: v })} />
-                                      <span className="block text-[10px] text-gray-400 mt-0.5">releasing</span>
-                                    </div>
+                                    {/* NOT ON A SCENARIO THAT RELEASES NOTHING.
+                                        16 Oct 2026 - see canReleaseEquity in
+                                        lib/complex-refinance.ts. */}
+                                    {canReleaseEquity(template) && (
+                                      <div className="w-[128px]">
+                                        <NumberInput value={securityReleases[String(p.id)] || ''}
+                                          onChange={(v: string) => setSecurityReleases({ ...securityReleases, [String(p.id)]: v })} />
+                                        <span className="block text-[10px] text-gray-400 mt-0.5">releasing</span>
+                                      </div>
+                                    )}
                                     <div className="w-[128px]">
                                       <NumberInput value={securityLimits[String(p.id)] || ''}
                                         onChange={(v: string) => setSecurityLimits({ ...securityLimits, [String(p.id)]: v })} />

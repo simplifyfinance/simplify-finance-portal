@@ -263,7 +263,22 @@ export function combineIntoOneLoan(splits: LenderSplit[] | undefined | null): Le
 // "Equity release: $0" line - and never negative: a client borrowing LESS than
 // they owe is contributing cash, which is a different sentence and not one this
 // block is trying to write.
-export function equityReleaseAmount(globals: { amount?: string }[] | undefined | null, existingLoan: any): number {
-  const extra = lenderTotal(globals as LenderSplit[]) - amountOf(existingLoan)
-  return extra > 0 ? Math.round(extra) : 0
-}
+// GONE, 16 OCT 2026, AND NOT TO BE WRITTEN AGAIN.
+//
+// It was `total lending - the one existing loan balance`. That held while a
+// deal had one property and one balance box. Once a deal could be secured by
+// several houses, that box held ONE of them - so on the Avard deal, a straight
+// refinance of two properties releasing nothing:
+//
+//   lending  129,000 + 240,000 = 369,000
+//   balance                      237,392   <- one house
+//   printed to the client        131,608   of "Equity Release"
+//
+// Fabio: "LO is not only wrong showing equity, it is creating its own
+// breakdown, when I said 10000 times LO doesn't create structure, BC holds
+// that." The lending options email now reads balanceTotal() and releaseTotal()
+// off the borrowing capacity - figures a person typed - and prints nothing
+// where nothing was typed. See lib/complex-refinance.ts.
+//
+// The 2 Sep complaint this was built for is still answered: the release shows,
+// because the BC records one. It is read rather than inferred.

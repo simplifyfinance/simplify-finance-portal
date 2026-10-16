@@ -57,7 +57,8 @@ describe('a lender with no splits of its own falls back to the deal', () => {
 })
 
 // ---------------------------------------------------------------------------
-import { lenderTotal, lenderLvr, combineIntoOneLoan, amountOf, equityReleaseAmount } from './lo-splits'
+import { lenderTotal, lenderLvr, combineIntoOneLoan, amountOf } from './lo-splits'
+import { readFileSync } from 'fs'
 
 const row = (label: string, amount: string, rate = '6.09', repaymentType = 'P&I') =>
   ({ id: label, label, amount, lvr: '', rate, repayment: '100', repaymentType })
@@ -133,24 +134,16 @@ describe('folding a lender into one loan', () => {
   })
 })
 
+// THE EQUITY RELEASE THE LENDING OPTIONS USED TO WORK OUT FOR ITSELF.
+//
+// 16 Oct 2026. These four tests covered equityReleaseAmount(), which subtracted
+// one balance from the total lending. Correct on a deal with one property and
+// wrong on every deal with two - see the note where the function used to be in
+// lib/lo-splits.ts. The figure is now read off the BC, so the tests that matter
+// live in lib/a-refinance-email-buys-nothing.test.ts.
 describe('the "Your numbers would be" block on a refinance', () => {
-  const globals = [{ amount: '666,000' }, { amount: '30,000' }]
-
-  it('finds the equity release Clementine was never shown', () => {
-    expect(equityReleaseAmount(globals, '666,000')).toBe(30000)
-  })
-
-  it('shows nothing extra on a dollar-for-dollar refinance', () => {
-    expect(equityReleaseAmount([{ amount: '500,000' }], '500,000')).toBe(0)
-  })
-
-  it('never goes negative when the client is borrowing less than they owe', () => {
-    // That is a cash contribution, which is a different sentence. Not this one.
-    expect(equityReleaseAmount([{ amount: '400,000' }], '500,000')).toBe(0)
-  })
-
-  it('copes with a deal that has no splits recorded yet', () => {
-    expect(equityReleaseAmount([], '500,000')).toBe(0)
-    expect(equityReleaseAmount(null, '500,000')).toBe(0)
+  it('no longer works the equity release out by subtraction', () => {
+    const src = readFileSync('lib/lo-splits.ts', 'utf8')
+    expect(src).not.toContain('export function equityReleaseAmount')
   })
 })

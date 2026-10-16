@@ -58,8 +58,24 @@ describe('a balance of nothing is not a balance', () => {
   // "0" is a truthy string. That one fact sent the deal down the refinance
   // branch and then printed a zero to a client.
   it('the line waits on the figure being above zero', () => {
-    expect(route).toContain('if (owes > 0) body += p(`Existing Loan Balance:')
+    expect(route).toContain('if (owing > 0) body += p(`Existing Loan Balance:')
     expect(route).toContain("const owes = Number(String(d.existingLoan ?? '').replace(/[^0-9.]/g, '')) || 0")
+  })
+
+  // 16 Oct 2026. The figure PRINTED is no longer d.existingLoan - that is the
+  // lending options' copy of one box, and on a deal secured by two houses it
+  // holds one of them. It is now the total the BC recorded against the
+  // securities. `owes` still decides which branch the email takes, which is a
+  // question about whether anything is being refinanced at all.
+  it('and the balance it prints comes from the BC, not from the LO copy', () => {
+    expect(route).toContain('const owing = balanceTotal(bcData || {})')
+    expect(route).toContain('const extra = releaseTotal(bcData || {})')
+  })
+
+  // THE INFERENCE IS GONE. "Total lending minus one balance" printed $131,608
+  // of equity release on a straight refinance.
+  it('and nothing works an equity release out by subtraction', () => {
+    expect(route).not.toContain('equityReleaseAmount(')
   })
 })
 

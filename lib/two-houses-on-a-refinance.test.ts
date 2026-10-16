@@ -150,15 +150,35 @@ describe('the equity figure in the opening sentence', () => {
 describe('the email route reads the answer rather than the old boxes', () => {
   const src = readFileSync('app/api/generate-email/route.ts', 'utf8')
 
-  it('one property-card builder, shared by every template that can have two', () => {
-    // It lived inside the complex_refinance branch. Three templates need it now.
-    expect((src.match(/propertyCards\(d\)/g) || []).length).toBeGreaterThanOrEqual(3)
+  // 16 Oct 2026. These two asserted that Refinance only and Refinance + equity
+  // release both rendered the Complex refinance layout once securities were
+  // ticked. Fabio, on a straight refinance of two houses: "why did you decide
+  // to change the html template - that is not an approved template."
+  //
+  // He had not approved it, and it did not fit: "Equity released $0" on a deal
+  // releasing nothing, and $129,000 printed three times as Limit, Refinanced
+  // loan and Drawn. Refinance only now gets its OWN approved card, twice - see
+  // refinanceBoxes() - and Refinance + equity release goes back to the email it
+  // has always sent until a layout for it is drawn and approved.
+  it('the grouped property cards belong to complex refinance', () => {
     expect(src).toContain('function propertyCards(')
+    expect((src.match(/propertyCards\(d\)/g) || []).length).toBe(1)
   })
 
-  it('the grouped layout is chosen by securedByMany, not by the template alone', () => {
-    expect(src).toContain("template === 'refinance_equity' && securedByMany(d)")
+  it('refinance only prints its own approved card, once per security', () => {
     expect(src).toContain("template === 'refinance_only' && securedByMany(d)")
+    expect(src).toContain('function refinanceBoxes(')
+    expect(src).toContain('refinanceBoxes(d)')
+  })
+
+  it('and refinance + equity release has no second layout at all', () => {
+    expect(src).not.toContain("template === 'refinance_equity' && securedByMany(d)")
+  })
+
+  // A ZERO IS NOT A FIGURE. money(0) is "$0", which rowIf reads as one.
+  it('no card prints a row for a release of nothing', () => {
+    expect(src).not.toContain("rowIf('Equity released'")
+    expect(src).toContain("g.release > 0 ? row('Equity released'")
   })
 
   it('and the old single-property branches are still there underneath', () => {

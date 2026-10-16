@@ -73,6 +73,25 @@ export function canHaveManySecurities(template: any): boolean {
   return MANY_SECURITIES.includes(txt(template))
 }
 
+// A REFINANCE ONLY RELEASES NOTHING, SO IT IS NOT ASKED.
+//
+// 16 Oct 2026. Fabio, looking at the securities block on a straight refinance:
+// "for the love of god a refinance ONLY should NOT have a releasing box in BC
+// shouldn't it?"
+//
+// It should not. His own words on 2 Sep, written into the email route: that
+// scenario "is only for dollar for dollar refi". The box has been drawn on
+// every template since the securities block was built, because the block was
+// built for Complex refinance where a release is normal.
+//
+// ONE NAMED EXCEPTION, not a guess from the template's name. Complex refinance
+// and Debt recycling can both carry an equity access split, so they keep it.
+const RELEASES_NOTHING = ['refinance_only']
+
+export function canReleaseEquity(template: any): boolean {
+  return !RELEASES_NOTHING.includes(txt(template))
+}
+
 // IS THIS PARTICULAR DEAL SECURED BY PROPERTIES THE BROKER HAS TICKED?
 //
 // Two questions, and they are not the same one. canHaveManySecurities asks
@@ -162,6 +181,13 @@ export function releaseFor(bc: any, id?: string): number {
   return byId(bc?.securityReleases, id)
 }
 
+// The same figure as valueOf, as a number, for arithmetic rather than a label.
+export function worthOf(bc: any, property: string): number {
+  const list = Array.isArray(bc?.ffProperties) ? bc.ffProperties : []
+  const hit = list.find((p: any) => txt(p?.address) === property)
+  return hit ? num(hit.value) : 0
+}
+
 export function valueOf(bc: any, property: string): string {
   const list = Array.isArray(bc?.ffProperties) ? bc.ffProperties : []
   const hit = list.find((p: any) => txt(p?.address) === property)
@@ -182,6 +208,11 @@ export type PropertyGroup = {
   // Per property, from the securities block. 0 when nobody typed one.
   balance: number
   release: number
+  // What this house is worth, as a number, and what the lending on it makes
+  // its LVR. Null when the fact find has no value - never zero, which reads as
+  // "no debt" rather than "we do not know". Same rule as lib/securities.ts.
+  worth: number
+  lvr: number | null
 }
 
 // SPLITS WITH NO PROPERTY ARE NOT HIDDEN. They collect in a last card that says
@@ -211,6 +242,10 @@ export function groupsOf(bc: any): PropertyGroup[] {
     const drawn = splits.reduce((sum, s) => sum + num(s?.amount), 0)
     const id = property ? (idFor.get(property) || '') : ''
     const limit = property ? limitOf(bc, property, id) : 0
+    const worth = property ? worthOf(bc, property) : 0
+    // The limit is what is approved; the drawn is what is taken. The LVR a
+    // lender assesses is against the limit where there is one.
+    const lending = limit > 0 ? limit : drawn
     return {
       property,
       heading: property || UNASSIGNED,
@@ -224,6 +259,8 @@ export function groupsOf(bc: any): PropertyGroup[] {
       // nothing owing on it and nothing being released from it.
       balance: property ? balanceFor(bc, id) : 0,
       release: property ? releaseFor(bc, id) : 0,
+      worth,
+      lvr: worth > 0 && lending > 0 ? Math.round((lending / worth) * 1000) / 10 : null,
     }
   })
 }
@@ -278,6 +315,15 @@ export function securedHeading(bc: any): string {
 // being accessed. It read the one deal-level box, which is empty the moment the
 // releases move onto the securities - so the sentence said "[equity amount]" or
 // fell back to split 2, which is one split of several.
+// WHAT THE HOUSES OWE TODAY, ADDED UP. Same shape and same reason as
+// releaseTotal below: the deal-level box holds one house's figure once the
+// securities are in use, and a client email reading it names the wrong number.
+export function balanceTotal(bc: any): number {
+  const ids = Array.isArray(bc?.securityIds) ? bc.securityIds.map(txt).filter(Boolean) : []
+  const total = ids.reduce((sum: number, id: string) => sum + balanceFor(bc, id), 0)
+  return total > 0 ? total : num(bc?.existingLoanBal)
+}
+
 export function releaseTotal(bc: any): number {
   const ids = Array.isArray(bc?.securityIds) ? bc.securityIds.map(txt).filter(Boolean) : []
   const total = ids.reduce((sum: number, id: string) => sum + releaseFor(bc, id), 0)

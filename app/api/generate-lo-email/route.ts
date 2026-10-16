@@ -17,9 +17,10 @@ import { isRecommended, recommendedLabel, recommendedOption, recommendedFirst } 
 //
 // money('') is the empty string, not a lonely '$' - so a field nobody filled
 // in prints as nothing rather than as a dollar sign with no number.
+import { balanceTotal, releaseTotal } from '@/lib/complex-refinance'
 import { money } from '@/lib/money'
 import { emailParagraphs } from '@/lib/rich-text'
-import { resolveLenderSplits, lenderTotal, lenderLvr, equityReleaseAmount } from '@/lib/lo-splits'
+import { resolveLenderSplits, lenderTotal, lenderLvr } from '@/lib/lo-splits'
 import { securitiesOf } from '@/lib/securities'
 import { bufferNoteBlock } from '@/lib/buffer-note'
 import { propertyColour } from '@/lib/lo-by-property'
@@ -358,16 +359,35 @@ export async function POST(req: NextRequest) {
       // It used to read "Loan Amount: $666,000" then "Existing Loan Balance:
       // $666,000" - the same figure twice, with the equity release missing.
       const total = lenderTotal(d.refinanceSplits)
-      const extra = equityReleaseAmount(d.refinanceSplits, d.existingLoan)
+
+      // THE LENDING OPTIONS DO NOT DECIDE WHAT IS BEING RELEASED. THE BC DOES.
+      //
+      // 16 Oct 2026, the Avard deal. This worked the release out itself, as
+      // literally total lending MINUS the one existing loan balance. On a deal
+      // secured by two houses that box holds one of them, so the other house's
+      // entire refinanced loan read as equity:
+      //
+      //   lending  129,000 + 240,000 = 369,000
+      //   balance                      237,392   <- ONE house
+      //   "equity release"             131,608   <- on a deal releasing nothing
+      //
+      // Fabio: "LO is not only wrong showing equity, it is creating its own
+      // breakdown, when I said 10000 times LO doesn't create structure, BC
+      // holds that."
+      //
+      // So both figures are read off the BC, where a person typed them. Nothing
+      // typed, nothing printed - the arithmetic that filled the gap is gone.
+      const owing = balanceTotal(bcData || {})
+      const extra = releaseTotal(bcData || {})
       // A ZERO BALANCE IS NOT A BALANCE. "0" is a truthy string, so the test
       // above sent this deal down the refinance branch and then printed
       // "Existing Loan Balance: $0" to a client. Nothing is being refinanced
       // off it; the line says nothing instead.
-      if (owes > 0) body += p(`Existing Loan Balance: ${money(d.existingLoan)}`)
+      if (owing > 0) body += p(`Existing Loan Balance: ${money(owing)}`)
       if (extra > 0) body += p(`Equity Release: ${money(extra)}`)
       // Dropped when it is the balance under a second name - the same rule the
       // BC follows. A dollar-for-dollar refinance has one number, not two.
-      if (total > 0 && showsOwnLoanAmount(d.existingLoan, total)) {
+      if (total > 0 && showsOwnLoanAmount(owing, total)) {
         body += p(`Total Loan Amount: ${money(total)}`)
       }
     }
