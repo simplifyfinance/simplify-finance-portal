@@ -35,6 +35,7 @@
 import { isDebtRecycling, complianceLines, everySplitHasAPurpose } from './debt-recycling'
 import { article } from './article'
 import { securitiesOf } from './box-security'
+import { securitiesWithPurchase, positionsOf, positionLine } from './securities'
 import { variantOf } from './box-variant'
 import { andList } from './and-list'
 import { money, readMoney } from './money'
@@ -360,12 +361,32 @@ export function boxOne(deal: any): BoxOne {
   // named all three. securitiesOf() is the list box nine uses, in its order, so
   // the two cannot name different houses.
   const namedSecurities = securitiesOf(deal).map(x => txt(x.address)).filter(Boolean)
+
+  // SEVERAL HOUSES GET SEVERAL SENTENCES, NOT ONE RATIO.
+  //
+  // 16 Oct 2026. Fabio: "on compliance notes when multiple properties I want
+  // the breakdown per property not combined."
+  //
+  // The line read "borrowing $1,855,000 ... against TBA, 10/5 Kinsellas Road
+  // and 15/15 Alter St - a loan to value ratio of 73.5%". Every word of it true
+  // and none of it usable: one of those houses is at 80% and another at 64%,
+  // and a lender's policy is written against those, not against their average.
+  //
+  // So the addresses come out of this sentence and get a paragraph of their own
+  // below. Only where there is more than one - naming a single house twice is
+  // worse than the combined line ever was.
+  const positions = positionsOf(securitiesWithPurchase(bc, deal?.fact_find_data), splitsOf(deal))
+  const manyHouses = positions.length > 1
+
   opening.push(isPurchase
     ? ` to buy an owner-occupied property${txt(bc.suburb) ? ` in ${txt(bc.suburb)}` : ''}`
+    : manyHouses ? ''
     : ` against ${namedSecurities.length > 0 ? andList(namedSecurities)
         : (txt(row.securityAddress) || 'the security recorded on this deal')}`)
   if (purchase && purchase > 0) opening.push(`, against a purchase price of ${money(purchase)}`)
-  if (lvr !== null) opening.push(` — a loan to value ratio of ${lvr}%`)
+  // The overall ratio moves down to the foot of the breakdown, where it belongs
+  // next to the figures it is made of.
+  if (lvr !== null && !manyHouses) opening.push(` — a loan to value ratio of ${lvr}%`)
   let p1 = opening.join('') + '.'
 
   // FIRST HOME BUYER — ONLY WHEN THE SCENARIO SAYS SO.
@@ -401,6 +422,33 @@ export function boxOne(deal: any): BoxOne {
     gaps.push({ what: "The clients' own reason for the loan", where: 'Fact Find → Purpose of loan' })
   }
   paras.push(p1)
+
+  // --- the securities, one line each ---------------------------------------
+  if (manyHouses) {
+    const count = positions.length === 2 ? 'two' : positions.length === 3 ? 'three' : String(positions.length)
+    const secured = positions.reduce((t, x) => t + x.lending, 0)
+    const worth = positions.reduce(
+      (t, x) => t + (Number(String(x.security.value || '').replace(/[^0-9.]/g, '')) || 0), 0)
+
+    const lines = [`The lending is secured by ${count} properties.`,
+                   ...positions.map(positionLine)]
+
+    // THE TOTAL IS THE DEAL'S OWN, NOT THESE LINES ADDED UP. If a split is
+    // tagged to no house the two differ, and the honest thing is to print the
+    // real total and say the difference is untagged - not to quietly report a
+    // smaller loan than the one being applied for.
+    if (lvr !== null && worth > 0) {
+      lines.push(`Across all of them, ${money(amount)} against ${money(worth)} of security` +
+                 ` — an overall loan to value ratio of ${lvr}%.`)
+    }
+    if (amount > 0 && secured > 0 && Math.abs(amount - secured) >= 1) {
+      lines.push(shout(`NOT RECORDED — ${money(amount - secured)} of this lending is not recorded` +
+        ' against any of the securities above, so the breakdown does not add up to the loan.'))
+      gaps.push({ what: 'A loan split is not recorded against any security',
+                  where: 'BC → Loan splits → Security' })
+    }
+    paras.push(lines.join(' '))
+  }
 
   // --- paragraph two: the loan they have been recommended ------------------
   const s = structureOf(deal)

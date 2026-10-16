@@ -1,7 +1,7 @@
 // THE DEAL, AS ONE BLOCK, IN TWO PLACES.
 import { purchaseSuburbOf } from './duty-state'
 import { money } from './money'
-import { normalisePurpose } from './split-purpose'
+import { normalisePurpose, purposeFromTheProperty } from './split-purpose'
 //
 // Replaces the "FROM BC" strip on the Lending options tab and the "DEAL SUMMARY"
 // strip on Compliance. One component, one record - edit the approval type on the
@@ -251,6 +251,11 @@ export function splitsOf(deal: any): StructureSplit[] {
     const ls = same(lenderSplits, id, i)
     const bs = same(bcSplits, id, i)
 
+    // The structure, so the BC has the last word where the lists disagree -
+    // which house a loan sits on is not a lending options decision. Lifted out
+    // of the object below because the purpose now reads it.
+    const securityId = firstOf(bs?.securityId, s?.securityId, gs?.securityId, ls?.securityId)
+
     // Label and amount follow the BC, because this list is a copy OF it.
     const amount = firstOf(s?.amount, gs?.amount, ls?.amount, bs?.amount,
       onlySplit && loanAmount(deal) > 0 ? String(loanAmount(deal)) : '')
@@ -263,7 +268,7 @@ export function splitsOf(deal: any): StructureSplit[] {
       rate: firstOf(ls?.rate, gs?.rate, s?.rate, bs?.rate),
       // The structure, so the BC has the last word where the lists disagree -
       // which house a loan sits on is not a lending options decision.
-      securityId: firstOf(bs?.securityId, s?.securityId, gs?.securityId, ls?.securityId),
+      securityId,
       fundsUsedFor: firstOf(gs?.fundsUsedFor, s?.fundsUsedFor, bs?.fundsUsedFor, gs?.funds, s?.funds),
       // ANSWERED HERE FIRST. 17 Sep 2026, Dylan Smyth and Megan Isherwood: an
       // investment PURCHASE, where the per-lender splits box does not exist -
@@ -295,7 +300,14 @@ export function splitsOf(deal: any): StructureSplit[] {
       //
       // The fall is the same one the repayment type above already makes: this
       // list's answer, then the BC split it came from.
-      purpose: normalisePurpose(gs?.purpose) || normalisePurpose(s?.purpose) || normalisePurpose(bs?.purpose),
+      // AND LAST, THE USE RECORDED AGAINST THE HOUSE IT IS SECURED BY.
+      //
+      // 16 Oct 2026. An answer typed anywhere still wins - all three reads
+      // above come first. This only speaks when nobody has, and it reads the
+      // fact find's own Investment / Owner occupied box rather than deciding
+      // anything. See lib/split-purpose.ts.
+      purpose: normalisePurpose(gs?.purpose) || normalisePurpose(s?.purpose)
+        || normalisePurpose(bs?.purpose) || purposeFromTheProperty(deal, securityId),
       funds: (txt(gs?.funds) as SplitFunds) || (txt(s?.funds) as SplitFunds) || '',
       // The BC holds one term for the whole deal; it prefills every split, and a
       // split that differs is changed here.

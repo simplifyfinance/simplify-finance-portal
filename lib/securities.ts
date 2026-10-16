@@ -281,6 +281,54 @@ export function orphanSplits(splits: any, securities: Security[]): any[] {
   return realOnes(splits).filter(s => !isBeingPurchased(s) && !have.has(splitSecurityId(s)))
 }
 
+// WHAT IS ACTUALLY LENT AGAINST EACH HOUSE, AND WHAT THAT MAKES ITS LVR.
+//
+// 16 Oct 2026. Fabio, reading a compliance note that said the clients were
+// borrowing "$1,855,000 ... against TBA - TBA, 10/5 Kinsellas Road and 15/15
+// Alter St - a loan to value ratio of 73.5%": "on compliance notes when
+// multiple properties I want the breakdown per property not combined."
+//
+// One ratio across three houses is a number no credit assessor can act on. It
+// does not say which property is at 80% and which is at 64%, and those are the
+// facts a lender's policy is actually written against.
+//
+// THE SPLITS ARE THE ANSWER, THE TYPED LIMIT IS THE FALLBACK. Every split
+// carries the security it sits against, so what is lent on a house is the sum
+// of its splits. securityLimits is almost never filled in - that is what sent
+// every LVR on the Veljovic deal to a dash on 13 Oct - so it comes second.
+export type Position = { security: Security; lending: number; lvr: number | null }
+
+export function positionsOf(securities: Security[], splits: any): Position[] {
+  const rows = realOnes(splits)
+  return (securities || []).map(security => {
+    const drawn = rows
+      .filter(s => splitSecurityId(s) === security.id)
+      .reduce((t, s) => t + num(s?.amount), 0)
+    const lending = drawn > 0 ? drawn : num(security.limit)
+    const value = num(security.value)
+    return {
+      security, lending,
+      lvr: value > 0 && lending > 0 ? Math.round((lending / value) * 1000) / 10 : null,
+    }
+  })
+}
+
+// ONE PROPERTY, IN A SENTENCE A CREDIT ASSESSOR READS.
+//
+// Nothing is skipped quietly: a house with no value says so, and a house
+// carrying no lending says that too, because on a multi-security deal both are
+// questions somebody has to answer before submission.
+export function positionLine(p: Position): string {
+  const use = p.security.use.toLowerCase()
+  const bits = [
+    use || '',
+    num(p.security.value) > 0 ? `valued at ${money(p.security.value)}` : 'no value recorded',
+    p.lending > 0 ? `lending of ${money(p.lending)} against it` : 'no lending recorded against it',
+    p.lvr === null ? '' : `a loan to value ratio of ${pct(p.lvr)}`,
+  ].filter(Boolean)
+  return `${p.security.address || 'Address not recorded'} \u2014 ${bits.join(', ')}.`
+}
+
 // --- saying it ---------------------------------------------------------------
 
 export function pct(n: number | null): string {

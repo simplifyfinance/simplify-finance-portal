@@ -300,8 +300,32 @@ describe('the interest only paragraph, on a deal whose splits disagree', () => {
 describe('box one names the securities too', () => {
   it('names them instead of the placeholder', () => {
     const s = boxOne(deal(SIX, TWO_HOUSES)).text.replace(/\s+/g, ' ')
-    expect(s).toContain('against 16 Sample Street, Paddington and 7/22 Sample Road, Hawks Nest')
+    expect(s).toContain('16 Sample Street, Paddington')
+    expect(s).toContain('7/22 Sample Road, Hawks Nest')
     expect(s).not.toContain('the security recorded on this deal')
+  })
+
+  // 16 Oct 2026. This used to assert the combined clause - "against 16 Sample
+  // Street and 7/22 Sample Road - a loan to value ratio of X%". Fabio, reading
+  // one on a three-property deal: "when multiple properties I want the
+  // breakdown per property not combined." One of his houses was at 80% and
+  // another at 64%, and the averaged figure said neither.
+  it('one line per house, and the overall ratio at the foot of them', () => {
+    const s = boxOne(deal(SIX, TWO_HOUSES)).text.replace(/\s+/g, ' ')
+    expect(s).toContain('The lending is secured by two properties.')
+    expect(s).toMatch(/16 Sample Street, Paddington \u2014 .*loan to value ratio of/)
+    expect(s).toMatch(/7\/22 Sample Road, Hawks Nest \u2014 .*loan to value ratio of/)
+    expect(s).toContain('an overall loan to value ratio of')
+    // The addresses are named once each, in the breakdown, not again in the
+    // opening sentence.
+    expect(s).not.toMatch(/against 16 Sample Street, Paddington and 7\/22 Sample Road/)
+  })
+
+  it('a single security keeps the sentence it has always had', () => {
+    const one = deal(SIX, TWO_HOUSES.slice(0, 1))
+    one.bc_data.securityIds = [TWO_HOUSES[0].id]
+    const s = boxOne(one).text.replace(/\s+/g, ' ')
+    expect(s).not.toContain('The lending is secured by')
   })
 
   it('names the same houses box four and box nine do', () => {

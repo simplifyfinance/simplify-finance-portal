@@ -1,7 +1,7 @@
 import { contractPrice, contractLoan, contractStampDuty } from './contract-figures'
 import { isLandPurchase, landLoanPayout, dutyApplies } from './construction'
 import { buildsSomething, purchasePriceOf } from './sale-build'
-import { securitiesWithPurchase, totalsOf } from './securities'
+import { securitiesWithPurchase, totalsOf, canBuyAndRefinance } from './securities'
 
 // WHAT THE CLIENT HAS TO FIND.
 //
@@ -177,7 +177,19 @@ export function fundsToComplete(deal: any): FundsToComplete {
   // and a total that quietly leaves it out looks exactly like a correct one.
   // Duty follows the price that was actually paid, once somebody records it.
   // See contractStampDuty - the portal never works duty out for itself.
-  const duty = contractStampDuty(deal) || (has(bc.stampDuty) ? num(bc.stampDuty) : 0)
+  // THE BOX THIS TEMPLATE ACTUALLY WRITES INTO.
+  //
+  // 16 Oct 2026. Fabio, on an Equity release + purchase: "you know from BC that
+  // equity is being used to purchase the property, why do you ask?"
+  //
+  // The BC's new purchase block writes newPurchaseStampDuty and
+  // newPurchaseDeposit. The client email has read both for weeks - that is why
+  // the BC email was right. This file read bc.stampDuty and bc.deposit only, so
+  // the compliance tab reported two figures missing that were sitting on the
+  // deal. One file reading three fields and another reading one.
+  const duty = contractStampDuty(deal)
+    || (has(bc.stampDuty) ? num(bc.stampDuty)
+      : has(bc.newPurchaseStampDuty) ? num(bc.newPurchaseStampDuty) : 0)
   if (duty > 0) lines.push({ label: 'Stamp duty', amount: duty, kind: 'cost' })
   // A BUILD ON LAND SOMEBODY ALREADY OWNS HAS NO DUTY, and "not recorded" is a
   // different claim from "none". This deal was permanently reported incomplete
@@ -214,7 +226,17 @@ export function fundsToComplete(deal: any): FundsToComplete {
   // The cross-check. Not an error either way - a deposit that disagrees means
   // one of the two figures needs another look, and the strip is the place to
   // notice that rather than the settlement statement.
-  const deposit = has(bc.deposit) ? num(bc.deposit) : null
+  // AND THE EQUITY RELEASE IS THE DEPOSIT, ON THE SCENARIO BUILT TO SAY SO.
+  //
+  // On an equity release and purchase the client contributes no savings - the
+  // release IS the contribution, which is the whole point of the scenario and
+  // what its client email has always printed. Read only where the deal both
+  // refinances and buys; on anything else an equity release is not a deposit
+  // and must not be counted as one.
+  const deposit = has(bc.deposit) ? num(bc.deposit)
+    : has(bc.newPurchaseDeposit) ? num(bc.newPurchaseDeposit)
+    : canBuyAndRefinance(bc.template) && has(bc.equityRelease) ? num(bc.equityRelease)
+    : null
   if (deposit === null) missing.push('No deposit has been recorded')
 
   return {
