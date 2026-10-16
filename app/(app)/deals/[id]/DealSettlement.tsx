@@ -77,6 +77,10 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
   const [askLoanIds, setAskLoanIds] = useState(false)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+  // UNDOING THE LAST STAGE. Asked before it happens, because a stage going
+  // backwards is unusual enough to be worth one click.
+  const [undoing, setUndoing] = useState(false)
+  const [reverting, setReverting] = useState(false)
 
   // What can happen next - not what must.
   //
@@ -188,6 +192,48 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
     setSplits(prev => prev.map((s, j) => j === i ? { ...s, [k]: v } : s))
   }
 
+  // THE LAST THING THIS DEAL REACHED, AND ONLY THAT.
+  //
+  // 16 Oct 2026. Fabio, having marked a deal formally approved by mistake: "I
+  // need a way to revert that ... reverting anything from compliance onwards is
+  // OK as it doesn't change compliance (the rule applied to LO and prior to
+  // compliance only)."
+  //
+  // ONLY THE FURTHEST POINT. Clearing a stage in the middle would leave a deal
+  // settled but never lodged - a history with a hole in it, which is worse than
+  // the wrong stage. Undo the last one, and the one before it becomes the last.
+  // Walked in STAGES order rather than by date, because dates get backfilled.
+  //
+  // AND ONLY WHAT THIS PANEL RECORDS. Contracts returned and Settlement booked
+  // are the settlements team's, entered in the panel below - the same reason
+  // they have no button here. If one of those is the furthest point, nothing
+  // here will undo it and the line below says where to go.
+  const lastReached = [...STAGES].reverse().find(x => deal[x.key])
+  const undoable = lastReached && lastReached.mark ? lastReached : null
+
+  async function revertIt() {
+    if (!undoable) return
+    setReverting(true); setErr('')
+    // THE DATE GOES. THE SNAPSHOT STAYS.
+    //
+    // Lodgement and formal approval each saved a lender, a date, every split
+    // and the application ID into deal_stage_snapshots. Fabio chose to keep
+    // them: re-marking the stage finds its own figures again, and if the undo
+    // itself was the mistake nothing has been lost. The snapshot is written
+    // with onConflict on (deal_id, stage), so marking it again overwrites the
+    // row rather than making a second one.
+    const { data: rows, error } = await supabase.from('deals')
+      .update({ [undoable.key]: null }).eq('id', deal.id).select('id')
+    setReverting(false)
+    if (error) { setErr('NOT UNDONE - ' + error.message); return }
+    if (!rows || rows.length === 0) {
+      setErr('NOT UNDONE - the change did not reach the database.'); return
+    }
+    setUndoing(false)
+    setPickedKey('')
+    onUpdated?.({ [undoable.key]: null })
+  }
+
   async function confirmIt() {
     if (!stage) return
     setSaving(true); setErr('')
@@ -296,6 +342,49 @@ export default function DealSettlement({ deal, onUpdated }: { deal: any; onUpdat
             </div>
           )
         })}
+
+        {/* MARKED IN ERROR. One line, under the stages it undoes, rather than a
+            button beside each one - there is only ever one stage that can go
+            back and a row of greyed-out undos would say otherwise. */}
+        {lastReached && !undoing && (
+          undoable ? (
+            <button type="button" onClick={() => { setUndoing(true); setErr('') }}
+              className="self-start mt-1 text-[12px] text-brand-ink hover:underline">
+              Undo &ldquo;{labelOf(undoable.key, undoable.label, deal)}&rdquo; &mdash; marked in error
+            </button>
+          ) : (
+            <p className="self-start mt-1 mb-0 text-[11.5px] text-faint">
+              {labelOf(lastReached.key, lastReached.label, deal)} was recorded by the settlements
+              team below. Undo it there.
+            </p>
+          )
+        )}
+
+        {undoing && undoable && (
+          <div className="mt-2 border border-chase-edge bg-chase-bg rounded-xl px-3.5 py-3">
+            <p className="m-0 text-[12.5px] text-ink">
+              Undo <b>{labelOf(undoable.key, undoable.label, deal)}</b>?
+            </p>
+            <p className="m-0 mt-1 text-[11.5px] text-muted leading-[1.5]">
+              The date comes off the deal and this stage can be marked again.
+              {undoable.snap
+                ? ' The lender, the amount and the splits recorded with it are kept.'
+                : ''}
+              {' '}Nothing on Compliance or anything before it changes.
+            </p>
+            {err && <p className="m-0 mt-2 text-[11.5px] text-chase">{err}</p>}
+            <div className="flex gap-2 mt-2.5">
+              <button type="button" onClick={revertIt} disabled={reverting}
+                className="text-[12.5px] font-semibold rounded-lg px-3 py-1.5 bg-chase text-white disabled:opacity-60">
+                {reverting ? 'Undoing\u2026' : 'Yes, undo it'}
+              </button>
+              <button type="button" onClick={() => { setUndoing(false); setErr('') }}
+                className="text-[12.5px] rounded-lg px-3 py-1.5 border border-line bg-card text-ink">
+                Keep it
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Once it has settled, the Loan IDs are the only thing left to collect.
