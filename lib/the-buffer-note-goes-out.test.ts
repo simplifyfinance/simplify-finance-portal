@@ -58,9 +58,41 @@ describe('the borrowing capacity email', () => {
       .toContain('bufferNoteBlock(template)')
   })
 
-  // refinance_equity has two branches - one for the comparison layout. Both.
-  it('both refinance + equity release layouts carry it', () => {
-    expect(BC_ROUTE.match(/bufferNoteBlock\(template\)/g)?.length).toBe(5)
+  // A TEMPLATE CAN HAVE SEVERAL BRANCHES AND EVERY ONE OF THEM IS AN EMAIL.
+  //
+  // refinance_equity has three: the comparison layout, the grouped layout for a
+  // deal with several securities, and the plain one. refinance_only has two.
+  // branchFor() above finds the FIRST, so on its own it would pass while a
+  // later branch quietly went out without the paragraph.
+  //
+  // This used to be `.toBe(5)` - a count of the calls in the file, with no idea
+  // which branch any of them was in. Adding the two grouped layouts on 16 Oct
+  // 2026 made it 7 and the ship stopped, correctly, but a bare number cannot
+  // tell you whether 7 is right. So it walks the branches instead.
+  it('EVERY branch of a buffered template carries it, not just the first', () => {
+    const chunks = BC_ROUTE.split(/\} else if \(template ===/).slice(1)
+    const missed: string[] = []
+    for (const chunk of chunks) {
+      const name = /^\s*'([a-z_]+)'/.exec(chunk)?.[1]
+      if (!name || !BUFFERED_TEMPLATES.includes(name as any)) continue
+      // Only the chunks that actually build an email. A guard clause that
+      // falls through to another branch builds nothing and needs nothing.
+      if (!chunk.includes('body = heading()')) continue
+      if (!chunk.includes('bufferNoteBlock(template)')) {
+        missed.push(`${name} (${/securedByMany/.test(chunk) ? 'several securities'
+          : /compareOptions/.test(chunk) ? 'comparison' : 'plain'} layout)`)
+      }
+    }
+    expect(missed, 'these branches build a client email with no buffer note in it').toEqual([])
+  })
+
+  it('and there are more branches than templates, which is why the above walks them', () => {
+    const chunks = BC_ROUTE.split(/\} else if \(template ===/).slice(1)
+      .filter(c => {
+        const n = /^\s*'([a-z_]+)'/.exec(c)?.[1]
+        return n && BUFFERED_TEMPLATES.includes(n as any) && c.includes('body = heading()')
+      })
+    expect(chunks.length).toBeGreaterThan(BUFFERED_TEMPLATES.length)
   })
 
   it.each(Object.keys(TEMPLATE_LABELS).filter(t => !hasBufferNote(t)).map(t => [t]))(

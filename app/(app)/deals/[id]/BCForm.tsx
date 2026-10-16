@@ -1947,6 +1947,28 @@ Key assumptions: ${checklistText}`
                           </p>
                         )}
 
+                        {/* A SECURITY WITH NO SPLIT ON IT - THE MIRROR OF THE LINE BELOW.
+                          * 16 Oct 2026. The warning under this one catches money
+                          * with no house. This catches a house with no money:
+                          * ticked as security, a balance typed against it, and
+                          * no split pointing at it - so it never opens a card
+                          * and the client email simply does not mention a
+                          * property the lender is taking. Silent, and on the
+                          * one screen where silence is the whole failure. */}
+                        {(() => {
+                          const bare = secs.filter(x =>
+                            (groups.find(g => g.security.id === x.id)?.splits.length || 0) === 0)
+                          if (bare.length === 0) return null
+                          return (
+                            <p className="mt-1.5 text-[11px] text-chase leading-snug">
+                              {bare.length === 1 ? 'This property is' : `These ${bare.length} properties are`} security
+                              with no split against {bare.length === 1 ? 'it' : 'them'}
+                              &mdash; {bare.map(x => x.address || 'address not recorded').join(', ')}.
+                              {bare.length === 1 ? ' It' : ' They'} will not appear in the client email.
+                            </p>
+                          )
+                        })()}
+
                         {/* MONEY NO PROPERTY IS CARRYING. These used to vanish. */}
                         {orphans.length > 0 && (
                           <p className="mt-1.5 text-[11px] text-chase leading-snug">

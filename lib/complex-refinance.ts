@@ -23,6 +23,7 @@
 // have the question whether or not we invite it.
 
 import { money, readMoney } from './money'
+import { andList } from './and-list'
 import { purposeLabel, purposeOf, fundsUsedFor, offsetLine } from './debt-recycling'
 
 const txt = (v: any) => String(v ?? '').trim()
@@ -49,10 +50,43 @@ export function isComplexRefinance(template: any): boolean {
 // two; a straight purchase cannot. Adding a template here is the whole job -
 // the securities block, the per-split Security box and the LVR across the
 // securities all read this one answer.
-const MANY_SECURITIES = ['complex_refinance', 'investment_equity']
+// 16 Oct 2026. Fabio, looking at a Refinance + equity release with two houses
+// ticked on the fact find and one set of figures on the BC: "I want the same
+// thing on refinance and equity release and refinance only ... the LO is
+// working in the refinance equity template but the BC still has the old view -
+// did you miss that?"
+//
+// I did. The list named two templates and his two were not on it. Everything
+// else already asks this one question, so this line was the whole of the form.
+//
+// THE EMAIL WAS NOT THE WHOLE OF IT, and that is the part I had left unfinished
+// the day before. Those templates print the deal-level existingLoanBal and
+// equityRelease - the exact two boxes that leave the form once each property
+// carries its own - so adding a name here without touching the email gives a
+// client a Split 1 card with no balance and a Split 2 card headed "Equity
+// release amount" with nothing beside it. See securedByMany below, and the
+// property cards in app/api/generate-email/route.ts that read it.
+const MANY_SECURITIES = ['complex_refinance', 'investment_equity',
+                         'refinance_equity', 'refinance_only']
 
 export function canHaveManySecurities(template: any): boolean {
   return MANY_SECURITIES.includes(txt(template))
+}
+
+// IS THIS PARTICULAR DEAL SECURED BY PROPERTIES THE BROKER HAS TICKED?
+//
+// Two questions, and they are not the same one. canHaveManySecurities asks
+// whether the TEMPLATE offers the securities block at all. This asks whether
+// somebody has actually used it on THIS deal.
+//
+// The email needs the second. A Refinance + equity release where nobody ticked
+// anything still has its suburb, its balance and its release filled in, and it
+// must keep printing the two cards it has always printed - every one of those
+// deals is already recorded that way. The grouped-by-property layout is for the
+// deals that have securities on them, and nothing else changes.
+export function securedByMany(bc: any): boolean {
+  if (!canHaveManySecurities(bc?.template)) return false
+  return Array.isArray(bc?.securityIds) && bc.securityIds.filter((x: any) => txt(x)).length > 0
 }
 
 // WHICH HOUSE A SPLIT IS AGAINST.
@@ -104,6 +138,30 @@ export function limitOf(bc: any, property: string, id?: string): number {
 
 // The value on the fact find, passed through on the email payload. Never
 // invented, and never read from the BC - the BC does not hold one per property.
+// WHAT THIS PROPERTY OWES TODAY, AND WHAT IS COMING OUT OF IT.
+//
+// 16 Oct 2026. Held by id in securityBalances and securityReleases, which the
+// securities block on the BC writes per house. Before the block existed there
+// was one existingLoanBal and one equityRelease for the whole deal, and on two
+// houses they belonged to neither.
+//
+// NO FALLBACK TO THE DEAL-LEVEL FIGURE. A deal with two securities and one old
+// balance would print that balance against the first house, which is a specific
+// claim about a specific property and we do not know it to be true. An empty
+// row is dropped by rowIf; a wrong one is read and believed.
+function byId(store: any, id?: string): number {
+  if (!id || !store || typeof store !== 'object') return 0
+  return num(store[id])
+}
+
+export function balanceFor(bc: any, id?: string): number {
+  return byId(bc?.securityBalances, id)
+}
+
+export function releaseFor(bc: any, id?: string): number {
+  return byId(bc?.securityReleases, id)
+}
+
 export function valueOf(bc: any, property: string): string {
   const list = Array.isArray(bc?.ffProperties) ? bc.ffProperties : []
   const hit = list.find((p: any) => txt(p?.address) === property)
@@ -118,6 +176,12 @@ export type PropertyGroup = {
   drawn: number
   limit: number
   undrawn: number
+  // The fact find property's id, so a caller can look anything else up by it
+  // rather than matching on the address a second time.
+  id: string
+  // Per property, from the securities block. 0 when nobody typed one.
+  balance: number
+  release: number
 }
 
 // SPLITS WITH NO PROPERTY ARE NOT HIDDEN. They collect in a last card that says
@@ -145,7 +209,8 @@ export function groupsOf(bc: any): PropertyGroup[] {
   return keys.map(property => {
     const splits = byProperty.get(property)!
     const drawn = splits.reduce((sum, s) => sum + num(s?.amount), 0)
-    const limit = property ? limitOf(bc, property, idFor.get(property)) : 0
+    const id = property ? (idFor.get(property) || '') : ''
+    const limit = property ? limitOf(bc, property, id) : 0
     return {
       property,
       heading: property || UNASSIGNED,
@@ -154,6 +219,11 @@ export function groupsOf(bc: any): PropertyGroup[] {
       drawn,
       limit,
       undrawn: limit > drawn ? limit - drawn : 0,
+      id,
+      // UNASSIGNED CARRIES NEITHER. "Other lending" is not a house, so it has
+      // nothing owing on it and nothing being released from it.
+      balance: property ? balanceFor(bc, id) : 0,
+      release: property ? releaseFor(bc, id) : 0,
     }
   })
 }
@@ -182,6 +252,36 @@ export function undrawnNoteFor(g: PropertyGroup): string {
 // is two different things wearing one place on the page.
 export function originalPurposeLine(split: any): string {
   return fundsUsedFor(split)
+}
+
+// THE HOUSES THIS LENDING SITS AGAINST, NAMED, IN THE ORDER THE SPLITS PUT THEM.
+//
+// 16 Oct 2026. Equity release + purchase prints a two-column table whose left
+// heading was "Against {suburb}" - one box, filled in before the securities
+// block existed. Turn two securities on and that heading names one of them, or
+// prints "[Existing Property]" because the suburb box is no longer being
+// filled. It went live on 15 Oct and no email has been sent through it yet.
+//
+// Splits with no property are not named - they are not a house, and "Against
+// Other lending" is not a sentence.
+export function securedAddresses(bc: any): string[] {
+  return groupsOf(bc).map(g => g.property).filter(Boolean)
+}
+
+export function securedHeading(bc: any): string {
+  return andList(securedAddresses(bc))
+}
+
+// WHAT IS COMING OUT, ADDED UP ACROSS THE HOUSES.
+//
+// The opening sentence of a Refinance + equity release says how much equity is
+// being accessed. It read the one deal-level box, which is empty the moment the
+// releases move onto the securities - so the sentence said "[equity amount]" or
+// fell back to split 2, which is one split of several.
+export function releaseTotal(bc: any): number {
+  const ids = Array.isArray(bc?.securityIds) ? bc.securityIds.map(txt).filter(Boolean) : []
+  const total = ids.reduce((sum: number, id: string) => sum + releaseFor(bc, id), 0)
+  return total > 0 ? total : num(bc?.equityRelease)
 }
 
 export function everySplitHasAProperty(bc: any): boolean {

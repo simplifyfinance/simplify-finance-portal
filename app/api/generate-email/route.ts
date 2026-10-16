@@ -36,7 +36,7 @@ import { totalLimit as recycledLimit, purposeLine, byPurpose, everySplitHasAPurp
          whySplitThisWay, openingLine, ACCOUNTANT_NOTE, splitsTotal, limitCheck,
          undrawnNote, STRUCTURE_NOTE } from '@/lib/debt-recycling'
 import { groupsOf, undrawnNoteFor, originalPurposeLine, aboutThisStructure,
-         openingLine as refinanceOpening,
+         openingLine as refinanceOpening, securedByMany, securedHeading, releaseTotal,
          ACCOUNTANT_NOTE as REFINANCE_ACCOUNTANT_NOTE } from '@/lib/complex-refinance'
 import { siteUrl } from '@/lib/site-url'
 
@@ -240,6 +240,10 @@ function repaymentRow(split: any, loanTerm: any) {
 // a client. Empty now means the line is not there, and the Preview screen says
 // which boxes are empty before anybody presses send.
 function securityHead(d: any) {
+  // WHEN EACH CARD BELOW NAMES ITS OWN PROPERTY, THIS LINE IS A SECOND ANSWER
+  // TO THE SAME QUESTION - and a worse one, because the suburb box holds one
+  // house and there are two. 16 Oct 2026.
+  if (securedByMany(d)) return ''
   return d.suburb ? propHead(`Against ${d.suburb}`, d.incomeRental) : ''
 }
 
@@ -264,6 +268,46 @@ export const PLUS_INCIDENTALS = " (plus solicitor's fees and incidentals)"
 // funding a build describe the same thing, so they print the same rows in the
 // same order. The rows themselves live in lib/build-card.ts; this is the order
 // they go in, which is also shared and so also written down once.
+// ONE CARD PER PROPERTY - FOR EVERY TEMPLATE THAT CAN HAVE MORE THAN ONE.
+//
+// 16 Oct 2026. This was written inside the complex_refinance branch and stayed
+// there. Fabio then asked for several securities on Refinance + equity release
+// and Refinance only, which is the same email problem arriving a second time -
+// so the cards come out here and the branches call them.
+//
+// THE DEAL-LEVEL BOXES ARE NOT READ HERE, deliberately. existingLoanBal and
+// equityRelease describe the whole deal and leave the BC form the moment each
+// property carries its own; reading them would print one house's balance
+// against another's address. Empty rows are dropped by rowIf - a missing figure
+// is a gap somebody can see, a borrowed one is a lie nobody can.
+function propertyCards(d: any) {
+  return groupsOf(d).map(g =>
+    card(g.heading + (g.value ? ` \u2014 valued at ${g.value}` : ''),
+      // WHAT THE PROPERTY CARRIES NOW, THEN WHAT IS COMING OUT OF IT, THEN THE
+      // LIMIT IT ENDS UP WITH. The order a client reads the change in, and the
+      // order the refinance emails have always put them in.
+      rowIf('Existing loan balance', money(g.balance)) +
+      rowIf('Equity released', money(g.release)) +
+      (g.limit > 0 ? row('Limit against this property', money(g.limit)) : '') +
+      g.splits.map((sp: any) => {
+        const detail = [
+          txt(sp?.rate) ? `${txt(sp.rate)}% p.a.*` : '',
+          // THE INTEREST ONLY PERIOD, NOT JUST THE WORDS. A bare "Interest only"
+          // reads as thirty years of it. One shared line decides it everywhere;
+          // see repaymentTypeLine in lib/split-cards.ts.
+          repaymentTypeLine(sp, d.loanTerm) || '',
+          repaymentOf(sp, d.loanTerm) ? `${repaymentOf(sp, d.loanTerm)} per month` : '',
+        ].filter(Boolean).join(' \u00b7 ')
+        const under = [originalPurposeLine(sp), detail].filter(Boolean).join(' \u00b7 ')
+        return row(txt(sp?.label) || 'Split', money(sp?.amount)) + (under ? note(under) : '')
+      }).join('') +
+      // THE LAST CARD IS NOT A PROPERTY. Splits nobody has assigned collect
+      // under "Other lending", and "Drawn against this property" on that one
+      // was calling it something it is not.
+      row(g.property ? 'Drawn against this property' : 'Drawn', money(g.drawn)) +
+      note(undrawnNoteFor(g)))).join('')
+}
+
 function buildStructure(d: any, lending: number, contribute: number, from?: string) {
   return buildCostRows(d) +
     buildSplitRows(d.splits) +
@@ -623,6 +667,41 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px"><span style="color:#7a5c3a;">Equity Release Options</span></p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptionsRE.join('')}</tr></table>
       </td></tr></table>` +
+      bufferNoteBlock(template) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
+      check(checkItems) +
+      p('The numbers are looking strong. The next step is finding the right lender and rate for your situation \u2014 and that is exactly what we will do for you.') +
+       notesBox(notes) + sig(b)
+
+  } else if (template === 'refinance_equity' && securedByMany(d)) {
+    // TWO HOUSES, SO ONE CARD EACH - the layout Complex refinance already uses
+    // and Fabio asked for by name on 16 Oct: "its the same layout at the equity
+    // release and purchase".
+    //
+    // The wording around the cards is this template's own. Only the structure
+    // in the middle changes, because only the structure was ever the thing that
+    // could not hold two properties.
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
+      p(`Based on your current financial position, you have sufficient capacity to refinance your properties and access approximately ${amt(releaseTotal(d) || '', '[equity amount]')} in equity, while also securing a competitive rate.`) +
+      p13('Here is how your lending sits once the refinance is complete:') +
+      propertyCards(d) +
+      card('About this structure',
+        aboutThisStructure(d).map((l: string) => note(l)).join('') +
+        note(REFINANCE_ACCOUNTANT_NOTE)) +
+      bufferNoteBlock(template) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
+      check(checkItems) +
+      p('The numbers are looking strong. The next step is finding the right lender and rate for your situation \u2014 and that is exactly what we will do for you.') +
+       notesBox(notes) + sig(b)
+
+  } else if (template === 'refinance_only' && securedByMany(d)) {
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
+      p('Based on your current financial position, you have sufficient capacity to refinance your existing lending and secure a competitive rate.') +
+      p13('Here is how your lending sits once the refinance is complete:') +
+      propertyCards(d) +
+      card('About this structure',
+        aboutThisStructure(d).map((l: string) => note(l)).join('') +
+        note(REFINANCE_ACCOUNTANT_NOTE)) +
       bufferNoteBlock(template) +
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
@@ -1099,7 +1178,7 @@ export async function POST(req: NextRequest) {
       p13('Below is a breakdown of the structure:') +
       `<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:14px"><tr>
         <td width="50%" bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px;border:1px solid #e5ddc8;vertical-align:top">
-          <p style="font-size:12px;font-weight:700;color:#343333;margin:0 0 10px"><span style="color:#343333;">&#127968; Against ${d.suburb || '[Existing Property]'}</span></p>
+          <p style="font-size:12px;font-weight:700;color:#343333;margin:0 0 10px"><span style="color:#343333;">&#127968; Against ${securedHeading(d) || d.suburb || '[Existing Property]'}</span></p>
           ${existingLoanCol}
         </td>
         <td width="50%" bgcolor="#F2E8DB" style="background:#F2E8DB;padding:14px;border:1px solid #e5ddc8;vertical-align:top">
@@ -1229,33 +1308,9 @@ export async function POST(req: NextRequest) {
     //
     // The grouping, the arithmetic and the wording are in
     // lib/complex-refinance.ts. Nothing is decided here.
-    const propertyCards = groupsOf(d).map(g =>
-      card(g.heading + (g.value ? ` \u2014 valued at ${g.value}` : ''),
-        (g.limit > 0 ? row('Limit against this property', money(g.limit)) : '') +
-        g.splits.map((sp: any) => {
-          const detail = [
-            txt(sp?.rate) ? `${txt(sp.rate)}% p.a.*` : '',
-            // THE INTEREST ONLY PERIOD, NOT JUST THE WORDS. Both scenarios built on
-            // 1 Oct 2026 printed the bare type, so an interest only split said
-            // "Interest only" and never for how long - which reads as thirty years
-            // of it. Fabio, same day: "ensure we are including IO perios 1-5 years
-            // as we tehnd to forget." One shared line decides it everywhere; see
-            // repaymentTypeLine in lib/split-cards.ts.
-            repaymentTypeLine(sp, d.loanTerm) || '',
-            repaymentOf(sp, d.loanTerm) ? `${repaymentOf(sp, d.loanTerm)} per month` : '',
-          ].filter(Boolean).join(' \u00b7 ')
-          const under = [originalPurposeLine(sp), detail].filter(Boolean).join(' \u00b7 ')
-          return row(txt(sp?.label) || 'Split', money(sp?.amount)) + (under ? note(under) : '')
-        }).join('') +
-        // THE LAST CARD IS NOT A PROPERTY. Splits nobody has assigned collect
-        // under "Other lending", and "Drawn against this property" on that one
-        // was calling it something it is not.
-        row(g.property ? 'Drawn against this property' : 'Drawn', money(g.drawn)) +
-        note(undrawnNoteFor(g)))).join('')
-
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p(refinanceOpening(d)) +
-      propertyCards +
+      propertyCards(d) +
       card('About this structure',
         aboutThisStructure(d).map((l: string) => note(l)).join('') +
         note(REFINANCE_ACCOUNTANT_NOTE)) +
