@@ -105,3 +105,54 @@ describe('two securities, two boxes', () => {
     expect(readRows(refinanceBoxes(extra)).join(' | ')).toContain('Fixed portion $50,000')
   })
 })
+
+// --- the audit of 16 Oct, after the fixes -----------------------------------
+
+import { moneyIf, money } from './money'
+import { readFileSync } from 'fs'
+
+describe('a zero is not a figure', () => {
+  // money(0) is "$0", and "$0" is truthy - so every rowIf(x, money(y)) in the
+  // portal printed a zero row the moment that box was empty. Nine of them.
+  it('money says $0 and moneyIf says nothing', () => {
+    expect(money(0)).toBe('$0')
+    expect(moneyIf(0)).toBe('')
+    expect(moneyIf('')).toBe('')
+    expect(moneyIf(null)).toBe('')
+    expect(moneyIf('127,090')).toBe('$127,090')
+  })
+
+  // THE ONE I SHIPPED AND THEN FOUND IN MY OWN AUDIT twenty minutes later,
+  // beside the copy of it I had just fixed.
+  it('a security with no balance typed has no balance row', () => {
+    const bare = {
+      ...AVARD,
+      securityBalances: { p1: '127,090' },          // p2 left empty
+      securityLimits: { p1: '129,000' },            // and no limit either
+      splits: [AVARD.splits[0], { ...AVARD.splits[1], amount: '' }],
+    }
+    const out = readRows(refinanceBoxes(bare)).join(' | ')
+    expect(out).not.toContain('$0')
+  })
+
+  it('and no template prints money() straight into a rowIf any more', () => {
+    const src = readFileSync('app/api/generate-email/route.ts', 'utf8')
+      .replace(/\/\/[^\n]*/g, '')
+    expect(src).not.toMatch(/rowIf\([^)]*,\s*money\(/)
+    expect(src).not.toMatch(/lineIf\([^)]*,\s*money\(/)
+  })
+})
+
+describe('the lending options email on a multi-security deal', () => {
+  // The LVR divided by bc.propertyValue falling back to bc.purchasePrice. Both
+  // are empty once the values live on the securities, so lenderLvr returned 0
+  // and the line was dropped - "Total lending $369,000" and no LVR, on a deal
+  // sitting at 38.8%. The securities had been passed into that function since
+  // 12 Oct and never read.
+  it('measures against the securities, not one empty box', () => {
+    const src = readFileSync('app/api/generate-lo-email/route.ts', 'utf8')
+    expect(src).toContain('const against = totalsOf(secs).value || propertyValue')
+    expect(src).toContain('lenderLvr(rows, against)')
+  })
+})
+

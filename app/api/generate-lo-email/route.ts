@@ -21,7 +21,7 @@ import { balanceTotal, releaseTotal } from '@/lib/complex-refinance'
 import { money } from '@/lib/money'
 import { emailParagraphs } from '@/lib/rich-text'
 import { resolveLenderSplits, lenderTotal, lenderLvr } from '@/lib/lo-splits'
-import { securitiesOf } from '@/lib/securities'
+import { securitiesOf, totalsOf } from '@/lib/securities'
 import { bufferNoteBlock } from '@/lib/buffer-note'
 import { propertyColour } from '@/lib/lo-by-property'
 import { showsOwnLoanAmount } from '@/lib/email-amounts'
@@ -108,9 +108,20 @@ function splitBand(lenders: any[], globals: any[], propertyValue: any, secs: any
   // ONE LVR PER LENDER: that lender's whole loan over the property value. Never
   // per split - an LVR is a question about the deal, and it is calculated here
   // rather than typed so the email and the form cannot disagree.
+  // AGAINST EVERY HOUSE, NOT AGAINST ONE EMPTY BOX.
+  //
+  // 16 Oct 2026. propertyValue here is bc.propertyValue falling back to
+  // bc.purchasePrice. Both are empty once a deal's values live on its
+  // securities - so lenderLvr returned 0 and the LVR was simply left off. The
+  // Avard email went to a client reading "Total lending $369,000" with no LVR,
+  // on a deal sitting at 38.8%.
+  //
+  // `secs` has been passed into this function since 12 Oct and never read here.
+  const against = totalsOf(secs).value || propertyValue
+
   const totals = () => `<tr>${per.map(rows => {
     const tot = lenderTotal(rows)
-    const lvr = lenderLvr(rows, propertyValue)
+    const lvr = lenderLvr(rows, against)
     return totalCell(
       `<p style="font-size:12px;color:#343333;margin:0"><span style="color:#343333;"><strong>Total lending ${money(tot)}</strong>${lvr > 0 ? ` &nbsp;\u00b7&nbsp; LVR ${lvr}%` : ''}</span></p>`,
     )

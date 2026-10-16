@@ -111,3 +111,23 @@ export function digitsOnly(s: any): number | null {
   const n = Number(d)
   return Number.isNaN(n) ? null : n
 }
+
+// A FIGURE, OR NOTHING AT ALL.
+//
+// 16 Oct 2026, found by auditing every template after a day of fixing them.
+// money(0) is "$0", and "$0" is a truthy string - so every
+// rowIf('Something', money(x)) in the portal prints a zero row the moment that
+// box is empty. Nine of them. One reached a client as "Equity released $0" on a
+// straight refinance; the rest were one empty box away from doing the same.
+//
+// "0" IS A CLAIM. The note at the top of this file already says it: it tells a
+// client they have nothing, where the truth is that nobody has recorded it. A
+// row that is not there asks the question. A row that says $0 answers it,
+// wrongly, and looks finished doing it.
+//
+// WHERE A REAL ZERO IS WORTH SAYING - and there are such places - use money()
+// and say it deliberately, in a row that is always drawn.
+export function moneyIf(v: any): string {
+  const n = readMoney(v)
+  return n === null || n === 0 ? '' : money(v)
+}

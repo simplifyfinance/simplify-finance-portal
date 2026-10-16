@@ -22,7 +22,7 @@ import { purchaseRows } from '@/lib/purchase-rows'
 //
 // money('') is the empty string, not a lonely '$' - so a field nobody filled
 // in prints as nothing rather than as a dollar sign with no number.
-import { money, readMoney } from '@/lib/money'
+import { money, moneyIf, readMoney } from '@/lib/money'
 import { estimatedRepayment } from '@/lib/email-figures'
 import { emailParagraphs } from '@/lib/rich-text'
 import { showsOwnLoanAmount } from '@/lib/email-amounts'
@@ -240,15 +240,24 @@ function repaymentRow(split: any, loanTerm: any) {
 // a client. Empty now means the line is not there, and the Preview screen says
 // which boxes are empty before anybody presses send.
 function securityHead(d: any) {
-  // WHEN EACH CARD BELOW NAMES ITS OWN PROPERTY, THIS LINE IS A SECOND ANSWER
-  // TO THE SAME QUESTION - and a worse one, because the suburb box holds one
-  // house and there are two. 16 Oct 2026.
-  if (securedByMany(d)) return ''
+  // SEVERAL HOUSES ARE NAMED, NOT SKIPPED.
+  //
+  // 16 Oct 2026, first version: this returned '' whenever a deal had several
+  // securities, because the suburb box holds one house and there were two.
+  // Correct about the suburb and wrong about the answer - Refinance + equity
+  // release then went out naming no property anywhere in the email, since its
+  // Split 1 and Split 2 cards do not carry an address either.
+  //
+  // The securities are on the deal and have been since 12 Oct. Name them.
+  if (securedByMany(d)) {
+    const named = securedHeading(d)
+    return named ? propHead(`Against ${named}`, d.incomeRental) : ''
+  }
   return d.suburb ? propHead(`Against ${d.suburb}`, d.incomeRental) : ''
 }
 
 function existingLoanRow(d: any) {
-  return rowIf('Existing loan balance', money(d.existingLoanBal))
+  return rowIf('Existing loan balance', moneyIf(d.existingLoanBal))
 }
 
 // WHAT THE CLIENT STILL HAS TO FIND ON TOP.
@@ -292,8 +301,8 @@ export function refinanceBoxes(d: any) {
     const sp = g.splits[0] || {}
     const extra = g.splits.slice(1)
     return card(`Refinanced Loan \u2014 ${g.heading}`,
-      rowIf('Existing loan balance', money(g.balance)) +
-      rowIf('New loan amount', money(g.limit > 0 ? g.limit : g.drawn)) +
+      rowIf('Existing loan balance', moneyIf(g.balance)) +
+      rowIf('New loan amount', moneyIf(g.limit > 0 ? g.limit : g.drawn)) +
       rowIf('Indicative rate', txt(sp?.rate) ? `${txt(sp.rate)}% p.a.*` : '') +
       repaymentRow(sp, d.loanTerm) +
       rowIf('Repayment type', txt(sp?.type)) +
@@ -430,7 +439,7 @@ function pledgeLoan(title: string, split: any, loanTerm: any, sentence: string) 
     <p style="font-size:11px;font-weight:700;color:#7a5c3a;margin:0 0 6px"><span style="color:#7a5c3a;">${title}${split.label ? ' &mdash; ' + split.label : ''}</span></p>
     <p style="font-size:12px;color:#5b4a33;margin:0 0 9px;line-height:1.6"><span style="color:#5b4a33;">${sentence}</span></p>
     <table width="100%" cellpadding="0" cellspacing="0" border="0">${
-      rowIf('Loan amount', money(split.amount)) +
+      rowIf('Loan amount', moneyIf(split.amount)) +
       rowIf('Indicative rate', split.rate ? `${split.rate}% p.a.*` : '') +
       repaymentRow(split, loanTerm) +
       rowIf('Repayment type', split.type ? `${split.type} over ${loanTerm || '30'} years` : '')
@@ -614,7 +623,7 @@ export async function POST(req: NextRequest) {
                 lmiApplicable: bc.lmiApplicable, lmi: bc.lmi, lmiTreatment: bc.lmiTreatment,
               }) + buildLVRLine(bc, lmiIsInTheLoan(bc)))
           : securityHead(bc) + (money(bc.existingLoanBal)
-              ? card('Today', existingLoanRow(bc) + rowIf('Property value', money(bc.propertyValue)))
+              ? card('Today', existingLoanRow(bc) + rowIf('Property value', moneyIf(bc.propertyValue)))
               : '')) +
         splitCards(bc, 'Your loan', { termWithType: true })
     }
@@ -704,7 +713,7 @@ export async function POST(req: NextRequest) {
       const lmiLine = lvrNum > 80 ? lmiLines(opt, opt.lmiTreatment, existingLoanN + equityReleaseN) : ''
       return `<td style="width:50%;vertical-align:top;padding:0 6px">
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
-        ${lineIf('Existing loan balance', money(d.existingLoanBal))}
+        ${lineIf('Existing loan balance', moneyIf(d.existingLoanBal))}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Equity release amount: ${money(opt.equityReleaseAmount) || ''}</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
         ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px"><span style="color:#343333;">To achieve this option:</span></p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">&#10003; ${a}</span></p>`).join('') : ''}${nonBankNote}
@@ -1108,7 +1117,7 @@ export async function POST(req: NextRequest) {
       p(`When using ${guarantorPhrase(guarantor)} property as security you can borrow 100% of the purchase price. You would just need to contribute your own funds to cover stamp duty and costs.`) +
       p('Your application will be split into 2 loans.') +
       card('Your numbers would be',
-        rowIf('Purchase price', money(d.purchasePrice)) +
+        rowIf('Purchase price', moneyIf(d.purchasePrice)) +
         rowIf(dutyLabel(d), money(d.stampDuty)) +
         rowIf(`Total cost${PLUS_INCIDENTALS}`, cost > 0 ? money(cost) : '') +
         rowIf('Loan amount (borrowing 100% of the purchase price with a family security guarantee)', lending > 0 ? money(lending) : '') +
@@ -1285,7 +1294,7 @@ export async function POST(req: NextRequest) {
       // because the BC has no boxes for what they are paying now - and a figure
       // we do not have is a row that is not there.
       (money(d.existingLoanBal) || money(d.propertyValue)
-        ? card('Today', existingLoanRow(d) + rowIf('Property value', money(d.propertyValue)))
+        ? card('Today', existingLoanRow(d) + rowIf('Property value', moneyIf(d.propertyValue)))
         : '') +
       card(limit > 0 ? `Proposed structure \u2014 total limit ${money(limit)}` : 'Proposed structure',
         (limit > 0 ? row('Total limit', money(limit)) : '') +

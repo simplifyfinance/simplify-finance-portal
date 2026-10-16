@@ -188,8 +188,14 @@ describe('the email route reads the answer rather than the old boxes', () => {
     expect(src).toContain("} else if (template === 'refinance_only') {")
   })
 
-  it('"Against {suburb}" does not print beside cards that name their own house', () => {
-    expect(src).toContain('if (securedByMany(d)) return \'\'')
+  // 16 Oct 2026, corrected the same day. The first version of this returned
+  // nothing at all when a deal had several securities - right that one suburb
+  // box cannot name two houses, wrong about what to do instead. Refinance +
+  // equity release then named no property anywhere in its email, because its
+  // Split 1 and Split 2 cards carry no address either.
+  it('"Against {suburb}" gives way to the securities, which are named', () => {
+    expect(src).toContain('const named = securedHeading(d)')
+    expect(src).toContain('propHead(`Against ${named}`')
   })
 
   // 15 Oct 2026 shipped the securities block on Equity release + purchase and
