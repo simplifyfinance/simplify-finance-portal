@@ -1,5 +1,7 @@
 // THE NOTES THAT GO TO THE BANK.
 import { purchaseSuburbOf } from './duty-state'
+import { purchaseLoanOf, canBuyAndRefinance } from './securities'
+import { andList } from './and-list'
 import { buildsSomething } from './sale-build'
 //
 // Every other box on the Compliance tab is between the broker, the client and
@@ -51,6 +53,7 @@ const sentence = (s: string): string => {
   return /[.!?]$/.test(capped) ? capped : capped + '.'
 }
 const has = (v: any) => (readMoney(v) ?? 0) > 0
+const num = (v: any): number => readMoney(v) || 0
 
 export type NotesParagraph = { key: string; heading: string; lines: string[] }
 
@@ -117,6 +120,20 @@ function transaction(deal: any): { verb: string; isPurchase: boolean; isConstruc
   // below decided it from whatever happened to be in the box.
   if (t === 'debt_recycling') return { verb: 'restructure the existing lending against', isPurchase: false, isConstruction: false }
   if (t === 'complex_refinance') return { verb: 'refinance the existing lending against', isPurchase: false, isConstruction: false }
+  // A DEAL THAT REFINANCES AND BUYS IS NOT A PURCHASE.
+  //
+  // 16 Oct 2026. Fabio, reading the submission notes on an Equity release +
+  // purchase: "a line that 'The applicants are seeking finance of $1,855,000 to
+  // purchase an investment property in TBA' IS NOT TRUE."
+  //
+  // It was not. $1,116,000 of that refinances properties they already own and
+  // $290,000 is equity released; $449,000 buys anything. investment_equity sat
+  // in the purchase list below, so the whole loan was described as a purchase -
+  // to a lender, in the only box on the tab the bank reads.
+  //
+  // The verb is empty on purpose: this scenario does three things and no single
+  // verb is true of all of it, so theDeal() below writes the breakdown instead.
+  if (canBuyAndRefinance(t)) return { verb: 'mixed', isPurchase: true, isConstruction: false }
   if (PURCHASE_TEMPLATES.includes(t)) return { verb: 'purchase', isPurchase: true, isConstruction: false }
   return { verb: '', isPurchase: has(deal?.bc_data?.purchasePrice), isConstruction: false }
 }
@@ -145,6 +162,43 @@ function theDeal(deal: any, missing: string[]): NotesParagraph | null {
   const kind = purpose === 'Owner occupied & investment' ? 'owner-occupied and investment'
     : purpose === 'Owner occupied' ? 'owner-occupied'
     : purpose.toLowerCase()
+
+  // WHAT THE MONEY DOES, WHEN IT DOES MORE THAN ONE THING.
+  //
+  // No suburb is named here. On this scenario bc.suburb is the STATE box - the
+  // BC relabels it - and the property being bought has no address yet, which is
+  // how "in TBA" reached a lender. The securities are named, with their own
+  // figures, in the paragraph that follows.
+  if (verb === 'mixed') {
+    const buying = purchaseLoanOf(deal?.bc_data)
+    const rest = total - buying
+    const parts: string[] = []
+    if (buying > 0) parts.push(`${money(buying)} funds the purchase of an ${kind} property`)
+    // PAYOUT AND EQUITY RELEASE ARE NOT SEPARATED UNLESS SOMEBODY SAID SO.
+    // They look identical from here and only a person knows which is which, so
+    // the sentence says what IS known: this part is secured by the properties
+    // they already own. The split-by-split figures are in the breakdown below.
+    if (rest > 0) {
+      const roles = splitsOf(deal)
+      const payout = roles.filter(x => x.funds === 'payout').reduce((t, x) => t + num(x.amount), 0)
+      const equity = roles.filter(x => x.funds === 'equity').reduce((t, x) => t + num(x.amount), 0)
+      if (payout + equity === rest && payout > 0 && equity > 0) {
+        parts.push(`${money(payout)} refinances existing lending`)
+        parts.push(`${money(equity)} is released as equity`)
+      } else {
+        parts.push(`${money(rest)} is secured against the properties they already own`)
+      }
+    }
+    if (parts.length === 0) {
+      missing.push('No loan amount is recorded against any split, so the notes cannot say what the finance does')
+      return null
+    }
+    return {
+      key: 'deal', heading: '',
+      lines: [`${who} seeking finance of ${money(total)}. ${sentence(andList(parts))}`],
+    }
+  }
+
   const place = where ? ` in ${where}` : ''
   return {
     key: 'deal', heading: '',

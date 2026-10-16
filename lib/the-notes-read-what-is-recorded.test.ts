@@ -4,6 +4,7 @@ import { purposeFromTheProperty, normalisePurpose } from './split-purpose'
 import { purposeSummary, splitsOf } from './deal-structure'
 import { fundsToComplete, refinancedDebt } from './funds-to-complete'
 import { brokerNotes } from './broker-notes'
+import { boxOne } from './box-one'
 
 // 16 Oct 2026. The compliance tab refused to compose the lender's submission
 // notes on an Equity release + purchase, listing three things as not recorded.
@@ -211,5 +212,94 @@ describe('a cross-check is not a locked door', () => {
     const funds = notes.paragraphs.find(x => x.key === 'funds')
     expect(funds?.lines.join(' ')).toContain('Funds to complete: $268,500')
     expect(funds?.lines.join(' ')).not.toContain('met by')
+  })
+})
+
+// A WHOLE DEAL, SO THE SENTENCES CAN BE READ RATHER THAN ASSUMED.
+const FULL = () => ({
+  loan_amount: 1855000,
+  bc_data: {
+    ...BC,
+    suburb: 'QLD',
+    splits: [
+      { id: 'a', label: 'Existing loan refinanced', amount: '610,000', rate: '6.64',
+        repaymentType: 'Interest only', purpose: 'INV', funds: 'payout', securityId: 'p1' },
+      { id: 'b', label: 'Existing loan refinanced', amount: '506,000', rate: '6.64',
+        repaymentType: 'Interest only', purpose: 'INV', funds: 'payout', securityId: 'p2' },
+      { id: 'c', label: 'New purchase', amount: '449,000', rate: '6.39',
+        repaymentType: 'P&I', purpose: 'INV', securityId: BEING_PURCHASED },
+      { id: 'd', label: 'Equity access', amount: '290,000', rate: '6.89',
+        repaymentType: 'Interest only', purpose: 'INV', funds: 'equity', securityId: 'p2' },
+    ],
+  },
+  lo_data: { loanAmount: '1,855,000', recommendedLender: 'St George', lenders: [] },
+  fact_find_data: {
+    ...FF,
+    loanPurpose: 'To access available equity to purchase a third investment property.',
+    applicants: [{
+      id: 'a1', firstName: 'Graham', lastName: 'Belfield', dob: '1982-03-02',
+      addresses: [{ isCurrent: true, address: '1 Example St', residentialStatus: 'Owner' }],
+      employment: [{ isCurrent: true, employmentType: 'PAYG', employmentBasis: 'Full time',
+        occupation: 'Leasing Executive', employerName: 'Revelop', startDate: '2025-07-01' }],
+      income: [{ grossSalary: '170,000', grossSalaryFrequency: 'Annually' }],
+    }],
+  },
+})
+
+describe('what the lender is told the money does', () => {
+  // 16 Oct 2026. The submission notes said: "The applicants are seeking finance
+  // of $1,855,000 to purchase an investment property in TBA."
+  //
+  // Three things wrong in one sentence. $449,000 buys anything - the other
+  // $1,406,000 refinances two properties they already own and releases equity.
+  // And "TBA" was the suburb box, which this template relabels as the STATE,
+  // falling through to a property with no address because it does not exist yet.
+  //
+  // Fabio: "IS NOT TRUE ... we have been fixing this deal for over 1 hour."
+  const line = () => brokerNotes(FULL()).paragraphs.find(x => x.key === 'deal')?.lines.join(' ') || ''
+
+  it('does not call the whole loan a purchase', () => {
+    expect(line()).not.toContain('$1,855,000 to purchase')
+  })
+
+  it('says what each part of it does', () => {
+    expect(line()).toContain('seeking finance of $1,855,000')
+    expect(line()).toContain('$449,000 funds the purchase of an investment property')
+    expect(line()).toContain('$1,116,000 refinances existing lending')
+    expect(line()).toContain('$290,000 is released as equity')
+  })
+
+  it('and never names a suburb it does not have', () => {
+    expect(line()).not.toContain('TBA')
+    expect(line()).not.toContain('in QLD')
+  })
+
+  // Payout and equity look identical unless somebody has said which is which.
+  it('with the roles unanswered it says only what is known', () => {
+    const vague = FULL()
+    vague.bc_data.splits = vague.bc_data.splits.map((x: any) => ({ ...x, funds: '' }))
+    const l = brokerNotes(vague).paragraphs.find(x => x.key === 'deal')?.lines.join(' ') || ''
+    expect(l).toContain('$449,000 funds the purchase')
+    expect(l).toContain('$1,406,000 is secured against the properties they already own')
+    expect(l).not.toContain('refinances existing lending')
+  })
+})
+
+describe('the sentence is a sentence', () => {
+  it('ends with one full stop, not two', () => {
+    const A = { name: 'Mellissa Sedin', phone: '02 7228 3834' } as any
+    const text = brokerNotes(FULL(), A).text
+    expect(text).toContain('$290,000 is released as equity.')
+    expect(text).not.toContain('..')
+  })
+
+  // Box one already breaks the securities down; this is the submission notes
+  // agreeing with it rather than describing a different deal.
+  it('and box one names the same three houses with their own ratios', () => {
+    const t = boxOne(FULL()).text
+    expect(t).toContain('The lending is secured by three properties.')
+    expect(t).toContain('a loan to value ratio of 80%')
+    expect(t).toContain('a loan to value ratio of 64.1%')
+    expect(t).not.toMatch(/borrowing \$1,855,000 over a thirty year term against/)
   })
 })
