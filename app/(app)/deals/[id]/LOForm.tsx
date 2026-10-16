@@ -756,8 +756,24 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       // Same fix as the compliance form: read the deal, not the scenario's name.
       const purpose = dealPurpose(deal).binary === 'Investment' ? 'Investment' : 'Owner Occupied'
       const loanAmountNum = Number((d.loanAmount || '').toString().replace(/,/g, '')) || 0
-      const purchasePriceNum = Number((d.purchasePrice || '').toString().replace(/,/g, '')) || 0
-      const lvr = purchasePriceNum > 0 && loanAmountNum > 0 ? Math.round((loanAmountNum / purchasePriceNum) * 1000) / 10 : null
+      // AGAINST EVERY HOUSE, BECAUSE THIS ONE IS REMEMBERED.
+      //
+      // 16 Oct 2026, found by scripts/audit.sh on its first run. This divided
+      // the whole loan by the purchase price and wrote the answer into
+      // lender_rate_observations - the table the rate cheat sheet reads as if
+      // every row were a real quote. On a deal refinancing two houses and
+      // buying a third that is 1,855,000 / 700,000 = 265%, filed as the LVR at
+      // which that lender quoted that rate.
+      //
+      // Worse than a wrong figure on a screen: a wrong figure on a screen is
+      // seen and corrected, and this one is kept and consulted. Same source as
+      // every other LVR now - see lib/securities.ts.
+      const secured = totalsOf(securitiesWithPurchase(bc, ff)).value
+      const against = secured > 0
+        ? secured
+        : Number((d.purchasePrice || '').toString().replace(/,/g, '')) || 0
+      const lvr = against > 0 && loanAmountNum > 0
+        ? Math.round((loanAmountNum / against) * 1000) / 10 : null
 
       for (const lender of d.lenders) {
         if (!lender.lenderName) continue
