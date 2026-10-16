@@ -82,34 +82,35 @@ describe('an equity release alternative', () => {
 })
 
 describe('the repayment type, which was hard-set to P&I and could not be changed', () => {
-  it('P&I over 30 years on Ravi’s numbers', () => {
-    expect(altRepayment(ravi({ type: 'P&I' }), '30')).toBe('$3,714')
-  })
-
   it('interest only is a different figure, and now it can be said', () => {
     expect(altRepayment(ravi({ type: 'Interest only' }), '30')).toBe('$3,249')
   })
 
+  // 16 Oct 2026. These used to expect $3,714 and $3,773. Fabio: "only IO
+  // repayments are to be calculated." See lib/email-figures.ts - the rule is
+  // applied once, there, so this file inherits it rather than restating it.
+  it('a P&I alternative shows no repayment unless somebody typed one', () => {
+    expect(altRepayment(ravi({ type: 'P&I' }), '30')).toBe('')
+    expect(altEstimatedRepayment(ravi({ type: 'P&I' }), '30')).toBe('')
+  })
+
   it('capitalised LMI is borrowed, so the repayment is worked on the bigger loan', () => {
-    expect(altRepayment(ravi({ type: 'P&I', lmiTreatment: LMI_CAPITALISED }), '30')).toBe('$3,773')
     expect(altRepayment(ravi({ type: 'Interest only', lmiTreatment: LMI_CAPITALISED }), '30')).toBe('$3,301')
     expect(altDrawnLoan(ravi({ lmiTreatment: LMI_CAPITALISED }))).toBe(570000)
   })
 
+  // THE OLDER RULE, UNCHANGED AND NOW THE ONLY WAY A P&I FIGURE EXISTS.
   it('a figure the broker typed is never overwritten by one we worked out', () => {
     expect(altRepayment(ravi({ type: 'P&I', repayment: '3,600' }), '30')).toBe('$3,600')
-    // ...and the worked-out one is still available to show beside it.
-    expect(altEstimatedRepayment(ravi({ type: 'P&I', repayment: '3,600' }), '30')).toBe('$3,714')
+    expect(altRepayment(ravi({ type: 'Interest only', repayment: '3,600' }), '30')).toBe('$3,600')
   })
 
   it('no rate, or no loan, means no figure invented', () => {
-    expect(altRepayment(ravi({ type: 'P&I', rate: '' }), '30')).toBe('')
-    expect(altRepayment({ type: 'P&I', rate: '6.95' }, '30')).toBe('')
+    expect(altRepayment(ravi({ type: 'Interest only', rate: '' }), '30')).toBe('')
+    expect(altRepayment({ type: 'Interest only', rate: '6.95' }, '30')).toBe('')
   })
 
-  it('P&I with no loan term stays blank rather than guessing thirty years', () => {
-    expect(altRepayment(ravi({ type: 'P&I' }), '')).toBe('')
-    // Interest only does not need a term - it is the rate on the balance.
+  it('and interest only needs no loan term - it is the rate on the balance', () => {
     expect(altRepayment(ravi({ type: 'Interest only' }), '')).toBe('$3,249')
   })
 })
@@ -139,12 +140,25 @@ describe('the deposit and the loan move each other, both ways', () => {
 })
 
 describe('what does not change', () => {
-  it('an alternative nobody has answered anything on prints what it always printed', () => {
-    const old = { purchasePrice: '640,000', deposit: '114,000', stampDuty: '35,000',
-                  loanAmount: '561,000', rate: '6.95', type: 'P&I' }
-    expect(altLvrPurchase(old).percent).toBe(87.7)
-    expect(altDrawnLoan(old)).toBe(561000)
-    expect(altRepayment(old, '30')).toBe('$3,714')
+  const old = () => ({ purchasePrice: '640,000', deposit: '114,000', stampDuty: '35,000',
+                       loanAmount: '561,000', rate: '6.95', type: 'P&I' })
+
+  it('the LVR and the drawn loan on an old alternative are untouched', () => {
+    expect(altLvrPurchase(old()).percent).toBe(87.7)
+    expect(altDrawnLoan(old())).toBe(561000)
+  })
+
+  // AND THE ONE THING THAT DOES CHANGE, SAID OUT LOUD.
+  //
+  // 16 Oct 2026. This line expected $3,714 and was the only assertion in the
+  // file claiming an old alternative prints exactly what it always printed. It
+  // no longer does: a P&I alternative with no repayment typed now shows no
+  // repayment, here and in the client email, because the portal stopped working
+  // P&I out. Every alternative already recorded is affected, which is the point
+  // of writing it down rather than deleting the test.
+  it('but a P&I repayment nobody typed is no longer invented for it', () => {
+    expect(altRepayment(old(), '30')).toBe('')
+    expect(altRepayment({ ...old(), repayment: '3,714' }, '30')).toBe('$3,714')
   })
 })
 
