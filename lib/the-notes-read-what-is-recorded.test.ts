@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { positionsOf, positionLine, securitiesWithPurchase, BEING_PURCHASED } from './securities'
 import { purposeFromTheProperty, normalisePurpose } from './split-purpose'
 import { purposeSummary, splitsOf } from './deal-structure'
-import { fundsToComplete } from './funds-to-complete'
+import { fundsToComplete, refinancedDebt } from './funds-to-complete'
+import { brokerNotes } from './broker-notes'
 
 // 16 Oct 2026. The compliance tab refused to compose the lender's submission
 // notes on an Equity release + purchase, listing three things as not recorded.
@@ -144,5 +145,71 @@ describe('one line per property, not one ratio across all of them', () => {
                                  value: '500,000', limit: '400,000' }], [])
     expect(typed[0].lending).toBe(400000)
     expect(typed[0].lvr).toBe(80)
+  })
+})
+
+describe('the funds to complete on a deal that refinances and buys', () => {
+  const f = fundsToComplete(DEAL)
+
+  // 16 Oct 2026. Fabio: "why thinks deposit is $0 when you can see purchase
+  // price breakdown has 290 from equity?"
+  //
+  // It was not the deposit that was $0 - it was the funds to complete, and the
+  // cross-check then reported the two disagreeing. Moving the balances onto the
+  // securities emptied bc.existingLoanBal, refinancedDebt() still read only
+  // that box, so mixed() answered "this deal does not refinance", and the WHOLE
+  // $1,855,000 was counted as money reaching a $700,000 purchase. Nothing left
+  // to find. My change the same morning, found the same afternoon.
+  it('does not report nil on a $700,000 purchase', () => {
+    expect(f.toFind).not.toBe(0)
+    expect(f.workable).toBe(true)
+  })
+
+  it('counts only the loan that buys the house', () => {
+    expect(f.lines.find(l => l.label === 'Loan funding the purchase')?.amount).toBe(449000)
+    // 700,000 + 17,500 - 449,000
+    expect(f.toFind).toBe(268500)
+  })
+
+  it('and the refinanced debt is read off the securities', () => {
+    expect(refinancedDebt(DEAL)).toBe(0)
+    const withBalances = { ...DEAL, bc_data: { ...BC,
+      securityBalances: { p1: '495,000', p2: '111,000' } } }
+    expect(refinancedDebt(withBalances)).toBe(606000)
+  })
+
+  // The scenario is the answer. Fabio can fill the owes-now boxes later and
+  // this must not flip back to counting the whole loan in the meantime.
+  it('the scenario says this deal refinances, whether or not a payout is typed', () => {
+    expect(fundsToComplete({ ...DEAL, bc_data: { ...BC, securityBalances: {} } }).toFind)
+      .toBe(268500)
+  })
+})
+
+describe('a cross-check is not a locked door', () => {
+  // The deposit is 290,000 and the funds to complete 268,500. One of the two
+  // needs another look - which is exactly what lib/funds-to-complete.ts has
+  // always called it: "Not an error either way." It was stopping the notes
+  // being written at all.
+  const notes = brokerNotes(DEAL)
+
+  it('the disagreement no longer blocks the notes', () => {
+    expect(notes.missing.join(' ')).not.toContain('does not match the funds to complete')
+  })
+
+  it('it is printed in the funds paragraph instead, where the person pressing send reads it', () => {
+    // Read off the paragraph rather than notes.text: this fixture is a deal
+    // shape, not a whole file, so other sections are still missing their own
+    // answers and the finished text is empty. The line is what is being tested.
+    const funds = notes.paragraphs.find(x => x.key === 'funds')
+    expect(funds?.lines.join(' ')).toContain('does not match the funds to complete above')
+  })
+
+  // AND NOTHING UNTRUE GETS THROUGH. The notes only claim the funds are met
+  // when the two agree.
+  it('and the notes never claim the contribution covers it', () => {
+    const funds = notes.paragraphs.find(x => x.key === 'funds')
+    expect(funds?.lines.join(' ')).toContain('Funds to complete: $268,500')
+    expect(funds?.lines.join(' ')).not.toContain('met by')
   })
 })

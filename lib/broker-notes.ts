@@ -346,8 +346,22 @@ function fundsParagraph(deal: any, missing: string[]): NotesParagraph | null {
   lines.push(`Funds to complete: ${money(f.toFind)}`
     + (met ? `, met by the client's contribution${source ? ` from ${source.toLowerCase()}` : ''}` : ''))
   if (met && !source) missing.push('No deposit source is recorded, so the notes cannot say where the funds come from')
+  // A DISAGREEMENT IS A LINE IN THE NOTES, NOT A LOCKED DOOR.
+  //
+  // 16 Oct 2026. This went into `missing`, which stops the notes being composed
+  // at all - on a deal where every figure in them was recorded and correct.
+  // lib/funds-to-complete.ts has said what this is since the day it was
+  // written: "Not an error either way - a deposit that disagrees means one of
+  // the two figures needs another look."
+  //
+  // NOTHING UNTRUE REACHES THE LENDER BY LETTING IT THROUGH. The sentence above
+  // only claims the funds are met when the two agree; when they do not it says
+  // the figure and stops. So the disagreement is printed here, in the notes, in
+  // front of the person pressing send - which is where a cross-check belongs.
   if (f.deposit !== null && !f.depositAgrees) {
-    missing.push(`The deposit recorded on the BC (${money(f.deposit)}) does not match the funds to complete (${money(f.toFind)})`)
+    lines.push(`The deposit recorded on the borrowing capacity is ${money(f.deposit)}, `
+      + `which does not match the funds to complete above. Check which of the two is right `
+      + `before this is submitted.`)
   }
   return { key: 'funds', heading: 'FUNDS TO COMPLETE', lines }
 }

@@ -2467,20 +2467,41 @@ Key assumptions: ${checklistText}`
                             </Field>
                           )
                         })()}
+                        {/* OWNER OCCUPIED OR INVESTMENT - ON EVERY SCENARIO.
+                          *
+                          * 16 Oct 2026. Fabio, on the Compliance tab of an
+                          * Equity release + purchase: "where are the boxes to
+                          * mark OO and INV loans?"
+                          *
+                          * There were two, and neither was reachable from here.
+                          * This block was gated to Debt recycling and Complex
+                          * refinance, so thirteen templates never drew it; the
+                          * other one lives in the deal structure strip, which is
+                          * editable on the Lending options tab and read-only on
+                          * Compliance - the tab that was complaining.
+                          *
+                          * So the question is asked where the splits are built.
+                          * It is the same field, written the same way, and the
+                          * strip still shows it. The property's recorded use
+                          * fills it in when nobody has - see
+                          * purposeFromTheProperty in lib/split-purpose.ts - and
+                          * an answer typed here beats it. */}
+                        <Field label="Purpose">
+                          <select className={selectCls} value={s.purpose || ''} onChange={e => updateSplit(i, 'purpose', e.target.value)}>
+                            <option value="">&mdash; select &mdash;</option>
+                            {PURPOSES.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}
+                          </select>
+                        </Field>
+                        {/* WHAT THE MONEY WAS FOR, in the broker's own words.
+                          * Only where the email prints it - on the two
+                          * scenarios that exist because each split carries a
+                          * history. Everywhere else it is a box nobody reads. */}
                         {(isDebtRecycling(template) || isComplexRefinance(template)) && (
-                          <>
-                            <Field label="Purpose">
-                              <select className={selectCls} value={s.purpose || ''} onChange={e => updateSplit(i, 'purpose', e.target.value)}>
-                                <option value="">&mdash; select &mdash;</option>
-                                {PURPOSES.map(x => <option key={x.id} value={x.id}>{x.label}</option>)}
-                              </select>
-                            </Field>
-                            <Field label={isComplexRefinance(template) ? "Original purpose of funds" : "What the funds were used for"}>
-                              <input className={inputCls} value={s.fundsUsedFor || ''}
-                                placeholder="e.g. purchase 12 Example Road"
-                                onChange={e => updateSplit(i, 'fundsUsedFor', e.target.value)} />
-                            </Field>
-                          </>
+                          <Field label={isComplexRefinance(template) ? "Original purpose of funds" : "What the funds were used for"}>
+                            <input className={inputCls} value={s.fundsUsedFor || ''}
+                              placeholder="e.g. purchase 12 Example Road"
+                              onChange={e => updateSplit(i, 'fundsUsedFor', e.target.value)} />
+                          </Field>
                         )}
                         {isRefinanceLinked && (
                           <Field label="Existing balance on this property">

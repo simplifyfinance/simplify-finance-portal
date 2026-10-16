@@ -308,7 +308,12 @@ export function splitsOf(deal: any): StructureSplit[] {
       // anything. See lib/split-purpose.ts.
       purpose: normalisePurpose(gs?.purpose) || normalisePurpose(s?.purpose)
         || normalisePurpose(bs?.purpose) || purposeFromTheProperty(deal, securityId),
-      funds: (txt(gs?.funds) as SplitFunds) || (txt(s?.funds) as SplitFunds) || '',
+      // AND THE ONE ROLE THE SECURITY SETTLES. A loan secured by the property
+      // being bought funds that purchase and does nothing else. Payout versus
+      // equity release is NOT derived - those two look identical from here and
+      // only a person knows which is which, so the screen keeps asking.
+      funds: (txt(gs?.funds) as SplitFunds) || (txt(s?.funds) as SplitFunds)
+        || (txt(securityId) === 'being-purchased' ? 'purchase' as SplitFunds : ''),
       // The BC holds one term for the whole deal; it prefills every split, and a
       // split that differs is changed here.
       termYears: txt(d?.termYears) || txt(gs?.termYears) || txt(s?.termYears) || txt(deal?.bc_data?.loanTerm),

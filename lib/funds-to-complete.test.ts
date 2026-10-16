@@ -215,9 +215,33 @@ describe('a deal that refinances AND buys — only the purchase money counts', (
     expect(fundsToComplete(mixed(['payout', 'equity', 'purchase'])).toFind).not.toBe(0)
   })
 
-  // A partial sum would look finished and be wrong.
-  it('offers no total at all until every split has been answered', () => {
+  // 16 Oct 2026. This used to assert that ONE unanswered role stopped the whole
+  // total, including on these splits - labelled "Existing loan refinanced",
+  // "Equity access" and "New purchase". The label is a recorded fact, and three
+  // other places have read it since purchaseLoanOf() was written: the LVR box
+  // on the lending options, the purchase card in its email, and the compliance
+  // pack. Refusing to read it HERE is not caution, it is a fourth opinion.
+  //
+  // It gives the same $650,000 the typed roles give.
+  it('reads a split that says what it is, even with no role typed', () => {
     const f = fundsToComplete(mixed(['payout', '', 'purchase']))
+    expect(amountOf(f, 'Loan funding the purchase')).toBe(650_000)
+    expect(f.toFind).toBe(245_000)
+    expect(f.workable).toBe(true)
+  })
+
+  // A PARTIAL SUM WOULD LOOK FINISHED AND BE WRONG, and that guard is intact.
+  // Nothing here says which split buys the house: no role typed, no security
+  // tagged, and no label that names one. So there is no total and the section
+  // says what it needs instead of inventing a figure.
+  it('offers no total when nothing on the deal says which split buys', () => {
+    const vague = mixed(null)
+    vague.lo_data.refinanceSplits = [
+      { id: 'a', label: 'Split 1', amount: '520,000', funds: '' },
+      { id: 'b', label: 'Split 2', amount: '180,000', funds: '' },
+      { id: 'c', label: 'Split 3', amount: '650,000', funds: '' },
+    ]
+    const f = fundsToComplete(vague)
     expect(f.workable).toBe(false)
     expect(f.toFind).toBe(0)
     expect(f.missing.join(' ')).toContain('both refinances and buys')

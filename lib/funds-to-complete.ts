@@ -1,7 +1,8 @@
 import { contractPrice, contractLoan, contractStampDuty } from './contract-figures'
 import { isLandPurchase, landLoanPayout, dutyApplies } from './construction'
 import { buildsSomething, purchasePriceOf } from './sale-build'
-import { securitiesWithPurchase, totalsOf, canBuyAndRefinance } from './securities'
+import { securitiesWithPurchase, totalsOf, canBuyAndRefinance,
+         BEING_PURCHASED, purchaseLoanOf } from './securities'
 
 // WHAT THE CLIENT HAS TO FIND.
 //
@@ -113,6 +114,18 @@ function mixed(deal: any): boolean {
   // refinancedDebt() itself is deliberately untouched: that debt IS being paid
   // out and the deal row is right to say so.
   if (txt(bc.template) === 'buy_sell') return false
+
+  // THE SCENARIO ITSELF IS AN ANSWER TO THIS QUESTION.
+  //
+  // 16 Oct 2026. Equity release + purchase refinances existing properties and
+  // buys one - that is what the template IS, and it is the only reason anybody
+  // picks it. Deciding "does this deal refinance" from whether a payout figure
+  // happens to be typed meant the answer flipped the moment those figures moved
+  // onto the securities, and the funds to complete went to $0 on a $700,000
+  // purchase. A scenario a person chose is firmer ground than a box they may
+  // not have reached yet.
+  if (canBuyAndRefinance(bc.template)) return true
+
   return (has(purchasePriceOf(bc)) || has(bc.newPurchasePrice)) && refinancedDebt(deal) > 0
 }
 
@@ -135,8 +148,40 @@ function purchaseLoan(deal: any): number | null {
   const fromLo = (lo.refinanceSplits || []).filter((s: any) => has(s?.amount) || txt(s?.label))
   const splits: any[] = fromLo.length > 0 ? fromLo : (deal?.bc_data?.splits || [])
   if (splits.length === 0) return null
-  if (splits.some((s: any) => !txt(s?.funds))) return null
-  return splits.filter((s: any) => txt(s.funds) === 'purchase')
+
+  // THE ONE ANSWER TO "WHAT BUYS THE HOUSE", shared with the LVR box on the
+  // lending options and the purchase card in its email. It reads the split's
+  // security first and its label second, so a deal recorded before the TBA
+  // security existed still comes out right. See lib/securities.ts.
+  const buying = purchaseLoanOf({ splits })
+  if (buying > 0) return buying
+
+  // THE HOUSE A SPLIT IS SECURED BY ANSWERS THIS WITHOUT BEING ASKED AGAIN.
+  //
+  // 16 Oct 2026. A loan secured by a property the clients already own does not
+  // fund the purchase of a different one, and a loan secured by the property
+  // being purchased does nothing else. Both are recorded facts on the split -
+  // see BEING_PURCHASED in lib/securities.ts - so where every split carries a
+  // security there is nothing left to ask.
+  //
+  // A TYPED ROLE STILL WINS, and a split carrying neither still stops this
+  // dead. Null means "cannot be worked out yet"; a partial sum would look
+  // finished and be wrong, which is the whole reason this returns null at all.
+  // A NARROWER QUESTION THAN THE ONE ON SCREEN, ON PURPOSE. The deal structure
+  // block asks a three-way role - funds the purchase, pays out debt, releases
+  // equity - and payout versus equity is a real distinction only a person can
+  // make. This only needs yes or no to the first one, and a split secured by a
+  // house the clients already own answers no with certainty.
+  const fundsThePurchase = (x: any): boolean | null => {
+    const typed = txt(x?.funds)
+    if (typed) return typed === 'purchase'
+    const sec = txt(x?.securityId)
+    if (sec === BEING_PURCHASED) return true
+    if (sec) return false
+    return null
+  }
+  if (splits.some((s: any) => fundsThePurchase(s) === null)) return null
+  return splits.filter((s: any) => fundsThePurchase(s) === true)
     .reduce((t: number, s: any) => t + num(s?.amount), 0)
 }
 
@@ -442,10 +487,29 @@ export function refinancedDebt(deal: any): number {
       if (txt(l?.status) === 'To be refinanced') flagged += num(l?.balance)
     }
   }
+  if (PURCHASE_ONLY_TEMPLATES.has(txt(bc.template))) return flagged
+
+  // WHAT EACH SECURITY OWES, WHICH IS WHERE THIS FIGURE NOW LIVES.
+  //
+  // 16 Oct 2026, and this one is mine. Moving the balances onto the securities
+  // emptied bc.existingLoanBal, and this function did not know about the new
+  // boxes - so a deal refinancing $1,116,000 across two houses reported no
+  // refinanced debt at all.
+  //
+  // That is not a cosmetic figure. mixed() asks "does this deal refinance AND
+  // buy" by calling this, so the answer flipped to "no", purchaseLoan() counted
+  // the WHOLE $1,855,000 as money reaching the purchase, and the funds to
+  // complete came out at $0 on a $700,000 purchase. Fabio: "why thinks deposit
+  // is $0 when you can see purchase price breakdown has 290 from equity?"
+  //
+  // Newest first, and never added together: a deal has its balances in one
+  // place or the other, and summing the two would double the payout.
+  const perSecurity = Object.values(bc?.securityBalances || {})
+    .reduce((t: number, v: any) => t + num(v), 0)
+  if (perSecurity > 0) return perSecurity
+
   // Unchanged for every scenario that does refinance: the BC's figure wins,
   // because it is the payout the deal was priced on.
-  if (!PURCHASE_ONLY_TEMPLATES.has(txt(bc.template)) && has(bc.existingLoanBal)) {
-    return num(bc.existingLoanBal)
-  }
+  if (has(bc.existingLoanBal)) return num(bc.existingLoanBal)
   return flagged
 }

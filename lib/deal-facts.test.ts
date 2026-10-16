@@ -200,13 +200,21 @@ describe('funds to complete', () => {
     expect(all(d)).not.toContain('FUNDS TO COMPLETE')
   })
 
-  // The Chapman deal refinances a property AND buys one. The splits carry no
-  // role yet, so there is no total — but the section still appears, saying what
-  // it needs.
-  it('asks what each split does before totalling a mixed deal', () => {
+  // The Chapman deal refinances a property AND buys one, and its third split is
+  // labelled "New purchase". 16 Oct 2026: that label is read now, so the total
+  // appears without anybody typing a role - 850,000 + 45,000 - 650,000.
+  it('reads the split that names itself on a mixed deal', () => {
     const out = all(chapman())
-    expect(out).toContain('both refinances and buys')
-    expect(out).not.toMatch(/= Funds to complete: \$/)
+    expect(out).not.toContain('both refinances and buys')
+    expect(out).toContain('245,000')
+  })
+
+  // The guard is still there for a deal where nothing names the purchase.
+  it('but asks when no split says which one buys', () => {
+    const d = chapman()
+    d.bc_data.splits = d.bc_data.splits.map((x: any, i: number) =>
+      ({ ...x, label: `Split ${i + 1}` }))
+    expect(all(d)).toContain('both refinances and buys')
   })
 
   // Answered, the real number appears: 850,000 + 45,000 − 650,000. Only the
