@@ -22,6 +22,13 @@ import { realDealsOnly } from '@/lib/test-deal'
 
 type Row = { id: string; deal_name: string; [k: string]: any }
 
+// The search result first, then anything already loaded that it did not
+// return. One row per deal - a deal in both lists must not appear twice.
+function mergeById(first: Row[], rest: Row[]): Row[] {
+  const seen = new Set(first.map(r => String(r.id)))
+  return [...first, ...rest.filter(r => !seen.has(String(r.id)))]
+}
+
 export default function MilestoneFromTemplates({ templateId, onClose }: {
   templateId: TemplateId
   onClose: () => void
@@ -31,6 +38,10 @@ export default function MilestoneFromTemplates({ templateId, onClose }: {
   const [loadError, setLoadError] = useState('')
   const [term, setTerm] = useState('')
   const [picked, setPicked] = useState<Row | null>(null)
+  // WHAT THE DATABASE SAID WHEN SOMEBODY TYPED. Separate from `deals`, which is
+  // the browse list, so clearing the box goes straight back to it.
+  const [found, setFound] = useState<Row[] | null>(null)
+  const [searching, setSearching] = useState(false)
   const name = TEMPLATES.find(t => t.id === templateId)?.name || 'Email'
 
   useEffect(() => {
@@ -56,6 +67,53 @@ export default function MilestoneFromTemplates({ templateId, onClose }: {
     return () => { alive = false }
   }, [])
 
+  // TYPING ASKS THE DATABASE. IT DOES NOT SIFT WHAT IS ALREADY HERE.
+  //
+  // 16 Oct 2026. Fabio: "template box is not searching - Richard Lake is marked
+  // formal and not showing." The search was working perfectly. It had nothing
+  // to find.
+  //
+  // The load above takes the 300 most recent deals and the browser filters
+  // those. On his book that is 300 rows of which 39 survive realDealsOnly -
+  // the rest are test deals and copies - and the Lake deal, opened on 11 Sep,
+  // is older than the cut. So it was never in the list, the filter correctly
+  // matched nothing, and the screen said "No deal matches that", which reads as
+  // "you typed it wrong".
+  //
+  // THE FILE'S OWN RULE, BROKEN BY ITS OWN QUERY. The note at the top says a
+  // deal missing from the list is a question somebody has to ask, and that is
+  // why nothing here is hidden for not being ready. A silent limit of 300 is
+  // the same fault arriving through the back door.
+  //
+  // So a term goes to the database. The browse list stays as it was - a search
+  // box that only works when you have typed enough is worse than one that
+  // always works - and the result replaces it only while there is a term.
+  useEffect(() => {
+    const t = term.trim()
+    if (!t) { setFound(null); setSearching(false); return }
+    let alive = true
+    setSearching(true)
+    // Debounced, because this runs on every keystroke and each one is a query.
+    const id = setTimeout(() => {
+      createSupabaseBrowser()
+        .from('deals').select('*, clients(first_name, last_name, email)')
+        // The deal name carries the clients' names on every deal this portal
+        // has made - "Richard Lake & Letitia Lake 2026" - so one ilike covers
+        // both of the things somebody types. The client columns are searched
+        // too, for the deals named something else entirely.
+        .or(`deal_name.ilike.%${t.replace(/[%,()]/g, '')}%`)
+        .order('created_at', { ascending: false }).limit(40)
+        .then(({ data, error }: any) => {
+          if (!alive) return
+          if (error) setLoadError(error.message || 'the search could not run')
+          else setLoadError('')
+          setFound(realDealsOnly(data as any[]) as Row[])
+          setSearching(false)
+        })
+    }, 250)
+    return () => { alive = false; clearTimeout(id) }
+  }, [term])
+
   if (picked) {
     return (
       <SendScreen deal={picked} templateId={templateId}
@@ -65,7 +123,11 @@ export default function MilestoneFromTemplates({ templateId, onClose }: {
   }
 
   const t = term.trim().toLowerCase()
-  const rows = deals
+  // WHAT THE DATABASE FOUND, WHERE SOMEBODY HAS TYPED. The local filter stays
+  // on top of it: it catches a client name the deal is not named after, and it
+  // keeps the list responsive between keystrokes while the query is in flight.
+  const source = t ? mergeById(found || [], deals) : deals
+  const rows = source
     .map(d => ({ d, item: menuFor(d).find(m => m.id === templateId) }))
     .filter(({ d }) => !t
       || String(d.deal_name || '').toLowerCase().includes(t)
@@ -104,7 +166,18 @@ export default function MilestoneFromTemplates({ templateId, onClose }: {
           )}
 
           {!loading && !loadError && rows.length === 0 && (
-            <p className="mt-3 text-[12.5px] text-faint">No deal matches that.</p>
+            <p className="mt-3 text-[12.5px] text-faint">
+              {searching ? 'Searching every deal\u2026' : 'No deal matches that \u2014 every deal was searched, not just the ones listed.'}
+            </p>
+          )}
+
+          {/* WHAT YOU ARE LOOKING AT, SAID OUT LOUD. The browse list is the
+              recent deals; the box reaches the rest. Before this, a deal older
+              than the list was simply not there and nothing said so. */}
+          {!loading && !loadError && !t && rows.length > 0 && (
+            <p className="mt-2 mb-0 text-[11.5px] text-faint">
+              The {rows.length} most recent. Type a name to search every deal.
+            </p>
           )}
 
           {!loading && rows.length > 0 && (
