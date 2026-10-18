@@ -93,7 +93,27 @@ const str = (v: any): string => {
 }
 const dateStr = (v: any): string | null => {
   if (!v) return null
-  if (v instanceof Date) return v.toISOString().slice(0, 10)
+  // AN INVALID DATE IS STILL A DATE, AND THAT COST A WHOLE STATEMENT.
+  //
+  // 18 Oct 2026. Fabio: "all of a sudden Mark's and Fabio's commission reports
+  // are not reading." One file, refused, with the words "Invalid time value"
+  // and nothing else - not which row, not which column, not what to do.
+  //
+  // new Date('rubbish') is an Invalid Date object. It passes `instanceof Date`,
+  // and then toISOString() THROWS RangeError: Invalid time value. The throw
+  // went up through parseSfg to the catch in app/api/commission-import, which
+  // refused the entire file. One unreadable cell in a settlement date column
+  // and six months of commission does not load.
+  //
+  // The line below this one has guarded against exactly this since it was
+  // written - isNaN(d.getTime()) - for dates arriving as text. The Date branch
+  // never did, because a Date is "already a date" right up until it isn't.
+  //
+  // Null is a settlement date this line does not have, which is a gap somebody
+  // can see on one row. A thrown error is a statement nobody can load.
+  if (v instanceof Date) {
+    return isNaN(v.getTime()) ? null : v.toISOString().slice(0, 10)
+  }
   const s = str(v)
   const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/)
   if (m) return `${m[3]}-${m[2]}-${m[1]}`

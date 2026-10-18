@@ -37,7 +37,7 @@ import { totalLimit as recycledLimit, purposeLine, byPurpose, everySplitHasAPurp
          undrawnNote, STRUCTURE_NOTE } from '@/lib/debt-recycling'
 import { groupsOf, undrawnNoteFor, originalPurposeLine, aboutThisStructure,
          openingLine as refinanceOpening, securedByMany, securedHeading, releaseTotal,
-         ACCOUNTANT_NOTE as REFINANCE_ACCOUNTANT_NOTE } from '@/lib/complex-refinance'
+         ACCOUNTANT_NOTE as REFINANCE_ACCOUNTANT_NOTE, securityWorth } from '@/lib/complex-refinance'
 import { siteUrl } from '@/lib/site-url'
 
 
@@ -700,7 +700,16 @@ export async function POST(req: NextRequest) {
       const existingLoanN = parseFloat((d.existingLoanBal || '0').replace(/,/g, '')) || 0
       const equityReleaseN = parseFloat((opt.equityReleaseAmount || '0').replace(/,/g, '')) || 0
       // ONE COPY OF THE ARITHMETIC, shared with the box on the broker's screen.
-      const lvrNum = altLvrEquity(opt, d.existingLoanBal, d.propertyValue).percent
+      // AGAINST THE SECURITIES, AND NOT PRINTED AT ALL WHEN IT IS NOT KNOWN.
+      //
+      // 18 Oct 2026, found by scripts/audit.sh. pct() in lib/alt-scenario.ts
+      // returns 0 when it has no security value, and propertyValue is empty on
+      // every deal whose values live on the securities. So this column printed
+      // "LVR: 0%" to a client - and because the LMI wording below is gated on
+      // lvrNum > 80, a deal actually over 80% quietly lost its LMI paragraph
+      // as well. A zero that switches off a warning is the worst shape this
+      // fault takes.
+      const lvrNum = altLvrEquity(opt, d.existingLoanBal, securityWorth(d) || d.propertyValue).percent
       const actions = []
       if (opt.ccPayoff) actions.push((Number(opt.ccPayoffAmount) || 0) > 0 ? `Reduce credit card by ${money(opt.ccPayoffAmount)}` : 'Credit card closed')
       if (opt.hecsPayoff) actions.push((Number(opt.hecsPayoffAmount) || 0) > 0 ? `Reduce HECS by ${money(opt.hecsPayoffAmount)}` : 'HECS closed')
@@ -715,7 +724,7 @@ export async function POST(req: NextRequest) {
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:8px"><tr><td bgcolor="#ffffff" align="center" style="background:#ffffff;border-radius:4px;padding:6px 8px;font-size:13px;font-weight:700;color:#343333;font-family:Arial,sans-serif">${label}</td></tr></table>
         ${lineIf('Existing loan balance', moneyIf(d.existingLoanBal))}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Equity release amount: ${money(opt.equityReleaseAmount) || ''}</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
+        ${lvrNum > 0 ? `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>` : ''}${lmiLine}
         ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px"><span style="color:#343333;">To achieve this option:</span></p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">&#10003; ${a}</span></p>`).join('') : ''}${nonBankNote}
       </td>`
     }

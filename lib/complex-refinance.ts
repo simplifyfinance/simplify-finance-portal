@@ -318,6 +318,20 @@ export function securedHeading(bc: any): string {
 // WHAT THE HOUSES OWE TODAY, ADDED UP. Same shape and same reason as
 // releaseTotal below: the deal-level box holds one house's figure once the
 // securities are in use, and a client email reading it names the wrong number.
+// WHAT THE TICKED HOUSES ARE WORTH, READ OFF THE FACT FIND.
+//
+// 18 Oct 2026, found by the two-day sweep. Not derived from the splits like
+// groupsOf() - a security with no split on it is still security, and the figure
+// an LVR divides by must not depend on whether somebody has written the loan
+// against it yet.
+export function securityWorth(bc: any): number {
+  const ids = new Set((Array.isArray(bc?.securityIds) ? bc.securityIds : []).map(txt).filter(Boolean))
+  if (ids.size === 0) return 0
+  const list = Array.isArray(bc?.ffProperties) ? bc.ffProperties : []
+  return list.filter((p: any) => ids.has(txt(p?.id)))
+    .reduce((t: number, p: any) => t + num(p?.value), 0)
+}
+
 export function balanceTotal(bc: any): number {
   const ids = Array.isArray(bc?.securityIds) ? bc.securityIds.map(txt).filter(Boolean) : []
   const total = ids.reduce((sum: number, id: string) => sum + balanceFor(bc, id), 0)

@@ -58,7 +58,13 @@ function sheet(wb: ExcelJS.Workbook, name: string) {
 function txt(v: any): string {
   if (v === null || v === undefined) return ''
   if (typeof v === 'object') {
-    if (v instanceof Date) return v.toISOString().slice(0, 10)
+    // An Invalid Date is still `instanceof Date`, and toISOString() throws on one
+    // - RangeError: Invalid time value. That took a whole SFG commission
+    // statement down on 18 Oct 2026; see the long note in lib/sfg.ts. Same shape,
+    // same guard, so one bad cell costs its own row and nothing more.
+    if (v instanceof Date) {
+      return isNaN(v.getTime()) ? '' : v.toISOString().slice(0, 10)
+    }
     if ('text' in v) return String((v as any).text).trim()
     if ('result' in v) return String((v as any).result).trim()
     if ('richText' in v) return (v as any).richText.map((r: any) => r.text).join('').trim()
@@ -74,7 +80,13 @@ function num(v: any): number {
 }
 
 function isoDate(v: any): string {
-  if (v instanceof Date) return v.toISOString().slice(0, 10)
+  // An Invalid Date is still `instanceof Date`, and toISOString() throws on one
+  // - RangeError: Invalid time value. That took a whole SFG commission
+  // statement down on 18 Oct 2026; see the long note in lib/sfg.ts. Same shape,
+  // same guard, so one bad cell costs its own row and nothing more.
+  if (v instanceof Date) {
+    return isNaN(v.getTime()) ? '' : v.toISOString().slice(0, 10)
+  }
   const s = txt(v)
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/)
   if (m) return `${m[1]}-${m[2]}-${m[3]}`

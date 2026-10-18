@@ -96,7 +96,20 @@ out=$(grep -rn "lvr\|LVR" lib/*.ts "app/(app)" app/api components --include=*.ts
 if [ -n "$out" ]; then while IFS= read -r l; do hit "$l"; done <<< "$out"; else clean; fi
 
 # 7 --------------------------------------------------------------------------
-section '7. The suite itself'
+# new Date('rubbish') is an Invalid Date. It passes `instanceof Date` and then
+# toISOString() THROWS. On 18 Oct 2026 one unreadable settlement-date cell
+# refused an entire SFG commission statement with the words "Invalid time
+# value" and nothing else. Three other importers had the same line.
+section '7. An Invalid Date read as a date  (instanceof Date, then toISOString)'
+# Comments explaining the fault are not the fault. Both grep's own separators
+# are stripped: file:NN: for a match, file-NN- for a context line.
+out=$(grep -rn -A2 "instanceof Date" lib app components --include=*.ts --include=*.tsx 2>/dev/null \
+      | grep -v '\.test\.' | grep "toISOString" | grep -v "isNaN" \
+      | grep -vE '^[^:]+[:-][0-9]+[:-][[:space:]]*(//|\*)' || true)
+if [ -n "$out" ]; then while IFS= read -r l; do hit "$l"; done <<< "$out"; else clean; fi
+
+# 8 --------------------------------------------------------------------------
+section '8. The suite itself'
 printf '  test files: %s\n' "$(ls lib/*.test.ts | wc -l | tr -d ' ')"
 printf '  render-based email tests: %s\n' "$(grep -rl "from '../app/api/generate-email/route'" lib/*.test.ts 2>/dev/null | wc -l | tr -d ' ')"
 

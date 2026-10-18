@@ -130,7 +130,13 @@ export function whatIsMissing(m: Mapping): string[] {
 
 const txt = (v: any): string => {
   if (v === null || v === undefined) return ''
-  if (v instanceof Date) return v.toISOString().slice(0, 10)
+  // An Invalid Date is still `instanceof Date`, and toISOString() throws on one
+  // - RangeError: Invalid time value. That took a whole SFG commission
+  // statement down on 18 Oct 2026; see the long note in lib/sfg.ts. Same shape,
+  // same guard, so one bad cell costs its own row and nothing more.
+  if (v instanceof Date) {
+    return isNaN(v.getTime()) ? '' : v.toISOString().slice(0, 10)
+  }
   if (typeof v === 'object') {
     // ExcelJS hands back { text, hyperlink } for a linked cell and
     // { richText: [...] } for a formatted one.
