@@ -37,7 +37,7 @@ import { totalLimit as recycledLimit, purposeLine, byPurpose, everySplitHasAPurp
          undrawnNote, STRUCTURE_NOTE } from '@/lib/debt-recycling'
 import { groupsOf, undrawnNoteFor, originalPurposeLine, aboutThisStructure,
          openingLine as refinanceOpening, securedByMany, securedHeading, releaseTotal,
-         ACCOUNTANT_NOTE as REFINANCE_ACCOUNTANT_NOTE, securityWorth } from '@/lib/complex-refinance'
+         ACCOUNTANT_NOTE as REFINANCE_ACCOUNTANT_NOTE, securityWorth, STAND_ALONE_NOTE } from '@/lib/complex-refinance'
 import { siteUrl } from '@/lib/site-url'
 
 
@@ -317,6 +317,33 @@ export function refinanceBoxes(d: any) {
       // does not assess. The combined figure follows the cards.
       (g.lvr === null ? '' : row('LVR', `${g.lvr}%`)))
   }).join('')
+}
+
+// THE SAME TWO BOXES, WITH THE EQUITY ROWS THIS SCENARIO NEEDS.
+//
+// 18 Oct 2026, mocked and approved before a line was written. The difference
+// from refinanceBoxes() is an "Equity released" row and both loans listed under
+// the property they sit on - a refinance here usually has two splits per house,
+// the balance being moved and the money coming out, and inlining the first one
+// the way a straight refinance does would bury the second.
+//
+// A PROPERTY RELEASING NOTHING GETS NO EQUITY ROW. That is the "$0" that
+// reached a client on 16 October, and moneyIf below is what stops it.
+export function equityBoxes(d: any) {
+  return groupsOf(d).filter(g => g.property).map(g =>
+    card(g.heading + (g.value ? ` \u2014 valued at ${g.value}` : ''),
+      rowIf('Existing loan balance', moneyIf(g.balance)) +
+      rowIf('Equity released', moneyIf(g.release)) +
+      rowIf('Limit against this property', moneyIf(g.limit)) +
+      g.splits.map((sp: any) => {
+        const under = [
+          txt(sp?.rate) ? `${txt(sp.rate)}% p.a.*` : '',
+          repaymentTypeLine(sp, d.loanTerm) || '',
+          repaymentOf(sp, d.loanTerm) ? `${repaymentOf(sp, d.loanTerm)} per month` : '',
+        ].filter(Boolean).join(' \u00b7 ')
+        return row(txt(sp?.label) || 'Split', money(sp?.amount)) + (under ? note(under) : '')
+      }).join('') +
+      (g.lvr === null ? '' : row('LVR', `${g.lvr}%`)))).join('')
 }
 
 // The one line under the boxes. Never a card of its own - Fabio, 1 Oct 2026, on
@@ -741,6 +768,29 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;font-weight:600;color:#7a5c3a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px"><span style="color:#7a5c3a;">Equity Release Options</span></p>
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptionsRE.join('')}</tr></table>
       </td></tr></table>` +
+      bufferNoteBlock(template) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
+      check(checkItems) +
+      p('The numbers are looking strong. The next step is finding the right lender and rate for your situation \u2014 and that is exactly what we will do for you.') +
+       notesBox(notes) + sig(b)
+
+  } else if (template === 'refinance_equity' && securedByMany(d)) {
+    // TWO HOUSES, TWO BOXES, AND THE EQUITY SHOWN UNDER THE ONE IT COMES OUT OF.
+    //
+    // On 16 Oct this template was given the Complex refinance layout and Fabio
+    // rejected it - "that is not an approved template" - so it went back to its
+    // single-property email and stayed there until this was drawn and approved.
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
+      // The releases added up across the houses, not the one deal-level box
+      // that is empty the moment the securities are in use.
+      p(`Based on your current financial position, you have sufficient capacity to refinance your properties and access approximately ${amt(releaseTotal(d) || '', '[equity amount]')} in equity, while also securing a competitive rate.`) +
+      p13('Here is a breakdown of the structure:') +
+      equityBoxes(d) +
+      securedTotalLine(d) +
+      card('About this structure',
+        note(STAND_ALONE_NOTE) +
+        aboutThisStructure(d).map((l: string) => note(l)).join('') +
+        note(REFINANCE_ACCOUNTANT_NOTE)) +
       bufferNoteBlock(template) +
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +

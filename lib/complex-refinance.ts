@@ -362,6 +362,19 @@ export function openingLine(bc: any): string {
 // Fabio, 1 Oct 2026, asked whether any tax wording survives here: "keep
 // accoutnant line anyway". No deductible figure above it, so it makes no claim
 // to qualify - it says whose question it is, what we did, and what this is not.
+// EACH HOUSE STANDS ON ITS OWN.
+//
+// 18 Oct 2026. I wrote this sentence into a mock and then refused to ship it,
+// because nothing on the BC records whether a lender has cross-collateralised
+// two securities - that is the lender's structure, not ours. Asked plainly,
+// Fabio confirmed it is always true of this scenario: "yes put the line in."
+//
+// So it is his answer about how he writes these deals, not the portal's
+// inference from the figures. It is used by Refinance + equity release with
+// several securities, and nowhere else.
+export const STAND_ALONE_NOTE =
+  'Each property stands on its own security, so the loans are not cross-collateralised.'
+
 export const ACCOUNTANT_NOTE =
   'How these loans are treated in your tax return is a matter for your accountant, and we would ' +
   'encourage you to speak with them before we proceed. This is not tax advice.'

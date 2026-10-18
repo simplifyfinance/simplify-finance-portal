@@ -171,14 +171,29 @@ describe('the email route reads the answer rather than the old boxes', () => {
     expect(src).toContain('refinanceBoxes(d)')
   })
 
-  it('and refinance + equity release has no second layout at all', () => {
-    expect(src).not.toContain("template === 'refinance_equity' && securedByMany(d)")
+  // 18 Oct 2026. On the 16th this asserted the opposite: after the Complex
+  // refinance layout was rejected here, Refinance + equity release went back to
+  // its single-property email and was to STAY there until a layout for it was
+  // drawn and approved. That happened - mocked, approved, and rendered in
+  // lib/two-houses-and-the-equity.test.ts. The rule the test was protecting was
+  // never "no second layout", it was "nothing unapproved".
+  it('refinance + equity release has the layout that was approved for it', () => {
+    expect(src).toContain("template === 'refinance_equity' && securedByMany(d)")
+    expect(src).toContain('function equityBoxes(')
+    // And still not the Complex refinance one.
+    expect((src.match(/propertyCards\(d\)/g) || []).length).toBe(1)
   })
 
   // A ZERO IS NOT A FIGURE. money(0) is "$0", which rowIf reads as one.
+  //
+  // Two cards print this row now and they guard it two different ways - one
+  // tests the number, the other hands rowIf a blank. Both are correct; what
+  // must never appear is money() going straight into rowIf, which is what
+  // printed "Equity released $0" to a client.
   it('no card prints a row for a release of nothing', () => {
-    expect(src).not.toContain("rowIf('Equity released'")
     expect(src).toContain("g.release > 0 ? row('Equity released'")
+    expect(src).toContain("rowIf('Equity released', moneyIf(g.release))")
+    expect(src).not.toMatch(/rowIf\('Equity released', *money\(/)
   })
 
   it('and the old single-property branches are still there underneath', () => {
