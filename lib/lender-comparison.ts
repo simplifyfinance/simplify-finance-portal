@@ -103,6 +103,15 @@ const UPFRONT = ['applicationFee', 'establishmentFee', 'valuationFee', 'legalFee
 // Paid every year for the life of the loan.
 const ONGOING = ['annualFee']
 
+// A MONTHLY FEE IS THE SAME QUESTION IN A DIFFERENT UNIT.
+//
+// 18 Oct 2026. Adding 'monthlyFee' to the list above would have compared $10 a
+// month against $395 a year and called the first one cheaper by $385. The
+// comparison needs one unit, so it is annualised HERE - and only here. What a
+// client reads still says "$10 per month", in the lender's own words, because
+// that is what they will be charged and when.
+const monthlyAsAnnual = (l: any) => fee(l?.monthlyFee) * 12
+
 // WHERE THE RATES ACTUALLY ARE.
 //
 // 15 Sep 2026, Kylie's ME Bank deal. A lender card has two places a rate can be
@@ -149,8 +158,8 @@ export function optionsOf(lo: any): Option[] {
         lowestRate: rates.length ? Math.min(...rates.map(r => r.rate)) : null,
         upfront: UPFRONT.reduce((t, k) => t + fee(l?.[k]), 0),
         upfrontKnown: UPFRONT.some(k => recorded(l?.[k])),
-        ongoing: ONGOING.reduce((t, k) => t + fee(l?.[k]), 0),
-        ongoingKnown: ONGOING.some(k => recorded(l?.[k])),
+        ongoing: ONGOING.reduce((t, k) => t + fee(l?.[k]), 0) + monthlyAsAnnual(l),
+        ongoingKnown: ONGOING.some(k => recorded(l?.[k])) || recorded(l?.monthlyFee),
         // One rule for the whole portal - see lib/offset.ts.
         offset: hasOffset(offsetAnswer),
         offsetAnswer,

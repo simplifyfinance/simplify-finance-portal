@@ -103,6 +103,7 @@ type LenderProduct = {
   loan_purpose: string
   application_fee: string | null
   annual_fee: string | null
+  monthly_fee: string | null
   valuation_fee: string | null
   legal_fee: string | null
   rate_lock_fee: string | null
@@ -137,6 +138,11 @@ type LenderOption = {
   // charging it at settlement. See lib/lo-purchase-block.ts.
   feeInLoan?: boolean
   annualFee: string
+  // ALREADY HERE, AND THAT IS THE POINT. 18 Oct 2026: this field has existed
+  // since bridging was built - establishment fee, monthly fee, doc processing
+  // fee - and a monthly fee on an ordinary loan had nowhere to come FROM,
+  // because the product library had no box for it. The field was never the
+  // gap; the library was. See monthly_fee on LenderProduct below.
   valuationFee: string
   legalFee: string
   // What this bank calls it, copied at the moment the lender was chosen so a
@@ -1275,7 +1281,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   function selectLenderName(i: number, lenderId: string) {
     const lender = uniqueLenders.find(l => l.id === lenderId)
     const updated = [...d.lenders]
-    updated[i] = { ...updated[i], lenderId, lenderName: lender?.name || '', legalFeeLabel: legalFeeLabel(lender), lenderProductId: '', productName: '', applicationFee: '', feeInLoan: false, annualFee: '', valuationFee: '', legalFee: '', rateLockFee: '', earlyRepaymentFee: '', dischargeFee: '', offsetAccount: '', libraryNotes: '' }
+    updated[i] = { ...updated[i], lenderId, lenderName: lender?.name || '', legalFeeLabel: legalFeeLabel(lender), lenderProductId: '', productName: '', applicationFee: '', feeInLoan: false, annualFee: '', monthlyFee: '', valuationFee: '', legalFee: '', rateLockFee: '', earlyRepaymentFee: '', dischargeFee: '', offsetAccount: '', libraryNotes: '' }
     setD({ ...d, lenders: updated })
   }
 
@@ -1283,7 +1289,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     const product = allProducts.find(p => p.id === productId)
     if (!product) return
     const updated = [...d.lenders]
-    updated[i] = { ...updated[i], lenderProductId: productId, productName: product.product_name, applicationFee: product.application_fee || '', feeInLoan: false, annualFee: product.annual_fee || '', valuationFee: product.valuation_fee || '', legalFee: product.legal_fee || '', rateLockFee: product.rate_lock_fee || '', earlyRepaymentFee: product.early_repayment_fee || '', dischargeFee: product.discharge_fee || '', offsetAccount: product.offset_account ? (product.multiple_offsets ? 'Yes — multiple offsets' : 'Yes') : 'No', libraryNotes: product.notes || '' }
+    updated[i] = { ...updated[i], lenderProductId: productId, productName: product.product_name, applicationFee: product.application_fee || '', feeInLoan: false, annualFee: product.annual_fee || '', monthlyFee: product.monthly_fee || '', valuationFee: product.valuation_fee || '', legalFee: product.legal_fee || '', rateLockFee: product.rate_lock_fee || '', earlyRepaymentFee: product.early_repayment_fee || '', dischargeFee: product.discharge_fee || '', offsetAccount: product.offset_account ? (product.multiple_offsets ? 'Yes — multiple offsets' : 'Yes') : 'No', libraryNotes: product.notes || '' }
     setD({ ...d, lenders: updated })
   }
 
@@ -2522,6 +2528,14 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                           </label>
                         ) : undefined} />
                       <LibraryField label="Annual fee" value={lender.annualFee} onChange={v => updateLender(i, 'annualFee', v)} />
+                      {/* NOT ON A BRIDGE. Bridging has its own Monthly fee box in
+                          the Bridging structure block below, beside the
+                          establishment and doc processing fees - the same field,
+                          where somebody writing a bridge is already looking. Two
+                          boxes onto one value is how figures come to disagree. */}
+                      {!isBridging && (
+                        <LibraryField label="Monthly fee" value={lender.monthlyFee} onChange={v => updateLender(i, 'monthlyFee', v)} />
+                      )}
                       <LibraryField label="Valuation fee" value={lender.valuationFee} onChange={v => updateLender(i, 'valuationFee', v)} />
                       <LibraryField label={rowLegalFeeLabel(lender)} value={lender.legalFee} onChange={v => updateLender(i, 'legalFee', v)} />
                       <LibraryField label="Rate lock fee" value={lender.rateLockFee} onChange={v => updateLender(i, 'rateLockFee', v)} />

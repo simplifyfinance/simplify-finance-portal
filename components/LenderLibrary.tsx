@@ -33,6 +33,14 @@ type Product = {
   loan_purpose: string
   application_fee: string
   annual_fee: string
+  // A LENDER CHARGES ONE OR THE OTHER, AND THE BOX HAS TO EXIST FOR BOTH.
+  //
+  // 18 Oct 2026. Fabio: "I need a box that says monthly fees on product
+  // library, it is causing confusion." $10 a month went into the annual box as
+  // $120 - a figure the lender never wrote - or into Internal notes, which
+  // nothing reads. Text like every other fee here: what the lender says, in
+  // their words.
+  monthly_fee: string
   valuation_fee: string
   rate_lock_fee: string
   early_repayment_fee: string
@@ -50,6 +58,7 @@ type ExtractedProduct = {
   loan_purpose: string
   application_fee: string | null
   annual_fee: string | null
+  monthly_fee: string | null
   valuation_fee: string | null
   rate_lock_fee: string | null
   early_repayment_fee: string | null
@@ -68,6 +77,7 @@ const emptyProduct = {
   loan_purpose: 'both',
   application_fee: '',
   annual_fee: '',
+  monthly_fee: '',
   valuation_fee: '',
   rate_lock_fee: '',
   early_repayment_fee: '',
@@ -327,6 +337,7 @@ export default function LenderLibrary() {
       loan_purpose: product.loan_purpose,
       application_fee: product.application_fee || '',
       annual_fee: product.annual_fee || '',
+      monthly_fee: product.monthly_fee || '',
       valuation_fee: product.valuation_fee || '',
       early_repayment_fee: product.early_repayment_fee || '',
       discharge_fee: product.discharge_fee || '',
@@ -349,7 +360,7 @@ export default function LenderLibrary() {
   // the client sees 250 next to another lender's $350. Fabio, 4 Sep 2026: "it
   // keeps dropping off the dollar sign." A bare number gets one; a sentence is
   // left exactly as typed. See feeText in lib/lender-fees.ts.
-  const FEE_FIELDS = ['application_fee', 'annual_fee', 'valuation_fee', 'legal_fee',
+  const FEE_FIELDS = ['application_fee', 'annual_fee', 'monthly_fee', 'valuation_fee', 'legal_fee',
                       'rate_lock_fee', 'early_repayment_fee', 'discharge_fee'] as const
 
   function withTidyFees(form: typeof productForm) {
@@ -531,6 +542,7 @@ export default function LenderLibrary() {
         loan_purpose: p.loan_purpose,
         application_fee: p.application_fee || '',
         annual_fee: p.annual_fee || '',
+        monthly_fee: p.monthly_fee || '',
         valuation_fee: p.valuation_fee || '',
         early_repayment_fee: p.early_repayment_fee || '',
         discharge_fee: p.discharge_fee || '',
@@ -812,7 +824,10 @@ export default function LenderLibrary() {
                         <th className="font-bold px-2.5 py-2 border-b border-line-soft w-[9%]">Type</th>
                         <th className="font-bold px-2.5 py-2 border-b border-line-soft w-[8%]">Purpose</th>
                         <th className="font-bold px-2.5 py-2 border-b border-line-soft w-[7%] text-right">App</th>
-                        <th className="font-bold px-2.5 py-2 border-b border-line-soft w-[7%] text-right">Annual</th>
+                        {/* ONE COLUMN, NOT TWO. A lender charges an annual fee or a monthly one, so
+    a second column would be empty on every row. Headed "Ongoing" and showing
+    whichever is filled in - the same word the client comparison uses. */}
+                        <th className="font-bold px-2.5 py-2 border-b border-line-soft w-[7%] text-right">Ongoing</th>
                         <th className="font-bold px-2.5 py-2 border-b border-line-soft w-[8%] text-right">Valuation</th>
                         <th className="font-bold px-2.5 py-2 border-b border-line-soft w-[11%]">Offset</th>
                         <th className="font-bold px-2.5 py-2 border-b border-line-soft w-[8%]">Used by</th>
@@ -837,7 +852,11 @@ export default function LenderLibrary() {
                             <td className={td}>{rateTypeLabel(product)}</td>
                             <td className={td}>{purposeLabel(product)}</td>
                             <td className={td + ' text-right tabular-nums'}>{feeCell(product.application_fee)}</td>
-                            <td className={td + ' text-right tabular-nums'}>{feeCell(product.annual_fee)}</td>
+                            <td className={td + ' text-right tabular-nums'}>
+                              {product.monthly_fee && !product.annual_fee
+                                ? <>{feeCell(product.monthly_fee)}<span className="text-faint"> /mo</span></>
+                                : feeCell(product.annual_fee)}
+                            </td>
                             <td className={td + ' text-right tabular-nums'}>{feeCell(product.valuation_fee)}</td>
                             <td className={td}>{offsetLabelOf(product)}</td>
                             <td className={td + ' text-faint'}>{usesLabel(product.id)}</td>
@@ -979,6 +998,7 @@ export default function LenderLibrary() {
                         {p.loan_purpose === 'oo' ? 'OO only' : p.loan_purpose === 'investment' ? 'INV only' : 'OO + INV'}
                         {p.application_fee ? ` · App ${p.application_fee}` : ''}
                         {p.annual_fee && p.annual_fee !== 'None' ? ` · Annual ${p.annual_fee}` : ''}
+                        {p.monthly_fee && p.monthly_fee !== 'None' ? ` · Monthly ${p.monthly_fee}` : ''}
                         {' · '}{p.offset_account ? (p.multiple_offsets ? 'Multiple offsets' : 'Offset') : 'No offset'}
                       </p>
                       {p.notes && <p className="text-xs text-gray-400 mt-0.5 italic">{p.notes}</p>}
@@ -1041,8 +1061,14 @@ export default function LenderLibrary() {
                     <input className={inp} value={productForm.application_fee} onChange={e => setProductForm({...productForm, application_fee: e.target.value})} onBlur={e => setProductForm(f => ({...f, application_fee: feeText(e.target.value)}))} placeholder="e.g. $250" />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 block mb-1">Annual / ongoing fee</label>
+                    <label className="text-xs text-gray-400 block mb-1">Annual fee</label>
                     <input className={inp} value={productForm.annual_fee} onChange={e => setProductForm({...productForm, annual_fee: e.target.value})} onBlur={e => setProductForm(f => ({...f, annual_fee: feeText(e.target.value)}))} placeholder="e.g. $395/yr or None" />
+                  </div>
+                  {/* BESIDE THE ANNUAL ONE, because they are the same question
+                      asked in two units and a lender charges one of them. */}
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Monthly fee</label>
+                    <input className={inp} value={productForm.monthly_fee} onChange={e => setProductForm({...productForm, monthly_fee: e.target.value})} onBlur={e => setProductForm(f => ({...f, monthly_fee: feeText(e.target.value)}))} placeholder="e.g. $10, or None" />
                   </div>
                   <div>
                     <label className="text-xs text-gray-400 block mb-1">Valuation fee</label>

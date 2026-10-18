@@ -1187,6 +1187,7 @@ export default function ComplianceForm({ deal, onSaveStatus, onDataChange, onDea
       allLenders: (lo.lenders || []).map((l: any) => `${l.lenderName} ${l.productName}`).join(', '),
       applicationFee: recLender.applicationFee || '',
       annualFee: recLender.annualFee || '',
+      monthlyFee: recLender.monthlyFee || '',
       offsetAccount: recLender.offsetAccount || '',
       // `redraw` used to sit here as recLender.redraw, which does not exist -
       // not on a lender option, not in the lender library, nowhere. So every

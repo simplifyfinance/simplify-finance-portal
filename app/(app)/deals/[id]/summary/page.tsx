@@ -221,6 +221,7 @@ export default function DealSummaryPage() {
                   <td className="py-1">
                     {l.variablePI?.enabled ? `${l.variablePI.rate}% variable P&I` : l.variableIO?.enabled ? `${l.variableIO.rate}% variable IO` : l.fixedPI?.enabled ? `${l.fixedPI.rate}% fixed P&I` : 'Rate not set'}
                     {l.annualFee ? `, ${fmtMoney(l.annualFee)} annual fee` : ''}
+                    {l.monthlyFee ? `, ${fmtMoney(l.monthlyFee)} monthly fee` : ''}
                   </td>
                 </tr>
               ))}

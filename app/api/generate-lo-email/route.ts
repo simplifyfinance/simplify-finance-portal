@@ -248,6 +248,11 @@ function buildLenderTable(lenders: any[], isBridging: boolean, lo?: any, globals
       let fees = ''
       if (l.applicationFee) fees += tick("Application fee: " + feeText(l.applicationFee))
       if (l.annualFee) fees += tick("Annual fee: " + feeText(l.annualFee))
+      // 18 Oct 2026. The bridging branch above has printed a monthly fee since
+      // bridging was built. Every other scenario had no way to record one, so
+      // this line had nothing to print and was never written. The product
+      // library has the box now, so the email needs the line.
+      if (l.monthlyFee) fees += tick("Monthly fee: " + feeText(l.monthlyFee))
       if (l.valuationFee) fees += tick("Valuation fee: " + feeText(l.valuationFee))
       if (l.legalFee) fees += tick(rowLegalFeeLabel(l) + ": " + feeText(l.legalFee))
       if (l.rateLockFee) fees += tick("Rate lock fee: " + feeText(l.rateLockFee))
