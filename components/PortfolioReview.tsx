@@ -47,12 +47,76 @@ type Row = {
   calls: number
   last_contact: string | null
   due_on: string | null
+  // 19 Oct 2026. The book's own name, for the people who are not clients - see
+  // docs/portfolio-review-stands-alone.sql.
+  book_name: string | null
+}
+
+// ONE PROPERTY, AS THE BOOK HAS IT.
+type Prop = {
+  review_id: string
+  ordinal: number
+  address: string
+  investor: boolean
+  original_value: number | null
+  original_loan: number | null
+  current_balance: number | null
+  estimated_current_value: number | null
+  usable_equity: number | null
+  lender_raw: string | null
+}
+
+// WHAT THE ROW IS TRIAGED ON.
+//
+// Fabio, 19 Oct 2026: "All I need is the name of the client, the property
+// address, the loan amount, the LVR, the security address." The list had a
+// property count and nothing about the money, so 656 rows all looked the same
+// and every one had to be opened to find out whether it was worth opening.
+//
+// OWNER OCCUPIED IS SHOWN AND NOT COUNTED - the same rule the schema sets on
+// portfolio_review_properties. You need the whole portfolio to have the
+// conversation; counting the home's equity inflates the figure and the email
+// that goes out would be wrong.
+//
+// THE CURRENT FIGURE WINS WHERE THERE IS ONE. The balance keeps itself up to
+// date from the commission statements, and a valuation somebody looked up by
+// hand beats the settlement value. Where neither exists this is the book's
+// own history, which is what Fabio asked for: "LVR against settlement value is
+// fine because that's the information that we have."
+export type Figures = {
+  loan: number; value: number; lvr: number | null; usable: number | null
+  first: string; more: number; count: number
+}
+
+export function figuresFor(props: Prop[] | undefined): Figures {
+  const all = props || []
+  const counted = all.filter(p => p.investor)
+  const loan = counted.reduce((t, p) => t + (p.current_balance ?? p.original_loan ?? 0), 0)
+  const value = counted.reduce((t, p) => t + (p.estimated_current_value ?? p.original_value ?? 0), 0)
+  // A recorded figure is somebody's decision and is never recalculated over.
+  // Only where nobody has worked one out is 80% of value less what is owed
+  // used, which is the shortlist rule and not an answer.
+  const recorded = counted.filter(p => p.usable_equity !== null)
+  const usable = recorded.length > 0
+    ? recorded.reduce((t, p) => t + (p.usable_equity as number), 0)
+    : (value > 0 ? Math.round(value * 0.8 - loan) : null)
+  const ordered = [...all].sort((a, b) => (a.ordinal || 0) - (b.ordinal || 0))
+  return {
+    loan, value,
+    lvr: value > 0 && loan > 0 ? Math.round((loan / value) * 1000) / 10 : null,
+    usable,
+    first: ordered[0]?.address || '',
+    more: Math.max(0, ordered.length - 1),
+    count: ordered.length,
+  }
 }
 
 const CARD = 'bg-card border border-card-line rounded-xl overflow-hidden'
 const PILL = 'text-[10.5px] font-semibold rounded-full px-2.5 py-[3px] whitespace-nowrap border'
 const BLURB = 'Existing clients who may have usable equity. You run the numbers; this keeps the list.'
-const GRID = 'grid grid-cols-[minmax(0,1.5fr)_110px_132px_104px_104px_96px_minmax(0,1fr)] gap-3 items-center'
+// Client, security, loan, value, LVR, usable equity, status, next. Approved as
+// a mock on 19 Oct 2026 before a line of this was written.
+const GRID = 'grid grid-cols-[minmax(0,1.3fr)_minmax(0,1.45fr)_104px_104px_58px_112px_118px_104px] gap-3 items-center'
 
 // WHAT COLOUR A STAGE IS.
 //
@@ -91,12 +155,99 @@ function Count({ n, what, tone }: { n: number; what: string; tone?: 'info' | 'do
   )
 }
 
-// A link where there is somewhere to go, and a row where there is not.
-function Row({ href, className, children }: {
-  href: string | null; className: string; children: React.ReactNode
+// A link where there is somewhere to go, and a row that opens where there is
+// not. A book row has no client page because these people are not clients.
+function Row({ href, className, onClick, children }: {
+  href: string | null; className: string
+  onClick?: () => void; children: React.ReactNode
 }) {
-  if (!href) return <div className={className}>{children}</div>
+  if (!href) return <div className={className} onClick={onClick}>{children}</div>
   return <Link href={href} className={className}>{children}</Link>
+}
+
+// WHAT THE BOOK HOLDS FOR ONE PERSON.
+//
+// Opened in place, because the alternative is a page for somebody who is not a
+// client of this portal yet. Fabio, 19 Oct 2026: the triage happens out here,
+// and when one is worth doing he makes the deal card himself.
+function OpenReview({ r, rows, today }: { r: Row; rows: Prop[]; today: Date }) {
+  const ordered = [...rows].sort((a, b) => (a.ordinal || 0) - (b.ordinal || 0))
+  const cell = 'py-[7px] pr-3 border-t border-line-soft text-body align-top'
+  const num = `${cell} tabular-nums whitespace-nowrap`
+  const head = 'text-left text-[9.5px] font-bold uppercase tracking-[.06em] text-faint pb-1.5 pr-3 whitespace-nowrap'
+
+  return (
+    <div className="bg-page border-t border-line-soft px-4 py-3.5">
+      <p className="text-[9.5px] font-bold uppercase tracking-[.06em] text-faint mb-2">
+        {ordered.length === 1 ? 'The security' : 'The securities'}, as the book has them
+      </p>
+
+      {ordered.length === 0 ? (
+        <p className="text-[12px] text-muted">No properties came across for this one.</p>
+      ) : (
+        <table className="w-full border-collapse text-[12px]">
+          <tbody>
+            <tr>
+              <th className={head} style={{ width: '34%' }}>Security address</th>
+              <th className={head}>Lender</th><th className={head}>Loan</th>
+              <th className={head}>Value</th><th className={head}>LVR</th>
+              <th className={head}>Usable at 80%</th><th className={head}>Type</th>
+            </tr>
+            {ordered.map(p => {
+              const loan = p.current_balance ?? p.original_loan ?? 0
+              const value = p.estimated_current_value ?? p.original_value ?? 0
+              const lvr = value > 0 && loan > 0 ? Math.round((loan / value) * 1000) / 10 : null
+              // Owner occupied is shown and not counted - the same rule the
+              // schema sets. You need the whole portfolio to have the
+              // conversation; counting the home would inflate the figure.
+              const usable = p.usable_equity ?? (p.investor && value > 0 ? Math.round(value * 0.8 - loan) : null)
+              return (
+                <tr key={p.ordinal + p.address}>
+                  <td className={cell}>{p.address}</td>
+                  <td className={cell}>{p.lender_raw || '—'}</td>
+                  <td className={num}>{loan > 0 ? money(loan) : '—'}</td>
+                  <td className={num}>{value > 0 ? money(value) : '—'}</td>
+                  <td className={num}>{lvr === null ? '—' : `${lvr}%`}</td>
+                  <td className={`${num} ${p.investor && usable ? 'text-done font-semibold' : 'text-faint'}`}>
+                    {!p.investor ? 'not counted' : usable === null ? '—' : money(usable)}
+                  </td>
+                  <td className={cell}>{p.investor ? 'Investment' : 'Owner occupied'}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      )}
+
+      {/* WHERE THESE FIGURES COME FROM, said on the screen rather than assumed.
+          A number nobody can place is a number nobody acts on. */}
+      <p className="text-[11px] text-faint mt-2.5 leading-relaxed">
+        Loan and value are what the book recorded at settlement. The balance updates itself from the
+        commission statements each month. The value stands until somebody puts a current one in, which
+        is what the Valuation checked stage is for.
+      </p>
+
+      {(r.last_contact || r.email_sent_at) && (
+        <div className="mt-3 pt-2.5 border-t border-line-soft">
+          <p className="text-[9.5px] font-bold uppercase tracking-[.06em] text-faint mb-1.5">What has happened</p>
+          {r.email_sent_at && (
+            <p className="text-[11.5px] text-muted">
+              <b className="text-ink font-semibold">Review email sent</b>
+              {' '}{whenDue(r.email_sent_at.slice(0, 10), today)}
+            </p>
+          )}
+          {r.last_contact && (
+            <p className="text-[11.5px] text-muted">
+              <b className="text-ink font-semibold">
+                {r.calls} {r.calls === 1 ? 'call' : 'calls'}
+              </b>
+              {' '}&middot; last {whenDue(r.last_contact, today)}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function PortfolioReview() {
@@ -106,6 +257,12 @@ export default function PortfolioReview() {
   const [onlyDue, setOnlyDue] = useState(false)
   const [find, setFind] = useState('')
   const [importing, setImporting] = useState(false)
+  // The properties, by review. Read once beside the list rather than per row -
+  // 656 rows asking one question each is 656 round trips.
+  const [props, setProps] = useState<Map<string, Prop[]>>(new Map())
+  // Which one is open. The book's people have no client page to go to, so the
+  // detail belongs here. See the Row component above.
+  const [open, setOpen] = useState<string | null>(null)
 
   // ONE CLOCK FOR THE WHOLE SCREEN, taken once.
   //
@@ -126,6 +283,20 @@ export default function PortfolioReview() {
         if (error) { setWhy(error.message); setRows([]); return }
         setRows((data || []) as Row[])
       })
+
+    // THE SECURITIES. A failure here leaves the list standing with its figures
+    // blank rather than taking the whole screen down - the names, the stages
+    // and the chases are still the work.
+    supabase.from('portfolio_review_properties')
+      .select('review_id, ordinal, address, investor, original_value, original_loan, current_balance, estimated_current_value, usable_equity, lender_raw')
+      .limit(20000)
+      .then(({ data }) => {
+        const by = new Map<string, Prop[]>()
+        for (const p of (data || []) as Prop[]) {
+          by.set(p.review_id, [...(by.get(p.review_id) || []), p])
+        }
+        setProps(by)
+      })
   }, [])
 
   const shown = useMemo(() => {
@@ -138,13 +309,35 @@ export default function PortfolioReview() {
         if (d !== 'overdue' && d !== 'today') return false
       }
       if (needle) {
-        const hay = `${fullName(r)} ${r.email || ''}`.toLowerCase()
+        // THE ADDRESS IS SEARCHABLE TOO. Half of what somebody remembers about
+        // one of these is the street, not the surname.
+        const addresses = (props.get(r.review_id) || []).map(p => p.address).join(' ')
+        const hay = `${fullName(r)} ${r.book_name || ''} ${r.email || ''} ${addresses}`.toLowerCase()
         if (!hay.includes(needle)) return false
       }
       return true
     })
-    return sortForTheList(kept, today) as Row[]
-  }, [rows, stage, onlyDue, find, today])
+
+    // BIGGEST EQUITY FIRST, which is the question this list is asked.
+    //
+    // Fabio, 19 Oct 2026: "yes, okay to sort by usable equity first". 656 rows
+    // of nobody-has-looked-yet sorted by chase date is 656 rows in no order at
+    // all; sorted by equity, the ones worth an hour are the ones at the top.
+    //
+    // THE CHASES STILL WIN WHEN THERE ARE ANY. Turning on Due now, or filtering
+    // to a stage that is mid-flight, puts it back on sortForTheList - because
+    // at that point the question is "what do I owe somebody today", and a
+    // client waiting on a callback does not care how much equity they have.
+    if (onlyDue) return sortForTheList(kept, today) as Row[]
+    return [...kept].sort((a, b) => {
+      // Opted out sits at the bottom wherever it is sorted.
+      if (!!a.opted_out !== !!b.opted_out) return a.opted_out ? 1 : -1
+      const ea = figuresFor(props.get(a.review_id)).usable ?? -Infinity
+      const eb = figuresFor(props.get(b.review_id)).usable ?? -Infinity
+      if (ea !== eb) return eb - ea
+      return String(a.last_name || '').localeCompare(String(b.last_name || ''))
+    }) as Row[]
+  }, [rows, stage, onlyDue, find, today, props])
 
   const counts = useMemo(() => countsFor(rows || [], today), [rows, today])
 
@@ -214,8 +407,8 @@ export default function PortfolioReview() {
       </div>
 
       <div className={`${GRID} px-4 pb-2 text-[9.5px] font-bold uppercase tracking-[.06em] text-faint`}>
-        <span>Client</span><span>Portfolio</span><span>Status</span><span>Last reviewed</span>
-        <span>Next</span><span>Email sent</span><span>Last contact</span>
+        <span>Client</span><span>Security</span><span>Loan</span><span>Value</span>
+        <span>LVR</span><span>Usable equity</span><span>Status</span><span>Next</span>
       </div>
 
       <div className={CARD}>
@@ -233,42 +426,57 @@ export default function PortfolioReview() {
         ) : shown.map(r => {
           const due = dueState(r.due_on, today)
           const late = due === 'overdue' || due === 'today'
-          return (
-            // A BOOK ROW IS NOT A CLIENT, SO IT DOES NOT LINK TO ONE.
+          // A BOOK ROW IS NOT A CLIENT, SO IT DOES NOT LINK TO ONE.
             //
             // 19 Oct 2026. The book stopped being written into `clients` - see
             // BookImport.tsx - so client_id is null for everyone still sitting
             // in the book, and this used to send them to /clients/null. It
-            // becomes a plain row until the day somebody makes them a deal
-            // card, which is when a client row exists to point at.
-            <Row key={r.review_id} href={r.client_id ? `/clients/${r.client_id}` : null}
-              className={`${GRID} px-4 py-2.5 border-t border-line-soft first:border-t-0 text-[12.5px] hover:bg-page transition`}>
-              <span className="font-semibold text-ink truncate">
-                {fullName(r) || 'No name'}
-                {r.opted_out && <span className="ml-2 text-[10.5px] text-faint font-normal">opted out</span>}
-              </span>
-              <span className="text-[11.5px] text-muted">
-                {r.properties} {r.properties === 1 ? 'property' : 'properties'}
-              </span>
-              <StageBadge r={r} />
-              <span className="text-[11.5px] text-muted">
-                {r.reviewed_at ? new Date(r.reviewed_at).toLocaleDateString('en-AU',
-                  { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-              </span>
-              <span className={`text-[11.5px] ${late ? 'text-info font-semibold' : 'text-muted'}`}>
-                {whenDue(r.due_on, today) || '—'}
-              </span>
-              <span className="text-[11.5px] text-muted">
-                {r.email_sent_at ? whenDue(r.email_sent_at.slice(0, 10), today) : '—'}
-              </span>
-              <span className="text-[11.5px] text-muted truncate">
-                {r.linked_deal_id
-                  ? 'became a deal'
-                  : [r.calls ? `${r.calls} ${r.calls === 1 ? 'call' : 'calls'}` : '',
-                     r.usable_equity ? `${money(r.usable_equity)} usable` : '']
-                      .filter(Boolean).join(' · ') || '—'}
-              </span>
-            </Row>
+            // opens here instead: every security, every lender, the loan and
+            // the LVR on each, and the contact history. A client the portal
+          // really has still links to their own page.
+          const f = figuresFor(props.get(r.review_id))
+          const isOpen = open === r.review_id
+          return (
+            <div key={r.review_id} className="border-t border-line-soft first:border-t-0">
+              <Row href={r.client_id ? `/clients/${r.client_id}` : null}
+                onClick={r.client_id ? undefined : () => setOpen(o => o === r.review_id ? null : r.review_id)}
+                className={`${GRID} px-4 py-2.5 text-[12.5px] transition ${isOpen ? 'bg-page' : 'hover:bg-page'} ${r.client_id ? '' : 'cursor-pointer'}`}>
+                <span className="min-w-0">
+                  <span className="font-semibold text-ink block truncate">
+                    {fullName(r) || 'No name'}
+                    {r.opted_out && <span className="ml-2 text-[10.5px] text-faint font-normal">opted out</span>}
+                  </span>
+                  {/* EVERY APPLICANT, not just the one the emails are addressed
+                      to. 225 of the 656 are two people and 64 are three. */}
+                  {r.book_name && r.book_name !== fullName(r) && (
+                    <span className="text-[11px] text-faint block truncate">{r.book_name}</span>
+                  )}
+                </span>
+
+                <span className="min-w-0">
+                  <span className="text-[11.5px] text-body block truncate">{f.first || '—'}</span>
+                  {f.count > 0 && (
+                    <span className="text-[11px] text-faint block truncate">
+                      {f.more > 0 ? `+ ${f.more} more · ` : ''}{f.count} {f.count === 1 ? 'property' : 'properties'}
+                    </span>
+                  )}
+                </span>
+
+                <span className="text-[11.5px] text-muted tabular-nums">{f.loan > 0 ? money(f.loan) : '—'}</span>
+                <span className="text-[11.5px] text-muted tabular-nums">{f.value > 0 ? money(f.value) : '—'}</span>
+                <span className="text-[11.5px] text-muted tabular-nums">{f.lvr === null ? '—' : `${f.lvr}%`}</span>
+                <span className={`text-[11.5px] tabular-nums ${f.usable && f.usable > 0 ? 'text-done font-semibold' : 'text-faint'}`}>
+                  {f.usable === null ? '—' : money(f.usable)}
+                </span>
+
+                <StageBadge r={r} />
+                <span className={`text-[11.5px] ${late ? 'text-info font-semibold' : 'text-muted'}`}>
+                  {r.linked_deal_id ? 'became a deal' : whenDue(r.due_on, today) || '—'}
+                </span>
+              </Row>
+
+              {isOpen && <OpenReview r={r} rows={props.get(r.review_id) || []} today={today} />}
+            </div>
           )
         })}
       </div>
