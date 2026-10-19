@@ -5,6 +5,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { money } from '@/lib/money'
 import { SkelRows, SkelTile } from '@/components/Skeleton'
 import BookImport from '@/components/BookImport'
+import ReviewFigures from '@/components/ReviewFigures'
 import {
   STAGES, stageLabel, outcomeLabel, countsFor, sortForTheList,
   dueState, whenDue, fullName, type Stage,
@@ -54,6 +55,8 @@ type Row = {
 
 // ONE PROPERTY, AS THE BOOK HAS IT.
 type Prop = {
+  // Needed to say WHICH property the equity comes out of - see ReviewFigures.
+  id: string
   review_id: string
   ordinal: number
   address: string
@@ -170,7 +173,9 @@ function Row({ href, className, onClick, children }: {
 // Opened in place, because the alternative is a page for somebody who is not a
 // client of this portal yet. Fabio, 19 Oct 2026: the triage happens out here,
 // and when one is worth doing he makes the deal card himself.
-function OpenReview({ r, rows, today }: { r: Row; rows: Prop[]; today: Date }) {
+function OpenReview({ r, rows, today, onSaved }: {
+  r: Row; rows: Prop[]; today: Date; onSaved?: () => void
+}) {
   const ordered = [...rows].sort((a, b) => (a.ordinal || 0) - (b.ordinal || 0))
   const cell = 'py-[7px] pr-3 border-t border-line-soft text-body align-top'
   const num = `${cell} tabular-nums whitespace-nowrap`
@@ -202,7 +207,7 @@ function OpenReview({ r, rows, today }: { r: Row; rows: Prop[]; today: Date }) {
               // conversation; counting the home would inflate the figure.
               const usable = p.usable_equity ?? (p.investor && value > 0 ? Math.round(value * 0.8 - loan) : null)
               return (
-                <tr key={p.ordinal + p.address}>
+                <tr key={p.id}>
                   <td className={cell}>{p.address}</td>
                   <td className={cell}>{p.lender_raw || '—'}</td>
                   <td className={num}>{loan > 0 ? money(loan) : '—'}</td>
@@ -226,6 +231,10 @@ function OpenReview({ r, rows, today }: { r: Row; rows: Prop[]; today: Date }) {
         commission statements each month. The value stands until somebody puts a current one in, which
         is what the Valuation checked stage is for.
       </p>
+
+      {/* THE SEVEN BOXES A PERSON DECIDES. Everything above this line came off
+          the book; nothing below can send until these are filled in. */}
+      <ReviewFigures review={r} props={rows} onSaved={onSaved} />
 
       {(r.last_contact || r.email_sent_at) && (
         <div className="mt-3 pt-2.5 border-t border-line-soft">
@@ -263,6 +272,9 @@ export default function PortfolioReview() {
   // Which one is open. The book's people have no client page to go to, so the
   // detail belongs here. See the Row component above.
   const [open, setOpen] = useState<string | null>(null)
+  // Bumped when a review saves, so the list and its figures are read again
+  // rather than the screen quietly disagreeing with the database.
+  const [reload, setReload] = useState(0)
 
   // ONE CLOCK FOR THE WHOLE SCREEN, taken once.
   //
@@ -288,7 +300,7 @@ export default function PortfolioReview() {
     // blank rather than taking the whole screen down - the names, the stages
     // and the chases are still the work.
     supabase.from('portfolio_review_properties')
-      .select('review_id, ordinal, address, investor, original_value, original_loan, current_balance, estimated_current_value, usable_equity, lender_raw')
+      .select('id, review_id, ordinal, address, investor, original_value, original_loan, current_balance, estimated_current_value, usable_equity, lender_raw')
       .limit(20000)
       .then(({ data }) => {
         const by = new Map<string, Prop[]>()
@@ -297,7 +309,7 @@ export default function PortfolioReview() {
         }
         setProps(by)
       })
-  }, [])
+  }, [reload])
 
   const shown = useMemo(() => {
     const all = rows || []
@@ -475,7 +487,8 @@ export default function PortfolioReview() {
                 </span>
               </Row>
 
-              {isOpen && <OpenReview r={r} rows={props.get(r.review_id) || []} today={today} />}
+              {isOpen && <OpenReview r={r} rows={props.get(r.review_id) || []} today={today}
+                onSaved={() => setReload(x => x + 1)} />}
             </div>
           )
         })}
