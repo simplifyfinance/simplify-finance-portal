@@ -91,6 +91,14 @@ function Count({ n, what, tone }: { n: number; what: string; tone?: 'info' | 'do
   )
 }
 
+// A link where there is somewhere to go, and a row where there is not.
+function Row({ href, className, children }: {
+  href: string | null; className: string; children: React.ReactNode
+}) {
+  if (!href) return <div className={className}>{children}</div>
+  return <Link href={href} className={className}>{children}</Link>
+}
+
 export default function PortfolioReview() {
   const [rows, setRows] = useState<Row[] | null>(null)
   const [why, setWhy] = useState('')
@@ -226,7 +234,14 @@ export default function PortfolioReview() {
           const due = dueState(r.due_on, today)
           const late = due === 'overdue' || due === 'today'
           return (
-            <Link key={r.review_id} href={`/clients/${r.client_id}`}
+            // A BOOK ROW IS NOT A CLIENT, SO IT DOES NOT LINK TO ONE.
+            //
+            // 19 Oct 2026. The book stopped being written into `clients` - see
+            // BookImport.tsx - so client_id is null for everyone still sitting
+            // in the book, and this used to send them to /clients/null. It
+            // becomes a plain row until the day somebody makes them a deal
+            // card, which is when a client row exists to point at.
+            <Row key={r.review_id} href={r.client_id ? `/clients/${r.client_id}` : null}
               className={`${GRID} px-4 py-2.5 border-t border-line-soft first:border-t-0 text-[12.5px] hover:bg-page transition`}>
               <span className="font-semibold text-ink truncate">
                 {fullName(r) || 'No name'}
@@ -253,7 +268,7 @@ export default function PortfolioReview() {
                      r.usable_equity ? `${money(r.usable_equity)} usable` : '']
                       .filter(Boolean).join(' · ') || '—'}
               </span>
-            </Link>
+            </Row>
           )
         })}
       </div>

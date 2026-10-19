@@ -4,7 +4,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { money } from '@/lib/money'
 import {
   FIELDS, guessMapping, whatIsMissing, groupByClient, planTheImport, countThePlan,
-  positionProperties, rowKeyFor, type Mapping, type Planned,
+  rowKeyFor, type Mapping, type Planned,
 } from '@/lib/book-import'
 
 // DROPPING TEN YEARS OF CLIENTS IN, WITH A LOOK BEFORE ANYTHING IS WRITTEN.
@@ -70,12 +70,25 @@ export default function BookImport({ onFinished }: { onFinished?: () => void }) 
   function buildThePlan() {
     setBusy(true); setWhy('')
     const supabase = createSupabaseBrowser()
-    supabase.from('clients').select('id, first_name, last_name, book_row_key').limit(10000)
+    // WHAT THE BOOK ALREADY PUT HERE, not who the portal has as a client.
+    //
+    // 19 Oct 2026. This used to read `clients`, because the import used to
+    // write there. It does not any more - see writeIt. A second drop of the
+    // same spreadsheet matches on the book's own key and updates the review it
+    // already made, which is the only kind of "already here" this screen now
+    // has to think about.
+    supabase.from('portfolio_reviews')
+      .select('id, book_row_key, book_first_name, book_last_name')
+      .not('book_row_key', 'is', null).limit(10000)
       .then(({ data, error }) => {
         setBusy(false)
         if (error) { setWhy(error.message); return }
         const book = groupByClient(rows, mapping)
-        setPlan(planTheImport(book, (data || []) as any[]))
+        const seen = (data || []).map((r: any) => ({
+          id: r.id, first_name: r.book_first_name, last_name: r.book_last_name,
+          book_row_key: r.book_row_key,
+        }))
+        setPlan(planTheImport(book, seen as any[]))
         setSkip(new Set())
         setStep('preview')
       })
@@ -87,52 +100,113 @@ export default function BookImport({ onFinished }: { onFinished?: () => void }) 
     const { data: me } = await supabase.auth.getUser()
     const run = crypto.randomUUID()
     const now = new Date().toISOString()
-    let made = 0, updated = 0, reviews = 0
+    let made = 0, updated = 0, reviews = 0, written = 0
 
     try {
       for (const p of plan) {
         if (skip.has(p.client.key)) continue
         const first = p.client.people[0]
-        const row = {
-          first_name: first?.first || p.client.groupName,
-          last_name: first?.last || '',
-          from_book: true,
+
+        // NOTHING GOES INTO `clients`. 19 Oct 2026.
+        //
+        // Fabio, before a single row was imported: "This is just a reports tab.
+        // All I need is the name of the client, the property address, the loan
+        // amount, the LVR, the security address. I will then do everything
+        // outside the portal... and if it is an opportunity I will drag that
+        // client into a brand new deal card. I will upload the fact find to
+        // make sure we create the assets and liabilities position."
+        //
+        // The import used to write all 656 into `clients` with a
+        // position_properties built from the spreadsheet. Two things were wrong
+        // with that. The Clients page and both client pickers would have gone
+        // from hundreds of rows to over a thousand, for people who are not
+        // clients. And on anyone the portal ALREADY had, it overwrote their
+        // asset position with values-at-settlement out of a ten year old CRM
+        // export - the exact figure the client list exists to show.
+        //
+        // A person becomes a client when somebody makes them a deal card, by
+        // hand, with a fact find behind it. That is the only thing that
+        // produces a real assets and liabilities position, and a spreadsheet is
+        // not it. So the book lives here, in Reports, and client_id stays null
+        // until the day one of these turns into a deal.
+        const review = {
+          book_name: p.client.groupName,
+          book_first_name: first?.first || p.client.groupName,
+          book_last_name: first?.last || '',
           book_group: p.client.groupName,
           book_broker_key: (p.client.brokerKey || '').toLowerCase().split(' ')[0] || null,
           book_row_key: rowKeyFor(p.client),
           book_imported_at: now,
           book_import_run: run,
-          position_properties: positionProperties(p.client),
-          position_source: 'book import',
-          position_updated_at: now,
-          created_by: me?.user?.id || null,
         }
 
-        let clientId = p.existingId || ''
-        if (clientId) {
-          // CHECKED. A refused update that nobody hears about is a client who
-          // silently never makes it onto the list.
-          const { data, error } = await supabase.from('clients')
-            .update(row).eq('id', clientId).select('id')
-          if (error || !data?.length) throw new Error(error?.message || `could not update ${row.first_name}`)
+        let reviewId = p.existingId || ''
+        if (reviewId) {
+          // A SECOND DROP OF THE SAME SPREADSHEET UPDATES WHAT IT MADE.
+          //
+          // Only the book's own fields. The status, the figures, the contact
+          // history and the next review date are the work somebody has done
+          // since, and a re-import is not allowed to walk over any of it.
+          const { data, error } = await supabase.from('portfolio_reviews')
+            .update(review).eq('id', reviewId).select('id')
+          if (error || !data?.length) throw new Error(error?.message || `could not update ${review.book_first_name}`)
           updated += 1
         } else {
-          const { data, error } = await supabase.from('clients').insert(row).select('id').single()
-          if (error || !data?.id) throw new Error(error?.message || `could not add ${row.first_name}`)
-          clientId = String(data.id)
+          const { data, error } = await supabase.from('portfolio_reviews')
+            .insert({ ...review, status: 'not_reviewed', created_by: me?.user?.id || null })
+            .select('id').single()
+          if (error || !data?.id) throw new Error(error?.message || `could not add ${review.book_first_name}`)
+          reviewId = String(data.id)
           made += 1
+          reviews += 1
         }
 
-        // ONE OPEN REVIEW EACH, and the database refuses a second - see the
-        // unique index in docs/portfolio-review-schema.sql. A client who is
-        // already on the list stays where they got to.
-        const { data: already } = await supabase.from('portfolio_reviews')
-          .select('id').eq('client_id', clientId).neq('status', 'closed').limit(1)
-        if (!already?.length) {
-          const { error } = await supabase.from('portfolio_reviews')
-            .insert({ client_id: clientId, status: 'not_reviewed', created_by: me?.user?.id || null })
+        // THE PROPERTIES, REPLACED RATHER THAN ADDED TO.
+        //
+        // The spreadsheet is the whole truth about what the book holds for this
+        // person, so a re-import after a property was sold has to be able to
+        // take it off. Deleting first is what makes a second run an update
+        // instead of a pile.
+        //
+        // The hand-done columns - the current valuation, its source and date,
+        // the usable equity worked out on screen - are carried across rather
+        // than thrown away, matched on the address. Losing an afternoon of
+        // valuations because somebody re-dropped the export is not acceptable.
+        const { data: had } = await supabase.from('portfolio_review_properties')
+          .select('address, estimated_current_value, valuation_source, valuation_date, usable_equity, notes')
+          .eq('review_id', reviewId)
+        const byAddress = new Map((had || []).map((h: any) => [String(h.address || '').trim().toLowerCase(), h]))
+
+        // CHECKED, because a refused delete here is not a missing row - it is a
+        // DOUBLED one. The insert below would run anyway and this person would
+        // show two of every property, with twice the equity behind them, which
+        // is the figure the whole list is triaged on.
+        const { error: clearErr } = await supabase.from('portfolio_review_properties')
+          .delete().eq('review_id', reviewId)
+        if (clearErr) throw new Error(`${review.book_first_name}: the old properties would not clear — ${clearErr.message}`)
+
+        const props = p.client.properties.map((prop: any, i: number) => {
+          const kept: any = byAddress.get(String(prop.address || '').trim().toLowerCase()) || {}
+          return {
+            review_id: reviewId,
+            ordinal: i + 1,
+            address: prop.address,
+            investor: !!prop.investor,
+            original_value: prop.valueAtSettlement,
+            original_loan: prop.loanAtSettlement,
+            lender_raw: prop.lender || '',
+            loan_ref: (prop.loanIds || []).join(', '),
+            estimated_current_value: kept.estimated_current_value ?? null,
+            valuation_source: kept.valuation_source ?? null,
+            valuation_date: kept.valuation_date ?? null,
+            usable_equity: kept.usable_equity ?? null,
+            notes: kept.notes ?? '',
+          }
+        })
+        if (props.length) {
+          const { error } = await supabase.from('portfolio_review_properties').insert(props)
           if (error) throw new Error(error.message)
-          reviews += 1
+          written += props.length
         }
       }
 
@@ -143,7 +217,7 @@ export default function BookImport({ onFinished }: { onFinished?: () => void }) 
       await supabase.from('book_imports').insert({
         file_name: fileName, mapping, rows_seen: rows.length,
         clients_made: made, clients_updated: updated,
-        properties_written: plan.reduce((t, p) => t + p.client.properties.length, 0),
+        properties_written: written,
         imported_by: me?.user?.id || null,
       })
 
@@ -154,7 +228,7 @@ export default function BookImport({ onFinished }: { onFinished?: () => void }) 
       // STOPPED WHERE IT STOPPED, AND SAYS SO. Everything written before this
       // point is real and keyed, so running it again picks up where it left off
       // rather than starting a second copy.
-      setWhy(`${String(e?.message || e)} — ${made + updated} clients were saved before it stopped. Running it again carries on from there.`)
+      setWhy(`${String(e?.message || e)} — ${made + updated} were saved before it stopped. Running it again carries on from there.`)
     } finally { setBusy(false) }
   }
 
@@ -235,9 +309,18 @@ export default function BookImport({ onFinished }: { onFinished?: () => void }) 
             ))}
           </div>
 
+          {/* SAID BEFORE ANYTHING IS WRITTEN, because it is the question Fabio
+              asked on 19 Oct and the answer has to be visible, not trusted. */}
+          <p className="text-[12px] text-body mb-2 bg-done-bg border border-done-edge rounded-lg px-3 py-2">
+            <b className="text-done">Nothing is written to your Clients page.</b> This list lives in
+            Reports. Your clients, their deals and their recorded asset positions are not touched.
+            When one of these is worth doing, you make the deal card yourself and the review is marked
+            as having become a deal.
+          </p>
+
           {counts.maybe > 0 && (
             <p className="text-[12px] text-body mb-2">
-              <b className="text-ink">{counts.maybe} need a decision.</b> Somebody in the portal has the
+              <b className="text-ink">{counts.maybe} need a decision.</b> Another row in the book has the
               same name. Untick any you do not want written.
             </p>
           )}
@@ -291,7 +374,8 @@ export default function BookImport({ onFinished }: { onFinished?: () => void }) 
         <div className="border border-done-edge bg-done-bg rounded-lg px-3 py-3 mt-2">
           <b className="block text-[13px] text-done mb-1">The book is in.</b>
           <p className="text-[12px] text-body">
-            {wrote.made} clients added, {wrote.updated} updated, {wrote.reviews} put on the review list.
+            {wrote.made} added to the review list, {wrote.updated} updated.
+            Nothing was written to your Clients page — the book lives here, in Reports.
             Drop the same file again any time — it updates rather than making a second copy.
           </p>
         </div>
