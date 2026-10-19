@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { money, readMoney } from '@/lib/money'
 import { contributionCheck, canSendTheEmail, stageIndex } from '@/lib/portfolio-review'
+import ReviewActions from '@/components/ReviewActions'
 
 // THE FIGURES FABIO WORKS OUT, TYPED ONTO THE REVIEW.
 //
@@ -32,6 +33,19 @@ const BLANK = {
   equity_property_id: '', equity_release: '', equity_buffer: '',
   purchase_price: '', stamp_duty: '', loan_amount: '',
   loan_note: '', savings_contribution: '',
+  // THE BOOK CARRIED NO WAY TO CONTACT ANYBODY.
+  //
+  // 19 Oct 2026. The CRM export has 29 columns - names, deal ref, broker,
+  // settlement, lender, loan, LVR, the security, the balance - and not one of
+  // them is an email address or a phone number. So all 656 reviews landed with
+  // nothing to send to, and the send button would have been off for every
+  // single one with no way to turn it on.
+  //
+  // A second export keyed on Deal Ref is the real answer and Fabio is getting
+  // one. These two boxes are so the work does not stop while he does: type it
+  // in as you ring them, and the one you type beats whatever the import brings
+  // later, because a person typed it.
+  book_email: '', book_phone: '',
 }
 
 export default function ReviewFigures({ review, props, onSaved }: {
@@ -39,11 +53,50 @@ export default function ReviewFigures({ review, props, onSaved }: {
   props: Prop[]
   onSaved?: () => void
 }) {
+  // THE ROW COMES OFF A VIEW, AND THE VIEW CALLS IT review_id.
+  //
+  // 19 Oct 2026, within an hour of shipping: "invalid input syntax for type
+  // uuid: undefined" under every panel, and nothing saved. This read
+  // `review.id`, which portfolio_review_list does not have - it renames the
+  // review's own id to review_id so it can carry client_id beside it.
+  //
+  // Both are accepted here rather than at the call site, because this component
+  // is also handed a plain review row elsewhere and a component that works from
+  // one shape and silently writes nothing from the other is the bug twice.
+  const reviewId = String(review?.review_id || review?.id || '')
   const [d, setD] = useState({ ...BLANK })
   const [busy, setBusy] = useState(false)
   const [why, setWhy] = useState('')
   const [saved, setSaved] = useState(false)
   const [loaded, setLoaded] = useState(false)
+
+  // WHOSE NAME AND DIARY GO ON THE EMAIL.
+  //
+  // The book carries the broker who owned the deal, so these go out under the
+  // person the client last dealt with - which on a ten year old file is the
+  // only name they will recognise. No match means no diary link and no button
+  // rather than somebody else's Calendly on somebody else's client.
+  const [broker, setBroker] = useState<{ name: string; calendly: string; title?: string }>(
+    { name: '', calendly: '' })
+
+  useEffect(() => {
+    const key = String(review.book_broker_key || '').trim().toLowerCase()
+    if (!key) return
+    const supabase = createSupabaseBrowser()
+    supabase.from('brokers').select('name, title, calendly').eq('broker_key', key).maybeSingle()
+      .then(({ data }) => {
+        if (data) setBroker({ name: data.name || '', calendly: data.calendly || '', title: data.title || '' })
+      })
+  }, [review.book_broker_key])
+
+  // The words the email wears, out of settings. Empty means the defaults the
+  // code ships with - see DEFAULT_COPY in lib/portfolio-review-email.ts.
+  const [copy, setCopy] = useState<any>(null)
+  useEffect(() => {
+    const supabase = createSupabaseBrowser()
+    supabase.from('settings').select('portfolio_review_copy').eq('id', 'singleton').maybeSingle()
+      .then(({ data }) => setCopy(data?.portfolio_review_copy || {}))
+  }, [])
 
   // READ WHEN IT OPENS, NOT OFF THE LIST.
   //
@@ -53,10 +106,14 @@ export default function ReviewFigures({ review, props, onSaved }: {
   // was there, which is worse than not having the form.
   useEffect(() => {
     let alive = true
+    // No id means there is nothing to read and nothing to write. Saying so
+    // beats sending the string "undefined" to a uuid column and showing the
+    // client a database error.
+    if (!reviewId) { setWhy('This review has no id, so nothing can be saved against it.'); setLoaded(true); return }
     const supabase = createSupabaseBrowser()
     supabase.from('portfolio_reviews')
-      .select('equity_property_id, equity_release, equity_buffer, purchase_price, stamp_duty, loan_amount, loan_note, savings_contribution')
-      .eq('id', review.id).single()
+      .select('equity_property_id, equity_release, equity_buffer, purchase_price, stamp_duty, loan_amount, loan_note, savings_contribution, book_email, book_phone')
+      .eq('id', reviewId).single()
       .then(({ data, error }) => {
         if (!alive) return
         if (error || !data) { setWhy(error?.message || 'Could not read this review.'); setLoaded(true); return }
@@ -69,11 +126,13 @@ export default function ReviewFigures({ review, props, onSaved }: {
           loan_amount: data.loan_amount ?? '',
           loan_note: data.loan_note || 'your maximum borrowing capacity with non-bank lender',
           savings_contribution: data.savings_contribution ?? '',
+          book_email: data.book_email || '',
+          book_phone: data.book_phone || '',
         })
         setLoaded(true)
       })
     return () => { alive = false }
-  }, [review.id])
+  }, [reviewId])
 
   const set = (k: string, v: any) => { setSaved(false); setD(prev => ({ ...prev, [k]: v })) }
 
@@ -110,6 +169,7 @@ export default function ReviewFigures({ review, props, onSaved }: {
   const overDrawn = headroom !== null && n(d.equity_release) > headroom
 
   async function save(markDone: boolean) {
+    if (!reviewId) { setWhy('This review has no id, so nothing can be saved against it.'); return }
     setBusy(true); setWhy('')
     const supabase = createSupabaseBrowser()
     const patch: any = {
@@ -121,6 +181,8 @@ export default function ReviewFigures({ review, props, onSaved }: {
       loan_amount: readMoney(d.loan_amount),
       loan_note: d.loan_note || '',
       savings_contribution: readMoney(d.savings_contribution),
+      book_email: d.book_email.trim(),
+      book_phone: d.book_phone.trim(),
       updated_at: new Date().toISOString(),
     }
     // ONLY EVER FORWARD. Somebody filling in a figure on a review that is
@@ -131,7 +193,7 @@ export default function ReviewFigures({ review, props, onSaved }: {
       patch.reviewed_at = new Date().toISOString()
     }
     const { data, error } = await supabase.from('portfolio_reviews')
-      .update(patch).eq('id', review.id).select('id')
+      .update(patch).eq('id', reviewId).select('id')
     setBusy(false)
     // A refused write returns no rows and no error. Saying it saved when
     // nothing was stored is the quiet failure this portal keeps paying for.
@@ -143,7 +205,8 @@ export default function ReviewFigures({ review, props, onSaved }: {
     onSaved?.()
   }
 
-  const can = canSendTheEmail({ ...review, ...d, status: 'numbers_done' }, { email: review.email })
+  const can = canSendTheEmail({ ...review, ...d, status: 'numbers_done' },
+                              { email: review.email || d.book_email })
 
   // NOTHING IS EDITABLE UNTIL WHAT IS THERE HAS BEEN READ. Typing into a box
   // that is about to be overwritten by the read is how a figure gets lost.
@@ -186,6 +249,22 @@ export default function ReviewFigures({ review, props, onSaved }: {
           That is more than the {money(headroom as number)} this property has in it at 80%. Fine if the
           lender will wear it — the email will still say what you type.
         </p>
+      )}
+
+      {/* WHERE TO SEND IT. Only shown while there is nothing on file, so the
+          656 that get an address from the next import stop asking. */}
+      {!review.email && (
+        <>
+          <p className={`${K} mt-4 mb-2.5`}>How to reach them</p>
+          <div className="grid grid-cols-2 gap-2.5">
+            <div><label className={LAB}>Email</label>
+              <input className={IN} value={d.book_email} placeholder="nothing on file"
+                onChange={e => set('book_email', e.target.value)} /></div>
+            <div><label className={LAB}>Phone</label>
+              <input className={IN} value={d.book_phone} placeholder="nothing on file"
+                onChange={e => set('book_phone', e.target.value)} /></div>
+          </div>
+        </>
       )}
 
       <p className={`${K} mt-4 mb-2.5`}>The purchase</p>
@@ -248,6 +327,18 @@ export default function ReviewFigures({ review, props, onSaved }: {
         {!can.ok && <span className="text-[11.5px] text-faint">{can.why}</span>}
       </div>
       {why && <p className="text-[11.5px] text-chase mt-2">{why}</p>}
+
+      {/* SEND IT, RING THEM, CLOSE IT OUT. The figures handed across are the
+          ones ON SCREEN, not the ones last saved, so a preview always shows
+          what you are looking at. */}
+      <ReviewActions
+        review={review}
+        figures={d}
+        properties={props}
+        broker={broker}
+        copy={copy}
+        onDone={onSaved}
+      />
     </div>
   )
 }
