@@ -180,6 +180,14 @@ describe('the rule, so it cannot come back', () => {
     'client-agreement.ts',    // where optionOnTheDeal is built from it
     'recommended-option.ts',  // the question itself
     'handover-view.ts',       // "Our recommendation - X", a heading about the past
+    // 19 Oct 2026. This one is genuinely about the recommendation and not about
+    // the deal. The lending options email asks the client to confirm THE BANK WE
+    // RECOMMENDED - that is the question being put to them - and this file
+    // works out what may honestly be printed beside it. The deal is not on any
+    // lender yet; the client is being asked whether it should be. Where it is
+    // ambiguous it returns nothing rather than a guess, which is the rule this
+    // guard exists to protect.
+    'client-lender-choice.ts',
   ])
 
   it('no library reads recommendedOption to answer "which option is this deal on"', () => {

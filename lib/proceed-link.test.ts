@@ -61,8 +61,17 @@ describe('every client email passes the link', () => {
   for (const f of ['app/api/generate-email/route.ts', 'app/api/generate-lo-email/route.ts']) {
     it(`${f} never calls ctas without a proceed link`, () => {
       const src = readFileSync(f, 'utf8')
-      const calls = src.split('\n').filter(l => /[^a-z]ctas\(/.test(l))
-      expect(calls.length, `${f}: no ctas() calls found - has it been renamed?`).toBeGreaterThan(0)
+      // ctas( and ctasLender( - the two that take the proceed link on the same
+      // line they are called on. 19 Oct 2026: the lending options email calls
+      // ctasLender, and a rename must not quietly empty this guard, which is
+      // what the "has it been renamed?" line below is for.
+      //
+      // ctasTwo is deliberately not here. It takes an ARRAY built over the
+      // following lines, so a line-by-line read of it says nothing useful - the
+      // two scenario links it is given are checked in lib/bc-scenarios.test.ts
+      // instead, where the branch that builds them lives.
+      const calls = src.split('\n').filter(l => /[^a-z]ctas(?:Lender)?\(/.test(l))
+      expect(calls.length, `${f}: no ctas*() calls found - has it been renamed?`).toBeGreaterThan(0)
       const bare = calls.filter(l => !/proceedUrl|\/proceed\//.test(l))
       expect(bare, `${f}: a client email sends the button with no proceed link, so a `
         + 'client pressing it would book a call and the deal would never hear about it')

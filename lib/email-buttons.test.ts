@@ -85,9 +85,12 @@ describe('the Lending Options email puts it above the table', () => {
     // Fabio, 15 Sep 2026 - the client had to scroll past the whole comparison
     // before anything told them how to reply.
     const src = readFileSync('app/api/generate-lo-email/route.ts', 'utf8')
-    const buttons = src.indexOf('body += ctas(')
+    // 19 Oct 2026: the LO email calls ctasLender, which falls back to ctas by
+    // itself when there is no bank to name. The rule is unchanged - whatever
+    // the buttons are, they come before the comparison table.
+    const buttons = src.indexOf('body += ctasLender(')
     const table = src.indexOf('body += buildLenderTable(')
-    expect(buttons, 'ctas() is not called in the LO email').toBeGreaterThan(-1)
+    expect(buttons, 'the buttons are not built in the LO email').toBeGreaterThan(-1)
     expect(table, 'buildLenderTable() is not called in the LO email').toBeGreaterThan(-1)
     expect(buttons, 'the buttons have drifted back below the table').toBeLessThan(table)
   })

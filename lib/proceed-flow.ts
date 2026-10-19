@@ -7,6 +7,7 @@ import { requestDocuments, brokerDocumentLine, type DocRequestResult } from '@/l
 
 import type { ProceedStage } from './next-steps-copy'
 import { siteUrl } from './site-url'
+import { lenderToRecord, lenderOnOffer } from './client-lender-choice'
 
 // Reading the deal, without touching it.
 //
@@ -48,7 +49,17 @@ export async function loadProceed(dealId: string) {
   const supabase = createSupabaseAdmin()
   const { data: deal, error } = await supabase
     .from('deals')
-    .select('id, client_proceeded, lo_client_proceeded, clients(first_name, email)')
+    // AND THE THREE ADDED ON 19 OCT 2026, WHICH IS THE DECISION THE NOTE ABOVE
+    // ASKED FOR, NOT A CONVENIENCE. All three are plain columns.
+    //
+    // NOT lo_data, THOUGH THE PAGE NAMES THE LENDER. The bank, product and loan
+    // amount the client is shown do not come from here at all - they come back
+    // from the write itself, which reads the deal properly on a POST. See
+    // markProceeded, and ConfirmedPanel.tsx. A server component holding the
+    // whole lending options record is one careless prop away from handing a
+    // broker's fee notes to a stranger with a deal id, and the rule that stops
+    // that is this select staying narrow.
+    .select('id, client_proceeded, lo_client_proceeded, lo_proceeded_lender, lo_wants_call, clients(first_name, email)')
     .eq('id', dealId)
     .single()
   if (error || !deal) return { ok: false as const }
@@ -100,6 +111,7 @@ export type ProceedBy = { source: 'client' | 'office'; name?: string | null }
 // documents are coming.
 async function notifyBrokerOfProgress(
   deal: any, dealId: string, stage: ProceedStage, docs: DocRequestResult | null,
+  lender?: string | null,
 ) {
   try {
     const brokerRecord = await resolveBrokerProfile(deal.assigned_broker)
@@ -112,10 +124,16 @@ async function notifyBrokerOfProgress(
         from: 'Simplify Finance Portal <notifications@simplifyfinance.com.au>',
         to: brokerRecord.email,
         cc: 'info@simplifyfinance.com.au',
+        // THE BANK IN THE SUBJECT LINE. 19 Oct 2026. "has moved to Compliance"
+        // was true and told the broker nothing about the thing the client had
+        // just agreed to. Left out where no lender was captured rather than
+        // padded with a word like "a lender".
         subject: docs && !docs.ok
           ? `ACTION NEEDED - documents not requested: ${deal.deal_name}`
-          : `${deal.deal_name} has moved to ${nextStageLabel}`,
-        html: `<p>Hi ${brokerRecord.name?.split(' ')[0] || ''},</p><p><strong>${deal.deal_name}</strong> has progressed to <strong>${nextStageLabel}</strong>.</p>${brokerDocumentLine(docs)}<p><a href="${siteUrl()}/deals/${dealId}">Open the deal</a></p>`
+          : lender
+            ? `${deal.deal_name} confirmed ${lender} and has moved to ${nextStageLabel}`
+            : `${deal.deal_name} has moved to ${nextStageLabel}`,
+        html: `<p>Hi ${brokerRecord.name?.split(' ')[0] || ''},</p><p><strong>${deal.deal_name}</strong> has progressed to <strong>${nextStageLabel}</strong>.</p>${lender ? `<p>The client confirmed <strong>${lender}</strong> on their own page.</p>` : ''}${brokerDocumentLine(docs)}<p><a href="${siteUrl()}/deals/${dealId}">Open the deal</a></p>`
       })
     })
   } catch (e) {
@@ -163,6 +181,10 @@ export async function markProceeded(
   const wealthDeskLink = settings?.wealth_desk_link || ''
 
   const alreadyProceeded = stage === 'BC' ? !!deal.client_proceeded : !!deal.lo_client_proceeded
+  // What the lending options page shows the client once the write has landed.
+  // Set on the Lending Options branch, and on a repeat visit, so a refresh
+  // still names the bank they agreed to.
+  let offer = stage === 'LO' ? lenderOnOffer(deal.lo_data) : null
 
   if (!alreadyProceeded) {
     const nowIso = new Date().toISOString()
@@ -248,9 +270,42 @@ export async function markProceeded(
         await notifyBrokerOfProgress(deal, dealId, stage, outcome)
       })
     } else {
+      // THE LENDER THE CLIENT AGREED TO, READ OFF THE DEAL - NEVER OFF THE LINK.
+      //
+      // 19 Oct 2026. Until today nothing recorded which bank a client said yes
+      // to: the page named none and this update wrote none, so the only lender
+      // agreement on any deal was the box a broker ticks afterwards. Fabio
+      // believed it had stopped working; `git log -S clientAgreedLender` says it
+      // never did.
+      //
+      // It is worked out HERE, from the recommendation saved on the deal, for
+      // the same reason the BC's option is bound on the server: the client's
+      // page is reached by a link, and a link is whatever somebody typed. A
+      // lender name posted from a browser is not evidence of anything.
+      //
+      // NULL WHERE THE RECOMMENDATION IS AMBIGUOUS. Two options from the same
+      // bank with nothing recording which is "we do not know" everywhere else
+      // in this portal. The client has still agreed to proceed and the deal
+      // still moves; the compliance record says the lender was not captured
+      // rather than naming one nobody chose.
+      //
+      // ONLY EVER SET, NEVER CLEARED - an office recording the same proceed a
+      // second time must not wipe what the client themselves confirmed.
+      const agreed = by.source === 'client' ? lenderToRecord(deal.lo_data) : null
+      // AND THE SAME THING THE PAGE WILL PRINT, handed back with the result.
+      //
+      // The client's page reads a deliberately narrow set of columns and
+      // lo_data is not among them - see loadProceed. This read is the proper
+      // one, on a POST, so the bank, product and loan amount travel back with
+      // the answer rather than the page going looking for them.
+      offer = lenderOnOffer(deal.lo_data)
       const { data: wrote, error: wErr } = await supabase.from('deals').update({
         stage: 'Compliance', last_tab: 'Compliance', lo_client_proceeded: true, lo_proceeded_at: nowIso,
         lo_proceeded_source: by.source, lo_proceeded_by: by.source === 'office' ? (by.name || null) : null,
+        ...(agreed ? { lo_proceeded_lender: agreed } : {}),
+        // They pressed the real button in the end, so the request for a call is
+        // answered. The timestamp stays: it is a true record of what happened.
+        lo_wants_call: false,
       }).eq('id', dealId).select('id')
       if (wErr || !wrote || wrote.length === 0) {
         return { ok: false as const, error: wErr?.message || 'The deal would not save. Nothing was recorded.' }
@@ -262,16 +317,130 @@ export async function markProceeded(
         } catch (e) {
           console.error('[proceed] the move-card notice did not send', e)
         }
-        await notifyBrokerOfProgress(deal, dealId, stage, null)
+        await notifyBrokerOfProgress(deal, dealId, stage, null, agreed)
       })
     }
 
   }
 
-  return { ok: true as const, deal, alreadyProceeded, wealthDeskLink }
+  return { ok: true as const, deal, alreadyProceeded, wealthDeskLink, offer }
 }
 
 
+
+// THE CLIENT WOULD RATHER TALK FIRST.
+//
+// 19 Oct 2026. The second button on the Lending Options email, and the honest
+// no. Until today the client's page had one button and no way to disagree, so a
+// client who was not comfortable simply did not press anything - and a deal
+// waiting on a client who has decided against the recommendation looks exactly
+// like a deal waiting on a client who has not opened the email.
+//
+// IT MOVES NOTHING. No stage, no credit officer, no documents, no card. The
+// deal stays precisely where it is and the broker is told to ring them. That is
+// deliberate and it is the whole point: Fabio's own rule is that the Lending
+// Options tab does not invent structure, and a client picking a different bank
+// off a web page with nobody on the phone would be exactly that. What actually
+// happens goes in the box on that tab, after the call, in a broker's words.
+//
+// IT IS NOT AN ANSWER ABOUT A LENDER. Nothing here writes lo_proceeded_lender.
+// The client has said "not yet", which is not the same as "someone else".
+export async function markWantsCall(dealId: string, by: ProceedBy) {
+  const supabase = createSupabaseAdmin()
+
+  const { data: deal, error } = await supabase
+    .from('deals')
+    .select('*, clients(first_name, last_name, email)')
+    .eq('id', dealId)
+    .single()
+
+  if (error || !deal) return { ok: false as const, error: error?.message || 'Deal not found' }
+
+  // ALREADY PROCEEDED IS NOT A REASON TO IGNORE THEM - IT IS THE URGENT CASE.
+  //
+  // This is where "Pressed this by mistake? Let us know" lands, and a client
+  // saying that about a deal already on its way to Compliance needs a call
+  // sooner than one who has not pressed anything. The stage is NOT pulled back:
+  // undoing a client's recorded agreement on the strength of a second link
+  // press is not a thing this portal will do, and a broker can move it back
+  // themselves once they know what happened. The flag is raised and the email
+  // says which of the two it is.
+  const already = !!deal.lo_client_proceeded
+
+  // Pressed twice, or the page re-rendered: the record is already there and the
+  // broker has already been emailed. Saying so again is noise on a day somebody
+  // has to act on it. The page still shows the client the right words.
+  if (deal.lo_wants_call) {
+    return { ok: true as const, deal, alreadyProceeded: already }
+  }
+
+  const nowIso = new Date().toISOString()
+  const { data: wrote, error: wErr } = await supabase.from('deals').update({
+    lo_wants_call: true, lo_wants_call_at: nowIso,
+  }).eq('id', dealId).select('id')
+
+  // Same reason as every other write on this path: row level security refuses
+  // by returning no rows and no error, and telling a client we have passed the
+  // message on when nothing was stored is the worst kind of quiet failure.
+  if (wErr || !wrote || wrote.length === 0) {
+    return { ok: false as const, error: wErr?.message || 'That would not save. Nothing was recorded.' }
+  }
+
+  // After the response, like everything else the client is not waiting on.
+  after(async () => { await notifyBrokerWantsCall(deal, dealId, already) })
+
+  return { ok: true as const, deal, alreadyProceeded: already }
+}
+
+// THE EMAIL THAT ACTUALLY GETS SOMEBODY TO LOOK.
+//
+// Fabio, 19 Oct 2026: "I like that it's on the portal, but unless we see on the
+// portal, it doesn't flag the broker to go and have a look at it." The flag on
+// the deal is the record; this is the thing that gets it read. Same list as
+// every other notice on this path - the assigned broker, copied to the office.
+//
+// ACTION NEEDED in the subject, like the failed document request, because it is
+// a job somebody has to do today and not a notice that something happened.
+async function notifyBrokerWantsCall(deal: any, dealId: string, alreadyProceeded: boolean) {
+  try {
+    const brokerRecord = await resolveBrokerProfile(deal.assigned_broker)
+    if (!brokerRecord?.email) return
+    const offered = lenderOnOffer(deal.lo_data)
+    const first = String(deal.clients?.first_name || '').trim()
+    const who = first || 'The client'
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'Simplify Finance Portal <notifications@simplifyfinance.com.au>',
+        to: brokerRecord.email,
+        cc: 'info@simplifyfinance.com.au',
+        subject: alreadyProceeded
+          ? `ACTION NEEDED - ${who} says they pressed proceed by mistake: ${deal.deal_name}`
+          : `ACTION NEEDED - ${who} wants to talk before proceeding: ${deal.deal_name}`,
+        html: `<p>Hi ${brokerRecord.name?.split(' ')[0] || ''},</p>`
+          + (alreadyProceeded
+            ? `<p><strong>${who}</strong> has told us they pressed proceed by mistake`
+              + `${offered?.name ? ` on <strong>${offered.name}</strong>` : ''}.</p>`
+              + `<p><strong>The deal has already moved to Compliance and is still there.</strong> Nothing `
+              + `has been pulled back automatically - that is yours to decide once you have spoken to them. `
+              + `Call them, then put the deal where it should be and record what they decided in `
+              + `&ldquo;The client&rsquo;s decision&rdquo; on the lending options tab.</p>`
+            : `<p><strong>${who}</strong> opened the lending options email and asked to talk it through`
+              + `${offered?.name ? ` rather than go ahead with <strong>${offered.name}</strong>` : ''}.</p>`
+              + `<p><strong>Nothing has moved.</strong> The deal is still on Lending Options, nothing has `
+              + `been submitted and no lender has been recorded against their name. Give them a call, then `
+              + `record what they decided in &ldquo;The client&rsquo;s decision&rdquo; on the lending `
+              + `options tab.</p>`)
+          + `<p><a href="${siteUrl()}/deals/${dealId}">Open the deal</a></p>`
+      })
+    })
+  } catch (e) {
+    // Non-fatal, like every other notice here. The flag is already on the deal,
+    // which is the record; this is the nudge.
+    console.error('[proceed] the wants-a-call notice did not send', e)
+  }
+}
 
 // The email's words and its subject line live in one file that imports nothing,
 // so they can be tested without loading the database client. Re-exported here

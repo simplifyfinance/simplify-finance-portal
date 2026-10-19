@@ -2945,10 +2945,56 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             * See lib/client-agreement.ts. */}
           <div className="mt-5 pt-4 border-t border-card-line">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">The client&apos;s decision</div>
+
+            {/* THEY ASKED TO TALK BEFORE PROCEEDING. 19 Oct 2026.
+              *
+              * The second button on the lending options email. The deal has NOT
+              * moved and no lender has been recorded - see markWantsCall in
+              * lib/proceed-flow.ts. The assigned broker has an email saying the
+              * same thing, because Fabio's point on 19 Oct was that a flag
+              * nobody is looking at is not a flag: "unless we see on the
+              * portal, it doesn't flag the broker to go and have a look at it."
+              *
+              * It stays up until somebody records a decision below, which is
+              * the job it is asking for. */}
+            {deal.lo_wants_call && !d.clientAgreedLender && (
+              <div className="rounded-lg p-3.5 border border-waiting-edge bg-waiting-bg mb-3">
+                <div className="text-[13px] leading-relaxed text-waiting font-semibold">
+                  {deal.lo_client_proceeded
+                    ? 'The client says they pressed proceed by mistake'
+                    : 'The client asked to talk it through before proceeding'}
+                </div>
+                <div className="text-xs text-gray-500 mt-1 leading-relaxed">
+                  Pressed on their own page{deal.lo_wants_call_at ? ` ${dayMonth(deal.lo_wants_call_at, false)}` : ''}.
+                  {deal.lo_client_proceeded
+                    ? ' The deal has already moved to Compliance and has not been pulled back \u2014 that is yours to decide once you have spoken to them.'
+                    : ' Nothing has moved and nothing has been submitted.'}
+                  {' '}Call them, then record what they decided below.
+                </div>
+              </div>
+            )}
+
             {decisionOpen || !d.clientAgreedLender ? (
-              <div className={`rounded-lg p-3.5 border ${d.clientAgreedLender ? 'bg-page border-gray-100' : 'bg-chase-bg border-chase-edge'}`}>
-                <div className={`text-[13px] leading-relaxed ${d.clientAgreedLender ? 'text-gray-500' : 'text-chase'}`}>
-                  {!d.clientAgreedLender && <><span className="font-semibold">Not recorded</span> &mdash; </>}
+              <div className={`rounded-lg p-3.5 border ${d.clientAgreedLender ? 'bg-page border-gray-100' : deal.lo_proceeded_lender ? 'bg-done-bg border-done-edge' : 'bg-chase-bg border-chase-edge'}`}>
+                {/* THE CLIENT ANSWERED IT THEMSELVES, AND THIS BOX IS STILL THE
+                  * ANSWER. 19 Oct 2026.
+                  *
+                  * lo_proceeded_lender is what the client confirmed on their own
+                  * page - stronger evidence than anybody here ticking a box, and
+                  * it is shown so nobody has to go looking for it.
+                  *
+                  * IT IS NOT WRITTEN INTO clientAgreedLender BY THE PORTAL. That
+                  * field is what the compliance pack reads, every reader of it
+                  * goes through lib/client-agreement.ts, and a regulated answer
+                  * that appeared because a web page loaded is not an answer a
+                  * person gave. So the evidence is put in front of the broker
+                  * and the Yes beside it is one press. */}
+                <div className={`text-[13px] leading-relaxed ${d.clientAgreedLender ? 'text-gray-500' : deal.lo_proceeded_lender ? 'text-done' : 'text-chase'}`}>
+                  {!d.clientAgreedLender && (deal.lo_proceeded_lender
+                    ? <><span className="font-semibold">&#10003; The client confirmed {deal.lo_proceeded_lender} themselves</span>
+                        {deal.lo_proceeded_at ? <span className="text-gray-500"> on their own page, {dayMonth(deal.lo_proceeded_at, false)}</span> : null}
+                        <span className="text-gray-500"> &mdash; </span></>
+                    : <><span className="font-semibold">Not recorded</span> &mdash; </>)}
                   Did the client agree with <span className="font-semibold">{decisionLenderName(d) || 'the recommendation'}</span>?
                 </div>
                 <div className="flex gap-2 mt-2.5">

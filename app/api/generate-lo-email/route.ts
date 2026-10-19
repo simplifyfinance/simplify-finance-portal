@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { loPurchaseBlock, isBuyAndSell } from '@/lib/lo-purchase-block'
 import { buysNothing } from '@/lib/buying'
-import { ctas } from '@/lib/email-buttons'
+import { ctasLender } from '@/lib/email-buttons'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { type Brand, resolveBrand, brandLegal } from '@/lib/brand'
 import { rateNoticeLines } from '@/lib/rate-notice-server'
 import { isRecommended, recommendedLabel, recommendedOption, recommendedFirst } from '@/lib/recommended-option'
+import { lenderOnOffer } from '@/lib/client-lender-choice'
 // EVERY DOLLAR FIGURE IN A CLIENT EMAIL GOES THROUGH money().
 //
 // This file used to write `'$' + (d.purchasePrice || '')` in a hundred
@@ -309,7 +310,13 @@ export async function POST(req: NextRequest) {
     email: resolved.email || '',
   }
   const isBridging = d.template === 'lo_bridging'
-  const proceedUrl = dealId ? `${siteUrl()}/proceed/${dealId}?from=LO` : undefined
+  const proceedUrl = dealId ? `${siteUrl()}/proceed/${dealId}?from=LO&choice=proceed` : undefined
+  // THE SECOND BUTTON. 19 Oct 2026 - see ctasLender in lib/email-buttons.ts.
+  // It lands on a page that records a request for a call and moves nothing.
+  const talkUrl = dealId ? `${siteUrl()}/proceed/${dealId}?from=LO&choice=talk` : undefined
+  // The bank the buttons may name, or null where two options share one and
+  // nothing recorded which. Null keeps the single unnamed button.
+  const offered = lenderOnOffer(d)
 
 
   // The broker's own opening already says what the client is doing and why, in
@@ -467,7 +474,9 @@ export async function POST(req: NextRequest) {
   // The closing line stays where it is: it says "the numbers above", which only
   // makes sense underneath them. lib/email-buttons.test.ts fails if the button
   // ever drifts back below the table.
-  body += ctas(b.calendly, proceedUrl)
+  // TWO BUTTONS WHERE THERE IS A BANK TO NAME, one where there is not.
+  // ctasLender falls back to ctas by itself, so this is one call either way.
+  body += ctasLender(b.calendly, proceedUrl || '', talkUrl || '', offered?.name || '')
 
   const sortedLenders = recommendedFirst(d, d.lenders || [])
   // The securities, read live off the borrowing capacity and the fact find

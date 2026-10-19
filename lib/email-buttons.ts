@@ -106,3 +106,48 @@ export function ctasTwo(calendly: string, options: { url: string; label: string 
     + `<p style="font-size:12px;margin:0 0 20px;line-height:1.5">`
       + `<a href="${calendly}" style="color:#343333;text-decoration:underline">Not sure yet? Book a call with us</a></p>`
 }
+
+// THE LENDER NAMED ON THE BUTTON. 19 Oct 2026.
+//
+// Fabio: "It looks like though that the system is no longer asking the client to
+// confirm if they are happy to proceed with the recommended lender." It never
+// asked. "I am ready to proceed" names nothing, so the client was agreeing to
+// something neither the email nor the page ever told them, and the deal recorded
+// no lender against their answer. The only lender agreement this portal has ever
+// held is the box a broker fills in afterwards.
+//
+// So where the recommendation is unambiguous, the one button becomes two: go
+// ahead with that bank, or ask to talk it through first. The second is the
+// honest no - it does not move the deal, it does not pick a lender, it gets the
+// client a phone call. See lib/proceed-flow.ts.
+//
+// WHERE THE RECOMMENDATION IS AMBIGUOUS this is not called at all and the single
+// button stands. Two options from the same bank with nothing recording which is
+// "we do not know" everywhere else in this portal, and it is not going to become
+// a name printed on a button a client presses to agree to a loan.
+//
+// Every Outlook rule the single button learned the hard way applies unchanged:
+// the colour on the cell, the text colour on the anchor, never on the paragraph.
+// The second button is the same quieter grey ctasTwo uses, so the first one
+// stays the action rather than becoming a coin toss.
+export function ctasLender(calendly: string, proceedUrl: string, talkUrl: string, lenderName: string) {
+  const ok = (v: any) => String(v || '').trim()
+  // Nothing to record against, or no bank to name: the old button, unchanged.
+  if (!ok(proceedUrl) || !ok(talkUrl) || !ok(lenderName)) return ctas(calendly, proceedUrl)
+
+  const lead = `<p style="font-size:13px;font-weight:600;margin:0 0 10px;line-height:1.5">`
+    + `<span style="color:#343333;">Happy to go ahead with ${lenderName}? Press the first button below. `
+    + `If you would rather talk it through, press the second one and we will call you.</span></p>`
+
+  const button = (url: string, label: string, colour: string) =>
+    `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px"><tr>
+      <td bgcolor="${colour}" align="center" style="background:${colour};border-radius:6px;padding:12px 18px">
+        <a href="${url}" style="color:#343333;font-size:14px;font-weight:700;text-decoration:none;display:inline-block">${label} &nbsp;&rarr;</a>
+      </td></tr></table>`
+
+  return lead
+    + button(proceedUrl, `Proceed with ${lenderName}`, '#2DBEFF')
+    + button(talkUrl, `I&rsquo;d rather talk it through first`, '#E8E1D6')
+    + `<p style="font-size:12px;margin:0 0 20px;line-height:1.5">`
+      + `<a href="${calendly}" style="color:#343333;text-decoration:underline">Or book a time that suits you</a></p>`
+}
