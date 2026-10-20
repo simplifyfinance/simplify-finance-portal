@@ -63,6 +63,17 @@ const FROM_TEMPLATE: Record<string, { type?: TypeId; use?: UseId }> = {
   family_pledge:       { type: 'purchase', use: 'owner_occupied' },
   smsf:                { type: 'purchase', use: 'smsf' },
   construction:        { type: 'construction' },
+  // 20 Oct 2026. Neither of these was here, so a top up wore an "unknown" chip
+  // on every board - and this map is also what sets a deal's transaction type,
+  // which the settlements board uses to tell refinances from purchases.
+  //
+  // A top up releases money against a property they already own without the
+  // loan moving. Of the four types this portal has, equity release is the one
+  // that is true; refinance would be a lie about a discharge that is not
+  // happening. The use is deliberately left off both - it follows the property,
+  // and a deal can top up an investment to buy a home.
+  top_up:              { type: 'equity_release' },
+  top_up_purchase:     { type: 'purchase' },
 }
 
 const TYPE_WORDS: [RegExp, TypeId][] = [

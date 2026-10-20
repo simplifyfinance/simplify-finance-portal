@@ -5,6 +5,7 @@ import { dutyApplies } from './construction'
 import { dealRow, splitsOf, isMixed } from './deal-structure'
 import { applicantsOf } from './applicants'
 import { variantOf, andList, type Gap } from './box-one'
+import { isTopUp, increaseTotal, lendingAgainst, anyRefinanced, isDollarForDollar } from './top-up'
 
 // BOX SEVEN — DEPOSIT / EQUITY.
 //
@@ -37,7 +38,8 @@ const num = (v: any) => readMoney(v) ?? 0
 
 export type Box = { text: string; gaps: Gap[]; variant: 1 | 2 | 3 }
 
-export type Shape = 'purchase' | 'refinance' | 'cashout' | 'release_and_purchase' | 'unknown'
+export type Shape = 'purchase' | 'refinance' | 'cashout' | 'release_and_purchase'
+  | 'top_up' | 'top_up_purchase' | 'unknown'
 
 // WHAT THE DEAL ACTUALLY DOES.
 //
@@ -51,6 +53,22 @@ export function shapeOf(deal: any): Shape {
   const buying = num(bc.purchasePrice) > 0 || num(bc.newPurchasePrice) > 0
   const release = num(bc.equityRelease) > 0
   const payout = refinancedDebt(deal) > 0
+
+  // A TOP UP IS ITS OWN SHAPE, AND IT IS ASKED FIRST.
+  //
+  // 20 Oct 2026. Every shape below assumes a loan is either being paid out or
+  // nothing is happening to it. A top up is neither: the loan stays where it
+  // is and gets bigger. Before this existed the box read the balance on the
+  // security as a payout and wrote "This is a refinance of the existing debt
+  // dollar for dollar", which is false in every clause on a deal where nothing
+  // moves - and it is the compliance pack, so it goes to a lender.
+  //
+  // ASKED FIRST because a top up + purchase is both, and the increase IS the
+  // contribution - the same story as release_and_purchase, told with the
+  // figures a top up actually has.
+  if (isTopUp(bc.template) && increaseTotal(bc) > 0) {
+    return buying ? 'top_up_purchase' : 'top_up'
+  }
 
   if (buying && release) return 'release_and_purchase'
   if (buying) return 'purchase'
@@ -296,6 +314,50 @@ export function boxSeven(deal: any): Box {
       parts.push(`Total lending of ${money(lending)} is made up of ${money(payout)} to pay out the existing debt, the ${money(release)} equity release, and ${money(purchaseSplit)} funding the purchase.`)
     }
     take(completionLine(deal))
+    take(lvrLine(deal))
+  }
+
+  // THE LOAN STAYS AND GETS BIGGER. No deposit, no payout, no discharge.
+  //
+  // The figures come off the securities, which is where a top up records them -
+  // see lib/top-up.ts. What is owed is named because the LVR counts it, and the
+  // sentence says out loud that it is not moving, because the one thing this
+  // box must never imply on a top up is a refinance.
+  else if (shape === 'top_up' || shape === 'top_up_purchase') {
+    const bcNow = deal?.bc_data || {}
+    const ids: string[] = Array.isArray(bcNow?.securityIds) ? bcNow.securityIds.map(String) : []
+    const staying = ids.filter(id => !isDollarForDollar(bcNow, id))
+    const owed = staying.reduce((t, id) =>
+      t + num((bcNow?.securityBalances || {})[id]), 0)
+    const after = staying.reduce((t, id) => t + lendingAgainst(bcNow, id), 0)
+    const increase = increaseTotal(bcNow)
+
+    if (owed > 0 && increase > 0) {
+      parts.push(v === 2
+        ? `The existing lending of ${money(owed)} is increasing by ${money(increase)} to ${money(after)}. It stays with its current lender and is not being refinanced, so no discharge is required and no debt is being paid out.`
+        : `${who} ${is} increasing existing lending of ${money(owed)} by ${money(increase)}, taking it to ${money(after)}. The loan stays with its current lender and is not being refinanced — there is no discharge and no debt is being paid out.`)
+    } else {
+      gaps.push({ what: 'What is owed on each security, and what it is increasing by', where: 'Borrowing capacity' })
+      parts.push(shout('NOT RECORDED — what is owed on the security, or what it is increasing by.'))
+    }
+
+    if (shape === 'top_up_purchase') {
+      // THE INCREASE IS THE DEPOSIT. The same story release_and_purchase tells,
+      // with the figures a top up has - there is no equity release box on this
+      // scenario, the release lives on each security as an increase.
+      parts.push(price > 0
+        ? `That increase is the contribution towards the purchase price of ${money(price)}. No cash contribution is being made from ${plural ? 'their' : 'their'} own funds.`
+        : shout('NOT RECORDED — the purchase price, so the contribution cannot be set against it.'))
+      if (price <= 0) gaps.push({ what: 'Purchase price', where: 'Borrowing capacity' })
+      take(completionLine(deal))
+    }
+
+    // A SECURITY TICKED DOLLAR FOR DOLLAR IS MOVING, and saying nothing about
+    // it would leave the sentence above claiming more than it should.
+    if (anyRefinanced(bcNow)) {
+      parts.push(`A further ${money(payout)} of existing lending is being refinanced dollar for dollar to the new lender.`)
+    }
+    parts.push(purposeSentence(deal))
     take(lvrLine(deal))
   }
 

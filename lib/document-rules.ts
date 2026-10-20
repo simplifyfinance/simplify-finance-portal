@@ -77,6 +77,8 @@ const txt = (v: any) => String(v ?? '').trim()
 
 // ---------------------------------------------------------------- the deal --
 
+import { buysNothing } from './buying'
+
 const REFINANCE_TEMPLATES = ['refinance_only', 'refinance_equity', 'investment_equity']
 
 export function isRefinance(deal: any): boolean {
@@ -89,6 +91,15 @@ export function isRefinance(deal: any): boolean {
 
 export function isPurchase(deal: any): boolean {
   const t = txt(deal?.bc_data?.template)
+  // ANYTHING THAT IS NOT A REFINANCE IS NOT AUTOMATICALLY A PURCHASE.
+  //
+  // 20 Oct 2026. A plain top up is neither, and this asked only the first
+  // question - so it demanded an updated contract of sale and building
+  // insurance for a property nobody is buying, and switched on the "solicitor
+  // and buyers agent copied in" milestone on a deal with no other side.
+  // lib/buying.ts already holds the list of scenarios that positively buy
+  // nothing; it is read here rather than named a second time.
+  if (buysNothing(t)) return false
   return !!t && !REFINANCE_TEMPLATES.includes(t) && t !== 'custom'
 }
 

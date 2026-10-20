@@ -3,7 +3,7 @@ import { isLandPurchase, landLoanPayout, dutyApplies } from './construction'
 import { buildsSomething, purchasePriceOf } from './sale-build'
 import { securitiesWithPurchase, totalsOf, canBuyAndRefinance,
          BEING_PURCHASED, purchaseLoanOf } from './securities'
-import { isTopUp, cashReleased } from './top-up'
+import { isTopUp, cashReleased, isDollarForDollar } from './top-up'
 
 // WHAT THE CLIENT HAS TO FIND.
 //
@@ -513,8 +513,33 @@ export function refinancedDebt(deal: any): number {
   //
   // Newest first, and never added together: a deal has its balances in one
   // place or the other, and summing the two would double the payout.
-  const perSecurity = Object.values(bc?.securityBalances || {})
-    .reduce((t: number, v: any) => t + num(v), 0)
+  // A TOP UP PAYS OUT NOTHING, AND THIS IS WHERE THAT WENT WRONG.
+  //
+  // 20 Oct 2026. On a top up the balance on a security is a loan STAYING with
+  // the lender it is already with. Counted here it became "debt being paid
+  // out", and two screens then said so out loud: the deal structure block
+  // printed it as an existing loan being discharged, and the compliance pack's
+  // deposit box read the shape of the deal as a refinance and wrote "This is a
+  // refinance of the existing debt dollar for dollar... the new lending of
+  // $1,142,441 replaces the existing balance of $942,441 being paid out."
+  //
+  // Not one clause of that is true on a top up, and it goes to a lender. It is
+  // the exact failure the header of lib/top-up.ts is written against: the loan
+  // is not moving, so the pack must never call it a refinance.
+  //
+  // A TICKED SECURITY IS STILL A PAYOUT. Dollar for dollar means the loan DOES
+  // move to a new lender, so that balance is discharged and belongs in this
+  // figure - which is the third place that tick changes arithmetic rather than
+  // wording.
+  const balances: Record<string, any> = bc?.securityBalances || {}
+  if (isTopUp(bc?.template)) {
+    const moving = Object.keys(balances)
+      .filter(id => isDollarForDollar(bc, id))
+      .reduce((t, id) => t + num(balances[id]), 0)
+    if (moving > 0) return moving
+    return flagged
+  }
+  const perSecurity = Object.values(balances).reduce((t: number, v: any) => t + num(v), 0)
   if (perSecurity > 0) return perSecurity
 
   // Unchanged for every scenario that does refinance: the BC's figure wins,

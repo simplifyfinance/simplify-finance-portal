@@ -274,7 +274,7 @@ function fieldCls(value: string) {
     ? "px-2.5 py-1.5 text-sm border border-green-200 rounded-lg focus:outline-none focus:border-brand bg-field w-full"
     : "px-2.5 py-1.5 text-sm border border-dashed border-field-line rounded-lg focus:outline-none focus:border-brand bg-page w-full"
 }
-import { buysNothing } from '@/lib/buying'
+import { buysNothing, BUYING_TEMPLATES as SHARED_BUYING_TEMPLATES } from '@/lib/buying'
 import { isTopUp, increaseFor, lendingAgainst, limitDisagreement, splitsForSecurity } from '@/lib/top-up'
 import { offsetIsOn, toggleOffset, offsetsAfterRemoving } from '@/lib/offset-splits'
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
@@ -293,8 +293,12 @@ const formatNumber = formatAsTyped
 // drift apart - they already had, which is how a purchase ended up holding one.
 // The scenarios where something is being bought, and so where "house or
 // strata" is a question with an answer.
-const BUYING_TEMPLATES = ['oo_purchase', 'oo_lvr_compare', 'investment_purchase', 'fhb',
-  'investment_equity', 'buy_sell', 'bridging', 'smsf', 'family_pledge', 'construction']
+//
+// 20 Oct 2026. This was a second copy of lib/buying.ts BUYING_TEMPLATES, and it
+// did not get top_up_purchase when the shared one did - so the form stopped
+// asking house or strata on a scenario that buys a house. Two lists of the same
+// fact, free to disagree, which is the whole reason lib/buying.ts exists.
+const BUYING_TEMPLATES = SHARED_BUYING_TEMPLATES as readonly string[]
 
 const REFINANCING_TEMPLATES = ['refinance_equity', 'refinance_only', 'investment_equity', 'buy_sell', 'bridging', 'debt_recycling', 'complex_refinance']
 
@@ -2421,7 +2425,7 @@ Key assumptions: ${checklistText}`
                       </Field>
                     </div>
                   )}
-                  {!buysNothing(template) && !["refinance_equity", "refinance_only", "investment_equity", "construction"].includes(template) && !sellAndBuild && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={handlePurchasePriceChange} /></Field>}
+                  {!buysNothing(template) && !["refinance_equity", "refinance_only", "investment_equity", "top_up_purchase", "construction"].includes(template) && !sellAndBuild && <Field label="Purchase price"><NumberInput value={purchasePrice} onChange={handlePurchasePriceChange} /></Field>}
                   {/* THE CONTRIBUTION BOX, BACK ON THE FAMILY PLEDGE.
                       15 Sep 2026. The deposit box was hidden on this template,
                       yet the client email prints "Your contribution required"
@@ -2434,7 +2438,7 @@ Key assumptions: ${checklistText}`
                       <NumberInput value={deposit} onChange={handleDepositChange} />
                     </Field>
                   )}
-                  {!buysNothing(template) && !["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "construction"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={handleDepositChange} />
+                  {!buysNothing(template) && !["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "top_up_purchase", "family_pledge", "construction"].includes(template) && <Field label="Deposit"><NumberInput value={deposit} onChange={handleDepositChange} />
                     {(() => {
                       const dep = parseFloat(deposit.replace(/,/g, '')) || 0
                       const sd = parseFloat(stampDuty.replace(/,/g, '')) || 0
@@ -2443,7 +2447,7 @@ Key assumptions: ${checklistText}`
                       return <div className="text-[11px] text-gray-500 mt-1">${formatNumber(Math.round(dep - sd).toString())} into the property after stamp duty</div>
                     })()}
                   </Field>}
-              {!buysNothing(template) && !["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "family_pledge", "buy_sell"].includes(template) && (
+              {!buysNothing(template) && !["refinance_equity", "refinance_only", "oo_lvr_compare", "investment_equity", "top_up_purchase", "family_pledge", "buy_sell"].includes(template) && (
                 <Field label="Deposit source">
                   <select className={selectCls} value={depositSource} onChange={e => setDepositSource(e.target.value)}>
                     <option value="">Select source</option>
@@ -2460,11 +2464,11 @@ Key assumptions: ${checklistText}`
                   {/* NO PURCHASE, NO DUTY, AND NO STATE TO WORK IT OUT IN.
                       buysNothing() in front of both - see lib/buying.ts. */}
                   {!buysNothing(template)
-                    && !["refinance_equity", "refinance_only", "investment_equity"].includes(template)
+                    && !["refinance_equity", "refinance_only", "investment_equity", "top_up_purchase"].includes(template)
                     && !(showsBuild && landFunding !== 'purchase')
                     && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={handleStampDutyChange} /></Field>}
                   {!buysNothing(template)
-                    && !["refinance_equity", "refinance_only", "investment_equity"].includes(template)
+                    && !["refinance_equity", "refinance_only", "investment_equity", "top_up_purchase"].includes(template)
                     && !(showsBuild && landFunding !== 'purchase') && (
                     <Field label="State">
                       <select className={selectCls} value={dutyState} onChange={e => setDutyState(e.target.value)}>
@@ -2715,7 +2719,16 @@ Key assumptions: ${checklistText}`
                 })()}
                 <div className="flex flex-col gap-3">
                   {splits.map((s, i) => {
-                    if (template === 'investment_equity' && i === 2) return null
+                    // THE PURCHASE SPLIT IS EDITED IN THE PANEL, NOT HERE.
+                    //
+                    // 20 Oct 2026. This was pinned to one template and to the
+                    // third split. Top up + purchase has the same panel, so the
+                    // purchase was drawn twice; and merging the two top-up
+                    // splits moves it to position 1, so the hide would have
+                    // fallen on the wrong card. Same question both places now -
+                    // does this scenario have the panel, and which split is the
+                    // purchase.
+                    if (canBuyAndRefinance(template) && i === findPurchaseSplit(splits)) return null
                     const priceNum = parseFloat(purchasePrice.replace(/,/g, '')) || 0
                     const optAmountNum = parseFloat((s.amount || '0').replace(/,/g, '')) || 0
                     const optLvrPercent = priceNum > 0 ? Math.ceil((optAmountNum / priceNum) * 1000) / 10 : 0
