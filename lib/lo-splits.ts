@@ -16,7 +16,23 @@
 // promises - "pre-filled - editable per lender" - and it repairs every LO
 // already saved without touching the database.
 
-export type GlobalSplit = { id: string; label: string; amount: string; securityId?: string }
+import { norm } from './lender-id'
+
+export type GlobalSplit = { id: string; label: string; amount: string; securityId?: string
+  // THE LOAN THAT IS ALREADY THERE, ON A TOP UP, AND WHAT IT COSTS TODAY.
+  //
+  // 20 Oct 2026. The existing loan appears as a split so every lender can be
+  // priced against the whole position - that is how we compare staying and
+  // topping up against moving the lot, and it is deliberate. But under the
+  // lender the loan is ALREADY with, that split is not being repriced: the
+  // facility stays, at the rate it is on, and only the increase is new money.
+  //
+  // Left blank, somebody had to remember to type the current rate there. Miss
+  // it and the client is quoted a repayment on the whole balance at a rate that
+  // is not theirs - on the recommended option, which is the one they read.
+  staying?: boolean
+  existingRate?: string
+  existingLender?: string }
 // A figure out of a split, however it was typed.
 const money = (v: any): number => Number(String(v ?? '').replace(/[^0-9.]/g, '')) || 0
 
@@ -100,9 +116,29 @@ export function typeContradictsProduct(split: { repaymentType?: string } | null 
   return !offered.some(t => t.toLowerCase() === typed.toLowerCase())
 }
 
+/**
+ * The rate a seeded split starts on, which is blank for every split but one.
+ *
+ * A split tagged `staying` under the lender that loan is already with keeps the
+ * rate it is on. Under any OTHER lender it is blank, because there that loan
+ * would be moving and the new lender has to price it.
+ *
+ * NO FUZZY MATCH, for the reason lib/lender-id.ts gives: a near miss would put
+ * one bank's rate under another bank's name on a client's email. Exact after
+ * normalising, or nothing.
+ */
+function heldRate(s: GlobalSplit, lenderName: any): string {
+  if (!s?.staying) return ''
+  const mine = norm(s.existingLender)
+  const asked = norm(lenderName)
+  if (!mine || !asked || mine !== asked) return ''
+  return String(s.existingRate ?? '').trim()
+}
+
 export function seedFromGlobal(globals: GlobalSplit[] | undefined | null,
                                lender?: RateModuleHolder): LenderSplit[] {
   const type = seedType(lender)
+  const lenderName = (lender as any)?.lenderName
   // The interest only period comes across with the type when there is exactly
   // one module to read it from. The RATE does not: a module's rate belongs to
   // the money priced under it, and the repayment figure is for the whole loan -
@@ -110,7 +146,7 @@ export function seedFromGlobal(globals: GlobalSplit[] | undefined | null,
   const io = String(soleModule(lender)?.ioYears ?? '').trim()
   return (globals || []).map(s => ({
     id: s.id, label: s.label, amount: s.amount, securityId: s.securityId || '',
-    lvr: '', rate: '', repayment: '', repaymentType: type, ioYears: io,
+    lvr: '', rate: heldRate(s, lenderName), repayment: '', repaymentType: type, ioYears: io,
   }))
 }
 

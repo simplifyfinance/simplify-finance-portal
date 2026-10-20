@@ -79,6 +79,12 @@ type RefinanceSplit = {
   // It follows the BC, like the label and the amount, because it is part of the
   // structure this list is a copy OF. See lib/securities.ts.
   securityId?: string
+  // THE LOAN THAT IS ALREADY THERE, ON A TOP UP. Carried so the lender it is
+  // already with starts on the rate it is already on, rather than on a blank
+  // somebody has to remember to fill in. See heldRate in lib/lo-splits.ts.
+  staying?: boolean
+  existingRate?: string
+  existingLender?: string
 }
 
 type LenderSplit = {
@@ -535,6 +541,31 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     return total ? formatNumber(String(total)) : ''
   }
 
+  // WHAT THAT LOAN COSTS TODAY, FROM THE FACT FIND. It is already there - every
+  // property carries its loans, and every loan its lender and rate. Nothing is
+  // asked twice and nothing is invented: a loan with no rate recorded leaves
+  // the box blank, exactly as it is today.
+  const existingLoanOn = (securityId: any): { rate: string; lender: string } => {
+    const id = String(securityId ?? '').trim()
+    if (!id) return { rate: '', lender: '' }
+    const props: any[] = Array.isArray(ff?.properties) ? ff.properties : []
+    const loans: any[] = (props.find(p => String(p?.id ?? '').trim() === id)?.loans) || []
+    // ONE LOAN OR NONE. Two loans on one security have two rates and no single
+    // answer, and a guess here is a figure nobody typed on a client's email.
+    const withRate = loans.filter(l => String(l?.interestRate ?? '').trim())
+    if (withRate.length !== 1) return { rate: '', lender: '' }
+    return {
+      rate: String(withRate[0].interestRate).trim(),
+      lender: String(withRate[0].lenderName ?? '').trim(),
+    }
+  }
+
+  const stayingBits = (b: any) => {
+    if (!b?.staying) return {}
+    const found = existingLoanOn(b?.securityId)
+    return { staying: true, existingRate: found.rate, existingLender: found.lender }
+  }
+
   const initRefinanceSplits = (): RefinanceSplit[] => {
     if (bc.splits?.length > 0) {
       return bc.splits.map((s: any, i: number) => ({
@@ -551,6 +582,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         // refinance started with six splits and no property on any of them -
         // the exact flat list the grouping below exists to stop.
         securityId: s.securityId || '',
+        ...stayingBits(s),
       }))
     }
     return [{ id: makeUid(), label: 'Loan to be refinanced', amount: bc.existingLoanBal || '' }]
@@ -588,6 +620,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         // Follows the BC. Which house a loan is secured by is not a lending
         // options decision - it is the structure, and the BC owns it.
         securityId: b.securityId || was.securityId,
+        // AND SO DOES THIS. The BC decides whether a loan is staying; the rate
+        // it is on today is a fact on the fact find. Re-read every merge so a
+        // rate corrected on the fact find reaches the lending options.
+        ...stayingBits(b),
       }
     })
     return [...merged, ...extra]
