@@ -40,6 +40,13 @@ export function loTemplateFor(bcTemplate: unknown): LoTemplate {
   // page cares about: an existing loan moving, and nothing being bought.
   // startsWith('refinance') alone sent both of them to the purchase email.
   if (t.startsWith('refinance') || isDebtRecycling(t) || isComplexRefinance(t)) return 'lo_refinance'
+  // A PLAIN TOP UP BUYS NOTHING, so it wears the refinance page - no purchase
+  // price, no deposit, no stamp duty, and an LVR that is not worked out from a
+  // purchase price nobody has. 20 Oct 2026.
+  //
+  // top_up_purchase deliberately falls through to lo_purchase below: that one
+  // IS buying, and the purchase boxes are the whole second half of it.
+  if (t === 'top_up') return 'lo_refinance'
   if (t === 'bridging') return 'lo_bridging'
   return 'lo_purchase'
 }

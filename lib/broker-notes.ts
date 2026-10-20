@@ -40,6 +40,7 @@ import { lmiLoanSuffix, lmiAmount, lmiTreatment } from './lmi'
 import { fullName, ageFrom, currentEmployment, selfEmployed, notWorking } from './fact-find'
 import { annualIncomeOf, calculateSeAssessableIncome, seYearTotalFF } from './income-calculations'
 import { incomeKind, incomeLabel } from './income-kind'
+import { isTopUp, financeSought, whatEachPropertyIsDoing, anyRefinanced } from './top-up'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -133,6 +134,14 @@ function transaction(deal: any): { verb: string; isPurchase: boolean; isConstruc
   //
   // The verb is empty on purpose: this scenario does three things and no single
   // verb is true of all of it, so theDeal() below writes the breakdown instead.
+  // A TOP UP INCREASES; IT DOES NOT REFINANCE. 20 Oct 2026.
+  //
+  // The loan stays with the lender it is already with, so "refinance" in the
+  // one box a bank reads would be untrue - and the whole scenario was built on
+  // that distinction. top_up_purchase is 'mixed' because it does two things,
+  // and theDeal() below writes the breakdown rather than picking one verb.
+  if (t === 'top_up') return { verb: 'top-up', isPurchase: false, isConstruction: false }
+  if (t === 'top_up_purchase') return { verb: 'mixed', isPurchase: true, isConstruction: false }
   if (canBuyAndRefinance(t)) return { verb: 'mixed', isPurchase: true, isConstruction: false }
   if (PURCHASE_TEMPLATES.includes(t)) return { verb: 'purchase', isPurchase: true, isConstruction: false }
   return { verb: '', isPurchase: has(deal?.bc_data?.purchasePrice), isConstruction: false }
@@ -144,7 +153,13 @@ function applicantsOf(deal: any): any[] {
 
 function theDeal(deal: any, missing: string[]): NotesParagraph | null {
   const apps = applicantsOf(deal)
-  const total = loanAmount(deal)
+  const bcNow = deal?.bc_data || {}
+  // THE SPLITS ARE NOT WHAT IS BEING ASKED FOR, ON A TOP UP.
+  //
+  // The existing loan is a split so the LVR counts it, which means the splits
+  // total $800,000 on a deal asking a lender for $300,000. See financeSought
+  // in lib/top-up.ts - this is the one box on the tab the bank reads.
+  const total = isTopUp(bcNow.template) ? financeSought(bcNow) : loanAmount(deal)
   const purpose = purposeSummary(deal)
   const { verb } = transaction(deal)
   const where = txt(deal?.bc_data?.suburb) || purchaseSuburbOf(deal?.bc_data)
@@ -169,6 +184,31 @@ function theDeal(deal: any, missing: string[]): NotesParagraph | null {
   // BC relabels it - and the property being bought has no address yet, which is
   // how "in TBA" reached a lender. The securities are named, with their own
   // figures, in the paragraph that follows.
+  // A TOP UP SAYS WHAT EACH PROPERTY IS DOING, not one word for the deal.
+  //
+  // Fabio's standing complaint, 20 Oct 2026: a deal gets one label and the pack
+  // then says every property is doing the same thing. This one can be
+  // increasing one loan and refinancing another at the same time.
+  //
+  // NO SUBURB IS NAMED. Each property is named with its own figure instead -
+  // guessing a suburb is how "in TBA" reached a bank.
+  if (verb === 'top-up' || (verb === 'mixed' && isTopUp(deal?.bc_data?.template))) {
+    const parts = whatEachPropertyIsDoing(deal?.bc_data, deal?.fact_find_data)
+    const buying = purchaseLoanOf(deal?.bc_data)
+    if (buying > 0) parts.push(`${money(buying)} funds the purchase of an ${kind} property`)
+    if (parts.length === 0) {
+      missing.push('No increase is recorded against any security, so the notes cannot say what the finance does')
+      return null
+    }
+    return {
+      key: 'deal', heading: '',
+      lines: [`${who} seeking finance of ${money(total)}. ${sentence(andList(parts))}`
+        + (anyRefinanced(deal?.bc_data)
+          ? ''
+          : ' The existing lending stays with its current lender and is not being refinanced.')],
+    }
+  }
+
   if (verb === 'mixed') {
     const buying = purchaseLoanOf(deal?.bc_data)
     const rest = total - buying

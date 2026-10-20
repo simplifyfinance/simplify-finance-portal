@@ -261,7 +261,7 @@ function fieldCls(value: string) {
     : "px-2.5 py-1.5 text-sm border border-dashed border-field-line rounded-lg focus:outline-none focus:border-brand bg-page w-full"
 }
 import { buysNothing } from '@/lib/buying'
-import { isTopUp, increaseFor, lendingAgainst } from '@/lib/top-up'
+import { isTopUp, increaseFor, lendingAgainst, limitDisagreement } from '@/lib/top-up'
 import { offsetIsOn, toggleOffset, offsetsAfterRemoving } from '@/lib/offset-splits'
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
 import { annualIncomeOfApplicant, incomeBreakdownFor } from '@/lib/income-calculations'
@@ -506,6 +506,30 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     if (['refinance_equity', 'refinance_only', 'investment_equity'].includes(template)) {
       setSplits(prev => prev.map((sp, idx) => idx === 0 ? { ...sp, amount: formatNumber(val) } : sp))
     }
+  }
+
+  // THE BOX AND THE SPLIT ARE ONE FIGURE. 20 Oct 2026.
+  //
+  // Fabio, looking at a top up with 200,000 in the split and the increasing-by
+  // box empty: "is the increasing box suppose to say something?" It was, and
+  // nothing was keeping the two in step - the same link handleEquityReleaseChange
+  // below has drawn for a refinance since the day that scenario was built.
+  //
+  // TWO FIGURES FOR ONE THING IS THE FAULT THIS PORTAL KEEPS PAYING FOR. The
+  // LVR, the LMI gate and the submission notes all read the securities; the
+  // client email and the deal structure read the splits. Let them drift and
+  // one screen tells a client $200,000 while another tells a lender nothing.
+  function setIncreaseOn(id: string, val: string) {
+    setSecurityIncreases({ ...securityIncreases, [id]: val })
+    if (!isTopUp(template)) return
+    // The increase split for THIS security. Matched on the security and the
+    // label, so a deal with three properties puts the figure on the right one.
+    setSplits(prev => {
+      const i = prev.findIndex(sp => String(sp.securityId || '') === id
+        && /increase/i.test(String(sp.label || '')))
+      if (i < 0) return prev
+      return prev.map((sp, idx) => idx === i ? { ...sp, amount: formatNumber(val) } : sp)
+    })
   }
 
   function handleEquityReleaseChange(val: string) {
@@ -1228,6 +1252,34 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     })
     if (changed) setSplits(next)
   }, [splits, loanTerm])
+
+  // AND THE OTHER WAY ROUND, ONCE.
+  //
+  // 20 Oct 2026. The box writes to the split - see setIncreaseOn - but a figure
+  // typed straight into the split, or a deal built before that link existed,
+  // left the box empty. Fabio: "is the increasing box suppose to say
+  // something?" It was, and an empty box is not cosmetic: financeSought() reads
+  // the securities, so the submission notes would have told a lender this deal
+  // was asking for nothing.
+  //
+  // ONLY WHERE THE BOX IS EMPTY. A figure in it is somebody's answer and is
+  // never overwritten by a split - the same line this form draws everywhere
+  // else between what a person typed and what the portal worked out.
+  useEffect(() => {
+    if (!isTopUp(template)) return
+    const next = { ...securityIncreases }
+    let changed = false
+    for (const sp of splits) {
+      const id = String(sp?.securityId || '')
+      if (!id || !/increase/i.test(String(sp?.label || ''))) continue
+      const amount = String(sp?.amount || '').trim()
+      if (!amount) continue
+      if (String(next[id] || '').trim()) continue
+      next[id] = amount
+      changed = true
+    }
+    if (changed) setSecurityIncreases(next)
+  }, [template, splits, securityIncreases])
 
   // A DEAL-LEVEL BOX HOLDS A DEAL-LEVEL FIGURE. THE TOTAL, NOT THE FIRST.
   //
@@ -1999,7 +2051,7 @@ Key assumptions: ${checklistText}`
                                       <div className="w-[128px]">
                                         <div className={securityDollarForDollar[String(p.id)] ? 'opacity-40 pointer-events-none' : ''}>
                                           <NumberInput value={securityIncreases[String(p.id)] || ''}
-                                            onChange={(v: string) => setSecurityIncreases({ ...securityIncreases, [String(p.id)]: v })} />
+                                            onChange={(v: string) => setIncreaseOn(String(p.id), v)} />
                                         </div>
                                         <span className="block text-[10px] text-gray-400 mt-0.5">
                                           {securityDollarForDollar[String(p.id)] ? 'no increase' : 'increasing by'}
@@ -2039,6 +2091,16 @@ Key assumptions: ${checklistText}`
                                   </>
                                 ) : (
                                   <span className="text-[11px] text-gray-400 flex-1 text-right">not security</span>
+                                )}
+                                {/* THE THREE FIGURES THAT CANNOT ALL BE TRUE.
+                                    20 Oct 2026 - owes $942,441, increasing by $200,000,
+                                    new limit $1,599,941 on one row, and nothing said so.
+                                    The LVR follows the limit, so a mistyped limit is a
+                                    wrong LVR in front of a client. */}
+                                {on && limitDisagreement(bcNow, String(p.id)) && (
+                                  <p className="basis-full text-[11px] text-chase leading-relaxed pl-7 pr-2">
+                                    {limitDisagreement(bcNow, String(p.id))}
+                                  </p>
                                 )}
                               </div>
                             )

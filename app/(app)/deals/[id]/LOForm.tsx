@@ -37,6 +37,7 @@ import { useSaveIndicator } from '@/components/useSaveIndicator'
 import { useDraft } from '@/components/useDraft'
 import DraftBanner from '@/components/DraftBanner'
 import { recommendedOption, isRecommended, recommendedLabel, recommendationIsAmbiguous } from '@/lib/recommended-option'
+import { isTopUp, recommendExistingLender, existingLenderOn, whyTheExistingLender } from '@/lib/top-up'
 import type { SaveStatus } from '@/lib/save-indicator'
 import { useKeepalive } from '@/components/useKeepalive'
 import { loFigures } from '@/lib/deal-figures'
@@ -1088,6 +1089,30 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     if (!loaded.recommendedOptionId) {
       const rec = recommendedOption(loaded)
       if (rec?.id) loaded.recommendedOptionId = rec.id
+    }
+
+    // ON A TOP UP, THE RECOMMENDATION STARTS ON THE LENDER THE LOAN IS WITH.
+    //
+    // 20 Oct 2026. Fabio: "we still need to compare lenders but recommended
+    // product is always existing lender." The panel is still priced - the
+    // comparison is the conversation - but the default is the bank the money
+    // is already with, because moving it is not what a top up is.
+    //
+    // ONLY WHERE NOBODY HAS CHOSEN. recommendExistingLender returns '' the
+    // moment a recommendation exists, so a broker who has starred somebody is
+    // never overruled by a reload.
+    //
+    // AND ONLY ONTO AN OPTION THAT IS ACTUALLY ON THE LIST. Setting the name
+    // with no option behind it is the ambiguity lib/recommended-option.ts was
+    // written to end - a recommendation pointing at nothing.
+    const already = recommendExistingLender(loaded, bc, ff)
+    if (already) {
+      const hit = (loaded.lenders || []).filter(
+        (l: any) => String(l?.lenderName || '').trim().toLowerCase() === already.toLowerCase())
+      if (hit.length === 1) {
+        loaded.recommendedOptionId = hit[0].id
+        loaded.recommendedLender = hit[0].lenderName
+      }
     }
     return loaded
   }
@@ -2943,6 +2968,24 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             * compliance notes go stale on their own the moment it changes,
             * because they are stamped with the lender they were written about.
             * See lib/client-agreement.ts. */}
+          {/* WHY THE EXISTING LENDER IS STARRED, said on the screen where the
+            * recommendation is made rather than left for somebody to work out.
+            * 20 Oct 2026 - see whyTheExistingLender in lib/top-up.ts. The same
+            * sentence is what the compliance pack uses. */}
+          {isTopUp(d.bcTemplate) && existingLenderOn(bc, ff) && (
+            <div className="mt-4 rounded-lg border border-info-edge bg-info-bg px-3.5 py-2.5">
+              <div className="text-[12.5px] text-info leading-relaxed">
+                <span className="font-semibold">This is a top up with {existingLenderOn(bc, ff)}.</span>{' '}
+                {whyTheExistingLender(existingLenderOn(bc, ff))}
+              </div>
+              <div className="text-[11.5px] text-gray-500 mt-1 leading-relaxed">
+                Compare the panel as usual. If you recommend somebody else, the loan is moving and the
+                deal is a refinance rather than a top up &mdash; change the scenario on the BC so the
+                compliance pack says what actually happened.
+              </div>
+            </div>
+          )}
+
           <div className="mt-5 pt-4 border-t border-card-line">
             <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">The client&apos;s decision</div>
 

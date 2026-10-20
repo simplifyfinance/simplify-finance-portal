@@ -253,3 +253,178 @@ export function anyToppedUp(bc: any): boolean {
 // disagree - which is the mistake this codebase keeps writing notes about.
 // Import it from there.
 export { repaymentTypeLine } from './split-cards'
+
+// ---------------------------------------------------------------------------
+// WHO THE LOAN IS ALREADY WITH
+// ---------------------------------------------------------------------------
+//
+// 20 Oct 2026. Fabio: "we still need to compare lenders but recommended product
+// is always existing lender."
+//
+// THE ANSWER IS ALREADY ON THE FACT FIND and is not asked for a second time.
+// Every property there carries its loans, and every loan carries the lender's
+// name - it is what lib/position-after-settlement.ts reads to say which debts
+// are being closed. A new box on the borrowing capacity would be the same fact
+// in two places, free to disagree, and the one somebody forgot to fill in is
+// the one the recommendation would follow.
+//
+// ONE NAME OR NONE. Where the securities being topped up are with two different
+// lenders there is no single "existing lender" to recommend, and this says so
+// by returning '' rather than picking the first. A top up is an increase with
+// the lender a loan is already with; two lenders is a conversation, not a
+// default.
+export function existingLenderOn(bc: any, ff: any): string {
+  const ids = new Set((Array.isArray(bc?.securityIds) ? bc.securityIds : []).map((x: any) => txt(x)))
+  if (ids.size === 0) return ''
+  const props: any[] = Array.isArray(ff?.properties) ? ff.properties : []
+  const names = new Set<string>()
+  for (const p of props) {
+    if (!ids.has(txt(p?.id))) continue
+    // A security ticked as a dollar for dollar is MOVING. The lender it is
+    // with today is not the one to recommend - it is the one being left.
+    if (isDollarForDollar(bc, txt(p?.id))) continue
+    for (const l of (Array.isArray(p?.loans) ? p.loans : [])) {
+      const name = txt(l?.lenderName)
+      if (name) names.add(name)
+    }
+  }
+  return names.size === 1 ? [...names][0] : ''
+}
+
+/**
+ * Should the lending options page start with the existing lender starred?
+ *
+ * Only on a top up, only where every topped-up loan is with the same lender,
+ * and only while nobody has set a recommendation themselves. A broker who has
+ * picked one is never overruled - the same line this portal draws for the loan
+ * amount, the email template and the refinance splits.
+ */
+export function recommendExistingLender(lo: any, bc: any, ff: any): string {
+  if (!isTopUp(bc?.template)) return ''
+  // THE ID IS WHETHER A RECOMMENDATION EXISTS; THE NAME NEVER WAS.
+  //
+  // Reading recommendedLender here would also break the rule in
+  // lib/lender-on-the-deal.test.ts, which exists because a bank's name on its
+  // own cannot say WHICH of two options from that bank was meant - the fault
+  // that put a real rate against the wrong product on William Welton.
+  //
+  // An old record carrying a name and no id has already been resolved to one
+  // by the time this is asked: putOnScreen runs recommendedOption() first.
+  if (txt(lo?.recommendedOptionId)) return ''
+  return existingLenderOn(bc, ff)
+}
+
+/**
+ * WHY THE EXISTING LENDER IS THE RECOMMENDATION, in a sentence the compliance
+ * pack can use.
+ *
+ * Empty where it is not the existing lender, because then it is an ordinary
+ * recommendation and the ordinary reasons apply.
+ */
+export function whyTheExistingLender(lender: string): string {
+  const name = txt(lender)
+  return name
+    ? `The loan is already with ${name} and is not being moved. Increasing the existing `
+      + `facility avoids a discharge, a new application on the whole debt and the costs that `
+      + `come with both.`
+    : ''
+}
+
+// ---------------------------------------------------------------------------
+// WHAT IS ACTUALLY BEING ASKED FOR
+// ---------------------------------------------------------------------------
+//
+// 20 Oct 2026, and this is the trap in the whole scenario.
+//
+// The existing loan is a SPLIT, because that is the only way the LVR counts it
+// - see the top of this file. So the splits on Fabio's example add up to
+// $800,000. But the client is asking the lender for $300,000: the other
+// $500,000 is already theirs and is staying exactly where it is.
+//
+// lib/funds-to-complete.ts loanAmount() totals the splits, which is right for
+// every other scenario and wrong for this one. Left alone, the submission
+// notes would have told a lender "the applicants are seeking finance of
+// $800,000" on a deal asking for $300,000 - in the one box on the tab the bank
+// reads. It is the same shape as the fault Fabio caught on 16 Oct: "'seeking
+// finance of $1,855,000 to purchase an investment property in TBA' IS NOT
+// TRUE."
+//
+// A TICKED SECURITY COUNTS IN FULL. A dollar for dollar refinance is a new
+// facility at the new lender for the whole balance, so the whole balance is
+// being sought - which is exactly why the tick cannot be cosmetic.
+export function financeSought(bc: any): number {
+  const ids: string[] = Array.isArray(bc?.securityIds) ? bc.securityIds.map(String) : []
+  const balances = bc?.securityBalances
+  return ids.reduce((t, id) => {
+    if (isDollarForDollar(bc, id)) {
+      return t + (balances && typeof balances === 'object' ? n(balances[id]) : 0)
+    }
+    return t + increaseFor(bc, id)
+  }, 0)
+}
+
+/**
+ * WHAT EACH PROPERTY IS DOING, AS SENTENCE PARTS FOR THE SUBMISSION NOTES.
+ *
+ * Fabio's standing complaint and the reason this exists: a deal gets ONE label
+ * and the pack then says every property is doing the same thing. A top up can
+ * be increasing one loan, refinancing another and buying a third, and a lender
+ * reading "refinance" across all of it is being told something untrue.
+ *
+ * Addresses are named. On this scenario there is no single suburb to fall back
+ * on and guessing one is how "in TBA" reached a bank.
+ */
+export function whatEachPropertyIsDoing(bc: any, ff: any): string[] {
+  const ids: string[] = Array.isArray(bc?.securityIds) ? bc.securityIds.map(String) : []
+  const props: any[] = Array.isArray(ff?.properties) ? ff.properties : []
+  const addressOf = (id: string) => txt(props.find(p => txt(p?.id) === id)?.address)
+  const balances = bc?.securityBalances
+  const fmt = (v: number) => `$${v.toLocaleString('en-AU')}`
+
+  const out: string[] = []
+  for (const id of ids) {
+    const where = addressOf(id)
+    const at = where ? ` against ${where}` : ''
+    if (isDollarForDollar(bc, id)) {
+      const bal = balances && typeof balances === 'object' ? n(balances[id]) : 0
+      if (bal > 0) out.push(`${fmt(bal)} refinances the existing lending${at}, dollar for dollar`)
+      continue
+    }
+    const up = increaseFor(bc, id)
+    if (up > 0) out.push(`${fmt(up)} increases the existing lending${at}`)
+  }
+  return out
+}
+
+/**
+ * DOES THE NEW LIMIT AGREE WITH WHAT IS OWED PLUS THE INCREASE?
+ *
+ * 20 Oct 2026. Fabio's own screen: owes $942,441, increasing by $200,000, new
+ * limit $1,599,941. Those cannot all be true - the limit is $457,500 more than
+ * the two added up - and nothing said so. The LVR read 80% off the typed limit
+ * while the splits added to $1,142,441, which is 57%.
+ *
+ * A TYPED LIMIT IS STILL ALLOWED TO WIN. A lender can approve a limit above
+ * what is drawn, and recording that is a real thing to do - see limitOf in
+ * lib/securities.ts. This does not refuse it; it says the two disagree and by
+ * how much, which is the difference between a deliberate undrawn facility and a
+ * figure somebody mistyped.
+ *
+ * Empty where there is nothing to say, so the screen stays quiet when it agrees.
+ */
+export function limitDisagreement(bc: any, id: string): string {
+  if (!isTopUp(bc?.template)) return ''
+  const limits = bc?.securityLimits
+  const typed = limits && typeof limits === 'object' ? n(limits[id]) : 0
+  if (typed <= 0) return ''
+  const expected = lendingAgainst(bc, id)
+  if (expected <= 0) return ''
+  const gap = typed - expected
+  if (gap === 0) return ''
+  const fmt = (v: number) => `$${Math.abs(v).toLocaleString('en-AU')}`
+  return gap > 0
+    ? `The new limit is ${fmt(gap)} above what is owed plus the increase (${fmt(expected)}). `
+      + `Fine if the lender is approving an undrawn facility — the LVR follows the limit.`
+    : `The new limit is ${fmt(gap)} below what is owed plus the increase (${fmt(expected)}), `
+      + `so the limit does not cover the lending.`
+}
