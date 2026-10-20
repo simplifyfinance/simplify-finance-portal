@@ -131,6 +131,18 @@ export type StructureSplit = {
   // blank, and the handover prints "term not recorded" rather than a figure
   // nobody typed.
   ioYears?: string
+  // THE LOAN THAT IS ALREADY THERE, ON A TOP UP.
+  //
+  // 20 Oct 2026. The existing loan is a split because that is the only way the
+  // LVR counts it - see the header of lib/top-up.ts. It is tagged so the words
+  // stay right, and this shape dropped the tag, so every compliance box reading
+  // splits through here saw new lending where a loan was simply staying put.
+  //
+  // What that cost: the position after settlement lists every liability, then
+  // turns every split into a new loan. The existing loan appeared twice -
+  // $942,441 unchanged AND $942,441 of new lending - reporting $2,084,882 of
+  // debt against a property that will owe $1,142,441.
+  staying?: boolean
 }
 
 // WHO OWNS WHAT, AND WHY IT IS SPLIT THIS WAY.
@@ -266,6 +278,10 @@ export function splitsOf(deal: any): StructureSplit[] {
       amount: txt(amount),
       // Rate is only ever typed on the per-lender copy.
       rate: firstOf(ls?.rate, gs?.rate, s?.rate, bs?.rate),
+      // ONLY THE BORROWING CAPACITY KNOWS THIS. The lending options copies the
+      // BC's splits but has never carried the tag, so it is read from the BC's
+      // own row and nowhere else.
+      staying: bs?.staying === true || s?.staying === true,
       // The structure, so the BC has the last word where the lists disagree -
       // which house a loan sits on is not a lending options decision.
       securityId,

@@ -28,7 +28,8 @@ import { missingForEmail, missingSentence } from '@/lib/bc-ready'
 import { dealFigures } from '@/lib/deal-figures'
 import { useLiveColumn } from '@/components/useLiveColumn'
 import { newOwnership, focusField, blurField, markDirty, settleSaved, applyOwned } from '@/lib/field-ownership'
-import { LMI_CAPITALISED, LMI_SETTLEMENT, lmiAmount, looksAlreadyCapitalised } from '@/lib/lmi'
+import { LMI_CAPITALISED, LMI_SETTLEMENT, lmiAmount, looksAlreadyCapitalised,
+         lmiBySecurity, lmiTreatmentsDisagree } from '@/lib/lmi'
 import { propertyChecklist } from '@/lib/property-checklist'
 import { altLvrPurchase, altLvrEquity, altEstimatedRepayment, altNeedsLmi, altLmiUnanswered,
          loanFromDeposit, depositFromLoan } from '@/lib/alt-scenario'
@@ -736,6 +737,21 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // merged means one split at the new total, so every repayment downstream is
   // worked out on the whole of it.
   const [increaseMerged, setIncreaseMerged] = useState<boolean>(!!s.increaseMerged)
+
+  // LMI IS PRICED ON THE SECURITY, SO IT IS ASKED ON THE SECURITY.
+  //
+  // 20 Oct 2026. Fabio: "LVR and LMI loans always per property". The deal-level
+  // LMI boxes sit beside the deal-level LVR and that whole group is hidden the
+  // moment a deal has ticked securities - so on every top up, every complex
+  // refinance and every equity release with securities, nothing asked about LMI
+  // at all. See lib/lmi.ts for how these add up into the one figure the rest of
+  // the portal reads.
+  const [securityLmiApplicable, setSecurityLmiApplicable] = useState<Record<string, string>>(
+    s.securityLmiApplicable && typeof s.securityLmiApplicable === 'object' ? s.securityLmiApplicable : {})
+  const [securityLmi, setSecurityLmi] = useState<Record<string, string>>(
+    s.securityLmi && typeof s.securityLmi === 'object' ? s.securityLmi : {})
+  const [securityLmiTreatment, setSecurityLmiTreatment] = useState<Record<string, string>>(
+    s.securityLmiTreatment && typeof s.securityLmiTreatment === 'object' ? s.securityLmiTreatment : {})
   const [securityLimits, setSecurityLimits] = useState<Record<string, string>>(
     (s.securityLimits && typeof s.securityLimits === 'object') ? s.securityLimits : {})
   // WHICH SPLITS CARRY AN OFFSET - BY POSITION, NOT BY NAME.
@@ -1097,6 +1113,8 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     securityBalances: setSecurityBalances, securityReleases: setSecurityReleases,
     securityIncreases: setSecurityIncreases, securityDollarForDollar: setSecurityDollarForDollar,
     increaseMerged: setIncreaseMerged,
+    securityLmiApplicable: setSecurityLmiApplicable, securityLmi: setSecurityLmi,
+    securityLmiTreatment: setSecurityLmiTreatment,
     constructionCost: setConstructionCostRaw,
     landValue: setLandValueRaw, landFunding: setLandFunding, landLoanBalance: setLandLoanBalance,
     saleProceedsUse: setSaleProceedsUse,
@@ -1272,13 +1290,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // pending stays in pendingSave and is written by the effect above when the
     // form actually leaves.
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand }
   }
 
   // Does the saved email still match the scenario the deal is on? Read in three
@@ -2244,6 +2262,54 @@ Key assumptions: ${checklistText}`
                                     new limit $1,599,941 on one row, and nothing said so.
                                     The LVR follows the limit, so a mistyped limit is a
                                     wrong LVR in front of a client. */}
+                                {/* OVER 80% ON THIS PROPERTY, SO THE QUESTION IS
+                                    ASKED HERE. 20 Oct 2026 - a lender prices the
+                                    premium on the house it takes, and these boxes
+                                    were switched off entirely on any deal with
+                                    ticked securities. See lib/lmi.ts. */}
+                                {on && l !== null && l > 80 && (() => {
+                                  const id = String(p.id)
+                                  const applies = securityLmiApplicable[id] || ''
+                                  return (
+                                    <div className="basis-full ml-7 mt-1 mb-0.5 bg-chase-bg border border-chase-edge
+                                                    rounded-lg px-3 py-2 flex items-center gap-2.5 flex-wrap">
+                                      <span className="text-[11.5px] text-chase flex-1 min-w-[200px] leading-snug">
+                                        <b>Over 80% on this property.</b>{' '}
+                                        {fmtMoney(Number(String(sec?.limit || '').replace(/[^0-9.]/g, '')) || 0)} against{' '}
+                                        {fmtMoney(Number(String(sec?.value || '').replace(/[^0-9.]/g, '')) || 0)}.
+                                        LMI is a consideration here.
+                                      </span>
+                                      <span>
+                                        <select className={selectCls} value={applies}
+                                          onChange={e => setSecurityLmiApplicable({ ...securityLmiApplicable, [id]: e.target.value })}>
+                                          <option value="">Select</option>
+                                          <option value="Applicable">LMI applicable</option>
+                                          <option value="Waived">LMI waived</option>
+                                        </select>
+                                        <span className="block text-[9.5px] text-chase mt-0.5">status</span>
+                                      </span>
+                                      {applies === 'Applicable' && (
+                                        <>
+                                          <span className="w-[112px]">
+                                            <NumberInput value={securityLmi[id] || ''}
+                                              onChange={(v: string) => setSecurityLmi({ ...securityLmi, [id]: v })} />
+                                            <span className="block text-[9.5px] text-chase mt-0.5">estimate</span>
+                                          </span>
+                                          <span>
+                                            <select className={selectCls} value={securityLmiTreatment[id] || ''}
+                                              onChange={e => setSecurityLmiTreatment({ ...securityLmiTreatment, [id]: e.target.value })}>
+                                              <option value="">Select</option>
+                                              <option value={LMI_CAPITALISED}>Capitalised</option>
+                                              <option value={LMI_SETTLEMENT}>Paid at settlement</option>
+                                            </select>
+                                            <span className="block text-[9.5px] text-chase mt-0.5">how it is paid</span>
+                                          </span>
+                                        </>
+                                      )}
+                                    </div>
+                                  )
+                                })()}
+
                                 {on && limitDisagreement(bcNow, String(p.id)) && (
                                   <p className="basis-full text-[11px] text-chase leading-relaxed pl-7 pr-2">
                                     {limitDisagreement(bcNow, String(p.id))}
@@ -2299,6 +2365,28 @@ Key assumptions: ${checklistText}`
                             <span className="text-gray-400">against</span>
                             <span className="text-muted">{fmtMoney(t.limit)}</span>
                             {t.lvr !== null && <b className="text-info ml-auto">{pct(t.lvr)} LVR</b>}
+                            {/* THE ONE FIGURE THE REST OF THE PORTAL READS, shown
+                                beside the properties that produced it. */}
+                            {(() => {
+                              const rows = lmiBySecurity(bcNow)
+                              if (rows.length === 0) return null
+                              const total = rows.reduce((x, r) => x + r.amount, 0)
+                              const names = rows.map(r =>
+                                secs.find(x => x.id === r.id)?.address || 'a security').join(', ')
+                              return (
+                                <span className="basis-full text-[11.5px] text-chase mt-1.5">
+                                  LMI of <b>{fmtMoney(total)}</b> recorded against {names}.
+                                  That is the figure every screen downstream reads.
+                                </span>
+                              )
+                            })()}
+                            {/* NO SINGLE ANSWER, SO IT IS NOT INVENTED. */}
+                            {lmiTreatmentsDisagree(bcNow) && (
+                              <span className="basis-full text-[11.5px] text-chase mt-1 leading-relaxed">
+                                Two properties record LMI and they are paid differently. The funds to
+                                complete cannot be worked out until they agree.
+                              </span>
+                            )}
                           </div>
                         )}
 

@@ -25,6 +25,7 @@ import { securitiesOf } from './securities'
 // point here is the structure that will actually settle. See the rule in
 // lib/lender-on-the-deal.test.ts, which caught this the moment it was written.
 import { optionOnTheDeal } from './client-agreement'
+import { isTopUp, increaseFor } from './top-up'
 
 const txt = (v: any): string => (typeof v === 'string' ? v.trim() : v == null ? '' : String(v).trim())
 const num = (v: any): number => Number(txt(v).replace(/[^0-9.]/g, '')) || 0
@@ -93,6 +94,7 @@ export function positionChanges(deal: any, savingsNow: string): PositionChange[]
   const out: PositionChange[] = []
   const lender = txt(optionOnTheDeal(deal?.lo_data)?.lenderName) || 'the new lender'
   const splits = splitsOf(deal)
+  const bc = deal?.bc_data || {}
   const secs = securitiesOf(deal?.bc_data, deal?.fact_find_data)
   const props: any[] = deal?.fact_find_data?.properties || []
   const addressOf = (id: any) =>
@@ -108,12 +110,26 @@ export function positionChanges(deal: any, savingsNow: string): PositionChange[]
                      txt(l.repaymentType), txt(l.interestRate) && `${txt(l.interestRate)}%`]
                      .filter(Boolean).join(' · ')
       if (going) payingOut += num(l.balance)
+      // A TOPPED-UP LOAN IS NEITHER CLOSING NOR UNCHANGED.
+      //
+      // 20 Oct 2026. It stays with the lender it is already with and it gets
+      // bigger, which is the one thing the two words above cannot say. Left as
+      // "unchanged" the screen understated what these clients will owe by the
+      // whole increase, on the screen whose entire job is what they owe after.
+      const up = !going && isTopUp(bc?.template) && increaseFor(bc, txt(p.id)) > 0
+        ? increaseFor(bc, txt(p.id)) : 0
       out.push({
         id: `${going ? 'close' : 'keep'}:${txt(p.id)}:${txt(l.id)}`,
         kind: going ? 'close' : 'keep',
         about: txt(p.address) || 'a property',
         was: reads,
-        now: going ? `paid out by the ${lender} lending` : 'unchanged',
+        now: going ? `paid out by the ${lender} lending`
+          : up > 0 ? `increasing by $${money(up)} to $${money(num(l.balance) + up)}, same lender`
+          : 'unchanged',
+        // THE FIGURE STAYS AT WHAT IS OWED TODAY. The increase is its own line
+        // below - it is the new lending being arranged - so putting the new
+        // total here as well would count the $200,000 twice, which is a
+        // smaller version of the fault this whole change is about.
         amount: money(num(l.balance)),
         // A loan being paid out has no figure left to argue about, and one that
         // is not changing is not this screen's business to change.
@@ -127,6 +143,14 @@ export function positionChanges(deal: any, savingsNow: string): PositionChange[]
   // 2. WHAT THEY WILL OWE INSTEAD. Every split on the deal becomes a loan.
   for (const sp of splits) {
     if (num(sp.amount) <= 0) continue
+    // THE LOAN THAT IS ALREADY THERE IS NOT SOMETHING THEY WILL OWE INSTEAD.
+    //
+    // On a top up the existing loan is a split, because that is the only way
+    // the LVR counts it - see lib/top-up.ts. It is already listed above as a
+    // liability they hold, so adding it here counted the same debt twice:
+    // $942,441 kept plus $942,441 "new" plus the $200,000 increase, against a
+    // property that will owe $1,142,441.
+    if (sp.staying) continue
     out.push({
       id: `add:${txt(sp.id)}`,
       kind: 'add',

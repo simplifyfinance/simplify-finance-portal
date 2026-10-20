@@ -35,7 +35,72 @@ export type LmiTreatment = 'capitalised' | 'settlement' | 'unanswered'
 export const LMI_CAPITALISED = 'Capitalised'
 export const LMI_SETTLEMENT = 'Settlement'
 
+// ---------------------------------------------------------------------------
+// LMI IS PRICED ON THE SECURITY, SO IT IS ASKED ON THE SECURITY
+// ---------------------------------------------------------------------------
+//
+// 20 Oct 2026. Fabio, asked where the question should live on a deal with
+// several securities: "why would you even ask the question LVR and LMI loans
+// always per property". He is right - a lender prices the premium on the house
+// it is taking, so one deal with a house at 86% and another at 52% has one
+// premium and it belongs to the first house.
+//
+// AND THE QUESTION WAS NOT BEING ASKED AT ALL. The LMI boxes on the borrowing
+// capacity are drawn beside the deal-level LVR, and that whole group switches
+// off the moment a deal has ticked securities - which is every top up, every
+// complex refinance and every equity release with securities. So on a top up
+// over 80% nothing asked about LMI.
+//
+// ONE FIGURE STILL COMES OUT. Eighty-one places read a single LMI amount - the
+// client email, the funds to complete, the compliance pack, the handover sheet,
+// the commission band. The answers are collected per property and added up into
+// the figure those already read, so none of them change. Same move as when the
+// loan balances went onto the securities.
+const perSecurity = (bc: any, store: string): [string, any][] => {
+  const map = bc?.[store]
+  return map && typeof map === 'object' ? Object.entries(map) : []
+}
+
+/** Every security that has LMI recorded against it, with its premium. */
+export function lmiBySecurity(bc: any): { id: string; amount: number }[] {
+  const applies = bc?.securityLmiApplicable
+  return perSecurity(bc, 'securityLmi')
+    .map(([id, v]) => ({ id, amount: readMoney(v) ?? 0 }))
+    .filter(x => x.amount > 0
+      && txt(applies && typeof applies === 'object' ? applies[x.id] : '') === 'Applicable')
+}
+
+/**
+ * TWO PROPERTIES CAN DISAGREE ABOUT HOW THE PREMIUM IS PAID, and there is no
+ * single answer when they do. Said out loud rather than resolved by picking
+ * one, because the funds to complete genuinely cannot be worked out until
+ * somebody settles it.
+ */
+export function lmiTreatmentsDisagree(bc: any): boolean {
+  const map = bc?.securityLmiTreatment
+  if (!map || typeof map !== 'object') return false
+  const answered = lmiBySecurity(bc)
+    .map(x => txt(map[x.id]).toLowerCase())
+    .filter(Boolean)
+  return new Set(answered).size > 1
+}
+
 export function lmiTreatment(bc: any): LmiTreatment {
+  // THE PER-PROPERTY ANSWERS WIN WHERE THEY EXIST. Where they agree there is
+  // one answer; where they disagree there is none, and 'unanswered' is the
+  // honest return - it prints exactly what an unanswered deal has always
+  // printed rather than asserting a treatment nobody chose.
+  const rows = lmiBySecurity(bc)
+  if (rows.length > 0) {
+    const map = bc?.securityLmiTreatment || {}
+    const set = new Set(rows.map(x => txt(map[x.id]).toLowerCase()).filter(Boolean))
+    if (set.size === 1) {
+      const only = [...set][0]
+      if (only === 'capitalised') return 'capitalised'
+      if (only === 'settlement') return 'settlement'
+    }
+    return 'unanswered'
+  }
   const v = txt(bc?.lmiTreatment).toLowerCase()
   if (v === 'capitalised') return 'capitalised'
   if (v === 'settlement') return 'settlement'
@@ -46,6 +111,11 @@ export function lmiTreatment(bc: any): LmiTreatment {
 // recorded. "Applicable" with no amount is a gap for lib/bc-ready.ts to raise,
 // not a number to do arithmetic with.
 export function lmiAmount(bc: any): number | null {
+  // Per property first, added up. Only where somebody has actually recorded
+  // one - a security marked applicable with no figure is a gap for
+  // lib/bc-ready.ts to raise, exactly as the deal-level box has always been.
+  const rows = lmiBySecurity(bc)
+  if (rows.length > 0) return rows.reduce((t, x) => t + x.amount, 0)
   if (txt(bc?.lmiApplicable) !== 'Applicable') return null
   const n = readMoney(bc?.lmi)
   return n && n > 0 ? n : null
