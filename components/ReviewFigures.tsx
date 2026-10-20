@@ -45,7 +45,7 @@ const BLANK = {
   // one. These two boxes are so the work does not stop while he does: type it
   // in as you ring them, and the one you type beats whatever the import brings
   // later, because a person typed it.
-  book_email: '', book_phone: '',
+  book_email: '', book_phone: '', book_email2: '', book_phone2: '',
 }
 
 export default function ReviewFigures({ review, props, onSaved }: {
@@ -112,7 +112,7 @@ export default function ReviewFigures({ review, props, onSaved }: {
     if (!reviewId) { setWhy('This review has no id, so nothing can be saved against it.'); setLoaded(true); return }
     const supabase = createSupabaseBrowser()
     supabase.from('portfolio_reviews')
-      .select('equity_property_id, equity_release, equity_buffer, purchase_price, stamp_duty, loan_amount, loan_note, savings_contribution, book_email, book_phone')
+      .select('equity_property_id, equity_release, equity_buffer, purchase_price, stamp_duty, loan_amount, loan_note, savings_contribution, book_email, book_phone, book_email2, book_phone2')
       .eq('id', reviewId).single()
       .then(({ data, error }) => {
         if (!alive) return
@@ -128,6 +128,8 @@ export default function ReviewFigures({ review, props, onSaved }: {
           savings_contribution: data.savings_contribution ?? '',
           book_email: data.book_email || '',
           book_phone: data.book_phone || '',
+          book_email2: data.book_email2 || '',
+          book_phone2: data.book_phone2 || '',
         })
         setLoaded(true)
       })
@@ -183,6 +185,8 @@ export default function ReviewFigures({ review, props, onSaved }: {
       savings_contribution: readMoney(d.savings_contribution),
       book_email: d.book_email.trim(),
       book_phone: d.book_phone.trim(),
+      book_email2: d.book_email2.trim(),
+      book_phone2: d.book_phone2.trim(),
       updated_at: new Date().toISOString(),
     }
     // ONLY EVER FORWARD. Somebody filling in a figure on a review that is
@@ -253,19 +257,24 @@ export default function ReviewFigures({ review, props, onSaved }: {
 
       {/* WHERE TO SEND IT. Only shown while there is nothing on file, so the
           656 that get an address from the next import stop asking. */}
-      {!review.email && (
-        <>
-          <p className={`${K} mt-4 mb-2.5`}>How to reach them</p>
-          <div className="grid grid-cols-2 gap-2.5">
-            <div><label className={LAB}>Email</label>
-              <input className={IN} value={d.book_email} placeholder="nothing on file"
-                onChange={e => set('book_email', e.target.value)} /></div>
-            <div><label className={LAB}>Phone</label>
-              <input className={IN} value={d.book_phone} placeholder="nothing on file"
-                onChange={e => set('book_phone', e.target.value)} /></div>
-          </div>
-        </>
-      )}
+      <p className={`${K} mt-4 mb-2.5`}>How to reach them</p>
+      <div className="grid grid-cols-2 gap-2.5">
+        <div><label className={LAB}>Email</label>
+          <input className={IN} value={d.book_email} placeholder="nothing on file"
+            onChange={e => set('book_email', e.target.value)} /></div>
+        <div><label className={LAB}>Phone</label>
+          <input className={IN} value={d.book_phone} placeholder="nothing on file"
+            onChange={e => set('book_phone', e.target.value)} /></div>
+        {/* THE OTHER HALF OF A COUPLE. 225 of the 656 are two people, 64 are
+            three. The email goes to both, because sending to whichever name
+            the CRM put first is how one of them finds out second hand. */}
+        <div><label className={LAB}>Second applicant email</label>
+          <input className={IN} value={d.book_email2} placeholder="nothing on file"
+            onChange={e => set('book_email2', e.target.value)} /></div>
+        <div><label className={LAB}>Second applicant phone</label>
+          <input className={IN} value={d.book_phone2} placeholder="nothing on file"
+            onChange={e => set('book_phone2', e.target.value)} /></div>
+      </div>
 
       <p className={`${K} mt-4 mb-2.5`}>The purchase</p>
       <div className="grid grid-cols-2 gap-2.5">

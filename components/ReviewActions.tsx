@@ -67,7 +67,12 @@ export default function ReviewActions({ review, figures, properties, broker, cop
   const [close, setClose] = useState({ outcome: 'not_suitable', next_review_date: inDays(365) })
 
   const equityProp = properties.find(p => p.id === figures?.equity_property_id)
-  const to = String(review.email || figures?.book_email || '')
+  // BOTH OF THEM, WHERE THERE ARE TWO. 225 of the 656 are a couple, and
+  // sending to whichever name the CRM put first is how one of them hears about
+  // their own money second hand.
+  const to = [review.email || figures?.book_email, figures?.book_email2]
+    .map(v => String(v || '').trim()).filter(v => v.includes('@'))
+  const toLine = Array.from(new Set(to)).join(',')
 
   // BUILT HERE, EVERY TIME IT IS ASKED FOR, NEVER STORED.
   //
@@ -90,7 +95,7 @@ export default function ReviewActions({ review, figures, properties, broker, cop
     copy,
   })
 
-  const can = canSendTheEmail({ ...review, ...figures }, { email: to })
+  const can = canSendTheEmail({ ...review, ...figures }, { email: toLine })
 
   async function sendIt() {
     if (!reviewId) { setWhy('This review has no id, so nothing can be saved against it.'); return }
@@ -138,8 +143,8 @@ export default function ReviewActions({ review, figures, properties, broker, cop
 
       setSaid('Copied. Paste into Outlook with Cmd+V. Marked as sent, chase set for a week.')
       onDone?.()
-      if (to.includes('@')) {
-        window.location.href = `mailto:${encodeURIComponent(to)}`
+      if (toLine) {
+        window.location.href = `mailto:${encodeURIComponent(toLine)}`
           + `?subject=${encodeURIComponent(reviewEmailSubject())}`
       }
     } catch (e: any) {

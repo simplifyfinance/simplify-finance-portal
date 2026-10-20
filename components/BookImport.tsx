@@ -131,6 +131,18 @@ export default function BookImport({ onFinished }: { onFinished?: () => void }) 
         // until the day one of these turns into a deal.
         const review = {
           book_name: p.client.groupName,
+          // ONLY EVER FILLED IN, NEVER WIPED. 20 Oct 2026.
+          //
+          // The second export carries the emails the first one had no columns
+          // for. A re-import must fill in what is missing without touching an
+          // address somebody typed in by hand on the review in the meantime -
+          // a person who went and found it beats a spreadsheet that did not
+          // have it. So a blank in the file leaves what is there alone, which
+          // is why these are spread in conditionally rather than set.
+          ...(p.client.email ? { book_email: p.client.email } : {}),
+          ...(p.client.phone ? { book_phone: p.client.phone } : {}),
+          ...(p.client.email2 ? { book_email2: p.client.email2 } : {}),
+          ...(p.client.phone2 ? { book_phone2: p.client.phone2 } : {}),
           book_first_name: first?.first || p.client.groupName,
           book_last_name: first?.last || '',
           book_group: p.client.groupName,

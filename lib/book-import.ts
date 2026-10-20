@@ -44,6 +44,14 @@ export type FieldKey =
   | 'lender' | 'loanAmount' | 'loanIds' | 'currentBalance'
   | 'address' | 'postcode' | 'state' | 'propertyType' | 'zoning'
   | 'value' | 'ownershipType'
+  // HOW TO REACH THEM. 20 Oct 2026.
+  //
+  // The first export had 29 columns and not one of them was an email address
+  // or a phone number, so all 656 reviews landed with nothing to send to and
+  // the send button was off for every one of them. The second export splits
+  // the applicants out - C1 First Name, C1 Email, C1 Phone, then the same for
+  // C2 - and these four are why it was pulled.
+  | 'email' | 'phone' | 'email2' | 'phone2'
 
 export type Field = {
   key: FieldKey
@@ -94,6 +102,29 @@ export const FIELDS: Field[] = [
   { key: 'ownershipType', label: 'Owner occupied or investment',
     guess: ['security1ownershiptype', 'ownershiptype', 'ownership', 'occupancy'],
     why: 'Only investments are counted towards equity.' },
+  // THE CONTACT DETAILS, AND WHY THEY ARE NOT REQUIRED.
+  //
+  // A book with no emails is still a book worth having - the equity, the
+  // properties and the triage all work without one. It is only the SEND that
+  // cannot happen, and the review screen takes an address typed in by hand for
+  // exactly that case. So a missing column here is a smaller list of people
+  // you can email, never a refused import.
+  //
+  // C1 IS THE ONE THE EMAIL IS ADDRESSED TO. C2 comes along so a joint email
+  // reaches both of them rather than whichever name the CRM happened to put
+  // first.
+  { key: 'email', label: 'Email', 
+    guess: ['c1email', 'contact1email', 'primaryemail', 'emailaddress', 'email'],
+    why: 'Where the opportunity email goes. Without one it cannot be sent.' },
+  { key: 'phone', label: 'Phone',
+    guess: ['c1phone', 'contact1phone', 'primaryphone', 'mobile', 'phone'],
+    why: 'For the follow up call.' },
+  { key: 'email2', label: 'Second applicant email',
+    guess: ['c2email', 'contact2email', 'secondaryemail'],
+    why: 'So a joint email reaches both of them.' },
+  { key: 'phone2', label: 'Second applicant phone',
+    guess: ['c2phone', 'contact2phone', 'secondaryphone'],
+    why: 'The other half of a couple, for the call.' },
 ]
 
 export type Mapping = Partial<Record<FieldKey, string>>
@@ -228,6 +259,12 @@ export type BookProperty = {
 
 export type BookClient = {
   key: string
+  /** Where the email goes. Empty where the export carried none. */
+  email: string
+  phone: string
+  /** The second applicant, so a joint email reaches both. */
+  email2: string
+  phone2: string
   /** Every applicant, in the order the CRM had them. */
   people: Person[]
   /** The whole string, kept so nothing is lost in the parsing. */
@@ -289,6 +326,7 @@ export function groupByClient(rows: any[], m: Mapping): BookClient[] {
     let c = by.get(key)
     if (!c) {
       c = { key, groupName, people: peopleIn(groupName), brokerKey: '',
+            email: '', phone: '', email2: '', phone2: '',
             dealRefs: [], properties: [], owes: null, lastSettled: '', onTheBook: false }
       by.set(key, c)
       bal.set(key, [])
@@ -301,6 +339,15 @@ export function groupByClient(rows: any[], m: Mapping): BookClient[] {
     // First broker named wins, so a client does not change hands because their
     // rows came back in a different order.
     if (owner && !c.brokerKey) c.brokerKey = owner
+
+    // THE FIRST ONE THAT IS ACTUALLY THERE WINS, over eight rows of the same
+    // person. Same rule as the broker above, and for the same reason: a client
+    // must not get a different email address because their rows came back in a
+    // different order. A blank never overwrites something real.
+    for (const k of ['email', 'phone', 'email2', 'phone2'] as const) {
+      const v = txt(get(r, k))
+      if (v && !c[k]) c[k] = v
+    }
 
     const settled = day(get(r, 'settlementDate'))
     if (settled > c.lastSettled) c.lastSettled = settled
