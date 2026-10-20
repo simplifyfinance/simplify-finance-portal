@@ -159,7 +159,13 @@ function theDeal(deal: any, missing: string[]): NotesParagraph | null {
   // The existing loan is a split so the LVR counts it, which means the splits
   // total $800,000 on a deal asking a lender for $300,000. See financeSought
   // in lib/top-up.ts - this is the one box on the tab the bank reads.
-  const total = isTopUp(bcNow.template) ? financeSought(bcNow) : loanAmount(deal)
+  //
+  // AND THE PURCHASE LOAN IS PART OF WHAT IS BEING ASKED FOR. 20 Oct 2026 - on
+  // a top up + purchase it is neither an increase nor a ticked balance, so
+  // leaving it out said "$200,000" above a sentence listing $824,000.
+  const total = isTopUp(bcNow.template)
+    ? financeSought(bcNow, purchaseLoanOf(bcNow))
+    : loanAmount(deal)
   const purpose = purposeSummary(deal)
   const { verb } = transaction(deal)
   const where = txt(deal?.bc_data?.suburb) || purchaseSuburbOf(deal?.bc_data)

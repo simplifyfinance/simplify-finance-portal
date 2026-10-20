@@ -3,6 +3,7 @@ import { isLandPurchase, landLoanPayout, dutyApplies } from './construction'
 import { buildsSomething, purchasePriceOf } from './sale-build'
 import { securitiesWithPurchase, totalsOf, canBuyAndRefinance,
          BEING_PURCHASED, purchaseLoanOf } from './securities'
+import { isTopUp, cashReleased } from './top-up'
 
 // WHAT THE CLIENT HAS TO FIND.
 //
@@ -278,8 +279,16 @@ export function fundsToComplete(deal: any): FundsToComplete {
   // what its client email has always printed. Read only where the deal both
   // refinances and buys; on anything else an equity release is not a deposit
   // and must not be counted as one.
+  //
+  // ON A TOP UP THE DEPOSIT IS THE INCREASE. 20 Oct 2026. A top up has no
+  // deal-level equity release box - the figure lives per property, in
+  // securityIncreases - so the fallback below found nothing and the strip said
+  // "No deposit has been recorded" on a deal whose deposit was sitting right
+  // there. The client email already tells them the contribution comes from the
+  // loan increase; this makes the portal agree with it.
   const deposit = has(bc.deposit) ? num(bc.deposit)
     : has(bc.newPurchaseDeposit) ? num(bc.newPurchaseDeposit)
+    : isTopUp(bc.template) && cashReleased(bc) > 0 ? cashReleased(bc)
     : canBuyAndRefinance(bc.template) && has(bc.equityRelease) ? num(bc.equityRelease)
     : null
   if (deposit === null) missing.push('No deposit has been recorded')

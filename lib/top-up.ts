@@ -43,6 +43,13 @@ import { readMoney } from './money'
 const txt = (v: any) => String(v ?? '').trim()
 const n = (v: any) => readMoney(v) ?? 0
 
+// THE HOUSE NOBODY OWNS YET, BY ITS RESERVED ID.
+//
+// A local copy rather than an import from lib/securities.ts, which already
+// imports isTopUp and lendingAgainst from here - importing back would make a
+// cycle. lib/split-purpose.ts carries the same copy for the same reason.
+const BEING_PURCHASED_ID = 'being-purchased'
+
 export const TOP_UP_TEMPLATES = ['top_up', 'top_up_purchase'] as const
 
 export function isTopUp(template: any): boolean {
@@ -84,6 +91,10 @@ export function isDollarForDollar(bc: any, id: string): boolean {
 }
 
 export function increaseFor(bc: any, id: string): number {
+  // NOTHING IS BEING TOPPED UP ON A HOUSE NOBODY OWNS YET. There is no loan to
+  // increase, so an increase recorded against it is a figure that got there by
+  // accident and must not reach an LVR.
+  if (txt(id) === BEING_PURCHASED_ID) return 0
   // A ticked security has no increase however stale the box behind it is. The
   // figure is ignored rather than cleared, so unticking gets it back.
   if (isDollarForDollar(bc, id)) return 0
@@ -217,6 +228,11 @@ export function cashReleased(bc: any): number {
  * A deal can be increasing one loan, refinancing another and buying a third.
  */
 export function treatmentOf(bc: any, id: string): Treatment {
+  // 20 Oct 2026. On a top up + purchase this answered "topped up" about the
+  // house being bought, because the only two answers it had were the two a
+  // plain top up can give. A compliance pack saying a purchase is a top up is
+  // telling a lender something untrue.
+  if (txt(id) === BEING_PURCHASED_ID) return 'purchase'
   return isDollarForDollar(bc, id) ? 'dollar-for-dollar' : 'topped-up'
 }
 
@@ -352,15 +368,32 @@ export function whyTheExistingLender(lender: string): string {
 // A TICKED SECURITY COUNTS IN FULL. A dollar for dollar refinance is a new
 // facility at the new lender for the whole balance, so the whole balance is
 // being sought - which is exactly why the tick cannot be cosmetic.
-export function financeSought(bc: any): number {
+//
+// AND THE PURCHASE LOAN, WHICH IS WHY THE SECOND ARGUMENT EXISTS.
+//
+// 20 Oct 2026. Fabio: "ensure you are doing the same work for top + purchase".
+// This counted the increases and the ticked balances and stopped. On a top up +
+// purchase the loan that buys the house is neither, so the submission notes
+// read "seeking finance of $200,000" and the sentence straight after it listed
+// parts adding to $824,000 - the same shape as the $1,855,000 line Fabio pulled
+// up on 16 Oct, in the one box a bank reads.
+//
+// IT IS PASSED IN RATHER THAN READ HERE. purchaseLoanOf lives in
+// lib/securities.ts, which already imports from this file; reaching back for it
+// would make a cycle. The caller has it to hand, and
+// lib/the-top-up-reaches-lo-and-compliance.test.ts holds the only caller to
+// passing it so a future one cannot quietly drop it again.
+export function financeSought(bc: any, purchaseLoan: number = 0): number {
   const ids: string[] = Array.isArray(bc?.securityIds) ? bc.securityIds.map(String) : []
   const balances = bc?.securityBalances
-  return ids.reduce((t, id) => {
+  const onSecurities = ids.reduce((t, id) => {
     if (isDollarForDollar(bc, id)) {
       return t + (balances && typeof balances === 'object' ? n(balances[id]) : 0)
     }
     return t + increaseFor(bc, id)
   }, 0)
+  const buying = Number.isFinite(purchaseLoan) && purchaseLoan > 0 ? purchaseLoan : 0
+  return onSecurities + buying
 }
 
 /**

@@ -13,7 +13,8 @@ import { auDate } from '@/lib/client-position'
 import { PURPOSES, isDebtRecycling, limitCheck } from '@/lib/debt-recycling'
 import { isComplexRefinance, canHaveManySecurities, canReleaseEquity,
          groupsOf } from '@/lib/complex-refinance'
-import { ffProperties, securitiesOf, totalsOf, groupBySecurity, orphanSplits,
+import { ffProperties, securitiesOf, securitiesWithPurchase, totalsOf, groupBySecurity,
+         orphanSplits, canBuyAndRefinance, purchaseLoanOf,
         BEING_PURCHASED, BEING_PURCHASED_LABEL,
          lvrOf, pct, legacyAddress } from '@/lib/securities'
 import { tabsOf, canAdd, canSwap, swapTo, addScenario, removeScenario, whyNotDelete, renameLive,
@@ -166,7 +167,20 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
 // id. `property` is the old free-text address, kept so deals recorded before
 // 12 Oct 2026 still read - it is never written to again. See lib/securities.ts
 // for why an id and not an address.
-type Split = { label: string; amount: string; rate: string; type: string; ioYears?: string; existingBalance?: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string; interestCapitalised?: string; purpose?: string; fundsUsedFor?: string; property?: string; securityId?: string }
+type Split = { label: string; amount: string; rate: string; type: string; ioYears?: string; existingBalance?: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string; interestCapitalised?: string; purpose?: string; fundsUsedFor?: string; property?: string; securityId?: string; staying?: boolean }
+
+// WHICH SPLIT BUYS THE HOUSE. Tag first, then label, then the old fixed
+// position - the same order lib/securities.ts purchaseLoanOf reads them in, so
+// the panel and the figures downstream can never disagree about which split
+// that is. Returns -1 when there is none.
+function findPurchaseSplit(list: Split[]): number {
+  const arr = Array.isArray(list) ? list : []
+  const tagged = arr.findIndex(x => String(x?.securityId || '') === BEING_PURCHASED)
+  if (tagged >= 0) return tagged
+  const named = arr.findIndex(x => /new purchase/i.test(String(x?.label || '')))
+  if (named >= 0) return named
+  return arr.length > 2 ? 2 : -1
+}
 
 type AltScenario = {
   label?: string
@@ -261,7 +275,7 @@ function fieldCls(value: string) {
     : "px-2.5 py-1.5 text-sm border border-dashed border-field-line rounded-lg focus:outline-none focus:border-brand bg-page w-full"
 }
 import { buysNothing } from '@/lib/buying'
-import { isTopUp, increaseFor, lendingAgainst, limitDisagreement } from '@/lib/top-up'
+import { isTopUp, increaseFor, lendingAgainst, limitDisagreement, splitsForSecurity } from '@/lib/top-up'
 import { offsetIsOn, toggleOffset, offsetsAfterRemoving } from '@/lib/offset-splits'
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
 import { annualIncomeOfApplicant, incomeBreakdownFor } from '@/lib/income-calculations'
@@ -480,13 +494,27 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     }
   }
 
-  // The new purchase loan lives in splits[2]. This creates it if the deal was
-  // saved before that split existed, so the fields always have something to write to.
+  // THE PURCHASE LOAN IS FOUND, NOT COUNTED TO.
+  //
+  // 20 Oct 2026. This was splits[2] everywhere, which held while the only
+  // scenario with a purchase panel always had exactly three splits in a fixed
+  // order. Top up + purchase breaks that the moment "Added to the current loan"
+  // collapses two splits into one - the purchase is then splits[1], and every
+  // field in the panel would have been writing into the topped-up loan.
+  //
+  // THE TAG BEATS THE LABEL BEATS THE POSITION, the same order lib/securities.ts
+  // uses in purchaseLoanOf. Position is last so deals saved before the tag
+  // existed still find theirs.
   function setNewPurchaseSplitField(field: string, val: string) {
     setSplits(prev => {
       const next = [...prev]
-      while (next.length < 3) next.push({ label: 'New purchase', amount: '', rate: '6.39', type: 'P&I' })
-      next[2] = { ...next[2], [field]: val } as any
+      let i = findPurchaseSplit(next)
+      if (i < 0) {
+        next.push({ label: 'New purchase', amount: '', rate: '6.39', type: 'P&I',
+                    securityId: BEING_PURCHASED } as any)
+        i = next.length - 1
+      }
+      next[i] = { ...next[i], [field]: val } as any
       return next
     })
   }
@@ -529,6 +557,73 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
         && /increase/i.test(String(sp.label || '')))
       if (i < 0) return prev
       return prev.map((sp, idx) => idx === i ? { ...sp, amount: formatNumber(val) } : sp)
+    })
+  }
+
+  // ONE FACILITY OR TWO, AND THE SPLITS FOLLOW THE BUTTON.
+  //
+  // 20 Oct 2026. Fabio, asked whether these controls had a purpose: the merge
+  // button changed the client email's boxes and nothing else. His own rule, the
+  // same day: "if we add into the current split, let's estimate the repayments,
+  // which is the 500 plus the 300. But if we mark it as a second split, then we
+  // can do the repayments just on that split." The repayment comes off the
+  // splits, so until this existed pressing the button never moved it - a
+  // difference of $2,558 a month on his example, on a client's screen.
+  //
+  // RATES ARE CARRIED ACROSS, which is what he asked for when he chose this
+  // over warning him and leaving it alone. The figures all come from boxes he
+  // has already filled in; only the shape of the splits is rewritten.
+  //
+  // NOTHING THAT IS NOT BEING TOPPED UP IS TOUCHED. The purchase split on a top
+  // up + purchase, and anything pointed at a property that is not ticked, are
+  // kept exactly as they are and put back after.
+  function applyIncreaseMerged(merged: boolean) {
+    setIncreaseMerged(merged)
+    if (!isTopUp(template)) return
+    setSplits(prev => {
+      const ids = securityIds.map(String).filter(Boolean)
+      if (ids.length === 0) return prev
+      const props = ffProperties(ff)
+      const mine = (id: string) => prev.filter(sp => String(sp.securityId || '') === id)
+      const rebuilt: Split[] = []
+      for (const id of ids) {
+        const had = mine(id)
+        // The rate to carry is the one on the new money where there is one,
+        // because that is the rate somebody last thought about. The existing
+        // loan's own rate is kept separately so a merge does not overwrite it
+        // with the increase's rate and an unmerge cannot get it back.
+        const newMoney = had.find(x => !x.staying) || had[0]
+        const old = had.find(x => x.staying)
+        const address = String(props.find((x: any) => String(x?.id) === id)?.address || '')
+        const num = (v: any) => parseFloat(String(v || '0').replace(/[^0-9.]/g, '')) || 0
+        rebuilt.push(...splitsForSecurity({
+          id, address,
+          balance: num(securityBalances[id]),
+          // Read straight off the boxes rather than through buildBcData(),
+          // which is declared further down this component. The tick wins over
+          // the figure here exactly as increaseFor does in lib/top-up.ts.
+          increase: securityDollarForDollar[id] ? 0 : num(securityIncreases[id]),
+          dollarForDollar: !!securityDollarForDollar[id],
+        }, {
+          merged,
+          rate: newMoney?.rate || '6.14',
+          type: newMoney?.type || 'Interest only',
+          ioYears: newMoney?.ioYears || '5',
+          existingRate: old?.rate,
+          existingIoYears: old?.ioYears,
+        }).map(x => ({
+          // THE PURPOSE SURVIVES THE REBUILD. lib/top-up.ts builds the shape of
+          // the splits; it has never held what the money is for. Dropped here,
+          // purposeSummary() comes back empty and the submission notes refuse to
+          // write at all - "No split has a purpose recorded" - because somebody
+          // pressed a layout button.
+          ...x,
+          purpose: newMoney?.purpose || old?.purpose,
+          fundsUsedFor: newMoney?.fundsUsedFor || old?.fundsUsedFor,
+        })) as Split[])
+      }
+      const untouched = prev.filter(sp => !ids.includes(String(sp.securityId || '')))
+      return [...rebuilt, ...untouched]
     })
   }
 
@@ -1281,6 +1376,45 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     if (changed) setSecurityIncreases(next)
   }, [template, splits, securityIncreases])
 
+  // A SPLIT WITH NO HOUSE AGAINST IT IS THE ROOT OF ALL THREE COMPLAINTS.
+  //
+  // 20 Oct 2026. Fabio's screen: owes $942,441, increasing by nothing, and
+  // "drawn $942,441" beside a deal with a $200,000 increase split sitting right
+  // there. One cause. The increase split had no securityId, so it belonged to
+  // no property: the increasing-by box could not find it, the drawn figure was
+  // short by $200,000, and the per-property LVR was working off the typed limit
+  // instead of the lending.
+  //
+  // On a scenario with ONE security there is nothing to decide - every split is
+  // against that house. The dropdown on each split exists for the deals with
+  // two, and asking somebody to fill it in on a deal with one is asking them to
+  // restate the only answer available.
+  //
+  // THE PURCHASE IS THE EXCEPTION AND IT NAMES ITSELF. The split that buys the
+  // house points at the reserved id, never at a property being topped up -
+  // which is the Alter Street fault, where a purchase loan parked on a house
+  // that was not buying anything printed 124%.
+  //
+  // NEVER OVERWRITES. A split that already names a house keeps it.
+  useEffect(() => {
+    if (!isTopUp(template)) return
+    const ids = securityIds.map(String).filter(Boolean)
+    const only = ids.length === 1 ? ids[0] : ''
+    const buys = canBuyAndRefinance(template)
+    let changed = false
+    const next = splits.map(sp => {
+      if (String(sp.securityId || '')) return sp
+      if (buys && /new purchase/i.test(String(sp.label || ''))) {
+        changed = true
+        return { ...sp, securityId: BEING_PURCHASED }
+      }
+      if (!only) return sp
+      changed = true
+      return { ...sp, securityId: only }
+    })
+    if (changed) setSplits(next)
+  }, [template, splits, securityIds])
+
   // A DEAL-LEVEL BOX HOLDS A DEAL-LEVEL FIGURE. THE TOTAL, NOT THE FIRST.
   //
   // 15 Oct 2026 this mirrored the FIRST security's balance into existingLoanBal
@@ -1958,8 +2092,17 @@ Key assumptions: ${checklistText}`
                     }
                     const bcNow = buildBcData()
                     const secs = securitiesOf(bcNow, ff)
-                    const t = totalsOf(secs)
-                    const groups = groupBySecurity(splits, secs)
+                    // THE TOTAL COUNTS THE HOUSE BEING BOUGHT. 20 Oct 2026 - on
+                    // a top up + purchase this added up the properties they
+                    // already own and stopped, so the deal-level LVR left out
+                    // both the purchase price and the loan buying it. That is
+                    // the figure a lender assesses across the security it takes.
+                    const secsAll = securitiesWithPurchase(bcNow, ff)
+                    const t = totalsOf(secsAll)
+                    const buyRow = secsAll.find(x => x.id === BEING_PURCHASED)
+                    // Grouped against every security including the purchase,
+                    // so the row below can show what is drawn on it.
+                    const groups = groupBySecurity(splits, secsAll)
                     const orphans = orphanSplits(splits, secs)
                     const drawnOf = (id: string) => groups.find(g => g.security.id === id)?.drawn || 0
                     const toggle = (id: string) => setSecurityIds(
@@ -1989,7 +2132,7 @@ Key assumptions: ${checklistText}`
                             <span className="text-[11px] text-gray-400">On the ones being topped up:</span>
                             {[[false, 'A separate split'], [true, 'Added to the current loan']].map(([v, label]) => (
                               <button key={String(label)} type="button"
-                                onClick={() => setIncreaseMerged(v as boolean)}
+                                onClick={() => applyIncreaseMerged(v as boolean)}
                                 aria-pressed={increaseMerged === v}
                                 className={`text-[11.5px] rounded-lg px-3 py-[5px] border transition ${
                                   increaseMerged === v
@@ -2105,6 +2248,44 @@ Key assumptions: ${checklistText}`
                               </div>
                             )
                           })}
+
+                          {/* THE HOUSE NOBODY OWNS YET, AS A ROW LIKE ANY OTHER.
+                            * 20 Oct 2026. Read only: there is no fact find
+                            * property to tick, nothing owed on it and nothing to
+                            * top up. It is here so the purchase carries its own
+                            * LVR instead of leaning on a house that is only
+                            * being topped up - the Alter Street fault of 15 Oct,
+                            * where one property carried three loans and printed
+                            * 124%. Its value is the purchase price and its limit
+                            * is the loan that buys it; neither is invented, both
+                            * are already on this form. */}
+                          {buyRow && (
+                            <div className="flex items-center gap-3 flex-wrap rounded-lg px-2 py-1.5">
+                              <span className="shrink-0 w-4 h-4 rounded border-[1.5px] border-gray-200 bg-page" />
+                              <span className="text-[12.5px] text-ink flex-1 min-w-[170px]">
+                                {BEING_PURCHASED_LABEL}
+                              </span>
+                              <span className="text-[11px] text-gray-400 w-[96px]">
+                                {newPurchasePropertyType || ''}
+                              </span>
+                              <span className="text-[11px] text-gray-400 w-[86px] text-right">
+                                {fmtMoney(Number(String(buyRow.value || '').replace(/[^0-9.]/g, '')) || 0)}
+                              </span>
+                              <span className="text-[11px] text-gray-400 w-[128px]">nothing owed yet</span>
+                              {isTopUp(template) && (
+                                <span className="text-[11px] text-gray-400 w-[128px]">nothing to top up</span>
+                              )}
+                              <span className="text-[11px] text-gray-500 w-[128px] text-right tabular-nums">
+                                {fmtMoney(Number(String(buyRow.limit || '').replace(/[^0-9.]/g, '')) || 0)}
+                              </span>
+                              <span className="text-[11px] text-gray-400 w-[52px] text-right">
+                                {lvrOf(buyRow) === null ? '' : pct(lvrOf(buyRow) as number)}
+                              </span>
+                              <span className="text-[11px] text-gray-400 w-[110px] text-right">
+                                drawn {fmtMoney(groups.find(g => g.security.id === BEING_PURCHASED)?.drawn || 0)}
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         {secs.length > 0 && (
@@ -2772,7 +2953,19 @@ Key assumptions: ${checklistText}`
                 </div>
               </div>
 
-              {template === "investment_equity" && (
+              {/* THE PURCHASE DETAILS, ON EVERY SCENARIO THAT BUYS SOMETHING.
+                *
+                * 20 Oct 2026. Fabio: "remember when purchasing you keep section
+                * of purchase details and ensure they are linked on top up plus
+                * purchase". This was gated on one template name, so on a top up
+                * + purchase the panel never drew - while lib/bc-ready.ts went on
+                * refusing to send the email until newPurchasePrice and
+                * newPurchaseStampDuty were filled in. There was nowhere to fill
+                * them in. The scenario asks the question now, not the name. */}
+              {canBuyAndRefinance(template) && (() => {
+                const pIdx = findPurchaseSplit(splits)
+                const pSplit: any = pIdx >= 0 ? splits[pIdx] : {}
+                return (
                 <div className="bg-card border-2 border-brand/40 rounded-xl p-4">
                   <div className="text-xs font-medium text-brand-ink uppercase tracking-wider mb-3">New purchase</div>
                   <div className="grid grid-cols-2 gap-2">
@@ -2808,7 +3001,7 @@ Key assumptions: ${checklistText}`
                       <div className={inputCls + " bg-gray-50 text-gray-700"}>
                         {(() => {
                           const price = parseFloat((newPurchasePrice || '0').replace(/,/g, '')) || 0
-                          const loanAmt = parseFloat((splits[2]?.amount || '0').replace(/,/g, '')) || 0
+                          const loanAmt = parseFloat((pSplit?.amount || '0').replace(/,/g, '')) || 0
                           const pct = price > 0 ? Math.ceil((loanAmt / price) * 1000) / 10 : 0
                           return pct > 0 ? `${pct}%` : '\u2014'
                         })()}
@@ -2816,7 +3009,7 @@ Key assumptions: ${checklistText}`
                     </Field>
                     <Field label="Loan term (years)"><input className={inputCls} value={newPurchaseLoanTerm} onChange={e => setNewPurchaseLoanTerm(e.target.value)} /></Field>
                     <Field label="Loan amount">
-                      <NumberInput value={splits[2]?.amount || ''} onChange={v => {
+                      <NumberInput value={pSplit?.amount || ''} onChange={v => {
                         setNewPurchaseSplitField('amount', v)
                         const price = parseFloat((newPurchasePrice || '0').replace(/,/g, '')) || 0
                         const loanAmt = parseFloat((v || '0').replace(/,/g, '')) || 0
@@ -2832,18 +3025,28 @@ Key assumptions: ${checklistText}`
                       })()}
                     </Field>
                     <Field label="Rate">
-                      <input className={inputCls} value={splits[2]?.rate || ''} onChange={e => setNewPurchaseSplitField('rate', e.target.value)} />
+                      <input className={inputCls} value={pSplit?.rate || ''} onChange={e => setNewPurchaseSplitField('rate', e.target.value)} />
                     </Field>
                     <Field label="Type">
-                      <select className={selectCls} value={splits[2]?.type || 'P&I'} onChange={e => setNewPurchaseSplitField('type', e.target.value)}>
+                      <select className={selectCls} value={pSplit?.type || 'P&I'} onChange={e => setNewPurchaseSplitField('type', e.target.value)}>
                         <option>P&I</option>
                         <option>Interest only</option>
                       </select>
                     </Field>
-                    <Field label="Repayment"><CurrencyInput className={inputCls} value={splits[2]?.repayment || ''} onChange={v => setNewPurchaseSplitField('repayment', v)} /></Field>
+                    <Field label="Repayment"><CurrencyInput className={inputCls} value={pSplit?.repayment || ''} onChange={v => setNewPurchaseSplitField('repayment', v)} /></Field>
+                    {/* INTEREST ONLY NEVER TRAVELS ALONE. Fabio, 20 Oct 2026:
+                      * "make sure you always add how many years interest only,
+                      * because you tend to forget." */}
+                    {/^interest only$/i.test(String(pSplit?.type || '')) && (
+                      <Field label="Interest only years">
+                        <input className={inputCls} value={pSplit?.ioYears || ''}
+                          onChange={e => setNewPurchaseSplitField('ioYears', e.target.value)} />
+                      </Field>
+                    )}
                   </div>
                 </div>
-              )}
+                )
+              })()}
 
               {["oo_purchase", "investment_purchase", "refinance_equity"].includes(template) && compareOptions && altScenarios.map((alt, idx) => {
                 const isRefiEquityAlt = template === 'refinance_equity'

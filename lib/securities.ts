@@ -207,7 +207,15 @@ export function isBeingPurchased(split: any): boolean {
 // A SCENARIO THAT REFINANCES HOUSES AND BUYS ONE. The only shape where a
 // security list needs a row for a property nobody owns yet. Named here rather
 // than asked as "which template is this" on four screens.
-const BUYS_AND_REFINANCES = ['investment_equity']
+//
+// TOP UP + PURCHASE IS THE SAME SHAPE AND WAS LEFT OFF. 20 Oct 2026. Fabio:
+// "ensure you are doing the same work for top + purchase". The top up half was
+// finished and this list was not touched, so on that template the house being
+// bought got no row: no value, no LVR of its own, and nothing to pick in the
+// Security dropdown. The purchase loan then had to be parked on one of the
+// houses being topped up - which is the Alter Street fault of 15 Oct exactly,
+// where one property carried three loans and printed 124%.
+const BUYS_AND_REFINANCES = ['investment_equity', 'top_up_purchase']
 
 export function canBuyAndRefinance(template: any): boolean {
   return BUYS_AND_REFINANCES.includes(txt(template))
