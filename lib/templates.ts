@@ -17,6 +17,11 @@ export const TEMPLATE_LABELS: Record<string, string> = {
   construction:        'Construction loan',
   debt_recycling:      'Debt recycling',
   complex_refinance:   'Complex refinance',
+  // 20 Oct 2026. Increasing an existing loan with the lender it is already
+  // with. Not a refinance - see lib/top-up.ts for why that distinction is
+  // arithmetic rather than wording.
+  top_up:              'Top up',
+  top_up_purchase:     'Top up + purchase',
   custom:              'Custom (all fields)',
 }
 

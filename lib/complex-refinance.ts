@@ -67,7 +67,7 @@ export function isComplexRefinance(template: any): boolean {
 // release amount" with nothing beside it. See securedByMany below, and the
 // property cards in app/api/generate-email/route.ts that read it.
 const MANY_SECURITIES = ['complex_refinance', 'investment_equity',
-                         'refinance_equity', 'refinance_only']
+                         'refinance_equity', 'refinance_only', 'top_up', 'top_up_purchase']
 
 export function canHaveManySecurities(template: any): boolean {
   return MANY_SECURITIES.includes(txt(template))

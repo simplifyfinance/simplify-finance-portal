@@ -31,6 +31,7 @@
 // to decide.
 
 import { readMoney, money } from './money'
+import { isTopUp, lendingAgainst } from './top-up'
 
 const txt = (v: any) => String(v ?? '').trim()
 const num = (v: any): number => readMoney(v) || 0
@@ -79,8 +80,28 @@ export function isSecurity(bc: any, id: any): boolean {
 
 export function limitOf(bc: any, id: any): string {
   const limits = bc?.securityLimits
-  if (!limits || typeof limits !== 'object') return ''
-  return txt(limits[txt(id)])
+  const typed = limits && typeof limits === 'object' ? txt(limits[txt(id)]) : ''
+  if (typed) return typed
+
+  // A TOP UP HAS A LIMIT WHETHER OR NOT ANYBODY TYPED ONE. 20 Oct 2026.
+  //
+  // On a top up the lending against a security is what is owed now plus the
+  // increase - $500,000 + $300,000 - and it is known the moment those two
+  // boxes are filled in. Leaving it blank until somebody also types a limit
+  // would make lvrOf return null, so the screen would show no LVR at all on a
+  // deal whose whole point is the LVR.
+  //
+  // THE TYPED BOX STILL WINS, above, because a lender may approve a limit
+  // higher than the two added up and that is a real thing to record.
+  //
+  // This is the one place it belongs: lvrOf, totalsOf, the deal structure
+  // strip and lib/commission.ts all read this function, and a second answer
+  // anywhere else is how one screen ends up disagreeing with another.
+  if (isTopUp(bc?.template)) {
+    const lending = lendingAgainst(bc, txt(id))
+    return lending > 0 ? String(lending) : ''
+  }
+  return ''
 }
 
 // THE SECURITIES ON THIS DEAL, IN FACT FIND ORDER.

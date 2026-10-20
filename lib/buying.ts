@@ -30,11 +30,18 @@ export const BUYING_TEMPLATES = [
   'oo_purchase', 'oo_lvr_compare', 'investment_purchase', 'fhb',
   'investment_equity', 'buy_sell', 'bridging', 'smsf', 'family_pledge',
   'construction',
+  // 20 Oct 2026. The increase funds the deposit on a new property, so a price,
+  // a deposit and stamp duty are all real questions on this one.
+  'top_up_purchase',
 ] as const
 
 /** Scenarios that are an existing loan moving, with no purchase anywhere in them. */
 export const NOT_BUYING_TEMPLATES = [
   'refinance_equity', 'refinance_only', 'debt_recycling', 'complex_refinance',
+  // A plain top up buys nothing. Drawing a purchase price on it would put a
+  // purchase into the compliance pack for a deal where nothing is bought -
+  // see the note at the top of this file for what that costs.
+  'top_up',
 ] as const
 
 const txt = (v: unknown) => String(v ?? '').trim()

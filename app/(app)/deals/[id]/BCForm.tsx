@@ -94,6 +94,8 @@ function buildHousingExpenseLine(app: any): string {
 
 const TEMPLATES = [
   { id: 'refinance_equity', label: 'Refinance + equity release' },
+  { id: 'top_up', label: 'Top up' },
+  { id: 'top_up_purchase', label: 'Top up + purchase' },
   { id: 'refinance_only', label: 'Refinance only' },
   { id: 'oo_purchase', label: 'OO purchase' },
   { id: 'oo_lvr_compare', label: 'OO purchase — LVR comparison' },
@@ -113,6 +115,22 @@ const TEMPLATES = [
 const TEMPLATE_DEFAULTS: Record<string, any> = {
   refinance_equity: { splits: [{ label: 'Existing loan refinanced', amount: '', rate: '6.14', type: 'P&I' }, { label: 'Equity access', amount: '', rate: '6.14', type: 'P&I' }] },
   refinance_only: { splits: [{ label: 'Refinanced loan', amount: '', rate: '6.14', type: 'P&I' }] },
+  // THE EXISTING LOAN IS A SPLIT, AND THAT IS THE WHOLE DESIGN.
+  //
+  // 20 Oct 2026. Everything downstream adds up the splits against a property -
+  // the LVR, the LMI gate, the structure strip, the compliance pack. Leave the
+  // loan that is already there out of the splits and all of them are wrong at
+  // once: $500,000 + $300,000 against $1,000,000 reads 30% instead of 80%.
+  // See lib/top-up.ts.
+  top_up: { splits: [
+    { label: 'Existing loan', amount: '', rate: '6.14', type: 'Interest only', ioYears: '5' },
+    { label: 'Loan increase', amount: '', rate: '6.14', type: 'Interest only', ioYears: '5' },
+  ] },
+  top_up_purchase: { splits: [
+    { label: 'Existing loan', amount: '', rate: '6.14', type: 'Interest only', ioYears: '5' },
+    { label: 'Loan increase', amount: '', rate: '6.14', type: 'Interest only', ioYears: '5' },
+    { label: 'New purchase', amount: '', rate: '6.39', type: 'Interest only', ioYears: '5' },
+  ] },
   oo_purchase: { splits: [{ label: 'Owner-occupied loan', amount: '', rate: '6.14', type: 'P&I' }] },
   oo_lvr_compare: { splits: [{ label: '80% LVR option', amount: '', rate: '6.14', type: 'P&I' }, { label: '90% LVR option', amount: '', rate: '6.39', type: 'P&I' }] },
   investment_purchase: { splits: [{ label: 'Investment loan', amount: '', rate: '6.39', type: 'P&I' }] },
@@ -243,6 +261,7 @@ function fieldCls(value: string) {
     : "px-2.5 py-1.5 text-sm border border-dashed border-field-line rounded-lg focus:outline-none focus:border-brand bg-page w-full"
 }
 import { buysNothing } from '@/lib/buying'
+import { isTopUp, increaseFor, lendingAgainst } from '@/lib/top-up'
 import { offsetIsOn, toggleOffset, offsetsAfterRemoving } from '@/lib/offset-splits'
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
 import { annualIncomeOfApplicant, incomeBreakdownFor } from '@/lib/income-calculations'
@@ -576,6 +595,24 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     s.securityBalances && typeof s.securityBalances === 'object' ? s.securityBalances : {})
   const [securityReleases, setSecurityReleases] = useState<Record<string, string>>(
     s.securityReleases && typeof s.securityReleases === 'object' ? s.securityReleases : {})
+  // A TOP UP INCREASES; IT DOES NOT RELEASE. 20 Oct 2026.
+  //
+  // Kept apart from securityReleases on purpose. They are the same shape and a
+  // different thing: a release comes out of a refinance, an increase is new
+  // money on a loan that is staying. Sharing the field would mean a deal that
+  // changed template silently carried one as the other into the LVR.
+  const [securityIncreases, setSecurityIncreases] = useState<Record<string, string>>(
+    s.securityIncreases && typeof s.securityIncreases === 'object' ? s.securityIncreases : {})
+  // THE TICK, PER SECURITY. Fabio, 20 Oct 2026: "do a little tick box and say
+  // next to the security saying this is a dollar for dollar refi, not a top
+  // up." Ticked, the increase is ignored rather than cleared - so unticking
+  // gets the figure back. See isDollarForDollar in lib/top-up.ts.
+  const [securityDollarForDollar, setSecurityDollarForDollar] = useState<Record<string, boolean>>(
+    s.securityDollarForDollar && typeof s.securityDollarForDollar === 'object' ? s.securityDollarForDollar : {})
+  // One facility or two, on the securities being topped up. Not presentation:
+  // merged means one split at the new total, so every repayment downstream is
+  // worked out on the whole of it.
+  const [increaseMerged, setIncreaseMerged] = useState<boolean>(!!s.increaseMerged)
   const [securityLimits, setSecurityLimits] = useState<Record<string, string>>(
     (s.securityLimits && typeof s.securityLimits === 'object') ? s.securityLimits : {})
   // WHICH SPLITS CARRY AN OFFSET - BY POSITION, NOT BY NAME.
@@ -935,6 +972,8 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     offsetSplits: setOffsetSplits, offsetSplitIdx: setOffsetSplitIdx, propertyLimits: setPropertyLimits,
     securityIds: setSecurityIds, securityLimits: setSecurityLimits,
     securityBalances: setSecurityBalances, securityReleases: setSecurityReleases,
+    securityIncreases: setSecurityIncreases, securityDollarForDollar: setSecurityDollarForDollar,
+    increaseMerged: setIncreaseMerged,
     constructionCost: setConstructionCostRaw,
     landValue: setLandValueRaw, landFunding: setLandFunding, landLoanBalance: setLandLoanBalance,
     saleProceedsUse: setSaleProceedsUse,
@@ -1110,13 +1149,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // pending stays in pendingSave and is written by the effect above when the
     // form actually leaves.
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand }
   }
 
   // Does the saved email still match the scenario the deal is on? Read in three
@@ -1884,6 +1923,32 @@ Key assumptions: ${checklistText}`
                           Tick the ones this loan is secured by.
                         </p>
 
+                        {/* ONE FACILITY OR TWO. 20 Oct 2026, and not presentation.
+                          *
+                          * Fabio: "if we add into the current split, let's estimate the
+                          * repayments, which is the 500 plus the 300. But if we mark it as a
+                          * second split, then we can do the repayments just on that split."
+                          *
+                          * Merged means ONE split holding the new total, so every repayment
+                          * downstream is worked out on the whole $800,000 - $4,093 a month
+                          * against $1,535 on a client's screen. */}
+                        {isTopUp(template) && (
+                          <div className="flex items-center gap-2 mb-3 flex-wrap">
+                            <span className="text-[11px] text-gray-400">On the ones being topped up:</span>
+                            {[[false, 'A separate split'], [true, 'Added to the current loan']].map(([v, label]) => (
+                              <button key={String(label)} type="button"
+                                onClick={() => setIncreaseMerged(v as boolean)}
+                                aria-pressed={increaseMerged === v}
+                                className={`text-[11.5px] rounded-lg px-3 py-[5px] border transition ${
+                                  increaseMerged === v
+                                    ? 'border-brand text-brand-ink bg-brand/5 font-medium'
+                                    : 'border-gray-200 text-gray-500 hover:bg-page'}`}>
+                                {label as string}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
                         <div className="flex flex-col gap-1">
                           {props.map(p => {
                             const on = securityIds.includes(String(p.id))
@@ -1918,11 +1983,27 @@ Key assumptions: ${checklistText}`
                                     {/* NOT ON A SCENARIO THAT RELEASES NOTHING.
                                         16 Oct 2026 - see canReleaseEquity in
                                         lib/complex-refinance.ts. */}
-                                    {canReleaseEquity(template) && (
+                                    {canReleaseEquity(template) && !isTopUp(template) && (
                                       <div className="w-[128px]">
                                         <NumberInput value={securityReleases[String(p.id)] || ''}
                                           onChange={(v: string) => setSecurityReleases({ ...securityReleases, [String(p.id)]: v })} />
                                         <span className="block text-[10px] text-gray-400 mt-0.5">releasing</span>
+                                      </div>
+                                    )}
+                                    {/* INCREASING, NOT RELEASING. 20 Oct 2026. A top up adds to a
+                                        loan that is staying where it is - and the LVR counts this
+                                        PLUS what is owed now. $500,000 + $300,000 against
+                                        $1,000,000 is 80%, never the 30% you get from the increase
+                                        on its own. See lib/top-up.ts. */}
+                                    {isTopUp(template) && (
+                                      <div className="w-[128px]">
+                                        <div className={securityDollarForDollar[String(p.id)] ? 'opacity-40 pointer-events-none' : ''}>
+                                          <NumberInput value={securityIncreases[String(p.id)] || ''}
+                                            onChange={(v: string) => setSecurityIncreases({ ...securityIncreases, [String(p.id)]: v })} />
+                                        </div>
+                                        <span className="block text-[10px] text-gray-400 mt-0.5">
+                                          {securityDollarForDollar[String(p.id)] ? 'no increase' : 'increasing by'}
+                                        </span>
                                       </div>
                                     )}
                                     <div className="w-[128px]">
@@ -1936,6 +2017,25 @@ Key assumptions: ${checklistText}`
                                     <span className="text-[11px] text-gray-400 w-[110px] text-right">
                                       drawn {fmtMoney(drawnOf(String(p.id)))}
                                     </span>
+                                    {/* THE TICK CHANGES THE ARITHMETIC, NOT THE LABEL. Ticked,
+                                        there is no increase split, the LVR is the balance alone,
+                                        and this property contributes nothing to funds to complete
+                                        - a dollar for dollar refinance releases no cash. */}
+                                    {isTopUp(template) && (
+                                      <button type="button"
+                                        onClick={() => setSecurityDollarForDollar({
+                                          ...securityDollarForDollar,
+                                          [String(p.id)]: !securityDollarForDollar[String(p.id)],
+                                        })}
+                                        aria-pressed={!!securityDollarForDollar[String(p.id)]}
+                                        className={`shrink-0 text-[10.5px] font-semibold rounded-full px-2.5 py-[3px] border transition ${
+                                          securityDollarForDollar[String(p.id)]
+                                            ? 'bg-waiting-bg border-waiting-edge text-waiting'
+                                            : 'bg-card border-gray-200 text-gray-400 hover:bg-page'}`}
+                                        title="This loan moves to the lender at the same balance. No increase, and no cash released.">
+                                        {securityDollarForDollar[String(p.id)] ? '\u2713 dollar for dollar' : 'dollar for dollar?'}
+                                      </button>
+                                    )}
                                   </>
                                 ) : (
                                   <span className="text-[11px] text-gray-400 flex-1 text-right">not security</span>

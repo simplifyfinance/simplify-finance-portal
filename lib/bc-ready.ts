@@ -32,6 +32,11 @@ export type MissingBox = { label: string; where: string }
 const NEEDS: Record<string, string[]> = {
   refinance_only:      ['suburb', 'existingLoanBal', 'propertyValue', 'splitAmount', 'splitRate'],
   refinance_equity:    ['suburb', 'existingLoanBal', 'propertyValue', 'splitAmount', 'splitRate', 'equityRelease', 'split2Amount', 'split2Rate'],
+  // 20 Oct 2026. A top up needs what it is secured against, what is owed on it
+  // today and what the increase is - the three figures the LVR is built from.
+  // No purchase price and no stamp duty: nothing is being bought.
+  top_up:              ['suburb', 'propertyValue', 'existingLoanBal', 'splitAmount', 'splitRate'],
+  top_up_purchase:     ['suburb', 'propertyValue', 'existingLoanBal', 'splitAmount', 'splitRate', 'newPurchasePrice', 'newPurchaseStampDuty'],
   investment_equity:   ['suburb', 'existingLoanBal', 'propertyValue', 'splitAmount', 'splitRate', 'equityRelease'],
   oo_purchase:         ['suburb', 'purchasePrice', 'deposit', 'stampDuty', 'splitAmount', 'splitRate'],
   investment_purchase: ['suburb', 'purchasePrice', 'deposit', 'stampDuty', 'splitAmount', 'splitRate'],

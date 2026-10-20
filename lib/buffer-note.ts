@@ -58,8 +58,27 @@ export const BUFFER_TEXT =
  * attribute. scripts/check-email-html.sh fails the ship if that slips. See
  * lib/email-shell.ts.
  */
-export function bufferNoteBlock(template: unknown): string {
+/**
+ * THE NOTE FOLLOWS WHAT IS BEING PAID OUT, NOT THE TEMPLATE. 20 Oct 2026.
+ *
+ * A top up pays nothing out - the loan stays with the lender it is already
+ * with, there is no final repayment and no discharge fee - so the paragraph
+ * would be a sentence about a thing that is not happening.
+ *
+ * But one security on a top up CAN be ticked as a dollar for dollar refinance,
+ * and that loan is paid out like any other. So on those two scenarios the
+ * question is asked of the securities rather than the template, which is the
+ * same reason the opening sentence of that email is built rather than written.
+ * Everything else keeps the named list above exactly as it was.
+ */
+export function bufferNoteBlock(template: unknown, payingSomethingOut?: boolean): string {
+  if (payingSomethingOut === true) return bufferNoteHtml()
+  if (payingSomethingOut === false) return ''
   if (!hasBufferNote(template)) return ''
+  return bufferNoteHtml()
+}
+
+function bufferNoteHtml(): string {
   return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:18px"><tr>
     <td width="4" bgcolor="#2DBEFF" style="background:#2DBEFF;width:4px;font-size:0;line-height:0">&nbsp;</td>
     <td bgcolor="#EEF6FD" style="background:#EEF6FD;padding:13px 15px">

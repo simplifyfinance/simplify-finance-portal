@@ -11,6 +11,8 @@ import { lmiClientLines, lmiIsInTheLoan, clientLoan } from '@/lib/lmi'
 import { repaymentOf, splitRows, cardTitle, structureLead, realSplits,
          repaymentTypeLine } from '@/lib/split-cards'
 import { purchaseRows } from '@/lib/purchase-rows'
+import { isDollarForDollar, increaseFor, lendingAgainst, lvrFor,
+         anyRefinanced, anyToppedUp, cashReleased } from '@/lib/top-up'
 // EVERY DOLLAR FIGURE IN A CLIENT EMAIL GOES THROUGH money().
 //
 // This file used to write `'$' + (d.purchasePrice || '')` in a hundred
@@ -348,6 +350,76 @@ export function equityBoxes(d: any) {
 
 // The one line under the boxes. Never a card of its own - Fabio, 1 Oct 2026, on
 // a grand total under three property cards: "too confusing".
+// A TOP UP, ONE CARD PER SECURITY. 20 Oct 2026.
+//
+// Fabio's worked example: a house worth $1,000,000 with a $500,000 loan, topped
+// up by $300,000. The card says 80%, because the LVR counts the loan that is
+// already there - see lib/top-up.ts for what counting only the increase costs.
+//
+// THREE SHAPES, ONE PER TREATMENT, because a deal can hold all three at once:
+//
+//   topped up, separate split   the increase on its own, with its own rate and
+//                               repayment; the existing loan is named and left
+//                               alone because it is not changing
+//   topped up, merged           one facility, one figure, "increases from X to
+//                               Y" - and the repayment is on the WHOLE of it,
+//                               which is Fabio's rule and the difference
+//                               between $4,093 and $1,535 on a client's screen
+//   dollar for dollar           no increase anywhere, the balance moving across
+//
+// The purchase on top_up_purchase is drawn by the existing purchase card, not
+// here - this file already has one and a second would drift from it.
+export function topUpBoxes(d: any) {
+  const merged = !!d?.increaseMerged
+  const houses = groupsOf(d).filter(g => g.property)
+  return houses.map(g => {
+    const id = txt(g.id)
+    const refi = isDollarForDollar(d, id)
+    const increase = increaseFor(d, id)
+    const total = lendingAgainst(d, id)
+    const lvr = lvrFor(d, id, g.value)
+    // The split the rate and repayment are read off: the increase where there
+    // is one and it stands alone, otherwise the only split there is.
+    const sp = (refi || merged) ? (g.splits[0] || {}) : (g.splits[1] || g.splits[0] || {})
+
+    if (refi) {
+      return card(`Refinanced Loan \u2014 ${g.heading}`,
+        rowIf('Property value', g.value) +
+        rowIf('Existing loan balance', moneyIf(g.balance)) +
+        rowIf('New loan amount', moneyIf(total)) +
+        rowIf('Indicative rate', txt(sp?.rate) ? `${txt(sp.rate)}% p.a.*` : '') +
+        repaymentRow(sp, d.loanTerm) +
+        rowIf('Repayment type', repaymentTypeLine(sp, d.loanTerm)) +
+        (lvr === null ? '' : row('LVR', `${lvr}%`)) +
+        note('This loan moves across at the same balance, with nothing drawn out of it.'))
+    }
+
+    if (merged) {
+      return card(`Loan Increase \u2014 ${g.heading}`,
+        rowIf('Property value', g.value) +
+        rowIf('Your loan today', moneyIf(g.balance)) +
+        rowIf('Increases to', moneyIf(total)) +
+        rowIf('Indicative rate', txt(sp?.rate) ? `${txt(sp.rate)}% p.a.*` : '') +
+        // ON THE WHOLE FACILITY. One split holds the new total, so every
+        // repayment read off it is on the $800,000, not the $300,000.
+        repaymentRow(sp, d.loanTerm) +
+        rowIf('Repayment type', repaymentTypeLine(sp, d.loanTerm)) +
+        (lvr === null ? '' : row('LVR', `${lvr}%`)))
+    }
+
+    return card(`Loan Increase \u2014 ${g.heading}`,
+      rowIf('Property value', g.value) +
+      rowIf('Your loan today', moneyIf(g.balance)) +
+      rowIf('Increase', moneyIf(increase)) +
+      rowIf('Total lending after the increase', moneyIf(total)) +
+      (lvr === null ? '' : row('LVR', `${lvr}%`)) +
+      rowIf('Indicative rate on the increase', txt(sp?.rate) ? `${txt(sp.rate)}% p.a.*` : '') +
+      repaymentRow(sp, d.loanTerm) +
+      rowIf('Repayment type', repaymentTypeLine(sp, d.loanTerm)) +
+      note('Your existing loan stays as it is. The increase is a separate split alongside it.'))
+  }).join('')
+}
+
 export function securedTotalLine(d: any) {
   const houses = groupsOf(d).filter(g => g.property)
   const worth = houses.reduce((t, g) => t + g.worth, 0)
@@ -769,6 +841,62 @@ export async function POST(req: NextRequest) {
         <table width="100%" cellpadding="0" cellspacing="0"><tr>${allOptionsRE.join('')}</tr></table>
       </td></tr></table>` +
       bufferNoteBlock(template) +
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
+      check(checkItems) +
+      p('The numbers are looking strong. The next step is finding the right lender and rate for your situation \u2014 and that is exactly what we will do for you.') +
+       notesBox(notes) + sig(b)
+
+  } else if (template === 'top_up' || template === 'top_up_purchase') {
+    // A TOP UP. 20 Oct 2026, mocked and approved line by line before a word of
+    // this was written.
+    //
+    // THE OPENING SENTENCE IS NOT BOILERPLATE. "Nothing is being refinanced" is
+    // true of a plain top up and false the moment one security is ticked as a
+    // dollar for dollar, and a sentence that is wrong on a document a client
+    // keeps is worse than no sentence. So it is built from what the securities
+    // actually say - see anyRefinanced/anyToppedUp in lib/top-up.ts.
+    const ups = anyToppedUp(d), refis = anyRefinanced(d)
+    const opening = ups && refis
+      ? 'Based on your current financial position, you have sufficient capacity to increase your existing lending and move your remaining loan across, while securing a competitive rate.'
+      : refis
+        ? 'Based on your current financial position, you have sufficient capacity to refinance your existing lending and secure a competitive rate.'
+        : 'Based on your current financial position, you have sufficient capacity to increase your existing lending while keeping it where it is.'
+
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
+      p(opening) +
+      p13('Here is a breakdown of the structure:') +
+      topUpBoxes(d) +
+      // THE PURCHASE IS DRAWN BY THE CARD THIS FILE ALREADY HAS. A second one
+      // written here would drift from it, which is how two cards end up
+      // disagreeing about stamp duty.
+      // THE PURCHASE, DRAWN BY THE BLOCK THIS FILE ALREADY HAS.
+      //
+      // purchaseBlock reads lib/purchase-rows.ts, which is the one place that
+      // decides what the five lines of a purchase say and in what order. A
+      // second version written here is how two cards end up disagreeing about
+      // stamp duty.
+      //
+      // The deposit comes from the INCREASES, which is the whole shape of this
+      // scenario - and on a mixed deal a dollar for dollar contributes nothing
+      // to it, because it releases no cash. See cashReleased in lib/top-up.ts.
+      (template === 'top_up_purchase'
+        ? card('The purchase', purchaseBlock({
+            price: d.newPurchasePrice || d.purchasePrice,
+            duty: d.newPurchaseStampDuty || d.stampDuty,
+            dutyLabel: dutyLabel(d),
+            loan: d.splits?.find((x: any) => /purchase/i.test(txt(x?.label)))?.amount,
+            contribution: moneyIf(cashReleased(d)),
+            contributionFrom: 'the loan increase',
+          }))
+        : '') +
+      securedTotalLine(d) +
+      card('About this structure',
+        note(STAND_ALONE_NOTE) +
+        aboutThisStructure(d).map((l: string) => note(l)).join('') +
+        note(REFINANCE_ACCOUNTANT_NOTE)) +
+      // Only where a loan is actually being paid out - which on a top up means
+      // a security ticked as a dollar for dollar, and nothing else.
+      bufferNoteBlock(template, refis) +
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation \u2014 and that is exactly what we will do for you.') +
