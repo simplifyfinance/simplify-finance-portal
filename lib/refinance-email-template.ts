@@ -19,6 +19,8 @@ import {
   type RefinanceInput,
   type RefinanceResult,
 } from './refinance-calculations';
+import { analyse, analysisBlockHtml, analysisDisclaimerHtml, minimumRepayment,
+         yearsAndMonths, CALCULATOR_DISCLAIMER } from './repayment-analysis';
 
 export interface EmailContext {
   /** Which trading name this goes out under. Defaults to Simplify Finance. */
@@ -230,6 +232,81 @@ ${signOff(ctx)}`;
  * separately and pasted in. This is a limitation of the mailto spec, not a
  * gap in the implementation.
  */
+// ---------------------------------------------------------------------------
+// THE SAME CLIENT, THE OTHER ARGUMENT
+// ---------------------------------------------------------------------------
+//
+// 21 Oct 2026. Fabio wanted an email about what happens if a client KEEPS
+// paying what they pay now after moving to a lower rate, rather than taking the
+// lower repayment. He picked one card with a switch over two cards: "a client
+// getting two emails from us that both start you could be saving $X a month is
+// the problem".
+//
+// THE EMAIL ABOVE IS NOT TOUCHED. Not a word of it. This is a second body
+// beside it, reached by the switch on the form, and it reuses the same shell,
+// the same buttons and the same sign off so the two cannot drift apart in
+// anything but the argument they make.
+//
+// THE TABLE AND THE MATHS COME FROM lib/repayment-analysis.ts, which is the
+// same block the tick box on a borrowing capacity draws and the same ledger
+// that matches simplifyfinance.com.au/calculators/repayment. One engine, so a
+// client who gets this email and then runs their own numbers on the website
+// sees the same answer.
+export function buildKeepRepaymentEmail(
+  input: RefinanceInput,
+  ctx: EmailContext,
+  opts: { currentRepayment?: number } = {},
+): { subject: string; html: string; plainText: string } | null {
+  // INTEREST ONLY HAS NOTHING TO SAY HERE. Nothing is paying the balance down,
+  // so there are no years to take off. The form does not offer the switch on
+  // IO; this refuses as well rather than trusting it to.
+  if (input.repaymentType !== 'PI') return null;
+
+  const months = Math.round(input.remainingYears * 12);
+  // Their own figure wins. Where there is none - and on a speculative email
+  // there usually is not - the minimum on what they are paying today is the
+  // honest stand-in, and it is what the email above already assumes.
+  const paying = opts.currentRepayment && opts.currentRepayment > 0
+    ? opts.currentRepayment
+    : minimumRepayment(input.balance, input.currentRate, months);
+
+  const a = analyse({
+    balance: input.balance, currentRate: input.currentRate, newRate: input.newRate,
+    yearsRemaining: input.remainingYears, currentRepayment: paying,
+  });
+  if (!a) return null;
+
+  const name = ctx.clientFirstName.trim() || 'there';
+  const money0 = (v: number) => '$' + Math.round(v).toLocaleString('en-AU');
+
+  const inner = `<p style="margin:0 0 10px 0;font-family:${FONT};font-size:15px;color:${INK};line-height:1.6;"><span style="color:${INK};">Hi ${name},</span></p>
+<p style="margin:0 0 14px 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;"><span style="color:${BODY};">Rates have moved, and I have had a look at your loan. You have ${money0(a.balance)} left with ${Math.round(a.yearsRemaining)} years to run, and you are paying ${money0(a.currentRepayment)} a month at ${a.currentRate}%.</span></p>
+<p style="margin:0 0 14px 0;font-family:${FONT};font-size:14px;color:${BODY};line-height:1.6;"><span style="color:${BODY};">A rate of <strong>${a.newRate}%</strong> is available to you. That drops your repayment by ${money0(a.extraPerMonth)} a month &mdash; but the bigger decision is what you do with it.</span></p>
+${analysisBlockHtml(a, { lead: '', heading: 'If you keep your repayment where it is' })}
+${rateNoticeBlock(ctx.rateNotice || '')}
+${button('Book a 15-minute chat', ctx.calendlyUrl, true)}
+${button('Get started now', ctx.proceedUrl, false)}
+<div style="height:6px;line-height:6px;">&nbsp;</div>
+${analysisDisclaimerHtml()}
+<div style="height:10px;line-height:10px;">&nbsp;</div>
+${signOff(ctx)}`;
+
+  return {
+    subject: `${name}, ${money0(a.interestSaved)} and ${yearsAndMonths(a.monthsSaved)} off your loan`,
+    html: shell(inner, ctx.brand || DEFAULT_BRAND),
+    plainText: [
+      `Hi ${name},`,
+      '',
+      `You have ${money0(a.balance)} left with ${Math.round(a.yearsRemaining)} years to run, paying ${money0(a.currentRepayment)} a month at ${a.currentRate}%.`,
+      `A rate of ${a.newRate}% would drop that by ${money0(a.extraPerMonth)} a month.`,
+      '',
+      `If you keep paying ${money0(a.currentRepayment)} instead: ${money0(a.interestSaved)} saved and the loan gone ${yearsAndMonths(a.monthsSaved)} early.`,
+      '',
+      CALCULATOR_DISCLAIMER,
+    ].join('\n'),
+  };
+}
+
 export function buildMailtoUrl(opts: {
   to: string;
   bcc?: string;

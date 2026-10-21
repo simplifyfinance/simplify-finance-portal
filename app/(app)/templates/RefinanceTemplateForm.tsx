@@ -11,6 +11,7 @@ import {
 } from '@/lib/refinance-calculations'
 import {
   buildRefinanceEmail,
+  buildKeepRepaymentEmail,
   buildMailtoUrl,
 } from '@/lib/refinance-email-template'
 import { TONE } from '@/lib/tone'
@@ -58,6 +59,17 @@ export default function RefinanceTemplateForm() {
   const [newRate, setNewRate] = useState('')
   const [remainingYears, setRemainingYears] = useState('')
   const [cashback, setCashback] = useState('0')
+  // WHICH ARGUMENT THIS EMAIL MAKES. 21 Oct 2026, Fabio's call: one card with a
+  // switch rather than two cards, because "a client getting two emails from us
+  // that both start you could be saving $X a month is the problem".
+  //
+  // 'saving' is the email this template has always sent and is the default, so
+  // nothing changes for anybody who does not touch it.
+  const [angle, setAngle] = useState<'saving' | 'keep'>('saving')
+  // Their real repayment, where somebody has it off a statement. Optional: the
+  // minimum on their current rate is the stand-in, which is what the saving
+  // email already assumes.
+  const [theirRepayment, setTheirRepayment] = useState('')
 
   const [readyUrl, setReadyUrl] = useState('')
 
@@ -222,6 +234,24 @@ export default function RefinanceTemplateForm() {
 
   const email = useMemo(() => {
     if (!input || !result) return null
+    const ctx = {
+      clientFirstName: greeting || clientFirstName,
+      brokerName: broker?.name || 'Simplify Finance',
+      calendlyUrl: calendlyUrl || '#',
+      proceedUrl: proceedUrl.trim() || readyUrl || calendlyUrl || '#',
+      brand,
+      rateNotice,
+    }
+    // THE OTHER ARGUMENT, WHERE IT MAKES SENSE. Interest only never offers it -
+    // nothing is paying the balance down - and buildKeepRepaymentEmail refuses
+    // as well rather than trusting this to. A refusal falls back to the email
+    // this template has always sent, so the screen is never blank.
+    if (angle === 'keep' && input.repaymentType === 'PI') {
+      const alt = buildKeepRepaymentEmail(input, ctx, {
+        currentRepayment: parseFloat((theirRepayment || '').replace(/[^0-9.]/g, '')) || 0,
+      })
+      if (alt) return alt
+    }
     return buildRefinanceEmail(input, {
       clientFirstName: greeting || clientFirstName,
       brokerName: broker?.name || 'Simplify Finance',
@@ -230,7 +260,8 @@ export default function RefinanceTemplateForm() {
       brand,
       rateNotice,
     })
-  }, [input, result, greeting, clientFirstName, broker, calendlyUrl, proceedUrl, readyUrl, brand, rateNotice])
+  }, [input, result, greeting, clientFirstName, broker, calendlyUrl, proceedUrl, readyUrl, brand,
+      rateNotice, angle, theirRepayment])
 
   useEffect(() => {
     const frame = frameRef.current, inner = innerRef.current
@@ -406,6 +437,29 @@ export default function RefinanceTemplateForm() {
                   : { color: TONE.body }}>{l}</button>
             ))}
           </div>
+          {/* WHAT THIS EMAIL ARGUES. 21 Oct 2026. The same client and the same
+              four figures, making one of two cases: take the lower repayment,
+              or keep paying what you pay now and finish years early.
+
+              NOT ON INTEREST ONLY. Nothing is paying the balance down, so there
+              are no years to take off and no interest saved. */}
+          {repaymentType === 'PI' && (
+            <div className="mb-3">
+              <label className={lab} style={{ color: TONE.label }}>What this email says</label>
+              <div className="inline-flex rounded-lg p-[2px] border"
+                   style={{ background: TONE.hair, borderColor: TONE.line }}>
+                {([['saving', 'The saving'], ['keep', 'What keeping the repayment does']] as const)
+                  .map(([id, l]) => (
+                  <button key={id} onClick={() => setAngle(id as 'saving' | 'keep')}
+                    className="px-3 py-1 text-[12.5px] rounded-[6px]"
+                    style={angle === id
+                      ? { background: '#fff', color: TONE.ink, fontWeight: 600, boxShadow: '0 1px 2px rgba(0,0,0,.07)' }
+                      : { color: TONE.body }}>{l}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3 max-[520px]:grid-cols-1">
             <div><label className={lab} style={{ color: TONE.label }}>Current balance</label>
               <input className={inp} style={inpS} value={balance} inputMode="decimal"
@@ -416,6 +470,16 @@ export default function RefinanceTemplateForm() {
             <div><label className={lab} style={{ color: TONE.label }}>Current rate %</label>
               <input className={inp} style={inpS} value={currentRate} inputMode="decimal"
                      onChange={e => setCurrentRate(e.target.value)} placeholder="6.29" /></div>
+            {/* THEIR OWN FIGURE BEATS OURS, where somebody has the statement. A
+                real repayment often carries a package fee or extra they already
+                pay, and everything in this email follows from it. Left empty,
+                the minimum on their current rate stands in - which is what the
+                saving email has always assumed. */}
+            {angle === 'keep' && repaymentType === 'PI' && (
+              <div><label className={lab} style={{ color: TONE.label }}>Their repayment now (optional)</label>
+                <input className={inp} style={inpS} value={theirRepayment} inputMode="decimal"
+                       onChange={e => setTheirRepayment(e.target.value)} placeholder="off their statement" /></div>
+            )}
             <div><label className={lab} style={{ color: TONE.label }}>New rate %</label>
               <input className={inp} style={inpS} value={newRate} inputMode="decimal"
                      onChange={e => setNewRate(e.target.value)} placeholder="5.64" /></div>
