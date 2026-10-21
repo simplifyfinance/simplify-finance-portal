@@ -4,7 +4,9 @@ import { PAGE_WIDE } from '@/lib/page-width'
 import { copyHtmlAndPlain } from '@/lib/rich-text'
 import {
   SECTIONS, entriesFor, readableDate, entryEmailHtml,
-  type Section, type Entry,
+  isBullets, isCall, isFigure, isStep, stepNumber,
+  isLong, readingMinutes, PREVIEW_BLOCKS,
+  type Section, type Entry, type Block,
 } from '@/lib/knowledge-base'
 
 // WHAT CHANGED IN THE PORTAL, AND HOW WE DO THINGS NOW.
@@ -23,11 +25,71 @@ const PILL: Record<Section, string> = {
   process: 'bg-waiting-bg border-waiting-edge text-waiting',
 }
 
+// ONE BLOCK, DRAWN. The shapes are in lib/knowledge-base.ts - a paragraph, a
+// bullet list, a numbered step, a callout, a small table. Nothing here invents
+// a colour: every one of them is a token the rest of the portal already uses.
+function BlockView({ b, n }: { b: Block; n: number }) {
+  if (isBullets(b)) return (
+    <ul className="list-disc pl-[18px] mb-2.5">
+      {b.map((x, j) => <li key={j} className="text-[13.5px] leading-relaxed text-body mb-1.5">{x}</li>)}
+    </ul>
+  )
+
+  if (isCall(b)) return (
+    <div className={`rounded-lg px-3.5 py-2.5 mb-2.5 border text-[12.5px] leading-relaxed ${
+      b.watch ? 'bg-chase-bg border-chase-edge text-chase' : 'bg-info-bg border-info-edge text-info'}`}>
+      <b className="block mb-0.5">{b.title}</b>
+      {b.call}
+    </div>
+  )
+
+  if (isFigure(b)) return (
+    <div className="border border-line-soft rounded-lg bg-page px-3.5 py-3 mb-2.5">
+      <p className="text-[10px] uppercase tracking-[.06em] text-faint mb-2">{b.figure}</p>
+      <table className="w-full border-collapse">
+        <thead>
+          <tr>{b.head.map((h, i) => (
+            <th key={i} className={`text-[9.5px] uppercase tracking-[.05em] font-bold text-faint pb-1.5
+                                    ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
+          ))}</tr>
+        </thead>
+        <tbody>
+          {b.rows.map((r, ri) => (
+            <tr key={ri} className={b.win === ri ? 'bg-done-bg' : ''}>
+              {r.map((c, ci) => (
+                <td key={ci} className={`text-[12.5px] py-1.5 border-t border-line-soft
+                  ${ci === 0 ? 'text-left text-body' : 'text-right font-bold text-ink'}`}>{c}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+
+  if (isStep(b)) return (
+    <div className="flex gap-3 mb-3.5">
+      <span className="flex-none w-[22px] h-[22px] rounded-full bg-ink text-page text-[11px]
+                       font-bold flex items-center justify-center mt-[1px]">{n}</span>
+      <div className="flex-1 min-w-0">
+        <b className="block text-[13.5px] text-ink mb-1">{b.step}</b>
+        {b.body.map((x, i) => <BlockView key={i} b={x} n={0} />)}
+      </div>
+    </div>
+  )
+
+  return <p className="text-[13.5px] leading-relaxed text-body mb-2.5">{b}</p>
+}
+
 export default function KnowledgeBasePage() {
   const [section, setSection] = useState<Section | 'all'>('all')
   const [find, setFind] = useState('')
   const [copied, setCopied] = useState('')
   const [why, setWhy] = useState('')
+  // LONG ENTRIES OPEN ON ASKING. The lending options guide is six steps; six of
+  // those on one page is something nobody scrolls. Searching opens everything,
+  // because a hidden match looks like no match.
+  const [open, setOpen] = useState<Record<string, boolean>>({})
 
   useEffect(() => { document.title = 'Knowledge base — Simplify Finance' }, [])
 
@@ -96,15 +158,30 @@ export default function KnowledgeBasePage() {
               </div>
 
               <p className="text-[13.5px] leading-relaxed text-body mb-2.5">{e.lead}</p>
-              {e.body.map((b, i) => Array.isArray(b) ? (
-                <ul key={i} className="list-disc pl-[18px] mb-2.5">
-                  {b.map((x, j) => (
-                    <li key={j} className="text-[13.5px] leading-relaxed text-body mb-1">{x}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p key={i} className="text-[13.5px] leading-relaxed text-body mb-2.5">{b}</p>
-              ))}
+              {(() => {
+                const shut = isLong(e) && !open[e.id] && !find.trim()
+                const blocks = shut ? e.body.slice(0, PREVIEW_BLOCKS) : e.body
+                return (
+                  <>
+                    <div className={shut ? 'relative max-h-[150px] overflow-hidden' : ''}>
+                      {blocks.map((b, i) => (
+                        <BlockView key={i} b={b} n={stepNumber(e.body, i)} />
+                      ))}
+                      {shut && (
+                        <div className="absolute inset-x-0 bottom-0 h-[60px]
+                                        bg-gradient-to-b from-transparent to-card" />
+                      )}
+                    </div>
+                    {shut && (
+                      <button onClick={() => setOpen({ ...open, [e.id]: true })}
+                        className="text-[12px] font-semibold text-info bg-info-bg border border-info-edge
+                                   rounded-lg px-3 py-[6px] mt-1.5">
+                        Read the lot — {readingMinutes(e)} min
+                      </button>
+                    )}
+                  </>
+                )
+              })()}
 
               <div className="flex gap-2 mt-3 pt-[11px] border-t border-line-soft">
                 <button onClick={() => copyOne(e)}

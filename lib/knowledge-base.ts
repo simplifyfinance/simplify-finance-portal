@@ -46,6 +46,37 @@ export const SECTIONS: { key: Section; label: string; blurb: string }[] = [
     blurb: 'The way we do something has changed.' },
 ]
 
+// ---------------------------------------------------------------------------
+// WHAT AN ENTRY IS MADE OF
+// ---------------------------------------------------------------------------
+//
+// 21 Oct 2026. The first version was paragraphs and bullets, which was enough
+// for a four line note about a tick box. The lending options guide is six
+// numbered steps with two watch-outs and a worked table, and flattened into
+// bullets it became forty lines nobody would read.
+//
+// So four shapes, no more. A paragraph, a bullet list, a numbered step, a
+// callout, and a small table. Every one of them has to survive Word, which is
+// why the table carries no colour except a bgcolor on the row that wins.
+export type Step = { step: string; body: (string | string[])[] }
+export type Call = { title: string; call: string; watch?: boolean }
+export type Figure = { figure: string; head: string[]; rows: string[][]; win?: number }
+export type Block = string | string[] | Step | Call | Figure
+
+const isObj = (b: Block): b is Step | Call | Figure =>
+  typeof b === 'object' && b !== null && !Array.isArray(b)
+export const isBullets = (b: Block): b is string[] => Array.isArray(b)
+export const isStep = (b: Block): b is Step => isObj(b) && 'step' in b
+export const isCall = (b: Block): b is Call => isObj(b) && 'call' in b
+export const isFigure = (b: Block): b is Figure => isObj(b) && 'figure' in b
+
+/** Steps number themselves, so a callout can sit between two of them. */
+export function stepNumber(body: Block[], at: number): number {
+  let n = 0
+  for (let i = 0; i <= at && i < body.length; i++) if (isStep(body[i])) n++
+  return n
+}
+
 export type Entry = {
   /** Stable, lower case, hyphenated. It is the link somebody shares. */
   id: string
@@ -55,8 +86,39 @@ export type Entry = {
   on: string
   /** One or two sentences. What it is and why it exists. */
   lead: string
-  /** The rest. A string is a paragraph; an array is a bullet list. */
-  body: (string | string[])[]
+  body: Block[]
+}
+
+/** Every word in an entry, for searching and for measuring how long it is. */
+export function searchText(e: Entry): string {
+  const out: string[] = [e.title, e.lead]
+  const eat = (b: Block) => {
+    if (isBullets(b)) out.push(...b)
+    else if (isStep(b)) { out.push(b.step); for (const x of b.body) eat(x) }
+    else if (isCall(b)) out.push(b.title, b.call)
+    else if (isFigure(b)) out.push(b.figure, ...b.head, ...b.rows.flat())
+    else out.push(b)
+  }
+  e.body.forEach(eat)
+  return out.join(' ')
+}
+
+// HOW LONG IS TOO LONG TO OPEN BY ITSELF.
+//
+// Six guides the length of the lending options one, all open, is a page nobody
+// scrolls. Over this, an entry shows its lead and its first two blocks behind a
+// fade with a button. Under it, nothing changes and nothing is hidden.
+export const LONG_WORDS = 320
+export const PREVIEW_BLOCKS = 2
+
+export function wordCount(e: Entry): number {
+  const t = searchText(e).trim()
+  return t ? t.split(/\s+/).length : 0
+}
+export function isLong(e: Entry): boolean { return wordCount(e) > LONG_WORDS }
+/** 220 words a minute, rounded, never less than one. */
+export function readingMinutes(e: Entry): number {
+  return Math.max(1, Math.round(wordCount(e) / 220))
 }
 
 // Newest first is the order they are WRITTEN in, not sorted into - see
@@ -68,45 +130,93 @@ export const ENTRIES: Entry[] = [
     section: 'templates',
     title: 'Top up, and Top up + purchase',
     on: '2026-10-21',
-    lead: 'Use these when we are increasing a loan with the lender it is already with. '
-        + 'That is not a refinance, and until now we had no template that said so.',
+    lead: 'Two new scenarios on the borrowing capacity. Use them whenever we are increasing a loan '
+        + 'with the lender it is already with. That is not a refinance, and until now we had no '
+        + 'template that said so.',
     body: [
-      'The rule that matters: the LVR counts the existing loan plus the increase. A $1,000,000 '
-      + 'house owing $500,000, topped up by $300,000, is 80% — not 30%. The portal works it out, '
-      + 'but check it, because the LMI sits on the back of it.',
       [
-        'Increasing by is the new money on that property. It is linked to the split, so typing in '
-        + 'one fills the other.',
-        'A separate split / Added to the current loan changes the repayment, not just the layout. '
-        + 'Added means one loan and the repayment is on all of it.',
-        'Dollar for dollar is only for a loan actually moving to a new lender at the same balance. '
-        + 'It changes the maths, not the wording.',
+        'Top up — increasing an existing loan. Nothing is bought, nothing is discharged.',
+        'Top up + purchase — the same, and the increase funds the deposit on a new property.',
+      ],
+      {
+        title: 'The one rule that matters',
+        watch: true,
+        call: 'The LVR counts the existing loan plus the increase. A $1,000,000 house owing $500,000, '
+            + 'topped up by $300,000, is 80% — not 30%. The portal does this for you, but check it, '
+            + 'because the LMI sits on the back of it.',
+      },
+      {
+        figure: 'Each property on the deal gets its own row and its own LVR',
+        head: ['', 'Owes now', 'Increasing by', 'New limit', 'LVR'],
+        rows: [['The house', '$500,000', '$300,000', '$800,000', '80%']],
+      },
+      'Three controls on the securities block.',
+      [
+        'Increasing by — the new money on that property. It is linked to the split, so typing in one '
+        + 'fills the other.',
+        'A separate split / Added to the current loan — this changes the repayment. Added means one '
+        + 'loan of $800,000 and the repayment is on all of it. Separate means two lines and the '
+        + 'repayment on each.',
+        'Dollar for dollar — tick this only when that loan is actually moving to a new lender at the '
+        + 'same balance. It changes the maths, not just the wording: no increase, no cash released, '
+        + 'and it stops that lender being recommended.',
+      ],
+      'What happens downstream.',
+      [
+        'Lending options — the existing lender is pre-selected as the recommendation, with the reason '
+        + 'filled in. We still compare, but a top up stays where it is unless there is a reason to move.',
+        'Compliance — the pack now says the loan is increasing and staying with its current lender. It '
+        + 'will not call it a refinance and will not show a discharge.',
+        'LMI — asked on any property whose own LVR goes over 80%, right on that row.',
       ],
       'On Top up + purchase, fill in the New purchase panel. The property being bought gets its own '
       + 'security row, valued at the purchase price, with its own LVR.',
-      'Lending options pre-selects the existing lender with the reason filled in. We still compare, '
-      + 'but a top up stays where it is unless there is a reason to move.',
     ],
   },
   {
     id: 'repayment-analysis',
     section: 'features',
-    title: 'Repayment analysis on refinance emails',
+    title: 'The repayment analysis',
     on: '2026-10-21',
-    lead: 'A tick box on Refinance only and Refinance + equity release. It shows the client what '
-        + 'happens if they keep paying what they pay now after moving to a lower rate.',
+    lead: 'On a refinance the client’s repayment drops and the saving quietly disappears into the week. '
+        + 'There is now a tick box on the BC — Include a repayment analysis in the client email — that '
+        + 'shows them what happens if they keep paying what they pay now.',
     body: [
-      'You fill in three things: years remaining, their current repayment, and the rate they are on '
-      + 'today. The years remaining is their remaining term, not the original 30. Get that wrong and '
-      + 'the whole block is wrong and still looks right, so take it off the statement.',
+      {
+        figure: '$600,000 with 25 years to run, moving from 6.14% to 5.59%',
+        head: ['', 'Repayment', 'Finishes', 'Interest'],
+        rows: [
+          ['Stay as you are', '$3,917', '25 years 1 month', '$575,326'],
+          ['Take the lower repayment', '$3,717', '25 years', '$515,054'],
+          ['Keep paying $3,917', '$3,917', '22 years 6 months', '$453,699'],
+        ],
+        win: 2,
+      },
+      'Same money out each month, $121,627 saved and the loan gone 2 years 7 months early.',
+      'You fill in three things — years remaining, their current repayment, and the rate they are on. '
+      + 'The years remaining is their remaining term, not the original 30. Get that wrong and the whole '
+      + 'block is wrong and still looks right, so take it off the statement.',
       [
-        'Never on interest only. Nothing is paying the balance down, so there is nothing to save.',
-        'On an equity release it covers the loan being refinanced only. The release is a separate '
-        + 'split with its own repayment, and the email says so and gives the new total.',
-        'It is on the lending options too, priced off whichever product you recommended.',
+        'It is on Refinance only and Refinance + equity release. On an equity release it covers the '
+        + 'loan being refinanced only — the release is a separate split with its own repayment, and '
+        + 'the email says so and gives the new total.',
+        'Never on interest only. Nothing is paying the balance down, so there is nothing to save. The '
+        + 'tick box greys out and tells you why.',
+        'It is on the lending options too, priced off whichever product you have recommended. Star a '
+        + 'different lender and the saving follows it. Nothing is re-typed.',
       ],
-      'The numbers match the calculator on our website to the dollar, so a client who checks gets the '
-      + 'same answer. Every email carrying the analysis also carries the calculator disclaimer.',
+      {
+        title: 'Why the first row is not a round 25 years',
+        call: 'The term you type is what staying put costs if they pay the exact minimum. Round the '
+            + 'repayment down by thirty cents and there is a stub month on the end. The table shows '
+            + 'when staying put really finishes, so the years saved and the two rows agree.',
+      },
+      'The numbers match our website. The calculator at simplifyfinance.com.au gives the same answers '
+      + 'to the dollar, so a client who checks our email against it gets the same result. Every email '
+      + 'carrying the analysis also carries the calculator disclaimer.',
+      'If you want to send just this to someone, without the full borrowing capacity around it, use '
+      + 'Refinance saving under Templates and switch it to the second angle. There is no separate '
+      + 'scenario on the BC for it.',
     ],
   },
   {
@@ -130,20 +240,20 @@ export const ENTRIES: Entry[] = [
     lead: 'A top up leaves a loan where it is. The portal now carries that loan through the deal as '
         + 'itself, rather than folding it into the new money.',
     body: [
-      'Tick "a separate split" and you get two rows against that property: what is already there, and '
+      'Tick a separate split and you get two rows against that property: what is already there, and '
       + 'the increase. The existing one keeps its own rate and its own interest only years. Changing '
       + 'the rate on the new money no longer drags the old loan with it.',
       [
-        'The rate on the existing row is read off the fact find \u2014 the loan recorded against that '
+        'The rate on the existing row is read off the fact find — the loan recorded against that '
         + 'property. Correct it there and the lending options pick it up.',
         'If the property carries two loans, or the one loan has no rate recorded, the box is left '
         + 'blank for you. Nothing is guessed.',
         'In lending options the existing lender is already named, on the rate the client is already '
         + 'paying, so the comparison starts from the truth.',
       ],
-      'The position after settlement reads "increasing by $X to $Y, same lender" for that loan, '
-      + 'instead of listing it as a new loan being taken out. It is not new, and a client reading '
-      + 'that it is will ring you.',
+      'The position after settlement reads increasing by $X to $Y, same lender for that loan, instead '
+      + 'of listing it as a new loan being taken out. It is not new, and a client reading that it is '
+      + 'will ring you.',
     ],
   },
   {
@@ -158,10 +268,141 @@ export const ENTRIES: Entry[] = [
       + 'Tick a property as a security and the LMI question sits on that row: applicable or waived, '
       + 'the amount, and capitalised or paid at settlement.',
       'What the client sees does not change. The premiums add up into the one figure the emails, the '
-      + 'loan rows and the compliance notes already use.',
-      'If two properties record LMI and they are paid differently, the form says so. The money has to '
-      + 'come from somewhere on settlement day, and half of it being inside the loan is a different deal.',
-      'Single-security deals are untouched \u2014 the one set of boxes, where it has always been.',
+      + 'loan rows and the compliance notes already use. Single-security deals are untouched — the one '
+      + 'set of boxes, where it has always been.',
+      {
+        title: 'Two properties, two different answers',
+        watch: true,
+        call: 'If two properties record LMI and they are paid differently — one capitalised, one at '
+            + 'settlement — the form says so. The money has to come from somewhere on settlement day, '
+            + 'and half of it being inside the loan is a different deal.',
+      },
+    ],
+  },
+  {
+    id: 'lending-options-step-by-step',
+    section: 'process',
+    title: 'Lending options, step by step',
+    on: '2026-10-19',
+    lead: 'What you press, what the client gets, what they press, and what lands back in your inbox. '
+        + 'Read it once and you will know where every deal is at a glance.',
+    body: [
+      {
+        title: 'What changed',
+        call: 'The lending options email used to end with one button saying I am ready to proceed. It '
+            + 'never named the bank, so when a client pressed it the portal recorded that they had '
+            + 'agreed — but not what they had agreed to. It now names the lender, and there are two '
+            + 'buttons: the client can say yes, or ask to talk first.',
+      },
+      {
+        step: 'You pick the recommendation',
+        body: [
+          'On the Lending options tab, next to the option you are recommending, press Set as '
+          + 'recommended. Or use the Our recommendation dropdown further down.',
+          'This is the step everything else hangs off. The bank you pick here is the bank printed on '
+          + 'the button in the client’s email, the bank named on their landing page, and the bank '
+          + 'recorded against their confirmation. Get this one right and the rest is automatic.',
+        ],
+      },
+      {
+        title: 'Watch out',
+        watch: true,
+        call: 'If you have two options from the same bank — say Bankwest Simple and Bankwest Package — '
+            + 'and you have not set one as recommended, the portal will not guess. The client’s email '
+            + 'falls back to the old single unnamed button, and nothing about a lender is recorded. '
+            + 'Always set the recommendation on the exact product.',
+      },
+      {
+        step: 'You generate and send the email',
+        body: [
+          'At the bottom of the form, press Generate LO email. Then go to the Preview tab and press '
+          + 'Send to client — that copies the email, and you paste it into Outlook.',
+          'Credit team: you will not see Send to client. You press Done — send to broker for review '
+          + 'instead. Only the broker sends it.',
+        ],
+      },
+      {
+        step: 'What the client sees at the bottom of that email',
+        body: [
+          'Everything above this point in the email is exactly as it has always been — their figures, '
+          + 'your recommendation note, the comparison table. Only the ending changed.',
+          'It reads: happy to go ahead with St George? Press the first button below. If you would '
+          + 'rather talk it through, press the second one and we will call you. Then two buttons — '
+          + 'Proceed with the lender you recommended, and I’d rather talk it through first — and the '
+          + 'line offering to book a time.',
+        ],
+      },
+      {
+        step: 'Where each button takes them',
+        body: [
+          'Two buttons, two different landing pages. There is no second button to press on either '
+          + 'page. The client has already answered; the page just tells them what has happened.',
+          [
+            'Proceed — the deal moves to Compliance, exactly as it did before, and the lender is '
+            + 'recorded as the one the client themselves confirmed, with the date and time. Documents '
+            + 'are requested and the credit officer is allocated, same as always.',
+            'I’d rather talk it through — nothing. The deal stays on Lending options. No stage change, '
+            + 'no credit officer, no documents requested, no card moved. It raises a flag on the deal '
+            + 'and emails you.',
+          ],
+          'That is deliberate. A client picking a different bank off a web page with nobody on the '
+          + 'phone is not advice and is not a structure. You ring them, and then you record what they '
+          + 'decided.',
+        ],
+      },
+      {
+        step: 'The email that lands in your inbox',
+        body: [
+          'Goes to the assigned broker, copied to info@simplifyfinance.com.au. Same list as always. Do '
+          + 'not rely on spotting the flag in the portal — the email is the thing that tells you.',
+          [
+            'If they confirmed — the subject says they confirmed the lender and have moved to '
+            + 'Compliance. The body says whether the document request went out, and links to the deal.',
+            'If they asked to talk — the subject starts ACTION NEEDED. The body says nothing has '
+            + 'moved, nothing has been submitted, no lender has been recorded, and to call them and '
+            + 'then record the decision on the lending options tab.',
+          ],
+        ],
+      },
+      {
+        step: 'What you do back in the portal',
+        body: [
+          'Open the deal, go to Lending options, and look at The client’s decision at the bottom. It '
+          + 'is the same box it has always been. What changed is what it tells you before you answer it.',
+          'You still press Yes or No. The green line is evidence, not the answer. The portal will not '
+          + 'tick a compliance box on your behalf because a web page loaded — that answer has to come '
+          + 'from a person. Where the client confirmed it themselves, Yes is one press and you are done.',
+          'Pressing No works exactly as it always has: pick the bank they chose from the dropdown, and '
+          + 'type why. That reason goes into the compliance notes.',
+        ],
+      },
+      'Three other things will come up.',
+      [
+        'I pressed that by mistake — there is a quiet line at the bottom of the confirmation page for '
+        + 'exactly this. If they press it you get an email headed ACTION NEEDED. The deal is not '
+        + 'pulled back automatically: it has already moved to Compliance and it stays there until you '
+        + 'decide otherwise. Ring them first.',
+        'The client rings you instead of pressing anything — nothing changes for you. Use Client '
+        + 'agreed, move to Compliance above the tabs, exactly as you do now, and answer the box '
+        + 'yourself. That is recorded as recorded by the office rather than confirmed by the client, '
+        + 'which is the truth about it.',
+        'Every deal already sent, and every deal already proceeded — untouched. Emails already sitting '
+        + 'in a client’s inbox still work exactly as they did, with the old single button. Deals where '
+        + 'a client has already pressed it have no lender recorded against their confirmation, and we '
+        + 'are not inventing one.',
+      ],
+      {
+        title: 'Can anyone get into the portal through that page?',
+        call: 'No, and it is a fair question. The client’s page is a dead end. It is the only page in '
+            + 'the portal that opens without a login, and it has no menu, no sidebar, no search and no '
+            + 'link back into the portal — typing any other address lands you on the sign-in screen. '
+            + 'It reads five things: the client’s first name, whether they have already proceeded, the '
+            + 'lender recorded, and whether they asked for a call. No fact find, no income, no '
+            + 'figures, no notes, no fees, no other lenders, no other deals. The link is unguessable '
+            + 'and it only ever opens that one deal. The thing worth telling a client who asks is the '
+            + 'plain version: that link is personal to them, and anyone they forward it to can press '
+            + 'the button on their behalf.',
+      },
     ],
   },
   {
@@ -174,13 +415,13 @@ export const ENTRIES: Entry[] = [
     body: [
       'Open one, pick which property the equity comes out of, type the numbers, preview, then copy and '
       + 'mark as sent. A chase is set for a week later automatically, so nothing goes quiet.',
-      '267 of them have no loan recorded anywhere. Those say "loan unknown" rather than showing a '
+      '267 of them have no loan recorded anywhere. Those say loan unknown rather than showing a '
       + 'figure, and they sort below the ones we actually know about. Do not treat them as full '
       + 'equity — we simply do not know.',
       'Nothing here writes to the Clients page. When one is worth doing, you make the deal card '
       + 'yourself and the review is marked as having become a deal.',
-      'The wording of that email lives in Settings, under Portfolio review email. Change it there '
-      + 'and every review sent after that uses the new words. The figures are always the client\u2019s own.',
+      'The wording of that email lives in Settings, under Portfolio review email. Change it there and '
+      + 'every review sent after that uses the new words. The figures are always the client’s own.',
     ],
   },
 ]
@@ -190,8 +431,9 @@ export function entriesFor(section: Section | 'all' = 'all', find = ''): Entry[]
   return ENTRIES.filter(e => {
     if (section !== 'all' && e.section !== section) return false
     if (!want) return true
-    const hay = [e.title, e.lead, ...e.body.flat()].join(' ').toLowerCase()
-    return hay.includes(want)
+    // Through searchText, so a word inside a step or a callout is found. A
+    // flat() over the body would stringify the objects and match nothing.
+    return searchText(e).toLowerCase().includes(want)
   })
 }
 
@@ -240,6 +482,56 @@ export function entryEmailHtml(e: Entry, opts: { brokerName?: string } = {}): st
         + `<span style="color:#3d3d3a;">${esc(i)}</span></td></tr>`).join('')
     + `</table>`
 
+  // A NUMBERED STEP. The number is plain bold text in its own narrow cell, not
+  // a white digit on a dark circle - Word paints pale text on a dark cell black
+  // and scripts/check-email-html.sh refuses it before it can happen.
+  const step = (n: number, title: string, inner: string) =>
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 6px">`
+    + `<tr><td width="22" valign="top" style="padding:0 8px 6px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px">`
+    + `<span style="color:#1a1a1a;font-weight:bold;">${n}.</span></td>`
+    + `<td style="padding:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5">`
+    + `<span style="color:#1a1a1a;font-weight:bold;">${esc(title)}</span></td></tr>`
+    + `<tr><td>&nbsp;</td><td>${inner}</td></tr></table>`
+
+  // A CALLOUT. The background is a bgcolor attribute, which is the only way
+  // Word paints one, and the text on it is dark on pale either way round.
+  const call = (c: Call) => {
+    const bg = c.watch ? '#FDEDED' : '#EAF7FE'
+    const edge = c.watch ? '#F5C9C9' : '#BFE4F7'
+    const ink = c.watch ? '#7A2020' : '#0B5F7D'
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 13px">`
+      + `<tr><td bgcolor="${bg}" style="padding:11px 13px;border:1px solid ${edge};`
+      + `font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6">`
+      + `<span style="color:${ink};font-weight:bold;">${esc(c.title)}</span><br>`
+      + `<span style="color:${ink};">${esc(c.call)}</span></td></tr></table>`
+  }
+
+  // A SMALL TABLE. One pale row to mark the one that wins, and nothing else.
+  const figure = (f: Figure) => {
+    const th = (t: string, right: boolean) =>
+      `<td align="${right ? 'right' : 'left'}" style="padding:0 0 5px;font-family:Arial,Helvetica,sans-serif;font-size:9.5px;letter-spacing:.5px">`
+      + `<span style="color:#6b6b66;font-weight:bold;text-transform:uppercase;">${esc(t) || '&nbsp;'}</span></td>`
+    const td = (t: string, right: boolean, win: boolean) =>
+      `<td align="${right ? 'right' : 'left'}"${win ? ' bgcolor="#EAFAF4"' : ''} `
+      + `style="padding:7px 0;border-top:1px solid #F0EEE9;font-family:Arial,Helvetica,sans-serif;font-size:12.5px">`
+      + `<span style="color:${right ? '#1a1a1a' : '#3d3d3a'};${right ? 'font-weight:bold;' : ''}">${esc(t) || '&nbsp;'}</span></td>`
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 13px">`
+      + `<tr><td colspan="${f.head.length}" style="padding:0 0 7px;font-family:Arial,Helvetica,sans-serif;font-size:10px;letter-spacing:.6px">`
+      + `<span style="color:#8a8a84;text-transform:uppercase;">${esc(f.figure)}</span></td></tr>`
+      + `<tr>${f.head.map((h, i) => th(h, i > 0)).join('')}</tr>`
+      + f.rows.map((r, ri) =>
+          `<tr>${r.map((c, ci) => td(c, ci > 0, f.win === ri)).join('')}</tr>`).join('')
+      + `</table>`
+  }
+
+  const blockHtml = (b: Block, n: number): string => {
+    if (isBullets(b)) return bullets(b)
+    if (isCall(b)) return call(b)
+    if (isFigure(b)) return figure(b)
+    if (isStep(b)) return step(n, b.step, b.body.map(x => blockHtml(x, 0)).join(''))
+    return para(b)
+  }
+
   // THE SAME SHELL EVERY OTHER EMAIL USES.
   //
   // 21 Oct 2026. The first version of this built its own table with a charcoal
@@ -254,7 +546,7 @@ export function entryEmailHtml(e: Entry, opts: { brokerName?: string } = {}): st
     + `<span style="color:#1a1a1a;font-weight:bold;">${esc(e.title)}</span></p>`
     + para('Hi team,')
     + para(e.lead)
-    + e.body.map(b => Array.isArray(b) ? bullets(b) : para(b)).join('')
+    + e.body.map((b, i) => blockHtml(b, stepNumber(e.body, i))).join('')
     + para('It is all in the portal under Knowledge base if you need it again.')
     + `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6">`
     + `<span style="color:#3d3d3a;">${esc(opts.brokerName || 'Fabio De Castro')}</span><br>`
@@ -265,10 +557,21 @@ export function entryEmailHtml(e: Entry, opts: { brokerName?: string } = {}): st
 
 export function entryPlainText(e: Entry): string {
   const lines = ['Hi team,', '', e.lead, '']
-  for (const b of e.body) {
-    if (Array.isArray(b)) { for (const i of b) lines.push(`- ${i}`); lines.push('') }
+  const put = (b: Block, n: number) => {
+    if (isBullets(b)) { for (const i of b) lines.push(`- ${i}`); lines.push('') }
+    else if (isCall(b)) { lines.push(`${b.title}: ${b.call}`); lines.push('') }
+    else if (isFigure(b)) {
+      lines.push(b.figure)
+      for (const r of b.rows) lines.push(r.filter(Boolean).join('  |  '))
+      lines.push('')
+    }
+    else if (isStep(b)) {
+      lines.push(`${n}. ${b.step}`)
+      for (const x of b.body) put(x, 0)
+    }
     else { lines.push(b); lines.push('') }
   }
+  e.body.forEach((b, i) => put(b, stepNumber(e.body, i)))
   lines.push('It is all in the portal under Knowledge base if you need it again.')
   return lines.join('\n')
 }
@@ -312,7 +615,7 @@ export const WRITTEN_UP_LATER: string[] = [
 ]
 
 export function templatesWithNoEntry(labels: Record<string, string>): string[] {
-  const hay = ENTRIES.map(e => [e.title, e.lead, ...e.body.flat()].join(' ').toLowerCase()).join(' ')
+  const hay = ENTRIES.map(e => searchText(e).toLowerCase()).join(' ')
   const known = new Set(WRITTEN_UP_LATER.map(x => x.toLowerCase()))
   return Object.entries(labels)
     .filter(([key, label]) => key !== 'custom'
