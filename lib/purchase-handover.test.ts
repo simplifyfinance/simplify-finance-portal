@@ -79,13 +79,28 @@ describe('it never replaces the handover', () => {
     expect(docs).toContain('purchaseHandoverPath(deal.id)')
   })
 
+  it('is called the ACTUAL purchase handover everywhere a person reads it', () => {
+    // Fabio, 21 Oct 2026: "the name of the documents is ACTUAL Purchase
+    // Handover". I shipped it as "Purchase handover" and he caught it. The word
+    // is the point of the document - the purchase as it ACTUALLY is, against a
+    // handover built on what the file was assessed on - and the team have been
+    // emailed that name, so the screen has to match it.
+    const button = readFileSync('components/PurchaseHandover.tsx', 'utf8')
+    expect(button).toContain('Build the actual purchase handover')
+    expect(button).toContain('>Actual purchase handover</div>')
+    const list = readFileSync('components/DealDocuments.tsx', 'utf8')
+    expect(list).toContain('>Actual purchase handover PDF</span>')
+    const pdf = readFileSync('app/api/generate-purchase-handover-pdf/route.tsx', 'utf8')
+    expect(pdf).toContain('ACTUAL PURCHASE HANDOVER')
+  })
+
   it('carries a name of its own, for the people', () => {
     expect(purchaseHandoverName(['Oliver Thackeray', 'Margot Thackeray']))
-      .toBe('Purchase handover - Oliver Thackeray & Margot Thackeray.pdf')
+      .toBe('Actual purchase handover - Oliver Thackeray & Margot Thackeray.pdf')
     expect(purchaseHandoverName([], 'Thackeray_Purchase_2026'))
-      .toBe('Purchase handover - Thackeray Purchase 2026.pdf')
+      .toBe('Actual purchase handover - Thackeray Purchase 2026.pdf')
     // A slash in a client's name is not a folder.
-    expect(purchaseHandoverName(['A/B Co'])).toBe('Purchase handover - A-B Co.pdf')
+    expect(purchaseHandoverName(['A/B Co'])).toBe('Actual purchase handover - A-B Co.pdf')
   })
 })
 

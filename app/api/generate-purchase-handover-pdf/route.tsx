@@ -1,4 +1,4 @@
-// THE PURCHASE HANDOVER.
+// THE ACTUAL PURCHASE HANDOVER.
 //
 // A second document, not a replacement. The handover is the position the file
 // was ASSESSED on and it stays exactly as it is; this is the purchase as the
@@ -104,7 +104,7 @@ export async function generatePurchaseHandoverBuffer(dealId: string, supabase: a
         <View style={styles.mast}>
           <View style={{ flexDirection: 'row' }}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.mastKicker}>PURCHASE HANDOVER</Text>
+              <Text style={styles.mastKicker}>ACTUAL PURCHASE HANDOVER</Text>
               <Text style={styles.mastName}>{v.who}</Text>
               <Text style={styles.mastMeta}>{v.meta}</Text>
               <Text style={[styles.mastMeta, { marginTop: 3 }]}>
@@ -194,7 +194,7 @@ export async function generatePurchaseHandoverBuffer(dealId: string, supabase: a
         </View>
 
         <View style={styles.foot} fixed>
-          <Text style={styles.footText}>Purchase handover — {v.who}</Text>
+          <Text style={styles.footText}>Actual purchase handover — {v.who}</Text>
           <Text style={[styles.footText, { marginLeft: 'auto' }]}
             render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
         </View>

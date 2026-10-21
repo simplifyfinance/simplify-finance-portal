@@ -82,7 +82,7 @@ export async function buildDownloadAndFile(supabase: any, opts: {
   dealId: string
   filePath: string
   fallbackName: string
-  /** What to call it in an error message - "The purchase handover". */
+  /** What to call it in an error message - "The actual purchase handover". */
   called: string
 }): Promise<FilingProblem> {
   const { route, dealId, filePath, fallbackName, called } = opts

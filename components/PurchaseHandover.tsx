@@ -51,7 +51,7 @@ export default function PurchaseHandover({ deal }: { deal: any }) {
       // nothing here goes near it.
       filePath: purchaseHandoverPath(deal.id),
       fallbackName: purchaseHandoverName(applicantNamesOf(deal), deal.deal_name),
-      called: 'The purchase handover',
+      called: 'The actual purchase handover',
     })
     if (problem) setErr(problem)
     else setNote('Downloaded, and filed on the deal beside the handover.')
@@ -60,14 +60,14 @@ export default function PurchaseHandover({ deal }: { deal: any }) {
 
   return (
     <div className="mt-2.5 rounded-lg border border-info-edge bg-info-bg px-3.5 py-3">
-      <div className="text-[12.5px] font-semibold text-info">Purchase handover</div>
+      <div className="text-[12.5px] font-semibold text-info">Actual purchase handover</div>
       <p className="m-0 mt-1 mb-2.5 text-[11.5px] text-[#0B5F7D] leading-relaxed">
         The purchase as it actually is, on one page, with the submission notes the bank reads.
         A separate document — the handover stays as the position this file was assessed on.
       </p>
       <button type="button" onClick={build} disabled={busy}
         className="rounded-lg bg-ink px-3 py-1.5 text-[12.5px] font-semibold text-page disabled:opacity-50">
-        {busy ? 'Building…' : 'Build the purchase handover'}
+        {busy ? 'Building…' : 'Build the actual purchase handover'}
       </button>
       {/* WHAT WILL PRINT AS NOT RECORDED, BEFORE SOMEBODY SENDS IT ON. The page
           never guesses, so a gap is survivable - but finding out from a

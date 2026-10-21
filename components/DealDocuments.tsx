@@ -230,10 +230,10 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
       dealId: deal.id,
       filePath: purchaseHandoverPath(deal.id),
       fallbackName: purchaseHandoverName(applicantNamesOf(deal), deal.deal_name),
-      called: 'The purchase handover',
+      called: 'The actual purchase handover',
     })
     if (problem) setErr(problem)
-    else { setNote('Purchase handover replaced on file.'); loadFiled() }
+    else { setNote('Actual purchase handover replaced on file.'); loadFiled() }
     setBusy('')
   }
 
@@ -310,7 +310,7 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
         {/* AND THE PURCHASE HANDOVER, on a deal that has one. */}
         {thereIsAPurchase(deal) && (
           <div className="flex items-baseline gap-2 py-[3px]">
-            <span className="text-[12.5px] text-body">Purchase handover PDF</span>
+            <span className="text-[12.5px] text-body">Actual purchase handover PDF</span>
             <button onClick={buildPurchaseHandover} disabled={!!busy}
               title="The purchase as it actually is — a separate document, the handover is untouched"
               className="ml-auto text-[11.5px] font-[650] text-info disabled:opacity-40">

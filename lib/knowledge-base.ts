@@ -126,6 +126,90 @@ export function readingMinutes(e: Entry): number {
 // shows one addition at the top rather than a reshuffle.
 export const ENTRIES: Entry[] = [
   {
+    id: 'offer-accepted',
+    section: 'process',
+    title: 'Offer accepted \u2014 the loan, the email and the handover',
+    on: '2026-10-21',
+    lead: 'Everything an accepted offer needs now lives on one step. The rate the client is '
+        + 'actually going on, the email that tells them, and a one page handover with the real '
+        + 'purchase on it. Belle asked for the first, Kylie for the second.',
+    body: [
+      'Open the deal. The offer accepted step is on the deal page once an offer accepted date is '
+      + 'recorded. Everything below is on that one step.',
+      {
+        step: '1. The loan now',
+        body: [
+          'Directly under Deposit paid. Five boxes, and they open filled in from what the deal '
+          + 'already knows, so you are not starting from nothing.',
+          [
+            'Product',
+            'Interest rate',
+            'Loan term',
+            'Repayment type \u2014 interest only, or principal and interest',
+            'Interest only years \u2014 only shown when the loan is interest only',
+          ],
+          'Change whatever the offer has moved. Belle\u2019s point was that the rate almost always '
+          + 'moves once the LVR position changes, and there was nowhere to put it.',
+        ],
+      },
+      {
+        title: 'The repayment is worked out, not typed',
+        call: 'It uses the loan, the rate and the term in those boxes. A blank term means no figure '
+            + 'and no line in the email. It will never assume thirty years.',
+      },
+      {
+        step: '2. The offer accepted email',
+        body: [
+          'At the bottom of the same step, under Tell the client. It builds itself from everything '
+          + 'above \u2014 the property, the price, the deposit, the loan and the rate \u2014 and goes '
+          + 'straight to the client.',
+          'You tick what went with the submission, how many business days, and which outstanding '
+          + 'documents to chase in this one. The wording comes off the deal, never out of the screen.',
+        ],
+      },
+      {
+        title: 'It only sends from this step',
+        watch: true,
+        call: 'It is not on the Templates page and not in the Client emails menu on the deal card. '
+            + 'The five boxes above only exist here, so from anywhere else the email went out on '
+            + 'the pre-approval rate with nothing saying so. One door, and it is the screen that '
+            + 'asks for the rate.',
+      },
+      {
+        step: '3. The actual purchase handover',
+        body: [
+          'A button on the same step, under Telling the lender. One page, and it is a different '
+          + 'document from the handover.',
+          [
+            'The property, the price actually paid with the assessed price beside it, the deposit '
+            + 'and when it went in, the stamp duty, the finance clause and settlement dates',
+            'The loan \u2014 product, rate, term, repayments, monthly repayment, loan amount, LVR and '
+            + 'what the clients are putting in',
+            'The lender, the reference and where the pre-approval is up to',
+            'The solicitor and the buyers agent',
+            'The application submission notes \u2014 the one box on the Compliance tab the bank reads',
+          ],
+          'It downloads and saves onto the deal. It is also in Build a PDF above the tabs, so you '
+          + 'can get it again later without coming back here.',
+        ],
+      },
+      {
+        title: 'It sits beside the handover, it does not replace it',
+        call: 'Two rows in Documents. The handover stays as the position the file was assessed on, '
+            + 'because that is what the compliance pack was written from. This one is the purchase '
+            + 'as the clients actually made it.',
+      },
+      'Nothing on the page is estimated. Anything nobody has typed prints as not recorded, and every '
+      + 'gap is listed again at the bottom of the page so you can see them before you send it on.',
+      {
+        title: 'Settlement conditions are not on it',
+        call: 'We have not built those yet. They will be part of the settlements process, in the '
+            + 'portal for the settlements team to tick off \u2014 not on a handover, which is read '
+            + 'after settlement and would arrive too late to be any use.',
+      },
+    ],
+  },
+  {
     id: 'top-up-templates',
     section: 'templates',
     title: 'Top up, and Top up + purchase',

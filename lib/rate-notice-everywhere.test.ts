@@ -52,6 +52,10 @@ const CLIENT_FACING_BUT_EXEMPT: Record<string, string> = {
 // Each one needs a reason somebody can disagree with.
 const NOT_CLIENT_FACING: Record<string, string> = {
   'lib/milestone-figures.ts':       'builds the figures; the emails that print them are wired',
+  // 21 Oct 2026. The knowledge base entry for the offer accepted step names
+  // the Interest rate box on screen. It is the team's own guide, inside the
+  // portal; no client is ever sent it.
+  'lib/knowledge-base.ts':          'the team\u2019s own guide inside the portal, never sent to anybody',
   // 21 Oct 2026. Both caught by this guard on their first run, which is what it
   // is for. the-loan-now builds the loan details the offer accepted EMAIL
   // prints, and that email carries the notice - ctx.rateNotice in
