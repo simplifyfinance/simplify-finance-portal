@@ -9,6 +9,7 @@ import ReviewFigures from '@/components/ReviewFigures'
 import {
   STAGES, stageLabel, outcomeLabel, countsFor, sortForTheList,
   dueState, whenDue, fullName, type Stage,
+  usableForTheList, loanIsUnknown,
 } from '@/lib/portfolio-review'
 
 // THE PORTFOLIO REVIEW LIST.
@@ -88,6 +89,8 @@ type Prop = {
 // fine because that's the information that we have."
 export type Figures = {
   loan: number; value: number; lvr: number | null; usable: number | null
+  /** No loan recorded against ANY counted property, so the equity is a guess. */
+  loanUnknown: boolean
   first: string; more: number; count: number
 }
 
@@ -100,14 +103,22 @@ export function figuresFor(props: Prop[] | undefined): Figures {
   // Only where nobody has worked one out is 80% of value less what is owed
   // used, which is the shortlist rule and not an answer.
   const recorded = counted.filter(p => p.usable_equity !== null)
+  // THE SUMMARY CANNOT CLAIM MORE THAN THE ROWS UNDER IT.
+  //
+  // 21 Oct 2026. Where no counted property has a loan recorded, this was
+  // reading the missing loans as zero and reporting 80% of the value as
+  // equity - a figure the rows underneath now refuse to show. The client line
+  // says so instead, and sorts on nothing.
+  const loanUnknown = counted.length > 0 && counted.every(loanIsUnknown)
   const usable = recorded.length > 0
     ? recorded.reduce((t, p) => t + (p.usable_equity as number), 0)
+    : loanUnknown ? null
     : (value > 0 ? Math.round(value * 0.8 - loan) : null)
   const ordered = [...all].sort((a, b) => (a.ordinal || 0) - (b.ordinal || 0))
   return {
     loan, value,
     lvr: value > 0 && loan > 0 ? Math.round((loan / value) * 1000) / 10 : null,
-    usable,
+    usable, loanUnknown,
     first: ordered[0]?.address || '',
     more: Math.max(0, ordered.length - 1),
     count: ordered.length,
@@ -205,16 +216,27 @@ function OpenReview({ r, rows, today, onSaved }: {
               // Owner occupied is shown and not counted - the same rule the
               // schema sets. You need the whole portfolio to have the
               // conversation; counting the home would inflate the figure.
-              const usable = p.usable_equity ?? (p.investor && value > 0 ? Math.round(value * 0.8 - loan) : null)
+              // A MISSING LOAN IS NOT A LOAN OF ZERO. 267 of the 656 came across
+              // with a value and nothing against it, and this read that as fully
+              // unencumbered - $720,000 of equity on a $900,000 house we know
+              // nothing about. See loanIsUnknown in lib/portfolio-review.ts.
+              const usable = usableForTheList(p)
+              const unknown = usable === 'unknown'
               return (
                 <tr key={p.id}>
                   <td className={cell}>{p.address}</td>
                   <td className={cell}>{p.lender_raw || '—'}</td>
-                  <td className={num}>{loan > 0 ? money(loan) : '—'}</td>
+                  <td className={num}>
+                    {loan > 0 ? money(loan)
+                      : unknown ? <span className="text-chase">not recorded</span> : '—'}
+                  </td>
                   <td className={num}>{value > 0 ? money(value) : '—'}</td>
                   <td className={num}>{lvr === null ? '—' : `${lvr}%`}</td>
-                  <td className={`${num} ${p.investor && usable ? 'text-done font-semibold' : 'text-faint'}`}>
-                    {!p.investor ? 'not counted' : usable === null ? '—' : money(usable)}
+                  <td className={`${num} ${p.investor && typeof usable === 'number' && usable > 0
+                      ? 'text-done font-semibold' : 'text-faint'}`}>
+                    {!p.investor ? 'not counted'
+                      : unknown ? <span className="text-chase">loan unknown</span>
+                      : usable === null ? '—' : money(usable as number)}
                   </td>
                   <td className={cell}>{p.investor ? 'Investment' : 'Owner occupied'}</td>
                 </tr>
@@ -344,8 +366,13 @@ export default function PortfolioReview() {
     return [...kept].sort((a, b) => {
       // Opted out sits at the bottom wherever it is sorted.
       if (!!a.opted_out !== !!b.opted_out) return a.opted_out ? 1 : -1
-      const ea = figuresFor(props.get(a.review_id)).usable ?? -Infinity
-      const eb = figuresFor(props.get(b.review_id)).usable ?? -Infinity
+      // A CLIENT WE KNOW NOTHING ABOUT DOES NOT GO TO THE TOP. Reading a
+      // missing loan as zero put all 267 of them above the 389 who really do
+      // have a loan and really might have equity. 21 Oct 2026.
+      const fa = figuresFor(props.get(a.review_id))
+      const fb = figuresFor(props.get(b.review_id))
+      const ea = fa.loanUnknown ? -Infinity : (fa.usable ?? -Infinity)
+      const eb = fb.loanUnknown ? -Infinity : (fb.usable ?? -Infinity)
       if (ea !== eb) return eb - ea
       return String(a.last_name || '').localeCompare(String(b.last_name || ''))
     }) as Row[]
@@ -478,7 +505,8 @@ export default function PortfolioReview() {
                 <span className="text-[11.5px] text-muted tabular-nums">{f.value > 0 ? money(f.value) : '—'}</span>
                 <span className="text-[11.5px] text-muted tabular-nums">{f.lvr === null ? '—' : `${f.lvr}%`}</span>
                 <span className={`text-[11.5px] tabular-nums ${f.usable && f.usable > 0 ? 'text-done font-semibold' : 'text-faint'}`}>
-                  {f.usable === null ? '—' : money(f.usable)}
+                  {f.loanUnknown ? <span className="text-chase">loan unknown</span>
+                    : f.usable === null ? '—' : money(f.usable)}
                 </span>
 
                 <StageBadge r={r} />

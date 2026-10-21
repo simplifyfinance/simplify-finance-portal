@@ -131,6 +131,48 @@ export function usableEquity(
   return out > 0 ? out : 0
 }
 
+/**
+ * IS THERE A LOAN RECORDED ON THIS PROPERTY AT ALL?
+ *
+ * 21 Oct 2026. 267 of the 656 on the book came across with a value and no
+ * loan. Nothing in the export says whether that means "paid off" or "the CRM
+ * never had it", and the difference is the whole figure: at 80% of a $900,000
+ * house it is $720,000 of equity or it is unknown.
+ *
+ * The list was reading a missing loan as zero, so every one of those 267 showed
+ * as fully unencumbered and sorted above the 389 who really do have a loan and
+ * really might have equity. Fabio, asked which way to go: "loan unknown".
+ *
+ * So it is said rather than guessed. The row stays on the list - it is still a
+ * client worth ringing - and where the figure would have been it says what we
+ * actually know.
+ */
+export function loanIsUnknown(p: any): boolean {
+  const current = readMoney(p?.current_balance ?? p?.currentBalance)
+  const original = readMoney(p?.original_loan ?? p?.originalLoan)
+  // A recorded zero IS an answer: somebody wrote down that it is paid off.
+  // Only nothing at all is unknown.
+  return current === null && original === null
+}
+
+/**
+ * What the Usable at 80% column says for one property.
+ *
+ * null means "nothing to show here" - an owner occupied home, or no value.
+ * 'unknown' means we have a value and no loan, so the figure cannot be worked
+ * out and must not be invented.
+ */
+export function usableForTheList(p: any, lvr = 0.8): number | null | 'unknown' {
+  if (p?.investor === false) return null
+  const stored = readMoney(p?.usable_equity)
+  if (stored !== null) return stored
+  if (loanIsUnknown(p)) return 'unknown'
+  const value = readMoney(p?.estimated_current_value ?? p?.original_value)
+  if (value === null || value <= 0) return null
+  const loan = readMoney(p?.current_balance ?? p?.original_loan) ?? 0
+  return Math.round(value * lvr - loan)
+}
+
 export function totalUsableEquity(rows: any[], lvr = 0.8): number {
   return (rows || []).reduce<number>((t, r) => {
     const one = usableEquity(r?.estimated_current_value ?? r?.estimatedValue,
