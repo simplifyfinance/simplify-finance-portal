@@ -169,6 +169,27 @@ export default function TeamSection() {
     setUsers(users.filter(u => u.id !== user.id))
   }
 
+  // A LOST LAPTOP CARRIES A TRUSTED BROWSER. 21 Oct 2026, the same ship as the
+  // code at sign-in: trusting a browser for thirty days is what makes a code
+  // bearable, and it is what makes a stolen laptop worth something. This is
+  // the answer, and it had to exist on the same day.
+  async function signOutEverywhere(user: UserProfile) {
+    if (!confirm(`Sign ${user.full_name} out of every browser?\n\n`
+      + `They will need their password and a new emailed code next time. `
+      + `Nothing else about their account changes.`)) return
+    const res = await fetch('/api/2fa/revoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok || !data?.ok) { alert('Could not do that: ' + (data?.error || 'unknown')); return }
+    alert(data.cutOff === 0
+      ? `${user.full_name} had no trusted browsers. Nothing to cut off.`
+      : `Cut off ${data.cutOff} ${data.cutOff === 1 ? 'browser' : 'browsers'}. `
+        + `${user.full_name} needs a code next time.`)
+  }
+
   async function handleInvite() {
     if (!inviteEmail || !inviteName) return
     setInviting(true)
@@ -332,6 +353,11 @@ export default function TeamSection() {
                 <button onClick={() => toggleActive(user.id, user.active)}
                   className={`text-xs px-3 py-1 rounded-lg border transition ${user.active ? 'border-red-200 text-red-400 hover:bg-red-50' : 'border-green-200 text-green-500 hover:bg-green-50'}`}>
                   {user.active ? 'Deactivate' : 'Activate'}
+                </button>
+                <button onClick={() => signOutEverywhere(user)}
+                  title="Throw away every browser this person has trusted. They will need a code next time."
+                  className="text-xs px-3 py-1 rounded-lg border border-card-line text-muted hover:bg-page transition">
+                  Sign out everywhere
                 </button>
                 {!user.active && (
                   <button onClick={() => handleDelete(user)}

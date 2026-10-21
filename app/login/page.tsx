@@ -4,6 +4,7 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { safeNextPath } from '@/lib/safe-next-path'
+import { whyYouAreOut } from '@/lib/two-factor'
 import { siteUrl } from '@/lib/site-url'
 import OneMark, { MARK_WIDTH } from '@/components/OneMark'
 import ThemeSwitch from '@/components/ThemeSwitch'
@@ -82,6 +83,11 @@ function LoginForm() {
   const searchParams = useSearchParams()
   // Checked, not trusted - it arrives in the URL. See lib/safe-next-path.ts.
   const nextPath = safeNextPath(searchParams.get('next'))
+  // WHY YOU ARE LOOKING AT THIS SCREEN. Somebody who was working five minutes
+  // ago and is suddenly back here deserves a sentence, not a mystery. Written
+  // by lib/two-factor.ts so the screen and the rule cannot say different
+  // numbers.
+  const signedOutBecause = whyYouAreOut(searchParams.get('out'))
 
   // One client for this page. Creating a second one gives the browser two things
   // both trying to own the session.
@@ -160,6 +166,13 @@ function LoginForm() {
         <p className="text-[14.5px] font-semibold text-ink text-center mt-[18px] leading-[1.5] tracking-[-0.005em]">
           One client. One platform. <span className="text-brand-ink">One view.</span>
         </p>
+
+        {signedOutBecause && (
+          <div className="mt-5 rounded-lg border border-info-edge bg-info-bg px-3 py-2.5">
+            <b className="block text-[12px] text-info mb-0.5">You were signed out</b>
+            <span className="text-[11.5px] text-body leading-relaxed">{signedOutBecause}</span>
+          </div>
+        )}
 
         {mode === 'login' ? (
           <div className="mt-[30px]">

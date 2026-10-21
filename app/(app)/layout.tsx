@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Sidebar from "@/components/Sidebar";
 import TopProgress from "@/components/TopProgress";
 import Paco from "@/components/Paco";
+import StillHere from "@/components/StillHere";
 
 // EVERYTHING BEHIND THE LOGIN IS ONE. Nothing outside it is.
 //
@@ -28,6 +29,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // ours. See "the grey it wears" in lib/colours.ts.
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       <Sidebar />
+      {/* TELLS THE SERVER A PERSON IS ACTUALLY HERE, at most once every
+          five minutes, and only on a real key or press. The autosave and
+          the presence ping deliberately do not count - a laptop left open
+          overnight has to time out. See components/StillHere.tsx. */}
+      <StillHere />
       {/* THE BAR GOES HERE AND NOWHERE ELSE.
           It is fixed to the window rather than drawn inside <main>, which
           scrolls - a bar that slides away the moment you scroll is a bar you

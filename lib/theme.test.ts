@@ -161,10 +161,17 @@ describe('a client never gets the team\'s theme', () => {
     // Everything under app/ that is not behind the login, not the login itself,
     // not the root redirect, and not the password reset (which is reached from
     // an email by a team member, so it follows their choice).
+    //
+    // 21 OCT 2026: /verify joins them. It is the six digit code screen, and it
+    // is reached only by somebody who has already typed a staff password - the
+    // middleware sends anybody without a session to /login before it is drawn.
+    // A client has no login and can never arrive there, so it follows the
+    // team's theme exactly as the sign-in screen beside it does.
     const NOT_CLIENT_FACING = new Set([
       join('app', 'page.tsx'),
       join('app', 'login', 'page.tsx'),
       join('app', 'reset-password', 'page.tsx'),
+      join('app', 'verify', 'page.tsx'),
     ])
     const outside = walk('app')
       .filter(f => !f.includes('(app)'))

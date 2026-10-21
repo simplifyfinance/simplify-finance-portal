@@ -406,6 +406,55 @@ export const ENTRIES: Entry[] = [
     ],
   },
   {
+    id: 'signing-in-changed',
+    section: 'process',
+    title: 'Signing in has changed',
+    on: '2026-10-21',
+    lead: 'The portal now asks for a six digit code by email the first time you use a browser, and it '
+        + 'signs you out when you walk away. We hold a lot of people\u2019s personal information and it '
+        + 'should not be sitting open on an unattended screen.',
+    body: [
+      {
+        step: 'Sign in as you always have',
+        body: ['Your email and your password. Nothing about this step changed.'],
+      },
+      {
+        step: 'Type the code we email you',
+        body: [
+          'A six digit code lands in your inbox. It works for 10 minutes. Tick "trust this browser" '
+          + 'and you will not be asked again on that computer for 30 days.',
+          'You will still type your password every single time. The code is the second lock, not a '
+          + 'replacement for the first.',
+        ],
+      },
+      {
+        step: 'It signs you out when you are not there',
+        body: [
+          'An hour with nobody touching it and you are signed out. Twelve hours after you signed in '
+          + 'you are signed out regardless. Your work is saved as you go, so nothing is lost \u2014 you '
+          + 'type your password and carry on.',
+        ],
+      },
+      {
+        title: 'When you will see a code',
+        call: 'A new computer, a new browser, after you clear your cookies, or once every 30 days. '
+            + 'Not every morning. If you are getting one every day, tell Fabio \u2014 something is '
+            + 'clearing your cookies and we should look at it.',
+      },
+      {
+        title: 'If a code arrives and you were not signing in',
+        watch: true,
+        call: 'Somebody has your password. Change it straight away and tell Fabio. We will never ring '
+            + 'you and ask you to read a code out, and neither will anybody from any bank.',
+      },
+      'Lost a laptop, or left one somewhere? Tell Fabio. There is a Sign out everywhere button on the '
+      + 'Team page that throws away every browser you have trusted, so that machine needs a fresh code '
+      + 'it cannot get.',
+      'Nothing changes for clients. The pages they open from our emails \u2014 proceed, next steps, '
+      + 'the portfolio review link \u2014 have never had a login and still do not.',
+    ],
+  },
+  {
     id: 'lvr-exposure-on-the-book',
     section: 'features',
     title: 'LVR exposure now reads the whole book',
