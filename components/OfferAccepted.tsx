@@ -17,6 +17,7 @@ import { lenderOnTheDeal } from '@/lib/client-agreement'
 import { seedFrom, loanNow as loanDetailsOn, monthlyRepayment,
          REPAYMENT_TYPES, INTEREST_ONLY } from '@/lib/the-loan-now'
 import { dayMonthYear } from '@/lib/same-date-everywhere'
+import PurchaseHandover from './PurchaseHandover'
 
 // THE OFFER WAS ACCEPTED.
 //
@@ -385,6 +386,10 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
         {steps.map((l, i) => <Line key={i} line={l} />)}
         {pricing && <Line line={pricing} />}
         {preapproval && <Line line={preapproval} />}
+        {/* The documents go up with the resubmission, and this is one of them.
+            See components/PurchaseHandover.tsx for why it sits here rather than
+            at the bottom of the panel or on the email screen. */}
+        <PurchaseHandover deal={d} />
       </div>
 
       {/* THE PRICE MOVED. HOW MUCH ARE THE CLIENTS PUTTING IN?

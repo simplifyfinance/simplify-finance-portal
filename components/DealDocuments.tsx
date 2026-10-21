@@ -3,6 +3,9 @@ import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { builtFrom, behindLine, documentsAreCurrent } from '@/lib/keeping-up'
 import { isLocked } from '@/lib/deal-lock'
+import { fileDocument, buildDownloadAndFile } from '@/lib/filing-a-document'
+import { thereIsAPurchase, purchaseHandoverPath, purchaseHandoverName } from '@/lib/the-purchase-handover'
+import { applicantNamesOf } from '@/lib/purchase-handover'
 
 // THE THREE DOCUMENTS, REACHABLE FROM ANYWHERE ON THE DEAL.
 //
@@ -63,6 +66,19 @@ const KINDS = {
 
 type Kind = keyof typeof KINDS
 
+// THE FOURTH DOCUMENT, AND WHY IT IS NOT ONE OF THE THREE.
+//
+// 21 Oct 2026. The purchase handover only exists once an offer has been
+// accepted and a price recorded, so it cannot join "Rebuild all three" - that
+// press would fail on most of the book. It is built from the offer accepted
+// step, and reachable here too because Fabio asked for both: "questions 2
+// buttons". A month later nobody should have to go back to that step to get
+// the document again.
+//
+// IT DOES NOT REPLACE THE HANDOVER. "remenr this is a new docuemtn on document
+// tabs do not delete old handover." Its own path, its own row, its own name.
+// See lib/the-purchase-handover.ts.
+
 export default function DealDocuments({ deal, me, version, onUpdated }: {
   deal: any
   me?: { id: string | null; name: string }
@@ -72,7 +88,7 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
   onUpdated?: (patch: any) => void
 }) {
   const supabase = createSupabaseBrowser()
-  const [busy, setBusy] = useState<Kind | '' | 'all'>('')
+  const [busy, setBusy] = useState<Kind | '' | 'all' | 'purchase'>('')
   const [err, setErr] = useState('')
   const [note, setNote] = useState('')
   const [filed, setFiled] = useState<{ id: string; file_name: string; file_path: string }[]>([])
@@ -110,24 +126,15 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
 
   // One current copy per kind, replaced in place. The path decides that, not
   // the name - the name follows the clients and can change.
+  //
+  // THE RULE ITSELF MOVED TO lib/filing-a-document.ts on 21 Oct 2026, because
+  // the offer accepted step now files the actual purchase handover too and a
+  // second copy of this logic is exactly how the pile came back last time.
   async function fileIt(kind: Kind, blob: Blob, name: string): Promise<boolean> {
-    const filePath = `${deal.id}/${kind}.pdf`
-    const { error: upErr } = await supabase.storage.from('deal-documents')
-      .upload(filePath, blob, { contentType: 'application/pdf', upsert: true })
-    if (upErr) { setErr(`Downloaded, but the filed copy was NOT replaced — ${upErr.message}`); return false }
-
-    // The row only has to exist once; on every press after the first the file
-    // behind it has just been replaced. A second row pointing at the same path
-    // is the pile this avoids.
-    const { data: already } = await supabase.from('deal_documents')
-      .select('id').eq('deal_id', deal.id).eq('file_path', filePath).limit(1)
-    if (!already?.length) {
-      const { error: recErr } = await supabase.from('deal_documents').insert({
-        deal_id: deal.id, file_name: name, file_path: filePath, file_type: 'application/pdf',
-      })
-      // Uploaded but not listed is a file nobody can find. Said out loud.
-      if (recErr) { setErr(`Filed, but it was not added to the list — ${recErr.message}`); return false }
-    }
+    const problem = await fileDocument(supabase, {
+      dealId: deal.id, filePath: `${deal.id}/${kind}.pdf`, blob, name,
+    })
+    if (problem) { setErr(problem); return false }
     setNote(`${KINDS[kind].label} replaced on file.`)
     loadFiled()
     return true
@@ -207,6 +214,29 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
     }
   }
 
+  // THE PURCHASE HANDOVER IS ALWAYS A BUILD, NEVER AN OPEN.
+  //
+  // The other three settle down: once a deal is lodged their contents stop
+  // moving, so handing back the filed copy is the kind thing to do. This one
+  // follows the offer accepted step, where a rate, a settlement date or a
+  // solicitor can be typed any day of the week. A button that quietly handed
+  // back last week's copy would be the stale document problem again, in a
+  // document whose whole point is being current. The copy on file is still one
+  // click away in the On file list below.
+  async function buildPurchaseHandover() {
+    setBusy('purchase'); setErr(''); setNote('')
+    const problem = await buildDownloadAndFile(supabase, {
+      route: '/api/generate-purchase-handover-pdf',
+      dealId: deal.id,
+      filePath: purchaseHandoverPath(deal.id),
+      fallbackName: purchaseHandoverName(applicantNamesOf(deal), deal.deal_name),
+      called: 'The purchase handover',
+    })
+    if (problem) setErr(problem)
+    else { setNote('Purchase handover replaced on file.'); loadFiled() }
+    setBusy('')
+  }
+
   // What the button does. Open the filed copy where there is one; build only
   // when there has never been one.
   async function press(kind: Kind) {
@@ -277,6 +307,18 @@ export default function DealDocuments({ deal, me, version, onUpdated }: {
             </button>
           </div>
         ))}
+        {/* AND THE PURCHASE HANDOVER, on a deal that has one. */}
+        {thereIsAPurchase(deal) && (
+          <div className="flex items-baseline gap-2 py-[3px]">
+            <span className="text-[12.5px] text-body">Purchase handover PDF</span>
+            <button onClick={buildPurchaseHandover} disabled={!!busy}
+              title="The purchase as it actually is — a separate document, the handover is untouched"
+              className="ml-auto text-[11.5px] font-[650] text-info disabled:opacity-40">
+              {busy === 'purchase' ? 'Preparing…' : 'Build'}
+            </button>
+          </div>
+        )}
+
         {/* REBUILDING IS ITS OWN PRESS, always available - not only when the
             documents have fallen behind. */}
         <button onClick={rebuildAll} disabled={!!busy}

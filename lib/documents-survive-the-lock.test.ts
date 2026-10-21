@@ -21,7 +21,13 @@ import { isLocked } from './deal-lock'
 // stayed LIVE FORMS." The documents were caught in the net by accident.
 
 const page = readFileSync('app/(app)/deals/[id]/DealPageClient.tsx', 'utf8')
-const docs = readFileSync('components/DealDocuments.tsx', 'utf8')
+const panel = readFileSync('components/DealDocuments.tsx', 'utf8')
+// THE FILING RULE MOVED TO lib/ ON 21 OCT 2026, because the offer accepted step
+// now files the purchase handover too and a second copy of it is how the pile
+// came back the first time. It is still one rule; this reads both files so the
+// rules below are checked wherever they live.
+const filing = readFileSync('lib/filing-a-document.ts', 'utf8')
+const docs = panel + '\n' + filing
 const lock = readFileSync('components/TabLock.tsx', 'utf8')
 
 describe('the documents are outside the lock', () => {
@@ -164,8 +170,8 @@ describe('what the buttons do, and what they leave alone', () => {
   it('generating never deletes anything', () => {
     // Replacing a filed copy is an upsert. Building a document must never take
     // one off the deal as a side effect.
-    const build = docs.slice(docs.indexOf('async function buildAndFile'), docs.indexOf('async function download('))
-    const file = docs.slice(docs.indexOf('async function fileIt'), docs.indexOf('async function removeFiled'))
+    const build = panel.slice(panel.indexOf('async function buildAndFile'), panel.indexOf('async function download('))
+    const file = filing
     for (const fn of [build, file]) {
       expect(fn).not.toMatch(/\.remove\(/)
       expect(fn).not.toMatch(/\.delete\(/)
@@ -173,7 +179,7 @@ describe('what the buttons do, and what they leave alone', () => {
   })
 
   it('removing one asks first, and only when the deal is open to edits', () => {
-    const fn = docs.slice(docs.indexOf('async function removeFiled'), docs.indexOf('async function openFiled'))
+    const fn = panel.slice(panel.indexOf('async function removeFiled'), panel.indexOf('async function openFiled'))
     expect(fn).toContain('confirm(')
     // Opening is reading and is always allowed. Removing is not.
     expect(docs).toContain('{!isLocked(deal) && (')
@@ -181,8 +187,8 @@ describe('what the buttons do, and what they leave alone', () => {
   })
 
   it('opening one is never gated on the lock', () => {
-    const at = docs.indexOf('onClick={() => openFiled(')
-    const around = docs.slice(Math.max(0, at - 200), at)
+    const at = panel.indexOf('onClick={() => openFiled(')
+    const around = panel.slice(Math.max(0, at - 200), at)
     expect(around).not.toContain('isLocked')
   })
 
@@ -193,7 +199,7 @@ describe('what the buttons do, and what they leave alone', () => {
     // Scoped to download(). There is a second caller of fileIt now - the
     // rebuild-all path, which deliberately does NOT download - and searching the
     // whole file found that one first.
-    const fn = docs.slice(docs.indexOf('async function download('))
+    const fn = panel.slice(panel.indexOf('async function download('))
     const clickAt = fn.indexOf('a.click()')
     const fileAt = fn.indexOf('await fileIt(')
     expect(clickAt).toBeGreaterThan(-1)

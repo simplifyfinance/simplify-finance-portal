@@ -25,6 +25,7 @@ import { hemStateOf, hemTotals, unansweredNote } from '@/lib/hem'
 // list. They were copies that happened to still agree.
 import { EXPENSE_CATEGORIES, RISK_GROUPS, PRODUCT_GROUPS } from '@/lib/handover-view'
 import { shortDate } from '@/lib/push-answers'
+import { Section } from '@/lib/pdf-section'
 import { householdsOf } from '@/lib/households'
 import { lenderOnTheDeal } from '@/lib/client-agreement'
 import { expensesFor } from '@/lib/household-expenses'
@@ -47,10 +48,6 @@ const styles = StyleSheet.create({
   how: { backgroundColor: '#EEF7FD', borderWidth: 1, borderColor: '#CDE6F6', borderRadius: 6, padding: 10, marginBottom: 14 },
   howText: { fontSize: 8.5, color: '#274456', lineHeight: 1.55 },
 
-  secRow: { flexDirection: 'row', alignItems: 'center', marginTop: 14, marginBottom: 9 },
-  secTitle: { fontSize: 8.5, fontFamily: 'Helvetica-Bold', letterSpacing: 1.3, color: INK },
-  secPill: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', letterSpacing: .7, color: MUTE, backgroundColor: '#EEF2F5', borderRadius: 9, paddingVertical: 3, paddingHorizontal: 7, marginLeft: 8 },
-  secLine: { flex: 1, height: 2, backgroundColor: '#EEF2F5', marginLeft: 8 },
 
   // A COLUMN, not a row with a dark rail down the side. The rail looked better,
   // but a flex row cannot break across a page - so a box longer than a page was
@@ -91,15 +88,6 @@ const styles = StyleSheet.create({
 
 const money = (n: number) => '$' + Math.round(n).toLocaleString('en-AU')
 
-function Section({ title, pill }: { title: string; pill?: string }) {
-  return (
-    <View style={styles.secRow}>
-      <Text style={styles.secTitle}>{title.toUpperCase()}</Text>
-      {pill ? <Text style={styles.secPill}>{pill.toUpperCase()}</Text> : null}
-      <View style={styles.secLine} />
-    </View>
-  )
-}
 
 // A BOX STAYS WHOLE.
 //
