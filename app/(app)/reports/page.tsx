@@ -1,15 +1,14 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PAGE_WIDE } from '@/lib/page-width'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import { readMoney, money } from '@/lib/money'
+import { money } from '@/lib/money'
 import PortfolioReview from '@/components/PortfolioReview'
-
-// Was a hand-written formatter using Number(), which turns "506,514" into
-// nothing at all - the third copy of that mistake in this codebase. money() from
-// lib/money.ts is the one way money is printed here.
-const fmtMoney = (v: any) => money(v)
+import {
+  exposure, totalsFor, sourceLine,
+  type Holding as ExposureHolding, type Named, type Row as ExposureRow,
+} from '@/lib/lvr-exposure'
 
 export default function ReportsPage() {
   const supabase = createSupabaseBrowser()
@@ -20,6 +19,25 @@ export default function ReportsPage() {
   const [clients, setClients] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [rateThreshold, setRateThreshold] = useState('6.50')
+
+  // LVR EXPOSURE READS THE BOOK, NOT THE 33.
+  //
+  // 21 Oct 2026. Both reports read clients.position_properties, which holds 33
+  // properties across the whole portal - the few clients who have been through
+  // a full fact find here. Thirty rows looks like a report, so nobody noticed
+  // it was showing about four percent of the lending. The portfolio review
+  // holds 760 of them.
+  //
+  // RATE EXPOSURE STAYS WHERE IT IS. The client's interest rate is recorded on
+  // the position and nowhere else - not in the book, and not on a trail
+  // statement, which pays a percentage of the balance to US and says nothing
+  // about what the client pays the bank.
+  const [holdings, setHoldings] = useState<ExposureHolding[] | null>(null)
+  const [named, setNamed] = useState<Named[]>([])
+  const [lvrWhy, setLvrWhy] = useState('')
+  const [band, setBand] = useState<'all' | 'hot' | 'warm' | 'cool'>('all')
+  const [homes, setHomes] = useState(true)
+  const [findOne, setFindOne] = useState('')
 
   useEffect(() => {
     document.title = 'Reports — Simplify Finance'
@@ -34,6 +52,44 @@ export default function ReportsPage() {
     load()
   }, [])
 
+  // Only when somebody is looking at it. 760 properties and 656 names is not
+  // something to read on the way past to Rate exposure.
+  useEffect(() => {
+    if (tab !== 'lvr' || holdings !== null) return
+    let gone = false
+    ;(async () => {
+      const [h, r] = await Promise.all([
+        supabase.from('portfolio_review_properties')
+          .select('review_id, address, investor, original_value, original_loan, current_balance, balance_as_at, estimated_current_value, valuation_date')
+          .limit(20000),
+        supabase.from('portfolio_review_list').select('review_id, first_name, last_name').limit(5000),
+      ])
+      if (gone) return
+      // A MISSING TABLE IS SOMETHING NOBODY HAS SET UP, NOT AN EMPTY REPORT.
+      // "Nothing here" and "the SQL was never run" look identical on screen.
+      if (h.error) { setLvrWhy(h.error.message); setHoldings([]); return }
+      setHoldings((h.data || []) as ExposureHolding[])
+      setNamed((r.data || []) as Named[])
+    })()
+    return () => { gone = true }
+  }, [tab, holdings])
+
+  const lvrAll = useMemo(
+    () => exposure(holdings || [], named), [holdings, named])
+
+  const lvrShown = useMemo(() => {
+    const needle = findOne.trim().toLowerCase()
+    return lvrAll.filter(r => {
+      if (!homes && !r.investor) return false
+      if (band !== 'all' && r.band !== band) return false
+      if (needle && !`${r.client} ${r.address}`.toLowerCase().includes(needle)) return false
+      return true
+    })
+  }, [lvrAll, homes, band, findOne])
+
+  const lvrTotals = useMemo(
+    () => totalsFor(homes ? lvrAll : lvrAll.filter(r => r.investor)), [lvrAll, homes])
+
   const rateRows = clients.flatMap((c: any) =>
     (c.position_properties || []).flatMap((p: any) =>
       (p.loans || []).map((l: any) => ({
@@ -47,25 +103,11 @@ export default function ReportsPage() {
   ).filter(r => r.rate > (Number(rateThreshold) || 0))
     .sort((a, b) => b.rate - a.rate)
 
-  const lvrRows = clients.flatMap((c: any) =>
-    (c.position_properties || []).map((p: any) => {
-      // Number('620,000') is NaN, so every property whose value carried commas
-      // fell to zero, its LVR came out null, and it dropped off this report
-      // silently. The report looked like it had nothing to say.
-      const value = readMoney(p.value) || 0
-      const totalBalance = (p.loans || []).reduce((sum: number, l: any) => sum + (readMoney(l.balance) || 0), 0)
-      const lvr = value > 0 ? Math.round((totalBalance / value) * 1000) / 10 : null
-      return {
-        clientId: c.id,
-        clientName: `${c.first_name} ${c.last_name}`,
-        propertyAddress: p.address || 'Address not set',
-        value,
-        totalBalance,
-        lvr
-      }
-    })
-  ).filter(r => r.lvr !== null)
-    .sort((a, b) => (b.lvr || 0) - (a.lvr || 0))
+  // THE OLD LVR ROWS WERE HERE, READING clients.position_properties.
+  //
+  // 21 Oct 2026. Removed, not left in place unused: it unpacked every client
+  // position on every page load to build a report nobody reads any more. The
+  // rate report below still needs that data and still loads it.
 
   return (
     <div className={PAGE_WIDE}>
@@ -112,20 +154,157 @@ export default function ReportsPage() {
           </div>
         </>
       ) : (
-        <div className="bg-card border border-gray-100 rounded-xl overflow-hidden">
-          <div className="grid grid-cols-[1.5fr_2fr_1fr_1fr_0.8fr] px-4 py-2 text-xs font-medium text-gray-400 uppercase tracking-wider border-b border-gray-100">
-            <span>Client</span><span>Property</span><span>Value</span><span>Loan balance</span><span>LVR</span>
-          </div>
-          {lvrRows.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-gray-400 text-center">No properties with value and loan data found.</div>
-          ) : lvrRows.map((r, i) => (
-            <Link key={i} href={`/clients/${r.clientId}`} className="grid grid-cols-[1.5fr_2fr_1fr_1fr_0.8fr] px-4 py-3 text-sm border-b border-gray-50 last:border-0 hover:bg-gray-50 transition">
-              <span>{r.clientName}</span><span>{r.propertyAddress}</span><span>{fmtMoney(r.value)}</span><span>{fmtMoney(r.totalBalance)}</span>
-              <span className={`font-medium ${(r.lvr || 0) >= 80 ? 'text-red-600' : 'text-gray-700'}`}>{r.lvr}%</span>
-            </Link>
-          ))}
+        <LvrExposure
+          rows={lvrShown} totals={lvrTotals} all={lvrAll} loaded={holdings !== null} why={lvrWhy}
+          band={band} setBand={setBand} homes={homes} setHomes={setHomes}
+          find={findOne} setFind={setFindOne} />
+      )}
+    </div>
+  )
+}
+
+
+// THE GRID. Five columns, same as the report has always had, sorted worst
+// first. What is new is the grey line under each figure saying where it came
+// from - a 53% LVR against a settlement value from 2016 is not 53%, and the
+// screen has to say which rows are like that.
+const LVR_GRID = 'grid grid-cols-[minmax(0,1.05fr)_minmax(0,1.5fr)_132px_132px_78px] gap-3'
+
+function Tile({ n, what, tone }: { n: string; what: string; tone?: 'chase' | 'done' }) {
+  const edge = tone === 'chase' ? 'bg-chase-bg border-chase-edge'
+             : tone === 'done' ? 'bg-done-bg border-done-edge'
+             : 'bg-card border-card-line'
+  const ink = tone === 'chase' ? 'text-chase' : tone === 'done' ? 'text-done' : 'text-ink'
+  return (
+    <div className={`border rounded-xl px-3.5 py-2.5 min-w-[118px] ${edge}`}>
+      <b className={`block text-[18px] leading-tight ${ink}`}>{n}</b>
+      <span className="text-[11px] text-muted">{what}</span>
+    </div>
+  )
+}
+
+function LvrExposure({ rows, totals, all, loaded, why, band, setBand, homes, setHomes, find, setFind }: {
+  rows: ExposureRow[]
+  totals: ReturnType<typeof totalsFor>
+  all: ExposureRow[]
+  loaded: boolean
+  why: string
+  band: 'all' | 'hot' | 'warm' | 'cool'
+  setBand: (b: 'all' | 'hot' | 'warm' | 'cool') => void
+  homes: boolean
+  setHomes: (v: boolean) => void
+  find: string
+  setFind: (v: string) => void
+}) {
+  if (!loaded) return <div className="text-[13px] text-muted">Reading the book…</div>
+
+  const SEG = 'text-[11.5px] rounded-full px-3 py-[4px] border transition'
+  const millions = totals.lending >= 1000000
+    ? `$${Math.round(totals.lending / 1000000)}m`
+    : money(totals.lending)
+
+  return (
+    <div>
+      {why && (
+        <div className="mb-3 border border-info-edge bg-info-bg rounded-xl px-4 py-3">
+          <b className="block text-[13px] text-info mb-0.5">The book could not be read</b>
+          <p className="text-[12px] text-body">
+            {why} — docs/portfolio-review-schema.sql may not have been run on this database yet.
+          </p>
         </div>
       )}
+
+      <div className="flex gap-2 flex-wrap mb-3">
+        <Tile n={String(totals.properties)} what="properties" />
+        <Tile n={String(totals.over80)} what="at 80% or over" tone="chase" />
+        <Tile n={String(totals.between)} what="70% to 80%" />
+        <Tile n={String(totals.onLenderFigure)} what="on a lender figure" tone="done" />
+        <Tile n={millions} what="total lending" />
+      </div>
+
+      <div className="flex gap-2 items-center flex-wrap mb-3">
+        <div className="flex gap-1.5">
+          {([['all', `All ${homes ? all.length : all.filter(r => r.investor).length}`],
+             ['hot', 'Over 80%'], ['warm', '70–80%'], ['cool', 'Under 70%']] as const).map(([k, label]) => (
+            <button key={k} onClick={() => setBand(k)}
+              className={`${SEG} ${band === k
+                ? 'bg-ink border-ink text-page font-semibold'
+                : 'bg-card border-line text-muted hover:bg-page'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <input value={find} onChange={e => setFind(e.target.value)} placeholder="Search a client or street"
+          className="text-[11.5px] bg-card border border-card-line rounded-lg px-2.5 py-[6px] min-w-[200px]" />
+        <span className="ml-auto" />
+        {/* The home is not counted for equity anywhere on this portal, but it is
+            still lending against a security, so it is on the exposure report. */}
+        <button onClick={() => setHomes(!homes)}
+          className={`${SEG} ${homes
+            ? 'bg-card border-line text-muted hover:bg-page'
+            : 'bg-info-bg border-info-edge text-info font-semibold'}`}>
+          {homes ? 'Investment only' : 'Showing investments only'}
+        </button>
+      </div>
+
+      <div className={`${LVR_GRID} px-4 pb-2 text-[10px] font-semibold uppercase tracking-[.04em] text-faint`}>
+        <span>Client</span><span>Property</span>
+        <span className="text-right">Value</span><span className="text-right">Loan balance</span>
+        <span className="text-right">LVR</span>
+      </div>
+
+      <div className="bg-card border border-card-line rounded-xl overflow-hidden">
+        {rows.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <p className="text-[13px] text-ink font-medium mb-1">
+              {all.length === 0 ? 'Nothing on the book has both a value and a loan yet.' : 'Nothing matches that.'}
+            </p>
+            <p className="text-[12px] text-muted">
+              {all.length === 0
+                ? 'Import the book on the Portfolio review tab and they appear here.'
+                : 'Try a different band, or clear the search.'}
+            </p>
+          </div>
+        ) : rows.slice(0, 500).map((r, i) => (
+          <div key={`${r.reviewId}-${i}`}
+            className={`${LVR_GRID} px-4 py-3 border-b border-line-soft last:border-0 items-center`}>
+            <span className="text-[13px] text-body truncate">
+              {r.client}
+              {!r.investor && <span className="block text-[10px] text-faint leading-tight">their home</span>}
+            </span>
+            <span className="text-[13px] text-body truncate">{r.address}</span>
+            <span className="text-[13px] text-right text-ink">
+              {money(r.value)}
+              <span className="block text-[10px] text-faint leading-tight font-normal">
+                {sourceLine(r.valueFrom)}
+              </span>
+            </span>
+            <span className="text-[13px] text-right text-ink">
+              {money(r.loan)}
+              <span className="block text-[10px] text-faint leading-tight font-normal">
+                {sourceLine(r.loanFrom)}
+              </span>
+            </span>
+            {/* Red where LMI starts, purple for the ones that cross it if a
+                value softens, plain for the rest. No amber anywhere. */}
+            <span className={`text-[13px] text-right font-semibold ${
+              r.band === 'hot' ? 'text-chase' : r.band === 'warm' ? 'text-waiting' : 'text-body'}`}>
+              {r.lvr}%
+            </span>
+          </div>
+        ))}
+        {rows.length > 500 && (
+          <p className="px-4 py-2.5 text-[11.5px] text-faint">
+            Showing the worst 500 of {rows.length}. Narrow it with the bands or the search.
+          </p>
+        )}
+      </div>
+
+      <p className="text-[11.5px] text-muted mt-3 leading-relaxed">
+        The loan is the lender’s own figure wherever it says so. The value never is — it is an estimate
+        somebody looked up, or what the property was worth when the loan settled. Press Refresh balances
+        on the Portfolio review tab to bring the loan side up to your newest statement.
+      </p>
     </div>
   )
 }

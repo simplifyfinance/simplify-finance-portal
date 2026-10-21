@@ -406,6 +406,39 @@ export const ENTRIES: Entry[] = [
     ],
   },
   {
+    id: 'lvr-exposure-on-the-book',
+    section: 'features',
+    title: 'LVR exposure now reads the whole book',
+    on: '2026-10-21',
+    lead: 'The LVR exposure report under Reports was showing 33 properties. It now shows every property '
+        + 'on the portfolio review — around 760.',
+    body: [
+      'It was reading the position recorded on a client record, which only exists for the few clients '
+      + 'who have been through a full fact find here. Thirty rows looks like a report, which is why '
+      + 'nobody noticed it was covering about four percent of the lending.',
+      'Same five columns, same sort — worst LVR first. Bands across the top: over 80%, 70 to 80%, under '
+      + '70%. A toggle for whether to include the client’s own home, which is not counted for equity '
+      + 'anywhere but is still lending against a security.',
+      {
+        title: 'Read the small grey line',
+        call: 'Under each figure it says where that figure came from. "lender · Aug 26" is the bank’s '
+            + 'own balance off our trail statement. "book figure" is what the spreadsheet said when it '
+            + 'was exported. "estimate" is a value somebody looked up, with the month they looked it '
+            + 'up. "book · at settlement" is what the property was worth the day the loan started, '
+            + 'which can be ten years ago.',
+      },
+      {
+        title: 'The value is still the weak side',
+        watch: true,
+        call: 'A 53% LVR against a settlement value from years ago is not 53%. The loan can be the '
+            + 'lender’s own figure; the value never is. Check the grey line before you quote an LVR to '
+            + 'anybody.',
+      },
+      'Rate exposure beside it has not changed. The client’s interest rate is only recorded on the '
+      + 'client position, so that report still covers the same handful of clients.',
+    ],
+  },
+  {
     id: 'portfolio-review',
     section: 'process',
     title: 'The portfolio review list',
