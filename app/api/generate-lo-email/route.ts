@@ -25,6 +25,8 @@ import { resolveLenderSplits, lenderTotal, lenderLvr } from '@/lib/lo-splits'
 import { securitiesOf, totalsOf } from '@/lib/securities'
 import { bufferNoteBlock } from '@/lib/buffer-note'
 import { propertyColour } from '@/lib/lo-by-property'
+import { analysisFor, analysisBlockHtml, analysisLead, analysisDisclaimerHtml,
+         releasedAlongside, minimumRepayment } from '@/lib/repayment-analysis'
 import { showsOwnLoanAmount } from '@/lib/email-amounts'
 import { rowLegalFeeLabel, feeText} from '@/lib/lender-fees'
 import { siteUrl } from '@/lib/site-url'
@@ -476,6 +478,30 @@ export async function POST(req: NextRequest) {
   // ever drifts back below the table.
   // TWO BUTTONS WHERE THERE IS A BANK TO NAME, one where there is not.
   // ctasLender falls back to ctas by itself, so this is one call either way.
+  // THE ANALYSIS, PRICED OFF THE PRODUCT WE ARE RECOMMENDING.
+  //
+  // 21 Oct 2026. Fabio: "this is also on LO for those 2 templates but it
+  // automatically pushes the data using recommend product". The two figures a
+  // broker typed on the borrowing capacity come across as they are; the rate
+  // does NOT - on this tab the rate that matters is the one on the starred
+  // product, so star a different lender and the saving follows it.
+  //
+  // Nothing is drawn where no option is recommended yet. A saving built off
+  // whichever lender happens to be first in the list is a figure nobody chose.
+  const recSplits = resolveLenderSplits(recommendedOption(d) as any, d.refinanceSplits)
+  const recRate = recSplits?.[0]?.rate
+  const analysis = recRate ? analysisFor(bcData || {}, ffData || {}, recRate) : null
+  if (analysis) {
+    const released = releasedAlongside(bcData || {})
+    const months = Math.round(analysis.yearsRemaining * 12)
+    body += analysisBlockHtml(analysis, {
+      lead: analysisLead(analysis, released > 0
+        ? { released, releaseRepayment: minimumRepayment(released, analysis.newRate, months) }
+        : {}),
+      heading: released > 0 ? `On the ${money(analysis.balance)} we are refinancing` : undefined,
+    })
+  }
+
   body += ctasLender(b.calendly, proceedUrl || '', talkUrl || '', offered?.name || '')
 
   const sortedLenders = recommendedFirst(d, d.lenders || [])
@@ -485,6 +511,9 @@ export async function POST(req: NextRequest) {
   body += buildLenderTable(sortedLenders, isBridging, d, d.refinanceSplits, d.propertyValue, secs)
 
   body += p('Please let us know which lender you would like to proceed with and if you have any questions regarding the numbers above.')
+  // The disclaimer rides with the block and only with it. An email carrying no
+  // analysis has no calculator to disclaim.
+  if (analysis) body += analysisDisclaimerHtml()
   // THE RBA NOTICE, FIRST IN THE BOX THE CLIENT ALREADY READS FOR CAVEATS.
   //
   // This email puts several banks on one page and they will not all move on the

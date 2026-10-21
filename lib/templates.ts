@@ -20,6 +20,11 @@ export const TEMPLATE_LABELS: Record<string, string> = {
   // 20 Oct 2026. Increasing an existing loan with the lender it is already
   // with. Not a refinance - see lib/top-up.ts for why that distinction is
   // arithmetic rather than wording.
+  // 21 Oct 2026. The repayment analysis is a tick box on the two refinance
+  // scenarios AND a scenario of its own, so a broker can send just that -
+  // Fabio: "IF broker wants to show on a separate email they can". One block of
+  // code draws all three; see lib/repayment-analysis.ts.
+  refinance_analysis:  'Refinance repayment analysis',
   top_up:              'Top up',
   top_up_purchase:     'Top up + purchase',
   custom:              'Custom (all fields)',

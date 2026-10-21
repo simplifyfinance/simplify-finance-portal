@@ -96,6 +96,7 @@ function buildHousingExpenseLine(app: any): string {
 
 const TEMPLATES = [
   { id: 'refinance_equity', label: 'Refinance + equity release' },
+  { id: 'refinance_analysis', label: 'Refinance repayment analysis' },
   { id: 'top_up', label: 'Top up' },
   { id: 'top_up_purchase', label: 'Top up + purchase' },
   { id: 'refinance_only', label: 'Refinance only' },
@@ -124,6 +125,11 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
   // loan that is already there out of the splits and all of them are wrong at
   // once: $500,000 + $300,000 against $1,000,000 reads 30% instead of 80%.
   // See lib/top-up.ts.
+  // The standalone analysis has one split, and it exists only to carry the rate
+  // being compared against. Nothing on that email draws the split itself.
+  refinance_analysis: { splits: [
+    { label: 'Refinanced loan', amount: '', rate: '5.59', type: 'P&I' },
+  ] },
   top_up: { splits: [
     { label: 'Existing loan', amount: '', rate: '6.14', type: 'Interest only', ioYears: '5' },
     { label: 'Loan increase', amount: '', rate: '6.14', type: 'Interest only', ioYears: '5' },
@@ -276,6 +282,8 @@ function fieldCls(value: string) {
     : "px-2.5 py-1.5 text-sm border border-dashed border-field-line rounded-lg focus:outline-none focus:border-brand bg-page w-full"
 }
 import { buysNothing, BUYING_TEMPLATES as SHARED_BUYING_TEMPLATES } from '@/lib/buying'
+import { offersAnalysis, whyNotOffered, analyse, analysedBalance, releasedAlongside,
+         currentRateOf, refinancedSplit, yearsAndMonths, ANALYSIS_TEMPLATE } from '@/lib/repayment-analysis'
 import { isTopUp, increaseFor, lendingAgainst, limitDisagreement, splitsForSecurity } from '@/lib/top-up'
 import { offsetIsOn, toggleOffset, offsetsAfterRemoving } from '@/lib/offset-splits'
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
@@ -780,6 +788,12 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   function setConstructionCost(val: string) { setConstructionCostRaw(val); recomputeAsIfComplete(landValue, val) }
   const [landValue, setLandValueRaw] = useState(s.landValue || '')
   const [asIfCompleteValue, setAsIfCompleteValue] = useState(s.asIfCompleteValue || '')
+  // THE REPAYMENT ANALYSIS. 21 Oct 2026 - a tick box on the two refinance
+  // scenarios, and the whole of the standalone one. See lib/repayment-analysis.ts.
+  const [repaymentAnalysis, setRepaymentAnalysis] = useState<boolean>(!!s.repaymentAnalysis)
+  const [analysisYearsRemaining, setAnalysisYearsRemaining] = useState(s.analysisYearsRemaining || '')
+  const [analysisCurrentRepayment, setAnalysisCurrentRepayment] = useState(s.analysisCurrentRepayment || '')
+  const [analysisCurrentRate, setAnalysisCurrentRate] = useState(s.analysisCurrentRate || '')
   const [compareOptions, setCompareOptions] = useState(s.compareOptions || false)
   const [altScenarios, setAltScenarios] = useState<AltScenario[]>(s.altScenarios || [])
   const [optionLabel, setOptionLabel] = useState(s.optionLabel || '')
@@ -1119,6 +1133,10 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     landValue: setLandValueRaw, landFunding: setLandFunding, landLoanBalance: setLandLoanBalance,
     saleProceedsUse: setSaleProceedsUse,
     asIfCompleteValue: setAsIfCompleteValue,
+    repaymentAnalysis: setRepaymentAnalysis,
+    analysisYearsRemaining: setAnalysisYearsRemaining,
+    analysisCurrentRepayment: setAnalysisCurrentRepayment,
+    analysisCurrentRate: setAnalysisCurrentRate,
     compareOptions: setCompareOptions, optionLabel: setOptionLabel, altScenarios: setAltScenarios,
     brand: setBrand,
   }
@@ -1290,13 +1308,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // pending stays in pendingSave and is written by the effect above when the
     // form actually leaves.
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, repaymentAnalysis, analysisYearsRemaining, analysisCurrentRepayment, analysisCurrentRate, compareOptions, optionLabel, altScenarios, brand])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, repaymentAnalysis, analysisYearsRemaining, analysisCurrentRepayment, analysisCurrentRate, compareOptions, optionLabel, altScenarios, brand }
   }
 
   // Does the saved email still match the scenario the deal is on? Read in three
@@ -2506,6 +2524,105 @@ Key assumptions: ${checklistText}`
                       <label htmlFor="compareOptions" className="text-xs text-gray-600">Compare multiple options (e.g. different scenarios based on paying down liabilities)</label>
                     </div>
                   )}
+                  {/* THE REPAYMENT ANALYSIS. 21 Oct 2026, Fabio: show a client what
+                      happens if they keep paying what they pay now after moving to a
+                      lower rate. See lib/repayment-analysis.ts for the maths and for
+                      why it is never offered on interest only. */}
+                  {offersAnalysis(template) && (() => {
+                    const bcNow = buildBcData()
+                    const why = whyNotOffered(bcNow)
+                    const standalone = template === ANALYSIS_TEMPLATE
+                    const on = standalone || repaymentAnalysis
+                    const released = releasedAlongside(bcNow)
+                    const a = !why && on ? analyse({
+                      balance: analysedBalance(bcNow),
+                      currentRate: analysisCurrentRate || currentRateOf(bcNow, ff),
+                      yearsRemaining: analysisYearsRemaining,
+                      currentRepayment: analysisCurrentRepayment,
+                      newRate: refinancedSplit(bcNow)?.rate,
+                    }) : null
+                    return (
+                      <div className="col-span-2">
+                        {!standalone && (
+                          <div className="flex items-start gap-2">
+                            <input type="checkbox" id="repaymentAnalysis" className="mt-[3px]"
+                              checked={repaymentAnalysis} disabled={!!why}
+                              onChange={e => setRepaymentAnalysis(e.target.checked)} />
+                            <label htmlFor="repaymentAnalysis"
+                              className={`text-xs ${why ? 'text-gray-400' : 'text-gray-600'}`}>
+                              Include a repayment analysis in the client email
+                            </label>
+                          </div>
+                        )}
+                        {/* WHY IT IS OFF, BESIDE IT. A greyed box with no reason is a
+                            support call, and somebody will ask why it shows on one
+                            deal and not another. */}
+                        {why && <p className="text-[11px] text-chase leading-snug mt-1 ml-5">{why}</p>}
+
+                        {on && !why && (
+                          <div className="mt-2.5 border border-gray-100 rounded-lg p-3 bg-card">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">
+                              The analysis
+                            </p>
+                            <p className="text-[11px] text-gray-400 mb-2.5 leading-relaxed">
+                              Off their statement. The years remaining is the figure everything else
+                              follows from &mdash; it is their REMAINING term, not the original 30.
+                            </p>
+                            <div className="grid grid-cols-3 gap-2.5">
+                              <Field label="Years remaining">
+                                <input className={inputCls} value={analysisYearsRemaining}
+                                  onChange={e => setAnalysisYearsRemaining(e.target.value)} />
+                              </Field>
+                              <Field label="Current repayment (monthly)">
+                                <NumberInput value={analysisCurrentRepayment}
+                                  onChange={setAnalysisCurrentRepayment} />
+                              </Field>
+                              <Field label="Rate they are on today">
+                                <input className={inputCls}
+                                  value={analysisCurrentRate || currentRateOf(bcNow, ff)}
+                                  onChange={e => setAnalysisCurrentRate(e.target.value)} />
+                              </Field>
+                            </div>
+
+                            {released > 0 && (
+                              <p className="text-[11px] text-info leading-relaxed mt-2.5">
+                                The analysis covers the {fmtMoney(analysedBalance(bcNow))} being
+                                refinanced only. The {fmtMoney(released)} equity release is a separate
+                                split with its own repayment, and the email says so.
+                              </p>
+                            )}
+
+                            {a ? (
+                              <div className="flex gap-2.5 flex-wrap mt-3">
+                                <div className="flex-1 min-w-[140px] bg-done-bg border border-done-edge rounded-lg px-3 py-2">
+                                  <div className="text-[17px] font-bold text-done leading-tight">
+                                    {fmtMoney(a.interestSaved)}</div>
+                                  <div className="text-[10.5px] text-done">interest saved</div>
+                                </div>
+                                <div className="flex-1 min-w-[140px] bg-done-bg border border-done-edge rounded-lg px-3 py-2">
+                                  <div className="text-[17px] font-bold text-done leading-tight">
+                                    {yearsAndMonths(a.monthsSaved)}</div>
+                                  <div className="text-[10.5px] text-done">off the loan</div>
+                                </div>
+                                <div className="flex-1 min-w-[140px] bg-page border border-gray-200 rounded-lg px-3 py-2">
+                                  <div className="text-[17px] font-bold text-ink leading-tight">
+                                    {fmtMoney(a.extraPerMonth)}</div>
+                                  <div className="text-[10.5px] text-gray-500">a month freed up</div>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-[11px] text-chase leading-snug mt-2.5">
+                                Not enough recorded yet. The analysis needs the years remaining, the
+                                current repayment, the rate they are on and a lower new rate on the
+                                split. It will not appear in the email until it has them.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+
                   {["oo_purchase", "investment_purchase", "refinance_equity"].includes(template) && compareOptions && (
                     <div className="col-span-2">
                       <Field label="Option 1 description (appears in the client email)">

@@ -13,6 +13,8 @@ import { repaymentOf, splitRows, cardTitle, structureLead, realSplits,
 import { purchaseRows } from '@/lib/purchase-rows'
 import { isDollarForDollar, increaseFor, lendingAgainst, lvrFor,
          anyRefinanced, anyToppedUp, cashReleased } from '@/lib/top-up'
+import { analysisFor, analysisBlockHtml, analysisLead, analysisDisclaimerHtml,
+         releasedAlongside, minimumRepayment, ANALYSIS_TEMPLATE } from '@/lib/repayment-analysis'
 // EVERY DOLLAR FIGURE IN A CLIENT EMAIL GOES THROUGH money().
 //
 // This file used to write `'$' + (d.purchasePrice || '')` in a hundred
@@ -514,6 +516,33 @@ function amt(v: unknown, placeholder: string): string {
   return /[0-9]/.test(t) ? `${money(t)}` : t
 }
 
+// THE REPAYMENT ANALYSIS, WHEREVER IT IS ASKED FOR.
+//
+// 21 Oct 2026. Two tick boxes and one scenario of its own draw this, and the
+// lead sentence is the only thing that differs. On an equity release it HAS to
+// name the portion: the client's total repayment goes up, so a bare "keep
+// paying $3,917" would be false about their own budget. See the worked figures
+// at analysedBalance in lib/repayment-analysis.ts.
+function analysisBlock(d: any, ff: any, newRate?: any): string {
+  const a = analysisFor(d, ff, newRate)
+  if (!a) return ''
+  const released = releasedAlongside(d)
+  const months = Math.round(a.yearsRemaining * 12)
+  return analysisBlockHtml(a, {
+    lead: analysisLead(a, released > 0
+      ? { released, releaseRepayment: minimumRepayment(released, a.newRate, months) }
+      : {}),
+    heading: released > 0 ? `On the ${money(a.balance)} we are refinancing` : undefined,
+  })
+}
+
+// THE DISCLAIMER RIDES WITH THE BLOCK, NEVER ON ITS OWN. Fabio, 21 Oct 2026:
+// "add disclaimer on all email when we offer this". An email with no analysis
+// in it has no calculator to disclaim.
+function analysisDisclaimer(d: any): string {
+  return analysisFor(d, null) ? analysisDisclaimerHtml() : ''
+}
+
 function p(t: string) { return `<p style="font-size:14px;color:#333;margin-bottom:14px"><span style="color:#333;">${t}</span></p>` }
 function p13(t: string) { return `<p style="font-size:13px;color:#555;margin-bottom:12px"><span style="color:#555;">${t}</span></p>` }
 function propHead(t: string, rentalIncome?: string) {
@@ -954,9 +983,11 @@ export async function POST(req: NextRequest) {
       // its own. A third split had nowhere to go and was dropped in silence.
       splitCards(d, 'Additional lending', { from: 2, amountLabel: 'New loan amount', showTerm: true }) +
       bufferNoteBlock(template) +
+      analysisBlock(d, null) +
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
+      analysisDisclaimer(d) +
        notesBox(notes) + sig(b)
 
   } else if (template === 'refinance_only') {
@@ -974,9 +1005,43 @@ export async function POST(req: NextRequest) {
         after: (i) => (i === 0 ? buildLVRLine(d, lmiIsInTheLoan(d) && realSplits(d.splits).length === 1) : ''),
       }) +
       bufferNoteBlock(template) +
+      analysisBlock(d, null) +
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
+      analysisDisclaimer(d) +
+       notesBox(notes) + sig(b)
+
+  } else if (template === 'refinance_analysis') {
+    // THE BLOCK IS THE EMAIL. No structure cards, no LVR, no checklist - a
+    // client who went quiet after the borrowing capacity has had all of that
+    // thrown at them already. This is one number and a question.
+    //
+    // IT OPENS WITH THEIR POSITION, not with ours, so the first thing they read
+    // is something they can check against their own statement. If that is wrong
+    // nothing else matters and they will say so.
+    //
+    // AND THE RATE IS NAMED AS INDICATIVE. There is no recommended lender and no
+    // structure around this one, so the rate is a figure nobody has quoted them.
+    // Saying so is the difference between a prompt and a promise.
+    const a = analysisFor(d, null)
+    const opener = a
+      ? p(`You have ${money(a.balance)} left on your loan with ${a.yearsRemaining} years to run, and you `
+          + `are paying ${money(a.currentRepayment)} a month at ${a.currentRate}%.`)
+        + p(`Rates like <b>${a.newRate}%</b> are available to you today.`)
+      : p('The analysis cannot be built yet — the current repayment, the rate and the years remaining are all needed.')
+    body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
+      opener +
+      analysisBlock(d, null) +
+      // THE BUTTON REACHES THE DEAL. lib/proceed-link.test.ts refuses a client
+      // email whose button only books a call: the client presses it, and the
+      // deal never hears. On this one "yes" means "go and look into it for me",
+      // which is worth recording precisely because nothing has been scoped yet.
+      ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
+      p13('Worth fifteen minutes to see whether it stacks up for you. Press the button and I will '
+        + 'do the work either way — there is nothing to commit to yet.') +
+      analysisDisclaimer(d) +
+      (a ? p13(`The ${a.newRate}% above is indicative and is not an offer of credit.`) : '') +
        notesBox(notes) + sig(b)
 
   } else if (template === 'oo_purchase' && d.compareOptions) {

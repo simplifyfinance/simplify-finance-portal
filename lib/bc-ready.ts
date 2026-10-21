@@ -64,6 +64,11 @@ const NEEDS: Record<string, string[]> = {
   // meant. Named here so it is caught on the Preview screen first.
   complex_refinance:   ['existingLoanBal', 'splitAmount', 'splitRate',
                         'splitPurposes', 'splitProperties'],
+  // 21 Oct 2026. The analysis IS this email, so what it needs are the three
+  // figures the comparison is built from, plus the rate being compared against.
+  // No balance of its own: it reads what is owed off the security.
+  refinance_analysis:  ['analysisYearsRemaining', 'analysisCurrentRepayment',
+                        'analysisCurrentRate', 'splitRate'],
   custom:              ['splitAmount', 'splitRate'],
 }
 
@@ -92,6 +97,9 @@ const LABEL: Record<string, { label: string; where: string }> = {
   splitRate:         { label: 'Rate',                      where: 'Loan splits, split 1' },
   split2Amount:      { label: 'Amount',                    where: 'Loan splits, split 2' },
   split2Rate:        { label: 'Rate',                      where: 'Loan splits, split 2' },
+  analysisYearsRemaining:   { label: 'Years remaining',          where: 'Scenario details — the analysis' },
+  analysisCurrentRepayment: { label: 'Current repayment',        where: 'Scenario details — the analysis' },
+  analysisCurrentRate:      { label: 'Rate they are on today',   where: 'Scenario details — the analysis' },
 }
 
 function valueOf(key: string, d: any): any {

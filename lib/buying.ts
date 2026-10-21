@@ -42,6 +42,11 @@ export const NOT_BUYING_TEMPLATES = [
   // purchase into the compliance pack for a deal where nothing is bought -
   // see the note at the top of this file for what that costs.
   'top_up',
+  // 21 Oct 2026. The repayment analysis compares a loan they already have
+  // against a lower rate. Caught by scripts/check-template-lists.sh within a
+  // minute of the scenario being added: left off, the form would have drawn a
+  // purchase price, a deposit and a stamp duty box on it.
+  'refinance_analysis',
 ] as const
 
 const txt = (v: unknown) => String(v ?? '').trim()
