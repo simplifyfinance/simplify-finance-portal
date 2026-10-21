@@ -26,9 +26,59 @@
 //
 // THE HARD CAP is the backstop. Something that keeps a tab busy - a stuck
 // poll, a page left reloading - cannot hold a session open for a week.
-export const IDLE_MINUTES = 60
-export const ABSOLUTE_HOURS = 12
-export const TRUST_DAYS = 30
+// THEY ARE SETTINGS, NOT CODE. 21 Oct 2026, Fabio: "want to be able to change
+// in vercel while you are at it". Three numbers in Vercel, a redeploy, ninety
+// seconds - rather than an edit and an eight minute ship every time he wants
+// to try a different hour.
+//
+// THE BOUNDS ARE THE POINT OF READING THEM THIS WAY. A typo that set idle to
+// zero would sign everybody out on every click, for ever, and the only way
+// back would be another deploy by somebody who had worked out what happened.
+// Anything outside the range below is ignored and the default is used.
+export type Policy = {
+  /** How long somebody can walk away. */
+  idleMinutes: number
+  /** The hard cap from the moment the code was accepted. */
+  absoluteHours: number
+  /** How long a browser skips the code. 0 means never - a code every time. */
+  trustDays: number
+}
+
+export const DEFAULTS: Policy = { idleMinutes: 60, absoluteHours: 8, trustDays: 30 }
+
+export const LIMITS = {
+  // Under five minutes is unusable. Over eight hours is not an idle timeout.
+  idleMinutes: { min: 5, max: 480 },
+  // An hour is the shortest that is not cruel; a day is the longest that is
+  // still a cap.
+  absoluteHours: { min: 1, max: 24 },
+  // Zero is allowed and means something: a code every single sign-in.
+  trustDays: { min: 0, max: 90 },
+} as const
+
+function within(raw: any, bounds: { min: number; max: number }, fallback: number): number {
+  const text = String(raw ?? '').trim()
+  // NOT SET IS NOT ZERO. Number('') is 0, and zero is a legal answer for trust
+  // days - it means a code every single sign-in. So an unset variable read as
+  // "no browser is ever trusted", and everyone would have been typing a code
+  // every hour while the setting sat empty exactly as intended. Caught by its
+  // own test on the night it was written.
+  if (text === '') return fallback
+  const n = Number(text)
+  if (!Number.isFinite(n)) return fallback
+  const whole = Math.round(n)
+  if (whole < bounds.min || whole > bounds.max) return fallback
+  return whole
+}
+
+/** Read once per request from the environment. Nothing here throws. */
+export function readPolicy(env: Record<string, string | undefined> = {}): Policy {
+  return {
+    idleMinutes: within(env.TWO_FACTOR_IDLE_MINUTES, LIMITS.idleMinutes, DEFAULTS.idleMinutes),
+    absoluteHours: within(env.TWO_FACTOR_ABSOLUTE_HOURS, LIMITS.absoluteHours, DEFAULTS.absoluteHours),
+    trustDays: within(env.TWO_FACTOR_TRUST_DAYS, LIMITS.trustDays, DEFAULTS.trustDays),
+  }
+}
 
 // A CODE IS SHORT LIVED AND CHEAP TO GET WRONG TWICE, NOT FIFTY TIMES.
 export const CODE_MINUTES = 10
@@ -144,8 +194,8 @@ export function codeExpiry(now: Date): string {
   return new Date(now.getTime() + CODE_MINUTES * 60_000).toISOString()
 }
 
-export function trustExpiry(now: Date): string {
-  return new Date(now.getTime() + TRUST_DAYS * 86_400_000).toISOString()
+export function trustExpiry(now: Date, policy: Policy = DEFAULTS): string {
+  return new Date(now.getTime() + policy.trustDays * 86_400_000).toISOString()
 }
 
 // ---------------------------------------------------------------------------
@@ -201,12 +251,14 @@ export type SessionVerdict = 'ok' | 'idle' | 'spent' | 'wrong-user' | 'none'
  * Idle first, because it is the one Fabio asked for and the one that will
  * actually fire. "spent" is the twelve hour backstop.
  */
-export function sessionVerdict(pass: Pass | null, userId: string, now: Date): SessionVerdict {
+export function sessionVerdict(
+  pass: Pass | null, userId: string, now: Date, policy: Policy = DEFAULTS,
+): SessionVerdict {
   if (!pass) return 'none'
   if (pass.u !== userId) return 'wrong-user'
   const ms = now.getTime()
-  if (ms - pass.s > IDLE_MINUTES * 60_000) return 'idle'
-  if (ms - pass.v > ABSOLUTE_HOURS * 3_600_000) return 'spent'
+  if (ms - pass.s > policy.idleMinutes * 60_000) return 'idle'
+  if (ms - pass.v > policy.absoluteHours * 3_600_000) return 'spent'
   return 'ok'
 }
 
@@ -240,12 +292,24 @@ export function shouldPush(pass: Pass, now: Date): boolean {
 }
 
 /** The words on the sign-in screen when the portal let somebody go. */
-export function whyYouAreOut(reason: any): string {
+/**
+ * THE SENTENCE ON THE SIGN-IN SCREEN.
+ *
+ * The login page is a browser component and cannot read a Vercel setting, so
+ * the number travels with the redirect - ?out=idle&n=60 - rather than being
+ * hard coded here where it would start lying the first time Fabio changes it.
+ */
+export function whyYouAreOut(reason: any, howMany?: any): string {
+  const n = Number(String(howMany ?? '').trim())
   switch (String(reason || '')) {
-    case 'idle':
-      return `Nobody touched the portal for ${IDLE_MINUTES} minutes, so it locked itself.`
-    case 'spent':
-      return `You had been signed in for ${ABSOLUTE_HOURS} hours, so the portal locked itself.`
+    case 'idle': {
+      const mins = Number.isFinite(n) && n > 0 ? n : DEFAULTS.idleMinutes
+      return `Nobody touched the portal for ${mins} minutes, so it locked itself.`
+    }
+    case 'spent': {
+      const hrs = Number.isFinite(n) && n > 0 ? n : DEFAULTS.absoluteHours
+      return `You had been signed in for ${hrs} hours, so the portal locked itself.`
+    }
     default:
       return ''
   }

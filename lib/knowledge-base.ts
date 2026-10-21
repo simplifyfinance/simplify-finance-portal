@@ -430,7 +430,7 @@ export const ENTRIES: Entry[] = [
       {
         step: 'It signs you out when you are not there',
         body: [
-          'An hour with nobody touching it and you are signed out. Twelve hours after you signed in '
+          'An hour with nobody touching it and you are signed out. Eight hours after you signed in '
           + 'you are signed out regardless. Your work is saved as you go, so nothing is lost \u2014 you '
           + 'type your password and carry on.',
         ],

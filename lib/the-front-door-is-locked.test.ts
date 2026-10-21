@@ -3,8 +3,8 @@ import { readFileSync } from 'fs'
 import {
   enforcedFor, makeCode, makeToken, hashSecret, sameSecret, checkCode,
   sealPass, openPass, sessionVerdict, isRealVisit, shouldPush, whyYouAreOut,
-  codeExpiry, trustExpiry,
-  IDLE_MINUTES, ABSOLUTE_HOURS, TRUST_DAYS, MAX_ATTEMPTS, CODE_MINUTES,
+  codeExpiry, trustExpiry, readPolicy,
+  DEFAULTS, LIMITS, MAX_ATTEMPTS, CODE_MINUTES,
   SESSION_COOKIE, DEVICE_COOKIE,
 } from './two-factor'
 
@@ -116,10 +116,13 @@ describe('everything that can be wrong with a code', () => {
     expect(checkCode(null, 'anything', now)).toEqual({ ok: false, why: 'wrong' })
   })
 
-  it('dates a code ten minutes out and a trust thirty days out', () => {
+  it('dates a code ten minutes out and a trust by the policy', () => {
     const now = at('2026-10-21T10:00:00Z')
     expect(codeExpiry(now)).toBe(new Date(now.getTime() + CODE_MINUTES * 60_000).toISOString())
-    expect(trustExpiry(now)).toBe(new Date(now.getTime() + TRUST_DAYS * 86_400_000).toISOString())
+    expect(trustExpiry(now, { ...DEFAULTS, trustDays: 30 }))
+      .toBe(new Date(now.getTime() + 30 * 86_400_000).toISOString())
+    expect(trustExpiry(now, { ...DEFAULTS, trustDays: 7 }))
+      .toBe(new Date(now.getTime() + 7 * 86_400_000).toISOString())
   })
 })
 
@@ -167,15 +170,24 @@ describe('the two clocks', () => {
   it('ends it after an hour of nobody being there', () => {
     expect(sessionVerdict(pass, ME, at('2026-10-21T09:59:00Z'))).toBe('ok')
     expect(sessionVerdict(pass, ME, at('2026-10-21T10:01:00Z'))).toBe('idle')
-    expect(IDLE_MINUTES).toBe(60)
+    expect(DEFAULTS.idleMinutes).toBe(60)
+  })
+
+  it('uses whatever hour it has been given rather than a number of its own', () => {
+    const tight = { ...DEFAULTS, idleMinutes: 15 }
+    expect(sessionVerdict(pass, ME, at('2026-10-21T09:14:00Z'), tight)).toBe('ok')
+    expect(sessionVerdict(pass, ME, at('2026-10-21T09:16:00Z'), tight)).toBe('idle')
   })
 
   // THE BACKSTOP. Something that keeps a tab busy cannot hold a session open
   // for a week.
-  it('ends it after twelve hours however busy they were', () => {
-    const busy = { u: ME, v: started.getTime(), s: at('2026-10-21T21:30:00Z').getTime() }
-    expect(sessionVerdict(busy, ME, at('2026-10-21T21:31:00Z'))).toBe('spent')
-    expect(ABSOLUTE_HOURS).toBe(12)
+  // Fabio moved this from twelve to eight on 21 Oct 2026, the night it was
+  // built, which is the whole reason these are settings and not constants.
+  it('ends it after the cap however busy they were', () => {
+    const busy = { u: ME, v: started.getTime(), s: at('2026-10-21T17:30:00Z').getTime() }
+    expect(sessionVerdict(busy, ME, at('2026-10-21T16:59:00Z'))).toBe('ok')
+    expect(sessionVerdict(busy, ME, at('2026-10-21T17:31:00Z'))).toBe('spent')
+    expect(DEFAULTS.absoluteHours).toBe(8)
   })
 
   // A cookie from somebody else's login is no use on this account.
@@ -187,11 +199,20 @@ describe('the two clocks', () => {
     expect(sessionVerdict(null, ME, started)).toBe('none')
   })
 
-  it('tells the person which clock it was', () => {
-    expect(whyYouAreOut('idle')).toContain('60 minutes')
-    expect(whyYouAreOut('spent')).toContain('12 hours')
+  // The sign-in screen is a browser component and cannot read a Vercel
+  // setting, so the number travels in the address with it.
+  it('tells the person which clock it was, with the real number', () => {
+    expect(whyYouAreOut('idle', 60)).toContain('60 minutes')
+    expect(whyYouAreOut('idle', 15)).toContain('15 minutes')
+    expect(whyYouAreOut('spent', 8)).toContain('8 hours')
     expect(whyYouAreOut('')).toBe('')
     expect(whyYouAreOut('nonsense')).toBe('')
+  })
+
+  it('falls back to the default rather than printing nonsense', () => {
+    expect(whyYouAreOut('idle')).toContain(`${DEFAULTS.idleMinutes} minutes`)
+    expect(whyYouAreOut('idle', 'rubbish')).toContain(`${DEFAULTS.idleMinutes} minutes`)
+    expect(whyYouAreOut('spent', '-4')).toContain(`${DEFAULTS.absoluteHours} hours`)
   })
 })
 
@@ -421,5 +442,88 @@ describe('the beacon', () => {
 
   it('ignores a tab nobody is looking at', () => {
     expect(beacon).toContain('document.hidden')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// THE THREE NUMBERS ARE SETTINGS, AND A TYPO IN ONE IS NOT A LOCKOUT
+// ---------------------------------------------------------------------------
+//
+// 21 Oct 2026, Fabio: "want to be able to change in vercel while you are at
+// it". The bounds are the reason this is safe: a zero in the idle box would
+// otherwise sign the whole business out on every click, for ever, and the only
+// way back would be another deploy by somebody who had worked out why.
+
+describe('reading the rules out of Vercel', () => {
+  it('uses the defaults when nothing is set', () => {
+    expect(readPolicy({})).toEqual(DEFAULTS)
+    expect(readPolicy({ TWO_FACTOR_IDLE_MINUTES: '' })).toEqual(DEFAULTS)
+  })
+
+  it('takes a number that makes sense', () => {
+    expect(readPolicy({
+      TWO_FACTOR_IDLE_MINUTES: '30',
+      TWO_FACTOR_ABSOLUTE_HOURS: '10',
+      TWO_FACTOR_TRUST_DAYS: '7',
+    })).toEqual({ idleMinutes: 30, absoluteHours: 10, trustDays: 7 })
+  })
+
+  it('ignores a number that would lock everybody out', () => {
+    expect(readPolicy({ TWO_FACTOR_IDLE_MINUTES: '0' }).idleMinutes).toBe(DEFAULTS.idleMinutes)
+    expect(readPolicy({ TWO_FACTOR_IDLE_MINUTES: '-5' }).idleMinutes).toBe(DEFAULTS.idleMinutes)
+    expect(readPolicy({ TWO_FACTOR_IDLE_MINUTES: '1' }).idleMinutes).toBe(DEFAULTS.idleMinutes)
+    expect(readPolicy({ TWO_FACTOR_ABSOLUTE_HOURS: '0' }).absoluteHours).toBe(DEFAULTS.absoluteHours)
+  })
+
+  it('ignores a number that would make the lock pointless', () => {
+    expect(readPolicy({ TWO_FACTOR_IDLE_MINUTES: '99999' }).idleMinutes).toBe(DEFAULTS.idleMinutes)
+    expect(readPolicy({ TWO_FACTOR_ABSOLUTE_HOURS: '720' }).absoluteHours).toBe(DEFAULTS.absoluteHours)
+    expect(readPolicy({ TWO_FACTOR_TRUST_DAYS: '3650' }).trustDays).toBe(DEFAULTS.trustDays)
+  })
+
+  it('ignores anything that is not a number at all', () => {
+    for (const junk of ['sixty', 'an hour', '60 minutes', ' ', 'null']) {
+      expect(readPolicy({ TWO_FACTOR_IDLE_MINUTES: junk }).idleMinutes,
+        `${junk} should fall back`).toBe(DEFAULTS.idleMinutes)
+    }
+  })
+
+  // ZERO TRUST DAYS IS A REAL ANSWER, not a mistake - it means a code every
+  // single sign-in, which is the strictest setting Fabio was offered.
+  it('allows zero trust days, which means a code every time', () => {
+    expect(readPolicy({ TWO_FACTOR_TRUST_DAYS: '0' }).trustDays).toBe(0)
+  })
+
+  it('rounds a number somebody typed with a decimal point', () => {
+    expect(readPolicy({ TWO_FACTOR_IDLE_MINUTES: '45.4' }).idleMinutes).toBe(45)
+  })
+
+  it('has bounds that make sense against each other', () => {
+    expect(LIMITS.idleMinutes.min).toBeLessThan(LIMITS.idleMinutes.max)
+    expect(LIMITS.absoluteHours.min).toBeLessThan(LIMITS.absoluteHours.max)
+    expect(DEFAULTS.idleMinutes).toBeGreaterThanOrEqual(LIMITS.idleMinutes.min)
+    expect(DEFAULTS.absoluteHours).toBeLessThanOrEqual(LIMITS.absoluteHours.max)
+  })
+})
+
+describe('the rules reach the places that enforce them', () => {
+  const mw = readFileSync('middleware.ts', 'utf8')
+  const verify = readFileSync('app/api/2fa/verify/route.ts', 'utf8')
+  const screen = readFileSync('app/verify/page.tsx', 'utf8')
+
+  it('are read from the environment rather than hard coded', () => {
+    expect(mw).toContain('readPolicy(process.env')
+    expect(verify).toContain('readPolicy(process.env')
+  })
+
+  it('hand the number to the sign-in screen, which cannot read a setting', () => {
+    expect(mw).toContain("url.searchParams.set('n'")
+  })
+
+  // A tick box that does nothing is worse than no tick box.
+  it('stop offering to trust a browser when trust is turned off', () => {
+    expect(verify).toContain('policy.trustDays > 0')
+    expect(mw).toContain('policy.trustDays > 0')
+    expect(screen).toContain('rules.trustDays > 0')
   })
 })

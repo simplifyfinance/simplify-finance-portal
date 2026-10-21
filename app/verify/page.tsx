@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { safeNextPath } from '@/lib/safe-next-path'
 import OneMark, { MARK_WIDTH } from '@/components/OneMark'
-import { CODE_MINUTES, TRUST_DAYS } from '@/lib/two-factor'
+import { DEFAULTS } from '@/lib/two-factor'
 
 // THE SECOND FACTOR, ON SCREEN.
 //
@@ -28,6 +28,10 @@ function Verify() {
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [again, setAgain] = useState(0)
+  // HOW LONG A CODE LASTS AND HOW LONG A BROWSER IS TRUSTED ARE SETTINGS IN
+  // VERCEL. A browser component cannot read one, so the send route tells us
+  // and the defaults stand in until it answers.
+  const [rules, setRules] = useState({ minutes: 0, trustDays: DEFAULTS.trustDays })
   const asked = useRef(false)
 
   // ONE CODE ON ARRIVAL, AND ONLY ONE. React runs an effect twice in
@@ -52,7 +56,13 @@ function Verify() {
       const body = await res.json().catch(() => ({}))
       if (!res.ok) { setWhy(body?.error || 'The code could not be sent.'); return }
       if (body?.notNeeded) { window.location.href = nextPath || '/'; return }
-      setNote(`Sent. It works for ${CODE_MINUTES} minutes.`)
+      if (typeof body?.minutes === 'number' || typeof body?.trustDays === 'number') {
+        setRules(r => ({
+          minutes: typeof body.minutes === 'number' ? body.minutes : r.minutes,
+          trustDays: typeof body.trustDays === 'number' ? body.trustDays : r.trustDays,
+        }))
+      }
+      setNote(body?.minutes ? `Sent. It works for ${body.minutes} minutes.` : 'Sent.')
       setAgain(60)
     } catch {
       setWhy('The code could not be sent. Check your connection.')
@@ -115,14 +125,19 @@ function Verify() {
             className={`${FIELD} mt-1.5 text-center text-[20px] tracking-[8px] font-semibold`} />
         </div>
 
-        <label className="flex gap-2 items-start mt-4 cursor-pointer">
-          <input type="checkbox" checked={trust} onChange={e => setTrust(e.target.checked)}
-            className="mt-[3px] accent-ink" />
-          <span className="text-[12px] text-body leading-relaxed">
-            Trust this browser for {TRUST_DAYS} days
-            <span className="block text-[11px] text-faint">You will still type your password each time.</span>
-          </span>
-        </label>
+        {/* NOT OFFERED WHEN IT IS TURNED OFF. Trust days of zero means a code
+            every single time, and a tick box that does nothing is worse than
+            no tick box. */}
+        {rules.trustDays > 0 && (
+          <label className="flex gap-2 items-start mt-4 cursor-pointer">
+            <input type="checkbox" checked={trust} onChange={e => setTrust(e.target.checked)}
+              className="mt-[3px] accent-ink" />
+            <span className="text-[12px] text-body leading-relaxed">
+              Trust this browser for {rules.trustDays} days
+              <span className="block text-[11px] text-faint">You will still type your password each time.</span>
+            </span>
+          </label>
+        )}
 
         {why && <p className="text-[11.5px] text-chase mt-3">{why}</p>}
         {note && !why && <p className="text-[11.5px] text-done mt-3">{note}</p>}

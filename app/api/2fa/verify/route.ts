@@ -3,7 +3,7 @@ import { createSupabaseAdmin } from '@/lib/supabase-admin'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import {
   hashSecret, makeToken, checkCode, sealPass, trustExpiry,
-  SESSION_COOKIE, DEVICE_COOKIE, TRUST_DAYS, ABSOLUTE_HOURS, MAX_ATTEMPTS,
+  SESSION_COOKIE, DEVICE_COOKIE, MAX_ATTEMPTS, readPolicy,
 } from '@/lib/two-factor'
 
 // CHECKING THE CODE, AND REMEMBERING THE BROWSER.
@@ -43,6 +43,8 @@ export async function POST(req: NextRequest) {
 
   const admin = createSupabaseAdmin()
   const now = new Date()
+  // The three numbers, read from Vercel with their bounds applied.
+  const policy = readPolicy(process.env as any)
 
   // The newest live code for this person. Asking for several and taking the
   // newest means an old one sitting in the mailbox cannot be used instead.
@@ -78,7 +80,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'That code has already been used.' }, { status: 400 })
   }
 
-  const res = NextResponse.json({ ok: true })
+  const res = NextResponse.json({ ok: true, trustDays: policy.trustDays })
   const secureCookie = {
     httpOnly: true as const,
     secure: process.env.NODE_ENV === 'production',
@@ -88,9 +90,11 @@ export async function POST(req: NextRequest) {
 
   res.cookies.set(SESSION_COOKIE,
     await sealPass({ u: user.id, v: now.getTime(), s: now.getTime() }, secret),
-    { ...secureCookie, maxAge: ABSOLUTE_HOURS * 3600 })
+    { ...secureCookie, maxAge: policy.absoluteHours * 3600 })
 
-  if (trust) {
+  // TRUST_DAYS OF ZERO MEANS A CODE EVERY TIME, whatever the box said. The
+  // setting wins over the tick, because the setting is the business rule.
+  if (trust && policy.trustDays > 0) {
     const token = makeToken()
     const salt = makeToken()
     const agent = req.headers.get('user-agent') || ''
@@ -98,7 +102,7 @@ export async function POST(req: NextRequest) {
       user_id: user.id,
       token_hash: await hashSecret(token, salt),
       salt,
-      expires_at: trustExpiry(now),
+      expires_at: trustExpiry(now, policy),
       label: describe(agent),
     }).select('id')
 
@@ -107,7 +111,7 @@ export async function POST(req: NextRequest) {
     // be told their browser is not trusted while the box was ticked.
     if (!trustErr && kept && kept.length > 0) {
       res.cookies.set(DEVICE_COOKIE, `${kept[0].id}.${token}`,
-        { ...secureCookie, maxAge: TRUST_DAYS * 86400 })
+        { ...secureCookie, maxAge: policy.trustDays * 86400 })
     }
   }
 

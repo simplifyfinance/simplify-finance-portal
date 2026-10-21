@@ -87,7 +87,7 @@ function LoginForm() {
   // ago and is suddenly back here deserves a sentence, not a mystery. Written
   // by lib/two-factor.ts so the screen and the rule cannot say different
   // numbers.
-  const signedOutBecause = whyYouAreOut(searchParams.get('out'))
+  const signedOutBecause = whyYouAreOut(searchParams.get('out'), searchParams.get('n'))
 
   // One client for this page. Creating a second one gives the browser two things
   // both trying to own the session.

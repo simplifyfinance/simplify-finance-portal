@@ -4,7 +4,7 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { emailShell } from '@/lib/email-shell'
 import {
   makeCode, makeToken, hashSecret, codeExpiry,
-  CODE_MINUTES, MAX_SENDS_PER_HOUR, enforcedFor,
+  CODE_MINUTES, MAX_SENDS_PER_HOUR, enforcedFor, readPolicy,
 } from '@/lib/two-factor'
 
 // SENDING SOMEBODY THEIR SIGN-IN CODE.
@@ -115,5 +115,11 @@ export async function POST(req: NextRequest) {
     }, { status: 502 })
   }
 
-  return NextResponse.json({ sent: true, minutes: CODE_MINUTES })
+  // The code screen is a browser component and cannot read a Vercel
+  // setting, so it is told rather than left to guess.
+  return NextResponse.json({
+    sent: true,
+    minutes: CODE_MINUTES,
+    trustDays: readPolicy(process.env as any).trustDays,
+  })
 }

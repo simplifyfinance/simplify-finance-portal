@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import {
   openPass, sealPass, sessionVerdict, isRealVisit, shouldPush, enforcedFor,
-  hashSecret, SESSION_COOKIE, DEVICE_COOKIE, ABSOLUTE_HOURS,
+  hashSecret, readPolicy, SESSION_COOKIE, DEVICE_COOKIE,
 } from '@/lib/two-factor'
 
 export async function middleware(request: NextRequest) {
@@ -78,11 +78,16 @@ export async function middleware(request: NextRequest) {
   // the reason this can ship the night before people need to work.
   const secret = process.env.AUTH_COOKIE_SECRET || ''
   const mustVerify = !!secret && enforcedFor(user.email, process.env.TWO_FACTOR_EMAILS)
+  // The three numbers live in Vercel. readPolicy puts a floor and a ceiling on
+  // each, so a typo cannot set idle to zero and sign the whole business out on
+  // every click. Read here rather than inside the block below, because the
+  // cookie helper at the bottom of this function needs it too.
+  const policy = readPolicy(process.env as any)
 
   if (mustVerify && !pathname.startsWith('/verify') && !pathname.startsWith('/api/2fa')) {
     const now = new Date()
     const pass = await openPass(request.cookies.get(SESSION_COOKIE)?.value, secret)
-    const verdict = sessionVerdict(pass, user.id, now)
+    const verdict = sessionVerdict(pass, user.id, now, policy)
 
     // THE OVERNIGHT CASE, AND IT ENDS THE SESSION RATHER THAN PARKING IT.
     // Sending somebody to the code screen would leave them signed in behind
@@ -96,6 +101,11 @@ export async function middleware(request: NextRequest) {
       url.pathname = '/login'
       url.search = ''
       url.searchParams.set('out', verdict)
+      // The sign-in screen cannot read a Vercel setting, so it is handed the
+      // number rather than left to hard code one that would start lying the
+      // first time this changes.
+      url.searchParams.set('n', String(
+        verdict === 'idle' ? policy.idleMinutes : policy.absoluteHours))
       const bye = NextResponse.redirect(url)
       for (const c of request.cookies.getAll()) {
         if (c.name.startsWith('sb-') || c.name === SESSION_COOKIE) bye.cookies.delete(c.name)
@@ -107,7 +117,9 @@ export async function middleware(request: NextRequest) {
       // NO PASS YET. A browser this person has used in the last thirty days
       // carries a trust token, which skips the CODE - never the password, and
       // never the clocks above, which start again from here.
-      const trusted = await trustedBrowser(request, user.id)
+      // Zero trust days means a code every time, so the cookie is not even
+      // looked at.
+      const trusted = policy.trustDays > 0 && await trustedBrowser(request, user.id)
       if (!trusted) {
         if (pathname.startsWith('/api')) {
           return NextResponse.json({ error: 'Finish signing in.' }, { status: 401 })
@@ -145,7 +157,7 @@ export async function middleware(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
       path: '/',
-      maxAge: ABSOLUTE_HOURS * 3600,
+      maxAge: policy.absoluteHours * 3600,
     }
   }
 

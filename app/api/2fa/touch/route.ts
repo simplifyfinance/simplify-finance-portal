@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import {
   openPass, sealPass, sessionVerdict, shouldPush,
-  SESSION_COOKIE, ABSOLUTE_HOURS,
+  SESSION_COOKIE, readPolicy,
 } from '@/lib/two-factor'
 
 // SOMEBODY IS ACTUALLY THERE.
@@ -28,9 +28,10 @@ export async function POST(req: NextRequest) {
 
   const pass = await openPass(req.cookies.get(SESSION_COOKIE)?.value, secret)
   const now = new Date()
+  const policy = readPolicy(process.env as any)
   // AN EXPIRED SESSION IS NOT REVIVED BY TYPING INTO IT. Once the hour is up
   // the next page load signs them out; this must not hand back the time.
-  if (sessionVerdict(pass, user.id, now) !== 'ok') return NextResponse.json({ ok: false })
+  if (sessionVerdict(pass, user.id, now, policy) !== 'ok') return NextResponse.json({ ok: false })
   if (!shouldPush(pass!, now)) return NextResponse.json({ ok: true, quiet: true })
 
   const res = NextResponse.json({ ok: true })
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: ABSOLUTE_HOURS * 3600,
+      maxAge: policy.absoluteHours * 3600,
     })
   return res
 }
