@@ -40,7 +40,7 @@ describe('which figure it uses, and what it says about it', () => {
   it('uses the book loan where no statement has been matched', () => {
     const l = loanOf(hold())
     expect(l.amount).toBe(336000)
-    expect(sourceLine(l.from)).toBe('book figure')
+    expect(sourceLine(l.from)).toBe('book · at settlement')
   })
 
   it('uses the lender balance where there is one, and dates it', () => {
@@ -53,7 +53,7 @@ describe('which figure it uses, and what it says about it', () => {
   // and calling it the lender's would be a claim the screen cannot back up.
   it('refuses to call an undated balance the lender figure', () => {
     const l = loanOf(hold({ current_balance: 318450, balance_as_at: null }))
-    expect(sourceLine(l.from)).toBe('book figure')
+    expect(sourceLine(l.from)).toBe('book · at settlement')
   })
 
   it('never invents a date it has not got', () => {
@@ -120,19 +120,73 @@ describe('the rows', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// A SETTLEMENT LVR IS NOT EXPOSURE
+// ---------------------------------------------------------------------------
+//
+// 21 Oct 2026, within an hour of shipping the report. The tiles said "359 at
+// 80% or over" in red across the top of the screen. 308 of those were
+// settlement-day figures - a purchase with a 10% deposit IS 90% on the day it
+// settles - and 39 were construction, where the value is the land and the loan
+// is land plus the build, so they read over 100%.
+//
+// None of it was risk, and all of it was in red.
+
 describe('the counts above the table', () => {
-  it('count the bands, the lender figures and the lending', () => {
+  const mixed = () => exposure([
+    hold({ original_value: 500000, original_loan: 450000 }),                 // 90% at settlement
+    hold({ original_value: 1000000, original_loan: 750000 }),                // 75% at settlement
+    hold({ original_value: 1000000, original_loan: 850000,
+           current_balance: 850000, balance_as_at: '2026-08-01' }),          // 85% today
+    hold({ original_value: 1000000, original_loan: 400000,
+           current_balance: 400000, balance_as_at: '2026-08-01' }),          // 40% today
+  ], names)
+
+  it('counts only today’s figures as exposure', () => {
+    const t = totalsFor(mixed())
+    expect(t.current).toBe(2)
+    expect(t.over80).toBe(1)      // the 85%, not the 90% from settlement day
+    expect(t.between).toBe(0)     // the 75% is history and is not counted
+    expect(t.stillOnBook).toBe(2)
+  })
+
+  // The sum is a sum. It is not a claim that anybody is over-exposed.
+  it('still totals the lending across every row', () => {
+    expect(totalsFor(mixed()).lending).toBe(450000 + 750000 + 850000 + 400000)
+  })
+
+  it('claims nothing at all where no balance has been refreshed', () => {
     const t = totalsFor(exposure([
       hold({ original_value: 500000, original_loan: 450000 }),
-      hold({ original_value: 1000000, original_loan: 750000 }),
-      hold({ original_value: 1000000, original_loan: 400000,
-             current_balance: 400000, balance_as_at: '2026-08-01' }),
+      hold({ original_value: 400000, original_loan: 700000 }),  // a construction lot
     ], names))
-    expect(t.properties).toBe(3)
-    expect(t.over80).toBe(1)
-    expect(t.between).toBe(1)
-    expect(t.onLenderFigure).toBe(1)
-    expect(t.lending).toBe(1600000)
+    expect(t.current).toBe(0)
+    expect(t.over80).toBe(0)
+    expect(t.between).toBe(0)
+    expect(t.stillOnBook).toBe(2)
+  })
+})
+
+describe('a row knows whether anybody can act on it', () => {
+  it('marks a dated balance as current and an undated one as history', () => {
+    const [live] = exposure([hold({ current_balance: 300000, balance_as_at: '2026-08-01' })], names)
+    expect(live.current).toBe(true)
+    const [old] = exposure([hold()], names)
+    expect(old.current).toBe(false)
+  })
+
+  // A settlement LVR from 2016 above a real one puts the thing nobody can act
+  // on at the top of the screen.
+  it('sorts today’s figures above history, worst first inside each', () => {
+    const rows = exposure([
+      hold({ address: 'old-bad', original_value: 300000, original_loan: 900000 }),
+      hold({ address: 'live-mild', original_value: 1000000, original_loan: 500000,
+             current_balance: 500000, balance_as_at: '2026-08-01' }),
+      hold({ address: 'live-bad', original_value: 1000000, original_loan: 880000,
+             current_balance: 880000, balance_as_at: '2026-08-01' }),
+      hold({ address: 'old-mild', original_value: 1000000, original_loan: 400000 }),
+    ], names)
+    expect(rows.map(r => r.address)).toEqual(['live-bad', 'live-mild', 'old-bad', 'old-mild'])
   })
 })
 
@@ -161,5 +215,20 @@ describe('the report keeps the promises the mock made', () => {
   it('uses no amber', () => {
     expect(page).not.toMatch(/\b(bg|text|border)-amber-/)
     expect(page).not.toMatch(/#(F59E0B|FBBF24|D97706|FEF3C7|FDE68A)/i)
+  })
+
+  it('says out loud when nothing on screen is current', () => {
+    expect(page).toContain('No LVR here is current yet')
+  })
+
+  // Colour is a claim. A settlement LVR printed in red tells somebody to act
+  // on a figure from 2016.
+  it('only colours an LVR that is today’s figure', () => {
+    expect(page).toContain('!r.current')
+    expect(page).toContain('at settlement')
+  })
+
+  it('lets you look at the history on purpose rather than by accident', () => {
+    expect(page).toContain('setBasis')
   })
 })

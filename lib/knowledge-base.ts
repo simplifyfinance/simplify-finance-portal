@@ -428,10 +428,22 @@ export const ENTRIES: Entry[] = [
             + 'which can be ten years ago.',
       },
       {
+        title: 'An LVR at settlement is not exposure',
+        watch: true,
+        call: 'A purchase with a 10% deposit was 90% on the day it settled. That is normal and it is '
+            + 'not a problem. A construction deal reads over 100% because the value is the land and '
+            + 'the loan is land plus the build. So the report counts a property as exposure only '
+            + 'where the loan is the lender’s own figure — everything else shows in grey, '
+            + 'marked at settlement, and is counted in nothing.',
+      },
+      'The report opens on Today’s figures. Until balances have been refreshed that is empty, '
+      + 'which is the truth: we hold what these loans were years ago, not what they are. At '
+      + 'settlement shows you the history on purpose.',
+      {
         title: 'The value is still the weak side',
         watch: true,
-        call: 'A 53% LVR against a settlement value from years ago is not 53%. The loan can be the '
-            + 'lender’s own figure; the value never is. Check the grey line before you quote an LVR to '
+        call: 'Even with the loan refreshed, the value is an estimate somebody looked up or what the '
+            + 'property was worth at settlement. Check the grey line before you quote an LVR to '
             + 'anybody.',
       },
       'Rate exposure beside it has not changed. The client’s interest rate is only recorded on the '

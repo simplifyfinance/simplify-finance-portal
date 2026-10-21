@@ -50,13 +50,35 @@ export type Row = {
   loanFrom: Source
   lvr: number
   band: Band
+  /** The loan is the lender's own, dated. Anything else is history. */
+  current: boolean
 }
 
+// WHAT THE TILES ARE ALLOWED TO CLAIM.
+//
+// 21 Oct 2026, within an hour of shipping this. The first version counted
+// every row: 359 at 80% or over, in red, across the top of the screen. It read
+// as a risk finding and it was nothing of the sort.
+//
+// A purchase with a 10% deposit IS 90% LVR on the day it settles. 308 of those
+// 359 were settlement-day figures, correct and meaningless. Another 39 were
+// over 100% because the value is the land and the loan is land plus build on a
+// construction deal.
+//
+// So exposure is counted ONLY where the loan is today's figure. Where it is
+// not, the row still shows - it is the only thing we hold - but it is history
+// and it is not counted, coloured or sorted as though somebody should act on
+// it.
 export type Totals = {
-  properties: number
+  /** Rows carrying the lender's own balance. The only ones that mean anything. */
+  current: number
+  /** Of the current ones. */
   over80: number
+  /** Of the current ones. */
   between: number
-  onLenderFigure: number
+  /** Still on what the book said when it was exported. */
+  stillOnBook: number
+  /** Every row, because a sum is not a claim about risk. */
   lending: number
 }
 
@@ -139,17 +161,24 @@ export function exposure(holdings: Holding[], names: Named[]): Row[] {
       value: v.amount, valueFrom: v.from,
       loan: l.amount, loanFrom: l.from,
       lvr, band: bandFor(lvr),
+      current: l.from.kind === 'lender',
     })
   }
-  return out.sort((a, b) => b.lvr - a.lvr)
+  // TODAY'S FIGURES FIRST, worst first within each. A settlement LVR from 2016
+  // sorted above a real one would put the thing nobody can act on at the top.
+  return out.sort((a, b) => {
+    if (a.current !== b.current) return a.current ? -1 : 1
+    return b.lvr - a.lvr
+  })
 }
 
 export function totalsFor(rows: Row[]): Totals {
+  const live = rows.filter(r => r.current)
   return {
-    properties: rows.length,
-    over80: rows.filter(r => r.band === 'hot').length,
-    between: rows.filter(r => r.band === 'warm').length,
-    onLenderFigure: rows.filter(r => r.loanFrom.kind === 'lender').length,
+    current: live.length,
+    over80: live.filter(r => r.band === 'hot').length,
+    between: live.filter(r => r.band === 'warm').length,
+    stillOnBook: rows.length - live.length,
     lending: rows.reduce((t, r) => t + r.loan, 0),
   }
 }
@@ -174,5 +203,5 @@ export function sourceLine(s: Source): string {
     return when ? `estimate · ${when}` : 'estimate'
   }
   if (s.kind === 'settlement') return 'book · at settlement'
-  return 'book figure'
+  return 'book · at settlement'
 }

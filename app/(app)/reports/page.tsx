@@ -36,6 +36,10 @@ export default function ReportsPage() {
   const [named, setNamed] = useState<Named[]>([])
   const [lvrWhy, setLvrWhy] = useState('')
   const [band, setBand] = useState<'all' | 'hot' | 'warm' | 'cool'>('all')
+  // TODAY'S FIGURES, OR HISTORY. Opens on today's, which is the only thing on
+  // this screen anybody can act on. See the comment on Totals in
+  // lib/lvr-exposure.ts for why that matters more than it sounds.
+  const [basis, setBasis] = useState<'current' | 'book' | 'all'>('current')
   const [homes, setHomes] = useState(true)
   const [findOne, setFindOne] = useState('')
 
@@ -81,11 +85,13 @@ export default function ReportsPage() {
     const needle = findOne.trim().toLowerCase()
     return lvrAll.filter(r => {
       if (!homes && !r.investor) return false
+      if (basis === 'current' && !r.current) return false
+      if (basis === 'book' && r.current) return false
       if (band !== 'all' && r.band !== band) return false
       if (needle && !`${r.client} ${r.address}`.toLowerCase().includes(needle)) return false
       return true
     })
-  }, [lvrAll, homes, band, findOne])
+  }, [lvrAll, homes, band, findOne, basis])
 
   const lvrTotals = useMemo(
     () => totalsFor(homes ? lvrAll : lvrAll.filter(r => r.investor)), [lvrAll, homes])
@@ -157,7 +163,7 @@ export default function ReportsPage() {
         <LvrExposure
           rows={lvrShown} totals={lvrTotals} all={lvrAll} loaded={holdings !== null} why={lvrWhy}
           band={band} setBand={setBand} homes={homes} setHomes={setHomes}
-          find={findOne} setFind={setFindOne} />
+          find={findOne} setFind={setFindOne} basis={basis} setBasis={setBasis} />
       )}
     </div>
   )
@@ -183,7 +189,8 @@ function Tile({ n, what, tone }: { n: string; what: string; tone?: 'chase' | 'do
   )
 }
 
-function LvrExposure({ rows, totals, all, loaded, why, band, setBand, homes, setHomes, find, setFind }: {
+function LvrExposure({ rows, totals, all, loaded, why, band, setBand, homes, setHomes, find, setFind,
+                      basis, setBasis }: {
   rows: ExposureRow[]
   totals: ReturnType<typeof totalsFor>
   all: ExposureRow[]
@@ -195,6 +202,8 @@ function LvrExposure({ rows, totals, all, loaded, why, band, setBand, homes, set
   setHomes: (v: boolean) => void
   find: string
   setFind: (v: string) => void
+  basis: 'current' | 'book' | 'all'
+  setBasis: (b: 'current' | 'book' | 'all') => void
 }) {
   if (!loaded) return <div className="text-[13px] text-muted">Reading the book…</div>
 
@@ -214,18 +223,48 @@ function LvrExposure({ rows, totals, all, loaded, why, band, setBand, homes, set
         </div>
       )}
 
+      {/* ONLY WHAT IS TODAY'S FIGURE IS COUNTED AS EXPOSURE. The first version
+          of these tiles said "359 at 80% or over" in red across the top. 308
+          of those were settlement-day LVRs - a 10% deposit purchase is 90% on
+          the day it settles - and 39 were construction, where the value is the
+          land and the loan is land plus build. None of it was risk. */}
       <div className="flex gap-2 flex-wrap mb-3">
-        <Tile n={String(totals.properties)} what="properties" />
-        <Tile n={String(totals.over80)} what="at 80% or over" tone="chase" />
+        <Tile n={String(totals.current)} what="on today’s figures" tone={totals.current > 0 ? 'done' : undefined} />
+        <Tile n={String(totals.over80)} what="at 80% or over" tone={totals.over80 > 0 ? 'chase' : undefined} />
         <Tile n={String(totals.between)} what="70% to 80%" />
-        <Tile n={String(totals.onLenderFigure)} what="on a lender figure" tone="done" />
-        <Tile n={millions} what="total lending" />
+        <Tile n={String(totals.stillOnBook)} what="still on book figures" />
+        <Tile n={millions} what="lending on the book" />
+      </div>
+
+      {totals.current === 0 && totals.stillOnBook > 0 && (
+        <div className="mb-3 border border-info-edge bg-info-bg rounded-xl px-4 py-3">
+          <b className="block text-[13px] text-info mb-0.5">No LVR here is current yet</b>
+          <p className="text-[12px] text-body leading-relaxed">
+            Every one of these {totals.stillOnBook} properties is showing what the loan and the value
+            were when it settled. A purchase with a 10% deposit was 90% on that day and may be 55%
+            now — this screen cannot tell you which. Press <b>Refresh balances</b> on the Portfolio
+            review tab and the loan side becomes the lender’s own figure.
+          </p>
+        </div>
+      )}
+
+      <div className="flex gap-1.5 flex-wrap mb-2">
+        {([['current', `Today’s figures (${totals.current})`],
+           ['book', `At settlement (${totals.stillOnBook})`],
+           ['all', 'Both']] as const).map(([k, label]) => (
+          <button key={k} onClick={() => setBasis(k)}
+            className={`text-[11.5px] rounded-lg px-3 py-[5px] border transition ${basis === k
+              ? 'bg-info-bg border-info-edge text-info font-semibold'
+              : 'bg-card border-line text-muted hover:bg-page'}`}>
+            {label}
+          </button>
+        ))}
       </div>
 
       <div className="flex gap-2 items-center flex-wrap mb-3">
         <div className="flex gap-1.5">
-          {([['all', `All ${homes ? all.length : all.filter(r => r.investor).length}`],
-             ['hot', 'Over 80%'], ['warm', '70–80%'], ['cool', 'Under 70%']] as const).map(([k, label]) => (
+          {([['all', 'All'], ['hot', 'Over 80%'], ['warm', '70–80%'],
+             ['cool', 'Under 70%']] as const).map(([k, label]) => (
             <button key={k} onClick={() => setBand(k)}
               className={`${SEG} ${band === k
                 ? 'bg-ink border-ink text-page font-semibold'
@@ -257,12 +296,16 @@ function LvrExposure({ rows, totals, all, loaded, why, band, setBand, homes, set
         {rows.length === 0 ? (
           <div className="px-4 py-8 text-center">
             <p className="text-[13px] text-ink font-medium mb-1">
-              {all.length === 0 ? 'Nothing on the book has both a value and a loan yet.' : 'Nothing matches that.'}
+              {all.length === 0 ? 'Nothing on the book has both a value and a loan yet.'
+                : basis === 'current' && totals.current === 0 ? 'No loan on the book is current yet.'
+                : 'Nothing matches that.'}
             </p>
-            <p className="text-[12px] text-muted">
+            <p className="text-[12px] text-muted max-w-[520px] mx-auto leading-relaxed">
               {all.length === 0
                 ? 'Import the book on the Portfolio review tab and they appear here.'
-                : 'Try a different band, or clear the search.'}
+                : basis === 'current' && totals.current === 0
+                  ? 'Press Refresh balances on the Portfolio review tab, or switch to At settlement to see what the book holds.'
+                  : 'Try a different band, or clear the search.'}
             </p>
           </div>
         ) : rows.slice(0, 500).map((r, i) => (
@@ -285,11 +328,20 @@ function LvrExposure({ rows, totals, all, loaded, why, band, setBand, homes, set
                 {sourceLine(r.loanFrom)}
               </span>
             </span>
-            {/* Red where LMI starts, purple for the ones that cross it if a
-                value softens, plain for the rest. No amber anywhere. */}
-            <span className={`text-[13px] text-right font-semibold ${
-              r.band === 'hot' ? 'text-chase' : r.band === 'warm' ? 'text-waiting' : 'text-body'}`}>
+            {/* COLOUR IS A CLAIM, SO ONLY TODAY'S FIGURES GET IT. Red where
+                LMI starts, purple for the ones that cross it if a value
+                softens. A settlement LVR is printed plain and grey: it is
+                history, and painting it red tells somebody to act on a number
+                from 2016. No amber anywhere. */}
+            <span className={`text-[13px] text-right ${!r.current ? 'text-faint'
+              : r.band === 'hot' ? 'text-chase font-semibold'
+              : r.band === 'warm' ? 'text-waiting font-semibold' : 'text-body font-semibold'}`}>
               {r.lvr}%
+              {!r.current && (
+                <span className="block text-[10px] text-faint leading-tight font-normal">
+                  at settlement
+                </span>
+              )}
             </span>
           </div>
         ))}
@@ -301,9 +353,10 @@ function LvrExposure({ rows, totals, all, loaded, why, band, setBand, homes, set
       </div>
 
       <p className="text-[11.5px] text-muted mt-3 leading-relaxed">
-        The loan is the lender’s own figure wherever it says so. The value never is — it is an estimate
-        somebody looked up, or what the property was worth when the loan settled. Press Refresh balances
-        on the Portfolio review tab to bring the loan side up to your newest statement.
+        An LVR is only worth reading where both halves are current. The loan can be the lender’s own
+        figure once balances are refreshed; the value never is — it is an estimate somebody looked up,
+        or what the property was worth the day the loan settled. Anything marked at settlement is
+        history: a 90% there was a 10% deposit, not a problem.
       </p>
     </div>
   )
