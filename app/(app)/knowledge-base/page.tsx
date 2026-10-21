@@ -1,0 +1,130 @@
+'use client'
+import { useEffect, useMemo, useState } from 'react'
+import { PAGE_WIDE } from '@/lib/page-width'
+import { copyHtmlAndPlain } from '@/lib/rich-text'
+import {
+  SECTIONS, entriesFor, readableDate, entryEmailHtml,
+  type Section, type Entry,
+} from '@/lib/knowledge-base'
+
+// WHAT CHANGED IN THE PORTAL, AND HOW WE DO THINGS NOW.
+//
+// 21 Oct 2026. Every team email so far lived in exactly one place - Fabio's
+// sent items. Three weeks later a broker who cannot remember how a top up works
+// has nowhere to look.
+//
+// THE PAGE AND THE EMAIL ARE ONE ENTRY. Copy for Outlook builds the email from
+// the same words on screen, so the version in somebody's inbox and the version
+// here cannot drift apart. See lib/knowledge-base.ts.
+
+const PILL: Record<Section, string> = {
+  templates: 'bg-done-bg border-done-edge text-done',
+  features: 'bg-info-bg border-info-edge text-info',
+  process: 'bg-waiting-bg border-waiting-edge text-waiting',
+}
+
+export default function KnowledgeBasePage() {
+  const [section, setSection] = useState<Section | 'all'>('all')
+  const [find, setFind] = useState('')
+  const [copied, setCopied] = useState('')
+  const [why, setWhy] = useState('')
+
+  useEffect(() => { document.title = 'Knowledge base — Simplify Finance' }, [])
+
+  const shown = useMemo(() => entriesFor(section, find), [section, find])
+
+  // GROUPED THE WAY SOMEBODY LOOKS. A broker wanting "how do I do a top up"
+  // goes to Templates, not back through three weeks of dates.
+  const grouped = useMemo(() => SECTIONS
+    .map(s => ({ ...s, items: shown.filter(e => e.section === s.key) }))
+    .filter(g => g.items.length > 0), [shown])
+
+  async function copyOne(e: Entry) {
+    setWhy(''); setCopied('')
+    try {
+      // copyHtmlAndPlain works the plain text out of the HTML itself, which
+      // is what every other copy button in this portal does.
+      await copyHtmlAndPlain(entryEmailHtml(e))
+      setCopied(e.id)
+    } catch (err: any) {
+      setWhy(err?.message || 'Could not copy it. Select the text and copy it by hand.')
+    }
+  }
+
+  return (
+    <div className={PAGE_WIDE}>
+      <h1 className="text-[20px] font-semibold text-ink mb-0.5">Knowledge base</h1>
+      <p className="text-[12.5px] text-muted mb-4">What changed in the portal, and how we do things now.</p>
+
+      <div className="flex gap-2 items-center flex-wrap mb-4">
+        <div className="flex gap-1.5">
+          {([['all', 'Everything'], ...SECTIONS.map(s => [s.key, s.label] as const)] as const).map(([k, l]) => (
+            <button key={k} onClick={() => setSection(k as Section | 'all')}
+              className={`text-[12.5px] rounded-full px-3.5 py-[5px] border transition ${
+                section === k ? 'bg-ink border-ink text-page font-semibold'
+                              : 'bg-card border-line text-muted hover:bg-page'}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+        <input value={find} onChange={e => setFind(e.target.value)} placeholder="Search…"
+          className="ml-auto text-[12.5px] border border-line rounded-lg px-3 py-[6px] bg-card text-ink
+                     focus:outline-none focus:border-brand min-w-[190px]" />
+      </div>
+
+      {why && <p className="text-[12px] text-chase mb-3">{why}</p>}
+
+      {grouped.length === 0 && (
+        <p className="text-[13px] text-faint">Nothing here yet{find ? ' for that' : ''}.</p>
+      )}
+
+      {grouped.map(g => (
+        <div key={g.key}>
+          <p className="text-[10px] font-bold uppercase tracking-[.09em] text-faint mt-5 mb-2.5">
+            {g.label}
+          </p>
+          {g.items.map(e => (
+            <article key={e.id} id={e.id}
+              className="bg-card border border-card-line rounded-xl px-[18px] py-4 mb-2.5">
+              <div className="flex items-baseline gap-2.5 flex-wrap mb-1.5">
+                <h2 className="text-[15px] font-semibold text-ink m-0">{e.title}</h2>
+                <span className={`text-[9.5px] font-bold uppercase tracking-[.05em] rounded-full
+                                  px-2 py-[2px] border ${PILL[e.section]}`}>
+                  {g.label}
+                </span>
+                <span className="ml-auto text-[11.5px] text-faint">{readableDate(e.on)}</span>
+              </div>
+
+              <p className="text-[13.5px] leading-relaxed text-body mb-2.5">{e.lead}</p>
+              {e.body.map((b, i) => Array.isArray(b) ? (
+                <ul key={i} className="list-disc pl-[18px] mb-2.5">
+                  {b.map((x, j) => (
+                    <li key={j} className="text-[13.5px] leading-relaxed text-body mb-1">{x}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p key={i} className="text-[13.5px] leading-relaxed text-body mb-2.5">{b}</p>
+              ))}
+
+              <div className="flex gap-2 mt-3 pt-[11px] border-t border-line-soft">
+                <button onClick={() => copyOne(e)}
+                  className="text-[11.5px] bg-ink text-page rounded-lg px-3 py-[6px] font-semibold">
+                  {copied === e.id ? 'Copied — paste into Outlook' : 'Copy for Outlook'}
+                </button>
+                <button onClick={() => {
+                  // The link somebody pastes into a chat so a colleague lands
+                  // on this entry rather than the top of the page.
+                  navigator.clipboard?.writeText(`${window.location.origin}/knowledge-base#${e.id}`)
+                  setCopied(`link:${e.id}`)
+                }}
+                  className="text-[11.5px] border border-line bg-card rounded-lg px-3 py-[6px] text-ink hover:bg-page transition">
+                  {copied === `link:${e.id}` ? 'Link copied' : 'Copy link'}
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}

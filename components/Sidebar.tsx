@@ -3,7 +3,7 @@ import { SETTINGS_PANES } from '@/lib/settings-panes'
 import { LENDER_PANES } from '@/lib/lender-panes'
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3, Percent, TrendingUp, CalendarCheck, Mail } from "lucide-react"
+import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3, Percent, TrendingUp, CalendarCheck, Mail, BookOpen } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createSupabaseBrowser } from "@/lib/supabase-browser"
 import { can, roleLabel as formatRoleLabel } from '@/lib/permissions'
@@ -22,6 +22,9 @@ const nav = [
   { label: "Templates", href: "/templates", icon: Mail },
   { label: "Reports", href: "/reports", icon: BarChart3 },
   { label: "Cheat sheet", href: "/cheat-sheet", icon: Percent, newTab: true },
+  // 21 Oct 2026. Every team email lived in Fabio's sent items and nowhere else.
+  // See lib/knowledge-base.ts.
+  { label: "Knowledge base", href: "/knowledge-base", icon: BookOpen },
 ]
 
 // The heading is cosmetic. Each item states who may see it, so finance staff keep

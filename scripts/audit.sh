@@ -109,7 +109,37 @@ out=$(grep -rn -A2 "instanceof Date" lib app components --include=*.ts --include
 if [ -n "$out" ]; then while IFS= read -r l; do hit "$l"; done <<< "$out"; else clean; fi
 
 # 8 --------------------------------------------------------------------------
-section '8. The suite itself'
+# A scenario in the picker that the knowledge base has never heard of is a
+# template somebody will reach for with no idea what it does. 21 Oct 2026 -
+# Fabio asked for one automatic check and this is the only one narrow enough to
+# be right every time: five new templates in thirty days, and it would have
+# caught all five. It reports; the page is written when he says so, not by a
+# script watching commits.
+section '8. Scenarios the knowledge base has never mentioned'
+out=$(python3 -I - <<'PY2' || true
+import re
+src = open('lib/templates.ts').read()
+labels = re.findall(r"^  ([a-z_]+):\s+'([^']+)'", src, re.M)
+kb = open('lib/knowledge-base.ts').read()
+# The backlog named in WRITTEN_UP_LATER is a decision somebody made, not a gap.
+baseline = kb[kb.index('WRITTEN_UP_LATER'):]
+baseline = baseline[:baseline.index(']')].lower()
+hay = kb.lower()
+for key, label in labels:
+    if key == 'custom':
+        continue
+    plain = label.encode().decode('unicode_escape').lower()
+    if plain in baseline or label.lower() in baseline:
+        continue
+    if plain in hay or label.lower() in hay:
+        continue
+    print(f'{plain}  ({key})')
+PY2
+)
+if [ -n "$out" ]; then while IFS= read -r l; do hit "$l"; done <<< "$out"; else clean; fi
+
+# 9 --------------------------------------------------------------------------
+section '9. The suite itself'
 printf '  test files: %s\n' "$(ls lib/*.test.ts | wc -l | tr -d ' ')"
 printf '  render-based email tests: %s\n' "$(grep -rl "from '../app/api/generate-email/route'" lib/*.test.ts 2>/dev/null | wc -l | tr -d ' ')"
 
