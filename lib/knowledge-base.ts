@@ -34,6 +34,7 @@
 // watching commits. He is the only one who knows what the team needs told.
 
 import { emailShell } from './email-shell'
+import { siteUrl } from './site-url'
 
 export type Section = 'templates' | 'features' | 'process'
 
@@ -58,17 +59,38 @@ export const SECTIONS: { key: Section; label: string; blurb: string }[] = [
 // So four shapes, no more. A paragraph, a bullet list, a numbered step, a
 // callout, and a small table. Every one of them has to survive Word, which is
 // why the table carries no colour except a bgcolor on the row that wins.
-export type Step = { step: string; body: (string | string[])[] }
+export type Step = { step: string; body: Block[] }
 export type Call = { title: string; call: string; watch?: boolean }
 export type Figure = { figure: string; head: string[]; rows: string[][]; win?: number }
-export type Block = string | string[] | Step | Call | Figure
 
-const isObj = (b: Block): b is Step | Call | Figure =>
+// A PICTURE OF THE SCREEN BEING DESCRIBED.
+//
+// 21 Oct 2026, Fabio: "I need images too mcuh words quick sanppy images showing
+// where things are". He is right. "Under Deposit paid" is four words somebody
+// has to translate into a place on a screen they have not opened yet; a picture
+// of it is not.
+//
+// `shot` is a file in public/kb. The caption is what the picture is OF, not a
+// repeat of the paragraph above it - and it is the only part that reaches the
+// search, because a picture nobody can find is a picture nobody sees.
+//
+// IT HAS TO SURVIVE OUTLOOK. The email version gives the image an absolute
+// address built from siteUrl(), because a relative one in somebody's inbox
+// points at Outlook. See entryEmailHtml.
+export type Shot = { shot: string; caption: string }
+
+export type Block = string | string[] | Step | Call | Figure | Shot
+
+const isObj = (b: Block): b is Step | Call | Figure | Shot =>
   typeof b === 'object' && b !== null && !Array.isArray(b)
 export const isBullets = (b: Block): b is string[] => Array.isArray(b)
 export const isStep = (b: Block): b is Step => isObj(b) && 'step' in b
 export const isCall = (b: Block): b is Call => isObj(b) && 'call' in b
 export const isFigure = (b: Block): b is Figure => isObj(b) && 'figure' in b
+export const isShot = (b: Block): b is Shot => isObj(b) && 'shot' in b
+
+/** Where a shot lives, and the one place that decides it. */
+export const shotPath = (shot: string) => `/kb/${shot}`
 
 /** Steps number themselves, so a callout can sit between two of them. */
 export function stepNumber(body: Block[], at: number): number {
@@ -96,6 +118,7 @@ export function searchText(e: Entry): string {
     if (isBullets(b)) out.push(...b)
     else if (isStep(b)) { out.push(b.step); for (const x of b.body) eat(x) }
     else if (isCall(b)) out.push(b.title, b.call)
+    else if (isShot(b)) out.push(b.caption)
     else if (isFigure(b)) out.push(b.figure, ...b.head, ...b.rows.flat())
     else out.push(b)
   }
@@ -141,6 +164,7 @@ export const ENTRIES: Entry[] = [
         body: [
           'Directly under Deposit paid. Five boxes, and they open filled in from what the deal '
           + 'already knows, so you are not starting from nothing.',
+          { shot: 'offer-accepted-loan-now.png', caption: 'The loan now, under Deposit paid' },
           [
             'Product',
             'Interest rate',
@@ -163,8 +187,14 @@ export const ENTRIES: Entry[] = [
           'At the bottom of the same step, under Tell the client. It builds itself from everything '
           + 'above \u2014 the property, the price, the deposit, the loan and the rate \u2014 and goes '
           + 'straight to the client.',
-          'You tick what went with the submission, how many business days, and which outstanding '
-          + 'documents to chase in this one. The wording comes off the deal, never out of the screen.',
+          { shot: 'offer-accepted-tell-the-client.png', caption: 'Tell the client, at the bottom of the step' },
+          'You answer the valuation, tick what went with the submission, how many business days, and '
+          + 'which outstanding documents to chase in this one. The wording comes off the deal, never '
+          + 'out of the screen.',
+          { shot: 'offer-accepted-what-you-answer.png',
+            caption: 'The valuation, what went with it, and what to chase' },
+          'What you tick is what the client is asked for.',
+          { shot: 'offer-accepted-email.png', caption: 'What the client gets' },
         ],
       },
       {
@@ -180,6 +210,7 @@ export const ENTRIES: Entry[] = [
         body: [
           'A button on the same step, under Telling the lender. One page, and it is a different '
           + 'document from the handover.',
+          { shot: 'offer-accepted-handover.png', caption: 'The button, and both documents on the deal' },
           [
             'The property, the price actually paid with the assessed price beside it, the deposit '
             + 'and when it went in, the stamp duty, the finance clause and settlement dates',
@@ -712,9 +743,26 @@ export function entryEmailHtml(e: Entry, opts: { brokerName?: string } = {}): st
       + `</table>`
   }
 
+  // A PICTURE, IN AN EMAIL.
+  //
+  // The address is absolute, because a relative one in somebody's inbox points
+  // at Outlook and shows a broken image. 560px is the body width of these
+  // emails; the file itself is twice that, so it stays sharp on a retina screen
+  // and when somebody prints it.
+  //
+  // No bgcolor, no border radius, nothing Word repaints - just the image and a
+  // grey line saying what it is.
+  const shot = (sh: Shot) =>
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 13px">`
+    + `<tr><td style="padding:0 0 5px"><img src="${siteUrl()}${shotPath(sh.shot)}" width="560" `
+    + `alt="${esc(sh.caption)}" style="display:block;width:560px;max-width:100%;height:auto;border:1px solid #e6e6e2"></td></tr>`
+    + `<tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:11.5px">`
+    + `<span style="color:#8a8a84;">${esc(sh.caption)}</span></td></tr></table>`
+
   const blockHtml = (b: Block, n: number): string => {
     if (isBullets(b)) return bullets(b)
     if (isCall(b)) return call(b)
+    if (isShot(b)) return shot(b)
     if (isFigure(b)) return figure(b)
     if (isStep(b)) return step(n, b.step, b.body.map(x => blockHtml(x, 0)).join(''))
     return para(b)
@@ -757,6 +805,10 @@ export function entryPlainText(e: Entry): string {
       lines.push(`${n}. ${b.step}`)
       for (const x of b.body) put(x, 0)
     }
+    // A PICTURE CANNOT GO IN PLAIN TEXT, so it says what it was a picture of.
+    // Somebody reading the plain version in a phone client should still know a
+    // screenshot exists and what it showed.
+    else if (isShot(b)) { lines.push(`[${b.caption}]`); lines.push('') }
     else { lines.push(b); lines.push('') }
   }
   e.body.forEach((b, i) => put(b, stepNumber(e.body, i)))

@@ -4,7 +4,7 @@ import { PAGE_WIDE } from '@/lib/page-width'
 import { copyHtmlAndPlain } from '@/lib/rich-text'
 import {
   SECTIONS, entriesFor, readableDate, entryEmailHtml,
-  isBullets, isCall, isFigure, isStep, stepNumber,
+  isBullets, isCall, isFigure, isStep, isShot, shotPath, stepNumber,
   isLong, readingMinutes, PREVIEW_BLOCKS,
   type Section, type Entry, type Block,
 } from '@/lib/knowledge-base'
@@ -76,6 +76,17 @@ function BlockView({ b, n }: { b: Block; n: number }) {
         {b.body.map((x, i) => <BlockView key={i} b={x} n={0} />)}
       </div>
     </div>
+  )
+
+  // A PICTURE OF THE SCREEN. Fabio, 21 Oct 2026: "images showing where things
+  // are". Plain <img>, not next/image: these are in public/ at a fixed size and
+  // the optimiser would only add a build step to a screenshot.
+  if (isShot(b)) return (
+    <figure className="m-0 mb-3">
+      <img src={shotPath(b.shot)} alt={b.caption}
+        className="block w-full h-auto rounded-lg border border-card-line" />
+      <figcaption className="text-[11.5px] text-faint mt-1.5">{b.caption}</figcaption>
+    </figure>
   )
 
   return <p className="text-[13.5px] leading-relaxed text-body mb-2.5">{b}</p>
