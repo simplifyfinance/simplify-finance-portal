@@ -2699,102 +2699,6 @@ Key assumptions: ${checklistText}`
                     </Field>
                   )}
                   <Field label="Loan term (years)"><input className={inputCls} value={loanTerm} onChange={e => setLoanTerm(e.target.value)} /></Field>
-                  {/* THE REPAYMENT ANALYSIS. 21 Oct 2026, Fabio: show a client what
-                      happens if they keep paying what they pay now after moving to a
-                      lower rate. See lib/repayment-analysis.ts for the maths and for
-                      why it is never offered on interest only. */}
-                  {offersAnalysis(template) && (() => {
-                    const bcNow = buildBcData()
-                    const why = whyNotOffered(bcNow)
-                    const on = repaymentAnalysis
-                    const released = releasedAlongside(bcNow)
-                    const a = !why && on ? analyse({
-                      balance: analysedBalance(bcNow),
-                      currentRate: analysisCurrentRate || currentRateOf(bcNow, ff),
-                      yearsRemaining: analysisYearsRemaining,
-                      currentRepayment: analysisCurrentRepayment,
-                      newRate: refinancedSplit(bcNow)?.rate,
-                    }) : null
-                    return (
-                      <div className="col-span-2">
-                        <div className="flex items-start gap-2">
-                            <input type="checkbox" id="repaymentAnalysis" className="mt-[3px]"
-                              checked={repaymentAnalysis} disabled={!!why}
-                              onChange={e => setRepaymentAnalysis(e.target.checked)} />
-                            <label htmlFor="repaymentAnalysis"
-                              className={`text-xs ${why ? 'text-gray-400' : 'text-gray-600'}`}>
-                              Include a repayment analysis in the client email
-                            </label>
-                        </div>
-                        {/* WHY IT IS OFF, BESIDE IT. A greyed box with no reason is a
-                            support call, and somebody will ask why it shows on one
-                            deal and not another. */}
-                        {why && <p className="text-[11px] text-chase leading-snug mt-1 ml-5">{why}</p>}
-
-                        {on && !why && (
-                          <div className="mt-2.5 border border-gray-100 rounded-lg p-3 bg-card">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">
-                              The analysis
-                            </p>
-                            <p className="text-[11px] text-gray-400 mb-2.5 leading-relaxed">
-                              Off their statement. The years remaining is the figure everything else
-                              follows from &mdash; it is their REMAINING term, not the original 30.
-                            </p>
-                            <div className="grid grid-cols-3 gap-2.5">
-                              <Field label="Years remaining">
-                                <input className={inputCls} value={analysisYearsRemaining}
-                                  onChange={e => setAnalysisYearsRemaining(e.target.value)} />
-                              </Field>
-                              <Field label="Current repayment (monthly)">
-                                <NumberInput value={analysisCurrentRepayment}
-                                  onChange={setAnalysisCurrentRepayment} />
-                              </Field>
-                              <Field label="Rate they are on today">
-                                <input className={inputCls}
-                                  value={analysisCurrentRate || currentRateOf(bcNow, ff)}
-                                  onChange={e => setAnalysisCurrentRate(e.target.value)} />
-                              </Field>
-                            </div>
-
-                            {released > 0 && (
-                              <p className="text-[11px] text-info leading-relaxed mt-2.5">
-                                The analysis covers the {fmtMoney(analysedBalance(bcNow))} being
-                                refinanced only. The {fmtMoney(released)} equity release is a separate
-                                split with its own repayment, and the email says so.
-                              </p>
-                            )}
-
-                            {a ? (
-                              <div className="flex gap-2.5 flex-wrap mt-3">
-                                <div className="flex-1 min-w-[140px] bg-done-bg border border-done-edge rounded-lg px-3 py-2">
-                                  <div className="text-[17px] font-bold text-done leading-tight">
-                                    {fmtMoney(a.interestSaved)}</div>
-                                  <div className="text-[10.5px] text-done">interest saved</div>
-                                </div>
-                                <div className="flex-1 min-w-[140px] bg-done-bg border border-done-edge rounded-lg px-3 py-2">
-                                  <div className="text-[17px] font-bold text-done leading-tight">
-                                    {yearsAndMonths(a.monthsSaved)}</div>
-                                  <div className="text-[10.5px] text-done">off the loan</div>
-                                </div>
-                                <div className="flex-1 min-w-[140px] bg-page border border-gray-200 rounded-lg px-3 py-2">
-                                  <div className="text-[17px] font-bold text-ink leading-tight">
-                                    {fmtMoney(a.extraPerMonth)}</div>
-                                  <div className="text-[10.5px] text-gray-500">a month freed up</div>
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="text-[11px] text-chase leading-snug mt-2.5">
-                                Not enough recorded yet. The analysis needs the years remaining, the
-                                current repayment, the rate they are on and a lower new rate on the
-                                split. It will not appear in the email until it has them.
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })()}
-
               {/* A LIST, NOT A TYPED NAME. The guarantor goes into the client
                   email in a sentence - "using your parents' property as
                   security" - so the handful of answers that actually occur are
@@ -2898,6 +2802,123 @@ Key assumptions: ${checklistText}`
               )}
                 </div>
               </div>
+
+
+              {/* ITS OWN CARD, NOT A FIGURE AMONG FIGURES.
+                *
+                * 21 Oct 2026. It first landed inside the Scenario details grid,
+                * between Suburb and Existing loan balance, where it read as one
+                * more loan figure. Fabio: "where is the refinance tick box???"
+                *
+                * It is neither a property figure nor a scenario setting - it is
+                * a block of the client email, with three figures of its own. A
+                * card says that without anybody having to read a word, the same
+                * way Securities has one. Drawn only on the two refinance
+                * scenarios, so nobody else ever sees an extra card. */}
+                {/* THE REPAYMENT ANALYSIS. 21 Oct 2026, Fabio: show a client what
+                    happens if they keep paying what they pay now after moving to a
+                    lower rate. See lib/repayment-analysis.ts for the maths and for
+                    why it is never offered on interest only. */}
+                {offersAnalysis(template) && (() => {
+                  const bcNow = buildBcData()
+                  const why = whyNotOffered(bcNow)
+                  const on = repaymentAnalysis
+                  const released = releasedAlongside(bcNow)
+                  const a = !why && on ? analyse({
+                    balance: analysedBalance(bcNow),
+                    currentRate: analysisCurrentRate || currentRateOf(bcNow, ff),
+                    yearsRemaining: analysisYearsRemaining,
+                    currentRepayment: analysisCurrentRepayment,
+                    newRate: refinancedSplit(bcNow)?.rate,
+                  }) : null
+                  return (
+                    <div className="bg-card border border-gray-100 rounded-xl p-4">
+                      <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
+                        Repayment analysis
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <input type="checkbox" id="repaymentAnalysis" className="mt-[3px]"
+                          checked={repaymentAnalysis} disabled={!!why}
+                          onChange={e => setRepaymentAnalysis(e.target.checked)} />
+                        <label htmlFor="repaymentAnalysis"
+                          className={`text-[13px] font-medium ${why ? 'text-gray-400' : 'text-ink'}`}>
+                          Include a repayment analysis in the client email
+                        </label>
+                      </div>
+                      {/* WHAT IT IS FOR, IN ONE LINE. A tick box with no words
+                          beside it gets ticked by somebody who has not thought
+                          about what the client ends up reading. */}
+                      {!why && (
+                        <p className="text-[11.5px] text-gray-400 leading-relaxed mt-1 ml-5">
+                          Shows the client what happens if they keep paying what they pay now after
+                          moving to the lower rate.
+                        </p>
+                      )}
+                      {/* WHY IT IS OFF, BESIDE IT. A greyed box with no reason is a
+                          support call, and somebody will ask why it shows on one
+                          deal and not another. */}
+                      {why && <p className="text-[11px] text-chase leading-snug mt-1 ml-5">{why}</p>}
+
+                      {on && !why && (
+                        <div className="mt-3 pt-3 border-t border-line-soft">
+                          <p className="text-[11px] text-gray-400 mb-2.5 leading-relaxed">
+                            Off their statement. The years remaining is the figure everything else
+                            follows from &mdash; it is their REMAINING term, not the original 30.
+                          </p>
+                          <div className="grid grid-cols-3 gap-2.5">
+                            <Field label="Years remaining">
+                              <input className={inputCls} value={analysisYearsRemaining}
+                                onChange={e => setAnalysisYearsRemaining(e.target.value)} />
+                            </Field>
+                            <Field label="Current repayment (monthly)">
+                              <NumberInput value={analysisCurrentRepayment}
+                                onChange={setAnalysisCurrentRepayment} />
+                            </Field>
+                            <Field label="Rate they are on today">
+                              <input className={inputCls}
+                                value={analysisCurrentRate || currentRateOf(bcNow, ff)}
+                                onChange={e => setAnalysisCurrentRate(e.target.value)} />
+                            </Field>
+                          </div>
+
+                          {released > 0 && (
+                            <p className="text-[11px] text-info leading-relaxed mt-2.5">
+                              The analysis covers the {fmtMoney(analysedBalance(bcNow))} being
+                              refinanced only. The {fmtMoney(released)} equity release is a separate
+                              split with its own repayment, and the email says so.
+                            </p>
+                          )}
+
+                          {a ? (
+                            <div className="flex gap-2.5 flex-wrap mt-3">
+                              <div className="flex-1 min-w-[140px] bg-done-bg border border-done-edge rounded-lg px-3 py-2">
+                                <div className="text-[17px] font-bold text-done leading-tight">
+                                  {fmtMoney(a.interestSaved)}</div>
+                                <div className="text-[10.5px] text-done">interest saved</div>
+                              </div>
+                              <div className="flex-1 min-w-[140px] bg-done-bg border border-done-edge rounded-lg px-3 py-2">
+                                <div className="text-[17px] font-bold text-done leading-tight">
+                                  {yearsAndMonths(a.monthsSaved)}</div>
+                                <div className="text-[10.5px] text-done">off the loan</div>
+                              </div>
+                              <div className="flex-1 min-w-[140px] bg-page border border-gray-200 rounded-lg px-3 py-2">
+                                <div className="text-[17px] font-bold text-ink leading-tight">
+                                  {fmtMoney(a.extraPerMonth)}</div>
+                                <div className="text-[10.5px] text-gray-500">a month freed up</div>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-[11px] text-chase leading-snug mt-2.5">
+                              Not enough recorded yet. The analysis needs the years remaining, the
+                              current repayment, the rate they are on and a lower new rate on the
+                              split. It will not appear in the email until it has them.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
 
               <div className="bg-card border border-gray-100 rounded-xl p-4">
                 <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">{isMultiOption ? "Loan Options — Multiple Deposits" : "Loan splits"}</div>

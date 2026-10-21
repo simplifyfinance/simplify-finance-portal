@@ -179,6 +179,35 @@ describe('where it is offered', () => {
   })
 })
 
+describe('the tick box is where somebody can find it', () => {
+  const form = readFileSync('app/(app)/deals/[id]/BCForm.tsx', 'utf8')
+
+  // 21 Oct 2026. It first drew inside the Scenario details grid, between Suburb
+  // and Existing loan balance, where it read as one more loan figure. Fabio:
+  // "where is the refinance tick box???" It is neither a property figure nor a
+  // scenario setting - it is a block of the client email with three figures of
+  // its own, so it gets a card, the same way Securities does.
+  it('has a card and a heading of its own', () => {
+    const at = form.indexOf('{offersAnalysis(template) && (() => {')
+    const block = form.slice(at, at + 1600)
+    expect(block).toContain('rounded-xl p-4')
+    expect(block).toContain('Repayment analysis')
+    // It used to be a cell in the grid. A card is not a cell.
+    expect(block).not.toContain('col-span-2')
+  })
+
+  it('is not inside the scenario details grid', () => {
+    const grid = form.slice(0, form.indexOf('{offersAnalysis(template) && (() => {'))
+    expect(grid).toContain('label="Loan term (years)"')
+  })
+
+  // A tick box with no words beside it gets ticked by somebody who has not
+  // thought about what the client ends up reading.
+  it('says what it does', () => {
+    expect(form).toContain('keep paying what they pay now after')
+  })
+})
+
 describe('an equity cash out is about the refinanced loan only', () => {
   // THE TRAP, IN ONE NUMBER. They owe $600,000 and pay $3,917. Refinance that
   // and release $150,000 and they will pay $4,646 - their total goes UP by
