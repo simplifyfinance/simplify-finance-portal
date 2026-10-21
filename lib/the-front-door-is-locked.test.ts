@@ -188,6 +188,12 @@ describe('the two clocks', () => {
     expect(sessionVerdict(busy, ME, at('2026-10-21T16:59:00Z'))).toBe('ok')
     expect(sessionVerdict(busy, ME, at('2026-10-21T17:31:00Z'))).toBe('spent')
     expect(DEFAULTS.absoluteHours).toBe(8)
+    // 22 Oct 2026. A code every single sign-in, by Fabio's decision the morning
+    // after this shipped at thirty days: "I am nit sure I like that for
+    // security." Zero is not a leftover or a typo - it is the answer - and the
+    // bounds below allow it on purpose, so nothing else in here would notice if
+    // it drifted back to a month.
+    expect(DEFAULTS.trustDays).toBe(0)
   })
 
   // A cookie from somebody else's login is no use on this account.

@@ -44,7 +44,26 @@ export type Policy = {
   trustDays: number
 }
 
-export const DEFAULTS: Policy = { idleMinutes: 60, absoluteHours: 8, trustDays: 30 }
+// A CODE EVERY SINGLE SIGN-IN. 22 Oct 2026.
+//
+// This shipped at thirty days, which is the ordinary answer: the password is
+// typed every time and the code is for a new machine or once a month. Fabio
+// signed in the next morning, was not asked for one, and said: "I am nit sure
+// I like that for security."
+//
+// It is his call and he is not wrong to make it. We hold a client's whole
+// financial position, and a stolen password with a trusted laptop is one
+// factor wearing the costume of two. Zero means the code is always the second
+// factor, never a cookie that was the second factor a month ago.
+//
+// IT COSTS A CODE A MORNING. The hard cap is eight hours, so in practice the
+// team will meet the code roughly once a day. That is the price, and it was
+// chosen knowing it.
+//
+// TO GO BACK, nobody needs this file: set TWO_FACTOR_TRUST_DAYS in Vercel and
+// redeploy. The screens already follow it - the trust tick box is not drawn at
+// zero, and the middleware does not even read the cookie. See app/verify.
+export const DEFAULTS: Policy = { idleMinutes: 60, absoluteHours: 8, trustDays: 0 }
 
 export const LIMITS = {
   // Under five minutes is unusable. Over eight hours is not an idle timeout.
