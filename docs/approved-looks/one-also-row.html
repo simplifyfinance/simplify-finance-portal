@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The other deals row</title>
+<style>
+  :root{
+    --page:#F7F4EF; --card:#fff; --line:#E8E2D8; --card-line:#EBE5DB;
+    --line-soft:#F1ECE4; --ink:#17140F; --body:#3E3930; --muted:#6F6A62; --faint:#A79F93;
+    --chase:#D32F2F; --chase-bg:#FDEDED; --chase-edge:#F5C9C9;
+    --done:#137A55; --done-bg:#EAFAF4; --done-edge:#B4E7D5;
+    --info:#107EA8; --info-bg:#EAF7FE; --info-edge:#BFE4F7; --brand:#4FBBEA;
+    --wait:#5B3A9E; --wait-bg:#F4F1FC; --wait-edge:#DACFF1;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+  .bar{background:#17140F;color:#fff;padding:10px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .bar b{font-size:12px;letter-spacing:.5px;text-transform:uppercase}
+  .bar span{font-size:12px;color:#BDB6AB}
+  .app{display:flex}
+  .side{width:188px;flex:0 0 188px;background:#17140F;color:#fff;padding:16px 0;min-height:100vh}
+  .logo{padding:0 16px 20px;font-size:21px;font-weight:700}
+  .logo i{color:#4FBBEA;font-style:normal}
+  .side .k{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#6E6760;padding:0 16px;margin:14px 0 6px}
+  .side a{display:block;padding:7px 16px;font-size:13px;color:#BDB6AB;text-decoration:none}
+  .side a.on{background:#262019;color:#fff;font-weight:600}
+  .main{flex:1;min-width:0;padding:18px 22px 70px;max-width:1080px}
+  .crumb{font-size:12px;color:var(--faint);margin-bottom:5px}
+  .crumb b{color:var(--ink);font-weight:600}
+  .dname{font-size:17px;margin:0 0 7px}
+  .dname .pre{color:var(--faint);font-weight:400}
+  .dname .tail{font-weight:700;color:var(--ink)}
+  .saved{font-size:11.5px;color:var(--done);margin-left:7px;font-weight:500}
+  .alsorow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:7px 0 9px}
+  .alsok{font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#0B5F7D}
+  .chip{font-size:12.5px;font-weight:600;color:var(--info);background:var(--info-bg);
+    border:1px solid var(--info-edge);border-radius:8px;padding:4px 10px;display:inline-flex;
+    align-items:center;gap:6px;cursor:pointer}
+  .chip .ar{color:#0B5F7D;opacity:.7}
+  .chip.lost{color:var(--muted);background:var(--card);border-color:var(--card-line);font-weight:500}
+  .chip.done{color:var(--done);background:var(--done-bg);border-color:var(--done-edge)}
+  .chip.ghost{color:var(--faint);background:var(--card);border:1px dashed var(--card-line);font-weight:500}
+  .tag{font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.85}
+  .meta{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 12px}
+  .m{font-size:11px;border:1px solid var(--card-line);background:var(--card);border-radius:7px;padding:3px 9px;color:var(--muted)}
+  .m b{color:var(--ink);font-weight:600}
+  .card{background:var(--card);border:1px solid var(--card-line);border-radius:12px;padding:16px;margin-bottom:13px}
+  .k{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin:0 0 11px}
+  .note{font-size:12.5px;color:var(--muted);line-height:1.65;margin:0 0 10px}
+  .note b{color:var(--ink)}
+  .note:last-child{margin-bottom:0}
+  h4{margin:28px 0 10px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--faint)}
+  .pick{outline:2px dashed var(--done);outline-offset:5px;border-radius:13px}
+  .tagline{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin:0 0 9px}
+  .tagline.g{color:var(--done)} .tagline.b{color:var(--chase)} .tagline.n{color:var(--faint)}
+  .q{border-radius:10px;padding:11px 14px;font-size:12.5px;line-height:1.65;margin-bottom:10px}
+  .q.i{background:var(--info-bg);border:1px solid var(--info-edge);color:#0B5F7D}
+  .q b{display:block;margin-bottom:2px}
+</style>
+</head>
+<body>
+<div class="bar"><b>Mock only</b><span>The &ldquo;Also&rdquo; row on a deal header &middot; invented client and deal names</span></div>
+
+<div class="app">
+  <div class="side">
+    <div class="logo">one<i>.</i></div>
+    <div class="k">Main</div>
+    <a>Dashboard</a><a class="on">Deals</a><a>Pipeline</a><a>Settlements</a>
+    <a>Clients</a><a>Lender library</a><a>Templates</a><a>Reports</a>
+    <a>Cheat sheet</a><a>Knowledge base</a>
+    <div class="k">Admin</div>
+    <a>Commissions</a><a>Team workload</a><a>Team</a><a>Settings</a>
+  </div>
+
+  <div class="main">
+
+    <!-- NOW -->
+    <div class="card">
+      <p class="tagline b">What Katie is looking at &mdash; seven chips, five of them dead</p>
+      <p class="crumb">&larr; Deals / <b>Complex refinance</b></p>
+      <p class="dname"><span class="pre">Marchetti_</span><span class="tail">Refinance_2026 USE THIS</span>
+        <span class="saved">&check; All changes saved</span></p>
+      <div class="alsorow">
+        <span class="alsok">Also</span>
+        <span class="chip">THIS_2026_Copy <span class="ar">&rarr;</span></span>
+        <span class="chip">THIS_2026_New <span class="ar">&rarr;</span></span>
+        <span class="chip">INV Purchase PA <span class="ar">&rarr;</span></span>
+        <span class="chip">Investment Preapp_2026 <span class="ar">&rarr;</span></span>
+        <span class="chip">THIS_2026_Copy <span class="ar">&rarr;</span></span>
+        <span class="chip">Investment Preapp 2026 <span class="ar">&rarr;</span></span>
+        <span class="chip">INV_Pre-App_ORDE_2026 <span class="ar">&rarr;</span></span>
+      </div>
+      <p class="note" style="margin-top:9px">Every one the same blue. Two are live and five were lost
+        months ago, and the row gives you no way to tell. Two of them read the same.</p>
+    </div>
+
+    <!-- PROPOSED -->
+    <div class="card pick">
+      <p class="tagline g">Proposed &mdash; live deals only, lost tucked behind a count</p>
+      <p class="crumb">&larr; Deals / <b>Complex refinance</b></p>
+      <p class="dname"><span class="pre">Marchetti_</span><span class="tail">Refinance_2026 USE THIS</span>
+        <span class="saved">&check; All changes saved</span></p>
+      <div class="alsorow">
+        <span class="alsok">Also</span>
+        <span class="chip">INV Purchase PA <span class="ar">&rarr;</span></span>
+        <span class="chip">Investment Preapp 2026 <span class="ar">&rarr;</span></span>
+        <span class="chip ghost">5 lost &middot; show</span>
+      </div>
+      <div class="meta">
+        <span class="m">broker <b>Fabio de Castro</b></span>
+        <span class="m">credit <b>Katie Amos</b></span>
+        <span class="m">scenario <b>Complex refinance</b></span>
+        <span class="m">waiting on <b>&check; Ready to push to SalesTrekker</b></span>
+      </div>
+      <p class="note">Two live deals, which is the honest picture. The lost ones are still one press
+        away &mdash; nothing is hidden from you, it is just not shouting.</p>
+    </div>
+
+    <!-- EXPANDED -->
+    <div class="card">
+      <p class="tagline n">After pressing &ldquo;5 lost &middot; show&rdquo;</p>
+      <div class="alsorow">
+        <span class="alsok">Also</span>
+        <span class="chip">INV Purchase PA <span class="ar">&rarr;</span></span>
+        <span class="chip">Investment Preapp 2026 <span class="ar">&rarr;</span></span>
+        <span class="chip lost">THIS_2026_Copy <span class="tag">lost</span> <span class="ar">&rarr;</span></span>
+        <span class="chip lost">THIS_2026_New <span class="tag">lost</span> <span class="ar">&rarr;</span></span>
+        <span class="chip lost">Investment Preapp_2026 <span class="tag">lost</span> <span class="ar">&rarr;</span></span>
+        <span class="chip lost">THIS_2026_Copy <span class="tag">lost</span> <span class="ar">&rarr;</span></span>
+        <span class="chip lost">INV_Pre-App_ORDE_2026 <span class="tag">lost</span> <span class="ar">&rarr;</span></span>
+        <span class="chip ghost">hide</span>
+      </div>
+      <p class="note">Grey, with the word on them, and still clickable. Nothing is deleted and nothing
+        is lost from view &mdash; you asked for it and there it is.</p>
+    </div>
+
+    <!-- SETTLED -->
+    <div class="card">
+      <p class="tagline n">One more case worth deciding &mdash; a settled deal</p>
+      <div class="alsorow">
+        <span class="alsok">Also</span>
+        <span class="chip">INV Purchase PA <span class="ar">&rarr;</span></span>
+        <span class="chip done">Refinance_2024 <span class="tag">settled</span> <span class="ar">&rarr;</span></span>
+        <span class="chip ghost">5 lost &middot; show</span>
+      </div>
+      <p class="note">A settled deal is not live and it is not lost &mdash; it is history you often
+        want. I would keep it on the row in green with the word on it, rather than hiding it with the
+        lost ones. Say if you would rather it hid too.</p>
+    </div>
+
+    <h4>The other half of what you asked</h4>
+    <div class="q i"><b>Pressing a chip opens that deal.</b> They are already built as links, so either
+      something is stopping the click or the label is so similar to the one next to it that you cannot
+      tell where you landed. I will click every one of them in a real browser before I ship it, and the
+      browser test will press one and check which deal opens &mdash; so it cannot quietly stop working
+      again.</div>
+
+    <h4>Two small things while I am in there</h4>
+    <p class="note"><b>Two chips read the same.</b> &ldquo;THIS_2026_Copy&rdquo; twice, because the row
+      only shows the part of the name that differs from the deal you are on, and two deals can differ in
+      the same way. Where two labels come out identical I will show enough of the name to tell them
+      apart.</p>
+    <p class="note"><b>The count badge on the deals list.</b> It says &ldquo;8 deals&rdquo; today,
+      counting the lost ones. If lost come off this row they should come off that count too, or the two
+      screens disagree.</p>
+  </div>
+</div>
+</body>
+</html>

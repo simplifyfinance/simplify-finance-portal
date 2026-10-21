@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { clientIdsOn, sharesAClient, otherDealsForSameClients, splitOnCommonStart, otherDealsLine } from './same-clients'
+import { clientIdsOn, sharesAClient, otherDealsForSameClients, splitOnCommonStart, otherDealsLine, lifeOf, splitByLife, labelsFor} from './same-clients'
 
 // TWO DEALS FOR THE SAME PEOPLE.
 //
@@ -149,5 +149,106 @@ describe('the screens show it', () => {
     const s = read('components/DealName.tsx')
     expect(s).toContain('{shared}')
     expect(s).toContain('{tail}')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// LIVE, FINISHED, OR DEAD
+// ---------------------------------------------------------------------------
+//
+// 21 Oct 2026. Katie: "Would it be okay to remove the lost deals from this
+// section so only the active deals are showing? There are 5 lost deals in
+// here." One deal header carried seven of these chips, all the same blue, five
+// of them lost months ago.
+
+describe('which of them is still alive', () => {
+  it('calls a lost or duplicate deal dead', () => {
+    expect(lifeOf({ id: 'a', status: 'lost' })).toBe('lost')
+    expect(lifeOf({ id: 'a', status: 'duplicate' })).toBe('lost')
+    expect(lifeOf({ id: 'a', status: 'LOST' })).toBe('lost')
+  })
+
+  // FINISHED IS NOT DEAD. A settled deal is the loan the client actually has,
+  // which is the one somebody most often wants off this row.
+  it('calls a finished deal settled, not lost', () => {
+    for (const s of ['completed', 'settled', 'closed']) {
+      expect(lifeOf({ id: 'a', status: s }), `${s} should be settled`).toBe('settled')
+    }
+  })
+
+  it('calls anything else live, including a deal with no status at all', () => {
+    expect(lifeOf({ id: 'a' })).toBe('live')
+    expect(lifeOf({ id: 'a', status: null })).toBe('live')
+    expect(lifeOf({ id: 'a', status: 'imported' })).toBe('live')
+  })
+
+  it('splits the row into what shows and what folds away', () => {
+    const { shown, lost } = splitByLife([
+      { id: 'live' },
+      { id: 'done', status: 'completed' },
+      { id: 'dead', status: 'lost' },
+      { id: 'dupe', status: 'duplicate' },
+    ])
+    expect(shown.map(d => d.id)).toEqual(['live', 'done'])
+    expect(lost.map(d => d.id)).toEqual(['dead', 'dupe'])
+  })
+})
+
+// TWO CHIPS THAT READ THE SAME ARE WORSE THAN ONE LONG ONE.
+//
+// The row shows only the part of a name that differs from the deal you are
+// looking at, and two deals can differ in exactly the same way. Fabio had
+// "THIS_2026_Copy" twice on one header with no way to tell them apart.
+describe('what each chip is called', () => {
+  it('shortens to the part that differs', () => {
+    const got = labelsFor(
+      [{ id: 'a', deal_name: 'Marchetti_Investment Refinance 2026' }],
+      'Marchetti_Investment Preapp 2026')
+    expect(got.get('a')).toBe('Refinance 2026')
+  })
+
+  // THE REAL CASE IS TWO DEALS NAMED THE SAME THING. Fabio's header carried
+  // "THIS_2026_Copy" twice, because somebody cloned a deal and the copy kept
+  // the name. Where the shortened labels collide, the full name goes back on -
+  // and where the full names are identical too, nothing in a name can tell
+  // them apart. Most of those are the lost duplicate, which this row no longer
+  // shows by default.
+  it('puts the whole name back where two would read the same', () => {
+    const got = labelsFor([
+      { id: 'a', deal_name: 'Marchetti_Refinance_2026_Copy' },
+      { id: 'b', deal_name: 'Marchetti_Refinance_2026_Copy' },
+      { id: 'c', deal_name: 'Marchetti_Refinance_2026_New' },
+    ], 'Marchetti_Refinance_2026_Main')
+    expect(got.get('a')).toBe('Marchetti_Refinance_2026_Copy')
+    expect(got.get('b')).toBe('Marchetti_Refinance_2026_Copy')
+    // The one that was already unique keeps its short label.
+    expect(got.get('c')).toBe('New')
+  })
+
+  it('never hands back an empty label', () => {
+    const got = labelsFor([{ id: 'a', deal_name: 'Whatever' }], 'Whatever')
+    expect(String(got.get('a') || '').length).toBeGreaterThan(0)
+  })
+})
+
+describe('the screens that draw them', () => {
+  const header = readFileSync('app/(app)/deals/[id]/DealPageClient.tsx', 'utf8')
+  const list = readFileSync('app/(app)/deals/page.tsx', 'utf8')
+
+  it('folds the lost ones away on the deal header', () => {
+    expect(header).toContain('splitByLife')
+    expect(header).toContain('lost · show')
+  })
+
+  // Fabio: "ensure if I press the balloon I can go into the actual deal."
+  // tests/browser/other-deals.spec.ts presses one in a real browser; this only
+  // checks the id a robot needs is on the chip.
+  it('puts the deal id on the chip so a robot can check where it lands', () => {
+    expect(header).toContain('data-other-deal')
+  })
+
+  // The two screens must not disagree about how many deals a client has.
+  it('leaves the lost ones out of the count on the deals list', () => {
+    expect(list).toContain('splitByLife(twins.get(deal.id) || []).shown.length')
   })
 })

@@ -159,7 +159,16 @@ describe('the deal page holds no more state than it did', () => {
     // back, and while it is set a modal is over the form so nobody is typing
     // underneath. That is the whole hazard this number exists to guard, and
     // this one does not have it.
+    //
+    // 21 OCT 2026: 13 -> 14. The new one is `showLost` - whether the other
+    // deals row is also showing the lost ones. Katie: "There are 5 lost deals
+    // in here."
+    //
+    // It cannot land mid-keystroke. The only thing that sets it is a press on
+    // the chip itself, so the person doing it has their hand on the mouse and
+    // is not typing. No fetch resolves into it, nothing schedules it, and it
+    // is read in the header above the form rather than by any field.
     expect(held, 'the deal page is holding more state than it was - can it land mid-keystroke?')
-      .toBeLessThanOrEqual(13)
+      .toBeLessThanOrEqual(14)
   })
 })

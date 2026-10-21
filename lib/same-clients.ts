@@ -58,6 +58,64 @@ export function otherDealsForSameClients<T extends DealLike>(deal: T, all: T[] |
     d && d.id !== deal.id && !d.is_test && sharesAClient(deal, d))
 }
 
+// LIVE, FINISHED, OR DEAD.
+//
+// 21 Oct 2026. Katie: "Would it be okay to remove the lost deals from this
+// section so only the active deals are showing?" On one deal header there were
+// seven of these chips, all the same blue, and five of them were lost months
+// ago. The row gave nobody a way to tell.
+//
+// FINISHED IS NOT DEAD. A settled deal is the one somebody most often wants -
+// it is the loan the client actually has. It stays on the row, in the colour
+// the whole portal uses for finished well, with the word on it. Only the lost
+// ones step back, and even they are one press away.
+export type Life = 'live' | 'settled' | 'lost'
+
+const DEAD = ['lost', 'duplicate']
+const FINISHED = ['completed', 'settled', 'closed']
+
+export function lifeOf(d: DealLike | null | undefined): Life {
+  const s = String(d?.status || '').trim().toLowerCase()
+  if (DEAD.includes(s)) return 'lost'
+  if (FINISHED.includes(s)) return 'settled'
+  return 'live'
+}
+
+/** The ones the row shows without being asked, and the ones it folds away. */
+export function splitByLife<T extends DealLike>(deals: T[] | null | undefined): {
+  shown: T[]; lost: T[]
+} {
+  const all = deals || []
+  return {
+    shown: all.filter(d => lifeOf(d) !== 'lost'),
+    lost: all.filter(d => lifeOf(d) === 'lost'),
+  }
+}
+
+/**
+ * TWO CHIPS THAT READ THE SAME ARE WORSE THAN A LONG ONE.
+ *
+ * The row shows only the part of a name that differs from the deal you are on,
+ * and two deals can differ in exactly the same way - Fabio had
+ * "THIS_2026_Copy" twice on one header. Where that happens the whole name goes
+ * back on, for the ones that clashed only.
+ */
+export function labelsFor<T extends DealLike>(deals: T[], against: string): Map<string, string> {
+  const short = new Map<string, string>()
+  const seen = new Map<string, number>()
+  for (const d of deals) {
+    const tail = splitOnCommonStart(String(d.deal_name || ''), [against]).tail
+    short.set(d.id, tail)
+    seen.set(tail, (seen.get(tail) || 0) + 1)
+  }
+  const out = new Map<string, string>()
+  for (const d of deals) {
+    const tail = short.get(d.id) || ''
+    out.set(d.id, (seen.get(tail) || 0) > 1 ? String(d.deal_name || tail) : tail)
+  }
+  return out
+}
+
 // WHAT THE PART THAT DIFFERS ACTUALLY IS.
 //
 // Only ever used to EMPHASISE, never to decide anything. When two names share a

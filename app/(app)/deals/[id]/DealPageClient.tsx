@@ -45,7 +45,7 @@ import AnzAssessmentEmail from '@/components/AnzAssessmentEmail'
 import BrokerAssignment from './BrokerAssignment'
 import TestDealBand from '@/components/TestDealBand'
 import DealName from '@/components/DealName'
-import { splitOnCommonStart } from '@/lib/same-clients'
+import { splitOnCommonStart, splitByLife, labelsFor, lifeOf } from '@/lib/same-clients'
 import { useOtherDeals } from '@/components/useOtherDeals'
 import { CLONE_SELECT, cloneFields, cloneAsks, provenanceLine, type CloneKind } from '@/lib/clone-deal'
 import { positionChanges, applyChanges, type PositionChange } from '@/lib/position-after-settlement'
@@ -161,6 +161,8 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
   // ANOTHER DEAL FOR THE SAME PEOPLE. See components/useOtherDeals.ts - 23 Sep
   // 2026, two Hameed deals whose names matched for 42 characters.
   const otherDeals = useOtherDeals(dealData)
+  // The lost ones are folded away until somebody asks for them.
+  const [showLost, setShowLost] = useState(false)
   const [me, setMe] = useState<{ id: string | null; name: string }>({ id: null, name: '' })
   // Kept apart from the name: who may look at previous versions is decided by
   // address, not by job title. See canSeeHistory in lib/permissions.ts.
@@ -330,20 +332,51 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
               This is the line that would have ended 23 Sep 2026 in ten seconds
               instead of forty minutes. It shows only the part of the other
               name that differs, because the rest is the name above it. */}
-          {otherDeals.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap mt-1.5 mb-1">
-              <span className="text-[9.5px] font-bold tracking-wider uppercase text-brand-ink/70">Also</span>
-              {otherDeals.map(o => {
-                const label = splitOnCommonStart(String(o.deal_name || ''), [String(dealData.deal_name || '')]).tail
-                return (
-                  <Link key={o.id} href={`/deals/${o.id}`}
-                    className="text-[12.5px] font-semibold text-info bg-info-bg border border-info-edge rounded-lg px-2.5 py-1 hover:bg-info-bg">
-                    {label} <span className="text-brand-ink/70">&rarr;</span>
-                  </Link>
-                )
-              })}
-            </div>
-          )}
+          {otherDeals.length > 0 && (() => {
+            // LIVE FIRST, LOST FOLDED AWAY. Katie, 21 Oct 2026: seven chips on
+            // one header, five of them lost months ago, every one the same
+            // blue. A settled deal stays - it is the loan the client actually
+            // has, and it is the one most often wanted. See lifeOf in
+            // lib/same-clients.ts.
+            const { shown, lost } = splitByLife(otherDeals)
+            const labels = labelsFor(otherDeals, String(dealData.deal_name || ''))
+            const chip = (o: typeof otherDeals[number]) => {
+              const life = lifeOf(o)
+              const skin = life === 'lost'
+                ? 'text-muted bg-card border-card-line font-medium hover:bg-page'
+                : life === 'settled'
+                  ? 'text-done bg-done-bg border-done-edge font-semibold hover:bg-done-bg'
+                  : 'text-info bg-info-bg border-info-edge font-semibold hover:bg-info-bg'
+              return (
+                <Link key={o.id} href={`/deals/${o.id}`} data-other-deal={o.id}
+                  className={`text-[12.5px] border rounded-lg px-2.5 py-1 transition ${skin}`}>
+                  {labels.get(o.id) || o.deal_name}
+                  {life !== 'live' && (
+                    <span className="text-[9px] font-bold uppercase tracking-[.04em] opacity-80 ml-1.5">
+                      {life === 'lost' ? 'lost' : 'settled'}
+                    </span>
+                  )}
+                  <span className="text-brand-ink/70 ml-1.5">&rarr;</span>
+                </Link>
+              )
+            }
+            return (
+              <div className="flex items-center gap-2 flex-wrap mt-1.5 mb-1">
+                <span className="text-[9.5px] font-bold tracking-wider uppercase text-brand-ink/70">Also</span>
+                {shown.map(chip)}
+                {lost.length > 0 && showLost && lost.map(chip)}
+                {/* NOTHING IS HIDDEN, IT IS JUST NOT SHOUTING. One press and
+                    they are all there, greyed, with the word on them. */}
+                {lost.length > 0 && (
+                  <button onClick={() => setShowLost(v => !v)}
+                    className="text-[12px] text-faint bg-card border border-dashed border-card-line
+                               rounded-lg px-2.5 py-1 hover:bg-page transition">
+                    {showLost ? 'hide' : `${lost.length} lost · show`}
+                  </button>
+                )}
+              </div>
+            )
+          })()}
           {/* WHERE THIS FACT FIND CAME FROM, SAID ON THE DEAL.
               *
               * A fact find copied from another deal is a SNAPSHOT. Update the

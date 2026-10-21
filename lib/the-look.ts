@@ -130,6 +130,14 @@ export const THE_LOOK: Piece[] = [
   { mock: 'one-compliance.html', piece: 'Compliance: the index says what each section is still missing',
     proof: { file: 'app/(app)/deals/[id]/ComplianceForm.tsx', contains: 'WHAT EACH SECTION IS STILL MISSING' } },
 
+  // THE OTHER DEALS ROW. 21 Oct 2026. Katie: "Would it be okay to remove the
+  // lost deals from this section so only the active deals are showing? There
+  // are 5 lost deals in here." One header carried seven chips in the same
+  // blue, five of them dead. Fabio, on the same row: "ensure if I press the
+  // balloon I can go into the actual deal."
+  { mock: 'one-also-row.html', piece: 'Deal header: live deals on the row, lost folded behind a count',
+    proof: { file: 'app/(app)/deals/[id]/DealPageClient.tsx', contains: 'lost · show' } },
+
   // THE BOARD. Three decisions from 2 Oct 2026 that were never on this list -
   // which is exactly how "colour all the way round" sat unbuilt for four days
   // while the list said everything was accounted for. A mock in the repo that

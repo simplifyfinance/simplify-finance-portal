@@ -25,7 +25,7 @@ import { useBoardSettings } from '@/lib/use-board-settings'
 import type { Alert } from '@/lib/deal-notes'
 import { realDealsOnly, testDealsOnly } from '@/lib/test-deal'
 import DealName from '@/components/DealName'
-import { otherDealsForSameClients } from '@/lib/same-clients'
+import { otherDealsForSameClients, splitByLife} from '@/lib/same-clients'
 import Loading from '@/components/Loading'
 import { CLONE_SELECT, cloneFields, cloneAsks } from '@/lib/clone-deal'
 
@@ -523,9 +523,13 @@ export default function DealsPage() {
                   <div className="text-sm font-medium flex items-center gap-2 min-w-0">
                     <DealName className="truncate" name={deal.deal_name}
                       others={(twins.get(deal.id) || []).map(o => String(o.deal_name || ''))} />
-                    {(twins.get(deal.id) || []).length > 0 && (
+                    {/* LOST DEALS ARE NOT COUNTED HERE EITHER. 21 Oct 2026 -
+                        the Also row on the deal header stopped showing them,
+                        and a badge that still counted them would make the two
+                        screens disagree about how many deals a client has. */}
+                    {splitByLife(twins.get(deal.id) || []).shown.length > 0 && (
                       <span className="text-[10px] font-bold tracking-[.05em] uppercase text-muted bg-gray-50 border border-line rounded px-1.5 py-px flex-shrink-0">
-                        {(twins.get(deal.id) || []).length + 1} deals
+                        {splitByLife(twins.get(deal.id) || []).shown.length + 1} deals
                       </span>
                     )}
                   </div>
