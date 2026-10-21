@@ -20,16 +20,23 @@ const sent = (template: any, at: string, by = 'Katie Amos'): SentEmail => ({
 })
 
 describe('the catalogue', () => {
-  it('is four, and there is still no conditional approval template', () => {
+  it('is five, and there is still no conditional approval template', () => {
     // 9 Oct 2026: the final check-in joined them, for a client who has gone
     // quiet after the borrowing capacity. It leads the list because it is the
     // earliest point a deal can reach it - TEMPLATES is in the order a deal
     // LIVES them. Fabio, 30 Sep 2026, on the one that does NOT exist: "we dont
     // have a condtional apporval tempalkte".
+    // 21 Oct 2026: the offer accepted joined them, for a pre-approved client
+    // who has found a house. It sits beside the final check-in at the top for
+    // the same reason - neither waits for a milestone the record knows about.
     expect(TEMPLATES.map(t => t.id))
-      .toEqual(['final_checkin', 'preapproval', 'preapproval_extension', 'formal_approval'])
+      .toEqual(['final_checkin', 'offer_accepted', 'preapproval', 'preapproval_extension', 'formal_approval'])
     expect(templateById('conditional_approval')).toBeNull()
   })
+
+  // The ones whose body says "please find attached". An email that says that
+  // with nothing attached is a phone call.
+  const PROMISES_AN_ATTACHMENT = ['preapproval', 'preapproval_extension', 'formal_approval']
 
   it('every one that promises an attachment requires one', () => {
     // THE RULE THIS WAS ALWAYS STANDING IN FOR. It read "every one needs the
@@ -39,8 +46,15 @@ describe('the catalogue', () => {
     //
     // The final check-in announces nothing and attaches nothing, so it is not
     // an exception to the rule; it is outside it.
+    //
+    // 21 OCT 2026: SAID AS THE RULE RATHER THAN AS A LIST OF EXCEPTIONS. This
+    // read `toBe(t.id !== 'final_checkin')`, so adding the offer accepted
+    // template - which also attaches nothing - failed a test whose own comment
+    // says what it actually means. A second exception is the moment to stop
+    // listing them.
     for (const t of TEMPLATES) {
-      expect(t.letterRequired, `${t.id}`).toBe(t.id !== 'final_checkin')
+      const promises = PROMISES_AN_ATTACHMENT.includes(t.id)
+      expect(t.letterRequired, `${t.id}`).toBe(promises)
     }
   })
 
@@ -93,10 +107,12 @@ describe('what has already gone out', () => {
 describe('what is ready on a deal', () => {
   it('no MILESTONE on a deal that has reached none, and still nothing suggested', () => {
     const menu = menuFor({})
-    // The final check-in is always ready - it is not a milestone and nothing in
-    // the record knows whether a client has gone quiet. Everything else waits.
-    expect(menu.filter(i => i.id !== 'final_checkin').every(i => i.state === 'not_yet')).toBe(true)
-    expect(menu.find(i => i.id === 'final_checkin')!.state).toBe('ready')
+    // TWO OF THEM ARE ALWAYS READY and neither is a milestone: nothing in the
+    // record knows whether a client has gone quiet, or whether an agent has
+    // just rung them about an accepted offer. Everything else waits.
+    const ALWAYS = ['final_checkin', 'offer_accepted']
+    expect(menu.filter(i => !ALWAYS.includes(i.id)).every(i => i.state === 'not_yet')).toBe(true)
+    for (const id of ALWAYS) expect(menu.find(i => i.id === id)!.state, id).toBe('ready')
 
     // AND IT IS STILL NEVER THE SUGGESTION. Pressing Email on a brand new deal
     // must not offer to close the client's file. See suggestedFor.
@@ -104,7 +120,7 @@ describe('what is ready on a deal', () => {
 
     // Listed rather than hidden - a missing button is a question, a greyed one
     // is an answer.
-    expect(menu).toHaveLength(4)
+    expect(menu).toHaveLength(5)
     for (const i of menu) expect(i.note).not.toBe('')
   })
 
@@ -166,9 +182,12 @@ describe('the menu reads in a useful order', () => {
     expect(menuFor(deal).map(i => [i.id, i.state])).toEqual([
       ['formal_approval', 'ready'],
       ['preapproval_extension', 'ready'],
-      // Ready, but last of the ready ones: it is the earliest thing a deal can
-      // reach and this deal is formally approved, so it is the least likely
-      // thing anybody wants here.
+      // Ready, but last of the ready ones: these two are the earliest things a
+      // deal can reach and this one is formally approved, so they are the
+      // least likely things anybody wants here.
+      // The offer accepted leads the two of them: on any deal, telling a
+      // client their offer is on is likelier than closing their file.
+      ['offer_accepted', 'ready'],
       ['final_checkin', 'ready'],
       ['preapproval', 'sent'],
     ])

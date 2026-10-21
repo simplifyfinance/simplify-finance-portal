@@ -9,6 +9,8 @@ import { readNotice, noticeFor } from '@/lib/rate-notice'
 import { lenderIdFrom } from '@/lib/lender-id'
 import { lenderOnTheDeal } from '@/lib/client-agreement'
 import { emailsGoTo, isTestDeal, testSubject } from '@/lib/test-deal'
+import { outstandingFromDeal } from '@/lib/documents-outstanding'
+import { sentWithWords } from '@/lib/offer-accepted-email'
 
 // SENDING A MILESTONE EMAIL.
 //
@@ -170,6 +172,60 @@ async function brokerSender(supabase: any, brokerKey: string) {
 // WHAT WOULD BE SENT, WITHOUT SENDING IT. The send screen draws itself from
 // this, and so does the browser check - which is the only way a robot can look
 // at a client email without emailing a client. It writes nothing.
+
+// THE OFFER ACCEPTED EMAIL'S OWN FOUR CHOICES.
+//
+// 21 Oct 2026. Everything else these emails say comes off the deal. These are
+// the things only a person knows - which valuation was ordered, what went to
+// the lender with the contract, how long they said they would take, and which
+// outstanding documents to name in this particular email.
+//
+// THE DOCUMENTS ARE WORDS, NOT FIGURES. They are the deal's own outstanding
+// list as the screen phrased it, so nothing a browser sends here can change a
+// number in the email - which is the rule every other field in this route
+// follows.
+const VALUATIONS = ['desktop', 'full', 'none'] as const
+
+function keysFrom(raw: any): string[] {
+  try {
+    const parsed = JSON.parse(txt(raw) || '[]')
+    // Keys only, and a short list. Nothing here reaches a client as itself.
+    return Array.isArray(parsed)
+      ? parsed.map(txt).filter(k => /^[a-z0-9_.:-]{1,80}$/i.test(k)).slice(0, 30)
+      : []
+  } catch { return [] }
+}
+
+function offerAcceptedChoices(get: (k: string) => any, deal: any) {
+  const raw = txt(get('valuation'))
+
+  // THE DOCUMENTS ARE LOOKED UP, NOT RECEIVED.
+  //
+  // The screen ticks the deal's own outstanding rows and posts their keys.
+  // This reads that same list off the deal and takes the wording from there,
+  // so the sentence a client reads is the portal's, whatever a browser sends.
+  const want = new Set(keysFrom(get('documents')))
+  const documents = want.size === 0 ? [] : outstandingFromDeal(deal)
+    .filter((d: any) => want.has(d.key))
+    .map((d: any) => [d.label, d.groupLabel ? `(${d.groupLabel})` : '', d.detail || '']
+      .filter(Boolean).join(' '))
+
+  return {
+    // Anything that is not one of the three is the one his completed email
+    // used, rather than an unhandled state.
+    valuation: (VALUATIONS as readonly string[]).includes(raw) ? (raw as any) : 'desktop',
+    // Ticks in, English out. See SENT_WITH in lib/offer-accepted-email.ts.
+    sentWith: sentWithWords(keysFrom(get('sentWith'))),
+    // Digits only. "two" would read as "two business two days".
+    businessDays: txt(get('businessDays')).replace(/[^0-9]/g, ''),
+    // A NUMBER OF YEARS, NOT A PHRASE. It lands inside "a ___ fixed rate
+    // option", so anything but digits is a browser writing part of a
+    // sentence in a client email.
+    fixedTerm: txt(get('fixedTerm')).replace(/[^0-9]/g, '').slice(0, 2),
+    documents,
+  }
+}
+
 export async function GET(req: NextRequest) {
   const supabase = await createSupabaseServer()
   const sender = await senderOf(supabase)
@@ -213,6 +269,7 @@ export async function GET(req: NextRequest) {
     extra: txt(req.nextUrl.searchParams.get('extra')),
     expiry: txt(req.nextUrl.searchParams.get('expiry')),
     insuranceAmount: txt(req.nextUrl.searchParams.get('insuranceAmount')),
+    ...offerAcceptedChoices(k => req.nextUrl.searchParams.get(k), deal),
   })
   if (!built) return NextResponse.json({ error: 'Unknown template.' }, { status: 400 })
 
@@ -310,6 +367,7 @@ export async function POST(req: NextRequest) {
     extra: txt(form.get('extra')),
     expiry: txt(form.get('expiry')),
     insuranceAmount: txt(form.get('insuranceAmount')),
+    ...offerAcceptedChoices(k => form.get(k), deal),
   })
   if (!built) return NextResponse.json({ error: 'Unknown template.' }, { status: 400 })
 

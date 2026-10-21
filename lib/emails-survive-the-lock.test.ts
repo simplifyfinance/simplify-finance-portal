@@ -89,8 +89,25 @@ describe('the browser posts the deal, never the email', () => {
     //   and nowhere else; it cannot become a sentence.
     //
     // The words still come from the server. That is what the next two tests say.
+    //
+    // 21 OCT 2026. Five joined for the offer accepted email, and the first
+    // version of them widened this rule rather than keeping it. `sentWith` was
+    // a free text box whose contents landed in the middle of "This together
+    // with ___ has been sent to Ubank", and `documents` posted the finished
+    // bullet list. Both were a browser writing sentences in a client email,
+    // which is exactly what this test exists to stop. It caught them.
+    //
+    // All five are now in the two classes this list already allows:
+    //
+    //   valuation is one of three ids, like brandId. Anything else falls back.
+    //   sentWith and documents are KEYS. The route reads the deal's own
+    //     outstanding list and takes the wording from there, so the sentence a
+    //     client reads is the portal's whatever a browser sends.
+    //   businessDays and fixedTerm are figures, like insuranceAmount. Digits
+    //     are stripped out of both before either reaches a sentence.
     const allowed = ['dealId', 'template', 'overrides', 'extra', 'expiry',
-                     'insuranceAmount', 'brandId', 'brokerKey', 'calendly', 'file']
+                     'insuranceAmount', 'brandId', 'brokerKey', 'calendly', 'file',
+                     'valuation', 'sentWith', 'documents', 'businessDays', 'fixedTerm']
     const extra = posted.filter(k => !allowed.includes(k))
     expect(extra, 'anything else on this form is something a browser could put in a client email')
       .toEqual([])

@@ -19,10 +19,11 @@
 
 import { templateById, type TemplateId, type MilestoneTemplate } from './milestone-emails'
 import { formalApprovalBlocks, preapprovalBlocks, withOverrides, on,
-         securityState, waitingOnLender, type Block, type Overrides } from './milestone-blocks'
+         securityState, waitingOnLender, type Block, type Overrides, offerAcceptedBlocks} from './milestone-blocks'
 import { milestoneRows, loanDetails, missingFigures } from './milestone-figures'
 import { contractsByPhrase, insuredPartyName, type LenderRule } from './lender-rules'
 import { buildFormalApprovalEmail } from './formal-approval-email'
+import { buildOfferAcceptedEmail, loanMovedLine, depositPaidLine } from './offer-accepted-email'
 import { buildPreapprovalEmail } from './preapproval-email'
 import { buildFinalCheckinEmail } from './final-checkin-email'
 import { lenderOnTheDeal, optionOnTheDeal, splitsOnTheDeal } from './client-agreement'
@@ -45,6 +46,18 @@ export type Sender = {
 }
 
 export type AssembleInput = {
+  // --- the offer accepted email's own four choices -------------------------
+  //
+  // 21 Oct 2026. Everything else on this type comes off the deal. These are
+  // the things only a person knows: which valuation was ordered, what went to
+  // the lender with the contract, how long they said they would take, and
+  // which outstanding documents to chase in this particular email.
+  valuation?: 'desktop' | 'full' | 'none'
+  sentWith?: string
+  businessDays?: string
+  documents?: string[]
+  /** The term to offer where the fixed rate block is ticked on. */
+  fixedTerm?: string
   deal: any
   templateId: TemplateId
   // Answers already loaded for THIS deal's lender. An empty object is a lender
@@ -138,6 +151,9 @@ export function blocksFor(deal: any, templateId: TemplateId,
   // that could be turned on or off, so the honest answer is an empty list and
   // the screen draws no section at all.
   if (templateId === 'final_checkin') return []
+  // Three of its own, and none of them from the pre-approval checklist. See
+  // the note above about what the final check-in inherited by accident.
+  if (templateId === 'offer_accepted') return offerAcceptedBlocks(deal)
   if (templateId === 'formal_approval') return formalApprovalBlocks(deal, rules)
   return preapprovalBlocks(deal, rules)
 }
@@ -253,6 +269,41 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
       senderPhone: input.sender.phone,
       senderWeb: brandWeb(brand),
       calendlyUrl: input.calendlyUrl,
+    })
+  } else if (template.id === 'offer_accepted') {
+    // THE SOLICITOR ONLY WHERE THE TICK IS ON, same rule as the formal
+    // approval's other-side block: one decision, so the email cannot say we
+    // have copied somebody while the copy line is empty.
+    if (on(blocks, 'copy_solicitor')) {
+      const sol = txt(deal?.solicitor_email)
+      if (sol) cc.push(sol)
+      else problems.push('The solicitor is ticked to be copied in, but no email is recorded on the deal.')
+    }
+
+    built = buildOfferAcceptedEmail({
+      brand,
+      clientNames,
+      lenderName,
+      propertyAddress: propertyAddressOf(deal),
+      valuation: (input.valuation || 'desktop') as any,
+      sentWith: txt(input.sentWith),
+      businessDays: txt(input.businessDays),
+      documents: (input.documents || []).map(txt).filter(Boolean),
+      extra: txt(input.extra),
+      rows,
+      details: loanDetails(deal, optionOnTheDeal(lo), splitsOnTheDeal(lo)),
+      // NOT FROM THE BROWSER. Both are read off the deal here, for the same
+      // reason every other figure in these emails is: a number a screen can
+      // send is a number a screen can get wrong.
+      loanMoved: loanMovedLine(deal),
+      depositPaid: depositPaidLine(deal),
+      blocks,
+      fixedTerm: txt(input.fixedTerm),
+      rateNotice: txt(input.rateNotice),
+      senderName: input.sender.name,
+      senderEmail: input.sender.email,
+      senderPhone: input.sender.phone,
+      senderWeb: brandWeb(brand),
     })
   } else if (template.id === 'formal_approval') {
     // The other side only goes on the copy line when the block is on, which is

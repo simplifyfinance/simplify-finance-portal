@@ -119,6 +119,63 @@ function fromLender(key: string, label: string, rules: Record<string, LenderRule
 
 // --- the formal approval ---------------------------------------------------
 
+// WHAT THE OFFER ACCEPTED EMAIL SAYS, AND WHAT IT LEAVES OUT.
+//
+// 21 Oct 2026. Fabio's blank template carried a Queensland paragraph with
+// "DELETE IF NOT QLD" written across the middle of it in capitals, and a fixed
+// rate line for every lender whether or not it applied. Both are decisions,
+// and a decision marked for somebody to delete by hand is a decision that gets
+// made wrongly at six in the evening.
+export function offerAcceptedBlocks(deal: any): Block[] {
+  const out: Block[] = []
+  const state = securityState(deal)
+
+  // QUEENSLAND ONLY, AND THE DEAL ANSWERS IT. In Queensland the risk passes to
+  // the buyer at contract rather than at settlement, which is why his template
+  // tells them to insure now and to ask their solicitor. Anywhere else the
+  // sentence is wrong, not merely unnecessary.
+  out.push({
+    key: 'qld_insurance',
+    label: 'Insure now and speak to your solicitor (Queensland)',
+    on: state === 'QLD',
+    by: 'deal',
+    why: state === 'QLD'
+      ? 'On — the security is in Queensland'
+      : state
+        ? `Off — the security is in ${state}, where this does not apply`
+        : 'Off — no state recorded against the security',
+  })
+
+  // NOBODY HAS RECORDED WHICH LENDERS OFFER THIS, so it cannot be decided from
+  // the deal. Fabio, 21 Oct 2026, asked for a tick box rather than a lender
+  // library field: it is a thing a broker offers a particular client, not a
+  // fact about a bank. Off until somebody ticks it.
+  out.push({
+    key: 'fixed_rate',
+    label: 'Mention the fixed rate option and the rate lock fee',
+    on: false,
+    by: 'ask',
+    why: 'Off — tick it if you want to put the fixed rate in front of them',
+  })
+
+  // THE SOLICITOR GETS A COPY, OR DOES NOT. The offer accepted step already
+  // holds their address. Off by default because a client reading their own
+  // numbers may not expect them forwarded without being asked.
+  const solicitor = txt(deal?.solicitor_email)
+  out.push({
+    key: 'copy_solicitor',
+    label: 'Copy the solicitor in',
+    on: false,
+    by: 'ask',
+    why: solicitor
+      ? 'Off — tick it to copy the solicitor recorded on this deal'
+      : 'Off — no solicitor email recorded on this deal',
+    ...(solicitor ? {} : { needs: 'the solicitor email on the offer accepted step' }),
+  })
+
+  return out
+}
+
 export function formalApprovalBlocks(deal: any,
                                      rules: Record<string, LenderRule>): Block[] {
   const lender = lenderOnTheDeal(deal?.lo_data || {}) || 'this lender'

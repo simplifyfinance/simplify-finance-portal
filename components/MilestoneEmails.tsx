@@ -1,5 +1,8 @@
 'use client'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { outstandingFromDeal } from '@/lib/documents-outstanding'
+import { type DocRow } from '@/lib/document-progress'
+import { SENT_WITH } from '@/lib/offer-accepted-email'
 import { menuFor, lastSent, templateById, type MenuItem, type TemplateId } from '@/lib/milestone-emails'
 import { useSender } from '@/app/(app)/templates/useSender'
 import { SenderPanel } from '@/app/(app)/templates/TemplateFields'
@@ -60,6 +63,26 @@ export default function MilestoneEmails({ deal, onUpdated }: {
 }) {
   const [open, setOpen] = useState<TemplateId | null>(null)
   const [listOpen, setListOpen] = useState(false)
+
+  // ARRIVING FROM SOMEWHERE ELSE WITH ONE ALREADY IN MIND.
+  //
+  // 21 Oct 2026. The offer accepted step ends with "write the offer accepted
+  // email", and the honest way to do that is to open THIS menu on THAT
+  // template rather than to build a second copy of the email over there.
+  //
+  // Read once, from the address bar, and only for a template that exists. A
+  // link somebody edited by hand opens the menu and nothing else.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const want = new URLSearchParams(window.location.search).get('email')
+    if (!want || !templateById(want as TemplateId)) return
+    setOpen(want as TemplateId)
+    // Taken out of the address so a reload does not reopen it, and so the back
+    // button goes back to the deal rather than to the same email again.
+    const url = new URL(window.location.href)
+    url.searchParams.delete('email')
+    window.history.replaceState({}, '', url.toString())
+  }, [])
   const box = useRef<HTMLDivElement | null>(null)
   const menu = menuFor(deal)
 
@@ -160,6 +183,31 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
   const [extra, setExtra] = useState('')
   const [expiry, setExpiry] = useState('')
   const [insuranceAmount, setInsuranceAmount] = useState('')
+  // THE OFFER ACCEPTED EMAIL'S OWN FOUR CHOICES. Everything else on this
+  // screen comes off the deal; these are the things only a person knows.
+  const [valuation, setValuation] = useState<'desktop' | 'full' | 'none'>('desktop')
+  // TICKS, NOT A SENTENCE. See SENT_WITH in lib/offer-accepted-email.ts and
+  // the rule in lib/emails-survive-the-lock.test.ts: a browser must not be
+  // able to put words into a client email.
+  const [sentWith, setSentWith] = useState<Record<string, boolean>>({ contract: true })
+  const [businessDays, setBusinessDays] = useState('2')
+  const [fixedTerm, setFixedTerm] = useState('2')
+  // Which of the deal's outstanding documents to chase in THIS email. Keyed by
+  // the document's own key, so the list and the email cannot drift apart.
+  const [chasing, setChasing] = useState<Record<string, boolean>>({})
+  const isOfferAccepted = templateId === 'offer_accepted'
+  // Read off the deal, never retyped. groupLabel is whose it is - "Margot" -
+  // and detail is why we want it.
+  const outstanding: DocRow[] = useMemo(
+    () => isOfferAccepted ? outstandingFromDeal(deal) : [], [deal, isOfferAccepted])
+  // KEYS ONLY, NEVER THE WORDS. The route reads the same outstanding list off
+  // the deal and takes the wording from there - see the rule in
+  // lib/emails-survive-the-lock.test.ts.
+  const docKeys = useMemo(
+    () => outstanding.filter((d: DocRow) => chasing[d.key]).map((d: DocRow) => d.key),
+    [outstanding, chasing])
+  const sentWithKeys = useMemo(
+    () => SENT_WITH.filter(x => sentWith[x.key]).map(x => x.key), [sentWith])
   const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -206,6 +254,9 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
     const qs = new URLSearchParams({
       dealId: deal.id, template: templateId,
       overrides: JSON.stringify(overrides), extra, expiry, insuranceAmount,
+      valuation, businessDays, fixedTerm,
+      sentWith: JSON.stringify(sentWithKeys),
+      documents: JSON.stringify(docKeys),
       // Ignored by the route for a template that does not pick its sender.
       brokerKey, brandId, calendly,
     })
@@ -217,7 +268,8 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
     } catch (e: any) {
       setErr(`The preview could not be built — ${e?.message || 'network error'}.`)
     }
-  }, [deal.id, templateId, overrides, extra, expiry, insuranceAmount, brokerKey, brandId, calendly])
+  }, [deal.id, templateId, overrides, extra, expiry, insuranceAmount, brokerKey, brandId, calendly,
+      valuation, sentWithKeys, businessDays, fixedTerm, docKeys])
 
   // Redrawn as you tick. Typing is debounced so the free text box does not
   // rebuild the email on every keystroke.
@@ -238,6 +290,11 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
       body.set('extra', extra)
       body.set('expiry', expiry)
       body.set('insuranceAmount', insuranceAmount)
+      body.set('valuation', valuation)
+      body.set('sentWith', JSON.stringify(sentWithKeys))
+      body.set('businessDays', businessDays)
+      body.set('fixedTerm', fixedTerm)
+      body.set('documents', JSON.stringify(docKeys))
       body.set('brokerKey', brokerKey)
       body.set('brandId', brandId)
       body.set('calendly', calendly)
@@ -341,6 +398,77 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
               </>
             )}
 
+            {isOfferAccepted && (
+              <>
+                {/* ONE OF THREE, NOT TWO PARAGRAPHS AND A NOTE TO DELETE ONE.
+                    Fabio's blank template carried both valuation paragraphs
+                    wrapped in asterisks. */}
+                <Shout className="mt-5">The valuation</Shout>
+                <div className="flex gap-1.5 flex-wrap">
+                  {([['desktop', 'Desktop — back at price'],
+                     ['full', 'Full — awaiting inspection'],
+                     ['none', 'Not ordered yet']] as const).map(([k, label]) => (
+                    <button key={k} onClick={() => setValuation(k)}
+                      className={`text-[11.5px] rounded-full px-3 py-[5px] border transition ${
+                        valuation === k ? 'bg-ink border-ink text-page font-semibold'
+                                        : 'bg-card border-line text-muted hover:bg-page'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                <Shout className="mt-5">What went with it</Shout>
+                <div className="flex gap-1.5 flex-wrap">
+                  {SENT_WITH.map(x => (
+                    <button key={x.key}
+                      onClick={() => setSentWith(v => ({ ...v, [x.key]: !v[x.key] }))}
+                      className={`text-[11.5px] rounded-full px-3 py-[5px] border transition ${
+                        sentWith[x.key] ? 'bg-ink border-ink text-page font-semibold'
+                                        : 'bg-card border-line text-muted hover:bg-page'}`}>
+                      {x.words}
+                    </button>
+                  ))}
+                </div>
+
+                <Shout className="mt-5">We should hear back in</Shout>
+                <div className="flex gap-2 items-center">
+                  <input value={businessDays} onChange={e => setBusinessDays(e.target.value)}
+                    placeholder="2"
+                    className="w-20 border border-[#E3E6E8] rounded-lg px-2.5 py-1.5 text-[12.5px]" />
+                  <span className="text-[11.5px] text-faint">
+                    business days. Blank leaves the sentence out.
+                  </span>
+                </div>
+
+                {/* THE DEAL'S OWN OUTSTANDING DOCUMENTS, not a list somebody
+                    retypes. Ticking one here only decides whether it is named
+                    in this email. */}
+                <Shout className="mt-5">What to chase in this email</Shout>
+                {outstanding.length === 0 ? (
+                  <p className="text-[11.5px] text-faint">
+                    Nothing is outstanding on this deal, so the email asks for nothing.
+                  </p>
+                ) : outstanding.map((d: DocRow) => (
+                  <div key={d.key} className="flex gap-2.5 items-start py-1.5 border-b border-[#F6F7F8] last:border-b-0">
+                    <button onClick={() => setChasing(c => ({ ...c, [d.key]: !c[d.key] }))}
+                      aria-label={`${chasing[d.key] ? 'Do not ask' : 'Ask'} for ${d.label}`}
+                      className={`shrink-0 w-4 h-4 mt-0.5 rounded border-[1.5px] flex items-center justify-center text-[10px] font-bold ${
+                        chasing[d.key] ? 'bg-[#0F7B4F] border-[#0F7B4F] text-white' : 'bg-card border-[#CBD2D8] text-transparent'}`}>
+                      &#10003;
+                    </button>
+                    <div>
+                      <div className="text-[12.5px] leading-[1.45]">{d.label}</div>
+                      {(d.groupLabel || d.detail) && (
+                        <div className="text-[10.5px] mt-0.5 leading-[1.45] text-faint">
+                          {[d.groupLabel, d.detail].filter(Boolean).join(' · ')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
             {/* A heading over nothing is a screen with a piece missing. The
                 final check-in has no blocks, so it has no heading. */}
             {blocks.length > 0 && <Shout className="mt-5">What goes in</Shout>}
@@ -374,6 +502,18 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
                 <p className="mt-1 text-[11px] text-faint">
                   Off the lender&rsquo;s own approval letter. Never remembered.
                 </p>
+              </>
+            )}
+
+            {isOfferAccepted && blocks.some(b => b.key === 'fixed_rate' && isOn(b)) && (
+              <>
+                <Shout className="mt-5">The fixed rate term to offer</Shout>
+                <div className="flex gap-2 items-center">
+                  <input value={fixedTerm} onChange={e => setFixedTerm(e.target.value.replace(/[^0-9]/g, ''))}
+                    placeholder="2"
+                    className="w-20 border border-[#E3E6E8] rounded-lg px-2.5 py-1.5 text-[12.5px]" />
+                  <span className="text-[11.5px] text-faint">years</span>
+                </div>
               </>
             )}
 

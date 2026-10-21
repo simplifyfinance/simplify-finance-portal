@@ -19,7 +19,7 @@
 const txt = (v: any) => String(v ?? '').trim()
 
 export type TemplateId = 'preapproval' | 'preapproval_extension' | 'formal_approval'
-  | 'final_checkin'
+  | 'final_checkin' | 'offer_accepted'
 
 export type MilestoneTemplate = {
   id: TemplateId
@@ -58,6 +58,11 @@ export const TEMPLATES: MilestoneTemplate[] = [
   // borrowing capacity has gone and nothing has come back. TEMPLATES is in the
   // order a deal LIVES them; see LIVED below.
   { id: 'final_checkin', name: 'Final check-in', letterRequired: false, copySettlements: false, picksSender: true },
+  // OFFER ACCEPTED. 21 Oct 2026. A pre-approved client has found a house and
+  // the offer is on. There is no letter from a bank to attach - this one
+  // announces what WE are doing and asks for what is still outstanding - and
+  // there is no settlement to run yet, so neither flag is on.
+  { id: 'offer_accepted', name: 'Offer accepted', letterRequired: false, copySettlements: false, picksSender: false },
   { id: 'preapproval', name: 'Pre-approval', letterRequired: true, copySettlements: false, picksSender: false },
   { id: 'preapproval_extension', name: 'Pre-approval extension', letterRequired: true, copySettlements: false, picksSender: false },
   { id: 'formal_approval', name: 'Formal approval', letterRequired: true, copySettlements: true, picksSender: false },
@@ -159,6 +164,22 @@ function readiness(deal: any, t: MilestoneTemplate): { state: MenuState; note: s
   // a person decides that - and a portal that guessed would hide the button on
   // the deal somebody wants it for. Sent once already is still said, because
   // sending it twice is worth noticing; it is not stopped.
+  // ALWAYS AVAILABLE, FOR THE SAME REASON AS THE FINAL CHECK-IN.
+  //
+  // Fabio, 21 Oct 2026: "I don't want it to be locked to any stage. It's
+  // always available."
+  //
+  // A pre-approved client can accept an offer on any day of the week, and
+  // nothing in the record knows the moment it happens - an agent rings them.
+  // Gating this on a stage would hide the button on exactly the deal somebody
+  // wants it for. Sent once already is still said, because a second offer on a
+  // second house is worth noticing; it is not stopped.
+  if (t.id === 'offer_accepted') {
+    return already
+      ? { state: 'sent', note: `${sentNote}${timesSent(deal, t.id) > 1 ? ` \u00b7 ${timesSent(deal, t.id)} times` : ''}` }
+      : { state: 'ready', note: 'send when an offer has been accepted' }
+  }
+
   if (t.id === 'final_checkin') {
     return already
       ? { state: 'sent', note: `${sentNote}${timesSent(deal, t.id) > 1 ? ` \u00b7 ${timesSent(deal, t.id)} times` : ''}` }
@@ -223,6 +244,17 @@ export function menuFor(deal: any): MenuItem[] {
 // decision a person makes about a client who has gone quiet, never the portal's
 // idea of what comes next. It is in the menu, one click away, and that is where
 // it belongs.
+// ALWAYS AVAILABLE IS NOT THE SAME AS ALWAYS SUGGESTED.
+//
+// Two of these are ready on every deal by design - the final check-in and, from
+// 21 Oct 2026, the offer accepted. Neither is a milestone the record knows
+// about: a client goes quiet, or an agent rings them, and a person decides.
+//
+// Without this, pressing Email on a brand new deal would offer to tell the
+// client their offer had been accepted. The suggestion is for the thing that
+// HAS happened; these two stay one press away in the list.
+const NEVER_SUGGESTED: TemplateId[] = ['final_checkin', 'offer_accepted']
+
 export function suggestedFor(deal: any): TemplateId | null {
-  return menuFor(deal).find(i => i.state === 'ready' && i.id !== 'final_checkin')?.id || null
+  return menuFor(deal).find(i => i.state === 'ready' && !NEVER_SUGGESTED.includes(i.id))?.id || null
 }

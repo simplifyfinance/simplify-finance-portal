@@ -13,6 +13,9 @@ const MILESTONE_BLURB: Record<TemplateId, string> = {
   preapproval: 'Confirms the pre-approval and what the client needs once an offer is accepted.',
   preapproval_extension: 'A new expiry on a pre-approval that has already been sent.',
   formal_approval: 'The lender\u2019s full approval, with settlements copied in.',
+  offer_accepted: 'A pre-approved client has had an offer accepted. Confirms the valuation, the '
+    + 'final purchase numbers and the loan, and chases what is still outstanding. Always '
+    + 'available \u2014 no stage to wait for.',
 }
 const MILESTONES = MILESTONE_TEMPLATES.map(t => ({
   id: t.id, name: t.name, blurb: MILESTONE_BLURB[t.id],

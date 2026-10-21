@@ -56,10 +56,14 @@ describe('but it is never the suggestion', () => {
 })
 
 describe('it promises nothing and attaches nothing', () => {
-  it('does not require the bank letter, unlike the other three', () => {
+  it('does not require the bank letter, unlike the ones that announce a decision', () => {
     expect(templateById('final_checkin')!.letterRequired).toBe(false)
-    for (const t of TEMPLATES.filter(x => x.id !== 'final_checkin')) {
-      expect(t.letterRequired, t.id).toBe(true)
+    // 21 OCT 2026: the offer accepted template joined, and it attaches nothing
+    // either - it announces what WE are doing rather than a bank's decision.
+    // So the comparison is against the ones that DO announce one, named here,
+    // rather than against "everything else".
+    for (const id of ['preapproval', 'preapproval_extension', 'formal_approval']) {
+      expect(templateById(id as any)!.letterRequired, id).toBe(true)
     }
   })
 
@@ -223,7 +227,7 @@ describe('every template can say its own name', () => {
   // be spelled out.
   it('every name a person reads on the send screen is here', () => {
     expect(TEMPLATES.map(t => t.name).sort()).toEqual(
-      ['Final check-in', 'Formal approval', 'Pre-approval', 'Pre-approval extension'])
+      ['Final check-in', 'Formal approval', 'Offer accepted', 'Pre-approval', 'Pre-approval extension'])
   })
 
   it('no two share one, and none is blank', () => {

@@ -423,6 +423,37 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
         </div>
       )}
 
+      {/* AND THEN YOU TELL THE CLIENT.
+          *
+          * 21 Oct 2026. Fabio: "a part of the step is to confirm with the
+          * client what are the next steps in terms of the process."
+          *
+          * THE SAME TEMPLATE, NOT A SECOND COPY OF IT. This opens the one in
+          * the client emails menu with this deal already loaded. An email
+          * written twice drifts within a month, and this codebase keeps
+          * writing notes about one fact living in two places.
+          *
+          * The figures it needs are the four this panel chases - settlement
+          * date, finance clause, price paid, deposit paid - so the gaps are
+          * named here rather than discovered on the send screen. */}
+      <div className="mt-5 pt-4 border-t border-[#EEF0F2]">
+        <span className={LAB}>Tell the client</span>
+        <div className="mt-1.5 flex gap-2 items-center flex-wrap">
+          <a href={`/deals/${d.id}?email=offer_accepted`}
+             className="px-3 py-1.5 text-xs rounded-lg bg-ink text-page font-semibold">
+            Write the offer accepted email
+          </a>
+          {blanks.length > 0 && (
+            <span className="text-[11.5px] text-chase">
+              The numbers will be left out until {blanks.join(', ')} {blanks.length === 1 ? 'is' : 'are'} recorded.
+            </span>
+          )}
+        </div>
+        <p className="m-0 mt-1.5 text-[11px] text-[#A0A7AE]">
+          The same email as the one in the client emails menu, with this deal already loaded.
+        </p>
+      </div>
+
       {err && <p className="m-0 mt-3 text-[12px] text-chase">{err}</p>}
     </div>
   )
