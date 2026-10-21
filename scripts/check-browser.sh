@@ -185,6 +185,45 @@ if [ $RESULT -ne 0 ]; then
   # works - this is a dated copy beside it, and nothing ever deletes one.
   cp .robot-logs/browser-check.log ".robot-logs/failed-$(date +%Y%m%d-%H%M%S).log" 2>/dev/null || true
 
+  # THE ROBOT IS SIGNED OUT, AND THAT IS NOT A BROKEN PORTAL.
+  #
+  # 21 Oct 2026. Two factor went in, Fabio pressed Sign out to test it, and
+  # Supabase revoked EVERY session on the account - including the one the robot
+  # had saved. The next ship then spent eight minutes watching forty four tests
+  # time out on a page that was never going to load, and read as "the portal is
+  # broken" when the portal was fine.
+  #
+  # The server log says it plainly and nobody was looking at the server log. So
+  # this says it instead, before the wall of timeouts, with the one command
+  # that fixes it.
+  #
+  # IT ONLY SPEAKS WHEN THE EVIDENCE IS THERE. A dead login means the refresh
+  # token error AND tests failing on the page never becoming ready. Either one
+  # on its own is something else, and a check that cries wolf is a check people
+  # learn to scroll past.
+  #
+  # `grep -c` PRINTS 0 AND EXITS 1 WHEN IT FINDS NOTHING. Written as
+  # $(grep -c ... || echo 0) that gives the string "0\n0", and [ then refuses
+  # it with "integer expression expected" - which was in this very check until
+  # its own test ran the condition for real rather than reading it as text.
+  DEAD_LOGIN=$(grep -c "Invalid Refresh Token" .robot-logs/browser-server.log 2>/dev/null) || DEAD_LOGIN=0
+  NEVER_READY=$(grep -c 'data-ready="1"' .robot-logs/browser-check.log 2>/dev/null) || NEVER_READY=0
+  if [ "${DEAD_LOGIN:-0}" -gt 0 ] && [ "${NEVER_READY:-0}" -gt 0 ]; then
+    echo
+    echo "  ──────────────────────────────────────────────────────────────"
+    echo "  THE ROBOT IS SIGNED OUT. The portal is almost certainly fine."
+    echo
+    echo "  Supabase threw away every session on that account, which happens"
+    echo "  when somebody presses Sign out. The robot's saved login went with"
+    echo "  it, so every test opened a deal page that could never load."
+    echo
+    echo "  Sign it back in, then ship again:"
+    echo
+    echo "    ./scripts/portal-login.sh"
+    echo
+    echo "  ──────────────────────────────────────────────────────────────"
+  fi
+
   # ship.sh says "NOT SHIPPED" itself when this exits non-zero, so this only
   # has to say WHAT it found.
   echo
