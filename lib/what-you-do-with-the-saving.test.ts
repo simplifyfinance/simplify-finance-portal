@@ -3,14 +3,9 @@ import { readFileSync } from 'fs'
 import {
   minimumRepayment, schedule, analyse, yearsAndMonths, offersAnalysis, whyNotOffered,
   analysisOn, analysedBalance, releasedAlongside, currentRateOf, analysisFor,
-  analysisLead, analysisBlockHtml, CALCULATOR_DISCLAIMER, ANALYSIS_TEMPLATE,
+  analysisLead, analysisBlockHtml, CALCULATOR_DISCLAIMER, analysisMissing,
 } from './repayment-analysis'
 import { TEMPLATE_LABELS } from './templates'
-import { buysNothing } from './buying'
-import { loTemplateFor } from './lo-template'
-import { typeOf } from './deal-labels'
-import { isRefinance, isPurchase } from './document-rules'
-import { brokerNotes } from './broker-notes'
 
 // WHAT HAPPENS IF THEY KEEP PAYING WHAT THEY PAY NOW.
 //
@@ -80,13 +75,37 @@ describe('the three legs', () => {
   })
 
   // THE ANSWER FOLLOWS THEIR REPAYMENT, NOT A TIDY ONE. $3,917 is what a client
-  // reads off a statement; the exact minimum is $3,916.68, and that 32 cents is
-  // a month on the end of a 25 year loan. The figure they typed wins, because
-  // it is the one leaving their account.
+  // reads off a statement; the exact minimum is $3,917.32, so their own figure
+  // is 32 cents short and takes a month longer. Their figure wins, because it
+  // is the one leaving their account.
   it('takes years off when the repayment is kept', () => {
     expect(yearsAndMonths(a.keep.months)).toBe('22 years 6 months')
-    expect(yearsAndMonths(a.monthsSaved)).toBe('2 years 6 months')
+    expect(yearsAndMonths(a.monthsSaved)).toBe('2 years 7 months')
     expect(a.interestSaved).toBeCloseTo(121627, -1)
+  })
+
+  // THE FAULT AN INDEPENDENT AUDIT OF THE MATHS FOUND, 21 Oct 2026, before any
+  // of this reached a client. Measured against the STATED term, a client
+  // already paying extra was credited with the head start they gave
+  // themselves: $4,500 against a $3,917 minimum read as 7 years 7 months saved
+  // when the refinance delivers 1 year 4 months.
+  it('credits the refinance only, never a head start they gave themselves', () => {
+    const ahead = analyse({ balance: 600000, currentRate: 6.14, yearsRemaining: 25,
+                            currentRepayment: 4500, newRate: 5.59 })!
+    expect(yearsAndMonths(ahead.stay.months)).toBe('18 years 9 months')
+    expect(yearsAndMonths(ahead.monthsSaved)).toBe('1 year 4 months')
+    expect(ahead.monthsSaved).toBe(ahead.stay.months - ahead.keep.months)
+    // Never the stated term minus the new one, which is what it used to be.
+    expect(ahead.monthsSaved).not.toBe(300 - ahead.keep.months)
+  })
+
+  // Interest saved was never affected - it has always been these same two legs
+  // on the same repayment.
+  it('reports the interest saving correctly whatever they already pay', () => {
+    const ahead = analyse({ balance: 600000, currentRate: 6.14, yearsRemaining: 25,
+                            currentRepayment: 4500, newRate: 5.59 })!
+    expect(ahead.interestSaved).toBe(ahead.stay.interest - ahead.keep.interest)
+    expect(ahead.interestSaved).toBeCloseTo(71108, -2)
   })
 
   // A rate that is not lower has nothing to say, and the table would argue
@@ -111,7 +130,6 @@ describe('where it is offered', () => {
   it('is on the two refinance scenarios and its own, and nowhere else', () => {
     expect(offersAnalysis('refinance_only')).toBe(true)
     expect(offersAnalysis('refinance_equity')).toBe(true)
-    expect(offersAnalysis(ANALYSIS_TEMPLATE)).toBe(true)
     // Fabio, 21 Oct: "complex refinance and debt recycling out".
     expect(offersAnalysis('complex_refinance')).toBe(false)
     expect(offersAnalysis('debt_recycling')).toBe(false)
@@ -134,17 +152,30 @@ describe('where it is offered', () => {
     expect(whyNotOffered(bc())).toBe('')
   })
 
-  // The block IS that email, so a tick box would only be a way to send an
-  // empty one.
-  it('needs no tick on the scenario that is nothing else', () => {
-    expect(analysisOn(bc({ template: ANALYSIS_TEMPLATE, repaymentAnalysis: false }))).toBe(true)
+  it('is off until somebody ticks it', () => {
     expect(analysisOn(bc({ repaymentAnalysis: false }))).toBe(false)
+    expect(analysisOn(bc())).toBe(true)
   })
 
-  it('is a scenario of its own in the picker and the labels', () => {
-    expect(TEMPLATE_LABELS[ANALYSIS_TEMPLATE]).toBe('Refinance repayment analysis')
+  // 21 Oct 2026. Fabio: "when I said refinance analysis template I wanted HERE
+  // not a separate BC template". It is a tick box on the scenarios that already
+  // exist; the standalone email belongs in Templates, beside the other emails a
+  // broker sends without a deal behind them.
+  it('is not a scenario in the picker', () => {
+    expect(TEMPLATE_LABELS['refinance_analysis']).toBe(undefined)
     expect(readFileSync('app/(app)/deals/[id]/BCForm.tsx', 'utf8'))
-      .toContain("id: 'refinance_analysis'")
+      .not.toContain("id: 'refinance_analysis'")
+  })
+
+  // A BOX NOBODY CAN TICK YET IS NOT THE SAME AS ONE THAT DOES NOT APPLY.
+  // Fabio, on a refinance he had just started: "the box you mock up to tick to
+  // show the refinance analysis is not showing". It was there and disabled,
+  // because no split had an amount - which is true of every BC for its first
+  // few minutes.
+  it('is tickable on a form nobody has filled in yet', () => {
+    const fresh = { template: 'refinance_only', splits: [{ label: 'Refinanced loan', amount: '', rate: '', type: 'P&I' }] }
+    expect(whyNotOffered(fresh)).toBe('')
+    expect(analysisMissing({ ...fresh, repaymentAnalysis: true }, {}).length).toBeGreaterThan(0)
   })
 })
 
@@ -214,8 +245,11 @@ describe('the block that goes to the client', () => {
 
   it('shows the saving, the years and all three rows', () => {
     expect(html).toContain('$121,627')
-    expect(html).toContain('2 years 6 months earlier')
+    expect(html).toContain('2 years 7 months earlier')
     expect(html).toContain('Stay as you are')
+    // Their real finish, not the stated term - a client paying extra can see
+    // for themselves that the stated one is wrong.
+    expect(html).toContain('25 years 1 month')
     expect(html).toContain('Take the lower repayment')
     expect(html).toContain('Keep paying $3,917')
   })
@@ -248,7 +282,7 @@ describe('the disclaimer', () => {
   it('rides with the block on every email that can carry one', () => {
     const bcEmail = readFileSync('app/api/generate-email/route.ts', 'utf8')
     expect(bcEmail).toContain('function analysisDisclaimer(')
-    expect(bcEmail.match(/analysisDisclaimer\(d\)/g)?.length).toBeGreaterThanOrEqual(3)
+    expect(bcEmail.match(/analysisDisclaimer\(d\)/g)?.length).toBeGreaterThanOrEqual(2)
     const lo = readFileSync('app/api/generate-lo-email/route.ts', 'utf8')
     expect(lo).toContain('if (analysis) body += analysisDisclaimerHtml()')
   })
@@ -283,34 +317,3 @@ describe('one block, three places', () => {
   })
 })
 
-describe('the new scenario is wired into every list that matters', () => {
-  // scripts/check-template-lists.sh found all five of these within a minute of
-  // the scenario being added, which is the whole reason it was written
-  // yesterday. These keep them fixed.
-  it('buys nothing, so no purchase boxes are drawn on it', () => {
-    expect(buysNothing(ANALYSIS_TEMPLATE)).toBe(true)
-  })
-
-  it('wears the refinance lending options page, not the purchase one', () => {
-    expect(loTemplateFor(ANALYSIS_TEMPLATE)).toBe('lo_refinance')
-  })
-
-  it('is a refinance on the boards, not an unknown', () => {
-    expect(typeOf({ bc_data: { template: ANALYSIS_TEMPLATE } })).toBe('refinance')
-  })
-
-  it('is a refinance to the documents checklist, not a purchase', () => {
-    const deal = { bc_data: { template: ANALYSIS_TEMPLATE }, fact_find_data: {} }
-    expect(isRefinance(deal)).toBe(true)
-    expect(isPurchase(deal)).toBe(false)
-  })
-
-  it('has a verb, so the submission notes can write', () => {
-    const notes = brokerNotes({
-      bc_data: bc({ template: ANALYSIS_TEMPLATE }),
-      fact_find_data: { ...ff, applicants: [{ firstName: 'Dan', lastName: 'Hartley' }] },
-      lo_data: {},
-    } as any)
-    expect(notes.missing.join(' ')).not.toContain('purchase or a refinance')
-  })
-})

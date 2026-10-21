@@ -73,9 +73,6 @@ const FROM_TEMPLATE: Record<string, { type?: TypeId; use?: UseId }> = {
   // happening. The use is deliberately left off both - it follows the property,
   // and a deal can top up an investment to buy a home.
   top_up:              { type: 'equity_release' },
-  // The deal behind the analysis is a refinance; the email is just how we open
-  // the conversation about it.
-  refinance_analysis:  { type: 'refinance' },
   top_up_purchase:     { type: 'purchase' },
 }
 

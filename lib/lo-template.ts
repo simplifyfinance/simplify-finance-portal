@@ -47,10 +47,6 @@ export function loTemplateFor(bcTemplate: unknown): LoTemplate {
   // top_up_purchase deliberately falls through to lo_purchase below: that one
   // IS buying, and the purchase boxes are the whole second half of it.
   if (t === 'top_up') return 'lo_refinance'
-  // The analysis is about a loan moving to a lower rate and nothing being
-  // bought. Left to fall through it would wear the purchase page and ask for a
-  // price nobody has - the exact fault this file was written about.
-  if (t === 'refinance_analysis') return 'lo_refinance'
   if (t === 'bridging') return 'lo_bridging'
   return 'lo_purchase'
 }

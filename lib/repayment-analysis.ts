@@ -130,16 +130,29 @@ export function analyse(input: {
   const keep = schedule(balance, newRate, currentRepayment)
   if (!stay || !lower || !keep) return null
 
-  // TIME SAVED IS MEASURED AGAINST THE TERM THEY TOLD US, not against a
-  // re-derived one. Their remaining term is a fact off a statement; simulating
-  // it lands a month out when the typed repayment is a few dollars above the
-  // minimum, and then the email argues with itself.
+  // TIME SAVED IS WHAT THE REFINANCE DELIVERS, NOT WHAT THEY HAVE ALREADY DONE.
+  //
+  // 21 Oct 2026, found by auditing the maths against an independent integer-cent
+  // ledger before the figures went anywhere near a client.
+  //
+  // This measured against the term they typed. On a client paying exactly their
+  // minimum that is correct. On one already paying extra - and plenty round
+  // their repayment up - it claimed credit for the head start they gave
+  // themselves. A client paying $4,500 against a $3,917 minimum would have been
+  // told the refinance saves 7 years 7 months. It saves 1 year 4 months.
+  //
+  // So it is measured against the leg beside it: what staying put actually
+  // achieves on THEIR repayment, against what the lower rate achieves on the
+  // same money. Both legs are simulated the same way, so the comparison is
+  // like for like and the answer is the benefit of the refinance alone.
+  //
+  // Interest saved was never affected - it has always been these same two legs.
   return {
     balance, yearsRemaining: years, currentRate, newRate, currentRepayment, newRepayment,
     extraPerMonth: Math.round((currentRepayment - newRepayment) * 100) / 100,
     stay, lower, keep,
     interestSaved: stay.interest - keep.interest,
-    monthsSaved: Math.max(0, months - keep.months),
+    monthsSaved: Math.max(0, stay.months - keep.months),
   }
 }
 
@@ -156,11 +169,15 @@ export function yearsAndMonths(months: number): string {
 // ---------------------------------------------------------------------------
 
 /** The scenario that IS the analysis, sent on its own. */
-export const ANALYSIS_TEMPLATE = 'refinance_analysis'
-
 // Fabio, 21 Oct 2026: "offer option on refinance and equity cash out",
 // "complex refinance and debt recycling out".
-const OFFERED_ON = ['refinance_only', 'refinance_equity', ANALYSIS_TEMPLATE]
+//
+// THE STANDALONE EMAIL IS NOT A SCENARIO. It lives in Templates, beside the
+// other emails a broker sends without a deal behind them - Fabio: "move that
+// template to templates section not deal specific". I built it as a BC
+// scenario first, which put a sixteenth entry in the picker for something that
+// is not a way of structuring a loan. See lib/refinance-calculations.ts.
+const OFFERED_ON = ['refinance_only', 'refinance_equity']
 
 export function offersAnalysis(template: any): boolean {
   return OFFERED_ON.includes(txt(template))
@@ -227,12 +244,22 @@ export function whyNotOffered(bc: any): string {
     return 'Only on a refinance. There is no current repayment to keep on a purchase, '
       + 'and on a top up the repayment goes up rather than down.'
   }
+  // AN EMPTY FORM IS NOT A REASON TO GREY THIS OUT.
+  //
+  // 21 Oct 2026. Fabio, on a refinance he had just started: "the box you mock
+  // up to tick to show the refinance analysis is not showing". It was there and
+  // it was disabled, because no split had an amount yet - which is true of
+  // every BC for the first few minutes of its life. A broker ticks the box when
+  // they decide to show the analysis, then fills the figures in.
+  //
+  // So this answers only "does the analysis make sense on this deal at all".
+  // What is still missing is said inside the panel, by analysisMissing, where
+  // it reads as a to-do rather than a refusal.
   const split = refinancedSplit(bc)
-  if (!split) return 'No split has an amount recorded, so there is no loan to analyse.'
   // Fabio, 21 Oct 2026: "NEVER offer if IO as this doesnt make sense". Nothing
   // is paying the balance down, so there are no years to take off and no
   // interest saved - the table would be three identical rows.
-  if (isIO(split)) {
+  if (split && isIO(split)) {
     return 'Not available — this loan is interest only. Nothing is paying the balance down, '
       + 'so there are no years to take off and no interest to save.'
   }
@@ -247,9 +274,6 @@ export function whyNotOffered(bc: any): string {
 
 export function analysisOn(bc: any): boolean {
   if (whyNotOffered(bc)) return false
-  // ON THE STANDALONE SCENARIO THERE IS NOTHING TO TICK. The block IS the
-  // email, so a tick box would only be a way to send an empty one.
-  if (txt(bc?.template) === ANALYSIS_TEMPLATE) return true
   return bc?.repaymentAnalysis === true
 }
 
@@ -383,7 +407,11 @@ export function analysisBlockHtml(a: Analysis, opts: { lead: string; heading?: s
 
     + `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px">`
     + `<tr>${head('&nbsp;', 'left')}${head('Repayment', 'right')}${head('Finishes', 'right')}${head('Interest', 'right')}</tr>`
-    + row('Stay as you are', a.currentRepayment, yearsAndMonths(Math.round(a.yearsRemaining * 12)), a.stay.interest)
+    // WHEN STAYING PUT REALLY ENDS. The stated term assumes they pay the
+    // minimum; a client already paying extra finishes sooner and knows it, so
+    // printing their stated term beside their own repayment is a figure they
+    // can see is wrong.
+    + row('Stay as you are', a.currentRepayment, yearsAndMonths(a.stay.months), a.stay.interest)
     + row('Take the lower repayment', a.newRepayment, yearsAndMonths(Math.round(a.yearsRemaining * 12)), a.lower.interest)
     + row(`Keep paying ${dollars(a.currentRepayment)}`, a.currentRepayment, keepYears, a.keep.interest, true)
     + `</table>`

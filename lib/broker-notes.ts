@@ -116,9 +116,6 @@ function transaction(deal: any): { verb: string; isPurchase: boolean; isConstruc
   if (buildsSomething(deal?.bc_data)) return { verb: 'construct', isPurchase: true, isConstruction: true }
   if (t === 'refinance_only') return { verb: 'refinance', isPurchase: false, isConstruction: false }
   if (t === 'refinance_equity') return { verb: 'refinance and release equity against', isPurchase: false, isConstruction: false }
-  // The analysis email does not change what the deal IS. Without this the notes
-  // find no verb and refuse to write a word.
-  if (t === 'refinance_analysis') return { verb: 'refinance', isPurchase: false, isConstruction: false }
   if (t === 'bridging') return { verb: 'purchase', isPurchase: true, isConstruction: false }
   // A restructure buys nothing. Left to fall through, the purchase price test
   // below decided it from whatever happened to be in the box.

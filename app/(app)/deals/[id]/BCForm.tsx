@@ -96,7 +96,6 @@ function buildHousingExpenseLine(app: any): string {
 
 const TEMPLATES = [
   { id: 'refinance_equity', label: 'Refinance + equity release' },
-  { id: 'refinance_analysis', label: 'Refinance repayment analysis' },
   { id: 'top_up', label: 'Top up' },
   { id: 'top_up_purchase', label: 'Top up + purchase' },
   { id: 'refinance_only', label: 'Refinance only' },
@@ -125,11 +124,6 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
   // loan that is already there out of the splits and all of them are wrong at
   // once: $500,000 + $300,000 against $1,000,000 reads 30% instead of 80%.
   // See lib/top-up.ts.
-  // The standalone analysis has one split, and it exists only to carry the rate
-  // being compared against. Nothing on that email draws the split itself.
-  refinance_analysis: { splits: [
-    { label: 'Refinanced loan', amount: '', rate: '5.59', type: 'P&I' },
-  ] },
   top_up: { splits: [
     { label: 'Existing loan', amount: '', rate: '6.14', type: 'Interest only', ioYears: '5' },
     { label: 'Loan increase', amount: '', rate: '6.14', type: 'Interest only', ioYears: '5' },
@@ -283,7 +277,7 @@ function fieldCls(value: string) {
 }
 import { buysNothing, BUYING_TEMPLATES as SHARED_BUYING_TEMPLATES } from '@/lib/buying'
 import { offersAnalysis, whyNotOffered, analyse, analysedBalance, releasedAlongside,
-         currentRateOf, refinancedSplit, yearsAndMonths, ANALYSIS_TEMPLATE } from '@/lib/repayment-analysis'
+         currentRateOf, refinancedSplit, yearsAndMonths } from '@/lib/repayment-analysis'
 import { isTopUp, increaseFor, lendingAgainst, limitDisagreement, splitsForSecurity } from '@/lib/top-up'
 import { offsetIsOn, toggleOffset, offsetsAfterRemoving } from '@/lib/offset-splits'
 import { PROPERTY_SUBTYPES } from '@/lib/fact-find-options'
@@ -2531,8 +2525,7 @@ Key assumptions: ${checklistText}`
                   {offersAnalysis(template) && (() => {
                     const bcNow = buildBcData()
                     const why = whyNotOffered(bcNow)
-                    const standalone = template === ANALYSIS_TEMPLATE
-                    const on = standalone || repaymentAnalysis
+                    const on = repaymentAnalysis
                     const released = releasedAlongside(bcNow)
                     const a = !why && on ? analyse({
                       balance: analysedBalance(bcNow),
@@ -2543,8 +2536,7 @@ Key assumptions: ${checklistText}`
                     }) : null
                     return (
                       <div className="col-span-2">
-                        {!standalone && (
-                          <div className="flex items-start gap-2">
+                        <div className="flex items-start gap-2">
                             <input type="checkbox" id="repaymentAnalysis" className="mt-[3px]"
                               checked={repaymentAnalysis} disabled={!!why}
                               onChange={e => setRepaymentAnalysis(e.target.checked)} />
@@ -2552,8 +2544,7 @@ Key assumptions: ${checklistText}`
                               className={`text-xs ${why ? 'text-gray-400' : 'text-gray-600'}`}>
                               Include a repayment analysis in the client email
                             </label>
-                          </div>
-                        )}
+                        </div>
                         {/* WHY IT IS OFF, BESIDE IT. A greyed box with no reason is a
                             support call, and somebody will ask why it shows on one
                             deal and not another. */}
