@@ -415,9 +415,19 @@ export const ENTRIES: Entry[] = [
     body: [
       'Open one, pick which property the equity comes out of, type the numbers, preview, then copy and '
       + 'mark as sent. A chase is set for a week later automatically, so nothing goes quiet.',
-      '267 of them have no loan recorded anywhere. Those say loan unknown rather than showing a '
-      + 'figure, and they sort below the ones we actually know about. Do not treat them as full '
-      + 'equity — we simply do not know.',
+      'Every figure on the list was what the client owed when the book was exported. A loan six '
+      + 'years into being paid down read as if nothing had come off it, so the equity read low and '
+      + 'somebody worth ringing looked like somebody who was not.',
+      {
+        title: 'Refresh balances',
+        call: 'The button beside Import the book reads your trail statements and fills in what each '
+            + 'loan owes now, matched on the loan reference already on the property. It shows you '
+            + 'every change before it writes anything, and it never touches the book’s original '
+            + 'figure. Where a balance has been refreshed the loan on the row says which month it was '
+            + 'true; no line under it means it is still the book’s figure.',
+      },
+      'Ten reviews have no investment property on them at all, so there is nothing to price and no '
+      + 'statement to find. They are on the list and they are not a mistake.',
       'Nothing here writes to the Clients page. When one is worth doing, you make the deal card '
       + 'yourself and the review is marked as having become a deal.',
       'The wording of that email lives in Settings, under Portfolio review email. Change it there and '

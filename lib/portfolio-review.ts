@@ -134,14 +134,20 @@ export function usableEquity(
 /**
  * IS THERE A LOAN RECORDED ON THIS PROPERTY AT ALL?
  *
- * 21 Oct 2026. 267 of the 656 on the book came across with a value and no
- * loan. Nothing in the export says whether that means "paid off" or "the CRM
- * never had it", and the difference is the whole figure: at 80% of a $900,000
- * house it is $720,000 of equity or it is unknown.
+ * A property can come across with a value and no loan. Nothing in the export
+ * says whether that means "paid off" or "the CRM never had it", and the
+ * difference is the whole figure: at 80% of a $900,000 house it is $720,000 of
+ * equity, or it is unknown.
  *
- * The list was reading a missing loan as zero, so every one of those 267 showed
- * as fully unencumbered and sorted above the 389 who really do have a loan and
- * really might have equity. Fabio, asked which way to go: "loan unknown".
+ * Read as zero, such a row shows as fully unencumbered and sorts above every
+ * client who really does have a loan. Fabio, asked which way to go: "loan
+ * unknown".
+ *
+ * WHAT WAS ACTUALLY THERE. Checked against the database on 21 Oct 2026, after
+ * a count in this comment turned out to have been made up rather than read:
+ * 656 reviews, 646 carrying at least one investment property, 760 properties
+ * in all, and none of them missing a loan. So this rule protects nobody today.
+ * It is there for the next import with an unmapped column.
  *
  * So it is said rather than guessed. The row stays on the list - it is still a
  * client worth ringing - and where the figure would have been it says what we

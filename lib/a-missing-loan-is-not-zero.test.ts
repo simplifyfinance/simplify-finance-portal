@@ -5,12 +5,20 @@ import { figuresFor } from '../components/PortfolioReview'
 
 // A MISSING LOAN IS NOT A LOAN OF ZERO.
 //
-// 21 Oct 2026. 267 of the 656 on the book came across with a value and nothing
-// against it. The list read that as fully unencumbered: 80% of a $900,000
-// house is $720,000 of equity on a property we know nothing about. All 267
-// sorted above the 389 who really do have a loan.
+// A property that comes across with a value and nothing against it is not an
+// unencumbered one. Read as zero, 80% of a $900,000 house is $720,000 of
+// equity on a property we know nothing about, and it sorts above every client
+// who really does have a loan and really might have equity.
 //
 // Fabio, asked whether to hide them or mark them: "loan unknown".
+//
+// WHAT WAS ACTUALLY THERE. Checked against the database on 21 Oct 2026, after
+// a count in this comment turned out to have been made up rather than read:
+// 656 reviews, 646 carrying at least one investment property, 760 properties
+// in all, and NONE of them missing a loan. Every one carried the book's
+// original figure. So this rule protects nobody today - it is the next import
+// with an unmapped column that it is there for.
+
 
 const prop = (over: any = {}) => ({
   id: 'x', ordinal: 1, address: '1 Example St', investor: true,
