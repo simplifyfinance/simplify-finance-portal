@@ -253,3 +253,88 @@ export function reviewEmailHtml(input: ReviewEmailInput): string {
 
   return emailShell(body, DEFAULT_DISCLAIMER, brand)
 }
+
+// ---------------------------------------------------------------------------
+// THE WORDING, AS A SCREEN
+// ---------------------------------------------------------------------------
+//
+// 21 Oct 2026. Every block above is Fabio's words, agreed line by line, and
+// until now the only way to change one was to ask me. The Settings page writes
+// them instead.
+//
+// WORDING ONLY. Not one block can hold a figure - the price, the equity
+// release, the deposit and the loan are filled in per client from their own
+// review. That was the rule when this email was built and it is why the
+// editable blocks were separated from the figures in the first place.
+//
+// THE COMPLIANCE TAIL IS NOT HERE, on purpose. DEFAULT_DISCLAIMER and the
+// credit licence line are what makes this email legal to send; they are not
+// wording anybody rewords between reviews.
+
+export type CopyBlock = {
+  key: keyof ReviewCopy
+  group: 'Opening' | 'Why now' | 'Negative gearing' | 'Close'
+  label: string
+  /** A list is one line per bullet on screen, and an array in the record. */
+  list?: boolean
+  hint?: string
+}
+
+export const COPY_BLOCKS: CopyBlock[] = [
+  { key: 'opening', group: 'Opening', label: 'First line' },
+  { key: 'rework', group: 'Opening', label: 'Why we are writing' },
+  { key: 'standAlone', group: 'Opening', label: 'How it is structured' },
+  { key: 'whyNowIntro', group: 'Why now', label: 'Opening' },
+  { key: 'whyNowFundamentals', group: 'Why now', label: 'The fundamentals' },
+  { key: 'whyNowLead', group: 'Why now', label: 'Lead-in to the bullets' },
+  { key: 'whyNowBullets', group: 'Why now', label: 'The bullets', list: true,
+    hint: 'One per line. Blank lines are ignored.' },
+  { key: 'gearingBuffer', group: 'Negative gearing', label: 'The buffer' },
+  { key: 'gearingLosses', group: 'Negative gearing', label: 'What happens to the losses' },
+  { key: 'gearingBullets', group: 'Negative gearing', label: 'What the losses can be used against',
+    list: true, hint: 'One per line. Blank lines are ignored.' },
+  { key: 'strategy', group: 'Close', label: 'The strategy paragraph' },
+  { key: 'ctaLabel', group: 'Close', label: 'Button label' },
+  { key: 'pleaseNote', group: 'Close', label: 'Please note' },
+  { key: 'unsubscribe', group: 'Close', label: 'Unsubscribe line' },
+]
+
+const asText = (v: any): string =>
+  Array.isArray(v) ? v.join('\n') : String(v ?? '')
+
+/** What a block reads as on screen: the saved wording, or the default. */
+export function blockText(copy: any, b: CopyBlock): string {
+  const saved = copy && typeof copy === 'object' ? copy[b.key] : undefined
+  const has = Array.isArray(saved) ? saved.length > 0 : String(saved ?? '').trim() !== ''
+  return asText(has ? saved : (DEFAULT_COPY as any)[b.key])
+}
+
+export function isDefaultText(text: string, b: CopyBlock): boolean {
+  return text.trim() === asText((DEFAULT_COPY as any)[b.key]).trim()
+}
+
+/**
+ * The record to store, from what is on screen.
+ *
+ * A BLOCK LEFT AT THE DEFAULT IS NOT STORED. Saving all fourteen would freeze
+ * today's wording into the database, so a default improved in code later would
+ * never reach him - he would be reading his own saved copy of the old words
+ * and wondering why nothing changed. Only what he actually altered is kept.
+ *
+ * AND AN EMPTIED BOX IS NOT A BLANK PARAGRAPH. Clearing a block means "go back
+ * to the default", which is what the Reset link does and what somebody who
+ * deletes the text plainly means. A genuinely empty block would print a gap in
+ * a client's email with nothing explaining it.
+ */
+export function copyToStore(form: Record<string, string>): Record<string, any> {
+  const out: Record<string, any> = {}
+  for (const b of COPY_BLOCKS) {
+    const text = String(form[b.key] ?? '')
+    if (!text.trim()) continue
+    if (isDefaultText(text, b)) continue
+    out[b.key] = b.list
+      ? text.split('\n').map(s => s.trim()).filter(Boolean)
+      : text.trim()
+  }
+  return out
+}

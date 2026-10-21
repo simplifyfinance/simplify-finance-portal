@@ -1,5 +1,6 @@
 'use client'
 import { SETTINGS_PANES } from '@/lib/settings-panes'
+import ReviewEmailCopy from '@/components/ReviewEmailCopy'
 import { useState, useEffect } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import PipelineTargets from '@/components/PipelineTargets'
@@ -557,6 +558,12 @@ export default function SettingsPage() {
       </section>
       )}
       {pane === 'targets' && <PipelineTargets />}
+      {pane === 'review-email' && (
+      <section className="mb-10">
+        <h2 className="text-[10px] font-semibold text-faint uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-info inline-block shrink-0" />Portfolio review email</h2>
+        <ReviewEmailCopy />
+      </section>
+      )}
       {pane === 'ai' && (
       <section className="mb-10">
         <h2 className="text-[10px] font-semibold text-faint uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-info inline-block shrink-0" />AI expenses</h2>

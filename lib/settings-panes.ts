@@ -49,6 +49,8 @@ export const SETTINGS_PANES: SettingsPane[] = [
     blurb: 'Bank statement collection and other outside services.' },
   { key: 'statements', label: 'Statement analysis',
     blurb: 'What the statement analysis looks for, and when it raises a flag.' },
+  { key: 'review-email', label: 'Portfolio review email',
+    blurb: 'The wording of the opportunity email. Every figure in it comes from the client\u2019s own review.' },
 ]
 
 export const DEFAULT_PANE = SETTINGS_PANES[0].key
