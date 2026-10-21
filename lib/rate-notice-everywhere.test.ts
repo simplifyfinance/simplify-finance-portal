@@ -52,6 +52,12 @@ const CLIENT_FACING_BUT_EXEMPT: Record<string, string> = {
 // Each one needs a reason somebody can disagree with.
 const NOT_CLIENT_FACING: Record<string, string> = {
   'lib/milestone-figures.ts':       'builds the figures; the emails that print them are wired',
+  // 21 Oct 2026. Same shape as the line above and caught by this guard on
+  // the first run, which is what it is for. It builds the loan details the
+  // offer accepted email prints, and that email carries the notice - see
+  // ctx.rateNotice in lib/offer-accepted-email.ts, loaded per lender in
+  // app/api/send-milestone-email/route.ts. It sends nothing itself.
+  'lib/the-loan-now.ts':            'builds the loan details; the offer accepted email that prints them carries the notice',
   'lib/split-cards.ts':             'builds the cards; the emails that print them are wired',
   'lib/assessment-content.ts':      'the assessment is for the lender and the file, not the client',
   'lib/handover-view.ts':           'internal handover to the credit team',

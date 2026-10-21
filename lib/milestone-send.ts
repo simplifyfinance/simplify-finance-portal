@@ -21,6 +21,7 @@ import { templateById, type TemplateId, type MilestoneTemplate } from './milesto
 import { formalApprovalBlocks, preapprovalBlocks, withOverrides, on,
          securityState, waitingOnLender, type Block, type Overrides, offerAcceptedBlocks} from './milestone-blocks'
 import { milestoneRows, loanDetails, missingFigures } from './milestone-figures'
+import { loanDetailsNow } from './the-loan-now'
 import { contractsByPhrase, insuredPartyName, type LenderRule } from './lender-rules'
 import { buildFormalApprovalEmail } from './formal-approval-email'
 import { buildOfferAcceptedEmail, loanMovedLine, depositPaidLine } from './offer-accepted-email'
@@ -291,7 +292,20 @@ export function assembleMilestoneEmail(input: AssembleInput): Assembled | null {
       documents: (input.documents || []).map(txt).filter(Boolean),
       extra: txt(input.extra),
       rows,
-      details: loanDetails(deal, optionOnTheDeal(lo), splitsOnTheDeal(lo)),
+      // THE DEAL'S OWN ANSWER, NOT THE PRE-APPROVAL'S.
+      //
+      // Belle, 21 Oct 2026, working a live deal: "Can we please add a bit to
+      // include the new rate - most cases that will change if the LVR position
+      // is different or rates go up or down."
+      //
+      // loanDetails() reads the lending option, which is what the client was
+      // PRE-APPROVED on. By the time this email goes out the offer has been
+      // accepted, the LVR has usually moved and the rate with it - so the one
+      // email that quotes a rate to a client in writing was quoting the oldest
+      // rate on the deal. These read the five boxes on the offer accepted step,
+      // and fall back to the lending option only where nobody has answered.
+      // See lib/the-loan-now.ts.
+      details: loanDetailsNow(deal),
       // NOT FROM THE BROWSER. Both are read off the deal here, for the same
       // reason every other figure in these emails is: a number a screen can
       // send is a number a screen can get wrong.

@@ -10,6 +10,12 @@ import { reworkFromDeposit, depositAsAssessed, depositToKeepLvr, dutyNow,
 import { purchaseRows, dutyLabelFor } from '@/lib/purchase-rows'
 import { otherSideGaps } from '@/lib/other-side'
 import { lenderOnTheDeal } from '@/lib/client-agreement'
+// ALIASED, BECAUSE THIS FILE ALREADY HAS A loanNow. Line 140's one is the
+// loan AMOUNT, which the repricing check compares; this one is the loan's
+// own details. Two different things, and one name between them would be a
+// reader's trap as well as a compiler error.
+import { seedFrom, loanNow as loanDetailsOn, monthlyRepayment,
+         REPAYMENT_TYPES, INTEREST_ONLY } from '@/lib/the-loan-now'
 import { dayMonthYear } from '@/lib/same-date-everywhere'
 
 // THE OFFER WAS ACCEPTED.
@@ -157,6 +163,15 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
   const moved = priceHasMoved(d)
   const assessed = depositAsAssessed(d)
   const keepLvr = depositToKeepLvr(d)
+  // See lib/the-loan-now.ts. seed only fills the boxes the first time; `now` is
+  // the answer the rest of the portal reads.
+  const seed = seedFrom(d)
+  const theLoan = loanDetailsOn(d)
+  // loanNow() settles this to one of the two the dropdown offers, so the
+  // comparison is exact rather than a second pattern for the same question.
+  const isInterestOnly = theLoan.repaymentType === INTEREST_ONLY
+  const monthly = monthlyRepayment(d)
+
   // What is on screen, or what was recorded earlier, so reopening a deal shows
   // the figures rather than an empty question.
   const rework = reworkFromDeposit(d, num(typedDeposit) || num(d.contract_deposit))
@@ -209,6 +224,86 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
           <span className={LAB}>Deposit paid on</span>
           <input type="date" defaultValue={d.deposit_paid_at || ''} key={`da${d.deposit_paid_at || ''}`}
             onBlur={onBlurField('deposit_paid_at')} className={INP} />
+        </div>
+      </div>
+
+      {/* THE LOAN, AS IT ACTUALLY IS.
+          *
+          * 21 Oct 2026. Belle, working a real deal: "Can we please add a bit to
+          * include the new rate - most cases that will change if the LVR
+          * position is different or rates go up or down."
+          *
+          * She was right and there was nothing to add it to. This step held the
+          * price, the deposit, the duty and the loan AMOUNT - the amount
+          * because the lender's repricing rule needs it - and nothing about the
+          * loan itself. So the offer accepted email, which quotes a rate to a
+          * client in writing, had to read the product the PRE-APPROVAL was
+          * built on.
+          *
+          * SEEDED FROM THE LENDING OPTION, AND NOT COMPARED WITH IT. Fabio, the
+          * same day: "NEVER care of LO says remeber the figures will almost
+          * always be diffeerent! we dont care we care how we move forward to
+          * updating details not the LO." So the boxes open filled in and
+          * nothing reports a difference afterwards.
+          *
+          * The repricing check further down is a different thing and is
+          * untouched: it compares the loan AMOUNT, because that is the lender's
+          * own rule. See lib/offer-accepted-panel.ts. */}
+      <div className="mt-4">
+        <span className={LAB}>The loan now</span>
+        <p className="m-0 mb-2 text-[10.5px] text-[#A0A7AE] leading-relaxed">
+          Filled in from the lending option so you are not starting from nothing. Change whatever the
+          offer has moved. From here on the client email and the handover read these.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <span className={LAB}>Product</span>
+            <input defaultValue={d.offer_product ?? seed.product} key={`op${d.offer_product ?? ''}`}
+              onBlur={onBlurField('offer_product')} placeholder="the product it is going on"
+              className={INP} />
+          </div>
+          <div>
+            <span className={LAB}>Interest rate</span>
+            <input defaultValue={d.offer_rate ?? (seed.rate || '')} key={`or${d.offer_rate ?? ''}`}
+              onBlur={onBlurField('offer_rate', 'money')} placeholder="6.74" className={INP} />
+          </div>
+          <div>
+            <span className={LAB}>Loan term</span>
+            <input defaultValue={d.offer_term_years ?? (seed.termYears || '')}
+              key={`ot${d.offer_term_years ?? ''}`}
+              onBlur={onBlurField('offer_term_years', 'money')} placeholder="years" className={INP} />
+          </div>
+          <div>
+            <span className={LAB}>Repayment type</span>
+            <select value={theLoan.repaymentType || ''}
+              onChange={e => put('offer_repayment_type', e.target.value || null)}
+              className={INP}>
+              <option value="">Not set</option>
+              {REPAYMENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          {/* NOTHING TO ANSWER ON PRINCIPAL AND INTEREST. A box asking how many
+              interest only years a P&I loan has is a box somebody fills in. */}
+          {isInterestOnly && (
+            <div>
+              <span className={LAB}>Interest only years</span>
+              <input defaultValue={d.offer_io_years ?? (seed.ioYears || '')}
+                key={`oi${d.offer_io_years ?? ''}`}
+                onBlur={onBlurField('offer_io_years', 'money')} placeholder="3" className={INP} />
+            </div>
+          )}
+          <div>
+            <span className={LAB}>Monthly repayment</span>
+            <div className="text-[12.5px] border border-gray-200 rounded-lg px-2.5 py-1.5
+                            bg-page text-[#6F6A62] w-full">
+              {monthly === null ? '—' : money(monthly)}
+            </div>
+            <p className="m-0 mt-1 text-[10.5px] text-[#A0A7AE] leading-relaxed">
+              {monthly === null
+                ? 'Needs the loan, the rate and the term. Never an assumed 30 years.'
+                : 'Worked out from the loan, the rate and the term above.'}
+            </p>
+          </div>
         </div>
       </div>
 
