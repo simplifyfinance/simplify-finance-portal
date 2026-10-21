@@ -1,6 +1,7 @@
 'use client'
 import MilestoneFromTemplates from '@/components/MilestoneFromTemplates'
-import { TEMPLATES as MILESTONE_TEMPLATES, type TemplateId } from '@/lib/milestone-emails'
+import { TEMPLATES as MILESTONE_TEMPLATES, SENT_FROM_ITS_OWN_STEP,
+         type TemplateId } from '@/lib/milestone-emails'
 
 // THE SAME FOUR, FROM THE SAME LIST lib/milestone-emails.ts holds - so this
 // page cannot offer one the deal does not, or miss one it gains. The Record is
@@ -17,9 +18,24 @@ const MILESTONE_BLURB: Record<TemplateId, string> = {
     + 'final purchase numbers and the loan, and chases what is still outstanding. Always '
     + 'available \u2014 no stage to wait for.',
 }
-const MILESTONES = MILESTONE_TEMPLATES.map(t => ({
-  id: t.id, name: t.name, blurb: MILESTONE_BLURB[t.id],
-}))
+// ONE DOOR FOR THE OFFER ACCEPTED EMAIL, AND IT IS NOT THIS PAGE.
+//
+// 21 Oct 2026. Fabio sent it from here against a deal that had never had an
+// offer accepted and got a product and a rate nobody had typed - they came off
+// the lending option, which is the pre-approval. The five figures that email
+// quotes are only asked for on the offer accepted step, so from here there was
+// no way to answer them and no sign that they had not been.
+//
+// The blurb above stays, because this page still SAYS the template exists and
+// where to send it from. A template that vanishes is a template somebody hunts
+// for. See SENT_FROM_ITS_OWN_STEP in lib/milestone-emails.ts.
+const MILESTONES = MILESTONE_TEMPLATES
+  .filter(t => !SENT_FROM_ITS_OWN_STEP.includes(t.id))
+  .map(t => ({ id: t.id, name: t.name, blurb: MILESTONE_BLURB[t.id] }))
+
+const ELSEWHERE = MILESTONE_TEMPLATES
+  .filter(t => SENT_FROM_ITS_OWN_STEP.includes(t.id))
+  .map(t => ({ id: t.id, name: t.name }))
 import { useEffect, useState } from 'react'
 import { TONE } from '@/lib/tone'
 import RefinanceTemplateForm from './RefinanceTemplateForm'
@@ -214,6 +230,23 @@ export default function TemplatesClient() {
           </button>
         ))}
       </div>
+
+      {/* SAID, NOT HIDDEN. Somebody who knows this template exists will look
+          for it here, and a gap answers nothing. */}
+      {ELSEWHERE.length > 0 && (
+        <div className="border rounded-xl px-4 py-3 mb-6 bg-card"
+             style={{ borderColor: TONE.line }}>
+          <div className="text-[12.5px] leading-[1.6]" style={{ color: TONE.body }}>
+            <b style={{ color: TONE.ink }}>
+              {ELSEWHERE.map(t => t.name).join(', ')}
+            </b>
+            {ELSEWHERE.length > 1 ? ' are sent' : ' is sent'} from the deal, on the offer accepted
+            step — the same screen that asks for the product, the rate and the term the email
+            quotes. Open the deal and use <b style={{ color: TONE.ink }}>Tell the client</b> at the
+            bottom of that step.
+          </div>
+        </div>
+      )}
 
       <div className="text-[11px] font-bold tracking-[.08em] uppercase mb-2.5"
            style={{ color: TONE.label }}>What you type</div>

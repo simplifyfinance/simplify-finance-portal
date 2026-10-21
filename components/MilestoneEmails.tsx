@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { outstandingFromDeal } from '@/lib/documents-outstanding'
 import { type DocRow } from '@/lib/document-progress'
 import { SENT_WITH } from '@/lib/offer-accepted-email'
-import { menuFor, lastSent, templateById, type MenuItem, type TemplateId } from '@/lib/milestone-emails'
+import { menuFor, menuToBrowse, lastSent, templateById, type MenuItem, type TemplateId } from '@/lib/milestone-emails'
 import { useSender } from '@/app/(app)/templates/useSender'
 import { SenderPanel } from '@/app/(app)/templates/TemplateFields'
 
@@ -84,7 +84,12 @@ export default function MilestoneEmails({ deal, onUpdated }: {
     window.history.replaceState({}, '', url.toString())
   }, [])
   const box = useRef<HTMLDivElement | null>(null)
-  const menu = menuFor(deal)
+  // THE BROWSABLE LIST, NOT THE WHOLE ONE. The offer accepted email is sent
+  // from the step that asks for its figures and nowhere else - see
+  // SENT_FROM_ITS_OWN_STEP in lib/milestone-emails.ts. Opening it directly,
+  // which is what that step's link does, still works: this filters the menu,
+  // not the screen.
+  const menu = menuToBrowse(deal)
 
   // The menu shuts on a click anywhere else and on Escape. A menu you cannot
   // get out of without picking something is worse than no menu.

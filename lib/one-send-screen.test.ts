@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { execSync } from 'child_process'
-import { TEMPLATES } from './milestone-emails'
+import { TEMPLATES, SENT_FROM_ITS_OWN_STEP } from './milestone-emails'
 
 // ONE SEND SCREEN, TWO DOORS INTO IT.
 //
@@ -35,7 +35,22 @@ describe('the Templates page opens the screen that already exists', () => {
 describe('the three on the page are the three on the deal', () => {
   it('come from the one list, so neither side can gain or lose one', () => {
     expect(page).toContain("from '@/lib/milestone-emails'")
-    expect(page).toContain('MILESTONE_TEMPLATES.map(')
+    // BOTH LISTS ON THE PAGE ARE DERIVED FROM IT, not typed out.
+    //
+    // 21 Oct 2026. This used to look for `MILESTONE_TEMPLATES.map(` and stop
+    // there, which was the same thing while the page offered every template.
+    // One of them is now sent only from its own step - see
+    // SENT_FROM_ITS_OWN_STEP - so the page splits the list in two. What matters
+    // has not changed: neither side may gain or lose a template by hand, and
+    // the split has to be made by the named rule rather than by an id typed
+    // into this page.
+    expect(page).toContain('MILESTONE_TEMPLATES\n  .filter(t => !SENT_FROM_ITS_OWN_STEP.includes(t.id))')
+    expect(page).toContain('MILESTONE_TEMPLATES\n  .filter(t => SENT_FROM_ITS_OWN_STEP.includes(t.id))')
+    for (const t of TEMPLATES) {
+      if (SENT_FROM_ITS_OWN_STEP.includes(t.id)) continue
+      expect(page, `${t.id} has been dropped from the Templates page without a rule`)
+        .toContain(`${t.id}:`)
+    }
   })
 
   it('and every one of them has words on the card', () => {

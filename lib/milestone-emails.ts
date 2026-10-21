@@ -255,6 +255,37 @@ export function menuFor(deal: any): MenuItem[] {
 // HAS happened; these two stay one press away in the list.
 const NEVER_SUGGESTED: TemplateId[] = ['final_checkin', 'offer_accepted']
 
+// ONE DOOR, AND IT IS THE STEP THE FIGURES ARE TYPED ON.
+//
+// 21 Oct 2026. The offer accepted email was reachable three ways: the Templates
+// page, the Client emails menu on the deal card, and the Tell the client link
+// at the bottom of the offer accepted step. Fabio tested the first one on a
+// deal that had never had an offer accepted and got a rate nobody had typed -
+// Orange Advantage at 5.99%, straight off the lending option, which is the
+// pre-approval. That is the exact fault Belle reported and this template was
+// built to end.
+//
+// "think best to have one way to send that and it is via offer accepted process
+// this is going to be too hard otherwise", then, of the deal card menu: "no
+// point being there either."
+//
+// He is right, and the reason is not tidiness. THE EMAIL QUOTES FIVE FIGURES
+// THAT ARE ONLY ASKED FOR ON ONE SCREEN - the product, the rate, the term, the
+// repayment type and the interest only years, in The loan now. Reached from
+// anywhere else there is no way to answer them, so the email falls back to the
+// pre-approval and says nothing about having done so. A door with no way to
+// fill the form behind it is worse than no door.
+//
+// It stays in TEMPLATES and in menuFor: those are the record of what exists,
+// and the send screen still opens on ?email=offer_accepted. Only the two LISTS
+// somebody browses leave it out.
+export const SENT_FROM_ITS_OWN_STEP: TemplateId[] = ['offer_accepted']
+
+/** The menu somebody browses. The same list, less the ones with one door. */
+export function menuToBrowse(deal: any): MenuItem[] {
+  return menuFor(deal).filter(i => !SENT_FROM_ITS_OWN_STEP.includes(i.id))
+}
+
 export function suggestedFor(deal: any): TemplateId | null {
   return menuFor(deal).find(i => i.state === 'ready' && !NEVER_SUGGESTED.includes(i.id))?.id || null
 }
