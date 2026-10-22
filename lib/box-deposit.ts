@@ -1,4 +1,5 @@
 import { money, readMoney } from './money'
+import { lmiAmount, lmiTreatment } from './lmi'
 import { dutyStateOf } from './duty-state'
 import { fundsToComplete, refinancedDebt, isConstruction } from './funds-to-complete'
 import { dutyApplies } from './construction'
@@ -173,18 +174,52 @@ export function lvrLine(deal: any): { parts: string[]; gaps: Gap[] } {
   parts.push(`The loan to value ratio is ${row.lvr}%.`)
   if (row.lvr <= 80) return { parts, gaps }
 
+  // THE PREMIUM COMES OFF lib/lmi.ts, NOT OFF TWO BOXES ON THE DEAL.
+  //
+  // 22 Oct 2026. This read bc.lmiApplicable and bc.lmi directly. On 20 Oct the
+  // premium moved onto each security, because a lender prices it on the house
+  // it is taking - so on a deal recorded that way this box shouted
+  // "NOT RECORDED - whether lenders mortgage insurance applies at 91.8%" with
+  // the figure sitting on the file, and raised a gap for it.
+  //
+  // A false red flag in a pack that goes to a lender is worse than a quiet
+  // one: it teaches the reader to skim the shouting.
+  //
+  // lmiAmount() adds the per-security premiums and falls back to the
+  // deal-level box. It is the same door the handover sheet, the Fact Find PDF
+  // and the assessor notes already read through.
+  const premium = lmiAmount(bc)
   const status = txt(bc.lmiApplicable)
-  if (!status) {
+  const waived = /waived/i.test(status)
+    || Object.values(bc?.securityLmiApplicable || {}).some((v: any) => /waived/i.test(txt(v)))
+
+  if (premium !== null) {
+    parts.push(`Lenders mortgage insurance is applicable and has been estimated at ${money(premium)}.`)
+    // AND HOW IT IS BEING PAID, WHICH THIS PACK NEVER SAID.
+    //
+    // Fabio, 22 Oct 2026: "compliance notes need to be matching LMIs". They
+    // could not. The pack quoted a premium and stopped, so an assessor had no
+    // way to tell whether the loan figure three boxes up already had it in -
+    // the exact confusion lib/lmi.ts was written to end. The handover sheet
+    // and the assessor notes have both stated it since 16 Sep.
+    const how = lmiTreatment(bc)
+    if (how === 'capitalised') {
+      parts.push('The premium is capitalised onto the loan, so the loan amount stated above includes it.')
+    } else if (how === 'settlement') {
+      parts.push('The premium is paid at settlement and is not included in the loan amount stated above.')
+    } else {
+      parts.push(shout('NOT RECORDED — whether the premium is capitalised onto the loan or paid at settlement.'))
+      gaps.push({ what: 'How the LMI is paid', where: 'Borrowing capacity' })
+    }
+  } else if (waived) {
+    parts.push('Lenders mortgage insurance has been waived.')
+  } else if (status) {
+    // Applicable, with no figure recorded anywhere. Unchanged wording.
+    parts.push(`Lenders mortgage insurance is applicable. ${shout('NOT RECORDED — the LMI estimate.')}`)
+    gaps.push({ what: 'LMI estimate', where: 'Borrowing capacity' })
+  } else {
     parts.push(shout(`NOT RECORDED — whether lenders mortgage insurance applies at ${row.lvr}%.`))
     gaps.push({ what: 'LMI status', where: 'Borrowing capacity' })
-  } else if (/waived/i.test(status)) {
-    parts.push('Lenders mortgage insurance has been waived.')
-  } else {
-    const est = num(bc.lmi)
-    parts.push(est > 0
-      ? `Lenders mortgage insurance is applicable and has been estimated at ${money(est)}.`
-      : `Lenders mortgage insurance is applicable. ${shout('NOT RECORDED — the LMI estimate.')}`)
-    if (est <= 0) gaps.push({ what: 'LMI estimate', where: 'Borrowing capacity' })
   }
   return { parts, gaps }
 }
