@@ -70,7 +70,10 @@ describe('the two templates, and only those two', () => {
   it('top up + purchase and investment + equity release carry the record', () => {
     expect(src).toContain("contributionFrom: 'the loan increase',\n            // A top up's premium lives on the security")
     expect(src).toContain("contributionFrom: 'equity release and personal savings',\n          // This card had no LMI at all")
-    expect((src.match(/lmiFrom: d,/g) || []).length).toBe(2)
+    // Not a global count any more - every card that can carry a premium now
+    // passes the record, and lib/every-card-reads-the-premium.test.ts is the
+    // file that checks them all. These two are checked by their own wording
+    // above, which is what this file is about.
   })
 
   it('bridging is still left alone - it has no loan row to hang a premium on', () => {

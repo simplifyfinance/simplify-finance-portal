@@ -150,9 +150,10 @@ describe('wired into every template that has a purchase breakdown', () => {
   })
 
   it('every purchase breakdown is handed the deal’s LMI', () => {
-    // oo_purchase, investment_purchase, buy_sell, smsf, custom.
-    expect((src.match(/lmiApplicable: d\.lmiApplicable, lmi: d\.lmi, lmiTreatment: d\.lmiTreatment,/g) || []).length)
-      .toBeGreaterThanOrEqual(5)
+    // 22 Oct 2026. This counted the three fields being named one by one.
+    // Naming them is the bug - see lib/every-card-reads-the-premium.test.ts,
+    // which is now the list and checks each card by name.
+    expect((src.match(/lmiFrom: d,/g) || []).length).toBeGreaterThanOrEqual(5)
   })
 
   it('the LVR line is told when a loan figure already carries the premium', () => {

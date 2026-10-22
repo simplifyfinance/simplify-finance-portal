@@ -457,8 +457,7 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
                     price: rework.price, duty: rework.duty,
                     dutyLabel: dutyLabelFor(d.bc_data), loan: rework.loan,
                     contribution: rework.deposit, contributionFrom: 'savings',
-                    lmiApplicable: d.bc_data?.lmiApplicable, lmi: d.bc_data?.lmi,
-                    lmiTreatment: d.bc_data?.lmiTreatment,
+                    lmiFrom: d.bc_data,
                   }).map((r, i) => (
                     <tr key={i}>
                       {r.note

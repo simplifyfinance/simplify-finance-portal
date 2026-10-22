@@ -184,8 +184,9 @@ describe('one copy of the arithmetic, in both places that use it', () => {
     // The equity release column has no purchase breakdown to fold it into, so
     // it still prints the premium under its LVR - with its own answer.
     expect((src.match(/lmiLines\(opt, opt\.lmiTreatment/g) || []).length).toBe(1)
-    // The two purchase columns carry it inside the breakdown instead.
-    expect((src.match(/lmiTreatment: opt\.lmiTreatment/g) || []).length).toBe(2)
+    // The two purchase columns carry it inside the breakdown instead - the
+    // option passed whole rather than three of its fields named by hand.
+    expect((src.match(/lmiFrom: opt,/g) || []).length).toBe(2)
   })
 
   it('the email route works the alternative repayment out through the shared function', async () => {

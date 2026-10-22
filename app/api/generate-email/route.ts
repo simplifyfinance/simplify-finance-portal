@@ -748,7 +748,7 @@ export async function POST(req: NextRequest) {
               purchaseBlock({
                 price: bc.purchasePrice, duty: bc.stampDuty, dutyLabel: dutyLabel(bc),
                 loan: totalLending(bc.splits), contribution: bc.deposit, contributionFrom: bc.depositSource,
-                lmiApplicable: bc.lmiApplicable, lmi: bc.lmi, lmiTreatment: bc.lmiTreatment,
+                lmiFrom: bc,
               }) + buildLVRLine(bc, lmiIsInTheLoan(bc)))
           : securityHead(bc) + (money(bc.existingLoanBal)
               ? card('Today', existingLoanRow(bc) + rowIf('Property value', moneyIf(bc.propertyValue)))
@@ -1031,7 +1031,7 @@ export async function POST(req: NextRequest) {
         ${purchaseColumn({
           price: opt.purchasePrice, duty: opt.stampDuty, dutyLabel: dutyLabel(d),
           loan: opt.loanAmount, contribution: opt.deposit, contributionFrom: d.depositSource,
-          lmiApplicable: opt.lmiApplicable, lmi: opt.lmi, lmiTreatment: opt.lmiTreatment,
+          lmiFrom: opt,
         })}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
@@ -1067,7 +1067,7 @@ export async function POST(req: NextRequest) {
         purchaseBlock({
           price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
           loan: totalLending(d.splits), contribution: d.deposit, contributionFrom: d.depositSource,
-          lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
+          lmiFrom: d,
         }) +
         buildLVRLine(d, lmiIsInTheLoan(d))
       ) +
@@ -1094,7 +1094,7 @@ export async function POST(req: NextRequest) {
         ${purchaseColumn({
           price: opt.purchasePrice, duty: opt.stampDuty, dutyLabel: dutyLabel(d),
           loan: opt.loanAmount, contribution: opt.deposit, contributionFrom: d.depositSource,
-          lmiApplicable: opt.lmiApplicable, lmi: opt.lmi, lmiTreatment: opt.lmiTreatment,
+          lmiFrom: opt,
         })}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
@@ -1129,7 +1129,7 @@ export async function POST(req: NextRequest) {
         purchaseBlock({
           price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
           loan: totalLending(d.splits), contribution: d.deposit, contributionFrom: d.depositSource,
-          lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
+          lmiFrom: d,
         }) +
         buildLVRLine(d, lmiIsInTheLoan(d))
       ) +
@@ -1187,7 +1187,7 @@ export async function POST(req: NextRequest) {
               price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
               loan: totalLending(d.splits), contribution: d.deposit,
               contributionFrom: fromWords,
-              lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
+              lmiFrom: d,
             }) +
             buildLVRLine(d, lmiIsInTheLoan(d))
           )) +
@@ -1597,7 +1597,7 @@ export async function POST(req: NextRequest) {
         purchaseBlock({
           price: d.purchasePrice, duty: d.stampDuty, dutyLabel: dutyLabel(d),
           loan: totalLending(d.splits), contribution: d.deposit, contributionFrom: d.depositSource,
-          lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
+          lmiFrom: d,
         }) +
         buildLVRLine(d, lmiIsInTheLoan(d))
       ) +

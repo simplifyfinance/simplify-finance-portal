@@ -1067,3 +1067,38 @@ the purpose is a chip on the card and the year is already known. **Existing deal
 keep the names they were saved with.** Two deals for one client in one year now
 collide, and that is accepted: the SalesTrekker card carries the identity for the
 API. A clone gets `_clone` appended.
+
+## LMI, by template - Fabio, 22 Oct 2026
+
+Which borrowing capacity templates can carry a premium. His words, not derived
+from the code. Do not ask again.
+
+| Template | LMI |
+|---|---|
+| OO purchase | yes - definitely |
+| Investment purchase | yes - definitely |
+| Custom | yes |
+| Construction | yes |
+| Top up + purchase | yes |
+| Investment + equity release | yes |
+| Refinance / top up / complex refinance | yes - premium sits per security |
+| Buy and sell | potentially - treat as yes |
+| SMSF | NO - never |
+| Bridging | NO - never |
+| First home buyer | NO - that template IS the 5% Government Deposit Scheme |
+
+THE ARITHMETIC. Total cost is purchase price, or land + construction, plus
+stamp duty. The LMI is not a cost on top of that - it is a cost inside the
+loan. Capitalised, the funds to complete is total cost less the loan EXCLUDING
+the premium, because the premium bought none of the house. Paid at settlement,
+the client finds it on the day like the duty and it is a cost. Unanswered
+behaves exactly as capitalised always did, and the gap is named rather than
+guessed.
+
+THE HABIT THAT CAUSED ALL OF IT. lib/lmi.ts is the one door, and callers kept
+handing it a list of named fields. On 20 Oct the premium moved onto each
+security and every one of those callers went blind at once - a field list
+cannot carry a field it does not name. Pass the borrowing capacity whole
+(lmiFrom on purchaseRows). lib/every-card-reads-the-premium.test.ts fails if
+anybody writes one the old way, and fails if anybody adds LMI to SMSF,
+bridging or first home buyer.

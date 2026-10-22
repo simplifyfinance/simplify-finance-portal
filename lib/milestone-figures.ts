@@ -52,9 +52,10 @@ export function milestoneRows(deal: any): PurchaseRow[] {
     loan: loanAmount(deal),
     contribution: contributionOf(deal),
     contributionFrom: 'savings',
-    lmiApplicable: bc.lmiApplicable,
-    lmi: bc.lmi,
-    lmiTreatment: bc.lmiTreatment,
+    // The record, not three of its fields - so a premium recorded against a
+    // security reaches the preapproval, the formal approval and the offer
+    // accepted email. See lmiFrom in lib/purchase-rows.ts.
+    lmiFrom: bc,
   })
 }
 
