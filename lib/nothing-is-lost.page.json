@@ -8,7 +8,6 @@
     "Error saving name:",
     "Save",
     "Scenario",
-    "Waiting on",
     "Write from the deal"
   ],
   "app/(app)/deals/[id]/DealProgress.tsx": [

@@ -1,3 +1,5 @@
+import { pastFactFind } from './deal-phase'
+
 // What a deal is waiting on, worked out from what has actually happened to it.
 //
 // This used to read deals.stage. That column is only ever advanced in one place
@@ -99,8 +101,23 @@ type BeadDef = { key: string; label: string; done: (d: any) => boolean; date: (d
                  group: 'written' | 'tracked' }
 
 const BEADS: BeadDef[] = [
+  // THE SAME RULE AS THE BOARD, AT LAST.
+  //
+  // 22 Oct 2026. Fabio, who asked for this on 2 Sep: "when a deal is created
+  // they need to, the deal needs to sit and start on fact find. It's still
+  // starting on BC."
+  //
+  // It was fixed on 2 Sep - in lib/deal-phase.ts, which is what the BOARD
+  // reads. This file is what the DEAL PAGE reads, and it kept the old rule:
+  // the fact find counts as finished if fact_find_data has anything in it at
+  // all. The new-deal form seeds it with the applicants from the modal, so the
+  // fact find was finished before anybody opened the deal, and currentStage()
+  // sent them to the BC tab.
+  //
+  // Two files answering one question two ways for seven weeks. pastFactFind()
+  // asks for work a person actually typed - see lib/deal-phase.ts.
   { key: 'fact_find', label: 'Fact Find', group: 'written',
-    done: d => !!d?.fact_find_data && Object.keys(d.fact_find_data).length > 0,
+    done: d => pastFactFind(d),
     date: d => d?.created_at },
   // Closed by the client agreeing, not by the credit officer finishing.
   { key: 'bc', label: 'BC', group: 'written',
@@ -136,6 +153,12 @@ export function barFolds(deal: any): boolean {
 }
 
 // Which of the eight waiting-on steps we are on, or -1 once they are all behind us.
+//
+// Exported since 22 Oct so lib/who-has-it.ts can answer "who is holding this
+// up" off the same ladder rather than keeping a second opinion about where a
+// deal is. One ladder, two questions asked of it.
+export function waitingIndex(deal: any): number { return waitingStep(deal) }
+
 function waitingStep(deal: any): number {
   let last = -1
   STEPS.forEach((s, i) => { if (s.done(deal)) last = i })

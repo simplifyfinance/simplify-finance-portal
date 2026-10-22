@@ -10,6 +10,7 @@ import { checkedWrite } from '@/lib/checked-write'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
+import { whoHasIt } from '@/lib/who-has-it'
 import { ageGroupOf, stageAge, GROUP_ORDER, GROUP_STYLE } from '@/lib/deal-age'
 import { useBrokerNames } from '@/lib/broker-names'
 import { phaseOf, derivedPhaseOf, isFinished, isInApplication, PHASE_LABEL } from '@/lib/deal-phase'
@@ -540,7 +541,13 @@ export default function DealsPage() {
                     {(deal as any).credit_officers?.name && <> · Credit: {(deal as any).credit_officers.name}</>}
                   </div>
                 </div>
+                {/* Two words where the row has no room for a sentence. The
+                    full wording is still on the deal itself. */}
                 {(() => {
+                  const has = whoHasIt(deal)
+                  if (has) return (
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-md whitespace-nowrap ${has.style}`}>{has.label}</span>
+                  )
                   const waitingOn = getWaitingOnLabel(deal, (deal as any).credit_officers?.name)
                   return waitingOn ? (
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-md whitespace-nowrap ${WAITING_ON_STYLES[waitingOn.color]}`}>{waitingOn.text}</span>

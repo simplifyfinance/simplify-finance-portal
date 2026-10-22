@@ -22,6 +22,7 @@ import LOForm from './LOForm'
 import ComplianceForm from './ComplianceForm'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
 import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
+import { whoHasIt } from '@/lib/who-has-it'
 import DealProgress, { currentStage } from './DealProgress'
 import DealSettlement from './DealSettlement'
 import DealSettlementPanel from './DealSettlementPanel'
@@ -529,14 +530,29 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
                 <span className="text-[13px] font-semibold text-info">{templateLabel(dealData.bc_data?.template)}</span>
               </span>
             )}
+            {/* TWO WORDS IN FRONT, THE SENTENCE BEHIND THEM.
+                22 Oct 2026. The chip said "Waiting on: Melissa to complete
+                Compliance" whether Melissa was typing or waiting on the
+                client's payslips - see lib/who-has-it.ts. The two words answer
+                the question people actually ask; the old sentence still sits
+                beside them in grey, because it says what is next and that is
+                worth knowing too. */}
             {(() => {
+              const has = whoHasIt(dealData)
               const waitingOn = getWaitingOnLabel(dealData)
-              return waitingOn ? (
+              if (!has) return waitingOn ? (
                 <span className="inline-flex items-baseline gap-2 bg-waiting-bg border border-waiting-edge rounded-lg px-3 py-1">
-                  <span className="text-[9.5px] font-bold tracking-wider uppercase text-waiting">Waiting on</span>
-                  <span className="text-[13px] font-semibold text-waiting">{waitingOn.text.replace(/^Waiting on:\s*/i, '')}</span>
+                  <span className="text-[13px] font-semibold text-waiting">{waitingOn.text}</span>
                 </span>
               ) : null
+              return (
+                <span className="inline-flex items-center gap-2">
+                  <span className={`text-[13px] font-semibold rounded-lg px-3 py-1 ${has.style}`}>{has.label}</span>
+                  {waitingOn && (
+                    <span className="text-[12px] text-muted">{waitingOn.text.replace(/^Waiting on:\s*/i, '')}</span>
+                  )}
+                </span>
+              )
             })()}
             {/* Alerts belong in the header, not in a panel further down. An alert
                 is only worth calling urgent if somebody who was not going to
