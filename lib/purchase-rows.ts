@@ -60,6 +60,17 @@ export type PurchaseInput = {
   lmiApplicable?: any
   lmi?: any
   lmiTreatment?: any
+  // THE WHOLE BORROWING CAPACITY, FOR A CALLER THAT HAS ONE.
+  //
+  // 22 Oct 2026. The three boxes above are the deal-level ones. On 20 Oct the
+  // premium moved onto each security, because a lender prices it on the house
+  // it is taking - so a caller naming those three fields cannot see a premium
+  // recorded the new way.
+  //
+  // That is exactly the shape of a top up, which is why this exists. Optional
+  // and additive: a caller that still names the three fields behaves to the
+  // character as it did yesterday.
+  lmiFrom?: any
   // A LENDER FEE THAT SITS INSIDE THE LOAN FIGURE ABOVE.
   //
   // 14 Oct 2026. ORDE charge a $4,053 application fee and add it to the loan,
@@ -77,6 +88,8 @@ export type PurchaseInput = {
 }
 
 export function purchaseRows(input: PurchaseInput): PurchaseRow[] {
+  // The borrowing capacity where one was passed, the flat input otherwise.
+  const lmiRecord = input.lmiFrom ?? input
   const out: PurchaseRow[] = []
   const add = (label: string, value: string) => { if (value) out.push({ label, value }) }
 
@@ -109,7 +122,7 @@ export function purchaseRows(input: PurchaseInput): PurchaseRow[] {
 
   // ONE LOAN LINE. Capitalised, this is the base plus the premium and the
   // sentence under it says so. Every other answer leaves it exactly as typed.
-  const loan = clientLoan(input, readMoney(input.loan))
+  const loan = clientLoan(lmiRecord, readMoney(input.loan))
   add('Loan amount', amount(loan.amount))
   if (loan.note && loan.amount) out.push({ label: '', value: loan.note, note: true })
   // AND THE LINE THAT EXPLAINS THE FEE. Without it the column does not subtract
@@ -145,8 +158,8 @@ export function purchaseRows(input: PurchaseInput): PurchaseRow[] {
   // so there is nothing to take out. It is money to find on the day and
   // lmiTrailingLines() already says so underneath.
   const totalCost = totalPurchaseCost(input.price, input.duty)
-  const premium = lmiAmount(input)
-  const inTheLoan = premium !== null && lmiTreatment(input) !== 'settlement'
+  const premium = lmiAmount(lmiRecord)
+  const inTheLoan = premium !== null && lmiTreatment(lmiRecord) !== 'settlement'
 
 
   // `loan.amount` is what the client sees on the Loan amount line - the typed
@@ -165,7 +178,7 @@ export function purchaseRows(input: PurchaseInput): PurchaseRow[] {
       amount(worked !== null && worked > 0 ? worked : input.contribution))
 
   // Paid at settlement, or recorded with nobody yet saying how it is paid.
-  for (const line of lmiTrailingLines(input)) out.push({ label: line.label, value: line.value })
+  for (const line of lmiTrailingLines(lmiRecord)) out.push({ label: line.label, value: line.value })
 
   return out
 }

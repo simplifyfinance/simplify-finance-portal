@@ -916,6 +916,9 @@ export async function POST(req: NextRequest) {
             loan: d.splits?.find((x: any) => /purchase/i.test(txt(x?.label)))?.amount,
             contribution: moneyIf(cashReleased(d)),
             contributionFrom: 'the loan increase',
+            // A top up's premium lives on the security, not the deal - see
+            // lmiFrom in lib/purchase-rows.ts. This card had no LMI at all.
+            lmiFrom: d,
           }))
         : '') +
       securedTotalLine(d) +
@@ -1438,6 +1441,8 @@ export async function POST(req: NextRequest) {
           price: npPrice, duty: npStamp, dutyLabel: dutyLabel(d),
           loan: d.splits?.[2]?.amount, contribution: npDeposit,
           contributionFrom: 'equity release and personal savings',
+          // This card had no LMI at all. See lmiFrom in lib/purchase-rows.ts.
+          lmiFrom: d,
         })
       ) +
       p13('Below is a breakdown of the structure:') +

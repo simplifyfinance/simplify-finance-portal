@@ -200,6 +200,13 @@ export function loPurchaseBlock(d: any, bc?: any): string {
     contributionFrom: contributionSource(d),
     feeInLoan,
     feeLabel: 'application fee',
+    // THE PREMIUM, WHICH THIS CARD HAS NEVER SHOWN.
+    //
+    // 22 Oct 2026. The note at the top of this file said the LMI fields would
+    // come once the figures question was settled. It is settled - the
+    // borrowing capacity is already passed in for the price and the duty, so
+    // the premium comes with it. See lmiFrom in lib/purchase-rows.ts.
+    lmiFrom: bc,
   })
   if (!rows.length) return ''
 
