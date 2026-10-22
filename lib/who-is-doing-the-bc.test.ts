@@ -95,9 +95,13 @@ describe('and it has gone from Preview and share', () => {
     }
   })
 
-  // The credit officer's own button is a different thing and stays where it is.
-  it('but "Done — send to broker for review" stays', () => {
+  // The credit officer's own button is a different thing and stays - but it is
+  // one word now. 22 Oct 2026: it sits inside the What now strip, where the
+  // sentence it used to carry is the tooltip instead, because every stage has
+  // the same four steps and the step above it already says who it goes to.
+  it('but the credit officer\u2019s own hand-back stays', () => {
     expect(bc).toContain('markBCComplete')
-    expect(bc).toContain('Done — send to broker for review')
+    expect(bc).toContain("label: markingComplete ? 'Marking...' : 'Done'")
+    expect(bc).toContain('Tells the broker the BC is ready for their review')
   })
 })

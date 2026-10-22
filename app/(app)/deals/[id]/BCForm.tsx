@@ -1,5 +1,6 @@
 'use client'
 import HandoverBox from '@/components/Handover'
+import WhatNow from '@/components/WhatNow'
 import { dutyStateOf } from '@/lib/duty-state'
 import { useState, useEffect, useRef } from 'react'
 import { dayMonthYear, dayMonth, longDate } from '@/lib/same-date-everywhere'
@@ -3556,52 +3557,52 @@ Key assumptions: ${checklistText}`
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               {sendToClientMsg && <span className="text-xs text-info bg-info-bg border border-info-edge rounded-lg px-3 py-1.5">{sendToClientMsg}</span>}
             </div>
-            <div className="bg-card border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
-              <div className="flex items-center gap-2">
-                {deal.assigned_credit_officer ? (
-                  <button onClick={() => setHandingOver(true)} disabled={markingComplete || !!bcCompletedAt}
-                    title="This notifies the broker that BC is ready for their final review and personalisation"
-                    className={`px-3 py-1.5 text-sm rounded-lg font-medium disabled:opacity-70 ${bcCompletedAt ? 'bg-green-50 text-green-600 border border-green-200' : 'border border-gray-200 hover:bg-gray-50'}`}>
-                    {bcCompletedAt ? '✓ Sent to broker for review' : markingComplete ? 'Marking...' : 'Done — send to broker for review'}
-                  </button>
-                ) : null}
-{/* TWO THINGS HAVE NOW LEFT THIS BOX, BOTH FOR THE SAME REASON.
-                    "Client agreed — move to LO", 2 Sep 2026, asked for by Alan:
-                    the one action that moves the deal on was two clicks deep
-                    behind a tab nobody opens unless they are emailing. It sits
-                    beside the tab pills above.
-                    "I'll do this myself" and "Send to credit team", 27 Sep 2026,
-                    asked for by Fabio: the FIRST decision on a deal, three
-                    clicks deep. They now sit on the deal page itself, under the
-                    document list - see components/WhoIsDoingTheBc.tsx. */}
-              </div>
-
-              <div className="w-px h-8 bg-gray-200" />
-
-              <div className="flex items-center gap-3">
-                {canSendToClient ? (
-                  <>
-                    <button onClick={() => {
-                      // Already handed over by credit, or already written
-                      // down once - the note is not asked for twice.
-                      if (bcCompletedAt) { sendToClient(); return }
-                      setThenSend(true); setHandingOver(true)
-                    }}
-                      title={freshness.state === 'stale' ? 'Heads up: this email was written for a different scenario.' : freshness.state === 'figures-moved' ? 'Heads up: figures have changed since this email was written.' : ''}
-                      className="px-4 py-2 text-sm bg-brand text-on-brand rounded-lg font-medium hover:opacity-90 disabled:opacity-40 disabled:hover:opacity-40">Send to client</button>
-                  </>
-                ) : (
-                  <span className="text-xs text-gray-400 italic">Only the broker can send this to the client — use "Done — send to broker for review" above.</span>
-                )}
-              </div>
-
-              <div className="w-px h-8 bg-gray-200 ml-auto" />
-
-              <div className="flex items-center gap-4">
-                <div className="w-px h-6 bg-gray-200" />
-                <CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
-              </div>
-            </div>
+            {/* THE SAME STRIP AS EVERY OTHER STAGE - see components/WhatNow.tsx.
+                What was here: five buttons in three groups separated by little
+                grey rules, two of which vanished entirely when no credit officer
+                was assigned. Fabio, 22 Oct 2026, on why his team hesitate:
+                "sometimes there and sometimes not" is how a screen loses their
+                trust. The buttons that moved out of this box on 2 Sep and
+                27 Sep - "Client agreed", "I'll do this myself", "Send to credit
+                team" - have not come back; they live on the deal page. */}
+            <WhatNow
+              steps={[
+                { label: 'Written', done: !!emailHtml, now: !emailHtml },
+                { label: bcCompletedAt ? (deal.assigned_credit_officer ? 'Credit finished it' : 'Finished') : 'Being written',
+                  done: !!bcCompletedAt, now: !!emailHtml && !bcCompletedAt,
+                  under: bcCompletedAt ? dayMonth(bcCompletedAt) : undefined },
+                { label: deal.bc_sent_at ? 'Sent' : 'Not sent', done: !!deal.bc_sent_at,
+                  now: !!bcCompletedAt && !deal.bc_sent_at,
+                  under: deal.bc_sent_at ? dayMonth(deal.bc_sent_at) : undefined },
+                { label: deal.client_proceeded ? 'Client said yes' : 'With client',
+                  done: !!deal.client_proceeded, client: true,
+                  now: !!deal.bc_sent_at && !deal.client_proceeded },
+              ]}
+              actions={[
+                // Credit hands it back. Only a thing while somebody else is
+                // carrying it, and only until they have.
+                ...(deal.assigned_credit_officer && !bcCompletedAt ? [{
+                  label: markingComplete ? 'Marking...' : 'Done',
+                  onClick: () => setHandingOver(true),
+                  primary: true,
+                  disabled: markingComplete,
+                  title: 'Tells the broker the BC is ready for their review',
+                }] : []),
+                ...(canSendToClient ? [{
+                  label: 'Send to client',
+                  onClick: () => {
+                    // Already answered once on the handover - never asked twice.
+                    if (bcCompletedAt) { sendToClient(); return }
+                    setThenSend(true); setHandingOver(true)
+                  },
+                  primary: !(deal.assigned_credit_officer && !bcCompletedAt),
+                  title: freshness.state === 'stale' ? 'Heads up: this email was written for a different scenario.'
+                       : freshness.state === 'figures-moved' ? 'Heads up: figures have changed since this email was written.' : '',
+                }] : []),
+              ]}
+              hint={canSendToClient ? undefined : 'Only a broker can send this to the client.'}
+              note={<CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />}
+            />
           </div>
           {/* THE EMAIL IS A SAVED COPY, so it can be out of date with the deal
               sitting next to it. Say so here, where somebody is about to send

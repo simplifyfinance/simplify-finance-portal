@@ -151,6 +151,64 @@ export function readingMinutes(e: Entry): number {
 // Add a new entry wherever is tidiest. The date decides what the team sees.
 export const ENTRIES: Entry[] = [
   {
+    id: 'what-now-and-who-has-it',
+    section: 'process',
+    title: 'What now \u2014 the buttons on a deal have changed',
+    on: '2026-10-23',
+    lead: 'Every tab used to have different buttons in different places, and two of them '
+        + 'disappeared entirely when no credit officer was assigned. There is now one strip, the '
+        + 'same on the BC and the Lending options, and never more than two buttons on it.',
+    body: [
+      'Two different things used to be drawn as one row, which is why nobody was sure what to '
+      + 'press. They are now separated.',
+      {
+        step: '1. The top row is a picture. You cannot press it.',
+        body: [
+          'Written \u2192 who is on it \u2192 Sent \u2192 Client said yes. Green is done, blue is '
+          + 'where the deal is now, purple means it is the client\u2019s turn. It is there to tell you '
+          + 'where you are, nothing else.',
+        ],
+      },
+      {
+        step: '2. Underneath, the buttons, headed "What now"',
+        body: [
+          'At most two, and the one you normally want is first.',
+          ['Done \u2014 credit telling the broker it is written and ready for them',
+           'Send to client \u2014 the broker sending it out'],
+          'Nothing asks you who is doing the deal. Whoever is typing owns it. The only question '
+          + 'comes when you stop.',
+        ],
+      },
+      {
+        call: 'The notes box now appears every time a deal moves',
+        title: 'Including when a broker does the whole thing themselves',
+      },
+      'It used to appear only when credit handed a deal back. We were capturing what made a deal '
+      + 'hard on about half the file and nothing on the rest. It will not ask you twice on the '
+      + 'same deal \u2014 if credit already answered it, sending afterwards goes straight to the email.',
+      {
+        step: 'And every deal now says who it is sitting with',
+        body: [
+          ['With us \u2014 somebody here has to do something',
+           'With client \u2014 we have sent it and we are waiting on them',
+           'With lender \u2014 written and lodged, the bank has it'],
+          'On the deal and on every row of the deals list. This is what we will measure with: '
+          + 'until now a deal that sat with a client for a fortnight looked exactly like a slow '
+          + 'assessor, and every workload number was built on top of that.',
+          'If one ever says the wrong thing, say which deal. That is the feedback worth having.',
+        ],
+      },
+      {
+        call: 'New deals now open on Fact Find',
+        title: 'They used to open on BC before anybody had typed anything',
+      },
+      'A deal moves to the BC once there is real fact find work on it \u2014 a date of birth, an '
+      + 'address, a job or an income. Creating it with a name in the box is no longer enough.',
+      'All of this is being tried for a few days. If something is worse than it was, say so and '
+      + 'it comes back out.',
+    ],
+  },
+  {
     id: 'notes-on-a-deal',
     section: 'process',
     title: 'The three note boxes on a deal',

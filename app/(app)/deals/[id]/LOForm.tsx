@@ -1,5 +1,6 @@
 'use client'
 import HandoverBox from '@/components/Handover'
+import WhatNow from '@/components/WhatNow'
 import { isDebtRecycling } from '@/lib/debt-recycling'
 import { bcFieldsWin } from '@/lib/the-lo-copies-nothing-it-does-not-own'
 import { normalisePurpose } from '@/lib/split-purpose'
@@ -3238,38 +3239,43 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                     if (thenSend) { setThenSend(false); sendEmail() } else { markLOComplete() }
                   }} />
               )}
-              <div className="bg-card border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-2">
-                  {deal.assigned_credit_officer && (
-                    <button onClick={() => setHandingOver(true)} disabled={markingLoComplete || !!loCompletedAt} className={`px-3 py-1.5 text-sm rounded-lg font-medium disabled:opacity-70 ${loCompletedAt ? 'bg-green-50 text-green-600 border border-green-200' : 'border border-gray-200 hover:bg-gray-50'}`}>
-                      {loCompletedAt ? '✓ Sent to broker for review' : markingLoComplete ? 'Marking...' : 'Done — send to broker for review'}
-                    </button>
-                  )}
-{/* "Client agreed" and "Docs received" moved up beside the tabs, so
-                    the two actions that move a deal on are not behind the tab
-                    you would only open to email. Alan, 2 Sep 2026. */}
-                </div>
-                <div className="w-px h-8 bg-gray-200" />
-                <div className="flex items-center gap-3">
-                  {canSendToClient ? (
-                    <button onClick={() => {
+              {/* The same strip as the BC and, when it is built, Compliance.
+                  See components/WhatNow.tsx. */}
+              <WhatNow
+                steps={[
+                  { label: 'Written', done: !!emailHtml, now: !emailHtml },
+                  { label: loCompletedAt ? (deal.assigned_credit_officer ? 'Credit finished it' : 'Finished') : 'Being written',
+                    done: !!loCompletedAt, now: !!emailHtml && !loCompletedAt,
+                    under: loCompletedAt ? dayMonth(loCompletedAt) : undefined },
+                  { label: deal.lo_sent_at ? 'Sent' : 'Not sent', done: !!deal.lo_sent_at,
+                    now: !!loCompletedAt && !deal.lo_sent_at,
+                    under: deal.lo_sent_at ? dayMonth(deal.lo_sent_at) : undefined },
+                  { label: deal.lo_client_proceeded ? 'Client said yes' : 'With client',
+                    done: !!deal.lo_client_proceeded, client: true,
+                    now: !!deal.lo_sent_at && !deal.lo_client_proceeded },
+                ]}
+                actions={[
+                  ...(deal.assigned_credit_officer && !loCompletedAt ? [{
+                    label: markingLoComplete ? 'Marking...' : 'Done',
+                    onClick: () => setHandingOver(true),
+                    primary: true,
+                    disabled: markingLoComplete,
+                    title: 'Tells the broker the lending options are ready for their review',
+                  }] : []),
+                  ...(canSendToClient ? [{
+                    label: sending ? 'Copying...' : sent ? '\u2713 Copied \u2014 paste in Outlook' : 'Send to client',
+                    onClick: () => {
                       if (loCompletedAt) { sendEmail(); return }
                       setThenSend(true); setHandingOver(true)
-                    }} disabled={sending || !emailHtml}
-                      title={emailNeedsAttention ? 'Heads up: this email was written for a different scenario.' : ''}
-                      className="px-4 py-2 text-sm bg-brand text-on-brand rounded-lg font-medium hover:opacity-90 disabled:opacity-40">
-                      {sending ? 'Copying...' : sent ? '✓ Copied — paste in Outlook' : 'Send to client'}
-                    </button>
-                  ) : (
-                    <span className="text-xs text-gray-400 italic">Only the broker can send this to the client — use "Done — send to broker for review" above.</span>
-                  )}
-                </div>
-                <div className="w-px h-8 bg-gray-200 ml-auto" />
-                <div className="flex items-center gap-4">
-                  <div className="w-px h-6 bg-gray-200" />
-                  <CreditOfficerAssignment key={assignmentRefreshKey} dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
-                </div>
-              </div>
+                    },
+                    primary: !(deal.assigned_credit_officer && !loCompletedAt),
+                    disabled: sending || !emailHtml,
+                    title: emailNeedsAttention ? 'Heads up: this email was written for a different scenario.' : '',
+                  }] : []),
+                ]}
+                hint={canSendToClient ? undefined : 'Only a broker can send this to the client.'}
+                note={<CreditOfficerAssignment key={assignmentRefreshKey} dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />}
+              />
             </div>
           )}
           {freshness.state === 'figures-moved' && (
