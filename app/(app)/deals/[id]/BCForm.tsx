@@ -1021,6 +1021,8 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // to tell the broker WHY, so it was happening in Slack or not at all. It sits
   // in front of this button and never blocks it - see components/Handover.tsx.
   const [handingOver, setHandingOver] = useState(false)
+  // Which button opened the box, so onSent knows where to go next.
+  const [thenSend, setThenSend] = useState(false)
   const canSendToClient = can(userRole, 'sendClientEmails')
 
   const [showAllTemplates, setShowAllTemplates] = useState(false)
@@ -3528,11 +3530,24 @@ Key assumptions: ${checklistText}`
         </div>
       )}
 
+      {/* THE BOX POPS WHEN THE DEAL MOVES, WHOEVER MOVED IT.
+          22 Oct 2026. Fabio: "Always have the box pop up whne they move
+          stages". It only ever appeared on the credit-to-broker handover,
+          because that is the only button it was wired to. A broker who did
+          the BC themselves pressed Send to client and the deal moved with
+          nothing written down - so Paco learned from the deals that went
+          through credit and from none of the others, which is half the file.
+          Same box, same questions. What changes is what happens after it:
+          a handover marks the BC complete, a broker's own send goes on to
+          open the email. */}
       {handingOver && (
         <HandoverBox dealId={deal.id} stage="bc" lenders={[]}
           toWhom={String(deal.assigned_broker || 'the broker').split(' ')[0]}
-          onCancel={() => setHandingOver(false)}
-          onSent={() => { setHandingOver(false); markBCComplete() }} />
+          onCancel={() => { setHandingOver(false); setThenSend(false) }}
+          onSent={() => {
+            setHandingOver(false)
+            if (thenSend) { setThenSend(false); sendToClient() } else { markBCComplete() }
+          }} />
       )}
 
       {activeTab === 'preview' && (
@@ -3566,7 +3581,12 @@ Key assumptions: ${checklistText}`
               <div className="flex items-center gap-3">
                 {canSendToClient ? (
                   <>
-                    <button onClick={sendToClient}
+                    <button onClick={() => {
+                      // Already handed over by credit, or already written
+                      // down once - the note is not asked for twice.
+                      if (bcCompletedAt) { sendToClient(); return }
+                      setThenSend(true); setHandingOver(true)
+                    }}
                       title={freshness.state === 'stale' ? 'Heads up: this email was written for a different scenario.' : freshness.state === 'figures-moved' ? 'Heads up: figures have changed since this email was written.' : ''}
                       className="px-4 py-2 text-sm bg-brand text-on-brand rounded-lg font-medium hover:opacity-90 disabled:opacity-40 disabled:hover:opacity-40">Send to client</button>
                   </>

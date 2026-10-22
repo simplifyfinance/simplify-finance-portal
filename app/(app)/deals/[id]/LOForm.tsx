@@ -424,6 +424,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // deal, which is the question the borrowing capacity cannot answer. It never
   // blocks the button - see components/Handover.tsx.
   const [handingOver, setHandingOver] = useState(false)
+  // Which button opened the box, so onSent knows where to go next.
+  const [thenSend, setThenSend] = useState(false)
   const [sendingToCreditTeam, setSendingToCreditTeam] = useState(false)
   const [creditTeamMsg, setCreditTeamMsg] = useState('')
   const [creditTeamErr, setCreditTeamErr] = useState('')
@@ -862,14 +864,53 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     syncRateObservations()
   }, [d.lenders, d.loanAmount, d.purchasePrice, d.bcTemplate])
   const [lenderIdByName, setLenderIdByName] = useState<Record<string, string>>({})
-  const [brokersList, setBrokersList] = useState<{ name: string }[]>([{ name: 'Fabio' }, { name: 'Mark' }])
+  // THE BROKER LIST, AND THE BRANDS THAT GO WITH IT.
+  //
+  // 22 Oct 2026. Fabio, on a Navigate deal: "the LO brandign does not come
+  // across unless you generatee BC email".
+  //
+  // Two faults in one box. The dropdown printed the words "- Simplify Finance"
+  // after every name, typed into the page, so Justin Cornock read as Simplify
+  // whatever brand he was actually on. And there was no brand box at all: the
+  // LO took brandId off the BC, so a deal whose BC nobody had worked arrived
+  // here with an empty brand - and an empty brand resolves to the DEFAULT in
+  // lib/brand.ts. Simplify's logo, Simplify's trading name and SIMPLIFY'S
+  // CREDIT LICENCE on a Navigate client's email.
+  //
+  // THE SAME SOURCE AS THE BC, which is settings.brokers - it is the only
+  // record that carries brandIds. The brokers table has names and nothing
+  // else, so it stays as the fallback rather than the answer: a list that
+  // works but cannot say which brands a broker holds.
+  const [brokersList, setBrokersList] = useState<{ name: string; brandIds?: string[] }[]>([{ name: 'Fabio' }, { name: 'Mark' }])
+  const [brandsList, setBrandsList] = useState<{ id: string; name: string }[]>([{ id: 'simplify', name: 'Simplify Finance' }])
 
   useEffect(() => {
-    supabase.from('brokers').select('broker_key, name, active').order('name').then(({ data }: any) => {
-      const rows = (data || []).filter((b: any) => b.active !== false).map((b: any) => ({ name: b.name }))
-      if (rows.length) setBrokersList(rows)
+    supabase.from('settings').select('brokers, brands').eq('id', 'singleton').single().then(({ data, error }: any) => {
+      if (error) console.error('LO brokers/brands fetch error:', error)
+      if (data?.brokers?.length) setBrokersList(data.brokers)
+      if (data?.brands?.length) setBrandsList(data.brands)
+      // Only where settings has nothing to say. Never a second opinion.
+      if (!data?.brokers?.length) {
+        supabase.from('brokers').select('broker_key, name, active').order('name').then(({ data: rows }: any) => {
+          const live = (rows || []).filter((b: any) => b.active !== false).map((b: any) => ({ name: b.name }))
+          if (live.length) setBrokersList(live)
+        })
+      }
     })
   }, [])
+
+  // Justin holds more than one brand, which is the whole reason this is a
+  // dropdown and not a label. Identical rule to the BC.
+  const currentBrokerBrandIds = brokersList.find((b: any) => b.name === d.brokerSig)?.brandIds || ['simplify']
+  const availableBrands = brandsList.filter((br: any) => currentBrokerBrandIds.includes(br.id))
+
+  // NEVER BLANK, so it can never fall through to the default brand. The BC has
+  // done this since brands existed; the LO never did, which is the bug.
+  useEffect(() => {
+    if (availableBrands.length > 0 && !availableBrands.some((br: any) => br.id === d.brandId)) {
+      setD(x => ({ ...x, brandId: availableBrands[0].id }))
+    }
+  }, [d.brokerSig, brandsList])
 
   useEffect(() => {
     const newTemplate = loTemplateFor(bc.template)
@@ -2414,7 +2455,14 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             <label className="text-xs text-gray-500 block mb-1">Broker signature</label>
             <select className="w-full rounded-lg px-3 py-2 text-sm border border-gray-200 focus:outline-none focus:border-brand mb-3" value={d.brokerSig} onChange={e => setD({ ...d, brokerSig: e.target.value })}>
               {brokersList.map((b: any, i: number) => (
-                <option key={i} value={b.name}>{b.name} — Simplify Finance</option>
+                <option key={i} value={b.name}>{b.name}</option>
+              ))}
+            </select>
+            <label className="text-xs text-gray-500 block mb-1">Brand</label>
+            <select className="w-full rounded-lg px-3 py-2 text-sm border border-gray-200 focus:outline-none focus:border-brand mb-3"
+              value={d.brandId} onChange={e => setD({ ...d, brandId: e.target.value })}>
+              {availableBrands.map((br: any) => (
+                <option key={br.id} value={br.id}>{br.name}</option>
               ))}
             </select>
             <textarea spellCheck="true" className={`${d.brokerPersonalisation ? "border-green-200 bg-card" : "border-dashed border-field-line bg-page"} w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand min-h-[80px] resize-y border`} value={d.brokerPersonalisation}
@@ -3178,12 +3226,17 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 {moveToComplianceMsg && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">{moveToComplianceMsg}</span>}
                 {sendError && <span className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{sendError}</span>}
               </div>
+              {/* See the note on the same box in BCForm. The deal moving is
+                  what asks the questions, not who happens to be moving it. */}
               {handingOver && (
                 <HandoverBox dealId={deal.id} stage="lo"
                   lenders={d.lenders.map(x => String(x.lenderName || '').trim()).filter(Boolean)}
                   toWhom={String(deal.assigned_broker || 'the broker').split(' ')[0]}
-                  onCancel={() => setHandingOver(false)}
-                  onSent={() => { setHandingOver(false); markLOComplete() }} />
+                  onCancel={() => { setHandingOver(false); setThenSend(false) }}
+                  onSent={() => {
+                    setHandingOver(false)
+                    if (thenSend) { setThenSend(false); sendEmail() } else { markLOComplete() }
+                  }} />
               )}
               <div className="bg-card border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
@@ -3199,7 +3252,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                 <div className="w-px h-8 bg-gray-200" />
                 <div className="flex items-center gap-3">
                   {canSendToClient ? (
-                    <button onClick={sendEmail} disabled={sending || !emailHtml}
+                    <button onClick={() => {
+                      if (loCompletedAt) { sendEmail(); return }
+                      setThenSend(true); setHandingOver(true)
+                    }} disabled={sending || !emailHtml}
                       title={emailNeedsAttention ? 'Heads up: this email was written for a different scenario.' : ''}
                       className="px-4 py-2 text-sm bg-brand text-on-brand rounded-lg font-medium hover:opacity-90 disabled:opacity-40">
                       {sending ? 'Copying...' : sent ? '✓ Copied — paste in Outlook' : 'Send to client'}
