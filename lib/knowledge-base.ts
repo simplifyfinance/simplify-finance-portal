@@ -144,9 +144,11 @@ export function readingMinutes(e: Entry): number {
   return Math.max(1, Math.round(wordCount(e) / 220))
 }
 
-// Newest first is the order they are WRITTEN in, not sorted into - see
-// entriesFor(). Keeping the file in the order a person reads it means a diff
-// shows one addition at the top rather than a reshuffle.
+// NEWEST FIRST IS SORTED, NOT ASSUMED - see entriesFor(). This file used to
+// rely on new entries being written at the top, and by 22 Oct 2026 that had
+// already drifted: a guide dated 19 Oct sat above four from the 21st.
+//
+// Add a new entry wherever is tidiest. The date decides what the team sees.
 export const ENTRIES: Entry[] = [
   {
     id: 'notes-on-a-deal',
@@ -723,13 +725,27 @@ export const ENTRIES: Entry[] = [
 
 export function entriesFor(section: Section | 'all' = 'all', find = ''): Entry[] {
   const want = find.trim().toLowerCase()
-  return ENTRIES.filter(e => {
+  const hits = ENTRIES.filter(e => {
     if (section !== 'all' && e.section !== section) return false
     if (!want) return true
     // Through searchText, so a word inside a step or a callout is found. A
     // flat() over the body would stringify the objects and match nothing.
     return searchText(e).toLowerCase().includes(want)
   })
+  // NEWEST FIRST, SORTED, NOT HOPED FOR.
+  //
+  // 22 Oct 2026. Fabio: "knowledeg based under everything should be cronological
+  // order". The file comment above ENTRIES says the order they are written in
+  // IS the order they are read in - and it had already stopped being true. The
+  // lending options guide is dated 19 Oct and sat above four entries from the
+  // 21st, because somebody added theirs in the wrong place and nothing noticed.
+  //
+  // A convention nobody can see is a convention that drifts. The date is on
+  // every entry, so this sorts by it. Entries written on the same day keep the
+  // order they appear in the file, which is still the author's call.
+  const place = new Map(ENTRIES.map((e, i) => [e.id, i]))
+  return hits.sort((a, b) =>
+    a.on === b.on ? place.get(a.id)! - place.get(b.id)! : (a.on < b.on ? 1 : -1))
 }
 
 export function sectionLabel(key: Section): string {
