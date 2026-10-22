@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { bccForDeal } from '@/lib/files-itself-in-salestrekker'
 import { markProceeded, buildNextStepsContent, nextStepsSubject, loadProceed, stageFor } from '@/lib/proceed-flow'
 import { buildNextStepsEmailHtml } from '@/lib/next-steps-email'
 import { createSupabaseServer } from '@/lib/supabase-server'
@@ -135,6 +136,9 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         from: 'Simplify Finance <notifications@simplifyfinance.com.au>',
         to: where.to,
+        // Files itself against the deal. See lib/files-itself-in-salestrekker.ts.
+        ...(bccForDeal(deal, { redirected: where.redirected }).length
+          ? { bcc: bccForDeal(deal, { redirected: where.redirected }) } : {}),
         subject: where.redirected ? testSubject(nextStepsSubject(stage)) : nextStepsSubject(stage),
         html
       })

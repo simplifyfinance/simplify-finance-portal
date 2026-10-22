@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { bccForDeal, bccGap } from '@/lib/files-itself-in-salestrekker'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
 import { resolveBrand } from '@/lib/brand'
@@ -277,6 +278,8 @@ export async function GET(req: NextRequest) {
     deal, clientEmails: built.to, copyTo: built.cc, testerEmail: sender.email,
   })
 
+  const filingGap = bccGap(deal, { redirected: where.redirected })
+
   return NextResponse.json({
     preview: true,
     menu,
@@ -284,7 +287,12 @@ export async function GET(req: NextRequest) {
     subject: where.redirected ? testSubject(built.subject) : built.subject,
     html: built.html,
     blocks: built.blocks,
-    problems: built.problems,
+    // AND WHETHER IT WILL FILE ITSELF. 22 Oct 2026. A deal with no SalesTrekker
+    // code sends perfectly and files nowhere, and nothing said so - which is
+    // the quiet version of the fault this whole change is about. It sits with
+    // the other problems rather than in a box of its own, because it is the
+    // same kind of thing: worth knowing before you press send, not a refusal.
+    problems: [...built.problems, ...(filingGap ? [filingGap] : [])],
     // WHO IT IS GOING TO, by name. The person sending has to be able to see it
     // - half the point of a preview is catching an address that belongs to
     // somebody's old work account. They can read it on the fact find anyway.
@@ -429,10 +437,16 @@ export async function POST(req: NextRequest) {
     ? [sender.email || FALLBACK_FROM, SETTLEMENTS_EMAIL]
     : (sender.email || FALLBACK_FROM)
 
+  // IT FILES ITSELF AGAINST THE DEAL. 22 Oct 2026 - none of these five did,
+  // which is the whole of lib/files-itself-in-salestrekker.ts. A test deal is
+  // redirected to the sender and files nowhere.
+  const bcc = bccForDeal(deal, { redirected: where.redirected })
+
   const payload = (reply: string | string[]) => ({
     from: `${sender.name} <${fromAddress}>`,
     to: where.to,
     ...(where.cc.length ? { cc: where.cc } : {}),
+    ...(bcc.length ? { bcc } : {}),
     reply_to: reply,
     subject,
     html: built.html,
