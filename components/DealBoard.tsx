@@ -10,7 +10,6 @@ import { isUrgentNow, urgentChipLabel } from '@/lib/push-answers'
 // THE CARD WEARS THE COLOUR OF THE TILE THAT COUNTS IT. Both read these two
 // functions, so a red tile of six can only ever sit above six red cards.
 import { needsChasing, waitingOnSomeone } from '@/lib/board-tiles'
-import { AlertChips } from '@/components/DealFile'
 import type { Alert } from '@/lib/deal-notes'
 import DealPeek from '@/components/DealPeek'
 import { brokerKey as keyOf } from '@/lib/broker-key'
@@ -553,13 +552,22 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                         <span className="ml-auto text-[11px] text-muted tabular-nums">{when}</span>
                       </div>
 
-                      {/* Loudest thing on the card, above the labels - somebody
-                          scanning the board is looking for what is wrong. */}
-                      {(alerts?.[d.id]?.length || 0) > 0 && (
-                        <div className="flex gap-1 flex-wrap items-center mb-1.5">
-                          <AlertChips alerts={alerts![d.id]} max={2} />
-                        </div>
-                      )}
+                      {/* NOT ON THE CARD ANY MORE. 22 Oct 2026, Fabio: "deal
+                          cards are gettign too bsy", and of what needs
+                          chasing, "these needs chasign are just documents
+                          missing etc so havign them in the deal card in red
+                          and binoculars is enough".
+                          //
+                          He is right, and the reason is the content. These are
+                          a missing payslip and an unanswered email, not a deal
+                          on fire - and printed as a full sentence, two of them
+                          turned a column into a wall of red before anybody had
+                          read a deal name.
+                          //
+                          THEY ARE NOT HIDDEN. The binoculars open on any card
+                          and lead with them, and they are in red at the top of
+                          the deal itself. What has gone is the sentence on the
+                          face of the card. */}
 
                       <div className="flex gap-1 flex-wrap items-center min-w-0">
                         {chipsFor(d, colours).map(c => (

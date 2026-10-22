@@ -149,6 +149,82 @@ export function readingMinutes(e: Entry): number {
 // shows one addition at the top rather than a reshuffle.
 export const ENTRIES: Entry[] = [
   {
+    id: 'notes-on-a-deal',
+    section: 'process',
+    title: 'The three note boxes on a deal',
+    on: '2026-10-22',
+    lead: 'They were called Important notes, Internal notes and File notes, and nobody could tell '
+        + 'them apart. They are now Needs action, Sales notes and File update, they sit at the top '
+        + 'of every deal, and each one says on screen who reads it.',
+    body: [
+      'They are the first three things on the right hand side of a deal, in this order. Everything '
+      + 'else \u2014 documents, the PDFs, the links \u2014 is below them now.',
+      { shot: 'notes-three-boxes.png', caption: 'The three boxes, top of the deal' },
+      {
+        step: '1. Needs action \u2014 something somebody has to do',
+        body: [
+          'It is not a note. It takes an owner, a due date, and a tick to clear it.',
+          { shot: 'notes-in-the-binoculars.png',
+            caption: 'Typed on the deal, and the binoculars lead with it' },
+          'Use it for: chase the bank for something in writing, a figure missing before the '
+          + 'borrowing capacity goes out, a condition somebody has to satisfy by Friday.',
+        ],
+      },
+      {
+        title: 'It reaches people who never open the deal',
+        call: 'Open the binoculars on any deal and what needs action is the first thing in it, '
+            + 'before the figures. It is also in red at the top of the deal itself. Tick an item '
+            + 'off and it leaves both on its own \u2014 nothing to tidy up afterwards.',
+      },
+      {
+        step: '2. Sales notes \u2014 what we know about the deal',
+        body: [
+          'The working detail. What the client told us, what the lender said, the assumptions '
+          + 'behind the figures. It can be typed over, so it holds what is true now rather than '
+          + 'what happened.',
+        ],
+      },
+      {
+        title: 'IT IS NOT PRIVATE, AND IT USED TO BE CALLED INTERNAL',
+        watch: true,
+        call: 'It goes to SalesTrekker, it prints on the Fact Find PDF, and it is read into the '
+            + 'assessment. Write it as if credit will read it, because they will. That is the whole '
+            + 'reason the name changed.',
+      },
+      {
+        step: '3. File update \u2014 what happened, and when',
+        body: [
+          'The log. Every entry carries the time and who wrote it, and the portal writes to it as '
+          + 'well \u2014 a tab unlocked, a deal moved back a stage.',
+          'Use it for: spoke to the bank, client rang, documents went up, why a stage moved.',
+        ],
+      },
+      {
+        title: 'Nothing here can be typed over',
+        call: 'It is the only box on the deal where yesterday survives. If it matters that somebody '
+            + 'said something on Tuesday, it goes here.',
+      },
+      'In one line each.',
+      [
+        'Needs action \u2014 somebody has to DO this, and it is the first thing in the binoculars '
+        + 'until they have.',
+        'Sales notes \u2014 what we KNOW. Goes to the bank and onto the file.',
+        'File update \u2014 what HAPPENED. Permanent, and it carries the time and the name.',
+      ],
+      {
+        title: 'All three can be made taller',
+        call: 'A word in the top corner of the box, or drag the bar along its bottom edge. Each one '
+            + 'remembers its own height on each deal, on your own screen.',
+      },
+      {
+        title: 'And the binoculars show less on purpose',
+        call: 'The quick look answers one question \u2014 is anything on fire here. So it shows what '
+            + 'needs action and the single latest file update. Sales notes is a paragraph, not a '
+            + 'glance, and it is the first thing you see when you press Open deal.',
+      },
+    ],
+  },
+  {
     id: 'offer-accepted',
     section: 'process',
     title: 'Offer accepted \u2014 the loan, the email and the handover',

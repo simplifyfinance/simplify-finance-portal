@@ -101,7 +101,12 @@ export default function DealPeek({ deal, lenderName, brokerName, creditName, col
             answer "is anything on fire here" before you commit to opening it. */}
         {byUrgency(alerts).length > 0 && (
           <div className="px-[18px] pb-3">
-            <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-chase m-0 mb-2">Important notes</p>
+            <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-chase m-0 mb-2">
+              &#9888; Needs action
+              <span className="font-normal normal-case tracking-normal text-faint">
+                {' '}&middot; {byUrgency(alerts).length} open
+              </span>
+            </p>
             {byUrgency(alerts).slice(0, 3).map(a => {
               const red = toneOf(a) === 'red'
               return (
@@ -121,27 +126,23 @@ export default function DealPeek({ deal, lenderName, brokerName, creditName, col
           </div>
         )}
 
-        <div className="px-[18px] pb-3">
-          <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-muted m-0 mb-2">Internal notes</p>
-          {p.notes ? (
-            <div className="text-[12px] leading-[1.55] text-body bg-gray-50 border border-line rounded-lg px-2.5 py-2 max-h-[96px] overflow-auto whitespace-pre-line">
-              {p.notes}
-            </div>
-          ) : (
-            <p className="text-[12px] text-faint m-0">Nothing written yet.</p>
-          )}
-        </div>
+        {/* SALES NOTES ARE NOT IN THE QUICK LOOK. 22 Oct 2026, Fabio: "remove
+            sales notes ... otherwise it is too much info".
+            //
+            It is a paragraph, and this panel answers one question - is anything
+            on fire here - before somebody commits to opening the deal. It is
+            the first thing on the right once they do. */}
 
         {/* The last few things that happened, so the quick look answers "where
             is this up to" as well as "what is it". */}
         {newestFirst(notes).length > 0 && (
           <div className="px-[18px] pb-4">
             <p className="text-[9.5px] font-bold tracking-[.09em] uppercase text-muted m-0 mb-2">
-              File notes
-              {notes.length > 3 && <span className="font-normal normal-case tracking-normal text-faint"> · {notes.length} in total</span>}
+              &#128338; Last file update
+              {notes.length > 1 && <span className="font-normal normal-case tracking-normal text-faint"> · {notes.length} in total</span>}
             </p>
             <div className="border-l-2 border-line pl-2.5 ml-[2px]">
-              {newestFirst(notes).slice(0, 3).map(n => (
+              {newestFirst(notes).slice(0, 1).map(n => (
                 <div key={n.id} className="mb-2 last:mb-0">
                   <p className="text-[10px] text-faint m-0">
                     {whenLabel(n.created_at)} · {n.kind === 'system' ? 'recorded automatically' : (n.author_name || 'unknown')}

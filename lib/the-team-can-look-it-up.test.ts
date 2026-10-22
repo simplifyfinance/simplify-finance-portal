@@ -4,8 +4,7 @@ import {
   ENTRIES, SECTIONS, entriesFor, readableDate, entryEmailHtml, entryPlainText,
   templatesWithNoEntry, WRITTEN_UP_LATER,
   isBullets, isCall, isFigure, isStep, stepNumber, searchText,
-  isLong, wordCount, readingMinutes, LONG_WORDS,
-} from './knowledge-base'
+  isLong, wordCount, readingMinutes, LONG_WORDS, isShot } from './knowledge-base'
 import { TEMPLATE_LABELS } from './templates'
 
 // THE TEAM CAN LOOK IT UP.
@@ -143,14 +142,20 @@ describe('somebody can get to it', () => {
 // 21 Oct 2026. Added so the lending options guide could be itself - six
 // numbered steps, two watch-outs and a worked table - rather than forty bullet
 // points. Every shape has to survive Word, which is what most of this checks.
+//
+// 22 Oct 2026: SIX, because a picture is a shape now. Fabio: "I need images too
+// mcuh words quick sanppy images showing where things are". The offer accepted
+// entry's pictures all sat inside steps, so this check never met one at the top
+// level and only found out when the notes entry put one there.
 
 describe('the blocks', () => {
   const all = ENTRIES.flatMap(e => e.body.map(b => ({ id: e.id, b })))
 
-  it('are one of the five shapes and nothing else', () => {
+  it('are one of the six shapes and nothing else', () => {
     for (const { id, b } of all) {
-      const known = typeof b === 'string' || isBullets(b) || isStep(b) || isCall(b) || isFigure(b)
-      expect(known, `${id} carries a block that is none of the five shapes`).toBe(true)
+      const known = typeof b === 'string' || isBullets(b) || isStep(b) || isCall(b)
+        || isFigure(b) || isShot(b)
+      expect(known, `${id} carries a block that is none of the six shapes`).toBe(true)
     }
   })
 
