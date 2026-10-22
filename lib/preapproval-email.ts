@@ -21,6 +21,7 @@
 // knows what each one says.
 
 import { emailShell } from './email-shell'
+import { anythingElseItems } from './anything-else'
 import { type Brand, DEFAULT_BRAND } from './brand'
 import {
   p, hero, heading, moneyTable, markedList, noteBox, signature, plain, strip,
@@ -86,8 +87,9 @@ export function buildPreapprovalEmail(ctx: PreapprovalContext): {
     needs.push('Please check and confirm with your accountant or financial planner the entity name ' +
       'required on the contract.')
   }
-  const extra = String(ctx.extra || '').trim()
-  if (extra) needs.push(extra)
+  // ONE ITEM PER PARAGRAPH, not one tick for the lot. Kylie's three build
+  // requirements arrived as a single run-on sentence. See lib/anything-else.ts.
+  for (const item of anythingElseItems(ctx.extra)) needs.push(item)
 
   const moneyHeading = ext ? 'Purchase numbers' : 'Your pre-approval is based on the following'
 

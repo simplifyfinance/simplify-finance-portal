@@ -10,6 +10,7 @@
 // Outlook, already addressed and titled, and gets out of the way.
 
 import { norm } from './lender-id'
+import { bccForDeal } from './files-itself-in-salestrekker'
 import { lenderOnTheDeal } from './client-agreement'
 
 const txt = (v: any) => String(v ?? '').trim()
@@ -50,6 +51,19 @@ export function assessmentSubject(deal: any): string {
 // name. An assessor searching their inbox for a reference finds nothing either
 // way, and a wrong subject is the one they would act on.
 export function assessmentMailto(deal: any): string {
+  // IT FILES ITSELF AGAINST THE DEAL TOO.
+  //
+  // 22 Oct 2026. This one goes to the lender rather than the client, so it was
+  // not in the first sweep - Fabio asked for it straight after: "anz
+  // assesstment email I want in". He is right. It is correspondence about the
+  // deal going out of the portal, and the card should hold it.
+  //
+  // Same rule as every other one, so a test deal still files nowhere. See
+  // lib/files-itself-in-salestrekker.ts.
   const subject = assessmentSubject(deal)
-  return `mailto:${ANZ_ASSESSMENT_TO}` + (subject ? `?subject=${encodeURIComponent(subject)}` : '')
+  const parts: string[] = []
+  if (subject) parts.push(`subject=${encodeURIComponent(subject)}`)
+  const bcc = bccForDeal(deal)
+  if (bcc.length) parts.push(`bcc=${encodeURIComponent(bcc.join(','))}`)
+  return `mailto:${ANZ_ASSESSMENT_TO}` + (parts.length ? `?${parts.join('&')}` : '')
 }

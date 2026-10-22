@@ -27,6 +27,7 @@
 // this file works out a repayment, so nothing in it can assume a term.
 
 import { emailShell } from './email-shell'
+import { anythingElseItems } from './anything-else'
 import { type Brand, DEFAULT_BRAND } from './brand'
 import {
   p, hero, heading, moneyTable, detailTable, markedList, noteBox, signature, plain, strip,
@@ -225,8 +226,8 @@ export function buildOfferAcceptedEmail(ctx: OfferAcceptedContext): {
   }
 
   const theirs = [...(ctx.documents || []).map(txt).filter(Boolean)]
-  const extra = txt(ctx.extra)
-  if (extra) theirs.push(extra)
+  // One item per paragraph. See lib/anything-else.ts.
+  for (const item of anythingElseItems(ctx.extra)) theirs.push(item)
 
   // QUEENSLAND ONLY, AND THE DEAL DECIDES. His template says "DELETE IF NOT
   // QLD" in capitals across the middle of it. The duty state is on the deal,
