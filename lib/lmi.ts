@@ -35,6 +35,27 @@ export type LmiTreatment = 'capitalised' | 'settlement' | 'unanswered'
 export const LMI_CAPITALISED = 'Capitalised'
 export const LMI_SETTLEMENT = 'Settlement'
 
+// OPTION 1 IS A DEAL WEARING AN ALTERNATIVE'S CLOTHES.
+//
+// The comparison columns put the deal itself beside its alternatives, so the
+// email builds an option-shaped object out of the borrowing capacity. That
+// object cannot be the whole deal - it carries a label, a rate, a repayment -
+// so this is the one place in the codebase where the LMI field names are
+// written down, instead of six places doing it badly.
+//
+// Both halves: the deal-level boxes and the per-security maps that replaced
+// them on 20 Oct. Naming only the first three is what blinded every reader.
+export function lmiKeys(bc: any): Record<string, any> {
+  return {
+    lmiApplicable: bc?.lmiApplicable,
+    lmi: bc?.lmi,
+    lmiTreatment: bc?.lmiTreatment,
+    securityLmiApplicable: bc?.securityLmiApplicable,
+    securityLmi: bc?.securityLmi,
+    securityLmiTreatment: bc?.securityLmiTreatment,
+  }
+}
+
 // THE LABEL ON A PREMIUM THE CLIENT MEETS ON THE DAY. One word, shared, so the
 // cost column in a client email and the funds to complete strip cannot end up
 // calling the same dollars two different things.

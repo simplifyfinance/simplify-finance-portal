@@ -7,7 +7,7 @@ import { ctas, ctasTwo } from '@/lib/email-buttons'
 import { labelOf as scenarioLabel } from '@/lib/bc-scenarios'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { lmiClientLines, lmiIsInTheLoan, clientLoan } from '@/lib/lmi'
+import { lmiClientLines, lmiIsInTheLoan, clientLoan, lmiAmount, lmiKeys } from '@/lib/lmi'
 import { repaymentOf, splitRows, cardTitle, structureLead, realSplits,
          repaymentTypeLine } from '@/lib/split-cards'
 import { purchaseRows } from '@/lib/purchase-rows'
@@ -594,7 +594,8 @@ function pledgeList(title: string, items: string[], bar: string, bg: string, hea
 // columns already use. A deal where nobody has answered yet renders exactly what
 // it rendered before, character for character - see lmiClientLines().
 function lmiLines(opt: any, treatment: any, base: number): string {
-  const rows = lmiClientLines({ lmiApplicable: opt?.lmiApplicable, lmi: opt?.lmi, lmiTreatment: treatment },
+  // The option whole, with the treatment the caller worked out laid over it.
+  const rows = lmiClientLines({ ...(opt || {}), lmiTreatment: treatment },
                               base > 0 ? base : null)
   return rows.map(r => {
     const colour = r.strong ? '#343333' : '#555'
@@ -611,7 +612,14 @@ function buildLVRLine(d: any, lmiAlreadyInTheLoan?: boolean) {
     return row('LVR', d.lvr || '80%')
   }
   if (pct > 80) {
-    if (d.lmiApplicable === 'Applicable' && d.lmi) {
+    // THE GATE THAT COULD NOT SEE A PER-PROPERTY PREMIUM.
+    //
+    // 22 Oct 2026. This asked d.lmiApplicable and d.lmi directly, so on every
+    // deal whose premium is recorded against a security - which is where it
+    // has lived since 20 Oct - the branch below never ran and the LVR line
+    // said nothing about LMI at all. Same habit as the cards: a field list
+    // cannot carry a field it does not name.
+    if (lmiAmount(d) !== null) {
       // WHERE A LOAN FIGURE ABOVE ALREADY ABSORBED THE PREMIUM, this prints the
       // LVR and stops. It used to add a "Total loan" row underneath a breakdown
       // that had just shown the base - two loan amounts, four lines apart, and
@@ -621,12 +629,13 @@ function buildLVRLine(d: any, lmiAlreadyInTheLoan?: boolean) {
       // to go and reads here exactly as it always has.
       const base = (d.splits || []).reduce((t: number, sp: any) =>
         t + (parseFloat(String(sp?.amount ?? '').replace(/,/g, '')) || 0), 0)
-      const rows = lmiClientLines({ lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment },
-                                  base > 0 ? base : null)
+      const rows = lmiClientLines(d, base > 0 ? base : null)
       return row('LVR', `${pct}%`)
         + rows.map(r => row(r.label, r.value)).join('')
     }
-    if (d.lmiApplicable === 'Waived') {
+    // Waived on the deal, or waived on any security carrying one.
+    if (d.lmiApplicable === 'Waived'
+        || Object.values(d?.securityLmiApplicable || {}).some((v: any) => /waived/i.test(String(v ?? '')))) {
       return row('LVR', `${pct}% (LMI waived)`)
     }
     return row('LVR', `${pct}%`)
@@ -858,7 +867,7 @@ export async function POST(req: NextRequest) {
     }
     const baseOptionRE = {
       equityReleaseAmount: d.equityRelease,
-      lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
+      ...lmiKeys(d),
       ccPayoff: false, hecsPayoff: false, carLoanPayoff: false, personalLoanPayoff: false, nonBankLender: false
     }
     const allOptionsRE = [buildOptionColRE(baseOptionRE, `Option 1${d.optionLabel ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + d.optionLabel + '</span>' : ''}`), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionColRE(alt, `Option ${i + 2}${alt.label ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + alt.label + '</span>' : ''}`))]
@@ -1043,7 +1052,7 @@ export async function POST(req: NextRequest) {
       purchasePrice: d.purchasePrice, deposit: d.deposit, stampDuty: d.stampDuty,
       loanAmount: d.splits?.[0]?.amount, rate: d.splits?.[0]?.rate, repayment: d.splits?.[0]?.repayment,
       type: d.splits?.[0]?.type, ioYears: d.splits?.[0]?.ioYears,
-      lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
+      ...lmiKeys(d),
       ccPayoff: false, hecsPayoff: false, carLoanPayoff: false, personalLoanPayoff: false
     }
     const allOptions = [buildOptionCol(baseOption, `Option 1${d.optionLabel ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + d.optionLabel + '</span>' : ''}`), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionCol(alt, `Option ${i + 2}${alt.label ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + alt.label + '</span>' : ''}`))]
@@ -1106,7 +1115,7 @@ export async function POST(req: NextRequest) {
       purchasePrice: d.purchasePrice, deposit: d.deposit, stampDuty: d.stampDuty,
       loanAmount: d.splits?.[0]?.amount, rate: d.splits?.[0]?.rate, repayment: d.splits?.[0]?.repayment,
       type: d.splits?.[0]?.type, ioYears: d.splits?.[0]?.ioYears,
-      lmiApplicable: d.lmiApplicable, lmi: d.lmi, lmiTreatment: d.lmiTreatment,
+      ...lmiKeys(d),
       ccPayoff: false, hecsPayoff: false, carLoanPayoff: false, personalLoanPayoff: false, nonBankLender: false
     }
     const allOptionsIP = [buildOptionColIP(baseOptionIP, `Option 1${d.optionLabel ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + d.optionLabel + '</span>' : ''}`), ...(d.altScenarios || []).map((alt: any, i: number) => buildOptionColIP(alt, `Option ${i + 2}${alt.label ? '<br><span style="font-size:11px;font-weight:400;color:#666">' + alt.label + '</span>' : ''}`))]

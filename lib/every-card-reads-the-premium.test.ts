@@ -89,3 +89,62 @@ describe('the milestone emails and the offer accepted screen', () => {
     expect(readFileSync('components/OfferAccepted.tsx', 'utf8')).toContain('lmiFrom: d.bc_data,')
   })
 })
+
+// ---------------------------------------------------------------------------
+// AND THE LAST THREE PLACES, 22 Oct 2026.
+//
+// The cards were only the visible half. The LVR line, the alternative-scenario
+// columns and the Option 1 object beside them each read the deal-level boxes
+// by name, so a premium recorded against a security was invisible to all three
+// as well.
+// ---------------------------------------------------------------------------
+describe('the LVR line', () => {
+  it('is gated on the premium itself, not on two named boxes', () => {
+    expect(route).toContain('if (lmiAmount(d) !== null) {')
+    expect(route).not.toContain("d.lmiApplicable === 'Applicable' && d.lmi")
+  })
+
+  it('and hands the whole deal to the words it prints', () => {
+    expect(route).toContain('lmiClientLines(d, base > 0 ? base : null)')
+  })
+
+  it('a premium waived on a security still reads as waived', () => {
+    expect(route).toContain('securityLmiApplicable || {}')
+  })
+})
+
+describe('the comparison columns', () => {
+  it('Option 1 is built through the one helper that knows every field', () => {
+    expect((route.match(/\.\.\.lmiKeys\(d\),/g) || []).length).toBe(3)
+  })
+
+  it('and an alternative is passed whole, not three of its fields', () => {
+    expect(route).toContain('{ ...(opt || {}), lmiTreatment: treatment }')
+  })
+
+  it('lmiKeys carries the per-security maps as well as the old boxes', () => {
+    const src = readFileSync('lib/lmi.ts', 'utf8')
+    const i = src.indexOf('export function lmiKeys')
+    const fn = src.slice(i, i + 500)
+    for (const k of ['lmiApplicable', 'lmi:', 'lmiTreatment',
+                     'securityLmiApplicable', 'securityLmi:', 'securityLmiTreatment']) {
+      expect(fn, `lmiKeys does not carry ${k}`).toContain(k)
+    }
+  })
+})
+
+describe('nothing in the email route names the LMI boxes by hand any more', () => {
+  it('not one', () => {
+    // ONE EXEMPTION, AND ONLY ONE. The SMSF card keeps its old field list
+    // because an SMSF never carries a premium - Fabio, 22 Oct 2026, "Self
+    // managed super fund, no". Leaving it is the smaller change than taking
+    // its fields away, and nothing reads them on a deal that has no LMI.
+    const smsf = cards().find(c => c.template === 'smsf')!
+    const named = route.split('\n')
+      .map((l, i) => ({ l, i: i + 1 }))
+      .filter(x => /lmiApplicable:\s*[a-z]\w*\??\./i.test(x.l))
+      .filter(x => !smsf.block.includes(x.l.trim()))
+    expect(named.map(x => `route.ts:${x.i}`), 'use lmiKeys(), or pass the record')
+      .toEqual([])
+  })
+})
