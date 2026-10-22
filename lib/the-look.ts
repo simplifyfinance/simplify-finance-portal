@@ -67,17 +67,21 @@ export const THE_LOOK: Piece[] = [
     proof: { file: PAGE, contains: '<DealRail>' } },
   // The proof is that it is INSIDE the rail, not merely imported somewhere -
   // which is the mistake that made this list wrong the first time.
-  { mock: V4, piece: 'Important, in the rail',
-    proof: { file: PAGE, contains: '<DealRail>\n          <DealAlerts' } },
-  { mock: V4, piece: 'Internal notes, in the rail',
+  { mock: V4, piece: 'Needs action, first in the rail',
+    proof: { file: PAGE, contains: '<DealRail>\n          {/* THE THREE NOTE BOXES FIRST' } },
+  { mock: V4, piece: 'Sales notes, in the rail',
     proof: { file: PAGE, contains: '<RailNotes' } },
-  { mock: V4, piece: 'Internal notes can be made taller, and the words fade where they are cut off',
+  { mock: V4, piece: 'Sales notes can be made taller, and the words fade where they are cut off',
     proof: { file: RAIL, contains: 'cursor-ns-resize' } },
+  // 22 Oct 2026: all three, not just the middle one. "the ability of increase
+  // them mannually".
+  { mock: V4, piece: 'All three note boxes can be made taller, and remember it',
+    proof: { file: 'components/DealFile.tsx', contains: 'cursor-ns-resize' } },
   { mock: V4, piece: 'Documents, in the rail',
     proof: { file: PAGE, contains: '<DealRail>' } },
   { mock: V4, piece: 'Build a PDF, in the rail',
     proof: { file: PAGE, contains: '<DealDocuments' } },
-  { mock: V4, piece: 'File notes, in the rail',
+  { mock: V4, piece: 'File update, in the rail',
     proof: { file: PAGE, contains: '<FileNotes' } },
   { mock: V4, piece: 'Documents counts: to request, received, to check',
     proof: { file: DOCS, contains: '>To check</dt>' } },

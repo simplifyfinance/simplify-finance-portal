@@ -8,7 +8,7 @@ import { test, expect, type Page } from '@playwright/test'
 // DOES WHAT YOU TYPE SURVIVE - ON EVERY TAB, NOT THE ONE SOMEBODY COMPLAINED ABOUT.
 //
 // 14 Sep 2026. Fabio: "why are we just fixing one box and not checking all?"
-// Fair. Today went: the internal notes box was destroying notes, so it was
+// Fair. Today went: the sales notes box was destroying notes, so it was
 // fixed. Then a robot happened to trip over the same shape on Compliance. Then
 // the same shape again on Lending Options. Three instances of one fault, found
 // one at a time, by accident, over several hours - while the team kept losing
@@ -72,7 +72,7 @@ test.describe('what you type survives, on every tab', () => {
     test(`${tab}: typing the moment it opens is not thrown away`, async ({ page }) => {
       const mark = `robot${Date.now()}`
       // Every box on the tab, not the first one. The first visible textarea on
-      // every tab is the internal notes box, so testing only that would have
+      // every tab is the sales notes box, so testing only that would have
       // re-tested this morning's fix four times and told us nothing about
       // Purpose and Goals, the BC summary, or the nine compliance boxes.
       const MAX = 14

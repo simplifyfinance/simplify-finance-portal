@@ -161,7 +161,7 @@ describe('nothing from the old document was dropped', () => {
   })
 
   it('carries the notes and what is still to confirm', () => {
-    expect(valuesIn('Internal notes')![0]).toContain('Fairway')
+    expect(valuesIn('Sales notes')![0]).toContain('Fairway')
     const todo = items[items.length - 1] as any
     expect(todo.cols[0][0][0].value).toContain('no current address')
   })

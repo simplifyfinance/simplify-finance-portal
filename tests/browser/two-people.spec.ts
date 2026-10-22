@@ -16,7 +16,7 @@ import { test, expect, type Page, type BrowserContext } from '@playwright/test'
 // the same deal at once, because that is the only place this fault lives - and
 // it is the fault that has cost the team the most.
 //
-// IT TYPES INTO INTERNAL NOTES AND TICKS NOTHING ELSE. Internal notes are not
+// IT TYPES INTO SALES NOTES AND TICKS NOTHING ELSE. Sales notes are not
 // client facing and not read by any rule, so a robot may safely write in them.
 // Both windows put back what they found.
 
@@ -27,10 +27,14 @@ async function openFactFind(page: Page) {
   await page.goto(`/deals/${DEAL}`, { waitUntil: 'domcontentloaded' })
   await page.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
   await page.getByRole('button', { name: /^Fact Find$/ }).click()
-  await page.getByText('INTERNAL NOTES').waitFor({ timeout: 20_000 })
+  await page.getByText('SALES NOTES').waitFor({ timeout: 20_000 })
 }
 
-// INTERNAL NOTES LIVE IN THE RAIL NOW, NOT IN THE FORM.
+// SALES NOTES LIVE IN THE RAIL NOW, NOT IN THE FORM.
+//
+// 22 Oct 2026: renamed from "Internal notes". It goes to SalesTrekker, the
+// Fact Find PDF and the assessment, so internal was the one word it was not.
+// This spec found the rename by failing, which is what it is for.
 //
 // 5 Oct 2026. Until the rail was built the notes box was the first textarea on
 // the page, so `textarea.first()` found it. Moving the box out of the form
@@ -45,7 +49,7 @@ const notes = (page: Page) =>
 
 /** The rail shows the notes; Edit opens the box they are typed into. */
 async function openNotes(page: Page) {
-  const edit = page.getByRole('button', { name: 'Edit internal notes' })
+  const edit = page.getByRole('button', { name: 'Edit sales notes' })
   if (await edit.count()) await edit.first().click()
   await notes(page).waitFor({ timeout: 20_000 })
 }
@@ -96,7 +100,7 @@ test.describe('two people in the same deal', () => {
       await kylie.reload()
       await kylie.locator('[data-ready="1"]').waitFor({ timeout: 30_000 })
       await kylie.getByRole('button', { name: /^Fact Find$/ }).click()
-      await kylie.getByText('INTERNAL NOTES').waitFor({ timeout: 20_000 })
+      await kylie.getByText('SALES NOTES').waitFor({ timeout: 20_000 })
       await openNotes(kylie)
       expect(await notes(kylie).inputValue(),
         'it survived on screen but never reached the database').toContain('KYLIE')
@@ -172,7 +176,7 @@ test.describe('two people in the same deal', () => {
 
       // MELISSA SAVES THE FACT FIND - NOT THE NOTES.
       //
-      // The first version of this test had her type into internal notes, which
+      // The first version of this test had her type into sales notes, which
       // is a different column entirely: her save never produced a Fact Find
       // update for Kylie's screen to mishandle, so the test passed with the fix
       // and passed without it. It proved nothing. She edits the same record
@@ -215,7 +219,7 @@ test.describe('two people in the same deal', () => {
 
   test('EVERY box on the Fact Find survives the other window saving', async ({ browser }) => {
     // 14 Sep 2026. Kylie reported Purpose and Goals disappearing, the same way
-    // Melissa reported the internal notes disappearing. Fabio: "why are we just
+    // Melissa reported the sales notes disappearing. Fabio: "why are we just
     // fixing one box and not checking all?"
     //
     // The one-window sweep (typing-survives.spec.ts) already proves these boxes

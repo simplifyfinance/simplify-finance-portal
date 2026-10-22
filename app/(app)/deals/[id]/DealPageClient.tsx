@@ -747,15 +747,20 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
         </div>
 
         {stage !== 'Statements' && <DealRail>
+          {/* THE THREE NOTE BOXES FIRST, IN FABIO'S ORDER. 22 Oct 2026.
+              File update used to sit at the bottom under the documents and the
+              links, which is why it was empty on every deal - nobody scrolled
+              that far to write a line. The audit's finding in one change: the
+              boxes people are meant to use are the ones they meet first. */}
           <DealAlerts dealId={dealData.id} me={me} alerts={alerts} onChanged={reloadFile} />
           <RailNotes dealId={dealData.id} initial={dealData.internal_notes || ''} meId={me?.id} />
+          <FileNotes dealId={dealData.id} me={me} notes={notes} onChanged={reloadFile} />
           <DocumentsBox deal={dealData} me={me}
             onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
           <DealDocuments deal={dealData} me={me} version={documentsVersion}
             onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
           <DealLinks deal={dealData}
             onUpdated={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />
-          <FileNotes dealId={dealData.id} me={me} notes={notes} onChanged={reloadFile} />
         </DealRail>}
       </div>
     </div>

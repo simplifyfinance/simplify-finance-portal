@@ -406,7 +406,7 @@ export function factFindFormItems(input: FactFindFormInput): Item[] {
   if (purpose || notes) {
     items.push(band('Loan purpose and notes'))
     if (purpose) items.push(askRow('np.purpose', 'Loan purpose', 1, [purpose], 58))
-    if (notes)   items.push(askRow('np.notes',   'Internal notes', 1, [notes], 58))
+    if (notes)   items.push(askRow('np.notes',   'Sales notes', 1, [notes], 58))
   }
 
   // -- 11. STILL TO CONFIRM --------------------------------------------------

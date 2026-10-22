@@ -39,7 +39,7 @@ describe('a list of them, for a banner', () => {
     expect(describePaths([['dependants']])).toBe('Dependants')
     expect(describePaths([['dependants'], ['loanPurpose']])).toBe('Dependants and Loan purpose')
     expect(describePaths([['dependants'], ['loanPurpose'], ['internalNotes']]))
-      .toBe('Dependants, Loan purpose and Internal notes')
+      .toBe('Dependants, Loan purpose and Sales notes')
   })
 
   it('stops before it becomes a wall of text', () => {

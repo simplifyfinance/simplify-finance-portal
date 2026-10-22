@@ -170,7 +170,7 @@ export async function notifyEllieCreateCard(params: {
     </table>
 
     <table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0" width="100%" cellpadding="0" cellspacing="0" border="0">
-      <tr><td style="font-family:Arial,sans-serif;font-size:12.5px;font-weight:700;padding:0 0 5px"><span style="color:#141C24;">Internal notes from the broker</span></td></tr>
+      <tr><td style="font-family:Arial,sans-serif;font-size:12.5px;font-weight:700;padding:0 0 5px"><span style="color:#141C24;">Sales notes from the broker</span></td></tr>
       <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6"><span style="color:#555;">${internalNotes ? internalNotes.replace(/\n/g, '<br>') : 'None entered yet.'}</span></td></tr>
     </table>`
 

@@ -31,7 +31,7 @@ const ONE_OF: Record<string, string> = {
 // Where the plain reading of the field name is not the name it goes by here.
 const CALLED: Record<string, string> = {
   bc_data: 'BC', fact_find_data: 'Fact Find', lo_data: 'Lending options',
-  compliance_data: 'Compliance', internalNotes: 'Internal notes',
+  compliance_data: 'Compliance', internalNotes: 'Sales notes',
   brokerNotes: 'Broker notes', templateNotes: 'Template notes',
   needsPrimary: 'Primary reasons for seeking credit',
   needsImmediate: 'Immediate needs', needsLongTerm: 'Longer term needs',

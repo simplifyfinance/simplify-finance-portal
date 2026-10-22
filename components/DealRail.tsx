@@ -1,5 +1,6 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useGrow } from './useGrow'
 import InternalNotes from '@/components/InternalNotes'
 
 // THE RAIL.
@@ -45,55 +46,23 @@ export function RailCard({ title, action, children, tone }: {
 //
 // The height is remembered per deal, in this browser only. A deal with long
 // notes comes back the way it was left and the others are untouched.
-const SHUT = 92
-const TALL = 320
+// 22 Oct 2026: 92 was four visible lines on a box people write paragraphs in,
+// and Fabio asked for all three to be bigger. 260 shows a real note without
+// anybody dragging anything, and the drag is still there for the ones that run
+// long. See components/useGrow.ts.
+const SHUT = 260
+const TALL = 560
 
 export function RailNotes({ dealId, initial, meId }: {
   dealId: string; initial?: string; meId?: string | null
 }) {
   const [editing, setEditing] = useState(false)
-  const [h, setH] = useState<number>(SHUT)
-  const [over, setOver] = useState(false)
-  const wrap = useRef<HTMLDivElement | null>(null)
-  const key = `one.notes.h.${dealId}`
+  const { h, over, wrap, onGrab, toggle, toggleWord, measure } =
+    useGrow(`one.notes.h.${dealId}`, SHUT, TALL)
 
-  // Browser storage can be missing or refuse to answer - a private window, or
-  // site data cleared. The box has to draw either way.
-  useEffect(() => {
-    try {
-      const v = Number(window.localStorage.getItem(key))
-      if (v >= SHUT && v <= 1200) setH(v)
-    } catch { /* no memory - open at the normal height */ }
-  }, [key])
-
-  // Is there anything below the fold? A fade over the last line of a short note
-  // would be saying there is more when there is not.
-  useEffect(() => {
-    const el = wrap.current
-    if (!el) return
-    setOver(el.scrollHeight > el.clientHeight + 4)
-  }, [h, initial, editing])
-
-  const remember = (v: number) => {
-    setH(v)
-    try { window.localStorage.setItem(key, String(v)) } catch { /* nothing to do */ }
-  }
-
-  // Pointer events rather than mouse, so a trackpad and a touchscreen both work.
-  const onGrab = (e: React.PointerEvent) => {
-    e.preventDefault()
-    const startY = e.clientY
-    const startH = h
-    const clamp = (y: number) => Math.max(SHUT, Math.min(1200, startH + (y - startY)))
-    const move = (ev: PointerEvent) => setH(clamp(ev.clientY))
-    const up = (ev: PointerEvent) => {
-      window.removeEventListener('pointermove', move)
-      window.removeEventListener('pointerup', up)
-      remember(clamp(ev.clientY))
-    }
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', up)
-  }
+  // A fade over the last line of a short note would be saying there is more
+  // when there is not.
+  useEffect(() => { measure() }, [h, initial, editing, measure])
 
   // Editing is the box exactly as it was, with every protection it has - the
   // merge, the version check, the copy that survives a dead tab.
@@ -108,14 +77,19 @@ export function RailNotes({ dealId, initial, meId }: {
   const text = (initial || '').trim()
 
   return (
-    <RailCard title="Internal notes" action={
+    <RailCard title="Sales notes" action={
       <span className="flex items-center gap-3">
-        <button onClick={() => setEditing(true)} aria-label="Edit internal notes">Edit</button>
-        <button onClick={() => remember(h > SHUT ? SHUT : TALL)}>
-          {h > SHUT ? 'Shorter' : 'Taller'}
-        </button>
+        <button onClick={() => setEditing(true)} aria-label="Edit sales notes">Edit</button>
+        <button onClick={toggle}>{toggleWord}</button>
       </span>
     }>
+      {/* WHO READS IT, UNDER THE HEADING. 22 Oct 2026. The audit found the
+          box everyone writes in was the one that leaves the building, and its
+          old name said the opposite. The name is honest now and this line says
+          the rest. */}
+      <p className="text-[10.5px] text-faint leading-[1.5] m-0 mb-2">
+        Goes to SalesTrekker, the Fact Find PDF and the assessment. Write it as if credit will read it.
+      </p>
       <div ref={wrap} className="relative overflow-hidden" style={{ maxHeight: h }}>
         {text
           ? text.split(/\n{2,}/).map((para, i) => (

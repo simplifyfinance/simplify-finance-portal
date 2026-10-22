@@ -159,7 +159,10 @@ describe('the things Fabio caught by hand on the page, by name', () => {
   const MUST_BE_THERE = [
     'Back to deals',
     'Make it a real deal',
-    'Internal notes',
+    // 22 Oct 2026: renamed. The box is still there and bigger; it is called
+    // what it actually is now, because it goes to SalesTrekker, the Fact Find
+    // PDF and the assessment. 'Internal' was the one word it was not.
+    'Sales notes',
     'Email the assessment team',
     'Rebuild all three',
     'Request them',

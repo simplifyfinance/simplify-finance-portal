@@ -147,7 +147,6 @@
     "Cancel",
     "NOT SAVED -",
     "No date is fine &mdash; it stays amber rather than counting down.",
-    "Nothing flagged.",
     "Nothing here is ever overwritten.",
     "Nothing recorded yet.",
     "Resolve",
@@ -156,7 +155,7 @@
     "Who owns it"
   ],
   "components/InternalNotesStrip.tsx": [
-    "Internal notes",
+    "Sales notes",
     "Nothing written yet — what the client told us goes here."
   ],
   "components/DocumentsBox.tsx": [

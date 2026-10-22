@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useGrow } from './useGrow'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { checkedWrite } from '@/lib/checked-write'
 import {
@@ -62,6 +63,7 @@ export function DealAlerts({ dealId, me, alerts, onChanged }: {
   const [due, setDue] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
+  const grow = useGrow(`one.needs.h.${dealId}`, 230, 520)
 
   const open = byUrgency(alerts || [])
 
@@ -91,14 +93,28 @@ export function DealAlerts({ dealId, me, alerts, onChanged }: {
   return (
     <div className={PANEL}>
       <div className={HEAD}>
-        <span>⚠ Important notes</span>
-        {open.length > 0 && <span className="ml-auto text-waiting font-bold">{open.length}</span>}
+        <span>⚠ Needs action</span>
+        {open.length > 0 && <span className="ml-auto text-waiting font-bold">{open.length} open</span>}
+        <button onClick={grow.toggle}
+          className={`${open.length > 0 ? '' : 'ml-auto '}text-[10.5px] font-[650] text-info`}>
+          {grow.toggleWord}
+        </button>
       </div>
       <div className={BODY}>
+        {/* WHO READS IT. Not a note - a thing somebody has to do, and it shows
+            on the pipeline list without the deal being opened. 22 Oct 2026:
+            renamed from "Important notes", which collided with "Important
+            things to note" on the BC and the LO, and both of those go to the
+            CLIENT. Same words, opposite audience. */}
+        <p className="text-[10.5px] text-faint leading-[1.5] m-0 mb-2">
+          Shows as a red chip on the pipeline, so somebody who never opens this deal still sees it.
+          Tick it off when it is done.
+        </p>
         {open.length === 0 && !adding && (
-          <p className="text-[12px] text-faint m-0 mb-2">Nothing flagged.</p>
+          <p className="text-[12px] text-faint m-0 mb-2">Nothing needs action.</p>
         )}
 
+        <div ref={grow.wrap} className="overflow-y-auto" style={{ maxHeight: grow.h }}>
         {open.map(a => {
           const red = toneOf(a) === 'red'
           return (
@@ -119,6 +135,13 @@ export function DealAlerts({ dealId, me, alerts, onChanged }: {
             </div>
           )
         })}
+        </div>
+
+        {/* Drag the bottom edge, same as the other two. */}
+        <div onPointerDown={grow.onGrab} title="Drag to make this taller"
+          className="mt-2 mb-1 h-3.5 flex items-center justify-center cursor-ns-resize border-t border-line-soft">
+          <span className="w-[26px] h-[3px] rounded-sm bg-line block" />
+        </div>
 
         {adding ? (
           <div className="border border-line rounded-lg p-2.5 mt-1">
@@ -160,6 +183,7 @@ export function FileNotes({ dealId, me, notes, onChanged }: {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const list = newestFirst(notes || [])
+  const grow = useGrow(`one.fileupdate.h.${dealId}`, 280, 620)
 
   async function add() {
     if (!body.trim()) return
@@ -176,12 +200,25 @@ export function FileNotes({ dealId, me, notes, onChanged }: {
 
   return (
     <div className={PANEL}>
-      <div className={HEAD}><span>🕐 File notes</span></div>
+      <div className={HEAD}>
+        <span>🕐 File update</span>
+        {list.length > 0 && <span className="ml-auto text-muted">{list.length}</span>}
+        <button onClick={grow.toggle}
+          className={`${list.length > 0 ? '' : 'ml-auto '}text-[10.5px] font-[650] text-info`}>
+          {grow.toggleWord}
+        </button>
+      </div>
       <div className={BODY}>
+        {/* WHO READS IT, and the one thing that makes this box different from
+            the other two: nothing here can be typed over. */}
+        <p className="text-[10.5px] text-faint leading-[1.5] m-0 mb-2">
+          The log. Nothing here can be typed over, and the portal writes to it as well.
+        </p>
         {list.length === 0 && <p className="text-[12px] text-faint m-0 mb-2">Nothing recorded yet.</p>}
 
         {list.length > 0 && (
-          <div className="border-l-2 border-line pl-3 ml-[2px]">
+          <div ref={grow.wrap} className="border-l-2 border-line pl-3 ml-[2px] overflow-y-auto"
+               style={{ maxHeight: grow.h }}>
             {list.map(n => (
               <div key={n.id} className="relative mb-2.5 last:mb-0">
                 <span className="absolute -left-[17px] top-[5px] w-[6px] h-[6px] rounded-full bg-card border-2 border-[#E5DED2]" />
@@ -198,11 +235,18 @@ export function FileNotes({ dealId, me, notes, onChanged }: {
           </div>
         )}
 
+        {list.length > 0 && (
+          <div onPointerDown={grow.onGrab} title="Drag to make this taller"
+            className="mt-2 mb-1 h-3.5 flex items-center justify-center cursor-ns-resize border-t border-line-soft">
+            <span className="w-[26px] h-[3px] rounded-sm bg-line block" />
+          </div>
+        )}
+
         {/* data-compose: this box is typed into and then ADDED with the button
             below. It holds nothing until you press it, and it is empty again
             afterwards - so the tests that check a field survives a reload skip
             it. See tests/browser/typing-survives.spec.ts. */}
-        <textarea data-compose="1" value={body} onChange={e => setBody(e.target.value)} rows={2}
+        <textarea data-compose="1" value={body} onChange={e => setBody(e.target.value)} rows={3}
           className={INPUT + ' mt-2.5 resize-y'} placeholder="Add a note…" />
         <div className="flex gap-2 items-center mt-1.5">
           <button onClick={add} disabled={busy || !body.trim()}
