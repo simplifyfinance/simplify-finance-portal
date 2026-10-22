@@ -35,6 +35,11 @@ export type LmiTreatment = 'capitalised' | 'settlement' | 'unanswered'
 export const LMI_CAPITALISED = 'Capitalised'
 export const LMI_SETTLEMENT = 'Settlement'
 
+// THE LABEL ON A PREMIUM THE CLIENT MEETS ON THE DAY. One word, shared, so the
+// cost column in a client email and the funds to complete strip cannot end up
+// calling the same dollars two different things.
+export const LMI_COST_LABEL = 'LMI'
+
 // ---------------------------------------------------------------------------
 // LMI IS PRICED ON THE SECURITY, SO IT IS ASKED ON THE SECURITY
 // ---------------------------------------------------------------------------

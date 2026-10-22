@@ -43,7 +43,7 @@
 import { dutyLabel } from './duty-state'
 import { buildsSomething } from './sale-build'
 import { totalCost, totalLending, num } from './construction'
-import { buildCostRows, fundsToContributeRow, landEquityNote, buildNote } from './build-card'
+import { buildCostRows, fundsToContributeRow, landEquityNote, buildNote, totalLendingRow } from './build-card'
 import { money } from './money'
 import { INCIDENTALS } from './purchase-rows'
 // THE CARD IS NOT DRAWN TWICE. lib/no-duplicate-logic.test.ts caught the second
@@ -118,7 +118,7 @@ function loBuildBlock(d: any, bc: any): string {
   const from = contributionSource(d).toLowerCase()
   return card('Your build',
     buildCostRows(bc) +
-    row('Total lending', money(lending)) +
+    totalLendingRow(bc, lending) +
     fundsToContributeRow(contribute, INCIDENTALS) +
     (from ? buildNote(`This comes from your ${from}.`) : '') +
     landEquityNote(bc)

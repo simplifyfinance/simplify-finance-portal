@@ -4,6 +4,8 @@ import { buildsSomething, purchasePriceOf } from './sale-build'
 import { securitiesWithPurchase, totalsOf, canBuyAndRefinance,
          BEING_PURCHASED, purchaseLoanOf } from './securities'
 import { isTopUp, cashReleased, isDollarForDollar } from './top-up'
+import { lmiAmount, lmiTreatment, LMI_COST_LABEL } from './lmi'
+import { money } from './money'
 
 // WHAT THE CLIENT HAS TO FIND.
 //
@@ -242,6 +244,43 @@ export function fundsToComplete(deal: any): FundsToComplete {
   // over a figure that does not exist.
   else if (!isConstruction(deal) || dutyApplies(bc)) missing.push('Stamp duty has not been recorded')
 
+  // WHERE THE PREMIUM GOES DEPENDS ON THE ANSWER, AND THIS NEVER ASKED.
+  //
+  // 22 Oct 2026. These four lines put every LMI premium in the capitalised
+  // list - shown, never added - and that was the right call on 3 Sep, when
+  // capitalised was the only thing the portal could record. The
+  // capitalised-or-settlement question went on the BC on 16 Sep. This file has
+  // never read it, so for six weeks a premium the client pays on the day has
+  // been left out of the one figure that tells them what to bring. Every
+  // template, not just the build that found it.
+  //
+  // It also read bc.lmi raw, so the per-property premiums that replaced that
+  // box on 20 Oct were invisible here. lmiAmount() adds those up and falls
+  // back to the deal-level box, which is what the other eighty-odd readers
+  // already use.
+  const premium = lmiAmount(bc)
+  if (premium !== null) {
+    const how = lmiTreatment(bc)
+    if (how === 'settlement') {
+      // Found on the day, exactly like the stamp duty above it.
+      lines.push({ label: LMI_COST_LABEL, amount: premium, kind: 'cost' })
+    } else {
+      // Capitalised onto the loan, so it changes what is borrowed and never
+      // what is found at settlement. Listed so nobody wonders where it went.
+      capitalised.push({ label: LMI_COST_LABEL, amount: premium, kind: 'cost' })
+      // UNANSWERED IS NOT CAPITALISED, it is unanswered. The total above stays
+      // exactly what it has always been - nothing on a live file moves - and
+      // the gap is named instead of filled, which is this file's own habit
+      // with stamp duty and the deposit.
+      if (how === 'unanswered') {
+        missing.push(`LMI of ${money(premium)} is recorded but nobody has said whether it is added to the loan. If it is paid at settlement this figure is short by that much.`)
+      }
+    }
+  } else if (txt(bc.lmiApplicable).toLowerCase().startsWith('y')) {
+    missing.push('LMI applies but no amount has been recorded')
+  }
+
+
   const loan = purchaseLoan(deal)
   if (loan === null) {
     // Mixed deal, unanswered splits. Nothing is guessed and no total is offered.
@@ -250,14 +289,6 @@ export function fundsToComplete(deal: any): FundsToComplete {
     lines.push({ label: mixed(deal) ? 'Loan funding the purchase' : 'Loan', amount: loan, kind: 'source' })
   } else {
     missing.push('No loan amount has been recorded')
-  }
-
-  // Capitalised onto the loan, so it changes what is borrowed and never what is
-  // found at settlement. Listed so nobody wonders where it went.
-  if (has(bc.lmi)) {
-    capitalised.push({ label: 'LMI', amount: num(bc.lmi), kind: 'cost' })
-  } else if (txt(bc.lmiApplicable).toLowerCase().startsWith('y')) {
-    missing.push('LMI applies but no amount has been recorded')
   }
 
   const costs = lines.filter(l => l.kind === 'cost').reduce((s, l) => s + l.amount, 0)

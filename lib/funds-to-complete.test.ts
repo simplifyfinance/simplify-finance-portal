@@ -275,7 +275,8 @@ describe('LMI is shown but never counted', () => {
   // Capitalised onto the loan. The client does not find it at settlement, so it
   // must not move the total - but it must be visible, or people wonder.
   const withLmi = { bc_data: { purchasePrice: '850,000', stampDuty: '45,000',
-    deposit: '170,000', lmi: '18,000' }, lo_data: { loanAmount: '680,000' } }
+    deposit: '170,000', lmi: '18,000', lmiApplicable: 'Applicable',
+    lmiTreatment: 'Capitalised' }, lo_data: { loanAmount: '680,000' } }
 
   it('appears on its own list', () => {
     const f = fundsToComplete(withLmi)
@@ -291,6 +292,56 @@ describe('LMI is shown but never counted', () => {
 
   it('is not in the added-up lines', () => {
     expect(fundsToComplete(withLmi).lines.some(l => l.label === 'LMI')).toBe(false)
+  })
+
+  // ---------------------------------------------------------------------
+  // AND WHEN IT IS NOT CAPITALISED
+  //
+  // 22 Oct 2026. Fabio, on a 90% construction deal: "construction loan it is
+  // not allowing for LMi so the funds to complete is incorrect". This file
+  // put EVERY premium on the capitalised list without ever reading the
+  // capitalised-or-settlement answer the BC has recorded since 16 Sep - so a
+  // premium the client pays on the day was missing from the one figure that
+  // tells them what to bring.
+  // ---------------------------------------------------------------------
+
+  const atSettlement = { ...withLmi,
+    bc_data: { ...withLmi.bc_data, lmiTreatment: 'Settlement' } }
+
+  it('paid at settlement, it is money the client finds, so it is counted', () => {
+    const f = fundsToComplete(atSettlement)
+    expect(f.lines.some(l => l.label === 'LMI')).toBe(true)
+    expect(f.capitalised).toHaveLength(0)
+    // $215,000 plus the premium, not $215,000.
+    expect(f.toFind).toBe(233_000)
+  })
+
+  const unanswered = { ...withLmi,
+    bc_data: { ...withLmi.bc_data, lmiTreatment: '' } }
+
+  it('unanswered changes no figure on any file already written', () => {
+    const f = fundsToComplete(unanswered)
+    expect(f.toFind).toBe(215_000)
+    expect(f.capitalised.map(l => l.label)).toEqual(['LMI'])
+  })
+
+  it('but it says out loud that the figure may be short', () => {
+    expect(fundsToComplete(unanswered).missing.join(' '))
+      .toContain('nobody has said whether it is added to the loan')
+  })
+
+  // THE PER-PROPERTY PREMIUMS, which replaced the deal-level box on 20 Oct and
+  // which this file could not see at all - it read bc.lmi raw.
+  it('reads the premiums recorded against each security', () => {
+    const perProperty = { bc_data: { purchasePrice: '850,000', stampDuty: '45,000',
+      deposit: '170,000',
+      securityLmiApplicable: { a: 'Applicable', b: 'Applicable' },
+      securityLmi: { a: '11,000', b: '7,000' },
+      securityLmiTreatment: { a: 'Settlement', b: 'Settlement' } },
+      lo_data: { loanAmount: '680,000' } }
+    const f = fundsToComplete(perProperty)
+    expect(f.lines.find(l => l.label === 'LMI')?.amount).toBe(18_000)
+    expect(f.toFind).toBe(233_000)
   })
 
   it('still says so when LMI applies and no figure was typed', () => {

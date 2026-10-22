@@ -957,6 +957,21 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   }
   const splitTotal = splits.reduce((t, sp) => t + asNum(sp?.amount), 0)
   const lmiDoubleCounted = looksAlreadyCapitalised(lmiBc, splitTotal || null)
+
+  // THE FIELDS THE TWO CALCULATED BUILD BOXES READ, IN ONE PLACE.
+  //
+  // 22 Oct 2026. They each built their own object literal, and both left the
+  // LMI out - so a 90% construction deal with the premium payable at
+  // settlement showed a total cost and a contribution that were both short by
+  // the premium, while the LMI boxes sat three fields above saying otherwise.
+  // Fabio: "construction loan it is not allowing for LMi so the funds to
+  // complete is incorrect".
+  //
+  // The same trap as 9 Oct, when one of these two passed three fields and the
+  // other passed five. One object, read twice, so the next field added to
+  // lib/construction.ts cannot reach one box and miss the other.
+  const buildFields = { landFunding, landValue, landLoanBalance, constructionCost, stampDuty,
+                        lmiApplicable, lmi, lmiTreatment }
   const [internalNotes, setInternalNotes] = useState(s.internalNotes || '')
   const [brokerSig, setBrokerSig] = useState(s.brokerSig || deal.assigned_broker || 'Fabio')
   const [brokersList, setBrokersList] = useState<{ name: string; brandIds?: string[] }[]>([{ name: 'Fabio', brandIds: ['simplify'] }, { name: 'Mark', brandIds: ['simplify'] }])
@@ -2763,7 +2778,7 @@ Key assumptions: ${checklistText}`
                 <Field label="Total cost (calculated)">
                   <div className={inputCls + " bg-gray-50 text-gray-700"}>
                     {(() => {
-                      const total = totalCost({ landFunding, landValue, landLoanBalance, constructionCost, stampDuty })
+                      const total = totalCost(buildFields)
                       return total > 0 ? `$${formatNumber(String(total))}` : '\u2014'
                     })()}
                   </div>
@@ -2794,7 +2809,7 @@ Key assumptions: ${checklistText}`
                       // The email had it right all along, so the same screen
                       // showed a total cost of $1,731,000 and worked the funds
                       // out from $1,850,000, two fields apart.
-                      const d = { landFunding, landValue, landLoanBalance, constructionCost, stampDuty }
+                      const d = buildFields
                       return totalCost(d) > 0 ? `$${formatNumber(String(fundsToContribute(d, splits)))}` : '\u2014'
                     })()}
                   </div>

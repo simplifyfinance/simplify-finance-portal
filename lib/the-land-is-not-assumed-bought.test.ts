@@ -83,14 +83,23 @@ describe('and a saved email cannot look healthy while the scenario moves', () =>
 })
 
 describe('every box on the BC passes the whole answer', () => {
-  it('the funds to contribute box carries how the land is held', () => {
-    expect(bc, 'the funds box builds its figures without landFunding again, so a\n'
-      + 'client who owns their land is asked for their own equity back')
-      .toContain('const d = { landFunding, landValue, landLoanBalance, constructionCost, stampDuty }')
+  // ONE OBJECT, READ TWICE. 22 Oct 2026: the two boxes each built their own
+  // literal and both left the LMI out, which is the 9 Oct bug again with a
+  // different missing field. They now share buildFields, so a field added to
+  // lib/construction.ts cannot reach one box and miss the other.
+  it('there is one object, and it carries every field construction.ts reads', () => {
+    const m = bc.match(/const buildFields = \{([^}]*)\}/)
+    expect(m, 'buildFields is gone, so the two boxes are building their own\n'
+      + 'objects again and will drift the moment a field is added').toBeTruthy()
+    for (const field of ['landFunding', 'landValue', 'landLoanBalance', 'constructionCost',
+                         'stampDuty', 'lmiApplicable', 'lmi', 'lmiTreatment']) {
+      expect(m![1], `buildFields does not pass ${field}`).toContain(field)
+    }
   })
 
-  it('and so does the total cost box, which always did', () => {
-    expect(bc).toContain('totalCost({ landFunding, landValue, landLoanBalance, constructionCost, stampDuty })')
+  it('and both boxes read it rather than assembling their own', () => {
+    expect(bc).toContain('totalCost(buildFields)')
+    expect(bc).toContain('const d = buildFields')
   })
 
   it('no box on this screen builds a construction figure from a shorter set', () => {

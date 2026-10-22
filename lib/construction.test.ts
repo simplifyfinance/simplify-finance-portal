@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   totalCost, totalLending, fundsToContribute, constructionLvr, landEquity,
   landFundingOf, isLandPurchase, dutyApplies, landLoanPayout, LAND_FUNDING,
-  repaymentDuringConstruction,
+  repaymentDuringConstruction, lmiAtSettlement,
 } from './construction'
 
 // LAND VALUE WAS DOING TWO JOBS: what the project costs, and what the security
@@ -147,5 +147,83 @@ describe('the things that did not change', () => {
   it('there are three ways to hold land and no more', () => {
     expect(LAND_FUNDING.map(x => x.value)).toEqual(['purchase', 'owned', 'owned_with_loan'])
     for (const x of LAND_FUNDING) expect(x.label.length).toBeGreaterThan(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// THE PREMIUM
+//
+// 22 Oct 2026. Fabio, looking at a 90% construction deal: "construction loan it
+// is not allowing for LMi so the funds to complete is incorrect".
+//
+// This file had never heard of LMI. Cost was land + build + duty, contribution
+// was that less the lending, and the premium was on neither side - which comes
+// out right when it is capitalised and short by the whole premium when it is
+// not. Same deal, same splits, three answers, and only one of them used to be
+// correct.
+// ---------------------------------------------------------------------------
+describe('LMI on a build', () => {
+  // Land 378,000 + build 375,576 + duty 19,035 = 772,611, less 678,143 lent.
+  const DEAL = { landFunding: 'purchase', landValue: '378,000',
+    constructionCost: '375,576', stampDuty: '19,035',
+    asIfCompleteValue: '753,576', lmiApplicable: 'Applicable', lmi: '18,000' }
+  const SPLITS = [{ amount: '340,162.20' }, { amount: '337,980.80' }]
+
+  it('capitalised, the loan carries it and the client finds nothing extra', () => {
+    const d = { ...DEAL, lmiTreatment: 'Capitalised' }
+    expect(lmiAtSettlement(d)).toBe(0)
+    expect(totalCost(d)).toBe(772_611)
+    expect(fundsToContribute(d, SPLITS)).toBe(94_468)
+  })
+
+  it('paid at settlement, it is a cost like the duty beside it', () => {
+    const d = { ...DEAL, lmiTreatment: 'Settlement' }
+    expect(lmiAtSettlement(d)).toBe(18_000)
+    expect(totalCost(d)).toBe(790_611)
+    // The whole point. It used to say 94,468 here too.
+    expect(fundsToContribute(d, SPLITS)).toBe(112_468)
+  })
+
+  it('unanswered moves nothing on a deal already written', () => {
+    expect(lmiAtSettlement(DEAL)).toBe(0)
+    expect(fundsToContribute(DEAL, SPLITS)).toBe(94_468)
+  })
+
+  it('an amount with no applicability answer is not a premium', () => {
+    const d = { ...DEAL, lmiApplicable: '', lmiTreatment: 'Settlement' }
+    expect(lmiAtSettlement(d)).toBe(0)
+  })
+
+  it('waived is not a cost whatever is typed beside it', () => {
+    const d = { ...DEAL, lmiApplicable: 'Waived', lmiTreatment: 'Settlement' }
+    expect(lmiAtSettlement(d)).toBe(0)
+    expect(totalCost(d)).toBe(772_611)
+  })
+
+  it('land already owned gets the premium too, with no duty', () => {
+    const d = { landFunding: 'owned', landValue: '900000', constructionCost: '600000',
+      lmiApplicable: 'Applicable', lmi: '12,000', lmiTreatment: 'Settlement' }
+    expect(totalCost(d)).toBe(612_000)
+  })
+
+  // ONE SPLIT IS A VALID BUILD.
+  //
+  // 22 Oct 2026. Fabio: "when we're doing construction, we're breaking two
+  // splits... can I just do one split?" Nothing in this file counts splits -
+  // it adds them up - so one facility covering land and build comes out to the
+  // same dollar as two. Written down because the opposite assumption is what
+  // caused the original bug this file was created to fix.
+  it('adds up the same whether the build is one facility or two', () => {
+    const d = { ...DEAL, lmiTreatment: 'Capitalised' }
+    const one = [{ amount: '678,143' }]
+    expect(totalLending(one)).toBe(totalLending(SPLITS))
+    expect(fundsToContribute(d, one)).toBe(fundsToContribute(d, SPLITS))
+    expect(constructionLvr(d.asIfCompleteValue, one)).toBe(constructionLvr(d.asIfCompleteValue, SPLITS))
+  })
+
+  // THE $440,000 GUARD, with LMI in the file. Every construction deal written
+  // before today has no LMI answer recorded, and not one of them may move.
+  it('leaves the deal this file was written for exactly where it was', () => {
+    expect(fundsToContribute(BUYING, BUYING_SPLITS)).toBe(440_000)
   })
 })

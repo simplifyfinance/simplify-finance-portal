@@ -16,6 +16,7 @@
 // $2,040,000 total cost less $1,600,000 of total lending.
 
 import { splitsTotal } from './deal-phase'
+import { lmiAmount, lmiTreatment } from './lmi'
 
 export type Split = { label?: string; amount?: string; rate?: string; type?: string; repayment?: string }
 
@@ -81,14 +82,45 @@ export function landEquity(d: any): number {
   return Math.max(0, num(d?.landValue) - landLoanPayout(d))
 }
 
+// THE PREMIUM THE CLIENT FINDS ON THE DAY.
+//
+// 22 Oct 2026. Fabio, on a 90% construction deal: "construction loan it is not
+// allowing for LMi so the funds to complete is incorrect".
+//
+// Nothing in this file had ever heard of LMI. The cost was land + build + duty
+// and the contribution was that less the lending, so the premium was simply
+// absent from both sides.
+//
+// WHICH IS RIGHT EXACTLY HALF THE TIME, and silently. Capitalised, the lender
+// adds the premium to the loan and the client never finds it - cost and lending
+// both go up by the same amount and the contribution does not move, which is
+// why the old arithmetic came out correct by accident. Paid at settlement, the
+// client writes that cheque on the day exactly as they do for the stamp duty,
+// and the contribution was short by the whole premium. On the deal that found
+// this, $18,000 short on $94,468.
+//
+// So only the settlement answer is a cost. Capitalised returns zero because the
+// loan carries it - Fabio, 3 Sep 2026, "it doesnt impact funds to complete as
+// LMI and risk fee is capitalised on the loans" - and unanswered returns zero
+// too, so every construction deal written before today comes out to the dollar
+// it came out to yesterday. lib/bc-ready.ts raises the unanswered question
+// rather than this file guessing at it.
+export function lmiAtSettlement(d: any): number {
+  const amount = lmiAmount(d)
+  if (amount === null) return 0
+  return lmiTreatment(d) === 'settlement' ? amount : 0
+}
+
 // WHAT THE PROJECT COSTS - money that has to be found from somewhere.
 //
 // The build always. The land and its duty only where the land is being bought.
-// An existing land loan only where it is being paid out.
+// An existing land loan only where it is being paid out. LMI only where the
+// client pays it at settlement rather than borrowing it.
 export function totalCost(d: any): number {
   const build = num(d?.constructionCost)
-  if (isLandPurchase(d)) return num(d?.landValue) + build + num(d?.stampDuty)
-  return build + landLoanPayout(d)
+  const lmi = lmiAtSettlement(d)
+  if (isLandPurchase(d)) return num(d?.landValue) + build + num(d?.stampDuty) + lmi
+  return build + landLoanPayout(d) + lmi
 }
 
 // Every split, not the first one. This is the whole bug.

@@ -34,7 +34,7 @@ import { PLEDGE_PROS, PLEDGE_CONS, PLEDGE_LOAN_1, PLEDGE_LOAN_2, guarantorPhrase
 import { totalLending, fundsToContribute,
          isLandPurchase, landLoanPayout } from '@/lib/construction'
 import { buildCostRows, buildSplitRows, fundsToContributeRow, landEquityNote,
-         duringConstructionRows, buildNote } from '@/lib/build-card'
+         duringConstructionRows, buildNote, totalLendingRow } from '@/lib/build-card'
 import { isSellAndBuild } from '@/lib/sale-build'
 import { totalLimit as recycledLimit, purposeLine, byPurpose, everySplitHasAPurpose,
          whySplitThisWay, openingLine, ACCOUNTANT_NOTE, splitsTotal, limitCheck,
@@ -477,7 +477,7 @@ function propertyCards(d: any) {
 function buildStructure(d: any, lending: number, contribute: number, from?: string) {
   return buildCostRows(d) +
     buildSplitRows(d.splits) +
-    row('Total lending', money(lending)) +
+    totalLendingRow(d, lending) +
     fundsToContributeRow(contribute, PLUS_INCIDENTALS) +
     // WHERE THE MONEY COMES FROM, on the scenario where it is not savings. A
     // client who has just read a sale summary should not have to work out that

@@ -15,7 +15,8 @@ import { row } from './email-card'
 import { dutyLabel } from './duty-state'
 import { money } from './money'
 import { totalCost, isLandPurchase, landEquity, landLoanPayout,
-         repaymentDuringConstruction, num, DRAWDOWN_NOTE } from './construction'
+         repaymentDuringConstruction, num, DRAWDOWN_NOTE, lmiAtSettlement } from './construction'
+import { clientLoan, LMI_COST_LABEL } from './lmi'
 
 // THE ITALIC SUB-LINE. Anything in this card that is a sentence rather than an
 // amount goes here, full width, so it is never mistaken for a number that lost
@@ -37,10 +38,16 @@ export function buildNote(text: string, pad = '4px 0 0'): string {
 export function buildCostRows(d: any): string {
   const buyingLand = isLandPurchase(d)
   const payout = landLoanPayout(d)
+  // THE PREMIUM SITS WITH THE DUTY, because it is the same kind of money - a
+  // cost the client meets on the day out of their own pocket. Only printed
+  // where that is the answer; capitalised, it belongs on the loan line below
+  // and never in this column. See lmiAtSettlement in lib/construction.ts.
+  const settlementLmi = lmiAtSettlement(d)
   return (buyingLand ? row('Land value', money(d.landValue)) : '') +
     (buyingLand ? row(dutyLabel(d), money(d.stampDuty)) : '') +
     row('Construction cost', money(d.constructionCost)) +
     (payout > 0 ? row('Existing land loan paid out', money(payout)) : '') +
+    (settlementLmi > 0 ? row(LMI_COST_LABEL, money(settlementLmi)) : '') +
     `<tr style="border-top:1px solid #CEBEAB"><td style="font-size:12px;font-weight:600;color:#343333;padding-top:6px"><span style="color:#343333;">${buyingLand ? 'Total cost' : 'Total to fund'}</span></td><td style="font-size:12px;font-weight:600;color:#343333;text-align:right;padding-top:6px"><span style="color:#343333;">${money(totalCost(d))}</span></td></tr>` +
     // WHAT THE SECURITY IS WORTH, below the total and clearly not part of it.
     (!buyingLand ? row('Land you already own', money(d.landValue)) : '') +
@@ -92,4 +99,26 @@ export function duringConstructionRows(splits: any): string {
     ? row('Repayments during construction', money(during) + ' / month') +
       buildNote(DRAWDOWN_NOTE, '8px 0 0')
     : ''
+}
+
+// THE ONE LOAN FIGURE A CLIENT READS ON A BUILD.
+//
+// 22 Oct 2026. This card never mentioned LMI at all, on either email that
+// prints it. A 90% construction deal went out with a total cost, a total
+// lending, a contribution and an LVR of 90%, and the word LMI nowhere on the
+// page - so the premium was invisible whichever way it was being paid.
+//
+// clientLoan() is the same answer lib/lmi.ts gives every purchase email, and
+// the reasoning is Fabio's, 24 Sep 2026: when the premium is capitalised there
+// is ONE loan line and it is the one they borrow. The base figure is an
+// internal working and does not belong in a client's inbox.
+//
+// Both callers print this rather than their own row(), so the construction
+// email and the lending options email can never drift into describing the same
+// loan differently. scripts/check-email-html.sh is why it is markup and not a
+// component.
+export function totalLendingRow(d: any, lending: number): string {
+  const { amount, note } = clientLoan(d, lending)
+  return row('Total lending', money(amount ?? lending)) +
+    (note ? buildNote(note, '2px 0 0') : '')
 }

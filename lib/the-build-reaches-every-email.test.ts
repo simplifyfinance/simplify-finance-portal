@@ -21,7 +21,7 @@
 //   less 320,000 + 201,000 of lending            =   779,000 to contribute
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
-import { buildCostRows, buildSplitRows, fundsToContributeRow, landEquityNote } from './build-card'
+import { buildCostRows, buildSplitRows, fundsToContributeRow, landEquityNote, totalLendingRow } from './build-card'
 import { loPurchaseBlock } from './lo-purchase-block'
 import { buildLines, dealFacts } from './deal-facts'
 
@@ -212,5 +212,63 @@ describe('one question, asked in one place', () => {
         .replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
       expect(src, f).not.toMatch(/template\s*\)?\s*===\s*'construction'/)
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// THE PREMIUM WAS NOWHERE ON THIS CARD
+//
+// 22 Oct 2026. A 90% construction deal went to a client with a total cost, a
+// total lending, a contribution and "LVR 90%", and the letters LMI appeared
+// nowhere on the page. Whichever way the premium was being paid, the client
+// could not see it.
+// ---------------------------------------------------------------------------
+describe('LMI on the build card', () => {
+  const BASE = { landFunding: 'purchase', landValue: '378,000',
+    constructionCost: '375,576', stampDuty: '19,035', dutyState: 'VIC',
+    asIfCompleteValue: '753,576', lmiApplicable: 'Applicable', lmi: '18,000' }
+
+  it('paid at settlement, it sits in the cost column with the duty', () => {
+    const html = buildCostRows({ ...BASE, lmiTreatment: 'Settlement' })
+    expect(html).toContain('LMI')
+    expect(html).toContain('$18,000')
+    // And the total underneath has it in.
+    expect(html).toContain('$790,611')
+  })
+
+  it('capitalised, it is not in the cost column at all', () => {
+    const html = buildCostRows({ ...BASE, lmiTreatment: 'Capitalised' })
+    expect(html).toContain('$772,611')
+    expect(html).not.toContain('$790,611')
+  })
+
+  it('capitalised, the loan line is the one they borrow and says so', () => {
+    const html = totalLendingRow({ ...BASE, lmiTreatment: 'Capitalised' }, 678_143)
+    expect(html).toContain('$696,143')
+    expect(html).toContain('includes LMI of $18,000, added to the loan')
+    // Never both figures. Fabio, 24 Sep 2026.
+    expect(html).not.toContain('$678,143')
+  })
+
+  it('paid at settlement, the loan line is the loan and nothing else', () => {
+    const html = totalLendingRow({ ...BASE, lmiTreatment: 'Settlement' }, 678_143)
+    expect(html).toContain('$678,143')
+    expect(html).not.toContain('added to the loan')
+  })
+
+  it('with no LMI at all the row is exactly what it always was', () => {
+    expect(totalLendingRow(BUYING_LAND, 521_000)).toContain('$521,000')
+    expect(totalLendingRow(BUYING_LAND, 521_000)).not.toContain('LMI')
+  })
+
+  // ONE ROW, TWO EMAILS. The construction email and the lending options email
+  // both print it, so neither can describe the same loan differently.
+  it('both emails print the shared row rather than their own', () => {
+    const route = readFileSync('app/api/generate-email/route.ts', 'utf8')
+    const lo = readFileSync('lib/lo-purchase-block.ts', 'utf8')
+    expect(route).toContain('totalLendingRow(d, lending)')
+    expect(lo).toContain('totalLendingRow(bc, lending)')
+    expect(route).not.toContain("row('Total lending', money(lending))")
+    expect(lo).not.toContain("row('Total lending', money(lending))")
   })
 })
