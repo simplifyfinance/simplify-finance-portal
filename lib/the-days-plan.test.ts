@@ -5,7 +5,7 @@
 // order of priority. Every name in it is already on a deal.
 import { describe, it, expect } from 'vitest'
 import { draftDay, finishedOn, planBoard, everybodyPlanned, stageWaitingOn,
-         notTold, minutesIntoDay, dayBefore, DAY_STARTS,
+         notTold, minutesIntoDay, dayBefore, DAY_STARTS, creditHasIt, finishedAcross,
          type PlanDeal, type Plan } from './the-days-plan'
 
 const d = (id: string, since: string | null, priority?: any): PlanDeal =>
@@ -181,7 +181,23 @@ describe('the day starts at half past seven', () => {
     const [h, m] = hhmm.split(':').map(Number)
     return new Date(Date.UTC(2026, 9, 23, h - 11, m))
   }
+  // 23 Oct 2026 IS A FRIDAY, AND THE DAY IS NOW NAMED.
+  //
+  // notTold() defaults to the real today, and on a Saturday it answers nobody
+  // is late - correctly. Left to default, every test below would have started
+  // failing at midnight on a Friday and passing again on Monday, which is the
+  // worst kind of test there is. See lib/the-week.ts.
+  const FRIDAY = '2026-10-23'
   const unplanned: Plan = { officerId: 'sylvan', officerName: 'Sylvan', confirmedAt: null, deals: [] }
+
+  it('nobody is late on a Saturday, a Sunday or Australia Day', () => {
+    for (const day of ['2026-10-24', '2026-10-25', '2026-01-26']) {
+      expect(notTold([unplanned], at('09:30'), day), `${day} flagged somebody`).toHaveLength(0)
+    }
+    // And the working day either side still does.
+    expect(notTold([unplanned], at('09:30'), '2026-10-23')).toHaveLength(1)
+    expect(notTold([unplanned], at('09:30'), '2026-10-26')).toHaveLength(1)
+  })
 
   it('is 7:30, not 8 - Fabio said 8 is too late', () => {
     expect(DAY_STARTS).toBe('07:30')
@@ -189,29 +205,29 @@ describe('the day starts at half past seven', () => {
 
   it('nobody is late before it', () => {
     expect(minutesIntoDay(at('07:00'))).toBeLessThan(0)
-    expect(notTold([unplanned], at('07:00'))[0].level).toBe('quiet')
+    expect(notTold([unplanned], at('07:00'), FRIDAY)[0].level).toBe('quiet')
   })
 
   it('at 7:45 it is a nudge, and it names who is waiting', () => {
-    const [n] = notTold([unplanned], at('07:45'))
+    const [n] = notTold([unplanned], at('07:45'), FRIDAY)
     expect(n.level).toBe('nudge')
     expect(n.mine).toBe('You have not told the brokers your day yet.')
   })
 
   it('an hour later it is a flag, and it says how long', () => {
-    const [n] = notTold([unplanned], at('09:30'))
+    const [n] = notTold([unplanned], at('09:30'), FRIDAY)
     expect(n.level).toBe('flag')
     expect(n.mine).toContain('2 hours')
   })
 
   it('the brokers read a different sentence about the same person', () => {
-    const [n] = notTold([unplanned], at('07:45'))
+    const [n] = notTold([unplanned], at('07:45'), FRIDAY)
     expect(n.theirs).toBe('Sylvan has not told you their day yet')
   })
 
   it('and somebody who has planned is not on the list at all', () => {
     const done: Plan = { ...unplanned, confirmedAt: '2026-10-22T20:40:00Z' }
-    expect(notTold([done], at('09:30'))).toHaveLength(0)
+    expect(notTold([done], at('09:30'), FRIDAY)).toHaveLength(0)
   })
 
   // THE GUARD THAT WOULD HAVE CAUGHT THIS. Half past seven in Sydney is half
@@ -234,5 +250,85 @@ describe('the day before, on the calendar not the clock', () => {
   })
   it('and across a year', () => {
     expect(dayBefore('2027-01-01')).toBe('2026-12-31')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// WHOSE DAY IS THIS DEAL ON?
+//
+// 23 Oct 2026, building a broker's own Today. If Katie has the lending
+// options, that deal belongs on Katie's list and not on the broker's as well -
+// the same file on two plans is two people doing one job, which is the thing
+// this whole page exists to stop.
+//
+// The question has to be per stage. A broker who wrote the BC himself and then
+// gave the lending options to credit has a deal with a credit officer on it
+// for one stage and not the other, and the deal-wide column cannot tell those
+// apart. See lib/who-did-this-stage.ts.
+describe('whether credit is carrying the stage that is with us', () => {
+  // Fact find and BC closed; the lending options are open.
+  const open = {
+    id: 'd1', deal_name: 'Harding & Vass 2026', assigned_broker: 'mark',
+    created_at: '2026-09-24T01:00:00Z', bc_data: { purpose: 'OO purchase' },
+    client_proceeded: true, proceeded_at: '2026-09-24T05:00:00Z',
+  }
+
+  it('says who, when a credit assessor owns the open stage', () => {
+    expect(stageWaitingOn(open)).toBe('LO')
+    const d = { ...open, lo_owner_officer: 'k1', lo_owner_name: 'Katie Amos' }
+    expect(creditHasIt(d)).toEqual({ officerId: 'k1', name: 'Katie Amos' })
+  })
+
+  it('and nothing when the broker kept it', () => {
+    const d = { ...open, lo_owner_officer: null, lo_owner_name: 'Mark Gallo' }
+    expect(creditHasIt(d)).toBeNull()
+  })
+
+  it('a BC credit wrote does not make the lending options theirs', () => {
+    const d = {
+      ...open,
+      bc_owner_officer: 'k1', bc_owner_name: 'Katie Amos',
+      lo_owner_officer: null, lo_owner_name: 'Mark Gallo',
+      assigned_credit_officer: 'k1',
+    }
+    expect(creditHasIt(d), 'the deal-wide officer is being read again').toBeNull()
+  })
+
+  it('and a deal sitting with the client is nobody\u2019s day', () => {
+    const sent = { ...open, lo_sent_at: '2026-10-01T05:00:00Z' }
+    expect(stageWaitingOn(sent)).toBeNull()
+    expect(creditHasIt(sent)).toBeNull()
+  })
+})
+
+describe('what finished yesterday, for everybody', () => {
+  const deal = {
+    id: 'd1', deal_name: 'Harding & Vass 2026', assigned_broker: 'mark',
+    created_at: '2026-09-24T01:00:00Z', bc_data: { purpose: 'OO purchase' },
+    client_proceeded: true, proceeded_at: '2026-09-24T05:00:00Z',
+    lo_owner_officer: 'k1', lo_owner_name: 'Katie Amos',
+    lo_completed_at: '2026-10-22T04:00:00Z',
+  }
+
+  it('names the person who did that stage, not the deal\u2019s officer', () => {
+    const [row] = finishedAcross([deal], '2026-10-22')
+    expect(row.what).toBe('Lending options')
+    expect(row.who).toBe('Katie Amos')
+  })
+
+  it('counts from when the stage opened, not from when somebody was assigned', () => {
+    // The stage opened when the BC closed, 24 Sep. 28 days to 22 Oct.
+    const [row] = finishedAcross([deal], '2026-10-22')
+    expect(row.days).toBe(28)
+  })
+
+  it('and a Sydney day, not the machine\u2019s day', () => {
+    // 10pm Sydney on the 22nd is 11am UTC on the 22nd; 9am Sydney on the 23rd
+    // is 10pm UTC on the 22nd and belongs to the 23rd.
+    const late = { ...deal, lo_completed_at: '2026-10-22T11:00:00Z' }
+    const next = { ...deal, lo_completed_at: '2026-10-22T22:00:00Z' }
+    expect(finishedAcross([late], '2026-10-22')).toHaveLength(1)
+    expect(finishedAcross([next], '2026-10-22')).toHaveLength(0)
+    expect(finishedAcross([next], '2026-10-23')).toHaveLength(1)
   })
 })

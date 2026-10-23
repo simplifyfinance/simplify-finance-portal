@@ -151,6 +151,59 @@ export function readingMinutes(e: Entry): number {
 // Add a new entry wherever is tidiest. The date decides what the team sees.
 export const ENTRIES: Entry[] = [
   {
+    id: 'today-for-everybody',
+    section: 'process',
+    title: 'Today \u2014 a page for brokers and one for the business, and no weekends',
+    on: '2026-10-23',
+    lead: 'Today was built for the credit team and only for them. Everybody else opened it '
+        + 'and got a greeting and half a screen of nothing. There are three versions of it now, '
+        + 'and it stays shut at the weekend.',
+    body: [
+      'Which one you see depends on what you do here. Nobody chooses it and there is no setting.',
+      {
+        step: 'If you are a broker',
+        body: [
+          'Your deals that are sitting with us, oldest first, with the same "Yes, this is my day" '
+          + 'button credit has. Cross one off and it goes back in the queue.',
+          'Underneath, your files that credit is carrying: who has each one, how long it has been '
+          + 'there, and \u2014 the one worth looking at \u2014 whether it is in that person\u2019s day today. '
+          + 'A red chip means your file is not in anybody\u2019s plan.',
+          { shot: 'today-the-broker.png',
+            caption: 'A broker\u2019s Today. Their own deals on top, their files with credit underneath.' },
+          'A deal credit is holding is not also in your own list. One file, one person, one day.',
+        ],
+      },
+      {
+        step: 'If you are an admin',
+        body: [
+          'The business instead of a to-do list: where the book is this morning, then every deal '
+          + 'that is with us and in nobody\u2019s day, then what each broker is carrying, then what '
+          + 'moved yesterday across the whole book.',
+          { shot: 'today-admin.png',
+            caption: 'The admin Today. The second box is the one that matters \u2014 with us, and nobody has said they are doing it.' },
+          'Where somebody is both a broker and an admin, the admin view wins.',
+        ],
+      },
+      {
+        step: 'If you are in credit',
+        body: [
+          'Nothing has changed. Your day, drafted from your queue, and yesterday written for you.',
+        ],
+      },
+      {
+        call: 'And it is Monday to Friday now',
+        title: 'No plan at the weekend, and no flag counting all weekend beside your name',
+      },
+      'On a Saturday, a Sunday or a NSW public holiday the whole morning plan comes off the page. '
+      + 'Before this, Saturday at half past eight told four people they had not told the brokers '
+      + 'their day, and kept counting until Monday \u2014 by which point it said 48 hours for a day '
+      + 'nobody worked.',
+      'Monday\u2019s "yesterday you finished" is Friday, not Sunday. Same after a long weekend: '
+      + 'the Tuesday after Labour Day looks back at the Friday.',
+      'Say what is wrong with yours and it changes. This is the first version of both new pages.',
+    ],
+  },
+  {
     id: 'today-the-morning-plan',
     section: 'process',
     title: 'Today \u2014 the morning email is now in the portal',

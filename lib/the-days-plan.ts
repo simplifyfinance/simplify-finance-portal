@@ -35,6 +35,8 @@
 import { whoHasIt } from './who-has-it'
 import { waitingIndex } from './deal-status'
 import { toAuDate, todayYmd } from './periods'
+import { ownerOf, stageWindow, type Stage } from './who-did-this-stage'
+import { isWorkday } from './the-week'
 
 export type PlanDeal = {
   id: string
@@ -69,6 +71,23 @@ export function stageWaitingOn(deal: any): string | null {
   if (i === 4 || i === 5) return 'LO'
   if (i === 7) return 'Compliance'
   return null
+}
+
+// IS CREDIT CARRYING THE STAGE THAT IS SITTING WITH US?
+//
+// 23 Oct 2026. A broker's own day must not list the deals credit is holding,
+// or the same file is on two people's plans and counted twice. The answer is
+// not "does this deal have a credit officer" - a deal can have had one on the
+// BC and be back with the broker for the lending options. It is per stage,
+// which is what lib/who-did-this-stage.ts was built for.
+const STAGE_OF: Record<string, Stage> = { BC: 'bc', LO: 'lo', Compliance: 'compliance' }
+
+export function creditHasIt(deal: any): { officerId: string; name: string } | null {
+  const label = stageWaitingOn(deal)
+  const stage = label ? STAGE_OF[label] : null
+  if (!stage) return null
+  const o = ownerOf(deal, stage)
+  return o?.officerId ? { officerId: o.officerId, name: o.name } : null
 }
 
 // THE DRAFT. Priority deals first, in the order the brokers set them, then
@@ -118,6 +137,47 @@ export function finishedOn(deals: any[], officerId: string, day: string): Finish
       out.push({ id: d.id, name: d.deal_name, what: 'Lending options', days: span(d.lo_completed_at) })
     if (inDay(d?.compliance_completed_at))
       out.push({ id: d.id, name: d.deal_name, what: 'Compliance', days: span(d.compliance_completed_at) })
+  }
+  return out
+}
+
+// AND THE SAME LIST FOR EVERYBODY, NOT JUST ONE PERSON.
+//
+// 23 Oct 2026. The admin view asks what moved across the whole business, and
+// a broker's asks what moved on their own files. Neither is about one credit
+// assessor, which is all finishedOn() above can answer.
+//
+// The name beside each line is the stage's own owner - bc_owner_name and the
+// two beside it - so a stage a broker did themselves says the broker, and a
+// deal that passed through two people credits each of them with their own.
+// The days are how long the stage had been open when they finished their part,
+// measured from the moment the stage opened - the same clock the blue box on
+// the deal runs on. Not from the day a credit officer was put on the deal,
+// which is a different thing on any deal that changed hands.
+export type FinishedBy = Finished & { who: string }
+
+export function finishedAcross(deals: any[], day: string): FinishedBy[] {
+  const inDay = (v: any) => !!v && toAuDate(v) === day
+  const span = (from: any, to: any) => {
+    const a = t(from), b = t(to)
+    if (!a || !b || b < a) return null
+    return Math.round(((b - a) / 86_400_000) * 10) / 10
+  }
+  const out: FinishedBy[] = []
+  const stages: { stamp: string; what: string; name: string; stage: Stage }[] = [
+    { stamp: 'bc_completed_at', what: 'BC', name: 'bc_owner_name', stage: 'bc' },
+    { stamp: 'lo_completed_at', what: 'Lending options', name: 'lo_owner_name', stage: 'lo' },
+    { stamp: 'compliance_completed_at', what: 'Compliance', name: 'compliance_owner_name', stage: 'compliance' },
+  ]
+  for (const d of deals) {
+    for (const s of stages) {
+      if (!inDay(d?.[s.stamp])) continue
+      out.push({
+        id: d.id, name: d.deal_name, what: s.what,
+        days: span(stageWindow(d, s.stage).startedAt, d[s.stamp]),
+        who: String(d?.[s.name] ?? '').trim(),
+      })
+    }
   }
   return out
 }
@@ -207,7 +267,15 @@ export type NotTold = {
 // The wording is his, and it is pointed on purpose. "Not planned yet" sounds
 // like a tidiness problem. "You have not told the brokers your day" names the
 // person who is waiting, which is the whole reason it matters.
-export function notTold(plans: Plan[], now: Date): NotTold[] {
+export function notTold(plans: Plan[], now: Date, day: string = todayYmd()): NotTold[] {
+  // NOBODY IS LATE ON A SATURDAY.
+  //
+  // 23 Oct 2026, Fabio: "there is weekends. So don't do that on the weekend.
+  // So it's 7:30 Monday to Friday." Without this line, Saturday at 8:30 tells
+  // four people they have not told the brokers their day and goes on counting
+  // all weekend, so Monday's flag reads 48 hours for a day nobody worked.
+  // NSW public holidays count as weekends - see lib/the-week.ts.
+  if (!isWorkday(day)) return []
   const late = minutesIntoDay(now)
   const level: NotTold['level'] =
     late < NUDGE_AFTER ? 'quiet' : late < FLAG_AFTER ? 'nudge' : 'flag'

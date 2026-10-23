@@ -78,12 +78,23 @@ export default async function Dashboard() {
   const today = todayYmd()
   const [{ data: officerRows }, { data: planRows }] = await Promise.all([
     supabase.from('credit_officers').select('id, name').eq('active', true).order('name'),
-    supabase.from('daily_plans').select('officer_id, deal_ids, confirmed_at').eq('plan_date', today),
+    supabase.from('daily_plans').select('officer_id, broker_key, deal_ids, confirmed_at').eq('plan_date', today),
   ])
   const officers = (officerRows || []).map((o: any) => ({ id: o.id, name: o.name }))
   const byOfficer = new Map((planRows || []).map((p: any) => [p.officer_id, p]))
   // One row per assessor whether they have a plan or not - the board is about
   // who HAS NOT, so somebody with no row has to appear on it.
+  // AND THE BROKERS' OWN PLANS, which live in the same table keyed by broker
+  // rather than by officer - see docs/brokers-plan-their-day.sql. Added 23 Oct
+  // 2026, when Fabio opened his own Today page and found it empty.
+  const brokerPlans = (planRows || [])
+    .filter((p: any) => p.broker_key)
+    .map((p: any) => ({
+      brokerKey: String(p.broker_key),
+      confirmedAt: p.confirmed_at || null,
+      dealIds: (p.deal_ids || []) as string[],
+    }))
+
   const plans = officers.map(o => ({
     officerId: o.id,
     officerName: o.name,
@@ -100,9 +111,13 @@ export default async function Dashboard() {
         deals={deals || []}
         officers={officers}
         plans={plans}
+        brokerPlans={brokerPlans}
         meOfficerId={creditOfficerId}
         meName={profile?.full_name || ''}
         today={today}
+        seesAll={!!seesAll}
+        brokerKey={brokerKey}
+        brokerNames={brokerNames}
       />
     </div>
     <DashboardClient
