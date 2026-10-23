@@ -43,6 +43,10 @@ export const FORM_FILES = [
 // treatment, same direction: adding is free, removing has to be done on purpose
 // in a diff.
 export const PAGE_FILES = [
+  // 23 Oct 2026. Form, Email and every action moved out of the two forms and
+  // into one row drawn on both - see components/WhatNow.tsx. The words went
+  // with them, so the lock follows them here.
+  'components/WhatNow.tsx',
   'components/DealTabCards.tsx',
   'components/DealLinks.tsx',
   'components/DealMore.tsx',

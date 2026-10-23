@@ -1,12 +1,12 @@
 'use client'
 import HandoverBox from '@/components/Handover'
 import WhatNow from '@/components/WhatNow'
+import { handStageOver } from '@/lib/hand-this-stage-over'
 import { dutyStateOf } from '@/lib/duty-state'
 import { useState, useEffect, useRef } from 'react'
 import { dayMonthYear, dayMonth, longDate } from '@/lib/same-date-everywhere'
 import { supabase } from '@/lib/supabase'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
-import CreditOfficerAssignment from './CreditOfficerAssignment'
 import CurrencyInput from './CurrencyInput'
 import { can } from '@/lib/permissions'
 import { templateLabel } from '@/lib/templates'
@@ -1024,6 +1024,16 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const [handingOver, setHandingOver] = useState(false)
   // Which button opened the box, so onSent knows where to go next.
   const [thenSend, setThenSend] = useState(false)
+
+  // WHO IS DOING THIS STAGE. Me, or the credit queue - never a person. The
+  // same handler runs on the lending options, so the two screens cannot drift.
+  const [handErr, setHandErr] = useState('')
+  async function handOwner(choice: 'me' | 'queue') {
+    setHandErr('')
+    const out = await handStageOver(supabase, deal.id, 'bc', choice, brokerSig || deal.assigned_broker || 'Broker')
+    if (!out.ok) { setHandErr(out.error); return }
+    window.location.reload()
+  }
   const canSendToClient = can(userRole, 'sendClientEmails')
 
   const [showAllTemplates, setShowAllTemplates] = useState(false)
@@ -1832,38 +1842,70 @@ Key assumptions: ${checklistText}`
           onRestore={() => { applyBcData(draft.offer!.value); markTouched(); draft.taken() }}
           onDiscard={draft.dismiss} />
       )}
-      <div className="flex gap-2 mb-4 items-center flex-wrap">
-        {[['form','BC form'],['preview','Preview & share']].map(([id,label]) => (
-          <button key={id} onClick={() => setActiveTab(id as any)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${activeTab === id ? 'border-brand text-brand-ink bg-brand/5' : 'border-gray-200 text-gray-500 bg-card'}`}>
-            {label}
-            {/* A warning nobody can see is not a warning. The figures move on the
-                BC form, and the email they broke is one tab away. */}
-            {id === 'preview' && emailNeedsAttention && (
-              <span title="The saved email is out of date" className="ml-1.5 text-chase">●</span>
-            )}
-          </button>
-        ))}
+      {/* ONE ROW, AT THE TOP, WHERE THE TABS USED TO BE.
+          23 Oct 2026. What was here: two pills, a grey rule, and a black
+          button that moved the deal to the lending options. Fabio, looking at
+          this beside the same row on the LO: "see right now theres NO
+          consistency". The two screens used different words, different shapes
+          and different colours for the same four things, and on the LO the tab
+          you were standing on was the same solid black as the button that
+          moved the deal.
+          The view switch, who is doing it, and every action are now one row,
+          drawn by one component, identical on both screens. */}
+      <WhatNow
+        stage="bc"
+        deal={deal}
+        view={activeTab === 'preview' ? 'email' : 'form'}
+        onView={v => setActiveTab(v === 'email' ? 'preview' : 'form')}
+        finishedAt={bcCompletedAt}
+        canAllocate={!bcCompletedAt}
+        emailStale={emailNeedsAttention}
+        onOwnerChange={handOwner}
+        actions={[
+          // Credit handing it back. Only while somebody else is carrying
+          // it, and only until they have.
+          ...(deal.assigned_credit_officer && !bcCompletedAt ? [{
+            label: markingComplete ? 'Marking...' : 'Done',
+            onClick: () => setHandingOver(true),
+            primary: true,
+            title: 'Tells the broker the BC is ready for their review',
+          }] : []),
+          {
+            label: 'Send to client',
+            onClick: () => {
+              if (!canSendToClient) return
+              // Already answered once on the handover - never asked twice.
+              if (bcCompletedAt) { sendToClient(); return }
+              setThenSend(true); setHandingOver(true)
+            },
+            primary: !(deal.assigned_credit_officer && !bcCompletedAt),
+            done: !!deal.bc_sent_at,
+            waiting: !canSendToClient || !emailHtml,
+            since: deal.bc_sent_at ? dayMonth(deal.bc_sent_at) : undefined,
+            title: !canSendToClient ? 'Only a broker can send this to the client'
+                 : freshness.state === 'stale' ? 'Heads up: this email was written for a different scenario.'
+                 : freshness.state === 'figures-moved' ? 'Heads up: figures have changed since this email was written.' : '',
+          },
+          {
+            label: deal.client_proceeded
+              ? `Client agreed${agreedDay(proceedInfo.when)}`
+              : 'Client agreed',
+            onClick: () => setShowMoveToLoPopup(true),
+            done: !!deal.client_proceeded,
+            waiting: !deal.bc_sent_at && !deal.client_proceeded,
+            since: deal.client_proceeded ? proceedInfo.who : undefined,
+            title: 'They pressed Proceed in the email, or we record it here',
+          },
+        ]}
+      />
 
-        {/* The action that moves the deal on, on the page rather than inside a
-            tab. Shaped as a button, not a third pill, so it does not read as
-            another view of the same thing. */}
-        <span className="w-px h-6 bg-gray-200 mx-1" />
-        {clientProceeded ? (
-          <div className="flex items-center gap-2">
-            <span title={proceedInfo.when ? new Date(proceedInfo.when).toLocaleString('en-AU') : undefined}
-              className="px-3.5 py-1.5 text-sm rounded-lg font-medium bg-green-50 text-green-600 border border-green-200">
-              {'\u2713'} Client agreed{agreedDay(proceedInfo.when)}
-            </span>
-            <span className="text-xs text-gray-400">{proceedInfo.who}</span>
-          </div>
-        ) : (
-          <button onClick={() => setShowMoveToLoPopup(true)}
-            className="px-3.5 py-1.5 text-sm rounded-lg font-semibold border border-ink bg-ink text-page hover:bg-ink/90 transition">
-            Client agreed — move to LO
-          </button>
-        )}
-      </div>
+      {sendToClientMsg && (
+        <div className="mb-3 text-[12.5px] text-info bg-info-bg border border-info-edge rounded-lg px-3 py-1.5 inline-block">{sendToClientMsg}</div>
+      )}
+      {handErr && (
+        <div className="mb-3 text-[12.5px] text-chase bg-chase-bg border border-chase-edge rounded-lg px-3 py-1.5 inline-block">{handErr}</div>
+      )}
+      <div className="mb-4" />
 
       {/* Follows the button. This message only existed inside Preview & share,
           so pressing the button from the BC form tab said nothing at all. */}
@@ -3553,57 +3595,6 @@ Key assumptions: ${checklistText}`
 
       {activeTab === 'preview' && (
         <div>
-          <div className="mb-4">
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              {sendToClientMsg && <span className="text-xs text-info bg-info-bg border border-info-edge rounded-lg px-3 py-1.5">{sendToClientMsg}</span>}
-            </div>
-            {/* THE SAME STRIP AS EVERY OTHER STAGE - see components/WhatNow.tsx.
-                What was here: five buttons in three groups separated by little
-                grey rules, two of which vanished entirely when no credit officer
-                was assigned. Fabio, 22 Oct 2026, on why his team hesitate:
-                "sometimes there and sometimes not" is how a screen loses their
-                trust. The buttons that moved out of this box on 2 Sep and
-                27 Sep - "Client agreed", "I'll do this myself", "Send to credit
-                team" - have not come back; they live on the deal page. */}
-            <WhatNow
-              steps={[
-                { label: 'Written', done: !!emailHtml, now: !emailHtml },
-                { label: bcCompletedAt ? (deal.assigned_credit_officer ? 'Credit finished it' : 'Finished') : 'Being written',
-                  done: !!bcCompletedAt, now: !!emailHtml && !bcCompletedAt,
-                  under: bcCompletedAt ? dayMonth(bcCompletedAt) : undefined },
-                { label: deal.bc_sent_at ? 'Sent' : 'Not sent', done: !!deal.bc_sent_at,
-                  now: !!bcCompletedAt && !deal.bc_sent_at,
-                  under: deal.bc_sent_at ? dayMonth(deal.bc_sent_at) : undefined },
-                { label: deal.client_proceeded ? 'Client said yes' : 'With client',
-                  done: !!deal.client_proceeded, client: true,
-                  now: !!deal.bc_sent_at && !deal.client_proceeded },
-              ]}
-              actions={[
-                // Credit hands it back. Only a thing while somebody else is
-                // carrying it, and only until they have.
-                ...(deal.assigned_credit_officer && !bcCompletedAt ? [{
-                  label: markingComplete ? 'Marking...' : 'Done',
-                  onClick: () => setHandingOver(true),
-                  primary: true,
-                  disabled: markingComplete,
-                  title: 'Tells the broker the BC is ready for their review',
-                }] : []),
-                ...(canSendToClient ? [{
-                  label: 'Send to client',
-                  onClick: () => {
-                    // Already answered once on the handover - never asked twice.
-                    if (bcCompletedAt) { sendToClient(); return }
-                    setThenSend(true); setHandingOver(true)
-                  },
-                  primary: !(deal.assigned_credit_officer && !bcCompletedAt),
-                  title: freshness.state === 'stale' ? 'Heads up: this email was written for a different scenario.'
-                       : freshness.state === 'figures-moved' ? 'Heads up: figures have changed since this email was written.' : '',
-                }] : []),
-              ]}
-              hint={canSendToClient ? undefined : 'Only a broker can send this to the client.'}
-              note={<CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />}
-            />
-          </div>
           {/* THE EMAIL IS A SAVED COPY, so it can be out of date with the deal
               sitting next to it. Say so here, where somebody is about to send
               it, rather than letting the preview look perfectly normal. */}

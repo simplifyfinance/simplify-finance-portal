@@ -1,6 +1,7 @@
 'use client'
 import HandoverBox from '@/components/Handover'
 import WhatNow from '@/components/WhatNow'
+import { handStageOver } from '@/lib/hand-this-stage-over'
 import { isDebtRecycling } from '@/lib/debt-recycling'
 import { bcFieldsWin } from '@/lib/the-lo-copies-nothing-it-does-not-own'
 import { normalisePurpose } from '@/lib/split-purpose'
@@ -23,7 +24,6 @@ import { emptyGuard, adopt, saveGuarded } from '@/lib/save-conflict'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { docsStateOf, atTime, assessorMissing, NO_ASSESSOR_MESSAGE } from '@/lib/docs-received'
 import { legalFeeLabel, rowLegalFeeLabel } from '@/lib/lender-fees'
-import CreditOfficerAssignment from './CreditOfficerAssignment'
 import { can } from '@/lib/permissions'
 import { templateLabel } from '@/lib/templates'
 import { proceedCredit } from '@/lib/deal-status'
@@ -427,6 +427,15 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   const [handingOver, setHandingOver] = useState(false)
   // Which button opened the box, so onSent knows where to go next.
   const [thenSend, setThenSend] = useState(false)
+
+  // The same handler as the BC, so the two screens cannot drift.
+  const [handErr, setHandErr] = useState('')
+  async function handOwner(choice: 'me' | 'queue') {
+    setHandErr('')
+    const out = await handStageOver(supabase, deal.id, 'lo', choice, d.brokerSig || deal.assigned_broker || 'Broker')
+    if (!out.ok) { setHandErr(out.error); return }
+    window.location.reload()
+  }
   const [sendingToCreditTeam, setSendingToCreditTeam] = useState(false)
   const [creditTeamMsg, setCreditTeamMsg] = useState('')
   const [creditTeamErr, setCreditTeamErr] = useState('')
@@ -1880,60 +1889,99 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           onRestore={() => { setD(loShape(draft.offer!.value)); draft.taken() }}
           onDiscard={draft.dismiss} />
       )}
-      <div className="flex gap-2 items-center flex-wrap">
-        <div className="flex gap-2 bg-card border border-gray-100 rounded-xl p-1">
-          {(['form', 'preview'] as const).map(t => (
-            <button key={t} onClick={() => setActiveTab(t)} className={`px-6 py-2 rounded-lg text-sm font-medium transition ${activeTab === t ? 'bg-ink text-page' : 'text-gray-400 hover:text-gray-600'}`}>
-              {t === 'form' ? 'LO Form' : 'Email Preview'}
-            </button>
-          ))}
+      {/* THE SAME ROW AS THE BC, AT THE TOP, WHERE THE TABS USED TO BE.
+          23 Oct 2026. Fabio put the two screens side by side. One said "BC
+          form" and the other "LO Form"; one said "Preview & share" and the
+          other "Email Preview"; round pills here, square buttons there. And
+          worst of it, on this screen the tab you were standing on and the
+          button that moved the deal to Compliance were both solid black.
+          One component draws both screens now - components/WhatNow.tsx. */}
+      <WhatNow
+        stage="lo"
+        deal={deal}
+        view={activeTab === 'preview' ? 'email' : 'form'}
+        onView={v => setActiveTab(v === 'email' ? 'preview' : 'form')}
+        finishedAt={loCompletedAt}
+        canAllocate={!loCompletedAt}
+        emailStale={emailNeedsAttention}
+        onOwnerChange={handOwner}
+        actions={[
+          ...(deal.assigned_credit_officer && !loCompletedAt ? [{
+            label: markingLoComplete ? 'Marking...' : 'Done',
+            onClick: () => setHandingOver(true),
+            primary: true,
+            title: 'Tells the broker the lending options are ready for their review',
+          }] : []),
+          {
+            label: sending ? 'Copying...' : 'Send to client',
+            onClick: () => {
+              if (!canSendToClient) return
+              if (loCompletedAt) { sendEmail(); return }
+              setThenSend(true); setHandingOver(true)
+            },
+            primary: !(deal.assigned_credit_officer && !loCompletedAt),
+            done: !!deal.lo_sent_at,
+            waiting: !canSendToClient || !emailHtml,
+            since: deal.lo_sent_at ? dayMonth(deal.lo_sent_at) : undefined,
+            title: !canSendToClient ? 'Only a broker can send this to the client'
+                 : emailNeedsAttention ? 'Heads up: this email was written for a different scenario.' : '',
+          },
+          // DOCS RECEIVED. The lending options has one action the BC does not,
+          // because the stage does - one press, two emails, a gap between them.
+          // See lib/docs-received.ts. Same shape as everything else on the row.
+          {
+            label: docs.kind === 'none'
+              ? (assessorMissing(docsDeal) ? 'Allocate a credit assessor first'
+                 : docsBusy ? 'Marking\u2026' : 'Docs received')
+              : `Docs received${docsDay(docs.receivedAt)}`,
+            onClick: () => { if (docs.kind === 'none' && !assessorMissing(docsDeal)) markDocsReceived() },
+            done: docs.kind === 'done',
+            waiting: docs.kind === 'none' && assessorMissing(docsDeal),
+            title: assessorMissing(docsDeal) ? NO_ASSESSOR_MESSAGE : undefined,
+          },
+          {
+            label: deal.lo_client_proceeded ? 'Client agreed' : 'Client agreed',
+            onClick: () => setShowMoveToCompliancePopup(true),
+            done: !!deal.lo_client_proceeded,
+            waiting: !deal.lo_sent_at && !deal.lo_client_proceeded,
+            since: deal.lo_proceeded_at ? dayMonth(deal.lo_proceeded_at) : undefined,
+            title: 'They pressed Proceed in the email, or we record it here',
+          },
+        ]}
+      />
+
+      {handErr && (
+        <div className="mb-3 text-[12.5px] text-chase bg-chase-bg border border-chase-edge rounded-lg px-3 py-1.5 inline-block">{handErr}</div>
+      )}
+
+      {/* WHAT THE BUTTONS SAY BACK, OUT HERE WITH THE BUTTONS.
+          23 Oct 2026. Done and Send to client can be pressed from either view
+          now, so the message and the box that follow them cannot live inside
+          one of them. That is exactly the fault Emma and Joshua hit in
+          September - see lib/proceed-buttons.test.ts - a button that works
+          and a reply drawn in another room. */}
+      {(creditTeamMsg || creditTeamErr || moveToComplianceMsg || sendError || sent) && (
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          {creditTeamMsg && <span className="text-xs text-done bg-done-bg border border-done-edge rounded-lg px-3 py-1.5">{creditTeamMsg}</span>}
+          {creditTeamErr && <span className="text-xs text-chase bg-chase-bg border border-chase-edge rounded-lg px-3 py-1.5">{creditTeamErr}</span>}
+          {moveToComplianceMsg && <span className="text-xs text-done bg-done-bg border border-done-edge rounded-lg px-3 py-1.5">{moveToComplianceMsg}</span>}
+          {sendError && <span className="text-xs text-chase bg-chase-bg border border-chase-edge rounded-lg px-3 py-1.5">{sendError}</span>}
+          {sent && <span className="text-xs text-info bg-info-bg border border-info-edge rounded-lg px-3 py-1.5">Email copied — paste (Cmd+V) into the body in Outlook</span>}
         </div>
+      )}
 
-        <span className="w-px h-7 bg-gray-200 mx-1" />
-
-        {/* Documents received. One press, two emails, a gap between them - see
-            lib/docs-received.ts. */}
-        {docs.kind === 'none' && (
-          assessorMissing(docsDeal) ? (
-            // Nothing is sent and nothing is marked. The deal needs an assessor
-            // before there is anybody for the second email to go to.
-            <span title={NO_ASSESSOR_MESSAGE}
-              className="px-3.5 py-2 text-sm rounded-lg border border-chase-edge bg-chase-bg text-chase">
-              Allocate a credit assessor first
-            </span>
-          ) : (
-            <button onClick={markDocsReceived} disabled={docsBusy}
-              className="px-3.5 py-2 text-sm border border-gray-200 rounded-lg bg-card hover:bg-gray-50 disabled:opacity-50">
-              {docsBusy ? 'Marking…' : 'Docs received'}
-            </button>
-          )
-        )}
-        {docs.kind === 'waiting' && (
-          <span className="px-3.5 py-2 text-sm rounded-lg font-medium bg-info-bg text-info border border-info-edge">
-            Docs received{docsDay(docs.receivedAt)}
-          </span>
-        )}
-        {docs.kind === 'done' && (
-          <span className="px-3.5 py-2 text-sm rounded-lg font-medium bg-green-50 text-green-600 border border-green-200">
-            {'\u2713'} Docs received{docsDay(docs.receivedAt)}
-          </span>
-        )}
-
-        {clientProceeded ? (
-          <>
-            <span title={proceedInfo.when ? new Date(proceedInfo.when).toLocaleString('en-AU') : undefined}
-              className="px-3.5 py-2 text-sm rounded-lg font-medium bg-green-50 text-green-600 border border-green-200">
-              {'\u2713'} Client agreed{agreedDay(proceedInfo.when)}
-            </span>
-            <span className="text-xs text-gray-400">{proceedInfo.who}</span>
-          </>
-        ) : (
-          <button onClick={() => setShowMoveToCompliancePopup(true)}
-            className="px-3.5 py-2 text-sm rounded-lg font-semibold border border-ink bg-ink text-page hover:bg-ink/90 transition">
-            Client agreed — move to Compliance
-          </button>
-        )}
-      </div>
+      {/* See the note on the same box in BCForm. The deal moving is what asks
+          the questions, not who happens to be moving it. */}
+      {handingOver && (
+        <HandoverBox dealId={deal.id} stage="lo"
+          lenders={d.lenders.map(x => String(x.lenderName || '').trim()).filter(Boolean)}
+          toWhom={String(deal.assigned_broker || 'the broker').split(' ')[0]}
+          onCancel={() => { setHandingOver(false); setThenSend(false) }}
+          onSent={() => {
+            setHandingOver(false)
+            if (thenSend) { setThenSend(false); sendEmail() } else { markLOComplete() }
+          }} />
+      )}
 
       {/* What has happened and what is about to, in words. */}
       {docs.kind === 'waiting' && (
@@ -3219,65 +3267,6 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
 
       {activeTab === 'preview' && (
         <div>
-          {emailHtml && (
-            <div className="mb-4">
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                {creditTeamMsg && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">{creditTeamMsg}</span>}
-                {creditTeamErr && <span className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{creditTeamErr}</span>}
-                {moveToComplianceMsg && <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">{moveToComplianceMsg}</span>}
-                {sendError && <span className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">{sendError}</span>}
-              </div>
-              {/* See the note on the same box in BCForm. The deal moving is
-                  what asks the questions, not who happens to be moving it. */}
-              {handingOver && (
-                <HandoverBox dealId={deal.id} stage="lo"
-                  lenders={d.lenders.map(x => String(x.lenderName || '').trim()).filter(Boolean)}
-                  toWhom={String(deal.assigned_broker || 'the broker').split(' ')[0]}
-                  onCancel={() => { setHandingOver(false); setThenSend(false) }}
-                  onSent={() => {
-                    setHandingOver(false)
-                    if (thenSend) { setThenSend(false); sendEmail() } else { markLOComplete() }
-                  }} />
-              )}
-              {/* The same strip as the BC and, when it is built, Compliance.
-                  See components/WhatNow.tsx. */}
-              <WhatNow
-                steps={[
-                  { label: 'Written', done: !!emailHtml, now: !emailHtml },
-                  { label: loCompletedAt ? (deal.assigned_credit_officer ? 'Credit finished it' : 'Finished') : 'Being written',
-                    done: !!loCompletedAt, now: !!emailHtml && !loCompletedAt,
-                    under: loCompletedAt ? dayMonth(loCompletedAt) : undefined },
-                  { label: deal.lo_sent_at ? 'Sent' : 'Not sent', done: !!deal.lo_sent_at,
-                    now: !!loCompletedAt && !deal.lo_sent_at,
-                    under: deal.lo_sent_at ? dayMonth(deal.lo_sent_at) : undefined },
-                  { label: deal.lo_client_proceeded ? 'Client said yes' : 'With client',
-                    done: !!deal.lo_client_proceeded, client: true,
-                    now: !!deal.lo_sent_at && !deal.lo_client_proceeded },
-                ]}
-                actions={[
-                  ...(deal.assigned_credit_officer && !loCompletedAt ? [{
-                    label: markingLoComplete ? 'Marking...' : 'Done',
-                    onClick: () => setHandingOver(true),
-                    primary: true,
-                    disabled: markingLoComplete,
-                    title: 'Tells the broker the lending options are ready for their review',
-                  }] : []),
-                  ...(canSendToClient ? [{
-                    label: sending ? 'Copying...' : sent ? '\u2713 Copied \u2014 paste in Outlook' : 'Send to client',
-                    onClick: () => {
-                      if (loCompletedAt) { sendEmail(); return }
-                      setThenSend(true); setHandingOver(true)
-                    },
-                    primary: !(deal.assigned_credit_officer && !loCompletedAt),
-                    disabled: sending || !emailHtml,
-                    title: emailNeedsAttention ? 'Heads up: this email was written for a different scenario.' : '',
-                  }] : []),
-                ]}
-                hint={canSendToClient ? undefined : 'Only a broker can send this to the client.'}
-                note={<CreditOfficerAssignment key={assignmentRefreshKey} dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />}
-              />
-            </div>
-          )}
           {freshness.state === 'figures-moved' && (
             <div className="mb-3 border border-chase-edge bg-chase-bg rounded-xl px-4 py-3.5 flex items-start gap-3">
               <span className="text-[15px] leading-none mt-[2px]">⚠</span>
@@ -3323,7 +3312,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
               See components/EmailPreview.tsx. */}
           <div className="bg-card border border-gray-100 rounded-xl overflow-hidden">
             {emailHtml ? (
-              <EmailPreview html={emailHtml} title="LO Email Preview" />
+              <EmailPreview html={emailHtml} title={`Email preview \u2014 ${deal.deal_name}`} />
             ) : (
               <div className="p-8 text-center text-sm text-gray-400">Generate the email first to see a preview</div>
             )}

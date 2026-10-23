@@ -224,7 +224,10 @@ export async function markProceeded(
       after(async () => {
         try {
           if (!deal.assigned_credit_officer) {
-            const allocation = await allocateCreditOfficer(supabase, dealId)
+            // THE CLIENT AGREEING TO THE BC OPENS THE LENDING OPTIONS, so the
+            // officer being found here is the LO's, not the BC's. Before stages
+            // had their own owner this distinction did not exist.
+            const allocation = await allocateCreditOfficer(supabase, dealId, 'lo')
             if (!allocation.ok) console.error('[proceed] credit officer not allocated:', allocation.error)
           }
         } catch (e) {

@@ -344,5 +344,14 @@
     "Not started"
   ],
   "components/DealLinks.tsx": [],
-  "components/DealMore.tsx": []
+  "components/DealMore.tsx": [],
+  "components/WhatNow.tsx": [
+    "Did this",
+    "Doing this",
+    "I’ll do it",
+    "Put it in the credit queue",
+    "The saved email is out of date",
+    "What now",
+    "Whoever covers this broker and is carrying the least"
+  ]
 }

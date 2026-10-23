@@ -200,52 +200,73 @@ export const ENTRIES: Entry[] = [
   {
     id: 'what-now-and-who-has-it',
     section: 'process',
-    title: 'What now \u2014 the buttons on a deal have changed',
+    title: 'What now — one row of buttons, the same on the BC and the Lending options',
     on: '2026-10-23',
-    lead: 'Every tab used to have different buttons in different places, and two of them '
-        + 'disappeared entirely when no credit officer was assigned. There is now one strip, the '
-        + 'same on the BC and the Lending options, and never more than two buttons on it.',
+    lead: 'The same job was drawn five different ways. "BC form" on one tab and "LO Form" on the '
+        + 'other. "Preview & share" on one and "Email Preview" on the other. Round pills on one, '
+        + 'square buttons on the other. And on the lending options the tab you were standing on '
+        + 'and the button that moves the deal to Compliance were both solid black. There is now '
+        + 'one row, in one order, and it says who is doing the stage.',
     body: [
-      'Two different things used to be drawn as one row, which is why nobody was sure what to '
-      + 'press. They are now separated.',
-      { shot: 'what-now-strip.png',
-        caption: 'The same strip at three moments \u2014 writing it, credit finished it, gone out' },
+      'It sits at the top of the BC and at the top of the Lending options and it never moves. '
+      + 'Nothing on it is hidden when it does not apply — a button that comes and goes is how '
+      + 'a screen loses people.',
+      { shot: 'what-now-one-row.png',
+        caption: 'The same row at three moments — credit writing it, choosing who does it, '
+               + 'and after it has gone out' },
       {
-        step: '1. The top row is a picture. You cannot press it.',
+        step: '1. Form and Email are a view, not an action',
         body: [
-          'Written \u2192 who is on it \u2192 Sent \u2192 Client said yes. Green is done, blue is '
-          + 'where the deal is now, purple means it is the client\u2019s turn. It is there to tell you '
-          + 'where you are, nothing else.',
+          'The quiet grey switch on the left changes what you are reading: the form you type '
+          + 'into, or the email the client gets. It was a button called "Preview & share" on the '
+          + 'BC and "Email Preview" on the lending options. It is one control now, and it is grey '
+          + 'so it can never be mistaken for something that moves the deal.',
+          'A red dot on Email means the saved email no longer matches the deal.',
         ],
       },
       {
-        step: '2. Underneath, the buttons, headed "What now"',
+        step: '2. Everything after "What now" is an action',
         body: [
-          'At most two, and the one you normally want is first.',
-          ['Done \u2014 credit telling the broker it is written and ready for them',
-           'Send to client \u2014 the broker sending it out'],
-          'Nothing asks you who is doing the deal. Whoever is typing owns it. The only question '
-          + 'comes when you stop.',
+          'One order, one shape, on both screens.',
+          ['Black — the one you normally want',
+           'Dashed grey — not yet, and you can see it coming',
+           'Green with a tick — already done, with the date and who did it beside it'],
         ],
       },
       {
-        call: 'The notes box now appears every time a deal moves',
-        title: 'Including when a broker does the whole thing themselves',
-      },
-      'It used to appear only when credit handed a deal back. We were capturing what made a deal '
-      + 'hard on about half the file and nothing on the rest. It will not ask you twice on the '
-      + 'same deal \u2014 if credit already answered it, sending afterwards goes straight to the email.',
-      {
-        step: 'And every deal now says who it is sitting with',
+        step: '3. The blue box says who is doing this stage',
         body: [
-          ['With us \u2014 somebody here has to do something',
-           'With client \u2014 we have sent it and we are waiting on them',
-           'With lender \u2014 written and lodged, the bank has it'],
+          'It already says the right name when the screen opens. It carries over from the stage '
+          + 'before, and if nobody has touched it yet it is the broker. It reads "Doing this" '
+          + 'while the stage is live and "Did this" once it is finished, with the days it took.',
+          'Press it and there are two answers, never a list of names: "I’ll do it", or "Put '
+          + 'it in the credit queue" — the portal picks whoever covers that broker and is '
+          + 'carrying the least.',
+        ],
+      },
+      {
+        call: 'The BC, the lending options and compliance each keep their own name and clock',
+        title: 'A deal Katie wrote the BC for and Melissa did the lending options on used to '
+             + 'count as one person’s work',
+      },
+      'A broker doing the BC themselves can still send the lending options to credit, and credit '
+      + 'doing the BC carries on to the lending options unless somebody says otherwise. Every '
+      + 'hand over is recorded with the time, so the days on a stage are the days it actually '
+      + 'sat with that person.',
+      { shot: 'what-now-bc-and-lo.png',
+        caption: 'The same row on both. The lending options has one extra button, because the '
+               + 'stage has one extra thing — Docs received.' },
+      {
+        step: 'And every deal still says who it is sitting with',
+        body: [
+          ['With us — somebody here has to do something',
+           'With client — we have sent it and we are waiting on them',
+           'With lender — written and lodged, the bank has it'],
           { shot: 'with-us-with-client.png',
             caption: 'On the deal, and on every row of the deals list' },
-          'On the deal and on every row of the deals list. This is what we will measure with: '
-          + 'until now a deal that sat with a client for a fortnight looked exactly like a slow '
-          + 'assessor, and every workload number was built on top of that.',
+          'This is what we will measure with: until now a deal that sat with a client for a '
+          + 'fortnight looked exactly like a slow assessor, and every workload number was built '
+          + 'on top of that.',
           'If one ever says the wrong thing, say which deal. That is the feedback worth having.',
         ],
       },
@@ -253,7 +274,7 @@ export const ENTRIES: Entry[] = [
         call: 'New deals now open on Fact Find',
         title: 'They used to open on BC before anybody had typed anything',
       },
-      'A deal moves to the BC once there is real fact find work on it \u2014 a date of birth, an '
+      'A deal moves to the BC once there is real fact find work on it — a date of birth, an '
       + 'address, a job or an income. Creating it with a name in the box is no longer enough.',
       'All of this is being tried for a few days. If something is worse than it was, say so and '
       + 'it comes back out.',

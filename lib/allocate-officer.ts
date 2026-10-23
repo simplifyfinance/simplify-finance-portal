@@ -19,6 +19,7 @@
 // the signed-in user's; the proceed page passes the admin one, because a client
 // pressing a button on their own page is not signed in to anything.
 
+import { needsAllocating, handOver, type Stage } from './who-did-this-stage'
 import { phaseOf, PHASE_LABEL } from '@/lib/deal-phase'
 import { siteUrl } from './site-url'
 
@@ -32,16 +33,29 @@ export type AllocationResult = {
   overloadAlertSent?: boolean
 }
 
-export async function allocateCreditOfficer(supabase: any, dealId: string): Promise<AllocationResult> {
+export async function allocateCreditOfficer(
+  supabase: any, dealId: string, stage: Stage = 'bc',
+): Promise<AllocationResult> {
   const { data: deal, error: dealError } = await supabase
     .from('deals')
-    .select('id, deal_name, assigned_broker, assigned_credit_officer, stage, bc_data, clients(first_name, last_name)')
+    .select('id, deal_name, assigned_broker, assigned_credit_officer, stage, bc_data, clients(first_name, last_name), '
+      + 'bc_owner_officer, bc_owner_name, bc_owner_since, lo_owner_officer, lo_owner_name, lo_owner_since, '
+      + 'compliance_owner_officer, compliance_owner_name, compliance_owner_since')
     .eq('id', dealId)
     .single()
 
   if (dealError || !deal) return { ok: false, error: dealError?.message || 'Deal not found', status: 404 }
 
-  if (deal.assigned_credit_officer) {
+  // PER STAGE, NOT PER DEAL.
+  //
+  // 23 Oct 2026. This asked whether the DEAL had a credit officer and stopped
+  // if it did - so a broker who wrote the BC himself and then wanted the
+  // lending options in the queue got nothing at all, because the deal already
+  // carried an officer from the BC. Fabio: "if done themsleves BC they still
+  // can allocate to credit LO".
+  //
+  // Each stage now answers for itself. See lib/who-did-this-stage.ts.
+  if (!needsAllocating(deal, stage)) {
     return { ok: true, alreadyAssigned: true }
   }
 
@@ -130,10 +144,21 @@ export async function allocateCreditOfficer(supabase: any, dealId: string): Prom
     chosen = [...candidates].sort((a: any, b: any) => stats[a.id].active - stats[b.id].active)[0]
   }
 
-  const nowIso = new Date().toISOString()
+  const now = new Date()
+  const nowIso = now.toISOString()
+  // THE STAGE'S OWN COLUMNS, AND THE DEAL-LEVEL ONE AS WELL.
+  //
+  // assigned_credit_officer is not legacy - the row level security policies
+  // read it to decide whether a credit officer can see a deal at all. So it
+  // keeps pointing at whoever is holding the live stage, and the per-stage
+  // columns keep the history that makes the workload numbers true.
   const { error: updateError } = await supabase
     .from('deals')
-    .update({ assigned_credit_officer: chosen.id, credit_assigned_at: nowIso })
+    .update({
+      ...handOver(stage, { officerId: chosen.id, name: chosen.name }, now),
+      assigned_credit_officer: chosen.id,
+      credit_assigned_at: nowIso,
+    })
     .eq('id', dealId)
 
   if (updateError) return { ok: false, error: updateError.message, status: 500 }

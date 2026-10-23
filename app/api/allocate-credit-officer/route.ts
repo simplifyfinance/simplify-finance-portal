@@ -12,7 +12,7 @@ import { allocateCreditOfficer } from '@/lib/allocate-officer'
 // What is left here is the front door: who is asking, and turning the answer
 // into a response.
 export async function POST(req: NextRequest) {
-  const { dealId } = await req.json()
+  const { dealId, stage } = await req.json()
   if (!dealId) return NextResponse.json({ ok: false, error: 'Missing dealId' }, { status: 400 })
 
   const supabase = await createSupabaseServer()
@@ -25,7 +25,9 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 })
 
-  const result = await allocateCreditOfficer(supabase, dealId)
+  // The stage the broker pressed "credit queue" on. Defaults to the BC so an
+  // older caller behaves exactly as it did. See lib/who-did-this-stage.ts.
+  const result = await allocateCreditOfficer(supabase, dealId, stage === 'lo' || stage === 'compliance' ? stage : 'bc')
   const { status, ...body } = result
   return NextResponse.json(body, { status: status || (body.ok ? 200 : 500) })
 }

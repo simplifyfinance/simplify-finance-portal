@@ -149,7 +149,10 @@ describe('the client is not made to wait for our work', () => {
 
   it('the deciding lives in one place, used by both callers', () => {
     expect(alloc()).toContain('export async function allocateCreditOfficer')
-    expect(route()).toContain('allocateCreditOfficer(supabase, dealId)')
+    // 23 Oct 2026: it takes a stage now, because a broker who wrote the BC
+    // himself still has to be able to put the lending options in the queue.
+    // See lib/who-did-this-stage.ts.
+    expect(route()).toContain('allocateCreditOfficer(supabase, dealId,')
   })
 
   it('the route still asks who is calling before allocating', () => {

@@ -1,97 +1,137 @@
 'use client'
+import { useState } from 'react'
+import { showingOwner, ownerOf, daysOnStage, type Stage } from '@/lib/who-did-this-stage'
 
-// ONE STRIP, THE SAME ON EVERY STAGE.
+// ONE ROW, THE SAME ON THE BC AND THE LENDING OPTIONS.
 //
-// 22 Oct 2026. Fabio spent an afternoon telling me why the buttons confuse his
-// team, and the thing that finally landed was this: I had been drawing two
-// different things as one row.
+// 23 Oct 2026, after Fabio put two screenshots side by side. The same row,
+// doing the same job, drawn five different ways:
 //
-//   "I don't understand the mock-up of the buttons."
-//   "I think we need to find a way that these buttons are just very intuitive."
+//   "BC form"          vs  "LO Form"
+//   "Preview & share"  vs  "Email Preview"
+//   blue outline pill  vs  solid black
+//   round pills        vs  square buttons
+//   no Docs received   vs  Docs received
 //
-// WHERE THE DEAL IS is a picture. You cannot press it.
-// WHAT TO DO NEXT is a button. There are never more than two.
+// And the worst of it: on the lending options the tab you are standing on and
+// the button that moves the deal to Compliance were BOTH solid black. One
+// changes what you are reading. The other moves the deal. They looked the same.
 //
-// Mixing those was the confusion. A row of four boxes that are sometimes status
-// and sometimes actions means nobody knows which ones do anything.
+// So: the view switch is a quiet grey control on the left and can never be
+// mistaken for an action. Everything after "What now" is an action, in one
+// order, in one shape. Black is the one to press. Dashed grey is not yet.
+// Green is already done, with the date and who did it.
 //
-// AND NOBODY IS ASKED WHO IS DOING IT. The old screen had "I'll do this myself"
-// and "Send to credit team" - two buttons for one question, asked before any
-// work had started. Fabio: "I think it's just one more question that it doesn't
-// need to be... a broker comes in, he fills up the fact find, he's doing the
-// BC, and then doesn't need to answer that question."
-//
-// So whoever is typing owns it. The only question is asked when they stop, and
-// it is headed "What now".
-//
-// THE WORDS ARE HIS. "Done", "Hand to credit", "Send to client", "Client said
-// yes". Not "mark complete", not "submit", not "progress deal".
-
-export type Step = {
-  label: string
-  /** Finished. Green. */
-  done?: boolean
-  /** Where the deal is right now. Blue, or purple when it is the client's turn. */
-  now?: boolean
-  /** The client is the one holding it. Purple rather than blue. */
-  client?: boolean
-  /** Under the label - a date, a name, how long it took. */
-  under?: string
-}
+// WHO IS DOING IT IS THE FIRST THING, AND IT IS NOT A LIST OF NAMES.
+// Fabio, 23 Oct: "A broker still needs to either do the BC /LO or Allocate to
+// credit... remeebr you're the one that fucking assigns. You have that ability
+// on a round robin." Two answers - me, or the queue - and the portal picks the
+// person. See lib/allocate-officer.ts.
 
 export type Action = {
   label: string
   onClick: () => void
   /** The one somebody came here to press. Black. */
   primary?: boolean
-  /** The client's own decision - purple, to match the step above it. */
-  client?: boolean
-  disabled?: boolean
+  /** Already happened. Green, with whatever `since` says beside it. */
+  done?: boolean
+  /** Not yet. Dashed and unpressable, never hidden - a button that comes and
+   *  goes is how a screen loses people's trust. */
+  waiting?: boolean
+  since?: string
   title?: string
 }
 
-export default function WhatNow({ steps, actions, hint, note }: {
-  steps: Step[]
-  /** At most two. Three is a menu, and a menu is what this replaces. */
+export default function WhatNow({
+  stage, deal, view, onView, actions, onOwnerChange, finishedAt, canAllocate = true, emailStale,
+}: {
+  stage: Stage
+  deal: any
+  view: 'form' | 'email'
+  onView: (v: 'form' | 'email') => void
+  /** The saved email no longer matches the deal. A dot on the Email side -
+   *  it used to sit on the old Preview pill and had to come with it, because
+   *  a warning nobody can see is not a warning. */
+  emailStale?: boolean
+  /** At most three. More than that is a menu, and a menu is what this replaces. */
   actions: Action[]
-  /** The quiet line beside the buttons. "or just close the tab", that sort of thing. */
-  hint?: string
-  /** A sentence under everything, for when a step needs explaining. */
-  note?: React.ReactNode
+  /** 'me' keeps it, 'queue' sends it to the round robin. */
+  onOwnerChange?: (choice: 'me' | 'queue') => void
+  /** When this stage was finished, so the clock stops. */
+  finishedAt?: any
+  canAllocate?: boolean
 }) {
+  const [open, setOpen] = useState(false)
+  const owner = showingOwner(deal, stage)
+  const settled = !!ownerOf(deal, stage)
+  const days = daysOnStage(deal, stage, finishedAt)
+
   return (
-    <div className="bg-card border-2 border-ink rounded-xl px-5 py-4">
-      {/* THE PICTURE. Nothing here is clickable, on purpose. */}
-      <div className="flex gap-2 mb-3.5">
-        {steps.map((s, i) => (
-          <div key={i}
-            className={`flex-1 rounded-lg px-2 py-2 text-center border text-[12px] leading-tight ${
-              s.done ? 'bg-done-bg text-done border-done-edge font-semibold'
-              : s.now && s.client ? 'bg-waiting-bg text-waiting border-waiting-edge font-bold'
-              : s.now ? 'bg-info-bg text-info border-info-edge font-bold'
-              : 'bg-line-soft text-faint border-line'}`}>
-            <div>{s.label}</div>
-            {s.under && <div className="text-[10.5px] font-normal opacity-80 mt-0.5">{s.under}</div>}
-          </div>
-        ))}
-      </div>
-
-      <div className="text-[10.5px] font-bold tracking-[0.08em] uppercase text-faint mb-2">What now</div>
-
-      <div className="flex gap-2.5 items-center flex-wrap">
-        {actions.map((a, i) => (
-          <button key={i} onClick={a.onClick} disabled={a.disabled} title={a.title}
-            className={`text-[14px] rounded-[10px] px-5 py-2.5 font-semibold border disabled:opacity-40 ${
-              a.client ? 'bg-waiting text-white border-waiting'
-              : a.primary ? 'bg-ink text-page border-ink'
-              : 'bg-card text-ink border-line hover:bg-page'}`}>
-            {a.label}
+    <div className="flex gap-2.5 items-center flex-wrap">
+      {/* THE VIEW. Quiet, grey, on the left, and never shaped like an action. */}
+      <div className="inline-flex gap-[3px] bg-line-soft rounded-[10px] p-[3px]">
+        {([['form', 'Form'], ['email', 'Email']] as const).map(([k, label]) => (
+          <button key={k} onClick={() => onView(k)}
+            className={`text-[13.5px] rounded-lg px-4 py-2 ${
+              view === k ? 'bg-card text-ink font-semibold shadow-sm' : 'text-muted hover:text-ink'}`}>
+            {label}
+            {k === 'email' && emailStale && (
+              <span title="The saved email is out of date" className="ml-1.5 text-chase">●</span>
+            )}
           </button>
         ))}
-        {hint && <span className="text-[12px] text-faint">{hint}</span>}
       </div>
 
-      {note && <div className="text-[12.5px] text-muted mt-3 leading-relaxed">{note}</div>}
+      <span className="text-[10.5px] font-bold tracking-[0.08em] uppercase text-faint mx-0.5">What now</span>
+
+      {/* WHO IS DOING IT. A fact with a dropdown, not a question anybody has to
+          answer - it already says the right name when the screen opens. */}
+      {owner && (
+        <div className="relative">
+          <button onClick={() => onOwnerChange && canAllocate && setOpen(o => !o)}
+            disabled={!onOwnerChange || !canAllocate}
+            className="text-left text-[14px] rounded-[9px] px-3.5 py-1.5 border-[1.5px] border-brand-ink bg-info-bg text-brand-ink font-bold disabled:opacity-80">
+            <span className="block text-[10px] font-bold uppercase tracking-[0.05em] text-info opacity-75">
+              {days !== null && finishedAt ? 'Did this' : 'Doing this'}
+            </span>
+            {owner.name}{owner.isCredit ? ' — credit' : ''}
+            {days !== null && <span className="font-normal opacity-70"> · {days} days</span>}
+            {onOwnerChange && canAllocate && <span className="font-normal opacity-60 ml-1.5">▾</span>}
+          </button>
+          {open && onOwnerChange && (
+            <div className="absolute left-0 top-full mt-1 z-20 bg-card border border-card-line rounded-xl shadow-lg py-1 min-w-[230px]">
+              <button onClick={() => { setOpen(false); onOwnerChange('me') }}
+                className="block w-full text-left px-3.5 py-2.5 text-[13.5px] hover:bg-page">
+                {'I’ll do it'}
+              </button>
+              <button onClick={() => { setOpen(false); onOwnerChange('queue') }}
+                className="block w-full text-left px-3.5 py-2.5 text-[13.5px] hover:bg-page">
+                <span>Put it in the credit queue</span>
+                <span className="block text-[11.5px] text-muted leading-snug mt-0.5">
+                  Whoever covers this broker and is carrying the least
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {!settled && owner && (
+        <span className="text-[11.5px] text-faint">nobody has said yet</span>
+      )}
+
+      {actions.map((a, i) => (
+        <span key={i} className="inline-flex items-center gap-2">
+          <button onClick={a.onClick} disabled={a.waiting || a.done} title={a.title}
+            className={`text-[14px] rounded-[9px] px-4 py-2 font-bold border ${
+              a.done ? 'bg-done-bg text-done border-done-edge'
+              : a.waiting ? 'bg-line-soft text-faint border-field-line border-dashed font-normal'
+              : a.primary ? 'bg-ink text-page border-ink'
+              : 'bg-card text-ink border-field-line hover:bg-page'}`}>
+            {a.done ? `✓ ${a.label}` : a.label}
+          </button>
+          {a.since && <span className="text-[12px] text-faint">{a.since}</span>}
+        </span>
+      ))}
     </div>
   )
 }
