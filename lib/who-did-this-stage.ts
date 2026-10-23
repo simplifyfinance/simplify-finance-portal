@@ -23,6 +23,8 @@
 // lib/allocate-officer.ts works out who - by who covers that broker, who is on
 // leave, and who is carrying the least. See pickForStage below.
 
+import { dealBeads } from './deal-status'
+
 export type Stage = 'bc' | 'lo' | 'compliance'
 
 export const STAGES: Stage[] = ['bc', 'lo', 'compliance']
@@ -91,17 +93,63 @@ export function showingOwner(deal: any, stage: Stage): Owner | null {
   return ownerOf(deal, stage) || defaultOwnerFor(deal, stage)
 }
 
+// WHEN A STAGE OPENED AND WHEN IT CLOSED.
+//
+// 23 Oct 2026, an hour after the row shipped. Fabio, on a deal whose BC closed
+// on 24 September: the blue box read "Doing this, 29.1 days", and the lending
+// options beside it read "Did this, 1.1 days" while the lending options were
+// still open with the broker. Both wrong, for the same reason: I had handed
+// the row the date CREDIT marked their part done, which is not the same thing
+// as the stage being finished, and on that deal was never set at all.
+//
+// The portal already has one answer to "is this stage finished", and the cards
+// and the pipeline both read it: the BC closes when the client agrees, the
+// lending options when the client agrees to them, compliance when it is marked
+// complete. See BEADS in lib/deal-status.ts. This now reads the same list, so
+// the row cannot disagree with the card sitting above it.
+//
+// AND THE CLOCK MEASURES THE STAGE, NOT THE PERSON. Fabio, asked straight out
+// which one the number should be: the time the stage took. So it runs from the
+// stage opening - which is the moment the one before it closed - until the
+// client agrees, whoever was holding it in between. A stage that sat with a
+// broker for a month reads a month, which is the number worth looking at.
+const BEAD: Record<Stage, string> = { bc: 'bc', lo: 'lo', compliance: 'compliance' }
+const BEAD_BEFORE: Record<Stage, string> = { bc: 'fact_find', lo: 'bc', compliance: 'lo' }
+
+export type StageWindow = {
+  /** When the stage opened: the moment the one before it closed. */
+  startedAt: string | null
+  /** When the client agreed to it. Null while it is still open. */
+  finishedAt: string | null
+  done: boolean
+}
+
+export function stageWindow(deal: any, stage: Stage): StageWindow {
+  const beads = dealBeads(deal)
+  const mine = beads.find(b => b.key === BEAD[stage])
+  const before = beads.find(b => b.key === BEAD_BEFORE[stage])
+  return {
+    startedAt: before?.done && before.date ? String(before.date) : null,
+    finishedAt: mine?.done && mine.date ? String(mine.date) : null,
+    done: !!mine?.done,
+  }
+}
+
+/** Finished, by the same rule the card above it uses. */
+export function stageIsDone(deal: any, stage: Stage): boolean {
+  return stageWindow(deal, stage).done
+}
+
 /**
- * HOW LONG THIS STAGE HAS BEEN WITH THIS PERSON, in days to one decimal.
+ * HOW LONG THIS STAGE TOOK, in days to one decimal.
  *
- * Null until somebody owns it, and null where the stage finished before the
- * owner was recorded - a number worked out from a clock that was not running
- * is worse than no number.
+ * Null where we cannot know when it opened - a number worked out from a clock
+ * that was not running is worse than no number.
  */
-export function daysOnStage(deal: any, stage: Stage, finishedAt?: any, now = new Date()): number | null {
-  const o = ownerOf(deal, stage)
-  if (!o?.since) return null
-  const start = new Date(o.since).getTime()
+export function daysOnStage(deal: any, stage: Stage, now: Date = new Date()): number | null {
+  const { startedAt, finishedAt } = stageWindow(deal, stage)
+  if (!startedAt) return null
+  const start = new Date(startedAt).getTime()
   const end = finishedAt ? new Date(finishedAt).getTime() : now.getTime()
   if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return null
   return Math.round(((end - start) / 86_400_000) * 10) / 10

@@ -14,15 +14,47 @@
 -- RUN ON STAGING FIRST, then live. It only adds columns and backfills what we
 -- already know; nothing existing is changed or dropped.
 
-alter table public.deals add column if not exists bc_owner_officer         uuid references public.credit_officers(id);
+-- NO FOREIGN KEY ON THESE THREE. READ THIS BEFORE ADDING ONE BACK.
+--
+-- 23 Oct 2026, live, 20 minutes of the whole team seeing an empty deals list.
+-- I wrote these three columns as "references public.credit_officers(id)" out of
+-- habit. The deals list asks Supabase for "credit_officers(name)" alongside the
+-- deal, and that only works while there is exactly ONE link between the two
+-- tables. Three more links and it stops guessing and refuses the whole query -
+-- so the page asked for deals, got an error, and drew nothing. Every deal was
+-- sitting in the table the entire time.
+--
+-- The column holds the officer's id either way. The constraint bought us
+-- nothing and cost us the afternoon. If a foreign key is ever added here, the
+-- query in app/(app)/deals/page.tsx has to name which link it means first.
+
+-- If an earlier run of this file added them, take them off.
+do $$
+declare c record;
+begin
+  for c in
+    select con.conname
+      from pg_constraint con
+      join pg_attribute a
+        on a.attrelid = con.conrelid and a.attnum = any (con.conkey)
+     where con.conrelid  = 'public.deals'::regclass
+       and con.contype   = 'f'
+       and con.confrelid = 'public.credit_officers'::regclass
+       and a.attname in ('bc_owner_officer','lo_owner_officer','compliance_owner_officer')
+  loop
+    execute format('alter table public.deals drop constraint %I', c.conname);
+  end loop;
+end $$;
+
+alter table public.deals add column if not exists bc_owner_officer         uuid;
 alter table public.deals add column if not exists bc_owner_name            text;
 alter table public.deals add column if not exists bc_owner_since           timestamptz;
 
-alter table public.deals add column if not exists lo_owner_officer         uuid references public.credit_officers(id);
+alter table public.deals add column if not exists lo_owner_officer         uuid;
 alter table public.deals add column if not exists lo_owner_name            text;
 alter table public.deals add column if not exists lo_owner_since           timestamptz;
 
-alter table public.deals add column if not exists compliance_owner_officer uuid references public.credit_officers(id);
+alter table public.deals add column if not exists compliance_owner_officer uuid;
 alter table public.deals add column if not exists compliance_owner_name    text;
 alter table public.deals add column if not exists compliance_owner_since   timestamptz;
 
