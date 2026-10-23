@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { PAGE_WIDE } from '@/lib/page-width'
 import { copyHtmlAndPlain } from '@/lib/rich-text'
 import {
-  SECTIONS, entriesFor, readableDate, entryEmailHtml,
+  SECTIONS, entriesFor, readableDate, entryEmailHtml, sectionLabel,
   isBullets, isCall, isFigure, isStep, isShot, shotPath, stepNumber,
   isLong, readingMinutes, PREVIEW_BLOCKS,
   type Section, type Entry, type Block,
@@ -106,11 +106,22 @@ export default function KnowledgeBasePage() {
 
   const shown = useMemo(() => entriesFor(section, find), [section, find])
 
-  // GROUPED THE WAY SOMEBODY LOOKS. A broker wanting "how do I do a top up"
-  // goes to Templates, not back through three weeks of dates.
-  const grouped = useMemo(() => SECTIONS
-    .map(s => ({ ...s, items: shown.filter(e => e.section === s.key) }))
-    .filter(g => g.items.length > 0), [shown])
+  // EVERYTHING MEANS EVERYTHING, NEWEST FIRST.
+  //
+  // 23 Oct 2026. Fabio: "everything tab has to be cronological. So anything
+  // that is newer, it sits at the top." Sorting entriesFor() by date on 22 Oct
+  // was only half of it - this page then cut the list into three section
+  // groups and drew them in a fixed order, so the newest thing in the portal
+  // could be two headings down the page behind a guide from last week.
+  //
+  // On a named section the grouping is a heading over one list, which says
+  // nothing the tab above it has not already said. So it goes there too.
+  const grouped = useMemo(() => {
+    if (section === 'all') return [{ key: 'all', label: '', blurb: '', items: shown }]
+    return SECTIONS
+      .map(s => ({ ...s, items: shown.filter(e => e.section === s.key) }))
+      .filter(g => g.items.length > 0)
+  }, [shown, section])
 
   async function copyOne(e: Entry) {
     setWhy(''); setCopied('')
@@ -153,9 +164,11 @@ export default function KnowledgeBasePage() {
 
       {grouped.map(g => (
         <div key={g.key}>
-          <p className="text-[10px] font-bold uppercase tracking-[.09em] text-faint mt-5 mb-2.5">
-            {g.label}
-          </p>
+          {g.label && (
+            <p className="text-[10px] font-bold uppercase tracking-[.09em] text-faint mt-5 mb-2.5">
+              {g.label}
+            </p>
+          )}
           {g.items.map(e => (
             <article key={e.id} id={e.id}
               className="bg-card border border-card-line rounded-xl px-[18px] py-4 mb-2.5">
@@ -163,7 +176,7 @@ export default function KnowledgeBasePage() {
                 <h2 className="text-[15px] font-semibold text-ink m-0">{e.title}</h2>
                 <span className={`text-[9.5px] font-bold uppercase tracking-[.05em] rounded-full
                                   px-2 py-[2px] border ${PILL[e.section]}`}>
-                  {g.label}
+                  {sectionLabel(e.section)}
                 </span>
                 <span className="ml-auto text-[11.5px] text-faint">{readableDate(e.on)}</span>
               </div>

@@ -5,6 +5,7 @@
 // that had already drifted - the lending options guide, dated 19 October, sat
 // above four entries from the 21st. Nothing noticed, because nothing checked.
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'fs'
 import { ENTRIES, entriesFor, SECTIONS } from './knowledge-base'
 
 describe('the knowledge base is in date order', () => {
@@ -37,5 +38,24 @@ describe('the knowledge base is in date order', () => {
   it('and no two entries share an id', () => {
     const ids = ENTRIES.map(e => e.id)
     expect(new Set(ids).size).toBe(ids.length)
+  })
+})
+
+// AND THE PAGE DOES NOT PUT IT BACK OUT OF ORDER.
+//
+// 23 Oct 2026. The list was sorted on 22 Oct and the page still looked wrong,
+// because it cut the sorted list into three section groups and drew them in a
+// fixed order. The newest entry in the portal sat two headings down the page.
+// Fabio: "I asked you to be chronologic, that hasn't been done." He was right.
+describe('the Everything tab is one list, not three', () => {
+  const page = readFileSync('app/(app)/knowledge-base/page.tsx', 'utf8')
+
+  it('does not group when the tab is Everything', () => {
+    expect(page).toContain("if (section === 'all') return [{ key: 'all', label: '', blurb: '', items: shown }]")
+  })
+
+  it('and each card still names its own section, not the group it sits in', () => {
+    expect(page, 'the pill is reading the group label again')
+      .toContain('{sectionLabel(e.section)}')
   })
 })

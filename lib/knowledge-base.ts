@@ -154,7 +154,7 @@ export const ENTRIES: Entry[] = [
     id: 'today-the-morning-plan',
     section: 'process',
     title: 'Today \u2014 the morning email is now in the portal',
-    on: '2026-10-24',
+    on: '2026-10-23',
     lead: 'Credit used to write an email every morning listing yesterday\u2019s work and today\u2019s, '
         + 'and brokers replied with an order of priority. Every name in that email was already on a '
         + 'deal here. Today is that email, except nobody types it and it is still right at 2pm.',
