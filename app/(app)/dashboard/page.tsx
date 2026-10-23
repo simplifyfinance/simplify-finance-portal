@@ -2,8 +2,10 @@ import { createSupabaseServer } from '@/lib/supabase-server'
 import { realDealsOnly } from '@/lib/test-deal'
 import { redirect } from 'next/navigation'
 import DashboardClient from './DashboardClient'
+import TodayPlan from '@/components/TodayPlan'
+import { todayYmd } from '@/lib/periods'
 
-export const metadata = { title: 'Dashboard' }
+export const metadata = { title: 'Today' }
 
 export default async function Dashboard() {
   const supabase = await createSupabaseServer()
@@ -64,7 +66,45 @@ export default async function Dashboard() {
   const allowToggle = !!brokerKey && hasTeamAccess
   const defaultView: 'team' | 'mine' = creditOfficerId ? 'mine' : 'team'
 
+  // TODAY, ABOVE EVERYTHING ELSE ON THIS PAGE.
+  //
+  // 22 Oct 2026. The morning email the credit team send, in the portal - see
+  // components/TodayPlan.tsx. The date comes from the server so three people
+  // in three places cannot disagree about which day it is.
+  // THE SYDNEY DAY. toISOString() is the UTC day, and this server runs in UTC
+  // - so for the first eleven hours of every Australian working day a plan
+  // would have been filed against yesterday's date. Same fault as
+  // lib/rate-notice.ts on 9 Oct. See todayYmd() in lib/periods.ts.
+  const today = todayYmd()
+  const [{ data: officerRows }, { data: planRows }] = await Promise.all([
+    supabase.from('credit_officers').select('id, name').eq('active', true).order('name'),
+    supabase.from('daily_plans').select('officer_id, deal_ids, confirmed_at').eq('plan_date', today),
+  ])
+  const officers = (officerRows || []).map((o: any) => ({ id: o.id, name: o.name }))
+  const byOfficer = new Map((planRows || []).map((p: any) => [p.officer_id, p]))
+  // One row per assessor whether they have a plan or not - the board is about
+  // who HAS NOT, so somebody with no row has to appear on it.
+  const plans = officers.map(o => ({
+    officerId: o.id,
+    officerName: o.name,
+    confirmedAt: byOfficer.get(o.id)?.confirmed_at || null,
+    deals: (byOfficer.get(o.id)?.deal_ids || []).map((id: string) => ({
+      id, name: '', stage: '', since: null,
+    })),
+  }))
+
   return (
+    <>
+    <div className="px-6 pt-6">
+      <TodayPlan
+        deals={deals || []}
+        officers={officers}
+        plans={plans}
+        meOfficerId={creditOfficerId}
+        meName={profile?.full_name || ''}
+        today={today}
+      />
+    </div>
     <DashboardClient
       deals={deals || []}
       fullName={profile?.full_name || null}
@@ -74,5 +114,6 @@ export default async function Dashboard() {
       defaultView={defaultView}
       brokerNames={brokerNames}
     />
+    </>
   )
 }

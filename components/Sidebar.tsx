@@ -13,7 +13,10 @@ import NewVersion from '@/components/NewVersion'
 import { navStarted, onBusyChange, isBusy } from '@/components/useBusy'
 
 const nav = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  // TODAY, NOT DASHBOARD. 22 Oct 2026: the page everybody lands on is now the
+  // morning plan, so the word on the tab says what it is for. The route is
+  // unchanged - every link and bookmark in the portal still works.
+  { label: "Today", href: "/dashboard", icon: LayoutDashboard },
   { label: "Deals", href: "/deals", icon: Briefcase },
   { label: "Pipeline", href: "/pipeline", icon: TrendingUp },
   { label: "Settlements", href: "/settlements", icon: CalendarCheck, settlementsOnly: true },

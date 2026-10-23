@@ -151,6 +151,53 @@ export function readingMinutes(e: Entry): number {
 // Add a new entry wherever is tidiest. The date decides what the team sees.
 export const ENTRIES: Entry[] = [
   {
+    id: 'today-the-morning-plan',
+    section: 'process',
+    title: 'Today \u2014 the morning email is now in the portal',
+    on: '2026-10-24',
+    lead: 'Credit used to write an email every morning listing yesterday\u2019s work and today\u2019s, '
+        + 'and brokers replied with an order of priority. Every name in that email was already on a '
+        + 'deal here. Today is that email, except nobody types it and it is still right at 2pm.',
+    body: [
+      'It is the page you land on. The tab used to say Dashboard; it says Today.',
+      { shot: 'today-the-morning-plan.png',
+        caption: 'Your day, already drafted. Yesterday underneath, the team down the side.' },
+      {
+        step: 'Your day is ready from 7:30am',
+        body: [
+          'Drafted from your own queue. Priority deals first, then whatever has been waiting '
+          + 'longest. You do not type anything \u2014 you look at it, change it if it is wrong, '
+          + 'and press "Yes, this is my day".',
+          'Cross a deal off and it goes back in the queue. It is not deleted.',
+        ],
+      },
+      {
+        step: 'Yesterday writes itself',
+        body: [
+          'Every stage you finished yesterday, with how long it sat with you. Nobody types it, '
+          + 'so it cannot be wrong and it cannot be forgotten.',
+        ],
+      },
+      {
+        call: 'Until you press it, everybody can see you have not',
+        title: 'Melissa, Katie and Sylvan all appear on one list, and so do the brokers\u2019 screens',
+      },
+      'There is no locked screen and nothing stops you working. What there is, is a line that '
+      + 'says "You have not told the brokers your day yet" \u2014 and after an hour it says how long '
+      + 'they have been waiting. The brokers see the same thing from their side.',
+      {
+        step: 'Brokers never hold credit up',
+        body: [
+          'If no broker has said anything by the time you plan, the list is simply oldest first. '
+          + 'That is a full day\u2019s work with nobody\u2019s input. A broker arriving at 10:40 changes '
+          + 'the order from then on.',
+        ],
+      },
+      'This is the first half. Dragging deals to reorder them, the brokers\u2019 priority slots and '
+      + '"on it now" come next. Tell us what is wrong with this half first.',
+    ],
+  },
+  {
     id: 'what-now-and-who-has-it',
     section: 'process',
     title: 'What now \u2014 the buttons on a deal have changed',
@@ -161,6 +208,8 @@ export const ENTRIES: Entry[] = [
     body: [
       'Two different things used to be drawn as one row, which is why nobody was sure what to '
       + 'press. They are now separated.',
+      { shot: 'what-now-strip.png',
+        caption: 'The same strip at three moments \u2014 writing it, credit finished it, gone out' },
       {
         step: '1. The top row is a picture. You cannot press it.',
         body: [
@@ -192,6 +241,8 @@ export const ENTRIES: Entry[] = [
           ['With us \u2014 somebody here has to do something',
            'With client \u2014 we have sent it and we are waiting on them',
            'With lender \u2014 written and lodged, the bank has it'],
+          { shot: 'with-us-with-client.png',
+            caption: 'On the deal, and on every row of the deals list' },
           'On the deal and on every row of the deals list. This is what we will measure with: '
           + 'until now a deal that sat with a client for a fortnight looked exactly like a slow '
           + 'assessor, and every workload number was built on top of that.',
