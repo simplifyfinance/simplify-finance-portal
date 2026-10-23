@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { showingOwner, ownerOf, daysOnStage, type Stage } from '@/lib/who-did-this-stage'
+import { showingOwner, ownerOf, daysOnStage, stageIsDone, type Stage } from '@/lib/who-did-this-stage'
 
 // ONE ROW, THE SAME ON THE BC AND THE LENDING OPTIONS.
 //
@@ -43,7 +43,7 @@ export type Action = {
 }
 
 export default function WhatNow({
-  stage, deal, view, onView, actions, onOwnerChange, finishedAt, canAllocate = true, emailStale,
+  stage, deal, view, onView, actions, onOwnerChange, canAllocate = true, emailStale,
 }: {
   stage: Stage
   deal: any
@@ -57,14 +57,17 @@ export default function WhatNow({
   actions: Action[]
   /** 'me' keeps it, 'queue' sends it to the round robin. */
   onOwnerChange?: (choice: 'me' | 'queue') => void
-  /** When this stage was finished, so the clock stops. */
-  finishedAt?: any
   canAllocate?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const owner = showingOwner(deal, stage)
   const settled = !!ownerOf(deal, stage)
-  const days = daysOnStage(deal, stage, finishedAt)
+  // FINISHED IS WHAT THE CARD ABOVE SAYS IT IS - see stageWindow() in
+  // lib/who-did-this-stage.ts. This used to be a date the form handed down,
+  // and on any deal where credit never pressed Done it never arrived, so a
+  // BC closed in September read "Doing this" with the clock still running.
+  const done = stageIsDone(deal, stage)
+  const days = daysOnStage(deal, stage)
 
   return (
     <div className="flex gap-2.5 items-center flex-wrap">
@@ -88,15 +91,15 @@ export default function WhatNow({
           answer - it already says the right name when the screen opens. */}
       {owner && (
         <div className="relative">
-          <button onClick={() => onOwnerChange && canAllocate && setOpen(o => !o)}
-            disabled={!onOwnerChange || !canAllocate}
+          <button onClick={() => onOwnerChange && canAllocate && !done && setOpen(o => !o)}
+            disabled={!onOwnerChange || !canAllocate || done}
             className="text-left text-[14px] rounded-[9px] px-3.5 py-1.5 border-[1.5px] border-brand-ink bg-info-bg text-brand-ink font-bold disabled:opacity-80">
             <span className="block text-[10px] font-bold uppercase tracking-[0.05em] text-info opacity-75">
-              {days !== null && finishedAt ? 'Did this' : 'Doing this'}
+              {done ? 'Did this' : 'Doing this'}
             </span>
             {owner.name}{owner.isCredit ? ' — credit' : ''}
             {days !== null && <span className="font-normal opacity-70"> · {days} days</span>}
-            {onOwnerChange && canAllocate && <span className="font-normal opacity-60 ml-1.5">▾</span>}
+            {onOwnerChange && canAllocate && !done && <span className="font-normal opacity-60 ml-1.5">▾</span>}
           </button>
           {open && onOwnerChange && (
             <div className="absolute left-0 top-full mt-1 z-20 bg-card border border-card-line rounded-xl shadow-lg py-1 min-w-[230px]">

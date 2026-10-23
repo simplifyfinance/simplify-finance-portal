@@ -1857,7 +1857,6 @@ Key assumptions: ${checklistText}`
         deal={deal}
         view={activeTab === 'preview' ? 'email' : 'form'}
         onView={v => setActiveTab(v === 'email' ? 'preview' : 'form')}
-        finishedAt={bcCompletedAt}
         canAllocate={!bcCompletedAt}
         emailStale={emailNeedsAttention}
         onOwnerChange={handOwner}

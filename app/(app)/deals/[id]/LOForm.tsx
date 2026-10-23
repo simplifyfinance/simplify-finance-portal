@@ -1901,7 +1901,6 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         deal={deal}
         view={activeTab === 'preview' ? 'email' : 'form'}
         onView={v => setActiveTab(v === 'email' ? 'preview' : 'form')}
-        finishedAt={loCompletedAt}
         canAllocate={!loCompletedAt}
         emailStale={emailNeedsAttention}
         onOwnerChange={handOwner}

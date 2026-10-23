@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   ownerOf, defaultOwnerFor, showingOwner, daysOnStage, handOver,
-  needsAllocating, STAGES, STAGE_LABEL,
+  needsAllocating, stageIsDone, stageWindow, STAGES, STAGE_LABEL,
 } from './who-did-this-stage'
 
 const deal = (x: any = {}) => ({ assigned_broker: 'Mark', ...x })
@@ -73,32 +73,70 @@ describe('the rule Fabio gave: it carries forward', () => {
   })
 })
 
+// THE DEAL FABIO WAS LOOKING AT, 23 Oct 2026, an hour after this shipped.
+//
+// Fact find and BC both closed on 24 September; the lending options have been
+// with the broker ever since. Credit never pressed Done on the BC, so the date
+// the row used to read - bc_completed_at - is not there at all. It read "Doing
+// this, 29.1 days" on a stage that closed a month ago.
+//
+// Note what is deliberately missing below: bc_completed_at. That absence is
+// the whole test.
+const closedBc = (x: any = {}) => deal({
+  created_at: '2026-09-24T01:00:00Z',
+  bc_data: { purpose: 'OO purchase' },
+  client_proceeded: true,
+  proceeded_at: '2026-09-24T05:00:00Z',
+  ...x,
+})
+
 describe('the clock, which is what the productivity numbers read', () => {
-  it('runs from when the stage became theirs', () => {
-    const d = deal({ lo_owner_officer: 's', lo_owner_name: 'Sylvan', lo_owner_since: '2026-10-20T09:00:00Z' })
-    expect(daysOnStage(d, 'lo', '2026-10-22T09:00:00Z')).toBe(2)
+  const now = new Date('2026-10-23T05:00:00Z')
+
+  it('a finished stage says Did this, whether or not credit pressed Done', () => {
+    const d = closedBc()
+    expect(stageIsDone(d, 'bc')).toBe(true)
+    expect(d.bc_completed_at).toBeUndefined()
+    expect(daysOnStage(d, 'bc', now)).toBe(0.2)
   })
 
-  it('and stops when the stage was finished', () => {
-    const d = deal({ bc_owner_officer: 'k', bc_owner_name: 'Katie', bc_owner_since: '2026-10-20T09:00:00Z' })
-    const now = new Date('2026-10-30T09:00:00Z')
-    expect(daysOnStage(d, 'bc', '2026-10-21T21:00:00Z', now)).toBe(1.5)
+  it('and an open stage keeps counting from the day it opened', () => {
+    const d = closedBc()
+    expect(stageIsDone(d, 'lo')).toBe(false)
+    // Opened when the BC closed, 24 Sep. Still open a month later.
+    expect(daysOnStage(d, 'lo', now)).toBe(29)
   })
 
-  it('says nothing rather than guessing where no clock was running', () => {
-    expect(daysOnStage(deal({ bc_owner_name: 'Mark' }), 'bc')).toBeNull()
-    expect(daysOnStage(deal(), 'bc')).toBeNull()
-  })
-
-  it('three people on one deal, each on their own stage', () => {
-    const d = deal({
-      bc_owner_name: 'Mark', bc_owner_since: '2026-10-19T09:00:00Z',
-      lo_owner_officer: 's', lo_owner_name: 'Sylvan', lo_owner_since: '2026-10-22T09:00:00Z',
-      compliance_owner_officer: 'k', compliance_owner_name: 'Katie', compliance_owner_since: '2026-10-24T09:00:00Z',
+  it('a stage is measured end to end, not by who was holding it', () => {
+    // Credit handed this back the next day. The stage stayed open for a week,
+    // and a week is what it took.
+    const d = closedBc({
+      lo_completed_at: '2026-09-25T05:00:00Z',
+      lo_client_proceeded: true,
+      lo_proceeded_at: '2026-10-01T05:00:00Z',
     })
-    expect(daysOnStage(d, 'bc', '2026-10-21T09:00:00Z')).toBe(2)
-    expect(daysOnStage(d, 'lo', '2026-10-23T09:00:00Z')).toBe(1)
-    expect(daysOnStage(d, 'compliance', '2026-10-25T09:00:00Z')).toBe(1)
+    expect(daysOnStage(d, 'lo', now)).toBe(7)
+  })
+
+  it('a stage opens when the one before it closed', () => {
+    const w = stageWindow(closedBc(), 'lo')
+    expect(w.startedAt).toBe('2026-09-24T05:00:00Z')
+    expect(w.finishedAt).toBeNull()
+  })
+
+  it('says nothing rather than guessing where the stage never opened', () => {
+    expect(daysOnStage(deal(), 'bc')).toBeNull()
+    expect(daysOnStage(deal({ bc_owner_name: 'Mark' }), 'bc')).toBeNull()
+  })
+
+  it('three stages, one after the other, on the one deal', () => {
+    const d = closedBc({
+      lo_client_proceeded: true, lo_proceeded_at: '2026-10-01T05:00:00Z',
+      compliance_completed_at: '2026-10-03T05:00:00Z',
+    })
+    expect(daysOnStage(d, 'bc', now)).toBe(0.2)
+    expect(daysOnStage(d, 'lo', now)).toBe(7)
+    expect(daysOnStage(d, 'compliance', now)).toBe(2)
   })
 })
 

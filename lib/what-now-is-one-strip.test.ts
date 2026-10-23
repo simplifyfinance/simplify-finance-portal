@@ -48,7 +48,7 @@ describe('the two screens draw the same row', () => {
   })
 
   it('and hand it the same things, in the same order', () => {
-    const want = ['stage=', 'deal={deal}', 'view=', 'onView=', 'finishedAt=', 'canAllocate=', 'onOwnerChange=', 'actions=']
+    const want = ['stage=', 'deal={deal}', 'view=', 'onView=', 'canAllocate=', 'onOwnerChange=', 'actions=']
     for (const [name, src] of [['the BC', bc], ['the lending options', lo]] as const) {
       const p = props(src)
       let at = -1
