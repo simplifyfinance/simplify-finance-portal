@@ -61,8 +61,13 @@ describe('the import never touches the clients table', () => {
     // dates somebody has been working to.
     const update = code.slice(code.indexOf("from('portfolio_reviews')\n            .update("))
     const first = update.slice(0, update.indexOf('.select('))
+    // 26 Oct 2026: the reason and the note joined this list the day they were
+    // built. They are typed by a person at the end of a conversation, which
+    // makes them exactly the kind of thing a re-drop of the spreadsheet must
+    // never quietly replace.
     for (const worked of ['status', 'figures_date', 'next_review_date', 'reviewed_at',
-                          'outcome', 'linked_deal_id', 'email_sent_at', 'internal_notes']) {
+                          'outcome', 'linked_deal_id', 'email_sent_at', 'internal_notes',
+                          'outcome_reason', 'outcome_note', 'closed_at']) {
       expect(first, `a re-import would overwrite ${worked}`).not.toContain(worked)
     }
   })

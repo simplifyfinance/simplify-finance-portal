@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import {
-  STAGES, OUTCOMES, stageLabel, outcomeLabel, stageIndex,
+  STAGES, OUTCOMES, REASONS, stageLabel, outcomeLabel, reasonLabel, reasonTally, stageIndex,
   totalCost, depositNeeded, contributionCheck, usableEquity, totalUsableEquity,
   daysUntil, dueState, whenDue, countsFor, sortForTheList,
   greetingName, canSendTheEmail,
@@ -292,5 +292,119 @@ describe('it decides nothing and fetches nothing', () => {
       expect(src, `this file must stay a function of its arguments (${banned})`)
         .not.toContain(banned)
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// WHY IT WAS NOT SUITABLE, AND WHAT BRINGS IT BACK
+// ---------------------------------------------------------------------------
+//
+// 26 Oct 2026. Fabio, going through the book: "I want to find the best way to
+// add notes that why not suitable so we can track things better also creating
+// a task to follow up later as sometimes it is not a deal now but can be
+// later."
+
+describe('the reasons match the ones the database will accept', () => {
+  const sql = readFileSync('docs/why-it-was-not-suitable.sql', 'utf8')
+
+  it('every reason here is allowed there', () => {
+    for (const r of REASONS) {
+      expect(sql, `the database will refuse reason '${r.key}'`).toContain(`'${r.key}'`)
+    }
+  })
+
+  it('and every one of them has words a person reads', () => {
+    for (const r of REASONS) {
+      expect(reasonLabel(r.key), `${r.key} has no label`).toBe(r.label)
+      expect(r.label.length).toBeGreaterThan(3)
+    }
+    // An unknown key says nothing rather than guessing.
+    expect(reasonLabel('nonsense')).toBe('')
+    expect(reasonLabel(null)).toBe('')
+  })
+})
+
+describe('counting the reasons, which is the point of asking', () => {
+  const rows = [
+    { outcome_reason: 'serviceability' },
+    { outcome_reason: 'serviceability' },
+    { outcome_reason: 'equity' },
+    { outcome_reason: null },          // closed before this existed
+    { outcome_reason: 'nonsense' },    // not one of ours
+    { outcome_reason: 'serviceability' },
+  ]
+
+  it('biggest first, and only the ones it has an answer for', () => {
+    expect(reasonTally(rows)).toEqual([
+      { key: 'serviceability', label: 'Serviceability', n: 3 },
+      { key: 'equity', label: 'Not enough equity', n: 1 },
+    ])
+  })
+
+  it('never invents an answer for a review nobody gave one for', () => {
+    // Three of the six rows above have no usable reason. Reading them as
+    // "something else" would put a made-up number at the top of a report.
+    const total = reasonTally(rows).reduce((n, r) => n + r.n, 0)
+    expect(total).toBe(4)
+  })
+
+  it('and says nothing at all where nothing has been recorded', () => {
+    expect(reasonTally([])).toEqual([])
+    expect(reasonTally([{ outcome: 'declined' }])).toEqual([])
+  })
+})
+
+describe('the ones that came back round', () => {
+  // THE HOLE THIS FILLS. next_review_date has been saved on every close since
+  // the day the book shipped, and the trigger fills in twelve months where
+  // nobody chose a date. Nothing ever counted them: "to chase today" skips
+  // anything closed, so the day arrived and no number on the screen moved.
+  const rows = [
+    { status: 'closed', outcome: 'not_suitable', due_on: '2026-10-16' },  // came back round
+    { status: 'closed', outcome: 'declined',     due_on: '2026-10-19' },  // today
+    { status: 'closed', outcome: 'converted',    due_on: '2027-10-19' },  // next year
+    { status: 'template_sent', due_on: '2026-10-16' },                    // a chase, not this
+    { status: 'closed', outcome: 'declined', due_on: '2026-10-16', opted_out: true },
+  ]
+  const c = countsFor(rows, MONDAY)
+
+  it('counts a closed review whose day has come', () => {
+    expect(c.comingBack).toBe(2)
+  })
+
+  it('and does not mix it in with today\u2019s chasing', () => {
+    // Ringing somebody back a year later is a different job to finishing a
+    // conversation from last week, so they are two numbers.
+    expect(c.toChase).toBe(1)
+  })
+
+  it('an opted-out client never comes back round either', () => {
+    expect(c.onTheList).toBe(4)
+  })
+})
+
+describe('closing one out asks why', () => {
+  const box = readFileSync('components/ReviewActions.tsx', 'utf8')
+
+  it('offers the reasons rather than a free-for-all', () => {
+    expect(box).toContain("import { OUTCOMES, REASONS")
+    expect(box, 'the reason chips have gone').toContain('{REASONS.map(r => (')
+  })
+
+  it('and a note in their own words beside it', () => {
+    expect(box).toContain('setClose({ ...close, note: e.target.value })')
+  })
+
+  it('saves both, and when it was closed', () => {
+    for (const field of ['outcome_reason:', 'outcome_note:', 'closed_at:']) {
+      expect(box, `${field} is no longer written`).toContain(field)
+    }
+    // Null rather than '' - "nobody said" and "they said something else" are
+    // different things, and a check constraint refuses an empty string.
+    expect(box).toContain('outcome_reason: close.reason || null')
+  })
+
+  it('and still gives every outcome a day to come back on', () => {
+    expect(box).toContain('next_review_date: close.next_review_date || null')
   })
 })

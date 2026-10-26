@@ -7,7 +7,7 @@ import { SkelRows, SkelTile } from '@/components/Skeleton'
 import BookImport from '@/components/BookImport'
 import ReviewFigures from '@/components/ReviewFigures'
 import {
-  STAGES, stageLabel, outcomeLabel, countsFor, sortForTheList,
+  STAGES, stageLabel, outcomeLabel, reasonLabel, countsFor, sortForTheList,
   dueState, whenDue, fullName, type Stage,
   usableForTheList, loanIsUnknown,
 } from '@/lib/portfolio-review'
@@ -56,6 +56,11 @@ type Row = {
   // 19 Oct 2026. The book's own name, for the people who are not clients - see
   // docs/portfolio-review-stands-alone.sql.
   book_name: string | null
+  // 26 Oct 2026. Why it was closed, in a word and in your own words, and when.
+  // See docs/why-it-was-not-suitable.sql.
+  outcome_reason: string | null
+  outcome_note: string | null
+  closed_at: string | null
 }
 
 // ONE PROPERTY, AS THE BOOK HAS IT.
@@ -175,11 +180,13 @@ function StageBadge({ r }: { r: Row }) {
   return <span className={`${PILL} ${tone}`}>{words}</span>
 }
 
-function Count({ n, what, tone }: { n: number; what: string; tone?: 'info' | 'done' }) {
+function Count({ n, what, tone }: { n: number; what: string; tone?: 'info' | 'done' | 'chase' }) {
   const edge = tone === 'info' ? 'bg-info-bg border-info-edge'
              : tone === 'done' ? 'bg-done-bg border-done-edge'
+             : tone === 'chase' ? 'bg-chase-bg border-chase-edge'
              : 'bg-card border-card-line'
-  const ink = tone === 'info' ? 'text-info' : tone === 'done' ? 'text-done' : 'text-ink'
+  const ink = tone === 'info' ? 'text-info' : tone === 'done' ? 'text-done'
+            : tone === 'chase' ? 'text-chase' : 'text-ink'
   return (
     <div className={`border rounded-xl px-4 py-2.5 min-w-[118px] ${edge}`}>
       <b className={`block text-[20px] leading-tight ${ink}`}>{n}</b>
@@ -674,6 +681,11 @@ export default function PortfolioReview() {
         <Count n={counts.reviewed} what="reviewed" />
         <Count n={counts.awaitingReply} what="awaiting a reply" />
         <Count n={counts.toChase} what="to chase today" tone="info" />
+        {/* THE ONES THAT CAME BACK ROUND. 26 Oct 2026 - the date you set when
+            you closed one has always been saved and nothing ever counted it.
+            Its own tile, because ringing somebody back a year later is a
+            different job to finishing a conversation from last week. */}
+        <Count n={counts.comingBack} what="coming back round" tone="chase" />
         <Count n={counts.becameDeals} what="became deals" tone="done" />
       </div>
 
@@ -804,9 +816,22 @@ export default function PortfolioReview() {
                     : f.usable === null ? '—' : money(f.usable)}
                 </span>
 
-                <StageBadge r={r} />
-                <span className={`text-[11.5px] ${late ? 'text-info font-semibold' : 'text-muted'}`}>
+                <span className="min-w-0">
+                  <StageBadge r={r} />
+                  {/* WHY, IN ONE WORD, UNDER THE OUTCOME. "Not suitable now"
+                      on its own is four words against a whole conversation. */}
+                  {r.outcome_reason && (
+                    <span className="block mt-1 text-[10.5px] text-waiting truncate">
+                      {reasonLabel(r.outcome_reason)}
+                    </span>
+                  )}
+                </span>
+                <span className={`text-[11.5px] min-w-0 ${late ? 'text-info font-semibold' : 'text-muted'}`}>
                   {r.linked_deal_id ? 'became a deal' : whenDue(r.due_on, today) || '—'}
+                  {r.outcome_note && (
+                    <span className="block text-[10px] text-faint leading-tight truncate font-normal"
+                      title={r.outcome_note}>{r.outcome_note}</span>
+                  )}
                 </span>
               </Row>
 

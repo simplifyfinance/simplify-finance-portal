@@ -40,6 +40,61 @@ export const OUTCOMES = [
 
 export type Outcome = typeof OUTCOMES[number]['key']
 
+// WHY IT ENDED THE WAY IT DID.
+//
+// 26 Oct 2026. Fabio, going through the book: "I want to find the best way to
+// add notes that why not suitable so we can track things better".
+//
+// The outcome alone is four words against six hundred conversations. "Not
+// suitable now" does not say whether the problem was servicing, equity, or a
+// fixed rate with eighteen months left to run - and those three want three
+// different things done about them, at three different times.
+//
+// A LIST, NOT A BOX, AND A BOX AS WELL. Asked to choose between a reason you
+// can count and a note in your own words, he took both: the reason so a report
+// can say "nine of the last forty were serviceability", and the note because
+// no list ever fits the one in front of you. The note is where the next person
+// finds out that the second income starts in July.
+//
+// These eight are in docs/why-it-was-not-suitable.sql as a check constraint,
+// and the test below fails if the two lists ever drift.
+export const REASONS = [
+  { key: 'serviceability', label: 'Serviceability' },
+  { key: 'equity',         label: 'Not enough equity' },
+  { key: 'fixed_rate',     label: 'On a fixed rate' },
+  { key: 'happy',          label: 'Happy where they are' },
+  { key: 'selling',        label: 'Selling' },
+  { key: 'credit',         label: 'Credit history' },
+  { key: 'timing',         label: 'Timing' },
+  { key: 'other',          label: 'Something else' },
+] as const
+
+export type Reason = typeof REASONS[number]['key']
+
+export function reasonLabel(key: any): string {
+  return REASONS.find(r => r.key === String(key ?? ''))?.label || ''
+}
+
+/**
+ * THE POINT OF ASKING. How many of each, biggest first.
+ *
+ * Counts only what has a reason on it - a review closed before this existed
+ * has no answer, and inventing 'other' for it would put a made-up number at
+ * the top of a report.
+ */
+export function reasonTally(rows: any[]): { key: Reason; label: string; n: number }[] {
+  const n = new Map<string, number>()
+  for (const r of rows || []) {
+    const k = String(r?.outcome_reason ?? '')
+    if (!REASONS.some(x => x.key === k)) continue
+    n.set(k, (n.get(k) || 0) + 1)
+  }
+  return REASONS
+    .map(r => ({ key: r.key, label: r.label, n: n.get(r.key) || 0 }))
+    .filter(r => r.n > 0)
+    .sort((a, b) => b.n - a.n)
+}
+
 export function stageLabel(key: any): string {
   return STAGES.find(s => s.key === String(key ?? ''))?.label || 'Not reviewed'
 }
@@ -275,6 +330,8 @@ export type Counts = {
   reviewed: number
   awaitingReply: number
   toChase: number
+  /** Closed months ago, and the day you said to come back has arrived. */
+  comingBack: number
   becameDeals: number
 }
 
@@ -286,6 +343,23 @@ export function countsFor(rows: any[], today: Date): Counts {
     awaitingReply: live.filter(r => r?.status === 'template_sent').length,
     toChase: live.filter(r => {
       if (r?.status === 'closed') return false
+      const d = dueState(r?.due_on, today)
+      return d === 'overdue' || d === 'today'
+    }).length,
+    // THE ONES THAT CAME BACK ROUND.
+    //
+    // 26 Oct 2026. next_review_date has been saved on every close since the
+    // day this shipped, and the trigger fills in twelve months where nobody
+    // chose a date - so there have always been hundreds of these waiting. The
+    // count above skips anything closed, by design: a review you finished is
+    // not a chase you owe somebody today. So nothing counted them at all, the
+    // date arrived, and no number on the screen moved.
+    //
+    // Its own tile rather than a bigger "to chase" number, because the work is
+    // different: one is finishing a conversation, the other is starting one
+    // again a year later.
+    comingBack: live.filter(r => {
+      if (r?.status !== 'closed') return false
       const d = dueState(r?.due_on, today)
       return d === 'overdue' || d === 'today'
     }).length,

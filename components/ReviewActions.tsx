@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { copyHtmlAndPlain } from '@/lib/rich-text'
 import { reviewEmailHtml, reviewEmailSubject } from '@/lib/portfolio-review-email'
-import { OUTCOMES, stageIndex, canSendTheEmail, greetingName } from '@/lib/portfolio-review'
+import { OUTCOMES, REASONS, stageIndex, canSendTheEmail, greetingName } from '@/lib/portfolio-review'
 
 // WHAT HAPPENS TO A REVIEW AFTER THE NUMBERS ARE DONE.
 //
@@ -64,7 +64,9 @@ export default function ReviewActions({ review, figures, properties, broker, cop
     outcome: '',
     next_action_on: inDays(7),
   })
-  const [close, setClose] = useState({ outcome: 'not_suitable', next_review_date: inDays(365) })
+  const [close, setClose] = useState({
+    outcome: 'not_suitable', reason: '', note: '', next_review_date: inDays(365),
+  })
 
   const equityProp = properties.find(p => p.id === figures?.equity_property_id)
   // BOTH OF THEM, WHERE THERE ARE TWO. 225 of the 656 are a couple, and
@@ -193,11 +195,19 @@ export default function ReviewActions({ review, figures, properties, broker, cop
     // EVERY OUTCOME SETS A NEXT REVIEW DATE, including "became a deal". Not now
     // is almost never not ever, and a client who drops off this list is a
     // client nobody rings again.
+    const now = new Date().toISOString()
     const { data, error } = await supabase.from('portfolio_reviews').update({
       status: 'closed', outcome: close.outcome,
+      // WHY, IN A WORD AND IN YOUR OWN WORDS. The word is what a report can
+      // count; the note is what the next person actually needs to read before
+      // they ring. Null rather than '' on the reason, so "nobody said" and
+      // "they said something else" stay different things.
+      outcome_reason: close.reason || null,
+      outcome_note: close.note || '',
+      closed_at: now,
       next_review_date: close.next_review_date || null,
-      reviewer: me?.user?.id || null, reviewed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      reviewer: me?.user?.id || null, reviewed_at: now,
+      updated_at: now,
     }).eq('id', reviewId).select('id')
     if (error || !data?.length) {
       setWhy(error?.message || 'That would not save. Nothing was recorded.')
@@ -285,11 +295,37 @@ export default function ReviewActions({ review, figures, properties, broker, cop
               </button>
             ))}
           </div>
+          {/* WHY, AND THEN IN YOUR OWN WORDS.
+              26 Oct 2026. Four outcomes were the whole record of six hundred
+              conversations. The reason is the half a report can add up; the
+              note is the half the next person needs before they ring. Asked
+              to pick one, Fabio took both. See REASONS in
+              lib/portfolio-review.ts. */}
+          <label className={LAB}>Why</label>
+          <div className="flex gap-1.5 flex-wrap mb-3">
+            {REASONS.map(r => (
+              <button key={r.key}
+                onClick={() => setClose({ ...close, reason: close.reason === r.key ? '' : r.key })}
+                className={`text-[12px] rounded-lg px-3 py-[6px] border transition ${
+                  close.reason === r.key
+                    ? 'border-brand text-brand-ink bg-brand/5 font-medium'
+                    : 'border-card-line text-muted hover:bg-card'}`}>
+                {r.label}
+              </button>
+            ))}
+          </div>
+
+          <label className={LAB}>In your words</label>
+          <textarea className={`${IN} h-16 resize-none`} value={close.note}
+            placeholder="Second income starts in July. Worth a call once two payslips are in."
+            onChange={e => setClose({ ...close, note: e.target.value })} />
+
           <label className={LAB}>Come back to them on</label>
           <input type="date" className={IN} value={close.next_review_date}
             onChange={e => setClose({ ...close, next_review_date: e.target.value })} />
           <p className="text-[11px] text-faint mt-1.5 leading-relaxed">
-            Every outcome gets one, including &ldquo;became a deal&rdquo;.
+            Every outcome gets one, including &ldquo;became a deal&rdquo;. When the day comes
+            they come back on the list with what you wrote here.
           </p>
           <div className="flex gap-2 mt-3">
             <button className={DARK} disabled={busy} onClick={closeIt}>

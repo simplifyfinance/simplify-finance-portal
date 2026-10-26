@@ -151,6 +151,55 @@ export function readingMinutes(e: Entry): number {
 // Add a new entry wherever is tidiest. The date decides what the team sees.
 export const ENTRIES: Entry[] = [
   {
+    id: 'why-it-was-not-suitable',
+    section: 'process',
+    title: 'The book \u2014 why it was not suitable, and getting them back',
+    on: '2026-10-26',
+    lead: 'Closing a review recorded one of four words and nothing else. It now asks why, in a '
+        + 'word and in your own words, and the day you set to come back is finally a number '
+        + 'somebody sees when it arrives.',
+    body: [
+      'Two changes, both where you already work: the box you get when you press Close this out, '
+      + 'and the list itself.',
+      {
+        step: '1. Closing one out asks why',
+        body: [
+          'Pick the reason, then say it in your own words. The reason is the half a report can '
+          + 'add up \u2014 "nine of the last forty were serviceability" is something you can do '
+          + 'something about. The note is the half the next person needs before they ring.',
+          { shot: 'book-why-box.png',
+            caption: 'Closing one out. The reason, then your own words, then the day to come back.' },
+          'Eight reasons: serviceability, not enough equity, on a fixed rate, happy where they are, '
+          + 'selling, credit history, timing, something else. If one of them is wrong or missing, '
+          + 'say so \u2014 they are stored, so changing them later is harder than changing them now.',
+          'It asks on all four outcomes, not just "not suitable now". A decline with no reason is '
+          + 'the same information lost.',
+        ],
+      },
+      {
+        step: '2. They come back on their own',
+        body: [
+          'Every close already set a day to come back \u2014 twelve months unless you chose one. '
+          + 'Nothing ever counted them. The number at the top of the list skipped anything closed, '
+          + 'so the day arrived, no number moved, and nobody rang.',
+          { shot: 'book-why-list.png',
+            caption: 'The new tile, and the reason under the outcome with your note beside it.' },
+          'There is now a "coming back round" tile for exactly those, kept separate from "to chase '
+          + 'today" because ringing somebody back a year later is a different job to finishing a '
+          + 'conversation from last week.',
+        ],
+      },
+      {
+        call: 'Nothing you have already closed is lost',
+        title: 'Every review closed before today keeps its date and starts appearing when it falls due',
+      },
+      'They have no reason on them, because nobody was asked. They are not counted in any reason '
+      + 'total rather than being guessed at.',
+      'The reasons are only worth having if they are used. Give it a month and we will see what the '
+      + 'book is actually saying.',
+    ],
+  },
+  {
     id: 'today-for-everybody',
     section: 'process',
     title: 'Today \u2014 a page for brokers and one for the business, and no weekends',
