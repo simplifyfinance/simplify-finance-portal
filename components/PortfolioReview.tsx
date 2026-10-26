@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { money } from '@/lib/money'
@@ -8,10 +8,11 @@ import BookImport from '@/components/BookImport'
 import ReviewFigures from '@/components/ReviewFigures'
 import {
   STAGES, stageLabel, outcomeLabel, reasonLabel, countsFor, sortForTheList,
-  dueState, whenDue, fullName, type Stage,
+  dueState, whenDue, fullName, matchesTile, type Stage, type Tile,
   usableForTheList, loanIsUnknown, usableEquity,
 } from '@/lib/portfolio-review'
 import { readMoney } from '@/lib/money'
+import { securitiesOf, bookTotals, type Security } from '@/lib/one-security-many-loans'
 import {
   planFor, writeFor, monthName, asAtShort,
   type Holding, type TrailLine, type Plan, type Change,
@@ -109,44 +110,47 @@ export type Figures = {
 }
 
 export function figuresFor(props: Prop[] | undefined): Figures {
-  const all = props || []
-  const counted = all.filter(p => p.investor)
-  const loan = counted.reduce((t, p) => t + (p.current_balance ?? p.original_loan ?? 0), 0)
-  const value = counted.reduce((t, p) => t + (p.estimated_current_value ?? p.original_value ?? 0), 0)
-  // A recorded figure is somebody's decision and is never recalculated over.
-  // Only where nobody has worked one out is 80% of value less what is owed
-  // used, which is the shortlist rule and not an answer.
-  const recorded = counted.filter(p => p.usable_equity !== null)
-  // THE SUMMARY CANNOT CLAIM MORE THAN THE ROWS UNDER IT.
+  // ONE ROW PER LOAN IS NOT ONE ROW PER PROPERTY.
   //
-  // 21 Oct 2026. Where no counted property has a loan recorded, this was
-  // reading the missing loans as zero and reporting 80% of the value as
-  // equity - a figure the rows underneath now refuse to show. The client line
-  // says so instead, and sorts on nothing.
-  const loanUnknown = counted.length > 0 && counted.every(loanIsUnknown)
-  // WHEN THE LOAN FIGURE WAS LAST TRUE.
+  // 26 Oct 2026. Fabio: "see how the portal doesnt not think logically 2 loans
+  // against same secuitry and it is not caluclating overall LVR". The export
+  // writes a row per loan, and this added those rows up - so a house with two
+  // loans on it had its value counted twice and its equity worked out twice.
+  // On one client that was a million dollars of equity that does not exist.
   //
-  // 21 Oct 2026. Only where EVERY counted property carries a dated balance.
-  // One property refreshed and one still on the book's figure makes a total
-  // that was never true on any date, and a date under it would be a claim
-  // nobody could stand behind. The oldest of them, because a total is only as
-  // current as its stalest part.
-  const dated = counted.filter(p => !!p.balance_as_at && p.current_balance !== null)
-  const asAt = counted.length > 0 && dated.length === counted.length
-    ? dated.map(p => String(p.balance_as_at)).sort()[0]
+  // Every figure on this line now comes off securitiesOf(), which folds the
+  // loans back onto the property they are secured by. See
+  // lib/one-security-many-loans.ts.
+  const securities = securitiesOf(props || [])
+  const counted = securities.filter(s => s.investor)
+  const totals = bookTotals(counted)
+
+  // A LOAN NOBODY RECORDED IS NOT A LOAN OF ZERO, which is the rule the rows
+  // underneath already refused to break. Where no counted security has a
+  // balance on it, 80% of the value is not equity, it is a guess.
+  const loanUnknown = counted.length > 0 && counted.every(sec => sec.owing === null)
+
+  // WHEN THE LOAN FIGURE WAS LAST TRUE. Only where every loan on every counted
+  // security carries a dated balance - one refreshed and one still on the
+  // book's figure makes a total that was never true on any date. The oldest of
+  // them, because a total is only as current as its stalest part.
+  const everyLoan = counted.flatMap(sec => sec.loans)
+  const dated = everyLoan.filter(l => !!l.asAt && l.balance !== null)
+  const asAt = everyLoan.length > 0 && dated.length === everyLoan.length
+    ? dated.map(l => String(l.asAt)).sort()[0]
     : null
-  const usable = recorded.length > 0
-    ? recorded.reduce((t, p) => t + (p.usable_equity as number), 0)
-    : loanUnknown ? null
-    : (value > 0 ? Math.round(value * 0.8 - loan) : null)
-  const ordered = [...all].sort((a, b) => (a.ordinal || 0) - (b.ordinal || 0))
+
   return {
-    loan, value,
-    lvr: value > 0 && loan > 0 ? Math.round((loan / value) * 1000) / 10 : null,
-    usable, loanUnknown, asAt,
-    first: ordered[0]?.address || '',
-    more: Math.max(0, ordered.length - 1),
-    count: ordered.length,
+    loan: totals.owing ?? 0,
+    value: totals.value ?? 0,
+    lvr: totals.lvr,
+    usable: loanUnknown ? null : (totals.value === null ? null : totals.usable),
+    loanUnknown, asAt,
+    first: securities[0]?.address || '',
+    // SECURITIES, NOT ROWS. "4 properties" on a client with three houses and
+    // four loans is the same miscount said in words.
+    more: Math.max(0, securities.length - 1),
+    count: securities.length,
   }
 }
 
@@ -181,7 +185,17 @@ function StageBadge({ r }: { r: Row }) {
   return <span className={`${PILL} ${tone}`}>{words}</span>
 }
 
-function Count({ n, what, tone }: { n: number; what: string; tone?: 'info' | 'done' | 'chase' }) {
+// EVERY ONE OF THESE IS A FILTER.
+//
+// 26 Oct 2026. Fabio: "when I press the box at the top, I can't tell which
+// ones are reviewed. So what the fuck is the point?" They were six numbers
+// that did nothing when pressed. The rule behind each one lives in onTile()
+// in lib/portfolio-review.ts and the count above reads the same rule, so the
+// number and the list it shows you cannot disagree.
+function Count({ n, what, tone, on, onPick }: {
+  n: number; what: string; tone?: 'info' | 'done' | 'chase'
+  on?: boolean; onPick?: () => void
+}) {
   const edge = tone === 'info' ? 'bg-info-bg border-info-edge'
              : tone === 'done' ? 'bg-done-bg border-done-edge'
              : tone === 'chase' ? 'bg-chase-bg border-chase-edge'
@@ -189,10 +203,13 @@ function Count({ n, what, tone }: { n: number; what: string; tone?: 'info' | 'do
   const ink = tone === 'info' ? 'text-info' : tone === 'done' ? 'text-done'
             : tone === 'chase' ? 'text-chase' : 'text-ink'
   return (
-    <div className={`border rounded-xl px-4 py-2.5 min-w-[118px] ${edge}`}>
+    <button onClick={onPick} disabled={!onPick}
+      title={onPick ? (on ? 'Showing these - press again for all' : `Show the ${what}`) : undefined}
+      className={`text-left border rounded-xl px-4 py-2.5 min-w-[118px] transition ${edge} ${
+        on ? 'ring-2 ring-ink ring-offset-1' : onPick ? 'hover:border-brand' : ''}`}>
       <b className={`block text-[20px] leading-tight ${ink}`}>{n}</b>
       <span className="text-[11px] text-muted">{what}</span>
-    </div>
+    </button>
   )
 }
 
@@ -280,6 +297,32 @@ function OpenReview({ r, rows, today, onSaved }: {
     onSaved?.()
   }
 
+  // A VALUE BELONGS TO THE PROPERTY, NOT TO A LOAN.
+  //
+  // 26 Oct 2026. Where two loans sit on one house the book carried two rows,
+  // each with its own value - 1,600,000 on one and 1,700,000 on the other for
+  // the same place. Typing the right one in writes it to both, so the two
+  // stop disagreeing rather than one of them being quietly preferred forever.
+  async function saveSecurityValue(sec: Security, typed: string) {
+    setEditing(null)
+    const n = readMoney(typed)
+    const supabase = createSupabaseBrowser()
+    for (const r of sec.rows) {
+      const loan = (r as any).current_balance ?? (r as any).original_loan ?? null
+      const { error } = await supabase.from('portfolio_review_properties').update({
+        estimated_current_value: n,
+        valuation_source: 'Entered by hand',
+        valuation_date: n === null ? null : ymd,
+        // Kept honest on a single-loan property. On a merged one the stored
+        // figure is per loan and is ignored on the way out - see
+        // lib/one-security-many-loans.ts.
+        usable_equity: sec.rows.length === 1 ? equityFor(n, loan, sec.investor) : null,
+      }).eq('id', (r as any).id)
+      if (error) { setOops(error.message); return }
+    }
+    onSaved?.()
+  }
+
   async function saveFigure(p: Prop, field: 'loan' | 'value', typed: string) {
     setEditing(null)
     const n = readMoney(typed)
@@ -322,68 +365,100 @@ function OpenReview({ r, rows, today, onSaved }: {
               <th className={head}>Value</th><th className={head}>LVR</th>
               <th className={head}>Usable at 80%</th><th className={head}>Type</th>
             </tr>
-            {ordered.map(p => {
-              const loan = p.current_balance ?? p.original_loan ?? 0
-              const value = p.estimated_current_value ?? p.original_value ?? 0
-              const lvr = value > 0 && loan > 0 ? Math.round((loan / value) * 1000) / 10 : null
-              // Owner occupied is shown and not counted - the same rule the
-              // schema sets. You need the whole portfolio to have the
-              // conversation; counting the home would inflate the figure.
-              // A MISSING LOAN IS NOT A LOAN OF ZERO. A value with nothing
-              // against it read as fully unencumbered - $720,000 of equity on a
-              // $900,000 house we know nothing about. No row is in that state
-              // today; it is there for the next import. See loanIsUnknown in
-              // lib/portfolio-review.ts.
-              const usable = usableForTheList(p)
-              const unknown = usable === 'unknown'
+            {securitiesOf(ordered).map(sec => {
+              // ONE ROW PER SECURITY, NOT PER LOAN. See
+              // lib/one-security-many-loans.ts for the afternoon that taught
+              // us the difference, and what it was costing.
+              const many = sec.loans.length > 1
+              const disagree = sec.values.length > 1
               return (
-                <tr key={p.id}>
-                  <td className={cell}>{p.address}</td>
-                  <td className={cell}>{p.lender_raw || '—'}</td>
-                  {/* THE FIGURE IS TYPED INTO WHERE IT IS READ. A book
-                      number from settlement three years ago is not what
-                      somebody owes today, and the Numbers box underneath is
-                      about the new lending, not about correcting the book. */}
+                <Fragment key={sec.key}>
+                <tr>
+                  <td className={cell}>
+                    {sec.address}
+                    {many && (
+                      <span className="ml-2 text-[9.5px] font-bold text-info bg-info-bg border border-info-edge rounded-full px-2 py-[1px]">
+                        {sec.loans.length} loans
+                      </span>
+                    )}
+                    {disagree && (
+                      <span className="block text-[10.5px] text-chase mt-0.5">
+                        two values recorded &mdash; {sec.values.map(v => money(v)).join(' and ')}. Using the lower.
+                      </span>
+                    )}
+                  </td>
+                  <td className={cell}>
+                    {many ? `${sec.loans.length} lenders` : (sec.loans[0]?.lender || '—')}
+                  </td>
                   <td className={num}>
-                    {editing === `${p.id}:loan` ? (
-                      <input autoFocus defaultValue={loan > 0 ? String(loan) : ''}
-                        onBlur={e => saveFigure(p, 'loan', e.target.value)}
+                    {!many && sec.rows[0] ? (
+                      editing === `${(sec.rows[0] as any).id}:loan` ? (
+                        <input autoFocus defaultValue={sec.owing !== null ? String(sec.owing) : ''}
+                          onBlur={e => saveFigure(sec.rows[0] as Prop, 'loan', e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') saveFigure(sec.rows[0] as Prop, 'loan', (e.target as HTMLInputElement).value)
+                            if (e.key === 'Escape') setEditing(null)
+                          }}
+                          className="w-[110px] border border-field-line rounded-md px-1.5 py-[2px] text-[12px] bg-card" />
+                      ) : (
+                        <button onClick={() => setEditing(`${(sec.rows[0] as any).id}:loan`)} className="hover:underline text-left">
+                          {sec.owing !== null ? money(sec.owing)
+                            : <span className="text-chase">not recorded</span>}
+                        </button>
+                      )
+                    ) : (
+                      sec.owing !== null ? money(sec.owing) : <span className="text-chase">not recorded</span>
+                    )}
+                  </td>
+                  <td className={num}>
+                    {editing === `${sec.key}:value` ? (
+                      <input autoFocus defaultValue={sec.value !== null ? String(sec.value) : ''}
+                        onBlur={e => saveSecurityValue(sec, e.target.value)}
                         onKeyDown={e => {
-                          if (e.key === 'Enter') saveFigure(p, 'loan', (e.target as HTMLInputElement).value)
+                          if (e.key === 'Enter') saveSecurityValue(sec, (e.target as HTMLInputElement).value)
                           if (e.key === 'Escape') setEditing(null)
                         }}
                         className="w-[110px] border border-field-line rounded-md px-1.5 py-[2px] text-[12px] bg-card" />
                     ) : (
-                      <button onClick={() => setEditing(`${p.id}:loan`)} className="hover:underline text-left">
-                        {loan > 0 ? money(loan)
-                          : unknown ? <span className="text-chase">not recorded</span> : '—'}
+                      <button onClick={() => setEditing(`${sec.key}:value`)} className="hover:underline text-left">
+                        {sec.value !== null ? money(sec.value) : '—'}
                       </button>
                     )}
                   </td>
-                  <td className={num}>
-                    {editing === `${p.id}:value` ? (
-                      <input autoFocus defaultValue={value > 0 ? String(value) : ''}
-                        onBlur={e => saveFigure(p, 'value', e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') saveFigure(p, 'value', (e.target as HTMLInputElement).value)
-                          if (e.key === 'Escape') setEditing(null)
-                        }}
-                        className="w-[110px] border border-field-line rounded-md px-1.5 py-[2px] text-[12px] bg-card" />
-                    ) : (
-                      <button onClick={() => setEditing(`${p.id}:value`)} className="hover:underline text-left">
-                        {value > 0 ? money(value) : '—'}
-                      </button>
-                    )}
-                  </td>
-                  <td className={num}>{lvr === null ? '—' : `${lvr}%`}</td>
-                  <td className={`${num} ${p.investor && typeof usable === 'number' && usable > 0
+                  <td className={num}>{sec.lvr === null ? '—' : `${sec.lvr}%`}</td>
+                  <td className={`${num} ${sec.investor && sec.usable && sec.usable > 0
                       ? 'text-done font-semibold' : 'text-faint'}`}>
-                    {!p.investor ? 'not counted'
-                      : unknown ? <span className="text-chase">loan unknown</span>
-                      : usable === null ? '—' : money(usable as number)}
+                    {!sec.investor ? 'not counted'
+                      : sec.owing === null ? <span className="text-chase">loan unknown</span>
+                      : sec.usable === null ? '—' : money(sec.usable)}
                   </td>
-                  <td className={cell}>{p.investor ? 'Investment' : 'Owner occupied'}</td>
+                  <td className={cell}>{sec.investor ? 'Investment' : 'Owner occupied'}</td>
                 </tr>
+                {/* EVERY LOAN ON IT, where there is more than one. The sum
+                    above is the three of them together; these are the three. */}
+                {many && sec.loans.map(l => (
+                  <tr key={l.id}>
+                    <td className="py-[3px] pr-3 text-[11.5px] text-faint pl-4">&#8627; {l.lender || 'no lender recorded'}</td>
+                    <td className={cell}></td>
+                    <td className="py-[3px] pr-3 text-[11.5px] text-muted tabular-nums whitespace-nowrap">
+                      {editing === `${l.id}:loan` ? (
+                        <input autoFocus defaultValue={l.balance !== null ? String(l.balance) : ''}
+                          onBlur={e => saveFigure(sec.rows.find(r => (r as any).id === l.id) as Prop, 'loan', e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') saveFigure(sec.rows.find(r => (r as any).id === l.id) as Prop, 'loan', (e.target as HTMLInputElement).value)
+                            if (e.key === 'Escape') setEditing(null)
+                          }}
+                          className="w-[110px] border border-field-line rounded-md px-1.5 py-[2px] text-[12px] bg-card" />
+                      ) : (
+                        <button onClick={() => setEditing(`${l.id}:loan`)} className="hover:underline text-left">
+                          {l.balance !== null ? money(l.balance) : 'not recorded'}
+                        </button>
+                      )}
+                    </td>
+                    <td colSpan={4}></td>
+                  </tr>
+                ))}
+                </Fragment>
               )
             })}
           </tbody>
@@ -624,6 +699,7 @@ export default function PortfolioReview() {
   const [why, setWhy] = useState('')
   const [stage, setStage] = useState<'all' | Stage>('all')
   const [onlyDue, setOnlyDue] = useState(false)
+  const [tile, setTile] = useState<Tile>('all')
   const [find, setFind] = useState('')
   const [importing, setImporting] = useState(false)
   // REFRESHING THE BALANCES. Nothing is loaded until somebody asks: the trail
@@ -684,7 +760,15 @@ export default function PortfolioReview() {
     const all = rows || []
     const needle = find.trim().toLowerCase()
     const kept = all.filter(r => {
-      if (stage !== 'all' && r.status !== stage) return false
+      // THE TILE PRESSED AT THE TOP, by the same rule that counted it - and
+      // "on the list" means the work left, so a review you closed is gone
+      // from it the moment you close it.
+      //
+      // Picking a status by hand overrules the tile: choosing "Closed" has to
+      // show you closed ones, or the dropdown would be a list of words that
+      // return nothing.
+      if (stage === 'all') { if (!matchesTile(r, tile, today)) return false }
+      else if (r.status !== stage) return false
       if (onlyDue) {
         const d = dueState(r.due_on, today)
         if (d !== 'overdue' && d !== 'today') return false
@@ -725,7 +809,7 @@ export default function PortfolioReview() {
       if (ea !== eb) return eb - ea
       return String(a.last_name || '').localeCompare(String(b.last_name || ''))
     }) as Row[]
-  }, [rows, stage, onlyDue, find, today, props])
+  }, [rows, stage, onlyDue, find, today, props, tile])
 
   const counts = useMemo(() => countsFor(rows || [], today), [rows, today])
 
@@ -850,16 +934,22 @@ export default function PortfolioReview() {
       {importing && <BookImport onFinished={() => window.location.reload()} />}
 
       <div className="flex gap-2 flex-wrap mb-3">
-        <Count n={counts.onTheList} what="on the list" />
-        <Count n={counts.reviewed} what="reviewed" />
-        <Count n={counts.awaitingReply} what="awaiting a reply" />
-        <Count n={counts.toChase} what="to chase today" tone="info" />
+        <Count n={counts.onTheList} what="on the list"
+          on={tile === 'all'} onPick={() => setTile('all')} />
+        <Count n={counts.reviewed} what="reviewed"
+          on={tile === 'reviewed'} onPick={() => setTile(tile === 'reviewed' ? 'all' : 'reviewed')} />
+        <Count n={counts.awaitingReply} what="awaiting a reply"
+          on={tile === 'awaiting'} onPick={() => setTile(tile === 'awaiting' ? 'all' : 'awaiting')} />
+        <Count n={counts.toChase} what="to chase today" tone="info"
+          on={tile === 'chase'} onPick={() => setTile(tile === 'chase' ? 'all' : 'chase')} />
         {/* THE ONES THAT CAME BACK ROUND. 26 Oct 2026 - the date you set when
             you closed one has always been saved and nothing ever counted it.
             Its own tile, because ringing somebody back a year later is a
             different job to finishing a conversation from last week. */}
-        <Count n={counts.comingBack} what="coming back round" tone="chase" />
-        <Count n={counts.becameDeals} what="became deals" tone="done" />
+        <Count n={counts.comingBack} what="coming back round" tone="chase"
+          on={tile === 'coming'} onPick={() => setTile(tile === 'coming' ? 'all' : 'coming')} />
+        <Count n={counts.becameDeals} what="became deals" tone="done"
+          on={tile === 'deals'} onPick={() => setTile(tile === 'deals' ? 'all' : 'deals')} />
       </div>
 
       <div className="flex gap-2 items-center flex-wrap mb-3">

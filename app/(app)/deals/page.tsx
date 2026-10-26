@@ -2,6 +2,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { PAGE_WIDE } from '@/lib/page-width'
 import { seedFromClients, seedSummary } from '@/lib/seed-from-client'
+import { makeUid, makeApplicant } from '@/lib/the-review-becomes-a-deal'
 import { dealMatches } from '@/lib/deal-search'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { Plus, Search, Briefcase, Trash2, Copy } from 'lucide-react'
@@ -586,20 +587,9 @@ export default function DealsPage() {
   )
 }
 
-function makeUid() {
-  return typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)
-}
-function makeApplicant(first_name: string, last_name: string, email: string, phone: string, clientId?: string) {
-  const id = makeUid()
-  return {
-    id, title: '', firstName: first_name, middleName: '', lastName: last_name,
-    preferredName: '', previousName: '', gender: '', dob: '',
-    phoneMobile: phone, emailPersonal: email, clientId,
-    addresses: [{ id: makeUid(), address: '', residentialStatus: '', isCurrent: true, startDate: '' }],
-    employment: [{ id: makeUid(), isCurrent: true, employmentPriority: 'Primary', employmentBasis: 'Full time', occupation: '', startDate: '', onProbation: false, employerName: '', employerAbn: '', employerAcn: '', employerType: '', employerAddress: '', contactPersonName: '', contactPersonDetails: '' }],
-    income: [{ id: makeUid(), incomeType: 'PAYG', employmentId: '', grossSalary: '', grossSalaryFrequency: 'Annually', bonusAmount: '', bonusFrequency: 'Annually', overtimeEssentialAmount: '', overtimeEssentialFrequency: 'Annually', overtimeNonEssentialAmount: '', overtimeNonEssentialFrequency: 'Annually', commissionAmount: '', commissionFrequency: 'Annually', allowanceAmount: '', allowanceFrequency: 'Annually' }]
-  }
-}
+// MOVED TO lib/the-review-becomes-a-deal.ts ON 26 Oct 2026, so a deal built
+// from a portfolio review and a deal built here cannot shape an applicant two
+// different ways. The calls below read exactly as they did.
 
 function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: () => void; onCreated: (id: string) => void; brokerKey: string | null; userRole: string }) {
   const browser = createSupabaseBrowser()

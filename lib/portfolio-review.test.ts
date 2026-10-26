@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import {
   STAGES, OUTCOMES, REASONS, stageLabel, outcomeLabel, reasonLabel, reasonTally, stageIndex,
-  usableEquity,
+  usableEquity, matchesTile, onTile,
   totalCost, depositNeeded, contributionCheck, usableEquity, totalUsableEquity,
   daysUntil, dueState, whenDue, countsFor, sortForTheList,
   greetingName, canSendTheEmail,
@@ -191,7 +191,11 @@ describe('the Monday numbers', () => {
   it('leaves an opted-out client out of every count', () => {
     // They asked not to hear from us. A list that still counts them as "to
     // chase" is how that promise gets broken.
-    expect(c.onTheList).toBe(5)
+    //
+    // 26 Oct 2026: four, not five. "On the list" is the work left now - the
+    // closed row has moved over, and the opted-out one was never counted.
+    // Fabio: "the filters once I close move them over".
+    expect(c.onTheList).toBe(4)
     expect(c.toChase).toBe(2)
   })
 
@@ -205,7 +209,9 @@ describe('the Monday numbers', () => {
   })
 
   it('counts reviewed as having got as far as the figures', () => {
-    expect(c.reviewed).toBe(4)
+    // 26 Oct 2026: three, not four. A closed review is not work in progress,
+    // whatever stage it reached before it closed, so it is off this tile too.
+    expect(c.reviewed).toBe(3)
   })
 })
 
@@ -380,7 +386,11 @@ describe('the ones that came back round', () => {
   })
 
   it('an opted-out client never comes back round either', () => {
-    expect(c.onTheList).toBe(4)
+    expect(c.comingBack).toBe(2)
+    // One, not four. Four of these five are closed and have moved off the
+    // list; the fifth is the only one still being worked. Written earlier the
+    // same day, when "on the list" still counted every row.
+    expect(c.onTheList).toBe(1)
   })
 })
 
@@ -445,8 +455,11 @@ describe('adding and correcting a security', () => {
   })
 
   it('the loan and the value are typed into where they are read', () => {
-    expect(list).toContain("saveFigure(p, 'loan', e.target.value)")
-    expect(list).toContain("saveFigure(p, 'value', e.target.value)")
+    // 26 Oct 2026: the value belongs to the PROPERTY, so it is saved once for
+    // the security and written to every loan row on it. The balance is still
+    // per loan, because that is what a balance is.
+    expect(list).toContain("saveFigure(sec.rows[0] as Prop, 'loan', e.target.value)")
+    expect(list).toContain('saveSecurityValue(sec, e.target.value)')
   })
 
   it('and every change rewrites the stored equity', () => {
@@ -492,5 +505,57 @@ describe('the equity behind all of it', () => {
     // database, and a function that only survives one of those is a bug
     // waiting for a Tuesday.
     expect(usableEquity('$1,000,000', '400,000')).toBe(400000)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// THE TILES ARE FILTERS, AND THE LIST SHRINKS AS YOU WORK IT
+// ---------------------------------------------------------------------------
+//
+// 26 Oct 2026. Fabio, after closing one: "when I press the box at the top, I
+// can't tell which ones are reviewed. So what the fuck is the point?" And:
+// "the filters once I close move them over".
+
+describe('what each tile shows', () => {
+  const rows = [
+    { status: 'not_reviewed',   due_on: null },
+    { status: 'numbers_done',   due_on: '2026-10-19' },                       // reviewed, due today
+    { status: 'template_sent',  due_on: '2026-10-16' },                       // awaiting, overdue
+    { status: 'closed', outcome: 'not_suitable', due_on: '2026-10-16' },      // came back round
+    { status: 'closed', outcome: 'converted',    due_on: '2027-10-19' },      // became a deal
+    { status: 'not_reviewed',   due_on: null, opted_out: true },
+  ]
+  const c = countsFor(rows, MONDAY)
+
+  it('"on the list" is the work left, not every row ever imported', () => {
+    // Three open rows. The two closed ones have moved over, and the opted-out
+    // client is counted nowhere.
+    expect(c.onTheList).toBe(3)
+  })
+
+  it('and a closed review is off it the moment it is closed', () => {
+    const before = countsFor([{ status: 'numbers_done', due_on: null }], MONDAY)
+    const after = countsFor([{ status: 'closed', outcome: 'declined', due_on: null }], MONDAY)
+    expect(before.onTheList).toBe(1)
+    expect(after.onTheList).toBe(0)
+  })
+
+  it('every tile shows exactly what it counted', () => {
+    // THE WHOLE POINT. The number and the list behind it read the same rule,
+    // so a tile can never say 3 and show 4.
+    for (const tile of ['all', 'reviewed', 'awaiting', 'chase', 'coming', 'deals'] as const) {
+      const shown = rows.filter(r => !r.opted_out && matchesTile(r, tile, MONDAY)).length
+      const counted = {
+        all: c.onTheList, reviewed: c.reviewed, awaiting: c.awaitingReply,
+        chase: c.toChase, coming: c.comingBack, deals: c.becameDeals,
+      }[tile]
+      expect(shown, `the ${tile} tile counts ${counted} and shows ${shown}`).toBe(counted)
+    }
+  })
+
+  it('an opted-out client is counted nowhere but still appears on the list', () => {
+    const them = { status: 'not_reviewed', due_on: null, opted_out: true }
+    expect(onTile(them, 'all', MONDAY), 'they are being counted again').toBe(false)
+    expect(matchesTile(them, 'all', MONDAY), 'they have vanished off the list').toBe(true)
   })
 })

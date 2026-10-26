@@ -4,6 +4,9 @@ import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { copyHtmlAndPlain } from '@/lib/rich-text'
 import { reviewEmailHtml, reviewEmailSubject } from '@/lib/portfolio-review-email'
 import { OUTCOMES, REASONS, stageIndex, canSendTheEmail, greetingName } from '@/lib/portfolio-review'
+import {
+  makeApplicant, secondName, dealNameFromReview, factFindFromReview, dealRowFromReview,
+} from '@/lib/the-review-becomes-a-deal'
 
 // WHAT HAPPENS TO A REVIEW AFTER THE NUMBERS ARE DONE.
 //
@@ -42,7 +45,10 @@ const inDays = (n: number) => {
 export default function ReviewActions({ review, figures, properties, broker, copy, onDone }: {
   review: any
   figures: any
-  properties: { id: string; address: string }[]
+  // The whole property rows, not just a name and an address: the deal that
+  // comes out of a good review is seeded with the lender, the balance and the
+  // value on each one. See lib/the-review-becomes-a-deal.ts.
+  properties: any[]
   broker: { name: string; calendly: string; title?: string }
   copy?: any
   onDone?: () => void
@@ -187,6 +193,86 @@ export default function ReviewActions({ review, figures, properties, broker, cop
     onDone?.()
   }
 
+  // A GOOD ONE BECOMES A DEAL, IN ONE PRESS.
+  //
+  // 26 Oct 2026, Fabio on the half of the process that was never finished:
+  // "we were going to log calls and if successful I would create a deal card
+  // in one upload current fact find and register as a new lead".
+  //
+  // Everything the deal needs is already on this screen. What it used to take
+  // was somebody opening the new deal modal and typing the name, the second
+  // applicant, the broker and every security in again by hand.
+  const [making, setMaking] = useState(false)
+
+  const first = String(review?.first_name ?? '').trim()
+  const last = String(review?.last_name ?? '').trim()
+  const alsoCalled = secondName(review?.book_name, first, last)
+  const willBeCalled = dealNameFromReview(first, last, alsoCalled, new Date().getFullYear())
+
+  async function createTheDeal() {
+    if (!reviewId) { setWhy('This review has no id, so nothing can be saved against it.'); return }
+    setBusy(true); setWhy('')
+    const supabase = createSupabaseBrowser()
+    const email = String(review?.email || figures?.book_email || '').trim()
+    const phone = String(review?.phone || figures?.book_phone || '').trim()
+
+    // A BOOK ROW IS NOT A CLIENT YET. Most of the 656 are not - see
+    // docs/portfolio-review-stands-alone.sql. One is created here, the same as
+    // the new deal modal does, because everything that writes a position is
+    // gated on the applicant carrying a client id.
+    let clientId: string | null = review?.client_id || null
+    if (!clientId) {
+      const { data: made } = await supabase.from('clients').insert([{
+        first_name: first, last_name: last, email: email || null, phone: phone || null,
+      }]).select('id').single()
+      clientId = (made as any)?.id || null
+    }
+
+    let secondId: string | undefined
+    if (alsoCalled) {
+      const { data: made2 } = await supabase.from('clients').insert([{
+        first_name: alsoCalled.first, last_name: alsoCalled.last,
+        email: String(figures?.book_email2 || '').trim() || null,
+        phone: String(figures?.book_phone2 || '').trim() || null,
+      }]).select('id').single()
+      secondId = (made2 as any)?.id || undefined
+    }
+
+    const applicants = [makeApplicant(first, last, email, phone, clientId || undefined)]
+    if (alsoCalled) {
+      applicants.push(makeApplicant(alsoCalled.first, alsoCalled.last,
+        String(figures?.book_email2 || '').trim(), String(figures?.book_phone2 || '').trim(), secondId))
+    }
+
+    const row = dealRowFromReview({
+      dealName: willBeCalled,
+      clientId,
+      brokerKey: review?.book_broker_key,
+      factFind: factFindFromReview(applicants, properties || []),
+    })
+
+    const { data: deal, error } = await supabase.from('deals').insert([row]).select('id').single()
+    if (error || !deal) {
+      setBusy(false)
+      setWhy(error?.message || 'The deal was not created. Nothing was changed.')
+      return
+    }
+
+    // AND THE REVIEW SAYS WHAT BECAME OF IT. linked_deal_id has been read on
+    // the list since the day it was built and written nowhere until now.
+    const now = new Date().toISOString()
+    const { error: linkErr } = await supabase.from('portfolio_reviews').update({
+      linked_deal_id: (deal as any).id,
+      status: 'closed', outcome: 'converted',
+      closed_at: now, reviewed_at: now, updated_at: now,
+    }).eq('id', reviewId)
+    setBusy(false)
+    // The deal exists either way. Losing the link is worth saying out loud and
+    // is not worth throwing the deal away over.
+    if (linkErr) { setWhy('The deal was created, but the review was not marked. Say so and it gets fixed.'); return }
+    window.location.href = `/deals/${(deal as any).id}`
+  }
+
   async function closeIt() {
     if (!reviewId) { setWhy('This review has no id, so nothing can be saved against it.'); return }
     setBusy(true); setWhy('')
@@ -231,7 +317,20 @@ export default function ReviewActions({ review, figures, properties, broker, cop
         <button className={BTN} onClick={() => { setLogging(v => !v); setClosing(false) }}>
           Log a call
         </button>
-        <button className={BTN} onClick={() => { setClosing(v => !v); setLogging(false) }}>
+        {/* THE OTHER HALF OF THE PROCESS. Log the calls, and when one goes
+            well, one press builds the deal. 26 Oct 2026. */}
+        {!review?.linked_deal_id && (
+          <button className={BTN} onClick={() => { setMaking(v => !v); setClosing(false); setLogging(false) }}>
+            Became a deal
+          </button>
+        )}
+        {review?.linked_deal_id && (
+          <a href={`/deals/${review.linked_deal_id}`}
+            className="text-[12px] border border-done-edge bg-done-bg text-done rounded-lg px-3 py-[7px] font-semibold">
+            Open the deal
+          </a>
+        )}
+        <button className={BTN} onClick={() => { setClosing(v => !v); setLogging(false); setMaking(false) }}>
           Close this out
         </button>
       </div>
@@ -277,6 +376,29 @@ export default function ReviewActions({ review, figures, properties, broker, cop
             <span className="flex-1" />
             <button className={BTN} onClick={() => setC({ ...c, next_action_on: '' })}>
               No chase needed</button>
+          </div>
+        </div>
+      )}
+
+      {making && (
+        <div className="mt-3 bg-page border border-g100 rounded-lg p-3.5">
+          <label className={LAB}>This builds the deal from what is already here</label>
+          <ul className="text-[12.5px] text-body leading-relaxed list-disc pl-4 mb-2.5">
+            <li><b className="text-ink">{willBeCalled}</b></li>
+            <li>{alsoCalled ? 'Both applicants' : 'One applicant'}, with the email and phone on file</li>
+            <li>{(properties || []).length} {(properties || []).length === 1 ? 'security' : 'securities'} on the
+              fact find, with the lender, the balance and the value on each</li>
+            <li>Registered as a new lead from the portfolio review</li>
+            <li>This review marked as became a deal, and linked to it</li>
+          </ul>
+          <p className="text-[11px] text-faint mb-2.5 leading-relaxed">
+            It opens on the Fact Find. Everything on it can be changed there — nothing here is final.
+          </p>
+          <div className="flex gap-2">
+            <button className={DARK} disabled={busy} onClick={createTheDeal}>
+              {busy ? 'Building it…' : 'Create the deal card'}
+            </button>
+            <button className={BTN} onClick={() => setMaking(false)}>Cancel</button>
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
+import { securitiesOf } from '@/lib/one-security-many-loans'
 import { money, readMoney } from '@/lib/money'
 import { contributionCheck, canSendTheEmail, stageIndex } from '@/lib/portfolio-review'
 import ReviewActions from '@/components/ReviewActions'
@@ -154,17 +155,15 @@ export default function ReviewFigures({ review, props, onSaved }: {
   const tie = contributionCheck(d.purchase_price, d.stamp_duty, d.loan_amount,
                                 forTheDeposit, d.savings_contribution)
 
-  const chosen = props.find(p => p.id === d.equity_property_id)
-  const usableOf = (p: Prop) => {
-    if (!p.investor) return null
-    if (p.usable_equity !== null) return p.usable_equity
-    const value = p.estimated_current_value ?? p.original_value
-    const owing = p.current_balance ?? p.original_loan
-    if (value === null || owing === null) return null
-    const out = Math.round(value * 0.8 - owing)
-    return out > 0 ? out : 0
-  }
-  const headroom = chosen ? usableOf(chosen) : null
+  // ONE LINE PER SECURITY, NOT PER LOAN.
+  //
+  // 26 Oct 2026. This listed a row per loan, so a house with two loans on it
+  // appeared twice with two different equity figures - and both of them were
+  // 80% of the whole value less one of the loans. Picking either one released
+  // equity that is not there. See lib/one-security-many-loans.ts.
+  const securities = securitiesOf(props as any[])
+  const chosenSec = securities.find(sec => sec.rows.some((r: any) => r.id === d.equity_property_id))
+  const headroom = chosenSec ? chosenSec.usable : null
   // Releasing more than the property has in it is a real answer and the screen
   // says so rather than refusing. It is a conversation with a lender, not a
   // rule this portal gets to make.
@@ -231,12 +230,13 @@ export default function ReviewFigures({ review, props, onSaved }: {
         <select className={IN} value={d.equity_property_id}
           onChange={e => set('equity_property_id', e.target.value)}>
           <option value="">Not chosen yet</option>
-          {props.filter(p => p.investor).map(p => {
-            const u = usableOf(p)
-            return <option key={p.id} value={p.id}>
-              {p.address}{u === null ? '' : ` — ${money(u)} usable`}
+          {securities.filter(sec => sec.investor).map(sec => (
+            <option key={sec.key} value={String((sec.rows[0] as any)?.id || '')}>
+              {sec.address}
+              {sec.loans.length > 1 ? ` (${sec.loans.length} loans)` : ''}
+              {sec.usable === null ? '' : ` — ${money(sec.usable)} usable`}
             </option>
-          })}
+          ))}
         </select>
       </div>
 

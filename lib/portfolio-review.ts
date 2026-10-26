@@ -335,17 +335,62 @@ export type Counts = {
   becameDeals: number
 }
 
+// A NUMBER YOU CANNOT PRESS IS DECORATION.
+//
+// 26 Oct 2026. Fabio: "it closed another one that says now under one reviewed,
+// but when I press the box at the top, I can't tell which ones are reviewed.
+// So what the fuck is the point?" He is right. Six figures sat across the top
+// of the book and not one of them showed you what it was counting.
+//
+// ONE RULE PER TILE, USED BY THE COUNT AND BY THE LIST. The count and the
+// filter working it out separately is how a tile comes to say 3 and show 4 -
+// which is the same class of fault as the "to chase" tile that skipped closed
+// reviews while the list underneath showed them.
+export type Tile = 'all' | 'reviewed' | 'awaiting' | 'chase' | 'coming' | 'deals'
+
+// 'all' IS THE WORK LEFT, NOT EVERY ROW EVER.
+//
+// 26 Oct 2026, the same conversation: "the filters once I close move them
+// over". A worklist that does not shrink as you work it is not a worklist.
+// Six hundred and fifty-six stayed six hundred and fifty-six after a close,
+// and the one you had just finished sat in the middle of it.
+//
+// A closed review is still reachable - the status dropdown has Closed, and
+// the two tiles for came-back-round and became-deals are both closed rows.
+export function matchesTile(r: any, tile: Tile, today: Date): boolean {
+  const due = dueState(r?.due_on, today)
+  const soon = due === 'overdue' || due === 'today'
+  switch (tile) {
+    case 'reviewed': return stageIndex(r?.status) >= stageIndex('numbers_done')
+                         && r?.status !== 'closed'
+    case 'awaiting': return r?.status === 'template_sent'
+    case 'chase': return r?.status !== 'closed' && soon
+    case 'coming': return r?.status === 'closed' && soon
+    case 'deals': return r?.outcome === 'converted'
+    default: return r?.status !== 'closed'
+  }
+}
+
+export function onTile(r: any, tile: Tile, today: Date): boolean {
+  // An opted-out client is counted on no tile at all. They asked not to hear
+  // from us, and a number that still counts them is how that promise breaks.
+  // The LIST still shows them, at the bottom, so nobody wonders where they
+  // went - which is why this and matchesTile() are two functions.
+  if (r?.opted_out) return false
+  return matchesTile(r, tile, today)
+}
+
 export function countsFor(rows: any[], today: Date): Counts {
   const live = (rows || []).filter(r => !r?.opted_out)
+  const on = (tile: Tile) => live.filter(r => onTile(r, tile, today)).length
   return {
-    onTheList: live.length,
-    reviewed: live.filter(r => stageIndex(r?.status) >= stageIndex('numbers_done')).length,
-    awaitingReply: live.filter(r => r?.status === 'template_sent').length,
-    toChase: live.filter(r => {
-      if (r?.status === 'closed') return false
-      const d = dueState(r?.due_on, today)
-      return d === 'overdue' || d === 'today'
-    }).length,
+    // THE WORK LEFT, which is what a person wants a number for. It used to be
+    // every row imported, so it read 656 on the day the book landed and 656
+    // after a fortnight of work. See matchesTile().
+    onTheList: on('all'),
+    reviewed: on('reviewed'),
+    awaitingReply: on('awaiting'),
+    toChase: on('chase'),
     // THE ONES THAT CAME BACK ROUND.
     //
     // 26 Oct 2026. next_review_date has been saved on every close since the
@@ -358,12 +403,8 @@ export function countsFor(rows: any[], today: Date): Counts {
     // Its own tile rather than a bigger "to chase" number, because the work is
     // different: one is finishing a conversation, the other is starting one
     // again a year later.
-    comingBack: live.filter(r => {
-      if (r?.status !== 'closed') return false
-      const d = dueState(r?.due_on, today)
-      return d === 'overdue' || d === 'today'
-    }).length,
-    becameDeals: live.filter(r => r?.outcome === 'converted').length,
+    comingBack: on('coming'),
+    becameDeals: on('deals'),
   }
 }
 
