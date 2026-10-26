@@ -756,6 +756,25 @@ export default function PortfolioReview() {
       })
   }, [reload])
 
+  // THE FIGURES, WORKED OUT ONCE EACH.
+  //
+  // 26 Oct 2026, after Safari reloaded the tab "because it was using
+  // significant memory". figuresFor() was being called from inside the sort
+  // comparator AND again while drawing every row: on 656 clients that is
+  // thousands of calls, each one now grouping the loans onto their securities
+  // and normalising every address. Sorting alone did it about thirteen
+  // thousand times, on every keystroke in the search box.
+  //
+  // A Map, built when the properties change and not again. Everything below
+  // reads from it.
+  const figures = useMemo(() => {
+    const out = new Map<string, Figures>()
+    for (const [reviewId, list] of props) out.set(reviewId, figuresFor(list))
+    return out
+  }, [props])
+
+  const figuresOf = (reviewId: string) => figures.get(reviewId) || figuresFor(undefined)
+
   const shown = useMemo(() => {
     const all = rows || []
     const needle = find.trim().toLowerCase()
@@ -802,8 +821,8 @@ export default function PortfolioReview() {
       // have a loan and really might have equity. On 21 Oct 2026 no row on
       // this list was in that state - every property carried a figure - but
       // the next import is one empty column away from it.
-      const fa = figuresFor(props.get(a.review_id))
-      const fb = figuresFor(props.get(b.review_id))
+      const fa = figuresOf(a.review_id)
+      const fb = figuresOf(b.review_id)
       const ea = fa.loanUnknown ? -Infinity : (fa.usable ?? -Infinity)
       const eb = fb.loanUnknown ? -Infinity : (fb.usable ?? -Infinity)
       if (ea !== eb) return eb - ea
@@ -1033,7 +1052,7 @@ export default function PortfolioReview() {
             // opens here instead: every security, every lender, the loan and
             // the LVR on each, and the contact history. A client the portal
           // really has still links to their own page.
-          const f = figuresFor(props.get(r.review_id))
+          const f = figuresOf(r.review_id)
           const isOpen = open === r.review_id
           return (
             <div key={r.review_id} className="border-t border-line-soft first:border-t-0">
