@@ -209,9 +209,10 @@ describe('the Monday numbers', () => {
   })
 
   it('counts reviewed as having got as far as the figures', () => {
-    // 26 Oct 2026: three, not four. A closed review is not work in progress,
-    // whatever stage it reached before it closed, so it is off this tile too.
-    expect(c.reviewed).toBe(3)
+    // Four, including the closed one. Closing a review is the end of
+    // reviewing it. Fabio, 26 Oct 2026, after I briefly made it three: "I am
+    // marking some deals and it sits reviewed only 2".
+    expect(c.reviewed).toBe(4)
   })
 })
 

@@ -361,8 +361,16 @@ export function matchesTile(r: any, tile: Tile, today: Date): boolean {
   const due = dueState(r?.due_on, today)
   const soon = due === 'overdue' || due === 'today'
   switch (tile) {
+    // CLOSED STILL COUNTS AS REVIEWED.
+    //
+    // 26 Oct 2026, an hour after I made it not count: "I am marking some deals
+    // and it sits reviewed only 2". He had worked sixteen. Closing one is the
+    // END of reviewing it, not the opposite of it - and a number that goes
+    // DOWN as you work is worse than no number.
+    //
+    // "On the list" is the work left. "Reviewed" is the work done. They are
+    // different questions and only one of them drops a closed review.
     case 'reviewed': return stageIndex(r?.status) >= stageIndex('numbers_done')
-                         && r?.status !== 'closed'
     case 'awaiting': return r?.status === 'template_sent'
     case 'chase': return r?.status !== 'closed' && soon
     case 'coming': return r?.status === 'closed' && soon
