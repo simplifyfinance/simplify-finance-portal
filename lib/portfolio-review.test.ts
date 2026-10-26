@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import {
   STAGES, OUTCOMES, REASONS, stageLabel, outcomeLabel, reasonLabel, reasonTally, stageIndex,
+  usableEquity,
   totalCost, depositNeeded, contributionCheck, usableEquity, totalUsableEquity,
   daysUntil, dueState, whenDue, countsFor, sortForTheList,
   greetingName, canSendTheEmail,
@@ -406,5 +407,90 @@ describe('closing one out asks why', () => {
 
   it('and still gives every outcome a day to come back on', () => {
     expect(box).toContain('next_review_date: close.next_review_date || null')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// A SECURITY THE BOOK NEVER HAD
+// ---------------------------------------------------------------------------
+//
+// 26 Oct 2026. Fabio, working a review: "I cannot add a security and loan that
+// is not being pulled so need the ability of doing that". Every property
+// arrived from the spreadsheet and there was no other door - so a client who
+// has bought since the export had a usable equity figure that was wrong by
+// whatever was missing, and nothing on the screen said so.
+//
+// Asked whether rows should be removable too, he was exact: "I need to add not
+// remove".
+
+describe('adding and correcting a security', () => {
+  const list = readFileSync('components/PortfolioReview.tsx', 'utf8')
+
+  it('there is a way in', () => {
+    expect(list).toContain('+ Add a security')
+    expect(list).toContain("from('portfolio_review_properties').insert(")
+  })
+
+  it('and it is tied to this review, with an address', () => {
+    expect(list).toContain('review_id: r.review_id')
+    expect(list, 'a security with no address would be a blank row forever')
+      .toContain("if (!address) { setOops('A security needs an address.'); return }")
+  })
+
+  it('nothing on this screen deletes a property', () => {
+    // His words. A sold property is a different conversation and it has not
+    // been had yet.
+    expect(list, 'something deletes a property now')
+      .not.toContain("from('portfolio_review_properties').delete()")
+  })
+
+  it('the loan and the value are typed into where they are read', () => {
+    expect(list).toContain("saveFigure(p, 'loan', e.target.value)")
+    expect(list).toContain("saveFigure(p, 'value', e.target.value)")
+  })
+
+  it('and every change rewrites the stored equity', () => {
+    // THE ONE THAT MATTERS. usable_equity is kept on the row and the LIST adds
+    // up the stored column rather than working it out - so a loan changed
+    // without rewriting it leaves the table saying one thing and the headline
+    // figure above it another.
+    expect(list).toContain('usable_equity: equityFor(value, loan, p.investor !== false)')
+    expect(list).toContain('usable_equity: equityFor(value, loan, form.investor)')
+  })
+
+  it('a figure typed by hand says so and says when', () => {
+    expect(list).toContain("patch.valuation_source = 'Entered by hand'")
+    expect(list).toContain('patch.balance_as_at = n === null ? null : ymd')
+  })
+
+  it('and a write that saved nothing is treated as a failure', () => {
+    // RLS refuses by returning no rows and no error.
+    expect(list).toContain('if (error || !data?.length)')
+  })
+})
+
+describe('the equity behind all of it', () => {
+  it('eighty per cent of the value, less what is owed', () => {
+    expect(usableEquity(1000000, 400000)).toBe(400000)
+  })
+
+  it('never a negative, because that is not money you can use', () => {
+    expect(usableEquity(500000, 480000)).toBe(0)
+  })
+
+  it('and nothing at all for a home', () => {
+    expect(usableEquity(1000000, 100000, false)).toBeNull()
+  })
+
+  it('says nothing rather than guessing where a figure is missing', () => {
+    expect(usableEquity(null, 400000)).toBeNull()
+    expect(usableEquity(1000000, null)).toBeNull()
+  })
+
+  it('reads a figure typed with commas and a dollar sign', () => {
+    // It reaches these functions from a form field as well as from the
+    // database, and a function that only survives one of those is a bug
+    // waiting for a Tuesday.
+    expect(usableEquity('$1,000,000', '400,000')).toBe(400000)
   })
 })

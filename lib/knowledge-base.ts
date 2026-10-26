@@ -151,6 +151,106 @@ export function readingMinutes(e: Entry): number {
 // Add a new entry wherever is tidiest. The date decides what the team sees.
 export const ENTRIES: Entry[] = [
   {
+    id: 'a-security-the-book-never-had',
+    section: 'process',
+    title: 'The book \u2014 adding a security, and fixing a figure',
+    on: '2026-10-26',
+    lead: 'Every property on a review arrived from the spreadsheet and there was no other way in. '
+        + 'A client who has bought since the export had a usable equity figure that was wrong by '
+        + 'whatever was missing, and nothing said so. You can add one now, and correct a loan or a '
+        + 'value where it is written.',
+    body: [
+      'Open a review and the securities are listed as the book has them. Underneath there is now '
+      + 'a button.',
+      { shot: 'book-add-security.png',
+        caption: 'Add a security the book does not have \u2014 address, lender, loan, value, type.' },
+      {
+        step: 'Adding one',
+        body: [
+          'Five things: the address, the lender, what is owing, what it is worth, and whether it is '
+          + 'an investment or their home. The LVR and the usable equity work themselves out.',
+          'Owner occupied is shown and never counted. You need the whole portfolio to have the '
+          + 'conversation; counting the home would inflate the figure and the email would be wrong.',
+          'It is marked as added by hand, so nobody wonders later why it is not on the spreadsheet, '
+          + 'and a re-import of the book leaves it alone.',
+        ],
+      },
+      {
+        step: 'Fixing a loan or a value',
+        body: [
+          'Click the figure in the table and type over it. A book loan is what was owing at '
+          + 'settlement, which on a three year old file is not what is owing today.',
+          'A value you type is recorded as entered by hand, with the date, the same as any other '
+          + 'valuation. The usable equity is rewritten at the same moment, so the table and the '
+          + 'total at the top of the list can never say two different things.',
+        ],
+      },
+      {
+        call: 'Nothing here removes a security',
+        title: 'Adding was the thing missing; a sold property is a different conversation',
+      },
+      'If you need one off a review, say so and we will build it properly rather than putting a '
+      + 'cross on a row and hoping.',
+    ],
+  },
+  {
+    id: 'today-is-a-day-now',
+    section: 'process',
+    title: 'Today \u2014 a line through your list, in your order, with notes',
+    on: '2026-10-26',
+    lead: 'The first version put everything sitting with you on one list. On a book of fifty-eight '
+        + 'deals that is not a day, it is the same pile with numbers on it. There is now a line '
+        + 'through it: above is today, below is the queue, and you decide where it goes.',
+    body: [
+      'Everything is still drafted for you. What changes is that you say where your day ends.',
+      { shot: 'today-the-line.png',
+        caption: 'The line. Above it is today, below it is everything else still with you.' },
+      {
+        step: '1. Drag the line to where your day ends',
+        body: [
+          'Grab the line and pull it up. What drops below it is the queue \u2014 not today, not '
+          + 'forgotten, and drafted again tomorrow morning.',
+          'The cross on a deal does the same thing for one: it drops under the line. Nothing on '
+          + 'this screen deletes anything.',
+        ],
+      },
+      {
+        step: '2. Your order, not ours',
+        body: [
+          'Drag deals into the order you will work them. The grey tag on the right says why the '
+          + 'portal put it there \u2014 a broker\u2019s priority, or oldest, with the stage and how long '
+          + 'it has been waiting. Move it wherever you like; the tag still says what drafted it.',
+        ],
+      },
+      {
+        step: '3. A note, for today',
+        body: [
+          '"Waiting on the valuation \u2014 chase CBA at 11". One line under a deal, on the day. It '
+          + 'is gone tomorrow, because it was true for today.',
+          'Anything that matters longer than a day goes in the deal\u2019s own notes, where the next '
+          + 'person reads it. This is not that.',
+        ],
+      },
+      {
+        step: '4. On it now',
+        body: [
+          'Press the number beside a deal and it says On it now. One at a time, and everybody '
+          + 'else can see it \u2014 so nobody rings you about the file you are already in.',
+        ],
+      },
+      { shot: 'today-round-two.png',
+        caption: 'The whole screen: the day, the queue underneath, the team down the side.' },
+      {
+        call: 'The queue is not a bin',
+        title: 'Everything under the line is on tomorrow\u2019s list, in the same order, waiting',
+      },
+      'Nothing is lost by pulling the line up. A deal you did not get to is drafted again in the '
+      + 'morning, and it will be older, so it will be higher.',
+      'This is the second version of Today and it will not be the last. Tell us what is wrong with '
+      + 'it while you are using it, not afterwards.',
+    ],
+  },
+  {
     id: 'why-it-was-not-suitable',
     section: 'process',
     title: 'The book \u2014 why it was not suitable, and getting them back',

@@ -9,8 +9,9 @@ import ReviewFigures from '@/components/ReviewFigures'
 import {
   STAGES, stageLabel, outcomeLabel, reasonLabel, countsFor, sortForTheList,
   dueState, whenDue, fullName, type Stage,
-  usableForTheList, loanIsUnknown,
+  usableForTheList, loanIsUnknown, usableEquity,
 } from '@/lib/portfolio-review'
+import { readMoney } from '@/lib/money'
 import {
   planFor, writeFor, monthName, asAtShort,
   type Holding, type TrailLine, type Plan, type Change,
@@ -210,9 +211,95 @@ function Row({ href, className, onClick, children }: {
 // Opened in place, because the alternative is a page for somebody who is not a
 // client of this portal yet. Fabio, 19 Oct 2026: the triage happens out here,
 // and when one is worth doing he makes the deal card himself.
+// WHAT THE BOOK DOES NOT HAVE, AND WHAT IT HAS WRONG.
+//
+// 26 Oct 2026. Fabio, working a review: "I cannot add a security and loan that
+// is not being pulled so need the ability of doing that".
+//
+// Every property on a review arrived from the spreadsheet import and there was
+// no other door. A client who has bought since the export, or whose CRM record
+// was short a property, could not be worked properly at all - and the usable
+// equity figure the whole conversation turns on was wrong by whatever was
+// missing.
+//
+// Asked whether rows should also be removable, he was exact: "I need to add
+// not remove". So nothing here deletes a property. The loan and the value can
+// be corrected in place, which is the other half of the same problem: a book
+// figure from settlement three years ago is not what somebody owes today.
 function OpenReview({ r, rows, today, onSaved }: {
   r: Row; rows: Prop[]; today: Date; onSaved?: () => void
 }) {
+  const [adding, setAdding] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [oops, setOops] = useState('')
+  const [form, setForm] = useState({ address: '', lender: '', loan: '', value: '', investor: true })
+  // Which figure is being typed into: '<property id>:loan' or ':value'.
+  const [editing, setEditing] = useState<string | null>(null)
+
+  const ymd = new Date().toISOString().slice(0, 10)
+
+  // THE STORED FIGURE HAS TO BE REWRITTEN WITH THE ONES IT CAME FROM.
+  //
+  // usable_equity is kept on the row, and the LIST adds up the stored column
+  // rather than working it out per row - see portfolio_review_list. Change a
+  // loan without rewriting it and the table on screen says one thing while the
+  // headline figure above it says another.
+  const equityFor = (value: any, loan: any, investor: boolean) =>
+    usableEquity(value, loan, investor)
+
+  async function addIt() {
+    const address = form.address.trim()
+    if (!address) { setOops('A security needs an address.'); return }
+    setBusy(true); setOops('')
+    const supabase = createSupabaseBrowser()
+    const loan = readMoney(form.loan)
+    const value = readMoney(form.value)
+    const { data, error } = await supabase.from('portfolio_review_properties').insert({
+      review_id: r.review_id,
+      client_id: r.client_id,
+      ordinal: (rows.length || 0) + 1,
+      address,
+      investor: form.investor,
+      lender_raw: form.lender.trim() || null,
+      current_balance: loan,
+      balance_as_at: loan === null ? null : ymd,
+      estimated_current_value: value,
+      valuation_source: value === null ? null : 'Entered by hand',
+      valuation_date: value === null ? null : ymd,
+      usable_equity: equityFor(value, loan, form.investor),
+      notes: 'Added by hand - not on the book.',
+    }).select('id')
+    setBusy(false)
+    // A blocked policy returns no rows and no error, so the row is the proof.
+    if (error || !data?.length) {
+      setOops(error?.message || 'That was not saved - nothing reached the database.')
+      return
+    }
+    setForm({ address: '', lender: '', loan: '', value: '', investor: true })
+    setAdding(false)
+    onSaved?.()
+  }
+
+  async function saveFigure(p: Prop, field: 'loan' | 'value', typed: string) {
+    setEditing(null)
+    const n = readMoney(typed)
+    const loan = field === 'loan' ? n : (p.current_balance ?? p.original_loan ?? null)
+    const value = field === 'value' ? n : (p.estimated_current_value ?? p.original_value ?? null)
+    const patch: Record<string, any> = {
+      usable_equity: equityFor(value, loan, p.investor !== false),
+    }
+    if (field === 'loan') { patch.current_balance = n; patch.balance_as_at = n === null ? null : ymd }
+    else { patch.estimated_current_value = n; patch.valuation_source = 'Entered by hand'; patch.valuation_date = n === null ? null : ymd }
+    const supabase = createSupabaseBrowser()
+    const { data, error } = await supabase.from('portfolio_review_properties')
+      .update(patch).eq('id', p.id).select('id')
+    if (error || !data?.length) {
+      setOops(error?.message || 'That was not saved - nothing reached the database.')
+      return
+    }
+    onSaved?.()
+  }
+
   const ordered = [...rows].sort((a, b) => (a.ordinal || 0) - (b.ordinal || 0))
   const cell = 'py-[7px] pr-3 border-t border-line-soft text-body align-top'
   const num = `${cell} tabular-nums whitespace-nowrap`
@@ -253,11 +340,41 @@ function OpenReview({ r, rows, today, onSaved }: {
                 <tr key={p.id}>
                   <td className={cell}>{p.address}</td>
                   <td className={cell}>{p.lender_raw || '—'}</td>
+                  {/* THE FIGURE IS TYPED INTO WHERE IT IS READ. A book
+                      number from settlement three years ago is not what
+                      somebody owes today, and the Numbers box underneath is
+                      about the new lending, not about correcting the book. */}
                   <td className={num}>
-                    {loan > 0 ? money(loan)
-                      : unknown ? <span className="text-chase">not recorded</span> : '—'}
+                    {editing === `${p.id}:loan` ? (
+                      <input autoFocus defaultValue={loan > 0 ? String(loan) : ''}
+                        onBlur={e => saveFigure(p, 'loan', e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') saveFigure(p, 'loan', (e.target as HTMLInputElement).value)
+                          if (e.key === 'Escape') setEditing(null)
+                        }}
+                        className="w-[110px] border border-field-line rounded-md px-1.5 py-[2px] text-[12px] bg-card" />
+                    ) : (
+                      <button onClick={() => setEditing(`${p.id}:loan`)} className="hover:underline text-left">
+                        {loan > 0 ? money(loan)
+                          : unknown ? <span className="text-chase">not recorded</span> : '—'}
+                      </button>
+                    )}
                   </td>
-                  <td className={num}>{value > 0 ? money(value) : '—'}</td>
+                  <td className={num}>
+                    {editing === `${p.id}:value` ? (
+                      <input autoFocus defaultValue={value > 0 ? String(value) : ''}
+                        onBlur={e => saveFigure(p, 'value', e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') saveFigure(p, 'value', (e.target as HTMLInputElement).value)
+                          if (e.key === 'Escape') setEditing(null)
+                        }}
+                        className="w-[110px] border border-field-line rounded-md px-1.5 py-[2px] text-[12px] bg-card" />
+                    ) : (
+                      <button onClick={() => setEditing(`${p.id}:value`)} className="hover:underline text-left">
+                        {value > 0 ? money(value) : '—'}
+                      </button>
+                    )}
+                  </td>
                   <td className={num}>{lvr === null ? '—' : `${lvr}%`}</td>
                   <td className={`${num} ${p.investor && typeof usable === 'number' && usable > 0
                       ? 'text-done font-semibold' : 'text-faint'}`}>
@@ -271,6 +388,62 @@ function OpenReview({ r, rows, today, onSaved }: {
             })}
           </tbody>
         </table>
+      )}
+
+      {oops && (
+        <p className="text-[11.5px] text-chase bg-chase-bg border border-chase-edge rounded-lg px-3 py-1.5 mt-2.5 inline-block">
+          {oops}
+        </p>
+      )}
+
+      {/* ADDING ONE THE BOOK NEVER HAD. */}
+      {adding ? (
+        <div className="bg-card border-[1.5px] border-ink rounded-xl px-4 py-3.5 mt-2.5">
+          <p className="text-[9.5px] font-bold uppercase tracking-[.06em] text-faint mb-2.5">
+            Add a security the book does not have
+          </p>
+          <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1.1fr] gap-2.5 max-[900px]:grid-cols-2">
+            {([['address', 'Security address'], ['lender', 'Lender'],
+               ['loan', 'Loan owing'], ['value', 'Value']] as const).map(([k, label]) => (
+              <div key={k}>
+                <label className="block text-[10px] font-bold uppercase tracking-[.05em] text-muted mb-1">{label}</label>
+                <input value={(form as any)[k]}
+                  onChange={e => setForm({ ...form, [k]: e.target.value })}
+                  className="w-full border border-field-line rounded-lg px-2.5 py-[7px] text-[12.5px] bg-card" />
+              </div>
+            ))}
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-[.05em] text-muted mb-1">Type</label>
+              <div className="flex gap-1.5">
+                {[[true, 'Investment'], [false, 'Owner occupied']].map(([v, label]) => (
+                  <button key={String(label)} onClick={() => setForm({ ...form, investor: v as boolean })}
+                    className={`text-[11.5px] rounded-lg px-2.5 py-[7px] border transition ${
+                      form.investor === v
+                        ? 'border-brand text-brand-ink bg-brand/5 font-semibold'
+                        : 'border-card-line text-muted hover:bg-page'}`}>
+                    {label as string}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 items-center mt-3 flex-wrap">
+            <button onClick={addIt} disabled={busy}
+              className="text-[12.5px] rounded-lg px-4 py-2 font-semibold bg-ink text-page disabled:opacity-40">
+              {busy ? 'Adding…' : 'Add it'}
+            </button>
+            <button onClick={() => { setAdding(false); setOops('') }}
+              className="text-[12.5px] rounded-lg px-3.5 py-2 border border-card-line bg-card">Cancel</button>
+            <span className="text-[11px] text-faint">
+              LVR and usable equity work themselves out. Owner occupied is shown and never counted.
+            </span>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setAdding(true)}
+          className="text-[12px] font-semibold text-brand-ink bg-card border border-brand rounded-lg px-3 py-1.5 mt-2.5">
+          + Add a security
+        </button>
       )}
 
       {/* WHERE THESE FIGURES COME FROM, said on the screen rather than assumed.

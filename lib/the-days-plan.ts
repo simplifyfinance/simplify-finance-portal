@@ -52,10 +52,14 @@ export type PlanDeal = {
 export type Plan = {
   officerId: string
   officerName: string
-  /** The deals, in the order they will be worked. */
+  /** The deals, in the order they will be worked. Above the line only. */
   deals: PlanDeal[]
   /** Null until they have pressed "Yes - this is my day". */
   confirmedAt: string | null
+  /** A line each, for today only. Keyed by deal id - see withNote(). */
+  notes?: Record<string, string>
+  /** The one deal they are on right now, so nobody rings about that one. */
+  onItNow?: string | null
 }
 
 const t = (v: any) => (v ? new Date(v).getTime() : 0)
@@ -102,6 +106,77 @@ export function draftDay(deals: PlanDeal[]): PlanDeal[] {
   starred.sort((a, b) => t(a.priority!.at) - t(b.priority!.at))
   rest.sort((a, b) => (t(a.since) || 0) - (t(b.since) || 0))
   return [...starred, ...rest]
+}
+
+// THE LINE, WHICH IS WHAT TURNS A BOOK INTO A DAY.
+//
+// 26 Oct 2026. Fabio: "we should be able to remove from list as everything
+// that is allocated is being allocated to be done in one day". The draft put
+// everything sitting with a person onto one list - on his own book that is
+// fifty-eight deals, and a list of fifty-eight is not a plan, it is the same
+// pile with numbers on it.
+//
+// So the list has a line in it. Above it is today. Below it is everything else
+// still with you, in the same order, waiting. Asked whether the portal should
+// guess where the line goes or leave it to the person, he chose the person:
+// "you pull the line down". Two seconds every morning, and always right,
+// because only the person knows what today actually looks like.
+//
+// THE LINE IS AN ITEM IN THE LIST, not a number beside it. That is the whole
+// trick: dragging a deal and dragging the line are then the same gesture with
+// the same code, and there is no second way for the two to disagree about
+// where the day ends.
+export const LINE = '__line__'
+
+/** Move one item to sit just before another. Both may be the line itself. */
+export function moveInOrder(items: string[], id: string, before: string | null): string[] {
+  if (id === before) return [...items]
+  const out = items.filter(x => x !== id)
+  const at = before === null ? out.length : out.indexOf(before)
+  out.splice(at < 0 ? out.length : at, 0, id)
+  return out
+}
+
+/** Today, and the rest. A list with no line in it is all today. */
+export function splitAtLine(items: string[]): { today: string[]; queue: string[] } {
+  const i = items.indexOf(LINE)
+  if (i < 0) return { today: items.filter(x => x !== LINE), queue: [] }
+  return { today: items.slice(0, i), queue: items.slice(i + 1).filter(x => x !== LINE) }
+}
+
+/** Where a day starts from: everything drafted, line at the bottom. */
+export function startingOrder(ids: string[], saved?: string[] | null): string[] {
+  // A SAVED PLAN DECIDES THE LINE, NOT THE DRAFT. Once somebody has said
+  // "this is my day", what they kept above the line is their day - and a deal
+  // that arrived since then goes to the queue rather than silently into it.
+  if (saved && saved.length) {
+    const above = saved.filter(id => ids.includes(id))
+    const rest = ids.filter(id => !above.includes(id))
+    return [...above, LINE, ...rest]
+  }
+  return [...ids, LINE]
+}
+
+// A NOTE ABOUT TODAY, NOT ABOUT THE DEAL.
+//
+// "Waiting on the valuation, chase CBA at 11" is true until about eleven
+// o'clock. It belongs to the day, so it is stored on the day and it is gone
+// tomorrow - and anything that matters longer than that belongs in the deal's
+// own notes, where the next person reads it.
+export type DayNotes = Record<string, string>
+
+export function noteFor(notes: any, dealId: string): string {
+  return String((notes || {})[dealId] ?? '')
+}
+
+export function withNote(notes: any, dealId: string, text: string): DayNotes {
+  const out: DayNotes = { ...(notes || {}) }
+  const t = String(text ?? '').trim()
+  // An empty note is no note. Storing '' would keep a row of nothing in the
+  // day for every deal somebody opened the box on and thought better of.
+  if (t) out[dealId] = t
+  else delete out[dealId]
+  return out
 }
 
 // WHAT FINISHED YESTERDAY, which is the half of the email nobody should ever

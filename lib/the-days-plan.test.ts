@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest'
 import { draftDay, finishedOn, planBoard, everybodyPlanned, stageWaitingOn,
          notTold, minutesIntoDay, dayBefore, DAY_STARTS, creditHasIt, finishedAcross,
+         LINE, moveInOrder, splitAtLine, startingOrder, noteFor, withNote,
          type PlanDeal, type Plan } from './the-days-plan'
 
 const d = (id: string, since: string | null, priority?: any): PlanDeal =>
@@ -330,5 +331,104 @@ describe('what finished yesterday, for everybody', () => {
     expect(finishedAcross([late], '2026-10-22')).toHaveLength(1)
     expect(finishedAcross([next], '2026-10-22')).toHaveLength(0)
     expect(finishedAcross([next], '2026-10-23')).toHaveLength(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// THE LINE
+// ---------------------------------------------------------------------------
+//
+// 26 Oct 2026. The draft put everything sitting with a person on one list - on
+// Fabio's own book that is fifty-eight deals, and a list of fifty-eight is not
+// a plan. So the list has a line in it: above is today, below is the rest, and
+// the person drags it to where their day ends. His call, asked straight out:
+// "you pull the line down".
+
+describe('above the line and below it', () => {
+  it('a day starts as everything drafted, with the line at the bottom', () => {
+    expect(startingOrder(['a', 'b', 'c'])).toEqual(['a', 'b', 'c', LINE])
+    expect(splitAtLine(startingOrder(['a', 'b', 'c']))).toEqual({ today: ['a', 'b', 'c'], queue: [] })
+  })
+
+  it('and a saved day decides the line, not the draft', () => {
+    // Somebody kept two above the line this morning. The third arrived since,
+    // and goes to the queue rather than silently into a day already agreed.
+    expect(startingOrder(['a', 'b', 'c'], ['a', 'b'])).toEqual(['a', 'b', LINE, 'c'])
+  })
+
+  it('a saved deal that is no longer theirs quietly drops out', () => {
+    expect(startingOrder(['a', 'c'], ['a', 'b'])).toEqual(['a', LINE, 'c'])
+  })
+
+  it('a list with no line on it is all today', () => {
+    expect(splitAtLine(['a', 'b'])).toEqual({ today: ['a', 'b'], queue: [] })
+  })
+
+  it('splits where the line is', () => {
+    expect(splitAtLine(['a', 'b', LINE, 'c', 'd'])).toEqual({ today: ['a', 'b'], queue: ['c', 'd'] })
+  })
+})
+
+describe('moving things, including the line', () => {
+  const day = ['a', 'b', 'c', LINE, 'd']
+
+  it('reorders a deal within the day', () => {
+    expect(moveInOrder(day, 'c', 'a')).toEqual(['c', 'a', 'b', LINE, 'd'])
+  })
+
+  it('sends one back to the queue by dropping it on the end', () => {
+    // What the cross does. It is a move, never a delete - it is back on the
+    // list tomorrow, and a screen that loses a deal on a mis-tap is a screen
+    // nobody trusts with their morning.
+    expect(moveInOrder(day, 'b', null)).toEqual(['a', 'c', LINE, 'd', 'b'])
+  })
+
+  it('pulls one up out of the queue by dropping it on the line', () => {
+    expect(moveInOrder(day, 'd', LINE)).toEqual(['a', 'b', 'c', 'd', LINE])
+  })
+
+  it('and moving the LINE itself is the same gesture', () => {
+    // The whole trick: the line is an item in the list, so dragging it and
+    // dragging a deal run the same code and cannot disagree about where the
+    // day ends.
+    expect(splitAtLine(moveInOrder(day, LINE, 'b'))).toEqual({ today: ['a'], queue: ['b', 'c', 'd'] })
+  })
+
+  it('nothing is lost whatever is dragged where', () => {
+    for (const id of ['a', 'b', 'c', 'd', LINE]) {
+      for (const before of ['a', 'b', 'c', 'd', LINE, null]) {
+        const out = moveInOrder(day, id, before as any)
+        expect([...out].sort(), `${id} onto ${before} lost something`).toEqual([...day].sort())
+      }
+    }
+  })
+
+  it('dropping something on itself changes nothing', () => {
+    expect(moveInOrder(day, 'b', 'b')).toEqual(day)
+  })
+})
+
+describe('a note about today', () => {
+  it('keeps what was typed', () => {
+    const n = withNote({}, 'deal-1', '  Chase CBA at 11  ')
+    expect(n).toEqual({ 'deal-1': 'Chase CBA at 11' })
+    expect(noteFor(n, 'deal-1')).toBe('Chase CBA at 11')
+  })
+
+  it('an empty note is no note rather than an empty one', () => {
+    const n = withNote({ 'deal-1': 'something' }, 'deal-1', '   ')
+    expect(n).toEqual({})
+    expect(noteFor(n, 'deal-1')).toBe('')
+  })
+
+  it('and it never touches anybody else\u2019s', () => {
+    const before = { a: 'one', b: 'two' }
+    expect(withNote(before, 'c', 'three')).toEqual({ a: 'one', b: 'two', c: 'three' })
+    expect(before, 'the original was edited in place').toEqual({ a: 'one', b: 'two' })
+  })
+
+  it('says nothing where nothing was written', () => {
+    expect(noteFor(null, 'deal-1')).toBe('')
+    expect(noteFor({}, 'deal-1')).toBe('')
   })
 })

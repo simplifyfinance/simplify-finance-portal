@@ -11,8 +11,10 @@ import { sameBroker } from '@/lib/broker-key'
 import { whyNoPlan, lastWorkdayBefore } from '@/lib/the-week'
 import {
   draftDay, finishedOn, finishedAcross, planBoard, notTold, stageWaitingOn, creditHasIt,
+  startingOrder, splitAtLine, withNote,
   type PlanDeal, type Plan,
 } from '@/lib/the-days-plan'
+import MyDay, { type DayDeal } from '@/components/MyDay'
 
 // THE MORNING, WITHOUT THE EMAIL.
 //
@@ -52,7 +54,13 @@ import {
 type Officer = { id: string; name: string }
 
 /** A broker's own plan row. Same table as credit's, keyed by broker instead. */
-export type BrokerPlan = { brokerKey: string; confirmedAt: string | null; dealIds: string[] }
+export type BrokerPlan = {
+  brokerKey: string
+  confirmedAt: string | null
+  dealIds: string[]
+  notes?: Record<string, string>
+  onItNow?: string | null
+}
 
 const SOFT = 'text-[12px] text-muted'
 const CAP = 'text-[10.5px] font-bold tracking-[0.08em] uppercase text-muted mb-3'
@@ -104,8 +112,19 @@ export default function TodayPlan({
     (meOfficerId ? plans.find(p => p.officerId === meOfficerId)?.confirmedAt : myPlan?.confirmedAt) || null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
-  const [dropped, setDropped] = useState<string[]>([])
   const now = new Date()
+
+  // THE DAY, AS THIS PERSON HAS ARRANGED IT.
+  //
+  // One array with the line in it - see LINE in lib/the-days-plan.ts. Starts
+  // as everything drafted with the line at the bottom, and from there it is
+  // theirs: drag a deal, drag the line, cross one off. Nothing is deleted.
+  const mySaved = meOfficerId
+    ? plans.find(p => p.officerId === meOfficerId)
+    : myPlan ? { deals: myPlan.dealIds.map(id => ({ id })), notes: myPlan.notes, onItNow: myPlan.onItNow } : undefined
+  const [order, setOrder] = useState<string[] | null>(null)
+  const [notes, setNotes] = useState<Record<string, string>>((mySaved as any)?.notes || {})
+  const [onItNow, setOnItNow] = useState<string | null>((mySaved as any)?.onItNow || null)
 
   const named = (key: any) => brokerNames[String(key || '').toLowerCase()] || String(key || '')
 
@@ -125,10 +144,17 @@ export default function TodayPlan({
         : []
     return draftDay(base
       .filter(live)
-      .map(d => ({ id: d.id, name: d.deal_name, stage: stageWaitingOn(d) || '', since: d.credit_assigned_at || d.created_at }))
+      .map(d => ({
+        id: d.id, name: d.deal_name, stage: stageWaitingOn(d) || '',
+        since: d.credit_assigned_at || d.created_at,
+        priority: d.priority || null,
+      }))
       .filter(x => x.stage))
-      .filter(x => !dropped.includes(x.id))
-  }, [deals, meOfficerId, brokerKey, dropped])
+  }, [deals, meOfficerId, brokerKey])
+
+  // THE DRAFT, THEN WHATEVER THEY HAVE DONE TO IT SINCE.
+  const dayOrder = order ?? startingOrder(mine.map(d => d.id), mySaved?.deals?.map(d => d.id) || null)
+  const todayIds = splitAtLine(dayOrder).today
 
   // YESTERDAY IS THE LAST DAY ANYBODY WAS AT WORK, which on a Monday is
   // Friday. See lib/the-week.ts - this used to be one calendar day back, so
@@ -220,7 +246,13 @@ export default function TodayPlan({
     setBusy(true); setErr('')
     const when = new Date().toISOString()
     const row: Record<string, any> = {
-      plan_date: today, deal_ids: mine.map(d => d.id), confirmed_at: when, updated_at: when,
+      plan_date: today,
+      // ABOVE THE LINE ONLY. What is below it is the queue, not the day, and
+      // saving the queue as the plan is how a day became a book in the first
+      // place. See splitAtLine() in lib/the-days-plan.ts.
+      deal_ids: todayIds,
+      notes, on_it_now: onItNow,
+      confirmed_at: when, updated_at: when,
     }
     if (meOfficerId) row.officer_id = meOfficerId
     else row.broker_key = brokerKey
@@ -247,39 +279,18 @@ export default function TodayPlan({
   if (whyNoPlan(today)) return null
 
   const dayCard = (
-    <Card live={!saved}>
-      <div className={CAP}>Today, in this order</div>
-      {mine.length === 0 ? (
-        <div className={SOFT}>Nothing is sitting with you. Enjoy it.</div>
-      ) : mine.map((d, i) => (
-        <Row key={d.id}>
-          <span className="w-5 h-5 rounded-md bg-ink text-page text-[11px] font-bold flex items-center justify-center flex-none">{i + 1}</span>
-          <Link href={`/deals/${d.id}`} className="flex-1 font-semibold hover:underline">{d.name}</Link>
-          {d.priority && (
-            <span className={PILL_NOT}>{d.priority.by.toUpperCase()}&rsquo;S NEXT</span>
-          )}
-          <span className={SOFT}>{d.stage}</span>
-          {!saved && (
-            <button onClick={() => setDropped(x => [...x, d.id])}
-              title="Put it back in the queue" className="text-faint text-[12px] hover:text-chase">&#10005;</button>
-          )}
-        </Row>
-      ))}
-
-      <div className="flex gap-2.5 items-center mt-4 flex-wrap">
-        {saved ? (
-          <span className="text-[13.5px] font-semibold text-done bg-done-bg border border-done-edge rounded-[10px] px-4 py-2.5">
-            &#10003; Told the brokers &mdash; {new Date(saved).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}
-          </span>
-        ) : (
-          <button onClick={confirm} disabled={busy}
-            className="text-[14px] rounded-[10px] px-5 py-2.5 font-semibold bg-ink text-page disabled:opacity-40">
-            {busy ? 'Telling them...' : 'Yes — this is my day'}
-          </button>
-        )}
-        {!saved && <span className="text-[12px] text-faint">cross one off to send it back to the queue</span>}
-      </div>
-    </Card>
+    <MyDay
+      deals={mine.map(d => ({ ...d, days: daysSince(d.since) })) as DayDeal[]}
+      order={dayOrder}
+      setOrder={setOrder}
+      notes={notes}
+      setNote={(id, text) => setNotes(n => withNote(n, id, text))}
+      onItNow={onItNow}
+      setOnItNow={setOnItNow}
+      saved={saved}
+      busy={busy}
+      onConfirm={confirm}
+    />
   )
 
   const teamBox = (
