@@ -55,6 +55,7 @@ export type Action = {
 
 export default function WhatNow({
   stage, deal, view, onView, actions, onOwnerChange, canAllocate = true, emailStale,
+  showView = true,
 }: {
   stage: Stage
   deal: any
@@ -69,6 +70,13 @@ export default function WhatNow({
   /** 'me' keeps it, 'queue' sends it to the round robin. */
   onOwnerChange?: (choice: 'me' | 'queue') => void
   canAllocate?: boolean
+  // COMPLIANCE HAS NO FORM AND EMAIL TO SWITCH BETWEEN.
+  //
+  // 27 Oct 2026, Catherine's item 8. The BC and the lending options are each
+  // two views of one thing, so the switch earns its place there. Compliance is
+  // one page. Drawing a switch with one side to it would be a control that
+  // does nothing, which is the fault this whole row was built to remove.
+  showView?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const owner = showingOwner(deal, stage)
@@ -83,6 +91,7 @@ export default function WhatNow({
   return (
     <div className="flex gap-2.5 items-center flex-wrap">
       {/* THE VIEW. Quiet, grey, on the left, and never shaped like an action. */}
+      {showView && (
       <div className="inline-flex gap-[3px] bg-line-soft rounded-[10px] p-[3px]">
         {([['form', 'Form'], ['email', 'Email']] as const).map(([k, label]) => (
           <button key={k} onClick={() => onView(k)}
@@ -95,6 +104,7 @@ export default function WhatNow({
           </button>
         ))}
       </div>
+      )}
 
       <span className="text-[10.5px] font-bold tracking-[0.08em] uppercase text-faint mx-0.5">What now</span>
 

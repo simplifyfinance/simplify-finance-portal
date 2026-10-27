@@ -1,5 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import WhatNow from '@/components/WhatNow'
+import { handStageOver } from '@/lib/hand-this-stage-over'
 import { SharedWithBox } from '@/components/WhoSharesThisDeal'
 import { dayMonthYear, dayMonth, longDate, dayMonthTime } from '@/lib/same-date-everywhere'
 import SectionHeader from '@/components/SectionHeader'
@@ -1466,6 +1468,28 @@ Use the security address exactly as recorded. On a pre-approval it will already 
     for (const f of fields) { await generateField(f) }
   }
 
+  // WHO IS DOING COMPLIANCE, AND HANDING IT TO THE QUEUE.
+  //
+  // 27 Oct 2026. Catherine, Operations Manager, item 8 of nine: "Auto-assign
+  // Compliance by capacity - the same way Credit work is assigned now."
+  //
+  // It already is. lib/allocate-officer.ts has taken 'compliance' as a stage
+  // since 23 Oct, and knows who covers which broker, who is on leave and who
+  // is carrying the least. What has never existed is anything pointing at it:
+  // this tab had no What now row, so the only way to move compliance was
+  // Reassign at the top of the deal, which moves the whole file.
+  //
+  // AND IT IS WHY COMPLIANCE IS INVISIBLE IN THE WORKLOAD NUMBERS. Those read
+  // the per-stage owner, and nothing has ever written compliance_owner_officer.
+  const [handErr, setHandErr] = useState('')
+  async function handOwner(choice: 'me' | 'queue') {
+    setHandErr('')
+    const out = await handStageOver(supabase, deal.id, 'compliance', choice,
+      me?.name || deal.assigned_broker || 'Broker')
+    if (!out.ok) { setHandErr(out.error); return }
+    window.location.reload()
+  }
+
   async function markComplianceComplete() {
     const nowIso = new Date().toISOString()
     const { data: rows, error } = await supabase.from('deals')
@@ -1691,6 +1715,41 @@ Use the security address exactly as recorded. On a pre-approval it will already 
           onRestore={() => { setD(shape(draft.offer!.value)); draft.taken() }}
           onDiscard={draft.dismiss} />
       )}
+      {/* THE SAME ROW THE BC AND THE LENDING OPTIONS HAVE HAD SINCE 23 OCT.
+          Compliance never got one. See handOwner above. */}
+      <div className="mb-3">
+        <WhatNow
+          stage="compliance"
+          deal={deal}
+          showView={false}
+          view="form"
+          onView={() => {}}
+          canAllocate={!complianceCompletedAt}
+          onOwnerChange={handOwner}
+          actions={[
+            {
+              label: 'Done',
+              onClick: () => { if (!complianceCompletedAt) markComplianceComplete() },
+              primary: !complianceCompletedAt,
+              done: !!complianceCompletedAt,
+              since: complianceCompletedAt ? longDate(complianceCompletedAt) : undefined,
+              title: 'Marks compliance finished and tells SalesTrekker',
+            },
+            {
+              label: 'Sent to compliance',
+              onClick: () => {},
+              done: !!deal.compliance_sent_at,
+              waiting: !deal.compliance_sent_at,
+              since: deal.compliance_sent_at ? longDate(deal.compliance_sent_at) : undefined,
+              title: 'Both PDFs emailed to the compliance team',
+            },
+          ]}
+        />
+        {handErr && (
+          <p className="mt-2 mb-0 text-[12.5px] text-chase bg-chase-bg border border-chase-edge rounded-lg px-3 py-1.5 inline-block">{handErr}</p>
+        )}
+      </div>
+
       {past && (
         <div className="bg-card border border-done-edge rounded-xl px-4 py-3.5">
           <div className="flex items-center gap-2.5 flex-wrap">

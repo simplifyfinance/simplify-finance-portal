@@ -176,10 +176,35 @@ describe('who is doing it', () => {
   })
 })
 
-describe('compliance is deliberately untouched', () => {
-  it('this ship changed the BC and the lending options only', () => {
-    const compliance = readFileSync('app/(app)/deals/[id]/ComplianceForm.tsx', 'utf8')
-    expect(compliance, 'compliance was in scope for a later ship')
-      .not.toContain('<WhatNow')
+// COMPLIANCE CAUGHT UP, 27 Oct 2026.
+//
+// This used to assert that ComplianceForm had NO WhatNow - "compliance was in
+// scope for a later ship", written on 23 Oct when the BC and the lending
+// options got the row. That later ship is Catherine's item 8: "Auto-assign
+// Compliance by capacity - the same way Credit work is assigned now."
+//
+// A test that says "not yet" has to be rewritten the day it happens, or it
+// starts failing good work and somebody deletes it in a hurry. So it now
+// asserts the thing that must stay true instead: all three stages use the one
+// row, and none of them grows its own.
+describe('all three stages use the one row', () => {
+  const compliance = readFileSync('app/(app)/deals/[id]/ComplianceForm.tsx', 'utf8')
+
+  it('compliance has it too, and asks the same queue', () => {
+    expect(compliance).toContain('<WhatNow')
+    expect(compliance).toContain('stage="compliance"')
+    expect(compliance).toContain("handStageOver(supabase, deal.id, 'compliance', choice")
+  })
+
+  it('but with no view switch, because compliance is one page', () => {
+    expect(compliance).toContain('showView={false}')
+  })
+
+  it('and nobody draws their own row beside it', () => {
+    // The whole reason this file exists - see the note at the top of
+    // components/WhatNow.tsx about five different drawings of one thing.
+    const code = compliance.split('\n')
+      .filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*')).join('\n')
+    expect(code).not.toContain('What now<')
   })
 })
