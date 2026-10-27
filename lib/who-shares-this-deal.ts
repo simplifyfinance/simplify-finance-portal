@@ -48,6 +48,39 @@ export function splitKindLabel(v: any): string {
   return SPLIT_KIND_LABEL[k as SplitKind] || SPLIT_KIND_LABEL.referrer
 }
 
+// A SPLIT IS A LIST OF LINES.
+//
+// 27 Oct 2026, hours after the first version shipped. Fabio: "we need the
+// ability of addint lines for upfront and trail so line one for exmaple 20%
+// simplify line 80% broker 1 and abilty to add third line".
+//
+// He is right and the first shape was wrong. One pair of percentages can only
+// say what ONE party gets - "the referrer takes 20%" and nothing about who
+// holds the other eighty. A three-way split between the house, the referrer
+// and the writing broker is the normal case, not the edge one.
+//
+// EACH LINE CARRIES ITS OWN UPFRONT AND TRAIL, because they are not always the
+// same. A referrer on the upfront only, taking nothing of the trail, is a real
+// arrangement that could not be written down before.
+export type Line = {
+  who: string
+  /** Their share. Null means nobody recorded it; 0 means they genuinely get none. */
+  upfront: number | null
+  trail: number | null
+}
+
+export function lineFrom(raw: any): Line {
+  return {
+    who: txt(raw?.who),
+    upfront: readPct(raw?.upfront),
+    trail: readPct(raw?.trail),
+  }
+}
+
+export function blankLine(): Line {
+  return { who: '', upfront: null, trail: null }
+}
+
 /** A row of public.commission_splits. */
 export type Split = {
   id: string
@@ -55,9 +88,11 @@ export type Split = {
   kind: SplitKind
   who: string
   contactEmail: string
-  /** The share THEY get. Null where nobody recorded it. */
+  /** The share THEY get. Kept for rows written before lines existed. */
   upfront: number | null
   trail: number | null
+  /** Who gets what. Never empty - see splitFromRow. */
+  lines: Line[]
   notes: string
   active: boolean
 }
@@ -78,17 +113,82 @@ export function readPct(v: any): number | null {
 }
 
 export function splitFromRow(r: any): Split {
+  const upfront = readPct(r?.upfront_pct)
+  const trail = readPct(r?.trail_pct)
+  const stored = Array.isArray(r?.lines) ? r.lines.map(lineFrom).filter((l: Line) => l.who || l.upfront !== null || l.trail !== null) : []
+  // A ROW WRITTEN BEFORE LINES EXISTED READS AS ONE LINE.
+  //
+  // Two were added this morning under the old shape. Nothing has to be
+  // retyped, and nothing silently reads as empty.
+  const lines: Line[] = stored.length ? stored
+    : (upfront !== null || trail !== null || txt(r?.who))
+      ? [{ who: txt(r?.who) || txt(r?.name), upfront, trail }]
+      : [blankLine()]
   return {
     id: txt(r?.id),
     name: txt(r?.name),
     kind: txt(r?.kind) === 'broker_split' ? 'broker_split' : 'referrer',
     who: txt(r?.who),
     contactEmail: txt(r?.contact_email),
-    upfront: readPct(r?.upfront_pct),
-    trail: readPct(r?.trail_pct),
+    upfront, trail, lines,
     notes: txt(r?.notes),
     active: r?.active !== false,
   }
+}
+
+// ---------------------------------------------------------------------------
+// DOES IT ADD UP?
+// ---------------------------------------------------------------------------
+
+export type Totals = { upfront: number; trail: number; upfrontOk: boolean; trailOk: boolean }
+
+/**
+ * A COLUMN THAT DOES NOT REACH 100% IS A WARNING, NOT A REFUSAL.
+ *
+ * Some arrangements genuinely do not account for all of it, and a screen that
+ * refuses to save until the numbers are tidy is a screen people work around.
+ * So it says so and saves anyway - and a line nobody has filled in counts as
+ * nothing rather than dragging the total down to a false 100.
+ */
+export function totalsOf(lines: Line[]): Totals {
+  const sum = (k: 'upfront' | 'trail') =>
+    Math.round((lines || []).reduce((t, l) => t + (l[k] ?? 0), 0) * 100) / 100
+  const upfront = sum('upfront')
+  const trail = sum('trail')
+  const near = (n: number) => Math.abs(n - 100) < 0.01
+  return { upfront, trail, upfrontOk: near(upfront), trailOk: near(trail) }
+}
+
+/** The line under the table, or empty where both columns are right. */
+export function addsUpWarning(lines: Line[]): string {
+  const t = totalsOf(lines)
+  if (t.upfrontOk && t.trailOk) return ''
+  const bits: string[] = []
+  if (!t.upfrontOk) bits.push(`Upfront adds up to ${t.upfront}%`)
+  if (!t.trailOk) bits.push(`trail adds up to ${t.trail}%`)
+  return `${bits.join(', ')}, not 100%. Saved anyway \u2014 some arrangements genuinely do not account `
+    + 'for all of it \u2014 but worth a look before somebody is invoiced off this.'
+}
+
+/** "Simplify 20% · Harrow 20% · Mark Gallo 60%" */
+export function linesInWords(lines: Line[]): string {
+  const real = (lines || []).filter(l => txt(l.who))
+  if (!real.length) return 'share not recorded'
+  return real.map(l => {
+    const u = l.upfront === null ? null : `${l.upfront}%`
+    // ONLY SAY THE TRAIL WHERE IT DIFFERS. On most arrangements the two are
+    // the same and printing both doubles the length of the line for nothing.
+    const t = l.trail === null ? null : `${l.trail}%`
+    // A TRAIL NOBODY RECORDED MUST NOT READ LIKE A MATCHING ONE. 20% and
+    // 20% is said once; 20% upfront with the trail left empty says "upfront",
+    // because those are different arrangements and they looked identical.
+    const share = u === null && t === null ? 'share not recorded'
+      : u === t ? u
+      : t === null ? `${u} upfront`
+      : u === null ? `trail ${t}`
+      : `${u} upfront, ${t} trail`
+    return `${l.who} ${share}`
+  }).join(' \u00b7 ')
 }
 
 /** What goes in the dropdown: the ones in use, by name. */
@@ -114,7 +214,7 @@ export function termsInWords(upfront: number | null, trail: number | null): stri
 
 /** The one line a dropdown shows. */
 export function splitInWords(s: Split): string {
-  return `${s.name} — ${splitKindLabel(s.kind).toLowerCase()} · ${termsInWords(s.upfront, s.trail)}`
+  return `${s.name} \u2014 ${linesInWords(s.lines)}`
 }
 
 // ---------------------------------------------------------------------------
@@ -128,6 +228,8 @@ export type ChosenSplit = {
   kind: SplitKind
   upfront: number | null
   trail: number | null
+  /** The whole breakdown as it stood when it was chosen. */
+  lines: Line[]
   /** True where somebody answered "nobody - this one is all ours". */
   none: boolean
   at: string | null
@@ -152,6 +254,7 @@ export function chooseSplitPatch(
       commission_split_kind: null,
       commission_split_upfront: null,
       commission_split_trail: null,
+      commission_split_lines: null,
       commission_split_none: true,
       commission_split_at: now.toISOString(),
       commission_split_by: txt(by),
@@ -163,6 +266,9 @@ export function chooseSplitPatch(
     commission_split_kind: split.kind,
     commission_split_upfront: split.upfront,
     commission_split_trail: split.trail,
+    // THE WHOLE BREAKDOWN, COPIED. Renegotiating an arrangement next year must
+    // not rewrite what a settled deal says was agreed at the time.
+    commission_split_lines: split.lines,
     commission_split_none: false,
     commission_split_at: now.toISOString(),
     commission_split_by: txt(by),
@@ -187,6 +293,10 @@ export function splitOn(deal: any): ChosenSplit | null {
     kind: txt(deal.commission_split_kind) === 'broker_split' ? 'broker_split' : 'referrer',
     upfront: readPct(deal.commission_split_upfront),
     trail: readPct(deal.commission_split_trail),
+    lines: Array.isArray(deal.commission_split_lines) && deal.commission_split_lines.length
+      ? deal.commission_split_lines.map(lineFrom)
+      : [{ who: txt(deal.commission_split_name), upfront: readPct(deal.commission_split_upfront),
+           trail: readPct(deal.commission_split_trail) }],
     none: none === true && !id,
     at: txt(deal.commission_split_at) || null,
     by: txt(deal.commission_split_by),
@@ -208,8 +318,8 @@ export function answered(deal: any): boolean {
 export function sharedWithLine(deal: any): string {
   const s = splitOn(deal)
   if (!s) return 'Not recorded — nobody has said whether this deal is shared'
-  if (s.none) return 'Not shared — this one is all ours'
-  return `${s.name} — ${splitKindLabel(s.kind).toLowerCase()}, ${termsInWords(s.upfront, s.trail)}`
+  if (s.none) return 'Not shared \u2014 this one is all ours'
+  return `${s.name} \u2014 ${splitKindLabel(s.kind).toLowerCase()} \u00b7 ${linesInWords(s.lines)}`
 }
 
 /**
@@ -224,8 +334,9 @@ export function termsHaveMoved(deal: any, rows: any[]): string {
   if (!s?.id) return ''
   const now = (rows || []).map(splitFromRow).find(r => r.id === s.id)
   if (!now) return ''
-  if (now.upfront === s.upfront && now.trail === s.trail) return ''
-  return `This deal was agreed at ${termsInWords(s.upfront, s.trail)}. `
-    + `${now.name} is now set to ${termsInWords(now.upfront, now.trail)}. `
-    + `The deal keeps what was agreed at the time.`
+  const then = linesInWords(s.lines)
+  const current = linesInWords(now.lines)
+  if (then === current) return ''
+  return `This deal was agreed at ${then}. ${now.name} is now set to ${current}. `
+    + 'The deal keeps what was agreed at the time.'
 }

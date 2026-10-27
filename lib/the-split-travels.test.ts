@@ -13,6 +13,7 @@
 // This file holds that shape in place.
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
+import { SETTINGS_PANES } from './settings-panes'
 
 const FACT_FIND = readFileSync('app/(app)/deals/[id]/FactFindForm.tsx', 'utf8')
 const COMPLIANCE = readFileSync('app/(app)/deals/[id]/ComplianceForm.tsx', 'utf8')
@@ -52,11 +53,23 @@ describe('it is answered on the fact find and nowhere else', () => {
 })
 
 describe('the list in Settings', () => {
-  it('sits above the commission library, and both say which direction they are', () => {
-    const splits = SETTINGS.indexOf('Commission splits')
-    const library = SETTINGS.indexOf('Commission library')
-    expect(splits).toBeGreaterThan(-1)
-    expect(splits, 'the splits list is below the library again').toBeLessThan(library)
+  it('has its own entry in the menu, under its own name', () => {
+    // 27 Oct 2026. It shipped inside the Commission library pane - the
+    // OPPOSITE thing - and Fabio could not find it: "where in that phots shows
+    // commission library???". A page reachable only by knowing which other
+    // page it hides behind is a page nobody has.
+    const splits = SETTINGS_PANES.find(p => p.key === 'splits')
+    expect(splits, 'the splits list has lost its own menu entry again').toBeTruthy()
+    expect(splits!.label).toBe('Commission splits')
+    expect(SETTINGS).toContain("pane === 'splits'")
+  })
+
+  it('and is not drawn inside the library pane any more', () => {
+    const block = SETTINGS.slice(SETTINGS.indexOf("pane === 'splits'"))
+    expect(block.slice(0, 400)).toContain('<CommissionSplits />')
+  })
+
+  it('both headings still say which direction the money goes', () => {
     expect(SETTINGS).toContain('Commission splits &mdash; what we pay out')
     expect(SETTINGS).toContain('Commission library &mdash; what the banks pay us')
   })
@@ -71,6 +84,51 @@ describe('the list in Settings', () => {
   it('and checks the row came back, because RLS refuses by saying nothing', () => {
     expect(LIST).toContain('if (error || !data?.length)')
     expect(PICKER).toContain('if (error || !data?.length)')
+  })
+})
+
+// A SPLIT IS A LIST OF LINES, AND THE SCREEN HAS TO LET YOU ADD ONE.
+//
+// 27 Oct 2026. Fabio: "we need the ability of addint lines for upfront and
+// trail so line one for exmaple 20% simplify line 80% broker 1 and abilty to
+// add third line".
+describe('adding a line', () => {
+  it('there is a button for it', () => {
+    expect(LIST).toContain('+ Add a line')
+    expect(LIST).toContain('addLine(r.id)')
+  })
+
+  it('and a line can be taken off again', () => {
+    // "please alwasy have ability to edit and delete and add" - Fabio, 27 Oct.
+    expect(LIST).toContain('dropLine(r.id, i)')
+  })
+
+  it('but never the last one, because an empty table reads as a broken screen', () => {
+    expect(LIST).toContain('list.length > 1 ? list.filter')
+  })
+
+  it('every line carries its OWN upfront and trail', () => {
+    expect(LIST).toContain("editLine(r.id, i, { upfront: readPct(e.target.value) })")
+    expect(LIST).toContain("editLine(r.id, i, { trail: readPct(e.target.value) })")
+  })
+
+  it('the lines are what gets saved', () => {
+    expect(LIST).toContain('lines: r.lines.filter(')
+  })
+
+  it('and it says whether the column adds up, without refusing to save', () => {
+    expect(LIST).toContain('totalsOf(r.lines)')
+    expect(LIST).toContain('addsUpWarning(r.lines)')
+    expect(codeOnly(LIST), 'the splits screen now blocks a save')
+      .not.toContain('disabled={!totalsOf')
+  })
+
+  it('who gets a share is TYPED, with the names already in the portal offered', () => {
+    // A referrer is whoever the broker says it is. A list you are stuck
+    // inside is a box nobody can fill in.
+    expect(LIST).toContain('list="sf-share-names"')
+    expect(LIST).toContain('<datalist id="sf-share-names">')
+    expect(LIST).toContain("from('directory_people')")
   })
 })
 

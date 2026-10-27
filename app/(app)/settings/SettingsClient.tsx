@@ -571,13 +571,13 @@ export default function SettingsPage() {
         <AiExpenses />
       </section>
       )}
-      {/* WHO SHARES A DEAL - above the library on purpose.
-          27 Oct 2026. Two lists, two directions. This one is money going OUT:
-          a referrer paid a share, or two of our brokers splitting a deal. The
-          library underneath is what the banks pay US. Putting them next to
-          each other with a sentence on each is how they stop being confused
-          with one another - see components/CommissionSplits.tsx. */}
-      {pane === 'commissions' && (
+      {/* WHO SHARES A DEAL - ITS OWN ENTRY IN THE MENU.
+          27 Oct 2026. It shipped inside the Commission library pane, which is
+          the OPPOSITE thing - that is what the banks pay US, this is money
+          going out. Fabio went looking for it and could not find it: "where in
+          that phots shows commission library???". Fair. It has its own name in
+          the menu now, and each heading still says which direction it is. */}
+      {pane === 'splits' && (
       <section className="mb-10">
         <h2 className="text-[10px] font-semibold text-faint uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-info inline-block shrink-0" />Commission splits &mdash; what we pay out</h2>
         <CommissionSplits />

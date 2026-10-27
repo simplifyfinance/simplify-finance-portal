@@ -35,6 +35,15 @@ export const SETTINGS_PANES: SettingsPane[] = [
     blurb: 'The colour of each label on a card, and how long a column may sit before it goes amber and then red.' },
   { key: 'targets', label: 'Business targets', adminOnly: true,
     blurb: 'Monthly lodged and settled targets for the business as a whole. A broker’s own targets live on their profile.' },
+  // TWO LISTS, TWO DIRECTIONS, TWO ENTRIES.
+  //
+  // 27 Oct 2026. Fabio, told the splits were under Settings, could not find
+  // them: "where in that phots shows commission library???". They were real
+  // and they worked - they were sitting inside the pane named after the
+  // OPPOSITE thing. A page you can only reach by knowing it is hiding behind
+  // another page's name is a page nobody has.
+  { key: 'splits', label: 'Commission splits', financeOnly: true,
+    blurb: 'Who shares a deal and on what terms. Money going out \u2014 what the banks pay us is the Commission library.' },
   { key: 'commissions', label: 'Commission library', financeOnly: true,
     blurb: 'What each lender pays, on what basis, and what they claw back.' },
   { key: 'ai', label: 'AI expenses', financeOnly: true,
