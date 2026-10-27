@@ -8,6 +8,7 @@ import BrokerProfiles from '@/components/BrokerProfiles'
 import StatementRulesPane from '@/components/StatementRules'
 import { removeRule, TREATMENT_LABEL, type TreatAs } from '@/lib/statement-overrides'
 import CommissionLibrary from '@/components/CommissionLibrary'
+import CommissionSplits from '@/components/CommissionSplits'
 import AiExpenses from '@/components/AiExpenses'
 import { checkedWrite, checkedWriteAllowingNone } from '@/lib/checked-write'
 import DealBoardSettings from '@/components/DealBoardSettings'
@@ -570,9 +571,21 @@ export default function SettingsPage() {
         <AiExpenses />
       </section>
       )}
+      {/* WHO SHARES A DEAL - above the library on purpose.
+          27 Oct 2026. Two lists, two directions. This one is money going OUT:
+          a referrer paid a share, or two of our brokers splitting a deal. The
+          library underneath is what the banks pay US. Putting them next to
+          each other with a sentence on each is how they stop being confused
+          with one another - see components/CommissionSplits.tsx. */}
       {pane === 'commissions' && (
       <section className="mb-10">
-        <h2 className="text-[10px] font-semibold text-faint uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-info inline-block shrink-0" />Commission library</h2>
+        <h2 className="text-[10px] font-semibold text-faint uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-info inline-block shrink-0" />Commission splits &mdash; what we pay out</h2>
+        <CommissionSplits />
+      </section>
+      )}
+      {pane === 'commissions' && (
+      <section className="mb-10">
+        <h2 className="text-[10px] font-semibold text-faint uppercase tracking-[0.09em] mb-4 flex items-center gap-2"><span className="w-[5px] h-[5px] rounded-full bg-info inline-block shrink-0" />Commission library &mdash; what the banks pay us</h2>
         <CommissionLibrary />
       </section>
       )}

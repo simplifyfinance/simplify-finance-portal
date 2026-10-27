@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { SharedWithBox } from '@/components/WhoSharesThisDeal'
 import { dayMonthYear, dayMonth, longDate, dayMonthTime } from '@/lib/same-date-everywhere'
 import SectionHeader from '@/components/SectionHeader'
 import { isWithLender, splitsTotal } from '@/lib/deal-phase'
@@ -1868,6 +1869,14 @@ Use the security address exactly as recorded. On a pre-approval it will already 
       {/* STAGE: Needs & Objectives */}
       <section id="sec-needs" className="scroll-mt-4">
         <div className="space-y-4">
+          {/* WHO SHARES THIS DEAL.
+              27 Oct 2026. Catherine, Operations Manager: "there is nowhere in
+              compliance that we can select commissions for that deal".
+              It is SHOWN here, not chosen here. The broker answers it once on
+              the fact find and every other screen reads that one answer - a
+              second place to set it is a second answer waiting to disagree
+              with the first. Unanswered shows in red, like the goals boxes. */}
+          <SharedWithBox deal={deal} />
           <div className="bg-card border border-gray-100 rounded-xl p-5">
             <div className="flex items-center justify-between mb-2">
               <SectionHeader title="Needs & objectives" />

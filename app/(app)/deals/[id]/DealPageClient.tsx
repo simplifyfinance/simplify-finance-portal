@@ -33,6 +33,8 @@ import { templateLabel } from '@/lib/templates'
 import StatementAnalysis from '@/components/StatementAnalysis'
 import InternalNotesStrip from '@/components/InternalNotesStrip'
 import { HandoverNotes } from '@/components/Handover'
+import { SharedWithBox } from '@/components/WhoSharesThisDeal'
+import { answered as answeredSplit } from '@/lib/who-shares-this-deal'
 import TabLock from '@/components/TabLock'
 import { DealAlerts, FileNotes, AlertChips, useDealFile } from '@/components/DealFile'
 import { isLocked } from '@/lib/deal-lock'
@@ -660,6 +662,17 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           reads it before they ring anybody - "sell Bankwest, Macquarie will be
           harder" is the first thing they need and it was living in Slack. */}
       <HandoverNotes dealId={dealData.id} />
+
+      {/* AND WHO SHARES IT, in the same place and for the same reason.
+          27 Oct 2026. A credit assessor opening a deal needs to know a
+          referrer is on it before they write anything - it changes nothing
+          about the numbers and everything about who gets told. Shown only
+          once somebody has answered; the red "not recorded" state lives on
+          the fact find and on compliance, which are the two screens where
+          somebody can do something about it. */}
+      {answeredSplit(dealData) && (
+        <div className="mb-3"><SharedWithBox deal={dealData} /></div>
+      )}
 
       {/* A lodged deal is being TRACKED, not written, and the tracking blocks
           stacked one under another put the tabs 1300px down the page. Two

@@ -1,5 +1,6 @@
 'use client'
 import DropZone from '@/components/DropZone'
+import WhoSharesThisDeal from '@/components/WhoSharesThisDeal'
 import SectionHeader from '@/components/SectionHeader'
 import { checkedWrite } from '@/lib/checked-write'
 import { copyPlan, copyAddresses, recorded } from '@/lib/copy-history'
@@ -1239,6 +1240,12 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                 <p className="text-[11.5px] text-info mt-1 mb-0">A gift letter will be needed on file.</p>
               )}
             </div>
+            {/* WHO SHARES THIS DEAL. 27 Oct 2026 - a referrer paid a share, or
+                two of our brokers splitting one. It is a fact about the deal,
+                true from the first phone call, and the broker is the only
+                person who knows it. Compliance and credit read it; neither can
+                answer it. See components/WhoSharesThisDeal.tsx. */}
+            <WhoSharesThisDeal deal={deal} byName={me?.name || deal.assigned_broker || ''} />
             <div>
               <label className="text-xs text-gray-500 block mb-1">Purpose of loan / primary reason for finance{!d.loanPurpose?.trim() && <span className="text-red-600 font-semibold ml-1">● Required</span>}</label>
               <textarea spellCheck="true" aria-label="Purpose of loan / primary reason for finance" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none min-h-16 resize-y ${d.loanPurpose?.trim() ? 'border-gray-200 focus:border-brand' : 'border-red-500 bg-red-50/40 focus:border-red-500 ring-2 ring-red-500/10'}`} placeholder="What the client told you they want this loan for..." value={d.loanPurpose}
