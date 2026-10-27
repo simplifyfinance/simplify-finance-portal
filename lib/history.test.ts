@@ -3,7 +3,13 @@ import { monthsBetween, totalHistoryMonths, REQUIRED_HISTORY_MONTHS, stillToConf
 
 const TODAY = new Date('2026-09-03')
 
-describe('two years of history', () => {
+// THREE YEARS, NOT TWO.
+//
+// 27 Oct 2026. Every assertion here reads REQUIRED_HISTORY_MONTHS rather than a
+// number, which is why raising it cost nothing. That was luck as much as
+// design - a test that had typed 24 would have had to be edited to agree with
+// the bug, which is how the LMI figure stayed wrong for five weeks.
+describe('three years of history', () => {
   it('counts a finished period between its two dates', () => {
     expect(monthsBetween('2023-01-15', '2024-01-15', TODAY)).toBe(12)
   })
@@ -26,12 +32,25 @@ describe('two years of history', () => {
       { isCurrent: false, startDate: '2023-09-03', endDate: '2025-09-03' },
     ], TODAY)).toBe(36)
   })
+
+  it('and the bar is three years, not two', () => {
+    expect(REQUIRED_HISTORY_MONTHS).toBe(36)
+  })
+
+  it('TWENTY FIVE MONTHS IS NOT ENOUGH ANY MORE', () => {
+    // The exact file that kept coming back from credit. Under the old number
+    // this read as finished and nobody was warned.
+    const twentyFive = [{ isCurrent: true, startDate: '2024-08-03' }]
+    expect(totalHistoryMonths(twentyFive, TODAY)).toBe(25)
+    expect(totalHistoryMonths(twentyFive, TODAY)).toBeLessThan(REQUIRED_HISTORY_MONTHS)
+  })
 })
 
 // NOT WORKING IS HISTORY TOO. The form hid the dates on a not-working entry, so
 // these applicants sat permanently at "0 months recorded" with nothing they
 // could do about it. Fabio, 3 Sep 2026: "we need to establish 24 months of
-// history not working as well."
+// history not working as well." The rule he set that day still holds; only the
+// number has moved, and it moved because credit kept asking for a third year.
 describe('an applicant who is not working', () => {
   const natasha = (startDate: string) => ({
     fact_find_data: { applicants: [{
@@ -46,7 +65,7 @@ describe('an applicant who is not working', () => {
     bc_data: {},
   })
 
-  it('counts the time not working towards the 24 months', () => {
+  it('counts the time not working towards the three years', () => {
     const emp = natasha('2022-09-03').fact_find_data.applicants[0].employment
     expect(totalHistoryMonths(emp, TODAY)).toBe(48)
   })
@@ -65,10 +84,10 @@ describe('an applicant who is not working', () => {
     expect(out.join(' ')).not.toContain('months of employment history')
   })
 
-  // The form already warns about the 24 months, in amber, under the entries it
-  // is counting. Repeating it here would be a second warning about the same
-  // thing on the same screen.
-  it('leaves the 24-month total to the warning already on the form', () => {
+  // The form already warns about the shortfall, in red, under the entries it is
+  // counting. Repeating it here would be a second warning about the same thing
+  // on the same screen.
+  it('leaves the total to the warning already on the form', () => {
     const out = stillToConfirm(natasha('2026-01-03'))
     expect(out.join(' ')).not.toContain('months of employment history')
     expect(totalHistoryMonths(natasha('2026-01-03').fact_find_data.applicants[0].employment, TODAY))

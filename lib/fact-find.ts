@@ -53,16 +53,28 @@ export function dateAU(v: any): string {
 
 // TWO YEARS OF HISTORY, whatever it consists of.
 //
-// A lender wants 24 months of address history and 24 months of employment
+// A lender wants THREE YEARS of address history and three years of employment
 // history. A period of NOT WORKING counts towards it - it is history, it is just
 // not a job - and until 3 Sep 2026 the form hid the dates on a not-working entry
 // entirely, so those applicants sat permanently at "0 months recorded" with no
 // way to answer it.
 //
+// THIS WAS 24 UNTIL 27 OCT 2026, AND THAT WAS WRONG. Catherine, Operations
+// Manager, listing what keeps coming back from credit: "Residential address
+// history for the last 3 years... Employment history for the last 3 years."
+// Fabio, the same day: "36 is hardcore so change the fact find as it is today
+// with only 24."
+//
+// WHAT THE OLD NUMBER COST. The warning switched off at 24 months, so a file
+// with 25 months of history read as finished on the fact find and then came
+// back from credit a year short. Nobody was told anything untrue - the screen
+// said exactly what it had been built to say, and what it had been built to say
+// was two years.
+//
 // These two live here rather than inside the form because the still-to-confirm
 // list has to agree with the warning on screen. Two copies of a calculation is
 // two places for it to disagree.
-export const REQUIRED_HISTORY_MONTHS = 24
+export const REQUIRED_HISTORY_MONTHS = 36
 
 export function monthsBetween(start: any, end: any, today = new Date()): number {
   const from = String(start ?? '').trim()
