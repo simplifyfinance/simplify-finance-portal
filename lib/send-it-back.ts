@@ -96,10 +96,28 @@ const AGREED: Record<BackStage, string> = {
   bc: 'client_proceeded', lo: 'lo_client_proceeded',
 }
 
-/** The stamp credit sets when they finish. Nothing to send back before it. */
+/** The stamp credit sets when they finish. */
 const FINISHED: Record<BackStage, string> = {
   bc: 'bc_completed_at', lo: 'lo_completed_at',
 }
+
+// THERE IS NO "IS IT FINISHED YET" RULE, AND THAT TOOK TWO GOES TO LEARN.
+//
+// 27 Oct 2026. First I asked for bc_completed_at. Fabio sent a screenshot of a
+// live deal with no button: credit had emailed the BC to the client on 18 Oct
+// and never pressed Done, which the portal has always allowed. So I widened it
+// to "finished OR sent", and he threw that out too:
+//
+//   "makes no sense to have that rule thats the point od sending it back"
+//
+// He is right, and the better version is simpler than either of mine. A broker
+// who learns at 10am that the client wants a different scenario should tell
+// credit AT 10AM - not wait for them to finish writing the wrong thing first.
+// The most useful moment to send a deal back is the moment before the work is
+// wasted.
+//
+// So the only questions left are the two that are actually about people:
+// is there somebody in credit to tell, and has the client already agreed.
 
 // ---------------------------------------------------------------------------
 // CAN THIS BE SENT BACK?
@@ -123,14 +141,34 @@ export type CanSendBack = { ok: boolean; why: string }
  */
 export function sendBackTarget(deal: any, stage: BackStage): { officerId: string; name: string } | null {
   const o = ownerOf(deal, stage as Stage)
-  return o?.officerId ? { officerId: o.officerId, name: o.name } : null
+  if (o?.officerId) return { officerId: o.officerId, name: o.name }
+
+  // EVERY DEAL FINISHED BEFORE 23 OCTOBER 2026 HAS NO PER-STAGE OWNER.
+  //
+  // 27 Oct 2026, an hour after this shipped. Fabio: "I cannot see 'send it
+  // back' button on live deals". He was right and this line is why.
+  //
+  // bc_owner_officer and the two beside it were added on 23 Oct - see
+  // docs/who-did-each-stage.sql. Before that the portal stored ONE credit
+  // officer per deal, in assigned_credit_officer, and every deal older than
+  // that date still has only that. So ownerOf() answered null, the button
+  // decided nobody in credit had worked on it, and hid itself - on a screen
+  // whose own blue box was reading "Did this: Katie Amos - credit" two
+  // centimetres away, because showingOwner() falls back and this did not.
+  //
+  // A button that disagrees with the label beside it is worse than no button.
+  //
+  // THE APPROXIMATION, SAID OUT LOUD: on a deal this old there is one officer
+  // recorded for the whole file, so a lending options stage a broker quietly
+  // did themselves would be sent back to whoever did the BC. The box names the
+  // person before anything is sent, and any deal touched since 23 Oct answers
+  // from its own stage above. That is the better trade than no button at all.
+  const legacy = txt(deal?.assigned_credit_officer)
+  return legacy ? { officerId: legacy, name: '' } : null
 }
 
 export function canSendBack(deal: any, stage: BackStage): CanSendBack {
   if (!deal) return { ok: false, why: 'No deal' }
-  if (!deal[FINISHED[stage]]) {
-    return { ok: false, why: `There is no finished ${BACK_STAGE_LABEL[stage]} to send back yet` }
-  }
   if (deal[AGREED[stage]]) {
     return { ok: false, why: 'The client has already agreed to this one' }
   }

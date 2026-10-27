@@ -1,6 +1,7 @@
 'use client'
 import HandoverBox from '@/components/Handover'
 import WhatNow from '@/components/WhatNow'
+import { brandsOffered, brandToSettleOn, brandUncertainty } from '@/lib/the-brand-follows-the-broker'
 import SendItBack, { ReworkBanner } from '@/components/SendItBack'
 import { canSendBack, reworkOn, canSendAgain } from '@/lib/send-it-back'
 import { handStageOver } from '@/lib/hand-this-stage-over'
@@ -977,26 +978,42 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
                         lmiApplicable, lmi, lmiTreatment }
   const [internalNotes, setInternalNotes] = useState(s.internalNotes || '')
   const [brokerSig, setBrokerSig] = useState(s.brokerSig || deal.assigned_broker || 'Fabio')
-  const [brokersList, setBrokersList] = useState<{ name: string; brandIds?: string[] }[]>([{ name: 'Fabio', brandIds: ['simplify'] }, { name: 'Mark', brandIds: ['simplify'] }])
+  const [brokersList, setBrokersList] = useState<any[]>([])
   const [brandsList, setBrandsList] = useState<{ id: string; name: string }[]>([{ id: 'simplify', name: 'Simplify Finance' }])
   const [brand, setBrand] = useState(s.brand || '')
 
+  // BRANDS LIVE IN public.brokers, NOT IN THE FROZEN SETTINGS LIST.
+  //
+  // 27 Oct 2026. settings.brokers was frozen weeks ago and scripts/
+  // check-broker-keys.sh fails a ship for reading it - but it looks for
+  // select('brokers') and this said select('brokers, brands'), so it walked
+  // past. The register is asked first now; settings is only a fallback so a
+  // brand can never go missing during the changeover.
   useEffect(() => {
-    supabase.from('settings').select('brokers, brands').eq('id', 'singleton').single().then(({ data, error }) => {
-      if (error) console.error('BC brokers/brands fetch error:', error)
-      if (data?.brokers?.length) setBrokersList(data.brokers)
-      if (data?.brands?.length) setBrandsList(data.brands)
-    })
+    supabase.from('brokers').select('broker_key, name, brand_ids, active')
+      .then(({ data: rows }: any) => {
+        if (rows?.length) setBrokersList(rows)
+      })
+    // Only the brands come out of settings now. The broker list, and which
+    // brands each of them holds, is public.brokers and nowhere else - the old
+    // settings list is out of date, and was already wrong about Kylie.
+    supabase.from('settings').select('brands').eq('id', 'singleton').single()
+      .then(({ data, error }: any) => {
+        if (error) console.error('brands fetch error:', error)
+        if (data?.brands?.length) setBrandsList(data.brands)
+      })
   }, [])
 
-  const currentBrokerBrandIds = brokersList.find((b: any) => b.name === brokerSig)?.brandIds || ['simplify']
-  const availableBrands = brandsList.filter((br: any) => currentBrokerBrandIds.includes(br.id))
+  // WHICH BRANDS THIS BROKER HOLDS - worked out in one place for both forms.
+  // See lib/the-brand-follows-the-broker.ts for why this stopped being a
+  // name comparison, and what it now does when it cannot tell.
+  const availableBrands = brandsOffered(brokersList, brokerSig, brandsList as any)
+  const brandWarning = brandUncertainty(brokersList, brokerSig)
 
   useEffect(() => {
-    if (availableBrands.length > 0 && !availableBrands.some((br: any) => br.id === brand)) {
-      setBrand(availableBrands[0].id)
-    }
-  }, [brokerSig, brandsList])
+    const settle = brandToSettleOn(brokersList, brokerSig, brandsList as any, brand)
+    if (settle !== null) setBrand(settle)
+  }, [brokerSig, brandsList, brokersList])
   const [checklist, setChecklist] = useState<string[]>(s.checklist || [])
   const [newCheck, setNewCheck] = useState('')
   const [generating, setGenerating] = useState(false)
@@ -3577,6 +3594,9 @@ Key assumptions: ${checklistText}`
                     </select>
                   </Field>
                   <Field label="Brand">
+                    {brandWarning && (
+                      <p className="mt-1 text-[11px] text-chase leading-relaxed">{brandWarning}</p>
+                    )}
                     <select className={selectCls} value={brand} onChange={e => setBrand(e.target.value)}>
                       {availableBrands.map((br: any) => (
                         <option key={br.id} value={br.id}>{br.name}</option>

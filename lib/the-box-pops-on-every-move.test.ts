@@ -19,24 +19,58 @@ import { readFileSync } from 'fs'
 const lo = readFileSync('app/(app)/deals/[id]/LOForm.tsx', 'utf8')
 const bc = readFileSync('app/(app)/deals/[id]/BCForm.tsx', 'utf8')
 
+// A COMMENT EXPLAINING A RULE IS NOT A BREACH OF IT.
+//
+// 27 Oct 2026, and the third time in one day - see the same note in
+// scripts/check-email-html.sh and scripts/check-broker-keys.sh. The comment in
+// LOForm.tsx that explains why it stopped reading the frozen broker list
+// quotes the old call, and the test looking for that call found the
+// explanation. Checked against code only; the words above it are free.
+const codeOnly = (src: string) =>
+  src.split('\n').filter(l => !l.trim().startsWith('//')).join('\n')
+
 describe('the lending options knows its brand', () => {
   it('no longer types a trading name into the page', () => {
     expect(lo, 'the broker dropdown is hard-coding a brand again')
       .not.toContain('— Simplify Finance</option>')
   })
 
-  it('reads brokers and brands from the one record that holds both', () => {
-    expect(lo).toContain("supabase.from('settings').select('brokers, brands')")
+  // THESE THREE WERE REWRITTEN ON 27 Oct 2026, AND IT IS WORTH SAYING WHY.
+  //
+  // They locked in the fix made on 23 Oct, and that fix was half wrong. It had
+  // the lending options look the broker up by full name - "Justin Cornock" -
+  // in a list the deal addresses by key - "justin". The two never match, so
+  // every broker resolved to Simplify only, and the "never leave it blank"
+  // rule below then wrote Simplify over a chosen Navigate.
+  //
+  // Catherine, Operations Manager, 27 Oct: "When Navigate is selected at the BC
+  // level, it switches back to Simplify Finance after moving on." She was
+  // describing this, four days after we shipped it.
+  //
+  // A test that holds a bug in place is worse than no test. These now assert
+  // the rule rather than the spelling of it - the rule itself, with its own
+  // cases, is lib/the-brand-follows-the-broker.test.ts.
+
+  it('reads the brands from settings and the BROKERS from the register', () => {
+    // settings.brokers is frozen and was already out of date about Kylie.
+    expect(lo).toContain("supabase.from('settings').select('brands')")
+    expect(lo).toContain("from('brokers').select('broker_key, name, brand_ids, active')")
+    expect(codeOnly(lo), 'the frozen broker list is being read again').not.toContain("select('brokers,")
   })
 
-  it('offers only the brands that broker actually holds', () => {
-    expect(lo).toContain("brokersList.find((b: any) => b.name === d.brokerSig)?.brandIds")
+  it('offers the brands that broker holds, matched properly and not by name', () => {
+    expect(lo).toContain('brandsOffered(brokersList, d.brokerSig')
     expect(lo).toContain('availableBrands.map')
+    expect(codeOnly(lo), 'a broker is being matched on their full name again')
+      .not.toContain('b.name === d.brokerSig')
   })
 
-  it('and never leaves the brand blank, which is what fell through to Simplify', () => {
-    expect(lo).toContain('!availableBrands.some((br: any) => br.id === d.brandId)')
-    expect(lo).toContain('brandId: availableBrands[0].id')
+  it('never leaves the brand blank, and never overwrites a chosen one', () => {
+    // Blank falls through to the default brand in lib/brand.ts, so blank is
+    // still filled. What has stopped is overwriting a brand somebody picked
+    // because we could not identify the broker.
+    expect(lo).toContain('brandToSettleOn(brokersList, d.brokerSig')
+    expect(codeOnly(lo), 'the Simplify guess is back').not.toContain("|| ['simplify']")
   })
 
   it('the brand box is in broker personalisation, beside the signature', () => {

@@ -52,10 +52,62 @@ describe('when it can be sent back', () => {
     })
   })
 
-  it('and not before there is anything to send back', () => {
-    const { ok, why } = canSendBack({ id: 'd1' }, 'bc')
-    expect(ok).toBe(false)
-    expect(why).toContain('no finished BC')
+  // AND THERE IS NO "IS IT FINISHED" RULE AT ALL.
+  //
+  // 27 Oct 2026. Fabio, after I had already widened it once: "makes no sense
+  // to have that rule thats the point od sending it back". A broker who learns
+  // at 10am that the client wants a different scenario tells credit at 10am,
+  // rather than waiting for them to finish writing the wrong thing.
+  it('a BC credit has not finished can still be sent back - that is the point', () => {
+    const inProgress = {
+      id: 'd4', deal_name: 'In Progress 2026',
+      assigned_credit_officer: 'o1',
+      bc_owner_officer: 'o1', bc_owner_name: 'Katie Amos',
+      // nothing finished, nothing sent
+    }
+    expect(canSendBack(inProgress, 'bc').ok).toBe(true)
+  })
+
+  it('and sending one back that has no stamps clears nothing', () => {
+    const inProgress = { id: 'd4', bc_owner_officer: 'o1', bc_owner_name: 'Katie Amos' }
+    const patch = sendBackPatch(inProgress, 'bc', INPUT, new Date('2026-10-27T09:12:00+11:00'))
+    expect(clearedBySendingBack(inProgress, 'bc')).toEqual([])
+    // The deal does not move, because it is already with credit. What changes
+    // is that it is now a rework: top of her day, with the reason on it.
+    expect(patch.bc_rework_why).toBe('scenario')
+    expect(patch.bc_rework_count).toBe(1)
+  })
+
+  // THE DEAL THAT PROVED THE RULE WAS WRONG.
+  //
+  // 27 Oct 2026. Fabio sent a screenshot of a live deal with no button on it.
+  // The BC had gone to the client on 18 October and bc_completed_at was empty,
+  // because credit emailed it and never pressed Done - which the portal has
+  // always allowed. The row still showed the black Done button, which is how
+  // the screenshot gave it away.
+  //
+  // "Finished" was the wrong question. A BC sitting with a client is more
+  // urgent to rework than one that has not gone out, not less.
+  it('a BC that went to the client but was never marked Done', () => {
+    const emailed = {
+      id: 'd3', deal_name: 'Doughan & Addie 2026',
+      fact_find_data: { applicants: [{ firstName: 'A' }] },
+      assigned_credit_officer: 'o1',
+      bc_owner_officer: 'o1', bc_owner_name: 'Katie Amos',
+      bc_sent_at: '2026-10-18T04:00:00Z',
+      // bc_completed_at was never set
+    }
+    expect(canSendBack(emailed, 'bc').ok).toBe(true)
+    // And sending it back clears the one stamp there is.
+    const patch = sendBackPatch(emailed, 'bc', INPUT, new Date('2026-10-27T09:12:00+11:00'))
+    expect(patch.bc_sent_at).toBeNull()
+    expect(patch.bc_rework_was_sent).toBe('2026-10-18T04:00:00Z')
+  })
+
+  it('and the same on the lending options', () => {
+    const emailed = { id: 'd3', lo_sent_at: '2026-10-18T04:00:00Z',
+                      lo_owner_officer: 'o1', lo_owner_name: 'Katie Amos' }
+    expect(canSendBack(emailed, 'lo').ok).toBe(true)
   })
 
   it('the lending options answer the same questions off their own dates', () => {
@@ -63,14 +115,61 @@ describe('when it can be sent back', () => {
                  lo_owner_officer: 'o1', lo_owner_name: 'Katie Amos' }
     expect(canSendBack(lo, 'lo').ok).toBe(true)
     expect(canSendBack({ ...lo, lo_client_proceeded: true }, 'lo').ok).toBe(false)
-    // A finished BC is not a finished LO.
-    expect(canSendBack(FINISHED_BC, 'lo').ok).toBe(false)
+    // This used to assert that a finished BC is not a finished LO, and that
+    // the lending options could not be sent back until they existed. That was
+    // the paperwork rule Fabio threw out on 27 Oct - the lending options CAN
+    // be sent back before they are started, because "do this one differently"
+    // is worth saying before the work happens, not after.
+    expect(canSendBack(FINISHED_BC, 'lo').ok).toBe(true)
+  })
+
+  // THE ONE THAT WAS MISSING, AND IT WAS EVERY REAL DEAL.
+  //
+  // 27 Oct 2026, an hour after this shipped. Fabio: "I cannot see 'send it
+  // back' button on live deals". The per-stage owner columns only exist from
+  // 23 Oct, so every deal older than that answered "nobody in credit worked on
+  // this" and the button hid - beside a label reading "Did this: Katie Amos".
+  //
+  // The fixtures above all carry bc_owner_officer, which is exactly why the
+  // tests passed and the portal did not. A fixture tidier than the data is a
+  // test that proves nothing.
+  describe('a deal from before the per-stage owner existed', () => {
+    const OLD = {
+      id: 'd2', deal_name: 'Ashworth 2026',
+      fact_find_data: { applicants: [{ firstName: 'A' }] },
+      assigned_credit_officer: 'o9',
+      bc_completed_at: '2026-10-14T04:00:00Z',
+      // and nothing else - no bc_owner_officer, no bc_owner_name
+    }
+
+    it('can still be sent back', () => {
+      expect(canSendBack(OLD, 'bc').ok).toBe(true)
+      expect(sendBackTarget(OLD, 'bc')).toEqual({ officerId: 'o9', name: '' })
+    })
+
+    it('and the lending options on it too', () => {
+      const lo = { ...OLD, lo_completed_at: '2026-10-15T04:00:00Z' }
+      expect(canSendBack(lo, 'lo').ok).toBe(true)
+    })
+
+    it('but a deal nobody in credit ever touched still cannot be', () => {
+      const own = { ...OLD, assigned_credit_officer: null }
+      expect(sendBackTarget(own, 'bc')).toBeNull()
+      expect(canSendBack(own, 'bc').ok).toBe(false)
+    })
+
+    it('and the stage owner wins where there is one', () => {
+      // A deal worked since 23 Oct answers from its own stage, not the deal.
+      const both = { ...OLD, bc_owner_officer: 'o1', bc_owner_name: 'Katie Amos' }
+      expect(sendBackTarget(both, 'bc')).toEqual({ officerId: 'o1', name: 'Katie Amos' })
+    })
   })
 
   it('and never where a broker did it himself', () => {
     // There is nobody to send it back TO. He opens it and changes it, which is
     // what the form is for - so the button is absent rather than pointless.
-    const own = { ...FINISHED_BC, bc_owner_officer: null, bc_owner_name: 'Mark Gallo' }
+    const own = { ...FINISHED_BC, bc_owner_officer: null, bc_owner_name: 'Mark Gallo',
+                  assigned_credit_officer: null }
     expect(sendBackTarget(own, 'bc')).toBeNull()
     expect(canSendBack(own, 'bc').why).toContain('Nobody in credit')
   })

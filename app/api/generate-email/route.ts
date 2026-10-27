@@ -686,19 +686,21 @@ export async function POST(req: NextRequest) {
   let brandObj: any = undefined
   try {
     const supabase = await createSupabaseServer()
-    const { data: settings } = await supabase.from('settings').select('brokers, brands').eq('id', 'singleton').single()
-    if (settings?.brokers?.length) {
-      const liveBroker = settings.brokers.find((x: any) => x.name === broker)
-      if (liveBroker) {
-        b = {
-          name: liveBroker.name,
-          title: liveBroker.title || 'Mortgage Broker',
-          crn: liveBroker.crn || '',
-          calendly: liveBroker.calendly || '',
-          email: liveBroker.email || '',
-        }
-      }
-    }
+    // THE SECOND OPINION THAT WAS WORSE THAN THE FIRST, REMOVED 27 Oct 2026.
+    //
+    // resolveBrokerProfile() above reads public.brokers and matches a key, a
+    // first name or a full name - see lib/broker-profile.ts. This block then
+    // threw that away and looked the broker up again in the FROZEN settings
+    // list, on `x.name === broker`. A deal carries "justin"; that list carries
+    // "Justin Cornock". It never matched, so it either did nothing or, where a
+    // name happened to be passed, replaced a current profile with a stale one -
+    // and the thing it replaces is the CREDIT REPRESENTATIVE NUMBER printed on
+    // a client's email.
+    //
+    // Found by scripts/check-broker-keys.sh on the day it was widened, which is
+    // the entire argument for widening it. Same fault Catherine reported on the
+    // brand; third place it was hiding.
+    const { data: settings } = await supabase.from('settings').select('brands').eq('id', 'singleton').single()
     if (settings?.brands?.length && brand) {
       brandObj = settings.brands.find((x: any) => x.id === brand)
     }

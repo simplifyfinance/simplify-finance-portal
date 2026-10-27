@@ -1,6 +1,7 @@
 'use client'
 import HandoverBox from '@/components/Handover'
 import WhatNow from '@/components/WhatNow'
+import { brandsOffered, brandToSettleOn, brandUncertainty } from '@/lib/the-brand-follows-the-broker'
 import SendItBack, { ReworkBanner } from '@/components/SendItBack'
 import { canSendBack, reworkOn, canSendAgain } from '@/lib/send-it-back'
 import { handStageOver } from '@/lib/hand-this-stage-over'
@@ -895,36 +896,43 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // record that carries brandIds. The brokers table has names and nothing
   // else, so it stays as the fallback rather than the answer: a list that
   // works but cannot say which brands a broker holds.
-  const [brokersList, setBrokersList] = useState<{ name: string; brandIds?: string[] }[]>([{ name: 'Fabio' }, { name: 'Mark' }])
+  const [brokersList, setBrokersList] = useState<any[]>([])
   const [brandsList, setBrandsList] = useState<{ id: string; name: string }[]>([{ id: 'simplify', name: 'Simplify Finance' }])
 
+  // BRANDS LIVE IN public.brokers, NOT IN THE FROZEN SETTINGS LIST.
+  //
+  // 27 Oct 2026. settings.brokers was frozen weeks ago and scripts/
+  // check-broker-keys.sh fails a ship for reading it - but it looks for
+  // select('brokers') and this said select('brokers, brands'), so it walked
+  // past. The register is asked first now; settings is only a fallback so a
+  // brand can never go missing during the changeover.
   useEffect(() => {
-    supabase.from('settings').select('brokers, brands').eq('id', 'singleton').single().then(({ data, error }: any) => {
-      if (error) console.error('LO brokers/brands fetch error:', error)
-      if (data?.brokers?.length) setBrokersList(data.brokers)
-      if (data?.brands?.length) setBrandsList(data.brands)
-      // Only where settings has nothing to say. Never a second opinion.
-      if (!data?.brokers?.length) {
-        supabase.from('brokers').select('broker_key, name, active').order('name').then(({ data: rows }: any) => {
-          const live = (rows || []).filter((b: any) => b.active !== false).map((b: any) => ({ name: b.name }))
-          if (live.length) setBrokersList(live)
-        })
-      }
-    })
+    supabase.from('brokers').select('broker_key, name, brand_ids, active')
+      .then(({ data: rows }: any) => {
+        if (rows?.length) setBrokersList(rows)
+      })
+    // Only the brands come out of settings now. The broker list, and which
+    // brands each of them holds, is public.brokers and nowhere else - the old
+    // settings list is out of date, and was already wrong about Kylie.
+    supabase.from('settings').select('brands').eq('id', 'singleton').single()
+      .then(({ data, error }: any) => {
+        if (error) console.error('brands fetch error:', error)
+        if (data?.brands?.length) setBrandsList(data.brands)
+      })
   }, [])
 
   // Justin holds more than one brand, which is the whole reason this is a
-  // dropdown and not a label. Identical rule to the BC.
-  const currentBrokerBrandIds = brokersList.find((b: any) => b.name === d.brokerSig)?.brandIds || ['simplify']
-  const availableBrands = brandsList.filter((br: any) => currentBrokerBrandIds.includes(br.id))
+  // dropdown and not a label. Identical rule to the BC, and now literally the
+  // same code - see lib/the-brand-follows-the-broker.ts.
+  const availableBrands = brandsOffered(brokersList, d.brokerSig, brandsList as any)
+  const brandWarning = brandUncertainty(brokersList, d.brokerSig)
 
-  // NEVER BLANK, so it can never fall through to the default brand. The BC has
-  // done this since brands existed; the LO never did, which is the bug.
+  // NEVER BLANK, because a blank falls through to the default brand. But never
+  // overwriting a chosen brand either, which is what Catherine was seeing.
   useEffect(() => {
-    if (availableBrands.length > 0 && !availableBrands.some((br: any) => br.id === d.brandId)) {
-      setD(x => ({ ...x, brandId: availableBrands[0].id }))
-    }
-  }, [d.brokerSig, brandsList])
+    const settle = brandToSettleOn(brokersList, d.brokerSig, brandsList as any, d.brandId)
+    if (settle !== null) setD(x => ({ ...x, brandId: settle }))
+  }, [d.brokerSig, brandsList, brokersList])
 
   useEffect(() => {
     const newTemplate = loTemplateFor(bc.template)
@@ -2534,6 +2542,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
               ))}
             </select>
             <label className="text-xs text-gray-500 block mb-1">Brand</label>
+            {brandWarning && (
+              <p className="mb-1 text-[11px] text-chase leading-relaxed">{brandWarning}</p>
+            )}
             <select className="w-full rounded-lg px-3 py-2 text-sm border border-gray-200 focus:outline-none focus:border-brand mb-3"
               value={d.brandId} onChange={e => setD({ ...d, brandId: e.target.value })}>
               {availableBrands.map((br: any) => (

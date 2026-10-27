@@ -6,9 +6,18 @@ cd "$(dirname "$0")/.."
 
 fail=0
 
+# A COMMENT EXPLAINING A RULE IS NOT A BREACH OF IT.
+#
+# 27 Oct 2026, and the third guard this has happened to - see the same note in
+# scripts/check-email-html.sh. This file now describes the brand bug in its own
+# comments, and promptly failed itself. Every rule below drops lines whose
+# content begins with // or # or *.
+NOT_A_COMMENT='[0-9]+:[[:space:]]*(//|#|\*)'
+
+
 raw=$(grep -rn "assigned_broker ===\|broker_key ===\|broker_slug ===\|\.eq('broker_slug'\|\.eq('assigned_broker'" \
       --include=*.ts --include=*.tsx app lib components 2>/dev/null \
-      | grep -v "lib/broker-key.ts" || true)
+      | grep -v "lib/broker-key.ts" | grep -vE "$NOT_A_COMMENT" || true)
 if [ -n "$raw" ]; then
   echo "BROKER KEY CHECK FAILED - broker identity compared raw."
   echo "Use sameBroker()/brokerKey() from lib/broker-key.ts, or .ilike() for a query."
@@ -22,7 +31,7 @@ fi
 # them, because it only looked for a bare ===.
 lower=$(grep -rnE "(assigned_broker|broker_key|broker_slug)[^=]*\.toLowerCase\(\)[[:space:]]*===" \
         --include=*.ts --include=*.tsx app lib components 2>/dev/null \
-        | grep -v "lib/broker-key.ts" || true)
+        | grep -v "lib/broker-key.ts" | grep -vE "$NOT_A_COMMENT" || true)
 if [ -n "$lower" ]; then
   echo
   echo "BROKER KEY CHECK FAILED - broker identity compared by lower-casing it."
@@ -32,8 +41,11 @@ if [ -n "$lower" ]; then
   fail=1
 fi
 
-frozen=$(grep -rn "select('brokers')" --include=*.ts --include=*.tsx app lib components 2>/dev/null \
-         | grep -v "lib/broker-profile.ts" || true)
+# 27 Oct 2026. This looked for select('brokers') exactly. Both deal forms said
+# select('brokers, brands') and sailed through for five weeks, which is half of
+# why a Navigate client could get Simplify's credit licence on their email.
+frozen=$(grep -rnE "select\('brokers[,')]" --include=*.ts --include=*.tsx app lib components 2>/dev/null \
+         | grep -v "lib/broker-profile.ts" | grep -v "\.test\." | grep -vE "$NOT_A_COMMENT" || true)
 if [ -n "$frozen" ]; then
   echo
   echo "BROKER KEY CHECK FAILED - reading settings.brokers, which is frozen."
@@ -66,6 +78,50 @@ if [ -n "${shown// /}" ] && [ "$shown" != $'\n' ]; then
   echo "BROKER KEY CHECK FAILED - a broker key is being rendered to the screen."
   echo "It is lower case by design. Show the name from the register instead."
   echo "$shown"
+  fail=1
+fi
+
+# MATCHING A BROKER BY THEIR NAME, WHICH IS THE SAME FAULT WEARING A HAT.
+#
+# 27 Oct 2026. Catherine: "When Navigate is selected at the BC level, it
+# switches back to Simplify Finance after moving on." The cause was one line in
+# each deal form:
+#
+#   brokersList.find(b => b.name === brokerSig)?.brandIds || ['simplify']
+#
+# A full name on the left, a key on the right, never equal - so every broker
+# resolved to Simplify and the brand was quietly rewritten. The two rules above
+# both describe this mistake and neither matched this spelling, because it does
+# not mention assigned_broker and it does not lower-case anything.
+#
+# So: comparing anything that holds a broker to a .name with === is out.
+byname=$(grep -rnE "\.name === [A-Za-z_$][A-Za-z0-9_.$]*([Bb]roker|[Ss]ig)|([Bb]roker|[Ss]ig)[A-Za-z0-9_.$]* === [A-Za-z_$][A-Za-z0-9_.$]*\.name" \
+         --include=*.ts --include=*.tsx app lib components 2>/dev/null \
+         | grep -v "lib/broker-key.ts" | grep -v "\.test\." | grep -vE "$NOT_A_COMMENT" || true)
+if [ -n "$byname" ]; then
+  echo
+  echo "BROKER KEY CHECK FAILED - a broker is being matched on their full name."
+  echo "Deals store a key (justin); lists store a name (Justin Cornock). They never match."
+  echo "Use sameBroker() from lib/broker-key.ts."
+  echo "$byname"
+  fail=1
+fi
+
+# AND THE FALLBACK THAT TURNED A MISSED MATCH INTO A WRONG LICENCE.
+#
+# Guessing a brand is never safe, and guessing the house brand is the least safe
+# guess of all - it is the one that puts our credit licence on somebody else's
+# client email. Where the brands are unknown, offer all of them and write none.
+# See lib/the-brand-follows-the-broker.ts.
+guess=$(grep -rnE "\|\| \['simplify'\]|\|\| \["simplify"\]" \
+        --include=*.ts --include=*.tsx app lib components 2>/dev/null \
+        | grep -v "lib/the-brand-follows-the-broker.ts" | grep -v "\.test\." | grep -vE "$NOT_A_COMMENT" || true)
+if [ -n "$guess" ]; then
+  echo
+  echo "BRAND CHECK FAILED - falling back to the house brand when the broker is unknown."
+  echo "That is how Simplify's credit licence reaches another brand's client."
+  echo "Use brandsOffered()/brandToSettleOn() from lib/the-brand-follows-the-broker.ts."
+  echo "$guess"
   fail=1
 fi
 
