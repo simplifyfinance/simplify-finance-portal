@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { bccForDeal, bccGap } from '@/lib/files-itself-in-salestrekker'
+import { bccForDeal, bccGap, cleanBcc, bccIsSendable } from '@/lib/files-itself-in-salestrekker'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
 import { resolveBrand } from '@/lib/brand'
@@ -293,6 +293,26 @@ export async function GET(req: NextRequest) {
     // the other problems rather than in a box of its own, because it is the
     // same kind of thing: worth knowing before you press send, not a refusal.
     problems: [...built.problems, ...(filingGap ? [filingGap] : [])],
+    // AND WHETHER THE SCREEN HAS TO OFFER THE OUTLOOK STEP.
+    //
+    // 27 Oct 2026. Fabio: "copy the html and our outlook opnes with BCC inthere
+    // so we can paste and send". It is the mechanism the BC and the lending
+    // options have always used, and it works precisely because Outlook accepts
+    // the long SalesTrekker address that our mail provider refuses.
+    //
+    // The CLIENT'S copy still goes from here, because some of these carry the
+    // lender's letter as a PDF and a mailto cannot attach a file - the letter
+    // would be quietly left off. Only the filing copy goes through Outlook,
+    // and SalesTrekker stores the text of the note, not the attachment.
+    filesItself: bccForDeal(deal, { redirected: where.redirected }).length > 0,
+    // THE ADDRESS THE BROKER FILES TO BY HAND, or nothing.
+    //
+    // Set only where there IS a code and our mail provider will not take it -
+    // which is the whole 174. Empty on a test deal (files nowhere by design),
+    // on a deal with no code (nothing to file to), and on one whose address is
+    // fine (it already went in the bcc).
+    filingAddress: where.redirected || bccIsSendable(deal?.salestrekker_bcc)
+      ? '' : cleanBcc(deal?.salestrekker_bcc),
     // WHO IT IS GOING TO, by name. The person sending has to be able to see it
     // - half the point of a preview is catching an address that belongs to
     // somebody's old work account. They can read it on the fact find anyway.

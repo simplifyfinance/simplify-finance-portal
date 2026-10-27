@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { copyHtmlAndPlain } from '@/lib/rich-text'
 import { outstandingFromDeal } from '@/lib/documents-outstanding'
 import { type DocRow } from '@/lib/document-progress'
 import { SENT_WITH } from '@/lib/offer-accepted-email'
@@ -35,6 +36,10 @@ type Block = { key: string; label: string; on: boolean; by: string; why: string 
 type Preview = {
   subject: string
   html: string
+  // Whether the portal's own mail provider will carry the SalesTrekker copy.
+  filesItself?: boolean
+  // Where to file it by hand when it will not. See lib/files-itself-in-salestrekker.ts.
+  filingAddress?: string
   blocks: Block[]
   problems: string[]
   to: string[]
@@ -215,6 +220,10 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
     () => SENT_WITH.filter(x => sentWith[x.key]).map(x => x.key), [sentWith])
   const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
+  // Set once the client's copy has gone, so the footer can offer the
+  // filing step. 27 Oct 2026.
+  const [sent, setSent] = useState(false)
+  const [filed, setFiled] = useState(false)
   const [err, setErr] = useState('')
   const [done, setDone] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -283,6 +292,24 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
     return () => clearTimeout(t)
   }, [load])
 
+  // ONE PASTE, AND THE CARD HAS IT.
+  //
+  // The same two steps the BC and the lending options take: put the email on
+  // the clipboard, then hand the browser a mailto. Outlook opens already
+  // addressed with the subject filled in, and the person pastes.
+  //
+  // The clipboard write happens FIRST. Handing the browser a mailto: can cut
+  // short whatever is still in flight - lib/the-lo-marks-itself-sent.test.ts
+  // exists because of exactly that, on this same pattern.
+  async function fileItByHand() {
+    const to = String(preview?.filingAddress || '')
+    if (!to) return
+    try { await copyHtmlAndPlain(preview?.html || '') } catch { /* the mailto still opens */ }
+    setFiled(true)
+    const subject = `${preview?.subject || ''} — ${deal.deal_name || ''}`.trim()
+    window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}`
+  }
+
   async function send() {
     // Only the three that say "please find attached" - see the template record.
     if (wantsLetter && !file) { setErr('Attach the lender’s letter first.'); return }
@@ -315,6 +342,7 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
           to: preview?.to || [], cc: json.cc || [], attached: Boolean(file),
         }],
       })
+      setSent(true)
       setDone(json.warning || '')
     } catch (e: any) {
       setErr(`The send failed — ${e?.message || 'network error'}.`)
@@ -582,11 +610,37 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
           </div>
         )}
 
+        {/* FILING IT BY HAND, WHEN OUR MAIL PROVIDER WILL NOT.
+            27 Oct 2026. Fabio: "copy the html and our outlook opnes with BCC
+            inthere so we can paste and send". It is exactly what the BC and the
+            lending options have always done, and it works because Outlook
+            accepts the 74-character SalesTrekker address that Resend refuses.
+            The client's copy has already gone from the portal with its PDF on
+            it - this is the filing copy only, which is why the address goes in
+            To rather than Bcc. There is nobody left to hide it from. */}
+        {sent && !!preview?.filingAddress && (
+          <div className="px-5 pt-2">
+            <div className="border border-info-edge bg-info-bg rounded-lg px-3.5 py-3 text-[12.5px] text-body leading-relaxed">
+              {filed
+                ? <span><b className="text-ink">Outlook is open with it.</b> Paste the email in and send,
+                    and the card has it. Nothing else to fill in.</span>
+                : <span><b className="text-ink">It has not filed in SalesTrekker yet.</b> Press the button
+                    below — the email is copied and Outlook opens, already addressed. Paste, and send.</span>}
+            </div>
+          </div>
+        )}
+
         <div className="border-t border-[#EEF0F2] bg-[#FAFAF8] px-5 py-3 flex gap-2 items-center flex-wrap rounded-b-xl">
-          <button onClick={send} disabled={busy || (wantsLetter && !file) || !preview?.to?.length}
+          <button onClick={send} disabled={busy || sent || (wantsLetter && !file) || !preview?.to?.length}
             className="bg-ink text-page rounded-lg px-4 py-2 text-[12.5px] font-semibold disabled:opacity-40">
-            {busy ? 'Sending…' : 'Send'}
+            {busy ? 'Sending…' : sent ? '\u2713 Sent' : 'Send'}
           </button>
+          {sent && !!preview?.filingAddress && (
+            <button onClick={fileItByHand}
+              className="border border-[#BFE6F9] bg-card text-brand-ink rounded-lg px-4 py-2 text-[12.5px] font-bold">
+              {filed ? 'Open Outlook again' : 'Copy and open Outlook to file it'}
+            </button>
+          )}
           <button onClick={onClose}
             className="border border-[#E3E6E8] text-muted bg-card rounded-lg px-4 py-2 text-[12.5px] font-semibold">
             Close
