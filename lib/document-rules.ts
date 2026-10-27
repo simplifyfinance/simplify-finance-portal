@@ -318,7 +318,22 @@ function dealItems(deal: any, ff: any, out: DocItem[], gaps: DocGap[]) {
   // One deposit, one gift letter - written by whoever is giving the money. This
   // was per applicant to begin with, which asked a couple for two letters about
   // one gift. Where there really are two gifts, the assessor adds the second.
-  if (txt(ff?.depositSource) === 'Gift') {
+  // ASKED ON THE BC NOW, NOT ON THE FACT FIND.
+  //
+  // 27 Oct 2026. Fabio: "I am saying that question that early is useless so if
+  // it is not connected to compliance or LO remove it as we ask that in BC!"
+  //
+  // He is right - it was the FIRST question on the fact find, on every deal,
+  // including a refinance where there is no deposit at all. It has gone from
+  // there and the BC's own deposit source is the answer now.
+  //
+  // THE FACT FIND'S IS STILL READ, because deals filled in before today have it
+  // and nothing already recorded should stop working. Either one saying Gift
+  // puts the letter on the list.
+  //
+  // Nothing is asked too early by the move: documents are only requested once
+  // the client has proceeded, which is after the BC has gone out.
+  if (txt(ff?.depositSource) === 'Gift' || txt(deal?.bc_data?.depositSource) === 'Gift') {
     out.push({ ...g, key: 'gift-letter', label: 'Gift letter', detail: 'our template',
       why: 'The deposit is coming from a gift',
       forWhat: 'lodge', round: 'proceed', auto: true })

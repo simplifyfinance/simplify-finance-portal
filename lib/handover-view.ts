@@ -28,6 +28,7 @@ import { hemStateOf, hemTotals, unansweredNote, type ExpenseCategory } from './h
 import { rowLegalFeeLabel } from './lender-fees'
 import { householdsOf } from './households'
 import { expensesFor } from './household-expenses'
+import { splitOn, splitKindLabel, shareWords } from './who-shares-this-deal'
 
 // --- the lists ---------------------------------------------------------------
 
@@ -268,6 +269,43 @@ export function handoverSections(deal: any): ViewSection[] {
   })
   if (riskCards.length) sections.push({ key: 'risks', title: 'Risks', accent: 'red',
     pill: applicants.length > 1 ? 'both applicants' : 'applicant', cards: riskCards })
+
+  // WHO SHARES THIS DEAL, FOR THE PERSON TYPING IT INTO SALESTREKKER.
+  //
+  // 27 Oct 2026. The split was built onto the fact find, the deal page and
+  // compliance and then stopped. Fabio: "did you remeebr to add those
+  // commisisons splits to the handover pdf and iopne to copy so my team can
+  // input in salestrekker??" No, I did not. This is that.
+  //
+  // KEY AND VALUE ROWS, NOT A BLOCK OF PROSE, because each one goes into its
+  // own SalesTrekker field and the screen copies a value at a time. A paragraph
+  // on the clipboard cannot be pasted into any of them - the same reason the
+  // written boxes copy whole and these do not. Fabio, 2 Sep 2026: "remove copy
+  // of flields as copying multiple tabs doesnt work and it will confuse staff".
+  //
+  // AND "NOBODY" IS PRINTED, not left out. A deal nobody has answered and a
+  // deal somebody confirmed is all ours look identical in a blank space, and
+  // the person doing the handover has to be able to tell them apart.
+  {
+    const shared = splitOn(deal)
+    if (shared) {
+      const named = (shared.lines || []).filter(l => String(l?.who || '').trim())
+      const rows: ViewRow[] = shared.none
+        ? [{ kind: 'kv', k: 'Shared with', v: 'Nobody - this one is all ours' }]
+        : [
+            { kind: 'kv', k: 'Arrangement', v: shared.name || 'Unnamed' },
+            { kind: 'kv', k: 'Kind', v: splitKindLabel(shared.kind) },
+            ...(named.length ? [sub('Who gets what')] : []),
+            ...named.map(l => ({ kind: 'kv' as const, k: l.who, v: shareWords(l) })),
+            ...(shared.by ? [{ kind: 'kv' as const, k: 'Recorded by', v: shared.by }] : []),
+          ]
+      sections.push({
+        key: 'split', title: 'Commission split', accent: 'violet',
+        pill: shared.none ? 'not shared' : `${named.length || 1} ${named.length === 1 ? 'party' : 'parties'}`,
+        cards: [{ key: 'split', title: shared.none ? 'Not shared' : (shared.name || 'Arrangement'), rows }],
+      })
+    }
+  }
 
   const prodRows: ViewRow[] = []
   for (const g of PRODUCT_GROUPS) {

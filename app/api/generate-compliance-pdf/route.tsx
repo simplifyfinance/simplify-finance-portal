@@ -26,6 +26,7 @@ import { hemStateOf, hemTotals, unansweredNote } from '@/lib/hem'
 import { EXPENSE_CATEGORIES, RISK_GROUPS, PRODUCT_GROUPS } from '@/lib/handover-view'
 import { shortDate } from '@/lib/push-answers'
 import { Section } from '@/lib/pdf-section'
+import { splitOn, splitKindLabel, shareWords } from '@/lib/who-shares-this-deal'
 import { householdsOf } from '@/lib/households'
 import { lenderOnTheDeal } from '@/lib/client-agreement'
 import { expensesFor } from '@/lib/household-expenses'
@@ -255,6 +256,34 @@ export async function generateCompliancePdfBuffer(dealId: string, supabase: any)
               </View>
             )
           })}
+
+          {/* WHO SHARES THIS DEAL. 27 Oct 2026.
+              On the paper as well as on the screen, because the screen is what
+              gets typed from and the paper is the record. The same rows, from
+              the same place - lib/who-shares-this-deal.ts - so the two cannot
+              disagree about who is being paid what.
+              "Nobody" is printed rather than left out: a deal nobody has
+              answered and a deal somebody confirmed is all ours look the same
+              in a blank space, and whoever reads this has to tell them apart. */}
+          {(() => {
+            const shared = splitOn(deal)
+            if (!shared) return null
+            const named = (shared.lines || []).filter((l: any) => String(l?.who || '').trim())
+            const rows: [string, string][] = shared.none
+              ? [['Shared with', 'Nobody \u2014 this one is all ours']]
+              : [
+                  ['Arrangement', shared.name || 'Unnamed'],
+                  ['Kind', splitKindLabel(shared.kind)],
+                  ...named.map((l: any) => [l.who, shareWords(l)] as [string, string]),
+                  ...(shared.by ? [['Recorded by', shared.by] as [string, string]] : []),
+                ]
+            return (
+              <View>
+                <Section title="Commission split" pill={shared.none ? 'not shared' : 'money going out'} />
+                <QaRows rows={rows} />
+              </View>
+            )
+          })()}
 
           <Section title="Product requirements" pill="from the lending options" />
           {PRODUCT_GROUPS.map(g => (

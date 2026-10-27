@@ -96,7 +96,6 @@ describe('the things Fabio checked by hand, by name', () => {
   // a list of 174 is not something a person should have to read to be sure.
   const factFind = new Set(now['app/(app)/deals/[id]/FactFindForm.tsx'] || [])
   const MUST_BE_THERE = [
-    'Where is the deposit coming from?',
     'Purpose of loan / primary reason for finance',
     'Goals — next 2 years',
     'Goals — 2 to 10 years',
@@ -106,6 +105,59 @@ describe('the things Fabio checked by hand, by name', () => {
   ]
   it.each(MUST_BE_THERE)('%s', (label) => {
     expect(factFind.has(label), `"${label}" is no longer on the Fact Find`).toBe(true)
+  })
+})
+
+// MOVED, NOT LOST.
+//
+// 27 Oct 2026. "Where is the deposit coming from?" was the FIRST question on
+// the fact find, on every deal - including a refinance, a top up and a cash
+// out, where there is no deposit to have a source. Fabio: "that question that
+// early is useless so if it is not connected to compliance or LO remove it as
+// we ask that in BC!"
+//
+// It could not be hidden on a refinance, because the fact find is filled in
+// before the BC exists and at that moment nothing knows what kind of deal it
+// is. So it is asked once now, on the BC, where the deal already knows what it
+// is - and the one line came out of the snapshot by hand, which is what the
+// note at the top of this file says has to happen.
+//
+// THIS IS NOT A WEAKER TEST THAN THE ONE IT REPLACES. "Where is the deposit
+// coming from" was checked against one form. This checks that the question
+// still exists SOMEWHERE a person can answer it, and names where. Delete it
+// from the BC as well and this fails.
+describe('a question that moved is still a question somebody can answer', () => {
+  const bc = new Set(now['app/(app)/deals/[id]/BCForm.tsx'] || [])
+  const factFind = new Set(now['app/(app)/deals/[id]/FactFindForm.tsx'] || [])
+
+  it('the deposit source is asked on the BC', () => {
+    expect(bc.has('Deposit source'),
+      'nowhere asks where the deposit comes from any more').toBe(true)
+  })
+
+  it('and it is not asked twice', () => {
+    // Two boxes asking the same question is two answers waiting to disagree,
+    // which is what lib/box-deposit.ts had to be written to reconcile.
+    expect(factFind.has('Where is the deposit coming from?'),
+      'the fact find is asking for the deposit source again').toBe(false)
+  })
+
+  it('the gift letter still reaches the document list', () => {
+    // It used to hang off the fact find's answer alone. Removing that box
+    // without this would have quietly stopped a client being asked for a gift
+    // letter, which is the kind of loss this whole file exists to catch.
+    const rules = readFileSync('lib/document-rules.ts', 'utf8')
+    expect(rules).toContain("txt(deal?.bc_data?.depositSource) === 'Gift'")
+    expect(rules).toContain("key: 'gift-letter'")
+  })
+
+  it('and a deal filled in before today keeps its answer', () => {
+    // Nothing already recorded stops working: everything that reads the deposit
+    // source has always preferred the BC and fallen back to the fact find.
+    const box = readFileSync('lib/box-deposit.ts', 'utf8')
+    expect(box).toContain('deal?.fact_find_data?.depositSource')
+    const rules = readFileSync('lib/document-rules.ts', 'utf8')
+    expect(rules).toContain("txt(ff?.depositSource) === 'Gift'")
   })
 })
 

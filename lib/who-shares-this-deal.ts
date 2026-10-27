@@ -170,6 +170,17 @@ export function addsUpWarning(lines: Line[]): string {
     + 'for all of it \u2014 but worth a look before somebody is invoiced off this.'
 }
 
+/** Just the share, with no name in front of it. "20%", "25% upfront, 0% trail". */
+export function shareWords(l: Line): string {
+  const u = l?.upfront === null || l?.upfront === undefined ? null : `${l.upfront}%`
+  const t = l?.trail === null || l?.trail === undefined ? null : `${l.trail}%`
+  if (u === null && t === null) return 'share not recorded'
+  if (u === t) return u as string
+  if (t === null) return `${u} upfront`
+  if (u === null) return `trail ${t}`
+  return `${u} upfront, ${t} trail`
+}
+
 /** "Simplify 20% · Harrow 20% · Mark Gallo 60%" */
 export function linesInWords(lines: Line[]): string {
   const real = (lines || []).filter(l => txt(l.who))

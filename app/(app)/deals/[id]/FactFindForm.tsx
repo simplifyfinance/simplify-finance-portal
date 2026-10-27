@@ -14,7 +14,7 @@ import BankSelect from './BankSelect'
 import { seYearTotalFF, calculateSeAssessableIncome } from '@/lib/income-calculations'
 import { selfEmployedFacts } from '@/lib/self-employed-facts'
 import InternalNotes from '@/components/InternalNotes'
-import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET_TYPES, DEPOSIT_SOURCES, LIABILITY_STATUSES, LIMIT_REDUCED, optionsFor } from '@/lib/fact-find-options'
+import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET_TYPES, LIABILITY_STATUSES, LIMIT_REDUCED, optionsFor } from '@/lib/fact-find-options'
 import { withLimitConditions, conditionsChanged } from '@/lib/limit-to-send'
 import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship } from '@/lib/relationship'
 import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS } from '@/lib/fact-find'
@@ -158,6 +158,15 @@ type Asset = {
   accountNumber: string
   regNumber: string
   membershipNumber: string
+  // A CAR IS A MAKE, A MODEL AND A YEAR, NOT A SENTENCE.
+  //
+  // 27 Oct 2026. Catherine: "Car details, including make, model, year and
+  // estimated value." There was one free text Description box, so whatever was
+  // typed could not be checked, counted or asked for - and the portal could not
+  // tell a car that was recorded properly from one that said "the ute".
+  make: string
+  model: string
+  year: string
   ownership: Record<string, string>
 }
 
@@ -230,6 +239,18 @@ type FactFindData = {
   properties: FactFindProperty[]
   liabilities: Liability[]
   dependants: string
+  // HOW OLD THEY ARE, NOT JUST HOW MANY.
+  //
+  // 27 Oct 2026. Catherine, Operations Manager, listing what keeps coming back
+  // from credit: "Number of dependants and their ages." The count has been here
+  // since this form was written and the ages never were, so two dependants aged
+  // 2 and 4 and two aged 19 and 22 looked identical to the portal - and they are
+  // not the same household to a lender.
+  //
+  // Fabio, the same day, when the portal started ASKING clients for the ages
+  // with nowhere to type the answer: "you didnt add age of dependetns so how are
+  // we completing that???!" Fair. One box per dependant, beside the count.
+  dependantAges?: string[]
   // Per household, used only when there is more than one. The total above stays
   // the truth for everything that already reads it - see lib/households.ts.
   householdDependants?: Record<string, string>
@@ -244,6 +265,40 @@ type FactFindData = {
   loanPurpose: string
   goals2Years: string
   goals10Years: string
+}
+
+// ONE BOX PER DEPENDANT, AND NEVER MORE THAN THE COUNT SAYS.
+//
+// Drop the count from three to two and the third age goes with it, rather than
+// sitting in the record as an age belonging to nobody. Raise it again and the
+// two that were there are still there.
+function dependantAgeBoxes(d: any, setD: any) {
+  const count = Math.max(0, Math.min(10, Number(String(d?.dependants ?? '0').trim()) || 0))
+  if (!count) return null
+  const ages: string[] = Array.isArray(d?.dependantAges) ? d.dependantAges : []
+  const setAge = (i: number, v: string) => setD((prev: any) => {
+    const next = [...(Array.isArray(prev?.dependantAges) ? prev.dependantAges : [])]
+    while (next.length < count) next.push('')
+    next[i] = v
+    return { ...prev, dependantAges: next.slice(0, count) }
+  })
+  return (
+    <span className="flex items-center gap-1.5 pl-2 ml-1 border-l border-gray-200">
+      <span className="text-xs text-gray-500 whitespace-nowrap">
+        {count === 1 ? 'Age' : 'Ages'}
+      </span>
+      {Array.from({ length: count }).map((_, i) => (
+        <input key={i} type="number" min="0" max="120"
+          aria-label={count === 1 ? 'Age of the dependant' : `Age of dependant ${i + 1}`}
+          placeholder="—"
+          className={`w-11 text-center text-sm rounded-md px-1 py-0.5 border ${
+            String(ages[i] ?? '').trim()
+              ? 'border-gray-200 text-ink'
+              : 'border-red-300 bg-red-50/40 text-ink'}`}
+          value={ages[i] ?? ''} onChange={e => setAge(i, e.target.value)} />
+      ))}
+    </span>
+  )
 }
 
 function uid() {
@@ -295,7 +350,8 @@ const defaultApplicant = (): FactFindApplicant => ({
 
 const defaultAsset = (): Asset => ({
   id: uid(), assetType: 'Savings', description: '', value: '',
-  bsb: '', accountNumber: '', regNumber: '', membershipNumber: '', ownership: {}
+  bsb: '', accountNumber: '', regNumber: '', membershipNumber: '',
+  make: '', model: '', year: '', ownership: {}
 })
 
 const defaultPropertyLoan = (): PropertyLoan => ({
@@ -412,6 +468,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
       liabilities: [],
       dependants: '0',
       internalNotes: '',
+      dependantAges: [],
       depositSource: '',
       loanPurpose: '',
       goals2Years: '',
@@ -1035,6 +1092,11 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
           </svg>
           <span className="text-xs text-gray-500 whitespace-nowrap">Dependants</span>
           <input type="number" className="w-12 text-center text-sm border-0 focus:outline-none p-0" value={d.dependants || '0'} onChange={e => setD(prev => ({ ...prev, dependants: e.target.value }))} />
+          {/* THE AGES, IN THE SAME BOX AS THE COUNT. One small field per
+              dependant, appearing only once somebody says there is one. A
+              separate section further down the page would be a second place to
+              answer the same question. */}
+          {dependantAgeBoxes(d, setD)}
         </div>
       ) : (
         <div className="flex items-center gap-2 flex-wrap ml-1">
@@ -1229,17 +1291,20 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
             </div>
           )}
           <div className="flex flex-col gap-3">
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">Where is the deposit coming from?</label>
-              <select className={inp} value={d.depositSource || ''}
-                onChange={e => setD(prev => ({ ...prev, depositSource: e.target.value }))}>
-                <option value="">Select</option>
-                {optionsFor(d.depositSource, DEPOSIT_SOURCES).map(x => <option key={x}>{x}</option>)}
-              </select>
-              {d.depositSource === 'Gift' && (
-                <p className="text-[11.5px] text-info mt-1 mb-0">A gift letter will be needed on file.</p>
-              )}
-            </div>
+            {/* WHERE THE DEPOSIT COMES FROM IS ASKED ON THE BC, NOT HERE.
+                27 Oct 2026. It was the first question on this tab, on every
+                deal - including a refinance, a top up and a cash out, where
+                there is no deposit to have a source. Fabio: "that question
+                that early is useless so if it is not connected to compliance
+                or LO remove it as we ask that in BC!"
+                It could not simply be hidden on a refinance, because this tab
+                is filled in before the BC exists and at that moment nothing
+                knows what kind of deal it is. So it is asked once, on the BC,
+                where the deal already knows what it is.
+                A deal filled in before today keeps its answer and everything
+                that reads it still works - see lib/box-deposit.ts, which has
+                always preferred the BC and fallen back to this, and
+                lib/document-rules.ts, where the gift letter now reads both. */}
             {/* WHO SHARES THIS DEAL. 27 Oct 2026 - a referrer paid a share, or
                 two of our brokers splitting one. It is a fact about the deal,
                 true from the first phone call, and the broker is the only
@@ -1986,7 +2051,14 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                   <input className={inp} placeholder="Holding — company or fund" value={asset.description} onChange={e => updateAsset(asset.id, 'description', e.target.value)} />
                 )}
                 {asset.assetType === 'Vehicle' && (
-                  <input className={inp} placeholder="Description" value={asset.description} onChange={e => updateAsset(asset.id, 'description', e.target.value)} />
+                  <div className="flex gap-2 flex-wrap">
+                    <input className={`${inp} flex-1 min-w-[110px]`} placeholder="Make"
+                      value={asset.make || ''} onChange={e => updateAsset(asset.id, 'make', e.target.value)} />
+                    <input className={`${inp} flex-1 min-w-[120px]`} placeholder="Model"
+                      value={asset.model || ''} onChange={e => updateAsset(asset.id, 'model', e.target.value)} />
+                    <input className={`${inp} w-[90px]`} placeholder="Year" type="number"
+                      value={asset.year || ''} onChange={e => updateAsset(asset.id, 'year', e.target.value)} />
+                  </div>
                 )}
                 {asset.assetType === 'Other' && (
                   <input className={inp} placeholder="Description" value={asset.description} onChange={e => updateAsset(asset.id, 'description', e.target.value)} />

@@ -42,6 +42,7 @@ export default function CommissionSplits() {
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState('')
   const [saving, setSaving] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState<string | null>(null)
   // SUGGESTIONS, NOT A LIST YOU ARE STUCK INSIDE.
   //
   // 27 Oct 2026. Who gets a share is typed, because a referrer is whoever the
@@ -114,6 +115,36 @@ export default function CommissionSplits() {
       setRows(rs => rs.map(x => x.id === r.id ? { ...x, dirty: false } : x))
     }
     setSaving(null)
+  }
+
+  // REMOVE IS SAFE, AND I WAS WRONG TO LEAVE IT OUT.
+  //
+  // 27 Oct 2026. This shipped with "Stop using it" and nothing else, on the
+  // reasoning that a deal which used an arrangement has to keep making sense.
+  // Fabio, looking at two test rows he could not get rid of: "also you never
+  // create deelte buttons see I cant delete them".
+  //
+  // He is right and the reasoning was wrong. A deal keeps its OWN COPY of the
+  // whole arrangement the moment a broker picks it - the name, the kind and
+  // every line, written onto the deal by chooseSplitPatch(). Deleting the row
+  // here cannot change a single deal: the fact find dropdown already says "no
+  // longer in use" for an arrangement that has gone, and termsHaveMoved()
+  // already returns nothing when there is no row to compare against. I checked
+  // all three before adding this.
+  //
+  // STOP USING IT STAYS, because the two are different answers. "We still have
+  // this arrangement, just not on new deals" and "this was a mistake, bin it"
+  // are both things somebody needs to be able to say.
+  async function remove(r: Row) {
+    setSaving(r.id); setErr('')
+    const { data, error } = await supabase.from('commission_splits')
+      .delete().eq('id', r.id).select('id')
+    if (error || !data?.length) {
+      setErr(error?.message || 'That was not removed — nothing reached the database.')
+    } else {
+      setRows(rs => rs.filter(x => x.id !== r.id))
+    }
+    setSaving(null); setConfirming(null)
   }
 
   async function add() {
@@ -245,15 +276,36 @@ export default function CommissionSplits() {
               <span className="text-[11.5px] text-muted flex-1">
                 The broker sees: <b className="text-ink">{r.name || 'Unnamed'}</b> — {linesInWords(r.lines)}
               </span>
-              {/* NEVER A DELETE. A deal that used this has to keep making sense. */}
-              <button onClick={() => edit(r.id, { active: !r.active })}
-                className="text-[12px] border border-card-line bg-card rounded-lg px-3 py-1.5 text-body hover:bg-page">
-                {r.active ? 'Stop using it' : 'Use it again'}
-              </button>
-              <button onClick={() => save(r)} disabled={!r.dirty || saving === r.id}
-                className="text-[12px] font-semibold text-[#0E8FCB] bg-card border border-[#BFE6F9] rounded-lg px-4 py-1.5 hover:bg-[#EAF7FE] disabled:opacity-40">
-                {saving === r.id ? 'Saving…' : r.dirty ? 'Save' : 'Saved'}
-              </button>
+              {confirming === r.id ? (
+                <span className="flex gap-1.5 items-center">
+                  <span className="text-[11.5px] text-chase">
+                    Remove {r.name || 'this arrangement'}? No deal that used it changes.
+                  </span>
+                  <button onClick={() => remove(r)} disabled={saving === r.id}
+                    className="text-[11.5px] font-bold text-white bg-chase rounded-lg px-2.5 py-1">
+                    {saving === r.id ? '…' : 'Remove'}
+                  </button>
+                  <button onClick={() => setConfirming(null)}
+                    className="text-[11.5px] border border-card-line bg-card rounded-lg px-2.5 py-1 text-body">
+                    Keep
+                  </button>
+                </span>
+              ) : (
+                <>
+                  <button onClick={() => edit(r.id, { active: !r.active })}
+                    className="text-[12px] border border-card-line bg-card rounded-lg px-3 py-1.5 text-body hover:bg-page">
+                    {r.active ? 'Stop using it' : 'Use it again'}
+                  </button>
+                  <button onClick={() => setConfirming(r.id)}
+                    className="text-[12px] text-faint border border-card-line bg-card rounded-lg px-3 py-1.5 hover:text-chase">
+                    Remove
+                  </button>
+                  <button onClick={() => save(r)} disabled={!r.dirty || saving === r.id}
+                    className="text-[12px] font-semibold text-[#0E8FCB] bg-card border border-[#BFE6F9] rounded-lg px-4 py-1.5 hover:bg-[#EAF7FE] disabled:opacity-40">
+                    {saving === r.id ? 'Saving…' : r.dirty ? 'Save' : 'Saved'}
+                  </button>
+                </>
+              )}
             </div>
 
             {!r.active && (

@@ -21,6 +21,9 @@ const DEAL_PAGE = readFileSync('app/(app)/deals/[id]/DealPageClient.tsx', 'utf8'
 const PICKER = readFileSync('components/WhoSharesThisDeal.tsx', 'utf8')
 const SETTINGS = readFileSync('app/(app)/settings/SettingsClient.tsx', 'utf8')
 const LIST = readFileSync('components/CommissionSplits.tsx', 'utf8')
+const HANDOVER = readFileSync('lib/handover-view.ts', 'utf8')
+const HANDOVER_PDF = readFileSync('app/api/generate-compliance-pdf/route.tsx', 'utf8')
+const NOTES = readFileSync('lib/broker-notes.ts', 'utf8')
 
 const codeOnly = (src: string) =>
   src.split('\n').filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*')).join('\n')
@@ -74,11 +77,32 @@ describe('the list in Settings', () => {
     expect(SETTINGS).toContain('Commission library &mdash; what the banks pay us')
   })
 
-  it('switches an arrangement off and never deletes one', () => {
-    // A deal that used it has to keep making sense.
+  it('can switch an arrangement off AND remove one, which are different answers', () => {
+    // 27 Oct 2026. This file used to refuse a delete outright, on the reasoning
+    // that a deal which used an arrangement has to keep making sense. Fabio,
+    // stuck with two test rows: "you never create deelte buttons see I cant
+    // delete them."
+    //
+    // The reasoning was wrong. A deal keeps its OWN copy of the whole
+    // arrangement - see chooseSplitPatch - so removing the row cannot change a
+    // deal. The two tests below are what actually protects a deal, and they
+    // were always the real rule.
     expect(LIST).toContain('Stop using it')
-    expect(codeOnly(LIST), 'the settings list can delete an arrangement')
-      .not.toContain(".delete()")
+    expect(LIST).toContain('Remove')
+    expect(LIST).toContain(".delete().eq('id', r.id).select('id')")
+  })
+
+  it('and removing one asks first', () => {
+    expect(LIST).toContain('No deal that used it changes.')
+    expect(LIST).toContain('Keep')
+  })
+
+  it('THE DEAL IS WHAT KEEPS THE ARRANGEMENT, NOT THE ROW', () => {
+    // This is why a delete is safe, and it is the thing to protect.
+    const lib = readFileSync('lib/who-shares-this-deal.ts', 'utf8')
+    expect(lib).toContain('commission_split_lines: split.lines')
+    expect(lib).toContain('commission_split_name: split.name')
+    expect(PICKER).toContain('no longer in use')
   })
 
   it('and checks the row came back, because RLS refuses by saying nothing', () => {
@@ -129,6 +153,61 @@ describe('adding a line', () => {
     expect(LIST).toContain('list="sf-share-names"')
     expect(LIST).toContain('<datalist id="sf-share-names">')
     expect(LIST).toContain("from('directory_people')")
+  })
+})
+
+// IT REACHES THE PEOPLE WHO TYPE IT INTO SALESTREKKER.
+//
+// 27 Oct 2026. The split was built onto the fact find, the deal page and
+// compliance, and stopped there. Fabio: "did you remeebr to add those
+// commisisons splits to the handover pdf and iopne to copy so my team can input
+// in salestrekker??" No. This file is so that question never has to be asked
+// twice.
+describe('the handover carries it', () => {
+  it('Open to copy has a commission split card', () => {
+    expect(HANDOVER).toContain("key: 'split', title: 'Commission split'")
+    expect(HANDOVER).toContain('splitOn(deal)')
+  })
+
+  it('and so does the handover PDF', () => {
+    expect(HANDOVER_PDF).toContain('<Section title="Commission split"')
+    expect(HANDOVER_PDF).toContain('splitOn(deal)')
+  })
+
+  it('both read the same place, so they cannot disagree about who is paid what', () => {
+    for (const [name, src] of [['the screen', HANDOVER], ['the PDF', HANDOVER_PDF]] as const) {
+      expect(src, `${name} works out the share itself`).toContain('shareWords(l)')
+      expect(src).toContain("from '@/lib/who-shares-this-deal'".replace('@/lib', name === 'the screen' ? '.' : '@/lib'))
+    }
+  })
+
+  it('it is key and value rows, not a paragraph', () => {
+    // Each one goes into its own SalesTrekker field, and the screen copies a
+    // value at a time. A paragraph on the clipboard pastes into none of them.
+    const card = HANDOVER.slice(HANDOVER.indexOf("key: 'split', title: 'Commission split'"))
+    expect(card.slice(0, 600)).not.toContain('copyable: true')
+  })
+
+  it('AND "NOBODY" IS PRINTED, NOT LEFT OUT', () => {
+    // A deal nobody has answered and a deal somebody confirmed is all ours look
+    // identical in a blank space, and the person doing the handover has to be
+    // able to tell them apart.
+    expect(HANDOVER).toContain("Nobody - this one is all ours")
+    expect(HANDOVER_PDF).toContain('Nobody')
+  })
+
+  it('and it never reaches the notes that go to the LENDER', () => {
+    // lib/broker-notes.ts is pasted into a bank's web form. What we pay a
+    // referrer is our business and theirs, not the bank's.
+    expect(NOTES, 'the commission split is in the lender submission notes')
+      .not.toContain('splitOn')
+    expect(NOTES).not.toContain('commission_split')
+  })
+
+  it('and the conflicts declaration is left exactly as it was', () => {
+    // Fabio, 27 Oct 2026: "dont overcomlicate the conflicrs sentecen DOES NOT
+    // GET TOUCHED".
+    expect(NOTES).toContain('There are no known conflicts of interest as part of this transaction.')
   })
 })
 
