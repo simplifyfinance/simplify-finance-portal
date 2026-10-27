@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { STAGES, ownerOf, handOver, stageIsDone } from '@/lib/who-did-this-stage'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { can } from '@/lib/permissions'
 import { siteUrl } from '@/lib/site-url'
@@ -61,7 +62,11 @@ export async function POST(req: NextRequest) {
 
   const { data: deal, error: dealError } = await supabase
     .from('deals')
-    .select('deal_name, assigned_broker, assigned_credit_officer, salestrekker_created_at, clients(first_name, last_name)')
+    .select('*, clients(first_name, last_name)')  // 27 Oct 2026: the whole row. stageIsDone() walks the bead ladder and
+    // ownerOf() reads the three per-stage columns - with the narrow select
+    // above, every stage read as unfinished and unowned, so a reassign would
+    // have stamped the new officer onto a BC somebody else had already
+    // written. Caught by lib/the-sender-is-the-deals-broker.test.ts.
     .eq('id', dealId)
     .single()
 
@@ -71,9 +76,41 @@ export async function POST(req: NextRequest) {
   const previousOfficerId = deal.assigned_credit_officer
   const clientName = `${(deal.clients as any)?.first_name || ''} ${(deal.clients as any)?.last_name || ''}`.trim()
 
+  // AND THE STAGE THEY ARE ACTUALLY DOING, which this never touched.
+  //
+  // 27 Oct 2026. Fabio, on a deal reassigned from Katie to Mellissa: "Mel was
+  // assigned but it says Katie is doing this." The chip at the top read
+  // Mellissa and the row under the BC read "Katie Amos - credit", on the same
+  // screen, because they are two different columns and only one of them moved.
+  //
+  // assigned_credit_officer is the deal's officer. bc_owner_officer and the
+  // two beside it are who is doing THAT STAGE - added 23 Oct so a deal that
+  // changes hands credits each person with their own work. Reassigning wrote
+  // the first and left the second, so the per-stage owner stayed with whoever
+  // had it before, for good.
+  //
+  // A FINISHED STAGE KEEPS ITS OWNER. That is the entire point of recording
+  // one: a BC Katie wrote is Katie's work whoever carries the deal afterwards,
+  // and the workload numbers are built on exactly that. Only stages still open
+  // move - and only where the previous officer held them, or nobody did. A
+  // stage a BROKER is doing themselves is left alone; reassigning credit does
+  // not take work off a broker.
+  const now = new Date().toISOString()
+  const patch: Record<string, any> = {
+    assigned_credit_officer: creditOfficerId,
+    credit_assigned_at: now,
+  }
+  for (const stage of STAGES) {
+    if (stageIsDone(deal, stage)) continue
+    const owner = ownerOf(deal, stage)
+    const heldByThePreviousOne = owner?.officerId && owner.officerId === previousOfficerId
+    if (owner && !heldByThePreviousOne) continue
+    Object.assign(patch, handOver(stage, { officerId: creditOfficerId, name: officer.name }, new Date(now)))
+  }
+
   const { error: updateError } = await supabase
     .from('deals')
-    .update({ assigned_credit_officer: creditOfficerId, credit_assigned_at: new Date().toISOString() })
+    .update(patch)
     .eq('id', dealId)
 
   if (updateError) return NextResponse.json({ ok: false, error: updateError.message }, { status: 500 })

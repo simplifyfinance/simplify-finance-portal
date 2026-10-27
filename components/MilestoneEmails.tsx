@@ -249,7 +249,9 @@ export function SendScreen({ deal, templateId, onClose, onSent }: {
   // it, because a hook cannot be called conditionally - two small selects, and
   // the alternative is lifting its state out through callbacks and a loop.
   // See app/(app)/templates/useSender.ts.
-  const sender = useSender('sf_milestone_sender_v1')
+  // WHOSE DEAL IT IS, not whoever was last picked in this browser.
+  // 27 Oct 2026 - see the note on useSender.
+  const sender = useSender('sf_milestone_sender_v1', deal?.assigned_broker)
   const picksSender = Boolean(preview?.picksSender)
   const brokerKey = picksSender ? sender.brokerKey : ''
   const brandId = picksSender ? sender.brandId : ''

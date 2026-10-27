@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { type Brand, DEFAULT_BRAND, normaliseBrand } from '@/lib/brand'
+import { brokerKey as brokerKeyOf } from '@/lib/broker-key'
 
 // Who the email goes out as. Every template needs this and none of them should
 // ask the broker to retype what public.brokers already holds, so it lives in one
@@ -12,7 +13,27 @@ import { type Brand, DEFAULT_BRAND, normaliseBrand } from '@/lib/brand'
 
 export type Broker = { key: string; name: string; calendly: string; brandIds: string[] }
 
-export function useSender(storageKey: string) {
+/**
+ * `preferBrokerKey` - THE DEAL'S OWN BROKER, WHERE THERE IS A DEAL.
+ *
+ * 27 Oct 2026. Fabio: "When you are the broker the system is picking Marks
+ * email signature....thats come through on two deals".
+ *
+ * Two deals, one cause. This hook remembered the last person you sent as, in
+ * localStorage, and nothing ever looked at whose deal it was. So a sender
+ * chosen once - on any deal, weeks ago - signed every milestone email after it
+ * until somebody noticed and changed the dropdown back. It is one sticky
+ * browser setting, which is why it looked like it hit several deals at once.
+ *
+ * On the templates screens there is no deal and remembering is exactly right -
+ * you are picking who is writing. On a deal there IS a right answer, and it is
+ * the broker on the file.
+ *
+ * SO THE DEAL WINS, AND IT IS NOT REMEMBERED. Changing the sender on one deal
+ * must not quietly become the default on the next one. That is the fault,
+ * worn differently.
+ */
+export function useSender(storageKey: string, preferBrokerKey?: string) {
   const supabase = createSupabaseBrowser()
   const [brokers, setBrokers] = useState<Broker[]>([])
   const [brokerKey, setBrokerKey] = useState('')
@@ -23,7 +44,10 @@ export function useSender(storageKey: string) {
   const [brandId, setBrandId] = useState('')
   const [loaded, setLoaded] = useState(false)
 
+  const wanted = brokerKeyOf(preferBrokerKey)
+
   useEffect(() => {
+    if (wanted) { setBrokerKey(wanted); setLoaded(true); return }
     try {
       const raw = window.localStorage.getItem(storageKey)
       if (raw) {
@@ -32,7 +56,7 @@ export function useSender(storageKey: string) {
       }
     } catch { /* corrupt storage is not worth failing the page over */ }
     setLoaded(true)
-  }, [storageKey])
+  }, [storageKey, wanted])
 
   useEffect(() => {
     if (!loaded) return
@@ -53,7 +77,7 @@ export function useSender(storageKey: string) {
           brandIds: Array.isArray(r.brand_ids) ? r.brand_ids.map(String) : [],
         }))
       setBrokers(list)
-      if (brokerKey) return
+      if (brokerKey || wanted) return
       const { data: u } = await supabase.auth.getUser()
       if (u?.user) {
         const { data: prof } = await supabase.from('user_profiles')
@@ -68,8 +92,11 @@ export function useSender(storageKey: string) {
 
   useEffect(() => {
     if (!loaded) return
+    // A SENDER CHOSEN ON A DEAL IS FOR THAT DEAL. Remembering it is what put
+    // Mark's name on somebody else's client emails.
+    if (wanted) return
     try { window.localStorage.setItem(storageKey, JSON.stringify({ brokerKey })) } catch { /* ignore */ }
-  }, [brokerKey, loaded, storageKey])
+  }, [brokerKey, loaded, storageKey, wanted])
 
   // A broker with no Calendly on file can still send — the link is typed for
   // that one email rather than the send being blocked.
