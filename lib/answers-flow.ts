@@ -3,6 +3,7 @@ import { patchDealColumn } from './patch-deal-column'
 import { verifyAnswers, hasExpired, type AnswersPayload } from './answers-link'
 import { openQuestions, marksOn, type Question } from './what-we-still-need'
 import { applyAnswers, keysAnswered, type Answer } from './answers-from-the-client'
+import { fileNote } from './file-note'
 
 // THE PAGE A CLIENT OPENS TO ANSWER WHAT IS STILL MISSING.
 //
@@ -186,6 +187,18 @@ export async function saveAnswers(
   // find, which is the part that matters. Telling them it went wrong would make
   // them type it all again.
   if (error) console.error('[saveAnswers] could not record who answered', error)
+
+  // AND THE FILE SAYS SO.
+  //
+  // 29 Oct 2026. A client filling in their own address history is a contact
+  // with that client, and the only record of it was a row changing on the fact
+  // find. The log is where somebody looks a year later.
+  const open = openQuestions({ ...before, fact_find_data: before.fact_find_data }, today).length
+  await fileNote(payload.dealId,
+    `${who} answered ${closed.length} of ${open} ${open === 1 ? 'question' : 'questions'}`
+      + ' through the client link.',
+    who,
+    answers.map(a => `  ${String((a as any)?.key || '')}`).join('\n'))
 
   return { ok: true, closed }
 }

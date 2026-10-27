@@ -8,6 +8,12 @@ export type Note = {
   id: string
   deal_id: string
   body: string
+  // THE WORDING OF THE EMAIL THIS ENTRY RECORDS, where it records one.
+  //
+  // 29 Oct 2026. Structured text, never HTML - see lib/email-as-text.ts. `body`
+  // stays the one line the rail shows; this is what "Show what was sent" opens.
+  // Only ever set on an entry the portal wrote.
+  detail?: string | null
   kind: string           // 'note' typed by a person, 'system' written by the portal
   author_name: string | null
   created_at: string

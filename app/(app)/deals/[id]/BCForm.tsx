@@ -2,6 +2,8 @@
 import HandoverBox from '@/components/Handover'
 import WhatNow from '@/components/WhatNow'
 import WhatWeStillNeed from '@/components/WhatWeStillNeed'
+import { addSystemNote } from '@/components/DealFile'
+import { sentEmailAsText } from '@/lib/email-as-text'
 import { askedPatch, goingOut } from '@/lib/what-we-still-need'
 import { brandsOffered, brandToSettleOn, brandUncertainty } from '@/lib/the-brand-follows-the-broker'
 import SendItBack, { ReworkBanner } from '@/components/SendItBack'
@@ -1782,6 +1784,33 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
       }
       const { error: updErr } = await supabase.from('deals').update(updates).eq('id', deal.id)
       if (updErr) console.error('[sendToClient] deal update failed', updErr)
+
+  // THE FILE WRITES ITSELF WHEN THE EMAIL GOES.
+  //
+  // 29 Oct 2026. Catherine, item 6: keep a record of what we said to a client.
+  // The portal has always known - it built the email and it stamped the time -
+  // and it threw the record away afterwards, so a file note had two entries on
+  // it and neither was an email.
+  //
+  // ONE LINE IN THE LOG, AND THE WORDING FOLDED BEHIND IT. public.deal_notes is
+  // the log and always was; this just tells it about the emails. See
+  // lib/email-as-text.ts for why the wording and not the web page.
+  //
+  // AND IT NEVER STOPS THE EMAIL. A log that can refuse to let a client be
+  // emailed is a worse problem than a missing line, so it is attempted after
+  // everything that matters and anything it throws is swallowed.
+      try {
+        const asked = goingOut(deal, questionsDropped).length
+        await addSystemNote(deal.id,
+          `Borrowing capacity emailed to ${to || 'the client'} by ${brokerSig || deal.assigned_broker || 'a broker'}.`
+            + (asked ? ` Carried ${asked} ${asked === 1 ? 'question' : 'questions'}.` : ''),
+          { id: me?.id || null, name: me?.name || brokerSig || '' },
+          sentEmailAsText({
+            what: 'Borrowing capacity sent', subject, to, bcc: deal.salestrekker_bcc,
+            by: brokerSig || deal.assigned_broker, brand: deal.brand_id || undefined,
+            at: new Date(nowIso), html: emailHtml,
+          }))
+      } catch (e) { console.error('[sendToClient] file note failed', e) }
 
       let notifyFailed = false
       if (wasNotYetCompleted) {

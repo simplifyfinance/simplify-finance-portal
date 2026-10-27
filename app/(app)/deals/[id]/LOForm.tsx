@@ -2,6 +2,8 @@
 import HandoverBox from '@/components/Handover'
 import WhatNow from '@/components/WhatNow'
 import WhatWeStillNeed from '@/components/WhatWeStillNeed'
+import { addSystemNote } from '@/components/DealFile'
+import { sentEmailAsText } from '@/lib/email-as-text'
 import { askedPatch, goingOut } from '@/lib/what-we-still-need'
 import { brandsOffered, brandToSettleOn, brandUncertainty } from '@/lib/the-brand-follows-the-broker'
 import SendItBack, { ReworkBanner } from '@/components/SendItBack'
@@ -1801,6 +1803,29 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
         setSending(false)
         return
       }
+
+      // THE FILE WRITES ITSELF WHEN THE EMAIL GOES.
+      //
+      // 29 Oct 2026. Catherine, item 6. The portal built this email and stamped
+      // the time, then threw the record away - so a file note had two entries
+      // on it and neither was an email. See lib/email-as-text.ts for why the
+      // wording is stored and not the web page.
+      //
+      // AFTER the write that matters, and anything it throws is swallowed. A
+      // log that can stop a client being emailed is a worse problem than a
+      // missing line.
+      try {
+        const lender = recommendedOption(d)?.lenderName || ''
+        await addSystemNote(deal.id,
+          `Lending options emailed to ${to || 'the client'} by ${d.brokerSig || deal.assigned_broker || 'a broker'}.`
+            + (lender ? ` ${lender} recommended.` : ''),
+          { id: me?.id || null, name: me?.name || d.brokerSig || '' },
+          sentEmailAsText({
+            what: 'Lending options sent', subject, to, bcc: deal.salestrekker_bcc,
+            by: d.brokerSig || deal.assigned_broker, brand: deal.brand_id || undefined,
+            at: new Date(nowIso), html: emailHtml,
+          }))
+      } catch (e) { console.error('[sendToClient] file note failed', e) }
 
       if (updates.lo_completed_at) setLoCompletedAt(nowIso)
       // Tell the page, so the badge at the top moves to "Waiting on: Client to

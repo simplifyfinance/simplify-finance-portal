@@ -16,6 +16,26 @@ import {
 
 const supabase = createSupabaseBrowser()
 
+function SentWording({ id, text }: { id: string; text: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button onClick={() => setOpen(o => !o)}
+        aria-expanded={open} aria-controls={`sent-${id}`}
+        className="text-[10.5px] font-[650] text-info underline mt-[3px]">
+        {open ? 'Hide' : 'Show what was sent'}
+      </button>
+      {open && (
+        <pre id={`sent-${id}`}
+          className="mt-1.5 mb-0 max-h-[320px] overflow-auto bg-page border border-line-soft rounded-lg
+                     px-3 py-2.5 text-[10.5px] leading-[1.6] text-body whitespace-pre-wrap font-mono">
+          {text}
+        </pre>
+      )}
+    </>
+  )
+}
+
 const PANEL = 'border border-[#E5DED2] rounded-xl bg-card overflow-hidden mb-3'
 const HEAD = 'px-3 py-2 bg-[#FCFAF6] border-b border-line text-[9.5px] font-bold tracking-[.08em] uppercase text-muted flex items-center gap-2'
 const BODY = 'px-3 py-3'
@@ -230,6 +250,11 @@ export function FileNotes({ dealId, me, notes, onChanged }: {
                 <p className={`text-[12px] m-0 leading-[1.45] ${n.kind === 'system' ? 'text-muted italic' : 'text-[#575046]'}`}>
                   {n.body}
                 </p>
+                {/* WHAT WAS ACTUALLY SENT, FOLDED AWAY.
+                    A log you have to scroll past to find today's call is a log
+                    nobody reads, so an email is one sentence here and the
+                    wording is one press away. */}
+                {n.detail && <SentWording id={n.id} text={n.detail} />}
               </div>
             ))}
           </div>
@@ -283,10 +308,18 @@ export function useDealFile(dealId: string) {
   return { notes, alerts, reload }
 }
 
-// Written by the portal rather than a person - a lodgement, an unlock. Kept
-// here so the shape of a system note is decided in one place.
-export async function addSystemNote(dealId: string, body: string, me: { id: string | null; name: string }) {
+// Written by the portal rather than a person - a lodgement, an unlock, an email
+// going to the client. Kept here so the shape of a system note is decided in
+// one place.
+//
+// `detail` is the wording of the email, where there is one. The rail shows
+// `body`; detail is what "Show what was sent" opens. Never HTML - see
+// lib/email-as-text.ts for why, and for what it looks like.
+export async function addSystemNote(
+  dealId: string, body: string, me: { id: string | null; name: string }, detail?: string,
+) {
   return await supabase.from('deal_notes').insert({
     deal_id: dealId, body, kind: 'system', author_id: me.id, author_name: me.name || null,
+    ...(String(detail || '').trim() ? { detail } : {}),
   }).select('id')
 }

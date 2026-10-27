@@ -3,6 +3,7 @@ import { resolveBrokerProfile } from '@/lib/broker-profile'
 import { allocateCreditOfficer } from '@/lib/allocate-officer'
 import { notifyCrisMoveCard } from '@/lib/salestrekker-notify'
 import { createSupabaseAdmin } from '@/lib/supabase-admin'
+import { fileNote } from '@/lib/file-note'
 import { requestDocuments, brokerDocumentLine, type DocRequestResult } from '@/lib/document-request'
 
 import type { ProceedStage } from './next-steps-copy'
@@ -188,6 +189,23 @@ export async function markProceeded(
 
   if (!alreadyProceeded) {
     const nowIso = new Date().toISOString()
+    // THE FILE SAYS THE CLIENT AGREED, AND HOW.
+    //
+    // 29 Oct 2026. Catherine, item 6. A client pressing Proceed is the single
+    // most important contact on the whole file and the only record of it was a
+    // timestamp on a column. It goes in the log now, saying whether they
+    // pressed it themselves or the office recorded it for them - which are not
+    // the same fact and a reviewer will want to know which.
+    const noteTheyAgreed = async (what: 'BC' | 'LO') => {
+      await fileNote(dealId,
+        (what === 'BC'
+          ? 'Client agreed to proceed on the borrowing capacity'
+          : 'Client agreed to proceed on the lending options')
+        + (by.source === 'office'
+            ? `. Recorded by ${by.name || 'the office'}.`
+            : ', from the email.'),
+        by.source === 'office' ? (by.name || undefined) : undefined)
+    }
     if (stage === 'BC') {
       // Only ever set, never cleared by a press that did not carry one - an
       // older email with a single button must not wipe what a client already
@@ -205,6 +223,8 @@ export async function markProceeded(
       if (wErr || !wrote || wrote.length === 0) {
         return { ok: false as const, error: wErr?.message || 'The deal would not save. Nothing was recorded.' }
       }
+      // After the write that matters, and it cannot throw - see lib/file-note.ts.
+      await noteTheyAgreed('BC')
 
       // THE CLIENT DOES NOT WAIT FOR ANY OF THIS.
       //
@@ -313,6 +333,7 @@ export async function markProceeded(
       if (wErr || !wrote || wrote.length === 0) {
         return { ok: false as const, error: wErr?.message || 'The deal would not save. Nothing was recorded.' }
       }
+      await noteTheyAgreed('LO')
       // Ours, not the client's - so after the response, like the BC branch.
       after(async () => {
         try {
