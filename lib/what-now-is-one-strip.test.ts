@@ -94,11 +94,44 @@ describe('the buttons', () => {
   // The BC has three. The lending options has four, because "Docs received"
   // is a thing that happens on that stage and nowhere else. Five would be a
   // menu, and a menu is what this row replaced.
+  //
+  // 27 Oct 2026. "Send it back" arrived and this read five on the BC. The rule
+  // is right and it is not being loosened - what changed is that the count was
+  // wrong in two ways.
+  //
+  // FIRST, IT COUNTED A BUTTON ATTACHED TO ANOTHER BUTTON. `again` is the
+  // quiet "Send again" that sits beside the green tick - see Action in
+  // components/WhatNow.tsx. It has a label, so the old regex counted it as a
+  // fifth action. It is not one; it cannot exist without the action it hangs
+  // off, and it only appears once that action is done.
+  //
+  // SECOND, IT COUNTED THINGS THAT CANNOT BE ON SCREEN TOGETHER. "Done" is
+  // there only while the BC is UNfinished; "Send it back" only once it IS
+  // finished. One or the other, never both - which is the invariant this test
+  // was actually reaching for, and it is now asserted rather than approximated.
   it('never more than four, because five is a menu', () => {
     for (const [name, src] of [['the BC', bc], ['the lending options', lo]] as const) {
       const p = props(src)
       const block = p.slice(p.indexOf('actions={['))
-      expect((block.match(/label:/g) || []).length, `${name} has too many`).toBeLessThanOrEqual(4)
+      // The nested `again` button is not an action of its own.
+      const flat = block.replace(/again:[\s\S]*?: undefined,/g, '')
+      const n = (flat.match(/label:/g) || []).length
+      const exclusive = /!bcCompletedAt \? \[\{/.test(flat) || /!loCompletedAt \? \[\{/.test(flat)
+      // A pair that can never be drawn together counts as one slot.
+      expect(n - (exclusive ? 1 : 0), `${name} has too many`).toBeLessThanOrEqual(4)
+    }
+  })
+
+  it('and Done and Send it back are never both on screen', () => {
+    // The whole reason four is still four. Done shows while the stage is
+    // unfinished; Send it back shows only once it is finished.
+    for (const [name, src, stamp] of [['the BC', bc, 'bcCompletedAt'],
+                                      ['the lending options', lo, 'loCompletedAt']] as const) {
+      const p = props(src)
+      expect(p, `${name} shows Done without checking the stamp`)
+        .toContain(`!${stamp} ? [{`)
+      expect(p, `${name} offers Send it back without checking it is finished`)
+        .toMatch(/canSendToClient && canSendBack\(deal, '(bc|lo)'\)\.ok/)
     }
   })
 

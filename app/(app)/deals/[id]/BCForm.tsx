@@ -1,6 +1,8 @@
 'use client'
 import HandoverBox from '@/components/Handover'
 import WhatNow from '@/components/WhatNow'
+import SendItBack, { ReworkBanner } from '@/components/SendItBack'
+import { canSendBack, reworkOn, canSendAgain } from '@/lib/send-it-back'
 import { handStageOver } from '@/lib/hand-this-stage-over'
 import { dutyStateOf } from '@/lib/duty-state'
 import { useState, useEffect, useRef } from 'react'
@@ -1022,6 +1024,8 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // to tell the broker WHY, so it was happening in Slack or not at all. It sits
   // in front of this button and never blocks it - see components/Handover.tsx.
   const [handingOver, setHandingOver] = useState(false)
+  // SENDING IT BACK TO CREDIT - see components/SendItBack.tsx.
+  const [sendingBack, setSendingBack] = useState(false)
   // Which button opened the box, so onSent knows where to go next.
   const [thenSend, setThenSend] = useState(false)
 
@@ -1852,6 +1856,12 @@ Key assumptions: ${checklistText}`
           moved the deal.
           The view switch, who is doing it, and every action are now one row,
           drawn by one component, identical on both screens. */}
+      {/* WHAT THE BROKER SAID, ABOVE EVERYTHING ELSE ON THE SCREEN.
+          27 Oct 2026. A credit assessor who opens this deal from an email or
+          from the board has never seen the day's list, and the one thing they
+          must not do is start reworking without reading why. */}
+      <ReworkBanner rework={reworkOn(deal, 'bc')} what="BC" />
+
       <WhatNow
         stage="bc"
         deal={deal}
@@ -1881,6 +1891,14 @@ Key assumptions: ${checklistText}`
             done: !!deal.bc_sent_at,
             waiting: !canSendToClient || !emailHtml,
             since: deal.bc_sent_at ? dayMonth(deal.bc_sent_at) : undefined,
+            // SENDING IT AGAIN. The green tick is a fact, not a lock.
+            again: canSendAgain(deal, 'bc') && canSendToClient && emailHtml ? {
+              label: 'Send again',
+              title: 'Sends this email to the same people again',
+              onClick: () => {
+                if (confirm('Send this email to the client again?\n\nThey get it at the same addresses as last time.')) sendToClient()
+              },
+            } : undefined,
             title: !canSendToClient ? 'Only a broker can send this to the client'
                  : freshness.state === 'stale' ? 'Heads up: this email was written for a different scenario.'
                  : freshness.state === 'figures-moved' ? 'Heads up: figures have changed since this email was written.' : '',
@@ -1895,8 +1913,22 @@ Key assumptions: ${checklistText}`
             since: deal.client_proceeded ? proceedInfo.who : undefined,
             title: 'They pressed Proceed in the email, or we record it here',
           },
+          // SEND IT BACK. Only a broker, only where credit did the work, and
+          // only until the client has agreed - see canSendBack() in
+          // lib/send-it-back.ts, which is where all three rules live.
+          ...(canSendToClient && canSendBack(deal, 'bc').ok ? [{
+            label: '\u21BA Send it back',
+            onClick: () => setSendingBack(true),
+            title: 'Tells credit this BC needs doing again, and why',
+          }] : []),
         ]}
       />
+
+      {sendingBack && (
+        <SendItBack deal={deal} stage="bc" byName={brokerSig || deal.assigned_broker || 'Broker'}
+          onCancel={() => setSendingBack(false)}
+          onDone={() => window.location.reload()} />
+      )}
 
       {sendToClientMsg && (
         <div className="mb-3 text-[12.5px] text-info bg-info-bg border border-info-edge rounded-lg px-3 py-1.5 inline-block">{sendToClientMsg}</div>

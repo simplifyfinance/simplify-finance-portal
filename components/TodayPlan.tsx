@@ -11,6 +11,7 @@ import { sameBroker } from '@/lib/broker-key'
 import { whyNoPlan, lastWorkdayBefore } from '@/lib/the-week'
 import {
   draftDay, finishedOn, finishedAcross, planBoard, notTold, stageWaitingOn, creditHasIt,
+  reworkWaiting,
   startingOrder, splitAtLine, withNote,
   type PlanDeal, type Plan,
 } from '@/lib/the-days-plan'
@@ -148,6 +149,8 @@ export default function TodayPlan({
         id: d.id, name: d.deal_name, stage: stageWaitingOn(d) || '',
         since: d.credit_assigned_at || d.created_at,
         priority: d.priority || null,
+        // A DEAL A BROKER SENT BACK GOES TO THE TOP. See draftDay().
+        rework: reworkWaiting(d),
       }))
       .filter(x => x.stage))
   }, [deals, meOfficerId, brokerKey])

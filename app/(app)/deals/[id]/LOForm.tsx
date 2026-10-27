@@ -1,6 +1,8 @@
 'use client'
 import HandoverBox from '@/components/Handover'
 import WhatNow from '@/components/WhatNow'
+import SendItBack, { ReworkBanner } from '@/components/SendItBack'
+import { canSendBack, reworkOn, canSendAgain } from '@/lib/send-it-back'
 import { handStageOver } from '@/lib/hand-this-stage-over'
 import { isDebtRecycling } from '@/lib/debt-recycling'
 import { bcFieldsWin } from '@/lib/the-lo-copies-nothing-it-does-not-own'
@@ -425,6 +427,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // deal, which is the question the borrowing capacity cannot answer. It never
   // blocks the button - see components/Handover.tsx.
   const [handingOver, setHandingOver] = useState(false)
+  // SENDING IT BACK TO CREDIT - see components/SendItBack.tsx.
+  const [sendingBack, setSendingBack] = useState(false)
   // Which button opened the box, so onSent knows where to go next.
   const [thenSend, setThenSend] = useState(false)
 
@@ -1896,6 +1900,9 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           worst of it, on this screen the tab you were standing on and the
           button that moved the deal to Compliance were both solid black.
           One component draws both screens now - components/WhatNow.tsx. */}
+      {/* WHAT THE BROKER SAID, ABOVE EVERYTHING ELSE. Same reason as the BC. */}
+      <ReworkBanner rework={reworkOn(deal, 'lo')} what="lending options" />
+
       <WhatNow
         stage="lo"
         deal={deal}
@@ -1922,6 +1929,14 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             done: !!deal.lo_sent_at,
             waiting: !canSendToClient || !emailHtml,
             since: deal.lo_sent_at ? dayMonth(deal.lo_sent_at) : undefined,
+            // SENDING IT AGAIN. The green tick is a fact, not a lock.
+            again: canSendAgain(deal, 'lo') && canSendToClient && emailHtml ? {
+              label: 'Send again',
+              title: 'Sends this email to the same people again',
+              onClick: () => {
+                if (confirm('Send this email to the client again?\n\nThey get it at the same addresses as last time.')) sendEmail()
+              },
+            } : undefined,
             title: !canSendToClient ? 'Only a broker can send this to the client'
                  : emailNeedsAttention ? 'Heads up: this email was written for a different scenario.' : '',
           },
@@ -1946,8 +1961,20 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             since: deal.lo_proceeded_at ? dayMonth(deal.lo_proceeded_at) : undefined,
             title: 'They pressed Proceed in the email, or we record it here',
           },
+          // SEND IT BACK. Same three rules as the BC - see lib/send-it-back.ts.
+          ...(canSendToClient && canSendBack(deal, 'lo').ok ? [{
+            label: '\u21BA Send it back',
+            onClick: () => setSendingBack(true),
+            title: 'Tells credit these lending options need doing again, and why',
+          }] : []),
         ]}
       />
+
+      {sendingBack && (
+        <SendItBack deal={deal} stage="lo" byName={d.brokerSig || deal.assigned_broker || 'Broker'}
+          onCancel={() => setSendingBack(false)}
+          onDone={() => window.location.reload()} />
+      )}
 
       {handErr && (
         <div className="mb-3 text-[12.5px] text-chase bg-chase-bg border border-chase-edge rounded-lg px-3 py-1.5 inline-block">{handErr}</div>

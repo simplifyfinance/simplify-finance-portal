@@ -37,6 +37,7 @@ import { waitingIndex } from './deal-status'
 import { toAuDate, todayYmd } from './periods'
 import { ownerOf, stageWindow, type Stage } from './who-did-this-stage'
 import { isWorkday } from './the-week'
+import { reworkOn, type BackStage } from './send-it-back'
 
 export type PlanDeal = {
   id: string
@@ -47,6 +48,13 @@ export type PlanDeal = {
   since: string | null
   /** Set by a broker, with their name and their reason. */
   priority?: { by: string; why: string; at: string } | null
+  // SENT BACK BY A BROKER, which beats a priority and beats the queue.
+  //
+  // 27 Oct 2026. See lib/send-it-back.ts. A rework is not a new deal arriving;
+  // it is a deal that was FINISHED, where a client is already waiting and a
+  // broker has stopped. Everything below it on the list is work nobody is
+  // blocked on yet.
+  rework?: { at: string; by: string; label: string; note: string; count: number } | null
 }
 
 export type Plan = {
@@ -101,11 +109,38 @@ export function creditHasIt(deal: any): { officerId: string; name: string } | nu
 // than the newest: something we have no date for has been sitting there
 // longer than anything we do have a date for.
 export function draftDay(deals: PlanDeal[]): PlanDeal[] {
-  const starred = deals.filter(d => d.priority)
-  const rest = deals.filter(d => !d.priority)
+  // THREE TIERS, AND THE TOP ONE IS NEW ON 27 Oct 2026.
+  //
+  // A rework goes above a broker's priority. Asked which way round, Fabio:
+  // straight to the top. The reasoning holds on its own - a priority is a
+  // broker saying "do this one first", and a rework is a broker saying "the
+  // one you already did is wrong and a client is waiting on the fix". The
+  // second is strictly more urgent than the first.
+  //
+  // Oldest rework first, the same direction everything else on this list
+  // sorts: the one sent back longest ago has kept somebody waiting longest.
+  const back = deals.filter(d => d.rework)
+  const starred = deals.filter(d => !d.rework && d.priority)
+  const rest = deals.filter(d => !d.rework && !d.priority)
+  back.sort((a, b) => t(a.rework!.at) - t(b.rework!.at))
   starred.sort((a, b) => t(a.priority!.at) - t(b.priority!.at))
   rest.sort((a, b) => (t(a.since) || 0) - (t(b.since) || 0))
-  return [...starred, ...rest]
+  return [...back, ...starred, ...rest]
+}
+
+// THE REWORK SITTING ON WHICHEVER STAGE IS WITH US, for the draft above.
+//
+// stageWaitingOn() already says which stage this deal is waiting on us for.
+// Compliance cannot be sent back - there is nothing after it to come back
+// from - so a deal on compliance never has one.
+const BACK_STAGE_OF: Record<string, BackStage> = { BC: 'bc', LO: 'lo' }
+
+export function reworkWaiting(deal: any): PlanDeal['rework'] {
+  const label = stageWaitingOn(deal)
+  const stage = label ? BACK_STAGE_OF[label] : null
+  if (!stage) return null
+  const r = reworkOn(deal, stage)
+  return r ? { at: r.at, by: r.by, label: r.label, note: r.note, count: r.count } : null
 }
 
 // THE LINE, WHICH IS WHAT TURNS A BOOK INTO A DAY.

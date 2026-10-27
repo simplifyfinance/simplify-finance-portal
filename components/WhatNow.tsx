@@ -40,6 +40,17 @@ export type Action = {
   waiting?: boolean
   since?: string
   title?: string
+  // A SECOND, QUIETER BUTTON BESIDE A FINISHED ONE.
+  //
+  // 27 Oct 2026. Fabio: "it needs to give us the ability of resnding emails to
+  // client both BC and LO as right now once we mark email sent it locks and we
+  // cant resend the email with rewoked figures".
+  //
+  // The green tick stays, because a sent date is a fact worth showing. What it
+  // stopped being is a lock. This is deliberately small and outlined rather
+  // than another black button - resending a client email is a thing somebody
+  // chooses, never a thing they fall into.
+  again?: { label: string; onClick: () => void; title?: string }
 }
 
 export default function WhatNow({
@@ -133,6 +144,12 @@ export default function WhatNow({
             {a.done ? `✓ ${a.label}` : a.label}
           </button>
           {a.since && <span className="text-[12px] text-faint">{a.since}</span>}
+          {a.again && (
+            <button onClick={a.again.onClick} title={a.again.title}
+              className="text-[12px] rounded-lg px-2.5 py-1 font-semibold border border-card-line bg-card text-brand-ink hover:bg-page">
+              {a.again.label}
+            </button>
+          )}
         </span>
       ))}
     </div>

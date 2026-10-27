@@ -420,3 +420,65 @@ export async function notifyDealMovedBack(params: {
   return sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au',
     `Moved back to ${toLabel} — ${dealName}`, html)
 }
+
+// TELLING CREDIT A DEAL HAS COME BACK, AND WHY.
+//
+// 27 Oct 2026. notifyDealMovedBack() above is the old one, and the box in the
+// middle of it says: "Check with the broker whether this still needs working
+// on." That sentence is the portal admitting it does not know, and it costs
+// somebody a phone call every time it goes out.
+//
+// This one has the answer in it. The reason, and the broker's own words, above
+// the fold - because the whole value of the thing is that she reads it before
+// she opens anything.
+//
+// AND IT SAYS NOTHING WAS DELETED, out loud, because that is the first thing a
+// person wonders when work they finished comes back.
+//
+// THE NOTE IS THE FIRST FREE TEXT A PERSON TYPES THAT ENDS UP IN AN EMAIL WE
+// SEND. Everything else in these templates is a deal name or a date the portal
+// wrote itself. A broker typing < or & into the box must not be able to break
+// the mail or carry anything into it, so it is escaped on the way in.
+function safeText(v: any): string {
+  return String(v ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+export async function notifySentBack(params: {
+  dealId: string; dealName: string; clientName: string
+  stageLabel: string; reason: string; note: string; byName: string
+  /** How many times it had been sent back BEFORE this one. 0 the first time. */
+  timesBefore: number
+  recipientEmail?: string | null; recipientName?: string | null
+}): Promise<SendResult> {
+  const {
+    dealId, dealName, clientName, stageLabel, reason, note, byName,
+    timesBefore, recipientEmail, recipientName,
+  } = params
+  const again = timesBefore > 0
+    ? `<tr><td colspan="2" style="font-family:Arial,sans-serif;font-size:12px;padding:8px 0 0"><span style="color:#8A2020;">This ${safeText(stageLabel)} has now been sent back ${timesBefore + 1} times.</span></td></tr>`
+    : ''
+  const html = `${greeting(recipientName)}
+    <p>${safeText(byName)} has sent the ${safeText(stageLabel)} back to you for a rework.</p>
+    <table bgcolor="#FDEDED" style="background:#FDEDED;border-radius:8px;padding:13px 16px;margin:0 0 16px" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:0 0 6px"><span style="color:#8A2020;">${safeText(reason)}</span></td></tr>
+      <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6"><span style="color:#8A2020;">&ldquo;${safeText(note)}&rdquo;</span></td></tr>
+      ${again}
+    </table>
+    <table bgcolor="#f5f5f3" style="background:#f5f5f3;border-radius:8px;padding:12px 16px;margin:0 0 18px" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Deal</span></td><td style="text-align:right;font-size:13px;font-weight:600;padding:3px 0">${safeText(dealName)}</td></tr>
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Client</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${safeText(clientName || '')}</td></tr>
+      <tr><td style="color:#666;font-size:13px;padding:3px 0"><span style="color:#666;">Stage</span></td><td style="text-align:right;font-size:13px;padding:3px 0">${safeText(stageLabel)}</td></tr>
+    </table>
+    <table bgcolor="#ffffff" style="background:#ffffff;margin:0 0 18px" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6"><span style="color:#666;">Nothing has been deleted. The ${safeText(stageLabel)} you wrote is still on the deal, and it still counts as work you finished on the day you finished it. It is at the top of your day.</span></td></tr>
+    </table>
+    <table cellpadding="0" cellspacing="0" border="0" style="margin:0"><tr>
+      <td bgcolor="#2DBEFF" style="background:#2DBEFF;border-radius:8px;padding:11px 20px">
+        <a href="${siteUrl()}/deals/${dealId}" style="color:#08252F;font-family:Arial,sans-serif;font-size:14px;font-weight:700;text-decoration:none">Open the deal &rarr;</a>
+      </td>
+    </tr></table>`
+  return sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au',
+    `Rework — ${stageLabel} sent back on ${dealName}`, html)
+}

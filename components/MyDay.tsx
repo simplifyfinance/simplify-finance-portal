@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { LINE, moveInOrder, splitAtLine, noteFor, type PlanDeal } from '@/lib/the-days-plan'
+import { reworkChip } from '@/lib/send-it-back'
 
 // A DAY THAT IS A DAY.
 //
@@ -30,6 +31,7 @@ import { LINE, moveInOrder, splitAtLine, noteFor, type PlanDeal } from '@/lib/th
 const SOFT = 'text-[12px] text-muted'
 const WHY = 'text-[10.5px] text-faint border border-card-line rounded-full px-2 py-[1px] whitespace-nowrap'
 const WHY_P = 'text-[10.5px] text-chase bg-chase-bg border border-chase-edge rounded-full px-2 py-[1px] whitespace-nowrap font-bold'
+const WHY_R = 'text-[10.5px] text-chase bg-chase-bg border border-chase-edge rounded-full px-2 py-[1px] whitespace-nowrap font-bold uppercase tracking-[.03em]'
 
 export type DayDeal = PlanDeal & {
   /** How long it has been waiting, for the tag on the right. */
@@ -88,7 +90,8 @@ export default function MyDay({
             <button onClick={() => setOnItNow(now ? null : id)} disabled={!canEdit}
               title={now ? 'Not on it any more' : 'This is the one I am on now'}
               className={`w-5 h-5 rounded-md text-[11px] font-bold flex items-center justify-center flex-none ${
-                now ? 'bg-info text-page ring-[3px] ring-info-bg' : 'bg-ink text-page'}`}>
+                now ? 'bg-info text-page ring-[3px] ring-info-bg'
+                : d.rework ? 'bg-chase text-page' : 'bg-ink text-page'}`}>
               {i + 1}
             </button>
           ) : (
@@ -104,9 +107,13 @@ export default function MyDay({
           <span className="flex-1" />
           {/* WHY IT IS WHERE IT IS. The draft's reason, not yours - drag it
               anywhere and this still says what put it there. */}
-          {d.priority && <span className={WHY_P}>{d.priority.by.toUpperCase()}&rsquo;S NEXT</span>}
+          {/* A REWORK SAYS SO BEFORE IT SAYS ANYTHING ELSE. A deal that was
+              finished and came back must not look like a deal that arrived. */}
+          {d.rework && <span className={WHY_R}>{reworkChip(d.rework as any)}</span>}
+          {!d.rework && d.priority && <span className={WHY_P}>{d.priority.by.toUpperCase()}&rsquo;S NEXT</span>}
           <span className={WHY}>
-            {!d.priority && 'oldest · '}{d.stage}{d.days !== null && d.days !== undefined ? ` · ${d.days} days` : ''}
+            {d.rework ? `${d.rework.label} · ` : !d.priority ? 'oldest · ' : ''}
+            {d.stage}{d.days !== null && d.days !== undefined ? ` · ${d.days} days` : ''}
           </span>
           {canEdit && (isToday ? (
             <button onClick={() => setOrder(moveInOrder(items, id, null))}
@@ -118,6 +125,15 @@ export default function MyDay({
             </button>
           ))}
         </div>
+
+        {/* WHAT THE BROKER SAID, which is not a note and is not yours to
+            change. It comes off the deal, so it is the same words on the day
+            list, on the deal page and in the email. */}
+        {d.rework?.note && (
+          <div className="ml-[30px] mb-2 text-[11.5px] text-body bg-chase-bg border border-chase-edge rounded-md px-2.5 py-1 leading-relaxed">
+            &ldquo;{d.rework.note}&rdquo;
+          </div>
+        )}
 
         {/* THE NOTE, FOR TODAY ONLY. */}
         {isToday && (writing === id ? (
