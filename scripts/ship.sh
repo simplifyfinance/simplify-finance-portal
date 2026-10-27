@@ -55,6 +55,17 @@ if ! ./scripts/check-broker-keys.sh; then
   exit 1
 fi
 
+# 27 Oct 2026. A capitalised premium was in the purchase box and missing from
+# the split card under it, from the whole of the lending options, and from the
+# two compliance paragraphs that say what somebody is borrowing. Five weeks,
+# a green test suite, and Fabio finding it on a client email.
+echo "Checking the LMI carries..."
+if ! ./scripts/check-lmi-carries.sh; then
+  echo
+  echo "NOT SHIPPED - fix the above first."
+  exit 1
+fi
+
 echo "Checking email HTML..."
 if ! ./scripts/check-email-html.sh; then
   echo

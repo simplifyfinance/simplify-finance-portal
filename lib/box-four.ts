@@ -27,6 +27,7 @@
 import { money, readMoney } from './money'
 import { article } from './article'
 import { loanAmount, lvrOf, fundsToComplete } from './funds-to-complete'
+import { drawnLoan } from './lmi'
 import { splitsOf, dealRow } from './deal-structure'
 import { fullName, currentEmployment, notWorking, selfEmployed, monthsBetween } from './fact-find'
 import { annualIncomeOfApplicant } from './income-calculations'
@@ -192,7 +193,20 @@ export function boxFour(deal: any): Box {
   // ===================== ANALYSIS =====================
   const analysis: string[] = []
 
-  const amount = loanAmount(deal)
+  // THE LOAN THEY ACTUALLY SIGN FOR, NOT THE BASE.
+  //
+  // 27 Oct 2026. loanAmount() is the sum of the BC splits. Where LMI is
+  // capitalised the premium is borrowed too, so this paragraph was telling
+  // a client - in the compliance file - that they were borrowing $886,000
+  // when the contract was for $912,000.
+  //
+  // Fabio's own rule, 24 Sep 2026, written into lib/build-card.ts at the
+  // time: "when the premium is capitalised there is ONE loan line and it is
+  // the one they borrow." It was applied to one email and nowhere else.
+  //
+  // The LVR below is deliberately NOT changed - an LVR is worked out
+  // against the base and the portal has always drawn it that way.
+  const amount = drawnLoan(deal, loanAmount(deal))
   const term = splitsOf(deal).map(s => txt(s.termYears)).find(Boolean) || txt(bc.loanTerm)
   const lvr = lvrOf(deal)
   const purchase = readMoney(bc.purchasePrice)

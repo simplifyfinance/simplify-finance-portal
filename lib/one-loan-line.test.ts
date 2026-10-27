@@ -134,10 +134,33 @@ describe('the split card, where the split IS the whole loan', () => {
     expect(rows.find(r => r.note)?.value).toBe('includes LMI of $9,000, added to the loan')
   })
 
-  it('without the deal passed in it reads exactly as it did before', () => {
+  // THIS TEST WAS THE BUG, WRITTEN DOWN AS CORRECT BEHAVIOUR.
+  //
+  // 27 Oct 2026. It used to read "without the deal passed in it reads exactly
+  // as it did before", and assert $561,000 - the base, with the premium
+  // missing. It passed every ship for five weeks while five of the six
+  // templates drew exactly that, directly under a purchase box showing the
+  // loan WITH the premium in it. Fabio found it on a client email.
+  //
+  // The fault was not the assertion. It was that this file only ever asked
+  // whether splitRows() COULD add the premium, and never whether anything
+  // DID. One template out of six handed it the deal.
+  //
+  // What it says now is the thing that must stay true: a card with no deal
+  // behind it cannot invent a premium out of nothing. The question of whether
+  // the deal is handed over is answered where it belongs - in
+  // lib/the-premium-is-in-the-loan.test.ts and scripts/check-lmi-carries.sh.
+  it('a card with no deal behind it cannot invent a premium', () => {
     const rows = splitRows(split, '30', { amountLabel: 'New loan amount' })
     expect(find(rows, 'New loan amount').value).toBe('$561,000')
     expect(rows.some(r => r.note)).toBe(false)
+  })
+
+  it('and every template hands it the deal, which is what was missing', () => {
+    const src = readFileSync(new URL('../app/api/generate-email/route.ts', import.meta.url), 'utf8')
+    expect(src).toContain('lmiBc: splits.length === 1 ? d : undefined')
+    expect(src, 'the premium is behind a template flag again')
+      .not.toContain('lmiOnTheSplit && splits.length === 1 ? d : undefined')
   })
 })
 

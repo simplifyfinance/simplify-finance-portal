@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { clientLoan } from '@/lib/lmi'
 import { loPurchaseBlock, isBuyAndSell } from '@/lib/lo-purchase-block'
 import { buysNothing } from '@/lib/buying'
 import { ctasLender } from '@/lib/email-buttons'
@@ -85,7 +86,10 @@ function notesBox(items: string[]) {
 // the deal into a single loan is shorter than the others, and that gap is
 // information rather than a hole - it is exactly what is different about that
 // option.
-function splitBand(lenders: any[], globals: any[], propertyValue: any, secs: any[] = []): string {
+// `bc` is the borrowing capacity record, passed in since 27 Oct 2026 so this
+// band can tell whether a capitalised premium is part of the lending. Nothing
+// in the lending options knew about LMI before that.
+function splitBand(lenders: any[], globals: any[], propertyValue: any, secs: any[] = [], bc: any = {}): string {
   const per = lenders.map(l => resolveLenderSplits(l, globals))
   const deepest = per.reduce((m, rows) => Math.max(m, rows.length), 0)
   if (deepest === 0) return ''
@@ -122,11 +126,24 @@ function splitBand(lenders: any[], globals: any[], propertyValue: any, secs: any
   // `secs` has been passed into this function since 12 Oct and never read here.
   const against = totalsOf(secs).value || propertyValue
 
+  // AND THE PREMIUM, WHERE IT IS BEING BORROWED.
+  //
+  // 27 Oct 2026. Nothing in the whole of the lending options knew about LMI.
+  // A client comparing three lenders read "Total lending $886,000" under each
+  // of them while the borrowing capacity they had already been sent said
+  // $912,000 for the same deal.
+  //
+  // Fabio's rule from 24 Sep, written into lib/build-card.ts that day: "when
+  // the premium is capitalised there is ONE loan line and it is the one they
+  // borrow." The LVR is left against the base, which is how it has always
+  // been drawn.
   const totals = () => `<tr>${per.map(rows => {
     const tot = lenderTotal(rows)
+    const drawn = clientLoan(bc, tot)
     const lvr = lenderLvr(rows, against)
     return totalCell(
-      `<p style="font-size:12px;color:#343333;margin:0"><span style="color:#343333;"><strong>Total lending ${money(tot)}</strong>${lvr > 0 ? ` &nbsp;\u00b7&nbsp; LVR ${lvr}%` : ''}</span></p>`,
+      `<p style="font-size:12px;color:#343333;margin:0"><span style="color:#343333;"><strong>Total lending ${money(drawn.amount ?? tot)}</strong>${lvr > 0 ? ` &nbsp;\u00b7&nbsp; LVR ${lvr}%` : ''}</span></p>`
+      + (drawn.note ? `<p style="font-size:11px;color:#7a5c3a;font-style:italic;margin:2px 0 0"><span style="color:#7a5c3a;">${drawn.note}</span></p>` : ''),
     )
   }).join('')}</tr>`
 
@@ -187,7 +204,9 @@ function splitBand(lenders: any[], globals: any[], propertyValue: any, secs: any
 
 // `lo` rather than a lender name: two options from the same bank both answered
 // yes to a name, so both columns wore the star. See lib/recommended-option.ts.
-function buildLenderTable(lenders: any[], isBridging: boolean, lo?: any, globals?: any[], propertyValue?: any, secs: any[] = []) {
+// `bc` arrives here only to be handed to splitBand, which needs it to know
+// whether a capitalised premium is part of the lending. 27 Oct 2026.
+function buildLenderTable(lenders: any[], isBridging: boolean, lo?: any, globals?: any[], propertyValue?: any, secs: any[] = [], bc: any = {}) {
   const cols = lenders.length
   const pct = cols === 1 ? '100%' : cols === 2 ? '50%' : '33%'
 
@@ -272,7 +291,7 @@ function buildLenderTable(lenders: any[], isBridging: boolean, lo?: any, globals
   // Splits go directly under the lender names, before the rates: the client's
   // first question about an option is what the money looks like, not what the
   // annual fee is. Bridging keeps its own structure block instead.
-  const splits = isBridging ? '' : splitBand(lenders, globals || [], propertyValue, secs)
+  const splits = isBridging ? '' : splitBand(lenders, globals || [], propertyValue, secs, bc)
   return `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px"><tr>${headers}</tr>${splits}${featureCells}</table>`
 }
 
@@ -508,7 +527,7 @@ export async function POST(req: NextRequest) {
   // The securities, read live off the borrowing capacity and the fact find
   // rather than copied - see the note on bcData at the top of this handler.
   const secs = securitiesOf(bcData || {}, ffData || {})
-  body += buildLenderTable(sortedLenders, isBridging, d, d.refinanceSplits, d.propertyValue, secs)
+  body += buildLenderTable(sortedLenders, isBridging, d, d.refinanceSplits, d.propertyValue, secs, d)
 
   body += p('Please let us know which lender you would like to proceed with and if you have any questions regarding the numbers above.')
   // The disclaimer rides with the block and only with it. An email carrying no

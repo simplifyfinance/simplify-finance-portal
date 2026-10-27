@@ -316,6 +316,53 @@ export function clientLoan(bc: any, base: number | null): ClientLoan {
 // Capitalised returns nothing: the loan line above already carried it.
 // Waived returns nothing either: the LVR line has said "(LMI waived)" since
 // before this file existed, and saying it twice is not saying it better.
+/**
+ * THE LOAN AS IT IS ACTUALLY DRAWN, FOR A WHOLE DEAL.
+ *
+ * 27 Oct 2026. Fabio, on a client email: "we are ticking the box to capitalise
+ * LMI but HTML the loan is not including LMI so that figures is not carrying
+ * accross".
+ *
+ * He was right three times over. totalLoan() has existed since September and
+ * was only ever called in two places - the purchase breakdown and a split card
+ * on templates that have no purchase breakdown. Everywhere else read the base:
+ * the split card on every OTHER template, the whole of the lending options,
+ * and compliance boxes one and four, which say in words how much somebody is
+ * borrowing.
+ *
+ * So the premium was added where the email explains the purchase and dropped
+ * everywhere the email, or the compliance file, states the loan.
+ *
+ * `base` is the sum of the splits - see loanAmount() in lib/funds-to-complete.ts.
+ * This is that plus the premium, where it is being capitalised.
+ *
+ * THE LVR IS NOT COMPUTED FROM THIS. An LVR is worked out against the base and
+ * the portal already draws it that way - see buildLVRLine(). Changing that is
+ * a different argument and is not what was asked.
+ */
+export function drawnLoan(deal: any, base: number): number {
+  return totalLoan(deal?.bc_data || {}, base) ?? base
+}
+
+/**
+ * WHERE THE PREMIUM GOES WHEN THERE IS MORE THAN ONE SPLIT.
+ *
+ * Nothing on the deal says which split a capitalised premium sits on, and the
+ * portal does not guess at a client's lending. Asked on 27 Oct 2026, Fabio
+ * chose the honest version: leave both cards alone and say the total
+ * underneath them.
+ *
+ * Empty where there is no capitalised premium, or where the deal has one split
+ * - that one carries it in its own Loan amount row and repeating it here would
+ * be the double-count this file exists to prevent.
+ */
+export function totalLendingLine(bc: any, base: number | null, splitCount: number): string {
+  if (splitCount < 2) return ''
+  const amount = lmiAmount(bc)
+  if (amount === null || base === null || lmiTreatment(bc) !== 'capitalised') return ''
+  return `Total lending ${money(base + amount)} \u2014 includes LMI of ${money(amount)}, added to the loan`
+}
+
 export function lmiTrailingLines(bc: any): ClientLine[] {
   const amount = lmiAmount(bc)
   if (amount === null) return []

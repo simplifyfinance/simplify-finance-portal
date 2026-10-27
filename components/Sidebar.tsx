@@ -3,7 +3,7 @@ import { SETTINGS_PANES } from '@/lib/settings-panes'
 import { LENDER_PANES } from '@/lib/lender-panes'
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3, Percent, TrendingUp, CalendarCheck, Mail, BookOpen } from "lucide-react"
+import { LayoutDashboard, Briefcase, Users, Building2, UserPlus, Settings, LogOut, BarChart3, Percent, TrendingUp, CalendarCheck, Mail, BookOpen, Contact } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createSupabaseBrowser } from "@/lib/supabase-browser"
 import { can, roleLabel as formatRoleLabel } from '@/lib/permissions'
@@ -28,6 +28,11 @@ const nav = [
   // 21 Oct 2026. Every team email lived in Fabio's sent items and nowhere else.
   // See lib/knowledge-base.ts.
   { label: "Knowledge base", href: "/knowledge-base", icon: BookOpen },
+  // 27 Oct 2026. Catherine, item 9 of nine: a live group directory instead of
+  // a PDF on the shared drive. Not under Team, which is an admin screen for
+  // logins and roles - most of the 29 people on this have no login at all.
+  // Fabio: "I want a directy tab". See lib/the-directory.ts.
+  { label: "Directory", href: "/directory", icon: Contact },
 ]
 
 // The heading is cosmetic. Each item states who may see it, so finance staff keep

@@ -7,7 +7,7 @@ import { ctas, ctasTwo } from '@/lib/email-buttons'
 import { labelOf as scenarioLabel } from '@/lib/bc-scenarios'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { lmiClientLines, lmiIsInTheLoan, clientLoan, lmiAmount, lmiKeys } from '@/lib/lmi'
+import { lmiClientLines, lmiIsInTheLoan, clientLoan, lmiAmount, lmiKeys, totalLendingLine } from '@/lib/lmi'
 import { repaymentOf, splitRows, cardTitle, structureLead, realSplits,
          repaymentTypeLine } from '@/lib/split-cards'
 import { purchaseRows } from '@/lib/purchase-rows'
@@ -197,8 +197,21 @@ function splitCards(d: any, templateName: string, opts?: {
   // release - keep those and use this to pick up anything past them. Numbering
   // still counts from the whole list, so the third split is "Split 3".
   from?: number
-  // Set on a template with no purchase breakdown of its own, where the split
-  // card IS the loan line. Ignored unless there is exactly one real split.
+  // RETIRED 27 Oct 2026, and kept only so the one caller still compiles.
+  //
+  // It used to gate whether a split card added a capitalised premium, and it
+  // was set on exactly ONE template - the refinance, which has no purchase
+  // breakdown. Every other template drew a split card reading the BASE loan
+  // directly underneath a purchase box reading the loan WITH the premium in
+  // it. Two different "Loan amount" figures on one email, the second one with
+  // no explanation beside it.
+  //
+  // Fabio, 27 Oct 2026: "we are ticking the box to capitalise LMI but HTML the
+  // loan is not including LMI so that figures is not carrying accross".
+  //
+  // The premium is now added on any deal with exactly one real split, whatever
+  // the template. Saying it twice was the thing this gate avoided; saying two
+  // different numbers is worse than saying one number twice.
   lmiOnTheSplit?: boolean
 }) {
   const splits = realSplits(d.splits)
@@ -214,12 +227,32 @@ function splitCards(d: any, templateName: string, opts?: {
         // carries its own or the row is simply not there - a deal-level figure
         // printed on one of two property cards would be wrong on both.
         existingFallback: splits.length === 1 ? opts?.existingFallback : undefined,
-        // Same rule, same reason: one split or nothing.
-        lmiBc: opts?.lmiOnTheSplit && splits.length === 1 ? d : undefined,
+        // ONE SPLIT CARRIES THE PREMIUM. TWO AND NOTHING DOES.
+        //
+        // Nothing on a deal says which of two splits a capitalised premium
+        // sits on, and the portal does not guess at a client's lending. With
+        // two or more, both cards are left alone and the total is said
+        // underneath them - see totalLendingLine() in lib/lmi.ts.
+        lmiBc: splits.length === 1 ? d : undefined,
       }).map(r => r.note
         ? `<tr><td colspan="2" style="font-size:11px;color:#7a5c3a;font-style:italic;line-height:1.5;padding:0 0 4px"><span style="color:#7a5c3a;">${r.value}</span></td></tr>`
         : row(r.label, r.value)).join('')
       + (opts?.after ? opts.after(i, splits.length) : '')))(from + k)).join('')
+    // WITH TWO OR MORE SPLITS, THE PREMIUM IS SAID ONCE, UNDERNEATH.
+    //
+    // 27 Oct 2026. Neither card is touched, because nothing on the deal says
+    // which split a capitalised premium sits on. Asked which way to go, Fabio
+    // chose the honest one: leave them alone and state the total.
+    + splitsTotalLending(d, splits)
+}
+
+function splitsTotalLending(d: any, splits: any[]): string {
+  const base = splits.reduce((t: number, s: any) => t + (readMoney(s?.amount) || 0), 0)
+  const line = totalLendingLine(d, base || null, splits.length)
+  if (!line) return ''
+  return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px"><tr>`
+    + `<td bgcolor="#F3EEE4" style="background:#F3EEE4;border-radius:8px;padding:11px 14px;font-family:Arial,sans-serif;font-size:12.5px">`
+    + `<span style="color:#5a452c;"><strong>${line}</strong></span></td></tr></table>`
 }
 
 function repaymentRow(split: any, loanTerm: any) {
