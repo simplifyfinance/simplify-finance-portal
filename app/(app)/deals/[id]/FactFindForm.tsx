@@ -17,7 +17,7 @@ import InternalNotes from '@/components/InternalNotes'
 import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET_TYPES, LIABILITY_STATUSES, LIMIT_REDUCED, optionsFor } from '@/lib/fact-find-options'
 import { withLimitConditions, conditionsChanged } from '@/lib/limit-to-send'
 import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship } from '@/lib/relationship'
-import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS } from '@/lib/fact-find'
+import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS, gapsInHistory, gapInWords } from '@/lib/fact-find'
 import { newGuard, saveGuarded } from '@/lib/save-conflict'
 import { newOwnership, focusField, blurField, markDirty, keepOwned, settleSaved } from '@/lib/field-ownership'
 import { useSaveIndicator } from '@/components/useSaveIndicator'
@@ -1599,6 +1599,17 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               {totalHistoryMonths(applicant.addresses)} months of address history recorded — add a previous address to reach the required {REQUIRED_HISTORY_MONTHS} months.
             </div>
           )}
+          {/* AND THE HOLES INSIDE IT, WHICH AN ADDITION CANNOT SEE.
+              Three years of addresses with four months missing in the middle
+              adds up to thirty-two and reads as "short by four". It is not the
+              same problem, and only naming the months lets anybody fix it. */}
+          {gapsInHistory(applicant.addresses).map(g => (
+            <div key={g.from.toISOString()}
+              className="bg-chase-bg border border-chase-edge rounded-lg px-3 py-2 text-xs text-chase mb-2">
+              <b>Nothing recorded between {gapInWords(g)}.</b>{' '}
+              Add where they were living, or the dates on the entries either side are wrong.
+            </div>
+          ))}
           <button onClick={addAddress} className="text-sm text-brand-ink border border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition">
             + Add previous address
           </button>
@@ -1724,6 +1735,22 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                   : <>Add previous employment to cover the remaining {mth(short)}.</>}
               </div>
             )
+          })()}
+          {/* A GAP BETWEEN TWO JOBS. Fabio, 27 Oct 2026: "fix the gap between 2
+              jobs". The months above are ADDED UP, so a hole in the middle of
+              them is invisible to that sum - and a hole is the thing a lender
+              actually asks about. Time not working counts as history, so the
+              answer is usually a date somebody never wrote down rather than a
+              job that was forgotten. */}
+          {(() => {
+            const primary = applicant.employment.filter(e => e.employmentPriority !== 'Secondary')
+            return gapsInHistory(primary).map(g => (
+              <div key={g.from.toISOString()}
+                className="bg-chase-bg border border-chase-edge rounded-lg px-3 py-2 text-xs text-chase mb-2">
+                <b>Nothing recorded between {gapInWords(g)}.</b>{' '}
+                Add what they were doing — another job, not working, studying. A lender will ask.
+              </div>
+            ))
           })()}
           <div className="flex gap-2">
             <button onClick={addSecondaryEmployment} className="text-sm text-brand-ink border border-brand rounded-lg px-3 py-1.5 hover:bg-info-bg transition">

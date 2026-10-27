@@ -94,6 +94,114 @@ export function totalHistoryMonths(
     (sum, e) => sum + monthsBetween(e?.startDate, e?.isCurrent ? '' : (e?.endDate || ''), today), 0)
 }
 
+// A GAP IN THE MIDDLE IS INVISIBLE TO AN ADDITION.
+//
+// 27 Oct 2026. totalHistoryMonths() above adds the periods up, so three years
+// of history with four months missing in the middle comes to thirty-two and
+// reads as "short by four" - and four months missing between two jobs is not
+// the same problem as four months missing off the back. A lender asks about a
+// gap. Nothing in the portal could see one.
+//
+// Fabio: "fix the gap between 2 jobs".
+//
+// THE WINDOW MATTERS. A gap in 2015 is nobody's business. Only holes inside the
+// last three years are looked for, because that is the only stretch anybody is
+// being asked to account for.
+//
+// AND A HOLE AT THE END COUNTS TOO. Nothing current recorded, and the most
+// recent thing ended in March, is a gap running to today - and it is the one
+// most likely to be a real answer nobody has written down ("she stopped work in
+// March").
+//
+// A HOLE AT THE START DEPENDS ON WHETHER THERE IS ENOUGH HISTORY.
+//
+// Short of three years, the earliest stretch IS the shortfall and saying it
+// twice helps nobody - the total already says "32 of the 36 a lender needs".
+//
+// But a job from 2015 and a job from last year add up to eighty months, so the
+// shortfall warning says nothing at all, and the three months at the start of
+// the window are a real hole a lender will ask about. I missed that in my own
+// check of this function and only found it by printing the cases out.
+export type HistoryGap = { from: Date; to: Date; months: number }
+
+export function gapsInHistory(
+  entries: { isCurrent?: boolean; startDate?: string; endDate?: string }[] | null | undefined,
+  today = new Date(),
+  windowMonths = REQUIRED_HISTORY_MONTHS,
+): HistoryGap[] {
+  const start = new Date(today.getFullYear(), today.getMonth() - windowMonths, 1)
+  const end = new Date(today.getFullYear(), today.getMonth(), 1)
+
+  // Every period as a pair of months, clipped to the window. A period with no
+  // start date cannot be placed and is left out rather than guessed at.
+  const spans: [number, number][] = []
+  for (const e of entries || []) {
+    const from = String(e?.startDate ?? '').trim()
+    if (!from) continue
+    const s = new Date(from)
+    if (isNaN(s.getTime())) continue
+    const rawEnd = e?.isCurrent ? '' : String(e?.endDate ?? '').trim()
+    const t = rawEnd ? new Date(rawEnd) : today
+    if (isNaN(t.getTime())) continue
+    const a = Math.max(months(start, s), 0)
+    const b = Math.min(months(start, t), months(start, end))
+    if (b > a) spans.push([a, b])
+    // A period recorded with the same month in and out still covers that month.
+    else if (b === a && b >= 0) spans.push([a, a + 1])
+  }
+  if (!spans.length) return []
+
+  // Merge what overlaps, then the holes are what is left between them.
+  spans.sort((x, y) => x[0] - y[0])
+  const merged: [number, number][] = [spans[0]]
+  for (const [a, b] of spans.slice(1)) {
+    const last = merged[merged.length - 1]
+    if (a <= last[1]) last[1] = Math.max(last[1], b)
+    else merged.push([a, b])
+  }
+
+  const out: HistoryGap[] = []
+  // See the note above: only where there is already enough history, so the
+  // shortfall and the gap never say the same thing twice.
+  if (merged[0][0] > 0 && totalHistoryMonths(entries, today) >= windowMonths) {
+    out.push(gap(start, 0, merged[0][0]))
+  }
+  for (let i = 1; i < merged.length; i++) {
+    const a = merged[i - 1][1]
+    const b = merged[i][0]
+    if (b > a) out.push(gap(start, a, b))
+  }
+  const lastCovered = merged[merged.length - 1][1]
+  const upToNow = months(start, end)
+  if (upToNow > lastCovered) out.push(gap(start, lastCovered, upToNow))
+  return out
+}
+
+function months(from: Date, to: Date): number {
+  return (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth())
+}
+
+function gap(start: Date, a: number, b: number): HistoryGap {
+  return {
+    from: new Date(start.getFullYear(), start.getMonth() + a, 1),
+    to: new Date(start.getFullYear(), start.getMonth() + b, 1),
+    months: b - a,
+  }
+}
+
+/**
+ * "March 2024 and July 2024". The two months a person would say out loud.
+ *
+ * AND IT READS AS "BETWEEN X AND Y", not "between X to Y". Every place this is
+ * printed puts the word "between" in front of it - the warning on the form and
+ * the question to the client both do - and "between March and July" is how
+ * somebody says it. I wrote "to" first and both sentences came out wrong.
+ */
+export function gapInWords(g: HistoryGap): string {
+  const say = (d: Date) => d.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })
+  return `${say(g.from)} and ${say(g.to)}`
+}
+
 export function ageFrom(dob: any, today = new Date()): number | null {
   const raw = String(dob || '').trim()
   let d: Date | null = null

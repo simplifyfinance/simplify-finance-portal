@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { monthsBetween, totalHistoryMonths, REQUIRED_HISTORY_MONTHS, stillToConfirm } from './fact-find'
+import { monthsBetween, totalHistoryMonths, REQUIRED_HISTORY_MONTHS, stillToConfirm,
+         gapsInHistory, gapInWords } from './fact-find'
 
 const TODAY = new Date('2026-09-03')
 
@@ -92,5 +93,114 @@ describe('an applicant who is not working', () => {
     expect(out.join(' ')).not.toContain('months of employment history')
     expect(totalHistoryMonths(natasha('2026-01-03').fact_find_data.applicants[0].employment, TODAY))
       .toBeLessThan(REQUIRED_HISTORY_MONTHS)
+  })
+})
+
+// A GAP IN THE MIDDLE IS INVISIBLE TO AN ADDITION.
+//
+// 27 Oct 2026. Fabio: "fix the gap between 2 jobs".
+//
+// totalHistoryMonths adds the periods up. Three years of work with four months
+// missing in the middle comes to thirty-two and reads as "short by four" - and
+// those are not the same problem. A lender asks about the HOLE. Nothing in the
+// portal could see one.
+describe('a hole in the middle', () => {
+  const words = (e: any[]) => gapsInHistory(e, TODAY).map(gapInWords)
+
+  it('is found, and named by its months', () => {
+    expect(words([
+      { isCurrent: true, startDate: '2025-07-03' },
+      { startDate: '2023-01-03', endDate: '2025-03-03' },
+    ])).toEqual(['March 2025 and July 2025'])
+  })
+
+  it('AND THE ADDITION ALONE WOULD HAVE SAID NOTHING WAS WRONG', () => {
+    // This is the whole bug. 41 months is past the 36 a lender wants, so the
+    // warning on the form went quiet while four months sat unaccounted for.
+    const withHole = [
+      { isCurrent: true, startDate: '2025-07-03' },
+      { startDate: '2023-01-03', endDate: '2025-03-03' },
+    ]
+    expect(totalHistoryMonths(withHole, TODAY)).toBeGreaterThan(REQUIRED_HISTORY_MONTHS)
+    expect(gapsInHistory(withHole, TODAY)).toHaveLength(1)
+  })
+
+  it('two holes are two questions, not one', () => {
+    expect(words([
+      { isCurrent: true, startDate: '2026-06-03' },
+      { startDate: '2025-01-03', endDate: '2025-09-03' },
+      { startDate: '2024-01-03', endDate: '2024-06-03' },
+    ])).toEqual(['June 2024 and January 2025', 'September 2025 and June 2026'])
+  })
+
+  it('and an unbroken run has none', () => {
+    expect(words([
+      { isCurrent: true, startDate: '2025-03-03' },
+      { startDate: '2023-01-03', endDate: '2025-03-03' },
+    ])).toEqual([])
+  })
+
+  it('jobs that overlap are not a gap', () => {
+    // Somebody who started the new one before finishing the old.
+    expect(words([
+      { isCurrent: true, startDate: '2025-01-03' },
+      { startDate: '2023-01-03', endDate: '2025-06-03' },
+    ])).toEqual([])
+  })
+})
+
+describe('a hole at the end', () => {
+  it('counts, because it is usually an answer nobody wrote down', () => {
+    // "She stopped work in March" is a fact about the file. A blank is not.
+    expect(gapsInHistory([{ startDate: '2022-01-03', endDate: '2026-03-03' }], TODAY)
+      .map(gapInWords)).toEqual(['March 2026 and September 2026'])
+  })
+})
+
+describe('a hole at the start', () => {
+  it('is NOT reported where the history is already short', () => {
+    // The earliest stretch IS the shortfall there, and the total already says
+    // "24 of the 36 a lender needs". Saying it twice helps nobody.
+    const short = [{ isCurrent: true, startDate: '2024-10-03' }]
+    expect(totalHistoryMonths(short, TODAY)).toBeLessThan(REQUIRED_HISTORY_MONTHS)
+    expect(gapsInHistory(short, TODAY)).toEqual([])
+  })
+
+  it('but IS reported where old history pushes the total over the line', () => {
+    // A job in 2015 and a job from last year add up to eighty months, so the
+    // shortfall warning says nothing at all - and the four months at the start
+    // of the window are a real hole a lender will ask about. I missed this in
+    // my own check of the function and only found it by printing the cases out.
+    //
+    // TODAY in this file is 3 Sep 2026, so the window opens in September 2023.
+    const oldAndNew = [
+      { isCurrent: true, startDate: '2024-01-03' },
+      { startDate: '2015-01-03', endDate: '2019-01-03' },
+    ]
+    expect(totalHistoryMonths(oldAndNew, TODAY)).toBeGreaterThan(REQUIRED_HISTORY_MONTHS)
+    expect(gapsInHistory(oldAndNew, TODAY).map(gapInWords)).toEqual(['September 2023 and January 2024'])
+  })
+})
+
+describe('nothing is invented', () => {
+  it('no entries, no gaps', () => {
+    expect(gapsInHistory([], TODAY)).toEqual([])
+    expect(gapsInHistory(null, TODAY)).toEqual([])
+    expect(gapsInHistory(undefined, TODAY)).toEqual([])
+  })
+
+  it('an entry with no start date is left out rather than guessed at', () => {
+    expect(gapsInHistory([{ isCurrent: true, startDate: '' }], TODAY)).toEqual([])
+  })
+
+  it('and a date nobody can read does not become a gap', () => {
+    expect(gapsInHistory([{ isCurrent: true, startDate: 'last winter' }], TODAY)).toEqual([])
+  })
+
+  it('a gap entirely before the three years is nobody\'s business', () => {
+    expect(gapsInHistory([
+      { isCurrent: true, startDate: '2019-01-03' },
+      { startDate: '2010-01-03', endDate: '2014-01-03' },
+    ], TODAY)).toEqual([])
   })
 })

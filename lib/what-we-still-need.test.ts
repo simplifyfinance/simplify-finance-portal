@@ -95,6 +95,63 @@ describe('the gaps the portal can already see', () => {
   })
 })
 
+describe('a gap between two jobs', () => {
+  // 27 Oct 2026. Fabio: "fix the gap between 2 jobs". The months are added up,
+  // so a hole in the middle of them is invisible to that sum - and the hole is
+  // what a lender asks about.
+  const holed = JSON.parse(JSON.stringify(DEAL))
+  holed.fact_find_data.applicants[0].employment = [
+    { isCurrent: true, employmentPriority: 'Primary', employerName: 'Harrow', startDate: '2025-07-03' },
+    { isCurrent: false, employmentPriority: 'Primary', employerName: 'Calder',
+      startDate: '2023-01-03', endDate: '2025-03-03' },
+  ]
+
+  it('is asked about by the months it covers', () => {
+    const q = gapsFound(holed, TODAY).find(x => x.kind === 'employment_gap')!
+    expect(q.ask).toBe('Priya — what were you doing between March 2025 and July 2025?')
+  })
+
+  it('AND IT IS ASKED EVEN THOUGH THE TOTAL IS PAST THREE YEARS', () => {
+    // 41 months. The shortfall question is gone and this one is not.
+    expect(keys(holed)).not.toContain('employment_history:a1')
+    expect(keys(holed).some(k => k.startsWith('employment_gap:a1'))).toBe(true)
+  })
+
+  it('it does not ask who they worked for', () => {
+    // A break is as likely to be travel, study or a baby as a forgotten job,
+    // and a question that assumes a job gets "none" and tells us nothing.
+    const q = gapsFound(holed, TODAY).find(x => x.kind === 'employment_gap')!
+    expect(q.ask).not.toContain('work for')
+    expect(q.help).toContain('travelling')
+  })
+
+  it('and an address gap is its own question', () => {
+    const addrs = JSON.parse(JSON.stringify(DEAL))
+    addrs.fact_find_data.applicants[0].addresses = [
+      { isCurrent: true, address: '14 Pelham St', startDate: '2025-07-03' },
+      { isCurrent: false, address: '8 Marlowe Rd', startDate: '2021-01-03', endDate: '2025-03-03' },
+    ]
+    const q = gapsFound(addrs, TODAY).find(x => x.kind === 'address_gap')!
+    expect(q.ask).toBe('Priya — where were you living between March 2025 and July 2025?')
+  })
+
+  it('each gap gets its own key, so two never share an answer', () => {
+    const two = JSON.parse(JSON.stringify(DEAL))
+    two.fact_find_data.applicants[0].employment = [
+      { isCurrent: true, employmentPriority: 'Primary', startDate: '2026-06-03' },
+      { isCurrent: false, employmentPriority: 'Primary', startDate: '2025-01-03', endDate: '2025-09-03' },
+      { isCurrent: false, employmentPriority: 'Primary', startDate: '2024-01-03', endDate: '2024-06-03' },
+    ]
+    const gaps = gapsFound(two, TODAY).filter(x => x.kind === 'employment_gap')
+    expect(gaps).toHaveLength(2)
+    expect(new Set(gaps.map(g => g.key)).size).toBe(2)
+  })
+
+  it('an unbroken history is asked nothing', () => {
+    expect(keys(DEAL).some(k => k.startsWith('employment_gap'))).toBe(false)
+  })
+})
+
 describe('residency, marital status and dependants', () => {
   const noStatus = JSON.parse(JSON.stringify(DEAL))
   noStatus.fact_find_data.applicants[1].residencyStatus = ''

@@ -37,7 +37,8 @@
 //    who replied to an email has not answered anything until somebody types it
 //    in, and the next email will ask again. Fabio and I agreed that is right:
 //    asking twice costs a sentence, finding out at submission costs a week.
-import { REQUIRED_HISTORY_MONTHS, totalHistoryMonths, fullName } from './fact-find'
+import { REQUIRED_HISTORY_MONTHS, totalHistoryMonths, fullName,
+         gapsInHistory, gapInWords, type HistoryGap } from './fact-find'
 
 // ---------------------------------------------------------------------------
 // WHAT A QUESTION IS
@@ -46,6 +47,8 @@ import { REQUIRED_HISTORY_MONTHS, totalHistoryMonths, fullName } from './fact-fi
 export type GapKind =
   | 'address_history'
   | 'employment_history'
+  | 'employment_gap'
+  | 'address_gap'
   | 'residency'
   | 'marital'
   | 'dependant_ages'
@@ -189,6 +192,53 @@ function employmentQuestions(deal: any, today: Date): Question[] {
         + 'Time not working counts too — it is still history.',
       why: `${monthsWord(months)} of the ${REQUIRED_HISTORY_MONTHS} a lender needs.`,
       closesItself: true,
+    })
+  })
+  return out
+}
+
+// A GAP IN THE MIDDLE IS ITS OWN QUESTION, AND NOT THE SAME ONE.
+//
+// 27 Oct 2026. "You have 41 months of history" and "there are four months in
+// the middle of it nobody has accounted for" are different things, and a client
+// can only answer the second one if you tell them which four months.
+//
+// NOT ALWAYS A JOB. A gap in employment is as likely to be a real answer nobody
+// wrote down - travel, study, a baby, looking after somebody - as it is a job
+// that was forgotten. So the question asks what they were doing, not who they
+// worked for, and the answer goes to credit either way.
+function gapQuestions(deal: any, today: Date): Question[] {
+  const out: Question[] = []
+  applicantsOf(deal).forEach((a, i) => {
+    const name = callThem(a, i)
+    const id = txt(a?.id)
+
+    const jobs = list(a?.employment).filter((e: any) => txt(e?.employmentPriority) !== 'Secondary')
+    gapsInHistory(jobs, today).forEach((g: HistoryGap, k: number) => {
+      out.push({
+        key: `employment_gap:${id || i}:${g.from.toISOString().slice(0, 7)}`,
+        kind: 'employment_gap',
+        who: name,
+        applicantId: id,
+        ask: `${name} — what were you doing between ${gapInWords(g)}?`,
+        help: 'Another job, travelling, studying, between things — whatever it was is fine. '
+          + 'Lenders ask about any break, they do not mind what it was.',
+        why: `${monthsWord(g.months)} unaccounted for between two jobs.`,
+        closesItself: true,
+      })
+    })
+
+    gapsInHistory(list(a?.addresses), today).forEach((g: HistoryGap) => {
+      out.push({
+        key: `address_gap:${id || i}:${g.from.toISOString().slice(0, 7)}`,
+        kind: 'address_gap',
+        who: name,
+        applicantId: id,
+        ask: `${name} — where were you living between ${gapInWords(g)}?`,
+        help: 'The address and roughly the dates is all we need.',
+        why: `${monthsWord(g.months)} with no address recorded.`,
+        closesItself: true,
+      })
     })
   })
   return out
@@ -344,6 +394,7 @@ export function gapsFound(deal: any, today = new Date()): Question[] {
   return [
     ...addressQuestions(deal, today),
     ...employmentQuestions(deal, today),
+    ...gapQuestions(deal, today),
     ...residencyQuestions(deal),
     ...maritalQuestions(deal),
     ...dependantQuestions(deal),
