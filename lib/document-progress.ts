@@ -268,6 +268,11 @@ const EXTRAS: { label: string; forWhat: DocFor; detail?: string }[] = [
   // loan is on the fact find. The plain label is offered here so one can be
   // asked for on a deal where nothing matching is recorded.
   { label: 'Credit card statement', forWhat: 'compliance', detail: 'last 3 months' },
+  // 27 Oct 2026, with the BNPL liability type. Caught by the test above this
+  // list, which holds that anything a rule can ask for must also be addable by
+  // hand - a document somebody can be asked for automatically but cannot add
+  // themselves is a dead end on the one deal where the rules did not fire.
+  { label: 'Buy now pay later statement', forWhat: 'compliance', detail: 'last 3 months' },
   { label: 'Car loan statement', forWhat: 'compliance', detail: 'last 6 months' },
   { label: 'Personal loan statement', forWhat: 'compliance', detail: 'last 6 months' },
   { label: 'Home loan statement', forWhat: 'lodge', detail: 'last 6 months' },

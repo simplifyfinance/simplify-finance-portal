@@ -2121,7 +2121,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
             <div key={liab.id} className="border border-gray-100 rounded-lg p-4 mb-2">
               <div className="flex justify-between items-center mb-3">
                 <select className="text-xs font-medium text-gray-500 border-0" value={liab.liabilityType} onChange={e => updateLiability(liab.id, 'liabilityType', e.target.value)}>
-                  <option>Credit card</option><option>Car loan</option><option>Personal loan</option><option>HECS</option><option>Health Insurance</option><option>Other</option>
+                  <option>Credit card</option><option>Buy now pay later</option><option>Car loan</option><option>Personal loan</option><option>HECS</option><option>Health Insurance</option><option>Other</option>
                 </select>
                 <button onClick={() => removeLiability(liab.id)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
               </div>
@@ -2162,6 +2162,35 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                       onChange={val => updateLiability(liab.id, 'newLimitAmount', val)} />
                   )}
                 </div>
+              )}
+              {liab.liabilityType === 'Buy now pay later' && (
+                /* BUY NOW PAY LATER.
+                   27 Oct 2026, asked for by Catherine, Operations Manager, as
+                   item 7 on a list of nine. It was being recorded as "Other",
+                   which told a lender nothing and told the document list
+                   nothing either.
+                   SHAPED LIKE A CARD, NOT LIKE A PERSONAL LOAN. Fabio's call:
+                   a lender assesses the LIMIT, the same way it does a credit
+                   card, so there has to be somewhere to put it. The repayment
+                   is here too because some of them are a fixed instalment and
+                   a broker will be asked for it. */
+                <>
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    <input className={inp} placeholder="Provider (Afterpay, Zip...)" value={liab.lenderName}
+                      onChange={e => updateLiability(liab.id, 'lenderName', e.target.value)} />
+                    <CurrencyInput className={inp} placeholder="Account limit" value={liab.limitAmount} onChange={val => updateLiability(liab.id, 'limitAmount', val)} />
+                    <CurrencyInput className={inp} placeholder="Current balance" value={liab.balance} onChange={val => updateLiability(liab.id, 'balance', val)} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    <CurrencyInput className={inp} placeholder="Repayment" value={liab.repaymentAmount} onChange={val => updateLiability(liab.id, 'repaymentAmount', val)} />
+                    <select className={inp} value={liab.repaymentFrequency} onChange={e => updateLiability(liab.id, 'repaymentFrequency', e.target.value)}>
+                      <option>Monthly</option><option>Fortnightly</option><option>Weekly</option>
+                    </select>
+                    <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}>
+                      {optionsFor(liab.status, LIABILITY_STATUSES).map(x => <option key={x} value={x}>{x}</option>)}
+                    </select>
+                  </div>
+                </>
               )}
               {(liab.liabilityType === 'Car loan' || liab.liabilityType === 'Personal loan' || liab.liabilityType === 'Other') && (
                 <>

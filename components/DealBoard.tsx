@@ -10,6 +10,7 @@ import { isUrgentNow, urgentChipLabel } from '@/lib/push-answers'
 // THE CARD WEARS THE COLOUR OF THE TILE THAT COUNTS IT. Both read these two
 // functions, so a red tile of six can only ever sit above six red cards.
 import { needsChasing, waitingOnSomeone } from '@/lib/board-tiles'
+import { whoHasIt, holderLabel } from '@/lib/who-has-it'
 import type { Alert } from '@/lib/deal-notes'
 import DealPeek from '@/components/DealPeek'
 import { brokerKey as keyOf } from '@/lib/broker-key'
@@ -570,6 +571,28 @@ export default function DealBoard({ deals, allDeals, nameFor, colours, threshold
                           face of the card. */}
 
                       <div className="flex gap-1 flex-wrap items-center min-w-0">
+                        {/* WHO IS ACTUALLY HOLDING THIS UP.
+                            27 Oct 2026. Catherine, Operations Manager, item 1
+                            of nine: "Show where a deal is actually sitting.
+                            For example, a deal can be with doc collection
+                            while the pipeline says it's with Credit. I saw one
+                            deal with a 'with the client' outline, so it would
+                            be good to know what triggers that and build on it."
+                            She had seen it on the deal page, the deals list
+                            and Today - everywhere except the board, which is
+                            the screen she works from. It was built on 22 Oct
+                            and never drawn here. See lib/who-has-it.ts, which
+                            also now says WHY where the wait has a name. */}
+                        {(() => {
+                          const w = whoHasIt(d)
+                          if (!w) return null
+                          return (
+                            <span title={holderLabel(w)}
+                                  className={`max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] ${w.style}`}>
+                              {holderLabel(w)}
+                            </span>
+                          )
+                        })()}
                         {chipsFor(d, colours).map(c => (
                           <span key={c.id} title={c.label}
                                 className="max-w-full truncate text-[9px] font-bold tracking-[.04em] uppercase rounded px-1.5 py-[2px] border"

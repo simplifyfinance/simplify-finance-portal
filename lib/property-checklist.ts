@@ -236,6 +236,11 @@ export function propertyChecklist(ff: any): string[] {
     const type = txt(liab?.liabilityType)
     if (type === 'Credit card') {
       lines.push({ text: `Limit ${moneyOrBlank(liab?.limitAmount)}` })
+    } else if (type === 'Buy now pay later') {
+      // Assessed on the limit like a card, but the repayment is often a fixed
+      // instalment and gets asked about, so both are on the line.
+      lines.push({ text: `Limit ${moneyOrBlank(liab?.limitAmount)}, Balance ${moneyOrBlank(liab?.balance)}` })
+      lines.push({ text: `Repayment ${moneyOrBlank(liab?.repaymentAmount)}/${freqLabel(liab?.repaymentFrequency)}` })
     } else if (type === 'HECS') {
       lines.push({ text: `Balance ${moneyOrBlank(liab?.balance)}` })
     } else if (type === 'Health Insurance') {

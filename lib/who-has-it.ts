@@ -24,6 +24,7 @@
 // that make the reports possible are the next ship, not this one.
 
 import { waitingIndex } from './deal-status'
+import { requestRounds, progressOf } from './document-progress'
 
 export type Holder = 'us' | 'client' | 'lender'
 
@@ -36,12 +37,38 @@ export type WhoHasIt = {
    *  lender is plain grey: a wait that is neither ours nor theirs, and not
    *  worth inventing a hue the palette does not have. */
   style: string
+  /** Set only where the wait has a name - "documents". For the chip to say so. */
+  why?: string
 }
 
 const CHIP: Record<Holder, { label: string; style: string }> = {
   us:     { label: 'With us',     style: 'bg-info-bg text-info border border-info-edge' },
   client: { label: 'With client', style: 'bg-waiting-bg text-waiting border border-waiting-edge' },
   lender: { label: 'With lender', style: 'bg-line-soft text-muted border border-line' },
+}
+
+// WAITING ON DOCUMENTS IS WAITING ON THE CLIENT.
+//
+// 27 Oct 2026. Catherine, Operations Manager, item 1 of nine: "Show where a
+// deal is actually sitting. For example, a deal can be with doc collection
+// while the pipeline says it's with Credit."
+//
+// She is exactly right, and the ladder cannot see it. Once a client has agreed
+// to the BC, the next unticked step is the lending options, so the ladder says
+// credit. In the office the deal is sitting still because nobody has sent
+// their payslips.
+//
+// The portal already knows. Documents were asked for - progressOf() carries
+// the rounds - and "Docs received" has not been pressed. Those two facts
+// together are the whole answer, and neither of them is new.
+//
+// IT IS NOT A FOURTH ANSWER. Fabio cut this to three words in October: "just
+// say with us, with client kind of thing." So it stays With client, and says
+// what for.
+export function waitingOnDocuments(deal: any): boolean {
+  if (!deal) return false
+  if (deal.docs_received_at) return false
+  return requestRounds(progressOf(deal)).length > 0
 }
 
 // THE LADDER, READ ONCE, MAPPED ONTO THREE ANSWERS.
@@ -55,5 +82,18 @@ export function whoHasIt(deal: any): WhoHasIt | null {
 
   const i = waitingIndex(deal)
   const holder: Holder = i === -1 ? 'lender' : (i === 3 || i === 6) ? 'client' : 'us'
+
+  // A deal already waiting on the client stays as it is - it is one wait, and
+  // naming it twice says nothing. This only overrides a deal the ladder thinks
+  // is ours while the office is plainly waiting on somebody else.
+  if (holder === 'us' && waitingOnDocuments(deal)) {
+    return { holder: 'client', ...CHIP.client, why: 'documents' }
+  }
   return { holder, ...CHIP[holder] }
+}
+
+/** "With client — documents", or just the two words. */
+export function holderLabel(w: WhoHasIt | null): string {
+  if (!w) return ''
+  return w.why ? `${w.label} \u2014 ${w.why}` : w.label
 }

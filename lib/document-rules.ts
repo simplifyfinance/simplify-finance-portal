@@ -267,6 +267,14 @@ function debtItems(ff: any, out: DocItem[]) {
       out.push({ ...g, key: `cc-statement:${id}`, label: named('Credit card statement'),
         detail: 'last 3 months', coveredByBank: bank || undefined,
         forWhat: 'compliance', round: 'proceed', auto: true })
+    } else if (kind === 'Buy now pay later') {
+      // 27 Oct 2026. Catherine's item 7, and Fabio's call on what it needs:
+      // three months, the same as a credit card. It turns up on their bank
+      // statements too, but a lender asking for it is a scramble nobody needs
+      // and offshore can chase this one on the first round like any other.
+      out.push({ ...g, key: `bnpl-statement:${id}`, label: named('Buy now pay later statement'),
+        detail: 'last 3 months', coveredByBank: bank || undefined,
+        forWhat: 'compliance', round: 'proceed', auto: true })
     } else if (kind === 'Car loan') {
       out.push({ ...g, key: `car-statement:${id}`, label: named('Car loan statement'),
         detail: 'last 6 months', coveredByBank: bank || undefined,
