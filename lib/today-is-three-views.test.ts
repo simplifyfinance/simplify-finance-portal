@@ -187,8 +187,20 @@ describe('what a person can write and mark', () => {
   it('every row says why it is where it is', () => {
     // The draft's reason, not the person's - drag it anywhere and the tag
     // still says what put it there.
-    expect(day).toContain("S NEXT")
+    //
+    // 27 Oct 2026. This used to look for "S NEXT", off a chip that read
+    // "MARK'S NEXT". It now reads "MARK ASKED FOR THIS" - the words changed
+    // with Catherine's item 2, because a broker marking a file is now an ASK
+    // with a reason on it rather than a flag, and three of them on one day
+    // have to be told apart. See lib/a-slot-each.ts.
+    expect(day).toContain('askChip(d.priority')
     expect(day).toContain("'oldest · '")
+  })
+
+  it('and whose file it is, which it never said until today', () => {
+    // Catherine, Operations Manager, 27 Oct 2026: "The deal lists the credit
+    // managers send don't show which broker each deal belongs to."
+    expect(day).toContain('brokerLabel(d.broker).toUpperCase()')
   })
 })
 

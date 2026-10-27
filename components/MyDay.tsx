@@ -2,7 +2,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { LINE, moveInOrder, splitAtLine, noteFor, type PlanDeal } from '@/lib/the-days-plan'
+import { brokerLabel } from '@/lib/broker-key'
 import { reworkChip } from '@/lib/send-it-back'
+import { askChip } from '@/lib/a-slot-each'
 
 // A DAY THAT IS A DAY.
 //
@@ -32,6 +34,7 @@ const SOFT = 'text-[12px] text-muted'
 const WHY = 'text-[10.5px] text-faint border border-card-line rounded-full px-2 py-[1px] whitespace-nowrap'
 const WHY_P = 'text-[10.5px] text-chase bg-chase-bg border border-chase-edge rounded-full px-2 py-[1px] whitespace-nowrap font-bold'
 const WHY_R = 'text-[10.5px] text-chase bg-chase-bg border border-chase-edge rounded-full px-2 py-[1px] whitespace-nowrap font-bold uppercase tracking-[.03em]'
+const BRK = 'text-[10.5px] text-info bg-info-bg border border-info-edge rounded-full px-2 py-[1px] whitespace-nowrap font-bold'
 
 export type DayDeal = PlanDeal & {
   /** How long it has been waiting, for the tag on the right. */
@@ -110,7 +113,13 @@ export default function MyDay({
           {/* A REWORK SAYS SO BEFORE IT SAYS ANYTHING ELSE. A deal that was
               finished and came back must not look like a deal that arrived. */}
           {d.rework && <span className={WHY_R}>{reworkChip(d.rework as any)}</span>}
-          {!d.rework && d.priority && <span className={WHY_P}>{d.priority.by.toUpperCase()}&rsquo;S NEXT</span>}
+          {/* WHOSE FILE IT IS. 27 Oct 2026, Catherine, item 2 of nine: "The
+              deal lists the credit managers send don't show which broker each
+              deal belongs to." It costs one chip and it was never there. */}
+          {d.broker && <span className={BRK}>{brokerLabel(d.broker).toUpperCase()}</span>}
+          {!d.rework && d.priority && (
+            <span className={WHY_P}>{askChip(d.priority, brokerLabel(d.priority.by))}</span>
+          )}
           <span className={WHY}>
             {d.rework ? `${d.rework.label} · ` : !d.priority ? 'oldest · ' : ''}
             {d.stage}{d.days !== null && d.days !== undefined ? ` · ${d.days} days` : ''}
@@ -129,6 +138,14 @@ export default function MyDay({
         {/* WHAT THE BROKER SAID, which is not a note and is not yours to
             change. It comes off the deal, so it is the same words on the day
             list, on the deal page and in the email. */}
+        {/* WHY THEY ASKED. Required when they ask, and it is the only thing
+            that lets a credit assessor choose between two of them. */}
+        {!d.rework && d.priority?.why && (
+          <div className="ml-[30px] mb-2 text-[11.5px] text-body bg-page border border-line-soft rounded-md px-2.5 py-1 leading-relaxed">
+            &ldquo;{d.priority.why}&rdquo;
+          </div>
+        )}
+
         {d.rework?.note && (
           <div className="ml-[30px] mb-2 text-[11.5px] text-body bg-chase-bg border border-chase-edge rounded-md px-2.5 py-1 leading-relaxed">
             &ldquo;{d.rework.note}&rdquo;

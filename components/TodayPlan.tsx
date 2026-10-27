@@ -1,6 +1,7 @@
 'use client'
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import AskForThisNext from '@/components/AskForThisNext'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { dayMonth } from '@/lib/same-date-everywhere'
 import { whoHasIt } from '@/lib/who-has-it'
@@ -11,7 +12,7 @@ import { sameBroker } from '@/lib/broker-key'
 import { whyNoPlan, lastWorkdayBefore } from '@/lib/the-week'
 import {
   draftDay, finishedOn, finishedAcross, planBoard, notTold, stageWaitingOn, creditHasIt,
-  reworkWaiting,
+  reworkWaiting, askWaiting,
   startingOrder, splitAtLine, withNote,
   type PlanDeal, type Plan,
 } from '@/lib/the-days-plan'
@@ -148,7 +149,10 @@ export default function TodayPlan({
       .map(d => ({
         id: d.id, name: d.deal_name, stage: stageWaitingOn(d) || '',
         since: d.credit_assigned_at || d.created_at,
-        priority: d.priority || null,
+        // TODAY'S ASK ONLY. Yesterday's slot is not today's - see askOn() in
+        // lib/a-slot-each.ts, which is also why this stopped being d.priority.
+        priority: askWaiting(d, today),
+        broker: d.assigned_broker || '',
         // A DEAL A BROKER SENT BACK GOES TO THE TOP. See draftDay().
         rework: reworkWaiting(d),
       }))
@@ -379,6 +383,15 @@ export default function TodayPlan({
                     <span className={plannedIds.has(deal.id) ? PILL_OK : PILL_NOT}>
                       {plannedIds.has(deal.id) ? 'On their plan' : 'Not on today’s plan'}
                     </span>
+                    {/* ASK FOR THIS ONE NEXT. 27 Oct 2026, Catherine's item 2.
+                        It belongs here because this box is already the list of
+                        your files somebody else is carrying - the exact moment
+                        a broker thinks "that one, today". One a day; see
+                        lib/a-slot-each.ts. */}
+                    {brokerKey && (
+                      <AskForThisNext deal={deal} deals={deals} brokerKey={brokerKey}
+                        onDone={() => window.location.reload()} />
+                    )}
                   </Row>
                 ))}
             </Card>

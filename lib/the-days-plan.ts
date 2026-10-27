@@ -38,6 +38,7 @@ import { toAuDate, todayYmd } from './periods'
 import { ownerOf, stageWindow, type Stage } from './who-did-this-stage'
 import { isWorkday } from './the-week'
 import { reworkOn, type BackStage } from './send-it-back'
+import { askOn, interleaveByBroker, type Ask } from './a-slot-each'
 
 export type PlanDeal = {
   id: string
@@ -46,8 +47,10 @@ export type PlanDeal = {
   stage: string
   /** When this deal last moved. The clock the draft orders by. */
   since: string | null
-  /** Set by a broker, with their name and their reason. */
-  priority?: { by: string; why: string; at: string } | null
+  /** Set by a broker, with their key and their reason. Today's only. */
+  priority?: Ask | null
+  /** Whose file it is. Catherine, 27 Oct 2026: credit's lists never said. */
+  broker?: string
   // SENT BACK BY A BROKER, which beats a priority and beats the queue.
   //
   // 27 Oct 2026. See lib/send-it-back.ts. A rework is not a new deal arriving;
@@ -123,9 +126,21 @@ export function draftDay(deals: PlanDeal[]): PlanDeal[] {
   const starred = deals.filter(d => !d.rework && d.priority)
   const rest = deals.filter(d => !d.rework && !d.priority)
   back.sort((a, b) => t(a.rework!.at) - t(b.rework!.at))
-  starred.sort((a, b) => t(a.priority!.at) - t(b.priority!.at))
   rest.sort((a, b) => (t(a.since) || 0) - (t(b.since) || 0))
-  return [...back, ...starred, ...rest]
+
+  // ONE FROM EACH BROKER, THEN ROUND AGAIN.
+  //
+  // 27 Oct 2026. Catherine, Operations Manager: "When Mark and Kylie
+  // reprioritise, other brokers' deals, like Justin's, keep getting pushed
+  // back." Sorting these by who asked first is what her inbox already does,
+  // and it is the thing she is complaining about - so the asks are shared out
+  // one broker at a time instead. Mark still goes first because he asked
+  // first; he does not get three in a row. See lib/a-slot-each.ts.
+  const shared = interleaveByBroker(
+    starred.map(d => ({ id: d.id, ask: d.priority || null, deal: d })))
+    .map(x => (x as any).deal as PlanDeal)
+
+  return [...back, ...shared, ...rest]
 }
 
 // THE REWORK SITTING ON WHICHEVER STAGE IS WITH US, for the draft above.
@@ -134,6 +149,11 @@ export function draftDay(deals: PlanDeal[]): PlanDeal[] {
 // Compliance cannot be sent back - there is nothing after it to come back
 // from - so a deal on compliance never has one.
 const BACK_STAGE_OF: Record<string, BackStage> = { BC: 'bc', LO: 'lo' }
+
+/** Today's ask on a deal, for the draft and the chip. */
+export function askWaiting(deal: any, day?: string): Ask | null {
+  return askOn(deal, day as any)
+}
 
 export function reworkWaiting(deal: any): PlanDeal['rework'] {
   const label = stageWaitingOn(deal)
