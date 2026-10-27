@@ -40,7 +40,13 @@ export const THEME_ATTRIBUTE = 'data-theme'
 //
 // lib/theme.test.ts walks app/ and fails the ship if a new public page appears
 // that is not on this list, so the next one cannot be forgotten.
-export const PUBLIC_PREFIXES = ['/ready', '/proceed', '/opportunity'] as const
+// /answers JOINED THEM ON 27 Oct 2026, and the test above caught that it had
+// not. A client answering the questions from a borrowing capacity email is a
+// stranger on the one screen where the company is being judged by somebody who
+// has never seen it before - and without this they would get whatever theme the
+// last person on that browser chose, which on a shared laptop is the team's
+// dark one. Four pages now.
+export const PUBLIC_PREFIXES = ['/ready', '/proceed', '/opportunity', '/answers'] as const
 
 export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'))

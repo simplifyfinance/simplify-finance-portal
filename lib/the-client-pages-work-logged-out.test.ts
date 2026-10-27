@@ -39,7 +39,46 @@ const CLIENT_PAGES = [
   ['app', 'proceed', '[id]', 'page.tsx'],
   ['app', 'ready', '[token]', 'page.tsx'],
   ['app', 'opportunity', '[token]', 'page.tsx'],
+  ['app', 'answers', '[token]', 'page.tsx'],
 ]
+
+// THE FOURTH PAGE, 27 Oct 2026.
+//
+// A client answering the questions in a borrowing capacity or lending options
+// email. Same two rules, and they are two rules rather than one because fixing
+// the read and not the write gives a client a page that looks fine and then
+// tells them it could not be saved.
+describe('the answers page', () => {
+  const flow = () => read('lib', 'answers-flow.ts')
+
+  it('reads the deal with the key that does not need a login', () => {
+    expect(flow()).toContain('createSupabaseAdmin()')
+    expect(flow(), 'the answers page reads the deal as the visitor')
+      .not.toContain('createSupabaseServer')
+  })
+
+  it('and SAVES with it too, which is the half that got missed last time', () => {
+    const s = flow()
+    const save = s.slice(s.indexOf('export async function saveAnswers'))
+    expect(save).toContain('createSupabaseAdmin()')
+  })
+
+  it('the write does not hang off the link', () => {
+    // Opening the page reads and nothing else. A mail scanner following the
+    // link on its way to the inbox must not record answers nobody typed.
+    const page = read('app', 'answers', '[token]', 'page.tsx')
+    expect(page).toContain('loadAnswers(token)')
+    expect(page).not.toContain('saveAnswers(')
+  })
+
+  it('and it writes the fact find through the one door that re-reads first', () => {
+    // Writing fact_find_data straight from a copy the page was rendered with
+    // is the Wesley Perrott fault. patchDealColumn re-reads, applies to what
+    // the database holds now, and pins the write to the version it read.
+    expect(flow()).toContain('patchDealColumn(')
+    expect(flow()).not.toContain(".update({ fact_find_data")
+  })
+})
 
 describe('a client with no login can actually use the page', () => {
   it('the deal is not read as the visitor', () => {
@@ -71,7 +110,7 @@ describe('a client with no login can actually use the page', () => {
 
   it('the middleware still lets them through without a login', () => {
     const mw = read('middleware.ts')
-    for (const path of ['/proceed', '/ready', '/opportunity']) {
+    for (const path of ['/proceed', '/ready', '/opportunity', '/answers']) {
       expect(mw, `${path} is no longer public`).toContain(`pathname.startsWith('${path}')`)
     }
   })

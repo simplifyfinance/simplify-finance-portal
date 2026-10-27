@@ -37,7 +37,14 @@ export async function middleware(request: NextRequest) {
   // /ready is the client landing page for template emails. It must be public:
   // a past client has no login, and without this they are redirected to the
   // portal sign-in screen instead of seeing their next steps.
-  if (pathname.startsWith('/proceed') || pathname.startsWith('/ready') || pathname.startsWith('/opportunity') || pathname.startsWith('/login') || pathname.startsWith('/reset-password')) {
+  // /answers IS THE FOURTH CLIENT PAGE. 27 Oct 2026.
+  //
+  // Leaving it off this line is the whole of the 23 Sep bug: the page works,
+  // the link works, and every client who opens it is sent to a login screen
+  // they can never get past. Nobody here would see it, because we are always
+  // signed in. lib/the-client-pages-work-logged-out.test.ts fails the ship if
+  // any of these four stops being public.
+  if (pathname.startsWith('/proceed') || pathname.startsWith('/ready') || pathname.startsWith('/opportunity') || pathname.startsWith('/answers') || pathname.startsWith('/login') || pathname.startsWith('/reset-password')) {
     return supabaseResponse
   }
 

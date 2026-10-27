@@ -61,6 +61,13 @@ export type Question = {
   kind: GapKind
   /** Who it is about, for the broker's list. Empty where it is the household. */
   who: string
+  /**
+   * Whose applicant record the answer belongs on. Empty on a household
+   * question. Carried rather than parsed back out of the key, because a key is
+   * an identifier and the moment anything reads meaning out of one, renaming it
+   * breaks something a long way away.
+   */
+  applicantId?: string
   /** The sentence the CLIENT reads. Never jargon, never a field name. */
   ask: string
   /** One line under it, or empty. */
@@ -144,6 +151,7 @@ function addressQuestions(deal: any, today: Date): Question[] {
       key: `address_history:${txt(a?.id) || i}`,
       kind: 'address_history',
       who: name,
+      applicantId: txt(a?.id),
       // A DATE, NOT A MONTH COUNT. Nobody can act on "eleven months short".
       ask: back
         ? `${name} — where did you live before ${back}?`
@@ -173,6 +181,7 @@ function employmentQuestions(deal: any, today: Date): Question[] {
       key: `employment_history:${txt(a?.id) || i}`,
       kind: 'employment_history',
       who: name,
+      applicantId: txt(a?.id),
       ask: back
         ? `${name} — who did you work for before ${back}?`
         : `${name} — what are your last three years of work?`,
@@ -193,6 +202,7 @@ function residencyQuestions(deal: any): Question[] {
       key: `residency:${txt(a?.id) || i}`,
       kind: 'residency' as GapKind,
       who: name,
+      applicantId: txt(a?.id),
       ask: `${name} — are you an Australian citizen, a permanent resident, or here on a visa?`,
       help: 'It changes which lenders we can use, so we ask everybody.',
       why: 'No residency status recorded.',
@@ -209,6 +219,7 @@ function maritalQuestions(deal: any): Question[] {
       key: `marital:${txt(a?.id) || i}`,
       kind: 'marital' as GapKind,
       who: name,
+      applicantId: txt(a?.id),
       ask: `${name} — are you single, married, in a de facto relationship, separated, divorced or widowed?`,
       help: '',
       why: 'No marital status recorded.',
@@ -277,6 +288,20 @@ function hasAsset(deal: any, type: string): boolean {
     txt(a?.assetType) === type && (txt(a?.value) || txt(a?.description)))
 }
 
+/**
+ * SOMEBODY SAID THEY HAVE NONE, AND THAT IS AN ANSWER.
+ *
+ * Not a nil row. A nil asset would show up in the position and in every total
+ * that reads the assets; this is a note saying the question was put and the
+ * answer was no. Without it a client who says "we do not own a car" is asked
+ * about the car again in the next email, which is exactly the chasing this was
+ * built to stop.
+ */
+function saidTheyHaveNone(deal: any, kind: GapKind): boolean {
+  const said = ff(deal)?.nothingToDeclare
+  return Boolean(said && typeof said === 'object' && txt(said[kind as string]))
+}
+
 /** A vehicle row that nobody has described properly is still a gap. */
 function vehicleIsVague(deal: any): boolean {
   const cars = list(ff(deal).assets).filter((a: any) => txt(a?.assetType) === 'Vehicle')
@@ -286,6 +311,7 @@ function vehicleIsVague(deal: any): boolean {
 
 function assetQuestions(deal: any): Question[] {
   return ASSET_GAPS.flatMap(g => {
+    if (saidTheyHaveNone(deal, g.kind)) return []
     const missing = !hasAsset(deal, g.type)
     const vague = g.kind === 'vehicle' && vehicleIsVague(deal)
     if (!missing && !vague) return []
