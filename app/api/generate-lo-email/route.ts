@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { stillNeedFor } from '@/lib/still-need-for-deal'
 import { clientLoan } from '@/lib/lmi'
 import { loPurchaseBlock, isBuyAndSell } from '@/lib/lo-purchase-block'
 import { buysNothing } from '@/lib/buying'
@@ -309,6 +310,7 @@ function walletLinkBox(link: string) {
     </td></tr></table>`
 }
 
+
 export async function POST(req: NextRequest) {
   // bcData IS READ, NEVER STORED. The lending options form holds the deal, so
   // it sends the borrowing capacity along with this request and the email is
@@ -540,6 +542,10 @@ export async function POST(req: NextRequest) {
   // to pass it on. Empty where the notice is off, or where every bank quoted has
   // already moved. See lib/rate-notice.ts.
   const rbaLines = await rateNoticeLines((sortedLenders || []).map((l: any) => l?.lenderName))
+  // UNDER THE OPTIONS, ABOVE THE CAVEATS. They opened this to see the rates.
+  // Asking first is how the questions become the thing between them and the
+  // answer, and then they are skimmed past.
+  body += await stillNeedFor(dealId, d?.questionsDropped, ffData)
   body += notesBox([...rbaLines,
     ...(d.importantNotesList || ['Any rates or fees quoted are subject to change', 'This email does not constitute as a formal approval'])])
   body += sig(b)

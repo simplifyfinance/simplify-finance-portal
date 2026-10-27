@@ -1,6 +1,8 @@
 'use client'
 import HandoverBox from '@/components/Handover'
 import WhatNow from '@/components/WhatNow'
+import WhatWeStillNeed from '@/components/WhatWeStillNeed'
+import { askedPatch, goingOut } from '@/lib/what-we-still-need'
 import { brandsOffered, brandToSettleOn, brandUncertainty } from '@/lib/the-brand-follows-the-broker'
 import SendItBack, { ReworkBanner } from '@/components/SendItBack'
 import { canSendBack, reworkOn, canSendAgain } from '@/lib/send-it-back'
@@ -376,6 +378,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   const ffLiabs: any[] = ff.liabilities || []
 
   const [activeTab, setActiveTab] = useState<'form' | 'preview'>('form')
+  // UNTICKED FOR THIS EMAIL ONLY, AND NEVER SAVED.
+  //
+  // Dropping a question says "not in this one", not "the answer is known". If
+  // it were known it would be on the fact find and the question would have gone
+  // on its own - so this is deliberately state that dies with the page, and the
+  // next email asks again. See components/WhatWeStillNeed.tsx.
+  const [questionsDropped, setQuestionsDropped] = useState<string[]>([])
   const [template, setTemplate] = useState(s.template || 'oo_purchase')
   const [splits, setSplits] = useState<Split[]>(s.splits || TEMPLATE_DEFAULTS['oo_purchase'].splits)
   const firstName = ffApp.firstName || deal.clients?.first_name || ''
@@ -1757,7 +1766,16 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
       // in-flight requests, which previously lost Ellie's notification silently.
       const wasNotYetCompleted = !bcCompletedAt
       const nowIso = new Date().toISOString()
-      const updates: any = { bc_sent_at: nowIso }
+      // WHEN EACH QUESTION FIRST WENT OUT, RECORDED AS THE EMAIL GOES.
+      //
+      // Not when it was generated - a preview nobody sent has asked nobody
+      // anything, and a client chased for a question they never received is
+      // worse than one asked twice. The date is never moved on a later send:
+      // how long somebody has been waiting is measured from the first ask.
+      const updates: any = {
+        bc_sent_at: nowIso,
+        ...askedPatch(deal, goingOut(deal, questionsDropped).map(q => q.key), new Date(nowIso)),
+      }
       if (!deal.assigned_credit_officer && !bcCompletedAt) {
         updates.bc_completed_at = nowIso
         setBcCompletedAt(nowIso)
@@ -1839,6 +1857,7 @@ Key assumptions: ${checklistText}`
           // it builds today. See lib/bc-scenarios.ts.
           scenarioLabel: labelOf(buildBcData()),
           secondScenario: parkedOf(deal)[0]?.bc || null,
+          questionsDropped,
           additionalNotes: templateNotes.split('\n').map((n: string) => n.trim()).filter(Boolean) } })
       })
       if (!res.ok) {
@@ -1940,6 +1959,15 @@ Key assumptions: ${checklistText}`
           }] : []),
         ]}
       />
+
+
+      {/* WHAT WE STILL NEED FROM THE CLIENT.
+          27 Oct 2026. Between the strip and the preview, because the broker is
+          already here when they press Send. Unticking a line takes it out of
+          the preview underneath straight away - the panel and the email are the
+          same list, so there is never a question about what actually goes. */}
+      <WhatWeStillNeed deal={deal} me={me} dropped={questionsDropped}
+        onDropped={setQuestionsDropped} onChanged={() => window.location.reload()} />
 
       {sendingBack && (
         <SendItBack deal={deal} stage="bc" byName={brokerSig || deal.assigned_broker || 'Broker'}

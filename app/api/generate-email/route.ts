@@ -3,6 +3,7 @@ import { card, row } from '@/lib/email-card'
 import { bufferNoteBlock } from '@/lib/buffer-note'
 import { dutyLabel as sharedDutyLabel } from '@/lib/duty-state'
 import { NextRequest, NextResponse } from 'next/server'
+import { stillNeedFor } from '@/lib/still-need-for-deal'
 import { ctas, ctasTwo } from '@/lib/email-buttons'
 import { labelOf as scenarioLabel } from '@/lib/bc-scenarios'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
@@ -113,6 +114,8 @@ function notesBox(items: string[]) {
 }
 
 function heading() { return `<p style="font-size:11px;font-weight:600;color:#343333;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px"><span style="color:#343333;">Borrowing Capacity Review</span></p>` }
+
+
 
 // card() and row() moved to lib/email-card.ts on 7 Oct 2026, so the LO email
 // can use the same card instead of holding a second copy of it.
@@ -761,6 +764,10 @@ export async function POST(req: NextRequest) {
   // the ship if one of them loses it.
   const notes = [...(d.additionalNotes || [])]
 
+  // Built once, printed by whichever of the twenty-two templates runs below.
+  // A second copy per template is how one of them quietly loses it.
+  const stillNeed = await stillNeedFor(dealId, d.questionsDropped)
+
   let body = ''
 
   // --- TWO SCENARIOS IN ONE EMAIL -------------------------------------------
@@ -865,7 +872,7 @@ export async function POST(req: NextRequest) {
         { url: link(2), label: `Go ahead with ${label2}` },
       ]) +
       p('Have a look through both and tell us which suits you — we are happy to talk either one through.') +
-       notesBox(notes) + sig(b)
+       stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'refinance_equity' && d.compareOptions) {
     const buildOptionColRE = (opt: any, label: string) => {
@@ -917,7 +924,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation \u2014 and that is exactly what we will do for you.') +
-       notesBox(notes) + sig(b)
+       stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'top_up' || template === 'top_up_purchase') {
     // A TOP UP. 20 Oct 2026, mocked and approved line by line before a word of
@@ -976,7 +983,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation \u2014 and that is exactly what we will do for you.') +
-       notesBox(notes) + sig(b)
+       stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'refinance_equity' && securedByMany(d)) {
     // TWO HOUSES, TWO BOXES, AND THE EQUITY SHOWN UNDER THE ONE IT COMES OUT OF.
@@ -999,7 +1006,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation \u2014 and that is exactly what we will do for you.') +
-       notesBox(notes) + sig(b)
+       stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'refinance_only' && securedByMany(d)) {
     // TWO HOUSES, TWO BOXES - and otherwise the email this scenario has always
@@ -1014,7 +1021,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation \u2014 and that is exactly what we will do for you.') +
-       notesBox(notes) + sig(b)
+       stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'refinance_equity') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -1035,7 +1042,7 @@ export async function POST(req: NextRequest) {
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
       analysisDisclaimer(d) +
-       notesBox(notes) + sig(b)
+       stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'refinance_only') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -1057,7 +1064,7 @@ export async function POST(req: NextRequest) {
       check(checkItems) +
       p('The numbers are looking strong. The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
       analysisDisclaimer(d) +
-       notesBox(notes) + sig(b)
+       stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'oo_purchase' && d.compareOptions) {
     const buildOptionCol = (opt: any, label: string) => {
@@ -1100,7 +1107,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-       notesBox(notes) + sig(b)
+       stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'oo_purchase') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -1120,7 +1127,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-       notesBox(notes) + sig(b)
+       stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'investment_purchase' && d.compareOptions) {
     const buildOptionColIP = (opt: any, label: string) => {
@@ -1163,7 +1170,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right structure for your investment \u2014 and that is exactly what we will do for you.') +
-       notesBox(notes) + sig(b)
+       stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'investment_purchase') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -1182,7 +1189,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right structure for your investment — and that is exactly what we will do for you.') +
-       notesBox(notes) + sig(b)
+       stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'buy_sell') {
     // MONEY IS COMMA FORMATTED, AND Number('300,000') IS NaN.
@@ -1246,7 +1253,7 @@ export async function POST(req: NextRequest) {
         ? 'Now it is about finding the right lender for the build, and making sure the timing between your sale and your first construction draw lines up. That is exactly what we are here for.'
         : 'Now it is about finding the right lender, the right rate, and making sure the timing between your sale and purchase lines up perfectly. That is exactly what we are here for.') +
       
-      notesBox(notes) + sig(b)
+      stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'oo_lvr_compare') {
     const splits = d.splits || []
@@ -1280,7 +1287,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-       notesBox(notes) + sig(b)
+       stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'fhb') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -1309,7 +1316,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the particular features to match your goals — and that is exactly what we will do for you.') +
-       notesBox(notes) + sig(b)
+       stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'bridging') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -1366,7 +1373,7 @@ export async function POST(req: NextRequest) {
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right structure for your bridging scenario — and that is exactly what we will do for you.') +
       
-      notesBox(notes) + sig(b)
+      stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'family_pledge') {
     // BOTH SPLITS, AND THE WHOLE LOAN AS THE HEADLINE. See pledgeLoan() above
@@ -1398,7 +1405,7 @@ export async function POST(req: NextRequest) {
       check(checkItems) +
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       p('Please let us know your thoughts and if you have any questions regarding the numbers.') +
-      notesBox(notes) + sig(b)
+      stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'smsf') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -1417,7 +1424,7 @@ export async function POST(req: NextRequest) {
       check(checkItems) +
       p('The next step is finding the right lender, the right rate, and the right SMSF structure for your investment — and that is exactly what we will do for you.') +
       
-      notesBox(notes) + sig(b)
+      stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'construction') {
     // Every figure here used to read splits[0] and stop, so a land + construction
@@ -1451,7 +1458,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender and construction loan structure for your project \u2014 and we will guide you through every step of that process.') +
-      notesBox(notes) + sig(b)
+      stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'investment_equity') {
     const npPrice   = d.newPurchasePrice     || d.purchasePrice || ''
@@ -1508,7 +1515,7 @@ export async function POST(req: NextRequest) {
       check(checkItems) +
       p('Please let us know your thoughts and if you have any questions regarding the numbers above.') +
       p('The next step is to collect your documentation so we can look at specific lenders and interest rates.') +
-       notesBox(notes) + sig(b)
+       stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'debt_recycling') {
     // DEBT RECYCLING - ONE LIMIT, SPLIT BY PURPOSE.
@@ -1602,7 +1609,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is confirming this structure with your accountant, and then we will take it to the right lender for you.') +
-       notesBox(notes) + sig(b)
+       stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'complex_refinance') {
     // COMPLEX REFINANCE - ONE CARD PER PROPERTY.
@@ -1632,7 +1639,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender for a structure like this one \u2014 and that is exactly what we will do for you.') +
-       notesBox(notes) + sig(b)
+       stillNeed + notesBox(notes) + sig(b)
 
   } else if (template === 'custom') {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
@@ -1650,7 +1657,7 @@ export async function POST(req: NextRequest) {
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +
       p('The next step is finding the right lender and rate for your situation — and that is exactly what we will do for you.') +
-       notesBox(notes) + sig(b)
+       stillNeed + notesBox(notes) + sig(b)
 
   } else {
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) + p('Email template coming soon.') + ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) + sig(b)

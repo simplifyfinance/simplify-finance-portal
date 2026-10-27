@@ -1,6 +1,8 @@
 'use client'
 import HandoverBox from '@/components/Handover'
 import WhatNow from '@/components/WhatNow'
+import WhatWeStillNeed from '@/components/WhatWeStillNeed'
+import { askedPatch, goingOut } from '@/lib/what-we-still-need'
 import { brandsOffered, brandToSettleOn, brandUncertainty } from '@/lib/the-brand-follows-the-broker'
 import SendItBack, { ReworkBanner } from '@/components/SendItBack'
 import { canSendBack, reworkOn, canSendAgain } from '@/lib/send-it-back'
@@ -413,6 +415,10 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   const [generatingRec, setGeneratingRec] = useState(false)
   const [emailHtml, setEmailHtml] = useState('')
   const [activeTab, setActiveTab] = useState<'form' | 'preview'>('form')
+  // UNTICKED FOR THIS EMAIL ONLY, AND NEVER SAVED. Dropping a question says
+  // "not in this one", not "the answer is known" - see BCForm.tsx, where the
+  // same state lives for the same reason.
+  const [questionsDropped, setQuestionsDropped] = useState<string[]>([])
   // THE SAVE LINE beside the deal name. What it says, and when it is allowed to
   // say it, lives in components/useSaveIndicator.ts - shared, so BC cannot end up
   // telling Kylie a different story from the Fact Find.
@@ -1777,7 +1783,13 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       // forever. BC was fixed for exactly this; LO never was.
       const wasNotYetCompleted = !loCompletedAt
       const nowIso = new Date().toISOString()
-      const updates: any = { lo_sent_at: nowIso }
+      // WHEN EACH QUESTION FIRST WENT OUT. Only the ones that have never been
+      // asked get a date; a question carried over from the BC keeps the date it
+      // went out THERE, which is what "asked on 14 October" has to mean.
+      const updates: any = {
+        lo_sent_at: nowIso,
+        ...askedPatch(deal, goingOut(deal, questionsDropped).map(q => q.key), new Date(nowIso)),
+      }
       if (!deal.assigned_credit_officer && !loCompletedAt) updates.lo_completed_at = nowIso
 
       // A blocked policy returns no rows and no error, so the row is what proves it.
@@ -1819,7 +1831,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       // THE BORROWING CAPACITY GOES WITH IT, read here and not copied onto
       // this record. A build is described by the BC's land value, build cost
       // and valuation, and this form has never carried any of them.
-      body: JSON.stringify({ broker: d.brokerSig || deal.assigned_broker, dealId: deal.id, bcData: deal.bc_data || {}, ffData: deal.fact_find_data || {}, loData: { ...d, importantNotesList: (d.importantNotes || '').split('\n').map((n: string) => n.trim()).filter(Boolean) } })
+      body: JSON.stringify({ broker: d.brokerSig || deal.assigned_broker, dealId: deal.id, bcData: deal.bc_data || {}, ffData: deal.fact_find_data || {}, loData: { ...d, questionsDropped, importantNotesList: (d.importantNotes || '').split('\n').map((n: string) => n.trim()).filter(Boolean) } })
     })
     if (!res.ok) {
       const err = await res.json().catch(() => null)
@@ -1977,6 +1989,13 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
           }] : []),
         ]}
       />
+
+      {/* WHAT WE STILL NEED FROM THE CLIENT.
+          27 Oct 2026. Only what is still open reaches this email. A question
+          answered after the BC is shown closed here rather than hidden - it is
+          the only way anybody will trust the list. */}
+      <WhatWeStillNeed deal={deal} me={me} dropped={questionsDropped}
+        onDropped={setQuestionsDropped} onChanged={() => window.location.reload()} />
 
       {sendingBack && (
         <SendItBack deal={deal} stage="lo" byName={d.brokerSig || deal.assigned_broker || 'Broker'}
