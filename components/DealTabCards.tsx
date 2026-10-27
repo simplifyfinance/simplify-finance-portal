@@ -1,5 +1,5 @@
 'use client'
-import { FileText, LineChart, Calculator, Home, ShieldCheck } from 'lucide-react'
+import { FileText, LineChart, Calculator, Home, ShieldCheck, History } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { dealBeads, getWaitingOnLabel } from '@/lib/deal-status'
@@ -20,6 +20,7 @@ import { stageSince, stageAge } from '@/lib/deal-age'
 
 const ICON: Record<string, any> = {
   FactFind: FileText, Statements: LineChart, BC: Calculator, LO: Home, Compliance: ShieldCheck,
+  FileNotes: History,
 }
 
 // Which bead speaks for which tab. Statements is deliberately absent.
@@ -37,6 +38,10 @@ export const DEAL_TABS = [
   { key: 'BC', label: 'BC — Borrowing capacity' },
   { key: 'LO', label: 'Lending options' },
   { key: 'Compliance', label: 'Compliance' },
+  // THE SIXTH, 29 Oct 2026. Catherine, item 6: a record of our conversations
+  // with a client. It is the File update log full screen - the same rows, not a
+  // second store - with room to read a year of them and an export for an audit.
+  { key: 'FileNotes', label: 'File notes' },
 ]
 
 export default function DealTabCards({ deal, stage, onPick }: {
@@ -66,7 +71,7 @@ export default function DealTabCards({ deal, stage, onPick }: {
   const tabs = DEAL_TABS
 
   return (
-    <div className="grid grid-cols-[repeat(5,minmax(0,1fr))_minmax(0,1.45fr)] gap-2.5 mb-2.5 max-[1100px]:grid-cols-3 max-[700px]:grid-cols-2">
+    <div className="grid grid-cols-[repeat(6,minmax(0,1fr))_minmax(0,1.45fr)] gap-2.5 mb-2.5 max-[1300px]:grid-cols-4 max-[1100px]:grid-cols-3 max-[700px]:grid-cols-2">
       {tabs.map(({ key, label }) => {
         const Icon = ICON[key]
         const bead = BEAD[key] ? beads.find(b => b.key === BEAD[key]) : undefined

@@ -4,6 +4,7 @@ import { PAGE_WIDE } from '@/lib/page-width'
 import { brokerLabel } from '@/lib/broker-key'
 import DealPresence from '@/components/DealPresence'
 import DealTabCards, { DEAL_TABS } from '@/components/DealTabCards'
+import FileNotesTab from '@/components/FileNotesTab'
 import DealRail, { RailCard, RailNotes } from '@/components/DealRail'
 import DealLinks from '@/components/DealLinks'
 import DealMore from '@/components/DealMore'
@@ -54,7 +55,7 @@ import { CLONE_SELECT, cloneFields, cloneAsks, provenanceLine, type CloneKind } 
 import { positionChanges, applyChanges, type PositionChange } from '@/lib/position-after-settlement'
 
 export default function DealPageClient({ deal, initialStage, userRole }: { deal: any; initialStage?: string; userRole?: string }) {
-  const validStages = ['FactFind', 'Statements', 'BC', 'LO', 'Compliance']
+  const validStages = ['FactFind', 'Statements', 'BC', 'LO', 'Compliance', 'FileNotes']
   // Always open on the stage the progress bar marks as current, so whoever opens the deal
   // lands where the work actually is rather than on whichever tab was viewed last.
   const startStage = currentStage(deal)
@@ -771,6 +772,11 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
           {stage === 'Compliance' && <ComplianceForm whoElseHere={whoElseHere} me={me} deal={dealData} onSaveStatus={setSaveStatus}
             onDataChange={(data: any) => setDealData((prev: any) => ({ ...prev, compliance_data: data }))}
             onDealPatched={(patch: any) => setDealData((prev: any) => ({ ...prev, ...patch }))} />}
+          {/* THE SAME `notes` THE RAIL IS HANDED, two lines down. One load, one
+              array, two screens - so the tab and the box cannot show different
+              things, and opening the tab costs nothing. */}
+          {stage === 'FileNotes' && <FileNotesTab notes={notes} dealId={dealData.id}
+            dealName={dealData.deal_name} />}
         </TabBoundary>
       </TabLock>
         </div>

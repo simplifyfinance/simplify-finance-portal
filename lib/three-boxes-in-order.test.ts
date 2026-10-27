@@ -51,7 +51,16 @@ describe('they come first, in Fabio’s order', () => {
     const at = (s: string) => PAGE.indexOf(s)
     const needs = at('<DealAlerts')
     const sales = at('<RailNotes')
-    const update = at('<FileNotes')
+    // THE BOX, NOT THE TAB. 29 Oct 2026.
+    //
+    // This read `<FileNotes` and passed for a week. Then the File notes TAB was
+    // added - <FileNotesTab> - which is drawn further up the page, matched this
+    // first, and the three boxes appeared to be in the wrong order.
+    //
+    // Nothing had moved. The test was matching a prefix, which is the same
+    // fault as a name that is a prefix of another name, and the fix is to say
+    // which one: the box takes dealId as its first prop, the tab takes notes.
+    const update = at('<FileNotes dealId=')
     const docs = at('<DocumentsBox')
     const pdfs = at('<DealDocuments')
     const links = at('<DealLinks')
@@ -66,6 +75,15 @@ describe('they come first, in Fabio’s order', () => {
     expect(update).toBeLessThan(docs)
     expect(update).toBeLessThan(pdfs)
     expect(update).toBeLessThan(links)
+  })
+
+  it('and the tab is a different thing from the box', () => {
+    // Two windows onto the same rows - see lib/the-file-reads-as-one.test.ts.
+    // Named apart here so the prefix above can never quietly match again.
+    expect(PAGE).toContain('<FileNotesTab notes={notes}')
+    expect(PAGE).toContain('<FileNotes dealId=')
+    expect(PAGE.indexOf('<FileNotesTab'), 'the tab is drawn inside the rail')
+      .toBeLessThan(PAGE.indexOf('<DealAlerts'))
   })
 })
 
