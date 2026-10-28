@@ -200,6 +200,48 @@ describe('THE MATHS IS SHOWN EVERY TIME', () => {
   })
 })
 
+describe('THE WORKING SURVIVES LOOKING AWAY', () => {
+  // 28 Oct 2026. Fabio: "it's not saving the figure. So if I drop payslip, it
+  // calculates... every time I change the pages and I go back, it disappears."
+  //
+  // And, asked whether it should only save once somebody commits the figures:
+  // "Even if I don't press the button... I still need the calculations to sit
+  // there. I don't want this to be like, oh, you have to force people to do
+  // things. The calculations are always there."
+
+  it('it starts from what was read last time', () => {
+    expect(SCREEN).toContain('saved?.slips')
+    expect(SCREEN).toContain('saved?.baseTyped')
+    expect(SCREEN).toContain('saved?.essential')
+    expect(SCREEN).toContain('saved?.overrides')
+  })
+
+  it('AND IT SAVES ON READING, NOT ON PRESSING A BUTTON', () => {
+    // The whole point. Nobody is forced to commit figures to keep their work.
+    expect(SCREEN).toMatch(/useEffect\([\s\S]{0,600}onRead\(\{/)
+  })
+
+  it('and what it saves is the reading, never the totals', () => {
+    // A stored total is a second answer that cannot be corrected: fix a
+    // rounding next month and every figure already in a record keeps the old
+    // one, with nothing on screen to say which is which.
+    expect(SCREEN).toMatch(/onRead\(\{ slips, baseTyped, basisTyped, essential, overrides/)
+    expect(SCREEN).not.toMatch(/onRead\(\{[^}]*totals/)
+  })
+
+  it('and the drop zone asks for one payslip, not two', () => {
+    // Fabio: "just say, please drop the latest payslip available. No need to
+    // upload more than one." The latest year to date already covers the
+    // earlier, so a second one adds nothing to the maths.
+    expect(SCREEN).toContain('Drop the latest payslip')
+    expect(SCREEN).toContain('No need to upload more than one')
+  })
+
+  it('and it still says the payslip is not kept', () => {
+    expect(SCREEN).toContain('not stored')
+  })
+})
+
 describe('the two things the screen must never quietly do', () => {
   it('IT NEVER PICKS A COLUMN', () => {
     // Which figure to use is a credit decision made once a lender is in view,

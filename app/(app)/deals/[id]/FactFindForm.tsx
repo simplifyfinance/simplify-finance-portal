@@ -121,6 +121,15 @@ type Income = {
   seDirectorProfitable: string
   otherIncomeType: string
   otherIncomeAmount: string
+  /**
+   * WHAT THE PAYSLIPS SAID, KEPT.
+   *
+   * The reading and the choices, not the totals - see components/PayslipIncome.
+   * Saved the moment a payslip is read, so the working is still there when
+   * somebody comes back to the tab. Undefined on every income recorded before
+   * 28 Oct 2026, which simply means no payslip was ever dropped on it.
+   */
+  payslipRead?: any
 }
 
 type FactFindApplicant = {
@@ -2084,6 +2093,8 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                     employmentBasis={applicant.employment.find(e => e.id === inc.employmentId)?.employmentBasis || ''}
                     employmentStart={applicant.employment.find(e => e.id === inc.employmentId)?.startDate || ''}
                     onUse={(fields, note) => usePayslipFigures(inc.id, fields, note)}
+                    saved={inc.payslipRead}
+                    onRead={rec => updateIncomeFields(inc.id, { payslipRead: rec })}
                   />
                   <div className="grid grid-cols-3 gap-3 mb-2">
                     <div>

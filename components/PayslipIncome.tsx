@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import DropZone from '@/components/DropZone'
 import { assess, type PayLine, type PayKind } from '@/lib/annualise-income'
 import type { ReadPayslip, ReadLine } from '@/lib/payslip-lines'
@@ -58,19 +58,38 @@ const byPeriod = (x: { read: ReadPayslip }, y: { read: ReadPayslip }) =>
   String(x.read.periodEnd || '').localeCompare(String(y.read.periodEnd || ''))
 const theDate = (d: Date) => d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
 
+/** Everything needed to rebuild this screen. Never the totals - see onRead. */
+export type PayslipRead = {
+  slips: Array<{ name: string; read: ReadPayslip }>
+  baseTyped: string
+  basisTyped: BaseRate['basis']
+  essential: boolean
+  overrides: Record<string, string>
+  at: string
+}
+
 export default function PayslipIncome({
-  employerName, employmentBasis, employmentStart, onUse,
+  employerName, employmentBasis, employmentStart, onUse, saved, onRead,
 }: {
   employerName: string
   employmentBasis: string
   employmentStart: string
   onUse: (fields: Fields, note: string) => void
+  /** What was read last time, if a payslip has ever been dropped here. */
+  saved?: PayslipRead | null
+  /**
+   * SAVED THE MOMENT A PAYSLIP IS READ, not when somebody presses a button.
+   *
+   * Fabio, 28 Oct 2026: "I don't want this to be like, oh, you have to force
+   * people to do things... the calculations are always there."
+   */
+  onRead?: (rec: PayslipRead) => void
 }) {
-  const [slips, setSlips] = useState<Array<{ name: string; read: ReadPayslip }>>([])
+  const [slips, setSlips] = useState<Array<{ name: string; read: ReadPayslip }>>(saved?.slips || [])
   const [busy, setBusy] = useState(false)
   const [trouble, setTrouble] = useState('')
-  const [essential, setEssential] = useState(false)
-  const [overrides, setOverrides] = useState<Record<string, Override>>({})
+  const [essential, setEssential] = useState(Boolean(saved?.essential))
+  const [overrides, setOverrides] = useState<Record<string, Override>>((saved?.overrides as any) || {})
   const [used, setUsed] = useState<Column | null>(null)
   // THE BASE, WHERE THE PAYSLIP GIVES ONE COMBINED YEAR TO DATE.
   //
@@ -78,11 +97,27 @@ export default function PayslipIncome({
   // they did not. It is the one fact that method cannot do without, so it is
   // always on screen and always editable - a figure a credit assessor cannot
   // see is a figure they cannot check.
-  const [baseTyped, setBaseTyped] = useState('')
+  const [baseTyped, setBaseTyped] = useState(saved?.baseTyped || '')
   // FOLDED BY DEFAULT. It is complete and it is one press away; sitting in the
   // middle of the screen on every file is what made this a wall of text.
   const [showWorking, setShowWorking] = useState(false)
-  const [basisTyped, setBasisTyped] = useState<BaseRate['basis']>('annual')
+  const [basisTyped, setBasisTyped] = useState<BaseRate['basis']>(saved?.basisTyped || 'annual')
+
+  // EVERY CHANGE GOES BACK TO THE FACT FIND, where the rest of this card is
+  // already saved. Not the totals - the reading and the choices. The columns
+  // are worked out again on the way back in, from the same tested library, so
+  // there is never a second answer sitting in a record disagreeing with the
+  // first.
+  const first = useRef(true)
+  useEffect(() => {
+    if (!onRead) return
+    // Nothing to record until something has actually been read, and no point
+    // writing back the very record we were just handed.
+    if (first.current) { first.current = false; return }
+    if (slips.length === 0) return
+    onRead({ slips, baseTyped, basisTyped, essential, overrides, at: new Date().toISOString() })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slips, baseTyped, basisTyped, essential, overrides])
 
   async function read(files: File[]) {
     setBusy(true); setTrouble('')
@@ -199,8 +234,8 @@ export default function PayslipIncome({
     <div className="mb-4">
       <DropZone
         onFiles={read} accept="application/pdf" busy={busy} compact
-        title="Drop payslips here"
-        hint="PDF. The last two is what a lender asks for. Nothing is stored — it is read and the figures come back."
+        title="Drop the latest payslip"
+        hint="No need to upload more than one. The PDF is not stored."
       />
 
       {trouble && (
