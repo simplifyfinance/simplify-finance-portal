@@ -116,7 +116,30 @@ export async function POST(req: NextRequest) {
         const { data: u } = await supabase.from('user_profiles')
           .select('email, full_name').eq('id', id).single()
         // Somebody removed from the team is not a person to allocate to.
-        return u?.email ? { id, name: u.full_name || u.email } : null
+        if (!u?.email) return null
+
+        // AND WHETHER THEY ARE AWAY.
+        //
+        // 28 Oct 2026. Fabio: "if number one is off, it always goes to number
+        // two." The dates live on the person - see docs/compliance-leave.sql -
+        // and the deciding is lib/compliance-allocation.ts, which is handed
+        // them here and left to it.
+        //
+        // ASKED SEPARATELY so that a database without the columns yet still
+        // sends the pack. Folded into the select above, two missing columns
+        // would fail the query and allocate to nobody, which is the one outcome
+        // worse than allocating to somebody on leave.
+        let onLeaveFrom: string | null = null
+        let onLeaveUntil: string | null = null
+        try {
+          const { data: l } = await supabase.from('user_profiles')
+            .select('on_leave_from, on_leave_until').eq('id', id).single()
+          onLeaveFrom = l?.on_leave_from || null
+          onLeaveUntil = l?.on_leave_until || null
+        } catch {
+          // docs/compliance-leave.sql has not been run. Nobody is away.
+        }
+        return { id, name: u.full_name || u.email, onLeaveFrom, onLeaveUntil }
       }
       const first = await who(packUserId)
       const second = await who(packBackupUserId)

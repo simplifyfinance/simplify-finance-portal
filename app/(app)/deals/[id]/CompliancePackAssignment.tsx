@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { can } from '@/lib/permissions'
+import { isAway, sayDate } from '@/lib/compliance-allocation'
 
 // WHO HAS THE COMPLIANCE PACK, ON THE DEAL.
 //
@@ -30,6 +31,8 @@ export default function CompliancePackAssignment({ dealId, userRole }: { dealId:
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
+  /** The holder's leave, if the columns exist. Null means here, or not asked. */
+  const [leave, setLeave] = useState<{ from: string | null; until: string | null }>({ from: null, until: null })
 
   useEffect(() => { load() }, [dealId])
 
@@ -42,6 +45,21 @@ export default function CompliancePackAssignment({ dealId, userRole }: { dealId:
         setOwnerId(data.compliance_pack_user_id)
         setName(String(data.compliance_pack_user_name || ''))
         setAt(String(data.compliance_pack_at || ''))
+
+        // IS THE PERSON HOLDING IT AWAY RIGHT NOW.
+        //
+        // The pack was allocated correctly on the day it went out. Leave booked
+        // afterwards does not move it - a deal keeps whoever it was given to -
+        // so the only honest thing to do is say so here, beside the Reassign
+        // button that was already on this card.
+        try {
+          const { data: l } = await supabase.from('user_profiles')
+            .select('on_leave_from, on_leave_until')
+            .eq('id', data.compliance_pack_user_id).single()
+          setLeave({ from: l?.on_leave_from || null, until: l?.on_leave_until || null })
+        } catch {
+          // docs/compliance-leave.sql has not been run. Nothing to say.
+        }
       }
     } catch {
       // docs/compliance-allocation.sql has not been run. Nothing to show.
@@ -90,7 +108,14 @@ export default function CompliancePackAssignment({ dealId, userRole }: { dealId:
       })
     : ''
 
+  // TODAY IN SYDNEY, not wherever the person looking at this happens to be.
+  // The same day boundary the allocation itself counts on.
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
+  const theyAreAway = isAway(
+    { id: ownerId, name, onLeaveFrom: leave.from, onLeaveUntil: leave.until }, today)
+
   return (
+    <div className="flex flex-col gap-1.5 items-start">
     <div className="flex items-center gap-2 flex-wrap">
       <span className="inline-flex items-baseline gap-1.5 bg-page border border-line rounded-lg px-2.5 py-1">
         <span className="text-[9.5px] font-bold tracking-wider uppercase text-faint">Compliance pack</span>
@@ -120,6 +145,15 @@ export default function CompliancePackAssignment({ dealId, userRole }: { dealId:
             className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
         </div>
       )}
+    </div>
+    {/* ONLY WHEN THE PERSON HOLDING IT IS AWAY. On every other deal this card
+        is exactly what it was. */}
+    {theyAreAway && (
+      <div className="text-[12px] text-chase bg-chase-bg border border-chase-edge rounded-lg px-3 py-1.5">
+        {name || 'They'} {leave.until ? `is away until ${sayDate(String(leave.until))}` : 'is away'}.
+        {canMove ? <b> Reassign this one</b> : <b> Ask for it to be reassigned</b>} if it cannot wait.
+      </div>
+    )}
     </div>
   )
 }

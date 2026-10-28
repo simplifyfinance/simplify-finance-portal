@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { allocate, todaySoFar, countToday, capOf, DEFAULT_DAILY_CAP } from './compliance-allocation'
+import { allocate, todaySoFar, countToday, capOf, isAway, sayDate, DEFAULT_DAILY_CAP } from './compliance-allocation'
 
 // WHO GETS THE NEXT COMPLIANCE PACK.
 //
@@ -194,5 +194,214 @@ describe('where today stands, for the Settings page', () => {
     const t = todaySoFar({ first: ELLESSE, second: ELLIE, today: SAT, sent: sent(ELLESSE, 9, SAT) })
     expect(t.full).toBe(false)
     expect(t.words).toContain('not a working day')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SOMEBODY IS AWAY.
+//
+// 28 Oct 2026. Fabio: "if number one is off, it always goes to number two. If
+// number two is off, there's no overflow. It just keeps floating to number one.
+// There will be very rare instances, if ever, that both of them are on leave.
+// So just put a warning somewhere."
+//
+// THIS IS THE QUIETEST FAULT IN THE PORTAL. A pack sent to somebody on leave
+// produces no error, no bounce and no missing row - it lands in an inbox nobody
+// is reading, and the first anybody knows is a compliance file with a fortnight
+// missing out of it. So every branch is written down here, including the two
+// nobody expects: both away, and a half-typed leave range.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Away across WED (28 Oct), both ends inclusive. */
+const away = (p: { id: string; name: string }, from = '2026-10-26', until = '2026-10-30') =>
+  ({ ...p, onLeaveFrom: from, onLeaveUntil: until })
+
+describe('IS THIS PERSON AWAY', () => {
+  it('yes, on every day of the range', () => {
+    for (const day of ['2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30']) {
+      expect(isAway(away(ELLESSE), day), day).toBe(true)
+    }
+  })
+
+  it('AND BOTH ENDS ARE INCLUSIVE', () => {
+    // "Away from the 26th until the 30th" means the 30th is a day off. Treating
+    // the end as exclusive sends a pack to somebody on the last day of their
+    // leave, which is exactly the day they are least likely to look.
+    expect(isAway(away(ELLESSE), '2026-10-30')).toBe(true)
+    expect(isAway(away(ELLESSE), '2026-10-31')).toBe(false)
+    expect(isAway(away(ELLESSE), '2026-10-25')).toBe(false)
+  })
+
+  it('HALF AN ANSWER IS NOT AN ANSWER', () => {
+    // Somebody types the start date and is called away before typing the end.
+    // Reading that as "away for ever" would divert every pack from that day on
+    // and nobody would know why.
+    expect(isAway({ ...ELLESSE, onLeaveFrom: '2026-10-26', onLeaveUntil: null }, WED)).toBe(false)
+    expect(isAway({ ...ELLESSE, onLeaveFrom: null, onLeaveUntil: '2026-10-30' }, WED)).toBe(false)
+    expect(isAway({ ...ELLESSE, onLeaveFrom: '', onLeaveUntil: '' }, WED)).toBe(false)
+  })
+
+  it('and a range typed backwards is read the way it was meant', () => {
+    expect(isAway({ ...ELLESSE, onLeaveFrom: '2026-10-30', onLeaveUntil: '2026-10-26' }, WED)).toBe(true)
+  })
+
+  it('and nobody is never away', () => {
+    expect(isAway(null, WED)).toBe(false)
+    expect(isAway(ELLESSE, WED)).toBe(false)
+    expect(isAway(away(ELLESSE), '')).toBe(false)
+  })
+})
+
+describe('THE DATE, SAID OUT LOUD', () => {
+  it('reads the way a person would say it', () => {
+    expect(sayDate('2026-11-07')).toBe('7 November')
+    expect(sayDate('2026-10-30')).toBe('30 October')
+    expect(sayDate('2026-01-01')).toBe('1 January')
+  })
+
+  it('and anything it does not recognise is handed back untouched', () => {
+    for (const junk of ['', 'next week', '2026-13-01']) {
+      expect(typeof sayDate(junk)).toBe('string')
+    }
+    expect(sayDate('next week')).toBe('next week')
+  })
+})
+
+describe('THE FIRST PERSON IS AWAY', () => {
+  // Fabio: "if number one is off, it always goes to number two."
+  it('everything goes to the second person', () => {
+    const a = go({ first: away(ELLESSE) })
+    expect(a.to).toMatchObject({ id: ELLIE.id })
+    expect(a.why).toBe('second')
+    expect(a.awayFirst).toBe(true)
+  })
+
+  it('AND THE DAILY NUMBER STOPS APPLYING', () => {
+    // There is nobody to split across, so counting to five decides nothing.
+    // Without this the sixth pack of the day would "overflow" from a person who
+    // is in Bali to a person who is already taking all of them.
+    const a = go({ first: away(ELLESSE), sent: sent(ELLIE, 40) })
+    expect(a.to).toMatchObject({ id: ELLIE.id })
+    expect(a.capApplies).toBe(false)
+  })
+
+  it('and the sentence says when she is back', () => {
+    const a = go({ first: away(ELLESSE, '2026-10-26', '2026-11-07') })
+    expect(a.words).toContain('Ellesse Mowbray is away until 7 November')
+    expect(a.words).toContain('Everything goes to Ellie Nakamura')
+  })
+
+  it('but not on a day outside the range', () => {
+    const a = go({ first: away(ELLESSE, '2026-11-01', '2026-11-07') })
+    expect(a.to).toMatchObject({ id: ELLESSE.id })
+    expect(a.awayFirst).toBe(false)
+  })
+})
+
+describe('THE SECOND PERSON IS AWAY', () => {
+  // Fabio: "If number two is off, there's no overflow. It just keeps floating
+  // to number one."
+  it('the first person keeps taking them past the cap', () => {
+    const a = go({ second: away(ELLIE), sent: sent(ELLESSE, 9) })
+    expect(a.to).toMatchObject({ id: ELLESSE.id })
+    expect(a.why).toBe('first')
+    expect(a.capApplies).toBe(false)
+  })
+
+  it('AND IT IS STILL THE FIRST PERSON AT ONE HUNDRED', () => {
+    // No quiet ceiling. If this ever stopped handing them over, packs would
+    // simply stop being produced.
+    const a = go({ second: away(ELLIE), sent: sent(ELLESSE, 100) })
+    expect(a.to).toMatchObject({ id: ELLESSE.id })
+  })
+
+  it('and the sentence admits the cap is being passed', () => {
+    const a = go({ second: away(ELLIE), sent: sent(ELLESSE, 7) })
+    expect(a.words).toContain('Ellie Nakamura is away until 30 October')
+    expect(a.words).toContain('past the 5')
+  })
+})
+
+describe('BOTH AWAY - THE RARE ONE', () => {
+  // Fabio: "There will be very rare instances, if ever, that both of them are
+  // on leave. So just put a warning somewhere."
+  it('IT STILL GOES SOMEWHERE', () => {
+    // A pack sent nowhere is worse than a pack sent to a desk that is empty for
+    // a week: one of them leaves a trail.
+    const a = go({ first: away(ELLESSE), second: away(ELLIE) })
+    expect(a.to).toMatchObject({ id: ELLESSE.id })
+    expect(a.awayFirst).toBe(true)
+    expect(a.awaySecond).toBe(true)
+  })
+
+  it('and it says so, with what to do about it', () => {
+    const a = go({ first: away(ELLESSE), second: away(ELLIE) })
+    expect(a.words).toContain('both away')
+    expect(a.words).toContain('set somebody else as the first person')
+  })
+})
+
+describe('WHAT LEAVE DOES NOT CHANGE', () => {
+  it('A DEAL ALREADY GIVEN TO SOMEBODY STAYS WITH THEM', () => {
+    // Even if they are away. Moving it silently on the second press would mean
+    // two people believe they hold the same pack, which is worse than one
+    // person holding it late. Reassign is a button somebody presses.
+    const a = go({ first: away(ELLESSE), alreadyOn: ELLESSE })
+    expect(a.to).toMatchObject({ id: ELLESSE.id })
+    expect(a.why).toBe('kept')
+  })
+
+  it('and one person set, away, still takes it', () => {
+    const a = go({ first: away(ELLESSE), second: null })
+    expect(a.to).toMatchObject({ id: ELLESSE.id })
+    expect(a.words).toContain('no second person is set')
+  })
+
+  it('and nobody set is still nobody', () => {
+    const a = go({ first: null, second: null })
+    expect(a.to).toBeNull()
+    expect(a.why).toBe('nobody')
+  })
+
+  it('and with nobody away the answer is exactly what it was before', () => {
+    const a = go({ sent: sent(ELLESSE, 5) })
+    expect(a.to).toEqual(ELLIE)
+    expect(a.capApplies).toBe(true)
+    expect(a.words).toContain('full for today at 5')
+  })
+})
+
+describe('AND THE SETTINGS LINE SAYS THE SAME THING', () => {
+  it('the first person away', () => {
+    const t = todaySoFar({ first: away(ELLESSE, '2026-10-26', '2026-11-07'), second: ELLIE, today: WED, sent: sent(ELLIE, 4) })
+    expect(t.awayFirst).toBe(true)
+    expect(t.capApplies).toBe(false)
+    expect(t.full).toBe(false)
+    expect(t.firstAwayWords).toBe('away until 7 November')
+    expect(t.words).toContain('Everything goes to Ellie Nakamura until 7 November')
+  })
+
+  it('the second person away', () => {
+    const t = todaySoFar({ first: ELLESSE, second: away(ELLIE), today: WED, sent: sent(ELLESSE, 7) })
+    expect(t.awaySecond).toBe(true)
+    expect(t.firstCount).toBe(7)
+    expect(t.capApplies).toBe(false)
+    expect(t.secondAwayWords).toBe('away until 30 October')
+    expect(t.words).toContain('takes them all, past the 5')
+  })
+
+  it('BOTH AWAY IS NEVER SAID QUIETLY', () => {
+    const t = todaySoFar({ first: away(ELLESSE), second: away(ELLIE), today: WED, sent: [] })
+    expect(t.bothAway).toBe(true)
+    expect(t.words).toContain('both away')
+    expect(t.words).toContain('still being sent')
+  })
+
+  it('and nobody away reads exactly as it did yesterday', () => {
+    const t = todaySoFar({ first: ELLESSE, second: ELLIE, today: WED, sent: sent(ELLESSE, 3) })
+    expect(t.bothAway).toBe(false)
+    expect(t.capApplies).toBe(true)
+    expect(t.firstAwayWords).toBe('')
+    expect(t.words).toContain('The next one goes to Ellesse Mowbray — 3 of 5')
   })
 })

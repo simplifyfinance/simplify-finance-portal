@@ -54,6 +54,50 @@ type UserProfile = {
   email: string
   full_name: string
   role: string
+  /** YYYY-MM-DD, both inclusive. Null on everybody until somebody sets them. */
+  on_leave_from?: string | null
+  on_leave_until?: string | null
+}
+
+/**
+ * AWAY, FROM AND UNTIL.
+ *
+ * Shown only once somebody is chosen in the dropdown above it - two date boxes
+ * floating under "— same as whoever moves the card —" belong to nobody.
+ *
+ * BOTH DATES OR IT COUNTS FOR NOTHING, and the line says so rather than leaving
+ * somebody to find out. See isAway in lib/compliance-allocation.ts: half a
+ * range is read as "not away", so a start date typed on its own cannot quietly
+ * divert work for ever.
+ */
+function LeaveDates({ who, onChange, label }: {
+  who: UserProfile | null
+  onChange: (id: string, field: 'on_leave_from' | 'on_leave_until', value: string) => void
+  label: string
+}) {
+  if (!who) return null
+  const from = who.on_leave_from || ''
+  const until = who.on_leave_until || ''
+  const half = Boolean(from) !== Boolean(until)
+  return (
+    <div className="mt-1.5">
+      <div className="flex items-center gap-1.5">
+        <span className="text-[11px] font-semibold text-faint shrink-0">Away</span>
+        <input type="date" value={from} aria-label={`${label} away from`}
+          onChange={e => onChange(who.id, 'on_leave_from', e.target.value)}
+          className="flex-1 min-w-0 text-[12px] border border-line rounded-md px-2 py-1 text-body bg-card focus:outline-none focus:border-brand" />
+        <span className="text-faint text-[12px]">→</span>
+        <input type="date" value={until} aria-label={`${label} away until`}
+          onChange={e => onChange(who.id, 'on_leave_until', e.target.value)}
+          className="flex-1 min-w-0 text-[12px] border border-line rounded-md px-2 py-1 text-body bg-card focus:outline-none focus:border-brand" />
+      </div>
+      {half && (
+        <p className="text-[11px] text-chase mt-1">
+          Both dates are needed. Until the second one is set, {who.full_name} counts as here.
+        </p>
+      )}
+    </div>
+  )
 }
 
 export default function SettingsPage() {
@@ -211,7 +255,32 @@ export default function SettingsPage() {
     const { data: officers, error: officersError } = await supabase.from('credit_officers').select('*').order('created_at')
     const { data: links, error: linksError } = await supabase.from('credit_officer_brokers').select('*')
     const { data: profiles } = await supabase.from('user_profiles').select('id, email, full_name, role').eq('active', true).order('full_name')
-    if (profiles) setUserProfiles(profiles as UserProfile[])
+    if (profiles) {
+      // THE LEAVE DATES ARE ASKED FOR SEPARATELY, ON PURPOSE.
+      //
+      // Added to the select above, a database that has not had
+      // docs/compliance-leave.sql run on it returns an error for the WHOLE
+      // query - and the entire Settings page loses its list of people because
+      // of two columns that are only used by one box on it. Asked on its own,
+      // a missing column costs nothing but the dates.
+      let withLeave = profiles as UserProfile[]
+      try {
+        const { data: leave } = await supabase.from('user_profiles')
+          .select('id, on_leave_from, on_leave_until').eq('active', true)
+        if (leave) {
+          const by = new Map((leave as any[]).map(r => [r.id, r]))
+          withLeave = withLeave.map(u => ({
+            ...u,
+            on_leave_from: by.get(u.id)?.on_leave_from ?? null,
+            on_leave_until: by.get(u.id)?.on_leave_until ?? null,
+          }))
+        }
+      } catch {
+        // docs/compliance-leave.sql has not been run. Nobody is away, which is
+        // exactly how this page behaved yesterday.
+      }
+      setUserProfiles(withLeave)
+    }
     if (officersError) setCreditTeamError(`Load error (credit_officers): ${officersError.message}`)
     else if (linksError) setCreditTeamError(`Load error (credit_officer_brokers): ${linksError.message}`)
     if (officers) {
@@ -383,6 +452,23 @@ export default function SettingsPage() {
     const problem = await checkedWrite(
       supabase.from('credit_officers')
         .update({ [field === 'onLeaveFrom' ? 'on_leave_from' : 'on_leave_until']: value || null }).eq('id', id),
+      'That leave date')
+    if (problem) { alert(problem); loadCreditTeam() }
+  }
+
+  /**
+   * LEAVE DATES FOR A TEAM MEMBER.
+   *
+   * The same shape as updateCreditOfficerLeave above, and for the same reason:
+   * a leave date decides who work is sent to, so a write that is silently
+   * refused sends a fortnight of compliance packs to somebody who is away and
+   * says nothing. checkedWrite is what makes a refusal visible - see
+   * lib/checked-write.ts.
+   */
+  async function updateProfileLeave(id: string, field: 'on_leave_from' | 'on_leave_until', value: string) {
+    setUserProfiles(userProfiles.map(u => u.id === id ? { ...u, [field]: value || null } : u))
+    const problem = await checkedWrite(
+      supabase.from('user_profiles').update({ [field]: value || null }).eq('id', id),
       'That leave date')
     if (problem) { alert(problem); loadCreditTeam() }
   }
@@ -585,6 +671,8 @@ export default function SettingsPage() {
                   <option value="">— same as whoever moves the card —</option>
                   {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
                 </select>
+                <LeaveDates who={userProfiles.find(p => p.id === complianceIssuedNotificationUserId) || null}
+                  onChange={updateProfileLeave} label="First person" />
               </div>
               <div>
                 <label className="text-[11px] font-semibold text-faint block mb-1">Then — everything after that</label>
@@ -592,6 +680,8 @@ export default function SettingsPage() {
                   <option value="">— nobody, the first person takes them all —</option>
                   {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
                 </select>
+                <LeaveDates who={userProfiles.find(p => p.id === complianceIssuedBackupUserId) || null}
+                  onChange={updateProfileLeave} label="Second person" />
               </div>
               <div>
                 <label className="text-[11px] font-semibold text-faint block mb-1">Packs a day, first person</label>
@@ -607,9 +697,16 @@ export default function SettingsPage() {
             </p>
             {/* WHERE TODAY STANDS, so nobody has to work out who is next. */}
             {(complianceIssuedNotificationUserId || complianceIssuedBackupUserId) && (() => {
+              // THE LEAVE DATES TRAVEL WITH THE PERSON into the rule, so the
+              // sentence on this page and the decision the route makes come out
+              // of the same function. See lib/compliance-allocation.ts.
               const nameOf = (id: string) => {
                 const found = userProfiles.find(p => p.id === id)
-                return found ? { id, name: found.full_name } : null
+                return found ? {
+                  id, name: found.full_name,
+                  onLeaveFrom: found.on_leave_from ?? null,
+                  onLeaveUntil: found.on_leave_until ?? null,
+                } : null
               }
               const t = todaySoFar({
                 first: nameOf(complianceIssuedNotificationUserId),
@@ -618,17 +715,41 @@ export default function SettingsPage() {
                 today: new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }),
                 sent: packsToday,
               })
+              // BOTH AWAY REPLACES THE ROW RATHER THAN SITTING BESIDE IT.
+              // A count of today's packs is not the thing that needs saying
+              // when there is nobody here to read them.
+              if (t.bothAway) {
+                return (
+                  <div className="mt-3 rounded-lg border border-chase-edge bg-chase-bg px-3.5 py-2.5 text-[12.5px] text-chase leading-relaxed">
+                    <b>Both are away today.</b> Compliance packs are still being sent, and they are going
+                    to {nameOf(complianceIssuedNotificationUserId)?.name}. Set somebody else as the first
+                    person, or they will be waiting for them {t.firstAwayWords}.
+                  </div>
+                )
+              }
               return (
                 <div className="mt-3 pt-3 border-t border-line-soft flex items-center gap-2 flex-wrap">
                   <span className="text-[11px] font-semibold text-faint uppercase tracking-wider">Today so far</span>
                   {complianceIssuedNotificationUserId && (
-                    <span className={`text-[11.5px] font-bold rounded-full px-2.5 py-0.5 border ${t.full ? 'bg-chase-bg text-chase border-chase-edge' : 'bg-info-bg text-brand-ink border-info-edge'}`}>
-                      {nameOf(complianceIssuedNotificationUserId)?.name} · {t.firstCount} of {t.cap}
+                    <span className={`text-[11.5px] font-bold rounded-full px-2.5 py-0.5 border ${
+                      t.awayFirst ? 'bg-card text-faint border-line'
+                      : t.full ? 'bg-chase-bg text-chase border-chase-edge'
+                      : 'bg-info-bg text-brand-ink border-info-edge'}`}>
+                      {nameOf(complianceIssuedNotificationUserId)?.name} · {
+                        /* "7 of 5" is a screen printing a rule it is not
+                           following. When leave has taken the choice away the
+                           count still shows, without the number it is not
+                           being measured against. */
+                        t.awayFirst ? t.firstAwayWords
+                        : t.capApplies ? `${t.firstCount} of ${t.cap}`
+                        : t.firstCount}
                     </span>
                   )}
                   {complianceIssuedBackupUserId && (
-                    <span className="text-[11.5px] font-bold rounded-full px-2.5 py-0.5 border bg-waiting-bg text-waiting border-waiting-edge">
-                      {nameOf(complianceIssuedBackupUserId)?.name} · {t.secondCount}
+                    <span className={`text-[11.5px] font-bold rounded-full px-2.5 py-0.5 border ${
+                      t.awaySecond ? 'bg-card text-faint border-line'
+                      : 'bg-waiting-bg text-waiting border-waiting-edge'}`}>
+                      {nameOf(complianceIssuedBackupUserId)?.name} · {t.awaySecond ? t.secondAwayWords : t.secondCount}
                     </span>
                   )}
                   <span className="text-[11.5px] text-faint">{t.words}</span>
