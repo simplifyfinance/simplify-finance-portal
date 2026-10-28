@@ -425,6 +425,15 @@ const defaultProperty = (): FactFindProperty => ({
   ownership: {}, loans: []
 })
 
+// EVERY DROPDOWN BOUND TO ONE OF THESE CARRIES A BLANK OPTION.
+//
+// 28 Oct 2026, reported by Ellie Morella against the credit card fields. A
+// <select> whose value matches none of its options shows THE FIRST ONE - so a
+// field left empty on purpose displayed "Credit card", "Owner occupied",
+// "Interest only" or "Variable" and the record held nothing. The blank option
+// is what lets the control say "nothing chosen" out loud. See
+// lib/a-dropdown-cannot-invent-an-answer.test.ts, which fails the ship if one
+// of these loses it.
 const defaultLiability = (): Liability => ({
   id: uid(), liabilityType: '', lenderName: '', accountNumber: '', newLimitAmount: '',
   limitAmount: '', balance: '', repaymentAmount: '', repaymentFrequency: 'Monthly',
@@ -1717,13 +1726,13 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                 <select className={inp} value={emp.employmentPriority} onChange={e => updateEmployment(emp.id, 'employmentPriority', e.target.value)}>
                   <option>Primary</option><option>Secondary</option>
                 </select>
-                <select className={inp} value={emp.employmentType} onChange={e => updateEmployment(emp.id, 'employmentType', e.target.value)}>
+                <select className={inp} value={emp.employmentType} onChange={e => updateEmployment(emp.id, 'employmentType', e.target.value)}><option value="">— select —</option>
                   <option value="PAYG">PAYG</option>
                   <option value="Self-employed">Self-employed</option>
                   <option value="Not working">Not working</option>
                 </select>
                 {emp.employmentType === 'PAYG' && (
-                  <select className={inp} value={emp.employmentBasis} onChange={e => updateEmployment(emp.id, 'employmentBasis', e.target.value)}>
+                  <select className={inp} value={emp.employmentBasis} onChange={e => updateEmployment(emp.id, 'employmentBasis', e.target.value)}><option value="">— select —</option>
                     <option>Full time</option><option>Part time</option><option>Casual</option>
                   </select>
                 )}
@@ -1884,7 +1893,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Assessment method</label>
-                    <select className={inp} value={inc.seAssessmentMethod} onChange={e => updateIncome(inc.id, 'seAssessmentMethod', e.target.value)}>
+                    <select className={inp} value={inc.seAssessmentMethod} onChange={e => updateIncome(inc.id, 'seAssessmentMethod', e.target.value)}><option value="">— select —</option>
                       <option value="Last 2 financial years">Last 2 financial years</option>
                       <option value="One year in isolation">One year in isolation</option>
                       <option value="Director's salary">Director's salary</option>
@@ -1894,14 +1903,14 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                   {inc.seAssessmentMethod === 'Last 2 financial years' && (
                     <div className="mb-3">
                       <label className="text-xs text-gray-500 block mb-1">Income calculation method</label>
-                      <select className={inp} value={inc.seGrowthMethod} onChange={e => updateIncome(inc.id, 'seGrowthMethod', e.target.value)}>
+                      <select className={inp} value={inc.seGrowthMethod} onChange={e => updateIncome(inc.id, 'seGrowthMethod', e.target.value)}><option value="">— select —</option>
                         <option value="average">Average of the Last Two Years</option>
                         <option value="latest_lower">Latest Year Because Lower Than Previous Year</option>
                         <option value="previous_plus_growth">Previous Year Plus Growth Percentage</option>
                       </select>
                       {inc.seGrowthMethod === 'previous_plus_growth' && (
                         <div className="grid grid-cols-2 gap-3 mt-2">
-                          <select className={inp} value={inc.seGrowthPercentOption} onChange={e => updateIncome(inc.id, 'seGrowthPercentOption', e.target.value)}>
+                          <select className={inp} value={inc.seGrowthPercentOption} onChange={e => updateIncome(inc.id, 'seGrowthPercentOption', e.target.value)}><option value="">— select —</option>
                             <option value="20">20%</option>
                             <option value="50">50%</option>
                             <option value="Other">Other</option>
@@ -1959,7 +1968,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                           <select className="text-xs border border-gray-200 rounded px-2 py-1" value={inc.seYear1FY} onChange={e => {
                             const newYear1 = e.target.value
                             updateApplicant('income', applicant.income.map(i => i.id === inc.id ? { ...i, seYear1FY: newYear1, seYear2FY: incrementFY(newYear1) } : i))
-                          }}>
+                          }}><option value="">— select —</option>
                             <option>2021/22</option><option>2022/23</option><option>2023/24</option><option>2024/25</option>
                           </select>
                         </div>
@@ -2002,7 +2011,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                         <div className="bg-gray-50 rounded-lg p-3">
                           <div className="flex justify-between items-center mb-2">
                             <span className="text-xs font-medium text-gray-600">Financial year 2</span>
-                            <select className="text-xs border border-gray-200 rounded px-2 py-1" value={inc.seYear2FY} onChange={e => updateIncome(inc.id, 'seYear2FY', e.target.value)}>
+                            <select className="text-xs border border-gray-200 rounded px-2 py-1" value={inc.seYear2FY} onChange={e => updateIncome(inc.id, 'seYear2FY', e.target.value)}><option value="">— select —</option>
                               <option>2024/25</option><option>2023/24</option><option>2022/23</option><option>2021/22</option>
                             </select>
                           </div>
@@ -2058,7 +2067,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                       </div>
                       <div>
                         <label className="text-xs text-gray-500 block mb-1">Business profitable?</label>
-                        <select className={inp} value={inc.seDirectorProfitable} onChange={e => updateIncome(inc.id, 'seDirectorProfitable', e.target.value)}>
+                        <select className={inp} value={inc.seDirectorProfitable} onChange={e => updateIncome(inc.id, 'seDirectorProfitable', e.target.value)}><option value="">— select —</option>
                           <option>Yes</option><option>No</option>
                         </select>
                       </div>
@@ -2156,8 +2165,8 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
           {d.assets.map(asset => (
             <div key={asset.id} className="border border-gray-100 rounded-lg p-4 mb-2">
               <div className="flex justify-between items-center mb-3">
-                <select className="text-xs font-medium text-gray-500 border-0" value={asset.assetType} onChange={e => updateAsset(asset.id, 'assetType', e.target.value)}>
-                  {optionsFor(asset.assetType, ASSET_TYPES).map(x => <option key={x}>{x}</option>)}
+                <select className="text-xs font-medium text-gray-500 border-0" value={asset.assetType} onChange={e => updateAsset(asset.id, 'assetType', e.target.value)}><option value="">— select —</option>
+                  {optionsFor(asset.assetType, ASSET_TYPES).map(x =><option key={x}>{x}</option>)}
                 </select>
                 <button onClick={() => removeAsset(asset.id)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
               </div>
@@ -2201,7 +2210,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
           {d.properties.map(prop => (
             <div key={prop.id} className="border border-gray-100 rounded-lg p-4 mb-3">
               <div className="flex justify-between items-center mb-3">
-                <select className="text-xs font-medium text-gray-500 border-0" value={prop.ownershipType} onChange={e => updateProperty(prop.id, 'ownershipType', e.target.value)}>
+                <select className="text-xs font-medium text-gray-500 border-0" value={prop.ownershipType} onChange={e => updateProperty(prop.id, 'ownershipType', e.target.value)}><option value="">— select —</option>
                   <option>Owner occupied</option><option>Investment</option>
                 </select>
                 <button onClick={() => removeProperty(prop.id)} className="text-xs text-red-400 hover:text-red-600">Remove property</button>
@@ -2211,7 +2220,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                 <CurrencyInput className={inp} placeholder="Value" value={prop.value} onChange={val => updateProperty(prop.id, 'value', val)} />
               </div>
               <div className="grid grid-cols-4 gap-3 mb-3">
-                <select className={inp} value={prop.zoning} onChange={e => updateProperty(prop.id, 'zoning', e.target.value)}>
+                <select className={inp} value={prop.zoning} onChange={e => updateProperty(prop.id, 'zoning', e.target.value)}><option value="">— select —</option>
                   <option>Residential</option><option>Commercial</option><option>Rural</option>
                 </select>
                 <select className={inp} value={prop.propertySubtype} onChange={e => updateProperty(prop.id, 'propertySubtype', e.target.value)}>
@@ -2224,7 +2233,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                   <option>Rural</option>
                   <option>Other</option>
                 </select>
-                <select className={inp} value={prop.futureUse} onChange={e => updateProperty(prop.id, 'futureUse', e.target.value)}>
+                <select className={inp} value={prop.futureUse} onChange={e => updateProperty(prop.id, 'futureUse', e.target.value)}><option value="">— select —</option>
                   <option value="Ongoing">Ongoing</option>
                   <option value="Will become investment">Will become investment after settlement</option>
                   <option value="Will become owner occupied">Will become owner occupied after settlement</option>
@@ -2275,12 +2284,12 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                       <CurrencyInput className={inp} placeholder="Limit" value={loan.limitAmount} onChange={val => updatePropertyLoan(prop.id, loan.id, 'limitAmount', val)} />
                       <CurrencyInput className={inp} placeholder="Balance" value={loan.balance} onChange={val => updatePropertyLoan(prop.id, loan.id, 'balance', val)} />
                       <CurrencyInput className={inp} placeholder="Repayment" value={loan.repaymentAmount} onChange={val => updatePropertyLoan(prop.id, loan.id, 'repaymentAmount', val)} />
-                      <select className={inp} value={loan.repaymentType} onChange={e => updatePropertyLoan(prop.id, loan.id, 'repaymentType', e.target.value)}>
+                      <select className={inp} value={loan.repaymentType} onChange={e => updatePropertyLoan(prop.id, loan.id, 'repaymentType', e.target.value)}><option value="">— select —</option>
                         <option>Interest only</option><option>Principal and interest</option>
                       </select>
                     </div>
                     <div className="grid grid-cols-4 gap-3 mb-3">
-                      <select className={inp} value={loan.rateType} onChange={e => updatePropertyLoan(prop.id, loan.id, 'rateType', e.target.value)}>
+                      <select className={inp} value={loan.rateType} onChange={e => updatePropertyLoan(prop.id, loan.id, 'rateType', e.target.value)}><option value="">— select —</option>
                         <option>Variable</option><option>Fixed</option>
                       </select>
                       {/* Only on a fixed loan, because on a variable one there is no
@@ -2298,10 +2307,10 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                         <label className="text-[10px] uppercase tracking-wider text-gray-400 block mb-1">Interest only expires</label>
                         <input type="date" className={inp} value={loan.interestOnlyExpiryDate} onChange={e => updatePropertyLoan(prop.id, loan.id, 'interestOnlyExpiryDate', e.target.value)} />
                       </div>
-                      <select className={inp} value={loan.remainingLoanTermYears} onChange={e => updatePropertyLoan(prop.id, loan.id, 'remainingLoanTermYears', e.target.value)}>
-                        {Array.from({ length: 40 }, (_, i) => i + 1).map(y => <option key={y} value={y}>{y} year{y > 1 ? 's' : ''}</option>)}
+                      <select className={inp} value={loan.remainingLoanTermYears} onChange={e => updatePropertyLoan(prop.id, loan.id, 'remainingLoanTermYears', e.target.value)}><option value="">— select —</option>
+                        {Array.from({ length: 40 }, (_, i) => i + 1).map(y =><option key={y} value={y}>{y} year{y > 1 ? 's' : ''}</option>)}
                       </select>
-                      <select className={inp} value={loan.status} onChange={e => updatePropertyLoan(prop.id, loan.id, 'status', e.target.value)}>
+                      <select className={inp} value={loan.status} onChange={e => updatePropertyLoan(prop.id, loan.id, 'status', e.target.value)}><option value="">— select —</option>
                         <option value="Ongoing">Ongoing</option><option value="Refinance">Refinance</option><option value="To be paid out">To be paid out</option>
                       </select>
                     </div>
@@ -2326,7 +2335,7 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
           {d.liabilities.map(liab => (
             <div key={liab.id} className="border border-gray-100 rounded-lg p-4 mb-2">
               <div className="flex justify-between items-center mb-3">
-                <select className="text-xs font-medium text-gray-500 border-0" value={liab.liabilityType} onChange={e => updateLiability(liab.id, 'liabilityType', e.target.value)}>
+                <select className="text-xs font-medium text-gray-500 border-0" value={liab.liabilityType} onChange={e => updateLiability(liab.id, 'liabilityType', e.target.value)}><option value="">— select —</option>
                   <option>Credit card</option><option>Buy now pay later</option><option>Car loan</option><option>Personal loan</option><option>HECS</option><option>Health Insurance</option><option>Other</option>
                 </select>
                 <button onClick={() => removeLiability(liab.id)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
@@ -2334,8 +2343,8 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               {liab.liabilityType === 'HECS' && (
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <CurrencyInput className={inp} placeholder="Balance" value={liab.balance} onChange={val => updateLiability(liab.id, 'balance', val)} />
-                  <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}>
-                    {optionsFor(liab.status, LIABILITY_STATUSES).map(x => <option key={x} value={x}>{x}</option>)}
+                  <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}><option value="">— select —</option>
+                    {optionsFor(liab.status, LIABILITY_STATUSES).map(x =><option key={x} value={x}>{x}</option>)}
                   </select>
                 </div>
               )}
@@ -2345,8 +2354,8 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                   <select className={inp} value={liab.repaymentFrequency} onChange={e => updateLiability(liab.id, 'repaymentFrequency', e.target.value)}>
                     <option>Monthly</option><option>Fortnightly</option><option>Weekly</option>
                   </select>
-                  <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}>
-                    {optionsFor(liab.status, LIABILITY_STATUSES).map(x => <option key={x} value={x}>{x}</option>)}
+                  <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}><option value="">— select —</option>
+                    {optionsFor(liab.status, LIABILITY_STATUSES).map(x =><option key={x} value={x}>{x}</option>)}
                   </select>
                 </div>
               )}
@@ -2360,8 +2369,8 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                   <BankSelect className={inp} value={liab.lenderName} onChange={v => updateLiability(liab.id, 'lenderName', v)} />
                   <CurrencyInput className={inp} placeholder="Credit limit" value={liab.limitAmount} onChange={val => updateLiability(liab.id, 'limitAmount', val)} />
                   <CurrencyInput className={inp} placeholder="Current balance" value={liab.balance} onChange={val => updateLiability(liab.id, 'balance', val)} />
-                  <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}>
-                    {optionsFor(liab.status, LIABILITY_STATUSES).map(x => <option key={x} value={x}>{x}</option>)}
+                  <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}><option value="">— select —</option>
+                    {optionsFor(liab.status, LIABILITY_STATUSES).map(x =><option key={x} value={x}>{x}</option>)}
                   </select>
                   {liab.status === LIMIT_REDUCED && (
                     <CurrencyInput className={inp} placeholder="New limit" value={liab.newLimitAmount}
@@ -2392,8 +2401,8 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                     <select className={inp} value={liab.repaymentFrequency} onChange={e => updateLiability(liab.id, 'repaymentFrequency', e.target.value)}>
                       <option>Monthly</option><option>Fortnightly</option><option>Weekly</option>
                     </select>
-                    <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}>
-                      {optionsFor(liab.status, LIABILITY_STATUSES).map(x => <option key={x} value={x}>{x}</option>)}
+                    <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}><option value="">— select —</option>
+                      {optionsFor(liab.status, LIABILITY_STATUSES).map(x =><option key={x} value={x}>{x}</option>)}
                     </select>
                   </div>
                 </>
@@ -2409,8 +2418,8 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                     <select className={inp} value={liab.repaymentFrequency} onChange={e => updateLiability(liab.id, 'repaymentFrequency', e.target.value)}>
                       <option>Monthly</option><option>Fortnightly</option><option>Weekly</option>
                     </select>
-                    <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}>
-                      {optionsFor(liab.status, LIABILITY_STATUSES).map(x => <option key={x} value={x}>{x}</option>)}
+                    <select className={inp} value={liab.status} onChange={e => updateLiability(liab.id, 'status', e.target.value)}><option value="">— select —</option>
+                      {optionsFor(liab.status, LIABILITY_STATUSES).map(x =><option key={x} value={x}>{x}</option>)}
                     </select>
                   </div>
                 </>
