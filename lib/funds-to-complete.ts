@@ -1,6 +1,7 @@
 import { contractPrice, contractLoan, contractStampDuty } from './contract-figures'
 import { isLandPurchase, landLoanPayout, dutyApplies } from './construction'
 import { buildsSomething, purchasePriceOf } from './sale-build'
+import { buysNothing } from './buying'
 import { securitiesWithPurchase, totalsOf, canBuyAndRefinance,
          BEING_PURCHASED, purchaseLoanOf } from './securities'
 import { isTopUp, cashReleased, isDollarForDollar } from './top-up'
@@ -88,9 +89,29 @@ export function isConstruction(deal: any): boolean {
 
 // A pure refinance has no funds to complete - there is no settlement to fund.
 // A deal that BOTH refinances and buys does: the purchase still has to settle.
+//
+// AND THE SCENARIO IS ASKED BEFORE THE BOX IS. 28 Oct 2026.
+//
+// This read the purchase price box and nothing else, and that box keeps
+// whatever was typed into it months ago. Nader Gharsa's deal became a NSW
+// refinance with equity release and still holds $575,000 from the Victorian
+// purchase it used to be - so this said a pure refinance had a settlement to
+// fund, which put a Funds to complete section on a document going to a lender
+// and hid the existing loan being refinanced on the Deal structure.
+//
+// lib/buying.ts already answers "is anything being bought on this scenario"
+// for the form and the compliance pack, and it was written after the same
+// fault: a figure in a box that should never have been on screen. Fabio, 28
+// Oct 2026: "if it's a purchase, it will be on the deal summary... why are we
+// making this so hard?"
+//
+// A CONSTRUCTION STILL APPLIES whatever the template says, because a build has
+// a settlement to fund whoever is paying for it - see isConstruction above.
 export function fundsApply(deal: any): boolean {
   const bc = deal?.bc_data || {}
-  return isConstruction(deal) || has(bc.purchasePrice) || has(bc.newPurchasePrice)
+  if (isConstruction(deal)) return true
+  if (buysNothing(bc.template)) return false
+  return has(bc.purchasePrice) || has(bc.newPurchasePrice)
 }
 
 // A deal that both refinances and buys.

@@ -1,6 +1,6 @@
 // THE NOTES THAT GO TO THE BANK.
 import { purchaseSuburbOf } from './duty-state'
-import { purchaseLoanOf, canBuyAndRefinance } from './securities'
+import { purchaseLoanOf, canBuyAndRefinance, purchaseLending } from './securities'
 import { andList } from './and-list'
 import { buildsSomething } from './sale-build'
 //
@@ -144,7 +144,31 @@ function transaction(deal: any): { verb: string; isPurchase: boolean; isConstruc
   if (t === 'top_up_purchase') return { verb: 'mixed', isPurchase: true, isConstruction: false }
   if (canBuyAndRefinance(t)) return { verb: 'mixed', isPurchase: true, isConstruction: false }
   if (PURCHASE_TEMPLATES.includes(t)) return { verb: 'purchase', isPurchase: true, isConstruction: false }
-  return { verb: '', isPurchase: has(deal?.bc_data?.purchasePrice), isConstruction: false }
+  // NOTHING ABOVE RECOGNISED THIS SCENARIO. ASK THE DEAL, NOT A LEFTOVER BOX.
+  //
+  // 28 Oct 2026. This used to read "is there a number in the purchase price
+  // box?" - the only question left once the template is one nobody named, which
+  // in practice means Custom.
+  //
+  // It is the same fault as everything else fixed today. That box keeps what
+  // was typed into it months ago. Nader Gharsa's deal still holds $575,000 from
+  // a Victorian purchase that became a NSW refinance, and on a Custom template
+  // that figure alone would have told a lender's assessor the clients were
+  // buying something. Fabio, 16 Oct 2026, on exactly this sentence being wrong:
+  // "a line that 'The applicants are seeking finance of $1,855,000 to purchase
+  // an investment property in TBA' IS NOT TRUE."
+  //
+  // THE DEAL ALREADY KNOWS. By the time broker notes are written the splits are
+  // set and each one says what it is secured against - including, explicitly, a
+  // property nobody owns yet. That is a person's answer on the deal structure,
+  // it is locked at compliance, and it is the same question lib/securities.ts
+  // answers for the LVR and for the compliance pack.
+  //
+  // AND IT IS WRONG IN THE SAFE DIRECTION. A custom deal where nobody marked a
+  // split as buying anything now reads as lending against what they already
+  // own. That is visible to whoever reads the notes. A stale box reading as a
+  // purchase is not visible to anybody.
+  return { verb: '', isPurchase: purchaseLending(splitsOf(deal)) > 0, isConstruction: false }
 }
 
 function applicantsOf(deal: any): any[] {

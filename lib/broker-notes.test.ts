@@ -385,3 +385,67 @@ describe('an applicant who is not working', () => {
     expect(notes(d).missing.join(' ')).toContain('if they are not working, say so')
   })
 })
+
+describe('A STALE PURCHASE PRICE DOES NOT INVENT A SETTLEMENT', () => {
+  // 28 Oct 2026. Two places decided "is something being bought here?" by
+  // reading the purchase price box, and that box keeps whatever was typed into
+  // it months ago. Nader Gharsa's deal became a NSW refinance with equity
+  // release and still holds $575,000 from the Victorian purchase it used to be.
+  //
+  // What it cost: a FUNDS TO COMPLETE section on a document going to a lender
+  // for a deal with nothing to settle, and the existing loan being refinanced
+  // hidden on the Deal structure.
+  //
+  // Fabio, 28 Oct 2026: "by the time we get to compliance, you locked
+  // everything. So if it's a purchase, it will be on the deal summary... why
+  // are we making this so hard?" The scenario is asked first now.
+
+  const stale = (template: string, over: any = {}) => ({
+    bc_data: {
+      template, suburb: 'Hawthorn', loanTerm: '30',
+      existingLoanBal: '643,970', propertyValue: '1,300,000', equityRelease: '245,500',
+      // The leftover. Months old, and nothing ever cleared it.
+      purchasePrice: '575,000', deposit: '115,000', stampDuty: '30,895',
+      ...(over.bc_data || {}),
+    },
+    lo_data: { loanAmount: '893,800', refinanceSplits: over.splits
+      || [{ id: 's1', label: 'Loan', amount: '893,800', purpose: 'INV' }] },
+    compliance_data: {},
+    fact_find_data: { applicants: [payg()] },
+  })
+
+  it('A REFINANCE GETS NO FUNDS TO COMPLETE, WHATEVER IS IN THE BOX', () => {
+    expect(para(stale('refinance_equity'), 'funds')).toBeUndefined()
+    expect(para(stale('refinance_only'), 'funds')).toBeUndefined()
+    expect(para(stale('top_up'), 'funds')).toBeUndefined()
+  })
+
+  it('and a real purchase still gets one', () => {
+    // The guard rail. A fix that quietly dropped the section from purchases
+    // would be worse than the fault it replaced.
+    expect(para(purchase(), 'funds')).toBeTruthy()
+  })
+
+  it('A SCENARIO NOBODY NAMED ASKS THE SPLITS, NOT THE BOX', () => {
+    // Custom is the only scenario that reaches the last line of transaction().
+    // It used to read the box. It now asks what each split is secured against,
+    // which is a person's answer on the deal structure and is locked at
+    // compliance.
+    expect(para(stale('custom'), 'funds')).toBeUndefined()
+  })
+
+  it('and a custom deal that really is buying something still says so', () => {
+    const buying = stale('custom', {
+      splits: [{ id: 's1', label: 'Purchase loan', amount: '700,000',
+                 purpose: 'OO', securityId: 'being-purchased' }],
+    })
+    expect(para(buying, 'funds')).toBeTruthy()
+  })
+
+  it('and none of it describes a refinance as a purchase', () => {
+    // The sentence Fabio read on 16 Oct 2026 and said "IS NOT TRUE".
+    const deal = para(stale('refinance_equity'), 'deal')!.lines.join(' ')
+    expect(deal).not.toMatch(/to purchase/i)
+    expect(deal).toMatch(/refinance/i)
+  })
+})
