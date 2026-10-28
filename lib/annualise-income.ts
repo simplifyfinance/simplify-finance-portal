@@ -113,6 +113,27 @@ export type Assessment = {
   totals: { full: number; shaded: number; variable: number }
   /** The rate used on the shaded column, as a fraction. 0.8 by default. */
   rate: number
+  /**
+   * THE MATHS, STEP BY STEP, IN THE ORDER IT WAS DONE.
+   *
+   * 28 Oct 2026. Fabio: "I want you to explain to credit how you got to that
+   * figure and show the maths every time."
+   *
+   * Not a courtesy. A credit assessor handed two totals and no working has to
+   * either take them on trust or redo them, and the second is what actually
+   * happens. These lines are the difference between a figure somebody checks
+   * in ten seconds and one they argue with.
+   */
+  working: string[]
+  /**
+   * WHICH OF THE TWO METHODS PRODUCED THIS.
+   *
+   * 'line-by-line' where the payslip gave a year to date against each line.
+   * 'combined' where it gave one gross figure and the base came off it - see
+   * lib/combined-ytd.ts. The screen names it, because the same two columns
+   * arrived by two different roads and an assessor is entitled to know which.
+   */
+  method: 'line-by-line' | 'combined'
 }
 
 const num = (v: any): number | null => {
@@ -273,6 +294,8 @@ export function assess(opts: {
   const shaded = sum(l => l.shaded)
   return {
     coverage, lines, rate,
+    method: 'line-by-line',
+    working: workingOut(lines, coverage, rate, full, shaded),
     // THE GAP IS THE VARIABLE PART OF SOMEBODY'S INCOME, and it is worth saying
     // on its own. Base and allowances sit the same in both columns, so the
     // difference between the totals is exactly what is at risk.
@@ -292,4 +315,57 @@ export function lowerOf(annualised: number, lastFinancialYear: number | null): n
   const last = num(lastFinancialYear)
   if (last === null) return annualised
   return Math.min(annualised, last)
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THE WORKING, WRITTEN OUT.
+//
+// One line per figure, with the arithmetic in it, in the order it was done. A
+// credit assessor should be able to hold the payslip beside this and check it
+// without doing any of it again.
+
+const money2 = (n: number): string => '$' + Math.round(n).toLocaleString('en-AU')
+const exact2 = (n: number): string =>
+  '$' + n.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const auDay = (d: Date): string =>
+  d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+
+function workingOut(
+  lines: AssessedLine[], coverage: Coverage, rate: number, full: number, shaded: number,
+): string[] {
+  if (lines.length === 0) return []
+  const pct = Math.round(rate * 100)
+  const { days, yearDays } = coverage
+  const ytdTotal = lines.reduce((t, l) => t + l.ytd, 0)
+
+  const out: string[] = [
+    `Year to date ${exact2(ytdTotal)} to ${auDay(coverage.to)} — ${days} days of the financial year`
+      + (coverage.countsFrom > coverage.fyStart ? `, counted from the day they started.` : '.'),
+  ]
+
+  for (const l of lines) {
+    if (l.notIncome) {
+      out.push(`${l.label}: ${money2(l.ytd)} is money handed back, not money earned.`
+        + ` Out of both columns — annualising it would have claimed ${money2(l.refused || 0)}.`)
+      continue
+    }
+    if (l.oneOff) {
+      out.push(`${l.label}: paid once, so it is taken at the ${money2(l.ytd)} actually paid`
+        + (l.refused ? `, not the ${money2(l.refused)} annualising would have claimed` : '')
+        + `. Shaded to ${money2(l.shaded)} at ${pct}%.`)
+      continue
+    }
+    const sum = days > 0 ? `${money2(l.ytd)} ÷ ${days} days × ${yearDays} = ${money2(l.full)}` : money2(l.full)
+    out.push(l.shaded === l.full
+      ? `${l.label}: ${sum}. Never shaded, so it is the same in both columns.`
+      : `${l.label}: ${sum}, shaded to ${money2(l.shaded)} at ${pct}%.`)
+  }
+
+  out.push(`Full column: ${money2(full)}. At ${pct}%: ${money2(shaded)}.`)
+  if (full !== shaded) {
+    out.push(`Base and allowances are never shaded, so the ${money2(full - shaded)} between the two`
+      + ` columns is exactly the variable part of this income.`)
+  }
+  return out
 }

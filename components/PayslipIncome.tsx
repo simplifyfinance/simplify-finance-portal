@@ -4,6 +4,7 @@ import DropZone from '@/components/DropZone'
 import { assess, type PayLine, type PayKind } from '@/lib/annualise-income'
 import type { ReadPayslip, ReadLine } from '@/lib/payslip-lines'
 import { toFactFind, unsettled, whatHappened, type Fields, type Column } from '@/lib/income-to-fact-find'
+import { assessCombined, annualFromRate, type BaseRate } from '@/lib/combined-ytd'
 
 // WHAT A PAYSLIP SAYS THIS PERSON EARNS IN A YEAR, ON THE SCREEN.
 //
@@ -71,6 +72,14 @@ export default function PayslipIncome({
   const [essential, setEssential] = useState(false)
   const [overrides, setOverrides] = useState<Record<string, Override>>({})
   const [used, setUsed] = useState<Column | null>(null)
+  // THE BASE, WHERE THE PAYSLIP GIVES ONE COMBINED YEAR TO DATE.
+  //
+  // Read off the payslip where the employer printed it, and typed in where
+  // they did not. It is the one fact that method cannot do without, so it is
+  // always on screen and always editable - a figure a credit assessor cannot
+  // see is a figure they cannot check.
+  const [baseTyped, setBaseTyped] = useState('')
+  const [basisTyped, setBasisTyped] = useState<BaseRate['basis']>('annual')
 
   async function read(files: File[]) {
     setBusy(true); setTrouble('')
@@ -118,16 +127,58 @@ export default function PayslipIncome({
     return { ...l, key: o, oneOff: false, notIncome: false, recognised: true }
   }), [latest, overrides])
 
-  const a = useMemo(() => latest && latest.read.periodEnd ? assess({
-    lines: lines as PayLine[],
-    to: new Date(`${latest.read.periodEnd}T00:00:00`),
-    employmentStart: employmentStart ? new Date(`${employmentStart}T00:00:00`) : null,
-    kind: kindOf(employmentBasis),
-  }) : null, [latest, lines, employmentStart, employmentBasis])
-
-  const waiting = unsettled(lines)
   const noBreakdown = Boolean(latest && !latest.read.linesHaveYtd)
   const noPeriodEnd = Boolean(latest && !latest.read.periodEnd)
+
+  // WHAT THE BASE IS, IN A YEAR.
+  //
+  // What somebody typed wins, because they are looking at the document. Else
+  // the rate the payslip printed. Else the annual salary if it stated one.
+  const baseFromSlip = useMemo(() => {
+    if (!latest) return null
+    const r = latest.read
+    if (r.baseRate && r.baseRateBasis) return annualFromRate({ amount: r.baseRate, basis: r.baseRateBasis })
+    return r.annualSalaryStated || null
+  }, [latest])
+
+  // Turning a rate into a year is arithmetic, so lib does it - even the annual
+  // case, which looks like it needs no maths right up until somebody types
+  // "209,325.17" and a stray rounding appears in one path and not the other.
+  const typed = Number(String(baseTyped).replace(/[$,\s]/g, ''))
+  const annualBase = annualFromRate({ amount: typed, basis: basisTyped }) || baseFromSlip || 0
+
+  // TWO METHODS, ONE SHAPE OUT.
+  //
+  // 28 Oct 2026. The reader was built on the rule that each line carries its
+  // own year to date. Two real payslips - a central bank and a state health
+  // service - print full detail for the fortnight and ONE combined gross for
+  // the year, so the first version refused both and the feature was useless on
+  // the normal case.
+  //
+  // Fabio: "if each line has a year to date, you're going to do it one way. If
+  // each line doesn't... you're going to annualize the income, exclude the base
+  // salary, and then mark everything as non-base. But you're still going to
+  // show, if I shade it for 80%, that's the income."
+  //
+  // Both roads end at the same two columns. See lib/combined-ytd.ts.
+  const a = useMemo(() => {
+    if (!latest || !latest.read.periodEnd) return null
+    const to = new Date(`${latest.read.periodEnd}T00:00:00`)
+    const employmentStarted = employmentStart ? new Date(`${employmentStart}T00:00:00`) : null
+    const kind = kindOf(employmentBasis)
+    if (!noBreakdown) {
+      return assess({ lines: lines as PayLine[], to, employmentStart: employmentStarted, kind })
+    }
+    return assessCombined({
+      ytdGross: latest.read.ytdGross || 0,
+      annualBase,
+      to, employmentStart: employmentStarted, kind,
+    })
+  }, [latest, lines, employmentStart, employmentBasis, noBreakdown, annualBase])
+
+  // A line nobody has placed only blocks the line-by-line method. On the
+  // combined one there are no lines to place.
+  const waiting = noBreakdown ? [] : unsettled(lines)
 
   function press(column: Column) {
     if (!a) return
@@ -175,16 +226,39 @@ export default function PayslipIncome({
       )}
 
       {noBreakdown && !noPeriodEnd && (
-        <Note tone="chase" head="This payslip does not split its year to date.">
-          It shows one gross figure{latest?.read.ytdGross ? ` of ${money(latest.read.ytdGross)}` : ''} and
-          no line by line year to date. There is no honest way to tell how much of that is base, overtime
-          or bonus, and splitting it by this period&rsquo;s proportions would be making the numbers up.
-          <b className="block mt-1">Ask for a payslip that shows year to date per line, or type the six
-            boxes by hand.</b>
+        <Note tone="info" head="This payslip gives one year to date, not a line for each.">
+          It shows {latest?.read.ytdGross ? `${money(latest.read.ytdGross)} ` : 'one '}gross for the year
+          and nothing against the individual lines, which is how most large employers print them. So the
+          total is annualised, the base comes off it, and everything left is counted as non-base income
+          in one line. It is not split further because the payslip does not say how it splits.
+          <div className="mt-2 flex items-end gap-2 flex-wrap">
+            <span>
+              <span className="block text-[11px] font-semibold opacity-80 mb-0.5">Base, as the payslip states it</span>
+              <input value={baseTyped}
+                onChange={e => setBaseTyped(e.target.value)}
+                placeholder={baseFromSlip ? money(baseFromSlip) : 'type the base'}
+                aria-label="Base rate"
+                className="w-32 border border-field-line rounded px-2 py-1 text-[13px] text-ink bg-card tabular-nums" />
+            </span>
+            <select value={basisTyped} onChange={e => setBasisTyped(e.target.value as any)}
+              aria-label="Base rate period"
+              className="border border-field-line rounded px-2 py-1 text-[13px] text-ink bg-card">
+              <option value="annual">a year</option>
+              <option value="monthly">a month</option>
+              <option value="fortnightly">a fortnight</option>
+              <option value="weekly">a week</option>
+              <option value="hourly">an hour</option>
+            </select>
+            {annualBase > 0
+              ? <span className="text-[12.5px] opacity-80 pb-1">= {money(annualBase)} a year</span>
+              : <span className="text-[12.5px] font-semibold pb-1">
+                  This payslip does not print a base rate. Type it and the rest follows.
+                </span>}
+          </div>
         </Note>
       )}
 
-      {a && !noBreakdown && !noPeriodEnd && (
+      {a && !noPeriodEnd && (
         <div className="mt-3 border border-line rounded-xl p-4 bg-card">
           <div className="flex items-baseline gap-2.5 flex-wrap mb-2">
             <b className="text-[14.5px] text-ink">{employerName || latest?.read.employer || 'This employer'}</b>
@@ -274,6 +348,29 @@ export default function PayslipIncome({
               </tr>
             </tbody>
           </table>
+
+          {/* HOW IT GOT THERE, EVERY TIME.
+              Fabio, 28 Oct 2026: "I want you to explain to credit how you got
+              to that figure and show the maths every time." A credit assessor
+              handed two totals and no working either takes them on trust or
+              redoes them, and the second is what actually happens. */}
+          {a.working.length > 0 && (
+            <div className="mt-3 border border-line-soft rounded-lg bg-page px-3.5 py-3">
+              <div className="flex items-baseline gap-2 mb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-faint">The working</span>
+                <span className={`${pill} bg-card text-faint border-line`}>
+                  {a.method === 'combined'
+                    ? 'One year to date, base taken off'
+                    : 'A year to date on every line'}
+                </span>
+              </div>
+              <ol className="list-decimal pl-5 space-y-1">
+                {a.working.map((step, i) => (
+                  <li key={i} className="text-[12.5px] text-gray-700 leading-snug">{step}</li>
+                ))}
+              </ol>
+            </div>
+          )}
 
           {a.lines.some(l => l.key === 'overtime') && (
             <div className="mt-3 flex items-center gap-2 text-[12.5px] text-gray-700">

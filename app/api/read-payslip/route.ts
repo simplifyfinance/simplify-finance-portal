@@ -55,6 +55,8 @@ Return ONLY valid JSON, nothing else - no markdown fences, no preamble, no expla
   "payFrequency": "Weekly/Fortnightly/Monthly or empty string",
   "employmentStart": "YYYY-MM-DD or empty string",
   "annualSalaryStated": "plain digits or empty string",
+  "baseRate": "plain digits or empty string",
+  "baseRateBasis": "annual/monthly/fortnightly/weekly/hourly or empty string",
   "ytdGross": "plain digits or empty string",
   "linesHaveYtd": true or false,
   "lines": [{ "label": "", "thisPay": "", "ytd": "" }]
@@ -68,6 +70,19 @@ THE YEAR TO DATE IS THE COLUMN THAT MATTERS.
   date column, leave "ytd" as an empty string.
 - Set "linesHaveYtd" to false if the payslip shows only a single total year to
   date and does not break it down line by line.
+
+THE BASE RATE THE EMPLOYER STATES.
+- Many payslips print the contracted base somewhere near the top, outside the
+  earnings table. Examples of how it is worded: "Annual Rate", "Annual Salary",
+  "Base Salary", "Weekly Base Rate", "Hourly Rate", "Ordinary Rate", "Salary
+  p.a.", "Classification rate".
+- Put the number in "baseRate" and say which period it covers in
+  "baseRateBasis" - annual, monthly, fortnightly, weekly or hourly.
+- READ IT, DO NOT WORK IT OUT. Never calculate a base rate from an earnings
+  line, from hours times a rate, or from the year to date. If the payslip does
+  not state one, leave both fields empty.
+- "annualSalaryStated" stays as it is: fill it only where the stated rate is
+  already an annual figure.
 
 OTHER RULES:
 - "periodEnd" is the LAST DAY OF THE PAY PERIOD, not the date they were paid.
@@ -96,6 +111,10 @@ const num = (v: any): number | null => {
 }
 
 const date = (v: any): string => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '')
+
+// A period we know how to turn into a year. Anything else is not trusted, and
+// an untrusted basis makes the rate unusable rather than wrong.
+const BASIS = ['annual', 'monthly', 'fortnightly', 'weekly', 'hourly'] as const
 
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer()
@@ -151,6 +170,9 @@ export async function POST(req: NextRequest) {
       payFrequency: String(raw.payFrequency || ''),
       employmentStart: date(raw.employmentStart),
       annualSalaryStated: num(raw.annualSalaryStated),
+      baseRate: num(raw.baseRate),
+      baseRateBasis: BASIS.includes(String(raw.baseRateBasis || '').toLowerCase() as any)
+        ? String(raw.baseRateBasis).toLowerCase() as ReadPayslip['baseRateBasis'] : '',
       ytdGross: num(raw.ytdGross),
       // Trusted only where the lines actually carry one. A payslip claiming a
       // breakdown it did not print is the gap we refuse to fill.

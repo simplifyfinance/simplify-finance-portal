@@ -152,7 +152,21 @@ export type ReadPayslip = {
   paidOn: string
   payFrequency: string
   employmentStart: string
+  /** Kept for the screen to show. Superseded by baseRate below. */
   annualSalaryStated: number | null
+  /**
+   * THE BASE RATE THE EMPLOYER PRINTED, whatever period it is quoted in.
+   *
+   * The Reserve Bank writes "Annual Rate: 209,325.17"; NSW Health writes
+   * "Weekly Base Rate $2643.73". Both are the employer stating the contracted
+   * base on the document - not a figure worked back from a pay line, which
+   * moves about with the roster. On a fortnight where somebody took a rostered
+   * day off, the pay line understates the base by thousands and hands the
+   * difference to the variable bundle, where it gets shaded.
+   */
+  baseRate: number | null
+  /** What period baseRate is quoted in, as the payslip words it. */
+  baseRateBasis: 'annual' | 'monthly' | 'fortnightly' | 'weekly' | 'hourly' | ''
   ytdGross: number | null
   /** False where the payslip shows one total year to date and no breakdown. */
   linesHaveYtd: boolean

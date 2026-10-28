@@ -28,6 +28,10 @@ export default function CompliancePackWorkload() {
   const [days, setDays] = useState<DayRow[]>([])
   const [ready, setReady] = useState(false)
   const [missing, setMissing] = useState(false)
+  // TWENTY ROWS OF NOUGHTS IS NOISE. 28 Oct 2026, Fabio, seeing it with one
+  // pack in it: "this overwhelming... maybe only show rolling last 5 days with
+  // ability to expand? its too much". The month is still there, folded away.
+  const [showAll, setShowAll] = useState(false)
 
   useEffect(() => { load() }, [])
 
@@ -110,10 +114,16 @@ export default function CompliancePackWorkload() {
         ))}
       </div>
 
-      {days.length > 0 && (
+      {days.length > 0 && (() => {
+        const RECENT = 5
+        const shown = showAll ? days : days.slice(0, RECENT)
+        const hidden = days.slice(shown.length)
+        const hiddenPacks = hidden.reduce((t, d) => t + d.total, 0)
+        const today = days[0]?.day
+        return (
         <div className="mt-5">
           <div className="text-[10px] font-bold uppercase tracking-wider text-faint mb-2">
-            Every working day this month
+            {showAll ? 'Every working day this month' : `The last ${shown.length} working ${shown.length === 1 ? 'day' : 'days'}`}
           </div>
           <table className="w-full border-collapse">
             <thead>
@@ -128,28 +138,53 @@ export default function CompliancePackWorkload() {
               </tr>
             </thead>
             <tbody>
-              {days.map(d => (
-                <tr key={d.day}>
-                  <td className="py-2 pr-3 text-[13px] text-gray-700 border-b border-line-soft">
+              {shown.map(d => (
+                <tr key={d.day} className={d.day === today ? 'bg-page' : undefined}>
+                  <td className={`py-2 pr-3 text-[13px] border-b border-line-soft ${d.day === today ? 'font-bold text-ink' : 'text-gray-700'}`}>
                     {new Date(`${d.day}T00:00:00`).toLocaleDateString('en-AU',
                       { weekday: 'short', day: 'numeric', month: 'short' })}
+                    {d.day === today && <span className="font-normal text-faint"> · today</span>}
                   </td>
-                  {people.map(p => (
-                    <td key={p.id} className="py-2 pr-3 text-[13px] text-right tabular-nums font-semibold text-ink border-b border-line-soft">
-                      {d.counts[p.id] || 0}
-                    </td>
-                  ))}
-                  <td className="py-2 text-[13px] text-right tabular-nums font-bold text-ink border-b border-line-soft">{d.total}</td>
+                  {people.map(p => {
+                    const n = d.counts[p.id] || 0
+                    // A NOUGHT IN THE SAME WEIGHT AS A REAL FIGURE MAKES THE EYE
+                    // WORK FOR NOTHING. Only what happened is dark.
+                    return (
+                      <td key={p.id} className={`py-2 pr-3 text-[13px] text-right tabular-nums border-b border-line-soft ${n ? 'font-semibold text-ink' : 'text-line'}`}>
+                        {n}
+                      </td>
+                    )
+                  })}
+                  <td className={`py-2 text-[13px] text-right tabular-nums border-b border-line-soft ${d.total ? 'font-bold text-ink' : 'text-line'}`}>{d.total}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+
+          {hidden.length > 0 && (
+            <button type="button" onClick={() => setShowAll(true)}
+              className="mt-2.5 text-[13px] font-semibold text-brand-ink hover:underline">
+              Show the rest of {new Date(`${days[0].day}T00:00:00`).toLocaleDateString('en-AU', { month: 'long' })} ↓
+              {/* WHAT IS IN IT, BEFORE YOU OPEN IT. A fortnight where nothing
+                  happened is one sentence, not fourteen rows. */}
+              <span className="font-normal text-faint">
+                {'  '}{hidden.length} more working {hidden.length === 1 ? 'day' : 'days'},
+                {' '}{hiddenPacks} {hiddenPacks === 1 ? 'pack' : 'packs'}
+              </span>
+            </button>
+          )}
+          {showAll && days.length > RECENT && (
+            <button type="button" onClick={() => setShowAll(false)}
+              className="mt-2.5 text-[13px] font-semibold text-brand-ink hover:underline">Show less ↑</button>
+          )}
+
           <p className="text-[11px] text-faint mt-2">
             Weekends and NSW public holidays are not rows &mdash; nothing is allocated on them. A day
             with nothing on it is still a row, because the gap says something.
           </p>
         </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

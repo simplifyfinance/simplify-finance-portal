@@ -115,6 +115,75 @@ describe('ONE HUNDRED AND EIGHTY, AND NO THIRD THING TO DECIDE', () => {
   })
 })
 
+describe('TWO METHODS, ONE SHAPE OUT', () => {
+  // 28 Oct 2026. The reader was built on the rule that each line carries its
+  // own year to date. Two real payslips - a central bank and a state health
+  // service - print full detail for the fortnight and ONE combined gross for
+  // the year. The first version refused both, which made the feature useless
+  // on the normal case.
+  //
+  // Fabio: "if each line has a year to date, you're going to do it one way. If
+  // each line doesn't... you're going to annualize the income, exclude the base
+  // salary, and then mark everything as non-base. But you're still going to
+  // show, if I shade it for 80%, that's the income."
+
+  it('the screen picks the method and lib does both', () => {
+    expect(SCREEN).toContain("from '@/lib/combined-ytd'")
+    expect(SCREEN).toContain('assessCombined({')
+    expect(SCREEN).toContain('assess({')
+  })
+
+  it('AND IT STILL DOES NO ARITHMETIC OF ITS OWN', () => {
+    // Turning a rate into a year is maths. Even the annual case goes through
+    // lib, or a stray rounding appears in one path and not the other.
+    expect(SCREEN).toContain('annualFromRate({')
+    expect(SCREEN).not.toMatch(/\*\s*52\b|\*\s*26\b|\*\s*12\b/)
+    // Rounding for DISPLAY is fine and unavoidable - $104,948.07 on a screen
+    // is noise. Rounding anywhere else is a calculation, and calculations
+    // belong in lib where they are tested. So: exactly one, in the formatter.
+    const rounds = SCREEN.split('\n').filter(l => l.includes('Math.round'))
+    expect(rounds, `Math.round outside the money formatter:\n${rounds.join('\n')}`).toHaveLength(1)
+    expect(rounds[0]).toContain("const money =")
+  })
+
+  it('the base is always on screen and always editable', () => {
+    // It is the one fact the combined method cannot do without. A figure a
+    // credit assessor cannot see is a figure they cannot check.
+    expect(SCREEN).toContain('aria-label="Base rate"')
+    expect(SCREEN).toContain('aria-label="Base rate period"')
+  })
+
+  it('and it says so plainly when the payslip prints no base rate', () => {
+    expect(SCREEN).toContain('does not print a base rate')
+  })
+
+  it('A COMBINED PAYSLIP IS NO LONGER A DEAD END', () => {
+    // It used to say "ask for a payslip that shows year to date per line, or
+    // type the six boxes by hand" and stop.
+    expect(SCREEN).not.toMatch(/Ask for a payslip that shows year to date per line/)
+    expect(SCREEN).toContain('One year to date, base taken off')
+  })
+})
+
+describe('THE MATHS IS SHOWN EVERY TIME', () => {
+  // Fabio: "I want you to explain to credit how you got to that figure and
+  // show the maths every time."
+  it('the working is drawn, on both methods', () => {
+    expect(SCREEN).toContain('a.working.map')
+    expect(SCREEN).toContain('The working')
+  })
+
+  it('and the screen does not write the explanation itself', () => {
+    // It comes from the same function that did the sum, so it cannot describe
+    // a calculation the portal did not do.
+    expect(SCREEN).not.toMatch(/÷[\s\S]{0,40}× 365/)
+  })
+
+  it('and it names which method produced the figures', () => {
+    expect(SCREEN).toContain('A year to date on every line')
+  })
+})
+
 describe('the two things the screen must never quietly do', () => {
   it('IT NEVER PICKS A COLUMN', () => {
     // Which figure to use is a credit decision made once a lender is in view,

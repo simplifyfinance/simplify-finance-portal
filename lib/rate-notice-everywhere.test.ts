@@ -79,6 +79,12 @@ const NOT_CLIENT_FACING: Record<string, string> = {
   'lib/self-employed-facts.ts':     'income working, internal',
   'lib/income-calculations.ts':     'income working, internal',
   // 28 Oct 2026. Caught by this guard on its first run, which is what it is
+  // for. It is not a rate at all: the file is the PROMPT that reads a client's
+  // payslip, and it lists the wordings an employer might print a base rate
+  // under - "Annual Rate", "Hourly Rate", "Salary p.a.". The route returns
+  // JSON to our own screen and sends nothing to anybody.
+  'app/api/read-payslip/route.ts':  'the payslip reader\u2019s prompt; it returns JSON to our own screen and sends nothing',
+  // 28 Oct 2026. Caught by this guard on its first run, which is what it is
   // for. The percentage here is the SHADING on variable income - the 80%
   // column beside the 100% one - not a lender's interest rate. It is a rule of
   // thumb the credit team applies, it cannot change after the figures were
