@@ -117,10 +117,17 @@ export function seededProperty(p: ReviewProperty, ownership: Record<string, stri
   return {
     id: uid(),
     address: txt(p.address),
+    // WHAT THE REVIEW ACTUALLY KNOWS, AND NOTHING ELSE. 28 Oct 2026.
+    //
+    // The review says whether this is an investment, so that is carried over -
+    // it is an answer, not a guess. Future use, zoning and subtype were none of
+    // its business and were filled in here anyway, which put three facts on a
+    // compliance document that nobody had ever been asked. Same rule as the
+    // fact find's own defaults; see defaultProperty in FactFindForm.tsx.
     ownershipType: investor ? 'Investment' : 'Owner occupied',
-    futureUse: 'Ongoing',
-    zoning: 'Residential',
-    propertySubtype: 'Fully detached house',
+    futureUse: '',
+    zoning: '',
+    propertySubtype: '',
     value: money(p.estimated_current_value ?? p.original_value),
     // WHERE THE FIGURE CAME FROM, said rather than implied. It is the book's
     // number or a value somebody looked up, not the applicant's guess.
@@ -132,13 +139,16 @@ export function seededProperty(p: ReviewProperty, ownership: Record<string, stri
       id: uid(),
       lenderName: txt(p.lender_raw),
       bsb: '', accountNumber: '',
-      mortgageType: investor ? 'Investment' : 'Owner occupied',
+      // mortgageType is the old box nothing reads any more. The loan follows
+      // its property unless somebody says otherwise - see lib/loan-purpose.ts -
+      // and the review has no opinion about one loan against another.
+      mortgageType: '', purpose: '',
       limitAmount: '', balance,
       interestRate: '', repaymentAmount: '', repaymentFrequency: 'Monthly',
-      repaymentType: 'Interest only', interestOnlyExpiryDate: '',
-      rateType: 'Variable', fixedRateExpiryDate: '',
-      loanTermExpiryDate: '', remainingLoanTermYears: '30',
-      status: 'Ongoing', ownership,
+      repaymentType: '', interestOnlyExpiryDate: '',
+      rateType: '', fixedRateExpiryDate: '',
+      loanTermExpiryDate: '', remainingLoanTermYears: '',
+      status: '', ownership,
     }] : [],
   }
 }

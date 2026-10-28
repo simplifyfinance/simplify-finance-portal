@@ -19,6 +19,7 @@ import { addSystemNote } from '@/components/DealFile'
 import type { Fields } from '@/lib/income-to-fact-find'
 import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET_TYPES, LIABILITY_STATUSES, LIMIT_REDUCED, optionsFor } from '@/lib/fact-find-options'
 import { withLimitConditions, conditionsChanged } from '@/lib/limit-to-send'
+import { LOAN_PURPOSES, sameAsPropertyLabel } from '@/lib/loan-purpose'
 import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship } from '@/lib/relationship'
 import { totalHistoryMonths, REQUIRED_HISTORY_MONTHS, gapsInHistory, gapInWords } from '@/lib/fact-find'
 import { newGuard, saveGuarded } from '@/lib/save-conflict'
@@ -178,7 +179,12 @@ type PropertyLoan = {
   lenderName: string
   bsb: string
   accountNumber: string
+  // NEVER READ. Every loan recorded before 28 Oct 2026 carries 'Owner occupied'
+  // here because that was the value it was born with, so it is not evidence of
+  // anything. A real answer lives in `purpose` - see lib/loan-purpose.ts.
   mortgageType: string
+  /** 'Owner occupied' | 'Investment' | '' for "same as the property". */
+  purpose: string
   limitAmount: string
   balance: string
   interestRate: string
@@ -310,13 +316,38 @@ function uid() {
 // in lib/fact-find.ts, so the warning on screen and the still-to-confirm list
 // could disagree about the same 24 months. One copy. See lib/fact-find.ts.
 
+// NOTHING IS BORN WITH AN ANSWER NOBODY GAVE.
+//
+// 28 Oct 2026. Every record the fact find creates used to arrive with boxes
+// already filled in - a loan that said "Owner occupied", an income that said
+// "Last 2 financial years", a property that said "Fully detached house". The
+// form hid the ones that did not apply; the documents printed every box that
+// had a value in it, and a default has a value.
+//
+// That cost a whole afternoon of corrections from the compliance team on one
+// deal. The documents were fixed first, because that fixed every deal already
+// in the book. This is the other half: a record created from today carries no
+// guess at all, so there is nothing for a future reader - an export, a new
+// report, a lender integration - to mistake for an answer.
+//
+// Fabio, 28 Oct 2026: "I want everything new to stop guessing... when I press
+// that button, there is no guessing. The data comes from the boxes that are on
+// the fact find and the compliance."
+//
+// WHAT IS DELIBERATELY STILL SET:
+//   - frequencies (Annually, Monthly, Weekly). A frequency with no amount
+//     beside it prints nothing and is read by nothing. Blanking them would
+//     break the maths that reads an amount AND a frequency together.
+//   - employmentPriority: 'Primary'. The first job is the primary one by
+//     definition; it is structure, not an answer about this person.
+//   - isCurrent / onProbation. A boolean has no empty.
 const defaultAddress = (isCurrent: boolean): Address => ({
   id: uid(), address: '', residentialStatus: '', isCurrent, startDate: '', endDate: '',
   housingExpenseAmount: '', housingExpenseFrequency: 'Weekly'
 })
 
 const defaultEmployment = (isCurrent: boolean): Employment => ({
-  id: uid(), isCurrent, employmentPriority: 'Primary', employmentBasis: 'Full time', employmentType: 'PAYG', endDate: '',
+  id: uid(), isCurrent, employmentPriority: 'Primary', employmentBasis: '', employmentType: '', endDate: '',
   occupation: '', startDate: '', onProbation: false, employerName: '', employerAbn: '',
   employerAcn: '', employerType: '', employerAddress: '',
   contactPersonName: '', contactPersonDetails: '', selfEmployedStructure: ''
@@ -330,13 +361,13 @@ const defaultIncome = (type: string = 'PAYG'): Income => ({
   overtimeNonEssentialAmount: '', overtimeNonEssentialFrequency: 'Annually',
   commissionAmount: '', commissionFrequency: 'Annually',
   allowanceAmount: '', allowanceFrequency: 'Annually',
-  seBusinessName: '', seAbn: '', seAssessmentMethod: 'Last 2 financial years',
-  seGrowthMethod: 'average', seGrowthPercentOption: '20', seGrowthPercentCustom: '',
-  seYear1FY: '2023/24', seYear1Salary: '', seYear1NetProfit: '',
+  seBusinessName: '', seAbn: '', seAssessmentMethod: '',
+  seGrowthMethod: '', seGrowthPercentOption: '', seGrowthPercentCustom: '',
+  seYear1FY: '', seYear1Salary: '', seYear1NetProfit: '',
   seYear1Depreciation: '', seYear1Interest: '', seYear1Super: '', seYear1OneOff: '', seYear1Other: '',
-  seYear2FY: '2024/25', seYear2Salary: '', seYear2NetProfit: '',
+  seYear2FY: '', seYear2Salary: '', seYear2NetProfit: '',
   seYear2Depreciation: '', seYear2Interest: '', seYear2Super: '', seYear2OneOff: '', seYear2Other: '',
-  seDirectorSalary: '', seDirectorSalaryFrequency: 'Annually', seDirectorProfitable: 'Yes',
+  seDirectorSalary: '', seDirectorSalaryFrequency: 'Annually', seDirectorProfitable: '',
   otherIncomeType: '', otherIncomeAmount: ''
 })
 
@@ -350,7 +381,7 @@ const defaultApplicant = (): FactFindApplicant => ({
 })
 
 const defaultAsset = (): Asset => ({
-  id: uid(), assetType: 'Savings', description: '', value: '',
+  id: uid(), assetType: '', description: '', value: '',
   bsb: '', accountNumber: '', regNumber: '', membershipNumber: '',
   make: '', model: '', year: '', ownership: {}
 })
@@ -365,11 +396,11 @@ const defaultAsset = (): Asset => ({
 // against, which is an answer a person actually gave and cannot disagree with
 // itself. See lib/factfind-form-content.ts.
 const defaultPropertyLoan = (): PropertyLoan => ({
-  id: uid(), lenderName: '', bsb: '', accountNumber: '', mortgageType: '',
+  id: uid(), lenderName: '', bsb: '', accountNumber: '', mortgageType: '', purpose: '',
   limitAmount: '', balance: '', interestRate: '', repaymentAmount: '', repaymentFrequency: 'Monthly',
-  repaymentType: 'Interest only', interestOnlyExpiryDate: '', rateType: 'Variable',
+  repaymentType: '', interestOnlyExpiryDate: '', rateType: '',
   fixedRateExpiryDate: '',
-  loanTermExpiryDate: '', remainingLoanTermYears: '30', status: 'Ongoing', ownership: {}
+  loanTermExpiryDate: '', remainingLoanTermYears: '', status: '', ownership: {}
 })
 
 // 28 Oct 2026. valuationMethod and rpDataEstimatedValue were removed from this
@@ -377,8 +408,8 @@ const defaultPropertyLoan = (): PropertyLoan => ({
 // new property was born with, and three documents printed it as a fact. See
 // lib/box-security.ts.
 const defaultProperty = (): FactFindProperty => ({
-  id: uid(), address: '', ownershipType: 'Owner occupied', futureUse: 'Ongoing',
-  zoning: 'Residential', propertySubtype: 'Fully detached house', value: '',
+  id: uid(), address: '', ownershipType: '', futureUse: '',
+  zoning: '', propertySubtype: '', value: '',
   runningCosts: '', runningCostsFrequency: 'Monthly',
   bodyCorpAmount: '', bodyCorpFrequency: 'Monthly',
   rentalIncome: '', rentalIncomeFrequency: 'Weekly',
@@ -386,9 +417,9 @@ const defaultProperty = (): FactFindProperty => ({
 })
 
 const defaultLiability = (): Liability => ({
-  id: uid(), liabilityType: 'Credit card', lenderName: '', accountNumber: '', newLimitAmount: '',
+  id: uid(), liabilityType: '', lenderName: '', accountNumber: '', newLimitAmount: '',
   limitAmount: '', balance: '', repaymentAmount: '', repaymentFrequency: 'Monthly',
-  status: 'Remain open', ownership: {}
+  status: '', ownership: {}
 })
 
 function defaultOwnershipSplit(applicants: FactFindApplicant[]): Record<string, string> {
@@ -2212,6 +2243,19 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                     </div>
                     <div className="grid grid-cols-4 gap-3 mb-2">
                       <BankSelect className={inp} value={loan.lenderName} onChange={v => updatePropertyLoan(prop.id, loan.id, 'lenderName', v)} />
+                      {/* WHAT THIS LOAN IS FOR, PER LOAN.
+                          28 Oct 2026. Two loans on one property can be for two
+                          different things, and until today there was no way to
+                          say so - every loan was born saying "Owner occupied"
+                          and the documents printed it. Blank follows the
+                          property, which is what every loan already recorded
+                          does. See lib/loan-purpose.ts. */}
+                      <select className={inp} aria-label="Loan purpose"
+                        value={loan.purpose || ''}
+                        onChange={e => updatePropertyLoan(prop.id, loan.id, 'purpose', e.target.value)}>
+                        <option value="">{sameAsPropertyLabel(prop)}</option>
+                        {LOAN_PURPOSES.map(x => <option key={x} value={x}>{x}</option>)}
+                      </select>
                       <input className={inp} placeholder="BSB" value={loan.bsb} onChange={e => updatePropertyLoan(prop.id, loan.id, 'bsb', e.target.value)} />
                       <input className={inp} placeholder="Account number" value={loan.accountNumber} onChange={e => updatePropertyLoan(prop.id, loan.id, 'accountNumber', e.target.value)} />
                       <input className={inp} placeholder="Interest rate %" value={loan.interestRate} onChange={e => updatePropertyLoan(prop.id, loan.id, 'interestRate', e.target.value)} />

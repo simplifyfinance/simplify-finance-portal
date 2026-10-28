@@ -23,6 +23,7 @@ import { lenderOnTheDeal } from './client-agreement'
 import { isRecommended, recommendedFirst } from './recommended-option'
 import { incomeKind, type IncomeKind } from './income-kind'
 import { buysNothing } from './buying'
+import { loanPurpose } from './loan-purpose'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -365,7 +366,8 @@ export function factFindFormItems(input: FactFindFormInput): Item[] {
         // actually gave, it cannot disagree with itself, and a loan cannot be
         // against an investment property for a different purpose than the
         // property it is against.
-        prop(`l${j}.mtype`, `${tag}mortgage type`, p => ({ text: txt(p.ownershipType) })),
+        prop(`l${j}.mtype`, `${tag}mortgage type`,
+          p => ({ text: loanPurpose(p, (p.loans || [])[j] || {}) })),
         loan('acct',  'BSB / account',     l => ({ text: [txt(l.bsb), txt(l.accountNumber)].filter(Boolean).join(' / '), tall: 26 })),
         loan('lim',   'limit',             l => ({ amount: money(l.limitAmount) })),
         loan('bal',   'balance',           l => ({ amount: money(l.balance) })),

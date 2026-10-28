@@ -2,6 +2,7 @@
 import { dutyStateOf } from './duty-state'
 import { incomeKind } from './income-kind'
 import { buysNothing } from './buying'
+import { loanPurpose } from './loan-purpose'
 //
 // The handover and the fact find existed only as PDFs, and a PDF is a bad place
 // to copy from: text extraction inserts hard line breaks mid-sentence, splits
@@ -532,9 +533,9 @@ export function factFindSections(deal: any): ViewSection[] {
         rows.push(sub('Linked loan'))
         rows.push(...kv([
           ['Lender', l.lenderName],
-          // The property's answer, not the loan's default. See
-          // lib/factfind-form-content.ts.
-          ['Mortgage type', p.ownershipType],
+          // The loan's own answer where somebody gave one, else the property's.
+          // One function, four documents - see lib/loan-purpose.ts.
+          ['Mortgage type', loanPurpose(p, l)],
           ['BSB / account', [l.bsb, l.accountNumber].filter(Boolean).join(' · ')],
           ['Limit', money(l.limitAmount)], ['Balance', moneyOrBlank(l.balance)],
           ['Interest rate', l.interestRate ? `${l.interestRate}%` : ''],
