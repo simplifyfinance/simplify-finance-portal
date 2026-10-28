@@ -37,7 +37,21 @@ export async function POST(req: NextRequest) {
     const dealName = deal.deal_name
 
     // Resolve who currently receives each notification type from Settings (admin-editable, no code change needed)
+    // A COLUMN THE DATABASE MAY NOT HAVE YET DOES NOT TAKE THE REST DOWN.
+    //
+    // Naming compliance_issued_notification_user_id in a select fails the whole
+    // query on a database where docs/compliance-pack-recipient.sql has not been
+    // run, and that query is what every notification on this route depends on.
+    // So it is asked for separately and a failure simply means "not set".
     const { data: settingsRow } = await supabase.from('settings').select('new_deal_notification_user_id, stage_move_notification_user_id').eq('id', 'singleton').single()
+    let packUserId: string | null = null
+    try {
+      const { data: packRow } = await supabase.from('settings')
+        .select('compliance_issued_notification_user_id').eq('id', 'singleton').single()
+      packUserId = packRow?.compliance_issued_notification_user_id || null
+    } catch {
+      // The column is not there. Null, which falls back below.
+    }
     let ellieEmail: string | null = null
     let crisEmail: string | null = null
     // The name as well as the address, so the email can open "Hi Cris," rather
@@ -53,6 +67,29 @@ export async function POST(req: NextRequest) {
       const { data: p } = await supabase.from('user_profiles').select('email, full_name').eq('id', settingsRow.stage_move_notification_user_id).single()
       crisEmail = p?.email || null
       crisName = p?.full_name || null
+    }
+
+    // WHO GETS THE COMPLIANCE PACK, WHICH IS NOT THE SAME QUESTION.
+    //
+    // 28 Oct 2026. "When a deal moves stage — who is asked to move the
+    // SalesTrekker card" was deciding four emails. Three are a chore. The
+    // fourth carries the Fact Find, the Handover and the Broker Notes - the
+    // compliance record of what went to credit that day, to be filed into the
+    // client's OneDrive folder. The pack for a live deal went to Ellie when it
+    // was meant for Ellesse, and nothing on the Settings page explained why.
+    //
+    // Fabio: "when a deal moves stage is one thing, and then when compliance is
+    // issued is a separate thing."
+    //
+    // NOT SET MEANS EXACTLY WHAT HAPPENED BEFORE. Until somebody deliberately
+    // picks a person, the pack follows whoever moves the card. Nothing changes
+    // on the day this ships.
+    let packEmail: string | null = crisEmail
+    let packName: string | null = crisName
+    if (packUserId) {
+      const { data: p } = await supabase.from('user_profiles').select('email, full_name').eq('id', packUserId).single()
+      // A person who has been removed is not a reason to send the pack nowhere.
+      if (p?.email) { packEmail = p.email; packName = p.full_name || null }
     }
 
     // NOBODY IS EMAILED TO ASK THEMSELVES TO DO SOMETHING.
@@ -297,13 +334,13 @@ export async function POST(req: NextRequest) {
         // The count is a nicety. Never let it stop the email.
       }
 
-      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to Compliance Issued', true, attachments, crisEmail, {
+      await notifyCrisMoveCard(dealName, brokerName, 'Move this deal card to Compliance Issued', true, attachments, packEmail, {
         subject: emailSubject(dealName, answers),
         lines: emailLines(deal, answers),
         urgent: !!answers?.urgent,
         dealId,
         boxCount,
-        recipientName: crisName,
+        recipientName: packName,
         // Named in the email itself, not left to a paperclip at the bottom.
         // Fabio, 2 Sep 2026: "the atatchments will get misssed at the bottom".
         attachmentNames: attachments.map(a => a.filename),

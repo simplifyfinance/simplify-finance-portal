@@ -61,6 +61,7 @@ export default function SettingsPage() {
   const [wealthDeskLink, setWealthDeskLink] = useState('')
   const [newDealNotificationUserId, setNewDealNotificationUserId] = useState('')
   const [stageMoveNotificationUserId, setStageMoveNotificationUserId] = useState('')
+  const [complianceIssuedNotificationUserId, setComplianceIssuedNotificationUserId] = useState('')
   // Documents received: who files them, who is told once they are filed, and how
   // long to leave between the two. See lib/docs-received.ts.
   const [docsFileNotificationUserId, setDocsFileNotificationUserId] = useState('')
@@ -167,6 +168,7 @@ export default function SettingsPage() {
         if (data.wealth_desk_link) setWealthDeskLink(data.wealth_desk_link)
         if (data.new_deal_notification_user_id) setNewDealNotificationUserId(data.new_deal_notification_user_id)
         if (data.stage_move_notification_user_id) setStageMoveNotificationUserId(data.stage_move_notification_user_id)
+        if (data.compliance_issued_notification_user_id) setComplianceIssuedNotificationUserId(data.compliance_issued_notification_user_id)
         if (data.docs_file_notification_user_id) setDocsFileNotificationUserId(data.docs_file_notification_user_id)
         if (data.docs_request_notification_user_id) setDocsRequestNotificationUserId(data.docs_request_notification_user_id)
         if (data.docs_delay_minutes !== null && data.docs_delay_minutes !== undefined) setDocsDelayMinutes(String(data.docs_delay_minutes))
@@ -245,6 +247,7 @@ export default function SettingsPage() {
       wealth_desk_link: link,
       new_deal_notification_user_id: newDealNotificationUserId || null,
       stage_move_notification_user_id: stageMoveNotificationUserId || null,
+      compliance_issued_notification_user_id: complianceIssuedNotificationUserId || null,
       docs_file_notification_user_id: docsFileNotificationUserId || null,
       docs_request_notification_user_id: docsRequestNotificationUserId || null,
       docs_delay_minutes: clampDocsDelay(docsDelayMinutes),
@@ -267,7 +270,8 @@ export default function SettingsPage() {
     //
     // So: try it whole, and if the database rejects a column by name, save
     // everything else and say plainly which part did not go.
-    const DEFERRED = ['docs_file_notification_user_id', 'docs_request_notification_user_id', 'docs_delay_minutes']
+    const DEFERRED = ['docs_file_notification_user_id', 'docs_request_notification_user_id', 'docs_delay_minutes',
+      'compliance_issued_notification_user_id']
     const missing = error ? DEFERRED.filter(c => (error!.message || '').includes(c)) : []
     if (missing.length) {
       const rest: any = { ...patch }
@@ -276,8 +280,15 @@ export default function SettingsPage() {
       error = retry.error
       if (!error) {
         setSaving(false)
-        alert('Everything was saved except the documents-received settings - the database is missing '
-          + missing.join(' and ') + '. Run docs/docs-received-schema.sql, then set them again.')
+        const FILE_FOR: Record<string, string> = {
+          docs_file_notification_user_id: 'docs/docs-received-schema.sql',
+          docs_request_notification_user_id: 'docs/docs-received-schema.sql',
+          docs_delay_minutes: 'docs/docs-received-schema.sql',
+          compliance_issued_notification_user_id: 'docs/compliance-pack-recipient.sql',
+        }
+        const files = [...new Set(missing.map(c => FILE_FOR[c]).filter(Boolean))]
+        alert('Everything else was saved. The database is missing ' + missing.join(' and ')
+          + '. Run ' + files.join(' and ') + ', then set that part again.')
         setSaved(true)
         setTimeout(() => setSaved(false), 3000)
         return
@@ -522,6 +533,26 @@ export default function SettingsPage() {
               <option value="">— select team member —</option>
               {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
             </select>
+            <p className="text-[11px] text-faint mt-1">
+              Three emails, all of them a chore: move the card to BC Actioned, to LO Actioned, and to
+              Compliance. No documents are attached to any of them.
+            </p>
+          </div>
+          {/* THE PACK IS NOT A CHORE, SO IT IS NOT ON THE CHORE SETTING.
+              28 Oct 2026. This used to be the same dropdown as the one above,
+              and the pack for a live deal went to the wrong person with nothing
+              on the page to explain why. */}
+          <div>
+            <label className="text-[11px] font-semibold text-faint block mb-1">When compliance is issued — who receives the Fact Find, Handover and Broker Notes</label>
+            <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand" aria-label="When compliance is issued — who receives the Fact Find, Handover and Broker Notes" value={complianceIssuedNotificationUserId} onChange={(e) => setComplianceIssuedNotificationUserId(e.target.value)}>
+              <option value="">— same as the person above —</option>
+              {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+            </select>
+            <p className="text-[11px] text-faint mt-1">
+              The push to SalesTrekker. One email carrying all three PDFs, to be filed into the
+              client&rsquo;s OneDrive folder, plus the link to the handover to copy from. Leave it blank
+              and it goes to whoever moves the card, which is how it worked before this was here.
+            </p>
           </div>
           <div>
             <label className="text-[11px] font-semibold text-faint block mb-1">When documents are requested — who raises them on SalesTrekker</label>
