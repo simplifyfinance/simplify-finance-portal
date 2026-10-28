@@ -5,6 +5,7 @@ import {
   offered, splitInWords, chooseSplitPatch, splitOn, sharedWithLine,
   termsHaveMoved, type Split,
 } from '@/lib/who-shares-this-deal'
+import { inOrder, termsShort } from '@/lib/split-order'
 
 // IS THIS DEAL SHARED WITH ANYBODY?
 //
@@ -29,6 +30,18 @@ const INP = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ou
 const RED = 'w-full border border-red-500 bg-red-50/40 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500 ring-2 ring-red-500/10'
 
 export const NOBODY = '__nobody__'
+/** Not an arrangement - the row that opens the rest of the list. */
+const MORE = '__more__'
+
+// THE NAME, AND TWO NUMBERS.
+//
+// It used to read "Aspire Partners - Aspire Partners 20% upfront, 20% trail":
+// the name twice, then two words everybody in this business already knows.
+// Upfront then trail, and nothing else on the line.
+function splitLine(s: Split): string {
+  const terms = termsShort(s.lines)
+  return terms ? `${s.name} \u2014 ${terms}` : s.name
+}
 
 export default function WhoSharesThisDeal({ deal, byName, onChanged }: {
   deal: any
@@ -43,6 +56,36 @@ export default function WhoSharesThisDeal({ deal, byName, onChanged }: {
   const [err, setErr] = useState('')
   const [missing, setMissing] = useState(false)
   const [live, setLive] = useState<any>(deal)
+  // The rarely-used ones stay folded until somebody asks for them.
+  const [showAll, setShowAll] = useState(false)
+
+  // IT ASKS THE DATABASE WHAT THIS DEAL SAYS, RATHER THAN TRUSTING A COPY.
+  //
+  // 28 Oct 2026. Fabio: "when we select and we change tabs, it doesn't save.
+  // It just disappears."
+  //
+  // IT WAS SAVING. Every answer reached the database and none was ever lost.
+  // What vanished was the SCREEN. `live` started from the deal object the page
+  // handed over when it first loaded, and that copy was taken before anybody
+  // answered. Picking an arrangement wrote to the database and updated this
+  // component's own copy, so it looked right - until the tab changed, this box
+  // came off screen and was rebuilt, and started again from that same stale
+  // copy, which still said nobody had answered.
+  //
+  // So it goes and reads the eight columns itself. A component that shows a
+  // fact is the component that should fetch it; a prop taken at page load is a
+  // photograph, and this one was being read as a mirror.
+  useEffect(() => {
+    if (!deal?.id) return
+    let alive = true
+    supabase.from('deals').select(
+      'commission_split_id, commission_split_name, commission_split_kind,'
+      + ' commission_split_upfront, commission_split_trail, commission_split_lines,'
+      + ' commission_split_none, commission_split_at, commission_split_by')
+      .eq('id', deal.id).maybeSingle()
+      .then(({ data }: any) => { if (alive && data) setLive((d: any) => ({ ...d, ...data })) })
+    return () => { alive = false }
+  }, [deal?.id])
 
   useEffect(() => {
     supabase.from('commission_splits').select('*').then(({ data, error }: any) => {
@@ -57,7 +100,9 @@ export default function WhoSharesThisDeal({ deal, byName, onChanged }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // THE ONES THEY USE, IN THE ORDER THEY REACH FOR THEM. See lib/split-order.ts.
   const list = offered(rows)
+  const ordered = inOrder(list, s => s.name)
   const on = splitOn(live)
   const value = on ? (on.none ? NOBODY : (on.id || '')) : ''
   const moved = termsHaveMoved(live, rows)
@@ -96,16 +141,32 @@ export default function WhoSharesThisDeal({ deal, byName, onChanged }: {
   return (
     <div>
       <label className="text-xs text-gray-500 block mb-1">
-        Is this deal shared with anybody?
+        Commission splits
         {unanswered && <span className="text-red-600 font-semibold ml-1">● Required</span>}
       </label>
+      {/* THE LIST IS THE SEVEN THEY USE, THEN A FOLD.
+          28 Oct 2026. Fourteen arrangements, alphabetical, each line repeating
+          the name and spelling out "upfront" and "trail". Fabio: "it's very,
+          very messy... my team is getting lost." He gave the order himself;
+          it lives in lib/split-order.ts. Anything the order has never heard of
+          lands below the fold, which is where a rarely-used one belongs. */}
       <select className={unanswered ? RED : INP} value={value} disabled={busy}
-        aria-label="Is this deal shared with anybody?"
-        onChange={e => pick(e.target.value)}>
+        aria-label="Commission splits"
+        onChange={e => e.target.value === MORE ? setShowAll(true) : pick(e.target.value)}>
         {unanswered && <option value="">Select</option>}
-        <option value={NOBODY}>Nobody — this one is all ours</option>
-        {list.map(s => (
-          <option key={s.id} value={s.id}>{splitInWords(s)}</option>
+        {/* NOT SHARING WITH ANYBODY IS AN ANSWER, and it is the commonest one,
+            so it is first and it is said in the words Fabio uses for it. */}
+        <option value={NOBODY}>Simplify only — 100%</option>
+        {ordered.shown.map(s => (
+          <option key={s.id} value={s.id}>{splitLine(s)}</option>
+        ))}
+        {!showAll && ordered.rest.length > 0 && (
+          <option value={MORE}>
+            {"\u2014 show the other " + ordered.rest.length + " \u2014"}
+          </option>
+        )}
+        {showAll && ordered.rest.map(s => (
+          <option key={s.id} value={s.id}>{splitLine(s)}</option>
         ))}
         {/* AN ARRANGEMENT TAKEN OFF THE LIST STILL SHOWS ON A DEAL THAT USED
             IT. Otherwise the dropdown would silently read as something else. */}
