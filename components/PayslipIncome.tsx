@@ -79,6 +79,9 @@ export default function PayslipIncome({
   // always on screen and always editable - a figure a credit assessor cannot
   // see is a figure they cannot check.
   const [baseTyped, setBaseTyped] = useState('')
+  // FOLDED BY DEFAULT. It is complete and it is one press away; sitting in the
+  // middle of the screen on every file is what made this a wall of text.
+  const [showWorking, setShowWorking] = useState(false)
   const [basisTyped, setBasisTyped] = useState<BaseRate['basis']>('annual')
 
   async function read(files: File[]) {
@@ -225,37 +228,36 @@ export default function PayslipIncome({
         </Note>
       )}
 
+      {/* ONE LINE, NOT FOUR. The explanation was true and nobody needed it
+          every time - what they need is the figure and the box to correct it.
+          The long version lives in lib/combined-ytd.ts, where it belongs. */}
       {noBreakdown && !noPeriodEnd && (
-        <Note tone="info" head="This payslip gives one year to date, not a line for each.">
-          It shows {latest?.read.ytdGross ? `${money(latest.read.ytdGross)} ` : 'one '}gross for the year
-          and nothing against the individual lines, which is how most large employers print them. So the
-          total is annualised, the base comes off it, and everything left is counted as non-base income
-          in one line. It is not split further because the payslip does not say how it splits.
-          <div className="mt-2 flex items-end gap-2 flex-wrap">
-            <span>
-              <span className="block text-[11px] font-semibold opacity-80 mb-0.5">Base, as the payslip states it</span>
-              <input value={baseTyped}
-                onChange={e => setBaseTyped(e.target.value)}
-                placeholder={baseFromSlip ? money(baseFromSlip) : 'type the base'}
-                aria-label="Base rate"
-                className="w-32 border border-field-line rounded px-2 py-1 text-[13px] text-ink bg-card tabular-nums" />
-            </span>
+        <div className="mt-3 rounded-lg border border-info-edge bg-info-bg px-3.5 py-2.5 flex items-center gap-x-3 gap-y-2 flex-wrap text-[13px] text-[#1E5F7A]">
+          <b className="text-[#13455B]">One year to date, not a line for each.</b>
+          <span>
+            {latest?.read.ytdGross ? `${money(latest.read.ytdGross)} gross` : 'One gross figure'}
+            {' '}&mdash; base comes off, the rest is non-base.
+          </span>
+          <span className="ml-auto flex items-center gap-2">
+            <span className="text-[12.5px]">Base</span>
+            <input value={baseTyped} onChange={e => setBaseTyped(e.target.value)}
+              placeholder={baseFromSlip ? money(baseFromSlip) : 'type it'}
+              aria-label="Base rate"
+              className="w-28 border border-info-edge rounded-md px-2 py-1 text-[13px] text-ink bg-card tabular-nums" />
             <select value={basisTyped} onChange={e => setBasisTyped(e.target.value as any)}
               aria-label="Base rate period"
-              className="border border-field-line rounded px-2 py-1 text-[13px] text-ink bg-card">
+              className="border border-info-edge rounded-md px-2 py-1 text-[13px] text-ink bg-card">
               <option value="annual">a year</option>
               <option value="monthly">a month</option>
               <option value="fortnightly">a fortnight</option>
               <option value="weekly">a week</option>
               <option value="hourly">an hour</option>
             </select>
-            {annualBase > 0
-              ? <span className="text-[12.5px] opacity-80 pb-1">= {money(annualBase)} a year</span>
-              : <span className="text-[12.5px] font-semibold pb-1">
-                  This payslip does not print a base rate. Type it and the rest follows.
-                </span>}
-          </div>
-        </Note>
+            {annualBase <= 0 && (
+              <span className="text-[12.5px] font-semibold">No base rate printed &mdash; type it.</span>
+            )}
+          </span>
+        </div>
       )}
 
       {a && !noPeriodEnd && (
@@ -283,7 +285,11 @@ export default function PayslipIncome({
             <thead>
               <tr>
                 <th className={th} style={{ width: '27%' }}>What is on the payslip</th>
-                <th className={`${th} text-right`} style={{ width: '13%' }}>Year to date</th>
+                {/* A COLUMN OF NOUGHTS READS AS "THIS PERSON EARNED NOTHING".
+                    On the combined method the payslip never gave a figure per
+                    line, so there is nothing honest to put here. The total is
+                    in the blue line above and in the working below. */}
+                {!noBreakdown && <th className={`${th} text-right`} style={{ width: '13%' }}>Year to date</th>}
                 <th className={`${th} text-right`} style={{ width: '13%' }}>Full</th>
                 <th className={`${th} text-right text-waiting`} style={{ width: '15%' }}>At 80%</th>
                 <th className={th}>Why</th>
@@ -300,9 +306,14 @@ export default function PayslipIncome({
                       {unknown && (
                         <span className={`${pill} bg-chase-bg text-chase border-chase-edge ml-1.5`}>Not recognised</span>
                       )}
-                      <span className="block text-[12px] text-faint mt-0.5">{l.label}</span>
+                      {/* ONLY WHERE IT ADDS SOMETHING. "Base salary" under
+                          "Base salary" is noise; "Ordinary Hours" under it is
+                          what the payslip actually called it. */}
+                      {title(l.key, l.label) !== l.label && (
+                        <span className="block text-[12px] text-faint mt-0.5">{l.label}</span>
+                      )}
                     </td>
-                    <td className={num}>{money(l.ytd)}</td>
+                    {!noBreakdown && <td className={num}>{money(l.ytd)}</td>}
                     <td className={num}>
                       {l.refused !== null && (
                         <span className="block text-faint line-through font-normal">{money(l.refused)}</span>
@@ -312,8 +323,8 @@ export default function PayslipIncome({
                     <td className={`${num} bg-waiting-bg text-waiting`}>
                       {l.notIncome ? '—' : money(l.shaded)}
                     </td>
-                    <td className={td}>
-                      {why(l)}
+                    <td className={`${td} text-[13px] text-faint`}>
+                      {whyShort(l)}
                       {unknown && (
                         <span className="flex gap-1.5 flex-wrap mt-1.5">
                           {(['allowance', 'overtime', 'commission', 'base'] as Override[]).map(o => (
@@ -339,7 +350,7 @@ export default function PayslipIncome({
               })}
               <tr>
                 <td className={`${td} border-b-0 font-bold text-ink pt-3`}>What this person earns in a year</td>
-                <td className={`${num} border-b-0 pt-3`} />
+                {!noBreakdown && <td className={`${num} border-b-0 pt-3`} />}
                 <td className={`${num} border-b-0 pt-3 text-[15px]`}>{money(a.totals.full)}</td>
                 <td className={`${num} border-b-0 pt-3 text-[15px] bg-waiting-bg text-waiting`}>{money(a.totals.shaded)}</td>
                 <td className={`${td} border-b-0 pt-3 text-faint`}>
@@ -354,10 +365,22 @@ export default function PayslipIncome({
               to that figure and show the maths every time." A credit assessor
               handed two totals and no working either takes them on trust or
               redoes them, and the second is what actually happens. */}
-          {a.working.length > 0 && (
+          {a.working.length > 0 && !showWorking && (
+            <button type="button" onClick={() => setShowWorking(true)}
+              className="mt-3 text-[13px] font-semibold text-brand-ink hover:underline">
+              Show the working ↓
+              <span className="font-normal text-faint">
+                {'  '}{a.working.length} steps
+              </span>
+            </button>
+          )}
+          {a.working.length > 0 && showWorking && (
             <div className="mt-3 border border-line-soft rounded-lg bg-page px-3.5 py-3">
               <div className="flex items-baseline gap-2 mb-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-faint">The working</span>
+                <button type="button" onClick={() => setShowWorking(false)}
+                  className="text-[10px] font-bold uppercase tracking-wider text-brand-ink hover:underline">
+                  Hide the working ↑
+                </button>
                 <span className={`${pill} bg-card text-faint border-line`}>
                   {a.method === 'combined'
                     ? 'One year to date, base taken off'
@@ -438,16 +461,14 @@ function title(key: string, label: string): string {
   return TITLES[key] || label
 }
 
-function why(l: { key: string; oneOff: boolean; notIncome: boolean; refused: number | null; ytd: number }): string {
-  if (l.notIncome) return 'Money handed back, not money earned. Out of both columns.'
-  if (l.oneOff) {
-    return l.refused
-      ? `Not annualised. Paid once — spreading it across the year claimed ${money(l.refused)} of a ${money(l.ytd)} payment.`
-      : 'Not annualised. Paid once, so it is taken at what was actually paid.'
-  }
-  if (l.key === 'base') return 'Contracted, same every pay. Never shaded by anyone.'
-  if (l.key === 'allowance') return 'Paid every period and part of the package. Not shaded.'
-  if (l.key === 'overtime') return 'Regular and ongoing, so it counts. Some lenders take it in full — that is the left column.'
-  if (l.key === 'commission') return 'Paid again and again, however lumpy.'
-  return 'Counted, and shaded, until somebody says otherwise.'
+// TWO WORDS, NOT TWO SENTENCES.
+//
+// 28 Oct 2026. The Why column explained the rule in full on every row of every
+// payslip. It was right, and after the second file nobody reads it. What a
+// credit assessor needs from that column is whether this line was shaded. The
+// reasoning is in the working, once, where somebody can go and find it.
+function whyShort(l: { key: string; oneOff: boolean; notIncome: boolean; full: number; shaded: number }): string {
+  if (l.notIncome) return 'Not income'
+  if (l.oneOff) return 'Paid once, not annualised'
+  return l.shaded === l.full ? 'Never shaded' : 'Shaded at 80%'
 }

@@ -154,7 +154,9 @@ describe('TWO METHODS, ONE SHAPE OUT', () => {
   })
 
   it('and it says so plainly when the payslip prints no base rate', () => {
-    expect(SCREEN).toContain('does not print a base rate')
+    // 28 Oct 2026. Shortened with the rest of that box - the explanation was
+    // right and nobody needed four lines of it on every file.
+    expect(SCREEN).toContain('No base rate printed')
   })
 
   it('A COMBINED PAYSLIP IS NO LONGER A DEAD END', () => {
@@ -170,7 +172,21 @@ describe('THE MATHS IS SHOWN EVERY TIME', () => {
   // show the maths every time."
   it('the working is drawn, on both methods', () => {
     expect(SCREEN).toContain('a.working.map')
-    expect(SCREEN).toContain('The working')
+  })
+
+  // 28 Oct 2026. Fabio, seeing it on a real payslip: "its a mess so much
+  // information". Eight steps in the middle of the screen on every file is
+  // what made it one. It is folded, not gone.
+  it('AND IT IS FOLDED, NOT REMOVED', () => {
+    expect(SCREEN).toContain('Show the working')
+    expect(SCREEN).toContain('Hide the working')
+    expect(SCREEN).toContain('showWorking')
+  })
+
+  it('and a column of noughts is not printed where no figure exists', () => {
+    // On the combined method the payslip never gave a year to date per line,
+    // so that column read $0 on every row - which says the opposite of true.
+    expect(SCREEN).toMatch(/\{!noBreakdown && <th[\s\S]{0,120}Year to date/)
   })
 
   it('and the screen does not write the explanation itself', () => {
