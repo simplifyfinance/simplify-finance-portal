@@ -22,6 +22,7 @@ import BCForm from './BCForm'
 import LOForm from './LOForm'
 import ComplianceForm from './ComplianceForm'
 import CreditOfficerAssignment from './CreditOfficerAssignment'
+import CompliancePackAssignment from './CompliancePackAssignment'
 import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
 import { whoHasIt } from '@/lib/who-has-it'
 import DealProgress, { currentStage } from './DealProgress'
@@ -527,6 +528,10 @@ export default function DealPageClient({ deal, initialStage, userRole }: { deal:
                 away, at the bottom of an email preview. */}
             <BrokerAssignment dealId={dealData.id} currentBroker={dealData.assigned_broker} userRole={userRole} chip />
             <CreditOfficerAssignment dealId={deal.id} brokerName={deal.assigned_broker} userRole={userRole} />
+            {/* Whose desk the compliance pack is on, beside the credit officer,
+                because it answers the same kind of question. It only appears
+                once a pack has actually gone out. */}
+            <CompliancePackAssignment dealId={deal.id} userRole={userRole} />
             {templateLabel(dealData.bc_data?.template) && (
               <span className="inline-flex items-baseline gap-1.5 bg-info-bg border border-info-edge rounded-lg px-2.5 py-1">
                 <span className="text-[9.5px] font-bold tracking-wider uppercase text-brand-ink/70">Scenario</span>

@@ -40,6 +40,17 @@ export default defineConfig({
       'tests/browser/**',
       // Waiting to be deleted; not part of the portal.
       '_to_delete/**',
+      // FABIO'S OWN SCRATCH FOLDER, WHICH IS NOT THE PORTAL.
+      //
+      // 28 Oct 2026. It is in .gitignore, so nothing in it is ever committed -
+      // but vitest does not read .gitignore, and a .test.ts dropped in there
+      // was collected and run like any other. One landed there by accident and
+      // failed the whole ship on an import that could never have resolved.
+      //
+      // Six hundred files have been sitting in that folder since September.
+      // Every one of them was a ship waiting to break on a file nobody
+      // considered part of the codebase.
+      'Claude outputs/**',
     ],
   },
 })

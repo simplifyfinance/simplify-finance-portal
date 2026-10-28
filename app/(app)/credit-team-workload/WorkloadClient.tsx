@@ -4,6 +4,7 @@ import { PAGE_WIDE } from '@/lib/page-width'
 import { useEffect, useState } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
 import { realDealsOnly } from '@/lib/test-deal'
+import CompliancePackWorkload from '@/components/CompliancePackWorkload'
 
 type DealRow = {
   assigned_broker: string | null
@@ -148,6 +149,11 @@ export default function WorkloadClient() {
 
       {!loading && (
         <>
+          {/* Who is carrying the compliance packs. Counted from the deals, so
+              it cannot disagree with the deal card or with the allocation on
+              the next push. See lib/compliance-workload.ts. */}
+          <CompliancePackWorkload />
+
           <div className="grid grid-cols-2 gap-6 mb-8">
             <div className="bg-card border border-gray-100 rounded-xl p-5">
               <div className="text-xs font-medium text-gray-400 uppercase tracking-widest mb-4">Deals per broker</div>

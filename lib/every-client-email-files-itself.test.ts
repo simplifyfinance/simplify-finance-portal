@@ -32,6 +32,7 @@ const NOT_TO_A_CLIENT: Record<string, string> = {
   'app/api/notify-broker-stage-complete/route.ts': 'asks our broker to review; internal',
   'app/api/reassign-broker/route.ts': 'tells our staff a deal moved to them',
   'app/api/reassign-credit-officer/route.ts': 'tells our staff a deal moved to them',
+  'app/api/reassign-compliance-pack/route.ts': 'tells our own staff the compliance pack moved to them; no client is ever on it',
   'app/api/docs-received/route.ts': 'tells our staff to file documents; internal',
   'app/api/invite-user/route.ts': 'invites a staff member to the portal; no deal exists',
   'app/api/2fa/send/route.ts': 'the sign-in code, to one of us; no deal exists',
