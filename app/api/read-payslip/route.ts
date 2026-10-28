@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import Anthropic from '@anthropic-ai/sdk'
-import { classify, isTotal } from '@/lib/payslip-lines'
-import type { PayLine } from '@/lib/annualise-income'
+import { classify, isTotal, type ReadPayslip } from '@/lib/payslip-lines'
 
 // READING A PAYSLIP. NOTHING ELSE.
 //
@@ -97,22 +96,6 @@ const num = (v: any): number | null => {
 }
 
 const date = (v: any): string => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : '')
-
-export type ReadPayslip = {
-  employer: string
-  employee: string
-  periodEnd: string
-  paidOn: string
-  payFrequency: string
-  employmentStart: string
-  annualSalaryStated: number | null
-  ytdGross: number | null
-  /** False where the payslip shows one total year to date and no breakdown. */
-  linesHaveYtd: boolean
-  lines: Array<PayLine & { recognised: boolean; thisPay: number | null }>
-  /** Labels this portal has no rule for. Shown to a person, never hidden. */
-  unknown: string[]
-}
 
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServer()

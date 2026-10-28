@@ -30,7 +30,7 @@
 // AND WHEN IT DOES NOT KNOW IT SAYS SO. `recognised: false` is not a failure,
 // it is the honest answer for "Site Uplift 7B", and the screen puts those in
 // front of a person rather than quietly folding them into a total.
-import type { LineKey } from './annualise-income'
+import type { LineKey, PayLine } from './annualise-income'
 
 export type Seen = {
   key: LineKey
@@ -127,4 +127,36 @@ export function classify(label: string): Seen {
     }
   }
   return { key: 'other', oneOff: false, notIncome: false, recognised: false }
+}
+
+/**
+ * ONE PAYSLIP, READ.
+ *
+ * The shape app/api/read-payslip/route.ts returns and components/PayslipIncome
+ * draws. It lives here rather than in the route because a type exported from a
+ * route is a type nothing else can sensibly import, and these two have to agree
+ * about every field or the screen quietly shows nothing.
+ */
+export type ReadLine = PayLine & {
+  /** False where nothing above matched the label. Shown, never hidden. */
+  recognised: boolean
+  /** What this line paid THIS period. Never used to annualise - see the route. */
+  thisPay: number | null
+}
+
+export type ReadPayslip = {
+  employer: string
+  employee: string
+  /** The last day of the pay period. Not the day they were paid. */
+  periodEnd: string
+  paidOn: string
+  payFrequency: string
+  employmentStart: string
+  annualSalaryStated: number | null
+  ytdGross: number | null
+  /** False where the payslip shows one total year to date and no breakdown. */
+  linesHaveYtd: boolean
+  lines: ReadLine[]
+  /** Labels this portal has no rule for. */
+  unknown: string[]
 }

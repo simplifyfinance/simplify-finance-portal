@@ -14,6 +14,9 @@ import BankSelect from './BankSelect'
 import { seYearTotalFF, calculateSeAssessableIncome } from '@/lib/income-calculations'
 import { selfEmployedFacts } from '@/lib/self-employed-facts'
 import InternalNotes from '@/components/InternalNotes'
+import PayslipIncome from '@/components/PayslipIncome'
+import { addSystemNote } from '@/components/DealFile'
+import type { Fields } from '@/lib/income-to-fact-find'
 import { SELF_EMPLOYED_STRUCTURES, RESIDENCY_STATUSES, OTHER_INCOME_TYPES, ASSET_TYPES, LIABILITY_STATUSES, LIMIT_REDUCED, optionsFor } from '@/lib/fact-find-options'
 import { withLimitConditions, conditionsChanged } from '@/lib/limit-to-send'
 import { RELATIONSHIP_STATUSES, needsPartner, partnerOptions, applyRelationship } from '@/lib/relationship'
@@ -926,6 +929,39 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
 
   function updateIncome(id: string, field: keyof Income, value: any) {
     updateApplicant('income', applicant.income.map(i => i.id === id ? { ...i, [field]: value } : i))
+  }
+
+  // SIX BOXES AT ONCE, NOT SIX CALLS.
+  //
+  // updateIncome reads applicant.income as THIS render saw it. Six of them in a
+  // row would each overwrite the last and only the final field would land - the
+  // payslip would appear to fill one box and clear the other five.
+  function updateIncomeFields(id: string, patch: Partial<Income>) {
+    updateApplicant('income', applicant.income.map(i => i.id === id ? { ...i, ...patch } : i))
+  }
+
+  // WHAT THE PAYSLIP BUTTON DOES. The figures are worked out in lib - this puts
+  // them in the boxes and writes the line in the file.
+  async function usePayslipFigures(id: string, fields: Fields, note: string) {
+    updateIncomeFields(id, {
+      ...fields,
+      grossSalaryFrequency: 'Annually',
+      allowanceFrequency: 'Annually',
+      overtimeEssentialFrequency: 'Annually',
+      overtimeNonEssentialFrequency: 'Annually',
+      commissionFrequency: 'Annually',
+      bonusFrequency: 'Annually',
+    })
+    // The file note never blocks the figures landing. A missing line in the log
+    // is a smaller problem than a button that failed AFTER it had already
+    // changed the fact find.
+    try {
+      const { data, error } = await addSystemNote(
+        deal.id, note, { id: me?.id || null, name: me?.name || '' })
+      if (error || !data?.length) console.error('[payslip] file note not written', error)
+    } catch (e) {
+      console.error('[payslip] file note not written', e)
+    }
   }
   function addIncome(type: string = 'PAYG') {
     updateApplicant('income', [...applicant.income, defaultIncome(type)])
@@ -2002,6 +2038,12 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
               )}
               {inc.incomeType === 'PAYG' && (
                 <>
+                  <PayslipIncome
+                    employerName={applicant.employment.find(e => e.id === inc.employmentId)?.employerName || ''}
+                    employmentBasis={applicant.employment.find(e => e.id === inc.employmentId)?.employmentBasis || ''}
+                    employmentStart={applicant.employment.find(e => e.id === inc.employmentId)?.startDate || ''}
+                    onUse={(fields, note) => usePayslipFigures(inc.id, fields, note)}
+                  />
                   <div className="grid grid-cols-3 gap-3 mb-2">
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">Gross salary</label>

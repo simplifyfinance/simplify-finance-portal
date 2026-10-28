@@ -78,6 +78,13 @@ const NOT_CLIENT_FACING: Record<string, string> = {
   'lib/factfind-form-content.ts':   'the fact find sheet, filled in with the client in front of you',
   'lib/self-employed-facts.ts':     'income working, internal',
   'lib/income-calculations.ts':     'income working, internal',
+  // 28 Oct 2026. Caught by this guard on its first run, which is what it is
+  // for. The percentage here is the SHADING on variable income - the 80%
+  // column beside the 100% one - not a lender's interest rate. It is a rule of
+  // thumb the credit team applies, it cannot change after the figures were
+  // prepared, and lib/rate-notice.ts has nothing to say about it. This file
+  // writes a line into the file notes; no client is ever sent one.
+  'lib/income-to-fact-find.ts':     'income working, internal - the 80% shading column, not an interest rate',
   // 13 Oct 2026. Builds the fact find for a NEW deal out of this one's lending
   // options - the rate it carries is going into a liability row on a form, not
   // into anything a client is sent.

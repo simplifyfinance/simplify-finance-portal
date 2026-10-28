@@ -233,7 +233,7 @@ export function assess(opts: {
   to: Date
   employmentStart?: Date | null
   kind?: PayKind
-  /** The shaded column, as a fraction. One number, changed in Settings. */
+  /** The shaded column, as a fraction. 0.8, and the screen never offers another. */
   rate?: number
 }): Assessment {
   const coverage = coverageOf(opts)
