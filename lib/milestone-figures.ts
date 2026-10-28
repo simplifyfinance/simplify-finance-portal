@@ -19,6 +19,9 @@ import { purchaseRows, dutyLabelFor, type PurchaseRow } from './purchase-rows'
 import { contractPrice, contractStampDuty } from './contract-figures'
 import { loanAmount } from './funds-to-complete'
 import { depositAsAssessed } from './contract-funding'
+import { isRefinance } from './document-rules'
+import { balanceTotal, releaseTotal } from './complex-refinance'
+import { money } from './money'
 
 const num = (v: any): number => {
   const n = Number(String(v ?? '').replace(/[^0-9.]/g, ''))
@@ -45,6 +48,25 @@ export function dutyOf(deal: any): number {
 // purchaseRows already knows how to say.
 export function milestoneRows(deal: any): PurchaseRow[] {
   const bc = deal?.bc_data || {}
+
+  // A REFINANCE HAS ITS OWN THREE LINES.
+  //
+  // There is no price, no duty and no deposit, and printing those labels empty
+  // would be worse than leaving them out. What a refinancing client wants
+  // confirmed is the same thing a buyer does - what are we borrowing - plus
+  // what is being paid out and anything they are taking in hand.
+  //
+  // Each line appears only where there is a figure. A refinance with no equity
+  // release prints two lines, not a "Cash out $0" that reads as a decision.
+  if (isRefinance(deal)) {
+    const rows: PurchaseRow[] = []
+    const add = (label: string, n: number) => { if (n > 0) rows.push({ label, value: money(n) }) }
+    add('Loan amount', loanAmount(deal))
+    add('Balance being refinanced', balanceTotal(bc))
+    add('Cash out', releaseTotal(bc))
+    return rows
+  }
+
   return purchaseRows({
     price: priceOf(deal),
     duty: dutyOf(deal),
@@ -65,11 +87,23 @@ export function milestoneRows(deal: any): PurchaseRow[] {
 // with no money block: it looks like the figures, and it is a fragment of them.
 // So the block goes in whole or not at all, and the send screen says which.
 export function figuresAreComplete(deal: any): boolean {
-  return priceOf(deal) > 0 && loanAmount(deal) > 0 && contributionOf(deal) > 0
+  return missingFigures(deal).length === 0
 }
 
 export function missingFigures(deal: any): string[] {
   const out: string[] = []
+
+  // ON A REFINANCE, ONLY THE LOAN AMOUNT IS OWED.
+  //
+  // 28 Oct 2026. Asking a refinance for a purchase price and a deposit is
+  // asking for something that does not exist, and the answer is always
+  // "missing" - which silently cost every refinance its money block, and with
+  // it the one figure the client was waiting to read.
+  if (isRefinance(deal)) {
+    if (loanAmount(deal) <= 0) out.push('the loan amount')
+    return out
+  }
+
   if (priceOf(deal) <= 0) out.push('the purchase price')
   if (loanAmount(deal) <= 0) out.push('the loan amount')
   if (contributionOf(deal) <= 0) out.push("the clients' contribution")
@@ -94,7 +128,13 @@ export function loanDetails(deal: any, option: any, splits: any[]): LoanDetail[]
   }
   const first = (splits || [])[0] || {}
   add('Product', option?.productName)
-  add('Interest rate', rateOf(option))
+  // THE MODULES FIRST, THEN THE SPLITS.
+  //
+  // 28 Oct 2026. A lender priced on its splits has empty rate modules, and this
+  // printed a product, a repayment type and no rate - on the same deal whose
+  // lending options email had shown the rate perfectly, because that email
+  // reads the splits. Two places to look and only one of them was looked at.
+  add('Interest rate', rateOf(option) || rateFromSplits(splits))
   add('Repayments', first.repaymentType)
   add('Loan term', first.termYears ? `${first.termYears} years` : '')
   add('Monthly repayment', monthlyOf(option))
@@ -104,6 +144,27 @@ export function loanDetails(deal: any, option: any, splits: any[]): LoanDetail[]
 // The rate from whichever module the broker switched on. Two switched on and
 // disagreeing prints nothing: there is no way to know which one a given split
 // follows, and the wrong rate in a client email is money.
+/**
+ * THE RATE OFF THE SPLITS, WHERE EVERY SPLIT AGREES.
+ *
+ * Two splits on different rates print nothing: there is no single rate to name
+ * and naming one of them is inventing the other. Exactly the rule rateOf()
+ * follows for the modules.
+ *
+ * AND IT NEVER SAYS FIXED OR VARIABLE. A split does not record which, and the
+ * repayment type beside it is P&I or interest only, which is a different
+ * question. Printing "variable" because the module usually is would be a guess
+ * on a client's email about the thing they care most about.
+ */
+function rateFromSplits(splits: any[]): string {
+  const rates = (splits || [])
+    .map(s => String(s?.rate ?? '').trim())
+    .filter(Boolean)
+  if (rates.length === 0) return ''
+  if (!rates.every(r => r === rates[0])) return ''
+  return `${rates[0]}% p.a.`
+}
+
 function rateOf(option: any): string {
   const rates = ['variablePI', 'variableIO', 'fixedPI', 'fixedIO']
     .map(k => (option?.[k]?.enabled ? String(option[k]?.rate ?? '').trim() : ''))
