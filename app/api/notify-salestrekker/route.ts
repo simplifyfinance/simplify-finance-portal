@@ -6,6 +6,8 @@ import { allSections, countCards } from '@/lib/handover-view'
 import { generateSummaryPdfBuffer } from '@/app/api/generate-summary-pdf/route'
 import { generateCompliancePdfBuffer } from '@/app/api/generate-compliance-pdf/route'
 import { generateBrokerNotesPdfBuffer } from '@/app/api/generate-broker-notes-pdf/route'
+import { allocate, todaySoFar, type Person } from '@/lib/compliance-allocation'
+import { checkedWrite } from '@/lib/checked-write'
 
 type Trigger = 'bc_action' | 'bc_sent' | 'lo_sent' | 'lo_to_compliance' | 'push_to_salestrekker' | 'close_followup'
 
@@ -45,12 +47,23 @@ export async function POST(req: NextRequest) {
     // So it is asked for separately and a failure simply means "not set".
     const { data: settingsRow } = await supabase.from('settings').select('new_deal_notification_user_id, stage_move_notification_user_id').eq('id', 'singleton').single()
     let packUserId: string | null = null
+    let packBackupUserId: string | null = null
+    let packCap: any = null
     try {
       const { data: packRow } = await supabase.from('settings')
         .select('compliance_issued_notification_user_id').eq('id', 'singleton').single()
       packUserId = packRow?.compliance_issued_notification_user_id || null
     } catch {
       // The column is not there. Null, which falls back below.
+    }
+    try {
+      const { data: twoRow } = await supabase.from('settings')
+        .select('compliance_issued_backup_user_id, compliance_daily_cap').eq('id', 'singleton').single()
+      packBackupUserId = twoRow?.compliance_issued_backup_user_id || null
+      packCap = twoRow?.compliance_daily_cap ?? null
+    } catch {
+      // docs/compliance-allocation.sql has not been run. One person, no cap -
+      // exactly how it behaved yesterday.
     }
     let ellieEmail: string | null = null
     let crisEmail: string | null = null
@@ -86,7 +99,71 @@ export async function POST(req: NextRequest) {
     // on the day this ships.
     let packEmail: string | null = crisEmail
     let packName: string | null = crisName
-    if (packUserId) {
+    let packChosenId: string | null = null
+    let packWhy = ''
+
+    // TWO PEOPLE AND A NUMBER. 28 Oct 2026. Fabio: "it goes to the first person
+    // until we hit the number of that particular day of five. Once we hit five,
+    // anything after that goes to person number two."
+    //
+    // THE RULE IS IN lib/compliance-allocation.ts AND IT IS NOT REPEATED HERE.
+    // This fetches the three facts it needs - the two people, and every pack
+    // that has gone out today - and does as it is told. The deciding is tested
+    // without a database; this part cannot be.
+    if (packUserId || packBackupUserId) {
+      const who = async (id: string | null): Promise<Person> => {
+        if (!id) return null
+        const { data: u } = await supabase.from('user_profiles')
+          .select('email, full_name').eq('id', id).single()
+        // Somebody removed from the team is not a person to allocate to.
+        return u?.email ? { id, name: u.full_name || u.email } : null
+      }
+      const first = await who(packUserId)
+      const second = await who(packBackupUserId)
+
+      // TODAY'S PACKS, COUNTED FROM THE DEALS THEMSELVES. No tally anywhere, so
+      // nothing to reset at midnight and nothing that can drift from the deal
+      // card or the workload tab.
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
+      let sent: Array<{ userId?: string | null; at?: string | null }> = []
+      try {
+        const { data: rows } = await supabase.from('deals')
+          .select('compliance_pack_user_id, compliance_pack_at')
+          .gte('compliance_pack_at', `${today}T00:00:00`)
+        sent = (rows || []).map((r: any) => ({ userId: r.compliance_pack_user_id, at: r.compliance_pack_at }))
+      } catch {
+        // No column yet. An empty day, which sends to the first person.
+      }
+
+      // A DEAL KEEPS WHOEVER IT WAS FIRST GIVEN TO. Pushing it again does not
+      // move it and does not use a second slot out of the day.
+      //
+      // Asked separately, not added to the main deal select above: a column the
+      // database has not got yet would fail that query, and every notification
+      // on this route depends on it.
+      let alreadyOn: Person = null
+      try {
+        const { data: mine } = await supabase.from('deals')
+          .select('compliance_pack_user_id, compliance_pack_user_name').eq('id', dealId).single()
+        if (mine?.compliance_pack_user_id) {
+          alreadyOn = { id: mine.compliance_pack_user_id, name: mine.compliance_pack_user_name || '' }
+        }
+      } catch {
+        // No column yet. Treated as a deal nobody has been given.
+      }
+
+      const picked = allocate({ first, second, cap: packCap, today, sent, alreadyOn })
+      packWhy = picked.words
+      if (picked.to) {
+        const { data: u } = await supabase.from('user_profiles')
+          .select('email, full_name').eq('id', picked.to.id).single()
+        if (u?.email) {
+          packEmail = u.email
+          packName = u.full_name || picked.to.name
+          packChosenId = picked.to.id
+        }
+      }
+    } else if (packUserId) {
       const { data: p } = await supabase.from('user_profiles').select('email, full_name').eq('id', packUserId).single()
       // A person who has been removed is not a reason to send the pack nowhere.
       if (p?.email) { packEmail = p.email; packName = p.full_name || null }
@@ -341,10 +418,45 @@ export async function POST(req: NextRequest) {
         dealId,
         boxCount,
         recipientName: packName,
+        // ONE NAMED PERSON, NOBODY COPIED. Fabio, 28 Oct 2026: "We do not need
+        // info to be CC'd on everything in that tab." Only this email - the
+        // card-moving ones and the two document ones are unchanged.
+        copyTheOffice: false,
         // Named in the email itself, not left to a paperclip at the bottom.
         // Fabio, 2 Sep 2026: "the atatchments will get misssed at the bottom".
         attachmentNames: attachments.map(a => a.filename),
       })
+
+      // WHO GOT IT, WRITTEN ON THE DEAL.
+      //
+      // This is the only record of the allocation, and everything else is
+      // derived from it: the day's count on the next push, the owner on the
+      // deal card, and the workload numbers. There is no second copy anywhere,
+      // so there is nothing that can disagree with it.
+      //
+      // ONLY ON THE FIRST PUSH. compliance_pack_at is what today's count is
+      // counted from, and re-stamping it would move a deal into a later day and
+      // quietly free a slot in one that has already happened.
+      if (packChosenId) {
+        try {
+          const { data: mine } = await supabase.from('deals')
+            .select('compliance_pack_user_id').eq('id', dealId).single()
+          if (!mine?.compliance_pack_user_id) {
+            const problem = await checkedWrite(
+              supabase.from('deals').update({
+                compliance_pack_user_id: packChosenId,
+                compliance_pack_user_name: packName,
+                compliance_pack_at: new Date().toISOString(),
+              }).eq('id', dealId),
+              'Who the compliance pack went to')
+            // Never fail the push over the record of it. The email has already
+            // gone; refusing here would leave the pack sent and the button red.
+            if (problem) console.error('[compliance pack]', problem, packWhy)
+          }
+        } catch (e) {
+          console.error('[compliance pack] not recorded', e)
+        }
+      }
 
       // This used to set status = 'completed', and the deals list hides anything
       // completed — so the loan vanished the moment compliance went out, before it

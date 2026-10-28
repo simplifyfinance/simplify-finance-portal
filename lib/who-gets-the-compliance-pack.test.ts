@@ -112,7 +112,44 @@ describe('THE SETTINGS PAGE SAYS WHAT EACH LINE SENDS', () => {
   })
 
   it('and blank says what blank does, rather than leaving it to be found out', () => {
-    expect(SETTINGS).toContain('— same as the person above —')
-    expect(SETTINGS).toMatch(/Leave it blank[\s\S]{0,80}whoever moves the card/)
+    expect(SETTINGS).toContain('— same as whoever moves the card —')
+    expect(SETTINGS).toContain('— nobody, the first person takes them all —')
+  })
+
+  // 28 Oct 2026, the same afternoon. One recipient became two and a number.
+  // Fabio: "I need to be able to choose two people, not just one."
+  it('THERE ARE TWO PEOPLE AND A NUMBER, AND THE PAGE SAYS WHICH IS WHICH', () => {
+    expect(SETTINGS).toContain('First — the day starts here')
+    expect(SETTINGS).toContain('Then — everything after that')
+    expect(SETTINGS).toContain('Packs a day, first person')
+  })
+
+  it('and it says the count is working days only', () => {
+    expect(SETTINGS).toMatch(/Monday to Friday[\s\S]{0,60}NSW public holidays/)
+  })
+
+  it('and that a deal pushed twice does not move', () => {
+    expect(SETTINGS).toMatch(/pushed twice keeps whoever it already had/)
+  })
+
+  it('THE RULE ITSELF IS NOT WRITTEN OUT ON THE PAGE OR IN THE ROUTE', () => {
+    // It lives in lib/compliance-allocation.ts, which is tested without a
+    // database. A second copy of "five a day" anywhere is a second opinion.
+    expect(SETTINGS).toContain("from '@/lib/compliance-allocation'")
+    expect(ROUTE).toContain("from '@/lib/compliance-allocation'")
+    expect(ROUTE).toContain('allocate({')
+    expect(ROUTE).not.toMatch(/>=\s*5\b|===\s*5\b/)
+  })
+
+  it('and the pack email no longer copies the office', () => {
+    // Fabio: "We do not need info to be CC'd on everything in that tab."
+    expect(ROUTE).toContain('copyTheOffice: false')
+  })
+
+  it('and who got it is written on the deal, once', () => {
+    expect(ROUTE).toContain('compliance_pack_user_id: packChosenId')
+    // Re-stamping the date would move a deal into a later day and free a slot
+    // in one that has already happened.
+    expect(ROUTE).toMatch(/if \(!mine\?\.compliance_pack_user_id\)/)
   })
 })

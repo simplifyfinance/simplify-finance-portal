@@ -1,5 +1,6 @@
 'use client'
 import { SETTINGS_PANES } from '@/lib/settings-panes'
+import { todaySoFar } from '@/lib/compliance-allocation'
 import ReviewEmailCopy from '@/components/ReviewEmailCopy'
 import { useState, useEffect } from 'react'
 import { createSupabaseBrowser } from '@/lib/supabase-browser'
@@ -62,6 +63,11 @@ export default function SettingsPage() {
   const [newDealNotificationUserId, setNewDealNotificationUserId] = useState('')
   const [stageMoveNotificationUserId, setStageMoveNotificationUserId] = useState('')
   const [complianceIssuedNotificationUserId, setComplianceIssuedNotificationUserId] = useState('')
+  const [complianceIssuedBackupUserId, setComplianceIssuedBackupUserId] = useState('')
+  const [complianceDailyCap, setComplianceDailyCap] = useState('')
+  // Every pack sent today, so the page can say who is next rather than
+  // making somebody work it out. See lib/compliance-allocation.ts.
+  const [packsToday, setPacksToday] = useState<Array<{ userId?: string | null; at?: string | null }>>([])
   // Documents received: who files them, who is told once they are filed, and how
   // long to leave between the two. See lib/docs-received.ts.
   const [docsFileNotificationUserId, setDocsFileNotificationUserId] = useState('')
@@ -162,6 +168,19 @@ export default function SettingsPage() {
   useEffect(() => {
     async function load() {
       const { data } = await supabase.from('settings').select('*').eq('id', 'singleton').single()
+      // WHERE TODAY STANDS. Counted from the deals, like everywhere else, so
+      // this line cannot disagree with the deal card or the workload tab.
+      try {
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' })
+        const { data: rows } = await supabase.from('deals')
+          .select('compliance_pack_user_id, compliance_pack_at')
+          .gte('compliance_pack_at', `${today}T00:00:00`)
+        setPacksToday((rows || []).map((r: any) =>
+          ({ userId: r.compliance_pack_user_id, at: r.compliance_pack_at })))
+      } catch {
+        // docs/compliance-allocation.sql has not been run. The line below just
+        // does not appear.
+      }
       if (data) {
         if (data.brands?.length) setBrands(data.brands)
         if (data.brokers?.length) setBrokers(data.brokers)
@@ -169,6 +188,8 @@ export default function SettingsPage() {
         if (data.new_deal_notification_user_id) setNewDealNotificationUserId(data.new_deal_notification_user_id)
         if (data.stage_move_notification_user_id) setStageMoveNotificationUserId(data.stage_move_notification_user_id)
         if (data.compliance_issued_notification_user_id) setComplianceIssuedNotificationUserId(data.compliance_issued_notification_user_id)
+        if (data.compliance_issued_backup_user_id) setComplianceIssuedBackupUserId(data.compliance_issued_backup_user_id)
+        if (data.compliance_daily_cap !== null && data.compliance_daily_cap !== undefined) setComplianceDailyCap(String(data.compliance_daily_cap))
         if (data.docs_file_notification_user_id) setDocsFileNotificationUserId(data.docs_file_notification_user_id)
         if (data.docs_request_notification_user_id) setDocsRequestNotificationUserId(data.docs_request_notification_user_id)
         if (data.docs_delay_minutes !== null && data.docs_delay_minutes !== undefined) setDocsDelayMinutes(String(data.docs_delay_minutes))
@@ -248,6 +269,8 @@ export default function SettingsPage() {
       new_deal_notification_user_id: newDealNotificationUserId || null,
       stage_move_notification_user_id: stageMoveNotificationUserId || null,
       compliance_issued_notification_user_id: complianceIssuedNotificationUserId || null,
+      compliance_issued_backup_user_id: complianceIssuedBackupUserId || null,
+      compliance_daily_cap: complianceDailyCap.trim() === '' ? null : Number(complianceDailyCap),
       docs_file_notification_user_id: docsFileNotificationUserId || null,
       docs_request_notification_user_id: docsRequestNotificationUserId || null,
       docs_delay_minutes: clampDocsDelay(docsDelayMinutes),
@@ -271,7 +294,7 @@ export default function SettingsPage() {
     // So: try it whole, and if the database rejects a column by name, save
     // everything else and say plainly which part did not go.
     const DEFERRED = ['docs_file_notification_user_id', 'docs_request_notification_user_id', 'docs_delay_minutes',
-      'compliance_issued_notification_user_id']
+      'compliance_issued_notification_user_id', 'compliance_issued_backup_user_id', 'compliance_daily_cap']
     const missing = error ? DEFERRED.filter(c => (error!.message || '').includes(c)) : []
     if (missing.length) {
       const rest: any = { ...patch }
@@ -285,6 +308,8 @@ export default function SettingsPage() {
           docs_request_notification_user_id: 'docs/docs-received-schema.sql',
           docs_delay_minutes: 'docs/docs-received-schema.sql',
           compliance_issued_notification_user_id: 'docs/compliance-pack-recipient.sql',
+          compliance_issued_backup_user_id: 'docs/compliance-allocation.sql',
+          compliance_daily_cap: 'docs/compliance-allocation.sql',
         }
         const files = [...new Set(missing.map(c => FILE_FOR[c]).filter(Boolean))]
         alert('Everything else was saved. The database is missing ' + missing.join(' and ')
@@ -542,17 +567,74 @@ export default function SettingsPage() {
               28 Oct 2026. This used to be the same dropdown as the one above,
               and the pack for a live deal went to the wrong person with nothing
               on the page to explain why. */}
-          <div>
+          {/* TWO PEOPLE AND A NUMBER. 28 Oct 2026. Fabio: "it goes to the
+              first person until we hit the number of that particular day of
+              five. Once we hit five, anything after that goes to person number
+              two." The rule is lib/compliance-allocation.ts; this is the page
+              that feeds it. */}
+          <div className="border border-line-soft rounded-lg p-4 bg-page">
             <label className="text-[11px] font-semibold text-faint block mb-1">When compliance is issued — who receives the Fact Find, Handover and Broker Notes</label>
-            <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand" aria-label="When compliance is issued — who receives the Fact Find, Handover and Broker Notes" value={complianceIssuedNotificationUserId} onChange={(e) => setComplianceIssuedNotificationUserId(e.target.value)}>
-              <option value="">— same as the person above —</option>
-              {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
-            </select>
-            <p className="text-[11px] text-faint mt-1">
-              The push to SalesTrekker. One email carrying all three PDFs, to be filed into the
-              client&rsquo;s OneDrive folder, plus the link to the handover to copy from. Leave it blank
-              and it goes to whoever moves the card, which is how it worked before this was here.
+            <p className="text-[11px] text-faint mb-3">
+              One email carrying all three PDFs, to be filed into the client&rsquo;s OneDrive folder,
+              plus the link to the handover to copy from. Info@ is not copied on this one.
             </p>
+            <div className="grid grid-cols-[1fr_1fr_130px] gap-3 max-[900px]:grid-cols-1">
+              <div>
+                <label className="text-[11px] font-semibold text-faint block mb-1">First — the day starts here</label>
+                <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand" aria-label="First — the day starts here" value={complianceIssuedNotificationUserId} onChange={(e) => setComplianceIssuedNotificationUserId(e.target.value)}>
+                  <option value="">— same as whoever moves the card —</option>
+                  {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-faint block mb-1">Then — everything after that</label>
+                <select className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink focus:outline-none focus:border-brand" aria-label="Then — everything after that" value={complianceIssuedBackupUserId} onChange={(e) => setComplianceIssuedBackupUserId(e.target.value)}>
+                  <option value="">— nobody, the first person takes them all —</option>
+                  {userProfiles.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-faint block mb-1">Packs a day, first person</label>
+                <input type="number" min={1} max={99} placeholder="5"
+                  className="w-full text-[13px] border border-line rounded-lg px-3 py-2 text-ink text-center tabular-nums focus:outline-none focus:border-brand"
+                  aria-label="Packs a day, first person"
+                  value={complianceDailyCap} onChange={(e) => setComplianceDailyCap(e.target.value)} />
+              </div>
+            </div>
+            <p className="text-[11px] text-faint mt-2">
+              Working days only — Monday to Friday, excluding NSW public holidays. The count starts
+              again each working morning. A deal that is pushed twice keeps whoever it already had.
+            </p>
+            {/* WHERE TODAY STANDS, so nobody has to work out who is next. */}
+            {(complianceIssuedNotificationUserId || complianceIssuedBackupUserId) && (() => {
+              const nameOf = (id: string) => {
+                const found = userProfiles.find(p => p.id === id)
+                return found ? { id, name: found.full_name } : null
+              }
+              const t = todaySoFar({
+                first: nameOf(complianceIssuedNotificationUserId),
+                second: nameOf(complianceIssuedBackupUserId),
+                cap: complianceDailyCap,
+                today: new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }),
+                sent: packsToday,
+              })
+              return (
+                <div className="mt-3 pt-3 border-t border-line-soft flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] font-semibold text-faint uppercase tracking-wider">Today so far</span>
+                  {complianceIssuedNotificationUserId && (
+                    <span className={`text-[11.5px] font-bold rounded-full px-2.5 py-0.5 border ${t.full ? 'bg-chase-bg text-chase border-chase-edge' : 'bg-info-bg text-brand-ink border-info-edge'}`}>
+                      {nameOf(complianceIssuedNotificationUserId)?.name} · {t.firstCount} of {t.cap}
+                    </span>
+                  )}
+                  {complianceIssuedBackupUserId && (
+                    <span className="text-[11.5px] font-bold rounded-full px-2.5 py-0.5 border bg-waiting-bg text-waiting border-waiting-edge">
+                      {nameOf(complianceIssuedBackupUserId)?.name} · {t.secondCount}
+                    </span>
+                  )}
+                  <span className="text-[11.5px] text-faint">{t.words}</span>
+                </div>
+              )
+            })()}
           </div>
           <div>
             <label className="text-[11px] font-semibold text-faint block mb-1">When documents are requested — who raises them on SalesTrekker</label>

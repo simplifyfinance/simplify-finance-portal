@@ -19,6 +19,13 @@ import { siteUrl } from './ready-link'
 // machines. Keys are per email per deal, e.g. "docs-file:<deal id>".
 export type SendResult = { ok: boolean; id?: string; error?: string }
 
+// WHO ELSE SEES IT.
+//
+// info@ is copied on every internal notification, which is how the office keeps
+// half an eye on the pipeline. 28 Oct 2026, Fabio, on the compliance pack
+// specifically: "We do not need info to be CC'd on everything in that tab."
+//
+// So it is a default, not a rule. One email opts out; the rest are untouched.
 async function sendResendEmail(
   to: string,
   subject: string,
@@ -26,6 +33,7 @@ async function sendResendEmail(
   attachments?: { filename: string; content: string }[],
   scheduledAt?: string,
   idempotencyKey?: string,
+  copyTheOffice = true,
 ): Promise<SendResult> {
   try {
     const res = await fetch('https://api.resend.com/emails', {
@@ -39,7 +47,7 @@ async function sendResendEmail(
       body: JSON.stringify({
         from: 'Simplify Finance Portal <notifications@simplifyfinance.com.au>',
         to,
-        cc: 'info@simplifyfinance.com.au',
+        ...(copyTheOffice ? { cc: 'info@simplifyfinance.com.au' } : {}),
         subject,
         html,
         ...(attachments && attachments.length ? { attachments } : {}),
@@ -199,7 +207,9 @@ function isBrokerNotes(name: string): boolean {
   return /^broker notes/i.test(String(name || '').trim())
 }
 
-export async function notifyCrisMoveCard(dealName: string, brokerName: string, action: string, closed = false, attachments?: { filename: string; content: string }[], recipientEmail?: string | null, answers?: { subject?: string; lines?: string[]; urgent?: boolean; dealId?: string; boxCount?: number; recipientName?: string | null; attachmentNames?: string[] }) {
+export async function notifyCrisMoveCard(dealName: string, brokerName: string, action: string, closed = false, attachments?: { filename: string; content: string }[], recipientEmail?: string | null, answers?: { subject?: string; lines?: string[]; urgent?: boolean; dealId?: string; boxCount?: number; recipientName?: string | null; attachmentNames?: string[];
+  /** False on the compliance pack: one named person, nobody copied. */
+  copyTheOffice?: boolean }) {
   const bg = closed ? '#E6F5EC' : '#F2E9FB'
   const color = closed ? '#1D9E75' : '#7C3AED'
   const html = `${greeting(answers?.recipientName)}
@@ -258,7 +268,10 @@ export async function notifyCrisMoveCard(dealName: string, brokerName: string, a
   // The subject carries the urgency, because that is the only part of an email a
   // busy person reads before deciding when to open it.
   const subject = answers?.subject || `SalesTrekker update needed — ${dealName}`
-  await sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au', subject, html, attachments)
+  // The compliance pack goes to one named person and nobody else - see
+  // answers.copyTheOffice, set by the push in app/api/notify-salestrekker.
+  await sendResendEmail(recipientEmail || 'info@simplifyfinance.com.au', subject, html, attachments,
+    undefined, undefined, answers?.copyTheOffice !== false)
 }
 
 // --- requesting documents ---------------------------------------------------
