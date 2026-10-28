@@ -124,8 +124,6 @@ export function seededProperty(p: ReviewProperty, ownership: Record<string, stri
     value: money(p.estimated_current_value ?? p.original_value),
     // WHERE THE FIGURE CAME FROM, said rather than implied. It is the book's
     // number or a value somebody looked up, not the applicant's guess.
-    valuationMethod: 'Applicant estimate',
-    rpDataEstimatedValue: '',
     runningCosts: '', runningCostsFrequency: 'Monthly',
     bodyCorpAmount: '', bodyCorpFrequency: 'Monthly',
     rentalIncome: '', rentalIncomeFrequency: 'Weekly',

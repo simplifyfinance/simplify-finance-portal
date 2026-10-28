@@ -614,9 +614,7 @@ export const DEAL: any = {
         "ownershipType": "Owner occupied",
         "bodyCorpAmount": "",
         "propertySubtype": "Fully detached house",
-        "valuationMethod": "Applicant estimate",
         "bodyCorpFrequency": "Monthly",
-        "rpDataEstimatedValue": "",
         "rentalIncomeFrequency": "Weekly",
         "runningCostsFrequency": "Monthly"
       }

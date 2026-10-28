@@ -2362,7 +2362,7 @@ Key assumptions: ${checklistText}`
                                 </span>
                                 <span className="text-[11px] text-gray-400 w-[96px]">{p.ownershipType || ''}</span>
                                 <span className="text-[11px] text-gray-400 w-[86px] text-right">
-                                  {fmtMoney(Number(String(p.value || p.rpDataEstimatedValue || '').replace(/[^0-9.]/g, '')) || 0)}
+                                  {fmtMoney(Number(String(p.value || '').replace(/[^0-9.]/g, '')) || 0)}
                                 </span>
                                 {on ? (
                                   <>

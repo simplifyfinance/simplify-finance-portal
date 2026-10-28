@@ -207,8 +207,6 @@ type FactFindProperty = {
   zoning: string
   propertySubtype: string
   value: string
-  valuationMethod: string
-  rpDataEstimatedValue: string
   runningCosts: string
   runningCostsFrequency: string
   bodyCorpAmount: string
@@ -357,18 +355,30 @@ const defaultAsset = (): Asset => ({
   make: '', model: '', year: '', ownership: {}
 })
 
+// A LOAN NO LONGER STARTS OUT CLAIMING TO BE OWNER OCCUPIED.
+//
+// 28 Oct 2026, on Nader Gharsa's file. The property is marked Investment and
+// both loans against it printed "Owner occupied" on the sheet that went to the
+// compliance team. Nobody chose it - every loan was born with it.
+//
+// The documents now take the purpose from the PROPERTY the loan is secured
+// against, which is an answer a person actually gave and cannot disagree with
+// itself. See lib/factfind-form-content.ts.
 const defaultPropertyLoan = (): PropertyLoan => ({
-  id: uid(), lenderName: '', bsb: '', accountNumber: '', mortgageType: 'Owner occupied',
+  id: uid(), lenderName: '', bsb: '', accountNumber: '', mortgageType: '',
   limitAmount: '', balance: '', interestRate: '', repaymentAmount: '', repaymentFrequency: 'Monthly',
   repaymentType: 'Interest only', interestOnlyExpiryDate: '', rateType: 'Variable',
   fixedRateExpiryDate: '',
   loanTermExpiryDate: '', remainingLoanTermYears: '30', status: 'Ongoing', ownership: {}
 })
 
+// 28 Oct 2026. valuationMethod and rpDataEstimatedValue were removed from this
+// record. Neither ever had a box on this form. They existed only as a value a
+// new property was born with, and three documents printed it as a fact. See
+// lib/box-security.ts.
 const defaultProperty = (): FactFindProperty => ({
   id: uid(), address: '', ownershipType: 'Owner occupied', futureUse: 'Ongoing',
   zoning: 'Residential', propertySubtype: 'Fully detached house', value: '',
-  valuationMethod: 'Applicant estimate', rpDataEstimatedValue: '',
   runningCosts: '', runningCostsFrequency: 'Monthly',
   bodyCorpAmount: '', bodyCorpFrequency: 'Monthly',
   rentalIncome: '', rentalIncomeFrequency: 'Weekly',

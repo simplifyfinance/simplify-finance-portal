@@ -27,7 +27,7 @@ import { DEAL } from './box-fixture'
 
 const prop = (id: string, address: string, value: string, owing: string) => ({
   id, address, value, ownershipType: 'Investment', propertySubtype: 'Unit',
-  zoning: 'Residential', futureUse: 'Ongoing', valuationMethod: 'Applicant estimate',
+  zoning: 'Residential', futureUse: 'Ongoing',
   loans: [{ id: `l${id}`, lenderName: 'ANZ', balance: owing, status: 'To be refinanced' }],
 })
 

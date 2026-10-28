@@ -19,6 +19,7 @@ import React from 'react'
 import { dealRow, splitsOf, purposeSummary, repaymentLine, PURPOSE_LABEL } from '@/lib/deal-structure'
 import { fundsToComplete } from '@/lib/funds-to-complete'
 import { relationshipLine } from '@/lib/relationship'
+import { securityAddressOf } from '@/lib/security-address'
 import { fullName } from '@/lib/fact-find'
 import { money } from '@/lib/money'
 import { templateLabel } from '@/lib/templates'
@@ -106,6 +107,10 @@ export async function generateBrokerNotesPdfBuffer(dealId: string, supabase: any
     : String(deal.deal_name || 'Deal').replace(/_/g, ' ')
   const purpose = [purposeSummary(deal), templateLabel(deal.bc_data?.template)].filter(Boolean).join(' — ')
   const relationship = relationshipLine(apps)
+  // Typed into Compliance if somebody typed one, else whatever the fact find
+  // already knows this deal is secured against. See lib/security-address.ts -
+  // "Not recorded" has to mean not recorded.
+  const securityAddress = securityAddressOf(deal)
 
   const doc = (
     <Document title={brokerNotesFileName(who)}>
@@ -136,8 +141,8 @@ export async function generateBrokerNotesPdfBuffer(dealId: string, supabase: any
             <F label="Approval required" value={row.preApproval ? 'Pre-approval' : 'Formal'} />
           </View>
           <View style={[s.row, { marginBottom: 0 }]}>
-            <F label="Security address" value={row.securityAddress || 'Not recorded'}
-               gap={!row.securityAddress} flex={2.4} />
+            <F label="Security address" value={securityAddress || 'Not recorded'}
+               gap={!securityAddress} flex={2.4} />
             <F label="Property value" value={row.propertyValue > 0 ? money(row.propertyValue) : 'Not recorded'}
                bold gap={row.propertyValue <= 0} />
           </View>

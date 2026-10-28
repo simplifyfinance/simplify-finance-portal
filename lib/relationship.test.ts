@@ -80,7 +80,17 @@ describe('the line the PDF prints', () => {
       .toBe('Married — Matti Hallanoro and Elizabeth Hallanoro')
   })
 
-  it('says nothing on a single-applicant deal', () => {
+  // 28 Oct 2026, Nader Gharsa. The fact find said Single; the broker notes
+  // said "Relationship of applicants: Not recorded", and compliance sent the
+  // file back for data that was already there. This was written as a question
+  // about a PAIR, so a sole applicant got nothing. On their own it is not an
+  // unanswerable question - it is a different one, with the answer on the form.
+  it('A SOLE APPLICANT STILL HAS A STATUS, AND IT IS THEIR OWN', () => {
+    expect(relationshipLine([{ ...one, relationshipStatus: 'Single' }])).toBe('Single')
+    expect(relationshipLine([{ ...one, relationshipStatus: 'Divorced' }])).toBe('Divorced')
+  })
+
+  it('and says nothing when a sole applicant has not answered', () => {
     expect(relationshipLine([one])).toBe('')
   })
 

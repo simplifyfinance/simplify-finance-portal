@@ -21,6 +21,8 @@ import { loanFigureRows } from './lmi'
 import { rowLegalFeeLabel } from './lender-fees'
 import { lenderOnTheDeal } from './client-agreement'
 import { isRecommended, recommendedFirst } from './recommended-option'
+import { incomeKind, type IncomeKind } from './income-kind'
+import { buysNothing } from './buying'
 
 const txt = (v: any) => String(v ?? '').trim()
 
@@ -201,23 +203,61 @@ export function factFindFormItems(input: FactFindFormInput): Item[] {
   // -- 4. INCOME -------------------------------------------------------------
   const incOf = (a: any, j: number) => (a.income || [])[j] || {}
   const mostIncomes = Math.max(1, ...applicants.map(a => (a.income || []).length))
+  // A ROW BELONGS TO THE KIND OF INCOME IT IS ABOUT.
+  //
+  // 28 Oct 2026, on Nader Gharsa's fact find. The compliance team were sent a
+  // sheet saying a PAYG client's "Assessment method" was "Last 2 financial
+  // years", and the same against his Centrelink payment. He has never been
+  // self-employed.
+  //
+  // Nobody typed it. EVERY income row the fact find creates is born carrying
+  // seAssessmentMethod: 'Last 2 financial years' because that is the first
+  // option in a dropdown the form only ever shows to self-employed people. The
+  // form hides the box. This document printed it.
+  //
+  // That is the whole fault, and it is not about one field. The FORM decides
+  // what is relevant and the DOCUMENT did not: it printed every box that had a
+  // value in it, and a default has a value. A blank box is obviously blank; a
+  // default reads as an answer somebody gave.
+  //
+  // So every row now asks lib/income-kind.ts what this income actually is -
+  // the same function the broker notes have used since September, and which
+  // carries its own scars from the same default. PER CELL, not per row: two
+  // applicants with different kinds of income share a row on this paper, and
+  // one of them having a business is no reason to print a business against the
+  // other one.
+  //
+  // Fabio, 28 Oct 2026: "why is the PDF being done and making stuff up?"
+  const cellKind = (inc: any): IncomeKind => {
+    const k = incomeKind(inc)
+    // An income row nobody has filled in yet is laid out as PAYG, which is what
+    // the paper looked like before this and what somebody writing on it by hand
+    // expects. It has no values to lie with.
+    return k === 'none' ? 'payg' : k
+  }
   const incRows = (j: number) => {
     const tag = mostIncomes > 1 ? `Income ${j + 1} - ` : ''
-    const each = (k: string, label: string, get: (inc: any) => any) =>
-      row(`inc.${j}.${k}`, `${tag}${label}`, applicants.map(a => ({ text: get(incOf(a, j)) })))
+    const kinds = applicants.map(a => cellKind(incOf(a, j)))
+    // Print the row if it is about somebody's income; blank the cell of anybody
+    // it is not about.
+    const each = (k: string, label: string, forKind: IncomeKind | null, get: (inc: any) => any) => {
+      if (forKind !== null && !kinds.includes(forKind)) return null
+      return row(`inc.${j}.${k}`, `${tag}${label}`, applicants.map((a, i) =>
+        ({ text: forKind === null || kinds[i] === forKind ? get(incOf(a, j)) : '' })))
+    }
     return [
-      mostIncomes > 1 ? each('type', 'type', inc => txt(inc.incomeType)) : null,
-      each('base',  'Gross base salary', inc => withFrequency(inc.grossSalary, inc.grossSalaryFrequency)),
-      each('bonus', 'Bonus', inc => withFrequency(inc.bonusAmount, inc.bonusFrequency)),
-      each('oteN',  'Overtime (essential)', inc => withFrequency(inc.overtimeEssentialAmount, inc.overtimeEssentialFrequency)),
-      each('oteX',  'Overtime (non-essential)', inc => withFrequency(inc.overtimeNonEssentialAmount, inc.overtimeNonEssentialFrequency)),
-      each('comm',  'Commission', inc => withFrequency(inc.commissionAmount, inc.commissionFrequency)),
-      each('allow', 'Allowances', inc => withFrequency(inc.allowanceAmount, inc.allowanceFrequency)),
-      each('biz',   'Business', inc => txt(inc.seBusinessName)),
-      each('bizabn','Business ABN', inc => txt(inc.seAbn)),
-      each('method','Assessment method', inc => txt(inc.seAssessmentMethod)),
-      each('dir',   "Director's salary", inc => withFrequency(inc.seDirectorSalary, inc.seDirectorSalaryFrequency)),
-      each('other', 'Other income', inc => txt(inc.otherIncomeType)
+      mostIncomes > 1 ? each('type', 'type', null, inc => txt(inc.incomeType)) : null,
+      each('base',  'Gross base salary', 'payg', inc => withFrequency(inc.grossSalary, inc.grossSalaryFrequency)),
+      each('bonus', 'Bonus', 'payg', inc => withFrequency(inc.bonusAmount, inc.bonusFrequency)),
+      each('oteN',  'Overtime (essential)', 'payg', inc => withFrequency(inc.overtimeEssentialAmount, inc.overtimeEssentialFrequency)),
+      each('oteX',  'Overtime (non-essential)', 'payg', inc => withFrequency(inc.overtimeNonEssentialAmount, inc.overtimeNonEssentialFrequency)),
+      each('comm',  'Commission', 'payg', inc => withFrequency(inc.commissionAmount, inc.commissionFrequency)),
+      each('allow', 'Allowances', 'payg', inc => withFrequency(inc.allowanceAmount, inc.allowanceFrequency)),
+      each('biz',   'Business', 'self-employed', inc => txt(inc.seBusinessName)),
+      each('bizabn','Business ABN', 'self-employed', inc => txt(inc.seAbn)),
+      each('method','Assessment method', 'self-employed', inc => txt(inc.seAssessmentMethod)),
+      each('dir',   "Director's salary", 'self-employed', inc => withFrequency(inc.seDirectorSalary, inc.seDirectorSalaryFrequency)),
+      each('other', 'Other income', 'other', inc => txt(inc.otherIncomeType)
         ? `${withFrequency(inc.otherIncomeAmount, 'annually')} (${txt(inc.otherIncomeType)})` : ''),
     ]
   }
@@ -290,8 +330,18 @@ export function factFindFormItems(input: FactFindFormInput): Item[] {
       prop('sub',   'Property subtype',  p => ({ text: txt(p.propertySubtype) })),
       prop('zone',  'Zoning',            p => ({ text: txt(p.zoning) })),
       prop('val',   'Value',             p => ({ amount: money(p.value) })),
-      prop('vmeth', 'Valuation method',  p => ({ text: txt(p.valuationMethod), tall: 26 })),
-      prop('rp',    'RP Data estimate',  p => ({ amount: money(p.rpDataEstimatedValue) })),
+      // VALUATION METHOD AND RP DATA ESTIMATE ARE GONE. 28 Oct 2026, Fabio:
+      // "on the valuation where it says estimated, I don't know where is that
+      // getting that information. So remove that box completely because it
+      // doesn't matter. It's just confusing people."
+      //
+      // He could not find where it came from because there was nowhere to look.
+      // The fact find has no control for either of them. They existed only as
+      // the value every new property is born with - 'Applicant estimate' - and
+      // this document printed it as though somebody had chosen it. It also put
+      // a sentence in the compliance pack: "The value is the applicants' own
+      // estimate and will be confirmed by the lender's valuation." On every
+      // deal. Said by nobody.
       prop('run',   'Running costs',     p => ({ text: withFrequency(p.runningCosts, p.runningCostsFrequency) })),
       prop('strata','Strata',            p => ({ text: withFrequency(p.bodyCorpAmount, p.bodyCorpFrequency) })),
       prop('rent',  'Rental income',     p => ({ text: withFrequency(p.rentalIncome, p.rentalIncomeFrequency) })),
@@ -304,7 +354,18 @@ export function factFindFormItems(input: FactFindFormInput): Item[] {
         prop(`l${j}.${key}`, `${tag}${label}`, p => get((p.loans || [])[j] || {}))
       items.push(
         loan('who',   'lender',            l => ({ text: txt(l.lenderName) })),
-        loan('mtype', 'mortgage type',     l => ({ text: txt(l.mortgageType) })),
+        // A LOAN SECURED ON AN INVESTMENT PROPERTY IS AN INVESTMENT LOAN.
+        //
+        // 28 Oct 2026, Nader Gharsa again: the property is marked Investment and
+        // both Pepper loans against it printed "Owner occupied". Nobody chose
+        // that either - it is the value every new loan is born with, and the
+        // only thing that could ever change it was somebody noticing.
+        //
+        // The property is the one that gets asked. It is the answer a person
+        // actually gave, it cannot disagree with itself, and a loan cannot be
+        // against an investment property for a different purpose than the
+        // property it is against.
+        prop(`l${j}.mtype`, `${tag}mortgage type`, p => ({ text: txt(p.ownershipType) })),
         loan('acct',  'BSB / account',     l => ({ text: [txt(l.bsb), txt(l.accountNumber)].filter(Boolean).join(' / '), tall: 26 })),
         loan('lim',   'limit',             l => ({ amount: money(l.limitAmount) })),
         loan('bal',   'balance',           l => ({ amount: money(l.balance) })),
@@ -340,16 +401,30 @@ export function factFindFormItems(input: FactFindFormInput): Item[] {
   // -- 8. BORROWING CAPACITY -------------------------------------------------
   const one = (name: string, label: string, text: string) => row(name, label, [{ text }])
   const oneAmount = (name: string, label: string, amount: any) => row(name, label, [{ amount }])
+  // NOTHING IS BEING BOUGHT, SO NOTHING ABOUT A PURCHASE IS PRINTED.
+  //
+  // 28 Oct 2026. Nader's sheet carried "State VIC" and "Purchase price
+  // $575,000" on a NSW refinance. That was a real scenario once - months ago,
+  // before the deal became an equity release - and the figures never left the
+  // record. The BC form stopped drawing those boxes the moment the scenario
+  // changed; this document kept printing what was behind them.
+  //
+  // lib/buying.ts answers this once for the whole portal and already carries
+  // the same scar: the compliance pack reads it so that a leftover purchase
+  // price cannot put a purchase into a regulated document for a deal where
+  // nothing is bought. The same rule, applied to the same figures, on paper.
+  const buying = !buysNothing(bc.template)
   items.push(...section('Borrowing capacity', null, [
     one('bc.tpl',   'Scenario',      words(bc.template)),
-    one('bc.state', 'State',         dutyStateOf(bc)),
+    // The duty state. There is no duty where there is no purchase.
+    buying ? one('bc.state', 'State', dutyStateOf(bc)) : null,
     one('bc.sub',   'Suburb',        txt(bc.suburb)),
     one('bc.ptype', 'Property type', txt(bc.propertyType)),
     one('bc.term',  'Loan term',     txt(bc.loanTerm) ? `${txt(bc.loanTerm)} years` : ''),
-    oneAmount('bc.price', 'Purchase price', money(bc.purchasePrice) || money(bc.newPurchasePrice)),
-    one('bc.dep',   'Deposit', money(bc.deposit)
-      ? `${money(bc.deposit)}${txt(bc.depositSource) ? ` (${txt(bc.depositSource)})` : ''}` : ''),
-    oneAmount('bc.duty',  'Stamp duty',            money(bc.stampDuty)),
+    buying ? oneAmount('bc.price', 'Purchase price', money(bc.purchasePrice) || money(bc.newPurchasePrice)) : null,
+    buying ? one('bc.dep',   'Deposit', money(bc.deposit)
+      ? `${money(bc.deposit)}${txt(bc.depositSource) ? ` (${txt(bc.depositSource)})` : ''}` : '') : null,
+    buying ? oneAmount('bc.duty',  'Stamp duty',            money(bc.stampDuty)) : null,
     oneAmount('bc.exist', 'Existing loan balance', money(bc.existingLoanBal)),
     oneAmount('bc.pval',  'Property value',        money(bc.propertyValue)),
     oneAmount('bc.eq',    'Equity release',        money(bc.equityRelease)),

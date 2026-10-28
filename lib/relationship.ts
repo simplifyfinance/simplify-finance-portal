@@ -87,7 +87,23 @@ export function applyRelationship(applicants: any[], selfId: string,
 // printed label reads as an unfinished form.
 export function relationshipLine(applicants: any[]): string {
   const apps = (applicants || []).filter(a => nameOf(a))
-  if (apps.length < 2) return ''
+  if (apps.length === 0) return ''
+
+  // ONE APPLICANT STILL HAS AN ANSWER, AND IT IS THEIR OWN.
+  //
+  // 28 Oct 2026, Nader Gharsa. The fact find said Single. The broker notes said
+  // "Relationship of applicants: Not recorded", and the compliance team read
+  // that as missing data and sent it back.
+  //
+  // This returned nothing for anybody on their own, because the question was
+  // written as one about a PAIR - who are these two to each other. On a sole
+  // application that is not an unanswerable question, it is a different
+  // question with an answer sitting right there on the form.
+  //
+  // "Not recorded" has to mean not recorded. A document that prints it over
+  // something the portal knows teaches people to ignore it, and then it means
+  // nothing anywhere.
+  if (apps.length === 1) return txt(apps[0]?.relationshipStatus)
 
   const byId = new Map(apps.map(a => [txt(a?.id), a]))
   for (const a of apps) {

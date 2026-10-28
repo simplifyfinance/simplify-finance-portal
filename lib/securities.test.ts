@@ -76,9 +76,10 @@ describe('which properties are security', () => {
     expect(securitiesOf(bc, corrected)[0].value).toBe('1,250,000')
   })
 
-  it('and falls back to the RP Data figure rather than nothing', () => {
-    const noOwn = { properties: [{ id: 'p1', address: 'x', value: '', rpDataEstimatedValue: '900,000' }] }
-    expect(securitiesOf({ securityIds: ['p1'] }, noOwn)[0].value).toBe('900,000')
+  // 28 Oct 2026. There is no RP Data figure any more - see lib/securities.ts.
+  it('and a property with no value recorded reports no value', () => {
+    const noOwn = { properties: [{ id: 'p1', address: 'x', value: '' }] }
+    expect(securitiesOf({ securityIds: ['p1'] }, noOwn)[0].value).toBe('')
   })
 })
 

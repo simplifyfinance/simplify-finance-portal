@@ -1,5 +1,7 @@
 // WHAT IS ON THE HANDOVER, AS DATA.
 import { dutyStateOf } from './duty-state'
+import { incomeKind } from './income-kind'
+import { buysNothing } from './buying'
 //
 // The handover and the fact find existed only as PDFs, and a PDF is a bad place
 // to copy from: text extraction inserts hard line breaks mid-sentence, splits
@@ -463,19 +465,28 @@ export function factFindSections(deal: any): ViewSection[] {
       const jobs = currentEmployment(a)
       const idle = jobs.length > 0 && jobs.every(notWorking)
       const rows: ViewRow[] = []
+      // A ROW BELONGS TO THE KIND OF INCOME IT IS ABOUT. This is what gets
+      // typed into SalesTrekker, so a self-employed box against a PAYG client
+      // does not stay on this page - it gets keyed into a lender's system.
+      // See the long note in lib/factfind-form-content.ts; same fault, same
+      // function, two documents.
       for (const inc of a.income || []) {
         if ((a.income || []).length > 1) rows.push(sub(String(inc.incomeType || 'Income')))
+        const kind = incomeKind(inc)
+        const payg = kind === 'payg' || kind === 'none'
+        const se = kind === 'self-employed'
+        const other = kind === 'other'
         rows.push(...kv([
-          ['Gross base salary', withFrequency(inc.grossSalary, inc.grossSalaryFrequency)],
-          ['Bonus', withFrequency(inc.bonusAmount, inc.bonusFrequency)],
-          ['Overtime (essential)', withFrequency(inc.overtimeEssentialAmount, inc.overtimeEssentialFrequency)],
-          ['Overtime (non-essential)', withFrequency(inc.overtimeNonEssentialAmount, inc.overtimeNonEssentialFrequency)],
-          ['Commission', withFrequency(inc.commissionAmount, inc.commissionFrequency)],
-          ['Allowances', withFrequency(inc.allowanceAmount, inc.allowanceFrequency)],
-          ['Business', inc.seBusinessName], ['ABN', inc.seAbn],
-          ['Assessment method', inc.seAssessmentMethod],
-          ['Director salary', withFrequency(inc.seDirectorSalary, inc.seDirectorSalaryFrequency)],
-          ['Other income', inc.otherIncomeType
+          ['Gross base salary', payg ? withFrequency(inc.grossSalary, inc.grossSalaryFrequency) : ''],
+          ['Bonus', payg ? withFrequency(inc.bonusAmount, inc.bonusFrequency) : ''],
+          ['Overtime (essential)', payg ? withFrequency(inc.overtimeEssentialAmount, inc.overtimeEssentialFrequency) : ''],
+          ['Overtime (non-essential)', payg ? withFrequency(inc.overtimeNonEssentialAmount, inc.overtimeNonEssentialFrequency) : ''],
+          ['Commission', payg ? withFrequency(inc.commissionAmount, inc.commissionFrequency) : ''],
+          ['Allowances', payg ? withFrequency(inc.allowanceAmount, inc.allowanceFrequency) : ''],
+          ['Business', se ? inc.seBusinessName : ''], ['ABN', se ? inc.seAbn : ''],
+          ['Assessment method', se ? inc.seAssessmentMethod : ''],
+          ['Director salary', se ? withFrequency(inc.seDirectorSalary, inc.seDirectorSalaryFrequency) : ''],
+          ['Other income', other && inc.otherIncomeType
             ? withFrequency(inc.otherIncomeAmount, 'annually') + ` (${inc.otherIncomeType})` : ''],
         ]))
       }
@@ -508,8 +519,10 @@ export function factFindSections(deal: any): ViewSection[] {
       const rows: ViewRow[] = kv([
         ['Ownership type', p.ownershipType], ['Future use', p.futureUse],
         ['Property subtype', p.propertySubtype], ['Zoning', p.zoning],
-        ['Value', moneyOrBlank(p.value)], ['Valuation method', p.valuationMethod],
-        ['RP Data estimate', money(p.rpDataEstimatedValue)],
+        ['Value', moneyOrBlank(p.value)],
+        // Valuation method and RP Data estimate removed 28 Oct 2026. Neither
+        // had a box on the fact find; both printed a value nobody chose. See
+        // lib/factfind-form-content.ts.
         ['Running costs', withFrequency(p.runningCosts, p.runningCostsFrequency)],
         ['Strata', withFrequency(p.bodyCorpAmount, p.bodyCorpFrequency)],
         ['Rental income', withFrequency(p.rentalIncome, p.rentalIncomeFrequency)],
@@ -518,7 +531,10 @@ export function factFindSections(deal: any): ViewSection[] {
       for (const l of p.loans || []) {
         rows.push(sub('Linked loan'))
         rows.push(...kv([
-          ['Lender', l.lenderName], ['Mortgage type', l.mortgageType],
+          ['Lender', l.lenderName],
+          // The property's answer, not the loan's default. See
+          // lib/factfind-form-content.ts.
+          ['Mortgage type', p.ownershipType],
           ['BSB / account', [l.bsb, l.accountNumber].filter(Boolean).join(' · ')],
           ['Limit', money(l.limitAmount)], ['Balance', moneyOrBlank(l.balance)],
           ['Interest rate', l.interestRate ? `${l.interestRate}%` : ''],
@@ -549,15 +565,18 @@ export function factFindSections(deal: any): ViewSection[] {
       ]),
     }))})
 
+  // Nothing bought, nothing about a purchase printed - including a stale one
+  // from a scenario this deal used to be. See lib/buying.ts.
+  const buying = !buysNothing(bc.template)
   const scenario: ViewRow[] = kv([
-    ['Template', words(bc.template)], ['State', dutyStateOf(bc)], ['Suburb', bc.suburb],
+    ['Template', words(bc.template)], ['State', buying ? dutyStateOf(bc) : ''], ['Suburb', bc.suburb],
     ['Property type', bc.propertyType], ['Loan term', bc.loanTerm ? `${bc.loanTerm} years` : ''],
   ])
   scenario.push(sub('Figures'))
   scenario.push(...kv([
-    ['Purchase price', money(bc.purchasePrice) || money(bc.newPurchasePrice)],
-    ['Deposit', money(bc.deposit) ? `${money(bc.deposit)}${bc.depositSource ? ` (${bc.depositSource})` : ''}` : ''],
-    ['Stamp duty', money(bc.stampDuty)],
+    ['Purchase price', buying ? (money(bc.purchasePrice) || money(bc.newPurchasePrice)) : ''],
+    ['Deposit', buying && money(bc.deposit) ? `${money(bc.deposit)}${bc.depositSource ? ` (${bc.depositSource})` : ''}` : ''],
+    ['Stamp duty', buying ? money(bc.stampDuty) : ''],
     ['Existing loan balance', money(bc.existingLoanBal)],
     ['Property value', money(bc.propertyValue)],
     ['Equity release', money(bc.equityRelease)],

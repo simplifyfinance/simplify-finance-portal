@@ -44,7 +44,6 @@ export type FactFindProperty = {
   ownershipType?: string
   propertySubtype?: string
   value?: string
-  rpDataEstimatedValue?: string
   loans?: any[]
 }
 
@@ -116,10 +115,12 @@ export function securitiesOf(bc: any, ff: any): Security[] {
     address: txt(p.address),
     use: txt(p.ownershipType),
     subtype: txt(p.propertySubtype),
-    // The applicant's own estimate is the figure the rest of the portal uses;
-    // the RP Data one is a cross-check and only stands in when there is nothing
-    // else, so a security is never valued at nothing when a number exists.
-    value: txt(p.value) || txt(p.rpDataEstimatedValue),
+    // 28 Oct 2026. The RP Data fall-back went with the box. Nothing ever wrote
+    // to it - there was no control for it on the fact find - so it could only
+    // ever be empty, and a fall-back that cannot hold a value is a line that
+    // reads as a safety net and is not one. A property with no value recorded
+    // is reported as having no value recorded.
+    value: txt(p.value),
     limit: limitOf(bc, p.id),
   }))
 }

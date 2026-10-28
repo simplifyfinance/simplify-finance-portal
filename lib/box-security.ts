@@ -59,7 +59,6 @@ export type Security = {
   subtype: string
   zoning: string
   futureUse: string
-  valuationMethod: string
   // The loan being refinanced off it, where there is one.
   mortgagee: string
   owing: number
@@ -108,7 +107,7 @@ export function securitiesOf(deal: any): Security[] {
       // owner-occupied to be purchased". Caught by looking at the output.
       use: txt(bc.propertyType) || txt(bc.newPurchasePropertyType),
       subtype: txt(bc.purchasePropertySubtype),
-      zoning: '', futureUse: '', valuationMethod: '', mortgagee: '', owing: 0,
+      zoning: '', futureUse: '', mortgagee: '', owing: 0,
     })
   }
 
@@ -142,7 +141,6 @@ export function securitiesOf(deal: any): Security[] {
       subtype: txt(p?.propertySubtype),
       zoning: txt(p?.zoning),
       futureUse: txt(p?.futureUse),
-      valuationMethod: txt(p?.valuationMethod),
       mortgagee: txt(loan?.lenderName),
       owing: num(loan?.balance),
     })
@@ -152,7 +150,7 @@ export function securitiesOf(deal: any): Security[] {
     out.push({
       kind: 'existing', id: '', address: txt(deal?.compliance_data?.securityAddress),
       value: num(bc.propertyValue), use: '', subtype: '', zoning: '',
-      futureUse: '', valuationMethod: '', mortgagee: '', owing: 0,
+      futureUse: '', mortgagee: '', owing: 0,
     })
   }
   return out
@@ -192,6 +190,17 @@ const FUTURE_WORDS: Record<string, string> = {
   'To be sold': 'is to be sold',
 }
 
+// 28 Oct 2026. VALUATION METHOD AND THE RP DATA ESTIMATE ARE GONE.
+//
+// Fabio: "on the valuation where it says estimated, I don't know where is that
+// getting that information. So remove that box completely because it doesn't
+// matter. It's just confusing people."
+//
+// He could not find where it came from because there was nowhere to look. The
+// fact find never had a control for either. They existed only as the value a
+// new property is born with - 'Applicant estimate' - and three documents
+// printed it as an answer somebody gave. This one put a whole sentence into a
+// regulated pack on the strength of it, on every deal, said by nobody.
 export function securitySentences(deal: any, s: Security, only: boolean): { parts: string[]; gaps: Gap[] } {
   const parts: string[] = []
   const gaps: Gap[] = []
@@ -247,12 +256,6 @@ export function securitySentences(deal: any, s: Security, only: boolean): { part
     } else {
       parts.push(`${lead} ${s.address}, ${what || 'a property'}. ${shout(`NOT RECORDED — the value of ${s.address}.`)}`)
       gaps.push({ what: `Value of ${s.address}`, where: 'Fact Find → Properties' })
-    }
-
-    // The value is somebody's estimate until a lender says otherwise, and an
-    // assessor should be told which.
-    if (s.value > 0 && /applicant estimate/i.test(s.valuationMethod)) {
-      parts.push("The value is the applicants' own estimate and will be confirmed by the lender's valuation.")
     }
 
     if (s.mortgagee && s.owing > 0) {

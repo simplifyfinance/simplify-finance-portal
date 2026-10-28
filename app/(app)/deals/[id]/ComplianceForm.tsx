@@ -40,6 +40,7 @@ import { dealFacts, factsBlock, dealPurpose } from '@/lib/deal-facts'
 import { noteFacts, noteFreshness, reviewNotes, fingerprint, type NoteFacts, type NoteStamp,
          type NoteFreshness } from '@/lib/notes-freshness'
 import { purposeSummary, dealRow } from '@/lib/deal-structure'
+import { securityAddressOf } from '@/lib/security-address'
 import { fundsToComplete, loanAmount } from '@/lib/funds-to-complete'
 import { money } from '@/lib/money'
 import { brokerNotes, type Assessor } from '@/lib/broker-notes'
@@ -1293,7 +1294,7 @@ Write it as a sentence or two. Cover what is recorded above and nothing else.`,
 
 Add the security if it is a refinance, or write TBA for a pre-approval — must reference the security in question.
 
-Security address as recorded on the deal: ${dealRow(deal).securityAddress || 'not recorded'}. Property type: ${context.propertyType}. Location: ${context.suburb}.
+Security address as recorded on the deal: ${securityAddressOf(deal) || 'not recorded'}. Property type: ${context.propertyType}. Location: ${context.suburb}.
 
 Use the security address exactly as recorded. On a pre-approval it will already read "TBA — <state or suburb>", which is the correct answer: there is no property yet. Do not rewrite it, do not add an address, and do not guess a suburb. One sentence only.`,
     }

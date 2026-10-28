@@ -33,7 +33,7 @@ const withRefinanced = (over: any = {}, propOver: any = {}) => {
   d.fact_find_data = { ...d.fact_find_data, properties: [{
     id: 'p1', address: '8 Sample Road, Hawthorn VIC 3122', value: '1,050,000',
     ownershipType: 'Owner occupied', propertySubtype: 'Townhouse', zoning: 'Residential',
-    futureUse: 'Ongoing', valuationMethod: 'Applicant estimate',
+    futureUse: 'Ongoing',
     loans: [{ id: 'l1', lenderName: 'Macquarie', balance: '640,000', status: 'To be refinanced' }],
     ...propOver,
   }] }
@@ -157,13 +157,14 @@ describe('a refinance of an existing property', () => {
     expect(t()).toContain('8 Sample Road, Hawthorn VIC 3122, an owner occupied townhouse valued at $1,050,000')
   })
 
-  it('says the value is the applicants own estimate', () => {
-    expect(t()).toMatch(/The value is the applicants' own estimate and will be confirmed by the lender's valuation\./)
-  })
-
-  it('does not say that when the value came from somewhere else', () => {
-    const d = withRefinanced({}, { valuationMethod: 'Rates notice' })
-    expect(boxNine(d).text).not.toMatch(/own estimate/)
+  // 28 Oct 2026. THE PACK NO LONGER SAYS WHOSE ESTIMATE THE VALUE IS.
+  //
+  // It used to say "The value is the applicants' own estimate and will be
+  // confirmed by the lender's valuation" - on every deal, because the field it
+  // read was a default nobody could see or change. Removed on Fabio's
+  // instruction; see lib/box-security.ts.
+  it('and never claims to know whose estimate the value is', () => {
+    expect(t()).not.toMatch(/own estimate/)
   })
 
   it('names the existing mortgagee and what is owing', () => {
