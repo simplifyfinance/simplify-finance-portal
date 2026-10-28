@@ -39,6 +39,22 @@ export type DocProgress = {
   // Rows somebody chose not to ask for YET, which come back on their own later.
   // Only the discharge uses this today. Keyed the same way as everything else.
   deferred?: Record<string, { at: string; by: string }>
+  /**
+   * WHAT HAS ACTUALLY COME BACK, one entry per document.
+   *
+   * 28 Oct 2026. The client uploads to SalesTrekker, not to this portal - so
+   * nothing here can find out on its own that a payslip arrived. Somebody who
+   * can see it says so, and this is where they say it.
+   *
+   * ANYBODY MAY TICK IT. Fabio: "who ticks is Chris and credit. So allow
+   * everyone to tick this." The person who can see the document is the person
+   * who should be recording it, and a permission check here would mean a
+   * document sitting in SalesTrekker marked outstanding because the only
+   * person allowed to say otherwise is on leave.
+   *
+   * A key that is no longer on the list is ignored, like every other map here.
+   */
+  received?: Record<string, { at: string; by: string }>
 }
 
 // A row as the screen renders it: the rule's version, plus whether it is
@@ -50,6 +66,9 @@ export type DocRow = DocItem & {
   // When it was asked for, if it has been. A requested row is no longer a
   // decision to make; it is a thing being waited on.
   requestedAt?: string
+  /** When somebody confirmed it had come in, and who. Absent means not here. */
+  receivedAt?: string
+  receivedBy?: string
 }
 
 const now = () => new Date().toISOString()
@@ -74,6 +93,7 @@ export function progressOf(deal: any): DocProgress {
 export function rowsFor(items: DocItem[], progress: DocProgress, opts: RowOpts = {}): DocRow[] {
   const decisions = progress?.decisions || {}
   const asked = requestedAtByKey(progress)
+  const got = progress?.received || {}
 
   const derived: DocRow[] = items
     // A deferred row is out of sight until the moment it was deferred TO. The
@@ -88,9 +108,15 @@ export function rowsFor(items: DocItem[], progress: DocProgress, opts: RowOpts =
         : { ...item, ticked: wasDeferred ? true : item.auto }
       if (wasDeferred) {
         return { ...base, askFirst: false, ticked: d ? d.ticked : true,
-          why: 'Put off earlier — the loan is now formally approved', requestedAt: asked[item.key] }
+          why: 'Put off earlier — the loan is now formally approved', requestedAt: asked[item.key],
+          receivedAt: got[item.key]?.at, receivedBy: got[item.key]?.by }
       }
-      return { ...base, requestedAt: asked[item.key] }
+      return {
+        ...base,
+        requestedAt: asked[item.key],
+        receivedAt: got[item.key]?.at,
+        receivedBy: got[item.key]?.by,
+      }
     })
 
   const added: DocRow[] = (progress?.added || []).map(a => {
@@ -110,6 +136,8 @@ export function rowsFor(items: DocItem[], progress: DocProgress, opts: RowOpts =
       decidedBy: d?.by,
       addedByHand: true,
       requestedAt: asked[a.key],
+      receivedAt: got[a.key]?.at,
+      receivedBy: got[a.key]?.by,
     }
   })
 
@@ -184,6 +212,35 @@ export function withDeferred(progress: DocProgress, key: string, by: string): Do
     decisions,
     deferred: { ...(progress.deferred || {}), [key]: { at: now(), by } },
   }
+}
+
+/**
+ * IT TURNED UP.
+ *
+ * Recorded against the document's own key, with who said so and when, because
+ * "when did that come in" is a question an audit asks and a memory does not
+ * answer. Nothing is deleted anywhere - a document that arrived is history.
+ */
+export function withReceived(progress: DocProgress, key: string, by: string): DocProgress {
+  const k = String(key ?? '').trim()
+  if (!k) return progress
+  return {
+    ...progress,
+    received: { ...(progress.received || {}), [k]: { at: now(), by } },
+  }
+}
+
+/**
+ * AND TAKING IT BACK, because somebody will press the wrong row.
+ *
+ * A tick that cannot be undone is a tick people are afraid to use, and a
+ * document wrongly marked in is a document nobody ever chases again. The entry
+ * is removed rather than flagged: the question is only ever "is it here now".
+ */
+export function withUnreceived(progress: DocProgress, key: string): DocProgress {
+  const received = { ...(progress.received || {}) }
+  delete received[String(key ?? '').trim()]
+  return { ...progress, received }
 }
 
 // Only a row somebody added can be removed - a derived row is a fact about the

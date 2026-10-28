@@ -35,6 +35,60 @@ export function laterRowsOf(deal: any, progress: DocProgress): DocRow[] {
   return allRowsOf(deal, progress).filter(r => !due.includes(r.key) && !r.addedByHand)
 }
 
+/**
+ * HOW LONG BEFORE A WAIT IS WORTH SHOUTING ABOUT.
+ *
+ * Fabio, 28 Oct 2026: "still waiting after 14 days. Yeah, should be shouting
+ * after that."
+ *
+ * It shouts INSIDE THE BUILDING ONLY - red on the row, and a harder line in the
+ * compliance email. The client's wording never sharpens on a timer: an email
+ * that gets firmer on its own, with nobody reading it first, will eventually
+ * get firm at somebody who has a very good reason.
+ */
+export const SHOUT_AFTER_DAYS = 14
+
+/** Whole days since it was asked for. Null where it never was. */
+export function daysWaiting(row: DocRow, today = new Date()): number | null {
+  const asked = String(row?.requestedAt || '').trim()
+  if (!asked) return null
+  const then = new Date(asked)
+  if (Number.isNaN(then.getTime())) return null
+  const ms = today.getTime() - then.getTime()
+  return ms < 0 ? 0 : Math.floor(ms / 86_400_000)
+}
+
+export function isLate(row: DocRow, today = new Date()): boolean {
+  const d = daysWaiting(row, today)
+  return d !== null && d >= SHOUT_AFTER_DAYS
+}
+
+/**
+ * ASKED FOR, AND STILL NOT HERE.
+ *
+ * THE QUESTION THE WHOLE FEATURE EXISTS TO ANSWER, and the one this file could
+ * not answer until 28 Oct 2026. Note what it is NOT: outstandingOf below is
+ * "ticked but nobody has asked yet", which is a question about US. This is a
+ * question about the CLIENT, and it is the list that goes in their email.
+ *
+ * A row that was never requested is not in here. Nobody can be chased for a
+ * document they were never asked for, and putting one in a client's email is
+ * how a client learns the list is not to be trusted.
+ */
+export function stillOut(rows: DocRow[]): DocRow[] {
+  return (rows || []).filter(r => r.ticked && r.requestedAt && !r.receivedAt)
+}
+
+/** The same, from a deal. The list that reaches every email. */
+export function stillOutFromDeal(deal: any): DocRow[] {
+  return stillOut(allRowsOf(deal, progressOf(deal)))
+}
+
+/** What has come back. The other half, for the count on the box. */
+export function cameIn(rows: DocRow[]): DocRow[] {
+  return (rows || []).filter(r => r.ticked && r.receivedAt)
+}
+
 /** The ones nobody has asked for yet. */
 export function outstandingOf(deal: any, progress: DocProgress): DocRow[] {
   return toRequest(nowRowsOf(deal, progress))

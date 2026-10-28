@@ -5,10 +5,11 @@ import { patchDealColumn } from '@/lib/patch-deal-column'
 import { dayMonth } from '@/lib/same-date-everywhere'
 import { documentsFor, documentsDue, groupedDocuments, type DocRound } from '@/lib/document-rules'
 import { rowsFor, tickedCount, toRequest, withTick, withAdded, withoutAdded, withDeferred,
+  withReceived, withUnreceived,
          progressOf, requestRounds, COMMON_EXTRAS, extrasNotAlreadyListed,
          type DocProgress, type DocRow } from '@/lib/document-progress'
 import { formallyApproved } from '@/lib/document-rules'
-import { nowRowsOf, laterRowsOf } from '@/lib/documents-outstanding'
+import { nowRowsOf, laterRowsOf , stillOut, cameIn, daysWaiting, isLate, SHOUT_AFTER_DAYS } from '@/lib/documents-outstanding'
 import { requestDocuments } from '@/lib/request-documents'
 import { banksSeen, accountsPerBank, coveredRows, shortOfPeriod, salaryAccounts,
          expensesAccount, undeclaredBanks, type BanksSeen, type NamedAccount } from '@/lib/statement-cover'
@@ -115,6 +116,11 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
   const ticked = tickedCount(nowRows)
   const pending = toRequest(nowRows).filter(r => !covered.has(r.key))
   const asked = nowRows.filter(r => r.requestedAt).length
+  // IN, AND STILL OUT. Two numbers, because one of them was the whole problem:
+  // "8 asked for" read identically whether eight came back or none did.
+  const inNow = cameIn(nowRows)
+  const out = stillOut(nowRows)
+  const late = out.filter(r => isLate(r))
   const rounds = requestRounds(progress)
 
   // Rebuilt server-side before anything is sent, so this is a request, not an
@@ -235,9 +241,21 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
               {pending.length > 0 ? pending.length : asked > 0 ? 0 : ticked}
             </dd>
           </div>
+          {/* NOW IT COUNTS WHAT CAME BACK. See the note at the top of this
+              file: until 28 Oct 2026 this printed tickedCount, which is how
+              many we decided to ASK for. */}
           <div className="flex items-baseline gap-2 py-[3px]">
             <dt className="text-[12.5px] text-body">Received</dt>
-            <dd className="ml-auto text-[13px] font-semibold text-ink m-0">{ticked}</dd>
+            <dd className="ml-auto text-[13px] font-semibold text-ink m-0">{inNow.length}</dd>
+          </div>
+          {/* AND THE ONE NOBODY COULD SEE BEFORE. Asked for, still not here.
+              Red once anything on it has been waiting the full fortnight. */}
+          <div className="flex items-baseline gap-2 py-[3px]">
+            <dt className="text-[12.5px] text-body">Still out</dt>
+            <dd className={`ml-auto text-[13px] font-semibold m-0 ${
+              late.length > 0 ? 'text-chase' : out.length > 0 ? 'text-ink' : 'text-faint'}`}>
+              {out.length}{late.length > 0 ? ` · ${late.length} over ${SHOUT_AFTER_DAYS} days` : ''}
+            </dd>
           </div>
           <div className="flex items-baseline gap-2 py-[3px]">
             <dt className="text-[12.5px] text-body">To check</dt>
@@ -350,9 +368,14 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
                   {r.requestedAt ? (
                     // Asked for. Not a tick any more - a thing being waited on,
                     // and unticking it would only lie about what went out.
-                    <span title={`Asked for ${whenAsked(r.requestedAt)}`}
-                      className="w-4 h-4 rounded-[4px] border-[1.5px] mt-[3px] flex-none grid place-items-center
-                                 bg-done-bg border-done-edge text-done">
+                    // GREEN ONLY ONCE IT IS ACTUALLY HERE. Before 28 Oct 2026
+                    // this went green the moment the email left, which is how a
+                    // box of eight green ticks could mean nothing had arrived.
+                    <span title={r.receivedAt ? `Came in ${whenAsked(r.receivedAt)}` : `Asked for ${whenAsked(r.requestedAt)}`}
+                      className={`w-4 h-4 rounded-[4px] border-[1.5px] mt-[3px] flex-none grid place-items-center ${
+                        r.receivedAt ? 'bg-done-bg border-done-edge text-done'
+                        : isLate(r) ? 'bg-chase-bg border-chase-edge text-transparent'
+                        : 'bg-card border-[var(--color-field-line)] text-transparent'}`}>
                       {TICK}
                     </span>
                   ) : (
@@ -373,7 +396,13 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
                     </div>
                     {(r.why || r.decidedBy || r.requestedAt || covered.has(r.key)) && (
                       <div className="text-[11.5px] text-faint mt-[1px]">
-                        {r.requestedAt ? <span className="text-done">Asked for {whenAsked(r.requestedAt)}</span>
+                        {r.requestedAt ? (
+                          r.receivedAt
+                            ? <span className="text-done">Came in {whenAsked(r.receivedAt)}{r.receivedBy ? ` · ticked by ${r.receivedBy}` : ''}</span>
+                            : <span className={isLate(r) ? 'text-chase font-semibold' : 'text-faint'}>
+                                Still waiting — {daysWaiting(r) ?? 0} day{daysWaiting(r) === 1 ? '' : 's'}
+                              </span>
+                        )
                           : covered.has(r.key) ? (
                             <span className="text-done">
                               ✓ On file — {covered.get(r.key)!.bank} statements came through
@@ -409,6 +438,23 @@ export default function DocumentsBox({ deal, me, onUpdated }: {
                       : 'text-info bg-info-bg border-info-edge'}`}>
                     {r.forWhat === 'lodge' ? 'Lodge' : 'Compliance'}
                   </span>
+                  {/* ARRIVED. Only on a row that has actually been asked for -
+                      before that there is nothing to have arrived. Anybody may
+                      press it, and anybody may press it again to take it back,
+                      because a tick nobody dares undo is a tick nobody uses. */}
+                  {r.requestedAt && (
+                    <button
+                      onClick={() => save(cur => r.receivedAt ? withUnreceived(cur, r.key)
+                                                              : withReceived(cur, r.key, who), r.key)}
+                      disabled={busy === r.key}
+                      aria-label={r.receivedAt ? `Mark ${r.label} as not received` : `Mark ${r.label} as arrived`}
+                      className={`text-[11px] font-semibold rounded-lg px-2.5 py-[3px] border flex-none mt-[1px]
+                        transition disabled:opacity-40 ${r.receivedAt
+                          ? 'bg-done-bg border-done-edge text-done'
+                          : 'bg-page border-line text-faint hover:border-[var(--color-faint)] hover:text-body'}`}>
+                      Arrived
+                    </button>
+                  )}
                   {r.addedByHand && (
                     <button onClick={() => save(cur => withoutAdded(cur, r.key), r.key)}
                       className="text-[11px] text-faint hover:text-chase flex-none mt-[3px]">Remove</button>
