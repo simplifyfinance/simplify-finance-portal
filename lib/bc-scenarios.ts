@@ -115,6 +115,29 @@ export function canSwap(deal: any): boolean {
 // Every one of these returns the WHOLE set of columns to write, so a swap is one
 // update and a scenario cannot be lost between two of them.
 
+// THE TWO NOTE BOXES, WHICH ARE ABOUT THE CLIENTS AND NOT ABOUT THE STRUCTURE.
+//
+// brokerNotes is the opening paragraph of the client email. templateNotes is
+// the "important things to note" list under it. Neither is a fact about which
+// loan they take, and typing them twice is how one of them ends up a version
+// behind the other in front of a client.
+const SHARED_NOTES = ['brokerNotes', 'templateNotes'] as const
+
+/**
+ * The scenario coming out, with the notes from the one going in.
+ *
+ * Only where there is something to carry. Every save writes both keys, so a
+ * scenario nobody typed notes into holds an empty string, and letting that win
+ * would empty the other scenario's boxes the first time somebody switched tabs.
+ */
+function withNotes(target: any, from: any): any {
+  const out = { ...(target && typeof target === 'object' ? target : {}) }
+  for (const key of SHARED_NOTES) {
+    if (txt(from?.[key])) out[key] = from[key]
+  }
+  return out
+}
+
 export type ScenarioWrite = {
   bc_data: any
   bc_scenarios: ParkedScenario[]
@@ -129,7 +152,9 @@ export function swapTo(deal: any, parkedIndex: number): ScenarioWrite | null {
   // The one coming out is replaced by the one going in, in its place - so the
   // tabs do not reorder under somebody's hand every time they switch.
   next[parkedIndex] = { bc: deal?.bc_data || {}, completedAt: txt(deal?.bc_completed_at) || null }
-  return { bc_data: target.bc, bc_scenarios: next, bc_completed_at: target.completedAt }
+  // The notes come with you. See withNotes above.
+  return { bc_data: withNotes(target.bc, deal?.bc_data), bc_scenarios: next,
+           bc_completed_at: target.completedAt }
 }
 
 // A NEW SCENARIO IS BLANK, AND IT IS THE ONE YOU LAND ON.
@@ -141,7 +166,9 @@ export function addScenario(deal: any, label: string): ScenarioWrite | null {
   if (!canAdd(deal)) return null
   const parked = parkedOf(deal)
   return {
-    bc_data: { scenarioLabel: txt(label) || 'Second scenario' },
+    // Blank of every figure, and not of the two note boxes - those are about
+    // the clients, who have not changed. See withNotes above.
+    bc_data: withNotes({ scenarioLabel: txt(label) || 'Second scenario' }, deal?.bc_data),
     bc_scenarios: [...parked, { bc: deal?.bc_data || {}, completedAt: txt(deal?.bc_completed_at) || null }],
     bc_completed_at: null,
   }
@@ -189,7 +216,8 @@ export function removeScenario(deal: any, index: number): ScenarioWrite | null {
     if (downstreamStarted(deal)) return null
     const [promoted, ...rest] = parked
     return {
-      bc_data: promoted.bc,
+      // Deleting a structure does not delete what was written to the clients.
+      bc_data: withNotes(promoted.bc, deal?.bc_data),
       bc_scenarios: rest,
       bc_completed_at: promoted.completedAt,
     }
