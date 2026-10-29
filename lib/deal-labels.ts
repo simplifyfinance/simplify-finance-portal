@@ -91,6 +91,32 @@ const USE_WORDS: [RegExp, UseId][] = [
 // The settlement fields win when they exist: they were set at lodgement, which is
 // later and more certain than anything chosen at BC. Then the BC template. Then
 // whatever words are on the deal itself.
+/**
+ * WHAT THE TEMPLATE ALREADY SAYS THE PROPERTY IS FOR.
+ *
+ * 29 Oct 2026, Fabio, on an Investment purchase: "Property type preloads INV".
+ * It does, and it should - but it was ALSO still asking, which is how one fact
+ * ends up in two boxes that can disagree. The form now asks only where this
+ * returns nothing.
+ *
+ * In the dropdown's own words, so the value that reaches the broker notes and
+ * the compliance wording is the same string a person would have picked.
+ *
+ * EMPTY WHERE THE TEMPLATE GENUINELY DOES NOT KNOW. A top up, a refinance or a
+ * buy-and-sell can be either, and FROM_TEMPLATE deliberately leaves the use off
+ * those - "it follows the property, and a deal can top up an investment to buy
+ * a home". Those templates keep the question, because for them it is a real one.
+ *
+ * SMSF is not one of the two words the dropdown offers, so it is left for a
+ * person to answer rather than forced into the nearest box.
+ */
+export function useFromTemplate(template: any): string {
+  const use = FROM_TEMPLATE[String(template ?? '').trim()]?.use
+  if (use === 'investment') return 'Investment'
+  if (use === 'owner_occupied') return 'Owner-occupied'
+  return ''
+}
+
 export function typeOf(deal: any): TypeId {
   const txn = String(deal?.transaction_type || '')
   if (txn === 'purchase') return 'purchase'

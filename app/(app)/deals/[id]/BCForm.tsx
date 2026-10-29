@@ -10,6 +10,7 @@ import SendItBack, { ReworkBanner } from '@/components/SendItBack'
 import { canSendBack, reworkOn, canSendAgain } from '@/lib/send-it-back'
 import { handStageOver } from '@/lib/hand-this-stage-over'
 import { dutyStateOf } from '@/lib/duty-state'
+import { useFromTemplate } from '@/lib/deal-labels'
 import { useState, useEffect, useRef } from 'react'
 import { dayMonthYear, dayMonth, longDate } from '@/lib/same-date-everywhere'
 import { supabase } from '@/lib/supabase'
@@ -440,7 +441,17 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   //
   // Living expenses are not a BC figure at all. Fabio, 8 Sep 2026.
   const [suburb, setSuburb] = useState(s.suburb || '')
-  const [propertyType, setPropertyType] = useState(s.propertyType || 'Owner-occupied')
+  // HIDING THE BOX IS NOT ENOUGH - THE VALUE HAS TO BE RIGHT.
+  //
+  // 29 Oct 2026. Everything downstream reads `propertyType`: the broker notes,
+  // the compliance wording, the documents list. Hiding the dropdown on an
+  // investment purchase while leaving 'Owner-occupied' sitting underneath it
+  // would be the Nader fault exactly - a field nobody can see, carrying a guess,
+  // printing itself onto a client's document.
+  //
+  // So where the template answers it, the template IS the answer.
+  const [propertyTypeTyped, setPropertyType] = useState(s.propertyType || '')
+  const propertyType = useFromTemplate(template) || propertyTypeTyped
   // HOUSE OR STRATA, for the property being bought. The document checklist has
   // wanted this since it was written: without it, insurance evidence goes on
   // every purchase to be safe, and the checklist has to explain that it is only
@@ -2656,14 +2667,42 @@ Key assumptions: ${checklistText}`
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-2">
-                  {/* IT IS THE SUBURB BOX. It writes into `suburb`, it is read
-                      as the suburb everywhere, and the "what is missing" check
-                      asks for "Suburb" - but it only SAID Suburb on two of the
-                      templates. On a complex refinance it said "State", two
-                      boxes above a second box also called "State" that really is
-                      one. Fabio, 12 Oct 2026. */}
-                  <Field label={buysNothing(template) ? 'Suburb' : 'State'}><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
-                  {template !== "fhb" && <Field label="Property type"><select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}><option>Owner-occupied</option><option>Investment</option></select></Field>}
+                  {/* IT IS THE SUBURB BOX, ON EVERY TEMPLATE.
+                      It writes into `suburb`, it is read as the suburb by the
+                      broker notes, the security address and the pre-approval,
+                      and lib/bc-ready.ts asks for "Suburb" when it is empty.
+                      It has only ever BEEN the suburb.
+                      29 Oct 2026. It said "Suburb" on the templates that buy
+                      nothing and "State" on every other one - two rows above a
+                      second box also called State, which is the real one. So a
+                      purchase deal collected a state code into its suburb, and
+                      the client's security address read "WA" where a suburb
+                      belongs. The ternary is gone: there is one honest label
+                      and it does not depend on the template.
+                      Deals already written are repaired at read time, where it
+                      is safe to do it - see lib/duty-state.ts. */}
+                  <Field label="Suburb"><input className={inputCls} value={suburb} onChange={e => setSuburb(e.target.value)} /></Field>
+                  {/* ONLY WHERE THE TEMPLATE DOES NOT ALREADY KNOW.
+                      29 Oct 2026, Fabio: "if I select Investment Purchase,
+                      Property type preloads INV". It does, because an
+                      investment purchase is an investment - lib/deal-labels.ts
+                      has said so since the chips were built, and that map is
+                      also what sets the deal's transaction type for the
+                      settlements board.
+                      So the question is not asked where it is already answered.
+                      A second box holding the same fact is a box that can
+                      disagree with it, and the one that loses is whichever the
+                      next document happens to read. First home buyer has worked
+                      this way all along; now so do the rest. */}
+                  {!useFromTemplate(template) && (
+                    <Field label="Property type">
+                      <select className={selectCls} value={propertyType} onChange={e => setPropertyType(e.target.value)}>
+                        <option value="">— select —</option>
+                        <option>Owner-occupied</option>
+                        <option>Investment</option>
+                      </select>
+                    </Field>
+                  )}
                   {/* Amber until answered, the same way the LO marks a split
                       with no purpose - it is not optional, it decides a
                       document. */}
@@ -2732,9 +2771,14 @@ Key assumptions: ${checklistText}`
                     && !["refinance_equity", "refinance_only", "investment_equity", "top_up_purchase"].includes(template)
                     && !(showsBuild && landFunding !== 'purchase')
                     && <Field label="Stamp duty"><NumberInput value={stampDuty} onChange={handleStampDutyChange} /></Field>}
-                  {!buysNothing(template)
-                    && !["refinance_equity", "refinance_only", "investment_equity", "top_up_purchase"].includes(template)
-                    && !(showsBuild && landFunding !== 'purchase') && (
+                  {/* A PROPERTY IS IN A STATE WHETHER OR NOT DUTY IS PAYABLE.
+                      29 Oct 2026, Fabio: "State dropdown to choose - all
+                      templates." It used to share stamp duty's condition, so a
+                      refinance had nowhere to record the state at all - the
+                      second half of the fault written up in lib/duty-state.ts
+                      on 30 Sep. Stamp duty keeps its own condition above,
+                      because duty really is only payable sometimes. */}
+                  {(
                     <Field label="State">
                       <select className={selectCls} value={dutyState} onChange={e => setDutyState(e.target.value)}>
                         <option value="">Select</option>

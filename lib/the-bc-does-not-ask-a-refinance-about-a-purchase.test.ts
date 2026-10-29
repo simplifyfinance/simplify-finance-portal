@@ -37,21 +37,41 @@ describe('the boxes a scenario with no purchase is not asked', () => {
     expect(fieldLine(label)).toContain('buysNothing(template)')
   })
 
-  // There are several boxes called "State" in this file - the duty one, and the
-  // new purchase block's own. The duty one is the one that sits beside Stamp
-  // duty, so it is found through that.
-  it('the duty State is behind the one rule', () => {
+  // THE STATE BOX IS NO LONGER ONE OF THEM, AND THAT IS DELIBERATE.
+  //
+  // 29 Oct 2026, Fabio: "State dropdown to choose - all templates." A property
+  // sits in a state whether or not duty is payable on it, and sharing stamp
+  // duty's condition meant a refinance had nowhere to record one - the second
+  // half of the fault lib/duty-state.ts was written for on 30 Sep.
+  //
+  // So this now asserts the opposite of what it used to: the box is still
+  // beside Stamp duty, and it is NOT behind the purchase rule.
+  it('the duty State sits beside Stamp duty, on every template', () => {
     const i = FORM.indexOf('<Field label="Stamp duty">')
-    const after = FORM.slice(i, i + 1200)
+    const after = FORM.slice(i, i + 1600)
     const j = after.indexOf('<Field label="State">')
     expect(j, 'the duty State box moved away from Stamp duty').toBeGreaterThan(-1)
-    expect(after.slice(0, j)).toContain('buysNothing(template)')
+    expect(after.slice(0, j),
+      'the State box is behind the purchase rule again - a refinance cannot record one')
+      .not.toContain('buysNothing(template)')
   })
 })
 
 describe('the box at the top of the card says what it is', () => {
-  it('it is the Suburb box on every scenario that buys nothing', () => {
-    expect(FORM).toContain("buysNothing(template) ? 'Suburb' : 'State'")
+  // 29 Oct 2026. This used to require the ternary - Suburb where the scenario
+  // buys nothing, "State" everywhere else. That was the 12 Oct halfway house,
+  // and the half it left alone is where most suburbs come from: a purchase
+  // deal collected "WA" into its suburb, and the broker notes, the security
+  // address and the pre-approval printed a state code where a suburb belongs.
+  //
+  // It writes into `suburb`. It is read as the suburb. It is the suburb box on
+  // every template, and there is no longer a condition that can get it wrong.
+  it('it is the Suburb box, on every scenario', () => {
+    expect(FORM).toContain('<Field label="Suburb"><input className={inputCls} value={suburb}')
+  })
+
+  it('and the ternary that made it say State is gone', () => {
+    expect(FORM).not.toContain("buysNothing(template) ? 'Suburb' : 'State'")
   })
 
   it('and the hand-written pair it replaced is gone', () => {
