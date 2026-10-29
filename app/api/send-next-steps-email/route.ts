@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { bccForDeal } from '@/lib/files-itself-in-salestrekker'
 import { markProceeded, buildNextStepsContent, nextStepsSubject, loadProceed, stageFor } from '@/lib/proceed-flow'
 import { buildNextStepsEmailHtml } from '@/lib/next-steps-email'
+import { stillNeedFor } from '@/lib/still-need-for-deal'
+import { documentsStillOutFor } from '@/lib/documents-block-for'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { emailGoesTo, isTestDeal, testSubject } from '@/lib/test-deal'
 
@@ -37,7 +39,13 @@ export async function GET(req: NextRequest) {
     preview: true,
     stage,
     subject: nextStepsSubject(stage),
-    html: buildNextStepsEmailHtml({ stage, clientName: deal.clients?.first_name, wealthDeskLink }),
+    html: buildNextStepsEmailHtml({
+      stage, clientName: deal.clients?.first_name, wealthDeskLink,
+      // The preview is the email. Leaving the blocks out here would mean
+      // somebody approving one email and a client receiving another.
+      blocks: (await stillNeedFor(dealId, (deal as any)?.lo_data?.questionsDropped))
+        + (await documentsStillOutFor(dealId)),
+    }),
     wealthDeskLink,
     stepCount: steps.length,
     // Whether a real send would have a recipient at all. The address itself is
@@ -127,6 +135,8 @@ export async function POST(req: NextRequest) {
 
   const html = buildNextStepsEmailHtml({
     stage, clientName: deal.clients?.first_name, wealthDeskLink,
+    blocks: (await stillNeedFor(dealId, (deal as any)?.lo_data?.questionsDropped))
+      + (await documentsStillOutFor(dealId)),
   })
 
   try {

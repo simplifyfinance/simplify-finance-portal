@@ -8,6 +8,7 @@ import { generateCompliancePdfBuffer } from '@/app/api/generate-compliance-pdf/r
 import { generateBrokerNotesPdfBuffer } from '@/app/api/generate-broker-notes-pdf/route'
 import { allocate, todaySoFar, type Person } from '@/lib/compliance-allocation'
 import { checkedWrite } from '@/lib/checked-write'
+import { documentChaseFor } from '@/lib/documents-block'
 
 type Trigger = 'bc_action' | 'bc_sent' | 'lo_sent' | 'lo_to_compliance' | 'push_to_salestrekker' | 'close_followup'
 
@@ -427,9 +428,18 @@ export async function POST(req: NextRequest) {
       // whole deal, not from the slim select above - the select is deliberately
       // narrow and a missing column is a silently undefined value.
       let boxCount: number | undefined
+      // WHAT IS STILL OUT, off the same read as the box count.
+      //
+      // 28 Oct 2026. One query, two answers. Both are niceties in the sense
+      // that neither may stop the pack going out - the three PDFs are the point
+      // of this email and a chase list is the reason somebody opens it twice.
+      let outstanding: Array<{ name: string; asked: string; late: boolean }> = []
       try {
         const { data: full } = await supabase.from('deals').select('*').eq('id', dealId).single()
-        if (full) boxCount = countCards(allSections(full))
+        if (full) {
+          boxCount = countCards(allSections(full))
+          outstanding = documentChaseFor(full)
+        }
       } catch {
         // The count is a nicety. Never let it stop the email.
       }
@@ -445,6 +455,7 @@ export async function POST(req: NextRequest) {
         // info to be CC'd on everything in that tab." Only this email - the
         // card-moving ones and the two document ones are unchanged.
         copyTheOffice: false,
+        outstanding,
         // Named in the email itself, not left to a paperclip at the bottom.
         // Fabio, 2 Sep 2026: "the atatchments will get misssed at the bottom".
         attachmentNames: attachments.map(a => a.filename),

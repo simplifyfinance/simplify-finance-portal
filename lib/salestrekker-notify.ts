@@ -207,9 +207,55 @@ function isBrokerNotes(name: string): boolean {
   return /^broker notes/i.test(String(name || '').trim())
 }
 
+/**
+ * PANEL FOUR, OR NOTHING AT ALL.
+ *
+ * A deal with everything in gets the three panels it has always had. No
+ * "nothing outstanding", no empty box - the absence IS the message, and a panel
+ * that appears every time saying there is nothing to do is a panel people stop
+ * reading before the one time there is.
+ */
+// ONE ESCAPER IN THIS FILE, NOT TWO. safeText() is declared below and hoists.
+function chasePanel(
+  out: Array<{ name: string; asked: string; late: boolean }> | undefined,
+  dealId: string | undefined,
+): string {
+  const items = (out || []).filter(i => String(i?.name || '').trim())
+  if (!items.length) return ''
+  const n = items.length
+  const rows = items.map(i => `<tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:6px;padding:8px 11px">
+      <p style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;margin:0"><span style="color:#141C24;">${safeText(i.name)}</span></p>
+      ${i.asked ? `<p style="font-family:Arial,sans-serif;font-size:12px;font-weight:700;margin:3px 0 0"><span style="color:${i.late ? '#C0392B' : '#6B4FA8'};">${safeText(i.asked)}</span></p>` : ''}
+    </td></tr><tr><td style="padding:4px 0 0"></td></tr>`).join('')
+  const open = dealId
+    ? `<tr><td style="padding:4px 0 0">
+        <table cellpadding="0" cellspacing="0" border="0" style="margin:0"><tr>
+          <td bgcolor="#C9B6F0" style="background:#C9B6F0;border-radius:8px;padding:10px 18px">
+            <a href="${siteUrl()}/deals/${safeText(dealId)}" style="color:#2E1C56;font-family:Arial,sans-serif;font-size:13.5px;font-weight:700;text-decoration:none">Open the documents list &rarr;</a>
+          </td></tr></table>
+      </td></tr>`
+    : ''
+  return `<tr><td style="padding:8px 0 0"></td></tr>
+    <tr><td bgcolor="#F2E9FB" style="background:#F2E9FB;border-radius:8px;padding:13px 16px">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr><td style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:0 0 4px"><span style="color:#5B3A9E;">4 &nbsp;Keep chasing ${n} document${n === 1 ? '' : 's'} from the client</span></td></tr>
+        <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55;padding:0 0 9px"><span style="color:#5B3A9E;">Raised on SalesTrekker and still not in. Tick each one off in the portal as it arrives &mdash; whatever is left unticked is what the client keeps being asked for.</span></td></tr>
+        ${rows}
+        ${open}
+      </table>
+    </td></tr>`
+}
+
 export async function notifyCrisMoveCard(dealName: string, brokerName: string, action: string, closed = false, attachments?: { filename: string; content: string }[], recipientEmail?: string | null, answers?: { subject?: string; lines?: string[]; urgent?: boolean; dealId?: string; boxCount?: number; recipientName?: string | null; attachmentNames?: string[];
   /** False on the compliance pack: one named person, nobody copied. */
-  copyTheOffice?: boolean }) {
+  copyTheOffice?: boolean;
+  /**
+   * WHAT THE CLIENT STILL OWES US, for the team that will chase it.
+   *
+   * 28 Oct 2026. Empty on a deal where everything is in, and then this email is
+   * the three panels it has always been. See lib/documents-block-for.ts.
+   */
+  outstanding?: Array<{ name: string; asked: string; late: boolean }> }) {
   const bg = closed ? '#E6F5EC' : '#F2E9FB'
   const color = closed ? '#1D9E75' : '#7C3AED'
   const html = `${greeting(answers?.recipientName)}
@@ -253,6 +299,7 @@ export async function notifyCrisMoveCard(dealName: string, brokerName: string, a
           <tr><td style="font-family:Arial,sans-serif;font-size:13px;line-height:1.55"><span style="color:#166F52;">Once the boxes are in.</span></td></tr>
         </table>
       </td></tr>
+      ${chasePanel(answers?.outstanding, answers?.dealId)}
     </table>` : `
     <p style="color:#666;font-size:13px;margin:0 0 6px"><span style="color:#666;">Action needed in SalesTrekker:</span></p>
     <table cellpadding="0" cellspacing="0" border="0" style="margin:0"><tr><td bgcolor="${bg}" style="background:${bg};border-radius:8px;padding:8px 12px;font-family:Arial,sans-serif;font-size:14px;font-weight:600;color:${color}">${action}</td></tr></table>`}

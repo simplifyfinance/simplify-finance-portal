@@ -19,6 +19,18 @@ export function buildNextStepsEmailHtml(opts: {
   stage: ProceedStage
   clientName?: string | null
   wealthDeskLink?: string
+  /**
+   * WHAT IS STILL OUTSTANDING, BUILT BY THE CALLER.
+   *
+   * 28 Oct 2026. The questions block and the documents block, already rendered.
+   * They are fetched rather than worked out, and this function reads nothing
+   * and awaits nothing - which is what lets lib/next-steps-email.test.ts check
+   * every word of this email without a database anywhere near it.
+   *
+   * Empty on a client who owes us nothing, which is most of them, and then this
+   * email is exactly what it was yesterday.
+   */
+  blocks?: string
 }): string {
   const { steps } = buildNextStepsContent(opts.stage, opts.wealthDeskLink)
   const clientName = esc(opts.clientName || 'there')
@@ -54,6 +66,7 @@ export function buildNextStepsEmailHtml(opts: {
           <h1 style="font-size:20px;font-weight:700;color:#343333;margin:0 0 8px">Great news, ${clientName}!</h1>
           <p style="font-size:13px;color:#666666;margin:0 0 24px;line-height:1.6"><span style="color:#666666;">Following our call, here&rsquo;s exactly what happens next.</span></p>
           ${stepsHtml}
+          ${String(opts.blocks || '')}
           <p style="font-size:11px;color:#999999;margin:16px 0 0;border-top:1px solid #eeeeee;padding-top:16px"><span style="color:#999999;">Simplify Finance | ACL 387025 | St Leonards, Sydney</span></p>
         </td></tr>
       </table>

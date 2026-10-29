@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stillNeedFor } from '@/lib/still-need-for-deal'
+import { documentsStillOutFor } from '@/lib/documents-block-for'
 import { clientLoan } from '@/lib/lmi'
 import { loPurchaseBlock, isBuyAndSell } from '@/lib/lo-purchase-block'
 import { buysNothing } from '@/lib/buying'
@@ -546,6 +547,16 @@ export async function POST(req: NextRequest) {
   // Asking first is how the questions become the thing between them and the
   // answer, and then they are skimmed past.
   body += await stillNeedFor(dealId, d?.questionsDropped, ffData)
+  // AND THE DOCUMENTS, DIRECTLY UNDER THE QUESTIONS.
+  //
+  // Two blocks rather than one, because they are two different jobs with two
+  // different answers: a question is answered on the answers page, a document
+  // is sent through SalesTrekker. One block would mean one button doing half
+  // the work and a line of small print doing the rest.
+  //
+  // Either stands alone. Nothing to answer and only this one shows; nothing
+  // outstanding and neither does, which is most clients.
+  body += await documentsStillOutFor(dealId)
   body += notesBox([...rbaLines,
     ...(d.importantNotesList || ['Any rates or fees quoted are subject to change', 'This email does not constitute as a formal approval'])])
   body += sig(b)
