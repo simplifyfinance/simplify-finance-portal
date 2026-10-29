@@ -27,6 +27,7 @@ import { ffProperties, securitiesOf, securitiesWithPurchase, totalsOf, groupBySe
         BEING_PURCHASED, BEING_PURCHASED_LABEL,
          lvrOf, pct, legacyAddress } from '@/lib/securities'
 import { autoTagSplits } from '@/lib/split-security-tag'
+import { boxesFor, firstDischargedBalance } from '@/lib/security-figures'
 import { tabsOf, canAdd, canSwap, swapTo, addScenario, removeScenario, whyNotDelete, renameLive,
          labelOf, scenarioCount, downstreamStarted, parkedOf } from '@/lib/bc-scenarios'
 import { proceedCredit } from '@/lib/deal-status'
@@ -506,19 +507,21 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // because everything else in this form arrives via NumberInput and is already
   // formatted.
   //
-  // Now: only on a scenario that actually refinances, only from a loan somebody
-  // marked "To be refinanced", and formatted the way every other figure here is.
+  // Now: only on a scenario that actually refinances, only from a loan the fact
+  // find says is going at settlement, and formatted the way every other figure
+  // here is.
+  //
+  // AND IT HAD NEVER ONCE FIRED. 29 Oct 2026. It waited for a loan marked "To
+  // be refinanced". The fact find's dropdown offers Ongoing, Refinance and To
+  // be paid out - that phrase is not one of them and never has been, so this
+  // box has been typed by hand on every refinance the portal has ever done.
+  // The words are decided in lib/security-figures.ts now, beside the three
+  // boxes on the securities block that ask the same question.
   useEffect(() => {
     if (existingLoanBal) return
     if (!REFINANCING_TEMPLATES.includes(template)) return
-    for (const prop of ff.properties || []) {
-      for (const loan of prop?.loans || []) {
-        if (String(loan?.status || '').trim() === 'To be refinanced' && loan?.balance) {
-          setExistingLoanBal(formatNumber(String(loan.balance)))
-          return
-        }
-      }
-    }
+    const found = firstDischargedBalance(ff.properties)
+    if (found) setExistingLoanBal(formatNumber(String(found)))
   }, [ff.properties, template])
   const [newPurchasePrice, setNewPurchasePrice] = useState(s.newPurchasePrice || '')
   const [newPurchaseDeposit, setNewPurchaseDeposit] = useState(s.newPurchaseDeposit || '')
@@ -2371,6 +2374,12 @@ Key assumptions: ${checklistText}`
                             const on = securityIds.includes(String(p.id))
                             const sec = secs.find(x => x.id === String(p.id))
                             const l = sec ? lvrOf(sec) : null
+                            // WHAT THE THREE BOXES ALREADY KNOW. Shown as the
+                            // placeholder, never written - see the note in
+                            // lib/security-figures.ts. A zero is not shown at
+                            // all: a $0 in a box reads as an answer.
+                            const known = boxesFor(bcNow, ff, String(p.id))
+                            const ghost = (n: number) => n > 0 ? formatNumber(String(Math.round(n))) : undefined
                             return (
                               <div key={String(p.id)}
                                    className={`flex items-center gap-3 flex-wrap rounded-lg px-2 py-1.5 ${on ? '' : 'opacity-55'}`}>
@@ -2394,6 +2403,7 @@ Key assumptions: ${checklistText}`
                                         whichever house you had in your head. 15 Oct 2026. */}
                                     <div className="w-[128px]">
                                       <NumberInput value={securityBalances[String(p.id)] || ''}
+                                        placeholder={ghost(known.owes)}
                                         onChange={(v: string) => setSecurityBalances({ ...securityBalances, [String(p.id)]: v })} />
                                       <span className="block text-[10px] text-gray-400 mt-0.5">owes now</span>
                                     </div>
@@ -2403,6 +2413,7 @@ Key assumptions: ${checklistText}`
                                     {canReleaseEquity(template) && !isTopUp(template) && (
                                       <div className="w-[128px]">
                                         <NumberInput value={securityReleases[String(p.id)] || ''}
+                                          placeholder={ghost(known.releasing)}
                                           onChange={(v: string) => setSecurityReleases({ ...securityReleases, [String(p.id)]: v })} />
                                         <span className="block text-[10px] text-gray-400 mt-0.5">releasing</span>
                                       </div>
@@ -2425,6 +2436,7 @@ Key assumptions: ${checklistText}`
                                     )}
                                     <div className="w-[128px]">
                                       <NumberInput value={securityLimits[String(p.id)] || ''}
+                                        placeholder={ghost(known.limit)}
                                         onChange={(v: string) => setSecurityLimits({ ...securityLimits, [String(p.id)]: v })} />
                                       <span className="block text-[10px] text-gray-400 mt-0.5">new limit</span>
                                     </div>
@@ -2568,13 +2580,16 @@ Key assumptions: ${checklistText}`
                           )}
                         </div>
 
+                        {/* NO COMBINED TOTAL. See the note on 29 Oct 2026 - two
+                          * houses carrying two loans are two transactions, and
+                          * one percentage across them describes neither. Each
+                          * row above carries its own.
+                          *
+                          * The strip stays for what IS about one house: the
+                          * premium recorded against it, and the two properties
+                          * that cannot agree how it is paid. */}
                         {secs.length > 0 && (
                           <div className="mt-2.5 pt-2.5 border-t border-card-line flex items-center gap-3 flex-wrap text-[12px]">
-                            <b className="text-ink">Total security</b>
-                            <span className="text-muted">{fmtMoney(t.value)}</span>
-                            <span className="text-gray-400">against</span>
-                            <span className="text-muted">{fmtMoney(t.limit)}</span>
-                            {t.lvr !== null && <b className="text-info ml-auto">{pct(t.lvr)} LVR</b>}
                             {/* THE ONE FIGURE THE REST OF THE PORTAL READS, shown
                                 beside the properties that produced it. */}
                             {(() => {

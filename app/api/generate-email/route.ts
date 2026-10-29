@@ -871,7 +871,9 @@ export async function POST(req: NextRequest) {
         sum + (readMoney(repaymentOf(sp, bc?.loanTerm)) || 0), 0)
       const every = splits.length > 0 &&
         splits.every((sp: any) => readMoney(repaymentOf(sp, bc?.loanTerm)))
-      const buys = readMoney(bc?.purchasePrice)
+      // purchasePriceOf, not the raw box: an Equity release + purchase holds
+      // the price in newPurchasePrice. 29 Oct 2026.
+      const buys = readMoney(purchasePriceOf(bc))
       // THE SAME NUMBER THE CARD PRINTS, NOT A SECOND ONE WORKED OUT HERE.
       //
       // The first version added the deposit and the duty together and put
@@ -894,7 +896,13 @@ export async function POST(req: NextRequest) {
         ? [['Purchase loan', money(clientLoan(bc, buyLoan).amount ?? buyLoan)],
            ['Refinance', money(rest)]]
         : [['Loan', money(clientLoan(bc, loan).amount ?? loan)]]
+      // WHAT THE OPTION BUYS, ABOVE WHAT IT BORROWS. The column answered "what
+      // do I borrow" without ever saying what for. Nothing on a scenario that
+      // buys nothing, where there is no price to print.
+      const buyingRow: [string, string][] = buys && buys > 0
+        ? [['Purchase price', money(purchasePriceOf(bc))]] : []
       return [
+        ...buyingRow,
         ...lendingRows,
         // THE REPAYMENT IS ONE FIGURE HONESTLY. It is what leaves the account
         // each month, not two transactions added together.
