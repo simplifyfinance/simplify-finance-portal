@@ -2374,9 +2374,21 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
           {d.liabilities.map(liab => (
             <div key={liab.id} className="border border-gray-100 rounded-lg p-4 mb-2">
               <div className="flex justify-between items-center mb-3">
-                <select className="text-xs font-medium text-gray-500 border-0" value={liab.liabilityType} onChange={e => updateLiability(liab.id, 'liabilityType', e.target.value)}><option value="">— select —</option>
-                  <option>Credit card</option><option>Buy now pay later</option><option>Car loan</option><option>Personal loan</option><option>HECS</option><option>Health Insurance</option><option>Other</option>
-                </select>
+                <div className="flex items-center gap-3">
+                  <select className="text-xs font-medium text-gray-500 border-0" value={liab.liabilityType} onChange={e => updateLiability(liab.id, 'liabilityType', e.target.value)}><option value="">— select —</option>
+                    <option>Credit card</option><option>Buy now pay later</option><option>Car loan</option><option>Personal loan</option><option>HECS</option><option>Health Insurance</option><option>Other</option>
+                  </select>
+                  {/* NOBODY HAS SAID WHAT HAPPENS TO THIS DEBT.
+                    * See the note at the top of this block. Said here, beside
+                    * the card it is about, while the fix is one click away -
+                    * rather than in the client email, where the honest thing
+                    * to print is nothing at all. */}
+                  {liab.liabilityType && !liab.status && (
+                    <span className="text-[12px] font-bold text-chase whitespace-nowrap">
+                      &#9679; Status required
+                    </span>
+                  )}
+                </div>
                 <button onClick={() => removeLiability(liab.id)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
               </div>
               {liab.liabilityType === 'HECS' && (
