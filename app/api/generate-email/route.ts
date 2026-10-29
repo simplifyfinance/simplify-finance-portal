@@ -1,4 +1,6 @@
 import { altLvrPurchase, altLvrEquity, altRepayment } from '@/lib/alt-scenario'
+import type { IncomeLine } from '@/lib/income-calculations'
+import { incomeEvidenceSentence } from '@/lib/low-doc'
 import { card, row } from '@/lib/email-card'
 import { bufferNoteBlock } from '@/lib/buffer-note'
 import { dutyLabel as sharedDutyLabel } from '@/lib/duty-state'
@@ -694,11 +696,20 @@ function buildChecklist(d: any) {
   // they duplicated what factFindChecklist (buildPropertyLiabilityChecklist) already shows correctly
   // from the real Fact Find liabilities data, causing double-counted, unformatted entries.
   const items = []
-  const breakdown: { label: string; amount: number | null }[] = d.incomeBreakdown || []
+  // THE TYPE IS lib/income-calculations.ts's, not a hand-written copy of it.
+  // A second declaration of this shape is how 'evidence' could be produced at
+  // one end and dropped at the other without anything complaining.
+  const breakdown: IncomeLine[] = d.incomeBreakdown || []
   if (breakdown.length > 0) {
     breakdown.forEach(entry => {
       if (entry.amount === null) {
-        items.push(`${entry.label}: Income as per tax returns provided`)
+        // THE EVIDENCE, NOT ALWAYS THE TAX RETURNS.
+        //
+        // 29 Oct 2026. A low doc client has not given us tax returns and saying
+        // so to their face is both wrong and careless. The line comes off the
+        // assessment method - see lib/low-doc.ts - and is written in one place
+        // so the BC and the lending options email cannot word it differently.
+        items.push(`${entry.label}: ${incomeEvidenceSentence(entry.evidence)}`)
       } else {
         items.push(`${entry.label} ${money(entry.amount)} p.a.`)
       }

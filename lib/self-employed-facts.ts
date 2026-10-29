@@ -14,6 +14,7 @@
 // find used to print "$0 p.a." in a confident blue box on exactly that.
 
 import { readMoney, money } from './money'
+import { isLowDoc, lowDocMethodWords } from './low-doc'
 import { calculateSeAssessableIncome, seYearTotalFF } from './income-calculations'
 import { incomeKind } from './income-kind'
 
@@ -75,7 +76,8 @@ export function selfEmployedFacts(inc: any, employment?: any): SelfEmployedFacts
   // description of it. And on growth: "the business is growing, performing very
   // well year on year, so we're using a conservative figure of previous year
   // plus twenty percent growth as per lender's policy."
-  const methodWords = isDirector ? "the director's salary"
+  const methodWords = isLowDoc(method) ? lowDocMethodWords(method)
+    : isDirector ? "the director's salary"
     : oneYear ? 'one financial year in isolation'
     : growth === 'latest_lower' ? 'the latest financial year as per the tax returns provided'
     : growth === 'previous_plus_growth' ? `a conservative figure of the previous financial year plus ${pct}% growth, as per lender policy`
@@ -87,13 +89,20 @@ export function selfEmployedFacts(inc: any, employment?: any): SelfEmployedFacts
   // method uses the later one. Printing the year that was NOT used invites an
   // assessor to ask why that number is on the page.
   const bothYears = [yearFacts(inc, 1), yearFacts(inc, 2)]
-  const years = isDirector ? []
+  // AND NO FINANCIAL YEARS. There are none - printing an empty pair of years
+  // under a low doc assessment invites an assessor to ask where they went.
+  const years = isLowDoc(method) ? []
+    : isDirector ? []
     : oneYear ? [bothYears[0]]
     : growth === 'latest_lower' ? [bothYears[1]]
     : growth === 'previous_plus_growth' ? [bothYears[0]]
     : bothYears
   const assessedRaw = calculateSeAssessableIncome(inc)
-  const hasFigures = isDirector ? has(inc?.seDirectorSalary) : bothYears.some(y => y.total > 0)
+  // NOTHING TYPED IN IS STILL NOT ZERO, on low doc as on everything else: the
+  // red panel on the form and the blank in every document both read this.
+  const hasFigures = isLowDoc(method) ? has(inc?.seLowDocIncome)
+    : isDirector ? has(inc?.seDirectorSalary)
+    : bothYears.some(y => y.total > 0)
   // Only said when the figures actually show it. The method is chosen because a
   // business is growing; the note only claims it when the two years agree.
   const growingYearOnYear = growth === 'previous_plus_growth'

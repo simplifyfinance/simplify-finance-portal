@@ -81,9 +81,25 @@ describe('what does NOT change', () => {
   })
 
   it('self-employed still says income as per tax returns, with no figure invented', () => {
+    // 29 Oct 2026: the line gained `evidence`, which names what the figure
+    // rests on so a low doc client is not told we hold tax returns we have
+    // never seen. A full-doc assessment, and an unanswered one, still say tax
+    // returns - and the amount is still null, which is the half of this that
+    // matters most.
     expect(incomeBreakdownFor({
       income: [{ incomeType: 'Self-employed', seBusinessName: 'Acme Pty Ltd' }],
-    }, 'Dylan')).toEqual([{ label: 'Dylan — Self-employed income', amount: null }])
+    }, 'Dylan')).toEqual([
+      { label: 'Dylan — Self-employed income', amount: null, evidence: 'tax returns' },
+    ])
+  })
+
+  it('and a low doc assessment names its own evidence, still with no figure', () => {
+    expect(incomeBreakdownFor({
+      income: [{ incomeType: 'Self-employed', seAssessmentMethod: 'Low doc — BAS',
+                 seLowDocIncome: '186000' }],
+    }, 'Dylan')).toEqual([
+      { label: 'Dylan — Self-employed income', amount: null, evidence: 'BAS' },
+    ])
   })
 
   it('other income keeps its own name', () => {

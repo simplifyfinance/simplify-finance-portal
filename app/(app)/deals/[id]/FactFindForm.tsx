@@ -1,5 +1,6 @@
 'use client'
 import DropZone from '@/components/DropZone'
+import { isLowDoc } from '@/lib/low-doc'
 import WhoSharesThisDeal from '@/components/WhoSharesThisDeal'
 import SectionHeader from '@/components/SectionHeader'
 import { checkedWrite } from '@/lib/checked-write'
@@ -97,6 +98,15 @@ type Income = {
   seBusinessName: string
   seAbn: string
   seAssessmentMethod: string
+  /**
+   * WHAT WE ARE DECLARING, ON A LOW DOC ASSESSMENT.
+   *
+   * A year, before tax, typed by somebody who has read the BAS or the
+   * accountant's letter. There is no calculation behind it and there is not
+   * meant to be - see lib/low-doc.ts. Empty on every income before 29 Oct 2026
+   * and on every full-doc one after it.
+   */
+  seLowDocIncome: string
   seGrowthMethod: string
   seGrowthPercentOption: string
   seGrowthPercentCustom: string
@@ -370,7 +380,7 @@ const defaultIncome = (type: string = 'PAYG'): Income => ({
   overtimeNonEssentialAmount: '', overtimeNonEssentialFrequency: 'Annually',
   commissionAmount: '', commissionFrequency: 'Annually',
   allowanceAmount: '', allowanceFrequency: 'Annually',
-  seBusinessName: '', seAbn: '', seAssessmentMethod: '',
+  seBusinessName: '', seAbn: '', seAssessmentMethod: '', seLowDocIncome: '',
   seGrowthMethod: '', seGrowthPercentOption: '', seGrowthPercentCustom: '',
   seYear1FY: '', seYear1Salary: '', seYear1NetProfit: '',
   seYear1Depreciation: '', seYear1Interest: '', seYear1Super: '', seYear1OneOff: '', seYear1Other: '',
@@ -1897,6 +1907,12 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                       <option value="Last 2 financial years">Last 2 financial years</option>
                       <option value="One year in isolation">One year in isolation</option>
                       <option value="Director's salary">Director's salary</option>
+                      {/* LOW DOC, UNDERNEATH THE THREE THAT READ TAX RETURNS.
+                          The wording is exact: lib/low-doc.ts matches on these
+                          strings, and a renamed option is a method that
+                          silently stops being low doc. */}
+                      <option value="Low doc — BAS">Low doc — BAS</option>
+                      <option value="Low doc — accountant's letter">Low doc — accountant&rsquo;s letter</option>
                     </select>
                   </div>
 
@@ -1934,7 +1950,9 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                     <div className="bg-chase-bg border border-chase-edge rounded-lg p-3 mb-3">
                       <div className="text-sm font-semibold text-chase">No income figures recorded yet</div>
                       <div className="text-xs text-chase mt-1">
-                        {inc.seAssessmentMethod === "Director's salary"
+                        {isLowDoc(inc.seAssessmentMethod)
+                          ? 'Enter the declared income above. Until then this income counts as nothing on the BC, the client email and the compliance notes.'
+                          : inc.seAssessmentMethod === "Director's salary"
                           ? 'Enter the director\'s salary below. Until then this income counts as nothing on the BC, the client email and the compliance notes.'
                           : 'Enter the financial year figures below. Until then this income counts as nothing on the BC, the client email and the compliance notes.'}
                       </div>
@@ -1956,7 +1974,28 @@ export default function FactFindForm({ deal, onDataChange, onDealFieldChange, on
                         {inc.seAssessmentMethod === 'Last 2 financial years' && inc.seGrowthMethod === 'previous_plus_growth' && `FY ${inc.seYear1FY}: $${Math.round(seYearTotalFF(inc, 1)).toLocaleString()} + ${inc.seGrowthPercentOption === 'Other' ? inc.seGrowthPercentCustom : inc.seGrowthPercentOption}% growth`}
                         {inc.seAssessmentMethod === 'One year in isolation' && `FY ${inc.seYear1FY} total, including add-backs`}
                         {inc.seAssessmentMethod === "Director's salary" && `Director's salary, annualized`}
+                        {inc.seAssessmentMethod === 'Low doc — BAS' && 'Declared, supported by BAS'}
+                        {inc.seAssessmentMethod === "Low doc — accountant's letter" && 'Declared, supported by accountant\u2019s letter'}
                       </div>
+                    </div>
+                  )}
+
+                  {/* LOW DOC: ONE FIGURE, TYPED.
+                      No years, no add-backs, no growth method - none of them
+                      exist on this evidence. Fabio, 29 Oct 2026: "all they do
+                      is just give you a box that you input the income." */}
+                  {isLowDoc(inc.seAssessmentMethod) && (
+                    <div className="mb-3">
+                      <label className="text-xs text-gray-500 block mb-1">Income declared</label>
+                      <CurrencyInput className={inp} value={inc.seLowDocIncome}
+                        onChange={val => updateIncome(inc.id, 'seLowDocIncome', val)} />
+                      <p className="text-[11px] text-faint mt-1">
+                        A year, before tax.{' '}
+                        {inc.seAssessmentMethod === 'Low doc — BAS'
+                          ? 'As declared by the client and supported by the BAS provided.'
+                          : 'As stated in the accountant\u2019s letter.'}
+                        {' '}This is the figure that carries to the BC, the compliance notes and the handover.
+                      </p>
                     </div>
                   )}
 

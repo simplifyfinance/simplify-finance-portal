@@ -14,6 +14,7 @@
 // readMoney() is the one way this codebase reads stored money. See lib/money.ts,
 // and the guard in lib/email-money.test.ts that keeps Number() away from it.
 import { readMoney } from './money'
+import { isLowDoc, evidenceWords } from './low-doc'
 import { incomeKind } from './income-kind'
 
 // Zero when the box is empty, which is what an add-back nobody typed means.
@@ -29,6 +30,13 @@ export function seYearTotalFF(inc: any, year: 1 | 2): number {
 }
 
 export function calculateSeAssessableIncome(inc: any): number {
+  // LOW DOC IS THE FIGURE SOMEBODY TYPED, FULL STOP.
+  //
+  // 29 Oct 2026. No arithmetic, no BAS maths, no annualising - see lib/low-doc.ts
+  // for why. A person has read the BAS or the accountant's letter and written
+  // down what we are declaring; this returns it.
+  if (isLowDoc(inc?.seAssessmentMethod)) return n(inc?.seLowDocIncome)
+
   const year1 = seYearTotalFF(inc, 1)
   if (inc?.seAssessmentMethod === 'One year in isolation') return year1
 
@@ -124,7 +132,18 @@ const PAYG_PARTS: [string, string, string][] = [
   ['Allowance',               'allowanceAmount',            'allowanceFrequency'],
 ]
 
-export type IncomeLine = { label: string; amount: number | null }
+export type IncomeLine = {
+  label: string
+  amount: number | null
+  /**
+   * WHAT A CLIENT'S EMAIL MAY SAY THE FIGURE RESTS ON.
+   *
+   * Only ever set on a self-employed line, whose amount is deliberately null -
+   * the client is never sent the number. 'tax returns', 'BAS' or
+   * "accountant's letter". See lib/low-doc.ts.
+   */
+  evidence?: string
+}
 
 export function incomeBreakdownFor(applicant: any, applicantLabel: string): IncomeLine[] {
   const out: IncomeLine[] = []
@@ -135,7 +154,12 @@ export function incomeBreakdownFor(applicant: any, applicantLabel: string): Inco
       && type !== 'Other taxable' && type !== 'Other non-taxable') continue
 
     if (type === 'Self-employed') {
-      out.push({ label: `${applicantLabel} — Self-employed income`, amount: null })
+      out.push({
+        label: `${applicantLabel} — Self-employed income`,
+        amount: null,
+        // Still no figure. Only the name of the thing it rests on changes.
+        evidence: evidenceWords(inc?.seAssessmentMethod),
+      })
       continue
     }
 
