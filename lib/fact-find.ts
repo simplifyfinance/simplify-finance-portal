@@ -132,9 +132,9 @@ export function gapsInHistory(
   const start = new Date(today.getFullYear(), today.getMonth() - windowMonths, 1)
   const end = new Date(today.getFullYear(), today.getMonth(), 1)
 
-  // Every period as a pair of months, clipped to the window. A period with no
-  // start date cannot be placed and is left out rather than guessed at.
-  const spans: [number, number][] = []
+  // EVERY PERIOD AS REAL DATES FIRST. A period with no start date cannot be
+  // placed and is left out rather than guessed at.
+  const periods: [Date, Date][] = []
   for (const e of entries || []) {
     const from = String(e?.startDate ?? '').trim()
     if (!from) continue
@@ -143,6 +143,30 @@ export function gapsInHistory(
     const rawEnd = e?.isCurrent ? '' : String(e?.endDate ?? '').trim()
     const t = rawEnd ? new Date(rawEnd) : today
     if (isNaN(t.getTime())) continue
+    periods.push([s, t])
+  }
+
+  // THEN THE JOINS ARE CLOSED, IN DAYS, BEFORE ANYTHING BECOMES A MONTH.
+  //
+  // 29 Oct 2026. Moving out on the 31st and in on the 1st is one move, and the
+  // day between them is not a month unaccounted for. Months are the right unit
+  // for REPORTING a gap and the wrong one for deciding whether there is one:
+  // 31 December and 1 January fall in different months and are a day apart.
+  //
+  // Only the joins are closed. An address held until 3 March beside one
+  // starting 3 July is still four months short, and still says so.
+  periods.sort((x, y) => x[0].getTime() - y[0].getTime())
+  const joined: [Date, Date][] = []
+  for (const [s, t] of periods) {
+    const last = joined[joined.length - 1]
+    if (last && daysBetween(last[1], s) <= MOVING_DAYS) {
+      if (t.getTime() > last[1].getTime()) last[1] = t
+    } else joined.push([s, t])
+  }
+
+  // AND ONLY NOW, MONTHS. Clipped to the window.
+  const spans: [number, number][] = []
+  for (const [s, t] of joined) {
     const a = Math.max(months(start, s), 0)
     const b = Math.min(months(start, t), months(start, end))
     if (b > a) spans.push([a, b])
@@ -175,6 +199,20 @@ export function gapsInHistory(
   const upToNow = months(start, end)
   if (upToNow > lastCovered) out.push(gap(start, lastCovered, upToNow))
   return out
+}
+
+/**
+ * HOW LONG ANYBODY IS ALLOWED TO TAKE MOVING HOUSE.
+ *
+ * A fortnight. Longer than the day most leases join on, short enough that a
+ * month nobody can account for is still a month nobody can account for. Out on
+ * the 31st and in on the 1st is one day; out in March and in in July is 122.
+ */
+const MOVING_DAYS = 14
+
+/** Whole days from one date to the next. Negative where they overlap. */
+function daysBetween(from: Date, to: Date): number {
+  return Math.round((to.getTime() - from.getTime()) / 86_400_000)
 }
 
 function months(from: Date, to: Date): number {

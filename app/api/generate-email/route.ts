@@ -1097,6 +1097,7 @@ export async function POST(req: NextRequest) {
         })}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
+        ${lineIf('Repayment type', repaymentTypeLine(opt, d.loanTerm))}
         ${lineIf('Est. repayment', altRepayment(opt, d.loanTerm))}
         ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px"><span style="color:#343333;">To achieve this option:</span></p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">&#10003; ${a}</span></p>`).join('') : ''}${nonBankNote}
       </td>`
@@ -1160,6 +1161,7 @@ export async function POST(req: NextRequest) {
         })}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${opt.rate}% p.a.*</span></p>
+        ${lineIf('Repayment type', repaymentTypeLine(opt, d.loanTerm))}
         ${lineIf('Est. repayment', altRepayment(opt, d.loanTerm))}
         ${actions.length ? `<p style="font-size:11px;font-weight:600;color:#343333;margin:8px 0 3px"><span style="color:#343333;">To achieve this option:</span></p>` + actions.map((a: string) => `<p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">&#10003; ${a}</span></p>`).join('') : ''}${nonBankNote}
       </td>`
@@ -1286,7 +1288,7 @@ export async function POST(req: NextRequest) {
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Loan amount: ${col.amount !== null ? money(col.amount) : money(s.amount)}</span></p>${colNote}${s.deposit ? `<p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Deposit required${PLUS_INCIDENTALS}: ${money(s.deposit)}</span></p>` : ""}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">LVR: ${lvrNum}%</span></p>${lmiLine}
         <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Rate: ${s.rate}% p.a.*</span></p>
-        <p style="font-size:11px;color:#555;margin:3px 0"><span style="color:#555;">Type: ${s.type}</span></p>
+        ${lineIf('Repayment type', repaymentTypeLine(s, d.loanTerm))}
       </td>`
     }).join('')
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +

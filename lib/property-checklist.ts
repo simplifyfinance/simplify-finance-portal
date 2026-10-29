@@ -228,25 +228,57 @@ export function propertyChecklist(ff: any): string[] {
     items.push(header + subBlock(lines))
   }
 
-  // LIABILITIES ARE UNCHANGED. They worked, and nothing was asked of them.
+  // A LABEL WITH NOTHING AFTER IT IS NOT A LINE.
+  //
+  // 29 Oct 2026. This block used to read "LIABILITIES ARE UNCHANGED. They
+  // worked, and nothing was asked of them." They did not work: a credit card
+  // with no limit recorded sent a client the word "Limit" and white space, and
+  // a car loan with no figures sent "Repayment /monthly, Balance".
+  //
+  // Each part is now built only where there is something to say, and a line
+  // with no parts is not pushed. The liability still appears - it exists, and
+  // leaving a debt off a credit document to tidy a layout is not a trade worth
+  // making. What goes is the empty label, not the fact.
   for (const liab of liabilities) {
     const owners = ownersByCheckbox(liab?.ownership, applicants)
     const header = `<strong>${txt(liab?.liabilityType)}</strong>${statusBadge(liab?.status)}`
     const lines: Line[] = []
     const type = txt(liab?.liabilityType)
+
+    /** "Limit $20,000", or nothing at all. */
+    const part = (label: string, v: any) => {
+      const money = moneyOrBlank(v)
+      return money ? `${label} ${money}`.trim() : ''
+    }
+    /** A repayment carries its frequency, and neither half stands alone. */
+    const repayment = () => {
+      const money = moneyOrBlank(liab?.repaymentAmount)
+      if (!money) return ''
+      const freq = freqLabel(liab?.repaymentFrequency)
+      return freq ? `Repayment ${money}/${freq}` : `Repayment ${money}`
+    }
+    /** One line from whichever parts exist, or no line. */
+    const line = (...parts: string[]) => {
+      const real = parts.filter(Boolean)
+      if (real.length) lines.push({ text: real.join(', ') })
+    }
+
     if (type === 'Credit card') {
-      lines.push({ text: `Limit ${moneyOrBlank(liab?.limitAmount)}` })
+      line(part('Limit', liab?.limitAmount))
     } else if (type === 'Buy now pay later') {
       // Assessed on the limit like a card, but the repayment is often a fixed
       // instalment and gets asked about, so both are on the line.
-      lines.push({ text: `Limit ${moneyOrBlank(liab?.limitAmount)}, Balance ${moneyOrBlank(liab?.balance)}` })
-      lines.push({ text: `Repayment ${moneyOrBlank(liab?.repaymentAmount)}/${freqLabel(liab?.repaymentFrequency)}` })
+      line(part('Limit', liab?.limitAmount), part('Balance', liab?.balance))
+      line(repayment())
     } else if (type === 'HECS') {
-      lines.push({ text: `Balance ${moneyOrBlank(liab?.balance)}` })
+      line(part('Balance', liab?.balance))
     } else if (type === 'Health Insurance') {
-      lines.push({ text: `${moneyOrBlank(liab?.repaymentAmount)}/${freqLabel(liab?.repaymentFrequency)}` })
+      // No label on this one - the figure and its frequency are the whole line.
+      const money = moneyOrBlank(liab?.repaymentAmount)
+      const freq = freqLabel(liab?.repaymentFrequency)
+      line(money ? (freq ? `${money}/${freq}` : money) : '')
     } else {
-      lines.push({ text: `Repayment ${moneyOrBlank(liab?.repaymentAmount)}/${freqLabel(liab?.repaymentFrequency)}, Balance ${moneyOrBlank(liab?.balance)}` })
+      line(repayment(), part('Balance', liab?.balance))
     }
     if (owners) lines.push({ text: `Owned by: ${owners}` })
     items.push(header + subBlock(lines))
