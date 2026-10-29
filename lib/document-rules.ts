@@ -28,6 +28,7 @@
 // file passed a typecheck and then failed the ship gate.
 import { currentAddress, currentEmployment, fullName, notWorking, selfEmployed } from './fact-find'
 import { needsCompanyFinancials, structureAnswered } from './fact-find-options'
+import { isLowDoc, LOW_DOC_BAS } from './low-doc'
 
 // Lodge means the lender sees it - and lodge is automatically compliance too.
 // Compliance means our file only. Fabio, 3 Sep 2026: "anything that is labeled
@@ -199,6 +200,36 @@ function employmentItems(a: any, id: string, who: string, g: any, out: DocItem[]
   }
 
   if (anySelf) {
+    // ── LOW DOC ASKS FOR ITS OWN EVIDENCE, AND NOTHING ELSE ────────────────
+    //
+    // The method lives on the INCOME record, not the employment one - it is a
+    // decision about how the income is assessed, not about the business. See
+    // lib/low-doc.ts.
+    const seIncomes = (a?.income || []).filter((inc: any) => txt(inc?.incomeType) === 'Self-employed')
+    const lowDocMethods = [...new Set(
+      seIncomes.map((inc: any) => txt(inc?.seAssessmentMethod)).filter((m: string) => isLowDoc(m)))]
+
+    for (const method of lowDocMethods) {
+      if (method === LOW_DOC_BAS) {
+        out.push({ ...g, key: `lowdoc-bas:${id}`, label: 'BAS × 4',
+          detail: 'last four quarters',
+          why: 'Assessed on BAS', forWhat: 'lodge', round: 'proceed', auto: true })
+      } else {
+        out.push({ ...g, key: `lowdoc-letter:${id}`, label: "Accountant's letter",
+          detail: 'stating the income declared',
+          why: "Assessed on an accountant's letter", forWhat: 'lodge', round: 'proceed', auto: true })
+      }
+    }
+
+    // A CLIENT ASSESSED ONLY ON LOW DOC IS ASKED FOR NOTHING ELSE.
+    //
+    // Where some income is full doc and some is low doc - rare, but a person
+    // can run two businesses - the full list stays as well. Asking for a
+    // document we do not need costs a download; missing one costs a week.
+    const everyIncomeIsLowDoc = seIncomes.length > 0
+      && seIncomes.every((inc: any) => isLowDoc(inc?.seAssessmentMethod))
+    if (everyIncomeIsLowDoc) return
+
     // Everybody self-employed needs these, whatever the structure.
     out.push({ ...g, key: `personal-tax:${id}`, label: 'Personal tax returns × 2',
       detail: 'most recent two', forWhat: 'lodge', round: 'proceed', auto: true })

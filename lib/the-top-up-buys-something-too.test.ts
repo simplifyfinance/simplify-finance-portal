@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
+import { autoTagSplits } from './split-security-tag'
 import {
   canBuyAndRefinance, securitiesWithPurchase, totalsOf, purchaseLoanOf,
   BEING_PURCHASED, lvrOf,
@@ -178,10 +179,20 @@ describe('the form asks the questions the scenario needs', () => {
 
   // One unassigned split was the cause of the empty increasing-by box, the
   // short "drawn" figure and the LVR reading off the typed limit.
+  //
+  // 29 Oct 2026. This used to pin the three lines of the rule where they sat,
+  // inline in the form. They have moved to lib/split-security-tag.ts, because
+  // the gate around them was wrong - it asked "is this a top up" and the
+  // purchase rule inside it is not a top-up rule, so Equity release + purchase
+  // never tagged its purchase split. The form calls it; the rule itself is
+  // tested properly in lib/the-purchase-is-a-security-like-any-other.test.ts
+  // rather than by reading the source it lives in.
   it('puts a house against a split that has none', () => {
-    expect(form).toContain("if (buys && /new purchase/i.test(String(sp.label || '')))")
-    expect(form).toContain('return { ...sp, securityId: BEING_PURCHASED }')
-    expect(form).toContain("if (String(sp.securityId || '')) return sp")
+    expect(form).toContain('autoTagSplits(splits, template, securityIds)')
+    expect(autoTagSplits([{ label: 'New purchase' }], 'top_up_purchase', ['p1'])?.[0].securityId)
+      .toBe(BEING_PURCHASED)
+    expect(autoTagSplits([{ label: 'Increase' }], 'top_up', ['p1'])?.[0].securityId).toBe('p1')
+    expect(autoTagSplits([{ label: 'Increase', securityId: 'p2' }], 'top_up', ['p1'])).toBe(null)
   })
 })
 

@@ -88,9 +88,11 @@ describe('the securities are chosen before anything is split against them', () =
   it('the securities block is above the property details, not inside Loan splits', () => {
     // 15 Oct 2026: that heading now reads "Property being refinanced" on a
     // refinancing scenario and "Scenario details" on the rest, so the anchor is
-    // the line that renders either one.
+    // the line that renders either one. 29 Oct 2026 it gained "Sale and
+    // purchase" for a buy and sell and moved into a named function, so the
+    // anchor is the call rather than the ternary.
     const sec = FORM.indexOf('Securities for this loan')
-    const scenario = FORM.indexOf("manySecurities ? '' : REFINANCING_TEMPLATES.includes(template)")
+    const scenario = FORM.indexOf('scenarioBoxHeading(template, manySecurities)')
     const splits = FORM.indexOf('"Loan splits"')
     expect(sec).toBeGreaterThan(-1)
     expect(sec).toBeLessThan(scenario)

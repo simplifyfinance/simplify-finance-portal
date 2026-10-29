@@ -302,6 +302,15 @@ const EXTRAS: { label: string; forWhat: DocFor; detail?: string }[] = [
   { label: 'Company tax returns × 2', forWhat: 'lodge' },
   { label: 'Company financials × 2', forWhat: 'lodge', detail: 'accountant prepared' },
   { label: 'BAS × 3', forWhat: 'lodge' },
+  // FOUR ON A LOW DOC ASSESSMENT. The lender is not chosen when the list is
+  // built, and La Trobe wants four where everybody else wants two - so the
+  // rule asks for four and covers both. See lib/document-rules.ts.
+  //
+  // It is here because document-progress.test.ts holds the rule that anything
+  // a RULE can produce must also be addable BY HAND: a deal where the rules
+  // did not ask for it is exactly where somebody needs to add it themselves.
+  // That test caught this one, which is what it is for.
+  { label: 'BAS × 4', forWhat: 'lodge', detail: 'last four quarters' },
   { label: 'HECS balance', forWhat: 'lodge' },
   { label: 'Living at home rent free letter', forWhat: 'compliance' },
   { label: 'Tenancy agreement', forWhat: 'compliance' },

@@ -26,6 +26,7 @@ import { ffProperties, securitiesOf, securitiesWithPurchase, totalsOf, groupBySe
          orphanSplits, canBuyAndRefinance, purchaseLoanOf,
         BEING_PURCHASED, BEING_PURCHASED_LABEL,
          lvrOf, pct, legacyAddress } from '@/lib/securities'
+import { autoTagSplits } from '@/lib/split-security-tag'
 import { tabsOf, canAdd, canSwap, swapTo, addScenario, removeScenario, whyNotDelete, renameLive,
          labelOf, scenarioCount, downstreamStarted, parkedOf } from '@/lib/bc-scenarios'
 import { proceedCredit } from '@/lib/deal-status'
@@ -313,6 +314,26 @@ const formatNumber = formatAsTyped
 const BUYING_TEMPLATES = SHARED_BUYING_TEMPLATES as readonly string[]
 
 const REFINANCING_TEMPLATES = ['refinance_equity', 'refinance_only', 'investment_equity', 'buy_sell', 'bridging', 'debt_recycling', 'complex_refinance']
+
+// WHAT THE CARD UNDER THE TEMPLATE BUTTONS IS ABOUT.
+//
+// 29 Oct 2026. Fabio, on a Buy / sell: it "asks 'property being refinanced'...
+// same box for being sold and purchased so sentence needs to match the
+// intention of the boxes in that section."
+//
+// Nothing is refinanced on a buy and sell. That card holds the sale - expected
+// price, agent fees, net proceeds - and the purchase - suburb, property type,
+// price, stamp duty - in one place, so it is named after both, because it is
+// both. The existing loan balance in it is the loan on the house being sold.
+//
+// EMPTY WHERE EACH PROPERTY CARRIES ITS OWN FIGURES. 15 Oct 2026: once the
+// securities are ticked, what is left in the card belongs to the loan rather
+// than to a house, and a heading naming one house is a lie about what it holds.
+function scenarioBoxHeading(template: string, manySecurities: boolean): string {
+  if (manySecurities) return ''
+  if (template === 'buy_sell') return 'Sale and purchase'
+  return REFINANCING_TEMPLATES.includes(template) ? 'Property being refinanced' : 'Scenario details'
+}
 
 
 const STATES = ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'] as const
@@ -1501,23 +1522,14 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // that was not buying anything printed 124%.
   //
   // NEVER OVERWRITES. A split that already names a house keeps it.
+  //
+  // 29 Oct 2026. The gate was `isTopUp` and the purchase rule inside it was
+  // not a top-up rule, so Equity release + purchase - which buys a house and
+  // is not a top up - never tagged its purchase split. Both rules, each gated
+  // on its own question, now live in lib/split-security-tag.ts.
   useEffect(() => {
-    if (!isTopUp(template)) return
-    const ids = securityIds.map(String).filter(Boolean)
-    const only = ids.length === 1 ? ids[0] : ''
-    const buys = canBuyAndRefinance(template)
-    let changed = false
-    const next = splits.map(sp => {
-      if (String(sp.securityId || '')) return sp
-      if (buys && /new purchase/i.test(String(sp.label || ''))) {
-        changed = true
-        return { ...sp, securityId: BEING_PURCHASED }
-      }
-      if (!only) return sp
-      changed = true
-      return { ...sp, securityId: only }
-    })
-    if (changed) setSplits(next)
+    const next = autoTagSplits(splits, template, securityIds)
+    if (next) setSplits(next as any)
   }, [template, splits, securityIds])
 
   // A DEAL-LEVEL BOX HOLDS A DEAL-LEVEL FIGURE. THE TOTAL, NOT THE FIRST.
@@ -2519,7 +2531,17 @@ Key assumptions: ${checklistText}`
                             * are already on this form. */}
                           {buyRow && (
                             <div className="flex items-center gap-3 flex-wrap rounded-lg px-2 py-1.5">
-                              <span className="shrink-0 w-4 h-4 rounded border-[1.5px] border-gray-200 bg-page" />
+                              {/* TICKED, AND NOT A BUTTON. An empty box on this
+                                  list means "not security", and the loan that
+                                  buys a house is always secured by it - there
+                                  is nothing here to decide. 29 Oct 2026, Fabio:
+                                  "I cannot link the new purchase to the
+                                  security at the top." */}
+                              <span title="Always security for the loan that buys it"
+                                className="shrink-0 w-4 h-4 rounded border-[1.5px] border-gray-300 bg-gray-200
+                                           text-gray-500 flex items-center justify-center text-[10px] font-bold">
+                                &#10003;
+                              </span>
                               <span className="text-[12.5px] text-ink flex-1 min-w-[170px]">
                                 {BEING_PURCHASED_LABEL}
                               </span>
@@ -2559,8 +2581,11 @@ Key assumptions: ${checklistText}`
                               const rows = lmiBySecurity(bcNow)
                               if (rows.length === 0) return null
                               const total = rows.reduce((x, r) => x + r.amount, 0)
+                              // secsAll, not secs: the house being bought
+                              // can carry the premium and it is not on the
+                              // fact find. 29 Oct 2026.
                               const names = rows.map(r =>
-                                secs.find(x => x.id === r.id)?.address || 'a security').join(', ')
+                                secsAll.find(x => x.id === r.id)?.address || 'a security').join(', ')
                               return (
                                 <span className="basis-full text-[11.5px] text-chase mt-1.5">
                                   LMI of <b>{fmtMoney(total)}</b> recorded against {names}.
@@ -2644,8 +2669,7 @@ Key assumptions: ${checklistText}`
                    * details needs to go." What is left under it is the loan
                    * term and the state, which belong to the loan rather than to
                    * a house, so they are shown without a heading at all. */
-                  manySecurities ? '' : REFINANCING_TEMPLATES.includes(template)
-                    ? 'Property being refinanced' : 'Scenario details'}</div>
+                  scenarioBoxHeading(template, manySecurities)}</div>
                 {/* WHAT THE SALE PROCEEDS ARE GOING INTO.
                     It governs the whole card below it, so it sits at the top of
                     the card rather than beside the boxes it turns on and off.
@@ -3404,6 +3428,11 @@ Key assumptions: ${checklistText}`
               {canBuyAndRefinance(template) && (() => {
                 const pIdx = findPurchaseSplit(splits)
                 const pSplit: any = pIdx >= 0 ? splits[pIdx] : {}
+                // THE SAME FUNCTION THE SECURITIES ROW USES. This worked its
+                // own out with Math.ceil, so one house read 87.2% here and
+                // 87.1% six inches up the page. 29 Oct 2026.
+                const buyLvr = lvrOf({ value: newPurchasePrice, limit: pSplit?.amount })
+                const buyApplies = securityLmiApplicable[BEING_PURCHASED] || ''
                 return (
                 <div className="bg-card border-2 border-brand/40 rounded-xl p-4">
                   <div className="text-xs font-medium text-brand-ink uppercase tracking-wider mb-3">New purchase</div>
@@ -3438,14 +3467,56 @@ Key assumptions: ${checklistText}`
                     <Field label="Stamp duty"><NumberInput value={newPurchaseStampDuty} onChange={handleNewPurchaseStampDutyChange} /></Field>
                     <Field label="LVR (calculated)">
                       <div className={inputCls + " bg-gray-50 text-gray-700"}>
-                        {(() => {
-                          const price = parseFloat((newPurchasePrice || '0').replace(/,/g, '')) || 0
-                          const loanAmt = parseFloat((pSplit?.amount || '0').replace(/,/g, '')) || 0
-                          const pct = price > 0 ? Math.ceil((loanAmt / price) * 1000) / 10 : 0
-                          return pct > 0 ? `${pct}%` : '\u2014'
-                        })()}
+                        {buyLvr === null ? '\u2014' : pct(buyLvr)}
                       </div>
                     </Field>
+                    {/* OVER 80% ON THE HOUSE BEING BOUGHT, SO THE QUESTION IS
+                      * ASKED HERE - beside the LVR that raises it, the same way
+                      * every ticked security asks it beside its own.
+                      *
+                      * 29 Oct 2026. Fabio: "equity release and purchase
+                      * scenario on the purchase LVR is above 80% and you are
+                      * not giving me LMI." Three of the four LVR boxes on this
+                      * form were followed by these; this one never was, so a
+                      * premium on the purchase reached no email, no funds to
+                      * complete and no compliance pack.
+                      *
+                      * IT WRITES WHERE THE OTHER SECURITIES WRITE, keyed by the
+                      * house being bought. lib/lmi.ts adds the per-property
+                      * answers into the one figure the rest of the portal
+                      * reads, so nothing downstream needs telling. */}
+                    {buyLvr !== null && buyLvr > 80 && (
+                      <Field label="LMI status">
+                        <select className={selectCls} value={buyApplies}
+                          onChange={e => setSecurityLmiApplicable({
+                            ...securityLmiApplicable, [BEING_PURCHASED]: e.target.value })}>
+                          <option value="">Select</option>
+                          <option value="Applicable">LMI applicable</option>
+                          <option value="Waived">LMI waived</option>
+                        </select>
+                        <span className="block text-[11px] text-chase mt-1 leading-snug">
+                          {pct(buyLvr)} on the property being purchased.
+                        </span>
+                      </Field>
+                    )}
+                    {buyLvr !== null && buyLvr > 80 && buyApplies === 'Applicable' && (
+                      <Field label="LMI estimate">
+                        <NumberInput value={securityLmi[BEING_PURCHASED] || ''}
+                          onChange={(v: string) => setSecurityLmi({
+                            ...securityLmi, [BEING_PURCHASED]: v })} />
+                      </Field>
+                    )}
+                    {buyLvr !== null && buyLvr > 80 && buyApplies === 'Applicable' && (
+                      <Field label="How is the LMI paid?">
+                        <select className={selectCls} value={securityLmiTreatment[BEING_PURCHASED] || ''}
+                          onChange={e => setSecurityLmiTreatment({
+                            ...securityLmiTreatment, [BEING_PURCHASED]: e.target.value })}>
+                          <option value="">Select</option>
+                          <option value={LMI_CAPITALISED}>Capitalised onto the loan</option>
+                          <option value={LMI_SETTLEMENT}>Paid at settlement</option>
+                        </select>
+                      </Field>
+                    )}
                     <Field label="Loan term (years)"><input className={inputCls} value={newPurchaseLoanTerm} onChange={e => setNewPurchaseLoanTerm(e.target.value)} /></Field>
                     <Field label="Loan amount">
                       <NumberInput value={pSplit?.amount || ''} onChange={v => {
