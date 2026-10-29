@@ -115,13 +115,23 @@ export function canSwap(deal: any): boolean {
 // Every one of these returns the WHOLE set of columns to write, so a swap is one
 // update and a scenario cannot be lost between two of them.
 
-// THE TWO NOTE BOXES, WHICH ARE ABOUT THE CLIENTS AND NOT ABOUT THE STRUCTURE.
+// THE OPENING PARAGRAPH, WHICH IS ABOUT THE CLIENTS AND NOT ABOUT THE
+// STRUCTURE.
 //
-// brokerNotes is the opening paragraph of the client email. templateNotes is
-// the "important things to note" list under it. Neither is a fact about which
-// loan they take, and typing them twice is how one of them ends up a version
-// behind the other in front of a client.
-const SHARED_NOTES = ['brokerNotes', 'templateNotes'] as const
+// brokerNotes is what the broker writes at the top of the client email. It is
+// the same words whichever option they take, and typing it twice is how one
+// copy ends up a version behind the other in front of a client.
+//
+// "IMPORTANT THINGS TO NOTE" IS NOT IN HERE, AND WAS FOR HALF A DAY.
+//
+// 29 Oct 2026. Fabio, once he saw why the box was empty: "each template has its
+// own pre determined items, can we merge both together in html email when this
+// is being generated." He is right and I had it backwards. That list is
+// pre-filled per template - a Buy / sell warns about the sale price being an
+// estimate and about capital gains tax, an equity release says none of that -
+// so each scenario keeps its own, and the EMAIL puts both in front of the
+// client. See lib/scenario-notes.ts.
+const SHARED_NOTES = ['brokerNotes'] as const
 
 /**
  * The scenario coming out, with the notes from the one going in.

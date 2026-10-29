@@ -10,7 +10,11 @@ import { ctas, ctasTwo } from '@/lib/email-buttons'
 import { labelOf as scenarioLabel } from '@/lib/bc-scenarios'
 import { resolveBrokerProfile, noBrokerMessage } from '@/lib/broker-profile'
 import { createSupabaseServer } from '@/lib/supabase-server'
-import { lmiClientLines, lmiIsInTheLoan, clientLoan, lmiAmount, lmiKeys, totalLendingLine } from '@/lib/lmi'
+import { lmiClientLines, lmiIsInTheLoan, clientLoan, lmiAmount, lmiKeys,
+         totalLendingLine, lmiOnSecurity } from '@/lib/lmi'
+import { loanThatBuysIt, lendingNotBuyingIt, purchasePriceOf, splitSecurityId,
+         canBuyAndRefinance, BEING_PURCHASED } from '@/lib/securities'
+import { mergedNotes } from '@/lib/scenario-notes'
 import { repaymentOf, splitRows, cardTitle, structureLead, realSplits,
          repaymentTypeLine } from '@/lib/split-cards'
 import { purchaseRows } from '@/lib/purchase-rows'
@@ -232,13 +236,20 @@ function splitCards(d: any, templateName: string, opts?: {
         // carries its own or the row is simply not there - a deal-level figure
         // printed on one of two property cards would be wrong on both.
         existingFallback: splits.length === 1 ? opts?.existingFallback : undefined,
-        // ONE SPLIT CARRIES THE PREMIUM. TWO AND NOTHING DOES.
+        // THE PREMIUM GOES ON THE SPLIT THAT CARRIES IT.
         //
-        // Nothing on a deal says which of two splits a capitalised premium
-        // sits on, and the portal does not guess at a client's lending. With
-        // two or more, both cards are left alone and the total is said
-        // underneath them - see totalLendingLine() in lib/lmi.ts.
-        lmiBc: splits.length === 1 ? d : undefined,
+        // 27 Oct 2026 this read "nothing on a deal says which of two splits a
+        // capitalised premium sits on", so with two or more splits neither card
+        // was touched and the total was said underneath instead. That stopped
+        // being true on 20 Oct, when the premium moved onto the security, and
+        // finished stopping being true on 29 Oct, when the purchase split
+        // started naming the house it buys. A premium recorded against a
+        // security now prints on the split secured by it - and only that one,
+        // which is what lmiOnSecurity narrows it to.
+        //
+        // The old rule stays underneath it, for a deal whose premium is
+        // recorded at deal level and has only one split to sit on.
+        lmiBc: lmiOnSecurity(d, splitSecurityId(sp)) || (splits.length === 1 ? d : undefined),
       }).map(r => r.note
         ? `<tr><td colspan="2" style="font-size:11px;color:#7a5c3a;font-style:italic;line-height:1.5;padding:0 0 4px"><span style="color:#7a5c3a;">${r.value}</span></td></tr>`
         : row(r.label, r.value)).join('')
@@ -252,6 +263,15 @@ function splitCards(d: any, templateName: string, opts?: {
 }
 
 function splitsTotalLending(d: any, splits: any[]): string {
+  // NEVER ACROSS TWO TRANSACTIONS. Fabio, 29 Oct 2026: "I said to NEVER do
+  // total lending, it makes no sense, it is 2 separate transactions." A
+  // refinance on the house they own and a loan buying another one are two
+  // things, and one number across them is not a figure a client can use.
+  if (canBuyAndRefinance(d?.template)) return ''
+  // AND NOT WHERE A SPLIT HAS ALREADY SAID IT. The line exists only to place a
+  // capitalised premium that no card could carry; where a card carries it, this
+  // would be the same money said twice.
+  if (splits.some((sp: any) => lmiOnSecurity(d, splitSecurityId(sp)))) return ''
   const base = splits.reduce((t: number, s: any) => t + (readMoney(s?.amount) || 0), 0)
   const line = totalLendingLine(d, base || null, splits.length)
   if (!line) return ''
@@ -482,8 +502,8 @@ export function securedTotalLine(d: any) {
 // property carries its own; reading them would print one house's balance
 // against another's address. Empty rows are dropped by rowIf - a missing figure
 // is a gap somebody can see, a borrowed one is a lie nobody can.
-function propertyCards(d: any) {
-  return groupsOf(d).map(g =>
+function propertyCards(d: any, only?: (g: any) => boolean) {
+  return groupsOf(d).filter(g => (only ? only(g) : true)).map(g =>
     card(g.heading + (g.value ? ` \u2014 valued at ${g.value}` : ''),
       // WHAT THE PROPERTY CARRIES NOW, THEN WHAT IS COMING OUT OF IT, THEN THE
       // LIMIT IT ENDS UP WITH. The order a client reads the change in, and the
@@ -644,8 +664,14 @@ function lmiLines(opt: any, treatment: any, base: number): string {
   }).join('')
 }
 
-function buildLVRLine(d: any, lmiAlreadyInTheLoan?: boolean) {
-  const pct = Number(d.lvrPercent)
+/**
+ * `only` is the LVR of ONE security, where the card above it describes one
+ * security rather than the deal. 29 Oct 2026: the purchase card on a two-option
+ * email printed the deal-level box - "80% (no LMI)" on a purchase that is 85.6%
+ * and has $21,295 of LMI recorded against it.
+ */
+function buildLVRLine(d: any, lmiAlreadyInTheLoan?: boolean, only?: number | null) {
+  const pct = only !== undefined && only !== null ? only : Number(d.lvrPercent)
   if (!pct || pct <= 0) {
     return row('LVR', d.lvr || '80%')
   }
@@ -799,7 +825,14 @@ export async function POST(req: NextRequest) {
   // asking: what do I borrow, what do I pay, what do I have to find.
   if (d.secondScenario && typeof d.secondScenario === 'object') {
     const asOption = (bc: any, label: string, n: number) => {
-      const buys = readMoney(bc?.purchasePrice)
+      // purchasePriceOf, not bc.purchasePrice: an Equity release + purchase
+      // holds the price in newPurchasePrice, and reading the raw box printed a
+      // purchase card with no price on one of the two options.
+      const buys = readMoney(purchasePriceOf(bc))
+      // THE LOAN THAT BUYS IT, AND THE LVR THAT GOES WITH IT - not the deal's.
+      const buyLoan = loanThatBuysIt(bc)
+      const buyLvr = buys && buys > 0 && buyLoan > 0
+        ? Math.round((buyLoan / buys) * 1000) / 10 : null
       return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0 12px"><tr>
           <td style="border-top:2px solid #343333;padding:12px 0 0">
             <p style="font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;margin:0"><span style="color:#A29889;">Option ${n}</span></p>
@@ -808,13 +841,24 @@ export async function POST(req: NextRequest) {
         (buys && buys > 0
           ? card('The Purchase',
               purchaseBlock({
-                price: bc.purchasePrice, duty: bc.stampDuty, dutyLabel: dutyLabel(bc),
-                loan: totalLending(bc.splits), contribution: bc.deposit, contributionFrom: bc.depositSource,
-                lmiFrom: bc,
-              }) + buildLVRLine(bc, lmiIsInTheLoan(bc)))
+                price: purchasePriceOf(bc),
+                duty: bc.newPurchaseStampDuty || bc.stampDuty, dutyLabel: dutyLabel(bc),
+                loan: buyLoan,
+                // The Deposit/Equity box on the New purchase panel, which is
+                // where a scenario that refinances AND buys records it.
+                contribution: bc.newPurchaseDeposit || bc.deposit,
+                contributionFrom: bc.newPurchaseDepositSource || bc.depositSource,
+                lmiFrom: lmiOnSecurity(bc, BEING_PURCHASED) || bc,
+              }) + buildLVRLine(bc, lmiIsInTheLoan(bc), buyLvr))
           : securityHead(bc) + (money(bc.existingLoanBal)
               ? card('Today', existingLoanRow(bc) + rowIf('Property value', moneyIf(bc.propertyValue)))
               : '')) +
+        // AND THE HOUSE THEY ALREADY OWN, AS ITS OWN TRANSACTION. One card per
+        // property, with what is owed on it, what is coming out of it and the
+        // LVR it ends up at - never folded into the purchase above.
+        (canBuyAndRefinance(bc?.template)
+          ? propertyCards(bc, (g: any) => g.property && g.id !== BEING_PURCHASED)
+          : '') +
         splitCards(bc, 'Your loan', { termWithType: true })
     }
 
@@ -836,9 +880,25 @@ export async function POST(req: NextRequest) {
       // The deposit box is already price minus loan plus duty, kept that way in
       // every direction by the BC; lib/purchase-rows.ts says so and prints it
       // unchanged. So does this.
-      const find = readMoney(bc?.deposit) || 0
+      //
+      // 29 Oct 2026, and it reads the New purchase panel's box as well. An
+      // Equity release + purchase records the contribution in
+      // newPurchaseDeposit, so this printed nothing at all on that option -
+      // one column answering "what do I have to find" and the other silent.
+      const find = readMoney(bc?.newPurchaseDeposit) || readMoney(bc?.deposit) || 0
+      // TWO TRANSACTIONS, TWO LINES. Never one "Loan" across a refinance and a
+      // purchase - see splitsTotalLending above for why.
+      const buyLoan = loanThatBuysIt(bc)
+      const rest = lendingNotBuyingIt(bc)
+      const lendingRows: [string, string][] = rest > 0
+        ? [['Purchase loan', money(clientLoan(bc, buyLoan).amount ?? buyLoan)],
+           ['Refinance', money(rest)]]
+        : [['Loan', money(clientLoan(bc, loan).amount ?? loan)]]
       return [
-        ['Loan', money(loan)],
+        ...lendingRows,
+        // THE REPAYMENT IS ONE FIGURE HONESTLY. It is what leaves the account
+        // each month, not two transactions added together.
+        //
         // A total across splits where one has no repayment would be a smaller
         // number presented as the whole of it. Plausible, and therefore worse
         // than absent.
@@ -856,7 +916,12 @@ export async function POST(req: NextRequest) {
       </td>`
 
     const one = d
-    const two = d.secondScenario
+    // THE FACT FIND IS THE DEAL'S, NOT THE SCENARIO'S. The form sends the
+    // properties - their ids, addresses and values - alongside the live
+    // scenario only, so a parked one arrives without them and every property
+    // card on option 2 would be headed "Other lending". Both scenarios are on
+    // one deal and the houses are the same houses. 29 Oct 2026.
+    const two = { ...d.secondScenario, ffProperties: d.secondScenario?.ffProperties || d.ffProperties }
     // ONE RULE FOR WHAT A SCENARIO IS CALLED - its own name, or the scenario it
     // is. Decided in lib/bc-scenarios.ts so the email, the BC tabs and the deal
     // card cannot call the same thing three things.
@@ -883,7 +948,16 @@ export async function POST(req: NextRequest) {
         { url: link(2), label: `Go ahead with ${label2}` },
       ]) +
       p('Have a look through both and tell us which suits you — we are happy to talk either one through.') +
-       stillNeed + notesBox(notes) + sig(b)
+       // BOTH SCENARIOS' IMPORTANT THINGS TO NOTE, MERGED.
+       //
+       // 29 Oct 2026. Fabio: "each template has its own pre determined items,
+       // can we merge both together in html email when this is being generated
+       // - otherwise the important things to note only shows based on where we
+       // are sitting in the template."
+       //
+       // The caveats on a Buy / sell are not the caveats on an equity release,
+       // and the client is being shown both. See lib/scenario-notes.ts.
+       stillNeed + notesBox(mergedNotes(d, d.secondScenario)) + sig(b)
 
   } else if (template === 'refinance_equity' && d.compareOptions) {
     const buildOptionColRE = (opt: any, label: string) => {

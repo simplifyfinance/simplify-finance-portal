@@ -248,6 +248,35 @@ export function purchaseLoanOf(bc: any): number {
   return num(named?.amount)
 }
 
+/**
+ * THE LOAN THAT BUYS THE HOUSE, OR THE WHOLE LENDING WHERE THE DEAL IS THE
+ * PURCHASE.
+ *
+ * 29 Oct 2026. The purchase card on a two-option email was handed every split
+ * added up, so a client buying a $1,530,000 house with $1,310,000 was told
+ * their loan amount was $2,251,295 - the refinance on the house they already
+ * own, folded in.
+ *
+ * purchaseLoanOf() answers "which split buys it" and returns 0 on a deal where
+ * no split says so, which is every ordinary purchase: one split, no tag, and
+ * the whole lending IS the loan that buys it. So that is the fall-back, and the
+ * figure only changes on the deals that hold two transactions.
+ */
+export function loanThatBuysIt(bc: any): number {
+  const named = purchaseLoanOf(bc)
+  if (named > 0) return named
+  const splits = Array.isArray(bc?.splits) ? bc.splits : []
+  return splits.reduce((t: number, s: any) => t + num(s?.amount), 0)
+}
+
+/** What is lent on this deal that is NOT buying the new house. */
+export function lendingNotBuyingIt(bc: any): number {
+  const splits = Array.isArray(bc?.splits) ? bc.splits : []
+  const all = splits.reduce((t: number, s: any) => t + num(s?.amount), 0)
+  const buys = purchaseLoanOf(bc)
+  return buys > 0 ? Math.max(0, all - buys) : 0
+}
+
 export function purchasePriceOf(bc: any): string {
   return txt(bc?.newPurchasePrice) || txt(bc?.purchasePrice)
 }

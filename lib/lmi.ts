@@ -102,6 +102,34 @@ export function lmiBySecurity(bc: any): { id: string; amount: number }[] {
  * one, because the funds to complete genuinely cannot be worked out until
  * somebody settles it.
  */
+/**
+ * THE PREMIUM THAT BELONGS TO ONE SECURITY, AND NOTHING ELSE ON THE DEAL.
+ *
+ * 29 Oct 2026. A split card needs to print the loan as it is drawn against the
+ * house that split is against - not the deal's whole premium, which on a deal
+ * with two securities would land the other house's LMI on this one's card.
+ *
+ * Returns a bc-shaped object holding only that security's answers, so every
+ * reader downstream - clientLoan, totalLoan, lmiTreatment - works unchanged.
+ * Null where that security carries no premium.
+ */
+export function lmiOnSecurity(bc: any, id: any): any | null {
+  const want = txt(id)
+  if (!want) return null
+  const row = lmiBySecurity(bc).find(r => r.id === want)
+  if (!row) return null
+  const how = (bc?.securityLmiTreatment || {})[row.id]
+  return {
+    ...bc,
+    securityLmi: { [row.id]: String(row.amount) },
+    securityLmiApplicable: { [row.id]: 'Applicable' },
+    securityLmiTreatment: how ? { [row.id]: how } : {},
+    // The deal-level pair is cleared, or lmiAmount would fall back to it on a
+    // security whose own figure is blank and print the whole deal's premium.
+    lmiApplicable: '', lmi: '',
+  }
+}
+
 export function lmiTreatmentsDisagree(bc: any): boolean {
   const map = bc?.securityLmiTreatment
   if (!map || typeof map !== 'object') return false

@@ -27,8 +27,13 @@ describe('SWITCHING TABS', () => {
     expect(swapTo(deal(), 0)?.bc_data.brokerNotes).toBe(OPENING)
   })
 
-  it('and the important things to note', () => {
-    expect(swapTo(deal(), 0)?.bc_data.templateNotes).toBe(CAVEATS)
+  it('AND LEAVES "IMPORTANT THINGS TO NOTE" WHERE IT BELONGS', () => {
+    // 29 Oct 2026, same day, reversed by Fabio once he saw why the box was
+    // empty: that list is pre-filled per template, so each scenario keeps its
+    // own and the email merges both. A Buy / sell warns about capital gains
+    // tax; an equity release has nothing to say about a sale.
+    const w = swapTo(deal({}, { templateNotes: 'Theirs' }), 0)
+    expect(w?.bc_data.templateNotes).toBe('Theirs')
   })
 
   it('AND NOTHING ELSE. The figures are the whole reason there are two.', () => {
@@ -72,7 +77,10 @@ describe('A NEW SCENARIO IS BLANK OF FIGURES, NOT OF THE NOTES', () => {
 
   it('because the clients have not changed', () => {
     expect(made?.bc_data.brokerNotes).toBe(OPENING)
-    expect(made?.bc_data.templateNotes).toBe(CAVEATS)
+  })
+
+  it('and its important things to note start from its own template', () => {
+    expect(made?.bc_data.templateNotes).toBeUndefined()
   })
 
   it('and it is still blank of everything that is the scenario', () => {

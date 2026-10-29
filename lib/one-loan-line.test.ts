@@ -156,9 +156,14 @@ describe('the split card, where the split IS the whole loan', () => {
     expect(rows.some(r => r.note)).toBe(false)
   })
 
+  // 29 Oct 2026 it gained a first answer in front of it: a premium recorded
+  // against a security now prints on the split secured by that security, which
+  // is knowable since the purchase split started naming the house it buys. The
+  // rule below is unchanged - the deal is still handed over, and nothing is
+  // gated behind a template.
   it('and every template hands it the deal, which is what was missing', () => {
     const src = readFileSync(new URL('../app/api/generate-email/route.ts', import.meta.url), 'utf8')
-    expect(src).toContain('lmiBc: splits.length === 1 ? d : undefined')
+    expect(src).toContain('lmiOnSecurity(d, splitSecurityId(sp)) || (splits.length === 1 ? d : undefined)')
     expect(src, 'the premium is behind a template flag again')
       .not.toContain('lmiOnTheSplit && splits.length === 1 ? d : undefined')
   })

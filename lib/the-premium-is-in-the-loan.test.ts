@@ -153,6 +153,10 @@ describe('nothing states a loan without asking about the premium', () => {
       .split('\n').filter((l: string) => !l.trim().startsWith('//')).join('\n')
     expect(src, 'the premium is behind a template flag again')
       .not.toContain('lmiOnTheSplit && splits.length')
-    expect(src).toContain('lmiBc: splits.length === 1 ? d : undefined')
+    // 29 Oct 2026. A premium recorded against a security now prints on the
+    // split secured by it - knowable since the purchase split started naming
+    // its house. The deal is still handed over behind it, for the deals whose
+    // premium is recorded at deal level and have one split to carry it.
+    expect(src).toContain('lmiOnSecurity(d, splitSecurityId(sp)) || (splits.length === 1 ? d : undefined)')
   })
 })

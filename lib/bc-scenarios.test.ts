@@ -219,8 +219,13 @@ describe('the two-option email', () => {
   // The first version added the deposit and the duty and put $227,800 in the
   // glance against the card's $190,000. The deposit box is already price minus
   // loan plus duty - lib/purchase-rows.ts says so and prints it unchanged.
+  //
+  // 29 Oct 2026 it gained the New purchase panel's box as a first choice. An
+  // Equity release + purchase records the contribution in newPurchaseDeposit,
+  // so that column printed nothing at all - one option answering "what do I
+  // have to find" and the other silent. Still ONE box, never two added up.
   it('and takes "what you contribute" from the one box that already holds it', () => {
-    expect(branch).toContain('const find = readMoney(bc?.deposit) || 0')
+    expect(branch).toContain('readMoney(bc?.newPurchaseDeposit) || readMoney(bc?.deposit) || 0')
     expect(branch).not.toContain("readMoney(bc?.stampDuty) || 0)")
   })
 
