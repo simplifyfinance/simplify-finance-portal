@@ -89,6 +89,18 @@ export const ASSET_TYPES = [
   'Other',
 ] as const
 
+/**
+ * IS THIS THE MONEY IN THE BANK?
+ *
+ * Both words, because the list says "Savings" and every deal recorded before
+ * 13 Oct 2026 says "Bank account" and always will. Asked in one place so a
+ * screen cannot answer it differently from an email.
+ */
+export function isSavings(assetType: unknown): boolean {
+  const v = String(assetType ?? '').trim().toLowerCase()
+  return v === 'savings' || v === 'bank account'
+}
+
 // WHAT HAPPENS TO A LIABILITY AT SETTLEMENT.
 //
 // 13 Oct 2026. Two changes, both from Fabio.

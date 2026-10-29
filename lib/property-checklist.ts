@@ -22,6 +22,7 @@
 // So it lives here now, out of the form, with a test on every line it prints.
 
 import { money as fmt, readMoney } from './money'
+import { isSavings } from './fact-find-options'
 
 const txt = (v: any) => String(v ?? '').trim()
 const money = (v: any) => fmt(v)
@@ -189,6 +190,29 @@ export function propertyChecklist(ff: any): string[] {
   const applicants = ff?.applicants || []
   const properties = ff?.properties || []
   const liabilities = ff?.liabilities || []
+  const assets = ff?.assets || []
+
+  // WHAT THEY HAVE, BEFORE WHAT THEY OWN AND WHAT THEY OWE.
+  //
+  // 29 Oct 2026. Savings is the asset the deposit comes out of and the one the
+  // client is about to be asked to evidence, and it has never appeared in the
+  // email that tells them what their numbers are. The rest of the assets stay
+  // out: nobody needs their own car read back to them on a lending email.
+  //
+  // ONE LINE PER ACCOUNT, because two accounts is two statements to produce.
+  // The total only where there is more than one - on a single account it would
+  // be the same figure twice.
+  const savings = assets.filter((a: any) => isSavings(a?.assetType) && readMoney(a?.value))
+  if (savings.length) {
+    const lines: Line[] = savings.map((a: any) => ({
+      text: [txt(a?.description), money(a?.value)].filter(Boolean).join(' \u2014 '),
+    }))
+    if (savings.length > 1) {
+      const total = savings.reduce((t: number, a: any) => t + (readMoney(a?.value) || 0), 0)
+      lines.push({ text: `Total ${money(total)}` })
+    }
+    items.push('<strong>Savings</strong>' + subBlock(lines))
+  }
 
   for (const prop of properties) {
     const owners = ownersByPercent(prop?.ownership, applicants)
