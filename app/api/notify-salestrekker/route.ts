@@ -451,10 +451,19 @@ export async function POST(req: NextRequest) {
         dealId,
         boxCount,
         recipientName: packName,
-        // ONE NAMED PERSON, NOBODY COPIED. Fabio, 28 Oct 2026: "We do not need
-        // info to be CC'd on everything in that tab." Only this email - the
-        // card-moving ones and the two document ones are unchanged.
-        copyTheOffice: false,
+        // INFO@ IS A PERSON, AND SHE IS THE ONE WHO ACTS ON THIS.
+        //
+        // 28 Oct 2026 this was false, from "We do not need info to be CC'd on
+        // everything in that tab". 29 Oct, Catherine: "Ria didn't get this
+        // email to info@. She only knew to jump on it because of the teams
+        // channel."
+        //
+        // info@ is not an archive address - it is Ria's inbox, and this email
+        // is how she knows there is a pack to pick up. Taking the office off
+        // the noisy card-moving emails and taking a person off the one email
+        // that starts her work are different instructions that read the same
+        // in code, and I did not ask which was meant.
+        copyTheOffice: true,
         outstanding,
         // Named in the email itself, not left to a paperclip at the bottom.
         // Fabio, 2 Sep 2026: "the atatchments will get misssed at the bottom".

@@ -141,9 +141,12 @@ describe('THE SETTINGS PAGE SAYS WHAT EACH LINE SENDS', () => {
     expect(ROUTE).not.toMatch(/>=\s*5\b|===\s*5\b/)
   })
 
-  it('and the pack email no longer copies the office', () => {
-    // Fabio: "We do not need info to be CC'd on everything in that tab."
-    expect(ROUTE).toContain('copyTheOffice: false')
+  it('AND IT REACHES INFO@, BECAUSE INFO@ IS A PERSON', () => {
+    // 28 Oct this asserted the opposite, off "We do not need info to be CC'd
+    // on everything in that tab". 29 Oct, Catherine: "Ria didn't get this
+    // email to info@. She only knew to jump on it because of the teams
+    // channel." info@ is Ria's inbox and this email is how her work starts.
+    expect(ROUTE).toContain('copyTheOffice: true')
   })
 
   it('and who got it is written on the deal, once', () => {

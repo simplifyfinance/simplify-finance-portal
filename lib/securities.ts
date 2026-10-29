@@ -98,9 +98,31 @@ export function limitOf(bc: any, id: any): string {
   // anywhere else is how one screen ends up disagreeing with another.
   if (isTopUp(bc?.template)) {
     const lending = lendingAgainst(bc, txt(id))
-    return lending > 0 ? String(lending) : ''
+    if (lending > 0) return String(lending)
   }
-  return ''
+
+  // AND ON EVERY OTHER SCENARIO, WHAT IS ACTUALLY LENT AGAINST IT.
+  //
+  // 29 Oct 2026. Fabio, on an Equity release + purchase: "the boxes on the
+  // existing security is blank???" They were - nobody had typed an owes-now or
+  // a limit - and the house was carrying $700,000 refinanced plus $220,000
+  // released, which the screen was already printing as "drawn $920,000" two
+  // columns across. With no limit the total read "against $1,310,000" and the
+  // deal's LVR came out at 48.9% instead of 83.2%: a figure that looks precise
+  // and is not, on the one screen whose whole point is the LVR.
+  //
+  // THE SAME ANSWER THE REST OF THE PORTAL ALREADY GIVES. groupsOf() in
+  // lib/complex-refinance.ts has used `limit > 0 ? limit : drawn` since it was
+  // written, so the client email's property cards had this right while the
+  // broker's own screen did not. One question answered two ways, which is the
+  // fault this codebase keeps paying for.
+  //
+  // THE TYPED BOX STILL WINS, above. A lender can approve more than is drawn
+  // at settlement and that is a real thing to record.
+  const drawn = realOnes(bc?.splits)
+    .filter((sp: any) => splitSecurityId(sp) === txt(id))
+    .reduce((t: number, sp: any) => t + num(sp?.amount), 0)
+  return drawn > 0 ? String(drawn) : ''
 }
 
 // THE SECURITIES ON THIS DEAL, IN FACT FIND ORDER.
