@@ -14,6 +14,7 @@ import { getWaitingOnLabel, WAITING_ON_STYLES } from '@/lib/deal-status'
 import { whoHasIt } from '@/lib/who-has-it'
 import { ageGroupOf, stageAge, GROUP_ORDER, GROUP_STYLE } from '@/lib/deal-age'
 import { useBrokerNames } from '@/lib/broker-names'
+import { brokerToStartWith } from '@/lib/whose-deal-is-it'
 import { phaseOf, derivedPhaseOf, isFinished, isInApplication, PHASE_LABEL } from '@/lib/deal-phase'
 import DealBoard from '@/components/DealBoard'
 import BoardFilters, { BoardFilterBar } from '@/components/BoardFilters'
@@ -602,7 +603,15 @@ function NewDealModal({ onClose, onCreated, brokerKey, userRole }: { onClose: ()
   const [form2, setForm2] = useState({ first_name: '', last_name: '', email: '', phone: '', client_id: '' })
   // No fallback to a named person. An unassigned deal is visible and fixable;
   // one quietly filed under the wrong broker is neither.
-  const [deal, setDeal] = useState({ assigned_broker: brokerKey || '', lead_source: '' })
+  //
+  // 29 Oct 2026, and this line was the fallback it warns about. It opened with
+  // the SIGNED-IN person's own name, and Create is only held back while the box
+  // is empty - so for an admin it was never held back at all, and one click
+  // filed the deal under whoever made it. Fabio: "all deals created are still
+  // picking up Mark as the broker... we need to keep changing it." It was not
+  // Mark; it was whoever was logged in. See lib/whose-deal-is-it.ts.
+  const [deal, setDeal] = useState({
+    assigned_broker: brokerToStartWith(userRole, brokerKey), lead_source: '' })
   // Off by default, so nothing changes for a normal deal. It sits with the
   // names where you cannot miss it, not behind a settings screen.
   const [isTest, setIsTest] = useState(false)
