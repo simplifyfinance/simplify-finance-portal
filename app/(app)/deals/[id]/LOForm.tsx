@@ -13,6 +13,7 @@ import { isDebtRecycling } from '@/lib/debt-recycling'
 import { bcFieldsWin } from '@/lib/the-lo-copies-nothing-it-does-not-own'
 import { normalisePurpose } from '@/lib/split-purpose'
 import { canHaveManySecurities } from '@/lib/complex-refinance'
+import { copyBeforeAsking } from '@/lib/send-again'
 import { loTemplateFor, settleLoTemplate } from '@/lib/lo-template'
 // Aliased: this file already has a local `pct` for the single-property LVR a
 // few hundred lines down, and two things called pct in one file is how the
@@ -263,6 +264,8 @@ type LOData = {
   // AND THE FIGURES IT WAS WRITTEN FROM. The Chapman email quoted a rate the
   // deal no longer held and nothing said so - see loFigures().
   emailFigures?: Record<string, string> | null
+  /** Which questions the saved email was built without. See BCForm. */
+  emailQuestions?: string[] | null
   refinanceSplits: RefinanceSplit[]
   // DID A PERSON BUILD THIS LIST.
   //
@@ -741,6 +744,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       emailHtml: '',
       emailHtmlTemplate: '',
       emailFigures: null,
+      emailQuestions: null,
       refinanceSplits: initRefinanceSplits(),
       refinanceSplitsByHand: false,
       brokerSig: deal.assigned_broker || 'Fabio',
@@ -1725,7 +1729,8 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
   // Does the saved email still match the scenario the deal is on?
   // Worked out every render: the form is the live copy, the stamp is the old
   // one, and the difference between them is the warning.
-  const freshness = emailFreshness({ emailHtml, emailHtmlTemplate: d.emailHtmlTemplate, emailFigures: d.emailFigures },
+  const freshness = emailFreshness({ emailHtml, emailHtmlTemplate: d.emailHtmlTemplate,
+                                    emailFigures: d.emailFigures, emailQuestions: d.emailQuestions },
                                    d.template, loFigures(d))
   // Shown, never acted on - nothing here switches a button off. See
   // needsAttention() in lib/email-freshness.ts.
@@ -1765,11 +1770,15 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
     await copyHtmlAndPlain(getCleanEmailHtml())
   }
 
-  async function sendEmail() {
+  /**
+   * `preCopied` - the wording is already on the clipboard, put there by the
+   * click that opened the "send it again?" dialog. See lib/send-again.ts.
+   */
+  async function sendEmail(preCopied = false) {
     if (!emailHtml) return
     setSending(true); setSendError(''); setSent(false)
     try {
-      await copyEmailToClipboard()
+      if (!preCopied) await copyEmailToClipboard()
       const subject = 'Lending Options & Recommendation'
       const applicantEmails = (deal.fact_find_data?.applicants || [])
         .map((a: any) => a.emailPersonal)
@@ -1865,7 +1874,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       return
     }
     const data = await res.json()
-    if (data.html) { setEmailHtml(data.html); setD({ ...d, emailHtml: data.html, emailHtmlTemplate: d.template, emailFigures: loFigures(d) }); setActiveTab('preview') }
+    if (data.html) { setEmailHtml(data.html); setD({ ...d, emailHtml: data.html, emailHtmlTemplate: d.template, emailFigures: loFigures(d), emailQuestions: questionsDropped }); setActiveTab('preview') }
     else alert('No email was returned. Try again.')
     setGenerating(false)
   }
@@ -1978,8 +1987,14 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             again: canSendAgain(deal, 'lo') && canSendToClient && emailHtml ? {
               label: 'Send again',
               title: 'Sends this email to the same people again',
-              onClick: () => {
-                if (confirm('Send this email to the client again?\n\nThey get it at the same addresses as last time.')) sendEmail()
+              // THE COPY HAPPENS ON THE CLICK, THE QUESTION AFTER IT.
+              // 30 Oct 2026 - see lib/send-again.ts.
+              onClick: async () => {
+                const next = await copyBeforeAsking(copyEmailToClipboard, () =>
+                  confirm('Send this email to the client again?\n\nThey get it at the same addresses as last time.'))
+                if (next === 'cancelled') return
+                if (next === 'could-not-copy') { setSendError('Could not copy the email — nothing was sent.'); return }
+                await sendEmail(true)
               },
             } : undefined,
             title: !canSendToClient ? 'Only a broker can send this to the client'

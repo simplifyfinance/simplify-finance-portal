@@ -38,6 +38,14 @@ export type SavedEmail = {
   // Absent on every email generated before this existed, which reads as
   // 'unknown' rather than a guess.
   emailFigures?: Figures | null
+  /**
+   * WHICH QUESTIONS THIS EMAIL WAS BUILT WITHOUT.
+   *
+   * The keys unticked on the form when it was generated. 30 Oct 2026: the
+   * questions block is built on the server at generate time, so unticking one
+   * afterwards left it in the saved email with nothing saying so.
+   */
+  emailQuestions?: string[] | null
 }
 
 export type EmailFreshness =
@@ -58,10 +66,14 @@ export type EmailFreshness =
   // we are not sure of. It resolves itself the first time an email is
   // regenerated, which stamps it.
   | { state: 'unknown'; nowOn: string }
+  // Right scenario, right figures, and somebody has ticked or unticked a
+  // question since it was written. The email still carries the old list.
+  | { state: 'questions-moved' }
 
 export function emailFreshness(saved: SavedEmail | null | undefined,
                                template: string,
-                               nowFigures?: Figures): EmailFreshness {
+                               nowFigures?: Figures,
+                               nowDropped?: string[]): EmailFreshness {
   const html = saved?.emailHtml
   if (!html || !String(html).trim()) return { state: 'fresh' }
 
@@ -78,6 +90,20 @@ export function emailFreshness(saved: SavedEmail | null | undefined,
   if (nowFigures) {
     const moved = figureChanges(saved?.emailFigures || undefined, nowFigures)
     if (moved.length > 0) return { state: 'figures-moved', changes: moved.map(c => c.sentence) }
+  }
+
+  // AND WHAT IS BEING ASKED, which is not a figure and moves for its own
+  // reasons. Last, because a wrong number in front of a client is louder than a
+  // question asked twice - but it is said, because the alternative is a client
+  // being asked something we have already been told.
+  //
+  // Only where the email recorded a list. Every email generated before 30 Oct
+  // 2026 has none, and warning on all of them would be noise about a thing we
+  // cannot know - the same reasoning as 'unknown' above.
+  if (nowDropped && Array.isArray(saved?.emailQuestions)) {
+    const was = [...(saved!.emailQuestions as string[])].map(String).sort().join('|')
+    const now = [...nowDropped].map(String).sort().join('|')
+    if (was !== now) return { state: 'questions-moved' }
   }
 
   return { state: 'fresh' }
@@ -100,7 +126,7 @@ export function emailFreshness(saved: SavedEmail | null | undefined,
 // every caller shows it rather than acting on it. The warning clears itself the
 // moment the email is regenerated, because the stamp is rewritten with it.
 export function needsAttention(f: EmailFreshness): boolean {
-  return f.state === 'stale' || f.state === 'figures-moved'
+  return f.state === 'stale' || f.state === 'questions-moved' || f.state === 'figures-moved'
 }
 
 // THE NOTES THAT COME WITH A SCENARIO.

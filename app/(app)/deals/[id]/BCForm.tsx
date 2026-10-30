@@ -27,6 +27,7 @@ import { ffProperties, securitiesOf, securitiesWithPurchase, totalsOf, groupBySe
         BEING_PURCHASED, BEING_PURCHASED_LABEL,
          lvrOf, pct, legacyAddress } from '@/lib/securities'
 import { autoTagSplits, findPurchaseSplit } from '@/lib/split-security-tag'
+import { copyBeforeAsking } from '@/lib/send-again'
 import { isInterestOnly } from '@/lib/deal-structure'
 import { boxesFor, firstDischargedBalance } from '@/lib/security-figures'
 import { tabsOf, canAdd, canSwap, swapTo, addScenario, removeScenario, whyNotDelete, renameLive,
@@ -1106,6 +1107,11 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // drawn. Emails written before today have none, which reads as "no changes
   // to report" rather than a false alarm.
   const [emailFigures, setEmailFigures] = useState<any>(s.emailFigures || null)
+  // WHICH QUESTIONS THE SAVED EMAIL WAS BUILT WITHOUT. 30 Oct 2026 - untick one
+  // after generating and the saved wording still carried it, with nothing
+  // saying so. See emailFreshness() in lib/email-freshness.ts.
+  const [emailQuestions, setEmailQuestions] = useState<string[] | null>(
+    Array.isArray(s.emailQuestions) ? s.emailQuestions : null)
   const [emailError, setEmailError] = useState('')
   const [bcCompletedAt, setBcCompletedAt] = useState<string | null>(deal.bc_completed_at || null)
   const [markingComplete, setMarkingComplete] = useState(false)
@@ -1229,6 +1235,7 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     brokerNotes: setBrokerNotes, templateNotes: setTemplateNotes, internalNotes: setInternalNotes,
     brokerSig: setBrokerSig, checklist: setChecklist, emailHtml: setEmailHtml,
     emailHtmlTemplate: setEmailHtmlTemplate, emailFigures: setEmailFigures,
+    emailQuestions: setEmailQuestions,
     existingLoanBal: setExistingLoanBal, propertyValue: setPropertyValue,
     newPurchasePrice: setNewPurchasePrice, newPurchaseDeposit: setNewPurchaseDeposit,
     newPurchaseSuburb: setNewPurchaseSuburb, newPurchasePropertyType: setNewPurchasePropertyType,
@@ -1423,13 +1430,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     // pending stays in pendingSave and is written by the effect above when the
     // form actually leaves.
     return () => clearTimeout(timeoutId)
-  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, repaymentAnalysis, analysisYearsRemaining, analysisCurrentRepayment, analysisCurrentRate, compareOptions, optionLabel, altScenarios, brand])
+  }, [template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, emailQuestions, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, repaymentAnalysis, analysisYearsRemaining, analysisCurrentRepayment, analysisCurrentRate, compareOptions, optionLabel, altScenarios, brand])
 
   // Single source of truth for BC form fields. Used by BOTH the autosave and the
   // email payload, so a new field reaches the database and the client email together.
   // These were previously two hand-written lists, and they drifted apart.
   function buildBcData() {
-    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, repaymentAnalysis, analysisYearsRemaining, analysisCurrentRepayment, analysisCurrentRate, compareOptions, optionLabel, altScenarios, brand }
+    return { template, splits, firstName, lastName, dependants, joint, incomeBase, incomeOther, incomeRental, ccLimit, carLoan, suburb, propertyType, purchasePropertySubtype, purchasePrice, deposit, stampDuty, dutyState, lvr, lvrCustom, lmiApplicable, lmiTreatment, lvrPercent, loanTerm, brokerNotes, templateNotes, internalNotes, brokerSig, checklist, emailHtml, emailHtmlTemplate, emailFigures, emailQuestions, existingLoanBal, propertyValue, newPurchasePrice, newPurchaseDeposit, newPurchaseSuburb, newPurchasePropertyType, newPurchaseDepositSource, newPurchaseStampDuty, newPurchaseLoanTerm, salePrice, agentFees, netProceeds, additionalSavings, equityRelease, depositSource, lmi, fhog, guarantorName, bridgingPeriod, peakDebt, totalLimit, offsetSplits, offsetSplitIdx, propertyLimits, securityIds, securityLimits, securityBalances, securityReleases, securityIncreases, securityDollarForDollar, increaseMerged, securityLmiApplicable, securityLmi, securityLmiTreatment, constructionCost, landValue, landFunding, landLoanBalance, asIfCompleteValue, saleProceedsUse, repaymentAnalysis, analysisYearsRemaining, analysisCurrentRepayment, analysisCurrentRate, compareOptions, optionLabel, altScenarios, brand }
   }
 
   // Does the saved email still match the scenario the deal is on? Read in three
@@ -1437,7 +1444,8 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
   // Read fresh off the deal every render: the fact find is the live copy, the
   // saved stamp is the old one, and the difference between them is the warning.
   const nowFigures = dealFigures(deal)
-  const freshness = emailFreshness({ emailHtml, emailHtmlTemplate, emailFigures }, template, nowFigures)
+  const freshness = emailFreshness({ emailHtml, emailHtmlTemplate, emailFigures, emailQuestions },
+                                   template, nowFigures, questionsDropped)
   // Shown, never acted on. Nothing here switches a button off - see
   // needsAttention() for why.
   const emailNeedsAttention = needsAttention(freshness)
@@ -1806,9 +1814,13 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
     setTimeout(() => setSendToClientMsg(''), 6000)
   }
 
-  async function sendToClient() {
+  /**
+   * `preCopied` - the wording is already on the clipboard, put there by the
+   * click that opened the "send it again?" dialog. See lib/send-again.ts.
+   */
+  async function sendToClient(preCopied = false) {
     try {
-      await copyEmailToClipboard()
+      if (!preCopied) await copyEmailToClipboard()
       const subject = 'Your Borrowing Capacity'
       const applicantEmails = (deal.fact_find_data?.applicants || [])
         .map((a: any) => a.emailPersonal)
@@ -1948,7 +1960,7 @@ Key assumptions: ${checklistText}`
         return
       }
       const data = await res.json()
-      if (data.html) { setEmailHtml(data.html); setEmailHtmlTemplate(template); setEmailFigures(dealFigures(deal)); if (data.brokerFirstName) { await supabase.from('deals').update({ broker_first_name: data.brokerFirstName }).eq('id', deal.id) } setActiveTab('preview') }
+      if (data.html) { setEmailHtml(data.html); setEmailHtmlTemplate(template); setEmailFigures(dealFigures(deal)); setEmailQuestions(questionsDropped); if (data.brokerFirstName) { await supabase.from('deals').update({ broker_first_name: data.brokerFirstName }).eq('id', deal.id) } setActiveTab('preview') }
       else setEmailError('No email returned. Try again.')
     } catch (e: any) {
       setEmailError(`Error: ${e.message}`)
@@ -2012,13 +2024,26 @@ Key assumptions: ${checklistText}`
             again: canSendAgain(deal, 'bc') && canSendToClient && emailHtml ? {
               label: 'Send again',
               title: 'Sends this email to the same people again',
-              onClick: () => {
-                if (confirm('Send this email to the client again?\n\nThey get it at the same addresses as last time.')) sendToClient()
+              // THE COPY HAPPENS ON THE CLICK, THE QUESTION AFTER IT.
+              // 30 Oct 2026 - see lib/send-again.ts. Asking first spent the
+              // click, the clipboard write was refused, and this button did
+              // nothing at all.
+              onClick: async () => {
+                const next = await copyBeforeAsking(copyEmailToClipboard, () =>
+                  confirm('Send this email to the client again?\n\nThey get it at the same addresses as last time.'))
+                if (next === 'cancelled') return
+                if (next === 'could-not-copy') {
+                  setSendToClientMsg('Could not copy the email — nothing was sent.')
+                  setTimeout(() => setSendToClientMsg(''), 6000)
+                  return
+                }
+                await sendToClient(true)
               },
             } : undefined,
             title: !canSendToClient ? 'Only a broker can send this to the client'
                  : freshness.state === 'stale' ? 'Heads up: this email was written for a different scenario.'
-                 : freshness.state === 'figures-moved' ? 'Heads up: figures have changed since this email was written.' : '',
+                 : freshness.state === 'figures-moved' ? 'Heads up: figures have changed since this email was written.'
+                 : freshness.state === 'questions-moved' ? 'Heads up: the questions have changed since this email was written. Rebuild it.' : '',
           },
           {
             label: deal.client_proceeded
@@ -3897,6 +3922,21 @@ Key assumptions: ${checklistText}`
                   Fill them in on the BC form and regenerate, or send as it is — nothing is blocked.
                 </div>
               </div>
+            </div>
+          )}
+          {/* TICKED OR UNTICKED SINCE IT WAS WRITTEN.
+            * 30 Oct 2026, Fabio: "when I untick these boxes they are still
+            * showing on the email." The questions block is built on the server
+            * when the email is generated, so the saved wording still carries
+            * the old list - and Send to client sends the saved wording while
+            * the deal records the live one. */}
+          {freshness.state === 'questions-moved' && (
+            <div className="mb-3 rounded-lg border border-chase-edge bg-chase-bg px-3 py-2.5">
+              <p className="m-0 text-[12.5px] text-chase leading-relaxed">
+                <b className="text-ink">The questions have changed since this email was written.</b>
+                {' '}It still carries the old list. Press <b className="text-ink">Generate email</b> again
+                and the ones you have unticked come off it.
+              </p>
             </div>
           )}
           {freshness.state === 'stale' && (
