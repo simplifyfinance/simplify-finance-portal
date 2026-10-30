@@ -26,7 +26,8 @@ import { ffProperties, securitiesOf, securitiesWithPurchase, totalsOf, groupBySe
          orphanSplits, canBuyAndRefinance, purchaseLoanOf,
         BEING_PURCHASED, BEING_PURCHASED_LABEL,
          lvrOf, pct, legacyAddress } from '@/lib/securities'
-import { autoTagSplits } from '@/lib/split-security-tag'
+import { autoTagSplits, findPurchaseSplit } from '@/lib/split-security-tag'
+import { isInterestOnly } from '@/lib/deal-structure'
 import { boxesFor, firstDischargedBalance } from '@/lib/security-figures'
 import { tabsOf, canAdd, canSwap, swapTo, addScenario, removeScenario, whyNotDelete, renameLive,
          labelOf, scenarioCount, downstreamStarted, parkedOf } from '@/lib/bc-scenarios'
@@ -181,18 +182,10 @@ const TEMPLATE_DEFAULTS: Record<string, any> = {
 // for why an id and not an address.
 type Split = { label: string; amount: string; rate: string; type: string; ioYears?: string; existingBalance?: string; deposit?: string; lmiApplicable?: string; lmi?: string; repayment?: string; interestCapitalised?: string; purpose?: string; fundsUsedFor?: string; property?: string; securityId?: string; staying?: boolean }
 
-// WHICH SPLIT BUYS THE HOUSE. Tag first, then label, then the old fixed
-// position - the same order lib/securities.ts purchaseLoanOf reads them in, so
-// the panel and the figures downstream can never disagree about which split
-// that is. Returns -1 when there is none.
-function findPurchaseSplit(list: Split[]): number {
-  const arr = Array.isArray(list) ? list : []
-  const tagged = arr.findIndex(x => String(x?.securityId || '') === BEING_PURCHASED)
-  if (tagged >= 0) return tagged
-  const named = arr.findIndex(x => /new purchase/i.test(String(x?.label || '')))
-  if (named >= 0) return named
-  return arr.length > 2 ? 2 : -1
-}
+// WHICH SPLIT BUYS THE HOUSE - decided in lib/split-security-tag.ts, where the
+// auto-tagger reads the same answer. 30 Oct 2026: it was written out here as
+// well, the two copies drifted, and a purchase split with an empty label was
+// edited by the panel and tagged by nothing.
 
 type AltScenario = {
   label?: string
@@ -571,7 +564,11 @@ export default function BCForm({ deal, onDataChange, onStageChange, userRole, on
                     securityId: BEING_PURCHASED } as any)
         i = next.length - 1
       }
-      next[i] = { ...next[i], [field]: val } as any
+      // WHAT THIS PANEL EDITS IS THE PURCHASE. It said so only on a split it
+      // had just created, so a deal whose third split already existed never
+      // carried the tag - and then nothing downstream knew the house it buys
+      // is the security. 30 Oct 2026.
+      next[i] = { ...next[i], [field]: val, securityId: BEING_PURCHASED } as any
       return next
     })
   }
@@ -2653,7 +2650,7 @@ Key assumptions: ${checklistText}`
                         {/* MONEY NO PROPERTY IS CARRYING. These used to vanish. */}
                         {orphans.length > 0 && (
                           <p className="mt-1.5 text-[11px] text-chase leading-snug">
-                            {orphans.length} split{orphans.length === 1 ? '' : 's'} not against any security
+                            {orphans.length} split{orphans.length === 1 ? '' : 's'}{' '}not against any security
                             &mdash; {orphans.map(o => o.label || 'unnamed').join(', ')}. Pick one on the split,
                             or tick the property it belongs to.
                           </p>
@@ -3358,7 +3355,7 @@ Key assumptions: ${checklistText}`
                             stops, rather than printing the loan term as if it
                             were the answer. See repaymentTypeLine in
                             lib/split-cards.ts. */}
-                        {/interest only|^io$/i.test(s.type || '') && (
+                        {isInterestOnly(s.type) && (
                           <Field label="IO period (years)">
                             <select className={selectCls} value={s.ioYears || ''} onChange={e => updateSplit(i, 'ioYears', e.target.value)}>
                               <option value="">— select —</option>
@@ -3562,10 +3559,13 @@ Key assumptions: ${checklistText}`
                     {/* INTEREST ONLY NEVER TRAVELS ALONE. Fabio, 20 Oct 2026:
                       * "make sure you always add how many years interest only,
                       * because you tend to forget." */}
-                    {/^interest only$/i.test(String(pSplit?.type || '')) && (
+                    {isInterestOnly(pSplit?.type) && (
                       <Field label="Interest only years">
-                        <input className={inputCls} value={pSplit?.ioYears || ''}
-                          onChange={e => setNewPurchaseSplitField('ioYears', e.target.value)} />
+                        <select className={selectCls} value={pSplit?.ioYears || ''}
+                          onChange={e => setNewPurchaseSplitField('ioYears', e.target.value)}>
+                          <option value="">&mdash; select &mdash;</option>
+                          <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                        </select>
                       </Field>
                     )}
                   </div>

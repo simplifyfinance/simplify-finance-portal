@@ -211,11 +211,18 @@ describe('no template works it out for itself', () => {
   })
 
   it('the scenarios with hand-written cards pick up anything past them', () => {
-    // refinance + equity release keeps its two, bridging keeps its two, equity
-    // release + purchase keeps its three - and a split beyond those now prints
-    // instead of vanishing.
+    // refinance + equity release keeps its two and bridging keeps its two, and
+    // a split beyond those prints instead of vanishing.
+    //
+    // 30 Oct 2026, and equity release + purchase is no longer one of them.
+    // Fabio: "split 4, see it is clearly linked to security in Woodend, why
+    // does the HTML have that as a separate box?" Picking a split up AFTER the
+    // hand-written cards is still a box with no house named on it. That
+    // template now puts every split in the column of the house it is against,
+    // so there is nothing past them to pick up - see
+    // lib/a-split-sits-with-its-house.test.ts.
     const froms = (src.match(/from: (\d)/g) || []).sort()
-    expect(froms).toEqual(['from: 2', 'from: 2', 'from: 3'])
+    expect(froms).toEqual(['from: 2', 'from: 2'])
   })
 
   it('nothing shadows the shared row builder', () => {

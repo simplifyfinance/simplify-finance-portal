@@ -163,8 +163,14 @@ describe('the form asks the questions the scenario needs', () => {
 
   // splits[2] held only while the purchase was always the third of three.
   // Merging the two top-up splits makes it the second.
+  // 30 Oct 2026. It moved to lib/split-security-tag.ts, beside the auto-tagger
+  // that has to agree with it. Two copies had drifted: the form found the
+  // purchase by tag, label OR position, the tagger by tag or label only, and a
+  // purchase split with an empty label was edited by one and ignored by the
+  // other. The rule is tested in lib/one-answer-to-which-split-buys-it.test.ts.
   it('finds the purchase split rather than counting to it', () => {
-    expect(form).toContain('function findPurchaseSplit(')
+    expect(form).toContain('findPurchaseSplit(')
+    expect(form, 'a second copy of the rule').not.toContain('function findPurchaseSplit(')
     expect(form).not.toMatch(/splits\[2\]\?\./)
   })
 

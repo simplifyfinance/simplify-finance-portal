@@ -33,6 +33,29 @@ const txt = (v: unknown) => String(v ?? '').trim()
 //
 // Returns the new list, or null when there was nothing to fill in - so the
 // caller can skip the state write rather than loop.
+/**
+ * WHICH SPLIT BUYS THE HOUSE. Returns -1 where there is none.
+ *
+ * THE TAG BEATS THE LABEL BEATS THE POSITION, the same order lib/securities.ts
+ * reads them in, so the panel and the figures downstream can never disagree
+ * about which split that is.
+ *
+ * POSITION IS LAST AND IT IS NOT A GUESS. The templates that buy and refinance
+ * seed three splits - the loan being refinanced, the equity coming out, and the
+ * one buying the house - and the New purchase panel has written into the third
+ * by position since before the tag existed. A deal recorded that way has a
+ * purchase split with an empty label and no tag, and reading it any other way
+ * means the panel edits one split while everything else reads another.
+ */
+export function findPurchaseSplit(splits: any): number {
+  const arr = Array.isArray(splits) ? splits : []
+  const tagged = arr.findIndex(x => txt(x?.securityId) === BEING_PURCHASED)
+  if (tagged >= 0) return tagged
+  const named = arr.findIndex(x => /new purchase/i.test(txt(x?.label)))
+  if (named >= 0) return named
+  return arr.length > 2 ? 2 : -1
+}
+
 export function autoTagSplits(
   splits: any[], template: unknown, securityIds: unknown[],
 ): any[] | null {
@@ -44,10 +67,16 @@ export function autoTagSplits(
   const ids = (securityIds || []).map(txt).filter(Boolean)
   const only = topUp && ids.length === 1 ? ids[0] : ''
 
+  // THE SAME ANSWER THE FORM USES. 30 Oct 2026: this asked the label and the
+  // form asked the label AND the position, so a purchase split with an empty
+  // label was edited by the New purchase panel and left against no security by
+  // this. One function now.
+  const buyIdx = buys ? findPurchaseSplit(list) : -1
+
   let changed = false
-  const next = list.map(sp => {
+  const next = list.map((sp, i) => {
     if (txt(sp?.securityId)) return sp
-    if (buys && /new purchase/i.test(txt(sp?.label))) {
+    if (i === buyIdx) {
       changed = true
       return { ...sp, securityId: BEING_PURCHASED }
     }

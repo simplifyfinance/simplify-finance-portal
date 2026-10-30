@@ -15,6 +15,8 @@ import { lmiClientLines, lmiIsInTheLoan, clientLoan, lmiAmount, lmiKeys,
 import { loanThatBuysIt, lendingNotBuyingIt, purchasePriceOf, splitSecurityId,
          canBuyAndRefinance, BEING_PURCHASED } from '@/lib/securities'
 import { mergedNotes } from '@/lib/scenario-notes'
+import { findPurchaseSplit } from '@/lib/split-security-tag'
+import { isBeingPurchased } from '@/lib/securities'
 import { repaymentOf, splitRows, cardTitle, structureLead, realSplits,
          repaymentTypeLine } from '@/lib/split-cards'
 import { purchaseRows } from '@/lib/purchase-rows'
@@ -1559,22 +1561,23 @@ export async function POST(req: NextRequest) {
     const npPrice   = d.newPurchasePrice     || d.purchasePrice || ''
     const npStamp   = d.newPurchaseStampDuty || d.stampDuty     || ''
     const npDeposit = d.newPurchaseDeposit   || d.equityRelease || d.deposit || ''
-    const existingLoanCol = `
-      <p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 6px"><span style="color:#343333;">Existing loan refinanced</span></p>
-      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Loan amount: ${money(d.splits?.[0]?.amount) || ''}</span></p>
-      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Indicative rate: ${d.splits?.[0]?.rate || ''}% p.a.*</span></p>
-      ${lineIf('Estimated repayments', repaymentOf(d.splits?.[0], d.loanTerm))}
-      <p style="font-size:11px;color:#555;margin:2px 0 10px"><span style="color:#555;">Repayment type: ${d.splits?.[0]?.type || 'P&I'} over ${d.loanTerm || '30'} years</span></p>
-      <p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 6px"><span style="color:#343333;">Equity access</span></p>
-      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Loan amount: ${money(d.splits?.[1]?.amount) || ''}</span></p>
-      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Indicative rate: ${d.splits?.[1]?.rate || ''}% p.a.*</span></p>
-      ${lineIf('Estimated repayments', repaymentOf(d.splits?.[1], d.loanTerm))}
-      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Repayment type: ${d.splits?.[1]?.type || 'P&I'} over ${d.loanTerm || '30'} years</span></p>`
-    const newPurchaseCol = `
-      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Loan amount: ${money(d.splits?.[2]?.amount) || ''}</span></p>
-      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Indicative rate: ${d.splits?.[2]?.rate || ''}% p.a.*</span></p>
-      ${lineIf('Estimated repayments', repaymentOf(d.splits?.[2], d.loanTerm))}
-      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Repayment type: ${d.splits?.[2]?.type || 'P&I'} over ${d.loanTerm || '30'} years</span></p>`
+    // EVERY SPLIT IN THE COLUMN OF THE HOUSE IT IS AGAINST. See the note at the
+    // top of this patch - positions put a fourth split in a box of its own.
+    const eqSplits = realSplits(d.splits)
+    const eqBuyIdx = findPurchaseSplit(eqSplits)
+    const isTheBuy = (sp: any, i: number) => i === eqBuyIdx || isBeingPurchased(sp)
+    const colLines = (sp: any, withLabel: boolean) =>
+      (withLabel && txt(sp?.label)
+        ? `<p style="font-size:12px;font-weight:600;color:#343333;margin:0 0 6px"><span style="color:#343333;">${txt(sp.label)}</span></p>`
+        : '') +
+      `<p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Loan amount: ${money(sp?.amount) || ''}</span></p>
+      <p style="font-size:11px;color:#555;margin:2px 0"><span style="color:#555;">Indicative rate: ${sp?.rate || ''}% p.a.*</span></p>
+      ${lineIf('Estimated repayments', repaymentOf(sp, d.loanTerm))}
+      <p style="font-size:11px;color:#555;margin:2px 0 10px"><span style="color:#555;">Repayment type: ${repaymentTypeLine(sp, d.loanTerm) || `${sp?.type || 'P&I'} over ${d.loanTerm || '30'} years`}</span></p>`
+    const existingLoanCol = eqSplits.filter((sp: any, i: number) => !isTheBuy(sp, i))
+      .map((sp: any) => colLines(sp, true)).join('')
+    const newPurchaseCol = eqSplits.filter((sp: any, i: number) => isTheBuy(sp, i))
+      .map((sp: any) => colLines(sp, false)).join('')
 
     body = heading() + brokerBox(personalisation, d.firstName, d.jointFirstName, d.joint) +
       p('We have now finalised your review as you are looking at purchasing an owner-occupied/investment property.') +
@@ -1585,7 +1588,7 @@ export async function POST(req: NextRequest) {
       card('Summary',
         purchaseBlock({
           price: npPrice, duty: npStamp, dutyLabel: dutyLabel(d),
-          loan: d.splits?.[2]?.amount, contribution: npDeposit,
+          loan: loanThatBuysIt(d), contribution: npDeposit,
           contributionFrom: 'equity release and personal savings',
           // This card had no LMI at all. See lmiFrom in lib/purchase-rows.ts.
           lmiFrom: d,
@@ -1602,9 +1605,10 @@ export async function POST(req: NextRequest) {
           ${newPurchaseCol}
         </td>
       </tr></table>` +
-      // Three columns are written by hand because each sits against a different
-      // security. A fourth split belongs to neither and used to disappear.
-      splitCards(d, 'Additional lending', { from: 3, termWithType: true }) +
+      // NOTHING IS LEFT OVER. Every split is in one of the two columns above,
+      // placed by the house it is against rather than by its position in the
+      // list - so there is nothing to print here and no box with no house named
+      // on it. 30 Oct 2026.
       bufferNoteBlock(template) +
       ctas(b.calendly, dealId ? `${siteUrl()}/proceed/${dealId}?from=BC` : undefined) +
       check(checkItems) +

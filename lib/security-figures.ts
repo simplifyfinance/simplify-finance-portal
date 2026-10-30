@@ -69,9 +69,19 @@ export function boxesFor(bc: any, ff: any, id: unknown): SecurityBoxes {
   const want = txt(id)
   const property = (Array.isArray(ff?.properties) ? ff.properties : [])
     .find((p: any) => txt(p?.id) === want)
-  const owes = owedOnProperty(property)
   const splits = Array.isArray(bc?.splits) ? bc.splits : []
-  const limit = splits.filter((sp: any) => splitSecurityId(sp) === want)
-    .reduce((t: number, sp: any) => t + num(sp?.amount), 0)
+  const mine = splits.filter((sp: any) => splitSecurityId(sp) === want)
+
+  // WHAT IT OWES TODAY, FROM EITHER PLACE IT IS RECORDED.
+  //
+  // The fact find first - that is the client's own record of the loan. Then the
+  // BC's own "Existing balance on this property" box, per split, which is where
+  // a broker puts it on a deal whose fact find never itemised the loans. 30 Oct
+  // 2026: reading only the first left the box blank on a deal showing $189,000
+  // two panels down.
+  const owes = owedOnProperty(property)
+    || mine.reduce((t: number, sp: any) => t + num(sp?.existingBalance), 0)
+
+  const limit = mine.reduce((t: number, sp: any) => t + num(sp?.amount), 0)
   return { owes, releasing: Math.max(0, limit - owes), limit }
 }
