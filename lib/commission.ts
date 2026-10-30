@@ -154,7 +154,7 @@ export function lvrOf(deal: any): number | null {
   // 265%", so the commission reads as unknown - or, where a band has no maximum,
   // it pays at the rate meant for the riskiest lending on the book. Either way
   // the figure is wrong and nothing on the screen says why.
-  const t = totalsOf(securitiesWithPurchase(bc, deal?.fact_find_data))
+  const t = totalsOf(securitiesWithPurchase(bc, deal?.fact_find_data, deal?.purchase_address))
   if (loan && t.value > 0) return Math.round((loan / t.value) * 1000) / 10
 
   const value = n(bc.propertyValue) ?? n(bc.purchasePrice)

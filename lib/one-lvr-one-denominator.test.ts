@@ -171,11 +171,16 @@ describe('the lending options screen asks one question, not three', () => {
     expect(src).not.toContain('isComplexRefinance(bc.template)')
   })
 
+  // 30 Oct 2026 it gained the address the offer-accepted panel records, so the
+  // house being bought stops reading TBA once there is a street to put on it.
+  // Every call passes it, because a screen that was not handed it would print
+  // TBA beside one printing the address.
   it('and every securities list on it includes the house being bought', () => {
-    expect((src.match(/securitiesWithPurchase\(bc, ff\)/g) || []).length).toBeGreaterThanOrEqual(5)
+    expect((src.match(/securitiesWithPurchase\(bc, ff, deal\?\.purchase_address\)/g) || []).length)
+      .toBeGreaterThanOrEqual(5)
   })
 
   it('so the grouped list and the flat list can never both render', () => {
-    expect(src).toContain('{(!canHaveManySecurities(bc.template) || securitiesWithPurchase(bc, ff).length < 2) && (')
+    expect(src).toContain('{(!canHaveManySecurities(bc.template) || securitiesWithPurchase(bc, ff, deal?.purchase_address).length < 2) && (')
   })
 })

@@ -168,8 +168,13 @@ describe('the form asks each question once', () => {
 
   // Pinned to one template and to the third split. Merging the top-up splits
   // moves the purchase to position 1, so the hide fell on the wrong card.
+  //
+  // 30 Oct 2026 it stopped returning null and started returning a grey strip
+  // saying where that split is edited. Fabio: "why does it go 1, 2 and then 4?
+  // Small but annoying." Same question, same answer - what changed is that the
+  // hole now says what it is. See lib/the-sentence-the-client-receives.test.ts.
   it('hides the purchase split by what it is, not where it sits', () => {
-    expect(form).toContain('if (canBuyAndRefinance(template) && i === findPurchaseSplit(splits)) return null')
+    expect(form).toContain('if (canBuyAndRefinance(template) && i === findPurchaseSplit(splits)) return (')
     expect(form).not.toContain("if (template === 'investment_equity' && i === 2) return null")
   })
 

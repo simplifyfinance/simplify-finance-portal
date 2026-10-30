@@ -188,6 +188,23 @@ export default function OfferAccepted({ deal, me, onUpdated }: {
         )}
         {saved && <span className="ml-auto text-[11.5px] text-done">{saved}</span>}
       </div>
+      {/* THE HOUSE GETS ITS NAME. 30 Oct 2026, Fabio: "offer accepted process
+        * is not allowing us to change the security details - remember it starts
+        * as TBA, then we find a property."
+        *
+        * First box on the panel, because it is the first thing an accepted
+        * offer tells you. It renames the security row every screen already
+        * reads - see securitiesWithPurchase in lib/securities.ts. */}
+      <div className="mt-3">
+        <span className={LAB}>The property being bought</span>
+        <input defaultValue={d.purchase_address ?? ''} key={`pa${d.purchase_address ?? ''}`}
+          onBlur={onBlurField('purchase_address')}
+          placeholder="the address off the contract" className={INP} />
+        <p className="m-0 mt-1 text-[10.5px] text-[#A0A7AE]">
+          Until this is filled in, every screen calls it &ldquo;the property being purchased (TBA)&rdquo;.
+        </p>
+      </div>
+
 
       <div className="grid grid-cols-2 gap-3 max-[720px]:grid-cols-1">
         <div>

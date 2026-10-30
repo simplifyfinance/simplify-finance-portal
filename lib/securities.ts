@@ -324,7 +324,7 @@ export function purchasePriceOf(bc: any): string {
 // ITS VALUE IS THE PURCHASE PRICE, which is what a lender lends against before
 // there is a valuation, and its limit is the loan that buys it. Neither is
 // invented: both are already on the BC.
-export function securitiesWithPurchase(bc: any, ff: any): Security[] {
+export function securitiesWithPurchase(bc: any, ff: any, purchaseAddress?: unknown): Security[] {
   const real = securitiesOf(bc, ff)
   // NOTHING TICKED MEANS THIS LIST IS NOT IN USE ON THIS DEAL, and a list
   // holding only the house being bought is not a security list - it is the
@@ -342,7 +342,10 @@ export function securitiesWithPurchase(bc: any, ff: any): Security[] {
   if (num(price) <= 0 && loan <= 0) return real
   return [...real, {
     id: BEING_PURCHASED,
-    address: BEING_PURCHASED_LABEL,
+    // ITS NAME, ONCE SOMEBODY HAS ONE TO GIVE IT. Recorded on the deal when the
+    // offer is accepted - see components/OfferAccepted.tsx. Until then it is
+    // TBA, which is the truth rather than a gap. 30 Oct 2026.
+    address: txt(purchaseAddress) || BEING_PURCHASED_LABEL,
     use: '', subtype: '',
     value: price,
     limit: loan > 0 ? String(loan) : '',

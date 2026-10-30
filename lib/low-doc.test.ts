@@ -67,9 +67,16 @@ describe('WHAT THE CLIENT IS TOLD', () => {
   })
 
   it('the whole sentence, written once', () => {
-    expect(incomeEvidenceSentence(LOW_DOC_BAS)).toBe('Income as per BAS provided')
-    expect(incomeEvidenceSentence(LOW_DOC_LETTER)).toBe("Income as per accountant's letter provided")
-    expect(incomeEvidenceSentence('One year in isolation')).toBe('Income as per tax returns provided')
+    // THE EVIDENCE, NOT THE METHOD - which is what the line carries and what
+    // the email has. 30 Oct 2026: this test called it with a method, the email
+    // called it with the words, and the words matched nothing.
+    expect(incomeEvidenceSentence(evidenceWords(LOW_DOC_BAS))).toBe('Income as per BAS provided')
+    expect(incomeEvidenceSentence(evidenceWords(LOW_DOC_LETTER)))
+      .toBe("Income as per accountant's letter provided")
+    expect(incomeEvidenceSentence(evidenceWords('One year in isolation')))
+      .toBe('Income as per tax returns provided')
+    expect(incomeEvidenceSentence(''), 'nothing recorded still reads as it always did')
+      .toBe('Income as per tax returns provided')
   })
 
   it('AND NEVER THE FIGURE', () => {

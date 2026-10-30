@@ -58,9 +58,18 @@ export function evidenceWords(method: any): string {
   return 'tax returns'
 }
 
-/** The whole sentence, in one place, so three emails cannot word it three ways. */
-export function incomeEvidenceSentence(method: any): string {
-  return `Income as per ${evidenceWords(method)} provided`
+/**
+ * The whole sentence, in one place, so three emails cannot word it three ways.
+ *
+ * IT TAKES THE EVIDENCE, NOT THE METHOD. 30 Oct 2026: it took the method and
+ * the only caller had the words - incomeBreakdownFor() converts the method
+ * once, on the line - so "BAS" was handed to evidenceWords(), matched nothing,
+ * and came back "tax returns". Every low doc client was told their income rests
+ * on returns they have not given us. The test passed the whole time, because it
+ * only ever called this with a method.
+ */
+export function incomeEvidenceSentence(evidence: any): string {
+  return `Income as per ${txt(evidence) || 'tax returns'} provided`
 }
 
 /**

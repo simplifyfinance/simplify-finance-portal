@@ -389,7 +389,7 @@ export function boxOne(deal: any): BoxOne {
   // So the addresses come out of this sentence and get a paragraph of their own
   // below. Only where there is more than one - naming a single house twice is
   // worse than the combined line ever was.
-  const positions = positionsOf(securitiesWithPurchase(bc, deal?.fact_find_data), splitsOf(deal))
+  const positions = positionsOf(securitiesWithPurchase(bc, deal?.fact_find_data, deal?.purchase_address), splitsOf(deal))
   const manyHouses = positions.length > 1
 
   opening.push(isPurchase

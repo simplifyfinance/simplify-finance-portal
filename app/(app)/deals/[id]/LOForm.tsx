@@ -836,7 +836,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
       // Worse than a wrong figure on a screen: a wrong figure on a screen is
       // seen and corrected, and this one is kept and consulted. Same source as
       // every other LVR now - see lib/securities.ts.
-      const secured = totalsOf(securitiesWithPurchase(bc, ff)).value
+      const secured = totalsOf(securitiesWithPurchase(bc, ff, deal?.purchase_address)).value
       const against = secured > 0
         ? secured
         : Number((d.purchasePrice || '').toString().replace(/,/g, '')) || 0
@@ -2382,7 +2382,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   * which house a loan is secured by is the structure, and the BC
                   * owns the structure. See lib/securities.ts. */}
                 {canHaveManySecurities(bc.template) && (() => {
-                  const secs = securitiesWithPurchase(bc, ff)
+                  const secs = securitiesWithPurchase(bc, ff, deal?.purchase_address)
                   if (secs.length === 0) return null
                   const t = totalsOf(secs)
                   const drawnOn = (id: string) => d.refinanceSplits
@@ -2447,7 +2447,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                   // security, or no securities ticked at all, keeps the plain
                   // list below - grouping one house under a heading of its own
                   // name is noise. See lib/lo-by-property.ts.
-                  const secs = canHaveManySecurities(bc.template) ? securitiesWithPurchase(bc, ff) : []
+                  const secs = canHaveManySecurities(bc.template) ? securitiesWithPurchase(bc, ff, deal?.purchase_address) : []
                   if (secs.length < 2) return null
                   const { groups, loose } = groupLoSplits(d.refinanceSplits, secs)
 
@@ -2545,7 +2545,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                     </div>
                   )
                 })()}
-                {(!canHaveManySecurities(bc.template) || securitiesWithPurchase(bc, ff).length < 2) && (
+                {(!canHaveManySecurities(bc.template) || securitiesWithPurchase(bc, ff, deal?.purchase_address).length < 2) && (
                 <div className="space-y-2 mb-3">
                   {d.refinanceSplits.map((split, idx) => (
                     <div key={split.id} className="bg-gray-50 border border-gray-100 rounded-lg p-3">
@@ -2699,7 +2699,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
             // Worked out here rather than inside the loop: "is this the first
             // split on this house" is a question about the list, and a map
             // built per row would answer it wrong. See lib/lo-by-property.ts.
-            const cmpSecs = canHaveManySecurities(bc.template) ? securitiesWithPurchase(bc, ff) : []
+            const cmpSecs = canHaveManySecurities(bc.template) ? securitiesWithPurchase(bc, ff, deal?.purchase_address) : []
             const headingAt: Record<number, { n: number; address: string }> = {}
             if (cmpSecs.length > 1) {
               const place = new Map(cmpSecs.map((x, n) => [x.id, { n, address: x.address }]))
@@ -2949,7 +2949,7 @@ export default function LOForm({ deal, onStageChange, userRole, onSaveStatus, on
                       // d.propertyValue - the single field that existed before
                       // a deal could be secured by more than one house, and
                       // which is empty on every deal that now uses securities.
-                      const secured = securitiesWithPurchase(bc, ff)
+                      const secured = securitiesWithPurchase(bc, ff, deal?.purchase_address)
                         .reduce((t: number, sec: any) =>
                           t + (Number(String(sec?.value || '').replace(/[^0-9.]/g, '')) || 0), 0)
                       const against = secured || d.propertyValue

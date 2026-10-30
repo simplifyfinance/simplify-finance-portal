@@ -2348,7 +2348,7 @@ Key assumptions: ${checklistText}`
                     // already own and stopped, so the deal-level LVR left out
                     // both the purchase price and the loan buying it. That is
                     // the figure a lender assesses across the security it takes.
-                    const secsAll = securitiesWithPurchase(bcNow, ff)
+                    const secsAll = securitiesWithPurchase(bcNow, ff, deal?.purchase_address)
                     const t = totalsOf(secsAll)
                     const buyRow = secsAll.find(x => x.id === BEING_PURCHASED)
                     // Grouped against every security including the purchase,
@@ -3219,7 +3219,20 @@ Key assumptions: ${checklistText}`
                     // fallen on the wrong card. Same question both places now -
                     // does this scenario have the panel, and which split is the
                     // purchase.
-                    if (canBuyAndRefinance(template) && i === findPurchaseSplit(splits)) return null
+                    // THE HOLE SAYS WHAT IT IS. See the note above - this card
+                    // is hidden because the New purchase panel edits it, and
+                    // the number went with it. 30 Oct 2026.
+                    if (canBuyAndRefinance(template) && i === findPurchaseSplit(splits)) return (
+                      <div key={i} className="rounded-xl border border-dashed border-card-line bg-page
+                                               px-3.5 py-2.5 flex items-center gap-2.5">
+                        <span className="w-[18px] h-[18px] flex-none rounded-full bg-page border border-card-line
+                                         text-[10px] font-bold text-faint inline-flex items-center justify-center">{i + 1}</span>
+                        <span className="text-xs text-muted">New purchase</span>
+                        <span className="ml-auto text-[11px] text-brand-ink">
+                          edited in the New purchase panel below &darr;
+                        </span>
+                      </div>
+                    )
                     const priceNum = parseFloat(purchasePrice.replace(/,/g, '')) || 0
                     const optAmountNum = parseFloat((s.amount || '0').replace(/,/g, '')) || 0
                     const optLvrPercent = priceNum > 0 ? Math.ceil((optAmountNum / priceNum) * 1000) / 10 : 0

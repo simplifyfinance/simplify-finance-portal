@@ -477,7 +477,7 @@ export function securityValue(deal: any): SecurityValue {
   // purchase PRICE was not in the denominator. 1,855,000 over 1,825,000 of
   // security: 101.6%, printed in Box 1 and Box 4 of a compliance pack. The
   // honest figure is 73.5%.
-  const ticked = securitiesWithPurchase(bc, deal?.fact_find_data)
+  const ticked = securitiesWithPurchase(bc, deal?.fact_find_data, deal?.purchase_address)
   if (ticked.length > 0) {
     const t = totalsOf(ticked)
     const loan = loanAmount(deal)
